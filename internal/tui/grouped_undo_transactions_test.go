@@ -87,6 +87,112 @@ func TestTUITaskMoveRecordsGroupedUndoAndRepairsConfigOnRestore(t *testing.T) {
 	}
 }
 
+func TestTUITaskMoveCanonicalizesSourceTaskPointer(t *testing.T) {
+	source, moved := newGroupedUndoProject(t, "source", "Source", "move-task-1", "Move me")
+	dest, _ := newGroupedUndoProject(t, "dest", "Dest", "", "")
+	cfg, mgr := newGroupedUndoConfig(t, source, dest)
+
+	app := &AppModel{
+		config:        cfg,
+		configManager: mgr,
+		persister:     NewProjectService(),
+	}
+
+	staleTask, err := models.NewTask(moved.ID, 99, models.TaskTypeTask, "Stale view copy")
+	if err != nil {
+		t.Fatalf("new stale task: %v", err)
+	}
+	destSection := models.SectionWaiting
+	oldCanonicalShortID := moved.ShortID
+
+	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
+		Task:          staleTask,
+		SourceProject: source,
+		DestProjectID: dest.ID,
+		DestSection:   &destSection,
+	})
+	if !handled {
+		t.Fatal("move message was not handled")
+	}
+
+	msgs := drainTUITestCmd(t, cmd)
+	var movedMsg TaskMovedToProjectMsg
+	foundMoveMsg := false
+	for _, msg := range msgs {
+		switch msg := msg.(type) {
+		case SaveErrorMsg:
+			t.Fatalf("move save failed: %v", msg.Err)
+		case TaskMovedToProjectMsg:
+			movedMsg = msg
+			foundMoveMsg = true
+		}
+	}
+	if !foundMoveMsg {
+		t.Fatalf("expected TaskMovedToProjectMsg, got %#v", msgs)
+	}
+	if movedMsg.OldShortID != oldCanonicalShortID {
+		t.Fatalf("OldShortID = %d, want canonical short ID %d", movedMsg.OldShortID, oldCanonicalShortID)
+	}
+	if source.GetTaskByID(moved.ID) != nil {
+		t.Fatal("source should no longer contain moved task")
+	}
+	destTask := dest.GetTaskByID(moved.ID)
+	if destTask == nil {
+		t.Fatal("destination should contain moved task")
+	}
+	if destTask == staleTask {
+		t.Fatal("destination should contain canonical source task, not stale view copy")
+	}
+	if destTask.Title != moved.Title {
+		t.Fatalf("destination task title = %q, want %q", destTask.Title, moved.Title)
+	}
+	if destTask.Section != destSection {
+		t.Fatalf("destination task section = %q, want %q", destTask.Section, destSection)
+	}
+}
+
+func TestGlobalMoveSectionSelectedCarriesDestSectionWithoutMutatingTask(t *testing.T) {
+	source := &models.Project{ID: "source", Name: "Source"}
+	dest := &models.Project{ID: "dest", Name: "Dest"}
+	task, err := models.NewTask("move-task-1", 4, models.TaskTypeTask, "Move me")
+	if err != nil {
+		t.Fatalf("new task: %v", err)
+	}
+
+	app := &AppModel{}
+	app.globalMoveState.sourceProject = source
+	app.globalMoveState.sourceTask = task
+	app.globalMoveState.destProject = dest
+
+	handled, cmd := app.handleGlobalMoveSectionSelected(GlobalMoveSectionSelectedMsg{
+		Section: models.SectionWaiting,
+	})
+	if !handled {
+		t.Fatal("section selection was not handled")
+	}
+	if cmd == nil {
+		t.Fatal("expected move command")
+	}
+	if task.Section != "" {
+		t.Fatalf("source task should not be mutated before move message, got section %q", task.Section)
+	}
+
+	rawMsg := cmd()
+	msg, ok := rawMsg.(MoveTaskToProjectMsg)
+	if !ok {
+		t.Fatalf("expected MoveTaskToProjectMsg, got %T", rawMsg)
+	}
+	if msg.Task != task || msg.SourceProject != source || msg.DestProjectID != dest.ID || !msg.FromGlobal {
+		t.Fatalf("unexpected move message: %#v", msg)
+	}
+	if msg.DestSection == nil || *msg.DestSection != models.SectionWaiting {
+		t.Fatalf("DestSection = %v, want %q", msg.DestSection, models.SectionWaiting)
+	}
+	if app.globalMoveState.sourceProject != nil || app.globalMoveState.sourceTask != nil || app.globalMoveState.destProject != nil {
+		t.Fatal("global move state should be cleared")
+	}
+}
+
 func TestProcessTUIDeferredMovesRecordsGroupedUndo(t *testing.T) {
 	source, moved := newGroupedUndoProject(t, "source", "Source", "workflow-task-1", "Workflow move")
 	dest, _ := newGroupedUndoProject(t, "dest", "Dest", "", "")

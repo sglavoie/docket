@@ -14,6 +14,13 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	if msg.Task == nil || msg.SourceProject == nil || msg.DestProjectID == "" {
 		return true, nil
 	}
+	sourceTask := msg.SourceProject.GetTaskByID(msg.Task.ID)
+	if sourceTask == nil {
+		return true, errorCmd("failed to move task: task %q is not in source project", msg.Task.ID)
+	}
+	if msg.DestSection != nil {
+		sourceTask.SetSection(*msg.DestSection)
+	}
 
 	// Get destination project
 	destProject := m.config.GetProject(msg.DestProjectID)
@@ -27,10 +34,10 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	}
 
 	// Store old short ID before move
-	oldShortID := msg.Task.ShortID
+	oldShortID := sourceTask.ShortID
 
 	// Perform the move
-	result, err := msg.SourceProject.MoveTaskToProject(msg.Task, destProject)
+	result, err := msg.SourceProject.MoveTaskToProject(sourceTask, destProject)
 	if err != nil {
 		return true, errorCmd("failed to move task: %w", err)
 	}

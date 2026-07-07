@@ -385,7 +385,8 @@ type MoveTaskToProjectMsg struct {
 	Task          *models.Task
 	SourceProject *models.Project
 	DestProjectID string
-	FromGlobal    bool // true when triggered from the global ;tm workflow (skip popView)
+	DestSection   *string // Optional section chosen by global move flow before moving
+	FromGlobal    bool    // true when triggered from the global ;tm workflow (skip popView)
 }
 
 // TaskMovedToProjectMsg signals a task was moved to another project.

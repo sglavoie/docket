@@ -54,7 +54,8 @@ func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool
 }
 
 // handleGlobalMoveSectionSelected completes the ;tm global task-move workflow.
-// It sets the chosen section on the task, then emits MoveTaskToProjectMsg.
+// It forwards the chosen destination section with the move request so the
+// move handler can apply it to the canonical source task.
 func (m *AppModel) handleGlobalMoveSectionSelected(msg GlobalMoveSectionSelectedMsg) (bool, tea.Cmd) {
 	m.sectionQuickPicker = nil
 	task := m.globalMoveState.sourceTask
@@ -68,13 +69,14 @@ func (m *AppModel) handleGlobalMoveSectionSelected(msg GlobalMoveSectionSelected
 		return true, nil
 	}
 
-	task.SetSection(msg.Section)
 	destProjectID := destProject.ID
+	destSection := msg.Section
 	return true, func() tea.Msg {
 		return MoveTaskToProjectMsg{
 			Task:          task,
 			SourceProject: sourceProject,
 			DestProjectID: destProjectID,
+			DestSection:   &destSection,
 			FromGlobal:    true,
 		}
 	}
