@@ -37,6 +37,9 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 			if task == nil || task.CanTransitionTo(targetStatus) != "" {
 				return false
 			}
+			if targetStatus.IsComplete() && task.HasIncompleteChildren() {
+				return false
+			}
 			return project.MutateTask(taskID, func(t *models.Task) {
 				t.ApplyTransition(targetStatus)
 			})

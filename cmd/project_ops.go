@@ -39,6 +39,7 @@ type SaveOptions struct {
 // Prints warnings to stderr if there are rule conflicts.
 func SaveProject(project *models.Project, opts *SaveOptions) error {
 	project.CheckAndAutoUnblock()
+	project.ReconcileParentCompletion()
 
 	workflowGroupedUndoRecorded := false
 
@@ -126,8 +127,15 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 
 	// Re-run post-mutation hooks after workflow rules: rules may have set
 	// tasks to "done" (e.g., auto-complete parent), which requires generating
-	// recurring instances and unblocking dependents.
+	// recurring instances and unblocking dependents. A workflow rule can also
+	// complete a parent with an incomplete child (complete_parent / set_status),
+	// so reconcile again here — mirroring the initial pre-rule pairing at 41-42 —
+	// to guarantee the illegal completed-parent-with-incomplete-child state is
+	// never written. ReconcileParentCompletion is idempotent, so double-calling
+	// (initial + post-rule) is safe; the nil-TaskIDs full-file undo snapshot
+	// already covers any parents reopened here.
 	project.CheckAndAutoUnblock()
+	project.ReconcileParentCompletion()
 	project.GenerateRecurringInstances()
 
 	project.ReorderRootTasksByCompletion()

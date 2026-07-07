@@ -60,6 +60,13 @@ func (m *OutlinerModel) crossPersistFn(_ *models.Project) persistFn {
 			return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
 		}
 		project.MutateTask(taskID, mutate)
+		// Match withPersist parity: auto-unblock dependents, reopen any parent
+		// left complete while a child is incomplete, and generate recurring
+		// instances before saving. The full-file undo snapshot recorded above
+		// (nil TaskIDs) already covers any reopened parent, so no widening.
+		project.CheckAndAutoUnblock()
+		project.ReconcileParentCompletion()
+		project.GenerateRecurringInstances()
 		if err := svc.Save(project); err != nil {
 			return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
 		}

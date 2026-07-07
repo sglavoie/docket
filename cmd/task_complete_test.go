@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -295,15 +296,8 @@ func TestCompleteParentAllChildrenDone(t *testing.T) {
 	project.BuildTaskTree()
 
 	parentTask := project.GetTaskByID(parent.ID)
-	var incompleteChildren []*models.Task
-	for _, child := range parentTask.Children {
-		if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
-			incompleteChildren = append(incompleteChildren, child)
-		}
-	}
-
-	if len(incompleteChildren) != 0 {
-		t.Errorf("expected 0 incomplete children when all done/canceled, got %d", len(incompleteChildren))
+	if err := CheckCompletionBlockers(project, parentTask); err != nil {
+		t.Errorf("expected no blocker when all children done/canceled, got %v", err)
 	}
 }
 
@@ -330,22 +324,19 @@ func TestCompleteParentBlockedByIncompleteChildren(t *testing.T) {
 	project.BuildTaskTree()
 
 	parentTask := project.GetTaskByID(parent.ID)
-	var incompleteChildren []*models.Task
-	for _, child := range parentTask.Children {
-		if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
-			incompleteChildren = append(incompleteChildren, child)
-		}
+	err = CheckCompletionBlockers(project, parentTask)
+	if err == nil {
+		t.Fatal("expected CheckCompletionBlockers to block parent with an incomplete child")
 	}
-
-	if len(incompleteChildren) != 1 {
-		t.Errorf("expected 1 incomplete child, got %d", len(incompleteChildren))
+	if !strings.Contains(err.Error(), "incomplete children") {
+		t.Errorf("expected incomplete-children error, got %v", err)
 	}
-	if incompleteChildren[0].ID != child1.ID {
-		t.Errorf("expected incomplete child to be child1")
+	if !strings.Contains(err.Error(), child1.Title) {
+		t.Errorf("expected error to name incomplete child %q, got %v", child1.Title, err)
 	}
 }
 
-func TestCompleteParentForceSkipsChildCheck(t *testing.T) {
+func TestCancelParentBlockedByIncompleteChildren(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	parent, err := models.NewTask("parent-1", 1, models.TaskTypeEpic, "Parent Epic")
@@ -362,20 +353,72 @@ func TestCompleteParentForceSkipsChildCheck(t *testing.T) {
 	project.BuildTaskTree()
 
 	parentTask := project.GetTaskByID(parent.ID)
-
-	// Simulate force=true: incomplete children exist but check is skipped
-	force := true
-	var incompleteChildren []*models.Task
-	if !force {
-		for _, c := range parentTask.Children {
-			if c.Status != models.StatusDone && c.Status != models.StatusCanceled {
-				incompleteChildren = append(incompleteChildren, c)
-			}
-		}
+	err = checkStatusChangeBlockers(project, parentTask, models.StatusCanceled)
+	if err == nil {
+		t.Fatal("expected canceling a parent with an incomplete child to be blocked")
 	}
+	if !strings.Contains(err.Error(), "incomplete children") {
+		t.Errorf("expected incomplete-children error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), child.Title) {
+		t.Errorf("expected error to name incomplete child %q, got %v", child.Title, err)
+	}
+}
 
-	if len(incompleteChildren) != 0 {
-		t.Errorf("force=true should skip children check, but got %d incomplete children", len(incompleteChildren))
+func TestCancelLeafAndCompleteParentSucceed(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	leaf, err := models.NewTask("leaf-1", 1, models.TaskTypeTask, "Leaf Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent, err := models.NewTask("parent-1", 2, models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := models.NewTask("child-1", 3, models.TaskTypeTask, "Child Done")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.ParentID = &parent.ID
+	child.Status = models.StatusDone
+
+	project.Tasks = []*models.Task{leaf, parent, child}
+	project.BuildTaskTree()
+
+	if err := checkStatusChangeBlockers(project, project.GetTaskByID(leaf.ID), models.StatusCanceled); err != nil {
+		t.Errorf("expected canceling a leaf to succeed, got %v", err)
+	}
+	if err := checkStatusChangeBlockers(project, project.GetTaskByID(parent.ID), models.StatusCanceled); err != nil {
+		t.Errorf("expected canceling a parent with all children complete to succeed, got %v", err)
+	}
+}
+
+func TestCancelNotBlockedByIncompleteDependencies(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	blocker, err := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Incomplete Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := models.NewTask("dependent-1", 2, models.TaskTypeTask, "Dependent Leaf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = dependent.AddDependency(blocker.ID)
+
+	project.Tasks = []*models.Task{blocker, dependent}
+	project.BuildTaskTree()
+
+	dependentTask := project.GetTaskByID(dependent.ID)
+
+	// Completing is blocked by the incomplete dependency...
+	if err := checkStatusChangeBlockers(project, dependentTask, models.StatusDone); err == nil {
+		t.Fatal("expected completing a task with an incomplete dependency to be blocked")
+	}
+	// ...but canceling is not (dependencies never block cancellation).
+	if err := checkStatusChangeBlockers(project, dependentTask, models.StatusCanceled); err != nil {
+		t.Errorf("expected canceling a task with an incomplete dependency to succeed, got %v", err)
 	}
 }
 

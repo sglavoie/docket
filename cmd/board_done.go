@@ -49,7 +49,7 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 	}
 
 	// Block completion if task has incomplete dependencies or children
-	if err := CheckCompletionBlockers(project, task, false); err != nil {
+	if err := CheckCompletionBlockers(project, task); err != nil {
 		return err
 	}
 

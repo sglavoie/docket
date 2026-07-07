@@ -119,8 +119,6 @@ func init() {
 	} {
 		addOutputFlags(sub)
 	}
-
-	taskCompleteCmd.Flags().Bool("force", false, "Skip incomplete-children check")
 }
 
 func runTaskComplete(cmd *cobra.Command, args []string) error {
@@ -128,8 +126,7 @@ func runTaskComplete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	force, _ := cmd.Flags().GetBool("force")
-	return updateTaskStatus(args, "complete", out, force, func(t *models.Task) {
+	return updateTaskStatus(args, "complete", out, func(t *models.Task) {
 		t.Complete()
 	})
 }
@@ -139,7 +136,7 @@ func runTaskStart(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "start", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "start", out, func(t *models.Task) {
 		t.Start()
 	})
 }
@@ -149,7 +146,7 @@ func runTaskBlock(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "block", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "block", out, func(t *models.Task) {
 		t.Block()
 	})
 }
@@ -159,7 +156,7 @@ func runTaskCancel(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "cancel", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "cancel", out, func(t *models.Task) {
 		t.Cancel()
 	})
 }
@@ -169,7 +166,7 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "reopen", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "reopen", out, func(t *models.Task) {
 		t.Reopen()
 	})
 }
@@ -179,7 +176,7 @@ func runTaskReview(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "review", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "review", out, func(t *models.Task) {
 		t.Review()
 	})
 }
@@ -189,7 +186,7 @@ func runTaskStandby(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "standby", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "standby", out, func(t *models.Task) {
 		t.Standby()
 	})
 }
@@ -199,7 +196,7 @@ func runTaskMaybe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "maybe", out, false, func(t *models.Task) {
+	return updateTaskStatus(args, "maybe", out, func(t *models.Task) {
 		t.Maybe()
 	})
 }
@@ -216,7 +213,7 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 	"maybe":    models.StatusMaybe,
 }
 
-func updateTaskStatus(args []string, action string, out MutateOutput, force bool, update func(*models.Task)) error { //nolint:gocyclo
+func updateTaskStatus(args []string, action string, out MutateOutput, update func(*models.Task)) error { //nolint:gocyclo
 	// Handle interactive selection if no ID provided
 	var taskIDs []string
 	var projectName string
@@ -294,11 +291,11 @@ func updateTaskStatus(args []string, action string, out MutateOutput, force bool
 				return fmt.Errorf("%s", msg)
 			}
 
-			// Block completion if task has incomplete dependencies or children
-			if action == "complete" {
-				if err := CheckCompletionBlockers(project, task, force); err != nil {
-					return err
-				}
+			// Completion is blocked by incomplete dependencies or children;
+			// cancellation is blocked by incomplete children only (a parent
+			// must never be done/canceled while a child is still open).
+			if err := checkStatusChangeBlockers(project, task, targetStatus); err != nil {
+				return err
 			}
 
 			// Update status

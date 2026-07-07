@@ -97,6 +97,17 @@ func (t *Task) Reopen() {
 	t.UpdatedAt = time.Now()
 }
 
+// Uncomplete reverts a completed task to in-progress without relocating it to
+// Inbox. Moves it out of the Completed section so it stays visible in place.
+func (t *Task) Uncomplete() {
+	t.Status = StatusInProgress
+	t.CompletedAt = nil
+	t.UpdatedAt = time.Now()
+	if t.Section == SectionCompleted {
+		t.Section = ""
+	}
+}
+
 // CanTransitionTo checks whether the task can move to newStatus based on its
 // current status. Returns an empty string if the transition is allowed, or a
 // human-readable reason if it is not.

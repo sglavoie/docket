@@ -40,6 +40,24 @@ func (t *Task) GetProgress() float64 {
 	return float64(completed) / float64(total) * 100.0
 }
 
+// IncompleteChildren returns the direct children that are not complete
+// (Status != Done && != Canceled). Leaf tasks (no children) return nil.
+func (t *Task) IncompleteChildren() []*Task {
+	var incomplete []*Task
+	for _, child := range t.Children {
+		if child.Status != StatusDone && child.Status != StatusCanceled {
+			incomplete = append(incomplete, child)
+		}
+	}
+	return incomplete
+}
+
+// HasIncompleteChildren reports whether the task has at least one direct child
+// that is not complete.
+func (t *Task) HasIncompleteChildren() bool {
+	return len(t.IncompleteChildren()) > 0
+}
+
 // CountChildren returns the total number of descendants.
 func (t *Task) CountChildren() int {
 	count := len(t.Children)

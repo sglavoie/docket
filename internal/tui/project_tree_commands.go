@@ -269,6 +269,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 	// Apply changes to each task
 	typeSkipped := 0
+	statusSkipped := 0
 	for _, task := range tasks {
 		// Handle type change with hierarchy validation (outside MutateTask
 		// since we need to check parent/children relationships)
@@ -308,8 +309,21 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 			}
 		}
 
+		// Gate the status transition outside MutateTask: skip it when the
+		// transition is invalid or would complete a parent with incomplete
+		// children, while still applying the other field changes below.
+		applyStatus := false
+		if changes.SetStatus != nil {
+			target := *changes.SetStatus
+			if task.CanTransitionTo(target) == "" && !(target.IsComplete() && task.HasIncompleteChildren()) {
+				applyStatus = true
+			} else {
+				statusSkipped++
+			}
+		}
+
 		m.project.MutateTask(task.ID, func(t *models.Task) {
-			if changes.SetStatus != nil {
+			if applyStatus {
 				t.ApplyTransition(*changes.SetStatus)
 			}
 			if changes.SetPriority != nil {
@@ -349,7 +363,8 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 			}
 		}
 	}
-	_ = typeSkipped // Available for future status message use
+	_ = typeSkipped   // Available for future status message use
+	_ = statusSkipped // Available for future status message use
 
 	// Handle reparenting (after other mutations, before persist)
 	if changes.ClearParent || changes.SetParentID != nil {

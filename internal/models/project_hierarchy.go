@@ -457,6 +457,30 @@ func (p *Project) ReorderRootTasksByCompletion() {
 	p.Tasks = newTasks
 }
 
+// ReconcileParentCompletion uncompletes any completed task that has an
+// incomplete child, so that a parent (task with children) is never left
+// complete while a child is still open. The fixpoint loop repeats until a full
+// pass makes no changes, so reopening a parent propagates upward to
+// grandparents. Returns the IDs of the tasks reopened (empty when the tree was
+// already consistent). Assumes an up-to-date tree (t.Children populated via
+// BuildTaskTree). Callers that record a targeted undo snapshot should add the
+// returned IDs to their undo task set so a single undo reverts the cascade
+// atomically.
+func (p *Project) ReconcileParentCompletion() []string {
+	var reopened []string
+	for changed := true; changed; {
+		changed = false
+		for _, t := range p.Tasks {
+			if t.Status.IsComplete() && t.HasIncompleteChildren() {
+				t.Uncomplete()
+				reopened = append(reopened, t.ID)
+				changed = true
+			}
+		}
+	}
+	return reopened
+}
+
 // collectSubtree collects a task and all its descendants in depth-first order.
 // Uses a visited set to prevent infinite loops on circular references.
 func collectSubtree(task *Task) []*Task {

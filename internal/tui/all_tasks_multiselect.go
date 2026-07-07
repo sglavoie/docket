@@ -78,6 +78,9 @@ func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) 
 			if task == nil || task.CanTransitionTo(newStatus) != "" {
 				return false
 			}
+			if newStatus.IsComplete() && task.HasIncompleteChildren() {
+				return false
+			}
 			project.MutateTask(taskID, func(t *models.Task) {
 				t.ApplyTransition(newStatus)
 			})

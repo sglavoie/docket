@@ -18,13 +18,18 @@ import (
 var errNilProject = errors.New("internal: nil project")
 
 // analyzeBulkStatusTransition separates tasks that can transition to newStatus
-// from those blocked by transition rules or incomplete dependencies.
+// from those blocked by transition rules, incomplete dependencies (completion
+// only), or incomplete children (any completion state).
 func analyzeBulkStatusTransition(project *models.Project, tasks []*models.Task, newStatus models.TaskStatus) (valid []*models.Task, blockedCount int) {
 	for _, task := range tasks {
 		if task.CanTransitionTo(newStatus) != "" {
 			continue
 		}
 		if newStatus == models.StatusDone && project.HasIncompleteDependencies(task) {
+			blockedCount++
+			continue
+		}
+		if newStatus.IsComplete() && task.HasIncompleteChildren() {
 			blockedCount++
 			continue
 		}
@@ -53,16 +58,14 @@ func applyStatusChange(pf persistFn, project *models.Project, taskID string, new
 		return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
 	}
 
-	if newStatus == models.StatusDone {
-		var incompleteChildren []*models.Task
-		for _, child := range task.Children {
-			if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
-				incompleteChildren = append(incompleteChildren, child)
+	if newStatus.IsComplete() {
+		if incompleteChildren := task.IncompleteChildren(); len(incompleteChildren) > 0 {
+			verb := "complete"
+			if newStatus == models.StatusCanceled {
+				verb = "cancel"
 			}
-		}
-		if len(incompleteChildren) > 0 {
 			var msg strings.Builder
-			fmt.Fprintf(&msg, "cannot complete #%d: has %d incomplete children:", task.ShortID, len(incompleteChildren))
+			fmt.Fprintf(&msg, "cannot %s #%d: has %d incomplete children:", verb, task.ShortID, len(incompleteChildren))
 			for _, child := range incompleteChildren {
 				fmt.Fprintf(&msg, " #%d", child.ShortID)
 			}

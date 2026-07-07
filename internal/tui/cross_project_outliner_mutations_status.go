@@ -103,6 +103,7 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 
 	svc := m.projectService
 	var projectIDs []string
+	skippedCount := 0
 
 	undoDepth := 0
 	if m.config != nil && m.config.UndoHistoryDepth != nil {
@@ -117,8 +118,10 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 	for _, projID := range projectOrder {
 		group := grouped[projID]
 		if undoDepth > 0 {
+			// Full-project (nil TaskIDs) snapshot: reconciliation below may reopen
+			// parents not in group.tasks, and the whole-file snapshot covers them.
 			if err := recordTUIUndoSnapshotWithGroup(svc, group.proj, "Bulk Status Change",
-				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth, movedTaskIDs(group.tasks), groupID, groupProjectIDs); err != nil {
+				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth, nil, groupID, groupProjectIDs); err != nil {
 				m.bulkOp.Clear()
 				return m, func() tea.Msg { return ErrorMsg{Err: err} }
 			}
@@ -133,10 +136,22 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 			if t == nil || t.CanTransitionTo(status) != "" {
 				continue
 			}
+			// Never complete/cancel a parent with incomplete children (mirrors
+			// the single-task guard); ReconcileParentCompletion below is the net.
+			if status.IsComplete() && len(t.IncompleteChildren()) > 0 {
+				skippedCount++
+				continue
+			}
 			group.proj.MutateTask(task.ID, func(t *models.Task) {
 				t.ApplyTransition(status)
 			})
 		}
+		// Match single-mutation parity: auto-unblock dependents, reopen any parent
+		// left complete while a child is incomplete, and generate recurring
+		// instances before saving.
+		group.proj.CheckAndAutoUnblock()
+		group.proj.ReconcileParentCompletion()
+		group.proj.GenerateRecurringInstances()
 		if err := svc.Save(group.proj); err != nil {
 			m.bulkOp.Clear()
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }
@@ -148,7 +163,12 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 	m.crossUndoCtx.ProjectIDs = projectIDs
 	m.crossUndoCtx.GroupID = groupID
 
-	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(tasks), status))
+	changed := len(tasks) - skippedCount
+	statusMsg := fmt.Sprintf("Changed %d tasks to %s", changed, status)
+	if skippedCount > 0 {
+		statusMsg += fmt.Sprintf(" (%d skipped: incomplete children)", skippedCount)
+	}
+	m.setStatus(statusMsg)
 	m.bulkOp.Clear()
 	m.rebuildRows()
 	return m, nil

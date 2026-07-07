@@ -66,41 +66,66 @@ func ParseTaskTypeFlags(epic, story, bug, idea bool, typeFlag string) (models.Ta
 	return models.TaskTypeTask, nil
 }
 
-// CheckCompletionBlockers checks whether a task can be completed,
-// returning an error if it has incomplete dependencies or children.
-// When force is true, the incomplete-children check is skipped.
-func CheckCompletionBlockers(project *models.Project, task *models.Task, force bool) error {
-	if project.HasIncompleteDependencies(task) {
-		incompleteDeps := project.GetIncompleteDependencies(task)
-		var msg strings.Builder
-		fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n", task.ShortID)
-		for _, dep := range incompleteDeps {
-			fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
-		}
-		crossProjectCount := countCrossProjectDeps(task)
-		if crossProjectCount > 0 {
-			fmt.Fprintf(&msg, "  - %d cross-project dependency/dependencies (not resolvable locally)\n", crossProjectCount)
-		}
-		return fmt.Errorf("%s", msg.String())
+// CheckCompletionBlockers checks whether a task can be completed, returning an
+// error if it has incomplete dependencies or children. Completion is gated on
+// both; cancellation is gated on children only via checkStatusChangeBlockers.
+func CheckCompletionBlockers(project *models.Project, task *models.Task) error {
+	if err := checkIncompleteDependencies(project, task); err != nil {
+		return err
 	}
+	return checkIncompleteChildren(task)
+}
 
-	if !force {
-		var incompleteChildren []*models.Task
-		for _, child := range task.Children {
-			if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
-				incompleteChildren = append(incompleteChildren, child)
-			}
-		}
-		if len(incompleteChildren) > 0 {
-			var msg strings.Builder
-			fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete children:\n",
-				task.ShortID, len(incompleteChildren))
-			for _, child := range incompleteChildren {
-				fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
-			}
-			return fmt.Errorf("%s", msg.String())
+// checkStatusChangeBlockers gates a status change on the completion invariant:
+// completion (StatusDone) is blocked by incomplete dependencies and children,
+// while cancellation (StatusCanceled) is blocked by incomplete children only.
+// A parent must never become done/canceled while a child is still open, but
+// dependency ordering is a separate rule that only applies to completion.
+func checkStatusChangeBlockers(project *models.Project, task *models.Task, targetStatus models.TaskStatus) error {
+	if targetStatus == models.StatusDone {
+		if err := checkIncompleteDependencies(project, task); err != nil {
+			return err
 		}
 	}
-
+	if targetStatus.IsComplete() {
+		if err := checkIncompleteChildren(task); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// checkIncompleteDependencies returns an error if the task has incomplete
+// dependencies. Only completion is gated on dependencies.
+func checkIncompleteDependencies(project *models.Project, task *models.Task) error {
+	if !project.HasIncompleteDependencies(task) {
+		return nil
+	}
+	incompleteDeps := project.GetIncompleteDependencies(task)
+	var msg strings.Builder
+	fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n", task.ShortID)
+	for _, dep := range incompleteDeps {
+		fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+	}
+	crossProjectCount := countCrossProjectDeps(task)
+	if crossProjectCount > 0 {
+		fmt.Fprintf(&msg, "  - %d cross-project dependency/dependencies (not resolvable locally)\n", crossProjectCount)
+	}
+	return fmt.Errorf("%s", msg.String())
+}
+
+// checkIncompleteChildren returns an error if the task has incomplete children.
+// Both completing and canceling a parent are gated on children, so the message
+// is status-neutral.
+func checkIncompleteChildren(task *models.Task) error {
+	incompleteChildren := task.IncompleteChildren()
+	if len(incompleteChildren) == 0 {
+		return nil
+	}
+	var msg strings.Builder
+	fmt.Fprintf(&msg, "task #%d has %d incomplete children:\n", task.ShortID, len(incompleteChildren))
+	for _, child := range incompleteChildren {
+		fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
+	}
+	return fmt.Errorf("%s", msg.String())
 }

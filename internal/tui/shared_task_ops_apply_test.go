@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -382,6 +383,40 @@ func nilPF(t *testing.T) persistFn {
 	return func(proj *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
 		t.Fatal("persistFn must not be called when project is nil")
 		return TaskOpResult{}
+	}
+}
+
+func TestApplyStatusChange_CancelBlockedByIncompleteChildren(t *testing.T) {
+	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent, err := models.NewTask("parent-1", 1, models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child Todo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.ParentID = &parent.ID
+	project.Tasks = []*models.Task{parent, child}
+	project.NextShortID = 3
+	project.BuildTaskTree()
+
+	// persistFn must not run: the guard returns before mutation/persist.
+	result := applyStatusChange(nilPF(t), project, parent.ID, models.StatusCanceled)
+	if result.Err != nil {
+		t.Fatalf("expected a blocking StatusMessage, not an error: %v", result.Err)
+	}
+	if result.StatusMessage == "" {
+		t.Fatal("expected a blocking StatusMessage when canceling a parent with an incomplete child")
+	}
+	if !strings.Contains(result.StatusMessage, "cannot cancel") {
+		t.Errorf("expected status-appropriate cancel message, got %q", result.StatusMessage)
+	}
+	if parent.Status == models.StatusCanceled {
+		t.Error("parent must not be canceled while a child is incomplete")
 	}
 }
 

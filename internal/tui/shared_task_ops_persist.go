@@ -39,15 +39,7 @@ func simplePersist(p Persister) persistFn {
 // need the full workflow pipeline (e.g. pinned tasks popup, quick switch).
 func simplePersistWithUndo(p Persister, cfg *config.Config, undoAction string) persistFn {
 	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
-		if cfg != nil && cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-			task := project.GetTaskByID(taskID)
-			ctx := ""
-			if task != nil {
-				ctx = fmt.Sprintf("#%d %s", task.ShortID, task.Title)
-			}
-			_ = p.RecordUndoSnapshot(project, undoAction, ctx, *cfg.UndoHistoryDepth, []string{taskID})
-		}
-		return withPersist(p, project, taskID, mutate)
+		return withPersistUndo(p, cfg, project, taskID, undoAction, mutate)
 	}
 }
 
@@ -104,12 +96,67 @@ func withPersist(p Persister, project *models.Project, taskID string, mutate fun
 	// switch, task detail) that use simplePersist still auto-unblock blocked
 	// tasks and generate recurring instances — matching the CLI behavior.
 	project.CheckAndAutoUnblock()
+	// Reverse safety net: reopen any parent left complete while a child is
+	// incomplete (e.g. reopening a child of a done Story). Mirrors the
+	// workflow persist pipeline so every save path enforces the invariant.
+	project.ReconcileParentCompletion()
 	project.GenerateRecurringInstances()
 	if err := p.Save(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
 	}
 	_ = p.Load(project)
 	return TaskOpResult{}
+}
+
+// withPersistUndo is withPersist plus undo recording. It records the undo
+// snapshot AFTER mutation + reconciliation but BEFORE Save: the on-disk
+// tasks.md is still pre-mutation until Save, so RecordUndoSnapshot captures the
+// correct pre-state while the reopened-parent IDs from ReconcileParentCompletion
+// are known and can widen the targeted undo set. A single undo then restores
+// both the child and any parent that reconciliation reopened.
+func withPersistUndo(p Persister, cfg *config.Config, project *models.Project, taskID, undoAction string, mutate func(*models.Task)) TaskOpResult {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+	recordUndo := cfg != nil && cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0
+	ctx := ""
+	if recordUndo {
+		ctx = fmt.Sprintf("#%d %s", task.ShortID, task.Title)
+	}
+	if err := p.Backup(project); err != nil {
+		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
+	}
+	project.MutateTask(taskID, mutate)
+	project.CheckAndAutoUnblock()
+	reopened := project.ReconcileParentCompletion()
+	project.GenerateRecurringInstances()
+	if recordUndo {
+		taskIDs := appendMissingIDs([]string{taskID}, reopened)
+		_ = p.RecordUndoSnapshot(project, undoAction, ctx, *cfg.UndoHistoryDepth, taskIDs)
+	}
+	if err := p.Save(project); err != nil {
+		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	}
+	_ = p.Load(project)
+	return TaskOpResult{}
+}
+
+// appendMissingIDs returns base with every id from extra that is not already
+// present appended, preserving order. Used to widen a targeted undo task set
+// with parents reopened by ReconcileParentCompletion.
+func appendMissingIDs(base, extra []string) []string {
+	seen := make(map[string]bool, len(base))
+	for _, id := range base {
+		seen[id] = true
+	}
+	for _, id := range extra {
+		if !seen[id] {
+			base = append(base, id)
+			seen[id] = true
+		}
+	}
+	return base
 }
 
 // WorkflowSaveOptions holds configuration for the save-with-workflow pipeline.
@@ -152,6 +199,7 @@ func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config
 // auto-unblock, recurring generation, workflow rules, root reorder, undo snapshot, backup, save, load.
 func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	opts.Project.CheckAndAutoUnblock()
+	reconciledParentIDs := opts.Project.ReconcileParentCompletion()
 	opts.Project.GenerateRecurringInstances()
 
 	workflowGroupedUndoRecorded := false
@@ -227,9 +275,24 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	// tasks to "done" (e.g., auto-complete parent), which requires generating
 	// recurring instances and unblocking dependents.
 	opts.Project.CheckAndAutoUnblock()
+	// Reconcile again after rules: a workflow action (complete_parent, or
+	// set_status skipping CanTransitionTo) can complete a parent AFTER the
+	// initial reconcile, so re-run the invariant here. Idempotent, so the
+	// double call is safe. Fold newly-reopened IDs into reconciledParentIDs so
+	// the targeted-undo widening below also covers post-rule reopens.
+	postRuleReopened := opts.Project.ReconcileParentCompletion()
+	reconciledParentIDs = appendMissingIDs(reconciledParentIDs, postRuleReopened)
 	opts.Project.GenerateRecurringInstances()
 
 	opts.Project.ReorderRootTasksByCompletion()
+
+	// When the undo snapshot is targeted (single-task ops set UndoTaskIDs), also
+	// restore any parent that ReconcileParentCompletion auto-uncompleted so a
+	// single undo reverts the cascade atomically. Full-file snapshots (nil
+	// UndoTaskIDs) already cover the reopened parents.
+	if len(opts.UndoTaskIDs) > 0 && len(reconciledParentIDs) > 0 {
+		opts.UndoTaskIDs = appendMissingIDs(opts.UndoTaskIDs, reconciledParentIDs)
+	}
 
 	// Record undo snapshot BEFORE backup+save so it captures the pre-mutation state
 	if opts.UndoDepth > 0 && !workflowGroupedUndoRecorded {

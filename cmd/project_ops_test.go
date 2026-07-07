@@ -262,6 +262,155 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 	})
 }
 
+// TestSaveProjectReopenedChildUncompletesParent verifies the reverse cascade
+// wired into the CLI save pipeline: after a completed parent's child is reopened
+// (the everyday cause of the illegal completed-parent-with-incomplete-child
+// state), SaveProject auto-uncompletes the parent to in_progress in place and
+// does not dump it into the Inbox.
+func TestSaveProjectReopenedChildUncompletesParent(t *testing.T) {
+	project := testutil.NewTestProject("Reconcile")
+	project.Path = t.TempDir()
+
+	parent, err := models.NewTask("recon-parent", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := models.NewTask("recon-child", project.GetNextShortID(), models.TaskTypeTask, "Child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.ParentID = &parent.ID
+	// Both complete: a legal state (parent done with a done child).
+	child.Complete()
+	parent.Complete()
+	project.Tasks = []*models.Task{parent, child}
+	project.BuildTaskTree()
+
+	// Persist the consistent starting state to disk.
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("initial SaveProject: %v", err)
+	}
+
+	// Simulate `tt task reopen <child>`: the child goes back to todo, leaving the
+	// parent illegally complete with an incomplete child.
+	child.Reopen()
+
+	if err := SaveProject(project, nil); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
+
+	if parent.Status != models.StatusInProgress {
+		t.Errorf("parent status = %q, want %q (reopening a child must auto-uncomplete the parent)", parent.Status, models.StatusInProgress)
+	}
+	if parent.CompletedAt != nil {
+		t.Error("parent CompletedAt should be cleared after auto-uncomplete")
+	}
+	if parent.Section == models.SectionInbox {
+		t.Errorf("parent section = %q, want it to stay in place (not dumped to Inbox)", parent.Section)
+	}
+}
+
+// TestSaveProject_WorkflowRuleCompletesParentPostRuleReconcile verifies the
+// post-rule reconcile in the CLI save pipeline: a workflow rule that completes a
+// parent AFTER a child is reopened (a complete_parent action fired by the
+// "reopened" event) cannot save the illegal completed-parent-with-incomplete-child
+// state. The initial reconcile reopens the parent, the rule re-completes it, and
+// the second ReconcileParentCompletion in the post-rule hook block reopens it
+// again so the file written to disk is consistent.
+func TestSaveProject_WorkflowRuleCompletesParentPostRuleReconcile(t *testing.T) {
+	deps := testutil.SetupTestDeps(t)
+	defer deps.Cleanup()
+
+	project := testutil.NewTestProject("PostRuleReconcile")
+	project.Path = t.TempDir()
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	defer func() { storage.DefaultRepository = oldRepo }()
+	deps.Repository.Projects[project.ID] = project
+
+	parent, err := models.NewTask("postrule-parent", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := models.NewTask("postrule-child", project.GetNextShortID(), models.TaskTypeTask, "Child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.ParentID = &parent.ID
+	// Both complete: a legal starting state (parent done with a done child).
+	child.Complete()
+	parent.Complete()
+	project.Tasks = []*models.Task{parent, child}
+	project.BuildTaskTree()
+
+	// Persist the consistent starting state to disk.
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("initial SaveProject: %v", err)
+	}
+
+	// A rule that completes the parent when a child is reopened. This deliberately
+	// re-creates the illegal state after the initial reconcile has cleaned it up.
+	cfg := deps.Config
+	cfg.WorkflowRules = []workflow.WorkflowRule{
+		{
+			ID:      "reopen-completes-parent",
+			Name:    "Complete parent when child reopened",
+			Enabled: true,
+			Source:  "user",
+			Trigger: workflow.RuleTrigger{
+				Field:     workflow.FieldReopened,
+				Operation: workflow.OpEquals,
+				Value:     "true",
+			},
+			Actions: []workflow.RuleAction{
+				{ActionType: workflow.ActionCompleteParent},
+			},
+		},
+	}
+	configManager := config.NewManager(deps.ConfigPath)
+
+	// Capture pre-mutation states so the "reopened" event trigger can fire, then
+	// reopen the child to leave the parent illegally complete with an incomplete
+	// child before rules run.
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
+	child.Reopen()
+
+	err = SaveProject(project, &SaveOptions{
+		EvaluateRules: true,
+		Config:        cfg,
+		ConfigManager: configManager,
+		PrevStates:    prevStates,
+	})
+	if err != nil {
+		t.Fatalf("SaveProject failed: %v", err)
+	}
+
+	// Reload from disk to assert on the persisted state, not just in-memory.
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("reload after SaveProject: %v", err)
+	}
+
+	reloadedParent := project.GetTaskByID(parent.ID)
+	if reloadedParent == nil {
+		t.Fatal("parent missing after reload")
+	}
+	if reloadedParent.Status != models.StatusInProgress {
+		t.Errorf("parent status = %q, want %q (post-rule reconcile must not save an illegal done parent)", reloadedParent.Status, models.StatusInProgress)
+	}
+	if reloadedParent.Status.IsComplete() {
+		t.Errorf("parent must never be complete with an incomplete child on disk, got %q", reloadedParent.Status)
+	}
+
+	reloadedChild := project.GetTaskByID(child.ID)
+	if reloadedChild == nil {
+		t.Fatal("child missing after reload")
+	}
+	if reloadedChild.Status.IsComplete() {
+		t.Errorf("child status = %q, want incomplete after reopen", reloadedChild.Status)
+	}
+}
+
 // TestSaveProject_ProjectLevelRulesEvaluated verifies that project-level
 // workflow rules (e.g., set_project_status based on completion_ratio) are
 // evaluated during SaveProject, not just in the TUI or `workflow eval`.
