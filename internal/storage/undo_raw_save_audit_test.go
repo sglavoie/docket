@@ -90,6 +90,7 @@ var rawProjectSaveAllowlist = map[string]string{
 	"internal/tui/shared_task_ops_persist.go:processTUIDeferredMoves:p.Save(destProject)":                                                rawSaveTUIRecorded,
 	"internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)":                                                 rawSaveRestoreResult,
 	"internal/tui/shared_task_ops_persist.go:withPersist:p.Save(project)":                                                                rawSaveTUIRecorded,
+	"internal/tui/shared_task_ops_persist.go:withPersistUndo:p.Save(project)":                                                            rawSaveTUIRecorded,
 	"internal/tui/snooze_input.go:(*SnoozeInputModel).saveAndReturn:saveProjectSync(project)":                                            rawSaveTUIMigration,
 	"internal/tui/tag_manager.go:(*TagManagerModel).addProjectTag:saveProjectSync(project)":                                              rawSaveTUIMigration,
 	"internal/tui/tag_manager.go:(*TagManagerModel).removeProjectTag:saveProjectSync(project)":                                           rawSaveTUIMigration,

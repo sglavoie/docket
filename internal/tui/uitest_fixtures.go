@@ -159,7 +159,7 @@ func NewFixtureDriver(name string, width, height int) (*UITestDriver, *uitestWor
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := build(ws); err != nil {
+	if err = build(ws); err != nil {
 		_ = ws.Cleanup()
 		return nil, nil, err
 	}
@@ -197,7 +197,7 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 	}
 	ws := &uitestWorkspace{Root: root, ConfigPath: filepath.Join(root, "tt.json")}
 
-	if err := os.WriteFile(ws.ConfigPath, srcConfigBytes, config.FilePermissions); err != nil {
+	if err = os.WriteFile(ws.ConfigPath, srcConfigBytes, config.FilePermissions); err != nil {
 		_ = ws.Cleanup()
 		return nil, nil, fmt.Errorf("failed to stage source config: %w", err)
 	}
@@ -216,7 +216,7 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 	// Copy the durable contents of the source data dir into the temp copy.
 	// MigrateCopyTree refuses to overwrite and skips runtime-only entries.
 	dstDataDir := filepath.Join(root, "data")
-	if err := config.MigrateCopyTree(srcDataDir, dstDataDir); err != nil {
+	if err = config.MigrateCopyTree(srcDataDir, dstDataDir); err != nil {
 		_ = ws.Cleanup()
 		return nil, nil, fmt.Errorf("failed to copy data dir: %w", err)
 	}
@@ -231,10 +231,10 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		if p == nil {
 			continue
 		}
-		newPath, err := rerootProjectPath(p.Path, srcDataDir, dstDataDir, p.ID)
-		if err != nil {
+		newPath, rerootErr := rerootProjectPath(p.Path, srcDataDir, dstDataDir, p.ID)
+		if rerootErr != nil {
 			_ = ws.Cleanup()
-			return nil, nil, fmt.Errorf("failed to isolate project %q: %w", p.ID, err)
+			return nil, nil, fmt.Errorf("failed to isolate project %q: %w", p.ID, rerootErr)
 		}
 		p.Path = newPath
 	}

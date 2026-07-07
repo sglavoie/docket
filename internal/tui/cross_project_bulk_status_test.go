@@ -244,7 +244,7 @@ func TestCrossProjectBulkReconcileFullFileUndoRestoresReopenedParent(t *testing.
 	if !ok {
 		t.Fatal("crossHandleUndo returned ok=false")
 	}
-	m = undoResult.(*OutlinerModel)
+	_ = undoResult.(*OutlinerModel)
 	if err := storage.LoadProject(alpha); err != nil {
 		t.Fatalf("reload alpha after undo: %v", err)
 	}

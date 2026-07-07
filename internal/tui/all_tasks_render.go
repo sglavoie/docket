@@ -268,6 +268,8 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			dueDetail = "week"
 		case DueDateNone:
 			dueDetail = "no-date"
+		case DueDateAll:
+			dueDetail = "(all)"
 		}
 		dueHint := PrefixHint{Key: "d", Description: "due-date (cycle)", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll}
 		projectDetail := "(all)"

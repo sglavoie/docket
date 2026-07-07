@@ -164,10 +164,10 @@ func TestSimplePersistWithUndoNoSpuriousReopen(t *testing.T) {
 		NextShortID: 3,
 	}
 	project.BuildTaskTree()
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("save project: %v", err)
 	}
-	if err := storage.LoadProject(project); err != nil {
+	if err = storage.LoadProject(project); err != nil {
 		t.Fatalf("load project: %v", err)
 	}
 
@@ -181,7 +181,7 @@ func TestSimplePersistWithUndoNoSpuriousReopen(t *testing.T) {
 		t.Fatalf("persist returned error: %v", res.Err)
 	}
 
-	if err := storage.LoadProject(project); err != nil {
+	if err = storage.LoadProject(project); err != nil {
 		t.Fatalf("reload after persist: %v", err)
 	}
 	if got := project.GetTaskByID(parent.ID).Status; got != models.StatusInProgress {

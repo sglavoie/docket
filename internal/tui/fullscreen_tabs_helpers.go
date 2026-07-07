@@ -86,32 +86,6 @@ func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width 
 	return strings.Join(lines, "\n")
 }
 
-// wrappingTabBarRows returns the number of rows renderWrappingTabBar would
-// produce for the given tabs and availableWidth. Used to size the surrounding
-// layout (e.g. scroll viewport) before rendering.
-func wrappingTabBarRows(tabs []string, availableWidth int) int {
-	if len(tabs) == 0 {
-		return 0
-	}
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	rows := 0
-	currentWidth := 0
-	haveCurrent := false
-	for _, name := range tabs {
-		tabWidth := lipgloss.Width(plainStyle.Render(name))
-		if currentWidth+tabWidth > availableWidth && haveCurrent {
-			rows++
-			currentWidth = 0
-		}
-		currentWidth += tabWidth
-		haveCurrent = true
-	}
-	if haveCurrent {
-		rows++
-	}
-	return rows
-}
-
 // renderTabFiller returns a bottom-border filler element that extends a tab row
 // to the given width. Returns "" if width <= 0.
 func renderTabFiller(width int) string {

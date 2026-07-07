@@ -315,7 +315,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		applyStatus := false
 		if changes.SetStatus != nil {
 			target := *changes.SetStatus
-			if task.CanTransitionTo(target) == "" && !(target.IsComplete() && task.HasIncompleteChildren()) {
+			if task.CanTransitionTo(target) == "" && (!target.IsComplete() || !task.HasIncompleteChildren()) {
 				applyStatus = true
 			} else {
 				statusSkipped++

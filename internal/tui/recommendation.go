@@ -519,10 +519,10 @@ func cockpitActionsFor(action RecommendedAction, emptyState CockpitEmptyState) (
 
 func cockpitFooterFor(emptyState CockpitEmptyState) CockpitFooterActions {
 	footer := CockpitFooterActions{Escape: cockpitEscapeActions()}
-	switch {
-	case emptyState == CockpitEmptyStateTodayCleared:
+	switch emptyState {
+	case CockpitEmptyStateTodayCleared:
 		footer.Contextual = []CockpitAction{actionPlanMore(), actionQuickCapture(), actionCloseView()}
-	case emptyState == CockpitEmptyStateFirstRun || emptyState == CockpitEmptyStateInboxOnly || emptyState == CockpitEmptyStateBacklogReady:
+	case CockpitEmptyStateFirstRun, CockpitEmptyStateInboxOnly, CockpitEmptyStateBacklogReady:
 		footer.Contextual = []CockpitAction{actionQuickCapture(), actionSwitchTab(), actionCloseView()}
 	default:
 		footer.Contextual = []CockpitAction{actionCompleteTask(), actionPrioritizeTask(), actionQuickCapture()}

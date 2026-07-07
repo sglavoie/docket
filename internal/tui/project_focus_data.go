@@ -62,14 +62,6 @@ func (m *ProjectFocusViewModel) computeSubTabs() {
 	}
 }
 
-// activeSubTabFilter returns the selected sub-tab value, or "" if no sub-tab filtering.
-func (m *ProjectFocusViewModel) activeSubTabFilter() string {
-	if len(m.subTabNames) <= 1 || m.subTab <= 0 || m.subTab > len(m.subTabNames) {
-		return ""
-	}
-	return m.subTabNames[m.subTab-1]
-}
-
 // filteredTasks returns tasks filtered by the active sub-tab and the shared
 // F-prefix filter state.
 func (m *ProjectFocusViewModel) filteredTasks() []*models.Task {

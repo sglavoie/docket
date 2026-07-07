@@ -43,7 +43,7 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 	dest := projectExportFile
 	if dest == "" {
 		dest = manager.ExportPath(project.Slug)
-		if err := os.MkdirAll(manager.ExportsDir(), 0700); err != nil {
+		if err = os.MkdirAll(manager.ExportsDir(), 0700); err != nil {
 			return fmt.Errorf("create exports dir: %w", err)
 		}
 	}

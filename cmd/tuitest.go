@@ -204,7 +204,7 @@ func runTUITestRun(cmd *cobra.Command, _ []string) error {
 
 	if tuiTestKeepWorkspace && workspaceRoot != "" {
 		// Reported on stderr so stdout stays a clean result payload.
-		fmt.Fprintf(cmd.ErrOrStderr(), "kept workspace: %s\n", workspaceRoot)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "kept workspace: %s\n", workspaceRoot)
 	}
 
 	if err := printTUITestResult(cmd, result); err != nil {
@@ -288,15 +288,15 @@ func runTUITestSession(cmd *cobra.Command, _ []string) error {
 	// copied config and size. It backs both the initial build and `reset`.
 	buildDriver := func() (*tui.UITestDriver, wsCleanup, error) {
 		if useConfig {
-			driver, ws, err := tui.NewCopiedWorkspaceDriver(sourceConfig, width, height)
-			if err != nil {
-				return nil, nil, err
+			driver, ws, buildErr := tui.NewCopiedWorkspaceDriver(sourceConfig, width, height)
+			if buildErr != nil {
+				return nil, nil, buildErr
 			}
 			return driver, ws, nil
 		}
-		driver, ws, err := tui.NewFixtureDriver(tuiTestSessionFixture, width, height)
-		if err != nil {
-			return nil, nil, err
+		driver, ws, buildErr := tui.NewFixtureDriver(tuiTestSessionFixture, width, height)
+		if buildErr != nil {
+			return nil, nil, buildErr
 		}
 		return driver, ws, nil
 	}
@@ -428,5 +428,5 @@ func writeSessionResponse(w io.Writer, resp sessionResponse) {
 	if err != nil {
 		data = []byte(`{"ok":false,"error":{"kind":"internal","reason":"failed to marshal response"}}`)
 	}
-	fmt.Fprintf(w, "%s\n", data)
+	_, _ = fmt.Fprintf(w, "%s\n", data)
 }

@@ -17,7 +17,7 @@ const appStatusBarHeight = 2
 // against viewHeight minus the height already consumed by preHelp (everything
 // the view rendered above the box) and the app status bar. A non-positive
 // viewHeight (an unsized view) renders the box unclamped. It returns "" when
-// there is no room for the box, signalling the caller to omit it.
+// there is no room for the box, signaling the caller to omit it.
 func clampHelpBoxToHeight(bodyLines []string, viewHeight int, preHelp string) string {
 	if viewHeight <= 0 {
 		return BoxStyle.Render(strings.Join(bodyLines, "\n"))
@@ -31,7 +31,7 @@ func clampHelpBoxToHeight(bodyLines []string, viewHeight int, preHelp string) st
 // rows. When body rows must be dropped, the last visible row collapses into a
 // muted "… N more" indicator so the panel degrades gracefully on short screens
 // instead of overflowing. It returns "" when maxHeight leaves no room for even a
-// minimal box, signalling the caller to omit the help entirely.
+// minimal box, signaling the caller to omit the help entirely.
 func renderClampedHelpBox(bodyLines []string, maxHeight int) string {
 	chrome := BoxStyle.GetVerticalBorderSize() + BoxStyle.GetVerticalPadding()
 	bodyBudget := maxHeight - chrome

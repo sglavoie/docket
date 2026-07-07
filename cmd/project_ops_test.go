@@ -287,7 +287,7 @@ func TestSaveProjectReopenedChildUncompletesParent(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Persist the consistent starting state to disk.
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("initial SaveProject: %v", err)
 	}
 
@@ -345,7 +345,7 @@ func TestSaveProject_WorkflowRuleCompletesParentPostRuleReconcile(t *testing.T) 
 	project.BuildTaskTree()
 
 	// Persist the consistent starting state to disk.
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("initial SaveProject: %v", err)
 	}
 

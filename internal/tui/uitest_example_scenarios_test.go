@@ -31,7 +31,7 @@ func TestExampleScenariosPass(t *testing.T) {
 			if err != nil {
 				t.Fatalf("LoadScenario(%q): %v", path, err)
 			}
-			if err := sc.Validate(); err != nil {
+			if err = sc.Validate(); err != nil {
 				t.Fatalf("scenario %q failed validation: %v", path, err)
 			}
 

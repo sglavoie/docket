@@ -203,12 +203,12 @@ func TestUITestWorkspaceIsolatesExternalProject(t *testing.T) {
 	task := newFixtureTask(project, models.TaskTypeTask, "External task")
 	task.Priority = 1
 	project.BuildTaskTree()
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject(external) error: %v", err)
 	}
 	ws.Config.Projects = append(ws.Config.Projects, project)
 	ws.Config.CurrentProject = project.ID
-	if err := ws.Manager.Save(ws.Config); err != nil {
+	if err = ws.Manager.Save(ws.Config); err != nil {
 		t.Fatalf("Manager.Save error: %v", err)
 	}
 

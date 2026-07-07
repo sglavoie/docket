@@ -303,7 +303,7 @@ func rewriteProjectPaths(raw map[string]json.RawMessage, legacyDataDir, newDataD
 	var projects []json.RawMessage
 	if err := json.Unmarshal(msg, &projects); err != nil {
 		// Not an array (e.g. null) - nothing to rewrite.
-		return nil
+		return nil //nolint:nilerr // a non-array projects value is a no-op, not a failure
 	}
 
 	legacyProjectsRoot := filepath.Join(legacyDataDir, projectsDirName)
