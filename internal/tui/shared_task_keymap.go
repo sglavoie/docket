@@ -204,6 +204,9 @@ func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 		ViewDecisions: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return ShowTaskDecisionsMsg{Task: task, Project: project}
 		}),
+		ParkTask: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
+			return ShowParkInputMsg{Task: task, Project: project}
+		}),
 		DeleteTask: buildDeleteTaskAction(deps),
 	}), taskActionTargetGate(deps))
 }

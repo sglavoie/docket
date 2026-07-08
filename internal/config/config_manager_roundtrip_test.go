@@ -29,6 +29,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	dueSoon := 4
 	maxPinned := 7
 	maxRecent := 12
+	resumeLimit := 6
 	autoTheme := false
 	useEmoji := true
 	taskFormCollapsed := true
@@ -49,6 +50,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	cfg.ReviewDueSoonDays = &dueSoon
 	cfg.MaxPinnedBarItems = &maxPinned
 	cfg.MaxRecentTaskVisits = &maxRecent
+	cfg.ResumeCardLimit = &resumeLimit
 	cfg.AutoTheme = &autoTheme
 	cfg.UseEmoji = &useEmoji
 	cfg.TaskFormCollapsed = &taskFormCollapsed
@@ -164,6 +166,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		{"ReviewDueSoonDays", *loaded2.ReviewDueSoonDays, 4},
 		{"MaxPinnedBarItems", *loaded2.MaxPinnedBarItems, 7},
 		{"MaxRecentTaskVisits", *loaded2.MaxRecentTaskVisits, 12},
+		{"ResumeCardLimit", *loaded2.ResumeCardLimit, 6},
 		{"AutoTheme", *loaded2.AutoTheme, false},
 		{"UseEmoji", *loaded2.UseEmoji, true},
 		{"TaskFormCollapsed", *loaded2.TaskFormCollapsed, true},

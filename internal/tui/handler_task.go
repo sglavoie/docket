@@ -35,6 +35,11 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
+	// Parking notes
+	if handled, cmd := m.handleTaskParkMessages(msg); handled {
+		return handled, cmd
+	}
+
 	// Undo/redo operations
 	if handled, cmd := m.handleTaskUndoMessages(msg); handled {
 		return handled, cmd

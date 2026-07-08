@@ -11,6 +11,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
 )
 
@@ -188,6 +189,11 @@ func (m *SettingsModel) validateExternalEditor() error {
 
 func (m *SettingsModel) validateMaxRecentTaskVisits() error {
 	_, err := validateIntInRange(m.maxRecentTaskVisitsInput.Value(), "task limit", 1, 50)
+	return err
+}
+
+func (m *SettingsModel) validateResumeCardLimit() error {
+	_, err := validateIntInRange(m.resumeCardLimitInput.Value(), "resume card limit", 1, config.ResumeCardLimitUpperBound)
 	return err
 }
 

@@ -94,6 +94,7 @@ type Config struct {
 	SavedFilters                   []SavedFilter                `json:"saved_filters,omitempty"`
 	MaxPinnedBarItems              *int                         `json:"max_pinned_bar_items,omitempty"`
 	MaxRecentTaskVisits            *int                         `json:"max_recent_task_visits,omitempty"`
+	ResumeCardLimit                *int                         `json:"resume_card_limit,omitempty"`
 	ActionInboxProjectID           string                       `json:"action_inbox_project_id,omitempty"`
 	TUIBackgroundColor             string                       `json:"tui_background_color,omitempty"`
 	TUICursorColor                 string                       `json:"tui_cursor_color,omitempty"`

@@ -171,6 +171,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardVertSplitInput.Value())); err == nil {
 		m.config.SetDashboardVerticalSplitPct(pct)
 	}
+	if limit, err := strconv.Atoi(strings.TrimSpace(m.resumeCardLimitInput.Value())); err == nil {
+		m.config.ResumeCardLimit = &limit
+	}
 	m.config.TUIZebraStriping = boolPtr(m.zebraStriping)
 	m.config.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	m.config.TimeFormat = timeFormatValues[m.timeFormatCursor]

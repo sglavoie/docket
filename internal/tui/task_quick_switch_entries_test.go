@@ -2,7 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -112,5 +116,23 @@ func TestSortedQuickSwitchEntries(t *testing.T) {
 		if sorted[i].Task.ID != id {
 			t.Errorf("index %d: expected %s, got %s", i, id, sorted[i].Task.ID)
 		}
+	}
+}
+
+func TestRenderQuickSwitchPopupShowsParkedSnippet(t *testing.T) {
+	app := newTestAppForQuickSwitch()
+	app.width = 110
+	app.showQuickSwitch = true
+	p := &models.Project{ID: "p1", Name: "Project 1"}
+	task := &models.Task{ID: "t1", Title: "Task 1", Status: models.StatusTodo, Type: models.TaskTypeTask}
+	parkedAt := time.Now().Add(-time.Hour)
+	task.ParkedAt = &parkedAt
+	task.ParkedNote = "waiting for schema review"
+	app.recentTaskVisits = []RecentTaskVisitEntry{{Task: task, Project: p}}
+	initQuickSwitchFilter(app)
+
+	plain := ansi.Strip(app.renderQuickSwitchPopup())
+	if !strings.Contains(plain, "⏸ waiting for schema review") {
+		t.Fatalf("expected parked snippet in quick-switch popup\n\n%s", plain)
 	}
 }

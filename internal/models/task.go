@@ -57,6 +57,8 @@ type Task struct {
 	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
 	Attachments   []Attachment       `json:"attachments,omitempty"`
 	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"`  // Task hidden until this date
+	ParkedNote    string             `json:"parked_note,omitempty"`    // Resume note for interrupted work
+	ParkedAt      *time.Time         `json:"parked_at,omitempty"`      // When the task was parked
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`       // Persistent changelog of field changes
 	Checklist     []ChecklistItem    `json:"checklist,omitempty"`      // Checklist items for subtasks
 	Stage         string             `json:"stage,omitempty"`          // Workflow stage (e.g., "Brainstorm", "Design", "Implement")

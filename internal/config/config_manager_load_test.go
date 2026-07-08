@@ -680,3 +680,48 @@ func TestConfigManager_MaxRecentTaskVisitsClampedToRange(t *testing.T) {
 		})
 	}
 }
+
+// TestConfigManager_ResumeCardLimitClampedToRange verifies that stored values
+// outside [1, 20] are clamped on load.
+func TestConfigManager_ResumeCardLimitClampedToRange(t *testing.T) {
+	cases := []struct {
+		name      string
+		stored    int
+		wantAfter int
+	}{
+		{"zero clamped to min", 0, 1},
+		{"negative clamped to min", -5, 1},
+		{"above max clamped to 20", 99, ResumeCardLimitUpperBound},
+		{"valid unchanged", 8, 8},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "cfg.json")
+			data, _ := json.Marshal(map[string]any{
+				"version":           1,
+				"data_dir":          tmpDir,
+				"projects":          []any{},
+				"resume_card_limit": tc.stored,
+			})
+			if err := os.WriteFile(configPath, data, 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			cfg, err := NewManager(configPath).Load()
+			if err != nil {
+				t.Fatalf("Load failed: %v", err)
+			}
+			if cfg.ResumeCardLimit == nil {
+				t.Fatal("ResumeCardLimit should not be nil")
+			}
+			if *cfg.ResumeCardLimit != tc.wantAfter {
+				t.Errorf("stored %d: expected clamped to %d, got %d", tc.stored, tc.wantAfter, *cfg.ResumeCardLimit)
+			}
+			if got := cfg.GetResumeCardLimit(); got != tc.wantAfter {
+				t.Errorf("GetResumeCardLimit() = %d, want %d", got, tc.wantAfter)
+			}
+		})
+	}
+}

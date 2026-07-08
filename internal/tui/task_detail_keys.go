@@ -98,6 +98,10 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return m, func() tea.Msg {
 			return SetDueDateMsg{Task: m.task, Project: m.project}
 		}
+	case "P":
+		return m, func() tea.Msg {
+			return ShowParkInputMsg{Task: m.task, Project: m.project}
+		}
 	case "o":
 		return m, func() tea.Msg {
 			return CloseTaskDetailMsg{}
@@ -231,7 +235,7 @@ func (m *TaskDetailModel) HandledKeys() []string {
 		"H",
 		",", "!",
 		"c", "l", "a", "h", "p", "S", "D", "d",
-		"o", "O", "e", "g",
+		"P", "o", "O", "e", "g",
 		"?",
 	}
 }
@@ -250,6 +254,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "O", Description: "Open external URL", Category: "Actions"},
 		{Key: "e", Description: "Edit task", Category: "Actions"},
 		{Key: "d", Description: "Set due date", Category: "Actions"},
+		{Key: "P", Description: "Park task", Category: "Actions"},
 		{Key: "c", Description: "Comments", Category: "Sub-views"},
 		{Key: "l", Description: "Checklist", Category: "Sub-views"},
 		{Key: "a", Description: "Attachments", Category: "Sub-views"},

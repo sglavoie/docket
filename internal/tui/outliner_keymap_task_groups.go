@@ -236,6 +236,9 @@ func (b *outlinerKeymapBuilder) taskPrefixEntries() []keymap.Entry {
 		ViewDecisions: func() (tea.Model, tea.Cmd) {
 			return m.handleTaskPrefix("d", b.cursorTask())
 		},
+		ParkTask: func() (tea.Model, tea.Cmd) {
+			return m.handleTaskPrefix("P", b.cursorTask())
+		},
 		DeleteTask: func() (tea.Model, tea.Cmd) {
 			return m.handleTaskPrefix("D", b.cursorTask())
 		},

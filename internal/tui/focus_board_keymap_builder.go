@@ -105,6 +105,13 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		keymap.Bind("p", "Plan or set priority", "Actions", func() (tea.Model, tea.Cmd) {
 			return m.executeCockpitAction(m.resolveCockpitActionForKey("p"))
 		}),
+		keymap.Bind("P", "Park task", "Actions", func() (tea.Model, tea.Cmd) {
+			task, project := m.getTaskRef()
+			if task == nil || project == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return ShowParkInputMsg{Task: task, Project: project} }
+		}),
 		keymap.Bind("?", "Toggle help", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m.toggleHelpAction()
 		}),

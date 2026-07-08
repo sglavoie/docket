@@ -464,6 +464,9 @@ func (m *SettingsModel) handleResetToDefault() {
 		case 18:
 			m.dashboardVertSplitInput.SetValue(strconv.Itoa(config.DefaultDashboardVerticalSplitPct))
 			resetDone = true
+		case 19:
+			m.resumeCardLimitInput.SetValue(strconv.Itoa(config.DefaultResumeCardLimit))
+			resetDone = true
 		}
 	case tabAttachments:
 		switch local {

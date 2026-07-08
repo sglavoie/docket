@@ -28,6 +28,8 @@ func WithCLIReference(ref string) AppOption {
 
 // NewAppModel creates a new TUI application model.
 func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption) *AppModel {
+	resetSessionMutations()
+
 	app := &AppModel{
 		config:                   cfg,
 		configManager:            manager,

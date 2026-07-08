@@ -276,5 +276,20 @@ func (m *SettingsModel) renderBehaviorDashboardSection() string {
 	}
 	b.WriteString(renderFormFieldDesc("Project-list width share in Vertical layout", indent, m.focusIndex == base+2))
 
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Resume Limit: ", labelWidth, m.focusIndex == base+3))
+	b.WriteString(m.resumeCardLimitInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(1-20)"))
+	b.WriteString(renderDefaultHint(m.resumeCardLimitInput.Value(), "5"))
+	b.WriteString("\n")
+	if m.focusIndex == base+3 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Maximum parked tasks shown in dashboard Resume card", indent, m.focusIndex == base+3))
+
 	return b.String()
 }

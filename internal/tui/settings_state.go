@@ -106,7 +106,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 5, 19, 2, 15, 24, 10, 15, 1, 5}
+	tabFieldCount = []int{5, 18, 5, 20, 2, 15, 24, 10, 15, 1, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -120,7 +120,7 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}, {"Today", 1}, {"Dashboard", 3}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}, {"Today", 1}, {"Dashboard", 4}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 6: Outliner
@@ -320,6 +320,7 @@ type SettingsModel struct {
 	dashboardLayoutCursor    int // Index into dashboardLayoutOptions (maps to DashboardBottomLayout)
 	dashboardHorizSplitInput textinput.Model
 	dashboardVertSplitInput  textinput.Model
+	resumeCardLimitInput     textinput.Model
 
 	// Kanban settings (Kanban tab, index 94-104)
 	kanbanDefaultModeCursor  int             // Index into kanbanModeValues

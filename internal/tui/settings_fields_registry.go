@@ -75,7 +75,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+3, tabReview, 0, "Review", "Completed Hours", "completed recent review hours window", "24")
 	add(base+4, tabReview, 0, "Review", "Stale Badge Days", "stale badge days inline task", "0")
 
-	// Tab 3: Behavior (16 fields across 9 sub-tabs)
+	// Tab 3: Behavior (20 fields across 10 sub-tabs)
 	// subTab 0: Recent Activity
 	base = subTabFieldStart(tabBehavior, 0)
 	add(base+0, tabBehavior, 0, "General > Recent Activity", "Task Limit", "recent activity limit count max", strconv.Itoa(20))
@@ -115,6 +115,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+0, tabBehavior, 9, "General > Dashboard", "Layout", "dashboard bottom layout horizontal vertical list only split", "Horizontal")
 	add(base+1, tabBehavior, 9, "General > Dashboard", "Horizontal Split %", "dashboard horizontal split percent ratio height", strconv.Itoa(config.DefaultDashboardHorizontalSplitPct))
 	add(base+2, tabBehavior, 9, "General > Dashboard", "Vertical Split %", "dashboard vertical split percent ratio width", strconv.Itoa(config.DefaultDashboardVerticalSplitPct))
+	add(base+3, tabBehavior, 9, "General > Dashboard", "Resume Card Limit", "dashboard resume parked tasks card limit", strconv.Itoa(config.DefaultResumeCardLimit))
 
 	// Tab 4: Attachments (2 fields)
 	base = tabFieldStart[tabAttachments]

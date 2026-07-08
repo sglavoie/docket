@@ -308,6 +308,7 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingCreateTaskProject = nil
 	m.pendingVarFillerTemplate = nil
 	m.pendingDescEdit = nil
+	m.pendingParkNav = nil
 
 	m.globalMoveState.sourceProject = nil
 	m.globalMoveState.sourceTask = nil
@@ -501,6 +502,17 @@ func (m *AppModel) popAndNavigateToTask(task *models.Task, project *models.Proje
 // the specified task. When task is nil it just opens the project view.
 // Returns a tea.Cmd if any notification needs to be shown (e.g. filters cleared).
 func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Project) tea.Cmd {
+	targetTaskID := ""
+	if task != nil {
+		targetTaskID = task.ID
+	}
+	cmd, _ := m.maybePromptPark(targetTaskID, func() tea.Cmd {
+		return m.navigateToTaskInProjectNow(task, project)
+	})
+	return cmd
+}
+
+func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models.Project) tea.Cmd {
 	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
 

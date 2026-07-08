@@ -11,6 +11,8 @@ import (
 
 // newTestAppModel creates an AppModel for testing with a temp config file.
 func newTestAppModel() *AppModel {
+	resetSessionMutations()
+
 	cfg := testutil.NewTestConfig()
 	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
 	configPath := filepath.Join(tmpDir, "tt.json")
@@ -33,6 +35,8 @@ func newTestAppModel() *AppModel {
 
 // newTestAppModelWithProject creates an AppModel with a test project and temp config.
 func newTestAppModelWithProject() (*AppModel, *models.Project) {
+	resetSessionMutations()
+
 	cfg := testutil.NewTestConfig()
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	cfg.Projects = []*models.Project{project}

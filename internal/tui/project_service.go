@@ -107,7 +107,11 @@ func (opts ProjectSaveOptions) storageUndoOptions() storage.UndoSnapshotOptions 
 }
 
 func recordUndoSnapshotForSave(project *models.Project, opts ProjectSaveOptions) {
-	if opts.UndoDepth <= 0 || !opts.hasUndoMetadata() {
+	if !opts.hasUndoMetadata() {
+		return
+	}
+	markSessionTaskMutated(project.ID, opts.UndoTaskIDs)
+	if opts.UndoDepth <= 0 {
 		return
 	}
 	if err := storage.RecordUndoSnapshotWithOptions(project, opts.storageUndoOptions()); err != nil {

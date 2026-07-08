@@ -350,6 +350,13 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 			}
 			return c.model, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
 		},
+		ParkTask: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowParkInputMsg{Task: task, Project: project} }
+		},
 		DeleteTask: func() (tea.Model, tea.Cmd) {
 			inboxDeletePrompt(c, &c.confirm)
 			return c.model, nil

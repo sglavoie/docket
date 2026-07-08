@@ -180,7 +180,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	keys := m.HandledKeys()
 
 	for _, key := range []string{
-		"a", "x", "p", "/", "?", "enter",
+		"a", "x", "p", "P", "/", "?", "enter",
 		"tab", "shift+tab", "shift+left", "shift+right",
 		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
 		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS", "F.",
@@ -194,7 +194,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
 		"g", "gg", "gp", "f", "fa", "fp",
-		"1", "2", "3", "4", "5", "0", "P", "P0",
+		"1", "2", "3", "4", "5", "0", "P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
 		"o", "D", "e", "*", "S", "O", "ctrl+b", "ctrl+.",
 	} {
@@ -208,6 +208,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: "a", Description: "Quick-add board item"},
 		{Key: "x", Description: "Complete or dismiss item"},
 		{Key: "p", Description: "Plan or set priority"},
+		{Key: "P", Description: "Park task"},
 		{Key: "/", Description: "Search"},
 		{Key: "?", Description: "Toggle help"},
 		{Key: ":", Description: "Command palette"},
@@ -221,7 +222,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
 		"g", "gg", "gp", "f", "fa", "fp",
-		"1", "2", "3", "4", "5", "0", "P", "P0",
+		"1", "2", "3", "4", "5", "0", "P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
 		"o", "D", "e", "*", "S", "O", "ctrl+o", "ctrl+n", "ctrl+b", "ctrl+.",
 		"y", "Y", "ctrl+Y",

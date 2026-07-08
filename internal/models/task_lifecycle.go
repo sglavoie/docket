@@ -9,9 +9,10 @@ import (
 
 // Complete marks the task as done and sets the completion time.
 // The task is moved to the Completed section.
-// Snooze is cleared since hiding a completed task is meaningless.
+// Snooze and parking are cleared since hiding or resuming a completed task is meaningless.
 func (t *Task) Complete() {
 	now := time.Now()
+	t.Unpark(true)
 	t.Status = StatusDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now

@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
@@ -20,15 +22,16 @@ func (m *DashboardModel) renderInfoSection(width, paneHeight int, selected *mode
 	return m.renderInfoSectionFull(width, paneHeight, selected)
 }
 
-// renderInfoSectionFull renders all four info cards regardless of whether
-// they carry actionable content. Used when the user has toggled `, c` to
-// opt out of compact mode.
+// renderInfoSectionFull renders the dashboard info cards in their expanded
+// layout. Used when the user has toggled `, c` to opt out of compact mode.
 func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
 	cfg.Height = paneHeight
 
 	hasRecent := selected != nil
 	hasPipeline := true
+	resumeEntries := m.collectParkedResumeTasks(m.resumeCardLimit())
+	hasResume := len(resumeEntries) > 0
 	var scoringProfile *scoring.ScoringProfile
 	hasTopScored := false
 	if selected != nil {
@@ -47,6 +50,9 @@ func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *
 	}
 
 	numCards := 1
+	if hasResume {
+		numCards++
+	}
 	if hasRecent {
 		numCards++
 	}
@@ -81,6 +87,11 @@ func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *
 
 	var cards []dashboardPanelCard
 
+	if hasResume {
+		resumeContent := m.renderResumeCardContent(resumeEntries, otherContentW)
+		cards = append(cards, dashboardPanelCard{title: "Resume", content: resumeContent, width: otherCardW})
+	}
+
 	if hasRecent {
 		recentContent := MutedStyle.Render(EmptyStateNoTasks)
 		if len(selected.Tasks) > 0 {
@@ -108,11 +119,12 @@ func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *
 	return renderDashboardCards(width, wide, cfg, cards)
 }
 
-// infoCardKind enumerates the four info cards in canonical compact-mode order.
+// infoCardKind enumerates the info cards in canonical compact-mode order.
 type infoCardKind int
 
 const (
 	infoCardAlerts infoCardKind = iota
+	infoCardResume
 	infoCardTopScored
 	infoCardPipeline
 	infoCardRecent
@@ -129,12 +141,13 @@ type infoCardSpec struct {
 
 // renderInfoSectionCompact renders actionable cards in the usual grid and
 // collapses inert cards into one-line summary rows beneath. Card order
-// within each partition: Alerts → Top Scored → Pipeline → Recent.
+// within each partition: Alerts → Resume → Top Scored → Pipeline → Recent.
 func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
 	cfg.Height = paneHeight
 
 	alertLines := m.computeGlobalAlertLines(selected)
+	resumeEntries := m.collectParkedResumeTasks(m.resumeCardLimit())
 
 	var scoringProfile *scoring.ScoringProfile
 	var bestTask *models.Task
@@ -162,6 +175,7 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 
 	specs := []infoCardSpec{
 		{kind: infoCardAlerts, title: "Alerts", actionable: len(alertLines) > 0, summary: "clear"},
+		{kind: infoCardResume, title: "Resume", actionable: len(resumeEntries) > 0, summary: "No parked tasks"},
 	}
 	if selected != nil && scoringProfile != nil {
 		specs = append(specs, infoCardSpec{
@@ -203,7 +217,7 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 		}
 	}
 
-	cards := m.buildActionableInfoCards(actionable, width, selected, scoringProfile, alertLines, recentTasks)
+	cards := m.buildActionableInfoCards(actionable, width, selected, scoringProfile, alertLines, resumeEntries, recentTasks)
 	wide := m.width >= DashboardInfoSectionWideMinWidth && len(cards) > 1
 
 	// Inert cards render as one-line summary rows below the cards. In the
@@ -246,6 +260,7 @@ func (m *DashboardModel) buildActionableInfoCards(
 	selected *models.Project,
 	scoringProfile *scoring.ScoringProfile,
 	alertLines []string,
+	resumeEntries []parkedResumeEntry,
 	recentTasks []*models.Task,
 ) []dashboardPanelCard {
 	if len(specs) == 0 {
@@ -303,6 +318,9 @@ func (m *DashboardModel) buildActionableInfoCards(
 			} else {
 				content = MutedStyle.Render("No alerts")
 			}
+		case infoCardResume:
+			title = "Resume"
+			content = m.renderResumeCardContent(resumeEntries, contentW)
 		case infoCardTopScored:
 			title = "Top Scored"
 			content = m.renderTopScoredContent(selected, scoringProfile, contentW)
@@ -325,6 +343,92 @@ func (m *DashboardModel) buildActionableInfoCards(
 		cards = append(cards, dashboardPanelCard{title: title, content: content, width: w})
 	}
 	return cards
+}
+
+type parkedResumeEntry struct {
+	task    *models.Task
+	project *models.Project
+}
+
+func (m *DashboardModel) resumeCardLimit() int {
+	if m.config == nil {
+		return config.DefaultResumeCardLimit
+	}
+	return m.config.GetResumeCardLimit()
+}
+
+func (m *DashboardModel) collectParkedResumeTasks(limit int) []parkedResumeEntry {
+	if limit < 1 {
+		return nil
+	}
+
+	var entries []parkedResumeEntry
+	for _, project := range m.projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil || task.Status.IsComplete() || !task.IsParked() {
+				continue
+			}
+			entries = append(entries, parkedResumeEntry{task: task, project: project})
+		}
+	}
+
+	sort.SliceStable(entries, func(i, j int) bool {
+		left := entries[i].task
+		right := entries[j].task
+		switch {
+		case left.ParkedAt != nil && right.ParkedAt != nil:
+			if !left.ParkedAt.Equal(*right.ParkedAt) {
+				return left.ParkedAt.After(*right.ParkedAt)
+			}
+		case left.ParkedAt != nil:
+			return true
+		case right.ParkedAt != nil:
+			return false
+		}
+		return left.UpdatedAt.After(right.UpdatedAt)
+	})
+
+	if len(entries) > limit {
+		entries = entries[:limit]
+	}
+	return entries
+}
+
+func (m *DashboardModel) renderResumeCardContent(entries []parkedResumeEntry, contentWidth int) string {
+	if len(entries) == 0 {
+		return MutedStyle.Render("No parked tasks")
+	}
+
+	lines := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		lines = append(lines, renderResumeCardLine(entry, contentWidth))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func renderResumeCardLine(entry parkedResumeEntry, contentWidth int) string {
+	task := entry.task
+	typeBadge := GetTypeBadge(string(task.Type), task.Type.Icon())
+	statusBadge := GetStatusBadge(string(task.Status), task.Status.Icon())
+	prefix := fmt.Sprintf("%s %s ", typeBadge, statusBadge)
+
+	suffixParts := []string{parkedResumeSnippet(task, max(contentWidth/3, 16))}
+	if entry.project != nil && strings.TrimSpace(entry.project.Name) != "" {
+		suffixParts = append(suffixParts, entry.project.Name)
+	}
+	if rel := parkedResumeRelative(task); rel != "" {
+		suffixParts = append(suffixParts, rel)
+	}
+	suffixWidth := max(contentWidth/2, 18)
+	suffix := MutedStyle.Render(" " + truncateToVisualWidth(strings.Join(suffixParts, " · "), suffixWidth))
+	titleWidth := max(contentWidth-lipgloss.Width(prefix)-lipgloss.Width(suffix), MinTitleTruncWidth)
+
+	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).
+		Render(truncateToVisualWidth(task.Title, titleWidth))
+	return fitStyledLineToWidth(prefix+title+suffix, contentWidth)
 }
 
 // bestScoredTask returns the highest-scored active task in a project, or nil if none exist.

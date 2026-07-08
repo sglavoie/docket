@@ -99,6 +99,9 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 			if dueStr := FormatRelativeDue(entry.Task.DueDate, true); dueStr != "" {
 				metaParts = append(metaParts, "@"+dueStr)
 			}
+			if entry.Task.IsParked() {
+				metaParts = append(metaParts, MutedStyle.Render(parkedResumeSnippet(entry.Task, 30)))
+			}
 
 			metaSuffix := ""
 			if len(metaParts) > 0 {

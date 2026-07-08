@@ -104,6 +104,7 @@ func withPersist(p Persister, project *models.Project, taskID string, mutate fun
 	if err := p.Save(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
 	}
+	markSessionTaskMutated(project.ID, []string{taskID})
 	_ = p.Load(project)
 	return TaskOpResult{}
 }
@@ -138,6 +139,7 @@ func withPersistUndo(p Persister, cfg *config.Config, project *models.Project, t
 	if err := p.Save(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
 	}
+	markSessionTaskMutated(project.ID, []string{taskID})
 	_ = p.Load(project)
 	return TaskOpResult{}
 }
@@ -198,6 +200,8 @@ func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config
 // persistWithWorkflow runs the full save pipeline used by both ProjectTree and Outliner:
 // auto-unblock, recurring generation, workflow rules, root reorder, undo snapshot, backup, save, load.
 func persistWithWorkflow(opts WorkflowSaveOptions) error {
+	sessionMutationTaskIDs := append([]string(nil), opts.UndoTaskIDs...)
+
 	opts.Project.CheckAndAutoUnblock()
 	reconciledParentIDs := opts.Project.ReconcileParentCompletion()
 	opts.Project.GenerateRecurringInstances()
@@ -316,6 +320,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 
+	markSessionTaskMutated(opts.Project.ID, sessionMutationTaskIDs)
 	_ = opts.Persister.Load(opts.Project)
 	return nil
 }

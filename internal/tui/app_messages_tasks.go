@@ -107,6 +107,25 @@ type SetSnoozeDateMsg struct {
 }
 
 // =============================================================================
+// Park Messages
+// =============================================================================
+
+// ShowParkInputMsg opens the park input view for a task.
+type ShowParkInputMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// ParkNoteDoneMsg is sent when a task parking note is saved or skipped.
+type ParkNoteDoneMsg struct {
+	Task     *models.Task
+	Project  *models.Project
+	Note     string
+	Unparked bool
+	Skipped  bool
+}
+
+// =============================================================================
 // Dependency Messages (Show/Close Pattern)
 // =============================================================================
 

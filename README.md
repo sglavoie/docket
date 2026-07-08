@@ -55,6 +55,8 @@ tt ask "create a bug for the login issue" --apply
 - Sections are built-in GTD buckets: Active, Next, Inbox, Waiting, Review, Standby, Someday, and Completed.
 - Tags are flexible labels for grouping work across sections.
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
+- Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the dashboard Resume card.
+- In the TUI, park from task-list prefix menus with `tP`; focused task surfaces such as Task Detail and the Focus Board use `P`.
 - The CLI and TUI operate on the same underlying task model and storage.
 
 ## Common Commands
@@ -70,6 +72,8 @@ tt task add "Write docs"        # Add a task to the current project
 tt task list --tree             # Show hierarchical tasks
 tt task show 12                 # Inspect a task
 tt task start 12                # Mark task in progress
+tt task park 12 "waiting on API review" # Save a resume note
+tt task unpark 12               # Clear a resume note
 tt task complete 12             # Mark task done
 tt task archive list            # List archived completed tasks
 tt task archive show abc12345   # Inspect an archived task

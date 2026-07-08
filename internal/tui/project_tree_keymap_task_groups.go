@@ -340,6 +340,14 @@ func (b *projectTreeKeymapBuilder) taskPrefixEntries() []keymap.Entry {
 
 			return m, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
 		},
+		ParkTask: func() (tea.Model, tea.Cmd) {
+			task, project := m.getTaskRef()
+			if task == nil {
+				return m, nil
+			}
+
+			return m, func() tea.Msg { return ShowParkInputMsg{Task: task, Project: project} }
+		},
 		DeleteTask: func() (tea.Model, tea.Cmd) {
 			handleDeleteConfirmKey(m)
 			return m, nil

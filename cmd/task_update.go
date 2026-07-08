@@ -25,6 +25,10 @@ func WithTaskUpdate(taskIdentifier string, updateFn func(*models.Task) error) (*
 // The update function receives the project and task and should return an error if the update fails.
 // Returns the updated task on success for further inspection.
 func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Project, *models.Task) error) (*models.Task, error) {
+	return withTaskUpdateInProjectUndoAction(taskIdentifier, "Edit Task", updateFn)
+}
+
+func withTaskUpdateInProjectUndoAction(taskIdentifier, undoAction string, updateFn func(*models.Project, *models.Task) error) (*models.Task, error) {
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return nil, err
@@ -50,7 +54,7 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 	undoContext := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
 	if err := SaveProject(project, &SaveOptions{
 		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
-		PrevStates: prevStates, UndoAction: "Edit Task", UndoContext: undoContext,
+		PrevStates: prevStates, UndoAction: undoAction, UndoContext: undoContext,
 	}); err != nil {
 		return nil, err
 	}

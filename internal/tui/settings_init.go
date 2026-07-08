@@ -163,6 +163,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		dashboardLayoutCursor:    initDashboardLayoutCursor(cfg.GetDashboardBottomLayout()),
 		dashboardHorizSplitInput: newSettingsInput(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct), 2, 6, strconv.Itoa(cfg.GetDashboardHorizontalSplitPct()), false),
 		dashboardVertSplitInput:  newSettingsInput(strconv.Itoa(config.DefaultDashboardVerticalSplitPct), 2, 6, strconv.Itoa(cfg.GetDashboardVerticalSplitPct()), false),
+		resumeCardLimitInput:     newSettingsInput(strconv.Itoa(config.DefaultResumeCardLimit), 2, 6, strconv.Itoa(cfg.GetResumeCardLimit()), false),
 		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, cfg.KanbanSettings.DefaultMode, 0),
 		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, cfg.KanbanSettings.DefaultStartColumn, false),
 		kanbanShowEmptyColumns:   cfg.KanbanSettings.ShowEmptyColumns == nil || *cfg.KanbanSettings.ShowEmptyColumns,

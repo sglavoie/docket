@@ -20,27 +20,10 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
-		// Pop overlay views if that's where we came from
-		if m.currentView() == ViewCommandPalette {
-			m.popView()
-		}
-		m.saveCurrentProjectView()
-		m.switchToProject(msg.Project, true)
-		targetView := m.getProjectLastView(msg.Project.ID)
-		switch targetView {
-		case ViewProjectTree:
-			m.showView(ViewProjectTree, m.projectTree)
-		default:
-			m.saveOutlinerToggleState()
-			m.saveOutlinerFilterState()
-			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
-			m.outliner.queueIDs = m.focusQueueIDs
-			m.outliner.dailyPlanIDs = m.dailyPlanIDs
-			m.restoreOutlinerToggleState()
-			m.restoreOutlinerFilterState()
-			m.showView(ViewOutliner, m.outliner)
-		}
-		return true, nil
+		cmd, _ := m.maybePromptPark("", func() tea.Cmd {
+			return m.selectProjectNow(msg.Project)
+		})
+		return true, cmd
 
 	case CreateProjectMsg:
 		m.showView(ViewProjectCreator, NewProjectCreatorModel(m.config, m.configManager))
@@ -299,6 +282,30 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, defaultStatusTimeout()
 	}
 	return false, nil
+}
+
+func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
+	// Pop overlay views if that's where we came from
+	if m.currentView() == ViewCommandPalette {
+		m.popView()
+	}
+	m.saveCurrentProjectView()
+	m.switchToProject(project, true)
+	targetView := m.getProjectLastView(project.ID)
+	switch targetView {
+	case ViewProjectTree:
+		m.showView(ViewProjectTree, m.projectTree)
+	default:
+		m.saveOutlinerToggleState()
+		m.saveOutlinerFilterState()
+		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner.queueIDs = m.focusQueueIDs
+		m.outliner.dailyPlanIDs = m.dailyPlanIDs
+		m.restoreOutlinerToggleState()
+		m.restoreOutlinerFilterState()
+		m.showView(ViewOutliner, m.outliner)
+	}
+	return nil
 }
 
 func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bool) tea.Cmd {

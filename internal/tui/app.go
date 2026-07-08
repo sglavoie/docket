@@ -80,6 +80,7 @@ const (
 	ViewWeeklyReview
 	ViewGlobalBlockers
 	ViewSnoozeInput
+	ViewParkInput
 	ViewTutor
 	ViewAsk
 	ViewProjectPicker
@@ -291,6 +292,9 @@ type AppModel struct {
 		Task    *models.Task
 		Project *models.Project
 	}
+
+	// Pending continuation after the smart park prompt resolves.
+	pendingParkNav *pendingParkNavigation
 
 	// Pending sandbox reset confirmation
 	pendingSandboxReset     bool

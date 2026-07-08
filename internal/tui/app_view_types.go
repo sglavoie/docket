@@ -65,6 +65,7 @@ var viewTypeNames = map[ViewType]string{
 	ViewWeeklyReview:          "WeeklyReview",
 	ViewGlobalBlockers:        "GlobalBlockers",
 	ViewSnoozeInput:           "SnoozeInput",
+	ViewParkInput:             "ParkInput",
 	ViewTutor:                 "Tutor",
 	ViewAsk:                   "Ask",
 	ViewProjectPicker:         "ProjectPicker",

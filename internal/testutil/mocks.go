@@ -323,6 +323,7 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.Recurrence = cloneRecurrencePattern(task.Recurrence)
 	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
 	taskCopy.SnoozedUntil = clonePointer(task.SnoozedUntil)
+	taskCopy.ParkedAt = clonePointer(task.ParkedAt)
 	taskCopy.Activity = clonePointerSlice(task.Activity)
 	taskCopy.Checklist = append([]models.ChecklistItem{}, task.Checklist...)
 	taskCopy.StartDate = clonePointer(task.StartDate)

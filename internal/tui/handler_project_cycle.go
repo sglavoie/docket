@@ -182,6 +182,14 @@ func cycleArchivedHiddenText(hiddenCount int) string {
 
 // switchToCycleProject switches to a project from the cycle list.
 func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd) {
+	cmd, _ := m.maybePromptPark("", func() tea.Cmd {
+		_, cmd := m.switchToCycleProjectNow(project)
+		return cmd
+	})
+	return true, cmd
+}
+
+func (m *AppModel) switchToCycleProjectNow(project *models.Project) (bool, tea.Cmd) {
 	m.saveCurrentProjectView()
 	m.saveProjectTreeState()
 	m.saveOutlinerToggleState()

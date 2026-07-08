@@ -373,7 +373,7 @@ func handleDeleteConfirmKey(v deleteConfirmView) bool {
 }
 
 // handleSharedTaskPrefix handles the t-prefix key sequence shared across
-// primary views: message-only handlers (to, tc, ta, tl, te, tm, td), action
+// primary views: message-only handlers (to, tc, ta, tl, te, tm, td, tP), action
 // handlers (tn, tN, ts, tt), rename (tr), toggle pinned (tp), toggle dimmed (th), and delete (tD).
 // The onRename callback handles view-specific rename entry. focusedTask is the
 // zoom/focus target (may be nil).
