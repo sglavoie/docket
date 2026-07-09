@@ -145,9 +145,10 @@ func (m *TaskDetailModel) prefixHints() PrefixHints {
 	return hints
 }
 
-// viewHeight returns the number of visible content lines (total minus title and footer).
+// viewHeight returns the number of visible content lines after reserving the
+// title and the task detail footer's actual wrapped height.
 func (m *TaskDetailModel) viewHeight() int {
-	return max(m.height-TitleFooterOverhead, 1)
+	return max(m.height-1-m.footerHeight(), 1)
 }
 
 // clampScroll ensures scrollOffset is within valid bounds.

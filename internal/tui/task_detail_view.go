@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
@@ -16,6 +17,8 @@ import (
 
 // maxContentWidth aliases the layout constant for local use.
 const maxContentWidth = MaxContentWidth
+
+const taskDetailFooterHelp = "j/k: scroll · ,: status · !: priority · e: edit · c: comments · D: decisions · d: due · h: history · H: toggle history · Esc: close"
 
 // detailContentWidth returns the shared task-detail card width used by View,
 // section rendering, centering, and description markdown. It caps the model
@@ -253,20 +256,136 @@ func (m *TaskDetailModel) renderTitleBar() string {
 	return renderFullscreenTitleWithCounter("Task Detail", fmt.Sprintf("#%d", m.task.ShortID), FormatOpenLoops(m.openLoops), m.width, m.AccentColor())
 }
 
-// renderFooter renders the bottom footer with scroll position and help.
+// footerHeight returns the rendered height of the task detail footer. The footer
+// can grow when narrow widths wrap the help text, so scroll accounting cannot
+// assume the shared two-line status-bar footer height.
+func (m *TaskDetailModel) footerHeight() int {
+	footerHeight := 2
+	for range 4 {
+		viewHeight := max(m.height-1-footerHeight, 1)
+		next := lipgloss.Height(m.renderFooterForViewHeight(viewHeight))
+		if next == footerHeight {
+			return next
+		}
+		footerHeight = next
+	}
+	return footerHeight
+}
+
+// renderFooter renders the bottom footer with scroll position and wrapping help.
 func (m *TaskDetailModel) renderFooter() string {
+	return m.renderFooterForViewHeight(m.viewHeight())
+}
+
+func (m *TaskDetailModel) renderFooterForViewHeight(viewHeight int) string {
 	var right string
-	if m.totalLines > m.viewHeight() {
+	if m.totalLines > viewHeight {
 		pct := 0
-		maxScroll := m.totalLines - m.viewHeight()
+		maxScroll := m.totalLines - viewHeight
 		if maxScroll > 0 {
 			pct = m.scrollOffset * 100 / maxScroll
 		}
 		right = HelpStyle.Render(fmt.Sprintf("%d%% (%d/%d)", pct, m.scrollOffset+1, m.totalLines))
 	}
 
-	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · D: decisions · d: due · h: history · H: toggle history · Esc: close")
-	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
+	return m.renderWrappingFooter(right)
+}
+
+func (m *TaskDetailModel) renderWrappingFooter(right string) string {
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+
+	var separatorStyle lipgloss.Style
+	if accent := m.AccentColor(); accent != nil {
+		separatorStyle = lipgloss.NewStyle().Foreground(accent)
+	} else {
+		separatorStyle = MutedStyle
+	}
+
+	rightWidth := lipgloss.Width(right)
+	if rightWidth >= width {
+		right = ansi.Truncate(right, max(width-1, 1), "")
+		rightWidth = lipgloss.Width(right)
+	}
+
+	firstLineWidth := width
+	if right != "" {
+		firstLineWidth = max(width-rightWidth-1, 1)
+	}
+	helpLines := wrapTaskDetailFooterHelp(taskDetailFooterHelp, firstLineWidth, width)
+	if len(helpLines) == 0 {
+		helpLines = []string{""}
+	}
+
+	var b strings.Builder
+	b.WriteString(separatorStyle.Render(strings.Repeat("─", width)))
+	for i, line := range helpLines {
+		b.WriteString("\n")
+		left := HelpStyle.Render(line)
+		if lipgloss.Width(left) > width {
+			left = ansi.Truncate(left, width, "")
+		}
+		if i == 0 && right != "" {
+			leftWidth := lipgloss.Width(left)
+			if leftWidth+rightWidth+1 > width {
+				left = ansi.Truncate(left, max(width-rightWidth-1, 1), "")
+				leftWidth = lipgloss.Width(left)
+			}
+			gap := max(width-leftWidth-rightWidth, 1)
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, left, ThemeSpacer(gap), right))
+			continue
+		}
+		b.WriteString(left)
+	}
+	return b.String()
+}
+
+func wrapTaskDetailFooterHelp(helpText string, firstLineWidth, width int) []string {
+	if width <= 0 {
+		width = 80
+	}
+	firstLineWidth = max(firstLineWidth, 1)
+
+	const separator = " · "
+	items := strings.Split(helpText, separator)
+	if len(items) == 0 {
+		return nil
+	}
+
+	var lines []string
+	var current strings.Builder
+	currentWidth := 0
+	lineWidth := firstLineWidth
+
+	for _, item := range items {
+		itemWidth := lipgloss.Width(item)
+		separatorWidth := 0
+		if current.Len() > 0 {
+			separatorWidth = lipgloss.Width(separator)
+		}
+
+		if current.Len() > 0 && currentWidth+separatorWidth+itemWidth > lineWidth {
+			lines = append(lines, current.String())
+			current.Reset()
+			currentWidth = 0
+			lineWidth = width
+			separatorWidth = 0
+		}
+
+		if current.Len() > 0 {
+			current.WriteString(separator)
+			currentWidth += separatorWidth
+		}
+		current.WriteString(item)
+		currentWidth += itemWidth
+	}
+
+	if current.Len() > 0 {
+		lines = append(lines, current.String())
+	}
+	return lines
 }
 
 // renderHeaderSection renders the task header card with section badge.

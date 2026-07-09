@@ -99,9 +99,9 @@ func TestTaskDetailNarrowMarkdownTableStaysWithinWidth(t *testing.T) {
 	}
 
 	// Important cell text must survive vertical wrapping (not be truncated away).
-	// These words sit in the first table row, which renders within the visible
-	// window at scroll offset 0.
-	stripped := ansi.Strip(rendered)
+	// Inspect the full pre-scroll detail body because the wrapped footer reduces
+	// the first viewport's body rows at narrow widths.
+	stripped := ansi.Strip(strings.Join(m.detailSections(m.detailContentWidth()), "\n"))
 	for _, word := range []string{"really", "another", "content"} {
 		if !strings.Contains(stripped, word) {
 			t.Fatalf("expected wide-table cell word %q preserved in task detail, got:\n%s", word, stripped)
@@ -292,5 +292,73 @@ func TestTaskDetailScreenshotScrollAccounting(t *testing.T) {
 	if m.totalLines <= m.viewHeight() {
 		t.Fatalf("expected screenshot description to overflow viewport: totalLines=%d viewHeight=%d",
 			m.totalLines, m.viewHeight())
+	}
+}
+
+func TestTaskDetailFooterWrapsAtMinimumWidth(t *testing.T) {
+	project, err := models.NewProject("proj-1", "Footer", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Footer wrapping")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	project.Tasks = []*models.Task{task}
+
+	const (
+		width  = 60
+		height = 20
+	)
+	m := &TaskDetailModel{task: task, project: project}
+	m.SetSize(width, height)
+
+	rendered := m.View().Content
+	plain, issues := normalizeScreen(rendered, width, height)
+	if len(issues) > 0 {
+		t.Fatalf("task detail footer layout issues: %+v\n\n%s", issues, plain)
+	}
+
+	for _, want := range []string{"c: comments", "D: decisions", "H: toggle history", "Esc: close"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("wrapped footer missing %q:\n%s", want, plain)
+		}
+	}
+}
+
+func TestTaskDetailWrappedFooterCountsTowardScrollHeight(t *testing.T) {
+	project, err := models.NewProject("proj-1", "Scrollable Footer", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Scrollable footer wrapping")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Description = screenshotLikeDescription
+	project.Tasks = []*models.Task{task}
+
+	const (
+		width  = 60
+		height = 20
+	)
+	m := &TaskDetailModel{task: task, project: project}
+	m.SetSize(width, height)
+
+	rendered := m.View().Content
+	plain, issues := normalizeScreen(rendered, width, height)
+	if len(issues) > 0 {
+		t.Fatalf("task detail scrollable footer layout issues: %+v\n\n%s", issues, plain)
+	}
+	if m.totalLines <= m.viewHeight() {
+		t.Fatalf("expected scrollable detail content: totalLines=%d viewHeight=%d", m.totalLines, m.viewHeight())
+	}
+	if !strings.Contains(plain, "% (1/") {
+		t.Fatalf("expected scroll indicator in wrapped footer:\n%s", plain)
+	}
+	if !strings.Contains(plain, "Esc: close") {
+		t.Fatalf("wrapped footer should preserve final close hint:\n%s", plain)
 	}
 }
