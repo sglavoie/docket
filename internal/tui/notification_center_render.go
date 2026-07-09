@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
 )
@@ -37,12 +38,34 @@ func (m *NotificationCenterModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
+	// Build the footer first so its actual height (the help text wraps to extra
+	// lines at narrow widths) can be reserved when sizing the alert window.
+	dismissLabel := "d: dismiss"
+	if m.showDismissed {
+		if item := m.selectedItem(); item != nil && item.dismissed {
+			dismissLabel = "d: restore"
+		}
+	}
+	toggleLabel := "D: show all"
+	if m.showDismissed {
+		toggleLabel = "D: hide dismissed"
+	}
+	footerLeft := HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: open · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
+	snap := m.activeSnapshot()
+	count := 0
+	if snap != nil {
+		count = snap.TotalCount
+	}
+	footerRight := MutedStyle.Render(fmt.Sprintf("%d alerts", count))
+	footer := renderStatusBarFooter(footerLeft, footerRight, m.width, m.AccentColor())
+
 	// NotificationCenter is app-framed: it renders its own title/footer, then
 	// AppModel appends the global two-line status bar. Keep the alert window
 	// inside that combined chrome budget so alert-heavy snapshots scroll instead
 	// of pushing the app status bar past short terminals.
-	const notificationCenterChromeHeight = 5 // title + blank + own footer + line boundary
-	contentHeight := max(m.height-notificationCenterChromeHeight-appStatusBarHeight, 3)
+	// Chrome: title (1) + blank (1) + content boundary "\n" (1) + wrapped footer.
+	const notificationCenterFixedChrome = 3
+	contentHeight := max(m.height-notificationCenterFixedChrome-lipgloss.Height(footer)-appStatusBarHeight, 3)
 
 	// Prefix overhead: cursor/space (2) + severity dot (2) = 4 visible chars
 	const prefixWidth = 4
@@ -91,26 +114,7 @@ func (m *NotificationCenterModel) View() tea.View {
 	visible := lines[scrollOffset:end]
 	b.WriteString(strings.Join(visible, "\n"))
 	b.WriteString("\n")
-
-	// Footer
-	dismissLabel := "d: dismiss"
-	if m.showDismissed {
-		if item := m.selectedItem(); item != nil && item.dismissed {
-			dismissLabel = "d: restore"
-		}
-	}
-	toggleLabel := "D: show all"
-	if m.showDismissed {
-		toggleLabel = "D: hide dismissed"
-	}
-	left := HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: open · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
-	snap := m.activeSnapshot()
-	count := 0
-	if snap != nil {
-		count = snap.TotalCount
-	}
-	right := MutedStyle.Render(fmt.Sprintf("%d alerts", count))
-	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
+	b.WriteString(footer)
 
 	return tea.NewView(b.String())
 }

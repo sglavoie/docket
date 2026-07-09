@@ -31,7 +31,12 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
+	// Render the footer up front and budget content against its actual height.
+	// The footer block includes status/error messages and help that can wrap
+	// beyond two rows at narrow widths, so reserving a fixed two rows would let
+	// the joined view overflow the height budget.
+	footer := m.renderAllTasksFooter()
+	contentHeight := fullscreenContentHeightWithFooter(m.Height(), chromeLines, footer)
 	if m.totalNavigableItems() == 0 {
 		b.WriteString(m.renderAllTasksEmptyState())
 		return tea.NewView(b.String())
@@ -81,7 +86,7 @@ func (m *AllTasksViewModel) View() tea.View {
 		b.WriteString("\n")
 		b.WriteString(strip)
 	}
-	b.WriteString(m.renderAllTasksFooter())
+	b.WriteString(footer)
 
 	return tea.NewView(b.String())
 }

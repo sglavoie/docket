@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -129,7 +128,7 @@ func padPeekLine(line string, width int) string {
 		return line
 	}
 	if w > width {
-		return ansi.Truncate(line, width, "")
+		return truncateIntentional(line, width, "")
 	}
 	return line + strings.Repeat(" ", width-w)
 }
@@ -178,7 +177,7 @@ func truncatePeekLine(line string, width int) string {
 	if lipgloss.Width(line) <= width {
 		return line
 	}
-	return ansi.Truncate(line, width, "")
+	return truncateIntentional(line, width, "")
 }
 
 // renderPeekDescription wraps the task description to width and returns its

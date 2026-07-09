@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
@@ -306,7 +305,7 @@ func (m *TaskDetailModel) renderWrappingFooter(right string) string {
 
 	rightWidth := lipgloss.Width(right)
 	if rightWidth >= width {
-		right = ansi.Truncate(right, max(width-1, 1), "")
+		right = truncateRequired("task detail footer scroll indicator", right, max(width-1, 1))
 		rightWidth = lipgloss.Width(right)
 	}
 
@@ -325,12 +324,12 @@ func (m *TaskDetailModel) renderWrappingFooter(right string) string {
 		b.WriteString("\n")
 		left := HelpStyle.Render(line)
 		if lipgloss.Width(left) > width {
-			left = ansi.Truncate(left, width, "")
+			left = truncateRequired("task detail footer help", left, width)
 		}
 		if i == 0 && right != "" {
 			leftWidth := lipgloss.Width(left)
 			if leftWidth+rightWidth+1 > width {
-				left = ansi.Truncate(left, max(width-rightWidth-1, 1), "")
+				left = truncateRequired("task detail footer help", left, max(width-rightWidth-1, 1))
 				leftWidth = lipgloss.Width(left)
 			}
 			gap := max(width-leftWidth-rightWidth, 1)

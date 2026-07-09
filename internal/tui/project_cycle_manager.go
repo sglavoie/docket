@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -516,7 +515,7 @@ func (m *AppModel) renderProjectCyclePopup() string { //nolint:gocyclo // render
 				if lineWidth < innerWidth {
 					line += strings.Repeat(" ", innerWidth-lineWidth)
 				}
-				line = SelectedLine(ansi.Truncate(line, innerWidth, ""), innerWidth)
+				line = SelectedLine(truncateIntentional(line, innerWidth, ""), innerWidth)
 			}
 
 			contentLines = append(contentLines, line)

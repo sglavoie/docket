@@ -166,9 +166,9 @@ func padRight(s string, width int) string {
 	n := ansi.StringWidth(s)
 	if n >= width {
 		if width > 1 {
-			return ansi.Truncate(s, width, "…")
+			return truncateIntentional(s, width, "…")
 		}
-		return ansi.Truncate(s, width, "")
+		return truncateIntentional(s, width, "")
 	}
 	return s + strings.Repeat(" ", width-n)
 }

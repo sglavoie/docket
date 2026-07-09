@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 func (m *AppModel) renderPinnedTasksBar(width int) string {
@@ -138,7 +137,7 @@ func (m *AppModel) renderPinnedPopup() string {
 				if lineWidth < innerWidth {
 					line += strings.Repeat(" ", innerWidth-lineWidth)
 				}
-				line = SelectedLine(ansi.Truncate(line, innerWidth, ""), innerWidth)
+				line = SelectedLine(truncateIntentional(line, innerWidth, ""), innerWidth)
 			}
 
 			contentLines = append(contentLines, line)

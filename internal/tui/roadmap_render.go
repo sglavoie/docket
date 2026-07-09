@@ -68,7 +68,10 @@ func (m *RoadmapModel) View() tea.View {
 	helpText := HelpStyle.Render(strings.Join(helpParts, " · "))
 	footer := renderStatusBarFooter("", helpText, m.width, m.AccentColor())
 
-	contentHeight := max(fullscreenContentHeight(m.height, 2), 4)
+	// Budget content against the actual rendered footer height so a footer that
+	// wraps beyond two rows at narrow widths does not push the joined view past
+	// m.height. Mirrors the metrics dashboard's block-based budgeting.
+	contentHeight := fullscreenContentHeightForBlocks(m.height, title, tabBar, footer)
 
 	var content string
 	switch m.activeTab {
@@ -79,6 +82,10 @@ func (m *RoadmapModel) View() tea.View {
 	case RoadmapTabForecasts:
 		content = m.renderForecastsTab(contentHeight)
 	}
+	// Clamp the rendered tab to its budget so an appended scroll-position row (or
+	// any content taller than contentHeight) cannot push the joined view past
+	// m.height. Mirrors the metrics dashboard's post-render fit.
+	content = fitBlockHeight(content, contentHeight)
 
 	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, title, tabBar, content, footer))
 }

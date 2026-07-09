@@ -1,0 +1,17 @@
+{
+  "name": "task-detail-narrow-layout",
+  "fixture": "narrow",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open project outliner", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "command", "label": "open task detail", "command": "view task details" },
+    { "type": "assert", "assert": "view", "value": "TaskDetail" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "assert", "assert": "contains", "value": "c: comments" },
+    { "type": "assert", "assert": "contains", "value": "D: decisions" },
+    { "type": "assert", "assert": "contains", "value": "H: toggle history" },
+    { "type": "assert", "assert": "contains", "value": "Esc: close" }
+  ]
+}

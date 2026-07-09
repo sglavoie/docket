@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
@@ -390,7 +389,7 @@ func renderTaskItemPreview(entry *strings.Builder, text string, maxLen int, mute
 		}
 
 		entry.WriteString("      ")
-		line = ansi.Truncate(line, maxLen, "")
+		line = truncateIntentional(line, maxLen, "")
 		if muted {
 			entry.WriteString(MutedStyle.Render(line))
 		} else {

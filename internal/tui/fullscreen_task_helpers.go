@@ -36,7 +36,7 @@ func renderFullscreenTitleContent(titleContent, subtitle string) string {
 func renderTaskScopedFullscreenTitle(prefix string, task *models.Task, subtitle string, width int, accent ...color.Color) string {
 	titleStyle := fullscreenTitleStyle(accent...)
 	if task == nil {
-		return fitStyledLineToWidth(renderFullscreenTitleContent(titleStyle.Render(prefix), subtitle), width)
+		return fitStyledChromeToWidth("fullscreen title", renderFullscreenTitleContent(titleStyle.Render(prefix), subtitle), width)
 	}
 	if width <= 0 {
 		titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
@@ -47,9 +47,12 @@ func renderTaskScopedFullscreenTitle(prefix string, task *models.Task, subtitle 
 	if subtitle != "" {
 		taskTitleWidth -= lipgloss.Width("  " + MutedStyle.Render(subtitle))
 	}
+	// The task title is dense data: clip it intentionally to its own budget.
 	taskTitle := truncateToVisualWidth(task.Title, max(taskTitleWidth, 0))
 	titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(taskTitle)
-	return fitStyledLineToWidth(renderFullscreenTitleContent(titleContent, subtitle), width)
+	// The composed title line is chrome; once the data title is pre-fit, any
+	// residual clip here means the prefix/subtitle chrome did not fit — audit it.
+	return fitStyledChromeToWidth("fullscreen title", renderFullscreenTitleContent(titleContent, subtitle), width)
 }
 
 func renderFullscreenTitleContentWithCounter(titleContent, subtitle, counter string, width int) string {

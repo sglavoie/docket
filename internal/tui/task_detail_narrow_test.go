@@ -327,6 +327,25 @@ func TestTaskDetailFooterWrapsAtMinimumWidth(t *testing.T) {
 	}
 }
 
+// TestTaskDetailFooterRecordsRequiredTruncation verifies that TaskDetail's custom
+// wrapped footer routes its last-resort clipping through the render audit: at an
+// extremely narrow width a help token can't be wrapped small enough, so the footer
+// clips it to fit and records a required_text_truncated issue.
+func TestTaskDetailFooterRecordsRequiredTruncation(t *testing.T) {
+	// Width narrower than the shortest indivisible help token ("H: toggle history"),
+	// so wrapping cannot avoid a last-resort clip of the over-wide help line.
+	m := &TaskDetailModel{}
+	m.SetSize(8, 20)
+
+	_, issues := withRenderAudit(func() string {
+		return m.renderWrappingFooter("")
+	})
+
+	if !hasIssueKind(issues, requiredTextTruncatedKind) {
+		t.Fatalf("expected a %q audit issue for the clipped task detail footer, got %+v", requiredTextTruncatedKind, issues)
+	}
+}
+
 func TestTaskDetailWrappedFooterCountsTowardScrollHeight(t *testing.T) {
 	project, err := models.NewProject("proj-1", "Scrollable Footer", t.TempDir())
 	if err != nil {

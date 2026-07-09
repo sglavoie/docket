@@ -60,13 +60,7 @@ func (m *MetricsDashboardModel) View() tea.View {
 }
 
 func metricsContentHeight(totalHeight int, title, tabBar, footer string) int {
-	for h := max(totalHeight, 1); h >= 1; h-- {
-		blocks := []string{title, tabBar, fitBlockHeight("", h), footer}
-		if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, blocks...)) <= totalHeight {
-			return h
-		}
-	}
-	return 1
+	return fullscreenContentHeightForBlocks(totalHeight, title, tabBar, footer)
 }
 
 // renderSummaryTab renders a 2x2 card grid with mini charts.

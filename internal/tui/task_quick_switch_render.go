@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 // renderQuickSwitchPopup renders the quick-switch overlay popup.
@@ -128,7 +127,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 				if lineWidth < innerWidth {
 					line += strings.Repeat(" ", innerWidth-lineWidth)
 				}
-				line = SelectedLine(ansi.Truncate(line, innerWidth, ""), innerWidth)
+				line = SelectedLine(truncateIntentional(line, innerWidth, ""), innerWidth)
 			}
 
 			contentLines = append(contentLines, line)

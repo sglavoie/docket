@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -304,9 +303,9 @@ func assembleNextActionStripRow(width int, glyph, title, project, reasons, hints
 			if leftW <= width {
 				return left
 			}
-			// Truncate the rendered left side as a last resort. Use the
-			// ANSI-aware ansi.Truncate so styling does not leak.
-			return ansi.Truncate(left, width, "…")
+			// Truncate the rendered left side as a last resort. Dense next-action
+			// data is allowed to clip, so use the intentional audited helper.
+			return truncateIntentional(left, width, "…")
 		}
 
 		if leftW+nextActionStripGap+rightW <= width {

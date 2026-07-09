@@ -88,8 +88,16 @@ func (d *UITestDriver) Render() string {
 // Observe renders the current screen and returns a normalized observation of
 // the app's state.
 func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
-	rawContent := d.app.View().Content
+	// Render inside a render audit so any render-time required-text truncation
+	// (footer/help/chrome clipping) is captured. normalizeScreen only sees
+	// geometry, which stays valid after such clips, so these issues are appended
+	// separately below.
+	var rawContent string
+	rawContent, auditIssues := withRenderAudit(func() string {
+		return d.app.View().Content
+	})
 	plain, issues := normalizeScreen(rawContent, d.app.width, d.app.height)
+	issues = append(issues, auditIssues...)
 
 	obs := UITestObservation{
 		CurrentView:  d.app.currentView().String(),

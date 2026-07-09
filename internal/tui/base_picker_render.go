@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"charm.land/lipgloss/v2"
 )
 
 // RenderList renders the scrollable item list with cursor and selection indicators.
@@ -127,10 +129,18 @@ func (p *BasePicker[T]) RenderFooter() string {
 func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisible int) string {
 	var b strings.Builder
 
-	// Title
+	// Title (picker header chrome — a clipped title should be suspicious).
 	title := renderFullscreenTitle(titleContent, headerContent)
 	if p.Width() > 0 {
-		title = fitStyledLineToWidth(title, p.Width())
+		// headerContent is an optional help/subtitle. When the composed title
+		// overflows, drop the subtitle and keep the title rather than clipping
+		// chrome (mirrors appendFullscreenTitleCounter). The essential picker
+		// hints still render in the wrapping footer below. Only a title that
+		// cannot fit even on its own is flagged as a required truncation.
+		if headerContent != "" && lipgloss.Width(title) > p.Width() {
+			title = renderFullscreenTitle(titleContent, "")
+		}
+		title = fitStyledChromeToWidth("picker title", title, p.Width())
 	}
 	b.WriteString(title)
 	b.WriteString("\n\n")

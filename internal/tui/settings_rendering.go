@@ -156,13 +156,9 @@ func (m *SettingsModel) settingsFooter(contentLines []string, visibleHeight, max
 	} else if m.searchActive {
 		left = HelpStyle.Render("↑/↓ navigate · Enter: jump · Esc: cancel")
 	} else {
-		if lipgloss.Width(helpText) > m.width-20 {
-			line1 := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save"
-			line2 := "ctrl+d: reset · Esc: cancel · ?: Help" + scrollHint
-			left = HelpStyle.Render(line1) + "\n" + HelpStyle.Render(line2)
-		} else {
-			left = HelpStyle.Render(helpText)
-		}
+		// renderStatusBarFooter wraps the help on " · " boundaries when it is too
+		// wide for the terminal, so a single-line help string is sufficient here.
+		left = HelpStyle.Render(helpText)
 	}
 	right := MutedStyle.Render("Settings")
 	return renderStatusBarFooter(left, right, m.width)
@@ -198,13 +194,7 @@ func fitBlockWidth(block string, width int) string {
 }
 
 func (m *SettingsModel) settingsContentHeight(footer string) int {
-	for h := max(m.height, 1); h >= 1; h-- {
-		blocks := append(m.settingsHeaderBlocks(), fitBlockHeight("", h), footer)
-		if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, blocks...)) <= m.height {
-			return h
-		}
-	}
-	return 1
+	return fullscreenContentHeightForBlocks(m.height, append(m.settingsHeaderBlocks(), footer)...)
 }
 
 func (m *SettingsModel) settingsVisibleContent(contentLines []string, visibleHeight, focusLine int) (string, int) {

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 // CardConfig holds configuration for card rendering.
@@ -98,8 +97,9 @@ func truncateAndPad(line string, maxWidth int) string {
 		return line + strings.Repeat(" ", maxWidth-visualWidth)
 	}
 
-	// Truncate - use ansi.Truncate for ANSI-aware truncation
-	truncated := ansi.Truncate(line, maxWidth-3, "")
+	// Truncate - dense card content is allowed to clip, so use the intentional
+	// ANSI-aware audited helper.
+	truncated := truncateIntentional(line, maxWidth-3, "")
 	truncatedWidth := lipgloss.Width(truncated)
 	// Add ellipsis and pad to exact width
 	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)
@@ -114,7 +114,9 @@ func renderTitledTopBorder(titleText string, width int, borderStyle lipgloss.Sty
 	right := borderStyle.Render(" " + strings.Repeat("─", remainingDashes) + "╮")
 	result := left + titleText + right
 	if lipgloss.Width(result) > width {
-		result = ansi.Truncate(result, width-1, "") + borderStyle.Render("╮")
+		// The titled border is header chrome, not card body data: a clipped
+		// title/frame should be suspicious, so record a required-text audit.
+		result = truncateRequired("card title border", result, width-1) + borderStyle.Render("╮")
 	}
 	return result
 }
@@ -128,7 +130,8 @@ func renderTitledBottomBorder(footerText string, width int, borderStyle lipgloss
 	right := borderStyle.Render(" " + strings.Repeat("─", remainingDashes) + "╯")
 	result := left + footerText + right
 	if lipgloss.Width(result) > width {
-		result = ansi.Truncate(result, width-1, "") + borderStyle.Render("╯")
+		// Bottom titled border is footer chrome; audit clips like the top border.
+		result = truncateRequired("card footer border", result, width-1) + borderStyle.Render("╯")
 	}
 	return result
 }

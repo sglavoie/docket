@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 // ScrollUpIndicator returns a muted "↑ N more" string for scroll overflow above.
@@ -95,7 +94,7 @@ func attachScrollbarAtWidth(content, scrollbar string, contentWidth int) string 
 		}
 		// Pad content line to uniform width so scrollbar aligns vertically.
 		if lipgloss.Width(cl) > contentWidth {
-			cl = ansi.Truncate(cl, contentWidth, "")
+			cl = truncateIntentional(cl, contentWidth, "")
 		}
 		if pad := contentWidth - lipgloss.Width(cl); pad > 0 {
 			cl += strings.Repeat(" ", pad)

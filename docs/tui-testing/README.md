@@ -144,6 +144,32 @@ Assertion kinds (`assert`):
 > use at least `100x35` for clean `no_layout_issues` assertions on the dashboard.
 > Smaller sizes legitimately report `height_overflow` / `width_overflow`.
 
+#### Layout issue kinds
+
+`no_layout_issues` fails when the observation records any `layout_issues[]`
+entry. Each entry has a `kind`; the harness detects these:
+
+| `kind`                    | Detected by                | Meaning                                                                 |
+| ------------------------- | -------------------------- | ----------------------------------------------------------------------- |
+| `invalid_utf8`            | `normalizeScreen` (geometry) | A rendered cell held bytes that were not valid UTF-8.                    |
+| `width_overflow`          | `normalizeScreen` (geometry) | A line exceeded the terminal width.                                     |
+| `height_overflow`         | `normalizeScreen` (geometry) | The rendered screen exceeded the terminal height.                       |
+| `required_text_truncated` | render audit (in-render)   | A renderer had to clip text it was supposed to show in full.            |
+
+The first three are **geometry** issues: `normalizeScreen` catches them after the
+fact because they leave a visible trace (a too-wide line, a too-tall screen,
+invalid bytes). The last one is a **render-audit** issue with no geometric trace —
+required chrome text (footer help, layout titles, indicators) that a renderer
+truncated with `ansi.Truncate` to make it fit still leaves the screen within its
+terminal bounds. Render sites report those clips through
+`recordRequiredTextTruncation` while `UITestDriver.Observe` wraps the render in a
+`withRenderAudit` context, so `required_text_truncated` surfaces text that would
+otherwise be silently cut. Dense data (task titles, file paths, previews, list
+rows) is truncated *intentionally* and does not record this issue; only required
+chrome does. A `required_text_truncated` failure means the layout is too narrow
+for the chrome it must show — widen the terminal, wrap the text (as the shared
+footer does), or relocate/shorten the clipped chrome; do not silence the audit.
+
 ### Example scenarios
 
 The [`scenarios/`](scenarios/) directory holds committed, verified examples:
@@ -161,6 +187,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `baseline-layout.json`          | Assert no layout issues across baseline dashboard sizes. |
 | `dashboard-search-alerts-minimum-layout.json` | Activate Dashboard project search on the alert-heavy fixture at `60x20`. |
 | `attr-filter-picker-minimum-layout.json` | Open Attribute Filter Picker at `60x20` and assert no layout issues. |
+| `task-detail-narrow-layout.json` | Open TaskDetail on the narrow fixture at `60x20`; assert no layout issues and that the wrapped footer keeps the `c: comments`, `D: decisions`, `H: toggle history`, and `Esc: close` hints. |
 | `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
 | `pipeline-hub-minimum-layout.json` | Open Pipeline Hub at `72x20` and assert no layout issues. |
 | `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
