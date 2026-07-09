@@ -105,3 +105,52 @@ func TestLinkedTaskCreatorTogglesSyntaxGuideOnQuestionMark(t *testing.T) {
 		t.Fatalf("expected syntax guide to be hidden after second toggle, got:\n%s", plain)
 	}
 }
+
+func TestLinkedTaskCreatorSubtaskAppendsAsLastChild(t *testing.T) {
+	project, err := models.NewProject("proj-1", "creator", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	parent, err := models.NewTask("parent-1", 1, models.TaskTypeStory, "parent")
+	if err != nil {
+		t.Fatalf("NewTask parent: %v", err)
+	}
+	childOne, err := models.NewTask("child-1", 2, models.TaskTypeTask, "child one")
+	if err != nil {
+		t.Fatalf("NewTask child one: %v", err)
+	}
+	childOne.ParentID = &parent.ID
+
+	project.Tasks = append(project.Tasks, parent, childOne)
+	project.BuildTaskTree()
+
+	m := NewLinkedTaskCreatorModel(parent, project, LinkTypeSubtask)
+	m.input.SetValue("child two")
+
+	cmd := m.createTask(false, false)
+	if cmd == nil {
+		t.Fatal("expected createTask to return a command")
+	}
+	msg, ok := cmd().(LinkedTaskCreatedMsg)
+	if !ok {
+		t.Fatalf("expected LinkedTaskCreatedMsg, got %T", cmd())
+	}
+	if msg.NewTask == nil {
+		t.Fatal("expected created subtask in message")
+	}
+
+	refreshedParent := project.GetTaskByID(parent.ID)
+	if refreshedParent == nil {
+		t.Fatal("expected parent task after save")
+	}
+	if len(refreshedParent.Children) != 2 {
+		t.Fatalf("expected 2 children, got %d", len(refreshedParent.Children))
+	}
+	if refreshedParent.Children[0].Title != "child one" {
+		t.Fatalf("first child = %q, want %q", refreshedParent.Children[0].Title, "child one")
+	}
+	if refreshedParent.Children[1].Title != "child two" {
+		t.Fatalf("last child = %q, want %q", refreshedParent.Children[1].Title, "child two")
+	}
+}

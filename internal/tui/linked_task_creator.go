@@ -314,8 +314,13 @@ func (m *LinkedTaskCreatorModel) createTask(openContent, openDetail bool) tea.Cm
 	default:
 	}
 
-	// Add task to project
-	m.project.Tasks = append([]*models.Task{newTask}, m.project.Tasks...)
+	// Preserve root-task prominence, but child tasks must stay at the end of
+	// their siblings so new subtasks become the last child rather than the first.
+	if newTask.ParentID != nil {
+		m.project.Tasks = append(m.project.Tasks, newTask)
+	} else {
+		m.project.Tasks = append([]*models.Task{newTask}, m.project.Tasks...)
+	}
 	m.project.BuildTaskTree()
 
 	// Save with backup and reload
