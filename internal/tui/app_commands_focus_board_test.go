@@ -15,7 +15,7 @@ func TestFocusBoardCommandsShortcutsMatchCockpitGrammar(t *testing.T) {
 		name     string
 		shortcut string
 	}{
-		{"today open task", "enter"},
+		{"today task details", "enter"},
 		{"today complete or dismiss", "x"},
 		{"today set priority", "p"},
 		{"today plan backlog", "p"},
@@ -61,11 +61,39 @@ func TestFocusBoardCommandsUseCockpitActionHandlers(t *testing.T) {
 	app.views.Register(ViewFocusBoard, focusBoard)
 	app.viewStack = []ViewType{ViewDashboard, ViewFocusBoard, ViewCommandPalette}
 
-	cmd := findCommand(app.focusBoardCommands(), "today set priority")
+	cmd := findCommand(app.focusBoardCommands(), "today task details")
+	if cmd == nil {
+		t.Fatal("today task details command missing")
+	}
+	if cmd.Description != "Show details for the selected Today task" {
+		t.Fatalf("today task details description = %q", cmd.Description)
+	}
+	if !slices.Contains(cmd.Aliases, "view today task details") {
+		t.Fatalf("today task details aliases missing detail wording: %v", cmd.Aliases)
+	}
+	if slices.Contains(cmd.Aliases, "open today task") {
+		t.Fatalf("today task details aliases should not preserve old open wording: %v", cmd.Aliases)
+	}
+	result, ok := cmd.Handler().(PaletteCommandResultMsg)
+	if !ok {
+		t.Fatalf("today task details should return PaletteCommandResultMsg, got %T", cmd.Handler())
+	}
+	if result.Cmd == nil {
+		t.Fatal("today task details should carry a command")
+	}
+	detail, ok := result.Cmd().(ShowTaskDetailMsg)
+	if !ok {
+		t.Fatalf("today task details should open details, got %T", result.Cmd())
+	}
+	if detail.Task != task || detail.Project != project {
+		t.Fatalf("today task details target = %+v/%+v, want selected task/project", detail.Task, detail.Project)
+	}
+
+	cmd = findCommand(app.focusBoardCommands(), "today set priority")
 	if cmd == nil {
 		t.Fatal("today set priority command missing")
 	}
-	result, ok := cmd.Handler().(PaletteCommandResultMsg)
+	result, ok = cmd.Handler().(PaletteCommandResultMsg)
 	if !ok {
 		t.Fatalf("today set priority should return PaletteCommandResultMsg, got %T", cmd.Handler())
 	}
@@ -106,7 +134,7 @@ func TestFocusBoardPaletteSuggestedItemsFollowCockpitRecommendation(t *testing.T
 		palette := openFocusBoardPaletteForCommandTest(t, app, focusBoard)
 
 		got := suggestedCommandNames(palette)
-		want := []string{"today open task", "today complete or dismiss", "today set priority"}
+		want := []string{"today task details", "today complete or dismiss", "today set priority"}
 		if !slices.Equal(got, want) {
 			t.Fatalf("planned task suggested commands = %v, want %v", got, want)
 		}

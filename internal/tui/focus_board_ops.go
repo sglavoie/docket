@@ -51,14 +51,14 @@ func (m *FocusBoardModel) zenAdvance() {
 	m.advanceToNextActionableRow()
 }
 
-// handleEnter navigates to the task in its project.
+// handleEnter opens the selected task detail view.
 func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
-	row := m.getRowAtCursor()
-	if row == nil {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
 		return m, nil
 	}
 	return m, func() tea.Msg {
-		return FocusBoardSelectMsg{Task: row.Task, Project: row.Project}
+		return ShowTaskDetailMsg{Task: task, Project: project}
 	}
 }
 
@@ -183,6 +183,7 @@ func (m *FocusBoardModel) ResetCursor() { m.cursor = 0 }
 func (m *FocusBoardModel) JumpToTop() tea.Cmd {
 	old := m.cursor
 	m.cursor = 0
+	m.clampCursor()
 	return flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 

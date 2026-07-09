@@ -165,7 +165,7 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("enter save · Esc cancel")
 	} else if m.tabs.Active == boardTabClosed {
-		left = composeFullHeightFooterLeft("d reopen · enter open · D delete")
+		left = composeFullHeightFooterLeft(",o reopen · enter/o details · tD delete")
 	} else if m.tabs.Active == boardTabToday && stats.completedToday == stats.plannedTotal && stats.plannedTotal > 0 {
 		left = composeFullHeightFooterLeft(cockpitActionsHint(actionPlanMore(), actionQuickCapture(), actionCloseView()))
 	} else if m.tabs.Active == boardTabToday {
@@ -526,7 +526,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 			remaining++
 		}
 	}
-	hint := HelpStyle.Render(fmt.Sprintf("  x done · p priority · enter open · j/k nav · Esc exit  (%d remaining)", remaining))
+	hint := HelpStyle.Render(fmt.Sprintf("  x done · p priority · enter details · j/k nav · Esc exit  (%d remaining)", remaining))
 	b.WriteString("\n")
 	b.WriteString(hint)
 

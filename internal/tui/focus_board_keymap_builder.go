@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -49,6 +50,18 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 		},
 	})...)
+	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
+		JumpToTop:   func() (tea.Model, tea.Cmd) { return m, m.JumpToTop() },
+		GoToProject: m.focusBoardGoToProject,
+	})...)
+	entries = append(entries,
+		keymap.Bind("n", "Go to next parent task", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, m.focusBoardGoToNextParent()
+		}),
+		keymap.Bind("N", "Go to previous parent task", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, m.focusBoardGoToPrevParent()
+		}),
+	)
 
 	// --- View-specific direct bindings ---
 
@@ -96,7 +109,7 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 
 	// Actions
 	entries = append(entries,
-		keymap.Bind("enter", "Navigate to task / open URL", "Navigation", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("enter", "View task details", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m.executeCockpitAction(m.resolveCockpitActionForKey("enter"))
 		}),
 		keymap.Bind("x", "Complete or dismiss item", "Actions", func() (tea.Model, tea.Cmd) {
@@ -112,10 +125,23 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return ShowParkInputMsg{Task: task, Project: project} }
 		}),
-		keymap.Bind("?", "Toggle help", "Navigation", func() (tea.Model, tea.Cmd) {
-			return m.toggleHelpAction()
-		}),
 	)
+
+	entries = append(entries, buildStandardTaskActionEntries(m.focusBoardTaskKeymapDeps())...)
+
+	// --- Today sort keys: 1-5, 0 ---
+	entries = append(entries, focusBoardSortGroup(keymap.SortDeps{
+		SortByPriority: m.focusBoardSortAction("1"),
+		SortByDueDate:  m.focusBoardSortAction("2"),
+		SortByCreated:  m.focusBoardSortAction("3"),
+		SortByStatus:   m.focusBoardSortAction("4"),
+		SortByScore:    m.focusBoardSortAction("5"),
+		ResetSort:      m.focusBoardSortAction("0"),
+	})...)
+
+	entries = append(entries, keymap.Prefix("f", "Preview", "View", []keymap.Entry{
+		keymap.Bind("p", "Toggle inline preview", "View", m.focusBoardTogglePreview),
+	}))
 
 	// --- Shared filter group: "F" prefix ---
 	entries = append(entries, keymap.FilterGroup(keymap.FilterDeps{
@@ -155,4 +181,156 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		ViewName: "Today",
 		Entries:  entries,
 	}
+}
+
+func (m *FocusBoardModel) focusBoardTaskKeymapDeps() TaskKeymapDeps {
+	var stages []string
+	if m.config != nil {
+		stages = m.config.Stages
+	}
+	return TaskKeymapDeps{
+		View:                m,
+		HasItem:             m.focusBoardHasItem,
+		Stages:              stages,
+		ToggleHelp:          m.toggleHelpAction,
+		NewTask:             m.focusBoardCreateTaskAction(true),
+		NewTaskWithTemplate: m.focusBoardCreateTaskAction(false),
+		DeleteTask:          m.focusBoardDeleteTask,
+		StatusChange:        m.focusBoardStatusChangeAction,
+		MarkDone:            m.markDone,
+		OpenURL:             m.focusBoardOpenURL,
+		MoveToProject:       m.focusBoardMoveToProject,
+		QuickNote:           m.focusBoardQuickNote,
+	}
+}
+
+func (m *FocusBoardModel) focusBoardHasItem() bool {
+	task, _ := m.getTaskRef()
+	return task != nil
+}
+
+func focusBoardSortGroup(deps keymap.SortDeps) []keymap.Entry {
+	cat := "Sort"
+	return []keymap.Entry{
+		keymap.Bind("1", "Sort within groups: priority", cat, deps.SortByPriority),
+		keymap.Bind("2", "Sort within groups: due date", cat, deps.SortByDueDate),
+		keymap.Bind("3", "Sort within groups: created", cat, deps.SortByCreated),
+		keymap.Bind("4", "Sort within groups: status", cat, deps.SortByStatus),
+		keymap.Bind("5", "Sort within groups: score", cat, deps.SortByScore),
+		keymap.Bind("0", "Reset group sort", cat, deps.ResetSort),
+	}
+}
+
+func (m *FocusBoardModel) focusBoardSortAction(key string) keymap.Action {
+	return func() (tea.Model, tea.Cmd) {
+		refresh := func() {
+			m.applyFilter()
+			m.clampCursor()
+		}
+		handleSortKey(key, &m.sort, refresh, func(SortField) { refresh() })
+		return m, nil
+	}
+}
+
+func (m *FocusBoardModel) focusBoardTogglePreview() (tea.Model, tea.Cmd) {
+	m.previewMode = !m.previewMode
+	m.resetViewScrollOffset()
+	return m, nil
+}
+
+func (m *FocusBoardModel) focusBoardCreateTaskAction(skipTemplatePicker bool) keymap.Action {
+	return func() (tea.Model, tea.Cmd) {
+		task, project := m.getTaskRef()
+		if task == nil || project == nil {
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CreateTaskMsg{
+				ParentTask:         task,
+				Project:            project,
+				SkipTemplatePicker: skipTemplatePicker,
+			}
+		}
+	}
+}
+
+func (m *FocusBoardModel) focusBoardDeleteTask() (tea.Model, tea.Cmd) {
+	task, _ := m.getTaskRef()
+	if task != nil {
+		m.showDeleteConfirm(task.ShortID)
+	}
+	return m, nil
+}
+
+func (m *FocusBoardModel) focusBoardStatusChangeAction(status string) keymap.Action {
+	s, ok := models.ParseTaskStatus(status)
+	if !ok {
+		return func() (tea.Model, tea.Cmd) { return m, nil }
+	}
+	if s == models.StatusDone {
+		return m.markDone
+	}
+	return func() (tea.Model, tea.Cmd) { return taskOpsChangeStatus(m, s) }
+}
+
+func (m *FocusBoardModel) focusBoardOpenURL() (tea.Model, tea.Cmd) {
+	task, _ := m.getTaskRef()
+	if task == nil || task.URL == "" {
+		return m, nil
+	}
+	return m, openBrowserCmd(task.URL)
+}
+
+func (m *FocusBoardModel) focusBoardMoveToProject() (tea.Model, tea.Cmd) {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
+		return m, nil
+	}
+	return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
+}
+
+func (m *FocusBoardModel) focusBoardQuickNote() (tea.Model, tea.Cmd) {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
+		return m, nil
+	}
+	return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
+}
+
+func (m *FocusBoardModel) focusBoardGoToProject() (tea.Model, tea.Cmd) {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
+		return m, nil
+	}
+	return m, func() tea.Msg { return FocusBoardSelectMsg{Task: task, Project: project} }
+}
+
+func (m *FocusBoardModel) parentRowIndices() []int {
+	var indices []int
+	for i, row := range m.filtered {
+		if row.Task != nil && row.TreePrefix == "" {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
+func (m *FocusBoardModel) focusBoardGoToNextParent() tea.Cmd {
+	old := m.cursor
+	cmd := m.SectionGoToNext(m.parentRowIndices())
+	m.clampCursor()
+	if cmd != nil {
+		return cmd
+	}
+	return flashIfJumped(old, m.cursor, &m.cursorFlash)
+}
+
+func (m *FocusBoardModel) focusBoardGoToPrevParent() tea.Cmd {
+	old := m.cursor
+	cmd := m.SectionGoToPrev(m.parentRowIndices())
+	m.clampCursor()
+	if cmd != nil {
+		return cmd
+	}
+	return flashIfJumped(old, m.cursor, &m.cursorFlash)
 }

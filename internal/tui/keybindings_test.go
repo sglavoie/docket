@@ -183,7 +183,12 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"a", "x", "p", "P", "/", "?", "enter",
 		"tab", "shift+tab", "shift+left", "shift+right",
 		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
+		"g", "gg", "gp", "n", "N",
+		"f", "fp",
 		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS", "F.",
+		"1", "2", "3", "4", "5", "0",
+		",", ",d", "!", "!1", "d", "dd", "z", "zd", "m", "mn", "c", "cb", "t", "tn", "tN", "tD",
+		"s", "s0", "b", "bb", "o", "D", "e", "*", "S", "O", "ctrl+b", "ctrl+.",
 	} {
 		if !slices.Contains(keys, key) {
 			t.Errorf("FocusBoard HandledKeys missing canonical key %q", key)
@@ -192,11 +197,10 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 
 	for _, key := range []string{
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
-		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
-		"g", "gg", "gp", "f", "fa", "fp",
-		"1", "2", "3", "4", "5", "0", "P0",
-		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
-		"o", "D", "e", "*", "S", "O", "ctrl+b", "ctrl+.",
+		"ctrl+f", "ctrl+r", "ctrl+t", "r",
+		"fa",
+		"P0",
+		".",
 	} {
 		if slices.Contains(keys, key) {
 			t.Errorf("FocusBoard HandledKeys should not preserve removed key %q", key)
@@ -211,6 +215,26 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: "P", Description: "Park task"},
 		{Key: "/", Description: "Search"},
 		{Key: "?", Description: "Toggle help"},
+		{Key: "enter", Description: "View task details"},
+		{Key: "gg", Description: "Jump to top"},
+		{Key: "gp", Description: "Go to task in project"},
+		{Key: "n", Description: "Go to next parent task"},
+		{Key: "N", Description: "Go to previous parent task"},
+		{Key: "o", Description: "View task details"},
+		{Key: "D", Description: "Mark done"},
+		{Key: "e", Description: "Edit task"},
+		{Key: "*", Description: "Toggle active flag"},
+		{Key: "S", Description: "Edit score dimensions"},
+		{Key: "O", Description: "Open URL in browser"},
+		{Key: "ctrl+b", Description: "Move task to project"},
+		{Key: "ctrl+.", Description: "Quick note on task"},
+		{Key: "1", Description: "Sort within groups: priority"},
+		{Key: "2", Description: "Sort within groups: due date"},
+		{Key: "3", Description: "Sort within groups: created"},
+		{Key: "4", Description: "Sort within groups: status"},
+		{Key: "5", Description: "Sort within groups: score"},
+		{Key: "0", Description: "Reset group sort"},
+		{Key: "fp", Description: "Toggle inline preview"},
 		{Key: ":", Description: "Command palette"},
 		{Key: "esc", Description: "Back / close"},
 		{Key: "u", Description: "Undo last task action"},
@@ -220,11 +244,11 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	}
 	for _, key := range []string{
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
-		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
-		"g", "gg", "gp", "f", "fa", "fp",
-		"1", "2", "3", "4", "5", "0", "P0",
+		"ctrl+f", "ctrl+r", "ctrl+t", "r",
+		"g", "f", "fa",
+		"P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
-		"o", "D", "e", "*", "S", "O", "ctrl+o", "ctrl+n", "ctrl+b", "ctrl+.",
+		"ctrl+o", "ctrl+n",
 		"y", "Y", "ctrl+Y",
 	} {
 		for _, item := range items {
@@ -233,6 +257,67 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestGetForView_FocusBoardIncludesTodayUngatedParity(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetForView(ViewFocusBoard)
+
+	for _, want := range []HelpItem{
+		{Key: "enter", Description: "View task details"},
+		{Key: "o", Description: "View task details"},
+		{Key: "gg", Description: "Jump to top"},
+		{Key: "gp", Description: "Go to task in project"},
+		{Key: "n", Description: "Go to next parent task"},
+		{Key: "N", Description: "Go to previous parent task"},
+		{Key: "1", Description: "Sort within groups: priority"},
+		{Key: "2", Description: "Sort within groups: due date"},
+		{Key: "3", Description: "Sort within groups: created"},
+		{Key: "4", Description: "Sort within groups: status"},
+		{Key: "5", Description: "Sort within groups: score"},
+		{Key: "0", Description: "Reset group sort"},
+		{Key: "fp", Description: "Toggle inline preview"},
+		{Key: "ctrl+b", Description: "Move task to project"},
+		{Key: "ctrl+.", Description: "Quick note on task"},
+	} {
+		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
+	}
+
+	for _, removed := range []HelpItem{
+		{Key: "w", Description: "Toggle today's plan"},
+		{Key: "ctrl+o", Description: "Open task reference copy"},
+		{Key: "ctrl+n", Description: "Open project Notes"},
+		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
+	} {
+		assertLacksHelpItem(t, items, ViewFocusBoard, removed.Key, removed.Description)
+	}
+}
+
+func TestFocusBoardHelpIncludesSelectedTaskParity(t *testing.T) {
+	m, _, _ := focusBoardTaskActionFixture(t)
+	items := m.GetHelpItems()
+
+	for _, want := range []HelpItem{
+		{Key: "tn", Description: "New task (no template)"},
+		{Key: "tN", Description: "New task (with template picker)"},
+		{Key: "tD", Description: "Delete task"},
+		{Key: ",d", Description: "Mark done"},
+		{Key: "ctrl+b", Description: "Move task to project"},
+		{Key: "ctrl+.", Description: "Quick note on task"},
+	} {
+		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
+	}
+}
+
+func TestFocusBoardHelpDistinguishesParentNavigationFromSnoozeNextMonday(t *testing.T) {
+	m, _, _ := focusBoardTaskActionFixture(t)
+	items := m.GetHelpItems()
+
+	assertHasHelpItem(t, items, ViewFocusBoard, "n", "Go to next parent task")
+	assertHasHelpItem(t, items, ViewFocusBoard, "N", "Go to previous parent task")
+	assertHasHelpItem(t, items, ViewFocusBoard, "zn", "Snooze until next Monday")
+	assertLacksHelpItem(t, items, ViewFocusBoard, "n", "Snooze until next Monday")
+	assertLacksHelpItem(t, items, ViewFocusBoard, "zn", "Go to next parent task")
 }
 
 func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {

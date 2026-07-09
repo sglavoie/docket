@@ -369,6 +369,9 @@ func TestTodayCockpitStripSuppressedOnClosedTab(t *testing.T) {
 	if !strings.Contains(plain, "Old closed task") {
 		t.Fatalf("Closed tab row missing: %s", plain)
 	}
+	if !strings.Contains(plain, ",o reopen") || !strings.Contains(plain, "enter/o details") || !strings.Contains(plain, "tD delete") {
+		t.Fatalf("Closed tab footer missing updated task actions: %s", plain)
+	}
 }
 
 // TestTodayCockpitStripSuppressedInTunnelMode covers the tunnel-mode branch.

@@ -6,12 +6,12 @@ func (m *AppModel) focusBoardCommands() []Command {
 	focusBoardViews := []ViewType{ViewFocusBoard}
 	return []Command{
 		{
-			Name:        "today open task",
-			Description: "Open the selected Today task or URL",
+			Name:        "today task details",
+			Description: "Show details for the selected Today task",
 			Shortcut:    "enter",
 			Category:    CategoryNavigation,
 			Views:       focusBoardViews,
-			Aliases:     []string{"open today task", "today details", "inspect today task"},
+			Aliases:     []string{"today details", "view today task details", "inspect today task"},
 			Handler: func() tea.Msg {
 				return m.runFocusBoardCockpitCommand(CockpitCommandOpenTask)
 			},
@@ -247,7 +247,7 @@ func (m *AppModel) focusBoardSuggestedCommandOrder() []string {
 }
 
 var defaultFocusBoardSuggestedCommandOrder = []string{
-	"today open task",
+	"today task details",
 	"today complete or dismiss",
 	"today set priority",
 	"today quick add",
@@ -257,7 +257,7 @@ var defaultFocusBoardSuggestedCommandOrder = []string{
 func focusBoardCommandName(command CockpitCommand) (string, bool) {
 	switch command {
 	case CockpitCommandOpenTask:
-		return "today open task", true
+		return "today task details", true
 	case CockpitCommandCompleteTask, CockpitCommandDismissTask:
 		return "today complete or dismiss", true
 	case CockpitCommandPrioritizeTask:

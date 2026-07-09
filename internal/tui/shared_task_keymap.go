@@ -46,18 +46,20 @@ type TaskKeymapDeps struct {
 	MoveToProject keymap.Action // nil = skip ctrl+b binding
 	QuickNote     keymap.Action // nil = skip ctrl+. binding
 
-	// Per-group override closures — nil uses the standard taskOps* helper.
-	StatusChange   func(status string) keymap.Action
-	PriorityChange func(key string) keymap.Action
-	DueDateSet     func(days int) keymap.Action
-	DueDateClear   keymap.Action
-	SnoozeDate     func(key string) keymap.Action
-	SectionMove    func(section string) keymap.Action
-	StageChange    func(stage string) keymap.Action
-	MarkDone       keymap.Action
-	ToggleActive   keymap.Action
-	TogglePin      keymap.Action
-	ToggleDim      keymap.Action
+	// Per-group overrides — nil uses the standard taskOps* helper.
+	NewTask             keymap.Action
+	NewTaskWithTemplate keymap.Action
+	StatusChange        func(status string) keymap.Action
+	PriorityChange      func(key string) keymap.Action
+	DueDateSet          func(days int) keymap.Action
+	DueDateClear        keymap.Action
+	SnoozeDate          func(key string) keymap.Action
+	SectionMove         func(section string) keymap.Action
+	StageChange         func(stage string) keymap.Action
+	MarkDone            keymap.Action
+	ToggleActive        keymap.Action
+	TogglePin           keymap.Action
+	ToggleDim           keymap.Action
 }
 
 // buildStandardTaskActionEntries returns the standard task-action keymap entries
@@ -170,12 +172,8 @@ func buildStandardLinkedEntries(deps TaskKeymapDeps) []keymap.Entry {
 func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 	v := deps.View
 	return gatePrefixEntries(keymap.TaskPrefixGroup(keymap.TaskPrefixDeps{
-		NewTask: taskRefMsgAction(v, false, func(task *models.Task, _ *models.Project) tea.Msg {
-			return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: true}
-		}),
-		NewTaskWithTemplate: taskRefMsgAction(v, false, func(task *models.Task, _ *models.Project) tea.Msg {
-			return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: false}
-		}),
+		NewTask:             buildNewTaskAction(deps, true),
+		NewTaskWithTemplate: buildNewTaskAction(deps, false),
 		RenameTask: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return EditTaskMsg{Task: task, Project: project}
 		}),
@@ -209,6 +207,18 @@ func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 		}),
 		DeleteTask: buildDeleteTaskAction(deps),
 	}), taskActionTargetGate(deps))
+}
+
+func buildNewTaskAction(deps TaskKeymapDeps, skipTemplatePicker bool) keymap.Action {
+	if skipTemplatePicker && deps.NewTask != nil {
+		return deps.NewTask
+	}
+	if !skipTemplatePicker && deps.NewTaskWithTemplate != nil {
+		return deps.NewTaskWithTemplate
+	}
+	return taskRefMsgAction(deps.View, false, func(task *models.Task, _ *models.Project) tea.Msg {
+		return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: skipTemplatePicker}
+	})
 }
 
 func buildStandardStageEntries(deps TaskKeymapDeps) []keymap.Entry {

@@ -178,25 +178,44 @@ func (m *FocusBoardModel) applyFilter() {
 
 // applySorting sorts the filtered rows based on the current sort field.
 func (m *FocusBoardModel) applySorting() {
-	sort.SliceStable(m.filtered, func(i, j int) bool {
-		ri, rj := m.filtered[i], m.filtered[j]
-		if m.sort.Field == SortByScore {
-			si, sj := m.scorePercent(ri), m.scorePercent(rj)
-			if si != sj {
-				cmp := -1
-				if si < sj {
-					cmp = 1
-				}
-				return ApplySortDirection(cmp, m.sort.Ascending)
-			}
-			return false
+	for start := 0; start < len(m.filtered); {
+		for start < len(m.filtered) && !m.filtered[start].isTask() {
+			start++
 		}
-		cmp := CompareTasksCrossProject(
-			ri.Task, rj.Task, m.sort.Field,
-			ri.Project.ID, rj.Project.ID, m.config,
-		)
-		return ApplySortDirection(cmp, m.sort.Ascending)
-	})
+		end := start
+		for end < len(m.filtered) && m.filtered[end].isTask() {
+			end++
+		}
+		if end-start > 1 {
+			rows := m.filtered[start:end]
+			sort.SliceStable(rows, func(i, j int) bool {
+				return m.focusBoardSortLess(rows[i], rows[j])
+			})
+		}
+		start = end
+	}
+}
+
+func (m *FocusBoardModel) focusBoardSortLess(ri, rj boardRow) bool {
+	if ri.Task == nil || rj.Task == nil || ri.Project == nil || rj.Project == nil {
+		return false
+	}
+	if m.sort.Field == SortByScore {
+		si, sj := m.scorePercent(ri), m.scorePercent(rj)
+		if si != sj {
+			cmp := -1
+			if si < sj {
+				cmp = 1
+			}
+			return ApplySortDirection(cmp, m.sort.Ascending)
+		}
+		return false
+	}
+	cmp := CompareTasksCrossProject(
+		ri.Task, rj.Task, m.sort.Field,
+		ri.Project.ID, rj.Project.ID, m.config,
+	)
+	return ApplySortDirection(cmp, m.sort.Ascending)
 }
 
 // scorePercent returns the normalized score percentage for a task row.
