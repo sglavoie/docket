@@ -376,8 +376,12 @@ func (m *FocusBoardModel) applyBoardHeroDemotion(task *models.Task, project *mod
 	}
 }
 
-func (m *FocusBoardModel) renderBoardTrailing(_ boardRow, dueStr string) string {
-	return dueStr
+func (m *FocusBoardModel) renderBoardTrailing(row boardRow, dueStr string) string {
+	// The Focus Board cockpit has no sidebar, so the parked marker always
+	// renders inline, matching the shared TaskLine renderer used by other
+	// list views. TrimPrefix drops the leading space appendParkedRowSnippet
+	// adds when there is no due-date suffix, since the caller re-inserts one.
+	return strings.TrimPrefix(appendParkedRowSnippet(dueStr, row.Task, m.width), " ")
 }
 
 func (m *FocusBoardModel) renderBoardEscalationHint(task *models.Task) string {

@@ -41,7 +41,7 @@ func TestParkInputExplicitParkPersistsNote(t *testing.T) {
 	if !handled {
 		t.Fatal("ParkNoteDoneMsg should be handled")
 	}
-	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, saveCmd))
+	assertParkFlowSaved(t, app, saveCmd, "Parked")
 
 	reloaded := loadBulkPickerTestProject(t, project)
 	reloadedTask := reloaded.GetTaskByID(task.ID)
@@ -89,7 +89,7 @@ func TestParkInputEmptyEnterOnParkedTaskUnparks(t *testing.T) {
 	if !handled {
 		t.Fatal("ParkNoteDoneMsg should be handled")
 	}
-	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, saveCmd))
+	assertParkFlowSaved(t, app, saveCmd, "Unparked")
 
 	reloaded := loadBulkPickerTestProject(t, project)
 	reloadedTask := reloaded.GetTaskByID(task.ID)
@@ -159,7 +159,7 @@ func TestParkInputEmptyEnterClearsLegacyParkedCompletedTask(t *testing.T) {
 	if !handled {
 		t.Fatal("ParkNoteDoneMsg should be handled")
 	}
-	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, saveCmd))
+	assertParkFlowSaved(t, app, saveCmd, "Unparked")
 
 	reloaded := loadBulkPickerTestProject(t, project)
 	reloadedTask := reloaded.GetTaskByID(task.ID)
@@ -264,6 +264,7 @@ func newCrossProjectParkFlowFixture(t *testing.T, mutateTaskB func(*models.Task)
 	app.currentProject = projectA
 
 	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner.sidebar.SetEnabled(false)
 	crossOutliner.SetSize(120, 20)
 	crossOutliner.loadedProjects = []*models.Project{projectA, projectB}
 	crossOutliner.rows = []outlinerRow{
@@ -388,29 +389,33 @@ func submitCrossProjectParkFlowThroughAppUpdate(t *testing.T, app *AppModel) []t
 func completeCrossProjectParkSaveThroughAppUpdate(t *testing.T, app *AppModel, saveMsgs []tea.Msg) {
 	t.Helper()
 
-	foundSaveComplete := false
-	for _, msg := range saveMsgs {
-		saveMsg, ok := msg.(SaveCompleteMsg)
-		if !ok {
-			continue
+	// Park now saves synchronously inside handleParkNoteDone, so there is no
+	// async SaveCompleteMsg. The returned batch drives the cross-project reload
+	// (ViewDidAppearMsg + crossProjectsLoadedMsg). Feed every emitted message
+	// back through Update so the outliner rebuilds its rows from reloaded disk
+	// state.
+	if len(saveMsgs) == 0 {
+		t.Fatal("park save should emit reload messages")
+	}
+	sawReload := false
+	queue := append([]tea.Msg(nil), saveMsgs...)
+	for i := 0; len(queue) > 0; i++ {
+		if i > 200 {
+			t.Fatal("park save reload did not settle")
 		}
-		foundSaveComplete = true
-		updateParkFlowApp(t, app, saveMsg)
-		break
+		msg := queue[0]
+		queue = queue[1:]
+		if _, ok := msg.(crossProjectsLoadedMsg); ok {
+			sawReload = true
+		}
+		queue = append(queue, immediateParkFlowMessages(t, updateParkFlowApp(t, app, msg))...)
 	}
-	if !foundSaveComplete {
-		t.Fatalf("expected SaveCompleteMsg, got %#v", saveMsgs)
+	if !sawReload {
+		t.Fatalf("park save should trigger cross-project reload, got %#v", saveMsgs)
 	}
-	if app.crossOutliner.loadedProjects != nil || !app.crossOutliner.crossLoading {
-		t.Fatalf("save completion should start cross-project reload, loaded=%v loading=%v",
-			app.crossOutliner.loadedProjects, app.crossOutliner.crossLoading)
+	if app.crossOutliner.crossLoading {
+		t.Fatal("cross-project reload should have completed")
 	}
-
-	loadedMsg, ok := app.crossOutliner.loadCrossProjectsCmd()().(crossProjectsLoadedMsg)
-	if !ok {
-		t.Fatal("loadCrossProjectsCmd should emit crossProjectsLoadedMsg")
-	}
-	updateParkFlowApp(t, app, loadedMsg)
 }
 
 func runCrossProjectParkFlowThroughAppUpdate(t *testing.T, app *AppModel, note string, clearExisting bool) {
@@ -503,6 +508,7 @@ func TestCrossProjectOutlinerTPParkFlowUsesCursorTaskProjectAndReloads(t *testin
 	app.currentProject = projectA
 
 	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner.sidebar.SetEnabled(false)
 	crossOutliner.SetSize(120, 20)
 	crossOutliner.loadedProjects = []*models.Project{projectA, projectB}
 	crossOutliner.rows = []outlinerRow{
@@ -551,22 +557,15 @@ func TestCrossProjectOutlinerTPParkFlowUsesCursorTaskProjectAndReloads(t *testin
 	if !handled {
 		t.Fatal("ParkNoteDoneMsg should be handled")
 	}
-	saveMsgs := runBulkPickerBatchCmd(t, saveCmd)
-	requireBulkPickerSaveComplete(t, saveMsgs)
-
-	var refreshCmd tea.Cmd
-	for _, msg := range saveMsgs {
-		if saveMsg, ok := msg.(SaveCompleteMsg); ok {
-			refreshCmd = app.handleSaveComplete(saveMsg)
-			break
-		}
-	}
-	if refreshCmd == nil {
-		t.Fatal("expected save completion to return a refresh command")
-	}
+	// Park saves synchronously, so the reload is already in flight and the
+	// success status is set before the returned batch runs.
 	if crossOutliner.loadedProjects != nil || !crossOutliner.crossLoading {
-		t.Fatalf("save completion should start cross-project reload, loaded=%v loading=%v", crossOutliner.loadedProjects, crossOutliner.crossLoading)
+		t.Fatalf("park save should start cross-project reload, loaded=%v loading=%v", crossOutliner.loadedProjects, crossOutliner.crossLoading)
 	}
+	if !strings.HasPrefix(app.statusMessage, "Parked") {
+		t.Fatalf("status message = %q, want a Parked message", app.statusMessage)
+	}
+	runBulkPickerBatchCmd(t, saveCmd)
 
 	loadedMsg, ok := crossOutliner.loadCrossProjectsCmd()().(crossProjectsLoadedMsg)
 	if !ok {
@@ -586,6 +585,19 @@ func TestCrossProjectOutlinerTPParkFlowUsesCursorTaskProjectAndReloads(t *testin
 	reloadedTaskB := reloadedB.GetTaskByID(taskB.ID)
 	if reloadedTaskB == nil || !reloadedTaskB.IsParked() || reloadedTaskB.ParkedNote != "resume beta" {
 		t.Fatalf("project B task parked state = %#v, want note %q", reloadedTaskB, "resume beta")
+	}
+}
+
+// assertParkFlowSaved verifies the synchronous park/unpark save succeeded: the
+// success status is set before the returned batch runs, and draining the batch
+// (popView + refresh cmds) does not panic.
+func assertParkFlowSaved(t *testing.T, app *AppModel, saveCmd tea.Cmd, wantVerb string) {
+	t.Helper()
+	if !strings.HasPrefix(app.statusMessage, wantVerb) {
+		t.Fatalf("status message = %q, want prefix %q", app.statusMessage, wantVerb)
+	}
+	if saveCmd != nil {
+		runBulkPickerBatchCmd(t, saveCmd)
 	}
 }
 

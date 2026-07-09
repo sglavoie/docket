@@ -47,37 +47,23 @@ func (m *AppModel) handleParkNoteDone(msg ParkNoteDoneMsg) (bool, tea.Cmd) {
 	if msg.Unparked {
 		action = "Unpark Task"
 	}
-	// Rebuild now for immediate visual feedback; the async save will trigger
-	// the full cross-project reload after persistence completes.
-	m.refreshCrossProjectParkRows(msg.Project)
-	saveCmd := SaveProjectAsyncWithOptions(
+	// Save synchronously so the tasks.md write completes before popView's
+	// ViewDidAppearMsg triggers reloadCrossProjects. That reload calls
+	// storage.LoadProject on the SAME shared *models.Project pointer this save
+	// serializes (cross-project loadedProjects are the config's own pointers).
+	// An async save here races the reload, which can replace the parked task
+	// with unparked disk state before serialization, silently dropping the
+	// park. Every other cross-project mutation already saves synchronously.
+	if err := m.persister.SaveWithBackupSyncOptions(
 		msg.Project,
-		parkNoteStatusMessage(msg),
 		m.taskMutationSaveOptions(msg.Task, action),
-	)
-	return true, tea.Batch(popCmd, saveCmd)
-}
+	); err != nil {
+		m.err = fmt.Errorf("park save failed: %w", err)
+		return true, popCmd
+	}
 
-func (m *AppModel) refreshCrossProjectParkRows(project *models.Project) {
-	if project == nil || m.baseProjectView() != ViewCrossProjectOutliner {
-		return
-	}
-	cross := m.activeCrossProjectOutliner()
-	if cross == nil || cross.project != nil {
-		return
-	}
-	replaced := false
-	for i, loaded := range cross.loadedProjects {
-		if loaded != nil && loaded.ID == project.ID {
-			cross.loadedProjects[i] = project
-			replaced = true
-			break
-		}
-	}
-	if !replaced {
-		return
-	}
-	cross.rebuildRows()
+	refreshCmd := m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: parkNoteStatusMessage(msg)})
+	return true, tea.Batch(popCmd, refreshCmd)
 }
 
 func parkNoteStatusMessage(msg ParkNoteDoneMsg) string {

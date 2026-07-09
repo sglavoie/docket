@@ -39,6 +39,40 @@ func newDenseRowTask(t *testing.T, id string, shortID int, title string) *models
 	return task
 }
 
+// TestFocusBoardDenseRowShowsParkedSnippet verifies the Today cockpit surfaces
+// the parked marker inline, matching the shared list-view treatment. The focus
+// board has no sidebar, so the marker always renders in the row.
+func TestFocusBoardDenseRowShowsParkedSnippet(t *testing.T) {
+	task := newDenseRowTask(t, "parked-focus-id", 9, "Parked focus row")
+	task.ParkedNote = "waiting on review"
+
+	project := newDenseRowProject(t)
+	m := newDenseRowFocusBoard(t)
+
+	row := boardRow{Task: task, Project: project, Source: project.Name}
+	line := ansi.Strip(m.renderRow(row, false, 100, "1.", false, nil))
+	if !strings.Contains(line, "⏸ waiting on review") {
+		t.Fatalf("focus board dense row should show parked snippet inline, got %q", line)
+	}
+}
+
+// TestFocusBoardDenseRowShowsParkedFallbackForBlankNote verifies the fallback
+// parked marker renders when there is no note.
+func TestFocusBoardDenseRowShowsParkedFallbackForBlankNote(t *testing.T) {
+	parkedAt := time.Now()
+	task := newDenseRowTask(t, "parked-focus-blank-id", 10, "Blank parked focus row")
+	task.ParkedAt = &parkedAt
+
+	project := newDenseRowProject(t)
+	m := newDenseRowFocusBoard(t)
+
+	row := boardRow{Task: task, Project: project, Source: project.Name}
+	line := ansi.Strip(m.renderRow(row, false, 100, "1.", false, nil))
+	if !strings.Contains(line, "⏸ parked") {
+		t.Fatalf("focus board dense row should show fallback parked snippet inline, got %q", line)
+	}
+}
+
 // TestFocusBoardDenseRowKeepsUrgencyHeroInline confirms the dense-row hierarchy
 // on the focus board: overdue and due-today urgency text remains inline (the
 // only date-driven primary anchor), while future-due dates drop out of the row

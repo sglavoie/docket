@@ -113,7 +113,29 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 		content += "\n" + MutedStyle.Render("zzz "+snoozeStr)
 	}
 
+	if parked := parkedTaskCardLine(task); parked != "" {
+		content += "\n" + parked
+	}
+
 	return content
+}
+
+// parkedTaskCardLine renders the parked status shown at the end of the Task
+// card (task-detail header and outliner sidebar). Format mirrors the former
+// standalone banner: "⏸ Parked <relative time> — <note>".
+func parkedTaskCardLine(task *models.Task) string {
+	if task == nil || !task.IsParked() {
+		return ""
+	}
+	parts := []string{"⏸ Parked"}
+	if task.ParkedAt != nil {
+		parts = append(parts, formatRelativeTime(*task.ParkedAt))
+	}
+	line := strings.Join(parts, " ")
+	if note := strings.TrimSpace(task.ParkedNote); note != "" {
+		line += " — " + note
+	}
+	return InfoStatusStyle.Render(line)
 }
 
 // renderDueDateContent builds the styled due date string with overdue/today/normal

@@ -75,9 +75,6 @@ func (m *TaskDetailModel) detailSections(contentWidth int) []string {
 
 func (m *TaskDetailModel) overviewSections(contentWidth int) []string {
 	sections := []string{m.renderHeaderSection(contentWidth)}
-	if m.task.IsParked() {
-		sections = append(sections, m.renderParkedBanner(contentWidth))
-	}
 	if m.task.DueDate != nil {
 		sections = append(sections, m.renderDueSection(contentWidth))
 	}
@@ -91,18 +88,6 @@ func (m *TaskDetailModel) overviewSections(contentWidth int) []string {
 		sections = append(sections, metaCard)
 	}
 	return sections
-}
-
-func (m *TaskDetailModel) renderParkedBanner(width int) string {
-	parts := []string{"⏸ Parked"}
-	if m.task.ParkedAt != nil {
-		parts = append(parts, formatRelativeTime(*m.task.ParkedAt))
-	}
-	line := strings.Join(parts, " ")
-	if note := strings.TrimSpace(m.task.ParkedNote); note != "" {
-		line += " — " + note
-	}
-	return InfoStatusStyle.Render(truncateToVisualWidth(line, width))
 }
 
 func (m *TaskDetailModel) planningSections(contentWidth int) ([]string, bool) {
