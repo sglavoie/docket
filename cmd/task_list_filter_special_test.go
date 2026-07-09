@@ -74,3 +74,61 @@ func TestTaskMatchesFilters_CompletedHiddenByDefault(t *testing.T) {
 		t.Error("expected completed task to be visible with --all flag")
 	}
 }
+
+func TestTaskMatchesFilters_ParkedOnly(t *testing.T) {
+	defer resetFilterVars()
+	listParked = true
+
+	parkedByNote := testutil.NewTestTask("Parked by note", models.TaskTypeTask)
+	parkedByNote.ParkedNote = "resume after review"
+	parkedByDate := testutil.NewTestTask("Parked by date", models.TaskTypeTask)
+	parkedAt := time.Now()
+	parkedByDate.ParkedAt = &parkedAt
+	plain := testutil.NewTestTask("Plain", models.TaskTypeTask)
+
+	if !taskMatchesFilters(parkedByNote) {
+		t.Error("expected task with parked note to match --parked")
+	}
+	if !taskMatchesFilters(parkedByDate) {
+		t.Error("expected task with parked_at to match --parked")
+	}
+	if taskMatchesFilters(plain) {
+		t.Error("expected non-parked task to be excluded by --parked")
+	}
+}
+
+func TestTaskMatchesFilters_ParkedRespectsCompletedVisibility(t *testing.T) {
+	defer resetFilterVars()
+	listParked = true
+
+	done := testutil.NewTestTaskWithStatus("Done parked", models.StatusDone)
+	done.ParkedNote = "resume archived state"
+
+	if taskMatchesFilters(done) {
+		t.Error("expected completed parked task to be hidden without --all")
+	}
+
+	listShowAll = true
+	if !taskMatchesFilters(done) {
+		t.Error("expected completed parked task to be visible with --parked and --all")
+	}
+}
+
+func TestTaskMatchesFilters_ParkedRespectsSnoozedVisibility(t *testing.T) {
+	defer resetFilterVars()
+	listParked = true
+
+	snoozed := testutil.NewTestTask("Snoozed parked", models.TaskTypeTask)
+	snoozed.ParkedNote = "resume later"
+	future := time.Now().Add(24 * time.Hour)
+	snoozed.SnoozedUntil = &future
+
+	if taskMatchesFilters(snoozed) {
+		t.Error("expected snoozed parked task to be hidden without --snoozed")
+	}
+
+	listSnoozed = true
+	if !taskMatchesFilters(snoozed) {
+		t.Error("expected snoozed parked task to be visible with --parked and --snoozed")
+	}
+}

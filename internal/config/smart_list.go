@@ -3,7 +3,7 @@ package config
 // SmartListCriterion represents a single filter criterion.
 // Used by both the legacy smartList type and the unified SavedFilter.
 type SmartListCriterion struct {
-	Field     string `json:"field"`     // type, status, priority, tags, due_date, section, score_min, actionable, created_days, updated_days, completed_days
+	Field     string `json:"field"`     // type, status, priority, tags, due_date, section, score_min, actionable, parked, created_days, updated_days, completed_days
 	Operation string `json:"operation"` // equals, not_equals, contains, greater_than, less_than
 	Value     string `json:"value"`
 }

@@ -25,6 +25,7 @@ var (
 	listShowAll    bool
 	listTreeView   bool
 	listSnoozed    bool
+	listParked     bool
 	listSort       string
 	listJSON       bool
 )
@@ -43,6 +44,7 @@ Examples:
   tt task list --tag backend
   tt task list --all        # Include completed tasks
   tt task list --tree       # Show hierarchical tree view
+  tt task list --parked     # Show parked tasks only
   tt task list --sort priority
   tt task list --json       # Output as JSON
   tt task list --project myproject
@@ -60,6 +62,7 @@ func init() {
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
 	taskListCmd.Flags().BoolVar(&listTreeView, "tree", false, "show hierarchical tree view")
 	taskListCmd.Flags().BoolVar(&listSnoozed, "snoozed", false, "include snoozed tasks (hidden by default)")
+	taskListCmd.Flags().BoolVar(&listParked, "parked", false, "show parked tasks only")
 	taskListCmd.Flags().StringVar(&listSort, "sort", "", "sort by: priority, created, updated, status, title")
 	taskListCmd.Flags().BoolVar(&listJSON, "json", false, "output as JSON")
 
@@ -167,13 +170,16 @@ type taskJSONEntry struct {
 	Dimmed       bool       `json:"dimmed"`
 	Stage        string     `json:"stage,omitempty"`
 	SnoozedUntil *time.Time `json:"snoozed_until,omitempty"`
+	Parked       bool       `json:"parked"`
+	ParkedNote   string     `json:"parked_note,omitempty"`
+	ParkedAt     *time.Time `json:"parked_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 	DueDate      *time.Time `json:"due_date"`
 	HasTime      bool       `json:"has_time"`
 }
 
-func displayTaskJSON(tasks []*models.Task) error {
+func taskListJSONEntries(tasks []*models.Task) []taskJSONEntry {
 	entries := make([]taskJSONEntry, len(tasks))
 	for i, t := range tasks {
 		tags := t.Tags
@@ -195,12 +201,20 @@ func displayTaskJSON(tasks []*models.Task) error {
 			Dimmed:       t.Dimmed,
 			Stage:        t.Stage,
 			SnoozedUntil: t.SnoozedUntil,
+			Parked:       t.IsParked(),
+			ParkedNote:   t.ParkedNote,
+			ParkedAt:     t.ParkedAt,
 			CreatedAt:    t.CreatedAt,
 			UpdatedAt:    t.UpdatedAt,
 			DueDate:      t.DueDate,
 			HasTime:      t.HasTime,
 		}
 	}
+	return entries
+}
+
+func displayTaskJSON(tasks []*models.Task) error {
+	entries := taskListJSONEntries(tasks)
 	return printJSON(entries)
 }
 
@@ -210,6 +224,9 @@ func taskMatchesFilters(task *models.Task) bool {
 		return false
 	}
 	if !listSnoozed && task.IsSnoozed() {
+		return false
+	}
+	if listParked && !task.IsParked() {
 		return false
 	}
 	if listTaskType != "" {

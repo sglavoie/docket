@@ -342,6 +342,11 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		issueDetail = "on"
 	}
 
+	parkedDetail := "off"
+	if m.filter.Parked {
+		parkedDetail = "on"
+	}
+
 	attrDetail := "(none)"
 	if len(m.filter.Attrs) > 0 {
 		attrDetail = fmt.Sprintf("%d attrs", len(m.filter.Attrs))
@@ -371,6 +376,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
 		{Key: "h", Description: "dimmed", Detail: dimDetail, Active: m.filter.HideDimmed},
 		{Key: "i", Description: "issues", Detail: issueDetail, Active: m.filter.GitHubIssue},
+		{Key: "k", Description: "parked", Detail: parkedDetail, Active: m.filter.Parked},
 		{Key: "v", Description: "saved filters"},
 		{Key: "D", Description: "columns"},
 		{Key: "x", Description: "clear-all"},

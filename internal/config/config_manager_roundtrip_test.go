@@ -82,10 +82,13 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	cfg.ProjectViewStates["p1"] = ProjectViewState{
 		PinnedTagTab:              "backend",
 		FilterGitHubIssue:         true,
+		FilterParked:              true,
 		OutlinerFilterGitHubIssue: true,
+		OutlinerFilterParked:      true,
 	}
 	cfg.CrossOutlinerPinnedTagTab = "urgent"
 	cfg.CrossOutlinerFilterGitHubIssue = true
+	cfg.CrossOutlinerFilterParked = true
 
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{
@@ -128,7 +131,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	}
 
 	cfg.SavedFilters = []SavedFilter{
-		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", FilterGitHubIssue: true, SortAscending: true, PinnedTagTab: "backend"},
+		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", FilterGitHubIssue: true, FilterParked: true, SortAscending: true, PinnedTagTab: "backend"},
 	}
 
 	if saveErr := manager.Save(cfg); saveErr != nil {
@@ -205,11 +208,15 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		{"AllTasksTabOrderLen", len(loaded2.AllTasksTabOrder), 2},
 		{"ProjectViewStatePinnedTagTab", loaded2.ProjectViewStates["p1"].PinnedTagTab, "backend"},
 		{"ProjectViewStateFilterGitHubIssue", loaded2.ProjectViewStates["p1"].FilterGitHubIssue, true},
+		{"ProjectViewStateFilterParked", loaded2.ProjectViewStates["p1"].FilterParked, true},
 		{"ProjectViewStateOutlinerFilterGitHubIssue", loaded2.ProjectViewStates["p1"].OutlinerFilterGitHubIssue, true},
+		{"ProjectViewStateOutlinerFilterParked", loaded2.ProjectViewStates["p1"].OutlinerFilterParked, true},
 		{"CrossOutlinerPinnedTagTab", loaded2.CrossOutlinerPinnedTagTab, "urgent"},
 		{"CrossOutlinerFilterGitHubIssue", loaded2.CrossOutlinerFilterGitHubIssue, true},
+		{"CrossOutlinerFilterParked", loaded2.CrossOutlinerFilterParked, true},
 		{"SavedFilterPinnedTagTab", loaded2.SavedFilters[0].PinnedTagTab, "backend"},
 		{"SavedFilterGitHubIssue", loaded2.SavedFilters[0].FilterGitHubIssue, true},
+		{"SavedFilterParked", loaded2.SavedFilters[0].FilterParked, true},
 		{"WorkflowEvalStates", loaded2.WorkflowEvalStates["p1"].RulesHash, "abc"},
 	}
 	for _, c := range checks {

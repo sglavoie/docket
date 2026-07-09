@@ -374,6 +374,7 @@ func weeklyReviewFilterEntries(m *WeeklyReviewModel, stages []string) []keymap.E
 		TogglePriority:    m.weeklyReviewFilterPrefixAction("p"),
 		ToggleHideDimmed:  m.weeklyReviewFilterPrefixAction("h"),
 		ToggleGitHubIssue: m.weeklyReviewFilterPrefixAction("i"),
+		ToggleParked:      m.weeklyReviewFilterPrefixAction("k"),
 		ClearFilters:      m.weeklyReviewFilterPrefixAction("x"),
 		TypeKey:           m.weeklyReviewFilterKeyAction("Ft"),
 		StatusKey:         m.weeklyReviewFilterKeyAction("Fs"),

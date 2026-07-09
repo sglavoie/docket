@@ -14,6 +14,9 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	task.Pinned = true
 	task.Active = true
 	task.Dimmed = true
+	task.ParkedNote = "resume after API review"
+	parkedAt := time.Date(2026, 7, 9, 12, 30, 0, 0, time.UTC)
+	task.ParkedAt = &parkedAt
 	parentID := "parent-uuid"
 	task.ParentID = &parentID
 
@@ -22,21 +25,24 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		tags = []string{}
 	}
 	entry := taskJSONEntry{
-		ID:        task.ID,
-		ShortID:   task.ShortID,
-		Type:      task.Type.String(),
-		Title:     task.Title,
-		Status:    task.Status.String(),
-		Priority:  task.Priority,
-		ParentID:  task.ParentID,
-		Tags:      tags,
-		Section:   task.Section,
-		Pinned:    task.Pinned,
-		Active:    task.Active,
-		Dimmed:    task.Dimmed,
-		CreatedAt: task.CreatedAt,
-		UpdatedAt: task.UpdatedAt,
-		DueDate:   task.DueDate,
+		ID:         task.ID,
+		ShortID:    task.ShortID,
+		Type:       task.Type.String(),
+		Title:      task.Title,
+		Status:     task.Status.String(),
+		Priority:   task.Priority,
+		ParentID:   task.ParentID,
+		Tags:       tags,
+		Section:    task.Section,
+		Pinned:     task.Pinned,
+		Active:     task.Active,
+		Dimmed:     task.Dimmed,
+		Parked:     task.IsParked(),
+		ParkedNote: task.ParkedNote,
+		ParkedAt:   task.ParkedAt,
+		CreatedAt:  task.CreatedAt,
+		UpdatedAt:  task.UpdatedAt,
+		DueDate:    task.DueDate,
 	}
 
 	data, err := json.Marshal(entry)
@@ -57,6 +63,15 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	}
 	if v, ok := parsed["dimmed"]; !ok || v != true {
 		t.Errorf("expected dimmed=true in JSON, got %v", v)
+	}
+	if v, ok := parsed["parked"]; !ok || v != true {
+		t.Errorf("expected parked=true in JSON, got %v", v)
+	}
+	if v, ok := parsed["parked_note"]; !ok || v != "resume after API review" {
+		t.Errorf("expected parked_note in JSON, got %v", v)
+	}
+	if _, ok := parsed["parked_at"]; !ok {
+		t.Error("expected parked_at in JSON output")
 	}
 	legacyTaskSectionField := "custom" + "_section"
 	if _, ok := parsed[legacyTaskSectionField]; ok {
@@ -169,5 +184,46 @@ func TestTaskJSONEntry_OmitsEmptyStageAndSnoozedUntil(t *testing.T) {
 	}
 	if _, ok := parsed["snoozed_until"]; ok {
 		t.Error("expected snoozed_until to be omitted when nil")
+	}
+	if v, ok := parsed["parked"]; !ok || v != false {
+		t.Errorf("expected parked=false in JSON, got %v", v)
+	}
+	if _, ok := parsed["parked_note"]; ok {
+		t.Error("expected parked_note to be omitted when empty")
+	}
+	if _, ok := parsed["parked_at"]; ok {
+		t.Error("expected parked_at to be omitted when nil")
+	}
+}
+
+func TestTaskListJSONEntries_IncludesParkedMetadata(t *testing.T) {
+	parkedAt := time.Date(2026, 7, 9, 12, 30, 0, 0, time.UTC)
+	parked := testutil.NewTestTask("Parked task", models.TaskTypeTask)
+	parked.ParkedNote = "resume after API review"
+	parked.ParkedAt = &parkedAt
+	plain := testutil.NewTestTask("Plain task", models.TaskTypeTask)
+
+	entries := taskListJSONEntries([]*models.Task{parked, plain})
+
+	if len(entries) != 2 {
+		t.Fatalf("got %d entries, want 2", len(entries))
+	}
+	if !entries[0].Parked {
+		t.Fatal("parked task JSON entry should have parked=true")
+	}
+	if entries[0].ParkedNote != "resume after API review" {
+		t.Errorf("ParkedNote = %q, want resume note", entries[0].ParkedNote)
+	}
+	if entries[0].ParkedAt == nil || !entries[0].ParkedAt.Equal(parkedAt) {
+		t.Errorf("ParkedAt = %v, want %v", entries[0].ParkedAt, parkedAt)
+	}
+	if entries[1].Parked {
+		t.Error("plain task JSON entry should have parked=false")
+	}
+	if entries[1].ParkedNote != "" {
+		t.Errorf("plain task ParkedNote = %q, want empty", entries[1].ParkedNote)
+	}
+	if entries[1].ParkedAt != nil {
+		t.Errorf("plain task ParkedAt = %v, want nil", entries[1].ParkedAt)
 	}
 }

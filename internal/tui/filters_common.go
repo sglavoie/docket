@@ -27,6 +27,7 @@ type CommonFilterState struct {
 	Actionable  bool              // only show tasks ready to work on (no blockers)
 	HideDimmed  bool              // hide dimmed tasks
 	GitHubIssue bool              // only show tasks linked to a GitHub issue
+	Parked      bool              // only show parked tasks
 	Stage       string            // filter by workflow stage
 }
 
@@ -41,6 +42,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		Actionable:  src.Actionable,
 		HideDimmed:  src.HideDimmed,
 		GitHubIssue: src.GitHubIssue,
+		Parked:      src.Parked,
 		Stage:       src.Stage,
 	}
 	if len(src.Tags) > 0 {
@@ -71,6 +73,9 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 		return false
 	}
 	if f.GitHubIssue && !task.HasGitHubIssue() {
+		return false
+	}
+	if f.Parked && !task.IsParked() {
 		return false
 	}
 	if len(f.Tags) > 0 {
@@ -129,6 +134,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Actionable ||
 		f.HideDimmed ||
 		f.GitHubIssue ||
+		f.Parked ||
 		f.Stage != ""
 }
 
@@ -144,6 +150,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.Actionable = false
 	f.HideDimmed = false
 	f.GitHubIssue = false
+	f.Parked = false
 	f.Stage = ""
 }
 
@@ -205,6 +212,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	}
 	if f.GitHubIssue {
 		parts = append(parts, "issue")
+	}
+	if f.Parked {
+		parts = append(parts, "parked")
 	}
 	if f.Stage != "" {
 		parts = append(parts, "stage:"+f.Stage)

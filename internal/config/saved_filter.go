@@ -27,6 +27,7 @@ type SavedFilter struct {
 	FilterActionable  bool              `json:"filter_actionable,omitempty"`
 	FilterHideDimmed  bool              `json:"filter_hide_dimmed,omitempty"`
 	FilterGitHubIssue bool              `json:"filter_github_issue,omitempty"`
+	FilterParked      bool              `json:"filter_parked,omitempty"`
 	FilterAttrs       map[string]string `json:"filter_attrs,omitempty"`
 	FilterScoreMin    float64           `json:"filter_score_min,omitempty"`
 	SortField         int               `json:"sort_field,omitempty"`
@@ -152,6 +153,7 @@ func savedViewToFilter(sv savedView) SavedFilter {
 		FilterDueDate:     sv.FilterDueDate,
 		FilterActionable:  sv.FilterActionable,
 		FilterGitHubIssue: sv.FilterGitHubIssue,
+		FilterParked:      sv.FilterParked,
 		FilterAttrs:       sv.FilterAttrs,
 		FilterScoreMin:    sv.FilterScoreMin,
 		SortField:         sv.SortField,

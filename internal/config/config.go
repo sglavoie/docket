@@ -22,6 +22,7 @@ type savedView struct {
 	FilterDueDate     int               `json:"filter_due_date,omitempty"`
 	FilterActionable  bool              `json:"filter_actionable,omitempty"`
 	FilterGitHubIssue bool              `json:"filter_github_issue,omitempty"`
+	FilterParked      bool              `json:"filter_parked,omitempty"`
 	FilterAttrs       map[string]string `json:"filter_attrs,omitempty"`
 	FilterScoreMin    float64           `json:"filter_score_min,omitempty"`
 	SortField         int               `json:"sort_field,omitempty"`
@@ -130,6 +131,7 @@ type Config struct {
 	CrossOutlinerFilterActionable  bool                         `json:"cross_outliner_filter_actionable,omitempty"`
 	CrossOutlinerFilterHideDimmed  bool                         `json:"cross_outliner_filter_hide_dimmed,omitempty"`
 	CrossOutlinerFilterGitHubIssue bool                         `json:"cross_outliner_filter_github_issue,omitempty"`
+	CrossOutlinerFilterParked      bool                         `json:"cross_outliner_filter_parked,omitempty"`
 	CrossOutlinerFilterStage       string                       `json:"cross_outliner_filter_stage,omitempty"`
 	CrossOutlinerFilterScoreMin    float64                      `json:"cross_outliner_filter_score_min,omitempty"`
 	CrossOutlinerFilterTags        []string                     `json:"cross_outliner_filter_tags,omitempty"`

@@ -30,6 +30,7 @@ func (m *AppModel) extractSharedStateFromTree() *sharedViewState {
 				Actionable:  m.projectTree.filter.Actionable,
 				HideDimmed:  m.projectTree.filter.HideDimmed,
 				GitHubIssue: m.projectTree.filter.GitHubIssue,
+				Parked:      m.projectTree.filter.Parked,
 				Stage:       m.projectTree.filter.Stage,
 			},
 		},
@@ -70,6 +71,7 @@ func (m *AppModel) extractSharedStateFromOutliner() *sharedViewState {
 				Actionable:  m.outliner.filter.Actionable,
 				HideDimmed:  m.outliner.filter.HideDimmed,
 				GitHubIssue: m.outliner.filter.GitHubIssue,
+				Parked:      m.outliner.filter.Parked,
 				Stage:       m.outliner.filter.Stage,
 			},
 		},
@@ -106,6 +108,7 @@ func (m *AppModel) applySharedStateToTree(s *sharedViewState) {
 	m.projectTree.filter.Actionable = s.Filter.Actionable
 	m.projectTree.filter.HideDimmed = s.Filter.HideDimmed
 	m.projectTree.filter.GitHubIssue = s.Filter.GitHubIssue
+	m.projectTree.filter.Parked = s.Filter.Parked
 	m.projectTree.filter.Stage = s.Filter.Stage
 	m.projectTree.filter.Attrs = s.Filter.Attrs
 	m.projectTree.sort = s.Sort
@@ -137,6 +140,7 @@ func (m *AppModel) applySharedStateToOutliner(s *sharedViewState) {
 	m.outliner.filter.Actionable = s.Filter.Actionable
 	m.outliner.filter.HideDimmed = s.Filter.HideDimmed
 	m.outliner.filter.GitHubIssue = s.Filter.GitHubIssue
+	m.outliner.filter.Parked = s.Filter.Parked
 	m.outliner.filter.Stage = s.Filter.Stage
 	m.outliner.filter.Attrs = s.Filter.Attrs
 	m.outliner.sort = s.Sort

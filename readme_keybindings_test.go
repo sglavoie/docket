@@ -149,6 +149,24 @@ func TestREADMEUndoCommandDescribesMutation(t *testing.T) {
 	}
 }
 
+func TestREADMEDocumentsParkedFiltering(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+
+	required := []string{
+		"tt task list --parked",
+		"`Fk`",
+		"Filter parked tasks",
+		"All Tasks includes a built-in `Parked` tab",
+		"the seven built-in All Tasks tabs fill the visible cap",
+		"the first pinned saved-filter tab can put `By Score` and saved-filter tabs behind `More…`",
+	}
+	for _, needle := range required {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("README missing parked filtering text: %q", needle)
+		}
+	}
+}
+
 func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "cmd/cli-reference.md")
 
@@ -199,6 +217,8 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"tt select my-project   # Select by slug or ID directly",
 		"Manage action board items",
 		"Plan work from the Today cockpit",
+		"tt task list --parked     # Show parked tasks only",
+		"--parked bool    show parked tasks only",
 	}
 
 	for _, needle := range required {

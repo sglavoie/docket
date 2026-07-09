@@ -57,6 +57,8 @@ tt ask "create a bug for the login issue" --apply
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
 - Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the dashboard Resume card.
 - In the TUI, park from task-list prefix menus with `tP`; focused task surfaces such as Task Detail and the Focus Board use `P`.
+- Filter parked tasks with `tt task list --parked` in the CLI or `Fk` in TUI filter popups.
+- All Tasks includes a built-in `Parked` tab; the seven built-in All Tasks tabs fill the visible cap, so the first pinned saved-filter tab can put `By Score` and saved-filter tabs behind `More…`.
 - The CLI and TUI operate on the same underlying task model and storage.
 
 ## Common Commands
@@ -70,6 +72,7 @@ tt project archive old-project  # Hide a project from active workflows
 tt project unarchive old-project # Restore an archived project
 tt task add "Write docs"        # Add a task to the current project
 tt task list --tree             # Show hierarchical tasks
+tt task list --parked           # Show parked tasks only
 tt task show 12                 # Inspect a task
 tt task start 12                # Mark task in progress
 tt task park 12 "waiting on API review" # Save a resume note

@@ -79,6 +79,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("p") },
 		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("h") },
 		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("i") },
+		ToggleParked:      func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("k") },
 		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }

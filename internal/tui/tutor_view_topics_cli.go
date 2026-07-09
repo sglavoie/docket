@@ -217,9 +217,10 @@ across all projects.
 # Filtering Options
 
 Combine search with filters to narrow results by status,
-priority, tag, or section.
+priority, tag, section, or parked state.
 
   tt task list --status todo --tag backend
+  tt task list --parked
   tt task list --priority 1`,
 		},
 		{

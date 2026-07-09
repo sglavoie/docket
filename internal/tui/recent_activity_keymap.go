@@ -115,6 +115,9 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) {
 			return m.handleRecentActivityFilterPrefix("i")
 		},
+		ToggleParked: func() (tea.Model, tea.Cmd) {
+			return m.handleRecentActivityFilterPrefix("k")
+		},
 		ClearFilters: func() (tea.Model, tea.Cmd) {
 			return m.handleRecentActivityFilterPrefix("x")
 		},

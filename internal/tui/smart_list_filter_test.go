@@ -50,3 +50,31 @@ func TestEvaluateCriterion_SectionMatchesGTDOnly(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluateCriterion_Parked(t *testing.T) {
+	project := &models.Project{Name: "test"}
+	parkedTask := &models.Task{Title: "Parked", ParkedNote: "resume after review"}
+	activeTask := &models.Task{Title: "Active"}
+
+	tests := []struct {
+		name string
+		task *models.Task
+		val  string
+		want bool
+	}{
+		{"parked true matches parked task", parkedTask, "true", true},
+		{"parked true rejects active task", activeTask, "true", false},
+		{"parked false rejects parked task", parkedTask, "false", false},
+		{"parked false matches active task", activeTask, "false", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := config.SmartListCriterion{Field: "parked", Operation: "equals", Value: tt.val}
+			got := evaluateCriterion(tt.task, project, c, nil)
+			if got != tt.want {
+				t.Errorf("evaluateCriterion(parked equals %q) = %v, want %v", tt.val, got, tt.want)
+			}
+		})
+	}
+}

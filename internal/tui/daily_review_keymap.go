@@ -366,6 +366,7 @@ func (m *DailyReviewModel) dailyReviewFilterEntries(stages []string) []keymap.En
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("p") },
 		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("h") },
 		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("i") },
+		ToggleParked:      func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("k") },
 		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("Ft", key) }

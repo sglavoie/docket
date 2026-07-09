@@ -139,6 +139,7 @@ func describeSavedFilterSummary(sf *config.SavedFilter) string {
 		sf.FilterType, sf.FilterStatus, sf.FilterPriority,
 		sf.FilterTags, sf.FilterSections, sf.FilterDueDate,
 		sf.FilterActionable, sf.FilterHideDimmed, sf.FilterGitHubIssue,
+		sf.FilterParked,
 		sf.FilterAttrs, sf.FilterScoreMin,
 		sf.SortField, sf.ViewMode,
 	)
@@ -162,7 +163,7 @@ func describeCriteriaFilter(sf *config.SavedFilter) string {
 }
 
 // describeSnapshotFilters builds a human-readable summary of a snapshot filter's state.
-func describeSnapshotFilters(filterType string, filterStatus string, filterPriority int, filterTags []string, filterSections []string, filterDueDate int, filterActionable bool, filterHideDimmed bool, filterGitHubIssue bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
+func describeSnapshotFilters(filterType string, filterStatus string, filterPriority int, filterTags []string, filterSections []string, filterDueDate int, filterActionable bool, filterHideDimmed bool, filterGitHubIssue bool, filterParked bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
 	var parts []string
 
 	switch viewMode {
@@ -219,6 +220,9 @@ func describeSnapshotFilters(filterType string, filterStatus string, filterPrior
 	}
 	if filterGitHubIssue {
 		parts = append(parts, "issue")
+	}
+	if filterParked {
+		parts = append(parts, "parked")
 	}
 	if len(filterAttrs) > 0 {
 		keys := make([]string, 0, len(filterAttrs))

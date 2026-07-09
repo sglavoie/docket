@@ -159,7 +159,7 @@ func TestEffectiveLogic(t *testing.T) {
 func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	c := NewConfig()
 	c.SavedViews = []savedView{
-		{Name: "Bugs", FilterType: "bug", FilterGitHubIssue: true, SortField: 1, PinnedTagTab: "backend"},
+		{Name: "Bugs", FilterType: "bug", FilterGitHubIssue: true, FilterParked: true, SortField: 1, PinnedTagTab: "backend"},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
 	}
 
@@ -190,6 +190,9 @@ func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	if !c.SavedFilters[0].FilterGitHubIssue {
 		t.Error("expected filter_github_issue to migrate")
 	}
+	if !c.SavedFilters[0].FilterParked {
+		t.Error("expected filter_parked to migrate")
+	}
 }
 
 func TestMigrateLegacyFilters_smartLists(t *testing.T) {
@@ -200,6 +203,7 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 			Name: "Overdue",
 			Criteria: []SmartListCriterion{
 				{Field: "due_date", Operation: "less_than", Value: "today"},
+				{Field: "parked", Operation: "equals", Value: "true"},
 			},
 			Logic:            "and",
 			IncludeCompleted: false,
@@ -226,8 +230,11 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 	if !f.ShowAsTab {
 		t.Error("expected ShowAsTab=true")
 	}
-	if len(f.Criteria) != 1 {
-		t.Fatalf("expected 1 criterion, got %d", len(f.Criteria))
+	if len(f.Criteria) != 2 {
+		t.Fatalf("expected 2 criteria, got %d", len(f.Criteria))
+	}
+	if f.Criteria[1].Field != "parked" || f.Criteria[1].Value != "true" {
+		t.Fatalf("parked criterion = %+v, want parked equals true", f.Criteria[1])
 	}
 	// AllTasksTabOrder should be unchanged (IDs match).
 	if len(c.AllTasksTabOrder) != 2 || c.AllTasksTabOrder[1] != "sl-1" {
@@ -285,6 +292,7 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 		FilterTags:        []string{"a", "b"},
 		FilterAttrs:       map[string]string{"x": "y"},
 		FilterGitHubIssue: true,
+		FilterParked:      true,
 		FilterScoreMin:    42.5,
 		SortField:         3,
 		SortAscending:     true,
@@ -310,6 +318,9 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	if decoded.FilterGitHubIssue != original.FilterGitHubIssue {
 		t.Errorf("filter_github_issue: got %v, want %v", decoded.FilterGitHubIssue, original.FilterGitHubIssue)
 	}
+	if decoded.FilterParked != original.FilterParked {
+		t.Errorf("filter_parked: got %v, want %v", decoded.FilterParked, original.FilterParked)
+	}
 	if len(decoded.FilterTags) != 2 {
 		t.Errorf("tags: got %d, want 2", len(decoded.FilterTags))
 	}
@@ -326,6 +337,9 @@ func TestSavedFilter_JSONMissingGitHubIssueDefaultsFalse(t *testing.T) {
 	if decoded.FilterGitHubIssue {
 		t.Error("missing filter_github_issue should default to false")
 	}
+	if decoded.FilterParked {
+		t.Error("missing filter_parked should default to false")
+	}
 }
 
 // --- Manager migration integration test ---
@@ -339,7 +353,7 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 		"data_dir": dir,
 		"editor":   "vim",
 		"saved_views": []map[string]any{
-			{"name": "My Bugs", "filter_type": "bug"},
+			{"name": "My Bugs", "filter_type": "bug", "filter_parked": true},
 		},
 		"smart_lists": []map[string]any{
 			{
@@ -347,6 +361,7 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 				"name": "Overdue",
 				"criteria": []map[string]string{
 					{"field": "due_date", "operation": "less_than", "value": "today"},
+					{"field": "parked", "operation": "equals", "value": "false"},
 				},
 			},
 		},
@@ -388,6 +403,9 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 	if snapshot.FilterType != "bug" {
 		t.Errorf("snapshot filter_type: got %q, want 'bug'", snapshot.FilterType)
 	}
+	if !snapshot.FilterParked {
+		t.Error("snapshot filter_parked should migrate")
+	}
 
 	// Verify criteria conversion.
 	criteria := cfg.GetSavedFilter("sl-abc")
@@ -399,6 +417,9 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 	}
 	if !criteria.ShowAsTab {
 		t.Error("criteria filter should have ShowAsTab=true")
+	}
+	if len(criteria.Criteria) != 2 || criteria.Criteria[1].Field != "parked" || criteria.Criteria[1].Value != "false" {
+		t.Fatalf("criteria parked criterion = %+v, want parked equals false", criteria.Criteria)
 	}
 
 	// Config file on disk should now have saved_filters and no legacy fields.

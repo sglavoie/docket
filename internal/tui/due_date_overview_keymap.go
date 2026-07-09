@@ -348,6 +348,7 @@ func (m *DueDateOverviewModel) dueDateFilterEntries(stages []string) []keymap.En
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("p") },
 		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("h") },
 		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("i") },
+		ToggleParked:      func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("k") },
 		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {

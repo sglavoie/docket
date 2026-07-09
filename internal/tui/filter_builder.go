@@ -27,6 +27,7 @@ var smartListFields = []SLField{
 	{Name: "section", Operations: []string{"equals", "not_equals"}, ValueType: "text"},
 	{Name: "score_min", Operations: []string{"greater_than"}, ValueType: "numeric"},
 	{Name: "actionable", Operations: []string{"equals"}, ValueType: "enum", EnumValues: []string{"true", "false"}},
+	{Name: "parked", Operations: []string{"equals"}, ValueType: "enum", EnumValues: []string{"true", "false"}},
 	{Name: "created_days", Operations: []string{"less_than", "greater_than"}, ValueType: "numeric"},
 	{Name: "updated_days", Operations: []string{"less_than", "greater_than"}, ValueType: "numeric"},
 	{Name: "completed_days", Operations: []string{"less_than", "greater_than"}, ValueType: "numeric"},

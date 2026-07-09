@@ -354,6 +354,7 @@ func (m *PriorityViewModel) priorityFilterEntries(stages []string) []keymap.Entr
 		TogglePriority:    m.priorityFilterPrefixAction("p"),
 		ToggleHideDimmed:  m.priorityFilterPrefixAction("h"),
 		ToggleGitHubIssue: m.priorityFilterPrefixAction("i"),
+		ToggleParked:      m.priorityFilterPrefixAction("k"),
 		ClearFilters:      m.priorityFilterPrefixAction("x"),
 		TypeKey:           m.priorityFilterKeyAction("Ft"),
 		StatusKey:         m.priorityFilterKeyAction("Fs"),

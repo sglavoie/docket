@@ -223,6 +223,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		m.filter.Actionable = cfg.CrossOutlinerFilterActionable
 		m.filter.HideDimmed = cfg.CrossOutlinerFilterHideDimmed
 		m.filter.GitHubIssue = cfg.CrossOutlinerFilterGitHubIssue
+		m.filter.Parked = cfg.CrossOutlinerFilterParked
 		m.filter.Stage = cfg.CrossOutlinerFilterStage
 		m.filter.ScoreMin = cfg.CrossOutlinerFilterScoreMin
 		m.sort.Field = SortField(cfg.CrossOutlinerSortField)

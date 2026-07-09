@@ -93,6 +93,37 @@ func findTutorTopicByTitle(t *testing.T, title string) TutorTopic {
 	return TutorTopic{}
 }
 
+func TestTutorFilteringTopicsDocumentParkedFilter(t *testing.T) {
+	tuiTopic := findTutorTUITopic(t, "Filtering")
+	tuiRequired := []string{
+		"Fk  Filter to parked tasks",
+		"Filter by score threshold",
+		"Saved filters shown",
+		"share the capped tab row",
+		`Parked is built in`,
+		"the seven built-in All Tasks tabs fill the",
+		"visible cap",
+		"the first pinned saved-filter tab can put By Score",
+		"and saved-filter tabs behind More…",
+	}
+	for _, want := range tuiRequired {
+		if !strings.Contains(tuiTopic.Content, want) {
+			t.Fatalf("TUI Filtering topic missing %q:\n%s", want, tuiTopic.Content)
+		}
+	}
+
+	cliTopic := findTutorTopicByTitle(t, "Search")
+	cliRequired := []string{
+		"parked state",
+		"tt task list --parked",
+	}
+	for _, want := range cliRequired {
+		if !strings.Contains(cliTopic.Content, want) {
+			t.Fatalf("CLI Search topic missing %q:\n%s", want, cliTopic.Content)
+		}
+	}
+}
+
 func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T) {
 	topic := findTutorTUITopic(t, "Quick Capture")
 

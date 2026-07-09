@@ -290,6 +290,9 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) {
 			return m.handleFilterPrefix("i")
 		},
+		ToggleParked: func() (tea.Model, tea.Cmd) {
+			return m.handleFilterPrefix("k")
+		},
 		ClearFilters: func() (tea.Model, tea.Cmd) {
 			return m.handleFilterPrefix("x")
 		},

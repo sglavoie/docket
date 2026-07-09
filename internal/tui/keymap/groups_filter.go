@@ -7,6 +7,7 @@ type FilterDeps struct {
 	TogglePriority    Action // Fp — toggle hi-priority filter
 	ToggleHideDimmed  Action // Fh — toggle hide-dimmed filter
 	ToggleGitHubIssue Action // Fi — toggle GitHub issues filter
+	ToggleParked      Action // Fk — toggle parked tasks filter
 	ClearFilters      Action // Fx — clear all filters
 
 	// TypeKey returns an Action for a Ft sub-key (e, s, t, b, i, 0).
@@ -139,8 +140,9 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("p", "Toggle priority filter", cat, deps.TogglePriority),
 		Bind("h", "Toggle hide-dimmed filter", cat, deps.ToggleHideDimmed),
 		Bind("i", "Toggle GitHub issues filter", cat, deps.ToggleGitHubIssue),
+		Bind("k", "Toggle parked filter", cat, deps.ToggleParked),
 		Bind("x", "Clear all filters", cat, deps.ClearFilters),
 	)
 
-	return []Entry{Prefix("F", "Filter prefix (type/status/tags/issue/attr/score)", cat, fChildren)}
+	return []Entry{Prefix("F", "Filter prefix (type/status/tags/parked/issue/attr/score)", cat, fChildren)}
 }

@@ -70,6 +70,7 @@ func (m *AppModel) saveCrossOutlinerState() {
 	m.config.CrossOutlinerFilterActionable = m.crossOutliner.filter.Actionable
 	m.config.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
 	m.config.CrossOutlinerFilterGitHubIssue = m.crossOutliner.filter.GitHubIssue
+	m.config.CrossOutlinerFilterParked = m.crossOutliner.filter.Parked
 	m.config.CrossOutlinerFilterStage = m.crossOutliner.filter.Stage
 	m.config.CrossOutlinerFilterScoreMin = m.crossOutliner.filter.ScoreMin
 	m.config.CrossOutlinerSortField = int(m.crossOutliner.sort.Field)
@@ -134,6 +135,7 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 	state.OutlinerFilterActionable = o.filter.Actionable
 	state.OutlinerFilterHideDimmed = o.filter.HideDimmed
 	state.OutlinerFilterGitHubIssue = o.filter.GitHubIssue
+	state.OutlinerFilterParked = o.filter.Parked
 	state.OutlinerFilterStage = o.filter.Stage
 	state.OutlinerFilterScoreMin = o.filter.ScoreMin
 	state.OutlinerColumnToggles = o.columnConfig.Toggles()
@@ -203,6 +205,7 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	o.filter.Actionable = state.OutlinerFilterActionable
 	o.filter.HideDimmed = state.OutlinerFilterHideDimmed
 	o.filter.GitHubIssue = state.OutlinerFilterGitHubIssue
+	o.filter.Parked = state.OutlinerFilterParked
 	o.filter.Stage = state.OutlinerFilterStage
 	o.filter.ScoreMin = state.OutlinerFilterScoreMin
 

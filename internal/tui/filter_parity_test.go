@@ -264,26 +264,26 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	wants := map[string][]string{
 		// Focus Board: full shared wiring including F. stage and Fd due date.
-		"FocusBoard": {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
+		"FocusBoard": {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Full shared wiring including F. stage and Fd due date.
-		"FocusView":    {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
-		"ProjectFocus": {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
+		"FocusView":    {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"ProjectFocus": {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// All Tasks: Fd is a direct cycle-binding (not a sub-prefix), and P is
 		// a view-specific direct project filter toggle.
-		"AllTasks": {"#", ".", "P", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
+		"AllTasks": {"#", ".", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Project Tree and Outliner append view-specific filters for
 		// completed/actionable/section/columns plus Fv saved filters.
-		"ProjectTree":          {"#", ".", "@", "D", "S", "a", "c", "d", "h", "i", "p", "r", "s", "t", "v", "x"},
-		"Outliner":             {"#", ".", "@", "D", "S", "a", "c", "d", "h", "i", "p", "r", "s", "t", "v", "x"},
-		"CrossProjectOutliner": {"#", ".", "@", "D", "P", "S", "a", "c", "d", "h", "i", "p", "r", "s", "t", "v", "x"},
-		"Kanban":               {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
+		"ProjectTree":          {"#", ".", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"Outliner":             {"#", ".", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"CrossProjectOutliner": {"#", ".", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"Kanban":               {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Priority view appends a view-specific direct binding `r` (toggle
 		// actionable filter) under the F prefix.
-		"PriorityView":    {"#", ".", "S", "a", "d", "h", "i", "p", "r", "s", "t", "x"},
-		"DailyReview":     {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
-		"WeeklyReview":    {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
-		"DueDateOverview": {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
-		"RecentActivity":  {"#", ".", "S", "a", "d", "h", "i", "p", "s", "t", "x"},
+		"PriorityView":    {"#", ".", "S", "a", "d", "h", "i", "k", "p", "r", "s", "t", "x"},
+		"DailyReview":     {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"WeeklyReview":    {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"DueDateOverview": {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"RecentActivity":  {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 	}
 
 	for _, tc := range sharedFilterViewCases() {
@@ -388,6 +388,24 @@ func TestFilterParity_SharedFilterViews_AdvertiseFh(t *testing.T) {
 			helpKeys := helpKeysWithPrefix(tc.km, "Fh")
 			if len(helpKeys) == 0 {
 				t.Errorf("%s HelpItems() omit Fh", tc.name)
+			}
+		})
+	}
+}
+
+// TestFilterParity_SharedFilterViews_AdvertiseFk confirms every shared-filter
+// view that wires FilterGroup advertises Fk (parked tasks only). The parked
+// filter is a common filter, so it must be reachable from keymap help wherever
+// the shared F prefix is present.
+func TestFilterParity_SharedFilterViews_AdvertiseFk(t *testing.T) {
+	for _, tc := range sharedFilterViewCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			if !fChildIsBinding(tc.km, "k") {
+				t.Errorf("%s does not advertise Fk (parked)", tc.name)
+			}
+			helpKeys := helpKeysWithPrefix(tc.km, "Fk")
+			if len(helpKeys) == 0 {
+				t.Errorf("%s HelpItems() omit Fk", tc.name)
 			}
 		})
 	}
@@ -562,20 +580,20 @@ func TestFilterParity_HandledKeys_CoverAdvertisedFKeys(t *testing.T) {
 }
 
 // TestKeybindingExplorer_FocusBoardAdvertisesFilterPrefix ensures the keybinding
-// explorer surfaces the shared filter shortcuts now wired into Focus Board,
-// including the Fh hide-dimmed toggle.
+// explorer surfaces the shared filter shortcuts wired into Focus Board,
+// including common boolean toggles.
 func TestKeybindingExplorer_FocusBoardAdvertisesFilterPrefix(t *testing.T) {
 	reg := BuildRegistryFromKeyMaps(migratedViewKeymaps())
 	items := reg.GetForView(ViewFocusBoard)
-	var hasFh bool
+	has := map[string]bool{}
 	for _, item := range items {
-		if item.Key == "Fh" {
-			hasFh = true
-			break
-		}
+		has[item.Key] = true
 	}
-	if !hasFh {
+	if !has["Fh"] {
 		t.Error("Focus Board explorer must advertise Fh (hide-dimmed)")
+	}
+	if !has["Fk"] {
+		t.Error("Focus Board explorer must advertise Fk (parked)")
 	}
 }
 

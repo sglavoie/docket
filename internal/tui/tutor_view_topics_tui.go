@@ -201,6 +201,7 @@ dimension by pressing the corresponding key:
   F/  Filter by section
   F.  Filter by stage
   Fi  Filter to tasks linked to a GitHub issue
+  Fk  Filter to parked tasks
   FS  Filter by score threshold
 
 Search accepts has:issue and no:issue for finding or excluding
@@ -213,8 +214,12 @@ Active filters appear as badges in the status bar.
 
 # Saved Filters
 
-Save your current filter combination for reuse. See the Saved
-Filters topic under Concepts for details.`,
+Save your current filter combination for reuse. Saved filters shown
+as All Tasks tabs share the capped tab row with built-in filters.
+Parked is built in, and the seven built-in All Tasks tabs fill the
+visible cap, so the first pinned saved-filter tab can put By Score
+and saved-filter tabs behind More….
+See the Saved Filters topic under Concepts for details.`,
 		},
 		{
 			Title:    "Help",

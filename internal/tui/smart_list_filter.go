@@ -80,6 +80,10 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 		isActionable := task.Status != models.StatusBlocked && !project.HasIncompleteDependencies(task)
 		return isActionable == wantActionable
 
+	case "parked":
+		wantParked := strings.EqualFold(c.Value, "true")
+		return task.IsParked() == wantParked
+
 	case "created_days":
 		return evalDaysDelta(task.CreatedAt, c.Operation, c.Value)
 

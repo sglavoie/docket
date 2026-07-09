@@ -150,6 +150,7 @@ func (m *AppModel) captureProjectTreeFilter(name, id string) config.SavedFilter 
 	sf.FilterActionable = pt.filter.Actionable
 	sf.FilterHideDimmed = pt.filter.HideDimmed
 	sf.FilterGitHubIssue = pt.filter.GitHubIssue
+	sf.FilterParked = pt.filter.Parked
 	sf.FilterScoreMin = pt.filter.ScoreMin
 	sf.SortField = int(pt.sort.Field)
 	sf.SortAscending = pt.sort.Ascending
@@ -197,6 +198,7 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	sf.FilterActionable = ol.filter.Actionable
 	sf.FilterHideDimmed = ol.filter.HideDimmed
 	sf.FilterGitHubIssue = ol.filter.GitHubIssue
+	sf.FilterParked = ol.filter.Parked
 	sf.FilterScoreMin = ol.filter.ScoreMin
 	sf.SortField = int(ol.sort.Field)
 	sf.SortAscending = ol.sort.Ascending
@@ -242,6 +244,7 @@ func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
 		pt.filter.Actionable = sf.FilterActionable
 		pt.filter.HideDimmed = sf.FilterHideDimmed
 		pt.filter.GitHubIssue = sf.FilterGitHubIssue
+		pt.filter.Parked = sf.FilterParked
 		pt.filter.ScoreMin = sf.FilterScoreMin
 		pt.sort.Field = SortField(sf.SortField)
 		pt.sort.Ascending = sf.SortAscending
@@ -309,6 +312,7 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		ol.filter.Actionable = sf.FilterActionable
 		ol.filter.HideDimmed = sf.FilterHideDimmed
 		ol.filter.GitHubIssue = sf.FilterGitHubIssue
+		ol.filter.Parked = sf.FilterParked
 		ol.filter.ScoreMin = sf.FilterScoreMin
 		ol.sort.Field = SortField(sf.SortField)
 		ol.sort.Ascending = sf.SortAscending
@@ -339,7 +343,10 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 
 // buildCurrentViewSummary returns a human-readable summary of the current filter state.
 func (m *AppModel) buildCurrentViewSummary() string {
-	if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+	switch m.baseProjectView() {
+	case ViewCrossProjectOutliner:
+		return m.buildOutlinerSummaryFrom(m.crossOutliner)
+	case ViewOutliner:
 		return m.buildOutlinerViewSummary()
 	}
 	return m.buildProjectTreeViewSummary()
@@ -371,6 +378,7 @@ func (m *AppModel) buildProjectTreeViewSummary() string {
 		pt.filter.Actionable,
 		pt.filter.HideDimmed,
 		pt.filter.GitHubIssue,
+		pt.filter.Parked,
 		pt.filter.Attrs,
 		pt.filter.ScoreMin,
 		int(pt.sort.Field),
@@ -380,10 +388,13 @@ func (m *AppModel) buildProjectTreeViewSummary() string {
 
 // buildOutlinerViewSummary returns a summary of the outliner's filter state.
 func (m *AppModel) buildOutlinerViewSummary() string {
-	if m.outliner == nil {
+	return m.buildOutlinerSummaryFrom(m.outliner)
+}
+
+func (m *AppModel) buildOutlinerSummaryFrom(ol *OutlinerModel) string {
+	if ol == nil {
 		return ""
 	}
-	ol := m.outliner
 
 	var tags []string
 	for tag := range ol.filter.Tags {
@@ -404,6 +415,7 @@ func (m *AppModel) buildOutlinerViewSummary() string {
 		ol.filter.Actionable,
 		ol.filter.HideDimmed,
 		ol.filter.GitHubIssue,
+		ol.filter.Parked,
 		ol.filter.Attrs,
 		ol.filter.ScoreMin,
 		int(ol.sort.Field),

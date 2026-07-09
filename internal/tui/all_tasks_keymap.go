@@ -94,6 +94,7 @@ func (m *AllTasksViewModel) allTasksFilterEntries(stages []string) []keymap.Entr
 		TogglePriority:    m.allTasksTogglePriorityFilter,
 		ToggleHideDimmed:  m.allTasksToggleHideDimmedFilter,
 		ToggleGitHubIssue: m.allTasksToggleGitHubIssueFilter,
+		ToggleParked:      m.allTasksToggleParkedFilter,
 		ClearFilters:      m.allTasksClearFilters,
 		TypeKey:           m.allTasksFilterTypeKey,
 		StatusKey:         m.allTasksFilterStatusKey,
@@ -350,6 +351,10 @@ func (m *AllTasksViewModel) allTasksToggleHideDimmedFilter() (tea.Model, tea.Cmd
 
 func (m *AllTasksViewModel) allTasksToggleGitHubIssueFilter() (tea.Model, tea.Cmd) {
 	return m.handleAllTasksFilterPrefix("i")
+}
+
+func (m *AllTasksViewModel) allTasksToggleParkedFilter() (tea.Model, tea.Cmd) {
+	return m.handleAllTasksFilterPrefix("k")
 }
 
 func (m *AllTasksViewModel) allTasksClearFilters() (tea.Model, tea.Cmd) {

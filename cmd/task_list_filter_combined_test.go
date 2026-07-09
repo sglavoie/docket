@@ -132,3 +132,37 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 		t.Errorf("expected 'Critical bug', got '%s'", result[0].Title)
 	}
 }
+
+func TestFilterTasks_ParkedComposesWithPriorityAndTag(t *testing.T) {
+	defer resetFilterVars()
+	listShowAll = true
+	listParked = true
+	listPriority = 1
+	listTag = "urgent"
+
+	matchingTask := testutil.NewTestTaskWithPriority("Parked urgent p1", 1)
+	matchingTask.ParkedNote = "resume deploy"
+	matchingTask.Tags = []string{"urgent", "backend"}
+
+	nonParked := testutil.NewTestTaskWithPriority("Urgent p1", 1)
+	nonParked.Tags = []string{"urgent"}
+
+	wrongPriority := testutil.NewTestTaskWithPriority("Parked urgent p2", 2)
+	wrongPriority.ParkedNote = "resume docs"
+	wrongPriority.Tags = []string{"urgent"}
+
+	missingTag := testutil.NewTestTaskWithPriority("Parked p1", 1)
+	missingTag.ParkedNote = "resume api"
+	missingTag.Tags = []string{"backend"}
+
+	tasks := []*models.Task{matchingTask, nonParked, wrongPriority, missingTag}
+
+	result := filterTasks(tasks)
+
+	if len(result) != 1 {
+		t.Errorf("expected 1 task matching parked AND priority=1 AND tag=urgent, got %d", len(result))
+	}
+	if len(result) > 0 && result[0].Title != "Parked urgent p1" {
+		t.Errorf("expected 'Parked urgent p1', got '%s'", result[0].Title)
+	}
+}

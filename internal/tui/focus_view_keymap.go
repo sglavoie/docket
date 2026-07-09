@@ -359,6 +359,7 @@ func (m *FocusViewModel) focusFilterEntries(stages []string) []keymap.Entry {
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("p") },
 		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("h") },
 		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("i") },
+		ToggleParked:      func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("k") },
 		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {

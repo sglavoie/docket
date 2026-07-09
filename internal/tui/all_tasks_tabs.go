@@ -14,14 +14,15 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-var defaultBuiltInTabNames = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
+var defaultBuiltInTabNames = []string{"All", "Active", "Parked", "Due Soon", "High Pri", "Blocked", "By Score"}
 
 const (
 	builtInTabActive  = 1
-	builtInTabDueSoon = 2
-	builtInTabHighPri = 3
-	builtInTabBlocked = 4
-	builtInTabByScore = 5
+	builtInTabParked  = 2
+	builtInTabDueSoon = 3
+	builtInTabHighPri = 4
+	builtInTabBlocked = 5
+	builtInTabByScore = 6
 )
 
 // overflowTabCap is the maximum number of visible tabs (including the "More…" entry).
@@ -149,6 +150,15 @@ func (m *AllTasksViewModel) applyBuiltInTabFilter(tasks []CrossProjectTask, buil
 		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Status == models.StatusInProgress {
+				result = append(result, item)
+			}
+		}
+		return result
+
+	case builtInTabParked:
+		var result []CrossProjectTask
+		for _, item := range tasks {
+			if item.Task.IsParked() {
 				result = append(result, item)
 			}
 		}

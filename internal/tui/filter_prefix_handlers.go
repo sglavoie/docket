@@ -269,7 +269,7 @@ type FilterPrefixResult struct {
 }
 
 // handleCommonFilterPrefix handles the common first-level F-prefix keys shared
-// across views: p (priority toggle), t/s (sub-prefix), # (tag selector),
+// across views: p/k (boolean toggles), t/s (sub-prefix), # (tag selector),
 // a (attribute sub-prefix), S (score sub-prefix), x (clear all).
 // buildTagCmd should return the tea.Cmd that opens the tag filter selector.
 // The caller handles view-specific keys before calling this function.
@@ -287,6 +287,9 @@ func handleCommonFilterPrefix(key string, f *CommonFilterState, buildTagCmd func
 		return FilterPrefixResult{Handled: true, Changed: true}
 	case "i":
 		f.GitHubIssue = !f.GitHubIssue
+		return FilterPrefixResult{Handled: true, Changed: true}
+	case "k":
+		f.Parked = !f.Parked
 		return FilterPrefixResult{Handled: true, Changed: true}
 	case "t":
 		return FilterPrefixResult{Handled: true, NewPrefix: "Ft"}
@@ -382,12 +385,18 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 		issueDetail = "on"
 	}
 
+	parkedDetail := "off"
+	if f.Parked {
+		parkedDetail = "on"
+	}
+
 	hints = append(hints,
 		PrefixHint{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(f.Attrs) > 0},
 		PrefixHint{Key: ".", Description: "stage", Detail: stageDetail, Active: f.Stage != ""},
 		PrefixHint{Key: "S", Description: "score", Detail: scoreDetail, Active: f.ScoreMin > 0},
 		PrefixHint{Key: "h", Description: "dimmed", Detail: dimDetail, Active: f.HideDimmed},
 		PrefixHint{Key: "i", Description: "issues", Detail: issueDetail, Active: f.GitHubIssue},
+		PrefixHint{Key: "k", Description: "parked", Detail: parkedDetail, Active: f.Parked},
 		PrefixHint{Key: "x", Description: "clear-all"},
 	)
 
