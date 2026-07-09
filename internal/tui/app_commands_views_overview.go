@@ -477,11 +477,11 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 		},
 		{
 			Name:        "send to waiting",
-			Description: "Park the current task in the Waiting section",
+			Description: "Move the current task to the Waiting section",
 			Shortcut:    "ctrl+w",
 			Category:    CategoryActions,
 			Views:       bothViews,
-			Aliases:     []string{"waiting", "defer task", "park task", "triage wait"},
+			Aliases:     []string{"waiting", "defer task", "triage wait"},
 			Handler: func() tea.Msg {
 				return runInboxResultCmd(func(c *inboxCore) tea.Cmd {
 					return c.sendToWaiting()

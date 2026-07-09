@@ -100,7 +100,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 				metaParts = append(metaParts, "@"+dueStr)
 			}
 			if entry.Task.IsParked() {
-				metaParts = append(metaParts, MutedStyle.Render(parkedResumeSnippet(entry.Task, 30)))
+				metaParts = append(metaParts, MutedStyle.Render(parkedResumeSnippetForRowWidth(entry.Task, innerWidth)))
 			}
 
 			metaSuffix := ""

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -134,5 +135,50 @@ func TestRenderQuickSwitchPopupShowsParkedSnippet(t *testing.T) {
 	plain := ansi.Strip(app.renderQuickSwitchPopup())
 	if !strings.Contains(plain, "⏸ waiting for schema review") {
 		t.Fatalf("expected parked snippet in quick-switch popup\n\n%s", plain)
+	}
+	for _, line := range strings.Split(plain, "\n") {
+		if got, want := lipgloss.Width(line), max(app.width-4, 30); got > want {
+			t.Fatalf("quick-switch line width = %d, want <= %d\n\n%s", got, want, plain)
+		}
+	}
+}
+
+func TestRenderQuickSwitchPopupParkedSnippetUsesRowWidthPolicy(t *testing.T) {
+	renderWithWidth := func(width int) string {
+		app := newTestAppForQuickSwitch()
+		app.width = width
+		app.showQuickSwitch = true
+		p := &models.Project{ID: "p1", Name: "Project 1"}
+		task := &models.Task{ID: "t1", Title: "Task 1", Status: models.StatusTodo, Type: models.TaskTypeTask}
+		parkedAt := time.Now().Add(-time.Hour)
+		task.ParkedAt = &parkedAt
+		task.ParkedNote = "waiting for schema review before rollout resumes"
+		app.recentTaskVisits = []RecentTaskVisitEntry{{Task: task, Project: p}}
+		initQuickSwitchFilter(app)
+		return ansi.Strip(app.renderQuickSwitchPopup())
+	}
+
+	narrow := renderWithWidth(34)
+	wide := renderWithWidth(160)
+
+	if strings.Contains(narrow, "schema review") {
+		t.Fatalf("narrow quick-switch popup exposed too much parked note\n\n%s", narrow)
+	}
+	if !strings.Contains(wide, "before rollout") {
+		t.Fatalf("wide quick-switch popup did not expose expanded parked note\n\n%s", wide)
+	}
+	for _, tc := range []struct {
+		name       string
+		rendered   string
+		popupWidth int
+	}{
+		{name: "narrow", rendered: narrow, popupWidth: 30},
+		{name: "wide", rendered: wide, popupWidth: 156},
+	} {
+		for _, line := range strings.Split(tc.rendered, "\n") {
+			if got := lipgloss.Width(line); got > tc.popupWidth {
+				t.Fatalf("%s quick-switch line width = %d, want <= %d\n\n%s", tc.name, got, tc.popupWidth, tc.rendered)
+			}
+		}
 	}
 }

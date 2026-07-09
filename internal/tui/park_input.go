@@ -87,18 +87,42 @@ func (m *ParkInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			note := strings.TrimSpace(m.input.Value())
 			unparked := false
-			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
+			m.err = nil
+			if m.project == nil {
+				m.err = fmt.Errorf("project no longer exists")
+				return m, nil
+			}
+			taskID := ""
+			if m.task != nil {
+				taskID = m.task.ID
+			}
+			resolvedTask := m.project.GetTaskByID(taskID)
+			if resolvedTask == nil {
+				m.err = fmt.Errorf("task no longer exists in project")
+				return m, nil
+			}
+			m.task = resolvedTask
+			var completedStatus models.TaskStatus
+			if !m.project.MutateTask(resolvedTask.ID, func(t *models.Task) {
 				if note == "" && t.IsParked() {
 					t.Unpark(false)
 					unparked = true
 					return
 				}
+				if t.Status.IsComplete() {
+					completedStatus = t.Status
+					return
+				}
 				t.Park(note)
 			}) {
 				m.err = fmt.Errorf("task no longer exists in project")
-				return m, func() tea.Msg { return BackMsg{} }
+				return m, nil
 			}
-			if fresh := m.project.GetTaskByID(m.task.ID); fresh != nil {
+			if completedStatus.IsComplete() {
+				m.err = fmt.Errorf("cannot park a %s task", completedStatus)
+				return m, nil
+			}
+			if fresh := m.project.GetTaskByID(resolvedTask.ID); fresh != nil {
 				m.task = fresh
 			}
 			return m, parkNoteDoneCmd(m.task, m.project, note, unparked, false)

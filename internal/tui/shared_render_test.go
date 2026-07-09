@@ -100,6 +100,122 @@ func TestRenderCrossProjectTaskLineNoLongerRendersStageBadge(t *testing.T) {
 	}
 }
 
+func TestTaskLineShowsParkedSnippet(t *testing.T) {
+	task := &models.Task{
+		ID:         "t1",
+		Title:      "parked task",
+		Type:       models.TaskTypeTask,
+		Status:     models.StatusTodo,
+		Priority:   3,
+		ParkedNote: "resume API",
+	}
+
+	line := TaskLine{Task: task, MaxTitle: 40, ViewWidth: 80}.Render()
+	plain := ansi.Strip(line)
+	if !strings.Contains(plain, "⏸ resume API") {
+		t.Fatalf("expected parked snippet in shared task row, got %q", plain)
+	}
+}
+
+func TestTaskLineShowsParkedFallbackForBlankNote(t *testing.T) {
+	parkedAt := time.Now()
+	task := &models.Task{
+		ID:       "t1",
+		Title:    "blank-note parked task",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 3,
+		ParkedAt: &parkedAt,
+	}
+
+	line := TaskLine{Task: task, MaxTitle: 40, ViewWidth: 80}.Render()
+	plain := ansi.Strip(line)
+	if !strings.Contains(plain, "⏸ parked") {
+		t.Fatalf("expected fallback parked snippet in shared task row, got %q", plain)
+	}
+}
+
+func TestRenderCrossProjectTaskLineShowsParkedSnippetWithExistingPostTitle(t *testing.T) {
+	proj := &models.Project{ID: "p1", Name: "Proj"}
+	task := &models.Task{
+		ID:         "t1",
+		Title:      "cross-project parked task",
+		Tags:       []string{"ops"},
+		ParkedNote: "restart deploy",
+	}
+
+	got := RenderCrossProjectTaskLine(task, proj, nil, false, 120, 40, CrossProjectTaskLineOpts{
+		ShowTags: true,
+	})
+	plain := ansi.Strip(got)
+	if !strings.Contains(plain, "#ops") {
+		t.Fatalf("expected existing post-title tag to remain, got %q", plain)
+	}
+	if !strings.Contains(plain, "⏸ restart deploy") {
+		t.Fatalf("expected parked snippet in cross-project row, got %q", plain)
+	}
+}
+
+func TestRenderCrossProjectTaskLineShowsParkedFallbackWithExistingPostTitle(t *testing.T) {
+	parkedAt := time.Now()
+	proj := &models.Project{ID: "p1", Name: "Proj"}
+	task := &models.Task{
+		ID:       "t1",
+		Title:    "cross-project blank-note parked task",
+		Tags:     []string{"ops"},
+		ParkedAt: &parkedAt,
+	}
+
+	got := RenderCrossProjectTaskLine(task, proj, nil, false, 120, 40, CrossProjectTaskLineOpts{
+		ShowTags: true,
+	})
+	plain := ansi.Strip(got)
+	if !strings.Contains(plain, "#ops") {
+		t.Fatalf("expected existing post-title tag to remain, got %q", plain)
+	}
+	if !strings.Contains(plain, "⏸ parked") {
+		t.Fatalf("expected fallback parked snippet in cross-project row, got %q", plain)
+	}
+}
+
+func TestTaskLineParkedSnippetStaysWithinViewWidth(t *testing.T) {
+	task := &models.Task{
+		ID:         "t1",
+		Title:      "parked task with a title long enough to pressure the row",
+		Type:       models.TaskTypeTask,
+		Status:     models.StatusTodo,
+		Priority:   3,
+		ParkedNote: "very long resume note that must be truncated before it widens the row",
+	}
+
+	const viewWidth = 52
+	line := TaskLine{Task: task, MaxTitle: 80, ViewWidth: viewWidth}.Render()
+	if got := lipgloss.Width(ansi.Strip(line)); got > viewWidth {
+		t.Fatalf("parked shared row width = %d, want <= %d, stripped=%q", got, viewWidth, ansi.Strip(line))
+	}
+}
+
+func TestTaskLineParkedSnippetExpandsWithViewWidth(t *testing.T) {
+	task := &models.Task{
+		ID:         "t1",
+		Title:      "parked task",
+		Type:       models.TaskTypeTask,
+		Status:     models.StatusTodo,
+		Priority:   3,
+		ParkedNote: "resume alpha beta gamma delta marker epsilon zeta",
+	}
+
+	narrow := ansi.Strip(TaskLine{Task: task, MaxTitle: 20, ViewWidth: 54}.Render())
+	wide := ansi.Strip(TaskLine{Task: task, MaxTitle: 20, ViewWidth: 120}.Render())
+
+	if strings.Contains(narrow, "delta marker") {
+		t.Fatalf("narrow shared row exposed too much parked note text, got %q", narrow)
+	}
+	if !strings.Contains(wide, "delta marker") {
+		t.Fatalf("wide shared row should expose more parked note text, got %q", wide)
+	}
+}
+
 func TestCrossProjectSelectedStripDoesNotRepeatInlineStaleBadge(t *testing.T) {
 	staleDays := 1
 	cfg := &config.Config{StaleTaskDays: &staleDays}

@@ -72,7 +72,7 @@ func TestPaletteTriage_InboxProcessorShortcutsMatchKeymap(t *testing.T) {
 // TestPaletteTriage_InboxProcessorTriageAliases asserts the inbox processor
 // commands carry triage-vocabulary aliases so palette search matches the
 // language users learn from the footer and help screens ("triage", "refine",
-// "resolve", "route", "schedule", "park").
+// "resolve", "route", "schedule", "waiting").
 func TestPaletteTriage_InboxProcessorTriageAliases(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	cmds := triageInboxCommands(t, app, ViewInboxProcessor)
@@ -87,7 +87,7 @@ func TestPaletteTriage_InboxProcessorTriageAliases(t *testing.T) {
 		{"manage inbox task tags", []string{"manage tags", "triage tags"}},
 		{"undo last triage action", []string{"undo"}},
 		{"route to section", []string{"assign section", "route inbox"}},
-		{"send to waiting", []string{"park task", "defer task"}},
+		{"send to waiting", []string{"waiting", "defer task", "triage wait"}},
 		{"set inbox task due date", []string{"schedule task", "deadline"}},
 		{"create subtask from inbox", []string{"refine subtask"}},
 		{"manage inbox dependencies", []string{"manage blockers"}},

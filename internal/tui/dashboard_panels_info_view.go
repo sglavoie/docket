@@ -415,7 +415,7 @@ func renderResumeCardLine(entry parkedResumeEntry, contentWidth int) string {
 	statusBadge := GetStatusBadge(string(task.Status), task.Status.Icon())
 	prefix := fmt.Sprintf("%s %s ", typeBadge, statusBadge)
 
-	suffixParts := []string{parkedResumeSnippet(task, max(contentWidth/3, 16))}
+	suffixParts := []string{parkedResumeSnippetForRowWidth(task, contentWidth)}
 	if entry.project != nil && strings.TrimSpace(entry.project.Name) != "" {
 		suffixParts = append(suffixParts, entry.project.Name)
 	}

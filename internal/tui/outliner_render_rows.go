@@ -147,7 +147,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	}
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
-	indicators := m.renderTaskIndicators(task)
+	indicators := m.renderTaskIndicators(task, rowWidth)
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands
 	// out. pickHeroAttribute already returns HeroNone for completed/dimmed rows
@@ -259,10 +259,13 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 // indicator — future due dates, snooze, recurrence, progress, dependencies,
 // score, tags, comments, description, attachments, checklist, decisions —
 // moves to the selected-task metadata strip rendered beneath the row.
-func (m *OutlinerModel) renderTaskIndicators(task *models.Task) string {
+func (m *OutlinerModel) renderTaskIndicators(task *models.Task, rowWidth int) string {
 	var parts []string
 	if m.columnConfig.IsVisible(ColShortID) {
 		parts = append(parts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+	}
+	if parked := parkedRowSnippet(task, rowWidth); parked != "" {
+		parts = append(parts, parked)
 	}
 	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
 		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {

@@ -335,8 +335,12 @@ func (tl TaskLine) composeTaskLine(cursorPrefix, queueIndicator string, segments
 		segments.typeIcon,
 		segments.prioritySegment,
 		segments.title,
-		tl.PostTitle,
+		tl.postTitleSuffix(),
 	)
+}
+
+func (tl TaskLine) postTitleSuffix() string {
+	return appendParkedRowSnippet(tl.PostTitle, tl.Task, tl.ViewWidth)
 }
 
 func (tl TaskLine) appendDueString(line, dueStr string) string {

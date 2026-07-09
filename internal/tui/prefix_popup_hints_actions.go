@@ -133,6 +133,7 @@ var (
 		{Key: "s", Description: "section", Detail: "Change section"},
 		{Key: "o", Description: "open", Detail: "Open in external editor"},
 		{Key: "p", Description: "pin", Detail: "Toggle pin/unpin"},
+		{Key: "P", Description: "park", Detail: "Note where you left off"},
 		{Key: "h", Description: "hide", Detail: "Dim/undim task"},
 		{Key: "t", Description: "tags", Detail: "Manage task tags"},
 		{Key: "c", Description: "comments", Detail: "View/add comments"},

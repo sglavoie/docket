@@ -190,6 +190,80 @@ func TestOutlinerCompletedAndCanceledDueTodayRowsAreQuiet(t *testing.T) {
 	}
 }
 
+func TestOutlinerDenseRowShowsParkedSnippet(t *testing.T) {
+	task := renderFixtureTask(t, "parked-dense", 21, models.TaskTypeTask,
+		"Parked dense row task", models.StatusTodo, 3, models.SectionNext)
+	task.ParkedNote = "resume pairing"
+
+	project := renderFixtureProject(t, "proj-parked-dense", "prd", "Parked Dense Project", []*models.Task{task})
+
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(120, 18)
+	m.project = project
+	m.rebuildRows()
+
+	line := ansi.Strip(findOutlinerRowLine(t, m, task.ID))
+	if !strings.Contains(line, "⏸ resume pairing") {
+		t.Fatalf("dense row should show parked snippet inline, got %q", line)
+	}
+}
+
+func TestOutlinerDenseRowShowsParkedFallbackForBlankNote(t *testing.T) {
+	parkedAt := time.Now()
+	task := renderFixtureTask(t, "parked-dense-blank", 23, models.TaskTypeTask,
+		"Blank-note parked dense row task", models.StatusTodo, 3, models.SectionNext)
+	task.ParkedAt = &parkedAt
+
+	project := renderFixtureProject(t, "proj-parked-dense-blank", "pdb", "Blank Parked Dense Project", []*models.Task{task})
+
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(120, 18)
+	m.project = project
+	m.rebuildRows()
+
+	line := ansi.Strip(findOutlinerRowLine(t, m, task.ID))
+	if !strings.Contains(line, "⏸ parked") {
+		t.Fatalf("dense row should show fallback parked snippet inline, got %q", line)
+	}
+}
+
+func TestOutlinerDenseRowParkedSnippetStaysWithinWidth(t *testing.T) {
+	task := renderFixtureTask(t, "parked-dense-narrow", 22, models.TaskTypeTask,
+		"Parked dense row task with a long title", models.StatusTodo, 3, models.SectionNext)
+	task.ParkedNote = "long resume note that must fit into the dense row width budget"
+
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	const width = 48
+	m.SetSize(width, 18)
+
+	line := m.renderOutlinerTaskRow(outlinerRow{task: task}, false, width, width, 0, nil)
+	if got := lipgloss.Width(ansi.Strip(line)); got > width {
+		t.Fatalf("parked dense row width = %d, want <= %d, stripped=%q", got, width, ansi.Strip(line))
+	}
+}
+
+func TestOutlinerDenseRowParkedSnippetExpandsWithRowWidth(t *testing.T) {
+	task := renderFixtureTask(t, "parked-dense-responsive", 24, models.TaskTypeTask,
+		"Parked dense row task", models.StatusTodo, 3, models.SectionNext)
+	task.ParkedNote = "resume alpha beta gamma delta marker epsilon zeta"
+
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+
+	narrow := ansi.Strip(m.renderOutlinerTaskRow(outlinerRow{task: task}, false, 54, 54, 0, nil))
+	wide := ansi.Strip(m.renderOutlinerTaskRow(outlinerRow{task: task}, false, 120, 120, 0, nil))
+
+	if strings.Contains(narrow, "delta marker") {
+		t.Fatalf("narrow dense row exposed too much parked note text, got %q", narrow)
+	}
+	if !strings.Contains(wide, "delta marker") {
+		t.Fatalf("wide dense row should expose more parked note text, got %q", wide)
+	}
+}
+
 // TestOutlinerDenseRowWidthStableAcrossSecondaryMetadata locks in the dense
 // hierarchy's stability promise: varying secondary metadata (tags, snooze,
 // recurrence, description) on individual tasks must not shift sibling row

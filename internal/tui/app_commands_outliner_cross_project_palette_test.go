@@ -237,6 +237,43 @@ func TestCrossPalette_TaskActivity_NoTaskUnderCursor(t *testing.T) {
 	}
 }
 
+func TestCrossPalette_ParkTaskUsesCursorTaskAndProject(t *testing.T) {
+	app, _, crossProj, crossTask := setupCrossPaletteApp(t)
+
+	cmd := findCommand(app.taskActionCommands(), "park task")
+	if cmd == nil {
+		t.Fatal("expected to find 'park task' command")
+	}
+	msg, ok := cmd.Handler().(ShowParkInputMsg)
+	if !ok {
+		t.Fatalf("expected ShowParkInputMsg, got %T", cmd.Handler())
+	}
+	if msg.Task != crossTask {
+		t.Errorf("Task: want cross task, got %v", msg.Task)
+	}
+	if msg.Project != crossProj {
+		t.Errorf("Project: want cross project, got %v", msg.Project)
+	}
+}
+
+func TestCrossPalette_ParkTask_NoTaskUnderCursor(t *testing.T) {
+	app, _, _, _ := setupCrossPaletteApp(t)
+	app.crossOutliner.rows = []outlinerRow{{IsSeparator: true}}
+
+	cmd := findCommand(app.taskActionCommands(), "park task")
+	if cmd == nil {
+		t.Fatal("expected to find 'park task' command")
+	}
+	result := cmd.Handler()
+	status, ok := result.(StatusMsg)
+	if !ok {
+		t.Fatalf("expected StatusMsg, got %T", result)
+	}
+	if string(status) != statusNoTaskSelected {
+		t.Errorf("status text: want %q, got %q", statusNoTaskSelected, string(status))
+	}
+}
+
 func TestCrossPalette_ProjectRecentActivityUsesCursorProject(t *testing.T) {
 	app, _, crossProj, _ := setupCrossPaletteApp(t)
 
@@ -298,6 +335,7 @@ func TestCrossPalette_RegistryExposesReadViewCaptureCommandsInCrossOutliner(t *t
 		{"bulk capture", "I"},
 		{"edit last task", "ctrl+l"},
 		{"task activity", "gh"},
+		{"park task", "tP"},
 		{"project recent activity", "gl"},
 		{"project tree", "ctrl+p"},
 	}

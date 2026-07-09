@@ -362,6 +362,24 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			},
 		},
 		{
+			Name:        "park task",
+			Description: "Park selected task with a resume note",
+			Shortcut:    "tP",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Aliases:     []string{"parking note", "pause task", "resume note"},
+			Handler: func() tea.Msg {
+				task, project := m.paletteTaskTarget()
+				if task == nil || project == nil {
+					return StatusMsg(statusNoTaskSelected)
+				}
+				return ShowParkInputMsg{
+					Task:    task,
+					Project: project,
+				}
+			},
+		},
+		{
 			Name:        "project recent activity",
 			Description: "Show recent activity for the current project",
 			Shortcut:    "gl",

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 func TestRenderPrefixPopup_EmptyPrefix(t *testing.T) {
@@ -100,6 +101,25 @@ func TestRenderPrefixPopup_NavigationPrefix(t *testing.T) {
 	}
 }
 
+func TestRenderPrefixPopup_TaskPrefixIncludesCommonActions(t *testing.T) {
+	result := ansi.Strip(RenderPrefixPopup("t", PrefixHints{"t": TaskPrefixHints}, 200, 40))
+	if result == "" {
+		t.Fatal("expected task prefix popup to render")
+	}
+
+	for _, row := range []struct {
+		description string
+		detail      string
+	}{
+		{"new", "Create new task"},
+		{"pin", "Toggle pin/unpin"},
+		{"park", "Note where you left off"},
+		{"delete", "Delete task"},
+	} {
+		assertPopupLineContains(t, result, row.description, row.detail)
+	}
+}
+
 func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
 	hints := PrefixHints{
 		"g": ProjectTreeNavigationPrefixHints,
@@ -113,6 +133,68 @@ func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
 		if !strings.Contains(result, desc) {
 			t.Errorf("expected result to contain description %q, got %q", desc, result)
 		}
+	}
+}
+
+func TestTaskPrefixHints_MatchTaskPrefixGroupKeys(t *testing.T) {
+	entries := keymap.TaskPrefixGroup(keymap.TaskPrefixDeps{})
+	if len(entries) != 1 || entries[0].PrefixNode == nil {
+		t.Fatalf("expected one task prefix node, got %#v", entries)
+	}
+
+	keymapKeys := map[string]bool{}
+	for _, child := range entries[0].PrefixNode.Children {
+		if child.Binding == nil {
+			continue
+		}
+		keymapKeys[child.Binding.Key] = true
+	}
+
+	hintKeys := map[string]bool{}
+	for _, hint := range TaskPrefixHints {
+		hintKeys[hint.Key] = true
+	}
+
+	for key := range keymapKeys {
+		if !hintKeys[key] {
+			t.Errorf("TaskPrefixHints missing keymap child key %q", key)
+		}
+	}
+	for key := range hintKeys {
+		if !keymapKeys[key] {
+			t.Errorf("TaskPrefixHints includes key %q without keymap child", key)
+		}
+	}
+}
+
+func TestBuildOutlinerTaskPrefixHints_CrossProjectDisablesOnlyCreationHints(t *testing.T) {
+	hints := buildOutlinerTaskPrefixHints(true)
+	disabledKeys := map[string]bool{}
+	seenPark := false
+
+	for _, hint := range hints {
+		if hint.Key == "P" {
+			seenPark = true
+			if hint.Disabled {
+				t.Fatal("cross-project outliner should keep P parking hint enabled")
+			}
+		}
+		if hint.Disabled {
+			disabledKeys[hint.Key] = true
+		}
+	}
+
+	if !seenPark {
+		t.Fatal("cross-project outliner task hints missing P parking hint")
+	}
+	for _, key := range []string{"n", "N"} {
+		if !disabledKeys[key] {
+			t.Errorf("cross-project outliner should disable task creation key %q", key)
+		}
+		delete(disabledKeys, key)
+	}
+	for key := range disabledKeys {
+		t.Errorf("cross-project outliner disabled unexpected task key %q", key)
 	}
 }
 

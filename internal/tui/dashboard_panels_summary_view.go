@@ -11,7 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// renderProjectSummarySection renders the project summary card and alerts card.
+// renderProjectSummarySection renders the project summary, resume, and alerts cards.
 // When stack is true, the cards are stacked vertically at full width regardless
 // of available horizontal room; otherwise they render side-by-side when wide.
 func (m *DashboardModel) renderProjectSummarySection(width, paneHeight int, selected *models.Project, stack bool) string {
@@ -22,57 +22,79 @@ func (m *DashboardModel) renderProjectSummarySection(width, paneHeight int, sele
 	if hasSummary {
 		numCards++
 	}
+	resumeEntries := m.collectParkedResumeTasks(m.resumeCardLimit())
+	hasResume := len(resumeEntries) > 0
+	if hasResume {
+		numCards++
+	}
 
 	wide := !stack && m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
-	summaryCardW := width
+	otherCardW := width
 	alertsCardW := width
 	if wide {
 		alertsReduction := width / 10
-		summaryCardW = width - (width/numCards - alertsReduction)
-		alertsCardW = max(width-summaryCardW, MinCardWidth)
-		if summaryCardW < MinCardWidth {
-			summaryCardW = MinCardWidth
+		otherCount := numCards - 1
+		if otherCount > 0 {
+			alertsCardW = width/numCards - alertsReduction
+			otherCardW = (width - alertsCardW) / otherCount
+		} else {
+			alertsCardW = width
+		}
+		if alertsCardW < MinCardWidth {
+			alertsCardW = MinCardWidth
+		}
+		if otherCardW < MinCardWidth {
+			otherCardW = MinCardWidth
 		}
 	}
+	otherContentW := max(otherCardW-CardBorderOverhead, 1)
 	alertsContentW := max(alertsCardW-CardBorderOverhead, 1)
 
 	var cards []dashboardPanelCard
 
 	if hasSummary {
 		summaryContent := m.renderProjectSummaryContent(selected)
-		summaryTitle := fmt.Sprintf("%s Summary", truncateToVisualWidth(selected.Name, summaryCardW-16))
-		cards = append(cards, dashboardPanelCard{title: summaryTitle, content: summaryContent, width: summaryCardW})
+		summaryTitle := fmt.Sprintf("%s Summary", truncateToVisualWidth(selected.Name, otherCardW-16))
+		cards = append(cards, dashboardPanelCard{title: summaryTitle, content: summaryContent, width: otherCardW})
+	}
+
+	if hasResume {
+		resumeContent := m.renderResumeCardContent(resumeEntries, otherContentW)
+		cards = append(cards, dashboardPanelCard{title: "Resume", content: resumeContent, width: otherCardW})
 	}
 
 	alertsContent := m.renderGlobalAlerts(alertsContentW, selected)
 	cards = append(cards, dashboardPanelCard{title: "Alerts", content: alertsContent, width: alertsCardW})
 
-	if stack && hasSummary && len(cards) == 2 {
-		return renderStackedSummaryAndAlerts(width, paneHeight, cards[0], cards[1])
+	if stack && len(cards) > 1 {
+		return renderStackedProjectSummaryCards(width, paneHeight, cards)
 	}
 
 	cfg.Height = paneHeight
 	return renderDashboardCards(width, wide, cfg, cards)
 }
 
-func renderStackedSummaryAndAlerts(width, paneHeight int, summaryCard, alertsCard dashboardPanelCard) string {
-	const gapHeight = 1
-
+func renderStackedProjectSummaryCards(width, paneHeight int, cards []dashboardPanelCard) string {
 	minCardHeight := CardVerticalBorderOverhead + 1
-	totalHeight := max(paneHeight, minCardHeight*2+gapHeight)
+	totalHeight := max(paneHeight, minCardHeight*len(cards))
 
-	maxAlertsHeight := max(totalHeight-gapHeight-minCardHeight, minCardHeight)
-	alertsHeight := min(max(dashboardNaturalCardHeight(alertsCard.content), minCardHeight), maxAlertsHeight)
-	summaryHeight := totalHeight - gapHeight - alertsHeight
+	heights := make([]int, len(cards))
+	remaining := totalHeight
+	for i := len(cards) - 1; i >= 1; i-- {
+		maxHeight := max(remaining-minCardHeight*i, minCardHeight)
+		cardHeight := max(dashboardNaturalCardHeight(cards[i].content), minCardHeight)
+		heights[i] = min(cardHeight, maxHeight)
+		remaining -= heights[i]
+	}
+	heights[0] = max(remaining, minCardHeight)
 
-	summaryCfg := DashboardCardConfig()
-	summaryCfg.Height = summaryHeight
-	alertsCfg := DashboardCardConfig()
-	alertsCfg.Height = alertsHeight
-
-	return renderCard(summaryCard.title, summaryCard.content, width, summaryCfg) +
-		"\n" +
-		renderCard(alertsCard.title, alertsCard.content, width, alertsCfg)
+	parts := make([]string, 0, len(cards))
+	for i, card := range cards {
+		cardCfg := DashboardCardConfig()
+		cardCfg.Height = heights[i]
+		parts = append(parts, renderCard(card.title, card.content, width, cardCfg))
+	}
+	return strings.Join(parts, "\n")
 }
 
 func dashboardNaturalCardHeight(content string) int {

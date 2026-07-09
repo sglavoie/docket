@@ -38,18 +38,46 @@ func (m *AppModel) handleParkNoteDone(msg ParkNoteDoneMsg) (bool, tea.Cmd) {
 	if msg.Skipped || msg.Task == nil || msg.Project == nil {
 		return true, popCmd
 	}
+	if fresh := msg.Project.GetTaskByID(msg.Task.ID); fresh != nil {
+		msg.Task = fresh
+	}
 	markParkPrompted(msg.Task.ID)
 
 	action := "Park Task"
 	if msg.Unparked {
 		action = "Unpark Task"
 	}
+	// Rebuild now for immediate visual feedback; the async save will trigger
+	// the full cross-project reload after persistence completes.
+	m.refreshCrossProjectParkRows(msg.Project)
 	saveCmd := SaveProjectAsyncWithOptions(
 		msg.Project,
 		parkNoteStatusMessage(msg),
 		m.taskMutationSaveOptions(msg.Task, action),
 	)
 	return true, tea.Batch(popCmd, saveCmd)
+}
+
+func (m *AppModel) refreshCrossProjectParkRows(project *models.Project) {
+	if project == nil || m.baseProjectView() != ViewCrossProjectOutliner {
+		return
+	}
+	cross := m.activeCrossProjectOutliner()
+	if cross == nil || cross.project != nil {
+		return
+	}
+	replaced := false
+	for i, loaded := range cross.loadedProjects {
+		if loaded != nil && loaded.ID == project.ID {
+			cross.loadedProjects[i] = project
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		return
+	}
+	cross.rebuildRows()
 }
 
 func parkNoteStatusMessage(msg ParkNoteDoneMsg) string {

@@ -10,6 +10,12 @@ import (
 
 const parkedResumeIcon = "⏸"
 
+const (
+	parkedRowSnippetDefaultWidth = 24
+	parkedRowSnippetMinWidth     = 8
+	parkedRowSnippetMaxWidth     = 48
+)
+
 func parkedResumeNote(task *models.Task) string {
 	if task == nil {
 		return "parked"
@@ -33,4 +39,37 @@ func parkedResumeSnippet(task *models.Task, width int) string {
 		return truncateToVisualWidth(parkedResumeIcon, width)
 	}
 	return prefix + truncateToVisualWidth(parkedResumeNote(task), width-lipgloss.Width(prefix))
+}
+
+func parkedResumeSnippetForRowWidth(task *models.Task, rowWidth int) string {
+	if task == nil || !task.IsParked() {
+		return ""
+	}
+	return parkedResumeSnippet(task, parkedRowSnippetRenderWidth(rowWidth))
+}
+
+func parkedRowSnippet(task *models.Task, rowWidth int) string {
+	snippet := parkedResumeSnippetForRowWidth(task, rowWidth)
+	if snippet == "" {
+		return ""
+	}
+	return MutedStyle.Render(snippet)
+}
+
+func appendParkedRowSnippet(suffix string, task *models.Task, rowWidth int) string {
+	parked := parkedRowSnippet(task, rowWidth)
+	if parked == "" {
+		return suffix
+	}
+	if suffix == "" {
+		return " " + parked
+	}
+	return suffix + " " + parked
+}
+
+func parkedRowSnippetRenderWidth(rowWidth int) int {
+	if rowWidth <= 0 {
+		return parkedRowSnippetDefaultWidth
+	}
+	return min(max(rowWidth/3, parkedRowSnippetMinWidth), min(rowWidth, parkedRowSnippetMaxWidth))
 }
