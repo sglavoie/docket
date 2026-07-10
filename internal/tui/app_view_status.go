@@ -56,6 +56,20 @@ func (m *AppModel) renderStatusBar() string {
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 
+	// Show the current view's contextual footer if it provides one (e.g. the
+	// capture views). This sits above the pinned-task bar and generic breadcrumb
+	// but below the transient loading/error/status overlays handled above, so a
+	// temporary status message still replaces capture controls and the controls
+	// return once it clears. renderContextualFooter emits its own separator, so
+	// return it directly rather than prefixing the local one.
+	if view := m.views.Get(m.currentView()); view != nil {
+		if provider, ok := view.(ContextualFooterProvider); ok {
+			if spec, ok := provider.ContextualFooter(); ok {
+				return renderContextualFooter(spec, m.width, m.currentAccentColor())
+			}
+		}
+	}
+
 	// Show pinned tasks bar if any tasks are pinned.
 	if pinnedBar := m.renderPinnedTasksBar(m.width); pinnedBar != "" {
 		return separator + "\n" + pinnedBar

@@ -31,33 +31,37 @@ func TestLinkedTaskCreatorUsesCalmPlaceholder(t *testing.T) {
 }
 
 // TestLinkedTaskCreatorViewHidesSigilHintByDefault ensures the always-visible
-// `^type · !N · #tag · …` strip removed in this session does not re-render.
-// The footer instead advertises `?: syntax` for users who want the full sigil
-// reference, matching Quick Capture.
+// `^type · !N · #tag · …` strip removed in a prior session does not re-render.
+// The contextual app-shell footer instead advertises `? syntax` for users who
+// want the full sigil reference, matching Quick Capture. The footer now lives
+// in AppModel.View() (the inline child footer was removed this session), so the
+// assertion is exercised through the composed app view, not the child View().
 func TestLinkedTaskCreatorViewHidesSigilHintByDefault(t *testing.T) {
-	project, err := models.NewProject("proj-1", "creator", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
+	app, project := newTestAppModelWithProject()
+	app.width = 80
+	app.height = 24
+	sourceTask := project.Tasks[0]
+
+	handled, _ := app.handleTaskMessages(CreateLinkedTaskMsg{SourceTask: sourceTask, Project: project, LinkType: LinkTypeBlocker})
+	if !handled {
+		t.Fatal("CreateLinkedTaskMsg should be handled")
 	}
-	sourceTask, err := models.NewTask("task-1", 1, models.TaskTypeTask, "source")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
+	if app.currentView() != ViewLinkedTaskCreator {
+		t.Fatalf("currentView should be LinkedTaskCreator, got %v", app.currentView())
 	}
 
-	m := NewLinkedTaskCreatorModel(sourceTask, project, LinkTypeBlocker)
-	m.SetSize(80, 24)
-	plain := ansi.Strip(m.View().Content)
+	plain := ansi.Strip(app.View().Content)
 
 	// Legacy always-visible strip (a representative slice) must NOT appear.
 	if strings.Contains(plain, "^type · !N · #tag") {
 		t.Fatalf("expected always-visible sigil hint to be gone, but found it:\n%s", plain)
 	}
-	// Footer must advertise the gated syntax toggle.
-	if !strings.Contains(plain, "?: syntax") {
-		t.Fatalf("expected '?: syntax' in footer, got:\n%s", plain)
+	// The composed app-shell footer must advertise the gated syntax toggle.
+	if !strings.Contains(plain, "? syntax") {
+		t.Fatalf("expected '? syntax' in app-shell footer, got:\n%s", plain)
 	}
 	// Syntax guide content must be hidden by default.
-	if strings.Contains(plain, "Quick Capture Syntax") {
+	if strings.Contains(plain, "Capture Syntax") {
 		t.Fatalf("expected syntax guide to be hidden until toggled, got:\n%s", plain)
 	}
 }
@@ -86,7 +90,7 @@ func TestLinkedTaskCreatorTogglesSyntaxGuideOnQuestionMark(t *testing.T) {
 	}
 
 	plain := ansi.Strip(m.View().Content)
-	if !strings.Contains(plain, "Quick Capture Syntax") {
+	if !strings.Contains(plain, "Capture Syntax") {
 		t.Fatalf("expected syntax guide header after toggle, got:\n%s", plain)
 	}
 	// Linked task creator skips %project sigil — the guide should not advertise it.
@@ -101,7 +105,7 @@ func TestLinkedTaskCreatorTogglesSyntaxGuideOnQuestionMark(t *testing.T) {
 		t.Fatalf("expected helpExpanded to flip false after second '?' key")
 	}
 	plain = ansi.Strip(m.View().Content)
-	if strings.Contains(plain, "Quick Capture Syntax") {
+	if strings.Contains(plain, "Capture Syntax") {
 		t.Fatalf("expected syntax guide to be hidden after second toggle, got:\n%s", plain)
 	}
 }

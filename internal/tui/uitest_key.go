@@ -13,6 +13,7 @@ import (
 //   - printable single runes: "a", "A", "1", "!"
 //   - named special keys: "enter", "esc"/"escape", "tab", "space", "backspace"
 //   - arrows: "up", "down", "left", "right"
+//   - pages: "pgup"/"pageup", "pgdown"/"pagedown"
 //   - modifier prefixes joined with "+": "ctrl+x", "alt+x", "shift+tab"
 //
 // Modifiers may be combined (e.g. "ctrl+shift+a"). The base key is the final
@@ -68,6 +69,10 @@ func parseUITestKey(name string) (tea.KeyPressMsg, error) {
 		key.Code = tea.KeyLeft
 	case "right":
 		key.Code = tea.KeyRight
+	case "pgup", "pageup":
+		key.Code = tea.KeyPgUp
+	case "pgdown", "pagedown":
+		key.Code = tea.KeyPgDown
 	default:
 		runes := []rune(base)
 		if len(runes) != 1 {

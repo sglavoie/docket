@@ -14,6 +14,20 @@ type AutocompleteState struct {
 	ViewportTop int
 	TriggerPos  int
 	Items       []ACSuggestion
+	// VisibleCount overrides the number of suggestion rows shown at once. Zero
+	// means use the shared acVisibleCount default (seven), which every consumer
+	// keeps unless it explicitly opts into a smaller window (e.g. Quick Capture
+	// rendering the dropdown into a bounded lower pane).
+	VisibleCount int
+}
+
+// visibleCount returns the effective scroll-window size: the caller-provided
+// VisibleCount when positive, otherwise the shared acVisibleCount default.
+func (ac *AutocompleteState) visibleCount() int {
+	if ac.VisibleCount > 0 {
+		return ac.VisibleCount
+	}
+	return acVisibleCount
 }
 
 // ACSuggestion represents an autocomplete suggestion with display text and
@@ -73,8 +87,8 @@ func (ac *AutocompleteState) HandleKey(key string, onAccept func()) bool {
 	case "down", "ctrl+n", "ctrl+j":
 		if ac.Cursor < len(ac.Items)-1 {
 			ac.Cursor++
-			if ac.Cursor >= ac.ViewportTop+acVisibleCount {
-				ac.ViewportTop = ac.Cursor - acVisibleCount + 1
+			if ac.Cursor >= ac.ViewportTop+ac.visibleCount() {
+				ac.ViewportTop = ac.Cursor - ac.visibleCount() + 1
 			}
 		}
 		return true
@@ -143,8 +157,8 @@ func (ac *AutocompleteState) ClampCursor() {
 	}
 	if ac.Cursor < ac.ViewportTop {
 		ac.ViewportTop = ac.Cursor
-	} else if ac.Cursor >= ac.ViewportTop+acVisibleCount {
-		ac.ViewportTop = ac.Cursor - acVisibleCount + 1
+	} else if ac.Cursor >= ac.ViewportTop+ac.visibleCount() {
+		ac.ViewportTop = ac.Cursor - ac.visibleCount() + 1
 	}
 }
 
@@ -224,6 +238,22 @@ func TriggerCharForMode(mode int, triggers []ACTrigger) byte {
 	return 0
 }
 
+// RenderDropdownWithLimit renders the dropdown constrained to at most rowBudget
+// total rows, including the "N more" indicators. The item window is derived by
+// reserving two rows for the possible top/bottom indicators, so the selected
+// item and both scroll hints always remain visible in a small pane. The derived
+// window size is persisted on the state so navigation keeps the selection inside
+// the same window; consumers that never call this keep the acVisibleCount
+// default.
+func (ac *AutocompleteState) RenderDropdownWithLimit(indent string, rowBudget int) string {
+	window := max(rowBudget-2, 1)
+	if ac.VisibleCount != window {
+		ac.VisibleCount = window
+		ac.ClampCursor()
+	}
+	return ac.RenderDropdown(indent)
+}
+
 // RenderDropdown renders the autocomplete suggestion dropdown as a string.
 // The indent parameter controls the leading whitespace before each line.
 func (ac *AutocompleteState) RenderDropdown(indent string) string {
@@ -237,7 +267,7 @@ func (ac *AutocompleteState) RenderDropdown(indent string) string {
 		b.WriteString("\n")
 	}
 
-	visibleEnd := min(ac.ViewportTop+acVisibleCount, len(ac.Items))
+	visibleEnd := min(ac.ViewportTop+ac.visibleCount(), len(ac.Items))
 
 	for i := ac.ViewportTop; i < visibleEnd; i++ {
 		s := ac.Items[i]

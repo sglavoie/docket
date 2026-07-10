@@ -110,6 +110,7 @@ func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
 		ViewGlobalNotes:           (&NotesViewModel{}).buildKeyMap(),
 		ViewPipelineHub:           (&PipelineHubModel{}).buildKeyMap(),
 		ViewQuickCapture:          (&QuickCaptureModel{}).buildKeyMap(),
+		ViewLinkedTaskCreator:     (&LinkedTaskCreatorModel{}).buildKeyMap(),
 		ViewTaskForm:              (&TaskFormModel{}).buildKeyMap(),
 		ViewProjectPreview:        (&ProjectPreviewModel{}).buildKeyMap(),
 		ViewCustomContextEditor:   (&CustomContextEditorModel{}).buildKeyMap(),

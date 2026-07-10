@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/google/uuid"
@@ -135,30 +136,48 @@ func newBaselineAlertProjects() []*models.Project {
 	return projects
 }
 
-// TestBaselineQuickCaptureRendersAcrossSizes locks down the Quick Capture
-// fullscreen view body: the title and the input field must fit each baseline
-// size. Quick Capture is a normal (non-full-height) stack view, so the footer
-// is owned by AppModel.View() rather than the child model — the composed
-// single-footer contract is exercised separately by
-// TestAppViewQuickCaptureUsesAppShellFooter. This baseline only asserts the
-// child body renders its title and stays within each width.
+// TestBaselineQuickCaptureRendersAcrossSizes locks down the composed Quick
+// Capture surface across every baseline size plus the narrow minimum. Quick
+// Capture is a normal (non-full-height) stack view, so the footer is owned by
+// AppModel.View() rather than the child model. Composing through the app (not
+// rendering the child directly) exercises the real single-footer contract:
+// this baseline asserts the capture title/body renders, the primary footer
+// actions are present, exactly one app-shell footer separator is drawn
+// (footer/content separation), and the total height stays within the terminal
+// budget. The width-only child render this replaced could not catch a footer
+// that overflowed or duplicated its separator.
 func TestBaselineQuickCaptureRendersAcrossSizes(t *testing.T) {
-	project := testutil.NewTestProject("Capture")
 	sizes := append([]baselineSize{}, baselineSizes...)
 	sizes = append(sizes, narrowBaseline)
 
 	for _, sz := range sizes {
 		t.Run(sz.label, func(t *testing.T) {
-			m := NewQuickCaptureModel(project, nil, false)
-			m.SetSize(sz.width, sz.height)
+			app, project := newTestAppModelWithProject()
+			// Drive sizing through the window-size path so the registered view is
+			// budgeted to terminal height minus the footer, matching real usage.
+			app.handleWindowSize(tea.WindowSizeMsg{Width: sz.width, Height: sz.height})
 
-			rendered := m.View().Content
+			if handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{Project: project}); !handled {
+				t.Fatal("ShowQuickCaptureMsg should be handled")
+			}
+
+			rendered := app.View().Content
 			label := "quick capture " + sz.label
 
 			assertBaselineLineWidth(t, label, rendered, sz.width)
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Quick Capture",
+				"Enter create",
+				"? syntax",
+				"Esc cancel",
 			)
+			// Footer/content separation: exactly one app-shell separator.
+			if got := countFullWidthDividers(rendered); got != 1 {
+				t.Fatalf("%s: expected exactly one app-shell footer separator, got %d\n%s",
+					label, got, ansi.Strip(rendered))
+			}
+			// Total height stays within the terminal budget.
+			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})
 	}
 }

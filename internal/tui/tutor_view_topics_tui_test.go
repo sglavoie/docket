@@ -142,6 +142,16 @@ func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T)
 		"Priority & Tags",
 		"Placement",
 		"Project Routing",
+		// Session 5: the fixed composer, scrollable syntax pane, scroll keys,
+		// neutral heading, footer states, and Esc precedence must be taught.
+		"Fixed Composer & Scrollable Syntax",
+		`"Capture Syntax"`,
+		"Ctrl+J/K",
+		"PgUp/PgDn",
+		"Footer States",
+		"? close syntax",
+		"Esc close syntax",
+		"dismisses autocomplete",
 	}
 	for _, want := range required {
 		if !strings.Contains(topic.Content, want) {
@@ -186,6 +196,11 @@ func TestTutorQuickCaptureGrammarTopicDocumentsGroupTaxonomy(t *testing.T) {
 		"Priority & Tags",
 		"Placement",
 		"Project Routing",
+		// Session 5: neutral heading, fixed composer, and independent scroll keys.
+		"Scrollable Syntax Reference",
+		`"Capture Syntax"`,
+		"Ctrl+J/K",
+		"PgUp/PgDn",
 	}
 	for _, want := range required {
 		if !strings.Contains(topic.Content, want) {

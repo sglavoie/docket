@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -88,6 +89,14 @@ type quickCaptureInput struct {
 
 	// Layout
 	width int // Available width for preview wrapping
+
+	// Syntax help state, shared by both capture hosts so the expanded/collapsed
+	// flag and scroll offset live in one place. helpExpanded is the logical
+	// toggle; syntaxVP holds the scrollable rendered guide and its offset, which
+	// is preserved across autocomplete activation and clamped on resize.
+	helpExpanded bool
+	syntaxVP     viewport.Model
+	syntaxReady  bool
 }
 
 // newQuickCaptureInput creates a new quickCaptureInput with default textarea settings.
@@ -152,6 +161,106 @@ func (q *quickCaptureInput) initCaches() {
 // resizeTextarea applies standard form resize logic to the textarea.
 func (q *quickCaptureInput) resizeTextarea(width int) {
 	formFactory.ResizeTextarea(&q.input, width)
+}
+
+// ensureSyntaxViewport lazily constructs the syntax help viewport so callers can
+// scroll or measure it before it has been sized by a render pass.
+func (q *quickCaptureInput) ensureSyntaxViewport() {
+	if !q.syntaxReady {
+		q.syntaxVP = viewport.New(viewport.WithWidth(max(q.width, 1)), viewport.WithHeight(1))
+		q.syntaxReady = true
+	}
+}
+
+// setSyntaxViewportWidth resizes the guide viewport to the composer width and,
+// when help is open, re-renders the width-measured guide and clamps the offset
+// so a resize can never leave the viewport scrolled past its (possibly shorter)
+// new content.
+func (q *quickCaptureInput) setSyntaxViewportWidth(width int) {
+	q.ensureSyntaxViewport()
+	q.syntaxVP.SetWidth(max(width, 1))
+	if q.helpExpanded {
+		q.syntaxVP.SetContent(q.renderSyntaxGuide())
+		q.clampSyntaxOffset()
+	}
+}
+
+// setSyntaxViewportHeight sets the guide viewport height (the bounded lower-pane
+// budget) and re-clamps the offset against the new visible height.
+func (q *quickCaptureInput) setSyntaxViewportHeight(height int) {
+	q.ensureSyntaxViewport()
+	q.syntaxVP.SetHeight(max(height, 1))
+	q.clampSyntaxOffset()
+}
+
+// clampSyntaxOffset re-applies the current offset, which the viewport clamps to
+// its valid range. Used after resize so a shrunk guide or pane cannot leave a
+// stale offset scrolled past the end.
+func (q *quickCaptureInput) clampSyntaxOffset() {
+	q.syntaxVP.SetYOffset(q.syntaxVP.YOffset())
+}
+
+// openHelp expands the syntax guide at the top. The offset resets to zero so the
+// guide always opens showing its first group (Basics), matching the reported
+// interaction model.
+func (q *quickCaptureInput) openHelp() {
+	q.helpExpanded = true
+	q.ensureSyntaxViewport()
+	q.syntaxVP.SetContent(q.renderSyntaxGuide())
+	q.syntaxVP.GotoTop()
+}
+
+// closeHelp collapses the syntax guide. The offset is retained on the viewport
+// so re-opening via toggleHelp still starts at the top (openHelp resets it),
+// while autocomplete-driven hide/show preserves the mid-scroll position.
+func (q *quickCaptureInput) closeHelp() {
+	q.helpExpanded = false
+}
+
+// toggleHelp opens the guide at the top when closed, or closes it when open.
+func (q *quickCaptureInput) toggleHelp() {
+	if q.helpExpanded {
+		q.closeHelp()
+		return
+	}
+	q.openHelp()
+}
+
+// syntaxScrollLine scrolls the guide by delta lines (negative = up).
+func (q *quickCaptureInput) syntaxScrollLine(delta int) {
+	q.ensureSyntaxViewport()
+	if delta < 0 {
+		q.syntaxVP.ScrollUp(-delta)
+	} else {
+		q.syntaxVP.ScrollDown(delta)
+	}
+}
+
+// syntaxScrollPage scrolls the guide by delta full pages (negative = up).
+func (q *quickCaptureInput) syntaxScrollPage(delta int) {
+	q.ensureSyntaxViewport()
+	if delta < 0 {
+		q.syntaxVP.PageUp()
+	} else {
+		q.syntaxVP.PageDown()
+	}
+}
+
+// syntaxOverflows reports whether the rendered guide is taller than its visible
+// viewport, i.e. scrolling is meaningful. Footer scroll hints and the scroll
+// percentage are shown only in this case.
+func (q *quickCaptureInput) syntaxOverflows() bool {
+	return q.syntaxReady && q.syntaxVP.TotalLineCount() > q.syntaxVP.Height()
+}
+
+// syntaxScrollPercent returns the scroll position as a 0-100 percentage, clamped
+// so a non-overflowing guide reports fully scrolled (100%).
+func (q *quickCaptureInput) syntaxScrollPercent() int {
+	if !q.syntaxOverflows() {
+		return 100
+	}
+	pct := int(q.syntaxVP.ScrollPercent() * 100)
+	return max(0, min(pct, 100))
 }
 
 // handleAutocompleteKey handles keys when autocomplete is active.
@@ -223,23 +332,23 @@ func (q *quickCaptureInput) updatePreview() {
 // longest label plus a trailing space so the body column lines up.
 const previewGroupLabelWidth = 9
 
-// renderPreview formats the parsed preview for display. The output is chunked
-// into labeled groups (Task / Route / Schedule / Metadata) so the user can
-// scan what the parser understood without parsing a separator-soup. Only
-// populated groups are shown; alias hints go on their own line.
-func (q *quickCaptureInput) renderPreview() string {
-	if q.previewErr != "" {
-		return ValidationErrorStyle.Render(q.previewErr)
-	}
-	if q.preview == nil || q.preview.title == "" {
-		return ""
-	}
+// previewGroup is one labeled cluster of parsed-metadata chunks (Task, Route,
+// Schedule, Metadata, Aliases). Both the full grouped preview and the compact
+// two-row fallback are built from the same groups so they can never disagree
+// about what the parser understood.
+type previewGroup struct {
+	label  string
+	chunks []string
+}
 
-	type previewGroup struct {
-		label  string
-		chunks []string
+// previewGroups builds the populated preview groups from the parsed result, or
+// reports ok=false when there is nothing to preview. It is the single source of
+// the recognized task, route, schedule, status, priority, tag, project, and
+// alias information shown by both preview renderers.
+func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
+	if q.preview == nil || q.preview.title == "" {
+		return nil, false
 	}
-	var groups []previewGroup
 
 	typeStyle := GetTypeStyle(string(q.preview.taskType))
 	taskChunks := []string{typeStyle.Render(q.preview.taskType.Icon()) + " " + q.preview.title}
@@ -288,17 +397,118 @@ func (q *quickCaptureInput) renderPreview() string {
 		groups = append(groups, previewGroup{label: "Metadata", chunks: metaChunks})
 	}
 
-	var lines []string
-	for _, g := range groups {
-		body := strings.Join(g.chunks, " · ")
-		lines = append(lines, q.renderPreviewLine(g.label, body))
-	}
-
 	if len(q.preview.aliasesUsed) > 0 {
 		body := MutedStyle.Render(strings.Join(q.preview.aliasesUsed, ", "))
-		lines = append(lines, q.renderPreviewLine("Aliases", body))
+		groups = append(groups, previewGroup{label: "Aliases", chunks: []string{body}})
 	}
 
+	return groups, true
+}
+
+// renderPreview formats the parsed preview for display. The output is chunked
+// into labeled groups (Task / Route / Schedule / Metadata) so the user can
+// scan what the parser understood without parsing a separator-soup. Only
+// populated groups are shown; alias hints go on their own line.
+func (q *quickCaptureInput) renderPreview() string {
+	if q.previewErr != "" {
+		return ValidationErrorStyle.Render(q.previewErr)
+	}
+	groups, ok := q.previewGroups()
+	if !ok {
+		return ""
+	}
+
+	var lines []string
+	for _, g := range groups {
+		lines = append(lines, q.renderPreviewLine(g.label, strings.Join(g.chunks, " · ")))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// renderCompactPreview renders the same recognized metadata as renderPreview but
+// as a single unlabeled " · "-joined line wrapped to at most two rows. Quick
+// Capture falls back to it when the full grouped preview would displace the
+// scrollable syntax guide or the app-shell footer, keeping the composed view
+// within its height budget without dropping what the parser understood.
+func (q *quickCaptureInput) renderCompactPreview() string {
+	if q.previewErr != "" {
+		return q.clampToRows(ValidationErrorStyle.Render(q.previewErr), 2)
+	}
+	groups, ok := q.previewGroups()
+	if !ok {
+		return ""
+	}
+	var chunks []string
+	for _, g := range groups {
+		chunks = append(chunks, g.chunks...)
+	}
+	return q.clampToRows(strings.Join(chunks, " · "), 2)
+}
+
+// composePreviewBlock renders the live preview (or error) for a composed capture
+// view, choosing the full grouped preview when it fits alongside the lower pane
+// and falling back to the compact two-row form when it would otherwise displace
+// the lower pane or the footer. It returns the rendered block, its row count, and
+// whether a trailing blank separator should follow it (1 when non-empty). Shared
+// by Quick Capture and the Linked Task Creator so both budget the preview identically.
+func (q *quickCaptureInput) composePreviewBlock(remaining, lowerMin int) (block string, rows, blankAfter int) {
+	renderFull := func() string {
+		if q.err != nil {
+			return ValidationErrorStyle.Render(q.err.Error())
+		}
+		return q.renderPreview()
+	}
+	renderCompact := func() string {
+		if q.err != nil {
+			return q.clampToRows(ValidationErrorStyle.Render(q.err.Error()), 2)
+		}
+		return q.renderCompactPreview()
+	}
+
+	block = renderFull()
+	if block != "" {
+		rows = lipgloss.Height(block)
+		blankAfter = 1
+	}
+
+	// Fall back to compact when a lower pane needs room the full preview would eat.
+	if lowerMin > 0 && rows+blankAfter+lowerMin > remaining {
+		block = renderCompact()
+		rows, blankAfter = 0, 0
+		if block != "" {
+			rows = lipgloss.Height(block)
+			blankAfter = 1
+		}
+	}
+
+	// Safety net when there is no lower pane: never let the preview overflow the
+	// budget. Clip trailing rows rather than push the footer off screen.
+	if lowerMin == 0 && rows+blankAfter > remaining {
+		lines := strings.Split(block, "\n")
+		if keep := max(remaining-blankAfter, 1); len(lines) > keep {
+			block = strings.Join(lines[:keep], "\n")
+			rows = keep
+		}
+	}
+	return block, rows, blankAfter
+}
+
+// clampToRows wraps a styled string to q.width and keeps at most rows lines,
+// silently dropping any overflow. Used for the best-effort compact preview,
+// where losing a trailing detail is acceptable but a fixed row budget is not.
+func (q *quickCaptureInput) clampToRows(styled string, rows int) string {
+	if rows < 1 {
+		rows = 1
+	}
+	var lines []string
+	if q.width <= 0 {
+		lines = strings.Split(styled, "\n")
+	} else {
+		lines = wrapStyled(styled, q.width)
+	}
+	if len(lines) > rows {
+		lines = lines[:rows]
+	}
 	return strings.Join(lines, "\n")
 }
 
@@ -328,13 +538,22 @@ func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
 	return strings.Join(wrapped, "\n")
 }
 
+// syntaxGuideTitle is the neutral heading shared by both capture hosts (Quick
+// Capture and the Linked Task Creator). It is intentionally host-agnostic so
+// the same grammar reference reads correctly wherever it appears.
+const syntaxGuideTitle = "Capture Syntax"
+
 // syntaxGuideEntry documents one sigil/alias family: the accepted forms, a
-// short description, and example values. Kept flat so the guide renderer can
-// wrap each field independently at narrow widths.
+// short description, display examples, and a set of full capture inputs that
+// must parse successfully. The display fields (forms/desc/examples) may carry
+// presentation sugar such as arrows or "(repeatable)" hints; the validation
+// inputs are kept separate so parser-backed tests exercise real, parseable
+// capture strings rather than the rendered sugar.
 type syntaxGuideEntry struct {
-	forms    string
-	desc     string
-	examples string
+	forms      string
+	desc       string
+	examples   string
+	validation []string
 }
 
 // syntaxGuideGroup clusters related capture sigils under a heading so the
@@ -349,38 +568,119 @@ type syntaxGuideGroup struct {
 // (which skips project syntax) never advertises it. Task-type examples omit
 // `note` because it is not a valid models.TaskType.
 func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
+	// Derive task-type forms and validation inputs from the authoritative model
+	// list so the invalid `note` type can never drift back into the guide.
+	typeForms := make([]string, 0, len(models.AllTaskTypes()))
+	typeValidation := make([]string, 0, len(models.AllTaskTypes())+1)
+	for _, tt := range models.AllTaskTypes() {
+		name := string(tt)
+		typeForms = append(typeForms, "^"+name)
+		typeValidation = append(typeValidation, "Sample ^"+name)
+	}
+	typeValidation = append(typeValidation, "Sample type:task")
+
 	groups := []syntaxGuideGroup{
 		{
 			name: "Basics",
 			entries: []syntaxGuideEntry{
-				{"^type · type:", "Task type", "^epic  ^story  ^task  ^bug  ^idea"},
+				{
+					forms:      "^type · type:",
+					desc:       "Task type",
+					examples:   strings.Join(typeForms, "  "),
+					validation: typeValidation,
+				},
 			},
 		},
 		{
 			name: "Priority & Tags",
 			entries: []syntaxGuideEntry{
-				{"! · pri:", "Priority (1-5)", "!1  !urgent→!1  !normal→!3  !low→!5  pri:2"},
-				{"# · tag:", "Add tag", "#backend  #urgent  tag:backend  (repeatable)"},
+				{
+					forms:    "! · pri: · priority:",
+					desc:     "Priority (1-5)",
+					examples: "!1  !urgent  !normal  !low  pri:2  priority:high",
+					validation: []string{
+						"Task !1", "Task !2", "Task !3", "Task !4", "Task !5",
+						"Task !critical", "Task !urgent", "Task !high",
+						"Task !normal", "Task !medium", "Task !low", "Task !lowest",
+						"Task !c", "Task !cr", "Task !u", "Task !ur", "Task !h", "Task !hi",
+						"Task !n", "Task !no", "Task !m", "Task !me", "Task !med",
+						"Task !l", "Task !lo",
+						"Task pri:2", "Task priority:high",
+					},
+				},
+				{
+					forms:    "# · tag:",
+					desc:     "Add tag",
+					examples: "#backend  #urgent  tag:api  (repeatable)",
+					validation: []string{
+						"Task #backend", "Task #urgent #api",
+						"Task tag:backend", "Task tag:api #frontend",
+					},
+				},
 			},
 		},
 		{
 			name: "Schedule",
 			entries: []syntaxGuideEntry{
-				{"@ · due:", "Due date", "@tomorrow  @friday  @+3d  due:fri  due:3d"},
-				{"~ · recur:", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  recur:weekly"},
+				{
+					forms:    "@ · due:",
+					desc:     "Due date",
+					examples: "@tomorrow  @friday  @+3d  @next monday  due:2w",
+					validation: []string{
+						"Task @tomorrow", "Task @friday", "Task @+3d", "Task @+1w",
+						"Task @next monday", "Task @in 2 weeks", "Task @2025-12-31",
+						"Task due:tomorrow", "Task due:friday", "Task due:2w",
+					},
+				},
+				{
+					forms:    "~ · recur:",
+					desc:     "Recurrence",
+					examples: "~daily  ~weekly  ~biweekly  ~2w  recur:monthly  ~weekly:mon,fri  ~daily~",
+					validation: []string{
+						"Task ~daily", "Task ~weekly", "Task ~biweekly",
+						"Task ~monthly", "Task ~yearly", "Task ~2d", "Task ~3w",
+						"Task recur:weekly", "Task ~weekly:mon,fri", "Task ~2w:mon,thu",
+						"Task ~daily~", "Task ~weekly:fri~",
+					},
+				},
 			},
 		},
 		{
 			name: "Placement",
 			entries: []syntaxGuideEntry{
-				{"/ · sec:", "Section", "/next  /inbox  /waiting  /someday  (default → Inbox)"},
-				{"> · parent:", "Parent task", ">42  >Login  parent:42  (short ID or title)"},
+				{
+					forms:    "/ · sec: · section:",
+					desc:     "Section",
+					examples: "/next  /inbox  /waiting  /someday  sec:review  (else → Inbox)",
+					validation: []string{
+						"Task /next", "Task /inbox", "Task /waiting",
+						"Task /someday", "Task /review", "Task /standby",
+						"Task sec:next", "Task section:waiting",
+					},
+				},
+				{
+					forms:    "> · parent:",
+					desc:     "Parent task",
+					examples: ">1  >Login  parent:2  (short ID or title)",
+					validation: []string{
+						"Subtask >1", "Subtask >Login", "Subtask parent:2",
+					},
+				},
 			},
 		},
 		{
 			name: "Status",
 			entries: []syntaxGuideEntry{
-				{"$ · status:", "Initial status", "$start  $blocked  $review  $done  status:done"},
+				{
+					forms:    "$ · status:",
+					desc:     "Initial status",
+					examples: "$start  $blocked  $review  $standby  $maybe  $done  $canceled  status:done",
+					validation: []string{
+						"Task $start", "Task $blocked", "Task $review",
+						"Task $standby", "Task $hold", "Task $maybe",
+						"Task $done", "Task $canceled", "Task status:done",
+					},
+				},
 			},
 		},
 	}
@@ -388,20 +688,64 @@ func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 		groups = append(groups, syntaxGuideGroup{
 			name: "Project Routing",
 			entries: []syntaxGuideEntry{
-				{"% · p: · proj:", "Target project", "%myproject  p:myproject  (slug or name)"},
+				{
+					forms:    "% · p: · proj:",
+					desc:     "Target project",
+					examples: "%slug  p:slug  proj:name  (slug or name)",
+					validation: []string{
+						"Task %" + syntaxGuideProjectSlug,
+						"Task p:" + syntaxGuideProjectSlug,
+						"Task proj:" + syntaxGuideProjectSlug,
+					},
+				},
 			},
 		})
 	}
 	return groups
 }
 
-// renderSyntaxGuide returns the grouped, wrap-aware sigil/alias reference shown
-// when the user toggles the gated syntax help. Shared by Quick Capture and the
-// linked-task creator so both surfaces stay in lockstep. Every emitted line is
-// wrapped to q.width so the guide never overflows at narrow widths.
+// syntaxGuideProjectSlug is the placeholder project slug used by the Project
+// Routing group's parser-validation inputs. Tests that parse those inputs must
+// supply a non-archived project with this slug in their allProjects fixture.
+const syntaxGuideProjectSlug = "myproj"
+
+// Layout constants for the syntax guide's measured responsive rendering.
+const (
+	syntaxEntryIndent = 2 // Leading indent for an entry's first field.
+	syntaxFieldIndent = 4 // Indent for wrapped/stacked continuation fields.
+	syntaxColumnGap   = 2 // Gap between aligned columns.
+)
+
+// renderSyntaxGuide returns the grouped, measured, wrap-aware sigil/alias
+// reference shown when the user toggles the gated syntax help. Shared by Quick
+// Capture and the linked-task creator so both surfaces stay in lockstep.
+//
+// Each entry is laid out with a measured responsive strategy, tried in order:
+//  1. Aligned row: forms, description, and examples share one line, with forms
+//     and descriptions padded to consistent columns.
+//  2. If the aligned row does not fit, keep forms and description on the first
+//     row and wrap the examples underneath.
+//  3. If forms and description cannot coexist on one row, stack every field.
+//
+// All measurement uses ANSI-aware visual width, so the guide never overflows
+// q.width at narrow widths regardless of styling.
 func (q *quickCaptureInput) renderSyntaxGuide() string {
+	groups := q.syntaxGuideGroups()
+
+	// Compute aligned column widths across every entry so aligned rows line up
+	// their forms and descriptions into consistent columns.
+	formsCol, descCol := 0, 0
+	for _, g := range groups {
+		for _, e := range g.entries {
+			formsCol = max(formsCol, lipgloss.Width(e.forms))
+			descCol = max(descCol, lipgloss.Width(e.desc))
+		}
+	}
+
 	var lines []string
-	appendWrapped := func(indent int, style lipgloss.Style, text string) {
+
+	// appendWrappedField wraps a single field to q.width at the given indent.
+	appendWrappedField := func(indent int, style lipgloss.Style, text string) {
 		pad := strings.Repeat(" ", indent)
 		avail := q.width - indent
 		if q.width <= 0 || avail <= 0 {
@@ -413,14 +757,64 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 		}
 	}
 
-	lines = append(lines, MutedStyle.Render("Quick Capture Syntax"))
-	for _, g := range q.syntaxGuideGroups() {
+	// padStyled pads an already-styled field with trailing spaces so its rendered
+	// visual width reaches col. Trailing padding is unstyled, which is width-safe.
+	padStyled := func(styled string, plainWidth, col int) string {
+		if plainWidth >= col {
+			return styled
+		}
+		return styled + strings.Repeat(" ", col-plainWidth)
+	}
+
+	appendEntry := func(e syntaxGuideEntry) {
+		formsW := lipgloss.Width(e.forms)
+		descW := lipgloss.Width(e.desc)
+		examplesW := lipgloss.Width(e.examples)
+
+		styledForms := MatchHighlightStyle.Render(e.forms)
+		styledDesc := MutedStyle.Render(e.desc)
+		styledExamples := MutedStyle.Render(e.examples)
+
+		indentStr := strings.Repeat(" ", syntaxEntryIndent)
+		gapStr := strings.Repeat(" ", syntaxColumnGap)
+		formsDescRow := indentStr +
+			padStyled(styledForms, formsW, formsCol) + gapStr +
+			padStyled(styledDesc, descW, descCol)
+		fdWidth := syntaxEntryIndent + formsCol + syntaxColumnGap + descCol
+
+		switch {
+		case q.width <= 0:
+			// No width budget: fall back to a simple stacked form.
+			appendWrappedField(syntaxEntryIndent, MatchHighlightStyle, e.forms)
+			appendWrappedField(syntaxFieldIndent, MutedStyle, e.desc)
+			if examplesW > 0 {
+				appendWrappedField(syntaxFieldIndent, MutedStyle, e.examples)
+			}
+		case examplesW > 0 && fdWidth+syntaxColumnGap+examplesW <= q.width:
+			// Mode 1: aligned single row.
+			lines = append(lines, formsDescRow+gapStr+styledExamples)
+		case fdWidth <= q.width:
+			// Mode 2: forms + description on the first row, examples wrapped below.
+			lines = append(lines, formsDescRow)
+			if examplesW > 0 {
+				appendWrappedField(syntaxFieldIndent, MutedStyle, e.examples)
+			}
+		default:
+			// Mode 3: forms and description cannot coexist; stack every field.
+			appendWrappedField(syntaxEntryIndent, MatchHighlightStyle, e.forms)
+			appendWrappedField(syntaxFieldIndent, MutedStyle, e.desc)
+			if examplesW > 0 {
+				appendWrappedField(syntaxFieldIndent, MutedStyle, e.examples)
+			}
+		}
+	}
+
+	lines = append(lines, MutedStyle.Render(syntaxGuideTitle))
+	for _, g := range groups {
 		lines = append(lines, "")
-		appendWrapped(0, SectionHeaderStyle, g.name)
+		appendWrappedField(0, SectionHeaderStyle, g.name)
 		for _, e := range g.entries {
-			appendWrapped(2, MatchHighlightStyle, e.forms)
-			appendWrapped(4, MutedStyle, e.desc)
-			appendWrapped(4, MutedStyle, e.examples)
+			appendEntry(e)
 		}
 	}
 	return strings.Join(lines, "\n") + "\n"

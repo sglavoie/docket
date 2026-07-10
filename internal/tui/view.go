@@ -28,6 +28,26 @@ type ViewCapabilities interface {
 	IsFullHeight() bool
 }
 
+// StatusBarFooterSpec describes a view's contextual footer as plain, unstyled
+// strings. Left is the multi-item help cluster (items joined by " · " so the
+// shared renderer can wrap on those boundaries); Right is a short
+// indicator/label. Styling is applied once by renderContextualFooter, so
+// providers must return unstyled text.
+type StatusBarFooterSpec struct {
+	Left  string
+	Right string
+}
+
+// ContextualFooterProvider is implemented by views that supply their own
+// contextual footer content for the app shell to compose. The app-shell status
+// bar renders this spec at a priority above the pinned-task bar and the generic
+// breadcrumb, but below transient loading/error/status overlays. Returning
+// ok=false means the view has no contextual footer for its current state, so
+// the app shell falls through to the lower-priority footers.
+type ContextualFooterProvider interface {
+	ContextualFooter() (spec StatusBarFooterSpec, ok bool)
+}
+
 // PendingPrefixView is implemented by views that participate in multi-key
 // prefix sequences (e.g. filter prefix F, goto prefix g). When a prefix is
 // pending, the app shell must skip global single-character shortcuts so the

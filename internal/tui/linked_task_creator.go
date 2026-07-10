@@ -7,19 +7,22 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // LinkedTaskCreatorModel handles creation of tasks linked to a source task.
+// The expanded-syntax flag (helpExpanded) lives in the embedded quickCaptureInput
+// so it is shared with Quick Capture; the viewport-backed scrollable guide is
+// adopted here in a later session.
 type LinkedTaskCreatorModel struct {
 	quickCaptureInput
-	sourceTask   *models.Task
-	linkType     LinkType
-	width        int
-	height       int
-	helpExpanded bool
+	sourceTask *models.Task
+	linkType   LinkType
+	width      int
+	height     int
 	discardConfirmState
 }
 
@@ -44,6 +47,7 @@ func (m *LinkedTaskCreatorModel) SetSize(width, height int) {
 	m.height = height
 	m.quickCaptureInput.width = width
 	m.resizeTextarea(width)
+	m.setSyntaxViewportWidth(width)
 }
 
 func (m *LinkedTaskCreatorModel) Init() tea.Cmd {
@@ -70,19 +74,48 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		key := msg.String()
 
+		// Interaction precedence mirrors Quick Capture: autocomplete owns its
+		// navigation keys while active; then the expanded syntax guide claims
+		// scroll keys; then the ? toggle; then normal capture handling.
+
 		// Handle autocomplete navigation when active
 		if m.handleAutocompleteKey(key) {
 			return m, nil
 		}
 
-		// Toggle syntax help (gated, parallels Quick Capture's ? toggle)
+		// Scroll the expanded syntax guide while it is actually visible (not
+		// shadowed by autocomplete).
+		if m.helpExpanded && !m.isAutocompleteActive() {
+			switch key {
+			case "ctrl+k":
+				m.syntaxScrollLine(-1)
+				return m, nil
+			case "ctrl+j":
+				m.syntaxScrollLine(1)
+				return m, nil
+			case "pgup":
+				m.syntaxScrollPage(-1)
+				return m, nil
+			case "pgdown":
+				m.syntaxScrollPage(1)
+				return m, nil
+			}
+		}
+
+		// Toggle syntax help (opens at the top, closes when open).
 		if key == "?" && m.ac.Mode == acModeNone {
-			m.helpExpanded = !m.helpExpanded
+			m.toggleHelp()
 			return m, nil
 		}
 
 		switch key {
 		case "esc":
+			// Esc dismisses the expanded guide before cancel/discard; autocomplete
+			// was already dismissed above.
+			if m.helpExpanded {
+				m.closeHelp()
+				return m, nil
+			}
 			if strings.TrimSpace(m.inputValue()) != "" {
 				m.confirmDiscard = true
 				return m, nil
@@ -111,57 +144,79 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *LinkedTaskCreatorModel) View() tea.View {
-	var b strings.Builder
+	applyThemedTextarea(&m.input)
 
-	// Header showing link type and source task
+	autocompleteActive := m.isAutocompleteActive()
+	helpVisible := m.helpExpanded && !autocompleteActive
+
+	// Content budget: views are sized to terminal height minus the standard
+	// two-row footer, so only reserve the extra rows a wrapped contextual footer
+	// adds beyond those two. AppModel.View() owns the single app-shell footer.
+	extraFooter := captureFooterExtraRows(m.width, m.confirmDiscard, autocompleteActive, m.helpExpanded)
+	budget := max(m.height-extraFooter, 1)
+
+	// Fixed blocks: title, the source-task context header, and the textarea. All
+	// stay put; only the lower pane (autocomplete or syntax viewport) flexes.
 	linkName := m.linkTypeName()
-	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Create %s for #%d", linkName, m.sourceTask.ShortID)))
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(truncateToVisualWidth(m.sourceTask.Title, max(m.width-2, 1))))
+	title := renderFullscreenTitle(fmt.Sprintf("New %s", linkName), "")
+	header := SubtitleStyle.Render(fmt.Sprintf("Create %s for #%d", linkName, m.sourceTask.ShortID)) + "\n" +
+		MutedStyle.Render(truncateToVisualWidth(m.sourceTask.Title, max(m.width-2, 1)))
+	textareaView := m.input.View()
+	// Rows above the flexible region: title + blank + header + blank + textarea + blank.
+	fixedRows := lipgloss.Height(title) + 1 + lipgloss.Height(header) + 1 + lipgloss.Height(textareaView) + 1
+
+	discard := ""
+	discardRows := 0
+	if m.confirmDiscard {
+		discard = ValidationErrorStyle.Render("Discard input? (y/n)")
+		discardRows = 1
+	}
+
+	remaining := max(budget-fixedRows-discardRows, 1)
+
+	// A lower pane (autocomplete or syntax viewport) needs a minimum height; when
+	// present, the full preview may fall back to the compact two-row form.
+	lowerMin := 0
+	if autocompleteActive || helpVisible {
+		lowerMin = min(3, remaining)
+	}
+
+	previewBlock, previewRows, blankAfterPreview := m.composePreviewBlock(remaining, lowerMin)
+
+	// Whatever remains after the (possibly compact) preview goes to the lower pane.
+	lowerRows := max(remaining-previewRows-blankAfterPreview, 1)
+	lower := ""
+	switch {
+	case autocompleteActive:
+		lower = m.ac.RenderDropdownWithLimit("", lowerRows)
+	case helpVisible:
+		m.setSyntaxViewportHeight(lowerRows)
+		lower = m.syntaxVP.View()
+	}
+
+	// The Linked Task Creator is a normal (non-full-height) stack view, so
+	// AppModel.View() owns the single app-shell footer via ContextualFooter().
+	// Rendering an inline footer here would duplicate the app-shell separator.
+	var b strings.Builder
+	b.WriteString(title)
 	b.WriteString("\n\n")
-
-	// Input field
-	b.WriteString(m.input.View())
-	b.WriteString("\n")
-
-	// Show autocomplete suggestions if active
-	if ac := m.renderAutocomplete(); ac != "" {
-		b.WriteString(ac)
-	}
-
-	b.WriteString("\n")
-
-	// Show live preview or error
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+	b.WriteString(header)
+	b.WriteString("\n\n")
+	b.WriteString(textareaView)
+	if previewBlock != "" {
 		b.WriteString("\n\n")
-	} else if preview := m.renderPreview(); preview != "" {
-		b.WriteString(preview)
-		b.WriteString("\n\n")
+		b.WriteString(previewBlock)
 	}
-
-	// Syntax guide only when toggled via ?; the prompt stays calm otherwise.
-	if m.helpExpanded {
-		b.WriteString(m.renderSyntaxGuide())
+	if lower != "" {
+		b.WriteString("\n\n")
+		b.WriteString(lower)
+	}
+	if discard != "" {
 		b.WriteString("\n")
-	}
-	var helpText string
-	if m.isAutocompleteActive() {
-		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
-	} else {
-		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · ?: syntax · Esc: cancel"
+		b.WriteString(discard)
 	}
 
-	title := fmt.Sprintf("New %s", linkName)
-
-	var out strings.Builder
-	out.WriteString(renderFullscreenTitle(title, ""))
-	out.WriteString("\n\n")
-	out.WriteString(b.String())
-	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
-
-	return tea.NewView(out.String())
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because this view uses a textarea.
@@ -344,3 +399,22 @@ func (m *LinkedTaskCreatorModel) createTask(openContent, openDetail bool) tea.Cm
 }
 
 func (m *LinkedTaskCreatorModel) StatusBarLabel() string { return "New Linked Task" }
+
+// ContextualFooter supplies the app-shell footer for the Linked Task Creator,
+// sharing the capture footer spec with Quick Capture. The view renders no local
+// footer; AppModel.View() composes this spec, including the expanded-syntax
+// scroll hints and percentage once the guide overflows its viewport.
+func (m *LinkedTaskCreatorModel) ContextualFooter() (StatusBarFooterSpec, bool) {
+	return captureFooterSpecFull(
+		m.confirmDiscard,
+		m.isAutocompleteActive(),
+		m.helpExpanded,
+		m.helpExpanded && m.syntaxOverflows(),
+		m.syntaxScrollPercent(),
+	), true
+}
+
+// HandledKeys returns all keys LinkedTaskCreatorModel's Update method can process.
+func (m *LinkedTaskCreatorModel) HandledKeys() []string {
+	return m.buildKeyMap().HandledKeys()
+}

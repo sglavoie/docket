@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -14,11 +15,12 @@ import (
 )
 
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
+// The expanded-syntax state (helpExpanded and the scroll viewport) lives in the
+// embedded quickCaptureInput so it is shared with the Linked Task Creator.
 type QuickCaptureModel struct {
 	quickCaptureInput
-	width        int
-	height       int
-	helpExpanded bool
+	width  int
+	height int
 	discardConfirmState
 }
 
@@ -49,6 +51,7 @@ func (m *QuickCaptureModel) SetSize(width, height int) {
 	m.height = height
 	m.quickCaptureInput.width = width
 	m.resizeTextarea(width)
+	m.setSyntaxViewportWidth(width)
 }
 
 func (m *QuickCaptureModel) Init() tea.Cmd {
@@ -75,20 +78,50 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		key := msg.String()
 
+		// Interaction precedence: autocomplete owns navigation (Ctrl+J/K, Tab,
+		// Enter, Esc) while active; then the expanded syntax guide claims scroll
+		// keys; then the ? toggle; then normal capture handling.
+
 		// Handle autocomplete navigation when active
 		if m.handleAutocompleteKey(key) {
 			return m, nil
 		}
 
-		// Toggle syntax help
+		// Scroll the expanded syntax guide while it is actually visible (i.e. not
+		// shadowed by autocomplete, which is dismissed above for its nav keys but
+		// still owns pgup/pgdown-adjacent handling here).
+		if m.helpExpanded && !m.isAutocompleteActive() {
+			switch key {
+			case "ctrl+k":
+				m.syntaxScrollLine(-1)
+				return m, nil
+			case "ctrl+j":
+				m.syntaxScrollLine(1)
+				return m, nil
+			case "pgup":
+				m.syntaxScrollPage(-1)
+				return m, nil
+			case "pgdown":
+				m.syntaxScrollPage(1)
+				return m, nil
+			}
+		}
+
+		// Toggle syntax help (opens at the top, closes when open).
 		if key == "?" && m.ac.Mode == acModeNone {
-			m.helpExpanded = !m.helpExpanded
+			m.toggleHelp()
 			return m, nil
 		}
 
 		// Regular key handling
 		switch key {
 		case "esc":
+			// Esc dismisses the expanded guide before cancel/discard; autocomplete
+			// was already dismissed above.
+			if m.helpExpanded {
+				m.closeHelp()
+				return m, nil
+			}
 			if strings.TrimSpace(m.inputValue()) != "" {
 				m.confirmDiscard = true
 				return m, nil
@@ -122,47 +155,70 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *QuickCaptureModel) View() tea.View {
-	var b strings.Builder
 	applyThemedTextarea(&m.input)
-	b.WriteString(m.input.View())
-	b.WriteString("\n")
 
-	// Show autocomplete suggestions if active
-	if ac := m.renderAutocomplete(); ac != "" {
-		b.WriteString(ac)
-	}
+	autocompleteActive := m.isAutocompleteActive()
+	helpVisible := m.helpExpanded && !autocompleteActive
 
-	b.WriteString("\n")
+	// Content budget: views are sized to terminal height minus the standard
+	// two-row footer, so only reserve the extra rows a wrapped contextual footer
+	// adds beyond those two. AppModel.View() owns the single app-shell footer.
+	extraFooter := captureFooterExtraRows(m.width, m.confirmDiscard, autocompleteActive, m.helpExpanded)
+	budget := max(m.height-extraFooter, 1)
 
-	// Show live preview or error
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n\n")
-	} else if preview := m.renderPreview(); preview != "" {
-		b.WriteString(preview)
-		b.WriteString("\n\n")
-	}
+	// Fixed blocks: title, textarea. Both stay put; only the lower pane flexes.
+	title := renderFullscreenTitle("Quick Capture", "")
+	textareaView := m.input.View()
+	// Rows above the flexible region: title + blank + textarea + blank.
+	fixedRows := lipgloss.Height(title) + 1 + lipgloss.Height(textareaView) + 1
 
-	// Syntax guide only when toggled via ?; the prompt stays calm otherwise.
-	if m.helpExpanded {
-		b.WriteString(m.renderSyntaxGuide())
-		b.WriteString("\n")
-	}
-
+	discard := ""
+	discardRows := 0
 	if m.confirmDiscard {
-		b.WriteString(ValidationErrorStyle.Render("Discard input? (y/n)"))
-		b.WriteString("\n")
+		discard = ValidationErrorStyle.Render("Discard input? (y/n)")
+		discardRows = 1
 	}
 
-	// Quick Capture is a normal (non-full-height) stack view, so AppModel.View()
-	// owns the single app-shell status bar. Rendering an inline footer here would
-	// duplicate it; leave footer composition to the app shell.
-	var out strings.Builder
-	out.WriteString(renderFullscreenTitle("Quick Capture", ""))
-	out.WriteString("\n\n")
-	out.WriteString(b.String())
+	remaining := max(budget-fixedRows-discardRows, 1)
 
-	return tea.NewView(out.String())
+	// A lower pane (autocomplete or syntax viewport) needs a minimum height; when
+	// present, the full preview may fall back to the compact two-row form.
+	lowerMin := 0
+	if autocompleteActive || helpVisible {
+		lowerMin = min(3, remaining)
+	}
+
+	previewBlock, previewRows, blankAfterPreview := m.composePreviewBlock(remaining, lowerMin)
+
+	// Whatever remains after the (possibly compact) preview goes to the lower pane.
+	lowerRows := max(remaining-previewRows-blankAfterPreview, 1)
+	lower := ""
+	switch {
+	case autocompleteActive:
+		lower = m.ac.RenderDropdownWithLimit("", lowerRows)
+	case helpVisible:
+		m.setSyntaxViewportHeight(lowerRows)
+		lower = m.syntaxVP.View()
+	}
+
+	var b strings.Builder
+	b.WriteString(title)
+	b.WriteString("\n\n")
+	b.WriteString(textareaView)
+	if previewBlock != "" {
+		b.WriteString("\n\n")
+		b.WriteString(previewBlock)
+	}
+	if lower != "" {
+		b.WriteString("\n\n")
+		b.WriteString(lower)
+	}
+	if discard != "" {
+		b.WriteString("\n")
+		b.WriteString(discard)
+	}
+
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because quick capture uses a textarea input.
@@ -305,6 +361,19 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 }
 
 func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }
+
+// ContextualFooter supplies the app-shell footer for Quick Capture. The view
+// renders no local footer; AppModel.View() composes this spec so there is a
+// single app-shell footer across all capture states.
+func (m *QuickCaptureModel) ContextualFooter() (StatusBarFooterSpec, bool) {
+	return captureFooterSpecFull(
+		m.confirmDiscard,
+		m.isAutocompleteActive(),
+		m.helpExpanded,
+		m.helpExpanded && m.syntaxOverflows(),
+		m.syntaxScrollPercent(),
+	), true
+}
 
 // HandledKeys returns all keys QuickCaptureModel's Update method can process.
 func (m *QuickCaptureModel) HandledKeys() []string {

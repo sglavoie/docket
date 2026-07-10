@@ -28,6 +28,17 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
 	}
 
+	// Exercise the syntax viewport state added by the redesign: expand the guide
+	// and scroll it by line and page. None of this may disturb the parked
+	// outliner beneath capture (cursor or view stack).
+	driveUITestKeys(t, driver, "?", "ctrl+j", "pgdown")
+	assertQuickCaptureOpenOver(t, driver, ViewOutliner, beforeStack)
+	if got := driver.App().outliner.cursor; got != beforeCursor {
+		t.Fatalf("outliner cursor after syntax scroll = %d, want %d", got, beforeCursor)
+	}
+	// Close the guide so the single-Esc dismissal path below is unchanged.
+	driveUITestKeys(t, driver, "?")
+
 	driveUITestKeys(t, driver, "esc")
 	after := driver.Observe(ObserveOptions{})
 	if after.CurrentView != ViewOutliner.String() {
@@ -72,6 +83,20 @@ func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
 	if detail.task == nil || detail.task.ID != beforeTaskID {
 		t.Fatalf("task detail task while capture is open = %v, want task ID %q", detail.task, beforeTaskID)
 	}
+
+	// Exercise the syntax viewport state: expand the guide and scroll it by line
+	// and page. The parked task detail's scroll offset and task identity must be
+	// untouched by capture's own viewport activity.
+	driveUITestKeys(t, driver, "?", "ctrl+j", "pgdown")
+	detail = currentTaskDetail(t, driver)
+	if detail.scrollOffset != beforeScroll {
+		t.Fatalf("task detail scroll offset after syntax scroll = %d, want %d", detail.scrollOffset, beforeScroll)
+	}
+	if detail.task == nil || detail.task.ID != beforeTaskID {
+		t.Fatalf("task detail task after syntax scroll = %v, want task ID %q", detail.task, beforeTaskID)
+	}
+	// Close the guide so the single-Esc dismissal path below is unchanged.
+	driveUITestKeys(t, driver, "?")
 
 	driveUITestKeys(t, driver, "esc")
 	after := driver.Observe(ObserveOptions{})

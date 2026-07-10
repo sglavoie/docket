@@ -1,0 +1,24 @@
+{
+  "name": "quick-capture-minimum-layout",
+  "fixture": "narrow",
+  "size": "60x20",
+  "actions": [
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "key", "label": "open project outliner", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "key", "label": "quick capture leader (;i)", "key": ";" },
+    { "type": "key", "key": "i" },
+    { "type": "key", "label": "confirm project picker", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "QuickCapture" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "assert", "assert": "contains", "value": "Enter create" },
+    { "type": "assert", "assert": "contains", "value": "? syntax" },
+    { "type": "key", "label": "expand grouped syntax guide", "key": "?" },
+    { "type": "assert", "assert": "contains", "value": "Capture Syntax" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "scroll syntax by line", "key": "ctrl+j" },
+    { "type": "key", "label": "scroll syntax by page", "key": "pgdown" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "assert", "assert": "contains", "value": "Esc close syntax" }
+  ]
+}

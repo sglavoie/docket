@@ -475,6 +475,35 @@ grouped syntax reference (Basics, Priority & Tags, Schedule,
 Placement, Status, Project Routing) on demand instead of
 crowding the prompt.
 
+# Fixed Composer & Scrollable Syntax
+
+The title/context and the three-row textarea stay fixed while
+you type — they never scroll away. Press ? to open the grouped
+"Capture Syntax" reference in a bounded pane below the composer.
+The reference scrolls on its own: Ctrl+J/K move it one line at a
+time and PgUp/PgDn move it a full page, so your direct j/k
+keystrokes keep editing the title rather than moving the guide.
+Scroll hints and a percentage appear only when the guide
+overflows its pane.
+
+# Footer States
+
+The single contextual footer swaps its actions to match what
+you are doing:
+
+  Normal        Enter create · Ctrl+O create & open ·
+                Ctrl+D create & edit · Ctrl+V paste ·
+                ? syntax · Esc cancel
+  Autocomplete  Tab/Enter accept · Ctrl+J/K navigate ·
+                Esc dismiss
+  Syntax open   Enter create … · ? close syntax ·
+                Esc close syntax
+  Discarding    Y discard · N/Esc keep editing
+
+Esc unwinds one layer at a time: it dismisses autocomplete
+first, then closes the syntax guide, and only then cancels the
+capture (confirming a discard first when you have typed text).
+
 # Inline Syntax
 
   ^bug Login spinner !1 #frontend @tomorrow >3 /next $start

@@ -19,6 +19,15 @@ syntax guide, and the same sigils — except %project, which is
 not offered because linked tasks always belong to the parent's
 project.
 
+# Scrollable Syntax Reference
+
+The composer (title, context, and three-row textarea) stays
+fixed while you type. The grouped "Capture Syntax" reference
+opens in a bounded pane you scroll on its own: Ctrl+J/K move it
+by line and PgUp/PgDn move it by page. Direct j/k keep editing
+the title. Esc closes autocomplete first, then the syntax pane,
+and only then cancels the capture.
+
 # Live Preview Groups
 
 As you type, the preview below the input organizes the parsed

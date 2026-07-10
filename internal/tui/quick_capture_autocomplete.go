@@ -42,28 +42,38 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
-// getTypeSuggestions returns matching task type options for the partial query.
-func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
-	types := []struct {
-		name string
-		icon string
-	}{
-		{"epic", icons.Get("type.epic")},
-		{"story", icons.Get("type.story")},
-		{"task", icons.Get("type.task")},
-		{"bug", icons.Get("type.bug")},
-		{"idea", icons.Get("idea")},
-		{"note", icons.Get("note_type")},
+// captureTypeIcon returns the autocomplete icon for a valid task type.
+func captureTypeIcon(t models.TaskType) string {
+	switch t {
+	case models.TaskTypeEpic:
+		return icons.Get("type.epic")
+	case models.TaskTypeStory:
+		return icons.Get("type.story")
+	case models.TaskTypeTask:
+		return icons.Get("type.task")
+	case models.TaskTypeBug:
+		return icons.Get("type.bug")
+	case models.TaskTypeIdea:
+		return icons.Get("idea")
+	default:
+		return ""
 	}
+}
 
+// getTypeSuggestions returns matching task type options for the partial query.
+// Suggestions are derived from models.AllTaskTypes() so only valid task types
+// are offered; the invalid `note` type can never be suggested because it cannot
+// produce a valid task.
+func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 
-	for _, t := range types {
-		if partial == "" || strings.Contains(t.name, partialLower) {
+	for _, t := range models.AllTaskTypes() {
+		name := string(t)
+		if partial == "" || strings.Contains(name, partialLower) {
 			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("^%s %s", t.name, t.icon),
-				Value:   t.name,
+				Display: fmt.Sprintf("^%s %s", name, captureTypeIcon(t)),
+				Value:   name,
 			})
 		}
 	}

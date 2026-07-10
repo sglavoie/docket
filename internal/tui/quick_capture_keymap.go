@@ -25,6 +25,30 @@ func (m *QuickCaptureModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
+	// Syntax-guide scroll bindings, active only while the guide is expanded (and
+	// autocomplete is not shadowing it). Gated so they are documented in help and
+	// counted in HandledKeys without appearing as ghost bindings when the guide
+	// is closed.
+	helpScrollActive := func() bool { return m.helpExpanded && !m.isAutocompleteActive() }
+	entries = append(entries,
+		keymap.Bind("ctrl+k", "Scroll syntax up", "Syntax", func() (tea.Model, tea.Cmd) {
+			m.syntaxScrollLine(-1)
+			return m, nil
+		}, keymap.WithGate(helpScrollActive)),
+		keymap.Bind("ctrl+j", "Scroll syntax down", "Syntax", func() (tea.Model, tea.Cmd) {
+			m.syntaxScrollLine(1)
+			return m, nil
+		}, keymap.WithGate(helpScrollActive)),
+		keymap.Bind("pgup", "Syntax page up", "Syntax", func() (tea.Model, tea.Cmd) {
+			m.syntaxScrollPage(-1)
+			return m, nil
+		}, keymap.WithGate(helpScrollActive)),
+		keymap.Bind("pgdown", "Syntax page down", "Syntax", func() (tea.Model, tea.Cmd) {
+			m.syntaxScrollPage(1)
+			return m, nil
+		}, keymap.WithGate(helpScrollActive)),
+	)
+
 	return &keymap.KeyMap{
 		ViewName: "QuickCapture",
 		Entries:  entries,

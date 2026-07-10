@@ -69,6 +69,16 @@ func session9SyncViews() []syncTestCase {
 	}
 }
 
+// captureParitySyncViews returns the capture views that adopted the shared Quick
+// Capture interaction/footer contract. The Linked Task Creator gained a
+// declarative keymap in the Quick Capture UX wave so both hosts advertise the
+// same local bindings and are covered by the structural sync invariants.
+func captureParitySyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewLinkedTaskCreator, &LinkedTaskCreatorModel{}},
+	}
+}
+
 // syncTestCase pairs a ViewType with a KeySyncView implementation.
 type syncTestCase struct {
 	view    ViewType
@@ -113,6 +123,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 	allViews = append(allViews, session6SyncViews()...)
 	allViews = append(allViews, session8SyncViews()...)
 	allViews = append(allViews, session9SyncViews()...)
+	allViews = append(allViews, captureParitySyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
 			keys := tc.handler.HandledKeys()
@@ -185,6 +196,8 @@ func TestViewTypeString(t *testing.T) {
 		ViewTaskForm:     "TaskForm",
 		// Session 9
 		ViewRoadmap: "Roadmap",
+		// Capture parity (Quick Capture UX wave)
+		ViewLinkedTaskCreator: "LinkedTaskCreator",
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {
@@ -227,6 +240,46 @@ func TestExpandRegistryKeyCoverage(t *testing.T) {
 		sort.Strings(wantSorted)
 		if strings.Join(gotSorted, ",") != strings.Join(wantSorted, ",") {
 			t.Errorf("expandRegistryKey(%q) = %v, want %v", c.display, got, c.want)
+		}
+	}
+}
+
+// TestCaptureViewsShareKeymapParity asserts the two capture hosts (Quick Capture
+// and the Linked Task Creator) advertise an identical set of local bindings and
+// that neither keymap re-registers the global ?/Esc keys. Those two keys are
+// handled by AppModel-level globals, so duplicating them in a view-local keymap
+// would create competing help entries.
+func TestCaptureViewsShareKeymapParity(t *testing.T) {
+	sortedSet := func(keys []string) []string {
+		out := append([]string(nil), keys...)
+		sort.Strings(out)
+		return out
+	}
+
+	qc := (&QuickCaptureModel{}).buildKeyMap().HandledKeys()
+	ltc := (&LinkedTaskCreatorModel{}).buildKeyMap().HandledKeys()
+
+	if strings.Join(sortedSet(qc), ",") != strings.Join(sortedSet(ltc), ",") {
+		t.Fatalf("capture hosts must advertise identical local bindings:\n  QuickCapture      = %v\n  LinkedTaskCreator = %v", sortedSet(qc), sortedSet(ltc))
+	}
+
+	for _, keys := range [][]string{qc, ltc} {
+		for _, k := range keys {
+			if k == "?" || k == "esc" {
+				t.Fatalf("capture keymap must not re-register global key %q (handled by app-level globals)", k)
+			}
+		}
+	}
+
+	// The newly advertised local bindings must be present on the Linked Task
+	// Creator: create/open/edit/paste plus the gated syntax scroll/page keys.
+	handled := make(map[string]bool, len(ltc))
+	for _, k := range ltc {
+		handled[k] = true
+	}
+	for _, want := range []string{"enter", "ctrl+d", "ctrl+o", "ctrl+v", "ctrl+j", "ctrl+k", "pgup", "pgdown"} {
+		if !handled[want] {
+			t.Fatalf("LinkedTaskCreator keymap missing advertised binding %q; have %v", want, sortedSet(ltc))
 		}
 	}
 }

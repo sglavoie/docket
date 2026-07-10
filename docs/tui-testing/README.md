@@ -128,6 +128,7 @@ Key syntax (`parseUITestKey`):
 - Printable runes: `"a"`, `"A"`, `"1"`, `"!"`.
 - Named keys: `enter`/`return`, `esc`/`escape`, `tab`, `space`, `backspace`.
 - Arrows: `up`, `down`, `left`, `right`.
+- Pages: `pgup`/`pageup`, `pgdown`/`pagedown` (drive full-page scrolling, e.g. the Quick Capture syntax reference).
 - Modifiers joined with `+`: `ctrl+x`, `alt+o`, `shift+tab`, `ctrl+shift+a`.
 
 Assertion kinds (`assert`):
@@ -204,6 +205,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `snooze-input-minimum-layout.json` | Open the Snooze Task input at `72x20` and assert no layout issues. |
 | `kanban-date-input-long-title-minimum-layout.json` | Open Set Due Date from Kanban on a long-title task at `60x20`. |
 | `kanban-snooze-input-long-title-minimum-layout.json` | Open Snooze from Kanban on a long-title task at `60x20`. |
+| `quick-capture-minimum-layout.json` | Open Quick Capture over a project outliner at `60x20`, expand the grouped `Capture Syntax` reference, scroll it by line (`ctrl+j`) and page (`pgdown`), and assert no layout issues with the wrapped contextual footer. |
 
 Run any of them:
 
