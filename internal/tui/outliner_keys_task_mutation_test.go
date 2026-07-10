@@ -731,3 +731,131 @@ func TestOutlinerMK_CrossProjectCursorTracking_DuplicateTaskID(t *testing.T) {
 			m.cursor, gotPID, gotTID, wantCursor, projB.ID, "aux")
 	}
 }
+
+// buildExpandedParentFixture builds a single-project outliner reproducing the
+// `trail` layout: in the Next bucket a root task, an expanded Epic (also a
+// root) with two children, then two more root tasks. The Epic's children sit
+// between the roots as visible rows, so only bounded-window sibling discovery
+// lets J/K and move-to-top/bottom treat the roots and Epic as mutual siblings.
+// Storage order in p.Tasks is root1, epic, c1, c2, root2, root3.
+func buildExpandedParentFixture(t *testing.T) (*OutlinerModel, *models.Project, map[string]*models.Task) {
+	t.Helper()
+
+	root1 := &models.Task{ID: "root1", Title: "Root 1", Section: models.SectionNext, Status: models.StatusTodo}
+	epic := &models.Task{ID: "epic", Title: "Epic", Section: models.SectionNext, Status: models.StatusTodo}
+	c1 := &models.Task{ID: "c1", Title: "Child 1", Section: models.SectionNext, Status: models.StatusTodo, ParentID: &epic.ID}
+	c2 := &models.Task{ID: "c2", Title: "Child 2", Section: models.SectionNext, Status: models.StatusTodo, ParentID: &epic.ID}
+	root2 := &models.Task{ID: "root2", Title: "Root 2", Section: models.SectionNext, Status: models.StatusTodo}
+	root3 := &models.Task{ID: "root3", Title: "Root 3", Section: models.SectionNext, Status: models.StatusTodo}
+
+	proj := &models.Project{ID: "proj", Name: "Test", Tasks: []*models.Task{root1, epic, c1, c2, root2, root3}}
+	proj.BuildTaskTree()
+
+	m := minimalOutliner()
+	m.project = proj
+	m.activePerspective = 1 // "All" — keep all non-completed, non-snoozed tasks
+
+	// Expanded display: the Epic's children are visible rows interleaved
+	// between the root siblings, exactly as they appear after rebuildRows.
+	m.rows = []outlinerRow{
+		{IsSectionHeader: true, SectionName: models.SectionNext}, // 0
+		{task: root1}, // 1
+		{task: epic},  // 2 (expanded)
+		{task: c1},    // 3 (expanded descendant)
+		{task: c2},    // 4 (expanded descendant)
+		{task: root2}, // 5
+		{task: root3}, // 6
+	}
+
+	return m, proj, map[string]*models.Task{
+		"root1": root1, "epic": epic, "c1": c1, "c2": c2, "root2": root2, "root3": root3,
+	}
+}
+
+// assertCursorOnTask re-finds the row for taskID after a rebuild and asserts the
+// cursor landed on it (single-project variant of assertCursorOnProjectTask).
+func assertCursorOnTask(t *testing.T, m *OutlinerModel, taskID string) {
+	t.Helper()
+	want := -1
+	for i, r := range m.rows {
+		if r.task != nil && r.task.ID == taskID {
+			want = i
+			break
+		}
+	}
+	if want < 0 {
+		t.Fatalf("could not locate row for task %q after rebuild", taskID)
+	}
+	if m.cursor != want {
+		t.Errorf("cursor = %d, want %d (cursor must follow task %q across the rebuild)", m.cursor, want, taskID)
+	}
+}
+
+// TestOutlinerK_MovesRootAboveExpandedParent: with the Epic expanded, its child
+// rows sit between the Epic and root2. Pressing K on root2 must swap it with the
+// Epic (the previous visible sibling), skipping the interleaved child rows — not
+// no-op because a child row happens to sit directly above.
+func TestOutlinerK_MovesRootAboveExpandedParent(t *testing.T) {
+	m, proj, tasks := buildExpandedParentFixture(t)
+	m.cursor = 5 // row for root2 (directly below the Epic's last child)
+
+	_, _, handled := m.handleTaskMutationKey("K", false)
+	if !handled {
+		t.Fatal("expected handled=true for K")
+	}
+
+	// SwapTasks(root2, epic) swaps p.Tasks idx 1 (epic) and idx 4 (root2). The
+	// children keep their flat positions; the tree stays correct via ParentID.
+	assertIDsEqual(t, "p.Tasks after K on root2", projectTaskIDs(proj), []string{"root1", "root2", "c1", "c2", "epic", "root3"})
+	assertIDsEqual(t, "epic.Children preserved", taskChildIDs(tasks["epic"]), []string{"c1", "c2"})
+	assertCursorOnTask(t, m, "root2")
+}
+
+// TestOutlinerJ_MovesExpandedParentBelowRoot: pressing J on the expanded Epic
+// must swap it with root2 (the next visible sibling), stepping over the Epic's
+// own child rows rather than treating them as a hard stop.
+func TestOutlinerJ_MovesExpandedParentBelowRoot(t *testing.T) {
+	m, proj, tasks := buildExpandedParentFixture(t)
+	m.cursor = 2 // row for the expanded Epic
+
+	_, _, handled := m.handleTaskMutationKey("J", false)
+	if !handled {
+		t.Fatal("expected handled=true for J")
+	}
+
+	// SwapTasks(epic, root2) swaps p.Tasks idx 1 (epic) and idx 4 (root2).
+	assertIDsEqual(t, "p.Tasks after J on epic", projectTaskIDs(proj), []string{"root1", "root2", "c1", "c2", "epic", "root3"})
+	assertIDsEqual(t, "epic.Children preserved", taskChildIDs(tasks["epic"]), []string{"c1", "c2"})
+	assertCursorOnTask(t, m, "epic")
+}
+
+// TestOutlinerMK_MovesToTopAcrossExpandedDescendants: mK on root3 (the last root)
+// must walk it to the top of its visible siblings, swapping past root2 and the
+// expanded Epic (whose child rows are skipped, not counted as siblings).
+func TestOutlinerMK_MovesToTopAcrossExpandedDescendants(t *testing.T) {
+	m, proj, tasks := buildExpandedParentFixture(t)
+	m.cursor = 6 // row for root3
+
+	_, _ = m.moveTaskToPosition(tasks["root3"], true /* toTop */)
+
+	// siblings = [root1, epic, root2, root3]; root3 swaps past root2, epic, root1.
+	assertIDsEqual(t, "p.Tasks after mK on root3", projectTaskIDs(proj), []string{"root3", "root1", "c1", "c2", "epic", "root2"})
+	assertIDsEqual(t, "epic.Children preserved", taskChildIDs(tasks["epic"]), []string{"c1", "c2"})
+	assertCursorOnTask(t, m, "root3")
+}
+
+// TestOutlinerMJ_MovesToBottomAcrossExpandedDescendants: mJ on the expanded Epic
+// must walk it to the bottom of its visible siblings, past root2 and root3,
+// carrying its children with it (via ParentID) while the child rows never act
+// as boundaries.
+func TestOutlinerMJ_MovesToBottomAcrossExpandedDescendants(t *testing.T) {
+	m, proj, tasks := buildExpandedParentFixture(t)
+	m.cursor = 2 // row for the expanded Epic
+
+	_, _ = m.moveTaskToPosition(tasks["epic"], false /* toBottom */)
+
+	// siblings = [root1, epic, root2, root3]; epic swaps past root2, then root3.
+	assertIDsEqual(t, "p.Tasks after mJ on epic", projectTaskIDs(proj), []string{"root1", "root2", "c1", "c2", "root3", "epic"})
+	assertIDsEqual(t, "epic.Children preserved", taskChildIDs(tasks["epic"]), []string{"c1", "c2"})
+	assertCursorOnTask(t, m, "epic")
+}

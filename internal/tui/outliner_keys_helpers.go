@@ -290,13 +290,16 @@ func parentIDOf(t *models.Task) string {
 	return *t.ParentID
 }
 
-// visibleSiblings returns the contiguous run of sibling rows in m.rows around
-// cursorIdx — tasks sharing the same parent ID and ProjectID as the cursor row,
-// uninterrupted by section headers, separators, or rows with a different parent.
+// visibleSiblings returns the visible sibling rows in m.rows around cursorIdx —
+// tasks sharing the same parent ID and ProjectID as the cursor row, gathered
+// across a window bounded by section headers, project headers, and separators.
+// Non-sibling task rows inside the window (e.g. expanded descendants of a
+// sibling) are skipped rather than treated as hard stops, so J/K reorders and
+// move-to-top/bottom can target siblings on either side of an expanded parent.
 // Returns nil when cursorIdx is out of range or points at a header/separator/nil
-// task row. The contiguous-run semantics confine J/K reorders to a single
-// section bucket (and to a single project in cross-project mode) without
-// dereferencing potentially stale cloned-parent Children slices.
+// task row. The window boundaries confine reorders to a single section bucket
+// (and to a single project in cross-project mode) without dereferencing
+// potentially stale cloned-parent Children slices.
 func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	if cursorIdx < 0 || cursorIdx >= len(m.rows) {
 		return nil
@@ -308,7 +311,22 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	cursorParentID := parentIDOf(cursorRow.task)
 	cursorProjectID := cursorRow.ProjectID
 
-	inRun := func(row outlinerRow) bool {
+	// isBoundary reports whether a row terminates the reorder window. Section
+	// headers, project sub-headers, and separators delimit buckets; a task row
+	// in a different project also bounds the window in cross-project mode.
+	isBoundary := func(row outlinerRow) bool {
+		if !row.isTaskRow() {
+			return true
+		}
+		if row.task != nil && row.ProjectID != cursorProjectID {
+			return true
+		}
+		return false
+	}
+
+	// isSibling reports whether a task row shares the cursor's parent (and
+	// project). Non-matching task rows inside the window are skipped, not stops.
+	isSibling := func(row outlinerRow) bool {
 		if !row.isTaskRow() || row.task == nil {
 			return false
 		}
@@ -323,10 +341,12 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 
 	var leftSide []*models.Task
 	for i := cursorIdx - 1; i >= 0; i-- {
-		if !inRun(m.rows[i]) {
+		if isBoundary(m.rows[i]) {
 			break
 		}
-		leftSide = append(leftSide, m.rows[i].task)
+		if isSibling(m.rows[i]) {
+			leftSide = append(leftSide, m.rows[i].task)
+		}
 	}
 	// Reverse leftSide so siblings appear in row order.
 	for i, j := 0, len(leftSide)-1; i < j; i, j = i+1, j-1 {
@@ -335,10 +355,12 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 
 	siblings := append(leftSide, cursorRow.task)
 	for i := cursorIdx + 1; i < len(m.rows); i++ {
-		if !inRun(m.rows[i]) {
+		if isBoundary(m.rows[i]) {
 			break
 		}
-		siblings = append(siblings, m.rows[i].task)
+		if isSibling(m.rows[i]) {
+			siblings = append(siblings, m.rows[i].task)
+		}
 	}
 	return siblings
 }

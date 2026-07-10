@@ -6,10 +6,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TestVisibleSiblings_SingleProject covers the contiguous-run semantics in
+// TestVisibleSiblings_SingleProject covers the bounded-window semantics in
 // single-project mode. Rows are bucketed by section header; cursor on A
 // (Next bucket) must return only [A, C] — B and D (Inbox) are excluded by
-// the intervening section-header/separator rows.
+// the intervening section-header/separator window boundaries.
 func TestVisibleSiblings_SingleProject(t *testing.T) {
 	proj := &models.Project{ID: "proj"}
 
@@ -45,9 +45,9 @@ func TestVisibleSiblings_SingleProject(t *testing.T) {
 	}
 }
 
-// TestVisibleSiblings_CrossProject covers cross-project mode: contiguous-run
-// stops at the separator between projects, so cursor on a1 returns [a1, a2]
-// and excludes b1 (which lives behind a separator + header).
+// TestVisibleSiblings_CrossProject covers cross-project mode: the reorder
+// window stops at the separator between projects, so cursor on a1 returns
+// [a1, a2] and excludes b1 (which lives behind a separator + header).
 func TestVisibleSiblings_CrossProject(t *testing.T) {
 	projA := &models.Project{ID: "proj-A"}
 	projB := &models.Project{ID: "proj-B"}
@@ -86,7 +86,7 @@ func TestVisibleSiblings_CrossProject(t *testing.T) {
 // TestVisibleSiblings_ChildrenInContiguousRun: when child rows form a
 // contiguous run in m.rows, the helper returns them in row order. This
 // replaces the old "Parent.Children short-circuit" test — children are now
-// resolved via the same contiguous-run walk as roots, which avoids the
+// resolved via the same bounded-window walk as roots, which avoids the
 // stale-cloned-parent dereference path.
 func TestVisibleSiblings_ChildrenInContiguousRun(t *testing.T) {
 	proj := &models.Project{ID: "proj"}
@@ -148,6 +148,58 @@ func TestVisibleSiblings_StopsAtSectionHeader(t *testing.T) {
 	got := m.visibleSiblings(m.cursor)
 	if len(got) != 1 || got[0].ID != "a" {
 		t.Errorf("siblings = %+v, want [a]", got)
+	}
+}
+
+// TestVisibleSiblings_SkipsExpandedDescendants reproduces the `trail` bug:
+// in the Next bucket, a root task, an expanded Epic (also a root), the Epic's
+// child, and a second root task appear as consecutive rows. Bounded-window
+// semantics must skip the interleaved child row so the two roots and the Epic
+// remain mutual siblings — contiguous-run semantics would sever them.
+func TestVisibleSiblings_SkipsExpandedDescendants(t *testing.T) {
+	proj := &models.Project{ID: "proj"}
+
+	root1 := &models.Task{ID: "root1", Title: "Root 1", Section: models.SectionNext}
+	epic := &models.Task{ID: "epic", Title: "Epic", Section: models.SectionNext}
+	child := &models.Task{ID: "child", Title: "Child", Section: models.SectionNext, Parent: epic, ParentID: &epic.ID}
+	epic.Children = []*models.Task{child}
+	root2 := &models.Task{ID: "root2", Title: "Root 2", Section: models.SectionNext}
+
+	proj.Tasks = []*models.Task{root1, epic, child, root2}
+
+	m := minimalOutliner()
+	m.project = proj
+	m.rows = []outlinerRow{
+		{IsSectionHeader: true, SectionName: models.SectionNext}, // 0
+		{task: root1}, // 1
+		{task: epic},  // 2 (expanded)
+		{task: child}, // 3 (expanded descendant of epic)
+		{task: root2}, // 4
+	}
+
+	// Cursor on the lower root sees the expanded Epic as its previous sibling.
+	m.cursor = 4
+	got := m.visibleSiblings(m.cursor)
+	wantIDs := []string{"root1", "epic", "root2"}
+	if len(got) != len(wantIDs) {
+		t.Fatalf("root2 siblings = %+v, want %v", got, wantIDs)
+	}
+	for i, id := range wantIDs {
+		if got[i].ID != id {
+			t.Errorf("root2 siblings[%d].ID = %q, want %q", i, got[i].ID, id)
+		}
+	}
+
+	// Cursor on the expanded Epic sees the lower root as its next sibling.
+	m.cursor = 2
+	got = m.visibleSiblings(m.cursor)
+	if len(got) != len(wantIDs) {
+		t.Fatalf("epic siblings = %+v, want %v", got, wantIDs)
+	}
+	for i, id := range wantIDs {
+		if got[i].ID != id {
+			t.Errorf("epic siblings[%d].ID = %q, want %q", i, got[i].ID, id)
+		}
 	}
 }
 
