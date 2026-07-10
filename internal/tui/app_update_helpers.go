@@ -56,9 +56,6 @@ func (m *AppModel) hasActiveTextInput() bool {
 	if m.quickNoteOverlay != nil {
 		return true
 	}
-	if m.quickCaptureOverlay != nil {
-		return true
-	}
 	if m.globalProjectPicker != nil {
 		return true
 	}

@@ -35,13 +35,6 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.quickNoteOverlay.input, cmd = m.quickNoteOverlay.input.Update(msg)
 			return true, cmd
 		}
-		if m.quickCaptureOverlay != nil {
-			newModel, cmd := m.quickCaptureOverlay.Update(msg)
-			if qc, ok := newModel.(*QuickCaptureModel); ok {
-				m.quickCaptureOverlay = qc
-			}
-			return true, cmd
-		}
 		return false, nil
 	case tea.KeyPressMsg:
 		return m.handleGlobalKeyPress(msg)

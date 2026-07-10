@@ -67,7 +67,7 @@ No task sneaks from Capture straight to Done.
 
 # Stage Shortcuts
 
-  ;i      Capture   — Quick Capture overlay
+  ;i      Capture   — Quick Capture view
   ctrl+i  Triage    — Global inbox processor
   ;a      Triage    — All Tasks inbox triage
   ;q      Plan      — Backlog (ranked focus queue)

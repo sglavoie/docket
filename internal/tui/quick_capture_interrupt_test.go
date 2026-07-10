@@ -17,26 +17,26 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	outliner.cursor = nthTaskRowIndex(t, outliner, 1)
 	before = driver.Observe(ObserveOptions{})
 	beforeStack := slices.Clone(before.ViewStack)
-	beforeCursor := snapshotInt(t, before.Snapshot, "cursor")
+	// Quick capture is now a stack view pushed over the outliner, so the outliner
+	// is no longer the active view; read its cursor directly instead of via the
+	// active-view snapshot.
+	beforeCursor := outliner.cursor
 
 	driveUITestKeys(t, driver, ";", "i", "enter")
 	assertQuickCaptureOpenOver(t, driver, ViewOutliner, beforeStack)
-	if got := snapshotInt(t, driver.Observe(ObserveOptions{}).Snapshot, "cursor"); got != beforeCursor {
+	if got := driver.App().outliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
 	}
 
 	driveUITestKeys(t, driver, "esc")
 	after := driver.Observe(ObserveOptions{})
-	if driver.App().quickCaptureOverlay != nil {
-		t.Fatal("quick capture overlay should close after esc")
-	}
 	if after.CurrentView != ViewOutliner.String() {
 		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, ViewOutliner.String())
 	}
 	if !slices.Equal(after.ViewStack, beforeStack) {
 		t.Fatalf("view stack after capture dismiss = %v, want %v", after.ViewStack, beforeStack)
 	}
-	if got := snapshotInt(t, after.Snapshot, "cursor"); got != beforeCursor {
+	if got := driver.App().outliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after capture dismiss = %d, want %d", got, beforeCursor)
 	}
 }
@@ -75,9 +75,6 @@ func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
 
 	driveUITestKeys(t, driver, "esc")
 	after := driver.Observe(ObserveOptions{})
-	if driver.App().quickCaptureOverlay != nil {
-		t.Fatal("quick capture overlay should close after esc")
-	}
 	if after.CurrentView != ViewTaskDetail.String() {
 		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, ViewTaskDetail.String())
 	}
@@ -147,18 +144,19 @@ func driveUITestKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 	}
 }
 
-func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view ViewType, wantStack []string) {
+func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view ViewType, priorStack []string) {
 	t.Helper()
-	app := driver.App()
-	if app.quickCaptureOverlay == nil {
-		t.Fatal("quick capture overlay should be open")
-	}
 	obs := driver.Observe(ObserveOptions{})
-	if obs.CurrentView != view.String() {
-		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, view.String())
+	// Quick capture is now a normal stack view pushed on top of the prior view.
+	if obs.CurrentView != ViewQuickCapture.String() {
+		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, ViewQuickCapture.String())
 	}
+	wantStack := append(slices.Clone(priorStack), ViewQuickCapture.String())
 	if !slices.Equal(obs.ViewStack, wantStack) {
 		t.Fatalf("view stack while capture is open = %v, want %v", obs.ViewStack, wantStack)
+	}
+	if len(priorStack) == 0 || priorStack[len(priorStack)-1] != view.String() {
+		t.Fatalf("capture should sit over %q; prior stack = %v", view.String(), priorStack)
 	}
 }
 
@@ -170,20 +168,4 @@ func currentTaskDetail(t *testing.T, driver *UITestDriver) *TaskDetailModel {
 		t.Fatalf("task detail view = %T, want *TaskDetailModel", view)
 	}
 	return detail
-}
-
-func snapshotInt(t *testing.T, snap map[string]any, key string) int {
-	t.Helper()
-	if snap == nil {
-		t.Fatalf("snapshot missing key %q: snapshot is nil", key)
-	}
-	v, ok := snap[key]
-	if !ok {
-		t.Fatalf("snapshot missing key %q; got %v", key, snap)
-	}
-	n, ok := v.(int)
-	if !ok {
-		t.Fatalf("snapshot key %q = %T, want int", key, v)
-	}
-	return n
 }

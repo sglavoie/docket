@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -327,38 +328,102 @@ func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
 	return strings.Join(wrapped, "\n")
 }
 
-// renderSyntaxGuide returns the formatted sigil/alias reference shown when
-// the user toggles the gated syntax help. Shared by Quick Capture and the
-// linked-task creator so both surfaces stay in lockstep.
-func (q *quickCaptureInput) renderSyntaxGuide() string {
-	prefixStyle := MatchHighlightStyle
-	type row struct{ prefix, desc, examples string }
-	rows := []row{
-		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea  · or: type:bug"},
-		{"!N/!word", "Priority (1-5)", "!1  !urgent/!high → !1  !normal → !3  !low → !5  · or: pri:2"},
-		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)  · or: tag:backend"},
-		{"@date", "Due date", "@tomorrow  @friday  @+3d · or: due:tomorrow  due:fri  due:3d"},
-		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  · or: recur:weekly"},
-		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)  · or: parent:42"},
-		{"/section", "Section", "/next  /inbox  /waiting  /someday  · default → Inbox  · or: sec:next"},
-		{"$status", "Initial status", "$start  $blocked  $done  $review  · or: status:done"},
+// syntaxGuideEntry documents one sigil/alias family: the accepted forms, a
+// short description, and example values. Kept flat so the guide renderer can
+// wrap each field independently at narrow widths.
+type syntaxGuideEntry struct {
+	forms    string
+	desc     string
+	examples string
+}
+
+// syntaxGuideGroup clusters related capture sigils under a heading so the
+// reference scans as intent groups rather than a flat sigil soup.
+type syntaxGuideGroup struct {
+	name    string
+	entries []syntaxGuideEntry
+}
+
+// syntaxGuideGroups returns the grouped sigil reference. Project Routing is
+// only included when %project capture is enabled, so the Linked Task Creator
+// (which skips project syntax) never advertises it. Task-type examples omit
+// `note` because it is not a valid models.TaskType.
+func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
+	groups := []syntaxGuideGroup{
+		{
+			name: "Basics",
+			entries: []syntaxGuideEntry{
+				{"^type · type:", "Task type", "^epic  ^story  ^task  ^bug  ^idea"},
+			},
+		},
+		{
+			name: "Priority & Tags",
+			entries: []syntaxGuideEntry{
+				{"! · pri:", "Priority (1-5)", "!1  !urgent→!1  !normal→!3  !low→!5  pri:2"},
+				{"# · tag:", "Add tag", "#backend  #urgent  tag:backend  (repeatable)"},
+			},
+		},
+		{
+			name: "Schedule",
+			entries: []syntaxGuideEntry{
+				{"@ · due:", "Due date", "@tomorrow  @friday  @+3d  due:fri  due:3d"},
+				{"~ · recur:", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  recur:weekly"},
+			},
+		},
+		{
+			name: "Placement",
+			entries: []syntaxGuideEntry{
+				{"/ · sec:", "Section", "/next  /inbox  /waiting  /someday  (default → Inbox)"},
+				{"> · parent:", "Parent task", ">42  >Login  parent:42  (short ID or title)"},
+			},
+		},
+		{
+			name: "Status",
+			entries: []syntaxGuideEntry{
+				{"$ · status:", "Initial status", "$start  $blocked  $review  $done  status:done"},
+			},
+		},
 	}
 	if !q.skipProjectSyntax {
-		rows = append(rows, row{"%project", "Target project", "%myproject  (slug or name)  · or: p:myproject"})
+		groups = append(groups, syntaxGuideGroup{
+			name: "Project Routing",
+			entries: []syntaxGuideEntry{
+				{"% · p: · proj:", "Target project", "%myproject  p:myproject  (slug or name)"},
+			},
+		})
 	}
-	var b strings.Builder
-	b.WriteString(MutedStyle.Render("Quick Capture Syntax"))
-	b.WriteString("\n\n")
-	for _, r := range rows {
-		b.WriteString("  ")
-		b.WriteString(prefixStyle.Render(fmt.Sprintf("%-10s", r.prefix)))
-		b.WriteString("  ")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("%-16s", r.desc)))
-		b.WriteString("  ")
-		b.WriteString(MutedStyle.Render(r.examples))
-		b.WriteString("\n")
+	return groups
+}
+
+// renderSyntaxGuide returns the grouped, wrap-aware sigil/alias reference shown
+// when the user toggles the gated syntax help. Shared by Quick Capture and the
+// linked-task creator so both surfaces stay in lockstep. Every emitted line is
+// wrapped to q.width so the guide never overflows at narrow widths.
+func (q *quickCaptureInput) renderSyntaxGuide() string {
+	var lines []string
+	appendWrapped := func(indent int, style lipgloss.Style, text string) {
+		pad := strings.Repeat(" ", indent)
+		avail := q.width - indent
+		if q.width <= 0 || avail <= 0 {
+			lines = append(lines, pad+style.Render(text))
+			return
+		}
+		for _, w := range wrapStyled(text, avail) {
+			lines = append(lines, pad+style.Render(w))
+		}
 	}
-	return b.String()
+
+	lines = append(lines, MutedStyle.Render("Quick Capture Syntax"))
+	for _, g := range q.syntaxGuideGroups() {
+		lines = append(lines, "")
+		appendWrapped(0, SectionHeaderStyle, g.name)
+		for _, e := range g.entries {
+			appendWrapped(2, MatchHighlightStyle, e.forms)
+			appendWrapped(4, MutedStyle, e.desc)
+			appendWrapped(4, MutedStyle, e.examples)
+		}
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 // statusShortcut maps a TaskStatus back to its quick-capture keyword.

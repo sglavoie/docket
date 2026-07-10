@@ -148,63 +148,21 @@ func (m *QuickCaptureModel) View() tea.View {
 		b.WriteString(m.renderSyntaxGuide())
 		b.WriteString("\n")
 	}
-	var helpText string
-	if m.isAutocompleteActive() {
-		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
-	} else {
-		helpText = "Enter: create · Ctrl+O: open · Ctrl+D: edit desc · ?: syntax · Esc: cancel"
+
+	if m.confirmDiscard {
+		b.WriteString(ValidationErrorStyle.Render("Discard input? (y/n)"))
+		b.WriteString("\n")
 	}
 
+	// Quick Capture is a normal (non-full-height) stack view, so AppModel.View()
+	// owns the single app-shell status bar. Rendering an inline footer here would
+	// duplicate it; leave footer composition to the app shell.
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle("Quick Capture", ""))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
-	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
 
 	return tea.NewView(out.String())
-}
-
-// renderOverlayContent returns the core input+preview+help content for use inside
-// the floating overlay box. It skips the fullscreen title and status bar footer.
-func (m *QuickCaptureModel) renderOverlayContent() string {
-	var b strings.Builder
-	applyThemedTextarea(&m.input)
-	b.WriteString(m.input.View())
-	b.WriteString("\n")
-
-	if ac := m.renderAutocomplete(); ac != "" {
-		b.WriteString(ac)
-	}
-
-	b.WriteString("\n")
-
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n\n")
-	} else if preview := m.renderPreview(); preview != "" {
-		b.WriteString(preview)
-		b.WriteString("\n\n")
-	}
-
-	if m.helpExpanded {
-		b.WriteString(m.renderSyntaxGuide())
-	}
-
-	if m.confirmDiscard {
-		b.WriteString("\n")
-		b.WriteString(ValidationErrorStyle.Render("Discard input? (y/n)"))
-	}
-
-	return b.String()
-}
-
-// overlayHelpText returns the footer help text shown in the overlay.
-func (m *QuickCaptureModel) overlayHelpText() string {
-	if m.isAutocompleteActive() {
-		return "Tab: accept · ↑↓: navigate · Esc: dismiss"
-	}
-	return "Enter: create · Ctrl+O: open · Ctrl+D: edit desc · ?: syntax · Esc: cancel"
 }
 
 // HasTextInput returns true because quick capture uses a textarea input.

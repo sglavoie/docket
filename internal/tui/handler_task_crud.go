@@ -74,14 +74,14 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	if msg.Task != nil {
 		m.sessionStats.tasksCreated++
 	}
-	// When created from the floating overlay, close it without popping the view stack.
-	fromOverlay := m.quickCaptureOverlay != nil
-	m.quickCaptureOverlay = nil
+	// Capture whether this creation originated from the Quick Capture view
+	// before handleWithRefresh pops it off the stack.
+	fromQuickCapture := m.currentView() == ViewQuickCapture
 	preCaptureCount := 0
 	if m.currentProject != nil {
 		preCaptureCount = len(m.currentProject.Tasks)
 	}
-	refreshCmd := m.handleWithRefresh(!fromOverlay, true, "")
+	refreshCmd := m.handleWithRefresh(true, true, "")
 
 	// Navigate cursor to the newly created task
 	if msg.Task != nil && m.currentProject != nil {
@@ -101,7 +101,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	}
 
 	// Override with onboarding next-step hint when this was the first task captured
-	if fromOverlay && msg.Task != nil {
+	if fromQuickCapture && msg.Task != nil {
 		if hint := captureNextHint(preCaptureCount); hint != "" {
 			m.setSuccessStatus(formatSuccessWithNext("Task captured", hint))
 		}

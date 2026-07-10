@@ -373,9 +373,6 @@ type AppModel struct {
 	// Quick note overlay (ctrl+. to add a comment without opening the full comments view)
 	quickNoteOverlay *QuickNoteOverlay
 
-	// Quick capture overlay (;i) — rendered as a floating centered box instead of a full view.
-	quickCaptureOverlay *QuickCaptureModel
-
 	// Global project picker overlay (shown for project selection in global workflows)
 	globalProjectPicker *GlobalProjectPicker
 

@@ -146,7 +146,7 @@ prominent slot.
 Three keys cover the entire capture-to-triage loop from the
 dashboard:
 
-  i        Quick Capture (per-project capture overlay)
+  i        Quick Capture (per-project capture view)
   O        Open inbox triage for the selected project
   ctrl+i   Global Inbox Processor (cross-project triage)
 
@@ -471,7 +471,9 @@ Press ;i from anywhere, or i in project views, to open Quick
 Capture. The placeholder reads "Type a task title…"
 — start with the title, then add sigils as you go. The footer
 hint shows "?: syntax · Esc: cancel"; press ? to toggle the
-full sigil reference on demand instead of crowding the prompt.
+grouped syntax reference (Basics, Priority & Tags, Schedule,
+Placement, Status, Project Routing) on demand instead of
+crowding the prompt.
 
 # Inline Syntax
 
@@ -497,7 +499,7 @@ inline to the title.
 
 # Linked Task Creator
 
-The blocker/dependent/subtask/follow-up overlay shares the same
+The blocker/dependent/subtask/follow-up creator shares the same
 calm placeholder, the same ?: syntax discoverability gate, and
 the same grouped preview. The only difference is the %project
 sigil is omitted, because linked tasks always belong to the

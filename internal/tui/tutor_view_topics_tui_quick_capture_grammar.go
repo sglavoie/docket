@@ -6,10 +6,12 @@ func tutorTUIQuickCaptureGrammarTopic() TutorTopic {
 		Category: "TUI",
 		Content: `# Opening Quick Capture
 
-Press ;i from any view to open the Quick Capture overlay. The
+Press ;i from any view to open the Quick Capture view. The
 placeholder reads "Type a task title…" — start
 typing the title, then add sigils as needed. Press ? to toggle
-the full syntax reference (the footer hint reads "?: syntax").
+the grouped syntax reference — Basics, Priority & Tags,
+Schedule, Placement, Status, and Project Routing (the footer
+hint reads "?: syntax").
 
 The Linked Task Creator (blockers, dependents, subtasks,
 follow-ups) shares the same calm placeholder, the same ?-gated

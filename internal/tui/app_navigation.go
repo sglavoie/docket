@@ -288,7 +288,6 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.showProjectCycle = false
 
 	m.quickNoteOverlay = nil
-	m.quickCaptureOverlay = nil
 	m.globalProjectPicker = nil
 	m.globalTaskPicker = nil
 	m.statusQuickPicker = nil

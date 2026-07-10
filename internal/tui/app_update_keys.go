@@ -495,13 +495,6 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		return true, cmd
 	}
-	if m.quickCaptureOverlay != nil {
-		newModel, cmd := m.quickCaptureOverlay.Update(msg)
-		if qc, ok := newModel.(*QuickCaptureModel); ok {
-			m.quickCaptureOverlay = qc
-		}
-		return true, cmd
-	}
 	if m.globalProjectPicker != nil {
 		dismiss, cmd := dispatchOverlayKey(m.globalProjectPicker, msg)
 		if dismiss {

@@ -20,9 +20,7 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			initialText := strings.Join(parts, " ")
 			model := NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture, initialText)
-			overlayWidth := max(min(m.width*3/5, m.width-4), 60)
-			model.SetSize(overlayWidth, 0)
-			m.quickCaptureOverlay = model
+			m.showView(ViewQuickCapture, model)
 		}
 		return true, nil
 

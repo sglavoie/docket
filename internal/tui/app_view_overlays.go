@@ -89,11 +89,6 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
-	// Overlay floating quick capture if active
-	if popup := m.renderQuickCaptureOverlay(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
 	// Overlay confirm dialog last so it renders on top of all other popups
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
 		content = OverlayPopupDimmed(content, popup, m.width, h)
@@ -216,22 +211,4 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 		return ""
 	}
 	return cd.RenderOverlay(m.width)
-}
-
-// renderQuickCaptureOverlay renders the floating quick capture box when the
-// overlay is active. The box is centered and dimmed over the current view.
-func (m *AppModel) renderQuickCaptureOverlay() string {
-	if m.quickCaptureOverlay == nil {
-		return ""
-	}
-	qc := m.quickCaptureOverlay
-
-	innerWidth := max(min(m.width*3/5, m.width-4), 60)
-	qc.SetSize(innerWidth, 0)
-
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Quick Capture")
-	footer := HelpStyle.Render(qc.overlayHelpText())
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-
-	return renderTitledBox(qc.renderOverlayContent(), innerWidth, title, footer, borderStyle)
 }

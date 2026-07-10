@@ -136,13 +136,12 @@ func newBaselineAlertProjects() []*models.Project {
 }
 
 // TestBaselineQuickCaptureRendersAcrossSizes locks down the Quick Capture
-// fullscreen view: the title, the input field, and the footer's primary
-// actions (Enter/Esc) must fit each baseline size. Session 2 compacted the
-// footer (dropped the verbose "create & open" / "create & edit desc"
-// phrasing) so the `Esc: cancel` hint now survives at every baseline width
-// (>=80 cols). The narrow 60x20 cell still cannot fit the full footer — a
-// future session can teach the footer to drop the syntax/Esc hints below
-// 80 cols if narrow becomes a target.
+// fullscreen view body: the title and the input field must fit each baseline
+// size. Quick Capture is a normal (non-full-height) stack view, so the footer
+// is owned by AppModel.View() rather than the child model — the composed
+// single-footer contract is exercised separately by
+// TestAppViewQuickCaptureUsesAppShellFooter. This baseline only asserts the
+// child body renders its title and stays within each width.
 func TestBaselineQuickCaptureRendersAcrossSizes(t *testing.T) {
 	project := testutil.NewTestProject("Capture")
 	sizes := append([]baselineSize{}, baselineSizes...)
@@ -159,12 +158,7 @@ func TestBaselineQuickCaptureRendersAcrossSizes(t *testing.T) {
 			assertBaselineLineWidth(t, label, rendered, sz.width)
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Quick Capture",
-				"Enter",
-				"create",
 			)
-			if sz.width >= 80 {
-				assertPrimaryActionsVisible(t, label, rendered, "Esc", "cancel")
-			}
 		})
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 type testViewWithMetadata struct{}
@@ -45,5 +46,63 @@ func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 	}
 	if !strings.Contains(output.Content, "Subview content") {
 		t.Fatal("expected composed app content to contain the subview content")
+	}
+}
+
+// countFullWidthDividers returns the number of rendered lines that are a solid
+// run of horizontal-rule glyphs (the app-shell status-bar / footer separator).
+// A footer separator is the only place a line is composed entirely of "─"; the
+// textarea box border interleaves corner glyphs, so it never matches.
+func countFullWidthDividers(content string) int {
+	count := 0
+	for _, line := range strings.Split(content, "\n") {
+		plain := strings.TrimSpace(ansi.Strip(line))
+		if plain == "" {
+			continue
+		}
+		allRule := true
+		runes := 0
+		for _, r := range plain {
+			runes++
+			if r != '─' {
+				allRule = false
+				break
+			}
+		}
+		if allRule && runes >= 40 {
+			count++
+		}
+	}
+	return count
+}
+
+// TestAppViewQuickCaptureUsesAppShellFooter guards the single-footer contract:
+// Quick Capture is a normal (non-full-height) stack view, so AppModel.View()
+// must supply exactly one app-shell footer. The prior regression rendered an
+// inline footer inside QuickCaptureModel.View() *and* the app-shell footer,
+// producing two competing separators. Rendering the stack-opened view through
+// app.View() (not QuickCaptureModel.View() directly) is required so the
+// composition path is exercised.
+func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.width = 80
+	app.height = 24
+
+	handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{Project: project})
+	if !handled {
+		t.Fatal("ShowQuickCaptureMsg should be handled")
+	}
+	if app.currentView() != ViewQuickCapture {
+		t.Fatalf("currentView should be QuickCapture, got %v", app.currentView())
+	}
+
+	content := app.View().Content
+
+	if !strings.Contains(content, "Quick Capture") {
+		t.Fatal("composed output should keep the Quick Capture title/body")
+	}
+
+	if got := countFullWidthDividers(content); got != 1 {
+		t.Fatalf("expected exactly one app-shell footer separator, got %d\n%s", got, ansi.Strip(content))
 	}
 }

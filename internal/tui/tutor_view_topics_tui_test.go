@@ -138,6 +138,10 @@ func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T)
 		"Aliases",
 		"Linked Task Creator",
 		"linked tasks always belong to the\nparent's project",
+		// The `?` reference now names the grouped syntax guide from session 2.
+		"Priority & Tags",
+		"Placement",
+		"Project Routing",
 	}
 	for _, want := range required {
 		if !strings.Contains(topic.Content, want) {
@@ -146,7 +150,8 @@ func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T)
 	}
 
 	// Stale strings: the old sigil-laden placeholder, the always-visible chrome
-	// strip, the old "?: help" footer hint, and the old "(via:" alias suffix
+	// strip, the old "?: help" footer hint, the old "(via:" alias suffix, and the
+	// pre-redesign "overlay" wording (Quick Capture is now a full-width view)
 	// must never reappear in tutor copy.
 	stale := []string{
 		"^type Task title !urgent",
@@ -154,6 +159,7 @@ func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T)
 		"?: help",
 		"(via:",
 		"ctrl+i",
+		"overlay",
 	}
 	for _, notWant := range stale {
 		if strings.Contains(topic.Content, notWant) {
@@ -176,6 +182,10 @@ func TestTutorQuickCaptureGrammarTopicDocumentsGroupTaxonomy(t *testing.T) {
 		"Aliases row",
 		"Linked Task Creator",
 		"omitted in global capture",
+		// The opening section now names the grouped syntax guide from session 2.
+		"Priority & Tags",
+		"Placement",
+		"Project Routing",
 	}
 	for _, want := range required {
 		if !strings.Contains(topic.Content, want) {
@@ -188,6 +198,8 @@ func TestTutorQuickCaptureGrammarTopicDocumentsGroupTaxonomy(t *testing.T) {
 		"(via:",
 		"^type Task title !urgent",
 		"ctrl+i",
+		// Quick Capture is a full-width view now, not an overlay.
+		"overlay",
 	}
 	for _, notWant := range stale {
 		if strings.Contains(topic.Content, notWant) {
