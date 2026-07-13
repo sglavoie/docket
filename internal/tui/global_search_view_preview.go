@@ -75,11 +75,11 @@ func (m *GlobalSearchModel) renderTaskPreview(filteredResult filteredSearchResul
 }
 
 func (m *GlobalSearchModel) renderTaskPreviewMetadata(b *strings.Builder, task *models.Task, typeStyle lipgloss.Style) {
-	statusStyle := GetStatusStyle(string(task.Status))
+	statusStyle := GetStateStyle(task.State())
 	fmt.Fprintf(b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
-		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status)))
+		statusStyle.Render(task.State().Icon()),
+		statusStyle.Render(string(task.State())))
 
 	priorityStyle := NormalStyle
 	if task.Priority <= 2 {

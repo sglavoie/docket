@@ -49,12 +49,12 @@ func TestSnoozedPerspective(t *testing.T) {
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusTodo, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateReady, SnoozedUntil: &tomorrow}
 	if !p.Filter(snoozed) {
 		t.Error("Snoozed should accept snoozed tasks")
 	}
 
-	normal := &models.Task{Status: models.StatusTodo}
+	normal := &models.Task{WorkflowState: models.StateReady}
 	if p.Filter(normal) {
 		t.Error("Snoozed should reject non-snoozed tasks")
 	}
@@ -68,21 +68,21 @@ func TestAllPerspective(t *testing.T) {
 	if p.Filter == nil {
 		t.Fatal("All perspective should have a filter that excludes completed tasks")
 	}
-	if !p.Filter(&models.Task{Status: models.StatusTodo}) {
+	if !p.Filter(&models.Task{WorkflowState: models.StateReady}) {
 		t.Error("All should accept todo tasks")
 	}
-	if !p.Filter(&models.Task{Status: models.StatusInProgress}) {
+	if !p.Filter(&models.Task{WorkflowState: models.StateInProgress}) {
 		t.Error("All should accept in_progress tasks")
 	}
-	if p.Filter(&models.Task{Status: models.StatusDone}) {
+	if p.Filter(&models.Task{WorkflowState: models.StateDone}) {
 		t.Error("All should reject done tasks")
 	}
-	if p.Filter(&models.Task{Status: models.StatusCanceled}) {
+	if p.Filter(&models.Task{WorkflowState: models.StateCanceled}) {
 		t.Error("All should reject canceled tasks")
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusTodo, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateReady, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozed) {
 		t.Error("All should reject snoozed tasks")
 	}
@@ -90,13 +90,13 @@ func TestAllPerspective(t *testing.T) {
 
 func TestActivePerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(2)
-	accept := &models.Task{Status: models.StatusInProgress}
+	accept := &models.Task{WorkflowState: models.StateInProgress}
 	reject := []*models.Task{
-		{Status: models.StatusTodo},
-		{Status: models.StatusDone},
-		{Status: models.StatusBlocked},
-		{Status: models.StatusReview},
-		{Status: models.StatusCanceled},
+		{WorkflowState: models.StateReady},
+		{WorkflowState: models.StateDone},
+		{WorkflowState: models.StateWaiting},
+		{WorkflowState: models.StateReview},
+		{WorkflowState: models.StateCanceled},
 	}
 
 	if !p.Filter(accept) {
@@ -104,12 +104,12 @@ func TestActivePerspective(t *testing.T) {
 	}
 	for _, task := range reject {
 		if p.Filter(task) {
-			t.Errorf("Active should reject %s tasks", task.Status)
+			t.Errorf("Active should reject %s tasks", task.State())
 		}
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozedActive := &models.Task{Status: models.StatusInProgress, SnoozedUntil: &tomorrow}
+	snoozedActive := &models.Task{WorkflowState: models.StateInProgress, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozedActive) {
 		t.Error("Active should reject snoozed tasks")
 	}
@@ -119,26 +119,26 @@ func TestNextPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(3)
 
 	for _, pri := range []int{1, 2} {
-		task := &models.Task{Status: models.StatusTodo, Priority: pri}
+		task := &models.Task{WorkflowState: models.StateReady, Priority: pri}
 		if !p.Filter(task) {
 			t.Errorf("Next should accept todo priority %d", pri)
 		}
 	}
 
 	for _, pri := range []int{3, 4, 5} {
-		task := &models.Task{Status: models.StatusTodo, Priority: pri}
+		task := &models.Task{WorkflowState: models.StateReady, Priority: pri}
 		if p.Filter(task) {
 			t.Errorf("Next should reject todo priority %d", pri)
 		}
 	}
 
-	task := &models.Task{Status: models.StatusInProgress, Priority: 1}
+	task := &models.Task{WorkflowState: models.StateInProgress, Priority: 1}
 	if p.Filter(task) {
 		t.Error("Next should reject non-todo tasks")
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusTodo, Priority: 1, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateReady, Priority: 1, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozed) {
 		t.Error("Next should reject snoozed tasks")
 	}
@@ -147,28 +147,28 @@ func TestNextPerspective(t *testing.T) {
 func TestInboxPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(4)
 
-	accept := &models.Task{Status: models.StatusTodo, Tags: nil}
+	accept := &models.Task{WorkflowState: models.StateReady, Tags: nil}
 	if !p.Filter(accept) {
 		t.Error("Inbox should accept todo tasks with no tags")
 	}
 
-	acceptEmpty := &models.Task{Status: models.StatusTodo, Tags: []string{}}
+	acceptEmpty := &models.Task{WorkflowState: models.StateReady, Tags: []string{}}
 	if !p.Filter(acceptEmpty) {
 		t.Error("Inbox should accept todo tasks with empty tags slice")
 	}
 
-	rejectTags := &models.Task{Status: models.StatusTodo, Tags: []string{"work"}}
+	rejectTags := &models.Task{WorkflowState: models.StateReady, Tags: []string{"work"}}
 	if p.Filter(rejectTags) {
 		t.Error("Inbox should reject todo tasks with tags")
 	}
 
-	rejectStatus := &models.Task{Status: models.StatusInProgress, Tags: nil}
+	rejectStatus := &models.Task{WorkflowState: models.StateInProgress, Tags: nil}
 	if p.Filter(rejectStatus) {
 		t.Error("Inbox should reject non-todo tasks")
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusTodo, Tags: nil, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateReady, Tags: nil, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozed) {
 		t.Error("Inbox should reject snoozed tasks")
 	}
@@ -180,22 +180,22 @@ func TestStandbyPerspective(t *testing.T) {
 		t.Fatalf("expected 'Standby', got %q", p.Name)
 	}
 
-	accept := &models.Task{Status: models.StatusStandby}
+	accept := &models.Task{WorkflowState: models.StatePaused}
 	if !p.Filter(accept) {
 		t.Error("Standby should accept standby tasks")
 	}
 
-	for _, status := range []models.TaskStatus{
-		models.StatusTodo,
-		models.StatusInProgress,
-		models.StatusDone,
-		models.StatusBlocked,
-		models.StatusReview,
-		models.StatusCanceled,
+	for _, state := range []models.WorkflowState{
+		models.StateReady,
+		models.StateInProgress,
+		models.StateDone,
+		models.StateWaiting,
+		models.StateReview,
+		models.StateCanceled,
 	} {
-		task := &models.Task{Status: status}
+		task := &models.Task{WorkflowState: state}
 		if p.Filter(task) {
-			t.Errorf("Standby should reject %s tasks", status)
+			t.Errorf("Standby should reject %s tasks", state)
 		}
 	}
 }
@@ -203,25 +203,25 @@ func TestStandbyPerspective(t *testing.T) {
 func TestWaitingPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(6)
 
-	accept := &models.Task{Status: models.StatusBlocked}
+	accept := &models.Task{WorkflowState: models.StateWaiting}
 	if !p.Filter(accept) {
 		t.Error("Waiting should accept blocked tasks")
 	}
 
-	for _, status := range []models.TaskStatus{
-		models.StatusTodo,
-		models.StatusInProgress,
-		models.StatusDone,
-		models.StatusReview,
+	for _, state := range []models.WorkflowState{
+		models.StateReady,
+		models.StateInProgress,
+		models.StateDone,
+		models.StateReview,
 	} {
-		task := &models.Task{Status: status}
+		task := &models.Task{WorkflowState: state}
 		if p.Filter(task) {
-			t.Errorf("Waiting should reject %s tasks", status)
+			t.Errorf("Waiting should reject %s tasks", state)
 		}
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusBlocked, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateWaiting, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozed) {
 		t.Error("Waiting should reject snoozed tasks")
 	}
@@ -231,26 +231,26 @@ func TestSomedayPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(7)
 
 	for _, pri := range []int{4, 5} {
-		task := &models.Task{Status: models.StatusTodo, Priority: pri}
+		task := &models.Task{WorkflowState: models.StateReady, Priority: pri}
 		if !p.Filter(task) {
 			t.Errorf("Someday should accept todo priority %d", pri)
 		}
 	}
 
 	for _, pri := range []int{1, 2, 3} {
-		task := &models.Task{Status: models.StatusTodo, Priority: pri}
+		task := &models.Task{WorkflowState: models.StateReady, Priority: pri}
 		if p.Filter(task) {
 			t.Errorf("Someday should reject todo priority %d", pri)
 		}
 	}
 
-	task := &models.Task{Status: models.StatusInProgress, Priority: 5}
+	task := &models.Task{WorkflowState: models.StateInProgress, Priority: 5}
 	if p.Filter(task) {
 		t.Error("Someday should reject non-todo tasks")
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusTodo, Priority: 5, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateReady, Priority: 5, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozed) {
 		t.Error("Someday should reject snoozed tasks")
 	}
@@ -259,24 +259,24 @@ func TestSomedayPerspective(t *testing.T) {
 func TestCompletedPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(8)
 
-	accept := &models.Task{Status: models.StatusDone}
+	accept := &models.Task{WorkflowState: models.StateDone}
 	if !p.Filter(accept) {
 		t.Error("Completed should accept done tasks")
 	}
 
-	canceled := &models.Task{Status: models.StatusCanceled}
+	canceled := &models.Task{WorkflowState: models.StateCanceled}
 	if p.Filter(canceled) {
 		t.Error("Completed should reject canceled tasks")
 	}
 
-	for _, status := range []models.TaskStatus{
-		models.StatusTodo,
-		models.StatusInProgress,
-		models.StatusBlocked,
+	for _, state := range []models.WorkflowState{
+		models.StateReady,
+		models.StateInProgress,
+		models.StateWaiting,
 	} {
-		task := &models.Task{Status: status}
+		task := &models.Task{WorkflowState: state}
 		if p.Filter(task) {
-			t.Errorf("Completed should reject %s tasks", status)
+			t.Errorf("Completed should reject %s tasks", state)
 		}
 	}
 }
@@ -284,25 +284,25 @@ func TestCompletedPerspective(t *testing.T) {
 func TestReviewPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(9)
 
-	accept := &models.Task{Status: models.StatusReview}
+	accept := &models.Task{WorkflowState: models.StateReview}
 	if !p.Filter(accept) {
 		t.Error("Review should accept in_review tasks")
 	}
 
-	for _, status := range []models.TaskStatus{
-		models.StatusTodo,
-		models.StatusInProgress,
-		models.StatusDone,
-		models.StatusBlocked,
+	for _, state := range []models.WorkflowState{
+		models.StateReady,
+		models.StateInProgress,
+		models.StateDone,
+		models.StateWaiting,
 	} {
-		task := &models.Task{Status: status}
+		task := &models.Task{WorkflowState: state}
 		if p.Filter(task) {
-			t.Errorf("Review should reject %s tasks", status)
+			t.Errorf("Review should reject %s tasks", state)
 		}
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	snoozed := &models.Task{Status: models.StatusReview, SnoozedUntil: &tomorrow}
+	snoozed := &models.Task{WorkflowState: models.StateReview, SnoozedUntil: &tomorrow}
 	if p.Filter(snoozed) {
 		t.Error("Review should reject snoozed tasks")
 	}
@@ -310,8 +310,8 @@ func TestReviewPerspective(t *testing.T) {
 
 func TestBuildSectionOrderWithGTDSectionsOnly(t *testing.T) {
 	tasks := []*models.Task{
-		{Section: ""},
-		{Section: models.SectionNext},
+		{WorkflowState: models.StateReady},
+		{WorkflowState: models.StateNext},
 	}
 	order := BuildSectionOrder(tasks)
 	if !slices.Equal(order, SectionOrder) {
@@ -321,9 +321,9 @@ func TestBuildSectionOrderWithGTDSectionsOnly(t *testing.T) {
 
 func TestBuildSectionOrderKeepsGTDOnlyWithNonGTDSections(t *testing.T) {
 	tasks := []*models.Task{
-		{Section: ""},
-		{Section: ""},
-		{Section: models.SectionNext},
+		{WorkflowState: models.StateReady},
+		{WorkflowState: models.StateReady},
+		{WorkflowState: models.StateNext},
 	}
 	order := BuildSectionOrder(tasks)
 	if !slices.Equal(order, SectionOrder) {
@@ -332,7 +332,7 @@ func TestBuildSectionOrderKeepsGTDOnlyWithNonGTDSections(t *testing.T) {
 }
 
 func TestBuildSectionOrderReturnsIndependentCopy(t *testing.T) {
-	tasks := []*models.Task{{Section: "Sprint"}}
+	tasks := []*models.Task{{WorkflowState: models.StateReady}}
 	order := BuildSectionOrder(tasks)
 	order[0] = "changed"
 	if SectionOrder[0] != models.SectionInbox {
@@ -342,8 +342,8 @@ func TestBuildSectionOrderReturnsIndependentCopy(t *testing.T) {
 
 func TestBuildCrossProjectSectionOrderKeepsGTDOnly(t *testing.T) {
 	groups := []projectTasksGroup{
-		{projectID: "p1", tasks: []*models.Task{{Section: "Beta"}}},
-		{projectID: "p2", tasks: []*models.Task{{Section: "Alpha"}}},
+		{projectID: "p1", tasks: []*models.Task{{WorkflowState: models.StateReady}}},
+		{projectID: "p2", tasks: []*models.Task{{WorkflowState: models.StateReady}}},
 	}
 	order := BuildCrossProjectSectionOrder(groups)
 	if !slices.Equal(order, SectionOrder) {
@@ -352,10 +352,10 @@ func TestBuildCrossProjectSectionOrderKeepsGTDOnly(t *testing.T) {
 }
 
 func TestHeaderSectionForTaskIgnoresNonGTDSection(t *testing.T) {
-	if got := headerSectionForTask(&models.Task{Section: models.SectionNext}); got != models.SectionNext {
+	if got := headerSectionForTask(&models.Task{WorkflowState: models.StateNext}); got != models.SectionNext {
 		t.Errorf("GTD task header section = %q, want %q", got, models.SectionNext)
 	}
-	if got := headerSectionForTask(&models.Task{Section: "Sprint-1"}); got != "" {
+	if got := headerSectionForTask(&models.Task{WorkflowState: models.StateReady}); got != "" {
 		t.Errorf("non-GTD task header section = %q, want Active empty section", got)
 	}
 	if got := headerSectionForTask(nil); got != "" {

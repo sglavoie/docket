@@ -62,9 +62,9 @@ func TestTaskTitleStyleFor(t *testing.T) {
 
 	taskWith := func(priority int) *models.Task {
 		return &models.Task{
-			Title:    "Task",
-			Status:   models.StatusTodo,
-			Priority: priority,
+			Title:         "Task",
+			WorkflowState: models.StateReady,
+			Priority:      priority,
 		}
 	}
 
@@ -79,9 +79,8 @@ func TestTaskTitleStyleFor(t *testing.T) {
 		{"priority 3", taskWith(3), TaskTitleStyleOptions{}, GetTitlePriorityStyle(3)},
 		{"priority 4", taskWith(4), TaskTitleStyleOptions{}, GetTitlePriorityStyle(4)},
 		{"priority 5", taskWith(5), TaskTitleStyleOptions{}, GetTitlePriorityStyle(5)},
-		{"active keeps priority title style", func() *models.Task {
+		{"plain task keeps priority title style", func() *models.Task {
 			task := taskWith(1)
-			task.Active = true
 			return task
 		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(1)},
 		{"pinned keeps priority title style", func() *models.Task {
@@ -93,12 +92,12 @@ func TestTaskTitleStyleFor(t *testing.T) {
 		{"cursor selected uses selected title style", taskWith(4), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
 		{"canceled uses canceled style", func() *models.Task {
 			task := taskWith(1)
-			task.Status = models.StatusCanceled
+			task.WorkflowState = models.StateCanceled
 			return task
 		}(), TaskTitleStyleOptions{}, CanceledStyle},
 		{"canceled suppresses selected title style", func() *models.Task {
 			task := taskWith(1)
-			task.Status = models.StatusCanceled
+			task.WorkflowState = models.StateCanceled
 			return task
 		}(), TaskTitleStyleOptions{CursorSelected: true}, CanceledStyle},
 		{"dimmed uses muted title style", func() *models.Task {

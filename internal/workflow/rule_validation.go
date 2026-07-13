@@ -433,8 +433,9 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 			return false
 		}
 		matched := false
+		taskSection := models.SectionForState(task.State())
 		for _, section := range r.Scope.Sections {
-			if strings.EqualFold(section, task.Section) {
+			if strings.EqualFold(section, taskSection) {
 				matched = true
 				break
 			}

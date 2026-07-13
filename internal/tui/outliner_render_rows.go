@@ -164,7 +164,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 			}
 		}
 	}
-	cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned, task.Dimmed)
+	cursorPrefix := RenderCursorPrefix(selected, m.queueIDs[task.ID], task.Pinned, task.Dimmed)
 	queueIndicator := m.renderTaskQueueIndicator(task)
 	checkbox := m.renderTaskCheckbox(task)
 	prefixStr, foldIndicator := renderTaskPrefix(row.prefix, foldIndicator)
@@ -239,9 +239,9 @@ func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task, proj *models.Project) string {
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	statusIcon := GetStateBadge(task.State())
 	if proj != nil && proj.HasIncompleteDependencies(task) {
-		return BlockedByDepsStyle.Render(task.Status.Icon())
+		return BlockedByDepsStyle.Render(task.State().Icon())
 	}
 	return statusIcon
 }
@@ -404,7 +404,7 @@ func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, pr
 		}
 		return SelectedLine(line, rowWidth)
 	}
-	if task.Status == models.StatusBlocked || (proj != nil && proj.HasIncompleteDependencies(task)) {
+	if task.IsInState(models.StateWaiting) || (proj != nil && proj.HasIncompleteDependencies(task)) {
 		return BlockedRowStyle.Width(rowWidth).Render(line)
 	}
 	if task.IsOverdue() {

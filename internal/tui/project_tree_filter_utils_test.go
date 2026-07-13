@@ -12,9 +12,9 @@ import (
 // (model order from p.Tasks). Without this, J/K swaps target the wrong
 // neighbor in sorted/active-prioritized views.
 func TestGetVisibleSiblings_FollowsNodeOrder(t *testing.T) {
-	t1 := &models.Task{ID: "t1", Title: "T1", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	t2 := &models.Task{ID: "t2", Title: "T2", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	t3 := &models.Task{ID: "t3", Title: "T3", Type: models.TaskTypeTask, Status: models.StatusTodo}
+	t1 := &models.Task{ID: "t1", Title: "T1", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	t2 := &models.Task{ID: "t2", Title: "T2", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	t3 := &models.Task{ID: "t3", Title: "T3", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
 
 	// p.Tasks order is t1, t2, t3 — the "model" order.
 	project := &models.Project{Tasks: []*models.Task{t1, t2, t3}}
@@ -47,12 +47,12 @@ func TestGetVisibleSiblings_FollowsNodeOrder(t *testing.T) {
 // and same-ParentID matches are accepted, while differing parents are
 // filtered out.
 func TestGetVisibleSiblings_ExcludesDifferentParent(t *testing.T) {
-	parentA := &models.Task{ID: "pa", Title: "PA", Type: models.TaskTypeEpic, Status: models.StatusTodo}
-	parentB := &models.Task{ID: "pb", Title: "PB", Type: models.TaskTypeEpic, Status: models.StatusTodo}
+	parentA := &models.Task{ID: "pa", Title: "PA", Type: models.TaskTypeEpic, WorkflowState: models.StateReady}
+	parentB := &models.Task{ID: "pb", Title: "PB", Type: models.TaskTypeEpic, WorkflowState: models.StateReady}
 
-	childA1 := &models.Task{ID: "a1", Title: "A1", Type: models.TaskTypeTask, Status: models.StatusTodo, ParentID: &parentA.ID, Parent: parentA}
-	childA2 := &models.Task{ID: "a2", Title: "A2", Type: models.TaskTypeTask, Status: models.StatusTodo, ParentID: &parentA.ID, Parent: parentA}
-	childB1 := &models.Task{ID: "b1", Title: "B1", Type: models.TaskTypeTask, Status: models.StatusTodo, ParentID: &parentB.ID, Parent: parentB}
+	childA1 := &models.Task{ID: "a1", Title: "A1", Type: models.TaskTypeTask, WorkflowState: models.StateReady, ParentID: &parentA.ID, Parent: parentA}
+	childA2 := &models.Task{ID: "a2", Title: "A2", Type: models.TaskTypeTask, WorkflowState: models.StateReady, ParentID: &parentA.ID, Parent: parentA}
+	childB1 := &models.Task{ID: "b1", Title: "B1", Type: models.TaskTypeTask, WorkflowState: models.StateReady, ParentID: &parentB.ID, Parent: parentB}
 
 	parentA.Children = []*models.Task{childA1, childA2}
 	parentB.Children = []*models.Task{childB1}
@@ -84,9 +84,9 @@ func TestGetVisibleSiblings_ExcludesDifferentParent(t *testing.T) {
 // TestGetVisibleSiblings_AppliesPassesFilters verifies the helper respects
 // passesFilters — e.g. completed tasks are filtered out in ViewModeAll.
 func TestGetVisibleSiblings_AppliesPassesFilters(t *testing.T) {
-	t1 := &models.Task{ID: "t1", Title: "T1", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	t2 := &models.Task{ID: "t2", Title: "T2", Type: models.TaskTypeTask, Status: models.StatusDone} // excluded in non-Completed views
-	t3 := &models.Task{ID: "t3", Title: "T3", Type: models.TaskTypeTask, Status: models.StatusTodo}
+	t1 := &models.Task{ID: "t1", Title: "T1", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	t2 := &models.Task{ID: "t2", Title: "T2", Type: models.TaskTypeTask, WorkflowState: models.StateDone} // excluded in non-Completed views
+	t3 := &models.Task{ID: "t3", Title: "T3", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
 
 	project := &models.Project{Tasks: []*models.Task{t1, t2, t3}}
 	m := &ProjectTreeModel{

@@ -49,7 +49,7 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 
 	var ranked []rankedTask
 	for _, task := range project.Tasks {
-		if !includeAll && task.Status.IsComplete() {
+		if !includeAll && task.IsTerminalState() {
 			continue
 		}
 		if !includeSnoozed && task.IsSnoozed() {
@@ -84,6 +84,7 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 			ShortID      int     `json:"short_id"`
 			Type         string  `json:"type"`
 			Status       string  `json:"status"`
+			State        string  `json:"state"`
 			Title        string  `json:"title"`
 			Priority     int     `json:"priority"`
 			Score        float64 `json:"score"`
@@ -98,7 +99,8 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 				ID:           r.task.ID,
 				ShortID:      r.task.ShortID,
 				Type:         string(r.task.Type),
-				Status:       string(r.task.Status),
+				Status:       string(models.LegacyStatusForState(r.task.State())),
+				State:        string(r.task.State()),
 				Title:        r.task.Title,
 				Priority:     r.task.Priority,
 				Score:        r.score,
@@ -112,7 +114,7 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Tasks ranked by %s score (project: %s):\n\n", profile.Name, project.Name)
 	for i, r := range ranked {
 		pct := scoring.ScorePercent(r.score, profile)
-		statusStr := string(r.task.Status)
+		statusStr := string(r.task.State())
 		if len(statusStr) > 3 {
 			statusStr = statusStr[:3]
 		}

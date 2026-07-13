@@ -6,8 +6,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // flashMoveCmd sets flashCardID on the model for the given task and returns a
@@ -32,6 +34,32 @@ func (m *KanbanModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *KanbanModel) getPersister() Persister           { return m.svc }
 func (m *KanbanModel) getConfig() *config.Config         { return m.config }
 func (m *KanbanModel) getConfigManager() *config.Manager { return m.configManager }
+
+// SetBulkCoordinator injects the application-layer bulk coordinator. The shell
+// wires it from the single showView/replaceView site via the bulkWireable
+// interface, so no Kanban construction path can forget to inject it.
+func (m *KanbanModel) SetBulkCoordinator(c BulkCoordinator) { m.bulk = c }
+
+// SetTaskItemCoordinator injects the application-layer single-task coordinator so
+// the single-card priority move commits through the application layer. The shell
+// wires it from the same showView/replaceView site via the taskItemWireable
+// interface.
+func (m *KanbanModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem = c }
+
+// enabledWorkflowRules returns the workspace's enabled workflow rules, or nil
+// when no config is bound (isolated render tests).
+func (m *KanbanModel) enabledWorkflowRules() []workflow.WorkflowRule {
+	if m.config == nil {
+		return nil
+	}
+	return m.config.GetEnabledWorkflowRules()
+}
+
+// workflowOpsView accessors: Kanban does not embed ViewBundle, so it exposes its
+// own single-task coordinator and enabled rules for the shared wf* helpers that
+// back its single-card (non-selection) actions.
+func (m *KanbanModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }
+func (m *KanbanModel) workflowRules() []workflow.WorkflowRule   { return m.enabledWorkflowRules() }
 
 // reloadData reloads all loaded projects and rebuilds columns, preserving the
 // active column by ID so it remains focused after data changes.
@@ -109,113 +137,94 @@ func (m *KanbanModel) applySelectedBulkDueDate(days int, isClear bool) (tea.Mode
 	refs := m.selectedTaskProjectRefs()
 	if len(refs) == 0 {
 		if isClear {
-			return taskOpsClearDueDate(m)
+			return m, wfClearDueDate(m)
 		}
-		return taskOpsSetQuickDueDate(m, days)
+		return m, wfSetQuickDueDate(m, days)
 	}
 
-	dueDate, desc := dueDateFromDays(days, isClear)
-	count, err := taskOpsApplyBulk(m, refs, "Set Due Date", func(project *models.Project, taskID string) bool {
-		return project.MutateTask(taskID, func(t *models.Task) {
-			if dueDate != nil {
-				d := *dueDate
-				t.DueDate = &d
-			} else {
-				t.DueDate = nil
-			}
-			t.HasTime = false
-		})
-	})
-	if err != nil {
-		m.setErr(err)
-		return m, nil
-	}
-
-	msg := fmt.Sprintf("Due date set to %s on %d tasks", desc, count)
 	if isClear {
-		msg = fmt.Sprintf("Cleared due date on %d tasks", count)
+		return m, bulkListClearDueDateCmd(m.bulk, refs)
 	}
-	m.FinishBulk(&m.statusMsg, msg)
-	return m, nil
+	return m, bulkListDueDateCmd(m.bulk, refs, days)
 }
 
 func (m *KanbanModel) applySelectedBulkSnooze(key string) (tea.Model, tea.Cmd) {
-	snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
+	snoozeDate, _, ok := resolveQuickSnoozeDate(key)
 	if !ok {
 		return m, nil
 	}
 
 	refs := m.selectedTaskProjectRefs()
 	if len(refs) == 0 {
-		return taskOpsQuickSnooze(m, snoozeDate)
+		return m, wfQuickSnooze(m, snoozeDate)
 	}
 
-	count, err := taskOpsApplyBulk(m, refs, "Snooze", func(project *models.Project, taskID string) bool {
-		return project.MutateTask(taskID, func(t *models.Task) {
-			if snoozeDate != nil {
-				d := *snoozeDate
-				t.SnoozedUntil = &d
-			} else {
-				t.SnoozedUntil = nil
-			}
-		})
-	})
-	if err != nil {
-		m.setErr(err)
-		return m, nil
-	}
-
-	msg := fmt.Sprintf("Snoozed %d tasks %s", count, desc)
-	if snoozeDate == nil {
-		msg = fmt.Sprintf("Cleared snooze on %d tasks", count)
-	}
-	m.FinishBulk(&m.statusMsg, msg)
-	return m, nil
+	return m, bulkListSnoozeCmd(m.bulk, refs, snoozeDate)
 }
 
+// runSelectedBulkAction applies an arbitrary in-memory task mutation (toggle
+// active/pin/dim) to every selected task, grouped by owning project, then commits
+// each touched project through the workflow-aware coordinator. The view sets its
+// own success status synchronously; the shell owns reload via the async batch
+// result (empty summary so it does not blank the status the view just set).
 func (m *KanbanModel) runSelectedBulkAction(
 	refs []TaskProjectRef,
 	undoAction string,
 	successMsg func(int) string,
 	mutate func(project *models.Project, taskID string) bool,
 ) (tea.Model, tea.Cmd) {
-	count, err := taskOpsApplyBulk(m, refs, undoAction, mutate)
-	if err != nil {
-		m.setErr(err)
-		return m, nil
-	}
-	m.FinishBulk(&m.statusMsg, successMsg(count))
-	return m, nil
-}
-
-func (m *KanbanModel) applySelectedBulkStatus(status models.TaskStatus) (tea.Model, tea.Cmd) {
-	refs := m.selectedTaskProjectRefs()
-	if len(refs) == 0 {
-		return taskOpsChangeStatus(m, status)
-	}
-
-	return m.runSelectedBulkAction(refs, StatusVerb(status)+" Task", func(count int) string {
-		return fmt.Sprintf("Changed %d tasks to %s", count, status)
-	}, func(project *models.Project, taskID string) bool {
-		task := project.GetTaskByID(taskID)
-		if task == nil || task.CanTransitionTo(status) != "" {
-			return false
-		}
-		if status == models.StatusDone && project.HasIncompleteDependencies(task) {
-			return false
-		}
-		if status == models.StatusDone {
-			for _, child := range task.Children {
-				if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
-					return false
-				}
+	count := 0
+	var changedProjects []*models.Project
+	for _, group := range groupTaskProjectRefsByProject(refs) {
+		project := group.Project
+		changed := false
+		for _, item := range group.Items {
+			if mutate(project, item.Task.ID) {
+				count++
+				changed = true
 			}
 		}
-		project.MutateTask(taskID, func(t *models.Task) {
-			t.ApplyTransition(status)
-		})
-		return true
-	})
+		if changed {
+			changedProjects = append(changedProjects, project)
+		}
+	}
+
+	m.FinishBulk(&m.statusMsg, successMsg(count))
+	return m, m.commitChangedProjects(changedProjects, undoAction, count)
+}
+
+// commitChangedProjects dispatches one workflow-aware commit per touched project,
+// batching the resulting async commands. It returns nil when nothing changed so an
+// unwired coordinator (isolated render tests) is never invoked.
+func (m *KanbanModel) commitChangedProjects(projects []*models.Project, undoAction string, count int) tea.Cmd {
+	if len(projects) == 0 {
+		return nil
+	}
+	opts := app.ProjectWorkflowOptions{
+		Rules:       m.enabledWorkflowRules(),
+		UndoAction:  undoAction,
+		UndoContext: fmt.Sprintf("%d tasks", count),
+	}
+	cmds := make([]tea.Cmd, 0, len(projects))
+	for _, project := range projects {
+		cmds = append(cmds, m.taskItem.CommitProjectWorkflow(project, opts, ""))
+	}
+	// A single touched project (the common non-cross-project board) returns its
+	// command directly so the shell receives one BatchTransactionResultMsg; only a
+	// genuine cross-project selection needs the tea.Batch fan-out.
+	if len(cmds) == 1 {
+		return cmds[0]
+	}
+	return tea.Batch(cmds...)
+}
+
+func (m *KanbanModel) applySelectedBulkState(state models.WorkflowState) (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return m, wfChangeState(m, state)
+	}
+
+	return m, bulkListStateCmd(m.bulk, m.enabledWorkflowRules(), refs, state)
 }
 
 func (m *KanbanModel) applySelectedBulkPriority(key string) (tea.Model, tea.Cmd) {
@@ -226,92 +235,33 @@ func (m *KanbanModel) applySelectedBulkPriority(key string) (tea.Model, tea.Cmd)
 
 	refs := m.selectedTaskProjectRefs()
 	if len(refs) == 0 {
-		return taskOpsChangePriority(m, key)
+		return m, wfChangePriority(m, key)
 	}
 
-	return m.runSelectedBulkAction(refs, "Set Priority", func(count int) string {
-		return fmt.Sprintf("Set priority %d on %d tasks", priority, count)
-	}, func(project *models.Project, taskID string) bool {
-		task := project.GetTaskByID(taskID)
-		if task == nil || task.Priority == priority {
-			return false
-		}
-		project.MutateTask(taskID, func(t *models.Task) {
-			t.Priority = priority
-		})
-		return true
-	})
-}
-
-func (m *KanbanModel) applySelectedBulkStage(stage string) (tea.Model, tea.Cmd) {
-	refs := m.selectedTaskProjectRefs()
-	if len(refs) == 0 {
-		return taskOpsChangeStage(m, stage)
-	}
-
-	return m.runSelectedBulkAction(refs, "Set Stage", func(count int) string {
-		if stage == "" {
-			return fmt.Sprintf("Cleared stage on %d tasks", count)
-		}
-		return fmt.Sprintf("Set stage on %d tasks", count)
-	}, func(project *models.Project, taskID string) bool {
-		task := project.GetTaskByID(taskID)
-		if task == nil || task.Stage == stage {
-			return false
-		}
-		project.MutateTask(taskID, func(t *models.Task) {
-			t.Stage = stage
-		})
-		return true
-	})
+	return m, bulkListPriorityCmd(m.bulk, refs, priority)
 }
 
 func (m *KanbanModel) applySelectedBulkSectionMove(section string) (tea.Model, tea.Cmd) {
 	refs := m.selectedTaskProjectRefs()
 	if len(refs) == 0 {
-		return taskOpsSectionMove(m, section)
-	}
-	if _, _, ok := sameProjectTaskRefs(refs); !ok {
-		m.setStatus("bulk section move not supported across projects")
-		return m, nil
+		return m, wfSectionMove(m, section)
 	}
 
-	return m.runSelectedBulkAction(refs, "Move to Section", func(count int) string {
-		return fmt.Sprintf("Moved %d tasks to %s", count, kanbanSectionStatusLabel(section))
-	}, func(project *models.Project, taskID string) bool {
-		task := project.GetTaskByID(taskID)
-		if task == nil || task.InSection(section) {
-			return false
-		}
-		project.MutateTask(taskID, func(t *models.Task) {
-			assignSection(t, section)
-		})
-		if section != "" {
-			project.EnsureSection(section)
-		}
-		return true
-	})
-}
-
-func (m *KanbanModel) applySelectedBulkToggleActive() (tea.Model, tea.Cmd) {
-	refs := m.selectedTaskProjectRefs()
-	if len(refs) == 0 {
-		return taskOpsToggleActive(m)
+	// Sections are retired: a "send to section X" bulk action is a workflow-state
+	// transition committed through the coordinator, which handles cross-project
+	// selections natively (one atomic transaction), so the former same-project
+	// restriction no longer applies.
+	cmd, ok := bulkListSectionMoveCmd(m.bulk, m.enabledWorkflowRules(), refs, section)
+	if !ok {
+		m.setStatus(fmt.Sprintf("Unknown section %q", section))
 	}
-
-	return m.runSelectedBulkAction(refs, "Toggle Active", func(count int) string {
-		return fmt.Sprintf("Toggled active on %d tasks", count)
-	}, func(project *models.Project, taskID string) bool {
-		return project.MutateTask(taskID, func(t *models.Task) {
-			t.ToggleActive()
-		})
-	})
+	return m, cmd
 }
 
 func (m *KanbanModel) applySelectedBulkTogglePin() (tea.Model, tea.Cmd) {
 	refs := m.selectedTaskProjectRefs()
 	if len(refs) == 0 {
-		return taskOpsTogglePinned(m)
+		return m, wfTogglePin(m)
 	}
 
 	return m.runSelectedBulkAction(refs, "Toggle Pin", func(count int) string {
@@ -326,7 +276,7 @@ func (m *KanbanModel) applySelectedBulkTogglePin() (tea.Model, tea.Cmd) {
 func (m *KanbanModel) applySelectedBulkToggleDim() (tea.Model, tea.Cmd) {
 	refs := m.selectedTaskProjectRefs()
 	if len(refs) == 0 {
-		return taskOpsToggleDimmed(m)
+		return m, wfToggleDim(m)
 	}
 
 	return m.runSelectedBulkAction(refs, "Toggle Dim", func(count int) string {
@@ -340,17 +290,14 @@ func (m *KanbanModel) applySelectedBulkToggleDim() (tea.Model, tea.Cmd) {
 
 func (m *KanbanModel) applySelectedBulkDelete() (tea.Model, tea.Cmd) {
 	if len(m.selectedTaskProjectRefs()) == 0 {
-		return taskOpsDeleteTask(m)
+		// Single-card delete commits the subtree through the coordinator-backed
+		// workflow path (folding durable planning-ref cleanup into the same
+		// transaction); the shell reloads the board from the async
+		// BatchTransactionResultMsg.
+		return m, wfDeleteTask(m, m.getConfig(), m.getConfigManager())
 	}
 	m.setStatus("bulk delete not supported in Kanban")
 	return m, nil
-}
-
-func kanbanSectionStatusLabel(section string) string {
-	if section == "" {
-		return "Active"
-	}
-	return section
 }
 
 // ─── commonActionView interface ───────────────────────────────────────────────
@@ -461,47 +408,58 @@ func (m *KanbanModel) bulkMoveSelectedTasks(delta int) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	var lastCmd tea.Cmd
+	// Apply the column move to every selected task in memory, grouped by owning
+	// project, then commit each touched project through the workflow-aware
+	// coordinator. The shell reloads the board from the committed transaction; a
+	// task that cannot transition (status mode) is skipped and not counted.
 	moved := 0
+	var changedProjects []*models.Project
+	seen := make(map[string]bool)
 	for _, ref := range selected {
-		pf := workflowPersist(func() WorkflowSaveOptions {
-			return BuildWorkflowOpts(m.getPersister(), ref.project, m.config, m.configManager, nil, "", "", nil)
-		})
-		var result TaskOpResult
-		switch m.mode {
-		case KanbanModeSection:
-			result = applySectionChange(pf, ref.project, ref.task.ID, kanbanColIDToSection(targetCol.ID))
-		case KanbanModeStatus:
-			newStatus := models.TaskStatus(targetCol.ID)
-			if reason := ref.task.CanTransitionTo(newStatus); reason != "" {
-				continue // skip tasks that can't transition
-			}
-			result = applyStatusChange(pf, ref.project, ref.task.ID, newStatus)
-		case KanbanModePriority:
-			result = applyPriorityChange(pf, ref.project, ref.task.ID, kanbanColIDToPriority(targetCol.ID))
-		case KanbanModeStages:
-			stage := targetCol.ID
-			if stage == "unset" {
-				stage = ""
-			}
-			result = applyStageChange(pf, ref.project, ref.task.ID, stage)
-		default:
+		if !m.applyBulkColumnMove(ref.project, ref.task, targetCol) {
 			continue
-		}
-		if result.Err != nil {
-			m.setErr(result.Err)
-			continue
-		}
-		if result.Cmd != nil {
-			lastCmd = result.Cmd
 		}
 		moved++
+		if !seen[ref.project.ID] {
+			seen[ref.project.ID] = true
+			changedProjects = append(changedProjects, ref.project)
+		}
 	}
 
 	m.FinishBulk(&m.statusMsg, fmt.Sprintf("Moved %d %s → %s", moved, pluralize(moved, "task", "tasks"), targetCol.Label))
-	m.reloadData()
-	m.clampCursor()
-	return m, lastCmd
+	return m, m.commitChangedProjects(changedProjects, "", moved)
+}
+
+// applyBulkColumnMove applies the mode-specific mutation that moving a card to
+// targetCol represents, in memory. It returns whether the task was mutated so the
+// caller can count moves and collect touched projects; a status transition the
+// task cannot make (or an unknown mode) returns false.
+func (m *KanbanModel) applyBulkColumnMove(project *models.Project, task *models.Task, targetCol *KanbanColumn) bool {
+	switch m.mode {
+	case KanbanModeSection:
+		section := kanbanColIDToSection(targetCol.ID)
+		return project.MutateTask(task.ID, func(t *models.Task) {
+			assignSection(t, section)
+			if section != "" {
+				project.EnsureSection(section)
+			}
+		})
+	case KanbanModeStatus:
+		newState := models.TargetStateForStatus(models.TaskStatus(targetCol.ID))
+		if reason := models.CanTransitionState(task.State(), newState); reason != "" {
+			return false // skip tasks that can't transition
+		}
+		return project.MutateTask(task.ID, func(t *models.Task) {
+			t.ApplyStateTransition(newState)
+		})
+	case KanbanModePriority:
+		priority := kanbanColIDToPriority(targetCol.ID)
+		return project.MutateTask(task.ID, func(t *models.Task) {
+			t.Priority = priority
+		})
+	default:
+		return false
+	}
 }
 
 // moveTaskToAdjacentCol moves the focused task to the column at activeCol+delta.
@@ -523,29 +481,26 @@ func (m *KanbanModel) moveTaskToAdjacentCol(delta int) (tea.Model, tea.Cmd) {
 	var model tea.Model
 	var cmd tea.Cmd
 
+	// The single-card column move mutates the cursor task (getTaskRef), so the
+	// coordinator-backed wf* helpers target exactly the task being moved. The
+	// shell reloads the board from the async BatchTransactionResultMsg (as the
+	// migrated priority path already does), so no inline reload is needed here.
 	switch m.mode {
 	case KanbanModeSection:
 		section := kanbanColIDToSection(targetCol.ID)
-		model, cmd = taskOpsSectionMove(m, section)
+		model, cmd = m, wfSectionMove(m, section)
 
 	case KanbanModeStatus:
-		newStatus := models.TaskStatus(targetCol.ID)
-		if reason := task.CanTransitionTo(newStatus); reason != "" {
+		newState := models.TargetStateForStatus(models.TaskStatus(targetCol.ID))
+		if reason := models.CanTransitionState(task.State(), newState); reason != "" {
 			m.statusMsg = reason
 			return m, nil
 		}
-		model, cmd = taskOpsChangeStatus(m, newStatus)
+		model, cmd = m, wfChangeState(m, newState)
 
 	case KanbanModePriority:
 		newPriority := kanbanColIDToPriority(targetCol.ID)
 		model, cmd = m.applyKanbanPriorityChange(project, task, newPriority)
-
-	case KanbanModeStages:
-		stage := targetCol.ID
-		if stage == "unset" {
-			stage = ""
-		}
-		model, cmd = taskOpsChangeStage(m, stage)
 
 	case KanbanModeScoreBuckets:
 		// Score is derived, not directly settable; open the score editor instead.
@@ -606,20 +561,21 @@ func kanbanColIDToPriority(id string) int {
 	return 0
 }
 
-// applyKanbanPriorityChange applies a priority change via the workflow pipeline.
-func (m *KanbanModel) applyKanbanPriorityChange(project *models.Project, task *models.Task, priority int) (tea.Model, tea.Cmd) {
-	pf := workflowPersist(func() WorkflowSaveOptions {
-		return BuildWorkflowOpts(m.getPersister(), project, m.config, m.configManager, nil, "", "", nil)
-	})
-	result := applyPriorityChange(pf, project, task.ID, priority)
-	if result.Err != nil {
-		m.setErr(result.Err)
-	} else if result.StatusMessage != "" {
-		m.setStatus(result.StatusMessage)
+// applyKanbanPriorityChange applies a single-card priority change through the
+// application-layer single-task coordinator. The shell's transaction-result
+// handler reloads the committed project and refreshes the board (reloadData +
+// clampCursor), so no inline reload is needed here.
+func (m *KanbanModel) applyKanbanPriorityChange(_ *models.Project, task *models.Task, priority int) (tea.Model, tea.Cmd) {
+	if task.Priority == priority {
+		return m, nil
 	}
-	m.reloadData()
-	m.clampCursor()
-	return m, result.Cmd
+	cmd := m.taskItem.SetPriority(task.ID, priority)
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		m.setErr(em.Err)
+		return m, nil
+	}
+	return m, func() tea.Msg { return msg }
 }
 
 // ─── J/K in-column reorder ────────────────────────────────────────────────────

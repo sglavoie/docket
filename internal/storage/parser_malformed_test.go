@@ -127,8 +127,8 @@ Description with <!-- a note: important --> embedded.
 	}
 
 	task := result.Tasks[0]
-	if task.Status != models.StatusTodo {
-		t.Errorf("expected status todo, got %q", task.Status)
+	if task.State() != models.StateReady {
+		t.Errorf("expected state ready, got %q", task.State())
 	}
 	if task.Priority != 2 {
 		t.Errorf("expected priority 2, got %d", task.Priority)
@@ -175,7 +175,7 @@ Normal description.
 	if t2.ID != "t2" {
 		t.Errorf("expected second task ID 't2', got %q", t2.ID)
 	}
-	if t2.Status != models.StatusInProgress {
-		t.Errorf("expected status in_progress, got %q", t2.Status)
+	if t2.State() != models.StateInProgress {
+		t.Errorf("expected state in_progress, got %q", t2.State())
 	}
 }

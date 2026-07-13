@@ -4,99 +4,100 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/testutil"
 )
+
+// scenarioEditForm builds an edit task form for the given seeded task wired to
+// the scenario task-form coordinator, so handleSave commits through the real
+// transactional stack instead of a raw project save.
+func scenarioEditForm(t *testing.T, env *scenarioEnv, task *models.Task) *TaskFormModel {
+	t.Helper()
+	cfg := testutil.NewTestConfig()
+	m := NewTaskFormModelEdit(env.project, task, cfg, nil)
+	m.SetTaskFormCoordinator(env.features.TaskForm)
+	return m
+}
+
+// runEdit executes handleSave and returns the committed TaskUpdatedMsg.
+func runEdit(t *testing.T, m *TaskFormModel) TaskUpdatedMsg {
+	t.Helper()
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd on successful edit; err=%v", m.err)
+	}
+	msg, ok := cmd().(TaskUpdatedMsg)
+	if !ok {
+		t.Fatalf("expected TaskUpdatedMsg, got %T", cmd())
+	}
+	if msg.Result == nil {
+		t.Fatal("TaskUpdatedMsg.Result should be non-nil on the coordinator path")
+	}
+	return msg
+}
 
 // ── Edit happy path ─────────────────────────────────────────────────────────
 
-func TestTaskForm_Save_EditHappyPath_EmitsTaskUpdatedMsg(t *testing.T) {
-	m, cleanup := newSaveableEditForm(t)
-	defer cleanup()
+func TestTaskForm_Save_EditHappyPath_CommitsThroughCoordinator(t *testing.T) {
+	task := seedTask(t, 1, "Original", models.StateReady)
+	env := newScenarioEnv(t, "edit", task)
+	m := scenarioEditForm(t, env, task)
 
 	m.draft.title = "Updated Title"
 	m.titleInput.SetValue("Updated Title")
 	m.draft.priority = 1
 	m.draft.desc = "Updated description"
 
-	cmd := m.handleSave()
-	if cmd == nil {
-		t.Fatalf("expected non-nil Cmd on successful edit; err=%v", m.err)
+	msg := runEdit(t, m)
+	if msg.Result.TaskID != task.ID {
+		t.Errorf("Result.TaskID = %q, want %q", msg.Result.TaskID, task.ID)
 	}
-	msg := cmd()
-	updated, ok := msg.(TaskUpdatedMsg)
-	if !ok {
-		t.Fatalf("expected TaskUpdatedMsg, got %T", msg)
+
+	got := env.reload(t).GetTaskByID(task.ID)
+	if got == nil {
+		t.Fatal("edited task absent from reloaded project")
 	}
-	if updated.Task == nil {
-		t.Fatal("TaskUpdatedMsg.Task should be non-nil")
+	if got.Title != "Updated Title" {
+		t.Errorf("Title = %q, want Updated Title", got.Title)
+	}
+	if got.Priority != 1 {
+		t.Errorf("Priority = %d, want 1", got.Priority)
+	}
+	if got.Description != "Updated description" {
+		t.Errorf("Description = %q, want Updated description", got.Description)
 	}
 }
 
-func TestTaskForm_Save_EditEmitsLivePointerInProject(t *testing.T) {
-	m, cleanup := newSaveableEditForm(t)
-	defer cleanup()
+func TestTaskForm_Save_EditMutatesTaskAndUndoRestores(t *testing.T) {
+	task := seedTask(t, 1, "Before", models.StateReady)
+	task.Priority = 3
+	env := newScenarioEnv(t, "edit-undo", task)
+	m := scenarioEditForm(t, env, task)
 
-	taskID := m.task.ID
-	m.draft.title = "Pointer Identity"
-	m.titleInput.SetValue("Pointer Identity")
-
-	cmd := m.handleSave()
-	if cmd == nil {
-		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
-	}
-	msg := cmd()
-	updated, ok := msg.(TaskUpdatedMsg)
-	if !ok {
-		t.Fatalf("expected TaskUpdatedMsg, got %T", msg)
-	}
-	if updated.Task == nil {
-		t.Fatal("TaskUpdatedMsg.Task should be non-nil")
-	}
-	live := m.project.GetTaskByID(taskID)
-	if live == nil {
-		t.Fatal("task missing from project after save")
-	}
-	if updated.Task != live {
-		t.Errorf("TaskUpdatedMsg.Task is not the live in-memory pointer: msg=%p live=%p", updated.Task, live)
-	}
-}
-
-func TestTaskForm_Save_EditHappyPath_MutatesTaskInProject(t *testing.T) {
-	m, cleanup := newSaveableEditForm(t)
-	defer cleanup()
-
-	taskID := m.task.ID
 	m.draft.title = "Mutated Title"
 	m.titleInput.SetValue("Mutated Title")
 	m.draft.priority = 5
 	m.draft.tags = []string{"mutated"}
 
-	cmd := m.handleSave()
-	if cmd == nil {
-		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	runEdit(t, m)
+	got := env.reload(t).GetTaskByID(task.ID)
+	if got == nil || got.Title != "Mutated Title" || got.Priority != 5 {
+		t.Fatalf("edit not persisted: %v", got)
 	}
-	_ = cmd()
+	if !got.HasTag("mutated") {
+		t.Errorf("tags = %v, want mutated", got.Tags)
+	}
 
-	var found *models.Task
-	for _, t2 := range m.project.Tasks {
-		if t2.ID == taskID {
-			found = t2
-			break
-		}
-	}
-	if found == nil {
-		t.Fatal("task not found in project after edit save")
-	}
-	if found.Title != "Mutated Title" {
-		t.Errorf("expected Title='Mutated Title', got %q", found.Title)
-	}
-	if found.Priority != 5 {
-		t.Errorf("expected Priority=5, got %d", found.Priority)
+	env.undo(t)
+	restored := env.reload(t).GetTaskByID(task.ID)
+	if restored == nil || restored.Title != "Before" || restored.Priority != 3 {
+		t.Fatalf("undo did not restore the pre-edit task: %v", restored)
 	}
 }
 
 func TestTaskForm_Save_EditFiltersBlankChecklistItems(t *testing.T) {
-	m, cleanup := newSaveableEditForm(t)
-	defer cleanup()
+	task := seedTask(t, 1, "Task", models.StateReady)
+	env := newScenarioEnv(t, "edit-checklist", task)
+	m := scenarioEditForm(t, env, task)
 
 	m.draft.title = "Edited task"
 	m.titleInput.SetValue("Edited task")
@@ -107,22 +108,35 @@ func TestTaskForm_Save_EditFiltersBlankChecklistItems(t *testing.T) {
 		{Text: "also keep", Done: true},
 	}
 
-	cmd := m.handleSave()
-	if cmd == nil {
-		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	runEdit(t, m)
+	got := env.reload(t).GetTaskByID(task.ID)
+	if got == nil {
+		t.Fatal("edited task absent from reloaded project")
 	}
-	msg := cmd()
-	updated, ok := msg.(TaskUpdatedMsg)
-	if !ok {
-		t.Fatalf("expected TaskUpdatedMsg, got %T", msg)
+	if len(got.Checklist) != 2 {
+		t.Fatalf("expected 2 checklist items (blanks filtered), got %d", len(got.Checklist))
 	}
-	if len(updated.Task.Checklist) != 2 {
-		t.Errorf("expected 2 checklist items (blanks filtered), got %d", len(updated.Task.Checklist))
+	if got.Checklist[0].Text != "keep me" {
+		t.Errorf("first item = %q, want keep me", got.Checklist[0].Text)
 	}
-	if updated.Task.Checklist[0].Text != "keep me" {
-		t.Errorf("expected first item 'keep me', got %q", updated.Task.Checklist[0].Text)
+	if got.Checklist[1].Text != "also keep" || !got.Checklist[1].Done {
+		t.Errorf("second item = %+v, want {also keep, done}", got.Checklist[1])
 	}
-	if updated.Task.Checklist[1].Text != "also keep" {
-		t.Errorf("expected second item 'also keep', got %q", updated.Task.Checklist[1].Text)
+}
+
+// TestTaskForm_Save_EditWithoutCoordinatorBuildsCmd guards that an edit form with
+// no coordinator wired still builds a command without panicking; only executing
+// it needs the coordinator.
+func TestTaskForm_Save_EditWithoutCoordinatorBuildsCmd(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Edit")
+	cfg := testutil.NewTestConfig()
+	if len(project.Tasks) == 0 {
+		t.Fatal("test project has no tasks")
+	}
+	m := NewTaskFormModelEdit(project, project.Tasks[0], cfg, nil)
+	m.draft.title = "changed"
+	m.titleInput.SetValue("changed")
+	if cmd := m.saveEdit(); cmd == nil {
+		t.Fatal("saveEdit should build a command even without a coordinator")
 	}
 }

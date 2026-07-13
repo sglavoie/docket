@@ -81,10 +81,56 @@ func init() {
 
 	focusCmd.AddCommand(focusQueueCmd)
 	focusCmd.AddCommand(focusTodayCmd)
+
+	// Read commands support a consistent --json envelope for scripting.
+	focusCmd.Flags().Bool("json", false, "output result as JSON")
+	focusSuggestCmd.Flags().Bool("json", false, "output result as JSON")
+	focusQueueCmd.Flags().Bool("json", false, "output result as JSON")
+	focusTodayCmd.Flags().Bool("json", false, "output result as JSON")
+}
+
+// focusTaskJSON is the JSON representation of a task in a focus/planning listing.
+type focusTaskJSON struct {
+	Project   string `json:"project"`
+	ProjectID string `json:"project_id"`
+	ShortID   int    `json:"short_id"`
+	Ref       string `json:"ref"`
+	Type      string `json:"type"`
+	Status    string `json:"status"`
+	State     string `json:"state"`
+	Priority  int    `json:"priority"`
+	Title     string `json:"title"`
+	Due       string `json:"due,omitempty"`
+}
+
+func focusTaskToJSON(task *models.Task, project *models.Project) focusTaskJSON {
+	entry := focusTaskJSON{
+		Project:   project.Name,
+		ProjectID: project.ID,
+		ShortID:   task.ShortID,
+		Ref:       fmt.Sprintf("%s:#%d", project.Slug, task.ShortID),
+		Type:      string(task.Type),
+		Status:    string(models.LegacyStatusForState(task.State())),
+		State:     string(task.State()),
+		Priority:  task.Priority,
+		Title:     task.Title,
+	}
+	if task.DueDate != nil {
+		entry.Due = task.DueDate.Format("2006-01-02")
+	}
+	return entry
+}
+
+func jsonRequested(cmd *cobra.Command) bool {
+	if cmd == nil {
+		return false
+	}
+	v, _ := cmd.Flags().GetBool("json")
+	return v
 }
 
 func runFocus(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfigStrict()
+	cfg, cfgMgr, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
@@ -94,19 +140,32 @@ func runFocus(cmd *cobra.Command, args []string) error {
 	var tasks []focus.FocusTask
 
 	if focusActiveOnly {
-		// Legacy: only active-flagged, non-completed tasks
-		fmt.Fprintf(os.Stderr, "warning: --active is deprecated; run 'tt focus' without flags to see all actionable tasks\n")
-		tasks = collectActiveFlaggedTasks(projects)
+		// Legacy flag: now backed by Focus Queue membership (the planning
+		// collection that replaced the per-task Active flag).
+		fmt.Fprintf(os.Stderr, "warning: --active is deprecated; run 'tt focus' without flags to see all actionable tasks, or 'tt focus queue' for the focus queue\n")
+		planning, planErr := planningStore(cfgMgr).LoadPlanning()
+		if planErr != nil {
+			return planErr
+		}
+		tasks = collectFocusQueueTasks(planning.FocusQueue, projects)
 	} else {
 		tasks = focus.CollectActionableTasks(projects)
 	}
 
 	sortFocusTasks(tasks)
 
+	if jsonRequested(cmd) {
+		entries := make([]focusTaskJSON, 0, len(tasks))
+		for _, ft := range tasks {
+			entries = append(entries, focusTaskToJSON(ft.Task, ft.Project))
+		}
+		return printJSON(entries)
+	}
+
 	if len(tasks) == 0 {
 		if focusActiveOnly {
 			fmt.Println("No tasks in focus.")
-			fmt.Println("Mark tasks as active with: tt task focus <id>")
+			fmt.Println("Accept suggestions in the TUI focus view (press 'a') to build your queue.")
 		} else {
 			fmt.Println("No actionable tasks found.")
 			fmt.Println("Tasks appear here from all active projects (excluding completed, snoozed, and blocked).")
@@ -131,7 +190,7 @@ func displayFocusTable(tasks []focus.FocusTask) {
 			util.Truncate(ft.Project.Name, 15),
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			task.Priority,
 			util.Truncate(task.Title, 40),
 			dueStr,
@@ -146,10 +205,18 @@ func displayFocusTable(tasks []focus.FocusTask) {
 	}
 }
 
-// collectActiveFlaggedTasks returns non-completed, active-flagged tasks across
-// the given projects. Nil projects and nil tasks are skipped so callers can
-// pass loosely-assembled slices without crashing on stray nil entries.
-func collectActiveFlaggedTasks(projects []*models.Project) []focus.FocusTask {
+// collectFocusQueueTasks returns non-terminal tasks that are members of the
+// persisted Focus Queue planning collection. It backs the deprecated
+// `tt focus --active` flag, which historically read the per-task Active flag;
+// Focus Queue membership is that flag's canonical replacement. The queue is read
+// from the planning domain by the caller and passed in. Nil projects and nil
+// tasks are skipped so callers can pass loosely-assembled slices without
+// crashing on stray nil entries.
+func collectFocusQueueTasks(queue []config.FocusQueueItem, projects []*models.Project) []focus.FocusTask {
+	queued := make(map[string]bool)
+	for _, item := range queue {
+		queued[item.TaskID] = true
+	}
 	var tasks []focus.FocusTask
 	for _, project := range projects {
 		if project == nil {
@@ -159,7 +226,7 @@ func collectActiveFlaggedTasks(projects []*models.Project) []focus.FocusTask {
 			if task == nil {
 				continue
 			}
-			if task.Status.IsComplete() || !task.Active {
+			if task.IsTerminalState() || !queued[task.ID] {
 				continue
 			}
 			tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
@@ -242,6 +309,25 @@ func runFocusSuggest(cmd *cobra.Command, args []string) error {
 
 	limit := min(focusSuggestLimit, len(ranked))
 
+	if jsonRequested(cmd) {
+		type suggestionJSON struct {
+			focusTaskJSON
+			Rank   int    `json:"rank"`
+			Score  int    `json:"score"`
+			Reason string `json:"reason"`
+		}
+		entries := make([]suggestionJSON, 0, limit)
+		for i, sft := range ranked[:limit] {
+			entries = append(entries, suggestionJSON{
+				focusTaskJSON: focusTaskToJSON(sft.Task, sft.Project),
+				Rank:          i + 1,
+				Score:         sft.Score,
+				Reason:        sft.Reason,
+			})
+		}
+		return printJSON(entries)
+	}
+
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"#", "Project", "ID", "Pri", "Title", "Score", "Reason"})
@@ -264,19 +350,43 @@ func runFocusSuggest(cmd *cobra.Command, args []string) error {
 }
 
 func runFocusToday(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfigStrict()
+	cfg, cfgMgr, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
 
-	planItems := cfg.GetDailyPlan()
+	planning, err := planningStore(cfgMgr).LoadPlanning()
+	if err != nil {
+		return err
+	}
+	planItems := planning.DailyPlan
+	wantJSON := jsonRequested(cmd)
 	if len(planItems) == 0 {
+		if wantJSON {
+			return printJSON([]focusTaskJSON{})
+		}
 		fmt.Println("No tasks planned for today.")
 		fmt.Println("Press 'w' on any task in the TUI to plan it for today.")
 		return nil
 	}
 
 	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(cfg))
+
+	if wantJSON {
+		entries := make([]focusTaskJSON, 0, len(planItems))
+		for _, item := range planItems {
+			project, ok := projectMap[item.ProjectID]
+			if !ok {
+				continue
+			}
+			task, ok := taskMap[item.TaskID]
+			if !ok {
+				continue
+			}
+			entries = append(entries, focusTaskToJSON(task, project))
+		}
+		return printJSON(entries)
+	}
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
@@ -300,7 +410,7 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 			util.Truncate(project.Name, 15),
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			task.Priority,
 			util.Truncate(task.Title, 40),
 			dueStr,
@@ -323,14 +433,39 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	queueItems := cfg.GetFocusQueue()
+	store := planningStore(cfgMgr)
+	planning, err := store.LoadPlanning()
+	if err != nil {
+		return err
+	}
+	queueItems := planning.FocusQueue
+	wantJSON := jsonRequested(cmd)
 	if len(queueItems) == 0 {
+		if wantJSON {
+			return printJSON([]focusTaskJSON{})
+		}
 		fmt.Println("Focus queue is empty.")
 		fmt.Println("Accept suggestions in the TUI focus view (press 'a') to build your queue.")
 		return nil
 	}
 
 	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(cfg))
+
+	if wantJSON {
+		entries := make([]focusTaskJSON, 0, len(queueItems))
+		for _, item := range queueItems {
+			project, ok := projectMap[item.ProjectID]
+			if !ok {
+				continue
+			}
+			task, ok := taskMap[item.TaskID]
+			if !ok || task.IsTerminalState() {
+				continue
+			}
+			entries = append(entries, focusTaskToJSON(task, project))
+		}
+		return printJSON(entries)
+	}
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
@@ -343,7 +478,7 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		task, ok := taskMap[item.TaskID]
-		if !ok || task.Status.IsComplete() {
+		if !ok || task.IsTerminalState() {
 			continue
 		}
 
@@ -355,17 +490,17 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 			util.Truncate(project.Name, 15),
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			task.Priority,
 			util.Truncate(task.Title, 40),
 			dueStr,
 		})
 	}
 
-	// Prune stale entries from config if any were skipped
+	// Prune stale entries from the planning domain if any were skipped
 	if len(activeItems) < len(queueItems) {
-		cfg.SetFocusQueue(activeItems)
-		if err := cfgMgr.Save(cfg); err != nil {
+		planning.FocusQueue = activeItems
+		if err := store.SavePlanning(planning); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
 		}
 	}

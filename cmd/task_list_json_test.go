@@ -12,7 +12,6 @@ import (
 func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	task := testutil.NewTestTask("Flagged task", models.TaskTypeTask)
 	task.Pinned = true
-	task.Active = true
 	task.Dimmed = true
 	task.ParkedNote = "resume after API review"
 	parkedAt := time.Date(2026, 7, 9, 12, 30, 0, 0, time.UTC)
@@ -29,13 +28,13 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		ShortID:    task.ShortID,
 		Type:       task.Type.String(),
 		Title:      task.Title,
-		Status:     task.Status.String(),
+		Status:     models.LegacyStatusForState(task.State()).String(),
 		Priority:   task.Priority,
 		ParentID:   task.ParentID,
 		Tags:       tags,
-		Section:    task.Section,
+		Section:    models.SectionForState(task.State()),
 		Pinned:     task.Pinned,
-		Active:     task.Active,
+		Active:     true,
 		Dimmed:     task.Dimmed,
 		Parked:     task.IsParked(),
 		ParkedNote: task.ParkedNote,
@@ -90,7 +89,7 @@ func TestTaskJSONEntry_NilParentIDSerializesAsNull(t *testing.T) {
 		ShortID:  task.ShortID,
 		Type:     task.Type.String(),
 		Title:    task.Title,
-		Status:   task.Status.String(),
+		Status:   models.LegacyStatusForState(task.State()).String(),
 		Priority: task.Priority,
 		ParentID: nil,
 		Tags:     []string{},
@@ -117,7 +116,6 @@ func TestTaskJSONEntry_NilParentIDSerializesAsNull(t *testing.T) {
 func TestTaskJSONEntry_IncludesStageAndSnoozedUntil(t *testing.T) {
 	snoozeTime := time.Now().Add(24 * time.Hour)
 	task := testutil.NewTestTask("Staged task", models.TaskTypeTask)
-	task.Stage = "Design"
 	task.SnoozedUntil = &snoozeTime
 
 	tags := task.Tags
@@ -129,10 +127,10 @@ func TestTaskJSONEntry_IncludesStageAndSnoozedUntil(t *testing.T) {
 		ShortID:      task.ShortID,
 		Type:         task.Type.String(),
 		Title:        task.Title,
-		Status:       task.Status.String(),
+		Status:       models.LegacyStatusForState(task.State()).String(),
 		Priority:     task.Priority,
 		Tags:         tags,
-		Stage:        task.Stage,
+		Stage:        "Design",
 		SnoozedUntil: task.SnoozedUntil,
 		CreatedAt:    task.CreatedAt,
 		UpdatedAt:    task.UpdatedAt,
@@ -164,7 +162,7 @@ func TestTaskJSONEntry_OmitsEmptyStageAndSnoozedUntil(t *testing.T) {
 		ShortID:  task.ShortID,
 		Type:     task.Type.String(),
 		Title:    task.Title,
-		Status:   task.Status.String(),
+		Status:   models.LegacyStatusForState(task.State()).String(),
 		Priority: task.Priority,
 		Tags:     []string{},
 	}
@@ -203,7 +201,7 @@ func TestTaskListJSONEntries_IncludesParkedMetadata(t *testing.T) {
 	parked.ParkedAt = &parkedAt
 	plain := testutil.NewTestTask("Plain task", models.TaskTypeTask)
 
-	entries := taskListJSONEntries([]*models.Task{parked, plain})
+	entries := taskListJSONEntries(nil, []*models.Task{parked, plain})
 
 	if len(entries) != 2 {
 		t.Fatalf("got %d entries, want 2", len(entries))

@@ -30,7 +30,9 @@ type DryRunChange struct {
 // WorkflowDryRunModel displays dry run results for workflow rules.
 type WorkflowDryRunModel struct {
 	BaseSearchableView
-	config        *config.Config
+	// dataDir is the workspace root used to resolve the active-project set through
+	// the catalog domain; configManager backs the automation-domain rule read.
+	dataDir       string
 	configManager *config.Manager
 	persister     Persister
 
@@ -52,10 +54,13 @@ type ShowWorkflowDryRunMsg struct {
 	SingleRule *workflow.WorkflowRule // nil = test all enabled rules
 }
 
-// NewWorkflowDryRunModel creates a new dry run model.
-func NewWorkflowDryRunModel(cfg *config.Config, manager *config.Manager, persister Persister, singleRule *workflow.WorkflowRule) *WorkflowDryRunModel {
+// NewWorkflowDryRunModel creates a new dry run model. It depends only on the
+// workspace dataDir (catalog domain) and the manager (automation domain) rather
+// than the config.Config facade: enabled rules load from automation.json and the
+// active-project set from the workspace catalog.
+func NewWorkflowDryRunModel(dataDir string, manager *config.Manager, persister Persister, singleRule *workflow.WorkflowRule) *WorkflowDryRunModel {
 	m := &WorkflowDryRunModel{
-		config:        cfg,
+		dataDir:       dataDir,
 		configManager: manager,
 		persister:     persister,
 		singleRule:    singleRule,
@@ -76,20 +81,32 @@ func (m *WorkflowDryRunModel) Init() tea.Cmd {
 
 // runDryRun performs the actual evaluation against deep-copied tasks.
 func (m *WorkflowDryRunModel) runDryRun() tea.Msg {
+	if m.configManager == nil {
+		return dryRunDoneMsg{err: fmt.Errorf("config manager unavailable")}
+	}
+	deps := m.configManager.RuntimeDependencies()
+
 	var rules []workflow.WorkflowRule
 	if m.singleRule != nil {
 		rule := *m.singleRule
 		rule.Enabled = true
 		rules = []workflow.WorkflowRule{rule}
 	} else {
-		rules = m.config.GetEnabledWorkflowRules()
+		automation, err := deps.Automation.LoadAutomation()
+		if err != nil {
+			return dryRunDoneMsg{err: err}
+		}
+		rules = automation.GetEnabledWorkflowRules()
 	}
 
 	if len(rules) == 0 {
 		return dryRunDoneMsg{err: fmt.Errorf("no enabled workflow rules")}
 	}
 
-	projects := m.config.GetActiveProjects()
+	projects, err := deps.ActiveProjects(m.dataDir)
+	if err != nil {
+		return dryRunDoneMsg{err: err}
+	}
 	var allResults []DryRunTaskResult
 	var allConflicts []workflow.RuleConflict
 	totalTasks := 0
@@ -184,18 +201,23 @@ func deepCopyTaskForDryRun(task *models.Task) *models.Task {
 		Type:        task.Type,
 		Title:       task.Title,
 		Description: task.Description,
-		Status:      task.Status,
-		Priority:    task.Priority,
-		Section:     task.Section,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   task.UpdatedAt,
-		HasTime:     task.HasTime,
-		Pinned:      task.Pinned,
-		Active:      task.Active,
-		Dimmed:      task.Dimmed,
-		Level:       task.Level,
-		Source:      task.Source,
-		URL:         task.URL,
+		// The workflow engine now reads task lifecycle through State()/WorkflowState
+		// (33.7.6.4), so only the canonical WorkflowState is carried — the retired
+		// Status/Section clones are gone. It is seeded from State() (not the raw
+		// WorkflowState field, which is empty for schema-v1 tasks) so the copy's
+		// State() resolves identically to the original and stays coherent after the
+		// engine's lifecycle mutators sync it. The engine also does not read Active
+		// (ActionSetActive became a Focus Queue change in 33.7.6.1).
+		WorkflowState: task.State(),
+		Priority:      task.Priority,
+		CreatedAt:     task.CreatedAt,
+		UpdatedAt:     task.UpdatedAt,
+		HasTime:       task.HasTime,
+		Pinned:        task.Pinned,
+		Dimmed:        task.Dimmed,
+		Level:         task.Level,
+		Source:        task.Source,
+		URL:           task.URL,
 	}
 
 	// Copy pointer fields
@@ -319,9 +341,12 @@ func buildTaskMap(tasks []*models.Task) map[string]*models.Task {
 func detectChanges(original, modified *models.Task) []DryRunChange {
 	var changes []DryRunChange
 
-	if original.Status != modified.Status {
+	// Lifecycle changes are reported as a single canonical WorkflowState
+	// transition rather than separate status/section fields (the engine still
+	// mutates the legacy shims, but State() collapses them to one truth).
+	if original.State() != modified.State() {
 		changes = append(changes, DryRunChange{
-			Field: "status", OldValue: string(original.Status), NewValue: string(modified.Status),
+			Field: "state", OldValue: string(original.State()), NewValue: string(modified.State()),
 		})
 	}
 	if original.Priority != modified.Priority {
@@ -329,19 +354,9 @@ func detectChanges(original, modified *models.Task) []DryRunChange {
 			Field: "priority", OldValue: fmt.Sprintf("%d", original.Priority), NewValue: fmt.Sprintf("%d", modified.Priority),
 		})
 	}
-	if original.Section != modified.Section {
-		changes = append(changes, DryRunChange{
-			Field: "section", OldValue: original.Section, NewValue: modified.Section,
-		})
-	}
 	if original.Type != modified.Type {
 		changes = append(changes, DryRunChange{
 			Field: "type", OldValue: string(original.Type), NewValue: string(modified.Type),
-		})
-	}
-	if original.Active != modified.Active {
-		changes = append(changes, DryRunChange{
-			Field: "active", OldValue: fmt.Sprintf("%t", original.Active), NewValue: fmt.Sprintf("%t", modified.Active),
 		})
 	}
 	if original.Dimmed != modified.Dimmed {

@@ -6,6 +6,9 @@ import "testing"
 func resetFilterVars() {
 	listTaskType = ""
 	listTaskStatus = ""
+	listState = ""
+	listBlocked = false
+	listFilterProject = nil
 	listPriority = 0
 	listTag = ""
 	listShowAll = false

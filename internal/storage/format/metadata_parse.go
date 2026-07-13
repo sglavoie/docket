@@ -265,23 +265,69 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 		})
 	}
 
-	if task.Section != "" && !models.IsGTDSection(task.Section) {
-		*warnings = append(*warnings, ParseWarning{
-			Type:  WarningDataCorrection,
-			Field: "section",
-			Message: fmt.Sprintf(
-				"task #%d had non-GTD section %q; clearing section because custom grouping now uses tags",
-				task.ShortID,
-				task.Section,
-			),
-		})
-		task.Section = ""
+	// Derive the canonical stored WorkflowState from the accumulated schema-v1
+	// lifecycle values when the document did not carry a schema-v2 `state:` field
+	// (the state codec already stored it, and set stateSeen, in that case). This
+	// is the loader upgrade that lets a schema-v1 task load into the canonical
+	// state model even though the writer no longer emits the legacy lifecycle
+	// keys. A non-GTD section is normalized to the default active bucket (empty),
+	// mirroring the retired rule that custom grouping now lives in tags.
+	if !state.stateSeen {
+		section := state.legacy.section
+		if section != "" && !models.IsGTDSection(section) {
+			*warnings = append(*warnings, ParseWarning{
+				Type:  WarningDataCorrection,
+				Field: "section",
+				Message: fmt.Sprintf(
+					"task #%d had non-GTD section %q; ignoring it because custom grouping now uses tags",
+					task.ShortID,
+					section,
+				),
+			})
+			section = ""
+		}
+		task.WorkflowState = models.DeriveWorkflowState(state.legacy.status, section, state.legacy.stage)
+	}
+}
+
+// LegacyLifecycle holds the retired schema-v1 lifecycle values a task's metadata
+// carried, for the loader-level migration audit. All fields are zero and Present
+// is false for a schema-v2 (`state:`) document, which carries none of these keys.
+type LegacyLifecycle struct {
+	Status  models.TaskStatus
+	Section string
+	Stage   string
+	Active  bool
+	Present bool // any legacy lifecycle key (status/section/stage/active) was seen
+}
+
+func legacyLifecycleFrom(state *metadataParseState) LegacyLifecycle {
+	return LegacyLifecycle{
+		Status:  state.legacy.status,
+		Section: state.legacy.section,
+		Stage:   state.legacy.stage,
+		Active:  state.legacy.active,
+		Present: state.legacy.statusSeen || state.legacy.sectionSeen ||
+			state.legacy.stageSeen || state.legacy.activeSeen,
 	}
 }
 
 // ParseMetadata parses the metadata string and sets task fields.
 // Returns any warnings encountered during parsing.
 func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
+	warnings, _ := parseMetadataInternal(task, metaStr)
+	return warnings
+}
+
+// ParseMetadataCapturingLegacy is ParseMetadata plus the retired schema-v1
+// lifecycle values the metadata carried, so the loader can build the migration
+// audit. The canonical stored WorkflowState is set on the task exactly as
+// ParseMetadata does.
+func ParseMetadataCapturingLegacy(task *models.Task, metaStr string) ([]ParseWarning, LegacyLifecycle) {
+	return parseMetadataInternal(task, metaStr)
+}
+
+func parseMetadataInternal(task *models.Task, metaStr string) ([]ParseWarning, LegacyLifecycle) {
 	var warnings []ParseWarning
 	state := metadataParseState{}
 
@@ -301,5 +347,5 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 	}
 
 	finalizeParsedMetadata(task, &state, &warnings)
-	return warnings
+	return warnings, legacyLifecycleFrom(&state)
 }

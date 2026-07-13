@@ -12,7 +12,7 @@ func makeBoardTask(t *testing.T, id string, shortID int, title string) *models.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 	return task
 }
 
@@ -144,7 +144,7 @@ func TestHandleDailyPlanReorder_CompletedCrossover(t *testing.T) {
 
 	taskA := makeBoardTask(t, "id-a", 1, "Active")
 	taskB := makeBoardTask(t, "id-b", 2, "Done")
-	taskB.Status = models.StatusDone
+	taskB.WorkflowState = models.StateDone
 
 	rowA := boardRow{Task: taskA, Project: project, Source: project.Name}
 	rowB := boardRow{Task: taskB, Project: project, Source: project.Name}

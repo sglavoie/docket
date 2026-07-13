@@ -16,31 +16,31 @@ func TestMatchesEventTrigger_RecurrenceCompleted(t *testing.T) {
 		{
 			"fires on done + recurrence cleared",
 			&models.Task{ID: "1", Recurrence: &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}},
-			&models.Task{ID: "1", Recurrence: nil, Status: models.StatusDone},
+			&models.Task{ID: "1", Recurrence: nil, WorkflowState: models.StateDone},
 			true,
 		},
 		{
 			"fires on canceled + recurrence cleared",
 			&models.Task{ID: "1", Recurrence: &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}},
-			&models.Task{ID: "1", Recurrence: nil, Status: models.StatusCanceled},
+			&models.Task{ID: "1", Recurrence: nil, WorkflowState: models.StateCanceled},
 			true,
 		},
 		{
 			"does not fire when still recurring",
 			&models.Task{ID: "1", Recurrence: &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}},
-			&models.Task{ID: "1", Recurrence: &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}, Status: models.StatusDone},
+			&models.Task{ID: "1", Recurrence: &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}, WorkflowState: models.StateDone},
 			false,
 		},
 		{
 			"does not fire when not complete",
 			&models.Task{ID: "1", Recurrence: &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}},
-			&models.Task{ID: "1", Recurrence: nil, Status: models.StatusInProgress},
+			&models.Task{ID: "1", Recurrence: nil, WorkflowState: models.StateInProgress},
 			false,
 		},
 		{
 			"does not fire when no previous recurrence",
 			&models.Task{ID: "1", Recurrence: nil},
-			&models.Task{ID: "1", Recurrence: nil, Status: models.StatusDone},
+			&models.Task{ID: "1", Recurrence: nil, WorkflowState: models.StateDone},
 			false,
 		},
 	}

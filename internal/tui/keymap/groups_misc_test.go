@@ -23,11 +23,11 @@ func TestListNavigationGroup(t *testing.T) {
 func TestCommonTaskActionGroup_Base(t *testing.T) {
 	deps := CommonTaskActionDeps{}
 	entries := CommonTaskActionGroup(deps)
-	if len(entries) != 7 {
-		t.Fatalf("CommonTaskActionGroup (base): want 7 entries, got %d", len(entries))
+	if len(entries) != 6 {
+		t.Fatalf("CommonTaskActionGroup (base): want 6 entries, got %d", len(entries))
 	}
 	keys := directBindingKeys(entries)
-	for _, k := range []string{"o", "Z", "D", "e", "?", "*", "S"} {
+	for _, k := range []string{"o", "Z", "D", "e", "?", "S"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("CommonTaskActionGroup: missing key %q", k)
 		}
@@ -41,8 +41,8 @@ func TestCommonTaskActionGroup_AllOptional(t *testing.T) {
 		QuickNote:     actFn(),
 	}
 	entries := CommonTaskActionGroup(deps)
-	if len(entries) != 10 {
-		t.Fatalf("CommonTaskActionGroup (full): want 10 entries, got %d", len(entries))
+	if len(entries) != 9 {
+		t.Fatalf("CommonTaskActionGroup (full): want 9 entries, got %d", len(entries))
 	}
 }
 
@@ -145,7 +145,7 @@ func TestCommonPrimaryViewGroup_ProjectNotesShortcut(t *testing.T) {
 // verifies that HandledKeys() contains the expected compound sequences.
 func TestIntegration_MergedHandledKeys(t *testing.T) {
 	statusDeps := StatusDeps{
-		ChangeStatus:  func(string) Action { return nilAction },
+		ChangeState:   func(string) Action { return nilAction },
 		HasRecurrence: func() bool { return false },
 	}
 	priorityDeps := PriorityDeps{ChangePriority: func(string) Action { return nilAction }}
@@ -182,21 +182,6 @@ func TestIntegration_MergedHandledKeys(t *testing.T) {
 	for _, k := range []string{"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d"} {
 		if !handledSet[k] {
 			t.Errorf("HandledKeys missing nav key %q", k)
-		}
-	}
-}
-
-// TestStageKeyForIndex verifies the key-assignment helper.
-func TestStageKeyForIndex(t *testing.T) {
-	tests := []struct {
-		i    int
-		want string
-	}{
-		{0, "1"}, {8, "9"}, {9, "a"}, {34, "z"}, {35, ""},
-	}
-	for _, tc := range tests {
-		if got := stageKeyForIndex(tc.i); got != tc.want {
-			t.Errorf("stageKeyForIndex(%d) = %q, want %q", tc.i, got, tc.want)
 		}
 	}
 }

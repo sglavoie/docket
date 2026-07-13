@@ -74,7 +74,7 @@ func TestNextActionStripWorkOnTaskShowsTitleProjectAndReasons(t *testing.T) {
 // the unblock affordance in the hint cluster.
 func TestNextActionStripReviewBlockedSurfacesUnblockHint(t *testing.T) {
 	task := stripFixtureTask(t, "Wire SSO callback")
-	task.Status = models.StatusBlocked
+	task.WorkflowState = models.StateWaiting
 	project := stripFixtureProject(t, "Auth")
 
 	plain := renderStripPlain(t, NextActionStripOpts{

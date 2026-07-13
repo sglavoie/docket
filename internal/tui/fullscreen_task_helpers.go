@@ -94,7 +94,8 @@ func renderPriorityBadge(priority int) string {
 // title, type badge + status line, priority badge + ID, and optional snooze line.
 func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnooze bool) string {
 	typeStyle := GetTypeStyle(string(task.Type))
-	statusStyle := GetStatusStyle(string(task.Status))
+	state := task.State()
+	statusStyle := GetStateStyle(state)
 
 	if hasIncompleteDeps {
 		statusStyle = BlockedByDepsStyle
@@ -102,7 +103,7 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 
 	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
-	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
+	statusLine := statusStyle.Render(state.Icon() + " " + string(state))
 	priorityBadge := renderPriorityBadge(task.Priority)
 	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
 
@@ -192,11 +193,11 @@ func renderMetadataContentOpts(task *models.Task, project *models.Project, inner
 	}
 
 	if !hideSection {
-		sectionName := task.Section
+		sectionName := taskSectionBucket(task)
 		if sectionName == "" {
 			sectionName = "Active"
 		}
-		effectiveSection := task.Section
+		effectiveSection := taskSectionBucket(task)
 		sectionColor := project.GetSectionColor(effectiveSection)
 		sectionStyle := GetSectionColorStyle(sectionColor)
 		sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)

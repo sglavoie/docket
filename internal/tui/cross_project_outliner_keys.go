@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -207,7 +208,10 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-// crossHandleUndo handles the 'u' key in cross-project mode.
+// crossHandleUndo handles the 'u' key in cross-project mode. Undo is
+// ledger-only: the newest workspace-ledger transaction is reversed. Every
+// cross-project mutation (bulk and single-task alike) now records there through
+// the application layer, so there is no legacy per-project fallback.
 //
 // Returns (model, cmd, true) when in cross-project mode (m.project == nil),
 // (nil, nil, false) otherwise.
@@ -215,52 +219,12 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 	if m.project != nil || key != "u" {
 		return nil, nil, false
 	}
-
-	ids := m.crossUndoCtx.ProjectIDs
-
-	// No pending undo context — try snapshot-based undo on any project that
-	// has undo history. This handles the case where the user presses u
-	// multiple times (crossUndoCtx was already cleared by the first undo).
-	if len(ids) == 0 {
-		for _, proj := range m.loadedProjects {
-			if storage.UndoHistoryExists(proj) {
-				return m.crossPerformUndo(proj)
-			}
-		}
-		m.setStatus("Nothing to undo")
-		return m, nil, true
-	}
-
-	for _, id := range ids {
-		proj := m.crossResolveProject(id)
-		if proj != nil {
-			return m.crossPerformUndo(proj)
-		}
-	}
-
-	m.setStatus("Undo failed: project not found")
-	m.crossUndoCtx.Clear()
-	m.rebuildRows()
+	m.crossRestore(false)
 	return m, nil, true
 }
 
-func (m *OutlinerModel) crossPerformUndo(anchor *models.Project) (tea.Model, tea.Cmd, bool) {
-	projectsToReload := restoreProjectsForTopTUIHistoryEntry(anchor, m.loadedProjects, storage.LoadUndoHistory)
-	actionDesc, err := storage.PerformUndoForProjects(anchor, m.loadedProjects)
-	if err != nil {
-		m.setStatus(formatUndoRedoRestoreErrorMessage("undo", err))
-	} else if err := m.reloadAndRepairCrossRestoreProjects(projectsToReload, "undo"); err != nil {
-		m.setStatus(fmt.Sprintf("Undo completed, refresh failed: %s", err))
-	} else {
-		m.setStatus(fmt.Sprintf("Undid: %s", actionDesc))
-	}
-	m.crossUndoCtx.Clear()
-	m.rebuildRows()
-	return m, nil, true
-}
-
-// crossHandleRedo handles the 'ctrl+r' key in cross-project mode. It performs
-// snapshot-based redo on the most recently affected project.
+// crossHandleRedo handles the 'ctrl+r' key in cross-project mode. Like undo it
+// restores purely from the workspace ledger.
 //
 // Returns (model, cmd, true) when in cross-project mode (m.project == nil),
 // (nil, nil, false) otherwise.
@@ -268,35 +232,110 @@ func (m *OutlinerModel) crossHandleRedo(key string) (tea.Model, tea.Cmd, bool) {
 	if m.project != nil || key != "ctrl+r" {
 		return nil, nil, false
 	}
-
-	for _, proj := range m.loadedProjects {
-		if storage.RedoHistoryExists(proj) {
-			return m.crossPerformRedo(proj)
-		}
-	}
-
-	m.setStatus("Nothing to redo")
+	m.crossRestore(true)
 	return m, nil, true
 }
 
-func (m *OutlinerModel) crossPerformRedo(anchor *models.Project) (tea.Model, tea.Cmd, bool) {
-	projectsToReload := restoreProjectsForTopTUIHistoryEntry(anchor, m.loadedProjects, storage.LoadRedoHistory)
-	actionDesc, err := storage.PerformRedoForProjects(anchor, m.loadedProjects)
+// crossRestore drives the ledger-only restore for both undo (redo=false) and
+// redo (redo=true). It rebuilds the rows once the restore settles.
+func (m *OutlinerModel) crossRestore(redo bool) {
+	ledger := workspaceLedgerFromConfig(m.config)
+	scope := storage.GlobalScope()
+
+	selectNewest := ledger.SelectNewestUndo
+	if redo {
+		selectNewest = ledger.SelectNewestRedo
+	}
+
+	entry, ledgerHas, err := selectNewest(scope)
 	if err != nil {
-		m.setStatus(formatUndoRedoRestoreErrorMessage("redo", err))
-	} else if err := m.reloadAndRepairCrossRestoreProjects(projectsToReload, "redo"); err != nil {
-		m.setStatus(fmt.Sprintf("Redo completed, refresh failed: %s", err))
+		m.setStatus(formatUndoRedoRestoreErrorMessage(crossRestoreLabel(redo), err))
+		return
+	}
+	if !ledgerHas {
+		m.setStatus(crossNothingMessage(redo))
+		return
+	}
+	m.crossPerformLedgerRestore(ledger, entry, redo)
+}
+
+// crossPerformLedgerRestore reverses (or replays) the selected ledger entry, then
+// reloads the touched projects into memory and repairs config task references.
+// The ledger already wrote the correct bytes to disk, so the in-memory projects
+// are reloaded rather than re-saved.
+func (m *OutlinerModel) crossPerformLedgerRestore(ledger *storage.WorkspaceLedger, entry storage.LedgerEntry, redo bool) {
+	scope := storage.GlobalScope()
+	restore := ledger.Undo
+	if redo {
+		restore = ledger.Redo
+	}
+	actionDesc, err := restore(scope)
+	if err != nil {
+		m.setStatus(formatUndoRedoRestoreErrorMessage(crossRestoreLabel(redo), err))
+		m.rebuildRows()
+		return
+	}
+	if reloadErr := m.crossReloadLedgerRestoredProjects(entry.ProjectIDs); reloadErr != nil {
+		m.setStatus(fmt.Sprintf("%s completed, refresh failed: %s", crossRestoreVerb(redo), reloadErr))
 	} else {
-		m.setStatus(fmt.Sprintf("Redo: %s", actionDesc))
+		m.setStatus(fmt.Sprintf("%s: %s", crossRestoreVerb(redo), actionDesc))
 	}
 	m.rebuildRows()
-	return m, nil, true
 }
 
-func (m *OutlinerModel) reloadAndRepairCrossRestoreProjects(projects []*models.Project, label string) error {
-	if err := reloadAndReapplyRestoredProjects(m.projectService, projects, label); err != nil {
-		return err
+// crossReloadLedgerRestoredProjects reloads every loaded project the restored
+// transaction touched and repairs focus-queue / daily-plan / recent-visit refs.
+func (m *OutlinerModel) crossReloadLedgerRestoredProjects(projectIDs []string) error {
+	restored := make([]*models.Project, 0, len(projectIDs))
+	for _, id := range projectIDs {
+		proj := m.crossResolveProject(id)
+		if proj == nil {
+			continue
+		}
+		if err := storage.LoadProject(proj); err != nil {
+			return err
+		}
+		restored = append(restored, proj)
 	}
-	_, err := repairConfigTaskRefsToLoadedProjects(m.configManager, m.config, projects)
+	_, err := repairConfigTaskRefsToLoadedProjects(m.configManager, m.config, restored)
 	return err
+}
+
+// crossRestoreLabel and crossRestoreVerb produce the short label used by the
+// shared error formatter and the capitalized verb used in the status line.
+func crossRestoreLabel(redo bool) string {
+	if redo {
+		return "redo"
+	}
+	return "undo"
+}
+
+func crossRestoreVerb(redo bool) string {
+	if redo {
+		return "Redo"
+	}
+	return "Undid"
+}
+
+func crossNothingMessage(redo bool) string {
+	if redo {
+		return "Nothing to redo"
+	}
+	return "Nothing to undo"
+}
+
+// workspaceLedgerFromConfig opens the workspace undo ledger the transactional
+// commit boundary records to, sized from the configured history depth — the same
+// construction newTUIAppRepository uses, so cross-project undo/redo reads exactly
+// what the coordinator wrote.
+func workspaceLedgerFromConfig(cfg *config.Config) *storage.WorkspaceLedger {
+	depth := config.DefaultUndoHistoryDepth
+	if cfg != nil && cfg.UndoHistoryDepth != nil {
+		depth = *cfg.UndoHistoryDepth
+	}
+	dataDir := ""
+	if cfg != nil {
+		dataDir = cfg.DataDir
+	}
+	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
 }

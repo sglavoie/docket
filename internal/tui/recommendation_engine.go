@@ -80,7 +80,7 @@ func Recommend(input RecommendationEngineInput) RecommendedAction {
 			continue
 		}
 		cand := recommendCandidate{task: ft.Task, project: ft.Project}
-		if ft.Task.Section == models.SectionInbox {
+		if ft.Task.InSection(models.SectionInbox) {
 			cand.reasons = []RecommendationReason{ReasonInboxNeedsTriage}
 			inbox = append(inbox, cand)
 			continue
@@ -216,10 +216,10 @@ func collectBlockedCandidates(projects []*models.Project, today time.Time, plann
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.Status.IsComplete() || task.IsSnoozedAt(today) {
+			if task == nil || task.IsComplete() || task.IsSnoozedAt(today) {
 				continue
 			}
-			isBlocked := task.Status == models.StatusBlocked || focus.HasIncompleteDependencies(task, project, projects)
+			isBlocked := task.IsInState(models.StateWaiting) || focus.HasIncompleteDependencies(task, project, projects)
 			if !isBlocked {
 				continue
 			}

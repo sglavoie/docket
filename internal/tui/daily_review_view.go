@@ -156,13 +156,11 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
-	var currentStage string
 	var currentPriority int
 	if ct := m.getTaskAtCursor(); ct != nil {
-		currentStage = ct.Task.Stage
 		currentPriority = ct.Task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	hints := CommonTaskActionPrefixHints(currentPriority)
 	// In DailyReview, marking done also auto-advances the next recurring occurrence
 	hints[","] = overrideHintDetail(hints[","], "d", "done + auto-advance")
 	hints["g"] = DailyReviewNavigationPrefixHints
@@ -305,12 +303,12 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 	var statusBadge string
 	if section == SectionBlocked {
 		if dt.Project.HasIncompleteDependencies(task) {
-			statusBadge = BlockedByDepsStyle.Render(task.Status.Icon())
+			statusBadge = BlockedByDepsStyle.Render(task.State().Icon())
 		} else {
-			statusBadge = BlockedStyle.Render(task.Status.Icon())
+			statusBadge = BlockedStyle.Render(task.State().Icon())
 		}
-	} else if task.Status.IsComplete() {
-		statusBadge = GetStatusStyle(string(task.Status)).Render(task.Status.Icon())
+	} else if task.IsTerminalState() {
+		statusBadge = GetStateStyle(task.State()).Render(task.State().Icon())
 	}
 
 	line := RenderCrossProjectTaskLine(task, dt.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{

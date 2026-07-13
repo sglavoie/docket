@@ -214,7 +214,7 @@ func makeArchiveBenchTasks(b *testing.B, prefix string, count int, completed boo
 		if completed {
 			startedAt := now.AddDate(0, 0, -20+(i%10))
 			completedAt := startedAt.Add(48 * time.Hour)
-			task.Status = models.StatusDone
+			task.WorkflowState = models.StateDone
 			task.CompletedAt = &completedAt
 			task.Activity = []*models.ActivityEntry{
 				{Timestamp: startedAt, Field: "status", OldValue: string(models.StatusTodo), NewValue: string(models.StatusInProgress)},

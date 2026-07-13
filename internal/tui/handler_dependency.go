@@ -2,8 +2,6 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleDependencyMessages handles dependency-related messages (manage, view, navigate).
@@ -19,16 +17,15 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case DependencySelectorDoneMsg:
 		m.popView()
 		if msg.HasChanges && msg.Task != nil && msg.Project != nil {
-			undoOpts := m.taskMutationSaveOptions(msg.Task, "Edit Dependencies")
-			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-				t.DependsOn = msg.NewDepsOn
-			}) {
-				return true, errorCmd("task no longer exists in project")
+			// The selector produced the complete post-edit dependency set (only
+			// non-cyclic, non-self candidates are selectable), so replace the whole
+			// set through the application layer as one ledger-undoable ChangeSet.
+			res, err := m.appService.SetDependencies(msg.Task.ID, msg.NewDepsOn)
+			if err != nil {
+				return true, errorCmd("%s", err)
 			}
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				m.appPersister().SaveWithBackupOptions(msg.Project, "Dependencies updated", undoOpts),
-			)
+			m.reloadProjectByID(res.ProjectID)
+			return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: "Dependencies updated"})
 		}
 		return true, nil
 

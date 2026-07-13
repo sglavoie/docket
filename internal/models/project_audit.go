@@ -125,22 +125,12 @@ func auditTaskRelatedRefs(task *Task, taskMap map[string]*Task) error {
 	return nil
 }
 
+// auditTaskSectionState validates the task's canonical workflow state: a stored
+// state, when present, must be one of the ten valid states. The retired legacy
+// Section field no longer exists, so there is nothing else to check here.
 func auditTaskSectionState(task *Task) error {
-	switch {
-	case task.Section != "":
-		if !IsGTDSection(task.Section) {
-			return fmt.Errorf("%s has non-GTD section %q; custom grouping must use tags", auditTaskLabel(task), task.Section)
-		}
-		if !task.InSection(task.Section) {
-			return fmt.Errorf("%s does not resolve to section bucket %q", auditTaskLabel(task), task.Section)
-		}
-		if task.InSection("") {
-			return fmt.Errorf("%s section %q also resolves to the active bucket", auditTaskLabel(task), task.Section)
-		}
-	default:
-		if !task.InSection("") {
-			return fmt.Errorf("%s does not resolve to the active section bucket", auditTaskLabel(task))
-		}
+	if task.WorkflowState != "" && !task.WorkflowState.IsValid() {
+		return fmt.Errorf("%s has invalid workflow state %q", auditTaskLabel(task), task.WorkflowState)
 	}
 
 	return nil

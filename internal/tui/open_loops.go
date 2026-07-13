@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -46,23 +47,26 @@ func ComputeOpenLoops(cfg *config.Config, dailyPlanIDs map[string]bool) OpenLoop
 	}
 	var out OpenLoops
 	svc := NewProjectService()
-	_, projects, _ := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{})
+	_, projects, failed := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{})
+	for _, f := range failed {
+		logging.Warn("open loops: %s", f.Detail)
+	}
 	for _, project := range projects {
 		for _, task := range project.Tasks {
 			out.HasTasks = true
 			// Today scope: include planned tasks regardless of completion (matches Today).
 			if dailyPlanIDs != nil && dailyPlanIDs[task.ID] {
 				out.TodayTotal++
-				if task.Status.IsComplete() {
+				if task.IsComplete() {
 					out.TodayDone++
 				}
 			}
 
-			if task.Status.IsComplete() {
+			if task.IsComplete() {
 				continue
 			}
 
-			if task.Section == models.SectionInbox && task.IsRoot() {
+			if task.InSection(models.SectionInbox) && task.IsRoot() {
 				out.Inbox++
 			}
 			if task.IsOverdue() {

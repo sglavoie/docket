@@ -144,7 +144,7 @@ func TestBuildCrossProjectRowsAllGroupsEmpty(t *testing.T) {
 func TestBuildCrossProjectRowsNonGTDSectionsUseActiveHeader(t *testing.T) {
 	m := minimalOutliner()
 
-	legacyTask := &models.Task{ID: "ct1", Title: "Legacy task", Section: "Sprint-1"}
+	legacyTask := &models.Task{ID: "ct1", Title: "Legacy task"}
 	activeTask := makeTask("at1", "Active task", "")
 
 	groups := []projectTasksGroup{{
@@ -179,7 +179,7 @@ func TestBuildCrossProjectRowsNonGTDSectionsUseActiveHeader(t *testing.T) {
 func TestBuildCrossProjectRowsNonGTDSectionPlacementUnderActive(t *testing.T) {
 	m := minimalOutliner()
 
-	legacyTask := &models.Task{ID: "ct1", Title: "Legacy task", Section: "Sprint-1"}
+	legacyTask := &models.Task{ID: "ct1", Title: "Legacy task"}
 	activeTask := makeTask("at1", "Active task", "")
 
 	groups := []projectTasksGroup{{
@@ -215,7 +215,7 @@ func TestBuildCrossProjectRowsMultipleNonGTDSectionsDoNotAddHeaders(t *testing.T
 			projectID: "p1",
 			tasks: []*models.Task{
 				{ID: "t1", Title: "T1"},
-				{ID: "t3", Title: "T3", Section: models.SectionInbox},
+				{ID: "t3", Title: "T3", WorkflowState: models.StateInbox},
 			},
 		},
 		{
@@ -252,7 +252,7 @@ func TestBuildCrossProjectRowsLegacyNonGTDSectionValueStaysVisible(t *testing.T)
 	groups := []projectTasksGroup{{
 		projectID: "proj-1",
 		tasks: []*models.Task{
-			{ID: "legacy", Title: "Legacy task", Section: "Sprint-1"},
+			{ID: "legacy", Title: "Legacy task"},
 		},
 	}}
 
@@ -263,7 +263,6 @@ func TestBuildCrossProjectRowsLegacyNonGTDSectionValueStaysVisible(t *testing.T)
 
 func TestCrossProjectRebuildRowsSortsAllSharedSectionRowsByProjectName(t *testing.T) {
 	alphaTask := makeTask("alpha-next", "Alpha next task", models.SectionNext)
-	alphaTask.Status = models.StatusTodo
 	alpha := &models.Project{
 		ID:    "proj-alpha",
 		Slug:  "alpha",
@@ -273,7 +272,6 @@ func TestCrossProjectRebuildRowsSortsAllSharedSectionRowsByProjectName(t *testin
 	alpha.BuildTaskTree()
 
 	betaTask := makeTask("beta-next", "Beta next task", models.SectionNext)
-	betaTask.Status = models.StatusTodo
 	beta := &models.Project{
 		ID:    "proj-beta",
 		Slug:  "beta",

@@ -202,11 +202,11 @@ func TestOpenCurrentNoteReferenceCreatesSnapshotAndUsesExternalEditor(t *testing
 	m := newTestNotesView([]*models.Note{note})
 	m.config = testNotesConfig{editor: "vi", externalEditor: "code"}
 	m.cachedTasks = []*models.Task{{
-		ID:      "task-1",
-		ShortID: 7,
-		Type:    models.TaskTypeTask,
-		Title:   "Linked task",
-		Status:  models.StatusTodo,
+		ID:            "task-1",
+		ShortID:       7,
+		Type:          models.TaskTypeTask,
+		Title:         "Linked task",
+		WorkflowState: models.StateReady,
 	}}
 
 	oldCreate := createReferenceSnapshotFile

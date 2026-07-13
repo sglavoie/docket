@@ -17,18 +17,19 @@ import (
 // CommonFilterState contains the filter fields shared across views that support
 // the F-prefix filter system. Views embed this struct directly.
 type CommonFilterState struct {
-	Type        models.TaskType   // filter by type (epic/story/task/bug/idea)
-	Status      models.TaskStatus // filter by status
-	Priority    int               // 0=all, 1=high only (<=2)
-	Tags        map[string]bool   // filter by tag names (AND logic)
-	DueDate     DueDateFilter     // filter by due date
-	Attrs       map[string]string // type.attribute -> value
-	ScoreMin    float64           // minimum score threshold (0 = no filter)
-	Actionable  bool              // only show tasks ready to work on (no blockers)
-	HideDimmed  bool              // hide dimmed tasks
-	GitHubIssue bool              // only show tasks linked to a GitHub issue
-	Parked      bool              // only show parked tasks
-	Stage       string            // filter by workflow stage
+	Type        models.TaskType      // filter by type (epic/story/task/bug/idea)
+	Status      models.TaskStatus    // filter by status
+	Priority    int                  // 0=all, 1=high only (<=2)
+	Tags        map[string]bool      // filter by tag names (AND logic)
+	DueDate     DueDateFilter        // filter by due date
+	Attrs       map[string]string    // type.attribute -> value
+	ScoreMin    float64              // minimum score threshold (0 = no filter)
+	Actionable  bool                 // only show tasks ready to work on (no blockers)
+	HideDimmed  bool                 // hide dimmed tasks
+	GitHubIssue bool                 // only show tasks linked to a GitHub issue
+	Parked      bool                 // only show parked tasks
+	State       models.WorkflowState // filter by the canonical workflow state (one of the ten)
+	Blocked     bool                 // only show tasks blocked by an unresolved dependency
 }
 
 // copyCommonFilterState returns a deep copy of a CommonFilterState.
@@ -43,7 +44,8 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		HideDimmed:  src.HideDimmed,
 		GitHubIssue: src.GitHubIssue,
 		Parked:      src.Parked,
-		Stage:       src.Stage,
+		State:       src.State,
+		Blocked:     src.Blocked,
 	}
 	if len(src.Tags) > 0 {
 		dst.Tags = make(map[string]bool, len(src.Tags))
@@ -58,15 +60,29 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 
 // passesCommonFilters checks if a task passes the shared filter criteria.
 // Views call this from their own passesFilters method before applying
-// view-specific logic. The projectID and cfg are needed for score filtering.
-func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID string, cfg *config.Config) bool {
+// view-specific logic. The project is needed for score filtering (its ID keys
+// the scoring profile) and for the derived dependency-blocked filter (which
+// resolves the task's unresolved dependencies within its project). A nil
+// project disables both project-scoped filters; the state filter is
+// project-independent because WorkflowState is derived from the task alone.
+func passesCommonFilters(task *models.Task, f *CommonFilterState, project *models.Project, cfg *config.Config) bool {
+	projectID := ""
+	if project != nil {
+		projectID = project.ID
+	}
 	if f.HideDimmed && task.Dimmed {
 		return false
 	}
 	if f.Type != "" && task.Type != f.Type {
 		return false
 	}
-	if f.Status != "" && task.Status != f.Status {
+	if f.Status != "" && !stateMatchesLegacyStatus(task.State(), f.Status) {
+		return false
+	}
+	if f.State != "" && task.State() != f.State {
+		return false
+	}
+	if f.Blocked && !task.IsDependencyBlocked(project) {
 		return false
 	}
 	if f.Priority == 1 && task.Priority > 2 {
@@ -85,28 +101,7 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 			}
 		}
 	}
-	if f.DueDate != DueDateAll {
-		switch f.DueDate {
-		case DueDateOverdue:
-			if !task.IsOverdue() {
-				return false
-			}
-		case DueDateToday:
-			if !task.IsDueToday() {
-				return false
-			}
-		case DueDateThisWeek:
-			if !task.IsDueThisWeek() {
-				return false
-			}
-		case DueDateNone:
-			if task.DueDate != nil {
-				return false
-			}
-		default:
-		}
-	}
-	if f.Stage != "" && task.Stage != f.Stage {
+	if !passesDueDateFilter(task, f.DueDate) {
 		return false
 	}
 	if !passesAttrFilters(task, f.Attrs) {
@@ -122,6 +117,23 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 	return true
 }
 
+// passesDueDateFilter reports whether a task satisfies the given due-date
+// filter. DueDateAll (and any unknown value) matches every task.
+func passesDueDateFilter(task *models.Task, filter DueDateFilter) bool {
+	switch filter {
+	case DueDateOverdue:
+		return task.IsOverdue()
+	case DueDateToday:
+		return task.IsDueToday()
+	case DueDateThisWeek:
+		return task.IsDueThisWeek()
+	case DueDateNone:
+		return task.DueDate == nil
+	default:
+		return true
+	}
+}
+
 // hasActiveCommonFilters returns true if any common filter is non-default.
 func hasActiveCommonFilters(f *CommonFilterState) bool {
 	return f.Type != "" ||
@@ -135,7 +147,8 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.HideDimmed ||
 		f.GitHubIssue ||
 		f.Parked ||
-		f.Stage != ""
+		f.State != "" ||
+		f.Blocked
 }
 
 // clearCommonFilters resets all common filters to defaults.
@@ -151,7 +164,8 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.HideDimmed = false
 	f.GitHubIssue = false
 	f.Parked = false
-	f.Stage = ""
+	f.State = ""
+	f.Blocked = false
 }
 
 // commonFilterParts returns the list of active filter description strings.
@@ -166,6 +180,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	}
 	if f.Status != "" {
 		parts = append(parts, "status:"+string(f.Status))
+	}
+	if f.State != "" {
+		parts = append(parts, "state:"+string(f.State))
 	}
 	if len(f.Tags) > 0 {
 		tagNames := make([]string, 0, len(f.Tags))
@@ -216,8 +233,8 @@ func commonFilterParts(f *CommonFilterState) []string {
 	if f.Parked {
 		parts = append(parts, "parked")
 	}
-	if f.Stage != "" {
-		parts = append(parts, "stage:"+f.Stage)
+	if f.Blocked {
+		parts = append(parts, "blocked")
 	}
 
 	return parts

@@ -91,21 +91,19 @@ func restoreTaskFields(dst, src *models.Task) {
 	dst.Type = src.Type
 	dst.Title = src.Title
 	dst.Description = src.Description
-	dst.Status = src.Status
+	// WorkflowState is the authoritative lifecycle state read by the v2 writer.
+	dst.WorkflowState = src.WorkflowState
 	dst.Priority = src.Priority
 	dst.ParentID = src.ParentID
-	dst.Section = src.Section
 	dst.CreatedAt = src.CreatedAt
 	dst.UpdatedAt = src.UpdatedAt
 	dst.CompletedAt = src.CompletedAt
 	dst.DueDate = src.DueDate
 	dst.HasTime = src.HasTime
-	dst.Active = src.Active
 	dst.Pinned = src.Pinned
 	dst.PinnedAt = src.PinnedAt
 	dst.Dimmed = src.Dimmed
 	dst.SnoozedUntil = src.SnoozedUntil
-	dst.Stage = src.Stage
 	dst.StartDate = src.StartDate
 	dst.EstimatedDays = src.EstimatedDays
 	dst.Source = src.Source

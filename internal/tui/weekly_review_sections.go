@@ -52,7 +52,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 		var latestUpdate time.Time
 
 		for _, task := range project.Tasks {
-			if task.Status.IsComplete() {
+			if task.IsTerminalState() {
 				continue
 			}
 			if task.IsSnoozed() {
@@ -74,17 +74,17 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// Inbox count
-			if task.Section == models.SectionInbox && task.IsRoot() {
+			if task.IsInState(models.StateInbox) && task.IsRoot() {
 				wp.InboxCount++
 			}
 
 			// Blocked count
-			if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
+			if task.IsInState(models.StateWaiting) || project.HasIncompleteDependencies(task) {
 				wp.BlockedCount++
 			}
 
 			// In-progress count
-			if task.Status == models.StatusInProgress {
+			if task.IsInState(models.StateInProgress) {
 				wp.InProgressCount++
 			}
 
@@ -94,7 +94,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// High priority todo
-			if task.Priority <= 2 && task.Status == models.StatusTodo {
+			if task.Priority <= 2 && taskInPlanningState(task) {
 				wp.HighPriorityTodo++
 			}
 
@@ -108,17 +108,17 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			if effectiveUpdate.IsZero() {
 				effectiveUpdate = task.CreatedAt
 			}
-			if !task.Status.IsComplete() && effectiveUpdate.Before(staleTaskThreshold) {
+			if !task.IsTerminalState() && effectiveUpdate.Before(staleTaskThreshold) {
 				m.staleTasks = append(m.staleTasks, WeeklyReviewTask{Task: task, Project: project})
 			}
 
 			// Priority mismatch: high priority still in todo
-			if task.Priority <= 2 && task.Status == models.StatusTodo {
+			if task.Priority <= 2 && taskInPlanningState(task) {
 				m.priorityMismatch = append(m.priorityMismatch, WeeklyReviewTask{Task: task, Project: project})
 			}
 
 			// Upcoming week
-			if task.DueDate != nil && !task.Status.IsComplete() {
+			if task.DueDate != nil && !task.IsTerminalState() {
 				dueDay := util.StartOfDay(*task.DueDate)
 				if !dueDay.Before(today) && dueDay.Before(weekFromNow) {
 					m.upcomingWeek = append(m.upcomingWeek, WeeklyReviewTask{Task: task, Project: project})
@@ -190,7 +190,7 @@ func (m *WeeklyReviewModel) shouldSkipWeeklyReviewTask(task *models.Task, projec
 	if !hasActiveCommonFilters(&m.filter) {
 		return false
 	}
-	return !passesCommonFilters(task, &m.filter, project.ID, m.config)
+	return !passesCommonFilters(task, &m.filter, project, m.config)
 }
 
 // sortSections sorts each section by appropriate criteria.

@@ -66,11 +66,11 @@ func TestGitHubIssueMetadataPreservesAttachmentCount(t *testing.T) {
 
 func TestCrossProjectTaskLineShowsGitHubIssueIndicator(t *testing.T) {
 	task := &models.Task{
-		ID:     "t1",
-		Title:  "Fix sync",
-		Type:   models.TaskTypeTask,
-		Status: models.StatusTodo,
-		URL:    "https://github.com/acme/roadmap/issues/123",
+		ID:            "t1",
+		Title:         "Fix sync",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		URL:           "https://github.com/acme/roadmap/issues/123",
 	}
 	proj := &models.Project{ID: "p1", Name: "Roadmap"}
 
@@ -89,7 +89,7 @@ func TestGitHubIssueAttachmentLabels(t *testing.T) {
 		Filename: "https://example.com/design.pdf",
 		IsURL:    true,
 	}
-	model := NewTaskAttachmentsModel(&models.Task{}, &models.Project{}, nil)
+	model := NewTaskAttachmentsModel(&models.Task{}, &models.Project{}, nil, AttachmentCoordinator{})
 
 	if got := model.attachmentTypeLabel(issueAttachment); got != "GITHUB ISSUE" {
 		t.Fatalf("GitHub issue attachment label = %q, want GITHUB ISSUE", got)

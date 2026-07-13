@@ -38,10 +38,11 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 		return fmt.Errorf("create runtime dir: %w", err)
 	}
 	lockPath := pidLockPath(cfg.DataDir)
-	if err := util.AcquirePIDLock(lockPath); err != nil {
+	lock, err := util.AcquirePIDLock(lockPath)
+	if err != nil {
 		return err
 	}
-	defer util.ReleasePIDLock(lockPath)
+	defer lock.Release()
 
 	// Evaluate workflow rules at startup if needed
 	var startupResult *StartupEvalResult
@@ -75,8 +76,8 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 			if n := len(current.Warnings); n > 0 {
 				model.statusMessage = fmt.Sprintf("%d data issue(s) auto-repaired (run tt doctor for details)", n)
 				model.statusIsInfo = true
-				if err := storage.SaveProjectLocked(current); err != nil {
-					logging.Warn("failed to persist auto-repaired data: %v", err)
+				if saveErr := storage.SaveProjectLocked(current); saveErr != nil {
+					logging.Warn("failed to persist auto-repaired data: %v", saveErr)
 				}
 			}
 		}
@@ -100,7 +101,7 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 		if app.currentProject != nil {
 			now := time.Now()
 			for _, t := range app.currentProject.Tasks {
-				if t.Status == models.StatusInProgress {
+				if t.State() == models.StateInProgress {
 					app.sessionStats.tasksInProgress++
 				}
 				if t.SnoozedUntil != nil && t.SnoozedUntil.After(now) {
@@ -203,6 +204,18 @@ func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, proj
 	result.Evaluated = true
 	result.ModifiedTasks = len(evalResult.ModifiedTasks)
 	result.RulesApplied = len(evalResult.RuleTriggerCounts)
+
+	// Apply Focus Queue membership changes requested by set_active actions.
+	// The engine records these as deferred FocusChanges; this config-aware
+	// layer adds/removes membership (the workflow-state replacement for the
+	// retired Task.Active flag). The cfg is persisted below via saveConfigWarn.
+	for _, fc := range evalResult.FocusChanges {
+		if fc.Add {
+			cfg.AddToFocusQueue(fc.TaskID, project.ID)
+		} else {
+			cfg.RemoveFromFocusQueue(fc.TaskID)
+		}
+	}
 
 	// Only save if there were actual modifications
 	if result.ModifiedTasks > 0 {

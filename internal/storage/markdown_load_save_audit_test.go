@@ -129,8 +129,8 @@ func TestLoadProjectWithWarnings_NormalizesLegacyDualSectionMetadata(t *testing.
 		t.Fatalf("loaded %d tasks, want 1", len(loaded.Tasks))
 	}
 	task := loaded.Tasks[0]
-	if task.Section != "" {
-		t.Fatalf("task.Section = %q, want empty after normalization", task.Section)
+	if got := models.SectionForState(task.State()); got != "" {
+		t.Fatalf("task section = %q, want empty after normalization (state %q)", got, task.State())
 	}
 
 	if len(result.Warnings) != 1 {

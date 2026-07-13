@@ -56,7 +56,7 @@ func TestBuildProjectGroupedRowsEmptyGroups(t *testing.T) {
 
 func TestCrossProjectRebuildRowsSortsNonAllGroupsByProjectName(t *testing.T) {
 	alphaTask := makeTask("alpha-task", "Alpha active task", "")
-	alphaTask.Status = models.StatusInProgress
+	alphaTask.WorkflowState = models.StateInProgress
 	alpha := &models.Project{
 		ID:    "proj-alpha",
 		Slug:  "alpha",
@@ -66,7 +66,7 @@ func TestCrossProjectRebuildRowsSortsNonAllGroupsByProjectName(t *testing.T) {
 	alpha.BuildTaskTree()
 
 	betaTask := makeTask("beta-task", "Beta active task", "")
-	betaTask.Status = models.StatusInProgress
+	betaTask.WorkflowState = models.StateInProgress
 	beta := &models.Project{
 		ID:    "proj-beta",
 		Slug:  "beta",

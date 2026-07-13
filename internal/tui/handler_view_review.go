@@ -21,9 +21,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowMetricsDashboardMsg:
 		if msg.Project != nil {
-			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, msg.Project)
+			m.metricsDashboard = NewMetricsDashboardModelForProject(m.configManager, msg.Project)
 		} else {
-			m.metricsDashboard = NewMetricsDashboardModel(m.config)
+			m.metricsDashboard = NewMetricsDashboardModel(m.configManager)
 		}
 		m.showView(ViewMetricsDashboard, m.metricsDashboard)
 		return true, nil
@@ -96,6 +96,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowAllTasksMsg:
 		atv := NewAllTasksViewModel(m.config, m.configManager)
+		atv.bulk = m.secondaryFeatures.Bulk
 		atv.queueIDs = m.focusQueueIDs
 		atv.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewAllTasks, atv)

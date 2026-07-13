@@ -8,59 +8,77 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleStatusTransition applies a status change to either the selected tasks
-// (in multi-select mode) or the task at the cursor.
-// For single-task mode, delegates to the shared applyStatusChange().
-// For multi-select mode, uses analyzeBulkStatusTransition with ConfirmDialog
+// handleStateTransition applies a workflow-state change to either the selected
+// tasks (in multi-select mode) or the task at the cursor.
+// For multi-select mode, uses analyzeBulkStateTransition with ConfirmDialog
 // when blocked tasks are present.
-func (m *ProjectTreeModel) handleStatusTransition(status models.TaskStatus, visible []*TreeNode) (bool, tea.Cmd) {
+func (m *ProjectTreeModel) handleStateTransition(state models.WorkflowState, visible []*TreeNode) (bool, tea.Cmd) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		return m.handleBulkStatusTransition(status)
+		return m.handleBulkStateTransition(state)
 	}
-	return m.handleSingleStatusTransition(status, visible)
+	return m.handleSingleStateTransition(state, visible)
 }
 
-// handleSingleStatusTransition applies a status change to the task at cursor
-// using the shared applyStatusChange() function.
-func (m *ProjectTreeModel) handleSingleStatusTransition(status models.TaskStatus, visible []*TreeNode) (bool, tea.Cmd) {
+// handleSingleStateTransition applies a workflow-state change to the task at
+// cursor through the application-layer single-task coordinator.
+func (m *ProjectTreeModel) handleSingleStateTransition(state models.WorkflowState, visible []*TreeNode) (bool, tea.Cmd) {
 	if !CursorInBounds(m.cursor, len(visible)) {
 		return true, nil
 	}
 
 	task := visible[m.cursor].Task
-	m.setUndoContext(StatusVerb(status)+" Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-	m.undo.TaskIDs = []string{task.ID}
 
-	pf := m.workflowPersistFn()
-	result := applyStatusChange(pf, m.project, task.ID, status)
-	if result.Err != nil {
-		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	// Preflight the coordinator guards so an invalid transition surfaces a status
+	// message (not an error toast) and does not fire the flash — matching the
+	// pre-migration UX. Valid transitions dispatch the coordinator.
+	if msg := models.CanTransitionState(task.State(), state); msg != "" {
+		m.setStatus(msg)
+		return true, nil
 	}
-	m.buildTree()
-	m.clampCursor()
-	if status == models.StatusDone {
+	if state == models.StateDone && m.project.HasIncompleteDependencies(task) {
+		return true, func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
+		}
+	}
+	if state.IsTerminal() {
+		if incomplete := task.IncompleteChildren(); len(incomplete) > 0 {
+			verb := "complete"
+			if state == models.StateCanceled {
+				verb = "cancel"
+			}
+			m.setStatus(fmt.Sprintf("cannot %s #%d: has %d incomplete children", verb, task.ShortID, len(incomplete)))
+			return true, nil
+		}
+	}
+
+	cmd := m.taskItem.Transition(task.ID, state)
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		return true, func() tea.Msg { return ErrorMsg{Err: em.Err} }
+	}
+	if state == models.StateDone {
 		m.setCompletionFlash()
-		return true, tea.Batch(result.Cmd, completionFlashScheduler())
+		return true, tea.Batch(func() tea.Msg { return msg }, completionFlashScheduler())
 	}
-	m.setMutationFlash(statusMutationFlashBg(status))
-	return true, tea.Batch(result.Cmd, mutationFlashTimeout())
+	m.setMutationFlash(stateMutationFlashBg(state))
+	return true, tea.Batch(func() tea.Msg { return msg }, mutationFlashTimeout())
 }
 
-// handleBulkStatusTransition applies a status change to all multi-selected tasks.
-// If some tasks are blocked by transition rules or incomplete dependencies,
-// shows a confirmation prompt before proceeding with the valid ones.
-func (m *ProjectTreeModel) handleBulkStatusTransition(status models.TaskStatus) (bool, tea.Cmd) {
+// handleBulkStateTransition applies a workflow-state change to all multi-selected
+// tasks. If some tasks are blocked by transition rules or incomplete
+// dependencies, shows a confirmation prompt before proceeding with the valid ones.
+func (m *ProjectTreeModel) handleBulkStateTransition(state models.WorkflowState) (bool, tea.Cmd) {
 	tasks := m.getSelectedTasks()
 	if len(tasks) == 0 {
 		return true, nil
 	}
 
-	valid, blockedCount := analyzeBulkStatusTransition(m.project, tasks, status)
+	valid, blockedCount := analyzeBulkStateTransition(m.project, tasks, state)
 
 	if len(valid) == 0 {
 		m.clearSelection()
 		return true, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("no selected tasks can transition to %s", status)}
+			return ErrorMsg{Err: fmt.Errorf("no selected tasks can transition to %s", state)}
 		}
 	}
 
@@ -68,7 +86,7 @@ func (m *ProjectTreeModel) handleBulkStatusTransition(status models.TaskStatus) 
 
 	// If there are blocked tasks, show confirmation before proceeding
 	if blockedCount > 0 {
-		m.bulkOp.SetOperation(status, valid, blockedCount, prevStates)
+		m.bulkOp.SetOperation(state, valid, blockedCount, prevStates)
 		m.confirm.Show("bulk-status",
 			fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway?", blockedCount, len(valid)))
 		m.clearSelection()
@@ -78,16 +96,16 @@ func (m *ProjectTreeModel) handleBulkStatusTransition(status models.TaskStatus) 
 	// No blocked tasks, proceed directly
 	for _, task := range valid {
 		m.project.MutateTask(task.ID, func(t *models.Task) {
-			t.ApplyTransition(status)
+			t.ApplyStateTransition(state)
 		})
 	}
 	m.clearSelection()
-	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), status))
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), state))
 	m.undo.TaskIDs = taskIDsFromSlice(valid)
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
-// executePendingBulkStatus applies the pending bulk status change after confirmation.
+// executePendingBulkStatus applies the pending bulk state change after confirmation.
 func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 	if len(m.bulkOp.GetTasks()) == 0 {
 		m.clearPendingBulkStatus()
@@ -97,14 +115,14 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 	// Capture previous states for event-based workflow triggers
 	prevStates := m.bulkOp.GetPrevStates()
 
-	// Apply status to all pending tasks
+	// Apply the target state to all pending tasks
 	for _, task := range m.bulkOp.GetTasks() {
-		task.ApplyTransition(m.bulkOp.GetStatus())
+		task.ApplyStateTransition(m.bulkOp.GetState())
 	}
 
 	bulkTasks := m.bulkOp.GetTasks()
 	count := len(bulkTasks)
-	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.bulkOp.GetStatus()))
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.bulkOp.GetState()))
 	m.undo.TaskIDs = taskIDsFromSlice(bulkTasks)
 	m.clearSelection()
 	m.clearPendingBulkStatus()

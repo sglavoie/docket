@@ -230,58 +230,6 @@ func (m *SettingsModel) validateAlertSettings() error {
 	return nil
 }
 
-// commitStageEdit validates and applies an in-progress stage add or rename.
-// Returns an error if the value is a duplicate of an existing stage.
-func (m *SettingsModel) commitStageEdit() error {
-	val := strings.TrimSpace(m.stageInput.Value())
-	if val != "" {
-		if m.stageAddMode {
-			if m.hasDuplicateStage(val, -1) {
-				return fmt.Errorf("stage '%s' already exists", val)
-			}
-			m.stages = append(m.stages, val)
-			m.stageCursor = len(m.stages) - 1
-		} else {
-			if m.hasDuplicateStage(val, m.stageCursor) {
-				return fmt.Errorf("stage '%s' already exists", val)
-			}
-			m.stages[m.stageCursor] = val
-		}
-	}
-	m.stageEditMode = false
-	m.stageAddMode = false
-	m.stageInput.Blur()
-	return nil
-}
-
-// hasDuplicateStage checks if a stage name already exists, excluding the given index.
-// Pass excludeIdx=-1 to check all stages (for add mode).
-func (m *SettingsModel) hasDuplicateStage(name string, excludeIdx int) bool {
-	lower := strings.ToLower(name)
-	for i, s := range m.stages {
-		if i == excludeIdx {
-			continue
-		}
-		if strings.ToLower(s) == lower {
-			return true
-		}
-	}
-	return false
-}
-
-// hasUnsavedStages reports whether the current stages differ from the saved snapshot.
-func (m *SettingsModel) hasUnsavedStages() bool {
-	if len(m.stages) != len(m.savedStages) {
-		return true
-	}
-	for i := range m.stages {
-		if m.stages[i] != m.savedStages[i] {
-			return true
-		}
-	}
-	return false
-}
-
 // hexColorRegex matches hex color strings with or without leading #.
 // Accepts: #rgb, #rrggbb, rgb, rrggbb.
 var hexColorRegex = regexp.MustCompile(`^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)

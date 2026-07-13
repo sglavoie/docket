@@ -7,8 +7,8 @@ import (
 )
 
 func TestModifiedTasksNoDuplicates(t *testing.T) {
-	prev := &models.Task{ID: "1", Status: models.StatusTodo, Tags: []string{}}
-	curr := &models.Task{ID: "1", Status: models.StatusInProgress, Tags: []string{}}
+	prev := &models.Task{ID: "1", WorkflowState: models.StateReady, Tags: []string{}}
+	curr := &models.Task{ID: "1", WorkflowState: models.StateInProgress, Tags: []string{}}
 
 	evalCtx := &EvaluationContext{
 		Changes:  []TaskChangeContext{{Task: curr, Previous: prev}},

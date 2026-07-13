@@ -54,29 +54,19 @@ func (m *AllTasksViewModel) groupByProject(tasks []CrossProjectTask) []AllTasksG
 	return result
 }
 
-// groupByStatus groups tasks by their workflow status in a defined order.
+// groupByStatus groups tasks by their workflow state in canonical order
+// (nonterminal states first, then the terminal states).
 func (m *AllTasksViewModel) groupByStatus(tasks []CrossProjectTask) []AllTasksGroup {
-	statusOrder := []models.TaskStatus{
-		models.StatusTodo,
-		models.StatusInProgress,
-		models.StatusReview,
-		models.StatusStandby,
-		models.StatusMaybe,
-		models.StatusBlocked,
-		models.StatusDone,
-		models.StatusCanceled,
-	}
-
-	groups := make(map[models.TaskStatus][]CrossProjectTask)
+	groups := make(map[models.WorkflowState][]CrossProjectTask)
 	for _, item := range tasks {
-		groups[item.Task.Status] = append(groups[item.Task.Status], item)
+		groups[item.Task.State()] = append(groups[item.Task.State()], item)
 	}
 
 	var result []AllTasksGroup
-	for _, status := range statusOrder {
-		if items, ok := groups[status]; ok && len(items) > 0 {
+	for _, state := range models.AllWorkflowStates() {
+		if items, ok := groups[state]; ok && len(items) > 0 {
 			result = append(result, AllTasksGroup{
-				Name:  string(status),
+				Name:  string(state),
 				Tasks: items,
 			})
 		}
@@ -115,7 +105,7 @@ func (m *AllTasksViewModel) groupBySection(tasks []CrossProjectTask) []AllTasksG
 	var order []string
 
 	for _, item := range tasks {
-		section := item.Task.Section
+		section := taskSectionBucket(item.Task)
 		if section == "" {
 			section = "(none)"
 		}

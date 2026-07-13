@@ -41,15 +41,21 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, configManager, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+
+	store := automationStore(configManager)
+	automation, err := store.LoadAutomation()
 	if err != nil {
 		return err
 	}
 
 	if workflowResetAll {
-		total := len(cfg.WorkflowRules)
-		cfg.ResetAllRuleTriggerCounts()
-		if err := saveConfig(configManager, cfg); err != nil {
+		total := len(automation.WorkflowRules)
+		automation.ResetAllRuleTriggerCounts()
+		if err := saveAutomation(store, automation); err != nil {
 			return err
 		}
 		if out.Quiet {
@@ -65,7 +71,7 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	}
 
 	ruleID := args[0]
-	rule := cfg.GetWorkflowRule(ruleID)
+	rule := automation.GetWorkflowRule(ruleID)
 	if rule == nil {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}
@@ -73,11 +79,11 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	ruleName := rule.Name
 	oldCount := rule.TriggerCount
 
-	if !cfg.ResetRuleTriggerCount(ruleID) {
+	if !automation.ResetRuleTriggerCount(ruleID) {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := saveAutomation(store, automation); err != nil {
 		return err
 	}
 

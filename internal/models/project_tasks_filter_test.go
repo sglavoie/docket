@@ -85,10 +85,10 @@ func TestProjectFilterMethods_EmptyTaskList(t *testing.T) {
 		}
 	})
 
-	t.Run("GetTasksByStatus on empty list", func(t *testing.T) {
-		result := project.GetTasksByStatus(StatusTodo)
+	t.Run("GetTasksByState on empty list", func(t *testing.T) {
+		result := project.GetTasksByState(StateReady)
 		if len(result) != 0 {
-			t.Errorf("GetTasksByStatus on empty list should return empty, got %d", len(result))
+			t.Errorf("GetTasksByState on empty list should return empty, got %d", len(result))
 		}
 	})
 
@@ -135,10 +135,10 @@ func TestProjectFilterMethods_NilTaskList(t *testing.T) {
 		}
 	})
 
-	t.Run("GetTasksByStatus on nil list", func(t *testing.T) {
-		result := project.GetTasksByStatus(StatusTodo)
+	t.Run("GetTasksByState on nil list", func(t *testing.T) {
+		result := project.GetTasksByState(StateReady)
 		if len(result) != 0 {
-			t.Errorf("GetTasksByStatus on nil list should return empty, got %d", len(result))
+			t.Errorf("GetTasksByState on nil list should return empty, got %d", len(result))
 		}
 	})
 

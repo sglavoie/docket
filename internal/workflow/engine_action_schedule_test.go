@@ -9,27 +9,24 @@ import (
 
 func TestApplyAction_SetStatusLifecycle(t *testing.T) {
 	t.Run("completing a task sets CompletedAt and Section", func(t *testing.T) {
-		task := &models.Task{ID: "1", Status: models.StatusInProgress, Active: true}
+		task := &models.Task{ID: "1", WorkflowState: models.StateInProgress}
 		modified := applyAction(task, RuleAction{ActionType: ActionSetStatus, Value: "done"})
 		if !modified {
 			t.Error("expected modification")
 		}
-		if task.Status != models.StatusDone {
-			t.Errorf("expected done, got %s", task.Status)
+		if task.State() != models.StateDone {
+			t.Errorf("expected done, got %s", task.State())
 		}
 		if task.CompletedAt == nil {
 			t.Error("expected CompletedAt to be set")
 		}
-		if task.Active {
-			t.Error("expected Active to be cleared")
-		}
-		if task.Section != models.SectionCompleted {
-			t.Errorf("expected Section=%q, got %q", models.SectionCompleted, task.Section)
+		if models.SectionForState(task.State()) != models.SectionCompleted {
+			t.Errorf("expected Section=%q, got %q", models.SectionCompleted, models.SectionForState(task.State()))
 		}
 	})
 
 	t.Run("canceling a task sets CompletedAt and Section", func(t *testing.T) {
-		task := &models.Task{ID: "2", Status: models.StatusTodo}
+		task := &models.Task{ID: "2", WorkflowState: models.StateReady}
 		modified := applyAction(task, RuleAction{ActionType: ActionSetStatus, Value: "canceled"})
 		if !modified {
 			t.Error("expected modification")
@@ -37,14 +34,14 @@ func TestApplyAction_SetStatusLifecycle(t *testing.T) {
 		if task.CompletedAt == nil {
 			t.Error("expected CompletedAt to be set")
 		}
-		if task.Section != models.SectionCompleted {
-			t.Errorf("expected Section=%q, got %q", models.SectionCompleted, task.Section)
+		if models.SectionForState(task.State()) != models.SectionCompleted {
+			t.Errorf("expected Section=%q, got %q", models.SectionCompleted, models.SectionForState(task.State()))
 		}
 	})
 
 	t.Run("reopening a task clears CompletedAt", func(t *testing.T) {
 		now := time.Now()
-		task := &models.Task{ID: "3", Status: models.StatusDone, CompletedAt: &now, Section: models.SectionCompleted}
+		task := &models.Task{ID: "3", WorkflowState: models.StateDone, CompletedAt: &now}
 		modified := applyAction(task, RuleAction{ActionType: ActionSetStatus, Value: "todo"})
 		if !modified {
 			t.Error("expected modification")
@@ -52,30 +49,30 @@ func TestApplyAction_SetStatusLifecycle(t *testing.T) {
 		if task.CompletedAt != nil {
 			t.Error("expected CompletedAt to be nil after reopen")
 		}
-		if task.Section != models.SectionInbox {
-			t.Errorf("expected Section=%q, got %q", models.SectionInbox, task.Section)
+		if models.SectionForState(task.State()) != models.SectionInbox {
+			t.Errorf("expected Section=%q, got %q", models.SectionInbox, models.SectionForState(task.State()))
 		}
 	})
 
 	t.Run("blocking a task sets Section to Waiting", func(t *testing.T) {
-		task := &models.Task{ID: "4", Status: models.StatusInProgress}
+		task := &models.Task{ID: "4", WorkflowState: models.StateInProgress}
 		modified := applyAction(task, RuleAction{ActionType: ActionSetStatus, Value: "blocked"})
 		if !modified {
 			t.Error("expected modification")
 		}
-		if task.Section != models.SectionWaiting {
-			t.Errorf("expected Section=%q, got %q", models.SectionWaiting, task.Section)
+		if models.SectionForState(task.State()) != models.SectionWaiting {
+			t.Errorf("expected Section=%q, got %q", models.SectionWaiting, models.SectionForState(task.State()))
 		}
 	})
 
 	t.Run("starting a task clears Inbox section", func(t *testing.T) {
-		task := &models.Task{ID: "5", Status: models.StatusTodo, Section: models.SectionInbox}
+		task := &models.Task{ID: "5", WorkflowState: models.StateInbox}
 		modified := applyAction(task, RuleAction{ActionType: ActionSetStatus, Value: "in_progress"})
 		if !modified {
 			t.Error("expected modification")
 		}
-		if task.Section != "" {
-			t.Errorf("expected Section to be empty, got %q", task.Section)
+		if models.SectionForState(task.State()) != "" {
+			t.Errorf("expected Section to be empty, got %q", models.SectionForState(task.State()))
 		}
 	})
 }
@@ -92,7 +89,7 @@ func TestApplyAction_SetSnooze(t *testing.T) {
 			name:  "sets SnoozedUntil correctly for +3d",
 			value: "+3d",
 			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Status: models.StatusTodo}
+				return &models.Task{ID: "1", WorkflowState: models.StateReady}
 			},
 			shouldModify: true,
 			check: func(t *models.Task) bool {

@@ -15,10 +15,10 @@ func TestCommonFilterGitHubIssueMatching(t *testing.T) {
 	filter := newFilterState()
 	filter.GitHubIssue = true
 
-	if !passesCommonFilters(issueTask, &filter, "", nil) {
+	if !passesCommonFilters(issueTask, &filter, nil, nil) {
 		t.Fatal("task with a GitHub issue URL should pass the GitHub issue filter")
 	}
-	if passesCommonFilters(plainTask, &filter, "", nil) {
+	if passesCommonFilters(plainTask, &filter, nil, nil) {
 		t.Fatal("task without a GitHub issue URL should not pass the GitHub issue filter")
 	}
 }

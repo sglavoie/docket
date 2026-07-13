@@ -13,7 +13,7 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 		m.quickSwitchFiltered = make([]int, 0, len(entries))
 		m.quickSwitchTitlePositions = make([][]int, 0, len(entries))
 		for i, entry := range entries {
-			if entry.Task.Status.IsComplete() != m.quickSwitchShowCompleted {
+			if entry.Task.IsComplete() != m.quickSwitchShowCompleted {
 				continue
 			}
 			m.quickSwitchFiltered = append(m.quickSwitchFiltered, i)
@@ -30,7 +30,7 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 
 	var pinned, unpinned []scored
 	for i, entry := range entries {
-		if entry.Task.Status.IsComplete() != m.quickSwitchShowCompleted {
+		if entry.Task.IsComplete() != m.quickSwitchShowCompleted {
 			continue
 		}
 		text := entry.Task.Title + " " + entry.Project.Name

@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -49,21 +49,31 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("comment text")
 	}
 
-	// Use WithTaskUpdate to add comment
-	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
-		t.AddComment(commentText)
-		return nil
-	})
-
+	// Resolve the task in the current project, then persist through the
+	// application layer so the comment commits atomically, revision-checked,
+	// and undoably via the workspace ledger.
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
+	task, findErr := FindTaskByIdentifier(project, taskID)
+	if findErr != nil {
+		return findErr
+	}
+
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.CommentResult, error) {
+		return svc.AddComment(task.ID, commentText)
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return printMutationJSON(res.Task)
 	}
 	if !out.Quiet {
-		fmt.Printf("Added comment to #%d: %s\n", task.ShortID, task.Title)
+		fmt.Printf("Added comment to #%d: %s\n", res.Task.ShortID, res.Task.Title)
 	}
 	return nil
 }

@@ -13,10 +13,10 @@ import (
 func TestVisibleSiblings_SingleProject(t *testing.T) {
 	proj := &models.Project{ID: "proj"}
 
-	a := &models.Task{ID: "a", Title: "A", Section: models.SectionNext}
-	b := &models.Task{ID: "b", Title: "B", Section: models.SectionInbox}
-	c := &models.Task{ID: "c", Title: "C", Section: models.SectionNext}
-	d := &models.Task{ID: "d", Title: "D", Section: models.SectionInbox}
+	a := &models.Task{ID: "a", Title: "A", WorkflowState: models.StateNext}
+	b := &models.Task{ID: "b", Title: "B", WorkflowState: models.StateInbox}
+	c := &models.Task{ID: "c", Title: "C", WorkflowState: models.StateNext}
+	d := &models.Task{ID: "d", Title: "D", WorkflowState: models.StateInbox}
 
 	proj.Tasks = []*models.Task{a, b, c, d}
 
@@ -132,8 +132,8 @@ func TestVisibleSiblings_EmptyRows(t *testing.T) {
 // TestVisibleSiblings_StopsAtSectionHeader: walking outward stops at a
 // section header — a single-task bucket returns just that task.
 func TestVisibleSiblings_StopsAtSectionHeader(t *testing.T) {
-	a := &models.Task{ID: "a", Title: "A", Section: models.SectionInbox}
-	b := &models.Task{ID: "b", Title: "B", Section: models.SectionNext}
+	a := &models.Task{ID: "a", Title: "A", WorkflowState: models.StateInbox}
+	b := &models.Task{ID: "b", Title: "B", WorkflowState: models.StateNext}
 
 	m := minimalOutliner()
 	m.project = &models.Project{ID: "proj"}
@@ -159,11 +159,11 @@ func TestVisibleSiblings_StopsAtSectionHeader(t *testing.T) {
 func TestVisibleSiblings_SkipsExpandedDescendants(t *testing.T) {
 	proj := &models.Project{ID: "proj"}
 
-	root1 := &models.Task{ID: "root1", Title: "Root 1", Section: models.SectionNext}
-	epic := &models.Task{ID: "epic", Title: "Epic", Section: models.SectionNext}
-	child := &models.Task{ID: "child", Title: "Child", Section: models.SectionNext, Parent: epic, ParentID: &epic.ID}
+	root1 := &models.Task{ID: "root1", Title: "Root 1", WorkflowState: models.StateNext}
+	epic := &models.Task{ID: "epic", Title: "Epic", WorkflowState: models.StateNext}
+	child := &models.Task{ID: "child", Title: "Child", WorkflowState: models.StateNext, Parent: epic, ParentID: &epic.ID}
 	epic.Children = []*models.Task{child}
-	root2 := &models.Task{ID: "root2", Title: "Root 2", Section: models.SectionNext}
+	root2 := &models.Task{ID: "root2", Title: "Root 2", WorkflowState: models.StateNext}
 
 	proj.Tasks = []*models.Task{root1, epic, child, root2}
 

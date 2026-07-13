@@ -26,8 +26,8 @@ func Test_diffAndRecordActivity_PrunesExcessEntries(t *testing.T) {
 		})
 	}
 
-	old.Status = models.StatusTodo
-	newTask.Status = models.StatusInProgress
+	old.WorkflowState = models.StateReady
+	newTask.WorkflowState = models.StateInProgress
 
 	maxEntries := 10
 	diffAndRecordActivity([]*models.Task{old}, []*models.Task{newTask}, maxEntries)
@@ -37,7 +37,7 @@ func Test_diffAndRecordActivity_PrunesExcessEntries(t *testing.T) {
 	}
 
 	newest := newTask.Activity[len(newTask.Activity)-1]
-	if newest.Field != "status" || newest.NewValue != "in_progress" {
-		t.Errorf("expected newest entry to be status change, got field=%q new=%q", newest.Field, newest.NewValue)
+	if newest.Field != "state" || newest.NewValue != "in_progress" {
+		t.Errorf("expected newest entry to be a state change, got field=%q new=%q", newest.Field, newest.NewValue)
 	}
 }

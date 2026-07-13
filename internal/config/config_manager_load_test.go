@@ -66,9 +66,55 @@ func TestConfigManager_LoadOrCreate(t *testing.T) {
 		t.Error("config file should exist after LoadOrCreate")
 	}
 
-	_, err = os.Stat(configPath)
-	if os.IsNotExist(err) {
-		t.Error("config file was not created")
+	// Persistence is the decomposed domain files, not the legacy monolithic
+	// config path: the workspace catalog domain file must exist after create.
+	dataDir := filepath.Dir(configPath)
+	if _, err = os.Stat(WorkspaceCatalogPath(dataDir)); os.IsNotExist(err) {
+		t.Error("workspace domain file was not created")
+	}
+	// The legacy monolithic file must never be written.
+	if _, err = os.Stat(configPath); err == nil {
+		t.Error("legacy monolithic config file should not be created")
+	}
+}
+
+// TestConfigManager_SaveWritesDomainsNotMonolith locks the cutover invariant:
+// Save persists the decomposed domain files and never writes the legacy
+// monolithic .tt.json at the config path.
+func TestConfigManager_SaveWritesDomainsNotMonolith(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".tt.json")
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	cfg.Editor = "vim"
+	if err := manager.Save(cfg); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	if _, err := os.Stat(configPath); err == nil {
+		t.Error("Save must not write the legacy monolithic config file")
+	}
+	for _, p := range []string{
+		WorkspaceCatalogPath(tmpDir),
+		PlanningStatePath(tmpDir),
+		SettingsPath(tmpDir),
+		AutomationPath(tmpDir),
+	} {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("Save should have written domain file %s: %v", filepath.Base(p), err)
+		}
+	}
+
+	loaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("reload failed: %v", err)
+	}
+	if loaded.Editor != "vim" {
+		t.Errorf("reload from domains lost mutation: Editor=%q", loaded.Editor)
 	}
 }
 
@@ -193,14 +239,10 @@ func TestConfigManager_MigratesNotesEditorToExternalEditor(t *testing.T) {
 		t.Errorf("expected ExternalEditor 'zed', got %q", cfg.ExternalEditor)
 	}
 
-	savedData, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatalf("failed to read saved config: %v", err)
-	}
-	var saved map[string]json.RawMessage
-	if unmarshalErr := json.Unmarshal(savedData, &saved); unmarshalErr != nil {
-		t.Fatalf("failed to parse saved config: %v", unmarshalErr)
-	}
+	// external_editor is a machine-domain field; the migrated value must land in
+	// the machine.json domain artifact and the legacy notes_editor key must be
+	// absent from the decomposed model entirely.
+	saved := readMachineDomainData(t, filepath.Dir(configPath))
 	if _, ok := saved["notes_editor"]; ok {
 		t.Fatal("saved config should not contain notes_editor")
 	}
@@ -248,14 +290,9 @@ func TestConfigManager_ExternalEditorWinsOverLegacyNotesEditor(t *testing.T) {
 		t.Errorf("expected ExternalEditor 'zed', got %q", cfg.ExternalEditor)
 	}
 
-	savedData, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatalf("failed to read saved config: %v", err)
-	}
-	var saved map[string]json.RawMessage
-	if err := json.Unmarshal(savedData, &saved); err != nil {
-		t.Fatalf("failed to parse saved config: %v", err)
-	}
+	// external_editor is a machine-domain field; verify the migrated value lands
+	// in machine.json and the legacy notes_editor key is gone from the model.
+	saved := readMachineDomainData(t, filepath.Dir(configPath))
 	if _, ok := saved["notes_editor"]; ok {
 		t.Fatal("saved config should not contain notes_editor")
 	}
@@ -266,6 +303,30 @@ func TestConfigManager_ExternalEditorWinsOverLegacyNotesEditor(t *testing.T) {
 	if savedExternalEditor != "zed" {
 		t.Errorf("expected saved external_editor 'zed', got %q", savedExternalEditor)
 	}
+}
+
+// readMachineDomainData reads the machine.json domain artifact for a workspace
+// data dir and returns its decoded payload as a raw-message map, so migration
+// tests can assert on individual persisted keys after the domain-file cutover.
+func readMachineDomainData(t *testing.T, dataDir string) map[string]json.RawMessage {
+	t.Helper()
+	raw, err := os.ReadFile(MachineStatePath(dataDir))
+	if err != nil {
+		t.Fatalf("failed to read machine domain file: %v", err)
+	}
+	var env struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		t.Fatalf("failed to parse machine domain envelope: %v", err)
+	}
+	out := map[string]json.RawMessage{}
+	if len(env.Data) > 0 {
+		if err := json.Unmarshal(env.Data, &out); err != nil {
+			t.Fatalf("failed to parse machine domain data: %v", err)
+		}
+	}
+	return out
 }
 
 func TestConfigManager_LoadFiltersInvalidProjects(t *testing.T) {

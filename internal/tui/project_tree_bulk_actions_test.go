@@ -1,36 +1,44 @@
 package tui
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	appsvc "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// newProjectTreeBulkActionTestApp seeds the test project on disk under a shared
+// commit service + workspace ledger and wires the secondary coordinators, so the
+// migrated shared picker/palette paths (e.g. bulk tags) commit through the
+// application layer. The returned ledger backs undo assertions.
 func newProjectTreeBulkActionTestApp(t *testing.T) (*AppModel, *models.Project) {
 	t.Helper()
 
 	app, project := newTestAppModelWithProject()
-	projectDir, cleanup := testutil.TempProjectDir(t)
-	t.Cleanup(cleanup)
 
-	project.Path = projectDir
+	dataDir := t.TempDir()
+	project.Path = filepath.Join(dataDir, "projects", models.Slugify(project.Name))
 	project.BuildTaskTree()
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
-	}
+
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	repo := newScenarioRepo(commitSvc, project)
+	repo.seed(t)
+	app.secondaryFeatures = newSecondaryCoordinators(appsvc.NewService(repo, nil, nil), app.configManager)
 
 	app.currentProject = project
 	app.config.Projects = []*models.Project{project}
 	app.config.CurrentProject = project.ID
 	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+	app.wireSecondaryCoordinators(app.projectTree)
 	app.viewStack = []ViewType{ViewProjectTree}
 	app.views.Register(ViewProjectTree, app.projectTree)
 	return app, project
@@ -140,12 +148,15 @@ func TestProjectTreeManageTagsUsesSelectedTasksWhenCursorElsewhere(t *testing.T)
 	if !handled {
 		t.Fatal("BulkTagSelectorDoneMsg was not handled")
 	}
-	if cmd != nil {
-		failOnErrorMsg(t, cmd())
-	}
 
+	// The migrated tag palette commits asynchronously through the BulkCoordinator;
+	// the shell clears the selection on the committed batch result.
+	batch := runBatchResult(t, cmd)
+	app.handleBatchTransactionResult(batch)
+
+	reloaded := loadBulkPickerTestProject(t, project)
 	for _, selectedTask := range selected {
-		task := project.GetTaskByID(selectedTask.ID)
+		task := reloaded.GetTaskByID(selectedTask.ID)
 		if task == nil {
 			t.Fatalf("selected task %q not found", selectedTask.ID)
 		}
@@ -153,7 +164,7 @@ func TestProjectTreeManageTagsUsesSelectedTasksWhenCursorElsewhere(t *testing.T)
 			t.Fatalf("selected task %q tags = %v, want [bulk-tag]", selectedTask.ID, task.Tags)
 		}
 	}
-	cursorTask := project.GetTaskByID(cursorTaskID)
+	cursorTask := reloaded.GetTaskByID(cursorTaskID)
 	if cursorTask == nil {
 		t.Fatal("cursor task not found")
 	}
@@ -198,20 +209,21 @@ func TestProjectTreeDueDatePickerUsesSelectedTasksWhenCursorElsewhere(t *testing
 	if !handled {
 		t.Fatal("DueDateChangedMsg was not handled")
 	}
-	if cmd != nil {
-		failOnErrorMsg(t, cmd())
-	}
 
+	// The migrated multiselect due-date fallback commits asynchronously through the
+	// BulkCoordinator; drain the batch result and let the shell clear the selection.
+	batch := runBatchResult(t, cmd)
+	app.handleBatchTransactionResult(batch)
+
+	reloaded := loadBulkPickerTestProject(t, project)
 	for _, selectedTask := range selected {
-		task := project.GetTaskByID(selectedTask.ID)
+		task := reloaded.GetTaskByID(selectedTask.ID)
 		if task == nil {
 			t.Fatalf("selected task %q not found", selectedTask.ID)
 		}
-		if task.DueDate == nil || !task.DueDate.Equal(dueDate) {
-			t.Fatalf("selected task %q due date = %v, want %v", selectedTask.ID, task.DueDate, dueDate)
-		}
+		assertTaskDueDate(t, task, dueDate, false)
 	}
-	cursorTask := project.GetTaskByID(cursorTaskID)
+	cursorTask := reloaded.GetTaskByID(cursorTaskID)
 	if cursorTask == nil {
 		t.Fatal("cursor task not found")
 	}
@@ -299,44 +311,16 @@ func TestProjectTreeCommandPaletteUsesSelectedTasksForTagsDueDateAndCopy(t *test
 func TestProjectTreeCommandPaletteBulkMutationsUseSelectedTasks(t *testing.T) {
 	app, project := newProjectTreeBulkActionTestApp(t)
 	for _, task := range project.Tasks {
-		task.Active = false
 		task.DueDate = nil
 	}
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject: %v", err)
 	}
 
-	selected := selectProjectTreeVisibleTasks(t, app.projectTree, 0, 1, 2)
-	selectedIDs := taskIDs(selected)
 	cursorTaskID := app.projectTree.visibleNodes()[0].Task.ID
 
-	activeCmd := findCommand(app.taskActionCommands(), "toggle active")
-	if activeCmd == nil {
-		t.Fatal("toggle active command not found")
-	}
-	failOnErrorMsg(t, activeCmd.Handler())
-	for _, id := range selectedIDs {
-		task := project.GetTaskByID(id)
-		if task == nil {
-			t.Fatalf("selected task %q not found", id)
-		}
-		if !task.Active {
-			t.Fatalf("selected task %q active = %v, want true", id, task.Active)
-		}
-	}
-	cursorTask := project.GetTaskByID(cursorTaskID)
-	if cursorTask == nil {
-		t.Fatal("cursor task not found")
-	}
-	if cursorTask.Active {
-		t.Fatalf("cursor task active = %v, should remain false", cursorTask.Active)
-	}
-
-	for _, task := range project.Tasks {
-		task.DueDate = nil
-	}
-	selected = selectProjectTreeVisibleTasks(t, app.projectTree, 0, 1, 2)
-	selectedIDs = taskIDs(selected)
+	selected := selectProjectTreeVisibleTasks(t, app.projectTree, 0, 1, 2)
+	selectedIDs := taskIDs(selected)
 
 	dueTodayCmd := findCommand(app.dueDateCommands(), "due today")
 	if dueTodayCmd == nil {
@@ -354,7 +338,7 @@ func TestProjectTreeCommandPaletteBulkMutationsUseSelectedTasks(t *testing.T) {
 			t.Fatalf("selected task %q due date = %v, want %v", id, task.DueDate, today)
 		}
 	}
-	cursorTask = project.GetTaskByID(cursorTaskID)
+	cursorTask := project.GetTaskByID(cursorTaskID)
 	if cursorTask == nil {
 		t.Fatal("cursor task not found")
 	}

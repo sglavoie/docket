@@ -134,11 +134,14 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	if err != nil {
 		t.Fatal(err)
 	}
-	epic.Status = models.StatusInProgress
+	// v2 is the sole writer: it serializes the derived `state` and drops the
+	// legacy section/stage/active keys, so a round-trip is an identity only when
+	// the lifecycle fields are the canonical representative of their state (empty
+	// stage, active migrated out). The epic is in_progress (canonical section "").
+	epic.WorkflowState = models.StateInProgress
 	epic.Priority = 1
 	epic.Tags = []string{"storage", "roundtrip"}
 	epic.Description = "Line with commas, status: todo, id: placeholder\n## Task: embedded heading\n# Project: embedded project line\n<!-- COMMENTS -->\n<!-- literal html comment -->"
-	epic.Section = models.SectionNext
 	epic.CreatedAt = base
 	epic.UpdatedAt = base.Add(2 * time.Hour)
 	epic.ScoreDimensions = map[string]int{"impact": 8, "risk": 5}
@@ -155,7 +158,7 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 		t.Fatal(err)
 	}
 	story.ParentID = &epic.ID
-	story.Status = models.StatusTodo
+	story.WorkflowState = models.StateReady
 	story.Priority = 2
 	story.CreatedAt = base.Add(3 * time.Hour)
 	story.UpdatedAt = base.Add(4 * time.Hour)
@@ -169,11 +172,13 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 		t.Fatal(err)
 	}
 	task.ParentID = &story.ID
-	task.Status = models.StatusBlocked
+	// Canonical `waiting` state. Blocked status also derives waiting but its
+	// canonical representative is todo+Waiting, so the writer emits `state: waiting`
+	// and the round-trip stays an identity under the v2 writer.
+	task.WorkflowState = models.StateWaiting
 	task.Priority = 2
 	task.CreatedAt = base.Add(5 * time.Hour)
 	task.UpdatedAt = base.Add(10 * time.Hour)
-	task.Section = models.SectionWaiting
 	task.DueDate = &dueAt
 	task.HasTime = true
 	task.StartDate = &startDate
@@ -182,10 +187,11 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	task.RelatedTo = []string{"epic-fixed", peerSlug + ":peer-related"}
 	task.Pinned = true
 	task.PinnedAt = timePtr(base.Add(6 * time.Hour))
-	task.Active = true
+	// Active (Focus Queue membership) and Stage (custom stages) are retired: they
+	// no longer exist on the task and are not serialized, so this stays a fixed
+	// point without them.
 	task.Dimmed = true
 	task.SnoozedUntil = &snoozedUntil
-	task.Stage = "verification"
 	task.Source = "cli"
 	task.URL = "https://example.com/issues/task-fixed?note=id:epic-fixed,status:todo"
 	task.Recurrence = &models.RecurrencePattern{
@@ -263,7 +269,7 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	if err != nil {
 		t.Fatal(err)
 	}
-	bug.Status = models.StatusTodo
+	bug.WorkflowState = models.StateReady
 	bug.Priority = 1
 	bug.Tags = []string{"bug", "parser"}
 	bug.CreatedAt = base.Add(15 * time.Hour)
@@ -331,11 +337,12 @@ func assertTaskCoreFields(t *testing.T, got, want *models.Task) {
 	assertTaskComparableField(t, want.ID, "Type", got.Type, want.Type)
 	assertTaskComparableField(t, want.ID, "Title", got.Title, want.Title)
 	assertTaskComparableField(t, want.ID, "Description", got.Description, want.Description)
-	assertTaskComparableField(t, want.ID, "Status", got.Status, want.Status)
+	// WorkflowState is the single source of truth for the lifecycle: asserting it
+	// covers the retired Status/Section/Stage reads (each derives from this state).
+	assertTaskComparableField(t, want.ID, "WorkflowState", got.State(), want.State())
 	assertTaskComparableField(t, want.ID, "Priority", got.Priority, want.Priority)
 	assertTaskStringPtrField(t, want.ID, "ParentID", got.ParentID, want.ParentID)
 	assertTaskDeepEqualField(t, want.ID, "Tags", got.Tags, want.Tags)
-	assertTaskComparableField(t, want.ID, "Section", got.Section, want.Section)
 }
 
 func assertTaskScheduleFields(t *testing.T, got, want *models.Task) {
@@ -358,9 +365,9 @@ func assertTaskRelationshipFields(t *testing.T, got, want *models.Task) {
 
 	assertTaskDeepEqualField(t, want.ID, "DependsOn", got.DependsOn, want.DependsOn)
 	assertTaskDeepEqualField(t, want.ID, "RelatedTo", got.RelatedTo, want.RelatedTo)
-	assertTaskComparableField(t, want.ID, "Active", got.Active, want.Active)
+	// Active and Stage are retired fields (Focus Queue membership / custom stages)
+	// that are not serialized, so there is nothing to round-trip here.
 	assertTaskComparableField(t, want.ID, "Dimmed", got.Dimmed, want.Dimmed)
-	assertTaskComparableField(t, want.ID, "Stage", got.Stage, want.Stage)
 	assertTaskComparableField(t, want.ID, "Source", got.Source, want.Source)
 	assertTaskComparableField(t, want.ID, "URL", got.URL, want.URL)
 }

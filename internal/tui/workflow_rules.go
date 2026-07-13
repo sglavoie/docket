@@ -19,6 +19,9 @@ type WorkflowRulesModel struct {
 	BaseSearchableView
 	config        *config.Config
 	configManager *config.Manager
+	// coordinator routes the durable config write through the secondary
+	// feature-coordinator seam (feature_coordinator_secondary.go).
+	coordinator WorkflowCoordinator
 
 	InteractiveViewState
 	allRules      []workflow.WorkflowRule
@@ -32,9 +35,14 @@ type WorkflowRulesModel struct {
 func NewWorkflowRulesModel(cfg *config.Config, manager *config.Manager) *WorkflowRulesModel {
 	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
 	allRules := append(defaultRules, customRules...)
+	var coordinator WorkflowCoordinator
+	if manager != nil {
+		coordinator = newWorkflowCoordinator(manager)
+	}
 	m := &WorkflowRulesModel{
 		config:        cfg,
 		configManager: manager,
+		coordinator:   coordinator,
 		allRules:      allRules,
 		filteredRules: allRules,
 		defaultCount:  len(defaultRules),

@@ -8,158 +8,102 @@ import (
 )
 
 // Complete marks the task as done and sets the completion time.
-// The task is moved to the Completed section.
 // Snooze and parking are cleared since hiding or resuming a completed task is meaningless.
 func (t *Task) Complete() {
 	now := time.Now()
 	t.Unpark(true)
-	t.Status = StatusDone
+	t.WorkflowState = StateDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now
-	t.Active = false
 	t.SnoozedUntil = nil
-	t.Section = SectionCompleted
 }
 
 // Start marks the task as in progress.
-// If the task is in any non-Active section, it is automatically moved out (auto-triage).
 // Snooze is cleared since an in-progress task should always be visible.
 func (t *Task) Start() {
-	t.Status = StatusInProgress
+	t.WorkflowState = StateInProgress
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
-	// Auto-triage: move out of GTD holding sections when starting.
-	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview || t.Section == SectionStandby || t.Section == SectionCompleted {
-		t.Section = ""
-	}
 }
 
 // Review marks the task as in review.
-// If the task is in any non-Active section, it is automatically moved to Review section.
 // Snooze is cleared since a task in review should always be visible.
 func (t *Task) Review() {
-	t.Status = StatusReview
+	t.WorkflowState = StateReview
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
-	t.Section = SectionReview
 }
 
-// Standby puts the task on hold.
-// The task is moved to the Standby section.
-// Snooze is cleared since standby tasks appear in the Standby section and should be visible.
+// Standby puts the task on hold (the paused state).
+// Snooze is cleared since paused tasks should remain visible.
 func (t *Task) Standby() {
-	t.Status = StatusStandby
+	t.WorkflowState = StatePaused
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
-	t.Section = SectionStandby
 }
 
-// Maybe marks the task as a tentative consideration.
-// The task is moved to the Someday section.
+// Maybe marks the task as a tentative consideration (the someday state).
 // Snooze is cleared since maybe tasks should remain visible for review.
 func (t *Task) Maybe() {
-	t.Status = StatusMaybe
+	t.WorkflowState = StateSomeday
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
-	t.Section = SectionSomeday
 }
 
-// Block marks the task as blocked.
-// Snooze is cleared since a blocked task needs visibility for tracking blockers.
+// Block marks the task as waiting (blocked on external input).
+// Snooze is cleared since a waiting task needs visibility for tracking blockers.
 func (t *Task) Block() {
-	t.Status = StatusBlocked
+	t.WorkflowState = StateWaiting
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
-	t.Section = SectionWaiting
 }
 
-// Cancel marks the task as canceled.
-// The task is moved to the Completed section.
+// Cancel marks the task as canceled (terminal).
 // Snooze is cleared since hiding a canceled task is meaningless.
 func (t *Task) Cancel() {
 	now := time.Now()
-	t.Status = StatusCanceled
+	t.WorkflowState = StateCanceled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
-	t.Active = false
 	t.SnoozedUntil = nil
-	t.Section = SectionCompleted
 }
 
-// Reopen sets the task back to todo status and moves it to the Inbox for re-processing.
+// Reopen returns the task to the Inbox for re-processing.
 // Snooze is cleared so the reopened task is immediately visible.
 func (t *Task) Reopen() {
-	t.Status = StatusTodo
+	t.WorkflowState = StateInbox
 	t.CompletedAt = nil
-	t.Active = false
 	t.Dimmed = false
 	t.SnoozedUntil = nil
-	t.Section = SectionInbox
 	t.UpdatedAt = time.Now()
 }
 
 // Uncomplete reverts a completed task to in-progress without relocating it to
-// Inbox. Moves it out of the Completed section so it stays visible in place.
+// Inbox, so it stays visible in place.
 func (t *Task) Uncomplete() {
-	t.Status = StatusInProgress
+	t.WorkflowState = StateInProgress
 	t.CompletedAt = nil
 	t.UpdatedAt = time.Now()
-	if t.Section == SectionCompleted {
-		t.Section = ""
-	}
 }
 
-// CanTransitionTo checks whether the task can move to newStatus based on its
-// current status. Returns an empty string if the transition is allowed, or a
-// human-readable reason if it is not.
+// CanTransitionTo checks whether the task can move to newStatus. Returns an
+// empty string if the transition is allowed, or a human-readable reason if it
+// is not.
 //
-// This method covers status-level rules only. Project-level checks (such as
+// This is the legacy-status wrapper over the canonical state rules: the target
+// status is mapped to the workflow state applying it would realize (see
+// TargetStateForStatus) and validated with CanTransitionState against the
+// task's current State(). Nonterminal states are freely interchangeable, a
+// same-state transition is rejected, and terminal states only allow the todo
+// (reopen-to-inbox) target.
+//
+// This method covers state-level rules only. Project-level checks (such as
 // incomplete dependencies blocking completion) must be performed by the caller.
 func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 	if !newStatus.IsValid() {
 		return fmt.Sprintf("invalid target status %q", newStatus)
 	}
-	if !t.Status.IsValid() {
-		return fmt.Sprintf("invalid current status %q", t.Status)
-	}
-	if t.Status.IsComplete() && newStatus != StatusTodo {
-		return fmt.Sprintf("cannot change status of completed task (reopen it first with 'todo'), current status: '%s'", t.Status)
-	}
-	switch newStatus {
-	case StatusInProgress:
-		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview && t.Status != StatusStandby && t.Status != StatusMaybe {
-			return fmt.Sprintf("cannot start task from '%s' status", t.Status)
-		}
-	case StatusDone:
-		if !t.Status.IsActive() {
-			return fmt.Sprintf("cannot complete task from '%s' status", t.Status)
-		}
-	case StatusBlocked:
-		if !t.Status.IsActive() || t.Status == StatusBlocked {
-			return fmt.Sprintf("cannot block task from '%s' status", t.Status)
-		}
-	case StatusCanceled:
-		if !t.Status.IsActive() {
-			return fmt.Sprintf("cannot cancel task from '%s' status", t.Status)
-		}
-	case StatusTodo:
-		if t.Status == StatusTodo {
-			return "task is already todo"
-		}
-	case StatusReview:
-		if !t.Status.IsActive() || t.Status == StatusReview {
-			return fmt.Sprintf("cannot move task to review from '%s' status", t.Status)
-		}
-	case StatusStandby:
-		if !t.Status.IsActive() || t.Status == StatusStandby {
-			return fmt.Sprintf("cannot put task on standby from '%s' status", t.Status)
-		}
-	case StatusMaybe:
-		if !t.Status.IsActive() || t.Status == StatusMaybe {
-			return fmt.Sprintf("cannot set task to maybe from '%s' status", t.Status)
-		}
-	}
-	return ""
+	return CanTransitionState(t.State(), TargetStateForStatus(newStatus))
 }
 
 // ApplyTransition moves the task to newStatus by calling the appropriate
@@ -186,9 +130,47 @@ func (t *Task) ApplyTransition(newStatus TaskStatus) {
 	}
 }
 
-// IsComplete returns true if the task status is complete.
+// ApplyStateTransition moves the task to the given canonical WorkflowState,
+// invoking the appropriate lifecycle method so terminal timestamps (CompletedAt),
+// reopen-to-inbox, and snooze-clearing side effects stay consistent. It is the
+// WorkflowState-native successor to ApplyTransition(TaskStatus): interactive and
+// bulk transition controls call it directly with one of the ten states rather
+// than routing a legacy TaskStatus through TargetStateForStatus first.
+//
+// The ready and next states have no dedicated legacy lifecycle mutator, so they
+// are applied through ApplyWorkflowState (which sets the canonical backing
+// fields) with an explicit snooze clear and UpdatedAt bump to match the other
+// nonterminal transitions. The caller should check CanTransitionState first.
+func (t *Task) ApplyStateTransition(state WorkflowState) {
+	switch state {
+	case StateInProgress:
+		t.Start()
+	case StateDone:
+		t.Complete()
+	case StateWaiting:
+		t.Block()
+	case StateCanceled:
+		t.Cancel()
+	case StateInbox:
+		t.Reopen()
+	case StateReview:
+		t.Review()
+	case StatePaused:
+		t.Standby()
+	case StateSomeday:
+		t.Maybe()
+	case StateReady, StateNext:
+		t.SnoozedUntil = nil
+		t.ApplyWorkflowState(state)
+		t.UpdatedAt = time.Now()
+	}
+}
+
+// IsComplete returns true if the task is in a terminal workflow state (done or
+// canceled). It is a synonym for IsTerminalState, kept for the large existing
+// caller base.
 func (t *Task) IsComplete() bool {
-	return t.Status.IsComplete()
+	return t.State().IsTerminal()
 }
 
 // Pin marks the task as pinned.
@@ -215,32 +197,9 @@ func (t *Task) TogglePinned() {
 	}
 }
 
-// Activate marks the task as active.
-func (t *Task) Activate() {
-	t.Active = true
-	t.Dimmed = false
-	t.UpdatedAt = time.Now()
-}
-
-// Deactivate removes the active status.
-func (t *Task) Deactivate() {
-	t.Active = false
-	t.UpdatedAt = time.Now()
-}
-
-// ToggleActive toggles the active status.
-func (t *Task) ToggleActive() {
-	if t.Active {
-		t.Deactivate()
-	} else {
-		t.Activate()
-	}
-}
-
-// Dim marks the task as visually dimmed and clears the Active flag.
+// Dim marks the task as visually dimmed.
 func (t *Task) Dim() {
 	t.Dimmed = true
-	t.Active = false
 	t.UpdatedAt = time.Now()
 }
 
@@ -290,7 +249,7 @@ func (t *Task) IsRecurring() bool {
 // IsOverdue returns true if the task has a due date in the past and is not complete.
 // Uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsOverdue() bool {
-	if t.DueDate == nil || t.Status.IsComplete() {
+	if t.DueDate == nil || t.IsTerminalState() {
 		return false
 	}
 	now := time.Now()
@@ -308,7 +267,7 @@ func (t *Task) IsOverdue() bool {
 // time has already passed is treated as overdue (not "due soon").
 // Otherwise uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsDueSoon(days int) bool {
-	if t.DueDate == nil || t.Status.IsComplete() {
+	if t.DueDate == nil || t.IsTerminalState() {
 		return false
 	}
 	now := time.Now()

@@ -203,45 +203,37 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 	targetRef := m.targetProject.ID + ":" + m.targetTask.ID
 	sourceRef := m.sourceProject.ID + ":" + m.sourceTask.ID
 
+	// The dependency directions store one edge on the depending task; a
+	// follow-up stores reciprocal related references on both tasks. Every shape
+	// commits through the link coordinator as one transaction (a follow-up
+	// commits both projects atomically), with existence and cross-project cycle
+	// validation the legacy raw save never had.
+	var commit tea.Cmd
 	switch linkType { //nolint:exhaustive
 	case LinkTypeBlocker:
-		if err := m.sourceTask.AddDependency(targetRef); err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)} }
-		}
+		commit = m.coordinator.AddDependency(m.sourceTask.ID, targetRef)
 	case LinkTypeDependent:
-		if err := m.targetTask.AddDependency(sourceRef); err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)} }
-		}
+		commit = m.coordinator.AddDependency(m.targetTask.ID, sourceRef)
 	case LinkTypeFollowUp:
-		if err := m.sourceTask.AddRelatedTo(targetRef); err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)} }
-		}
-		if err := m.targetTask.AddRelatedTo(sourceRef); err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)} }
-		}
+		commit = m.coordinator.RelateBidirectional(m.sourceTask.ID, targetRef)
 	}
-
-	m.sourceProject.MutateTask(m.sourceTask.ID, func(t *models.Task) {})
-	m.targetProject.MutateTask(m.targetTask.ID, func(t *models.Task) {})
+	if commit == nil {
+		return nil
+	}
 
 	srcProj := m.sourceProject
 	tgtProj := m.targetProject
 	srcTask := m.sourceTask
 	tgtTask := m.targetTask
-	return func() tea.Msg {
-		if err := storage.BackupProject(srcProj); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
+	return adaptSubviewCommit(commit, func() tea.Msg {
+		// Re-resolve both tasks so the handler observes the committed objects
+		// (the application snapshot reloaded each project's tasks).
+		if t := srcProj.GetTaskByID(srcTask.ID); t != nil {
+			srcTask = t
 		}
-		if err := storage.SaveProjectLocked(srcProj); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
+		if t := tgtProj.GetTaskByID(tgtTask.ID); t != nil {
+			tgtTask = t
 		}
-		if err := storage.BackupProject(tgtProj); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to backup target project: %w", err)}
-		}
-		if err := storage.SaveProjectLocked(tgtProj); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save target project: %w", err)}
-		}
-
 		return CrossProjectLinkCreatedMsg{
 			SourceTask:    srcTask,
 			SourceProject: srcProj,
@@ -249,7 +241,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 			TargetProject: tgtProj,
 			LinkType:      linkType,
 		}
-	}
+	})
 }
 
 func clamp(value, min, max int) int {

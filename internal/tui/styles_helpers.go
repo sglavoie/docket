@@ -44,6 +44,32 @@ func GetStatusStyle(status string) lipgloss.Style {
 	}
 }
 
+// GetStateStyle returns the appropriate foreground style for a workflow state.
+// Each state reuses the style of the legacy status it collapses into, matching
+// GetStateBadge.
+func GetStateStyle(state models.WorkflowState) lipgloss.Style {
+	switch state {
+	case models.StateInbox, models.StateReady, models.StateNext:
+		return TodoStyle
+	case models.StateInProgress:
+		return InProgressStyle
+	case models.StateWaiting:
+		return BlockedStyle
+	case models.StatePaused:
+		return StandbyStyle
+	case models.StateReview:
+		return ReviewStyle
+	case models.StateSomeday:
+		return MaybeStyle
+	case models.StateDone:
+		return DoneStyle
+	case models.StateCanceled:
+		return CanceledStyle
+	default:
+		return NormalStyle
+	}
+}
+
 // GetPriorityStyle returns the appropriate style for a priority level.
 // Delegates to GetTitlePriorityStyle for unified palette-driven color sourcing.
 func GetPriorityStyle(priority int) lipgloss.Style {
@@ -90,7 +116,7 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 	}
 
 	isMuted := opts.Muted || opts.Disabled || task.Dimmed
-	isCanceled := task.Status == models.StatusCanceled
+	isCanceled := task.IsInState(models.StateCanceled)
 	if opts.CursorSelected && !isMuted && !isCanceled {
 		return SelectedTaskTitleStyle
 	}
@@ -171,30 +197,59 @@ func GetStatusBadge(status, icon string) string {
 	}
 }
 
-// statusMutationFlashBg returns a subtle background color for a status-specific mutation flash.
-func statusMutationFlashBg(status models.TaskStatus) color.Color {
+// GetStateBadge returns the workflow-state icon rendered as a styled badge
+// with background. Each state reuses the badge style of the legacy status it
+// collapses into (see WorkflowState.Icon): the three todo-ish planning states
+// share the todo badge, waiting shows the blocked badge, paused the standby
+// badge, and someday the maybe badge.
+func GetStateBadge(state models.WorkflowState) string {
+	switch state {
+	case models.StateInbox, models.StateReady, models.StateNext:
+		return TodoBadgeStyle.Render(state.Icon())
+	case models.StateInProgress:
+		return InProgressBadgeStyle.Render(state.Icon())
+	case models.StateWaiting:
+		return BlockedBadgeStyle.Render(state.Icon())
+	case models.StatePaused:
+		return StandbyBadgeStyle.Render(state.Icon())
+	case models.StateReview:
+		return ReviewBadgeStyle.Render(state.Icon())
+	case models.StateSomeday:
+		return MaybeBadgeStyle.Render(state.Icon())
+	case models.StateDone:
+		return DoneBadgeStyle.Render(state.Icon())
+	case models.StateCanceled:
+		return CanceledBadgeStyle.Render(state.Icon())
+	default:
+		return NormalStyle.Render(state.Icon())
+	}
+}
+
+// stateMutationFlashBg returns a subtle background color for a
+// workflow-state-specific mutation flash.
+func stateMutationFlashBg(state models.WorkflowState) color.Color {
 	if activeThemeName == "light" {
-		switch status {
-		case models.StatusDone:
+		switch state {
+		case models.StateDone:
 			return lipgloss.Color("#d4edda")
-		case models.StatusBlocked:
+		case models.StateWaiting:
 			return lipgloss.Color("#f8d7da")
-		case models.StatusInProgress:
+		case models.StateInProgress:
 			return lipgloss.Color("#fff3cd")
-		case models.StatusReview:
+		case models.StateReview:
 			return lipgloss.Color("#e6d6f8")
 		default:
 			return ColorFlashBg
 		}
 	}
-	switch status {
-	case models.StatusDone:
+	switch state {
+	case models.StateDone:
 		return lipgloss.Color("#1a3825")
-	case models.StatusBlocked:
+	case models.StateWaiting:
 		return lipgloss.Color("#3d1515")
-	case models.StatusInProgress:
+	case models.StateInProgress:
 		return lipgloss.Color("#3d2e00")
-	case models.StatusReview:
+	case models.StateReview:
 		return lipgloss.Color("#1f1f3d")
 	default:
 		return ColorFlashBg
@@ -282,14 +337,6 @@ func typeMutationFlashBg(taskType models.TaskType) color.Color {
 	default:
 		return ColorFlashBg
 	}
-}
-
-// GetStageBadge returns the stage name rendered as a styled badge.
-func GetStageBadge(stage string) string {
-	if stage == "" {
-		return ""
-	}
-	return StageBadgeStyle.Render(stage)
 }
 
 // RenderProgressBar renders a simple progress bar.

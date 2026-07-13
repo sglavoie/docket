@@ -7,14 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// stageValidationClearMsg is sent after a timeout to clear the stage validation error.
-type stageValidationClearMsg struct{}
-
 func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case stageValidationClearMsg:
-		m.stageValidationErr = ""
-		return m, nil
 	case presetDeletedMsg:
 		m.themePresetFlash = fmt.Sprintf("deleted preset '%s'", msg.name)
 		if msg.listEmpty {

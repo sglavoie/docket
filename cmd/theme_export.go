@@ -39,14 +39,18 @@ func init() {
 func runThemeExport(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	cfg, configManager, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+	settings, err := loadSettings(configManager)
 	if err != nil {
 		return err
 	}
 
 	slot := themeExportSlot
 	if slot == "" {
-		slot = cfg.ActiveTheme
+		slot = settings.ActiveTheme
 		if slot == "" {
 			slot = "dark"
 		}
@@ -57,9 +61,9 @@ func runThemeExport(cmd *cobra.Command, args []string) error {
 
 	var theme config.Theme
 	if slot == "light" {
-		theme = cfg.ThemeLight
+		theme = settings.ThemeLight
 	} else {
-		theme = cfg.ThemeDark
+		theme = settings.ThemeDark
 	}
 
 	data, err := config.MarshalThemeFile(name, slot, Version, theme)

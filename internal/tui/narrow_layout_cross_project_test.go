@@ -67,7 +67,7 @@ func TestLinkedTaskSelectorRelationLineRespectsVisualWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 
 	m := &LinkedTaskSelectorModel{sourceTask: task, project: sourceProject}
 	m.SetSize(32, 12)
@@ -98,7 +98,7 @@ func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask target: %v", err)
 	}
-	targetTask.Status = models.StatusInProgress
+	targetTask.WorkflowState = models.StateInProgress
 
 	m := &CrossProjectLinkerModel{
 		sourceTask:    sourceTask,

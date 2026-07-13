@@ -143,12 +143,19 @@ func TestOpenReferenceFileGUILaunchesFireAndForget(t *testing.T) {
 		t.Fatalf("class = %q, want %q", result.Class, ReferenceEditorGUI)
 	}
 
-	recorded, err := readFileEventually(argFile, 5*time.Second)
+	// The fake editor sleeps after recording its arguments, so the launch is
+	// still in flight when OpenReferenceFile returns. Wait for the complete
+	// two-argument record rather than any nonempty file, so a partially flushed
+	// args file can never be mistaken for a successful fire-and-forget launch.
+	want := []string{"--reuse-window", referencePath}
+	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(b []byte) bool {
+		return len(strings.Split(strings.TrimSpace(string(b)), "\n")) == len(want)
+	})
 	if err != nil {
 		t.Fatalf("read arg file: %v", err)
 	}
 	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
-	if len(args) != 2 || args[0] != "--reuse-window" || args[1] != referencePath {
+	if len(args) != len(want) || args[0] != want[0] || args[1] != want[1] {
 		t.Fatalf("expected ['--reuse-window', referencePath], got %v", args)
 	}
 }

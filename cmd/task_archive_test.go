@@ -37,7 +37,7 @@ func TestGetCompletedTasks_SomeCompleted(t *testing.T) {
 
 	for _, task := range completed {
 		if !task.IsComplete() {
-			t.Errorf("expected completed task, got status %s", task.Status)
+			t.Errorf("expected completed task, got status %s", models.LegacyStatusForState(task.State()))
 		}
 	}
 }
@@ -121,7 +121,7 @@ func TestArchiveRemovesCompletedFromProject(t *testing.T) {
 	testutil.AssertTaskCount(t, project, 2)
 	for _, task := range project.Tasks {
 		if task.IsComplete() {
-			t.Errorf("expected only active tasks, found %s with status %s", task.Title, task.Status)
+			t.Errorf("expected only active tasks, found %s with status %s", task.Title, models.LegacyStatusForState(task.State()))
 		}
 	}
 }

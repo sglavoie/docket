@@ -62,6 +62,15 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		opt(app)
 	}
 
+	// Bind the primary feature coordinators to the application service. The
+	// service is built once per session over the storage-backed repository so a
+	// mutation dispatched from a primary view commits through the same
+	// transactional, undoable path as the equivalent CLI command.
+	appService := newTUIAppService(cfg.DataDir, manager.RuntimeDependencies())
+	app.appService = appService
+	app.features = newFeatureCoordinators(appService, appService)
+	app.secondaryFeatures = newSecondaryCoordinators(appService, manager)
+
 	activeProjects := cfg.GetActiveProjects()
 	app.hydrateFocusQueue(cfg, manager, activeProjects)
 	app.hydrateDailyPlan(cfg, manager, activeProjects)
@@ -113,7 +122,7 @@ func (app *AppModel) hydrateFocusQueue(cfg *config.Config, manager *config.Manag
 			if err := app.persister.Load(p); err != nil {
 				break
 			}
-			if task := p.GetTaskByID(item.TaskID); task != nil && !task.Status.IsComplete() {
+			if task := p.GetTaskByID(item.TaskID); task != nil && !task.IsComplete() {
 				app.focusQueue = append(app.focusQueue, FocusTask{Task: task, Project: p})
 				app.focusQueueIDs[task.ID] = true
 				updatedQueue = append(updatedQueue, item)
@@ -160,7 +169,7 @@ func (app *AppModel) hydrateDailyPlan(cfg *config.Config, manager *config.Manage
 			continue
 		}
 		if item.PlannedDate < today {
-			if foundTask.Status.IsComplete() {
+			if foundTask.IsComplete() {
 				planChanged = true
 				continue
 			}

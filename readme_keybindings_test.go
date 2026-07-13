@@ -190,6 +190,9 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"Commands for managing focus board actions",
 		"Add a new action to the focus board",
 		"Tasks are added to the daily plan by pressing 'w'",
+		// The legacy --config help predates the local-first workspace flow: the
+		// flag is now a deprecated isolation alias and --data-dir is canonical.
+		"config file path (default: ~/.tt/.tt.json, or the iCloud Drive tt folder when available)",
 	}
 
 	for _, needle := range forbidden {
@@ -199,7 +202,14 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	}
 
 	required := []string{
-		"config file path (default: ~/.tt/.tt.json, or the iCloud Drive tt folder when available)",
+		// Local-first workspace flow: --config is a deprecated isolation alias,
+		// --data-dir is the canonical selector, and `tt workspace` relocates data.
+		"deprecated: isolate a workspace at this config file's directory",
+		"workspace data directory (env TT_DATA_DIR; default: ~/.tt",
+		"## tt workspace",
+		"## tt workspace location",
+		"## tt workspace move",
+		"Usage: tt workspace move <destination> [flags]",
 		"'editor' field in the tt config file",
 		"The project directory is moved to the trash/ folder in your tt data directory and can be restored later.",
 		"Export a project to a human-readable Markdown file in the exports/ folder of your tt data directory.",
@@ -215,7 +225,6 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"Usage: tt project unarchive <slug-or-id> [flags]",
 		"Projects can be specified by slug or ID.",
 		"tt select my-project   # Select by slug or ID directly",
-		"Manage action board items",
 		"Plan work from the Today cockpit",
 		"tt task list --parked     # Show parked tasks only",
 		"--parked bool    show parked tasks only",

@@ -42,14 +42,13 @@ func TestInboxProcessors_HandledKeysParity(t *testing.T) {
 // projectName-controlled branch in renderInboxTaskDisplay.
 func TestRenderInboxTaskDisplay_ProjectNameVisibility(t *testing.T) {
 	task := &models.Task{
-		ID:        "t1",
-		ShortID:   42,
-		Title:     "Sample task",
-		Type:      models.TaskTypeTask,
-		Status:    models.StatusTodo,
-		Section:   models.SectionInbox,
-		Tags:      []string{},
-		DependsOn: []string{},
+		ID:            "t1",
+		ShortID:       42,
+		Title:         "Sample task",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateInbox,
+		Tags:          []string{},
+		DependsOn:     []string{},
 	}
 	cfg := &config.Config{SectionColors: map[string]string{}}
 
@@ -133,22 +132,22 @@ func TestInboxProcessorAutoProcessHooksAreUnified(t *testing.T) {
 		t.Error("global processor must auto-mark deleted tasks processed")
 	}
 
-	if !local.shouldProcessOnStatusChange(models.StatusDone) {
+	if !local.shouldProcessOnStateChange(models.StateDone) {
 		t.Error("local processor must auto-process on completion")
 	}
-	if !global.shouldProcessOnStatusChange(models.StatusDone) {
+	if !global.shouldProcessOnStateChange(models.StateDone) {
 		t.Error("global processor must auto-process on completion")
 	}
-	if local.shouldProcessOnStatusChange(models.StatusTodo) {
+	if local.shouldProcessOnStateChange(models.StateReady) {
 		t.Error("local processor must not auto-process on a non-terminal status change")
 	}
-	if global.shouldProcessOnStatusChange(models.StatusTodo) {
+	if global.shouldProcessOnStateChange(models.StateReady) {
 		t.Error("global processor must not auto-process on a non-terminal status change")
 	}
 
 	project := &models.Project{ID: "p1", Name: "P1"}
-	leavingTask := &models.Task{ID: "t-leaving", Section: models.SectionNext}
-	stayingTask := &models.Task{ID: "t-staying", Section: models.SectionInbox, Status: models.StatusTodo}
+	leavingTask := &models.Task{ID: "t-leaving", WorkflowState: models.StateNext}
+	stayingTask := &models.Task{ID: "t-staying", WorkflowState: models.StateInbox}
 	project.Tasks = []*models.Task{leavingTask, stayingTask}
 
 	if !local.shouldProcessOnSectionChange(leavingTask, project) {

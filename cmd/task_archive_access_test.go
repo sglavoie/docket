@@ -25,7 +25,7 @@ func TestTaskArchiveListUsesSummariesAndFilters(t *testing.T) {
 
 	mayDone := archiveAccessTestTask(t, "arch-may-done-0001", 101, models.TaskTypeTask, "May completed task", time.Date(2026, 5, 10, 9, 0, 0, 0, time.Local))
 	juneBug := archiveAccessTestTask(t, "arch-june-bug-0001", 102, models.TaskTypeBug, "June canceled bug", time.Date(2026, 6, 12, 14, 0, 0, 0, time.Local))
-	juneBug.Status = models.StatusCanceled
+	juneBug.WorkflowState = models.StateCanceled
 	juneStory := archiveAccessTestTask(t, "arch-june-story-0001", 103, models.TaskTypeStory, "June completed story", time.Date(2026, 6, 20, 14, 0, 0, 0, time.Local))
 	writeArchiveAccessArchive(t, project, "completed.md", []*models.Task{mayDone, juneBug, juneStory})
 
@@ -167,7 +167,7 @@ func archiveAccessTestTask(t *testing.T, id string, shortID int, taskType models
 	if err != nil {
 		t.Fatalf("new archive access task: %v", err)
 	}
-	task.Status = models.StatusDone
+	task.WorkflowState = models.StateDone
 	task.Priority = 2
 	task.CreatedAt = completedAt.AddDate(0, 0, -2)
 	task.UpdatedAt = completedAt

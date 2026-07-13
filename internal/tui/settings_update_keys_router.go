@@ -12,24 +12,12 @@ func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if m.tabs.Active == tabPalette && m.themePresetMode != presetModeNone {
 		return m.handlePresetKey(msg)
 	}
-	if handled := m.handleStageConfirmKey(msg.String()); handled {
-		return true, nil
-	}
-	if handled := m.handleStageListKey(msg.String()); handled {
-		return true, nil
-	}
 	return m.handleGlobalKey(msg.String())
 }
 
 func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:gocyclo
 	switch key {
 	case "esc":
-		if m.stageEditMode {
-			m.stageEditMode = false
-			m.stageAddMode = false
-			m.stageInput.Blur()
-			return true, nil
-		}
 		if m.subTabRowFocused {
 			m.subTabRowFocused = false
 			return true, nil
@@ -50,9 +38,6 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 
 	case "tab", "shift+tab":
-		if m.stageEditMode {
-			return false, nil
-		}
 		m.blurCurrentField()
 		if key == "tab" {
 			m.focusIndex = (m.focusIndex + 1) % settingsFieldCount
@@ -94,9 +79,6 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 
 	case "enter":
-		if m.tabs.Active == tabStages && m.stageEditMode {
-			return true, m.commitStageEditCmd()
-		}
 		if err := m.validateAll(); err != nil {
 			m.validationErr = err.Error()
 			return true, nil
@@ -107,11 +89,6 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		if m.tabs.Active == tabPalette {
 			m.openPresetSave()
 			return true, nil
-		}
-		if m.stageEditMode {
-			if cmd := m.commitStageEditCmd(); cmd != nil {
-				return true, cmd
-			}
 		}
 		if err := m.validateAll(); err != nil {
 			m.validationErr = err.Error()

@@ -57,13 +57,19 @@ func parseArchiveFileWithHeadingLines(path string) ([]*models.Task, []int, error
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read archive file: %w", err)
 	}
+	return parseArchiveContentWithHeadingLines(string(content))
+}
 
-	result, err := ParseTasksMarkdownWithSections(string(content))
+// parseArchiveContentWithHeadingLines parses already-read archive bytes so the
+// index builder can hash and parse a source from a single read, and so the
+// transactional archive path can index the exact content it is about to write.
+func parseArchiveContentWithHeadingLines(content string) ([]*models.Task, []int, error) {
+	result, err := ParseTasksMarkdownWithSections(content)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse archive: %w", err)
 	}
 
-	return result.Tasks, archiveTaskHeadingLines(string(content)), nil
+	return result.Tasks, archiveTaskHeadingLines(content), nil
 }
 
 func archiveTaskHeadingLines(content string) []int {
@@ -77,10 +83,226 @@ func archiveTaskHeadingLines(content string) []int {
 	return headingLines
 }
 
-// ArchiveTasks moves completed tasks from the project to the archive file.
-// It removes the archived tasks from project.Tasks and appends them to completed.md.
+// ArchiveTasks moves completed tasks from the project to the archive file. It
+// routes canonical filesystem projects (<data>/projects/<slug>) through the
+// durable transaction journal so active-task removal, archive append/rotation,
+// attachment retention, and index replacement commit as one atomic, crash-safe,
+// undoable transaction. Non-filesystem repositories (test mocks) and projects
+// outside that layout fall back to the legacy compensating-save path.
 // Returns the number of tasks archived and any error encountered.
 func ArchiveTasks(project *models.Project) (int, error) {
+	if svc, ok := archiveCommitService(project); ok {
+		return ArchiveTasksTx(svc, project)
+	}
+	return archiveTasksLegacy(project)
+}
+
+// archiveCommitService returns a CommitService for a project stored on the real
+// filesystem in the canonical <data>/projects/<slug> layout, mirroring the
+// routing cmd.SaveProject uses for ordinary saves. It returns ok=false for
+// non-filesystem repositories and any project outside that layout so callers fall
+// back to the legacy archive path. The service is ledger-less; production undo of
+// archiving still flows through the caller's pre-mutation undo snapshot until the
+// application-service sessions wire the workspace ledger into this boundary.
+func archiveCommitService(project *models.Project) (*CommitService, bool) {
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		return nil, false
+	}
+	projectsDir := filepath.Dir(project.Path)
+	if filepath.Base(projectsDir) != "projects" {
+		return nil, false
+	}
+	dataDir := filepath.Dir(projectsDir)
+	return NewCommitService(archiveTransactionsDir(dataDir), []string{dataDir}), true
+}
+
+// archiveTransactionsDir mirrors config.TransactionsDir without importing config
+// (storage must not depend on config): the durable transactions directory lives
+// under the workspace's internal ".tt" directory, matching the layout the config
+// package derives and the ".tt" convention already used elsewhere in storage.
+func archiveTransactionsDir(dataDir string) string {
+	return filepath.Join(dataDir, ".tt", "transactions")
+}
+
+// ArchiveTasksTx archives a project's completed tasks through the durable
+// transaction journal carried by svc. Active-task removal (the project's
+// tasks.md rewrite), archive append with rotation, attachment retention, and the
+// derived index replacement are assembled into ONE ChangeSet and committed
+// atomically: a crash or failure leaves the project fully un-archived, and — when
+// svc carries a workspace ledger — undo restores the active task while removing
+// the archived copy, and redo re-archives. A parse failure in any existing
+// archive source aborts the archive before any write so corruption is surfaced,
+// not compounded. A nil svc falls back to the legacy compensating-save path.
+func ArchiveTasksTx(svc *CommitService, project *models.Project) (int, error) {
+	if svc == nil {
+		return archiveTasksLegacy(project)
+	}
+
+	plan, err := PlanArchiveTasks(project)
+	if err != nil {
+		return 0, err
+	}
+	if plan.Count == 0 {
+		return 0, nil
+	}
+
+	cs := ChangeSet{
+		Project:       project,
+		Artifacts:     plan.Artifacts,
+		AttachmentOps: plan.AttachmentOps,
+		UndoAction:    "Archive Tasks",
+		UndoContext:   pluralizeArchivedContext(plan.Count),
+	}
+	if _, err := svc.Commit(cs); err != nil {
+		return 0, fmt.Errorf("failed to commit archive transaction: %w", err)
+	}
+
+	return plan.Count, nil
+}
+
+// ArchivePlan carries the durable effects of archiving a project's completed
+// tasks: the archive file rewrites and refreshed index (Artifacts), the archived
+// tasks' attachment-retention deletes (AttachmentOps), and how many tasks were
+// archived (Count). It is built by PlanArchiveTasks so an application-layer use
+// case can fold it — together with durable config cleanup and the workspace undo
+// ledger — into one atomic ChangeSet, rather than invoking the ledger-less
+// storage wrapper directly.
+type ArchivePlan struct {
+	Artifacts     []ArtifactChange
+	AttachmentOps []AttachmentOp
+	Count         int
+}
+
+// PlanArchiveTasks computes the complete archive effect for a project and mutates
+// the in-memory project to its post-archive shape (completed tasks removed,
+// orphaned parent/dependency references cleared), returning the archive file
+// rewrites, the refreshed archive index, and the attachment-retention deletes as
+// an ArchivePlan. It performs NO commit: the caller assembles the plan (plus any
+// durable config artifacts) into a single ChangeSet and commits it through the
+// transactional boundary. A parse failure in an existing archive source aborts
+// before the project is mutated so corruption is surfaced, not compounded. When
+// the project has no completed tasks the plan's Count is 0 and the project is
+// left untouched.
+func PlanArchiveTasks(project *models.Project) (ArchivePlan, error) {
+	completedTasks := project.GetCompletedTasks()
+	if len(completedTasks) == 0 {
+		return ArchivePlan{}, nil
+	}
+
+	// Model archive append and rotation as full-file rewrites so both, plus the
+	// index refresh, ride the same transaction. This reads the current archive
+	// files; the CommitService serializes the actual write under the project lock.
+	archiveWrites, err := planArchiveWrites(project, completedTasks)
+	if err != nil {
+		return ArchivePlan{}, fmt.Errorf("failed to plan archive writes: %w", err)
+	}
+
+	// Build the derived index over the exact bytes about to be written. A parse
+	// failure in any archive source aborts before the project is mutated.
+	_, indexPayload, err := buildArchiveIndexFromContents(archiveWrites)
+	if err != nil {
+		return ArchivePlan{}, fmt.Errorf("failed to build archive index: %w", err)
+	}
+
+	// Active-task removal: drop completed tasks from the in-memory project and
+	// repair references to them; the tasks.md write in the changeset carries this.
+	archivedIDs := make(map[string]bool, len(completedTasks))
+	for _, t := range completedTasks {
+		archivedIDs[t.ID] = true
+	}
+	removeCompletedTasks(project)
+	clearOrphanedParentRefs(project, archivedIDs)
+
+	artifacts := make([]ArtifactChange, 0, len(archiveWrites)+1)
+	for _, f := range archiveWrites {
+		artifacts = append(artifacts, ArtifactChange{Path: filepath.Join(project.Path, f.fileName), Data: f.content})
+	}
+	artifacts = append(artifacts, ArtifactChange{Path: archiveIndexPath(project), Data: indexPayload})
+
+	// Attachment retention: archived tasks' attachments are removed in the same
+	// transaction, so undo restores their bytes alongside the task metadata.
+	attachmentOps := make([]AttachmentOp, 0, len(completedTasks))
+	for _, t := range completedTasks {
+		attachmentOps = append(attachmentOps, AttachmentOp{Kind: AttachmentDelete, Task: t, SourceProject: project})
+	}
+
+	return ArchivePlan{Artifacts: artifacts, AttachmentOps: attachmentOps, Count: len(completedTasks)}, nil
+}
+
+// pluralizeArchivedContext renders the undo-context task count for an archive.
+func pluralizeArchivedContext(n int) string {
+	if n == 1 {
+		return "1 task"
+	}
+	return fmt.Sprintf("%d tasks", n)
+}
+
+// planArchiveWrites returns the full byte content of every archive file the
+// archive will write, in canonical index order (completed.md first, then rotated
+// completed.N.md). When the current completed.md is under the rotation threshold
+// the new archive block is appended to it; otherwise rotation shifts every
+// existing file up by one and completed.md starts fresh, all modeled as full-file
+// rewrites so the whole rotation is atomic within the commit transaction.
+func planArchiveWrites(project *models.Project, completedTasks []*models.Task) ([]inMemoryArchiveFile, error) {
+	archivePath := getArchiveFilePath(project)
+	newlyArchived := []byte(WriteArchivedTasks(project.Name, completedTasks))
+
+	existing, existed, err := readFileMaybe(archivePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if !existed || int64(len(existing)) < archiveRotationThreshold {
+		content := make([]byte, 0, len(existing)+len(newlyArchived))
+		content = append(content, existing...)
+		content = append(content, newlyArchived...)
+		return []inMemoryArchiveFile{{fileName: archiveFileName, content: content}}, nil
+	}
+
+	// Rotation: the current completed.md becomes completed.1.md, existing
+	// completed.N.md shift up to completed.(N+1).md, and completed.md restarts with
+	// only the new block.
+	files := []inMemoryArchiveFile{
+		{fileName: archiveFileName, content: newlyArchived},
+		{fileName: "completed.1.md", content: existing},
+	}
+	maxRotation, err := maxArchiveRotation(project.Path)
+	if err != nil {
+		return nil, err
+	}
+	for i := 1; i <= maxRotation; i++ {
+		rotated, _, rerr := readFileMaybe(filepath.Join(project.Path, fmt.Sprintf("completed.%d.md", i)))
+		if rerr != nil {
+			return nil, rerr
+		}
+		files = append(files, inMemoryArchiveFile{fileName: fmt.Sprintf("completed.%d.md", i+1), content: rotated})
+	}
+	return files, nil
+}
+
+// maxArchiveRotation returns the highest existing completed.N.md rotation number,
+// or 0 when none exist. It breaks on the first gap and on any unexpected stat
+// error so a persistent non-IsNotExist error cannot spin the scan forever.
+func maxArchiveRotation(projectPath string) (int, error) {
+	maxRotation := 0
+	for i := 1; ; i++ {
+		_, statErr := os.Stat(filepath.Join(projectPath, fmt.Sprintf("completed.%d.md", i)))
+		if statErr != nil {
+			if !os.IsNotExist(statErr) {
+				return 0, fmt.Errorf("failed to stat rotation candidate: %w", statErr)
+			}
+			break
+		}
+		maxRotation = i
+	}
+	return maxRotation, nil
+}
+
+// archiveTasksLegacy is the pre-transaction archive path retained for
+// non-filesystem repositories and non-canonical project layouts. It appends to
+// the archive with manual rollback compensation rather than one atomic
+// transaction.
+func archiveTasksLegacy(project *models.Project) (int, error) {
 	completedTasks := project.GetCompletedTasks()
 	if len(completedTasks) == 0 {
 		return 0, nil
@@ -257,7 +479,7 @@ func writeArchivedTask(task *models.Task) string {
 
 	// Write metadata using the canonical metadata writer; non-metadata blocks
 	// (description, activity, comments, decisions) are preserved separately below.
-	b.WriteString(format.WriteMetadata(task))
+	b.WriteString(format.WriteMetadataV2(task))
 	b.WriteString("\n")
 
 	// Write description (escape heading-like lines to prevent parser corruption)

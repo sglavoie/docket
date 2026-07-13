@@ -37,10 +37,12 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	epic.Description = "Top-level epic with a multi-line\ndescription."
 	epic.Priority = 1
 	epic.Tags = []string{"backend", "release"}
-	epic.Status = models.StatusInProgress
+	// Under the v2 writer the section collapses into the derived state, so the
+	// epic uses state=next rather than in_progress+Next: an in_progress state
+	// would drop the Next bucket on round-trip.
+	epic.WorkflowState = models.StateNext
 	epic.CreatedAt = now
 	epic.UpdatedAt = now
-	epic.Section = "Next"
 	epic.ScoreDimensions = map[string]int{"impact": 5, "effort": 3}
 
 	// Story under epic
@@ -54,20 +56,19 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	story.CreatedAt = now
 	story.UpdatedAt = now
 
-	// Task with dependency, due date, pinned, active
+	// Task with dependency, due date, pinned
 	task1, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Implement login")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.ParentID = &story.ID
-	task1.Status = models.StatusInProgress
+	task1.WorkflowState = models.StateInProgress
 	task1.Priority = 2
 	task1.DependsOn = []string{story.ID}
 	task1.DueDate = &due
 	task1.Pinned = true
 	pinnedAt := now
 	task1.PinnedAt = &pinnedAt
-	task1.Active = true
 	task1.CreatedAt = now
 	task1.UpdatedAt = now
 
@@ -133,7 +134,7 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	if err != nil {
 		t.Fatal(err)
 	}
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 	doneAt := now.Add(2 * time.Hour)
 	done.CompletedAt = &doneAt
 	done.CreatedAt = now
@@ -181,8 +182,8 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		if got.Type != orig.Type {
 			t.Errorf("%q: type got %s, want %s", orig.ID, got.Type, orig.Type)
 		}
-		if got.Status != orig.Status {
-			t.Errorf("%q: status got %s, want %s", orig.ID, got.Status, orig.Status)
+		if got.State() != orig.State() {
+			t.Errorf("%q: state got %s, want %s", orig.ID, got.State(), orig.State())
 		}
 		if got.Priority != orig.Priority {
 			t.Errorf("%q: priority got %d, want %d", orig.ID, got.Priority, orig.Priority)
@@ -208,9 +209,9 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		t.Errorf("project pinned tags: got %v, want %v", loaded.PinnedTags, project.PinnedTags)
 	}
 
-	// Section preserved
-	if gotEpic.Section != "Next" {
-		t.Errorf("epic section: got %q, want %q", gotEpic.Section, "Next")
+	// Section preserved (derived from the round-tripped state)
+	if got := models.SectionForState(gotEpic.State()); got != "Next" {
+		t.Errorf("epic section: got %q, want %q", got, "Next")
 	}
 
 	// Score dimensions preserved
@@ -235,9 +236,8 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	if !gotTask1.Pinned {
 		t.Errorf("task1 pinned: got false, want true")
 	}
-	if !gotTask1.Active {
-		t.Errorf("task1 active: got false, want true")
-	}
+	// The legacy Active flag is retired (Focus Queue membership lives outside the
+	// task and is not serialized), so there is nothing to assert on load.
 
 	// Comments preserved
 	gotTask2 := byID(loaded.Tasks, task2.ID)

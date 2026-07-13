@@ -61,7 +61,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			if task == nil {
 				continue
 			}
-			if !m.includeCompleted && !task.Status.IsActive() {
+			if !m.includeCompleted && task.IsTerminalState() {
 				continue
 			}
 
@@ -81,8 +81,8 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 				tagCounts[tag]++
 			}
 
-			if task.Section != "" {
-				sectionCounts[task.Section]++
+			if bucket := taskSectionBucket(task); bucket != "" {
+				sectionCounts[bucket]++
 			}
 		}
 	}

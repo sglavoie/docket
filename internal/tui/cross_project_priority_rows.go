@@ -36,7 +36,7 @@ func (m *OutlinerModel) buildCrossPriorityRows(groups []projectTasksGroup) {
 				if predicate(task) {
 					pt := &PriorityTask{
 						Task:         task,
-						UrgencyScore: ComputeUrgencyScore(task),
+						UrgencyScore: ComputeUrgencyScore(task, m.queueIDs[task.ID]),
 						RelativeDue:  FormatRelativeDue(task.DueDate, false),
 					}
 					if task.ParentID != nil {
@@ -138,30 +138,20 @@ func (m *OutlinerModel) crossPriorityRowPredicate(proj *models.Project) func(*mo
 		if pinnedTag != "" && !t.HasTag(pinnedTag) {
 			return false
 		}
-		if query != "" && !matchesSearch(t, query) {
+		if query != "" && !matchesSearch(t, query, m.config) {
 			return false
 		}
-		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj.ID, m.config) {
+		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.config) {
 			return false
 		}
 		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, m.config) {
 			return false
 		}
-		if len(sections) > 0 && !sections[t.Section] {
+		if len(sections) > 0 && !sections[taskSectionBucket(t)] {
 			return false
 		}
-		if actionable {
-			if proj.HasIncompleteDependencies(t) {
-				return false
-			}
-			if t.Status == models.StatusBlocked {
-				return false
-			}
-			if t.Section == models.SectionInbox || t.Section == models.SectionNext ||
-				t.Section == models.SectionWaiting || t.Section == models.SectionSomeday ||
-				t.Section == models.SectionReview || t.Section == models.SectionStandby {
-				return false
-			}
+		if actionable && !taskIsActionableState(t, proj) {
+			return false
 		}
 		return true
 	}

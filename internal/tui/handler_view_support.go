@@ -8,12 +8,12 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowBlockersMsg:
 		if msg.Project != nil {
 			editor := m.config.Editor
-			m.showView(ViewBlockers, NewBlockersModelWithEditor(msg.Project, editor))
+			m.showView(ViewBlockers, NewBlockersModelWithEditor(msg.Project, editor, m.secondaryFeatures.Blocker))
 		}
 		return true, nil
 
 	case ShowGlobalBlockersMsg:
-		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config))
+		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config, m.secondaryFeatures.Blocker))
 		return true, nil
 
 	case BlockerGoToProjectMsg:
@@ -34,7 +34,7 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Task != nil && msg.Project != nil {
 			m.lastNavigatedTaskID = msg.Task.ID
 			m.recordTaskVisit(msg.Task, msg.Project)
-			m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(msg.Task, msg.Project, m.config))
+			m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(msg.Task, msg.Project, m.config, m.secondaryFeatures.Attachment))
 		}
 		return true, nil
 
@@ -42,9 +42,6 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
-		return true, nil
-
-	case AttachmentReorderedMsg:
 		return true, nil
 	}
 

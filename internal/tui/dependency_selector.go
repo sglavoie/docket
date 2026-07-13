@@ -231,7 +231,7 @@ func (m *DependencySelectorModel) renderTaskList() string {
 		}
 
 		// Status icon with badge style
-		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
+		statusIcon := GetStateBadge(t.State())
 
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())

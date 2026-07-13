@@ -15,30 +15,30 @@ func TestGetVisibleSiblings(t *testing.T) {
 	}
 
 	child1 := &models.Task{
-		ID:       "child1",
-		Title:    "First Child",
-		Type:     models.TaskTypeTask,
-		Section:  "",
-		ParentID: &parent.ID,
-		Parent:   parent,
+		ID:            "child1",
+		Title:         "First Child",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		ParentID:      &parent.ID,
+		Parent:        parent,
 	}
 
 	child2 := &models.Task{
-		ID:       "child2",
-		Title:    "Second Child",
-		Type:     models.TaskTypeTask,
-		Section:  models.SectionInbox, // Different section
-		ParentID: &parent.ID,
-		Parent:   parent,
+		ID:            "child2",
+		Title:         "Second Child",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateInbox, // Different section
+		ParentID:      &parent.ID,
+		Parent:        parent,
 	}
 
 	child3 := &models.Task{
-		ID:       "child3",
-		Title:    "Third Child",
-		Type:     models.TaskTypeTask,
-		Section:  "",
-		ParentID: &parent.ID,
-		Parent:   parent,
+		ID:            "child3",
+		Title:         "Third Child",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		ParentID:      &parent.ID,
+		Parent:        parent,
 	}
 
 	parent.Children = []*models.Task{child1, child2, child3}

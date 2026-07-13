@@ -174,7 +174,7 @@ func writeLegacyConfig(t *testing.T, dataDir string, extraFiles map[string]strin
 	writeFileTree(t, dataDir, files)
 }
 
-func TestLoad_FirstRunLegacyMigratesToICloud(t *testing.T) {
+func TestLoad_FirstRunLegacyStaysLocalNoMigration(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
@@ -182,44 +182,37 @@ func TestLoad_FirstRunLegacyMigratesToICloud(t *testing.T) {
 	local := LocalDataRoot()
 	writeLegacyConfig(t, local, nil)
 
-	active := ActiveDefaultDataDir()
-	if active == local {
-		t.Fatal("test precondition: active default should be the iCloud root")
+	// iCloud Drive is available but holds no tt workspace: local-first keeps the
+	// existing local install in place — automatic migration has been removed.
+	if got := ActiveDefaultDataDir(); got != local {
+		t.Fatalf("ActiveDefaultDataDir() = %q, want local %q (no iCloud workspace exists)", got, local)
 	}
 
 	cfg, err := NewManager("").Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	if cfg.DataDir != local {
+		t.Errorf("data_dir = %q, want local %q", cfg.DataDir, local)
+	}
 
-	// Config now points at the migrated iCloud root.
-	if cfg.DataDir != active {
-		t.Errorf("data_dir = %q, want migrated iCloud %q", cfg.DataDir, active)
+	icloudRoot := filepath.Join(home, iCloudDriveRelPath, iCloudDataDirName)
+	if _, err := os.Stat(filepath.Join(icloudRoot, configFileName)); !os.IsNotExist(err) {
+		t.Errorf("no iCloud config should be created (migration removed), stat err=%v", err)
 	}
-	// Migrated iCloud config exists and durable data was copied forward.
-	if _, err := os.Stat(DefaultConfigPath()); err != nil {
-		t.Errorf("expected iCloud config after migration: %v", err)
+	if _, err := os.Stat(filepath.Join(icloudRoot, "projects", "alpha")); !os.IsNotExist(err) {
+		t.Errorf("legacy data must not be copied into iCloud, stat err=%v", err)
 	}
-	if _, err := os.Stat(filepath.Join(active, "projects", "alpha", "tasks.md")); err != nil {
-		t.Errorf("expected copied task data in iCloud root: %v", err)
-	}
-	// Legacy install remains intact as a backup.
-	if _, err := os.Stat(LegacyConfigPath()); err != nil {
-		t.Errorf("legacy config should remain as backup: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(local, "projects", "alpha", "tasks.md")); err != nil {
-		t.Errorf("legacy task data should remain as backup: %v", err)
-	}
-	// Project path was re-rooted onto the iCloud root.
+	// Legacy install remains canonical, in place.
 	if len(cfg.Projects) != 1 {
 		t.Fatalf("want 1 project, got %d", len(cfg.Projects))
 	}
-	if want := filepath.Join(active, "projects", "alpha"); cfg.Projects[0].Path != want {
+	if want := filepath.Join(local, "projects", "alpha"); cfg.Projects[0].Path != want {
 		t.Errorf("project path = %q, want %q", cfg.Projects[0].Path, want)
 	}
 }
 
-func TestLoad_BothConfigsPresentPrefersICloudNoMerge(t *testing.T) {
+func TestLoad_ExistingICloudWorkspaceIsPreserved(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
@@ -227,37 +220,41 @@ func TestLoad_BothConfigsPresentPrefersICloudNoMerge(t *testing.T) {
 	local := LocalDataRoot()
 	writeLegacyConfig(t, local, nil) // legacy has project "alpha"
 
-	active := ActiveDefaultDataDir()
-	// Pre-existing iCloud config with a different project.
+	icloudRoot := filepath.Join(home, iCloudDriveRelPath, iCloudDataDirName)
+	// Pre-existing iCloud workspace with a different project.
 	icloud := map[string]any{
 		"version":  CurrentConfigVersion,
-		"data_dir": active,
+		"data_dir": icloudRoot,
 		"projects": []map[string]any{
-			{"id": "p2", "slug": "beta", "name": "Beta", "path": filepath.Join(active, "projects", "beta")},
+			{"id": "p2", "slug": "beta", "name": "Beta", "path": filepath.Join(icloudRoot, "projects", "beta")},
 		},
 	}
 	icloudData, err := json.MarshalIndent(icloud, "", "  ")
 	if err != nil {
 		t.Fatalf("marshal iCloud config: %v", err)
 	}
-	writeFileTree(t, active, map[string]string{configFileName: string(icloudData)})
+	writeFileTree(t, icloudRoot, map[string]string{configFileName: string(icloudData)})
+
+	// The existing iCloud workspace stays selected even though a local install
+	// also exists.
+	if got := ActiveDefaultDataDir(); got != icloudRoot {
+		t.Fatalf("ActiveDefaultDataDir() = %q, want existing iCloud %q", got, icloudRoot)
+	}
 
 	cfg, err := NewManager("").Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-
-	// iCloud wins, no merge: only the iCloud project is present.
 	if len(cfg.Projects) != 1 || cfg.Projects[0].ID != "p2" {
 		t.Fatalf("expected only iCloud project p2, got %+v", cfg.Projects)
 	}
-	// The legacy install was not copied into iCloud.
-	if _, err := os.Stat(filepath.Join(active, "projects", "alpha")); !os.IsNotExist(err) {
-		t.Errorf("legacy project must not be merged into iCloud, stat err=%v", err)
+	// The local install was not merged into iCloud.
+	if _, err := os.Stat(filepath.Join(icloudRoot, "projects", "alpha")); !os.IsNotExist(err) {
+		t.Errorf("local project must not be merged into iCloud, stat err=%v", err)
 	}
 }
 
-func TestLoad_CustomConfigPathDoesNotMigrate(t *testing.T) {
+func TestLoad_CustomConfigPathIsIsolated(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
@@ -269,35 +266,32 @@ func TestLoad_CustomConfigPathDoesNotMigrate(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 
-	// No migration ran: the iCloud default config was never created.
-	if _, err := os.Stat(DefaultConfigPath()); !os.IsNotExist(err) {
-		t.Errorf("custom-path manager must not migrate to iCloud, stat err=%v", err)
+	// A custom-path workspace is isolated: no iCloud workspace is created or
+	// touched.
+	icloudRoot := filepath.Join(home, iCloudDriveRelPath, iCloudDataDirName)
+	if _, err := os.Stat(filepath.Join(icloudRoot, configFileName)); !os.IsNotExist(err) {
+		t.Errorf("custom-path manager must not touch iCloud, stat err=%v", err)
 	}
 }
 
-func TestLoad_ICloudUnavailableFallsBackLocalNoMigrate(t *testing.T) {
+func TestLoad_ICloudUnavailableUsesLocal(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	// No iCloud drive dir created → active default is the local root.
+	// No iCloud drive dir created → default is the local root.
 
 	local := LocalDataRoot()
 	writeLegacyConfig(t, local, nil)
 
 	if got := ActiveDefaultDataDir(); got != local {
-		t.Fatalf("test precondition: active default = %q, want local %q", got, local)
+		t.Fatalf("test precondition: default = %q, want local %q", got, local)
 	}
 
 	cfg, err := NewManager("").Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-
-	// Loaded the legacy local config in place; no migration lock/copy occurred.
 	if cfg.DataDir != local {
 		t.Errorf("data_dir = %q, want local %q", cfg.DataDir, local)
-	}
-	if _, err := os.Stat(filepath.Join(local, migrationLockName)); !os.IsNotExist(err) {
-		t.Errorf("no migration lock should be created when iCloud is unavailable, stat err=%v", err)
 	}
 }
 

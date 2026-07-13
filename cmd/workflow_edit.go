@@ -139,13 +139,19 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	ruleID := args[0]
 
 	// Load config
-	cfg, configManager, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+
+	store := automationStore(configManager)
+	automation, err := store.LoadAutomation()
 	if err != nil {
 		return err
 	}
 
 	// Get the rule to edit
-	rule := cfg.GetWorkflowRule(ruleID)
+	rule := automation.GetWorkflowRule(ruleID)
 	if rule == nil {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}
@@ -335,15 +341,15 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	// Apply the changes
-	if !cfg.UpdateWorkflowRule(modifiedRule) {
+	if !automation.UpdateWorkflowRule(modifiedRule) {
 		return fmt.Errorf("failed to update workflow rule: %s", ruleID)
 	}
 
 	// Invalidate eval states to force re-evaluation
-	cfg.InvalidateWorkflowEvalStates()
+	automation.InvalidateWorkflowEvalStates()
 
 	// Save config
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := saveAutomation(store, automation); err != nil {
 		return err
 	}
 

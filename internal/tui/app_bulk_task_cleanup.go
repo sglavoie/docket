@@ -1,11 +1,5 @@
 package tui
 
-import (
-	"fmt"
-
-	"github.com/sglavoie/tt/internal/models"
-)
-
 func (m *AppModel) appPersister() Persister {
 	if m.persister != nil {
 		return m.persister
@@ -13,56 +7,19 @@ func (m *AppModel) appPersister() Persister {
 	return NewProjectService()
 }
 
-func (m *AppModel) applyBulkTaskRefsWithWorkflow(
-	refs []TaskProjectRef,
-	undoAction string,
-	mutate func(project *models.Project, taskID string) bool,
-) (int, []TaskProjectGroup, error) {
-	groups := groupTaskProjectRefsByProject(refs)
-	total := 0
-	var changedGroups []changedTaskProjectGroup
-
-	for _, group := range groups {
-		var changedIDs []string
-		for _, ref := range group.Items {
-			if ref.Task == nil || ref.Task.ID == "" {
-				continue
-			}
-			if mutate(group.Project, ref.Task.ID) {
-				total++
-				changedIDs = append(changedIDs, ref.Task.ID)
-			}
-		}
-		if len(changedIDs) == 0 {
-			continue
-		}
-		changedGroups = append(changedGroups, changedTaskProjectGroup{group: group, taskIDs: changedIDs})
-	}
-
-	groupID, groupProjectIDs := workflowGroupMetadata(taskProjectGroupsFromChanged(changedGroups))
-	for _, changed := range changedGroups {
-		opts := BuildWorkflowOpts(
-			m.appPersister(),
-			changed.group.Project,
-			m.config,
-			m.configManager,
-			changed.prevStates,
-			undoAction,
-			fmt.Sprintf("%d tasks", len(changed.taskIDs)),
-			changed.taskIDs,
-		)
-		opts.UndoGroupID = groupID
-		opts.UndoGroupProjectIDs = groupProjectIDs
-		if err := persistWithWorkflow(opts); err != nil {
-			return total, groups, err
-		}
-	}
-
-	return total, groups, nil
+func (m *AppModel) clearBulkTaskSelectionsForRefs(refs []TaskProjectRef) {
+	m.clearBulkTaskSelectionsForTaskIDSet(taskIDSetFromRefs(refs))
 }
 
-func (m *AppModel) clearBulkTaskSelectionsForRefs(refs []TaskProjectRef) {
-	selectedIDs := taskIDSetFromRefs(refs)
+// clearBulkTaskSelectionsForTaskIDs is the ID-list entry point the async batch
+// result path uses: the shell knows only the committed task IDs, not the live
+// refs, so it clears every view's multiselect keyed by ID after a successful
+// commit.
+func (m *AppModel) clearBulkTaskSelectionsForTaskIDs(ids []string) {
+	m.clearBulkTaskSelectionsForTaskIDSet(taskIDSliceToSet(ids))
+}
+
+func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bool) {
 	if len(selectedIDs) == 0 {
 		return
 	}
@@ -123,6 +80,16 @@ func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt ViewType, selectedIDs ma
 			v.clearMultiSelect()
 		}
 	}
+}
+
+func taskIDSliceToSet(ids []string) map[string]bool {
+	set := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		if id != "" {
+			set[id] = true
+		}
+	}
+	return set
 }
 
 func taskIDSetFromRefs(refs []TaskProjectRef) map[string]bool {

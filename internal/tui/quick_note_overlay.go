@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
@@ -14,14 +13,16 @@ import (
 // QuickNoteOverlay is an inline overlay for quickly appending a comment to a
 // task. It is stored on AppModel and rendered on top of the current view.
 type QuickNoteOverlay struct {
-	taskID    string
-	taskTitle string
-	project   *models.Project
-	input     textarea.Model
+	taskID      string
+	taskTitle   string
+	project     *models.Project
+	coordinator SubviewCoordinator
+	input       textarea.Model
 }
 
-// newQuickNoteOverlay creates and focuses a quick note overlay for the given task.
-func newQuickNoteOverlay(task *models.Task, project *models.Project) *QuickNoteOverlay {
+// newQuickNoteOverlay creates and focuses a quick note overlay for the given
+// task; the note commits through the subview coordinator.
+func newQuickNoteOverlay(task *models.Task, project *models.Project, coordinator SubviewCoordinator) *QuickNoteOverlay {
 	ti := textarea.New()
 	ti.Placeholder = "Type your note..."
 	ti.CharLimit = 2000
@@ -30,10 +31,11 @@ func newQuickNoteOverlay(task *models.Task, project *models.Project) *QuickNoteO
 	ti.Focus()
 	applyThemedTextarea(&ti)
 	return &QuickNoteOverlay{
-		taskID:    task.ID,
-		taskTitle: task.Title,
-		project:   project,
-		input:     ti,
+		taskID:      task.ID,
+		taskTitle:   task.Title,
+		project:     project,
+		coordinator: coordinator,
+		input:       ti,
 	}
 }
 
@@ -58,10 +60,10 @@ func (q *QuickNoteOverlay) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 		if err != nil {
 			return nil, true, ErrorMsg{Err: err}
 		}
-		if err := saveProjectNoReload(q.project); err != nil {
-			return nil, true, ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return nil, true, CommentAddedMsg{Task: task}
+		msg := commitTaskItemMutation(q.project, task, q.coordinator.AddComment(task.ID, text), func(fresh *models.Task) tea.Msg {
+			return CommentAddedMsg{Task: fresh}
+		})()
+		return nil, true, msg
 	case "shift+enter":
 		q.input.InsertString("\n")
 		return nil, false, nil

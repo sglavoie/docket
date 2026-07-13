@@ -90,8 +90,8 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 	switch trigger.Field {
 	case FieldStatusChanged:
 		return matchesTransition(
-			getPrevValue(prev, func(t *models.Task) string { return string(t.Status) }),
-			string(task.Status),
+			getPrevValue(prev, statusFieldValue),
+			statusFieldValue(task),
 			trigger.Value,
 		)
 
@@ -123,16 +123,16 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		if trigger.Value != "true" {
 			return false
 		}
-		wasComplete := prev.Status.IsComplete()
-		isComplete := task.Status.IsComplete()
+		wasComplete := prev.IsTerminalState()
+		isComplete := task.IsTerminalState()
 		return !wasComplete && isComplete
 
 	case FieldReopened:
 		if trigger.Value != "true" {
 			return false
 		}
-		wasComplete := prev.Status.IsComplete()
-		isComplete := task.Status.IsComplete()
+		wasComplete := prev.IsTerminalState()
+		isComplete := task.IsTerminalState()
 		return wasComplete && !isComplete
 
 	case FieldDueDateChanged:
@@ -167,7 +167,7 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		}
 		hadRecurrence := prev.Recurrence != nil
 		hasRecurrence := task.Recurrence != nil
-		isComplete := task.Status.IsComplete()
+		isComplete := task.IsTerminalState()
 		return hadRecurrence && !hasRecurrence && isComplete
 
 	case FieldStreakBroken:
@@ -208,9 +208,17 @@ func matchesPattern(value, pattern string) bool {
 	return strings.EqualFold(value, pattern)
 }
 
-// effectiveSection returns the logical GTD section for a task.
+// effectiveSection returns the logical GTD section for a task, derived from its
+// canonical workflow state rather than the retired task.Section field.
 func effectiveSection(t *models.Task) string {
-	return t.Section
+	return models.SectionForState(t.State())
+}
+
+// statusFieldValue returns the legacy status string a task's canonical state
+// maps back to, so rule conditions authored against the legacy status
+// vocabulary keep matching without reading the retired task.Status field.
+func statusFieldValue(t *models.Task) string {
+	return string(models.LegacyStatusForState(t.State()))
 }
 
 // getPrevValue safely gets a value from the previous task state.
@@ -251,7 +259,7 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 		if task.Parent == nil {
 			return false
 		}
-		return compareValues(string(task.Parent.Status), trigger.Operation, trigger.Value)
+		return compareValues(statusFieldValue(task.Parent), trigger.Operation, trigger.Value)
 
 	case FieldParentType:
 		if task.Parent == nil {
@@ -393,7 +401,7 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 
 	switch trigger.Field {
 	case FieldStatus:
-		fieldValue = string(task.Status)
+		fieldValue = statusFieldValue(task)
 	case FieldPriority:
 		fieldValue = strconv.Itoa(task.Priority)
 	case FieldSection:

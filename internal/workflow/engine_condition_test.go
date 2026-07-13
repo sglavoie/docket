@@ -9,7 +9,7 @@ import (
 func TestEvaluateRules_ConditionMet(t *testing.T) {
 	// Action with a met condition should execute
 	tasks := []*models.Task{
-		{ID: "1", Title: "High pri task", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
+		{ID: "1", Title: "High pri task", Priority: 1, WorkflowState: models.StateReady, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -41,7 +41,7 @@ func TestEvaluateRules_ConditionMet(t *testing.T) {
 func TestEvaluateRules_ConditionNotMet(t *testing.T) {
 	// Action with an unmet condition should be skipped
 	tasks := []*models.Task{
-		{ID: "1", Title: "Low pri task", Priority: 3, Status: models.StatusTodo, Tags: []string{}},
+		{ID: "1", Title: "Low pri task", Priority: 3, WorkflowState: models.StateReady, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -74,8 +74,8 @@ func TestEvaluateRules_ComplementaryConditions(t *testing.T) {
 	// Two actions with complementary conditions (branching pattern)
 	// High priority -> Active section, low priority -> Someday section
 	tasks := []*models.Task{
-		{ID: "1", Title: "High pri", Priority: 1, Status: models.StatusTodo, Section: "Inbox"},
-		{ID: "2", Title: "Low pri", Priority: 3, Status: models.StatusTodo, Section: "Inbox"},
+		{ID: "1", Title: "High pri", Priority: 1, WorkflowState: models.StateInbox},
+		{ID: "2", Title: "Low pri", Priority: 3, WorkflowState: models.StateInbox},
 	}
 
 	rules := []WorkflowRule{
@@ -101,11 +101,11 @@ func TestEvaluateRules_ComplementaryConditions(t *testing.T) {
 
 	result := EvaluateRules(tasks, rules)
 
-	if tasks[0].Section != "" {
-		t.Errorf("expected high pri task section to be '' (Active), got %q", tasks[0].Section)
+	if models.SectionForState(tasks[0].State()) != "" {
+		t.Errorf("expected high pri task section to be '' (Active), got %q", models.SectionForState(tasks[0].State()))
 	}
-	if tasks[1].Section != "Someday" {
-		t.Errorf("expected low pri task section to be 'Someday', got %q", tasks[1].Section)
+	if models.SectionForState(tasks[1].State()) != "Someday" {
+		t.Errorf("expected low pri task section to be 'Someday', got %q", models.SectionForState(tasks[1].State()))
 	}
 	if len(result.ModifiedTasks) != 2 {
 		t.Errorf("expected 2 modified tasks, got %d", len(result.ModifiedTasks))
@@ -115,7 +115,7 @@ func TestEvaluateRules_ComplementaryConditions(t *testing.T) {
 func TestEvaluateRules_NoConditionBackwardCompat(t *testing.T) {
 	// Actions without conditions should work exactly as before
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test task", Status: models.StatusTodo, Tags: []string{}},
+		{ID: "1", Title: "Test task", WorkflowState: models.StateReady, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -146,7 +146,7 @@ func TestEvaluateRules_ConditionExcludedFromConflict(t *testing.T) {
 	// (conditional on priority=1). For a priority=3 task, Rule B's action is unmet
 	// so there should be no conflict.
 	tasks := []*models.Task{
-		{ID: "1", Title: "Normal task", Priority: 3, Status: models.StatusTodo, Section: "Inbox"},
+		{ID: "1", Title: "Normal task", Priority: 3, WorkflowState: models.StateInbox},
 	}
 
 	rules := []WorkflowRule{
@@ -181,15 +181,15 @@ func TestEvaluateRules_ConditionExcludedFromConflict(t *testing.T) {
 		t.Errorf("expected 0 conflicts (unmet condition excluded), got %d", len(result.Conflicts))
 	}
 	// Rule A's action should apply
-	if tasks[0].Section != "" {
-		t.Errorf("expected section to be '' (Active), got %q", tasks[0].Section)
+	if models.SectionForState(tasks[0].State()) != "" {
+		t.Errorf("expected section to be '' (Active), got %q", models.SectionForState(tasks[0].State()))
 	}
 }
 
 func TestEvaluateRules_MixedConditionalAndUnconditional(t *testing.T) {
 	// A rule with both conditional and unconditional actions
 	tasks := []*models.Task{
-		{ID: "1", Title: "Task", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
+		{ID: "1", Title: "Task", Priority: 1, WorkflowState: models.StateReady, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{

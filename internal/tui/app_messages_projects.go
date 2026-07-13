@@ -75,10 +75,16 @@ type ShowTrashedProjectsMsg struct{}
 type CloseTrashedProjectsMsg struct{ PopViewMsg }
 
 // RestoreFromTrashMsg requests restoration of a project from trash.
-type RestoreFromTrashMsg struct{ Slug string }
+type RestoreFromTrashMsg struct {
+	EntryID string
+	Slug    string
+}
 
 // PurgeFromTrashMsg requests permanent deletion of a project from trash.
-type PurgeFromTrashMsg struct{ Slug string }
+type PurgeFromTrashMsg struct {
+	EntryID string
+	Slug    string
+}
 
 // =============================================================================
 // Status Input Messages

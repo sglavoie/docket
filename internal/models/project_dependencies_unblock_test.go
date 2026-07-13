@@ -11,28 +11,28 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 
 	_ = blocked.AddDependency(blocker1.ID)
 	_ = blocked.AddDependency(blocker2.ID)
-	blocked.Status = StatusBlocked
+	blocked.WorkflowState = StateWaiting
 
 	project.Tasks = []*Task{blocker1, blocker2, blocked}
 
 	project.CheckAndAutoUnblock()
-	if blocked.Status != StatusBlocked {
-		t.Errorf("blocked task should remain blocked, got %s", blocked.Status)
+	if blocked.State() != StateWaiting {
+		t.Errorf("blocked task should remain blocked, got %s", blocked.State())
 	}
 
 	blocker1.Complete()
 	project.CheckAndAutoUnblock()
-	if blocked.Status != StatusBlocked {
-		t.Errorf("blocked task should remain blocked (one dep incomplete), got %s", blocked.Status)
+	if blocked.State() != StateWaiting {
+		t.Errorf("blocked task should remain blocked (one dep incomplete), got %s", blocked.State())
 	}
 
 	blocker2.Complete()
 	project.CheckAndAutoUnblock()
-	if blocked.Status != StatusTodo {
-		t.Errorf("blocked task should be unblocked to todo, got %s", blocked.Status)
+	if blocked.State() != StateInbox {
+		t.Errorf("blocked task should be unblocked to inbox, got %s", blocked.State())
 	}
-	if blocked.Section != SectionInbox {
-		t.Errorf("auto-unblocked task should be in Inbox for re-triage, got %q", blocked.Section)
+	if !blocked.InSection(SectionInbox) {
+		t.Errorf("auto-unblocked task should be in Inbox for re-triage, got %q", SectionForState(blocked.State()))
 	}
 	if blocked.CompletedAt != nil {
 		t.Error("auto-unblocked task should have CompletedAt cleared")
@@ -46,14 +46,14 @@ func TestProjectCheckAndAutoUnblockWithCanceled(t *testing.T) {
 	blocked := newDependencyTestTask(t, "blocked", 2, "Blocked Task")
 
 	_ = blocked.AddDependency(blocker.ID)
-	blocked.Status = StatusBlocked
+	blocked.WorkflowState = StateWaiting
 
 	project.Tasks = []*Task{blocker, blocked}
 
 	blocker.Cancel()
 	project.CheckAndAutoUnblock()
-	if blocked.Status != StatusTodo {
-		t.Errorf("blocked task should be unblocked when blocker canceled, got %s", blocked.Status)
+	if blocked.State() != StateInbox {
+		t.Errorf("blocked task should be unblocked when blocker canceled, got %s", blocked.State())
 	}
 }
 
@@ -61,13 +61,13 @@ func TestProjectCheckAndAutoUnblockNoDependencies(t *testing.T) {
 	project := newDependencyTestProject(t, "test")
 
 	blocked := newDependencyTestTask(t, "blocked", 1, "Blocked Task")
-	blocked.Status = StatusBlocked
+	blocked.WorkflowState = StateWaiting
 
 	project.Tasks = []*Task{blocked}
 
 	project.CheckAndAutoUnblock()
-	if blocked.Status != StatusBlocked {
-		t.Errorf("blocked task without deps should remain blocked, got %s", blocked.Status)
+	if blocked.State() != StateWaiting {
+		t.Errorf("blocked task without deps should remain blocked, got %s", blocked.State())
 	}
 }
 
@@ -79,15 +79,15 @@ func TestCheckAndAutoUnblockSkipsCrossProjectDeps(t *testing.T) {
 
 	_ = task.AddDependency(blocker.ID)
 	task.DependsOn = append(task.DependsOn, "other-project-id:remote-task-id")
-	task.Status = StatusBlocked
+	task.WorkflowState = StateWaiting
 
 	project.Tasks = []*Task{blocker, task}
 
 	blocker.Complete()
 
 	project.CheckAndAutoUnblock()
-	if task.Status != StatusBlocked {
-		t.Errorf("expected task to remain blocked due to cross-project dep, got %s", task.Status)
+	if task.State() != StateWaiting {
+		t.Errorf("expected task to remain blocked due to cross-project dep, got %s", task.State())
 	}
 }
 
@@ -98,12 +98,12 @@ func TestCheckAndAutoUnblockCrossProjectDepOnly(t *testing.T) {
 	// Must remain blocked because we cannot resolve cross-project refs locally.
 	task := newDependencyTestTask(t, "task1", 1, "Blocked Task")
 	task.DependsOn = []string{"other-project:remote-task"}
-	task.Status = StatusBlocked
+	task.WorkflowState = StateWaiting
 
 	project.Tasks = []*Task{task}
 
 	project.CheckAndAutoUnblock()
-	if task.Status != StatusBlocked {
-		t.Errorf("expected task to remain blocked with only cross-project dep, got %s", task.Status)
+	if task.State() != StateWaiting {
+		t.Errorf("expected task to remain blocked with only cross-project dep, got %s", task.State())
 	}
 }

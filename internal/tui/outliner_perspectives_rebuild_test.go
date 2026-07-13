@@ -17,16 +17,14 @@ func TestRebuildRows_AllPerspective(t *testing.T) {
 
 func TestRebuildRows_AllPerspectiveGroupsNonGTDSectionsUnderActive(t *testing.T) {
 	legacyTask := &models.Task{
-		ID:      "custom",
-		Title:   "Sprint task",
-		Status:  models.StatusTodo,
-		Section: "Sprint",
+		ID:            "custom",
+		Title:         "Sprint task",
+		WorkflowState: models.StateReady,
 	}
 	nextTask := &models.Task{
-		ID:      "next",
-		Title:   "Next task",
-		Status:  models.StatusTodo,
-		Section: models.SectionNext,
+		ID:            "next",
+		Title:         "Next task",
+		WorkflowState: models.StateNext,
 	}
 	proj := &models.Project{
 		ID:       "project",
@@ -43,15 +41,14 @@ func TestRebuildRows_AllPerspectiveGroupsNonGTDSectionsUnderActive(t *testing.T)
 
 func TestRebuildRows_LegacySectionTabIgnored(t *testing.T) {
 	legacyTask := &models.Task{
-		ID:      "legacy",
-		Title:   "Legacy task",
-		Status:  models.StatusTodo,
-		Section: "Legacy",
+		ID:            "legacy",
+		Title:         "Legacy task",
+		WorkflowState: models.StateReady,
 	}
 	otherTask := &models.Task{
-		ID:     "other",
-		Title:  "Other task",
-		Status: models.StatusTodo,
+		ID:            "other",
+		Title:         "Other task",
+		WorkflowState: models.StateReady,
 	}
 	proj := &models.Project{
 		ID:       "project",
@@ -73,16 +70,16 @@ func TestRebuildRows_LegacySectionTabIgnored(t *testing.T) {
 
 func TestRebuildRows_PinnedTagTabFiltersByTag(t *testing.T) {
 	backendTask := &models.Task{
-		ID:     "backend",
-		Title:  "Backend task",
-		Status: models.StatusTodo,
-		Tags:   []string{"backend"},
+		ID:            "backend",
+		Title:         "Backend task",
+		WorkflowState: models.StateReady,
+		Tags:          []string{"backend"},
 	}
 	frontendTask := &models.Task{
-		ID:     "frontend",
-		Title:  "Frontend task",
-		Status: models.StatusTodo,
-		Tags:   []string{"frontend"},
+		ID:            "frontend",
+		Title:         "Frontend task",
+		WorkflowState: models.StateReady,
+		Tags:          []string{"frontend"},
 	}
 	proj := &models.Project{
 		ID:         "project",
@@ -126,12 +123,12 @@ func TestRebuildRows_InboxPerspective(t *testing.T) {
 func TestRebuildRows_StandbyPerspective(t *testing.T) {
 	proj := buildTestProject()
 	standbyTask := &models.Task{
-		ID:       "standby1",
-		ShortID:  8,
-		Type:     models.TaskTypeTask,
-		Title:    "Standby Task",
-		Status:   models.StatusStandby,
-		Children: []*models.Task{},
+		ID:            "standby1",
+		ShortID:       8,
+		Type:          models.TaskTypeTask,
+		Title:         "Standby Task",
+		WorkflowState: models.StatePaused,
+		Children:      []*models.Task{},
 	}
 	proj.Tasks = append(proj.Tasks, standbyTask)
 
@@ -196,23 +193,23 @@ func TestRebuildRows_AllPerspectiveExcludesSnoozed(t *testing.T) {
 
 func TestRebuildRows_ParentExcludedWhenNoDescendantsMatch(t *testing.T) {
 	parent := &models.Task{
-		ID:       "parent",
-		ShortID:  1,
-		Type:     models.TaskTypeEpic,
-		Title:    "Parent",
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Children: []*models.Task{},
+		ID:            "parent",
+		ShortID:       1,
+		Type:          models.TaskTypeEpic,
+		Title:         "Parent",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Children:      []*models.Task{},
 	}
 	child := &models.Task{
-		ID:       "child",
-		ShortID:  2,
-		Type:     models.TaskTypeTask,
-		Title:    "Child",
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Children: []*models.Task{},
-		ParentID: &parent.ID,
+		ID:            "child",
+		ShortID:       2,
+		Type:          models.TaskTypeTask,
+		Title:         "Child",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Children:      []*models.Task{},
+		ParentID:      &parent.ID,
 	}
 	parent.Children = []*models.Task{child}
 
@@ -230,33 +227,33 @@ func TestRebuildRows_ParentExcludedWhenNoDescendantsMatch(t *testing.T) {
 
 func TestRebuildRows_ParentPreservedForMatchingDescendant(t *testing.T) {
 	grandparent := &models.Task{
-		ID:       "gp",
-		ShortID:  1,
-		Type:     models.TaskTypeEpic,
-		Title:    "Grandparent",
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Children: []*models.Task{},
+		ID:            "gp",
+		ShortID:       1,
+		Type:          models.TaskTypeEpic,
+		Title:         "Grandparent",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Children:      []*models.Task{},
 	}
 	mid := &models.Task{
-		ID:       "mid",
-		ShortID:  2,
-		Type:     models.TaskTypeStory,
-		Title:    "Middle",
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Children: []*models.Task{},
-		ParentID: &grandparent.ID,
+		ID:            "mid",
+		ShortID:       2,
+		Type:          models.TaskTypeStory,
+		Title:         "Middle",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Children:      []*models.Task{},
+		ParentID:      &grandparent.ID,
 	}
 	leaf := &models.Task{
-		ID:       "leaf",
-		ShortID:  3,
-		Type:     models.TaskTypeTask,
-		Title:    "Leaf",
-		Status:   models.StatusDone,
-		Priority: 3,
-		Children: []*models.Task{},
-		ParentID: &mid.ID,
+		ID:            "leaf",
+		ShortID:       3,
+		Type:          models.TaskTypeTask,
+		Title:         "Leaf",
+		WorkflowState: models.StateDone,
+		Priority:      3,
+		Children:      []*models.Task{},
+		ParentID:      &mid.ID,
 	}
 	mid.Children = []*models.Task{leaf}
 	grandparent.Children = []*models.Task{mid}

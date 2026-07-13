@@ -214,7 +214,7 @@ func WeightedVelocityWithSummaries(throughput metrics.ThroughputResult, summaryG
 	var effortTaskCount int
 	for _, summaries := range summaryGroups {
 		for _, summary := range summaries {
-			if !summary.Status.IsComplete() {
+			if !summary.WorkflowState.IsTerminal() {
 				continue
 			}
 			days, hasEffort := summaryEffortDays(summary)

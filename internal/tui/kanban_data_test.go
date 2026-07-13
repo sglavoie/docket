@@ -27,7 +27,7 @@ func TestColumnForTask_Section(t *testing.T) {
 	}
 	for _, tc := range tests {
 		task := testutil.NewTestTask("t", models.TaskTypeTask)
-		task.Section = tc.section
+		task.SetSection(tc.section)
 		got := columnForTask(task, KanbanModeSection, nil, "")
 		if got != tc.want {
 			t.Errorf("section %q: want %q, got %q", tc.section, tc.want, got)
@@ -46,8 +46,8 @@ func TestColumnForTask_Section_CompletedStatusWins(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := testutil.NewTestTaskWithStatus("t", tc.status)
-			task.Section = tc.section
+			task := testutil.NewTestTask("t", models.TaskTypeTask)
+			task.WorkflowState = models.DeriveWorkflowState(tc.status, tc.section, "")
 			got := columnForTask(task, KanbanModeSection, nil, "")
 			if got != "completed" {
 				t.Errorf("completed status in section %q: want completed, got %q", tc.section, got)
@@ -93,17 +93,6 @@ func TestColumnForTask_Priority(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("priority %d: want %q, got %q", tc.priority, tc.want, got)
 		}
-	}
-}
-
-func TestColumnForTask_Stages(t *testing.T) {
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	if got := columnForTask(task, KanbanModeStages, nil, ""); got != "unset" {
-		t.Errorf("empty stage: want unset, got %q", got)
-	}
-	task.Stage = "design"
-	if got := columnForTask(task, KanbanModeStages, nil, ""); got != "design" {
-		t.Errorf("stage=design: want design, got %q", got)
 	}
 }
 
@@ -160,7 +149,7 @@ func TestRebuildColumns_SectionMode_Distribution(t *testing.T) {
 		makeTestCard(models.SectionInbox, models.StatusTodo),
 		makeTestCard(models.SectionNext, models.StatusTodo),
 	}
-	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil)
 
 	idx := map[string]int{}
 	for i, c := range cols {
@@ -181,8 +170,7 @@ func TestRebuildColumns_SortsColumnTasksByProjectName(t *testing.T) {
 
 	card := func(project *models.Project, title string) KanbanCard {
 		task := testutil.NewTestTask(title, models.TaskTypeTask)
-		task.Section = models.SectionInbox
-		task.Status = models.StatusTodo
+		task.WorkflowState = models.StateInbox
 		return KanbanCard{Task: task, Project: project}
 	}
 
@@ -193,7 +181,7 @@ func TestRebuildColumns_SortsColumnTasksByProjectName(t *testing.T) {
 		card(alpha, "alpha second"),
 	}
 
-	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil)
 
 	var inbox KanbanColumn
 	found := false
@@ -237,7 +225,6 @@ func TestRebuildColumns_SectionMode_CompletedStatusOnlyInCompletedColumn(t *test
 		[]string{models.SectionInbox, models.SectionNext},
 		nil,
 		nil,
-		nil,
 	)
 
 	idx := map[string]int{}
@@ -263,15 +250,15 @@ func TestRebuildColumns_SectionMode_CompletedStatusOnlyInCompletedColumn(t *test
 	}
 	for _, id := range []string{"inbox", "next"} {
 		for _, card := range cols[idx[id]].Tasks {
-			if card.Task.Status.IsComplete() {
-				t.Errorf("%s column contains completed task with status %q", id, card.Task.Status)
+			if card.Task.IsComplete() {
+				t.Errorf("%s column contains completed task with state %q", id, card.Task.State())
 			}
 		}
 	}
 }
 
 func TestRebuildColumns_Empty(t *testing.T) {
-	cols := rebuildColumns(nil, KanbanModeSection, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(nil, KanbanModeSection, nil, nil, nil, nil)
 	if len(cols) == 0 {
 		t.Fatal("expected non-empty column list even with no cards")
 	}
@@ -287,7 +274,7 @@ func TestRebuildColumns_AllSameColumn(t *testing.T) {
 	for i := range cards {
 		cards[i] = makeTestCard(models.SectionInbox, models.StatusTodo)
 	}
-	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil)
 	total := 0
 	for _, c := range cols {
 		total += len(c.Tasks)
@@ -303,7 +290,7 @@ func TestRebuildColumns_PreservesCursorFromPrev(t *testing.T) {
 		makeTestCard(models.SectionInbox, models.StatusTodo),
 	}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: 1, ScrollOffset: 0}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.Cursor != 1 {
@@ -319,7 +306,7 @@ func TestRebuildColumns_ClampsOutOfBoundsCursor(t *testing.T) {
 	// Previous state had cursor=3, but now only 1 task remains.
 	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: 3}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.Cursor != 0 {
@@ -334,7 +321,7 @@ func TestRebuildColumns_ClampsOutOfBoundsCursor(t *testing.T) {
 func TestRebuildColumns_ClampsOutOfBoundsScrollOffset(t *testing.T) {
 	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: 0, ScrollOffset: 50}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.ScrollOffset >= len(c.Tasks) {
@@ -349,7 +336,7 @@ func TestRebuildColumns_ClampsOutOfBoundsScrollOffset(t *testing.T) {
 func TestRebuildColumns_ClampsNegativeCursor(t *testing.T) {
 	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: -5, ScrollOffset: -3}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.Cursor != 0 {
@@ -372,7 +359,7 @@ func TestRebuildColumns_StatusMode(t *testing.T) {
 		{Task: todo, Project: proj},
 		{Task: done, Project: proj},
 	}
-	cols := rebuildColumns(cards, KanbanModeStatus, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeStatus, nil, nil, nil, nil)
 	idx := map[string]int{}
 	for i, c := range cols {
 		idx[c.ID] = i
@@ -390,7 +377,7 @@ func TestRebuildColumns_PriorityMode(t *testing.T) {
 	t1 := testutil.NewTestTaskWithPriority("high", 1)
 	t2 := testutil.NewTestTaskWithPriority("unset", 0)
 	cards := []KanbanCard{{Task: t1, Project: proj}, {Task: t2, Project: proj}}
-	cols := rebuildColumns(cards, KanbanModePriority, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModePriority, nil, nil, nil, nil)
 	idx := map[string]int{}
 	for i, c := range cols {
 		idx[c.ID] = i
@@ -400,41 +387,6 @@ func TestRebuildColumns_PriorityMode(t *testing.T) {
 	}
 	if n := len(cols[idx["unset"]].Tasks); n != 1 {
 		t.Errorf("unset: want 1, got %d", n)
-	}
-}
-
-func TestRebuildColumns_StagesMode_DynamicColumn(t *testing.T) {
-	proj := testutil.NewTestProject("p")
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	task.Stage = "alpha"
-	cards := []KanbanCard{{Task: task, Project: proj}}
-	// stages list doesn't include "alpha" → dynamic column created
-	cols := rebuildColumns(cards, KanbanModeStages, nil, nil, nil, []string{"beta"}, nil)
-	found := false
-	for _, c := range cols {
-		if c.ID == "alpha" {
-			found = true
-			if len(c.Tasks) != 1 {
-				t.Errorf("alpha: want 1 task, got %d", len(c.Tasks))
-			}
-		}
-	}
-	if !found {
-		t.Error("dynamic 'alpha' column not created")
-	}
-}
-
-// ── collectStages ─────────────────────────────────────────────────────────────
-
-func TestCollectStages_MergesGlobalAndProjectStages(t *testing.T) {
-	proj := testutil.NewTestProject("p")
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	task.Stage = "project-stage"
-	proj.Tasks = []*models.Task{task}
-
-	got := collectStages([]string{"global-stage"}, []*models.Project{proj})
-	if len(got) != 2 {
-		t.Errorf("want 2 stages, got %d: %v", len(got), got)
 	}
 }
 
@@ -475,10 +427,10 @@ func TestKanbanFilteredCards_TagFilter(t *testing.T) {
 func TestKanbanRefreshAndClamp_AppliesTagFilter(t *testing.T) {
 	proj := testutil.NewTestProject("p")
 	tagged := testutil.NewTestTask("tagged", models.TaskTypeTask)
-	tagged.Section = models.SectionInbox
+	tagged.SetSection(models.SectionInbox)
 	tagged.Tags = []string{"bug"}
 	untagged := testutil.NewTestTask("untagged", models.TaskTypeTask)
-	untagged.Section = models.SectionInbox
+	untagged.SetSection(models.SectionInbox)
 	proj.Tasks = []*models.Task{tagged, untagged}
 
 	cfg := &config.Config{}
@@ -566,14 +518,3 @@ func TestKanbanBuildTagCmd_CrossProjectSource(t *testing.T) {
 // restoreKanbanState clamps a cached ScrollOffset that no longer fits within
 // a column's task list. Without clamping, deleting tasks while away from the
 // kanban view would leave the column scrolled past its last task on return.
-func TestCollectStages_Deduplication(t *testing.T) {
-	proj := testutil.NewTestProject("p")
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	task.Stage = "s1"
-	proj.Tasks = []*models.Task{task}
-
-	got := collectStages([]string{"s1"}, []*models.Project{proj})
-	if len(got) != 1 {
-		t.Errorf("want 1 unique stage, got %d: %v", len(got), got)
-	}
-}

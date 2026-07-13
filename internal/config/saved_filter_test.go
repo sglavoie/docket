@@ -422,17 +422,27 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 		t.Fatalf("criteria parked criterion = %+v, want parked equals false", criteria.Criteria)
 	}
 
-	// Config file on disk should now have saved_filters and no legacy fields.
-	reloaded, err := os.ReadFile(configPath)
+	// The planning domain file on disk should now carry saved_filters (a
+	// planning-domain field) and no legacy saved_views/smart_lists.
+	planningRaw, err := os.ReadFile(PlanningStatePath(dir))
 	if err != nil {
-		t.Fatalf("re-read: %v", err)
+		t.Fatalf("re-read planning domain: %v", err)
+	}
+	var env struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err = json.Unmarshal(planningRaw, &env); err != nil {
+		t.Fatalf("unmarshal planning envelope: %v", err)
 	}
 	var raw map[string]json.RawMessage
-	if err = json.Unmarshal(reloaded, &raw); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	if err = json.Unmarshal(env.Data, &raw); err != nil {
+		t.Fatalf("unmarshal planning data: %v", err)
 	}
 	if _, ok := raw["saved_filters"]; !ok {
-		t.Error("expected saved_filters key in persisted config")
+		t.Error("expected saved_filters key in persisted planning domain")
+	}
+	if _, ok := raw["saved_views"]; ok {
+		t.Error("planning domain should not carry legacy saved_views")
 	}
 
 	// Second load should not re-migrate.

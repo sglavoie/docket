@@ -43,6 +43,26 @@ type metadataParseState struct {
 		originalDay int
 		hasAny      bool
 	}
+	// legacy accumulates the schema-v1 lifecycle fields (status/section/stage/
+	// active) during parse. The v2 writer no longer emits these keys, but the
+	// parse-only codecs keep populating this accumulator so finalizeParsedMetadata
+	// can write the values back onto the Task (keeping the legacy shims and the
+	// migration audit's read of task.Active working) and derive the canonical
+	// WorkflowState when a schema-v1 document carries no `state:` field.
+	legacy struct {
+		status      models.TaskStatus
+		statusSeen  bool
+		section     string
+		sectionSeen bool
+		stage       string
+		stageSeen   bool
+		active      bool
+		activeSeen  bool
+	}
+	// stateSeen records whether a canonical schema-v2 `state:` field was parsed.
+	// When true, finalizeParsedMetadata trusts the state the codec already
+	// applied and skips legacy derivation.
+	stateSeen bool
 }
 
 func metadataField(key string, parse metadataParseFunc, write metadataWriteFunc) metadataFieldCodec {
@@ -119,15 +139,6 @@ func (r metadataRegistry) parse(task *models.Task, key, value string, state *met
 	}
 
 	return false
-}
-
-func (r metadataRegistry) appendWrittenParts(task *models.Task, parts *[]string) {
-	for _, field := range r.ordered {
-		field.write(task, parts)
-	}
-	for _, family := range r.families {
-		family.write(task, parts)
-	}
 }
 
 func (r metadataRegistry) nextSplitIndex(remaining string, seenKeys map[string]bool) int {

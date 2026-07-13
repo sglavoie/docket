@@ -60,18 +60,18 @@ func NewTestProjectWithTasks(name string) *models.Project {
 	// Add tasks under the story
 	task1 := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, "Create login form")
 	task1.ParentID = &story.ID
-	task1.Status = models.StatusInProgress
+	task1.WorkflowState = models.StateInProgress
 	addTask(project, task1)
 
 	task2 := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, "Add password validation")
 	task2.ParentID = &story.ID
-	task2.Status = models.StatusTodo
+	task2.WorkflowState = models.StateReady
 	addTask(project, task2)
 
 	// Add a completed task
 	task3 := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, "Design login page mockup")
 	task3.ParentID = &story.ID
-	task3.Status = models.StatusDone
+	task3.WorkflowState = models.StateDone
 	now := time.Now()
 	task3.CompletedAt = &now
 	addTask(project, task3)
@@ -140,13 +140,14 @@ func NewTestTask(title string, taskType models.TaskType) *models.Task {
 	return task
 }
 
-// NewTestTaskWithStatus creates a task with a specific status.
+// NewTestTaskWithStatus creates a task whose workflow state corresponds to the
+// given legacy status (mapped through the canonical loader-upgrade rules).
 func NewTestTaskWithStatus(title string, status models.TaskStatus) *models.Task {
 	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
 	if err != nil {
 		panic(fmt.Sprintf("NewTestTaskWithStatus(%q): %v", title, err))
 	}
-	task.Status = status
+	task.WorkflowState = models.DeriveWorkflowState(status, "", "")
 	if status == models.StatusDone {
 		now := time.Now()
 		task.CompletedAt = &now
@@ -172,11 +173,12 @@ func AssertTaskCount(t *testing.T, project *models.Project, expected int) {
 	}
 }
 
-// AssertTaskStatus checks that a task has the expected status.
+// AssertTaskStatus checks that a task's workflow state corresponds to the
+// expected legacy status (derived from State() through LegacyStatusForState).
 func AssertTaskStatus(t *testing.T, task *models.Task, expected models.TaskStatus) {
 	t.Helper()
-	if task.Status != expected {
-		t.Errorf("expected status %s, got %s", expected, task.Status)
+	if got := models.LegacyStatusForState(task.State()); got != expected {
+		t.Errorf("expected status %s, got %s", expected, got)
 	}
 }
 
@@ -215,6 +217,12 @@ type TestDeps struct {
 // Note: Tests must set storage.DefaultRepository themselves to avoid import cycles.
 func SetupTestDeps(t *testing.T) *TestDeps {
 	t.Helper()
+
+	// Isolate machine-local runtime state (machine.json under
+	// LocalRuntimeDirForDataDir, keyed off $HOME) into a throwaway directory so
+	// no test writes into the developer's real home directory once Manager
+	// persistence begins touching that tier.
+	t.Setenv("HOME", t.TempDir())
 
 	// Create temp directory for test files
 	tempDir, err := os.MkdirTemp("", "tt-test-*")

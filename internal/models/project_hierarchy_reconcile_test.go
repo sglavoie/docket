@@ -19,8 +19,8 @@ func TestReconcileParentCompletionSingleReopen(t *testing.T) {
 	if len(reopened) != 1 {
 		t.Errorf("expected 1 reopened, got %d", len(reopened))
 	}
-	if parent.Status != StatusInProgress {
-		t.Errorf("expected parent reopened to in_progress, got %s", parent.Status)
+	if parent.State() != StateInProgress {
+		t.Errorf("expected parent reopened to in_progress, got %s", parent.State())
 	}
 	if parent.CompletedAt != nil {
 		t.Error("expected parent CompletedAt cleared")
@@ -51,11 +51,11 @@ func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
 	if len(reopened) != 2 {
 		t.Errorf("expected 2 reopened (story then epic), got %d", len(reopened))
 	}
-	if story.Status != StatusInProgress {
-		t.Errorf("expected story reopened, got %s", story.Status)
+	if story.State() != StateInProgress {
+		t.Errorf("expected story reopened, got %s", story.State())
 	}
-	if epic.Status != StatusInProgress {
-		t.Errorf("expected epic reopened via fixpoint, got %s", epic.Status)
+	if epic.State() != StateInProgress {
+		t.Errorf("expected epic reopened via fixpoint, got %s", epic.State())
 	}
 }
 
@@ -75,8 +75,8 @@ func TestReconcileParentCompletionCanceledParent(t *testing.T) {
 	if len(reopened) != 1 {
 		t.Errorf("expected 1 reopened, got %d", len(reopened))
 	}
-	if parent.Status != StatusInProgress {
-		t.Errorf("expected canceled parent reopened to in_progress, got %s", parent.Status)
+	if parent.State() != StateInProgress {
+		t.Errorf("expected canceled parent reopened to in_progress, got %s", parent.State())
 	}
 }
 
@@ -97,10 +97,10 @@ func TestReconcileParentCompletionNoOpWhenConsistent(t *testing.T) {
 	if len(reopened) != 0 {
 		t.Errorf("expected 0 reopened for consistent tree, got %d", len(reopened))
 	}
-	if parent.Status != StatusDone {
-		t.Errorf("expected parent to stay done, got %s", parent.Status)
+	if parent.State() != StateDone {
+		t.Errorf("expected parent to stay done, got %s", parent.State())
 	}
-	if child.Status != StatusDone {
-		t.Errorf("expected child to stay done, got %s", child.Status)
+	if child.State() != StateDone {
+		t.Errorf("expected child to stay done, got %s", child.State())
 	}
 }

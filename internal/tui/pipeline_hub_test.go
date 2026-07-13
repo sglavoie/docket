@@ -151,31 +151,30 @@ func TestCountInbox_CountsProcessableRootTasksOnly(t *testing.T) {
 	}{
 		{
 			name: "root inbox todo",
-			task: &models.Task{Section: models.SectionInbox, Status: models.StatusTodo},
+			task: &models.Task{WorkflowState: models.StateInbox},
 			want: 1,
 		},
 		{
 			name: "completed root inbox",
-			task: &models.Task{Section: models.SectionInbox, Status: models.StatusDone},
+			task: &models.Task{WorkflowState: models.StateDone},
 			want: 0,
 		},
 		{
 			name: "snoozed root inbox",
-			task: &models.Task{Section: models.SectionInbox, Status: models.StatusTodo, SnoozedUntil: &future},
+			task: &models.Task{WorkflowState: models.StateInbox, SnoozedUntil: &future},
 			want: 0,
 		},
 		{
 			name: "child inbox task",
-			task: &models.Task{ParentID: &parentID, Section: models.SectionInbox, Status: models.StatusTodo},
+			task: &models.Task{ParentID: &parentID, WorkflowState: models.StateInbox},
 			want: 0,
 		},
 		{
 			name: "root with inbox child",
 			task: &models.Task{
-				ID:       "root",
-				Section:  models.SectionInbox,
-				Status:   models.StatusTodo,
-				Children: []*models.Task{{ParentID: &parentID, Section: models.SectionInbox, Status: models.StatusTodo}},
+				ID:            "root",
+				WorkflowState: models.StateInbox,
+				Children:      []*models.Task{{ParentID: &parentID, WorkflowState: models.StateInbox}},
 			},
 			want: 1,
 		},

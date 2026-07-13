@@ -11,13 +11,11 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for AllTasksViewModel.
 func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
-	stages := m.allTasksStages()
-
 	var entries []keymap.Entry
 	entries = append(entries, m.allTasksNavigationEntries()...)
 	entries = append(entries, m.allTasksViewEntries()...)
-	entries = append(entries, buildStandardTaskActionEntries(m.allTasksTaskKeymapDeps(stages))...)
-	entries = append(entries, m.allTasksFilterEntries(stages)...)
+	entries = append(entries, buildStandardTaskActionEntries(m.allTasksTaskKeymapDeps())...)
+	entries = append(entries, m.allTasksFilterEntries()...)
 	entries = append(entries, m.allTasksSortEntries()...)
 	entries = append(entries, m.allTasksTabEntries()...)
 	entries = append(entries, m.allTasksMultiSelectEntries()...)
@@ -28,13 +26,6 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 		ViewName: "All Tasks",
 		Entries:  entries,
 	}
-}
-
-func (m *AllTasksViewModel) allTasksStages() []string {
-	if m.config == nil {
-		return nil
-	}
-	return m.config.Stages
 }
 
 func (m *AllTasksViewModel) allTasksNavigationEntries() []keymap.Entry {
@@ -68,18 +59,17 @@ func (m *AllTasksViewModel) allTasksViewEntries() []keymap.Entry {
 	}
 }
 
-func (m *AllTasksViewModel) allTasksTaskKeymapDeps(stages []string) TaskKeymapDeps {
+func (m *AllTasksViewModel) allTasksTaskKeymapDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.allTasksHasItem,
-		Stages:           stages,
 		ToggleHelp:       m.allTasksToggleHelp,
 		SelectedTaskRefs: m.allTasksSelectedTaskRefs,
 		DeleteTask:       m.allTasksDeleteTask,
 		OpenURL:          m.allTasksOpenURL,
 		MoveToProject:    m.allTasksMoveToProject,
 		QuickNote:        m.allTasksQuickNote,
-		StatusChange:     m.allTasksStatusChangeAction,
+		StateChange:      m.allTasksStateChangeAction,
 		PriorityChange:   m.allTasksPriorityChangeAction,
 		DueDateSet:       m.allTasksDueDateSetAction,
 		DueDateClear:     m.allTasksClearDueDate,
@@ -88,7 +78,7 @@ func (m *AllTasksViewModel) allTasksTaskKeymapDeps(stages []string) TaskKeymapDe
 	}
 }
 
-func (m *AllTasksViewModel) allTasksFilterEntries(stages []string) []keymap.Entry {
+func (m *AllTasksViewModel) allTasksFilterEntries() []keymap.Entry {
 	filterEntries := keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags:      m.allTasksFilterByTags,
 		TogglePriority:    m.allTasksTogglePriorityFilter,
@@ -97,14 +87,12 @@ func (m *AllTasksViewModel) allTasksFilterEntries(stages []string) []keymap.Entr
 		ToggleParked:      m.allTasksToggleParkedFilter,
 		ClearFilters:      m.allTasksClearFilters,
 		TypeKey:           m.allTasksFilterTypeKey,
-		StatusKey:         m.allTasksFilterStatusKey,
+		StateKey:          m.allTasksFilterStateKey,
 		DueDateKey:        nil,
 		AttrDirectKey:     m.allTasksFilterAttrKey,
 		AttrSubKey:        m.allTasksFilterAttrSubKey,
 		OpenAttrPicker:    m.allTasksOpenAttrPicker,
 		ScoreKey:          m.allTasksFilterScoreKey,
-		StageFilterKey:    m.allTasksFilterStageKey,
-		StageFilterNames:  stages,
 	})
 	if len(filterEntries) == 0 || filterEntries[0].PrefixNode == nil {
 		return filterEntries
@@ -275,19 +263,19 @@ func (m *AllTasksViewModel) allTasksQuickNote() (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 }
 
-func (m *AllTasksViewModel) allTasksStatusChangeAction(status string) keymap.Action {
-	s := models.TaskStatus(status)
+func (m *AllTasksViewModel) allTasksStateChangeAction(state string) keymap.Action {
+	s := models.WorkflowState(state)
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			return m.handleBulkStatusChange(s)
+			return m.handleBulkStateChange(s)
 		}
-		model, cmd := taskOpsChangeStatus(m, s)
-		if s == models.StatusDone {
+		cmd := wfChangeState(m, s)
+		if s == models.StateDone {
 			m.setCompletionFlash()
-			return model, tea.Batch(cmd, completionFlashScheduler())
+			return m, tea.Batch(cmd, completionFlashScheduler())
 		}
-		m.setMutationFlash(statusMutationFlashBg(s))
-		return model, tea.Batch(cmd, mutationFlashTimeout())
+		m.setMutationFlash(stateMutationFlashBg(s))
+		return m, tea.Batch(cmd, mutationFlashTimeout())
 	}
 }
 
@@ -297,9 +285,9 @@ func (m *AllTasksViewModel) allTasksPriorityChangeAction(key string) keymap.Acti
 		if m.multiSelectMode && m.SelectedCount() > 0 {
 			return m.handleBulkPriorityChange(p)
 		}
-		model, cmd := taskOpsChangePriority(m, key)
+		cmd := wfChangePriority(m, key)
 		m.setMutationFlash(priorityMutationFlashBg(p))
-		return model, tea.Batch(cmd, mutationFlashTimeout())
+		return m, tea.Batch(cmd, mutationFlashTimeout())
 	}
 }
 
@@ -308,7 +296,7 @@ func (m *AllTasksViewModel) allTasksDueDateSetAction(days int) keymap.Action {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
 			return m.handleBulkDueDateChange(days)
 		}
-		return taskOpsSetQuickDueDate(m, days)
+		return m, wfSetQuickDueDate(m, days)
 	}
 }
 
@@ -316,7 +304,7 @@ func (m *AllTasksViewModel) allTasksClearDueDate() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && m.SelectedCount() > 0 {
 		return m.handleBulkClearDueDate()
 	}
-	return taskOpsClearDueDate(m)
+	return m, wfClearDueDate(m)
 }
 
 func (m *AllTasksViewModel) allTasksSectionMoveAction(section string) keymap.Action {
@@ -324,17 +312,17 @@ func (m *AllTasksViewModel) allTasksSectionMoveAction(section string) keymap.Act
 		if m.multiSelectMode && m.SelectedCount() > 0 {
 			return m.handleBulkSectionMove(section)
 		}
-		return taskOpsSectionMove(m, section)
+		return m, wfSectionMove(m, section)
 	}
 }
 
 func (m *AllTasksViewModel) allTasksMarkDone() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && m.SelectedCount() > 0 {
-		return m.handleBulkStatusChange(models.StatusDone)
+		return m.handleBulkStateChange(models.StateDone)
 	}
-	model, cmd := taskOpsChangeStatus(m, models.StatusDone)
+	cmd := wfChangeState(m, models.StateDone)
 	m.setCompletionFlash()
-	return model, tea.Batch(cmd, completionFlashScheduler())
+	return m, tea.Batch(cmd, completionFlashScheduler())
 }
 
 func (m *AllTasksViewModel) allTasksFilterByTags() (tea.Model, tea.Cmd) {
@@ -371,7 +359,7 @@ func (m *AllTasksViewModel) allTasksFilterTypeKey(key string) keymap.Action {
 	}
 }
 
-func (m *AllTasksViewModel) allTasksFilterStatusKey(key string) keymap.Action {
+func (m *AllTasksViewModel) allTasksFilterStateKey(key string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		return m.handleAllTasksFilterSubPrefix("Fs", key)
 	}
@@ -396,12 +384,6 @@ func (m *AllTasksViewModel) allTasksOpenAttrPicker() (tea.Model, tea.Cmd) {
 func (m *AllTasksViewModel) allTasksFilterScoreKey(key string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		return m.handleAllTasksFilterSubPrefix("FS", key)
-	}
-}
-
-func (m *AllTasksViewModel) allTasksFilterStageKey(key string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		return m.handleAllTasksFilterSubPrefix("F.", key)
 	}
 }
 

@@ -341,7 +341,7 @@ func (m *CommandPaletteModel) taskQuickAction(key string) tea.Cmd {
 
 	switch key {
 	case "x":
-		if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
+		if !task.IsTerminalState() {
 			return func() tea.Msg {
 				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 					Task: task, Project: project, Action: "complete",
@@ -349,7 +349,7 @@ func (m *CommandPaletteModel) taskQuickAction(key string) tea.Cmd {
 			}
 		}
 	case "s":
-		if task.Status == models.StatusTodo {
+		if taskInPlanningState(task) {
 			return func() tea.Msg {
 				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 					Task: task, Project: project, Action: "start",
@@ -357,7 +357,7 @@ func (m *CommandPaletteModel) taskQuickAction(key string) tea.Cmd {
 			}
 		}
 	case "b":
-		if task.Status.IsActive() && task.Status != models.StatusBlocked {
+		if !task.IsTerminalState() && !task.IsInState(models.StateWaiting) {
 			return func() tea.Msg {
 				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 					Task: task, Project: project, Action: "block",
@@ -365,7 +365,7 @@ func (m *CommandPaletteModel) taskQuickAction(key string) tea.Cmd {
 			}
 		}
 	case "r":
-		if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
+		if task.IsTerminalState() {
 			return func() tea.Msg {
 				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 					Task: task, Project: project, Action: "reopen",

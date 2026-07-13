@@ -8,7 +8,7 @@ import (
 
 func TestMatchesScope_NilScope(t *testing.T) {
 	rule := WorkflowRule{Scope: nil}
-	task := &models.Task{ID: "1", Type: models.TaskTypeTask, Section: models.SectionNext}
+	task := &models.Task{ID: "1", Type: models.TaskTypeTask, WorkflowState: models.StateNext}
 
 	if !rule.MatchesScope(task, "MyProject", "proj-123") {
 		t.Error("nil scope should match everything")
@@ -93,8 +93,11 @@ func TestMatchesScope_TypeMatch(t *testing.T) {
 }
 
 func TestMatchesScope_SectionListMatch(t *testing.T) {
+	// The task's section is now derived canonically from its state, so
+	// case-insensitivity is exercised on the (user-authored) scope side: a
+	// lowercase "next" scope still matches a canonical Next-section task.
 	rule := WorkflowRule{
-		Scope: &RuleScope{Sections: []string{models.SectionNext, models.SectionCompleted}},
+		Scope: &RuleScope{Sections: []string{"next", models.SectionCompleted}},
 	}
 
 	tests := []struct {
@@ -104,14 +107,14 @@ func TestMatchesScope_SectionListMatch(t *testing.T) {
 	}{
 		{"Next matches", models.SectionNext, true},
 		{"Completed matches", models.SectionCompleted, true},
-		{"case-insensitive match", "next", true},
+		{"case-insensitive scope match", models.SectionNext, true},
 		{"Active does not match", "", false},
 		{"Inbox does not match", "Inbox", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := &models.Task{ID: "1", Type: models.TaskTypeTask, Section: tt.section}
+			task := &models.Task{ID: "1", Type: models.TaskTypeTask, WorkflowState: models.DeriveWorkflowState("", tt.section, "")}
 			if got := rule.MatchesScope(task, "Proj", "p1"); got != tt.expected {
 				t.Errorf("MatchesScope() = %v, want %v", got, tt.expected)
 			}
@@ -143,7 +146,7 @@ func TestMatchesScope_CombinedScope(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := &models.Task{ID: "1", Type: tt.taskType, Section: tt.section}
+			task := &models.Task{ID: "1", Type: tt.taskType, WorkflowState: models.DeriveWorkflowState("", tt.section, "")}
 			if got := rule.MatchesScope(task, tt.projectName, "p1"); got != tt.expected {
 				t.Errorf("MatchesScope() = %v, want %v", got, tt.expected)
 			}
@@ -152,8 +155,10 @@ func TestMatchesScope_CombinedScope(t *testing.T) {
 }
 
 func TestMatchesScope_SectionMatch(t *testing.T) {
+	// Case-insensitivity is exercised on the scope side (lowercase "inbox")
+	// because the task's section is now derived canonically from its state.
 	rule := WorkflowRule{
-		Scope: &RuleScope{Sections: []string{models.SectionInbox, models.SectionNext}},
+		Scope: &RuleScope{Sections: []string{"inbox", models.SectionNext}},
 	}
 
 	tests := []struct {
@@ -162,16 +167,16 @@ func TestMatchesScope_SectionMatch(t *testing.T) {
 		expected bool
 	}{
 		{"section matches in scope list", models.SectionInbox, true},
-		{"section case-insensitive", "inbox", true},
+		{"case-insensitive scope match", models.SectionInbox, true},
 		{"neither matches", models.SectionWaiting, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:      "1",
-				Type:    models.TaskTypeTask,
-				Section: tt.section,
+				ID:            "1",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.DeriveWorkflowState("", tt.section, ""),
 			}
 			if got := rule.MatchesScope(task, "Proj", "p1"); got != tt.expected {
 				t.Errorf("MatchesScope() = %v, want %v", got, tt.expected)
@@ -190,12 +195,12 @@ func TestMatchesScope_EmptyFields(t *testing.T) {
 		},
 	}
 
-	task := &models.Task{ID: "1", Type: models.TaskTypeBug, Section: "Anything"}
+	task := &models.Task{ID: "1", Type: models.TaskTypeBug, WorkflowState: models.DeriveWorkflowState("", "Anything", "")}
 	if !rule.MatchesScope(task, "AnyProject", "any-id") {
 		t.Error("empty project/section slices should not restrict; only type should filter")
 	}
 
-	taskWrongType := &models.Task{ID: "2", Type: models.TaskTypeEpic, Section: "Anything"}
+	taskWrongType := &models.Task{ID: "2", Type: models.TaskTypeEpic, WorkflowState: models.DeriveWorkflowState("", "Anything", "")}
 	if rule.MatchesScope(taskWrongType, "AnyProject", "any-id") {
 		t.Error("non-empty type filter should reject non-matching types")
 	}

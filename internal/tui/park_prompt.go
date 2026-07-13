@@ -30,7 +30,7 @@ func (m *AppModel) maybePromptPark(targetTaskID string, continueNav func() tea.C
 		return continueNav(), false
 	}
 	task := project.GetTaskByID(mutation.TaskID)
-	if task == nil || task.Status.IsComplete() || taskParkedSinceMutation(task, mutation) {
+	if task == nil || task.IsComplete() || taskParkedSinceMutation(task, mutation) {
 		return continueNav(), false
 	}
 
@@ -77,14 +77,12 @@ func (m *AppModel) finishPendingParkPrompt(msg ParkNoteDoneMsg) (bool, tea.Cmd) 
 		return true, m.runPendingParkContinuation()
 	}
 
-	action := "Park Task"
-	if msg.Unparked {
-		action = "Unpark Task"
-	}
-	if err := m.persister.SaveWithBackupSyncOptions(msg.Project, m.taskMutationSaveOptions(msg.Task, action)); err != nil {
+	res, err := m.applyParkMutation(msg)
+	if err != nil {
 		m.err = fmt.Errorf("park prompt save failed: %w", err)
 		return true, nil
 	}
+	m.reloadProjectByID(res.ProjectID)
 
 	return true, m.runPendingParkContinuation()
 }

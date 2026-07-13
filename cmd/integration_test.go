@@ -44,11 +44,11 @@ func TestIntegration_CreateTaskAndComplete(t *testing.T) {
 		t.Fatal("should find task by short ID")
 	}
 	testutil.AssertEqual(t, foundTask.Title, "New Integration Task")
-	testutil.AssertEqual(t, foundTask.Status, models.StatusTodo)
+	testutil.AssertEqual(t, foundTask.State(), models.StateReady)
 
 	// Complete the task
 	foundTask.Complete()
-	testutil.AssertEqual(t, foundTask.Status, models.StatusDone)
+	testutil.AssertEqual(t, foundTask.State(), models.StateDone)
 	if foundTask.CompletedAt == nil {
 		t.Error("CompletedAt should be set after completing task")
 	}
@@ -130,12 +130,12 @@ func TestIntegration_TaskHierarchy(t *testing.T) {
 	task2.Complete()
 
 	// Verify children are complete
-	testutil.AssertEqual(t, task1.Status, models.StatusDone)
-	testutil.AssertEqual(t, task2.Status, models.StatusDone)
+	testutil.AssertEqual(t, task1.State(), models.StateDone)
+	testutil.AssertEqual(t, task2.State(), models.StateDone)
 
 	// Complete the story
 	story.Complete()
-	testutil.AssertEqual(t, story.Status, models.StatusDone)
+	testutil.AssertEqual(t, story.State(), models.StateDone)
 }
 
 func TestIntegration_FindTaskByIdentifier(t *testing.T) {
@@ -249,7 +249,7 @@ func TestIntegration_DependencyLifecycle(t *testing.T) {
 
 	// Complete task2
 	task2.Complete()
-	testutil.AssertEqual(t, task2.Status, models.StatusDone)
+	testutil.AssertEqual(t, task2.State(), models.StateDone)
 
 	// Remove dependency from task1
 	task1.RemoveDependency(task2.ID)

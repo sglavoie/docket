@@ -2,16 +2,16 @@ package tui
 
 // Common prefix hints used across multiple views.
 var (
-	// StatusPrefixHints contains hints for the "," (status) prefix.
+	// StatusPrefixHints contains hints for the "," (workflow-state) prefix.
 	StatusPrefixHints = []PrefixHint{
 		{Key: "s", Description: "start", Detail: "Set task to in-progress"},
 		{Key: "d", Description: "done", Detail: "Mark task as completed"},
-		{Key: "b", Description: "block", Detail: "Mark task as blocked"},
+		{Key: "b", Description: "waiting", Detail: "Set task to waiting (external block)"},
 		{Key: "x", Description: "cancel", Detail: "Cancel the task", Danger: true},
-		{Key: "o", Description: "reopen", Detail: "Reopen a closed task"},
+		{Key: "o", Description: "reopen", Detail: "Reopen a closed task (to inbox)"},
 		{Key: "r", Description: "review", Detail: "Send task to review"},
-		{Key: "S", Description: "standby", Detail: "Put task on standby"},
-		{Key: "m", Description: "maybe", Detail: "Set task to maybe"},
+		{Key: "S", Description: "paused", Detail: "Pause the task"},
+		{Key: "m", Description: "someday", Detail: "Set task to someday"},
 		{Key: "k", Description: "skip", Detail: "Skip next recurrence"},
 		{Key: "D", Description: "defer", Detail: "Defer recurrence"},
 	}

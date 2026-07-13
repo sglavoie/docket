@@ -36,7 +36,7 @@ func TestBuildCrossPriorityRowsGroupOrdering(t *testing.T) {
 	later := makePriorityTask("l1", "Later", intPtr(30))
 	backlog := makePriorityTask("b1", "Backlog", nil)
 	blocked := makePriorityTask("k1", "Blocked", nil)
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 
 	projA.Tasks = []*models.Task{overdue, thisWeek, backlog}
 	projB.Tasks = []*models.Task{today, later, blocked}
@@ -100,7 +100,7 @@ func TestBuildCrossPriorityRowsBlockedCollapsedHidesTasks(t *testing.T) {
 	proj := &models.Project{ID: "proj-1", Name: "Solo"}
 	today := makePriorityTask("t1", "Today", intPtr(0))
 	blocked := makePriorityTask("b1", "Blocked", nil)
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 	proj.Tasks = []*models.Task{today, blocked}
 
 	m := priorityTestEnv(proj)
@@ -165,10 +165,10 @@ func TestBuildCrossPriorityRowsExcludesCompletedAndSnoozed(t *testing.T) {
 	visible := makePriorityTask("v1", "Visible", intPtr(0))
 
 	done := makePriorityTask("d1", "Done", intPtr(0))
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 
 	canceled := makePriorityTask("c1", "Canceled", intPtr(0))
-	canceled.Status = models.StatusCanceled
+	canceled.WorkflowState = models.StateCanceled
 
 	snoozed := makePriorityTask("s1", "Snoozed", intPtr(0))
 	future := time.Now().AddDate(0, 0, 5)
@@ -294,7 +294,7 @@ func TestBuildCrossPriorityRowsBlockedClassification(t *testing.T) {
 	// must be reclassified to Blocked/Waiting when blocked.
 	proj := &models.Project{ID: "proj-1", Name: "Solo"}
 	blockedToday := makePriorityTask("bt", "Blocked today", intPtr(0))
-	blockedToday.Status = models.StatusBlocked
+	blockedToday.WorkflowState = models.StateWaiting
 	proj.Tasks = []*models.Task{blockedToday}
 
 	m := priorityTestEnv(proj)
@@ -338,7 +338,7 @@ func TestCrossProjectRebuildRowsPriorityModeIntegration(t *testing.T) {
 	proj := &models.Project{ID: "proj-int", Name: "Int"}
 	today := makePriorityTask("t1", "Today task", intPtr(0))
 	done := makePriorityTask("d1", "Done task", intPtr(0))
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 	proj.Tasks = []*models.Task{today, done}
 	proj.BuildTaskTree()
 

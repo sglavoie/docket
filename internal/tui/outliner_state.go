@@ -6,7 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // refreshView rebuilds the outliner rows.
@@ -16,13 +18,7 @@ func (m *OutlinerModel) refreshView() {
 
 // saveAndRefreshBulk saves the project with workflow rules and rebuilds rows.
 func (m *OutlinerModel) saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd {
-	opts := m.buildWorkflowOpts(prevStates)
-	return func() tea.Msg {
-		if err := persistWithWorkflow(opts); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return outlinerRefreshMsg{}
-	}
+	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(prevStates), "")
 }
 
 // setStatusMessage sets the status bar text.
@@ -30,29 +26,39 @@ func (m *OutlinerModel) setStatusMessage(msg string) {
 	m.setStatus(msg)
 }
 
-// buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
-// state, draining the pending undo context.
-func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context, m.undo.TaskIDs)
-	m.undo.Clear()
-	return opts
-}
-
-// workflowPersistFn returns a persistFn that runs the full save pipeline:
-// auto-unblock, recurring, workflow rules, undo snapshots.
-func (m *OutlinerModel) workflowPersistFn() persistFn {
-	return newWorkflowPersistFn(m)
-}
-
-// saveAndRefreshWithPrevStates saves the project with the workflow pipeline
-// and rebuilds rows. This is the outliner's equivalent of ProjectTree's method.
-func (m *OutlinerModel) saveAndRefreshWithPrevStates(prevStates map[string]*models.Task) error {
-	opts := m.buildWorkflowOpts(prevStates)
-	if err := persistWithWorkflow(opts); err != nil {
-		return err
+// commitWorkflowOpts constructs the project-scoped workflow options for the
+// application-layer commit, draining the pending undo context. Workflow rules come
+// from config (nil-guarded for isolated tests); a nil prevStates selects stateless
+// evaluation, a captured snapshot selects contextual evaluation.
+func (m *OutlinerModel) commitWorkflowOpts(prevStates map[string]*models.Task) app.ProjectWorkflowOptions {
+	var rules []workflow.WorkflowRule
+	if m.config != nil {
+		rules = m.config.GetEnabledWorkflowRules()
 	}
-	m.rebuildRows()
-	return nil
+	action, context := m.undo.Action, m.undo.Context
+	m.undo.Clear()
+	return app.ProjectWorkflowOptions{
+		Rules:       rules,
+		PrevStates:  prevStates,
+		UndoAction:  action,
+		UndoContext: context,
+	}
+}
+
+// singleTaskCoordinator exposes the application-layer single-task coordinator so
+// the shared primary-view helpers route single-task mutations through the
+// coordinator (bulk paths remain on saveAndRefreshBulk).
+func (m *OutlinerModel) singleTaskCoordinator() TaskItemCoordinator {
+	return m.taskItem
+}
+
+// commitWorkflow commits the project's current in-memory state (already mutated by
+// the caller) through the application layer with the workflow cascade, labeling
+// the ledger entry from the pending undo context and setting summary as the
+// status-line text. It is the single-project bulk-status/delete analogue of
+// saveAndRefreshBulk that carries an explicit success message.
+func (m *OutlinerModel) commitWorkflow(prevStates map[string]*models.Task, summary string) tea.Cmd {
+	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(prevStates), summary)
 }
 
 // setUndoContext sets the action context for the next save operation.
@@ -136,49 +142,54 @@ func copyBoolMap(src map[string]bool) map[string]bool {
 // outlinerRefreshMsg signals that the outliner should refresh its rows.
 type outlinerRefreshMsg struct{}
 
-// saveWithWorkflow persists the project using the full workflow pipeline
-// and rebuilds rows on success.
+// saveWithWorkflow persists the project's current in-memory state through the
+// application layer (workflow cascade + grouped ledger undo) and the shell reloads
+// the rows on the resulting BatchTransactionResultMsg. The caller has already
+// applied its structural mutation (swap/indent/outdent/section move/paste) to
+// m.project in memory.
 func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
-	opts := m.buildWorkflowOpts(nil)
-	return func() tea.Msg {
-		if err := persistWithWorkflow(opts); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return outlinerRefreshMsg{}
-	}
+	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(nil), "")
 }
 
-// pasteFromClipboardInto reads the clipboard, creates a task in proj's Inbox,
-// registers an undo snapshot, and saves. When proj is m.project the single-
-// project workflow pipeline runs; otherwise (cross-project mode) the cursor
-// project's backup/save path runs without touching m.project.
+// pasteFromClipboardInto reads the clipboard and creates a task in proj's Inbox.
+// When proj is m.project the single-project workflow pipeline runs (an in-memory
+// append + save). Otherwise (cross-project mode) the new task is created through
+// the app-layer Capture seam, which commits one ledger transaction; the shell
+// reloads and toasts. Cross-project paste stores a detected URL as the task's URL
+// field rather than as a URL attachment (the single-project path still attaches),
+// because the capture use case models URLs as a task field.
 func (m *OutlinerModel) pasteFromClipboardInto(proj *models.Project) tea.Cmd {
 	if proj == nil {
 		return nil
 	}
-	task, err := newInboxTaskFromClipboard(proj)
-	if err != nil {
-		return func() tea.Msg { return StatusMsg("Clipboard is empty") }
-	}
-	title := task.Title
-	if len([]rune(title)) > 40 {
-		title = string([]rune(title)[:37]) + "..."
-	}
-	m.setStatus(fmt.Sprintf("Created \"%s\" in Inbox", title))
 
 	if proj == m.project {
+		task, err := newInboxTaskFromClipboard(proj)
+		if err != nil {
+			return func() tea.Msg { return StatusMsg("Clipboard is empty") }
+		}
+		title := task.Title
+		if len([]rune(title)) > 40 {
+			title = string([]rune(title)[:37]) + "..."
+		}
+		m.setStatus(fmt.Sprintf("Created \"%s\" in Inbox", title))
 		m.setUndoContext("Paste Task", task.Title)
 		m.undo.TaskIDs = []string{task.ID}
 		return m.saveWithWorkflow()
 	}
 
-	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
-		_ = m.projectService.RecordUndoSnapshot(proj, "Paste Task", task.Title, *m.config.UndoHistoryDepth, nil)
+	pt, err := readPastedClipboard()
+	if err != nil {
+		return func() tea.Msg { return StatusMsg("Clipboard is empty") }
 	}
-	m.crossUndoCtx.Set("Paste Task", task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-	m.crossUndoCtx.TaskIDs = []string{task.ID}
-	return m.crossSaveProject(proj)
+	return m.taskItem.Capture(app.CaptureRequest{
+		ProjectID:   proj.ID,
+		Title:       pt.Title,
+		Description: pt.Description,
+		Section:     models.SectionInbox,
+		URL:         pt.URL,
+		Prepend:     true,
+	})
 }
 
 // archiveProject requests a confirmed archive or unarchive for the project

@@ -230,8 +230,7 @@ func TestAllTasksViewBudgetsWrappedFooterHeight(t *testing.T) {
 		// the task list overflows the content area and must scroll.
 		for i := 0; i < 40; i++ {
 			task := newFixtureTask(p, models.TaskTypeTask, fmt.Sprintf("In-progress budgeting task %d", i+1))
-			task.Status = models.StatusInProgress
-			task.SetSection(models.SectionNext)
+			task.WorkflowState = models.StateInProgress
 		}
 	}); err != nil {
 		t.Fatalf("addProject: %v", err)

@@ -176,7 +176,7 @@ func TestMoveUp_CompletionBoundaryBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	incompleteTask.Status = models.StatusTodo
+	incompleteTask.WorkflowState = models.StateReady
 	project.Tasks = append(project.Tasks, incompleteTask)
 	project.NextShortID++
 
@@ -212,7 +212,7 @@ func TestMoveDown_CompletionBoundaryBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	incompleteTask.Status = models.StatusInProgress
+	incompleteTask.WorkflowState = models.StateInProgress
 	project.Tasks = append(project.Tasks, incompleteTask)
 	project.NextShortID++
 

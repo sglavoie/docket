@@ -81,12 +81,15 @@ func validateThemeName(name string) error {
 }
 
 // ThemePath returns the full path for a named theme file.
-// Returns an error if the name is invalid.
+// Returns an error if the name is invalid or escapes the themes directory.
 func (m *Manager) ThemePath(name string) (string, error) {
 	if err := validateThemeName(name); err != nil {
 		return "", err
 	}
-	return filepath.Join(m.ThemesDir(), name+".json"), nil
+	// Defense in depth: even though validateThemeName forbids separators and
+	// double dots, resolve the final path through the shared containment API so
+	// a symlinked themes directory cannot be used to escape.
+	return util.SafeJoin(m.ThemesDir(), name+".json")
 }
 
 // ListThemes returns all valid theme files in the themes directory.

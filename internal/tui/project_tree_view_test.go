@@ -146,9 +146,9 @@ func TestProjectTreeCyclableViewModesInboxFirst(t *testing.T) {
 func TestProjectTreeViewModeIndicatorRendersInboxFirst(t *testing.T) {
 	active := newTestProjectTreeTask(t, "Active task")
 	inbox := newTestProjectTreeTask(t, "Inbox task")
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 	next := newTestProjectTreeTask(t, "Next task")
-	next.Section = models.SectionNext
+	next.SetSection(models.SectionNext)
 
 	project := newTestProjectTreeProject(t, "Test", []*models.Task{active, inbox, next})
 	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)

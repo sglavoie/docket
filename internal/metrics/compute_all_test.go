@@ -170,14 +170,14 @@ func TestComputeAllWithSummaries(t *testing.T) {
 	archivedSummaries := []TaskSummary{
 		{
 			ID:             "archived-done",
-			Status:         models.StatusDone,
+			WorkflowState:  models.StateDone,
 			CompletedAt:    &archivedDone,
 			FirstStartedAt: &archivedStart,
 		},
 		{
-			ID:          "archived-canceled",
-			Status:      models.StatusCanceled,
-			CompletedAt: &archivedCanceled,
+			ID:            "archived-canceled",
+			WorkflowState: models.StateCanceled,
+			CompletedAt:   &archivedCanceled,
 		},
 	}
 

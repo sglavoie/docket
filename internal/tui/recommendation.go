@@ -533,7 +533,7 @@ func cockpitFooterFor(emptyState CockpitEmptyState) CockpitFooterActions {
 func cockpitActionCanUnblock(action RecommendedAction) bool {
 	return action.Task != nil &&
 		action.Project != nil &&
-		action.Task.Status == models.StatusBlocked &&
+		action.Task.IsInState(models.StateWaiting) &&
 		!action.Project.HasIncompleteDependencies(action.Task)
 }
 

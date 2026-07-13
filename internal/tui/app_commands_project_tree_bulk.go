@@ -74,12 +74,12 @@ func (m *AppModel) runProjectTreeBulkDueDatePrefix(key string) tea.Msg {
 	return m.runProjectTreeCmd(cmd)
 }
 
-func (m *AppModel) runProjectTreeBulkStatusTransition(status models.TaskStatus) tea.Msg {
+func (m *AppModel) runProjectTreeBulkStateTransition(state models.WorkflowState) tea.Msg {
 	if m.projectTree == nil {
 		return nil
 	}
 	wasBulk := m.projectTreeHasBulkSelection()
-	_, cmd := m.projectTree.handleStatusTransition(status, m.projectTree.visibleNodes())
+	_, cmd := m.projectTree.handleStateTransition(state, m.projectTree.visibleNodes())
 	if !wasBulk {
 		return nil
 	}

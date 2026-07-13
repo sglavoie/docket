@@ -40,19 +40,20 @@ func renderSettingLine(label, value string) string {
 	return MutedStyle.Render(padded+":") + " " + value
 }
 
-// inboxSnapshot stores task state for undo in inbox processors.
+// inboxSnapshot stores task state for undo in inbox processors. The task's
+// lifecycle is captured as a single canonical WorkflowState; the remaining
+// fields are orthogonal task attributes that inbox triage also mutates and must
+// restore. The retired Section/Status/Stage/Active shims are no longer captured
+// — ApplyWorkflowState reconstitutes them from the stored state on restore.
 type inboxSnapshot struct {
-	section      string
 	priority     int
 	tags         []string
 	dueDate      *time.Time
 	hasTime      bool
 	dependsOn    []string
-	status       models.TaskStatus
+	state        models.WorkflowState
 	completedAt  *time.Time
-	active       bool
 	snoozedUntil *time.Time
-	stage        string
 }
 
 // captureInboxSnapshot creates a snapshot of task state for undo.
@@ -76,23 +77,23 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 	}
 
 	return &inboxSnapshot{
-		section:      task.Section,
 		priority:     task.Priority,
 		tags:         append([]string{}, task.Tags...),
 		dueDate:      dueDate,
 		hasTime:      task.HasTime,
 		dependsOn:    append([]string{}, task.DependsOn...),
-		status:       task.Status,
+		state:        task.State(),
 		completedAt:  completedAt,
-		active:       task.Active,
 		snoozedUntil: snoozedUntil,
-		stage:        task.Stage,
 	}
 }
 
-// restoreInboxSnapshot restores a task from a snapshot.
+// restoreInboxSnapshot restores a task from a snapshot. The lifecycle is
+// reconstituted from the stored WorkflowState via ApplyWorkflowState (which
+// keeps the derived Section/Status coherent); CompletedAt is restored
+// afterward since ApplyWorkflowState intentionally leaves the terminal
+// timestamp untouched.
 func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
-	task.Section = snap.section
 	task.Priority = snap.priority
 	task.Tags = append([]string{}, snap.tags...)
 	task.DependsOn = append([]string{}, snap.dependsOn...)
@@ -103,8 +104,7 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 		task.DueDate = nil
 	}
 	task.HasTime = snap.hasTime
-	task.Status = snap.status
-	task.Active = snap.active
+	task.ApplyWorkflowState(snap.state)
 	if snap.completedAt != nil {
 		c := *snap.completedAt
 		task.CompletedAt = &c
@@ -117,12 +117,11 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 	} else {
 		task.SnoozedUntil = nil
 	}
-	task.Stage = snap.stage
 	task.UpdatedAt = time.Now()
 }
 
 func isProcessableInboxTask(task *models.Task) bool {
-	return task.Section == models.SectionInbox &&
+	return task.InSection(models.SectionInbox) &&
 		task.IsRoot() &&
 		!task.IsComplete() &&
 		!task.IsSnoozed()
@@ -130,7 +129,7 @@ func isProcessableInboxTask(task *models.Task) bool {
 
 // willLeaveInbox returns true if the task will no longer appear in inbox after save.
 func willLeaveInbox(task *models.Task) bool {
-	return task.Section != models.SectionInbox || task.IsComplete()
+	return !task.InSection(models.SectionInbox) || task.IsComplete()
 }
 
 // renderInboxTaskDisplay renders the current task details for both local and global inbox.
@@ -171,16 +170,11 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 		b.WriteString("\n")
 	}
 
-	// Type badge, stage badge, status badge, created date, priority, due date
+	// Type badge, status badge, created date, priority, due date
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	stageBadge := GetStageBadge(task.Stage)
-	stageSegment := ""
-	if stageBadge != "" {
-		stageSegment = stageBadge + " "
-	}
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	metadata := fmt.Sprintf("%s %s%s  Created %s  Priority %s",
-		typeIcon, stageSegment, statusIcon,
+	statusIcon := GetStateBadge(task.State())
+	metadata := fmt.Sprintf("%s %s  Created %s  Priority %s",
+		typeIcon, statusIcon,
 		MutedStyle.Render(task.CreatedAt.Format("Jan 2")),
 		GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority)),
 	)
@@ -219,7 +213,7 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 func renderInboxCurrentSettings(task *models.Task, cfg *config.Config) string {
 	var lines []string
 
-	section := task.Section
+	section := taskSectionBucket(task)
 	if section == "" {
 		section = "(no section)"
 	}

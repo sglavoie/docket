@@ -334,7 +334,7 @@ func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewTask: %v", err)
 			}
-			task.Section = models.SectionInbox
+			task.SetSection(models.SectionInbox)
 			p.Tasks = append(p.Tasks, task)
 		}
 		projects = append(projects, p)
@@ -362,7 +362,7 @@ func TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewTask: %v", err)
 			}
-			task.Section = models.SectionInbox
+			task.SetSection(models.SectionInbox)
 			p.Tasks = append(p.Tasks, task)
 		}
 		projects = append(projects, p)

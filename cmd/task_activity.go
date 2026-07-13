@@ -34,6 +34,7 @@ var activitySinceFlag string
 func init() {
 	taskCmd.AddCommand(taskActivityCmd)
 	taskActivityCmd.Flags().StringVar(&activitySinceFlag, "since", "", "Filter entries newer than duration (e.g., 1d, 7d, 2w)")
+	taskActivityCmd.Flags().Bool("json", false, "output result as JSON")
 }
 
 func runTaskActivity(cmd *cobra.Command, args []string) error {
@@ -41,9 +42,47 @@ func runTaskActivity(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("task ID")
 	}
 
+	wantJSON := jsonRequested(cmd)
 	return WithTaskRead(args[0], func(project *models.Project, task *models.Task) error {
+		if wantJSON {
+			return emitTaskActivityJSON(task)
+		}
 		return displayTaskActivity(task)
 	})
+}
+
+// activityEntryJSON is the JSON representation of one task activity log entry.
+type activityEntryJSON struct {
+	Timestamp string `json:"timestamp"`
+	Field     string `json:"field"`
+	OldValue  string `json:"old_value,omitempty"`
+	NewValue  string `json:"new_value,omitempty"`
+}
+
+func emitTaskActivityJSON(task *models.Task) error {
+	var sinceTime time.Time
+	if activitySinceFlag != "" {
+		dur, err := parseDuration(activitySinceFlag)
+		if err != nil {
+			return fmt.Errorf("invalid --since value: %w", err)
+		}
+		sinceTime = time.Now().Add(-dur)
+	}
+
+	entries := make([]activityEntryJSON, 0, len(task.Activity))
+	for i := len(task.Activity) - 1; i >= 0; i-- {
+		entry := task.Activity[i]
+		if !sinceTime.IsZero() && entry.Timestamp.Before(sinceTime) {
+			continue
+		}
+		entries = append(entries, activityEntryJSON{
+			Timestamp: entry.Timestamp.Format(time.RFC3339),
+			Field:     entry.Field,
+			OldValue:  entry.OldValue,
+			NewValue:  entry.NewValue,
+		})
+	}
+	return printJSON(entries)
 }
 
 func displayTaskActivity(task *models.Task) error {

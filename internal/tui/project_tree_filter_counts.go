@@ -22,8 +22,9 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 		}
 		// Count by type
 		counts["type:"+string(task.Type)]++
-		// Count by status
-		counts["status:"+string(task.Status)]++
+		// Count by status (legacy status vocabulary, keyed by the state each
+		// status maps to so counts agree with the Fs filter predicate)
+		counts["status:"+legacyStatusColumnForState(task.State())]++
 		// Count by due date category
 		if task.IsOverdue() {
 			counts["overdue"]++
@@ -35,23 +36,15 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 			counts["thisWeek"]++
 		}
 		// Count by section
-		if task.Section != "" {
-			counts["section:"+task.Section]++
+		if bucket := taskSectionBucket(task); bucket != "" {
+			counts["section:"+bucket]++
 		}
 		// Count by tag
 		for _, tag := range task.Tags {
 			counts["tag:"+tag]++
 		}
 		// Count actionable tasks (ready to work on)
-		if !task.IsComplete() &&
-			!m.project.HasIncompleteDependencies(task) &&
-			task.Status != models.StatusBlocked &&
-			task.Section != models.SectionInbox &&
-			task.Section != models.SectionNext &&
-			task.Section != models.SectionWaiting &&
-			task.Section != models.SectionSomeday &&
-			task.Section != models.SectionReview &&
-			task.Section != models.SectionStandby {
+		if taskIsActionableState(task, m.project) {
 			counts["actionable"]++
 		}
 	}
@@ -76,7 +69,7 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]int {
 	counts := make(map[string]int)
 	for _, child := range task.Children {
-		section := child.Section
+		section := taskSectionBucket(child)
 		if section == "" || !models.IsGTDSection(section) {
 			section = "Active"
 		}

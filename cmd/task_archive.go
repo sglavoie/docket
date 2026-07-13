@@ -77,35 +77,43 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Record undo snapshot before archiving (this is destructive and important to undo)
-	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-		if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
-			fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
-		}
-	}
-
-	// Create backup before archiving
-	if backupErr := storage.BackupProject(project); backupErr != nil {
-		return fmt.Errorf("failed to create backup: %w", backupErr)
-	}
-
-	// Archive the tasks
-	count, err := storage.ArchiveTasks(project)
-	if err != nil {
-		return fmt.Errorf("failed to archive tasks: %w", err)
-	}
-
-	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	// for all tasks being archived. Done after successful archive so a
-	// failed archive doesn't strip refs to tasks still in tasks.md.
+	// Capture the archived task IDs from the loaded project (stable UUIDs) so the
+	// durable planning cleanup keys correctly regardless of the fresh snapshot the
+	// use case loads.
 	archivedIDs := make(map[string]bool, len(completedTasks))
 	for _, t := range completedTasks {
 		archivedIDs[t.ID] = true
 	}
-	if cfg.RemoveTaskRefs(archivedIDs) > 0 {
-		if saveErr := configManager.Save(cfg); saveErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", saveErr)
+
+	// Clean the DURABLE planning refs (Focus Queue, Daily Plan, dismissals) of every
+	// archived task and fold them into the archive transaction as a config artifact,
+	// so a partial archive can never leave planning refs pointing at an archived
+	// task. Machine-local recent visits are repaired separately after the commit.
+	var artifacts []storage.ArtifactChange
+	if cfg.RemoveDurableTaskRefs(archivedIDs) > 0 {
+		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+		if artErr != nil {
+			return artErr
+		}
+		artifacts = arts
+	}
+
+	// Route the archive through the application layer: active-task removal, archive
+	// file rewrites/rotation, refreshed index, archived-task attachment retention,
+	// and the durable planning artifact all commit as ONE transaction, revision-
+	// checked and undoable through the workspace ledger.
+	svc := newAppService(cfg)
+	res, err := svc.ArchiveTasks(project.ID, artifacts...)
+	if err != nil {
+		return translateAppError(err)
+	}
+
+	// Repair the machine-local recent visits separately — non-authoritative UI state
+	// updated only after the durable commit succeeded. A failure here is a warning,
+	// not an error: the archive is already committed and recent visits are best-effort.
+	if cfg.RemoveMachineLocalTaskRefs(archivedIDs) > 0 {
+		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
 	}
 
@@ -113,11 +121,11 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		entry := struct {
 			ArchivedCount int    `json:"archived_count"`
 			Project       string `json:"project"`
-		}{ArchivedCount: count, Project: project.Name}
+		}{ArchivedCount: res.ArchivedCount, Project: project.Name}
 		return printJSON(entry)
 	}
 	if !out.Quiet {
-		fmt.Printf("Archived %s to completed.md\n", Pluralize(count, "task", "tasks"))
+		fmt.Printf("Archived %s to completed.md\n", Pluralize(res.ArchivedCount, "task", "tasks"))
 	}
 	return nil
 }
@@ -128,10 +136,6 @@ func runTaskArchiveAll(out MutateOutput) error {
 		return err
 	}
 
-	type projectResult struct {
-		Name     string `json:"name"`
-		Archived int    `json:"archived"`
-	}
 	type archiveCandidate struct {
 		Project        *models.Project
 		CompletedCount int
@@ -140,10 +144,8 @@ func runTaskArchiveAll(out MutateOutput) error {
 
 	projects := cfg.GetActiveProjects()
 	totalArchived := 0
-	totalToArchive := 0
-	configDirty := false
 	var failures []string
-	var results []projectResult
+	var results []projectArchiveResult
 	var candidates []archiveCandidate
 
 	for _, project := range projects {
@@ -173,67 +175,79 @@ func runTaskArchiveAll(out MutateOutput) error {
 			CompletedCount: len(completedTasks),
 			ArchivedIDs:    archivedIDs,
 		})
-		totalToArchive += len(completedTasks)
 	}
 
-	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 && len(candidates) > 0 {
-		if len(candidates) == 1 {
-			candidate := candidates[0]
-			if snapshotErr := storage.RecordUndoSnapshot(candidate.Project, "Archive Tasks",
-				fmt.Sprintf("%d tasks", candidate.CompletedCount), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot for %s: %v\n", candidate.Project.Name, snapshotErr)
-			}
-		} else {
-			projectsToSnapshot := make([]*models.Project, 0, len(candidates))
-			for _, candidate := range candidates {
-				projectsToSnapshot = append(projectsToSnapshot, candidate.Project)
-			}
-			if _, snapshotErr := recordGroupedUndoSnapshots(projectsToSnapshot, "Archive Tasks",
-				fmt.Sprintf("%d tasks across %d projects", totalToArchive, len(candidates)), *cfg.UndoHistoryDepth); snapshotErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to record grouped undo snapshot: %v\n", snapshotErr)
-			}
-		}
+	if len(candidates) == 0 {
+		return emitArchiveAllOutput(out, totalArchived, results, failures)
 	}
 
+	// Aggregate the archived task IDs across every confirmed candidate and clean their
+	// DURABLE planning refs (Focus Queue, Daily Plan, dismissals), folding them into
+	// the archive-all transaction as a single config artifact so the cleanup commits
+	// atomically with the whole batch. Machine-local recent visits are repaired
+	// separately after the commit.
+	allArchivedIDs := make(map[string]bool)
+	projectIDs := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
-		if backupErr := storage.BackupProject(candidate.Project); backupErr != nil {
-			failures = append(failures, fmt.Sprintf("[%s] backup failed: %v", candidate.Project.Name, backupErr))
-			continue
+		projectIDs = append(projectIDs, candidate.Project.ID)
+		for id := range candidate.ArchivedIDs {
+			allArchivedIDs[id] = true
 		}
+	}
 
-		count, err := storage.ArchiveTasks(candidate.Project)
-		if err != nil {
-			failures = append(failures, fmt.Sprintf("[%s] archive failed: %v", candidate.Project.Name, err))
-			continue
+	var artifacts []storage.ArtifactChange
+	if cfg.RemoveDurableTaskRefs(allArchivedIDs) > 0 {
+		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+		if artErr != nil {
+			return artErr
 		}
+		artifacts = arts
+	}
 
-		// Clean up config references for archived tasks AFTER successful
-		// archive, so failures don't strip refs to tasks still in tasks.md.
-		if cfg.RemoveTaskRefs(candidate.ArchivedIDs) > 0 {
-			configDirty = true
-		}
+	// Archive every candidate as ONE atomic, ledger-backed transaction: a single undo
+	// reverses the whole batch and a failure leaves every project un-archived.
+	svc := newAppService(cfg)
+	res, err := svc.ArchiveAllTasks(projectIDs, artifacts...)
+	if err != nil {
+		return translateAppError(err)
+	}
 
-		results = append(results, projectResult{Name: candidate.Project.Name, Archived: count})
+	for _, pr := range res.Projects {
+		results = append(results, projectArchiveResult{Name: pr.ProjectName, Archived: pr.ArchivedCount})
 		if !out.Quiet && !out.JSON {
-			fmt.Printf("[%s] Archived %s\n", candidate.Project.Name, Pluralize(count, "task", "tasks"))
-		}
-		totalArchived += count
-	}
-
-	// Save config once after all projects are processed
-	if configDirty {
-		if saveErr := configManager.Save(cfg); saveErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", saveErr)
+			fmt.Printf("[%s] Archived %s\n", pr.ProjectName, Pluralize(pr.ArchivedCount, "task", "tasks"))
 		}
 	}
+	totalArchived = res.TotalArchived
 
+	// Repair machine-local recent visits once after the archive commit — best-effort,
+	// warning-only, non-authoritative UI state.
+	if cfg.RemoveMachineLocalTaskRefs(allArchivedIDs) > 0 {
+		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
+		}
+	}
+
+	return emitArchiveAllOutput(out, totalArchived, results, failures)
+}
+
+// projectArchiveResult is the per-project archive-all summary rendered under --json.
+type projectArchiveResult struct {
+	Name     string `json:"name"`
+	Archived int    `json:"archived"`
+}
+
+// emitArchiveAllOutput renders the archive-all summary: a JSON envelope under
+// --json, a per-project total otherwise, and a non-nil error when any project
+// failed so the caller's exit status reflects the partial failure.
+func emitArchiveAllOutput(out MutateOutput, totalArchived int, results []projectArchiveResult, failures []string) error {
 	if out.JSON {
 		if results == nil {
-			results = []projectResult{}
+			results = []projectArchiveResult{}
 		}
 		summary := struct {
-			TotalArchived int             `json:"total_archived"`
-			Projects      []projectResult `json:"projects"`
+			TotalArchived int                    `json:"total_archived"`
+			Projects      []projectArchiveResult `json:"projects"`
 		}{TotalArchived: totalArchived, Projects: results}
 		return printJSON(summary)
 	}

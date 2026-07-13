@@ -281,13 +281,21 @@ func buildTaskItemPanelKeyMap(viewName string, actions taskItemPanelActions, ext
 	}
 }
 
-func persistTaskItemMutation(project *models.Project, success tea.Msg) tea.Cmd {
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+// commitTaskItemMutation commits an already-applied local panel mutation
+// through its coordinator command and resolves to the panel's own success
+// message. The panel mutates its model synchronously in Update() (avoiding
+// data races with View()); the application layer then re-applies the same
+// mutation against a fresh snapshot and commits one ChangeSet. The success
+// message carries the freshest resolvable task so downstream handlers observe
+// the committed object, not the panel's optimistic copy.
+func commitTaskItemMutation(project *models.Project, task *models.Task, commit tea.Cmd, success func(*models.Task) tea.Msg) tea.Cmd {
+	return adaptSubviewCommit(commit, func() tea.Msg {
+		fresh := task
+		if current := resolveTaskInProject(project, task.ID); current != nil {
+			fresh = current
 		}
-		return success
-	}
+		return success(fresh)
+	})
 }
 
 func refreshTaskReference(project *models.Project, task **models.Task) {
@@ -303,19 +311,23 @@ type taskItemDeleteMutation struct {
 	remove       func(*models.Task, int) bool
 	count        func(*models.Task) int
 	errorMessage string
-	success      func(*models.Task) tea.Msg
+	// commit builds the coordinator command that persists the removal of the
+	// item at the given pre-decrement index.
+	commit  func(taskID string, index int) tea.Cmd
+	success func(*models.Task) tea.Msg
 }
 
 func executeTaskItemDeleteMutation(cfg taskItemDeleteMutation) tea.Cmd {
 	refreshTaskReference(cfg.project, cfg.task)
-	if !cfg.remove(*cfg.task, *cfg.cursor) {
+	index := *cfg.cursor
+	if !cfg.remove(*cfg.task, index) {
 		return func() tea.Msg { return ErrorMsg{Err: errors.New(cfg.errorMessage)} }
 	}
 	if *cfg.cursor >= cfg.count(*cfg.task) && *cfg.cursor > 0 {
 		*cfg.cursor--
 	}
 
-	return persistTaskItemMutation(cfg.project, cfg.success(*cfg.task))
+	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit((*cfg.task).ID, index), cfg.success)
 }
 
 type taskItemToggleMutation struct {
@@ -324,7 +336,10 @@ type taskItemToggleMutation struct {
 	cursor       int
 	toggle       func(*models.Task, int) bool
 	errorMessage string
-	success      func(*models.Task) tea.Msg
+	// commit builds the coordinator command that persists the toggle of the
+	// item at the given index.
+	commit  func(taskID string, index int) tea.Cmd
+	success func(*models.Task) tea.Msg
 }
 
 func executeTaskItemToggleMutation(cfg taskItemToggleMutation) tea.Cmd {
@@ -333,7 +348,7 @@ func executeTaskItemToggleMutation(cfg taskItemToggleMutation) tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: errors.New(cfg.errorMessage)} }
 	}
 
-	return persistTaskItemMutation(cfg.project, cfg.success(*cfg.task))
+	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit((*cfg.task).ID, cfg.cursor), cfg.success)
 }
 
 func copyTextToClipboard(text string) error {

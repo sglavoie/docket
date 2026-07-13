@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -71,39 +74,41 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Purge any existing trash entry with same slug
-	if err := storage.PurgeFromTrash(project.Slug, cfg.DataDir); err != nil {
-		return fmt.Errorf("failed to purge old trash entry: %w", err)
-	}
+	// Snapshot the project's configuration references before RemoveProject
+	// strips them, so a later restore can faithfully re-establish them.
+	configRefs := marshalProjectReferences(cfg, project.ID, project.Slug)
 
-	// Backup config before making changes
-	if err := configManager.BackupConfig(); err != nil {
-		return fmt.Errorf("failed to create config backup: %w", err)
-	}
-
-	// Move project directory to trash
-	if err := storage.MoveProjectToTrash(project, cfg.DataDir); err != nil {
-		return fmt.Errorf("failed to move project to trash: %w", err)
-	}
-
-	// Remove project from config
+	// Remove the project from the catalog (in-memory) and encode the resulting
+	// config as the artifact that will ride the delete transaction.
 	cfg.RemoveProject(project.ID)
-
-	// Clean cross-project references in remaining projects
-	if cleaned, err := cleanCrossProjectRefs(cfg.Projects, project.Slug); err != nil {
-		fmt.Printf("Warning: failed to clean some cross-project references: %v\n", err)
-	} else if cleaned > 0 {
-		// Summary is printed inside cleanCrossProjectRefs per project
-		_ = cleaned
+	configArts, err := encodeConfigArtifacts(configManager, cfg)
+	if err != nil {
+		return err
 	}
 
-	// Save config
-	if err := saveConfig(configManager, cfg); err != nil {
-		// Try to restore from trash on failure
-		if restoreErr := storage.RestoreProjectFromTrash(project.Slug, cfg.DataDir); restoreErr != nil {
-			return fmt.Errorf("config save failed and restore from trash also failed: %w (restore error: %w)", err, restoreErr)
-		}
-		return err
+	// Route the delete through the application layer: the project directory move to a
+	// new versioned trash entry, the tombstone write, and the config rewrite all
+	// commit as ONE atomic journaled transaction. A failure leaves the project
+	// untouched (still under projects/, still in config), so no manual rollback is
+	// needed. Existing trash entries that share this slug are preserved.
+	svc := newAppService(cfg)
+	if _, err := svc.DeleteProject(app.DeleteProjectRequest{
+		Project:    project,
+		DataDir:    cfg.DataDir,
+		Reason:     "deleted via CLI",
+		ConfigRefs: configRefs,
+		Config:     configArts,
+		Confirm:    true,
+	}); err != nil {
+		return translateAppError(err)
+	}
+
+	// Clean cross-project references in the remaining projects now that the deleted
+	// project's directory is gone. This is a best-effort repair separate from the
+	// atomic delete: a failure here is a warning, not an error — the project is
+	// already trashed and the stale references are harmless dangling links.
+	if _, err := cleanCrossProjectRefs(cfg.Projects, project.Slug); err != nil {
+		fmt.Printf("Warning: failed to clean some cross-project references: %v\n", err)
 	}
 
 	if out.Quiet {
@@ -195,6 +200,20 @@ func countCrossProjectRefs(projects []*models.Project, deletedProjectSlug string
 		}
 	}
 	return totalRefs, projectsWithRefs
+}
+
+// marshalProjectReferences captures the given project's configuration
+// references and encodes them for storage in a trash tombstone. A marshal
+// failure is non-fatal: the project data is still trashed, only the later
+// config-reference restoration would be lost, so we return nil rather than
+// abort the delete.
+func marshalProjectReferences(cfg *config.Config, id, slug string) json.RawMessage {
+	refs := cfg.ExtractProjectReferences(id, slug)
+	raw, err := json.Marshal(refs)
+	if err != nil {
+		return nil
+	}
+	return raw
 }
 
 // filterRefs returns a new slice with cross-project refs to the given project slug removed.

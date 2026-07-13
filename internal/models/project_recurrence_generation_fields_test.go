@@ -10,20 +10,18 @@ func TestGenerateRecurringInstancesCopiesCorrectFields(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Recurring Task",
-		Description: "Weekly standup agenda",
-		Status:      StatusDone,
-		Priority:    2,
-		Section:     SectionNext,
-		Tags:        []string{"test"},
-		DueDate:     &dueDate,
-		Recurrence:  &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
-		ParentID:    &parentID,
-		DependsOn:   []string{"dep-1", "dep-2"},
-		Stage:       "Review",
+		ID:            "task-1",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Recurring Task",
+		Description:   "Weekly standup agenda",
+		WorkflowState: StateDone,
+		Priority:      2,
+		Tags:          []string{"test"},
+		DueDate:       &dueDate,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+		ParentID:      &parentID,
+		DependsOn:     []string{"dep-1", "dep-2"},
 		Checklist: []ChecklistItem{
 			{Text: "Item 1", Done: true},
 			{Text: "Item 2", Done: false},
@@ -53,8 +51,11 @@ func TestGenerateRecurringInstancesCopiesCorrectFields(t *testing.T) {
 	if newTask.Description != "Weekly standup agenda" {
 		t.Errorf("Description should be copied, got %q", newTask.Description)
 	}
-	if newTask.Stage != "Review" {
-		t.Errorf("Stage should be copied, got %q", newTask.Stage)
+	// The legacy Stage is intentionally NOT carried forward: stages are
+	// retired, and copying a review-stage would derive the new instance into
+	// the review state instead of the inbox it is created for.
+	if newTask.State() != StateInbox {
+		t.Errorf("new instance should be in the inbox state, got %s", newTask.State())
 	}
 	if len(newTask.ScoreDimensions) != 2 || newTask.ScoreDimensions["impact"] != 4 || newTask.ScoreDimensions["effort"] != 2 {
 		t.Errorf("ScoreDimensions should be copied, got %v", newTask.ScoreDimensions)
@@ -88,7 +89,7 @@ func TestGenerateRecurringInstancesCopiesEstimatedDaysAndStartDate(t *testing.T)
 		ShortID:       1,
 		Type:          TaskTypeTask,
 		Title:         "Estimated work",
-		Status:        StatusDone,
+		WorkflowState: StateDone,
 		Priority:      2,
 		DueDate:       &dueDate,
 		StartDate:     &startDate,
@@ -125,14 +126,14 @@ func TestGenerateRecurringInstancesNilStartDateStaysNil(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 
 	task := &Task{
-		ID:         "task-1",
-		ShortID:    1,
-		Type:       TaskTypeTask,
-		Title:      "No start date",
-		Status:     StatusDone,
-		Priority:   2,
-		DueDate:    &dueDate,
-		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+		ID:            "task-1",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "No start date",
+		WorkflowState: StateDone,
+		Priority:      2,
+		DueDate:       &dueDate,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
 	}
 
 	project := &Project{
@@ -156,15 +157,15 @@ func TestGenerateRecurringInstancesCopiesHasTime(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 14, 30, 0, 0, time.Local)
 
 	task := &Task{
-		ID:         "task-1",
-		ShortID:    1,
-		Type:       TaskTypeTask,
-		Title:      "Daily standup",
-		Status:     StatusDone,
-		Priority:   3,
-		DueDate:    &dueDate,
-		HasTime:    true,
-		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+		ID:            "task-1",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Daily standup",
+		WorkflowState: StateDone,
+		Priority:      3,
+		DueDate:       &dueDate,
+		HasTime:       true,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 	}
 
 	project := &Project{
@@ -188,15 +189,15 @@ func TestGenerateRecurringInstancesNoHasTimeWhenFalse(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.Local)
 
 	task := &Task{
-		ID:         "task-2",
-		ShortID:    1,
-		Type:       TaskTypeTask,
-		Title:      "Weekly report",
-		Status:     StatusDone,
-		Priority:   3,
-		DueDate:    &dueDate,
-		HasTime:    false,
-		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+		ID:            "task-2",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Weekly report",
+		WorkflowState: StateDone,
+		Priority:      3,
+		DueDate:       &dueDate,
+		HasTime:       false,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
 	}
 
 	project := &Project{
@@ -217,16 +218,15 @@ func TestGenerateRecurringInstances_NewInstanceProperties(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 10, 12, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "props-task",
-		ShortID:     1,
-		Type:        TaskTypeBug,
-		Title:       "Fix login issue",
-		Status:      StatusDone,
-		Priority:    3,
-		Section:     SectionNext,
-		Tags:        []string{"backend", "auth", "urgent"},
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "props-task",
+		ShortID:       1,
+		Type:          TaskTypeBug,
+		Title:         "Fix login issue",
+		WorkflowState: StateDone,
+		Priority:      3,
+		Tags:          []string{"backend", "auth", "urgent"},
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  2,
 			Unit:      RecurrenceWeekly,
@@ -253,11 +253,8 @@ func TestGenerateRecurringInstances_NewInstanceProperties(t *testing.T) {
 	newTask := project.Tasks[0]
 	origTask := project.Tasks[1]
 
-	if newTask.Status != StatusTodo {
-		t.Errorf("new task status = %s, want %s", newTask.Status, StatusTodo)
-	}
-	if newTask.Section != SectionInbox {
-		t.Errorf("new task section = %s, want %s", newTask.Section, SectionInbox)
+	if newTask.State() != StateInbox {
+		t.Errorf("new task state = %s, want %s", newTask.State(), StateInbox)
 	}
 	if newTask.Type != TaskTypeBug {
 		t.Errorf("new task type = %s, want %s", newTask.Type, TaskTypeBug)
@@ -328,13 +325,13 @@ func TestGenerateRecurringInstances_OriginalDayCarriedForward(t *testing.T) {
 	dueDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 1, 31, 10, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "monthly-31",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Monthly on 31st",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "monthly-31",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Monthly on 31st",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:    1,
 			Unit:        RecurrenceMonthly,

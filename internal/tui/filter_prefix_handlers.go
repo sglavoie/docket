@@ -31,28 +31,33 @@ func handleFilterTypeKey(key string, f *CommonFilterState) bool {
 	return true
 }
 
-// handleFilterStatusKey applies a status filter based on the key pressed.
-// Returns true if the key was handled.
-func handleFilterStatusKey(key string, f *CommonFilterState) bool {
+// handleFilterStateKey applies a workflow-state filter based on the key
+// pressed. It backs the Fs sub-prefix (the sole state/status filter after the
+// legacy TaskStatus cycle was retired). Returns true if the key was handled.
+func handleFilterStateKey(key string, f *CommonFilterState) bool {
 	switch key {
-	case "t":
-		f.Status = models.StatusTodo
-	case "s":
-		f.Status = models.StatusInProgress
+	case "i":
+		f.State = models.StateInbox
 	case "r":
-		f.Status = models.StatusReview
-	case "S":
-		f.Status = models.StatusStandby
-	case "b":
-		f.Status = models.StatusBlocked
-	case "d":
-		f.Status = models.StatusDone
-	case "x":
-		f.Status = models.StatusCanceled
+		f.State = models.StateReady
+	case "n":
+		f.State = models.StateNext
+	case "s":
+		f.State = models.StateInProgress
+	case "w":
+		f.State = models.StateWaiting
+	case "p":
+		f.State = models.StatePaused
+	case "v":
+		f.State = models.StateReview
 	case "m":
-		f.Status = models.StatusMaybe
+		f.State = models.StateSomeday
+	case "d":
+		f.State = models.StateDone
+	case "x":
+		f.State = models.StateCanceled
 	case "0":
-		f.Status = ""
+		f.State = ""
 	default:
 		return false
 	}
@@ -77,22 +82,6 @@ func handleFilterDueDateKey(key string, f *CommonFilterState) bool {
 		return false
 	}
 	return true
-}
-
-// handleFilterStageKey applies a stage filter based on the key pressed.
-// Keys 1-9 map to stages[0..8], a-z map to stages[9..34], 0 clears.
-// Returns true if the key was handled.
-func handleFilterStageKey(key string, f *CommonFilterState, stages []string) bool {
-	if key == "0" {
-		f.Stage = ""
-		return true
-	}
-	idx := stageIndexForKey(key)
-	if idx >= 0 && idx < len(stages) {
-		f.Stage = stages[idx]
-		return true
-	}
-	return false
 }
 
 // handleFilterAttrKey handles the attribute sub-prefix selection. Returns the
@@ -237,11 +226,9 @@ func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *conf
 	case "Ft":
 		return handleFilterTypeKey(key, f)
 	case "Fs":
-		return handleFilterStatusKey(key, f)
+		return handleFilterStateKey(key, f)
 	case "Fd":
 		return handleFilterDueDateKey(key, f)
-	case "F.":
-		return handleFilterStageKey(key, f, cfg.Stages)
 	case "Fa":
 		newPrefix, handled := handleFilterAttrKey(key, f)
 		if !handled {
@@ -345,11 +332,11 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 	}
 
 	if includeStatus {
-		statusDetail := "(all)"
-		if f.Status != "" {
-			statusDetail = string(f.Status)
+		stateDetail := "(all)"
+		if f.State != "" {
+			stateDetail = string(f.State)
 		}
-		hints = append(hints, PrefixHint{Key: "s", Description: "status", Detail: statusDetail, Active: f.Status != ""})
+		hints = append(hints, PrefixHint{Key: "s", Description: "state", Detail: stateDetail, Active: f.State != ""})
 	}
 
 	hints = append(hints, PrefixHint{Key: "#", Description: "tags", Detail: tagDetail, Active: len(f.Tags) > 0})
@@ -370,11 +357,6 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 		hints = append(hints, PrefixHint{Key: "d", Description: "due-date", Detail: dueDetail, Active: f.DueDate != DueDateAll})
 	}
 
-	stageDetail := "(all)"
-	if f.Stage != "" {
-		stageDetail = f.Stage
-	}
-
 	dimDetail := "off"
 	if f.HideDimmed {
 		dimDetail = "on"
@@ -392,7 +374,6 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 
 	hints = append(hints,
 		PrefixHint{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(f.Attrs) > 0},
-		PrefixHint{Key: ".", Description: "stage", Detail: stageDetail, Active: f.Stage != ""},
 		PrefixHint{Key: "S", Description: "score", Detail: scoreDetail, Active: f.ScoreMin > 0},
 		PrefixHint{Key: "h", Description: "dimmed", Detail: dimDetail, Active: f.HideDimmed},
 		PrefixHint{Key: "i", Description: "issues", Detail: issueDetail, Active: f.GitHubIssue},
@@ -432,10 +413,6 @@ func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.
 // categories are available; set supportsCustomScoreInput true only for views
 // that wire FS -> C to a score-input component (project tree and outliner today).
 func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config, includeDueDate, includeStatus, supportsCustomScoreInput bool) PrefixHints {
-	var stages []string
-	if cfg != nil {
-		stages = cfg.Stages
-	}
 	hints := PrefixHints{
 		"F":   buildCommonFilterPrefixHints(f, includeDueDate, includeStatus),
 		"Ft":  FilterTypePrefixHints,
@@ -449,10 +426,9 @@ func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config,
 		"Fao": FilterAttrScopePrefixHints,
 		"Fap": FilterAttrPointsPrefixHints,
 		"FS":  BuildFilterScorePrefixHints(cfg, supportsCustomScoreInput),
-		"F.":  BuildFilterStagePrefixHints(stages, f.Stage),
 	}
 	if includeStatus {
-		hints["Fs"] = FilterStatusPrefixHints
+		hints["Fs"] = FilterStatePrefixHints
 	}
 	if includeDueDate {
 		hints["Fd"] = FilterDuePrefixHints

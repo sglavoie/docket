@@ -7,8 +7,8 @@ import (
 )
 
 func TestMatchesHierarchicalTrigger_ParentStatus(t *testing.T) {
-	parent := &models.Task{ID: "parent", Status: models.StatusInProgress, Type: models.TaskTypeEpic}
-	child := &models.Task{ID: "child", Status: models.StatusTodo, Parent: parent}
+	parent := &models.Task{ID: "parent", WorkflowState: models.StateInProgress, Type: models.TaskTypeEpic}
+	child := &models.Task{ID: "child", WorkflowState: models.StateReady, Parent: parent}
 
 	evalCtx := &EvaluationContext{
 		AllTasks: []*models.Task{parent, child},
@@ -74,10 +74,10 @@ func TestMatchesHierarchicalTrigger_AllChildrenDone(t *testing.T) {
 			parent := &models.Task{ID: "parent", Type: models.TaskTypeEpic, Children: []*models.Task{}}
 			for i, status := range tt.childStatuses {
 				child := &models.Task{
-					ID:     "child" + string(rune('0'+i)),
-					Status: status,
-					Type:   models.TaskTypeTask,
-					Parent: parent,
+					ID:            "child" + string(rune('0'+i)),
+					WorkflowState: models.DeriveWorkflowState(status, "", ""),
+					Type:          models.TaskTypeTask,
+					Parent:        parent,
 				}
 				parent.Children = append(parent.Children, child)
 			}
@@ -95,8 +95,8 @@ func TestMatchesHierarchicalTrigger_AllChildrenDone(t *testing.T) {
 }
 
 func TestMatchesHierarchicalTrigger_IsBlocked(t *testing.T) {
-	blocker1 := &models.Task{ID: "blocker1", Status: models.StatusTodo}
-	blocker2 := &models.Task{ID: "blocker2", Status: models.StatusDone}
+	blocker1 := &models.Task{ID: "blocker1", WorkflowState: models.StateReady}
+	blocker2 := &models.Task{ID: "blocker2", WorkflowState: models.StateDone}
 	task := &models.Task{ID: "task", DependsOn: []string{"blocker1", "blocker2"}}
 
 	evalCtx := &EvaluationContext{
@@ -250,13 +250,13 @@ func TestApplyHierarchicalAction_NotifyParent(t *testing.T) {
 
 func TestEvaluateRulesWithContext_HierarchicalTrigger(t *testing.T) {
 	// Epic with two completed children
-	child1 := &models.Task{ID: "c1", Status: models.StatusDone, Type: models.TaskTypeTask}
-	child2 := &models.Task{ID: "c2", Status: models.StatusDone, Type: models.TaskTypeTask}
+	child1 := &models.Task{ID: "c1", WorkflowState: models.StateDone, Type: models.TaskTypeTask}
+	child2 := &models.Task{ID: "c2", WorkflowState: models.StateDone, Type: models.TaskTypeTask}
 	epic := &models.Task{
-		ID:       "epic",
-		Status:   models.StatusInProgress,
-		Type:     models.TaskTypeEpic,
-		Children: []*models.Task{child1, child2},
+		ID:            "epic",
+		WorkflowState: models.StateInProgress,
+		Type:          models.TaskTypeEpic,
+		Children:      []*models.Task{child1, child2},
 	}
 	child1.Parent = epic
 	child2.Parent = epic
@@ -290,8 +290,8 @@ func TestEvaluateRulesWithContext_HierarchicalTrigger(t *testing.T) {
 	if len(result.ModifiedTasks) != 1 {
 		t.Errorf("expected 1 modified task (epic), got %d", len(result.ModifiedTasks))
 	}
-	if epic.Status != models.StatusDone {
-		t.Errorf("expected epic status to be done, got %s", epic.Status)
+	if epic.State() != models.StateDone {
+		t.Errorf("expected epic status to be done, got %s", epic.State())
 	}
 }
 
@@ -337,27 +337,27 @@ func TestEvaluateRulesWithContext_AllChildrenDoneDoesNotRecompleteReopenedParent
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			child1 := &models.Task{ID: "c1", Status: models.StatusDone, Type: models.TaskTypeTask}
-			child2 := &models.Task{ID: "c2", Status: models.StatusDone, Type: models.TaskTypeTask}
+			child1 := &models.Task{ID: "c1", WorkflowState: models.StateDone, Type: models.TaskTypeTask}
+			child2 := &models.Task{ID: "c2", WorkflowState: models.StateDone, Type: models.TaskTypeTask}
 			story := &models.Task{
-				ID:       "story",
-				Status:   models.StatusTodo,
-				Type:     models.TaskTypeStory,
-				Children: []*models.Task{child1, child2},
+				ID:            "story",
+				WorkflowState: models.StateReady,
+				Type:          models.TaskTypeStory,
+				Children:      []*models.Task{child1, child2},
 			}
 			child1.Parent = story
 			child2.Parent = story
 
 			evalCtx := &EvaluationContext{
-				Changes:  []TaskChangeContext{{Task: story, Previous: &models.Task{ID: "story", Status: models.StatusDone}}},
+				Changes:  []TaskChangeContext{{Task: story, Previous: &models.Task{ID: "story", WorkflowState: models.StateDone}}},
 				AllTasks: []*models.Task{story, child1, child2},
 				TaskMap:  map[string]*models.Task{"story": story, "c1": child1, "c2": child2},
 			}
 
 			result := EvaluateRulesWithContext(evalCtx, []WorkflowRule{tt.rule})
 
-			if story.Status != models.StatusTodo {
-				t.Errorf("expected reopened story to remain todo, got %s", story.Status)
+			if models.LegacyStatusForState(story.State()) != models.StatusTodo {
+				t.Errorf("expected reopened story to remain todo, got %s", story.State())
 			}
 			if len(result.ModifiedTasks) != 0 {
 				t.Errorf("expected no workflow modifications, got %d", len(result.ModifiedTasks))
@@ -370,16 +370,16 @@ func TestEvaluateRulesWithContext_AllChildrenDoneDoesNotRecompleteReopenedParent
 }
 
 func TestEvaluateRulesWithContext_ReopenedRuleCanStillSetCompleteStatus(t *testing.T) {
-	child := &models.Task{ID: "child", Status: models.StatusDone, Type: models.TaskTypeTask}
+	child := &models.Task{ID: "child", WorkflowState: models.StateDone, Type: models.TaskTypeTask}
 	task := &models.Task{
-		ID:       "task",
-		Status:   models.StatusTodo,
-		Type:     models.TaskTypeStory,
-		Children: []*models.Task{child},
+		ID:            "task",
+		WorkflowState: models.StateReady,
+		Type:          models.TaskTypeStory,
+		Children:      []*models.Task{child},
 	}
 	child.Parent = task
 	evalCtx := &EvaluationContext{
-		Changes:  []TaskChangeContext{{Task: task, Previous: &models.Task{ID: "task", Status: models.StatusDone}}},
+		Changes:  []TaskChangeContext{{Task: task, Previous: &models.Task{ID: "task", WorkflowState: models.StateDone}}},
 		AllTasks: []*models.Task{task, child},
 		TaskMap:  map[string]*models.Task{"task": task, "child": child},
 	}
@@ -404,8 +404,8 @@ func TestEvaluateRulesWithContext_ReopenedRuleCanStillSetCompleteStatus(t *testi
 
 	result := EvaluateRulesWithContext(evalCtx, []WorkflowRule{autoCompleteRule, reopenedRule})
 
-	if task.Status != models.StatusDone {
-		t.Errorf("expected explicit reopened rule to set status done, got %s", task.Status)
+	if task.State() != models.StateDone {
+		t.Errorf("expected explicit reopened rule to set status done, got %s", task.State())
 	}
 	if len(result.ModifiedTasks) != 1 || result.ModifiedTasks[0] != task {
 		t.Errorf("expected task to be recorded as modified once, got %d", len(result.ModifiedTasks))
@@ -422,7 +422,7 @@ func TestMatchesRule_TriggerGroupWithHierarchicalTrigger_NilEvalCtx(t *testing.T
 	// Regression: matchesRule passes nil evalCtx to matchesTriggerGroup.
 	// If TriggerGroup contains hierarchical triggers like FieldIsBlocked or
 	// FieldBlockerCount, the code used to dereference evalCtx.TaskMap and panic.
-	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+	task := &models.Task{ID: "task", WorkflowState: models.StateReady, DependsOn: []string{"blocker1"}}
 
 	tests := []struct {
 		name     string
@@ -505,7 +505,7 @@ func TestMatchesRule_TriggerGroupWithHierarchicalTrigger_NilEvalCtx(t *testing.T
 // matchesRuleWithContext is safe when called with nil evalCtx and a rule that
 // uses flat hierarchical triggers (no TriggerGroup wrapper).
 func TestMatchesRuleWithContext_HierarchicalTrigger_NilEvalCtx(t *testing.T) {
-	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+	task := &models.Task{ID: "task", WorkflowState: models.StateReady, DependsOn: []string{"blocker1"}}
 
 	tests := []struct {
 		name     string
@@ -561,9 +561,9 @@ func TestMatchesRuleWithContext_HierarchicalTrigger_NilEvalCtx(t *testing.T) {
 // matchesRuleWithContext is safe when evalCtx is non-nil but TaskMap is nil or
 // empty, which can occur when AllTasks is populated but the caller omits the map.
 func TestMatchesRuleWithContext_HierarchicalTrigger_NilTaskMap(t *testing.T) {
-	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+	task := &models.Task{ID: "task", WorkflowState: models.StateReady, DependsOn: []string{"blocker1"}}
 
-	blockerTask := &models.Task{ID: "blocker1", Status: models.StatusTodo}
+	blockerTask := &models.Task{ID: "blocker1", WorkflowState: models.StateReady}
 
 	scenarios := []struct {
 		name    string
@@ -615,7 +615,7 @@ func TestMatchesRuleWithContext_HierarchicalTrigger_NilTaskMap(t *testing.T) {
 // TestMatchesRuleWithContext_HierarchicalTrigger_TriggerGroup_NilEvalCtx checks
 // that the TriggerGroup path in matchesRuleWithContext is also safe with nil evalCtx.
 func TestMatchesRuleWithContext_HierarchicalTrigger_TriggerGroup_NilEvalCtx(t *testing.T) {
-	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+	task := &models.Task{ID: "task", WorkflowState: models.StateReady, DependsOn: []string{"blocker1"}}
 
 	rule := WorkflowRule{
 		ID:      "r1",

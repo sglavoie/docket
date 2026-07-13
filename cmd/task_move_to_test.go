@@ -332,7 +332,7 @@ func TestMoveTaskToProject_SectionPreservation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = models.SectionInbox
+	task.SetSection(models.SectionInbox)
 	sourceProject.Tasks = append(sourceProject.Tasks, task)
 	sourceProject.NextShortID++
 
@@ -343,7 +343,7 @@ func TestMoveTaskToProject_SectionPreservation(t *testing.T) {
 		t.Error("dest project should have Inbox section")
 	}
 
-	testutil.AssertEqual(t, task.Section, models.SectionInbox)
+	testutil.AssertEqual(t, models.SectionForState(task.State()), models.SectionInbox)
 }
 
 func TestMoveTaskToProject_NoOtherProjects(t *testing.T) {

@@ -42,8 +42,8 @@ func TestMatchesTrigger_Section(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:      "task-1",
-				Section: tt.section,
+				ID:            "task-1",
+				WorkflowState: models.DeriveWorkflowState("", tt.section, ""),
 			}
 			if got := matchesTrigger(task, tt.trigger); got != tt.expected {
 				t.Errorf("matchesTrigger() = %v, want %v", got, tt.expected)

@@ -8,9 +8,9 @@ import (
 
 func TestMatchesRule_CompoundAND(t *testing.T) {
 	task := &models.Task{
-		ID:       "task-1",
-		Status:   models.StatusBlocked,
-		Priority: 1,
+		ID:            "task-1",
+		WorkflowState: models.StateWaiting,
+		Priority:      1,
 	}
 
 	rule := WorkflowRule{
@@ -38,9 +38,9 @@ func TestMatchesRule_CompoundAND(t *testing.T) {
 
 func TestMatchesRule_CompoundOR(t *testing.T) {
 	task := &models.Task{
-		ID:       "task-1",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "task-1",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 	}
 
 	rule := WorkflowRule{
@@ -89,11 +89,11 @@ func TestMatchesRule_LegacySingleTrigger(t *testing.T) {
 
 func TestMatchesRule_TriggerGroup(t *testing.T) {
 	task := &models.Task{
-		ID:       "task-1",
-		Priority: 1,
-		Status:   models.StatusInProgress,
-		Tags:     []string{},
-		Type:     models.TaskTypeTask,
+		ID:            "task-1",
+		Priority:      1,
+		WorkflowState: models.StateInProgress,
+		Tags:          []string{},
+		Type:          models.TaskTypeTask,
 	}
 
 	rule := WorkflowRule{
@@ -116,11 +116,11 @@ func TestMatchesRule_TriggerGroup(t *testing.T) {
 
 	// Non-matching case
 	nonMatchTask := &models.Task{
-		ID:       "task-2",
-		Priority: 5,
-		Status:   models.StatusTodo,
-		Tags:     []string{},
-		Type:     models.TaskTypeTask,
+		ID:            "task-2",
+		Priority:      5,
+		WorkflowState: models.StateReady,
+		Tags:          []string{},
+		Type:          models.TaskTypeTask,
 	}
 	if matchesRule(nonMatchTask, &rule) {
 		t.Error("expected matchesRule NOT to match when TriggerGroup conditions are not met")

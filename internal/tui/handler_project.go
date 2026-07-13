@@ -1,13 +1,12 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -171,7 +170,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.loadingMessage = "Restoring..."
 		return true, tea.Batch(
 			m.spinner.Tick(),
-			m.restoreProjectFromTrash(msg.Slug),
+			m.restoreProjectFromTrash(msg.EntryID),
 			tea.Tick(10*time.Second, func(time.Time) tea.Msg { return SaveTimeoutMsg{} }),
 		)
 
@@ -190,7 +189,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.loadingMessage = "Deleting..."
 		return true, tea.Batch(
 			m.spinner.Tick(),
-			m.purgeProjectFromTrash(msg.Slug),
+			m.purgeProjectFromTrash(msg.EntryID, msg.Slug),
 			tea.Tick(10*time.Second, func(time.Time) tea.Msg { return SaveTimeoutMsg{} }),
 		)
 
@@ -360,53 +359,72 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	}
 }
 
-// restoreProjectFromTrash restores a project from the trash directory.
-func (m *AppModel) restoreProjectFromTrash(slug string) tea.Cmd {
+// restoreProjectFromTrash restores a specific versioned trash entry.
+func (m *AppModel) restoreProjectFromTrash(entryID string) tea.Cmd {
 	cfg := m.config
 	mgr := m.configManager
 	dataDir := cfg.DataDir
 	return func() tea.Msg {
-		// Check if project exists in trash
-		if !storage.TrashEntryExists(slug, dataDir) {
-			return ErrorMsg{Err: fmt.Errorf("project '%s' not found in trash", slug)}
+		tomb, err := storage.ReadTrashTombstone(dataDir, entryID)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("trash entry '%s' not found: %w", entryID, err)}
 		}
 
 		// Check if active project with same slug exists
-		if cfg.GetProject(slug) != nil {
-			return ErrorMsg{Err: fmt.Errorf("active project '%s' already exists; rename or delete it first", slug)}
+		if tomb.Project != nil && cfg.GetProject(tomb.Project.Slug) != nil {
+			return ErrorMsg{Err: fmt.Errorf("active project '%s' already exists; rename or delete it first", tomb.Project.Slug)}
 		}
 
 		// Backup config before making changes
-		if err := mgr.BackupConfig(); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create config backup: %w", err)}
+		if backupErr := mgr.BackupConfig(); backupErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create config backup: %w", backupErr)}
 		}
 
-		// Restore project directory from trash
-		if err := storage.RestoreProjectFromTrash(slug, dataDir); err != nil {
+		// Restore project directory from trash and reconstruct faithful metadata.
+		project, restoredTomb, err := storage.RestoreTrashEntry(dataDir, entryID)
+		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to restore project from trash: %w", err)}
 		}
 
-		// Reconstruct project metadata
-		projectPath := cfg.GetProjectPath(slug)
-		project, err := reconstructProjectFromDir(slug, projectPath)
-		if err != nil {
-			// Move back to trash on failure (best effort)
-			_ = storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, dataDir)
-			return ErrorMsg{Err: fmt.Errorf("failed to reconstruct project metadata: %w", err)}
-		}
-
-		// Add project to config
+		// Add project to config and re-establish its configuration references.
 		cfg.AddProject(project)
+		applyRestoredConfigRefs(cfg, project.ID, restoredTomb)
 
 		// Save config
 		if err := mgr.Save(cfg); err != nil {
 			// Move back to trash on failure (best effort)
-			_ = storage.MoveProjectToTrash(project, dataDir)
+			_, _ = storage.MoveProjectToTrash(project, dataDir, "restore rollback", restoredTomb.ConfigRefs)
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 
 		return projectRestoredFromTrashMsg{Project: project}
 	}
+}
+
+// marshalProjectReferences captures the given project's configuration
+// references and encodes them for storage in a trash tombstone. A marshal
+// failure is non-fatal: the project data is still trashed, only the later
+// config-reference restoration would be lost, so we return nil.
+func marshalProjectReferences(cfg *config.Config, id, slug string) json.RawMessage {
+	raw, err := json.Marshal(cfg.ExtractProjectReferences(id, slug))
+	if err != nil {
+		return nil
+	}
+	return raw
+}
+
+// applyRestoredConfigRefs decodes and re-applies the configuration references
+// captured in the tombstone. Decode failures are non-fatal: the project data is
+// already restored, so we skip reference restoration rather than abort.
+func applyRestoredConfigRefs(cfg *config.Config, projectID string, tomb *storage.TrashTombstone) {
+	if tomb == nil || len(tomb.ConfigRefs) == 0 {
+		return
+	}
+	var refs config.ProjectReferences
+	if err := json.Unmarshal(tomb.ConfigRefs, &refs); err != nil {
+		return
+	}
+	cfg.ApplyProjectReferences(projectID, refs)
 }
 
 // projectRestoredFromTrashMsg is an internal message for trash restoration completion.
@@ -419,11 +437,11 @@ type projectPurgedFromTrashMsg struct {
 	Slug string
 }
 
-// purgeProjectFromTrash permanently deletes a project from the trash directory.
-func (m *AppModel) purgeProjectFromTrash(slug string) tea.Cmd {
+// purgeProjectFromTrash permanently deletes a single trash entry.
+func (m *AppModel) purgeProjectFromTrash(entryID, slug string) tea.Cmd {
 	dataDir := m.config.DataDir
 	return func() tea.Msg {
-		if err := storage.PurgeFromTrash(slug, dataDir); err != nil {
+		if err := storage.PurgeTrashEntry(dataDir, entryID); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to delete project: %w", err)}
 		}
 		return projectPurgedFromTrashMsg{Slug: slug}
@@ -493,42 +511,4 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 
 		return SandboxResetDoneMsg{TaskCount: totalItems}
 	}
-}
-
-// reconstructProjectFromDir rebuilds project metadata from a restored directory.
-func reconstructProjectFromDir(slug, projectPath string) (*models.Project, error) {
-	// Create a temporary project to load tasks
-	tempProject := &models.Project{
-		Path: projectPath,
-	}
-
-	// Try to load and parse tasks.md to get project name
-	if err := storage.LoadProject(tempProject); err != nil {
-		return nil, fmt.Errorf("failed to load project tasks: %w", err)
-	}
-
-	// Read the raw file to get the project name from the header
-	projectName := slug // Default to slug if we can't find the name
-	tasksPath := filepath.Join(projectPath, "tasks.md")
-	content, err := storage.ParseProjectNameFromFile(tasksPath)
-	if err == nil && content != "" {
-		projectName = content
-	}
-
-	// Create the project with a new ID (since we don't store ID in tasks.md)
-	project := &models.Project{
-		ID:            uuid.New().String(),
-		Slug:          slug,
-		Name:          projectName,
-		Path:          projectPath,
-		Context:       "personal", // Default context
-		CreatedAt:     time.Now(), // We don't preserve original creation time
-		UpdatedAt:     time.Now(),
-		Tasks:         tempProject.Tasks,
-		NextShortID:   tempProject.NextShortID,
-		Sections:      tempProject.Sections,
-		SectionColors: tempProject.SectionColors,
-	}
-
-	return project, nil
 }

@@ -61,8 +61,7 @@ func cockpitTask(t *testing.T, project *models.Project, title string, status mod
 	if err != nil {
 		t.Fatalf("cockpitTask(%q): %v", title, err)
 	}
-	task.Status = status
-	task.Section = section
+	task.WorkflowState = legacyStateForStatusSection(status, section)
 	if status == models.StatusDone {
 		now := time.Now()
 		task.CompletedAt = &now

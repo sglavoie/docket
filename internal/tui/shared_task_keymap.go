@@ -7,21 +7,30 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
+// taskActionView is the concrete-model seam every standard task-action keymap
+// binds against. It satisfies both taskOpsView (message/ref helpers) and
+// workflowOpsView (coordinator-backed mutations), so each non-overridden action
+// routes through the wf* helpers that commit via the application-layer
+// TaskItemCoordinator. All list/board views satisfy both interfaces.
+type taskActionView interface {
+	taskOpsView
+	workflowOpsView
+}
+
 // TaskKeymapDeps configures buildStandardTaskActionEntries.
 //
-// Required fields: View, HasItem, Stages, ToggleHelp.
+// Required fields: View, HasItem, ToggleHelp.
 //
 // Bulk/override closures (StatusChange, PriorityChange, etc.) are nil-safe:
-// nil means "use the standard single-item taskOps* helper". Views that need
+// nil means "use the standard single-item wf* helper". Views that need
 // bulk multi-select or additional side effects (e.g. WeeklyReview mutation
 // tracking) provide their own closures.
 type TaskKeymapDeps struct {
-	// View is the taskOpsView implementation (the concrete model).
-	View taskOpsView
+	// View is the concrete model. Every non-overridden standard action routes
+	// through the coordinator-backed wf* helpers.
+	View taskActionView
 	// HasItem reports whether a task is currently under the cursor.
 	HasItem func() bool
-	// Stages is the list of workflow stage names from config.
-	Stages []string
 	// ToggleHelp opens the help panel; view-specific (needs viewID/viewName).
 	ToggleHelp keymap.Action
 	// SelectedTaskRefs returns the active multi-selection as task/project refs.
@@ -46,25 +55,23 @@ type TaskKeymapDeps struct {
 	MoveToProject keymap.Action // nil = skip ctrl+b binding
 	QuickNote     keymap.Action // nil = skip ctrl+. binding
 
-	// Per-group overrides — nil uses the standard taskOps* helper.
+	// Per-group overrides — nil uses the standard wf* helper.
 	NewTask             keymap.Action
 	NewTaskWithTemplate keymap.Action
-	StatusChange        func(status string) keymap.Action
+	StateChange         func(state string) keymap.Action
 	PriorityChange      func(key string) keymap.Action
 	DueDateSet          func(days int) keymap.Action
 	DueDateClear        keymap.Action
 	SnoozeDate          func(key string) keymap.Action
 	SectionMove         func(section string) keymap.Action
-	StageChange         func(stage string) keymap.Action
 	MarkDone            keymap.Action
-	ToggleActive        keymap.Action
 	TogglePin           keymap.Action
 	ToggleDim           keymap.Action
 }
 
 // buildStandardTaskActionEntries returns the standard task-action keymap entries
 // for the groups: Status, Priority, DueDate, Snooze, Move, LinkedTask, TaskPrefix,
-// Stage, Blocker, and CommonTaskAction — wired through taskOps* helpers.
+// Stage, Blocker, and CommonTaskAction — wired through wf* helpers.
 //
 // Each prefix group is gated on deps.HasItem or an active selected-task target.
 // The caller appends the returned entries alongside view-specific navigation,
@@ -78,7 +85,6 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 		buildStandardMoveEntries,
 		buildStandardLinkedEntries,
 		buildStandardTaskPrefixEntries,
-		buildStandardStageEntries,
 		buildStandardBlockerEntries,
 		buildStandardCommonActionEntries,
 	}
@@ -92,7 +98,7 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 
 func buildStandardStatusEntries(deps TaskKeymapDeps) []keymap.Entry {
 	return gatePrefixEntries(keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus:   buildStatusChangeAction(deps),
+		ChangeState:    buildStateChangeAction(deps),
 		HasRecurrence:  deps.HasRecurrence,
 		SkipRecurrence: deps.SkipRecurrence,
 		DeferChildren:  deps.DeferChildren,
@@ -221,13 +227,6 @@ func buildNewTaskAction(deps TaskKeymapDeps, skipTemplatePicker bool) keymap.Act
 	})
 }
 
-func buildStandardStageEntries(deps TaskKeymapDeps) []keymap.Entry {
-	return gatePrefixEntries(keymap.StageGroup(keymap.StageDeps{
-		Stages:      deps.Stages,
-		ChangeStage: buildStageChangeAction(deps),
-	}), taskActionTargetGate(deps))
-}
-
 func buildStandardBlockerEntries(deps TaskKeymapDeps) []keymap.Entry {
 	v := deps.View
 	return gatePrefixEntries(keymap.BlockerGroup(keymap.BlockerDeps{
@@ -255,8 +254,7 @@ func buildStandardCommonActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 		EditTask: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return EditTaskMsg{Task: task, Project: project}
 		}),
-		ToggleHelp:   deps.ToggleHelp,
-		ToggleActive: buildToggleActiveAction(deps),
+		ToggleHelp: deps.ToggleHelp,
 		EditScore: taskRefMsgAction(v, true, func(task *models.Task, project *models.Project) tea.Msg {
 			return ShowScoreEditorMsg{Task: task, Project: project}
 		}),
@@ -282,13 +280,13 @@ func gatePrefixEntries(entries []keymap.Entry, gate func() bool) []keymap.Entry 
 	return entries
 }
 
-func buildStatusChangeAction(deps TaskKeymapDeps) func(string) keymap.Action {
-	if deps.StatusChange != nil {
-		return deps.StatusChange
+func buildStateChangeAction(deps TaskKeymapDeps) func(string) keymap.Action {
+	if deps.StateChange != nil {
+		return deps.StateChange
 	}
-	return func(status string) keymap.Action {
-		s := models.TaskStatus(status)
-		return func() (tea.Model, tea.Cmd) { return taskOpsChangeStatus(deps.View, s) }
+	return func(state string) keymap.Action {
+		s := models.WorkflowState(state)
+		return func() (tea.Model, tea.Cmd) { return deps.View, wfChangeState(deps.View, s) }
 	}
 }
 
@@ -297,7 +295,7 @@ func buildPriorityChangeAction(deps TaskKeymapDeps) func(string) keymap.Action {
 		return deps.PriorityChange
 	}
 	return func(key string) keymap.Action {
-		return func() (tea.Model, tea.Cmd) { return taskOpsChangePriority(deps.View, key) }
+		return func() (tea.Model, tea.Cmd) { return deps.View, wfChangePriority(deps.View, key) }
 	}
 }
 
@@ -306,7 +304,7 @@ func buildDueDateSetAction(deps TaskKeymapDeps) func(int) keymap.Action {
 		return deps.DueDateSet
 	}
 	return func(days int) keymap.Action {
-		return func() (tea.Model, tea.Cmd) { return taskOpsSetQuickDueDate(deps.View, days) }
+		return func() (tea.Model, tea.Cmd) { return deps.View, wfSetQuickDueDate(deps.View, days) }
 	}
 }
 
@@ -314,7 +312,7 @@ func buildDueDateClearAction(deps TaskKeymapDeps) keymap.Action {
 	if deps.DueDateClear != nil {
 		return deps.DueDateClear
 	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsClearDueDate(deps.View) }
+	return func() (tea.Model, tea.Cmd) { return deps.View, wfClearDueDate(deps.View) }
 }
 
 func buildSnoozeDateAction(deps TaskKeymapDeps) func(string) keymap.Action {
@@ -327,7 +325,7 @@ func buildSnoozeDateAction(deps TaskKeymapDeps) func(string) keymap.Action {
 			if !ok {
 				return deps.View, nil
 			}
-			return taskOpsQuickSnooze(deps.View, snoozeDate)
+			return deps.View, wfQuickSnooze(deps.View, snoozeDate)
 		}
 	}
 }
@@ -337,16 +335,7 @@ func buildSectionMoveAction(deps TaskKeymapDeps) func(string) keymap.Action {
 		return deps.SectionMove
 	}
 	return func(section string) keymap.Action {
-		return func() (tea.Model, tea.Cmd) { return taskOpsSectionMove(deps.View, section) }
-	}
-}
-
-func buildStageChangeAction(deps TaskKeymapDeps) func(string) keymap.Action {
-	if deps.StageChange != nil {
-		return deps.StageChange
-	}
-	return func(stage string) keymap.Action {
-		return func() (tea.Model, tea.Cmd) { return taskOpsChangeStage(deps.View, stage) }
+		return func() (tea.Model, tea.Cmd) { return deps.View, wfSectionMove(deps.View, section) }
 	}
 }
 
@@ -354,35 +343,30 @@ func buildDeleteTaskAction(deps TaskKeymapDeps) keymap.Action {
 	if deps.DeleteTask != nil {
 		return deps.DeleteTask
 	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsDeleteTask(deps.View) }
+	return func() (tea.Model, tea.Cmd) {
+		return deps.View, wfDeleteTask(deps.View, deps.View.getConfig(), deps.View.getConfigManager())
+	}
 }
 
 func buildMarkDoneAction(deps TaskKeymapDeps) keymap.Action {
 	if deps.MarkDone != nil {
 		return deps.MarkDone
 	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsChangeStatus(deps.View, models.StatusDone) }
-}
-
-func buildToggleActiveAction(deps TaskKeymapDeps) keymap.Action {
-	if deps.ToggleActive != nil {
-		return deps.ToggleActive
-	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsToggleActive(deps.View) }
+	return func() (tea.Model, tea.Cmd) { return deps.View, wfChangeState(deps.View, models.StateDone) }
 }
 
 func buildTogglePinAction(deps TaskKeymapDeps) keymap.Action {
 	if deps.TogglePin != nil {
 		return deps.TogglePin
 	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsTogglePinned(deps.View) }
+	return func() (tea.Model, tea.Cmd) { return deps.View, wfTogglePin(deps.View) }
 }
 
 func buildToggleDimAction(deps TaskKeymapDeps) keymap.Action {
 	if deps.ToggleDim != nil {
 		return deps.ToggleDim
 	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsToggleDimmed(deps.View) }
+	return func() (tea.Model, tea.Cmd) { return deps.View, wfToggleDim(deps.View) }
 }
 
 func taskRefAction(

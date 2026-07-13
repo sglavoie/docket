@@ -5,214 +5,138 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
 
-// TestAcquirePIDLock_Success verifies a fresh acquire writes the PID.
+// TestAcquirePIDLock_Success verifies a fresh acquire records the current PID
+// and start identity in the lock file.
 func TestAcquirePIDLock_Success(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pid.lock")
-	if err := AcquirePIDLock(path); err != nil {
+	lock, err := AcquirePIDLock(path)
+	if err != nil {
 		t.Fatalf("AcquirePIDLock: %v", err)
 	}
-	defer ReleasePIDLock(path)
+	defer lock.Release()
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read lock: %v", err)
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		t.Fatalf("parse pid: %v", err)
+	if got := string(data); !strings.Contains(got, "pid="+strconv.Itoa(os.Getpid())) {
+		t.Errorf("lock file = %q, want it to record pid=%d", got, os.Getpid())
 	}
-	if pid != os.Getpid() {
-		t.Errorf("lock pid = %d, want %d", pid, os.Getpid())
+	if !strings.Contains(string(data), "started=") {
+		t.Errorf("lock file = %q, want a started= start-identity line", data)
 	}
 }
 
-// TestAcquirePIDLock_StaleOverridden verifies a stale lock file (containing a
-// non-running PID) is removed and re-acquired by this process.
-func TestAcquirePIDLock_StaleOverridden(t *testing.T) {
+// TestAcquirePIDLock_HeldRejectsSecondAcquire verifies that while one holder
+// keeps the OS lock, a second acquire from a separate open file description is
+// rejected — this is the held-lock authority replacing age-based expiry.
+func TestAcquirePIDLock_HeldRejectsSecondAcquire(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pid.lock")
-	// PID 1 is init/systemd on Unix; we pick an obviously dead PID
-	// by using a very large value that's effectively never a live process.
-	if err := os.WriteFile(path, []byte("2147483646"), 0o644); err != nil {
+	first, err := AcquirePIDLock(path)
+	if err != nil {
+		t.Fatalf("first AcquirePIDLock: %v", err)
+	}
+
+	if second, acquireErr := AcquirePIDLock(path); acquireErr == nil {
+		second.Release()
+		first.Release()
+		t.Fatal("expected second acquire to be rejected while lock is held, got nil")
+	} else if !strings.Contains(acquireErr.Error(), "already running") {
+		first.Release()
+		t.Fatalf("second acquire error = %v, want an 'already running' diagnostic", acquireErr)
+	}
+
+	// After the holder releases, the lock becomes available again.
+	first.Release()
+	third, err := AcquirePIDLock(path)
+	if err != nil {
+		t.Fatalf("acquire after release: %v", err)
+	}
+	third.Release()
+}
+
+// TestAcquirePIDLock_StaleDeadProcess verifies that a leftover lock file from a
+// dead process (content present, but no OS lock held) is acquired successfully
+// and its identity overwritten.
+func TestAcquirePIDLock_StaleDeadProcess(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pid.lock")
+	// A dead process leaves a file behind but no held OS lock.
+	stale := "pid=2147483646\nstarted=2000-01-01T00:00:00Z\n"
+	if err := os.WriteFile(path, []byte(stale), 0o600); err != nil {
 		t.Fatalf("seed stale lock: %v", err)
 	}
-	if err := AcquirePIDLock(path); err != nil {
-		t.Fatalf("AcquirePIDLock over stale lock: %v", err)
+
+	lock, err := AcquirePIDLock(path)
+	if err != nil {
+		t.Fatalf("AcquirePIDLock over stale dead-process lock: %v", err)
 	}
-	defer ReleasePIDLock(path)
+	defer lock.Release()
 
 	data, _ := os.ReadFile(path)
-	pid, _ := strconv.Atoi(strings.TrimSpace(string(data)))
-	if pid != os.Getpid() {
-		t.Errorf("stale lock not replaced: got pid=%d, want %d", pid, os.Getpid())
+	if !strings.Contains(string(data), "pid="+strconv.Itoa(os.Getpid())) {
+		t.Errorf("stale lock not replaced: %q", data)
 	}
 }
 
-// TestAcquirePIDLock_LiveLockRejected verifies a lock owned by a known-live
-// PID (the current process) is rejected.
-func TestAcquirePIDLock_LiveLockRejected(t *testing.T) {
+// TestAcquirePIDLock_LiveProcessOlderThan24h verifies that a live holder is
+// never treated as stale merely because its lock file is old. Under the old
+// age-based expiry a >24h lock would have been stolen; with a held OS lock the
+// age is irrelevant and a second acquire is still rejected.
+func TestAcquirePIDLock_LiveProcessOlderThan24h(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pid.lock")
-	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {
-		t.Fatalf("seed live lock: %v", err)
+	holder, err := AcquirePIDLock(path)
+	if err != nil {
+		t.Fatalf("acquire holder: %v", err)
 	}
-	if err := AcquirePIDLock(path); err == nil {
-		_ = os.Remove(path)
-		t.Fatal("expected error when lock held by live PID, got nil")
-	}
-}
+	defer holder.Release()
 
-func TestAcquirePIDLock_NonPositivePIDTreatedAsStale(t *testing.T) {
-	tests := []struct {
-		name string
-		pid  string
-	}{
-		{name: "zero", pid: "0"},
-		{name: "negative", pid: "-1"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "pid.lock")
-			if err := os.WriteFile(path, []byte(tc.pid), 0o644); err != nil {
-				t.Fatalf("seed lock: %v", err)
-			}
-			if err := AcquirePIDLock(path); err != nil {
-				t.Fatalf("AcquirePIDLock over non-positive PID %s: %v", tc.pid, err)
-			}
-			defer ReleasePIDLock(path)
-
-			data, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatalf("read lock: %v", err)
-			}
-			pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-			if err != nil {
-				t.Fatalf("parse pid: %v", err)
-			}
-			if pid != os.Getpid() {
-				t.Errorf("lock pid = %d, want %d", pid, os.Getpid())
-			}
-		})
-	}
-}
-
-// TestAcquirePIDLock_StaleByAge verifies a too-old lock is treated as stale
-// even if its PID happens to be alive.
-func TestAcquirePIDLock_StaleByAge(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "pid.lock")
-	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {
-		t.Fatalf("seed lock: %v", err)
-	}
-	// Backdate the file mtime past maxLockAge.
-	old := time.Now().Add(-maxLockAge - time.Hour)
+	// Backdate the lock file well past the former 24h expiry threshold.
+	old := time.Now().Add(-48 * time.Hour)
 	if err := os.Chtimes(path, old, old); err != nil {
 		t.Fatalf("chtimes: %v", err)
 	}
-	if err := AcquirePIDLock(path); err != nil {
-		t.Fatalf("AcquirePIDLock over aged lock: %v", err)
+
+	if second, err := AcquirePIDLock(path); err == nil {
+		second.Release()
+		t.Fatal("expected aged-but-live lock to remain held, got successful acquire")
 	}
-	defer ReleasePIDLock(path)
 }
 
-// TestAcquirePIDLock_ConcurrentRace verifies that with many goroutines racing
-// to acquire a fresh lock, exactly one wins. Prior to the O_EXCL fix, two
-// processes could both find no lock and both write, leaving no consistent owner.
-func TestAcquirePIDLock_ConcurrentRace(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "pid.lock")
-	const goroutines = 16
-
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	successes := 0
-	wg.Add(goroutines)
-	start := make(chan struct{})
-
-	for range goroutines {
-		go func() {
-			defer wg.Done()
-			<-start
-			if err := AcquirePIDLock(path); err == nil {
-				mu.Lock()
-				successes++
-				mu.Unlock()
-			}
-		}()
-	}
-	close(start)
-	wg.Wait()
-
-	// Because all goroutines run in the same process, isProcessAlive is true
-	// for our PID, so once the lock is taken, all others must fail.
-	if successes != 1 {
-		t.Errorf("expected exactly 1 successful acquire, got %d", successes)
-	}
-
-	// Cleanup
-	ReleasePIDLock(path)
-}
-
-// TestReleasePIDLock_Idempotent ensures release does not error on missing file.
+// TestReleasePIDLock_Idempotent ensures Release tolerates nil receivers and
+// repeated calls without panicking.
 func TestReleasePIDLock_Idempotent(t *testing.T) {
-	ReleasePIDLock(filepath.Join(t.TempDir(), "never-existed.lock"))
-}
+	var nilLock *PIDLock
+	nilLock.Release()
 
-func TestReleasePIDLock_RemovesOwnedLock(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pid.lock")
-	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {
-		t.Fatalf("seed owned lock: %v", err)
-	}
-
-	ReleasePIDLock(path)
-
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("expected owned lock removed, stat err = %v", err)
-	}
-}
-
-func TestReleasePIDLock_PreservesForeignLock(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "pid.lock")
-	foreignPID := os.Getpid() + 1
-	if err := os.WriteFile(path, []byte(strconv.Itoa(foreignPID)), 0o644); err != nil {
-		t.Fatalf("seed foreign lock: %v", err)
-	}
-
-	ReleasePIDLock(path)
-
-	data, err := os.ReadFile(path)
+	lock, err := AcquirePIDLock(path)
 	if err != nil {
-		t.Fatalf("foreign lock should remain readable: %v", err)
+		t.Fatalf("AcquirePIDLock: %v", err)
 	}
-	if got := strings.TrimSpace(string(data)); got != strconv.Itoa(foreignPID) {
-		t.Fatalf("foreign lock contents = %q, want %d", got, foreignPID)
-	}
+	lock.Release()
+	lock.Release()
 }
 
-func TestReleasePIDLock_PreservesMalformedLock(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "pid.lock")
-	if err := os.WriteFile(path, []byte("not-a-pid"), 0o644); err != nil {
-		t.Fatalf("seed malformed lock: %v", err)
+// TestFormatLockOwner covers the diagnostic-message rendering variants.
+func TestFormatLockOwner(t *testing.T) {
+	tests := []struct {
+		name  string
+		owner lockOwner
+		want  string
+	}{
+		{name: "pid and start", owner: lockOwner{pid: 42, startedAt: "2026-07-10T00:00:00Z"}, want: " (PID 42, started 2026-07-10T00:00:00Z)"},
+		{name: "pid only", owner: lockOwner{pid: 42}, want: " (PID 42)"},
+		{name: "empty", owner: lockOwner{pid: -1}, want: ""},
 	}
-
-	ReleasePIDLock(path)
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("malformed lock should remain readable: %v", err)
-	}
-	if got := strings.TrimSpace(string(data)); got != "not-a-pid" {
-		t.Fatalf("malformed lock contents = %q, want %q", got, "not-a-pid")
-	}
-}
-
-func TestIsProcessAlive_NonPositivePID(t *testing.T) {
-	tests := []int{0, -1, -42}
-	for _, pid := range tests {
-		if isProcessAlive(pid) {
-			t.Fatalf("isProcessAlive(%d) = true, want false", pid)
-		}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := formatLockOwner(tc.owner); got != tc.want {
+				t.Errorf("formatLockOwner(%+v) = %q, want %q", tc.owner, got, tc.want)
+			}
+		})
 	}
 }

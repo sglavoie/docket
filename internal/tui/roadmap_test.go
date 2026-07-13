@@ -189,7 +189,7 @@ func TestRoadmapLoadsArchivedSummariesForVelocity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new archived task: %v", err)
 	}
-	archived.Status = models.StatusDone
+	archived.WorkflowState = models.StateDone
 	archived.CompletedAt = &completedAt
 	archived.EnsureTaskAttrs().Effort = models.EffortLarge
 

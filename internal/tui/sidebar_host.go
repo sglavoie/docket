@@ -22,6 +22,54 @@ type SidebarHost interface {
 	UnlinkSelectedSidebarTask(task *models.Task) tea.Cmd
 }
 
+// sidebarUnlinkCommand builds the coordinator command that removes the linked
+// item at (section, cursor) from sourceTask and adapts the transaction outcome
+// back to a LinkRemovedMsg carrying the touched project IDs. Every relation kind
+// routes through the link coordinator as one ledger-undoable ChangeSet: a
+// blocked-by removal drops sourceTask's own dependency edge, a blocking removal
+// drops the dependent task's edge onto sourceTask, and a related removal is
+// bidirectional (removing both sides atomically, spanning projects when the peer
+// lives elsewhere). A cursor out of range yields a nil command (nothing to
+// remove); an error surfaces as ErrorMsg so the shell shows it without popping.
+func sidebarUnlinkCommand(link LinkCoordinator, project *models.Project, sourceTask *models.Task, section, cursor int) tea.Cmd {
+	var commit tea.Cmd
+	switch section {
+	case 0: // Blocked by: remove sourceTask's dependency edge
+		if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
+			return nil
+		}
+		commit = link.RemoveDependency(sourceTask.ID, sourceTask.DependsOn[cursor])
+	case 1: // Blocking: remove the dependent task's edge onto sourceTask
+		blockedTasks := project.GetBlockedByTasks(sourceTask)
+		if cursor < 0 || cursor >= len(blockedTasks) {
+			return nil
+		}
+		commit = link.RemoveDependency(blockedTasks[cursor].ID, sourceTask.ID)
+	case 2: // Related: bidirectional removal (may span projects)
+		if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
+			return nil
+		}
+		commit = link.RemoveRelatedBidirectional(sourceTask.ID, sourceTask.RelatedTo[cursor])
+	default:
+		return nil
+	}
+	if commit == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch r := commit().(type) {
+		case TransactionErrorMsg:
+			return ErrorMsg{Err: r.Err}
+		case TransactionResultMsg:
+			return LinkRemovedMsg{SourceTask: sourceTask, Section: section, TouchedProjectIDs: []string{r.Result.ProjectID}}
+		case BatchTransactionResultMsg:
+			return LinkRemovedMsg{SourceTask: sourceTask, Section: section, TouchedProjectIDs: r.TouchedProjectIDs}
+		default:
+			return r
+		}
+	}
+}
+
 // sidebarLinkedTask represents a resolved task reference for sidebar display.
 type sidebarLinkedTask struct {
 	Task      *models.Task    // nil if not found (broken link)

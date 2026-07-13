@@ -1,144 +1,80 @@
 package tui
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
+
+// newReparentTask builds a task with an explicit ID so the reparent tests can
+// resolve tasks across the wired snapshot by a stable identity.
+func newReparentTask(t *testing.T, id string, shortID int, typ models.TaskType, title string) *models.Task {
+	t.Helper()
+	task, err := models.NewTask(id, shortID, typ, title)
+	if err != nil {
+		t.Fatalf("NewTask %s: %v", id, err)
+	}
+	return task
+}
 
 // TestCrossProjectReparent verifies that a ParentSelectedMsg received by the
 // OutlinerModel in cross-project mode reparents the task in its owning project
-// (not some other loaded project), persists the change, and records an undo
-// snapshot.
+// (not some other loaded project) through the single-task coordinator, commits
+// one ledger-backed transaction, and that the ledger undo restores it.
 func TestCrossProjectReparent(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
-	alphaDir := t.TempDir()
-	betaDir := t.TempDir()
+	alphaEpicA := newReparentTask(t, "alpha-epic-a", 1, models.TaskTypeEpic, "Epic A")
+	alphaEpicB := newReparentTask(t, "alpha-epic-b", 2, models.TaskTypeEpic, "Epic B")
+	alphaLeaf := newReparentTask(t, "alpha-leaf", 3, models.TaskTypeTask, "Leaf under A")
+	alphaLeaf.ParentID = strPtr("alpha-epic-a")
+	betaEpic := newReparentTask(t, "beta-epic", 1, models.TaskTypeEpic, "Beta Epic")
 
-	const (
-		alphaEpicAID = "alpha-epic-a"
-		alphaEpicBID = "alpha-epic-b"
-		alphaLeafID  = "alpha-leaf"
-	)
+	env := newKanbanBulkEnv(t, []*models.Task{alphaEpicA, alphaEpicB, alphaLeaf}, []*models.Task{betaEpic})
+	m := newCrossOutlinerFromEnv(env)
 
-	alphaEpicA, _ := models.NewTask(alphaEpicAID, 1, models.TaskTypeEpic, "Epic A")
-	alphaEpicB, _ := models.NewTask(alphaEpicBID, 2, models.TaskTypeEpic, "Epic B")
-	alphaLeaf, _ := models.NewTask(alphaLeafID, 3, models.TaskTypeTask, "Leaf under A")
-	alphaLeaf.ParentID = strPtr(alphaEpicAID)
-
-	alpha := &models.Project{ID: "alpha-proj", Name: "Alpha", Path: alphaDir}
-	alpha.Tasks = []*models.Task{alphaEpicA, alphaEpicB, alphaLeaf}
-	alpha.BuildTaskTree()
-	if err := storage.SaveProject(alpha); err != nil {
-		t.Fatalf("save alpha: %v", err)
-	}
-
-	betaEpic, _ := models.NewTask("beta-epic", 1, models.TaskTypeEpic, "Beta Epic")
-	beta := &models.Project{ID: "beta-proj", Name: "Beta", Path: betaDir}
-	beta.Tasks = []*models.Task{betaEpic}
-	beta.BuildTaskTree()
-	if err := storage.SaveProject(beta); err != nil {
-		t.Fatalf("save beta: %v", err)
-	}
-
-	if err := storage.LoadProject(alpha); err != nil {
-		t.Fatalf("load alpha: %v", err)
-	}
-	if err := storage.LoadProject(beta); err != nil {
-		t.Fatalf("load beta: %v", err)
-	}
-
-	depth := 5
-	m := &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: &config.Config{UndoHistoryDepth: &depth}},
-			projectService: NewProjectService(),
-		},
-		loadedProjects: []*models.Project{alpha, beta},
-	}
-
-	newParentID := alphaEpicBID
+	newParentID := "alpha-epic-b"
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
-		ReparentTaskID: alphaLeafID,
+		ReparentTaskID: "alpha-leaf",
 		ParentID:       &newParentID,
 		Source:         ViewCrossProjectOutliner,
 	})
-	if cmd == nil {
-		t.Fatal("handleCrossProjectReparent returned nil cmd")
-	}
-	if _, ok := cmd().(ErrorMsg); ok {
-		t.Fatalf("save cmd returned ErrorMsg")
-	}
+	runResult(t, cmd)
 
-	// Reload alpha from disk to verify persistence.
-	alphaReload := &models.Project{ID: alpha.ID, Name: alpha.Name, Path: alphaDir}
-	if err := storage.LoadProject(alphaReload); err != nil {
-		t.Fatalf("reload alpha: %v", err)
-	}
-	leaf := alphaReload.GetTaskByID(alphaLeafID)
+	leaf := env.reload(t, 0).GetTaskByID("alpha-leaf")
 	if leaf == nil {
 		t.Fatal("leaf not found after reload")
 	}
-	if leaf.ParentID == nil || *leaf.ParentID != alphaEpicBID {
+	if leaf.ParentID == nil || *leaf.ParentID != "alpha-epic-b" {
 		got := "nil"
 		if leaf.ParentID != nil {
 			got = *leaf.ParentID
 		}
-		t.Errorf("leaf parent: want %q, got %q", alphaEpicBID, got)
+		t.Errorf("leaf parent: want %q, got %q", "alpha-epic-b", got)
 	}
 
-	// Verify undo snapshot was recorded for alpha (and only alpha).
-	alphaSnap := filepath.Join(alphaDir, ".undo", "0001.md")
-	if _, err := os.Stat(alphaSnap); err != nil {
-		t.Errorf("expected undo snapshot at %s: %v", alphaSnap, err)
-	}
-	betaSnap := filepath.Join(betaDir, ".undo", "0001.md")
-	if _, err := os.Stat(betaSnap); err == nil {
-		t.Errorf("beta should not have an undo snapshot (only alpha was mutated)")
-	}
-
-	// Verify undo context tracks only alpha.
-	if got := m.crossUndoCtx.Action; got != "Reparent Task" {
-		t.Errorf("crossUndoCtx.Action: want 'Reparent Task', got %q", got)
-	}
-	if got := m.crossUndoCtx.ProjectIDs; len(got) != 1 || got[0] != alpha.ID {
-		t.Errorf("crossUndoCtx.ProjectIDs: want [%q], got %v", alpha.ID, got)
+	// The ledger-primary undo restores the pre-mutation parent.
+	env.undo(t)
+	leaf = env.reload(t, 0).GetTaskByID("alpha-leaf")
+	if leaf == nil || leaf.ParentID == nil || *leaf.ParentID != "alpha-epic-a" {
+		got := "nil"
+		if leaf != nil && leaf.ParentID != nil {
+			got = *leaf.ParentID
+		}
+		t.Errorf("leaf parent after undo: want %q, got %q", "alpha-epic-a", got)
 	}
 }
 
 // TestCrossProjectReparent_InvalidTargetNoSnapshot verifies that supplying an
-// invalid parent (e.g. type-incompatible: task -> task) yields a no-op without
-// recording an undo snapshot. Previously the snapshot was recorded before the
-// validity check, polluting undo history with phantom "Reparent Task" entries.
+// invalid parent (type-incompatible: task -> task) is rejected by the
+// application layer before any commit, so the coordinator emits a
+// TransactionErrorMsg and the on-disk parent is unchanged.
 func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
-	strPtr := func(s string) *string { return &s }
+	leafA := newReparentTask(t, "leaf-a", 1, models.TaskTypeTask, "Leaf A")
+	leafB := newReparentTask(t, "leaf-b", 2, models.TaskTypeTask, "Leaf B")
 
-	dir := t.TempDir()
-	leafA, _ := models.NewTask("leaf-a", 1, models.TaskTypeTask, "Leaf A")
-	leafB, _ := models.NewTask("leaf-b", 2, models.TaskTypeTask, "Leaf B")
-	proj := &models.Project{ID: "p", Name: "P", Path: dir}
-	proj.Tasks = []*models.Task{leafA, leafB}
-	proj.BuildTaskTree()
-	if err := storage.SaveProject(proj); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-	if err := storage.LoadProject(proj); err != nil {
-		t.Fatalf("load: %v", err)
-	}
-
-	depth := 5
-	m := &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: &config.Config{UndoHistoryDepth: &depth}},
-			projectService: NewProjectService(),
-		},
-		loadedProjects: []*models.Project{proj},
-	}
+	env := newKanbanBulkEnv(t, []*models.Task{leafA, leafB})
+	m := newCrossOutlinerFromEnv(env)
 
 	// leafA cannot be a child of leafB (task type can't parent another task).
 	invalidParent := "leaf-b"
@@ -147,22 +83,21 @@ func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
 		ParentID:       &invalidParent,
 		Source:         ViewCrossProjectOutliner,
 	})
-	if cmd != nil {
-		if _, ok := cmd().(ErrorMsg); ok {
-			t.Fatalf("expected nil cmd, got ErrorMsg")
-		}
+	if cmd == nil {
+		t.Fatal("expected a command from an invalid reparent")
+	}
+	if _, ok := cmd().(TransactionErrorMsg); !ok {
+		t.Fatalf("expected TransactionErrorMsg for invalid reparent, got %T", cmd())
 	}
 
-	// No snapshot should exist because the operation was invalid.
-	if _, err := os.Stat(filepath.Join(dir, ".undo", "0001.md")); err == nil {
-		t.Error("undo snapshot was recorded for an invalid (no-op) reparent")
+	// The parent must remain unchanged on disk (no commit for a rejected change).
+	got := env.reload(t, 0).GetTaskByID("leaf-a")
+	if got == nil {
+		t.Fatal("leaf-a missing after reload")
 	}
-
-	// And the parent should remain unchanged in memory.
-	if leafA.ParentID != nil {
-		t.Errorf("leaf-a ParentID should still be nil, got %q", *leafA.ParentID)
+	if got.ParentID != nil {
+		t.Errorf("leaf-a ParentID should still be nil, got %q", *got.ParentID)
 	}
-	_ = strPtr
 }
 
 // TestCrossProjectReparentToRoot verifies that picking "None" (nil ParentID)
@@ -170,50 +105,25 @@ func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
 func TestCrossProjectReparentToRoot(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
-	alphaDir := t.TempDir()
-	alphaEpic, _ := models.NewTask("epic", 1, models.TaskTypeEpic, "Epic")
-	alphaLeaf, _ := models.NewTask("leaf", 2, models.TaskTypeTask, "Leaf")
-	alphaLeaf.ParentID = strPtr("epic")
-	alpha := &models.Project{ID: "alpha", Name: "Alpha", Path: alphaDir}
-	alpha.Tasks = []*models.Task{alphaEpic, alphaLeaf}
-	alpha.BuildTaskTree()
-	if err := storage.SaveProject(alpha); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-	if err := storage.LoadProject(alpha); err != nil {
-		t.Fatalf("load: %v", err)
-	}
+	epic := newReparentTask(t, "epic", 1, models.TaskTypeEpic, "Epic")
+	leaf := newReparentTask(t, "leaf", 2, models.TaskTypeTask, "Leaf")
+	leaf.ParentID = strPtr("epic")
 
-	depth := 5
-	m := &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: &config.Config{UndoHistoryDepth: &depth}},
-			projectService: NewProjectService(),
-		},
-		loadedProjects: []*models.Project{alpha},
-	}
+	env := newKanbanBulkEnv(t, []*models.Task{epic, leaf})
+	m := newCrossOutlinerFromEnv(env)
 
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
 		ReparentTaskID: "leaf",
 		ParentID:       nil,
 		Source:         ViewCrossProjectOutliner,
 	})
-	if cmd == nil {
-		t.Fatal("handleCrossProjectReparent returned nil cmd")
-	}
-	if _, ok := cmd().(ErrorMsg); ok {
-		t.Fatal("save cmd returned ErrorMsg")
-	}
+	runResult(t, cmd)
 
-	reload := &models.Project{ID: alpha.ID, Name: alpha.Name, Path: alphaDir}
-	if err := storage.LoadProject(reload); err != nil {
-		t.Fatalf("reload: %v", err)
-	}
-	leaf := reload.GetTaskByID("leaf")
-	if leaf == nil {
+	got := env.reload(t, 0).GetTaskByID("leaf")
+	if got == nil {
 		t.Fatal("leaf missing")
 	}
-	if leaf.ParentID != nil {
-		t.Errorf("leaf ParentID: want nil, got %q", *leaf.ParentID)
+	if got.ParentID != nil {
+		t.Errorf("leaf ParentID: want nil, got %q", *got.ParentID)
 	}
 }

@@ -1,6 +1,7 @@
 package external
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -350,4 +351,35 @@ func readFileEventually(path string, timeout time.Duration) ([]byte, error) {
 		lastErr = os.ErrNotExist
 	}
 	return nil, lastErr
+}
+
+// readFileEventuallyMatching polls path until want reports the content is
+// complete, or the timeout elapses. Unlike readFileEventually, which returns as
+// soon as the file is nonempty, this waits for the full expected content. Use it
+// for fire-and-forget launch assertions so a partially written argument file is
+// never mistaken for the final, complete launch record.
+func readFileEventuallyMatching(path string, timeout time.Duration, want func([]byte) bool) ([]byte, error) {
+	deadline := time.Now().Add(timeout)
+	var last []byte
+	var lastErr error
+	for {
+		b, err := os.ReadFile(path)
+		if err == nil {
+			last = b
+			if want(b) {
+				return b, nil
+			}
+			lastErr = nil
+		} else {
+			lastErr = err
+		}
+		if !time.Now().Before(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("timed out waiting for complete content in %s; last read: %q", path, strings.TrimSpace(string(last)))
+	}
+	return last, lastErr
 }

@@ -23,10 +23,11 @@ type ScoreEditorDoneMsg struct {
 
 // ScoreEditorModel is a small overlay for editing scoring dimensions on a task.
 type ScoreEditorModel struct {
-	task    *models.Task
-	project *models.Project
-	config  *config.Config
-	profile *scoring.ScoringProfile
+	task        *models.Task
+	project     *models.Project
+	config      *config.Config
+	profile     *scoring.ScoringProfile
+	coordinator TaskItemCoordinator
 
 	// Per-dimension editing state
 	values  []int    // current value for each dimension
@@ -43,8 +44,10 @@ type ScoreEditorModel struct {
 	height int
 }
 
-// NewScoreEditorModel creates a score editor for a task.
-func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config.Config) *ScoreEditorModel {
+// NewScoreEditorModel creates a score editor for a task. The coordinator commits
+// the edited dimensions through the application layer (atomic, ledger-undoable)
+// on save.
+func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config.Config, coordinator TaskItemCoordinator) *ScoreEditorModel {
 	profile := cfg.GetProjectScoringProfile(project.ID)
 	if profile == nil {
 		return nil
@@ -68,6 +71,7 @@ func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config
 		project:     project,
 		config:      cfg,
 		profile:     profile,
+		coordinator: coordinator,
 		values:      values,
 		sources:     sources,
 		scratchDims: scratchDims,
@@ -162,28 +166,25 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// save applies the edited values to the task and saves.
+// save collects the edited dimensions and commits them through the application
+// layer as one atomic, ledger-undoable ChangeSet. Only dimensions the user set
+// to "manual" are persisted; a dimension reset back to derived/default is simply
+// absent, so the application layer's replace semantics drops it. The commit runs
+// against a fresh snapshot, so on success the shell reloads the touched project
+// before rebuilding score-bearing views.
 func (m *ScoreEditorModel) save() tea.Cmd {
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
-
 	dims := make(map[string]int)
 	for i, dim := range m.profile.Dimensions {
 		if m.sources[i] == "manual" {
 			dims[dim.ID] = m.values[i]
 		}
 	}
-	m.task.ScoreDimensions = dims
 
 	project := m.project
 	task := m.task
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
+	return adaptSubviewCommit(m.coordinator.SetScore(task.ID, dims), func() tea.Msg {
 		return ScoreEditorDoneMsg{Task: task, Saved: true, Project: project}
-	}
+	})
 }
 
 // computeLiveScore calculates the score from the editor's in-progress values.

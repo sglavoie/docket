@@ -10,10 +10,10 @@ import (
 func TestRoundTrip_Attachments(t *testing.T) {
 	now := time.Now()
 	task := &models.Task{
-		ID:       "att-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "att-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		Attachments: []models.Attachment{
 			{
 				Filename:     "report.pdf",

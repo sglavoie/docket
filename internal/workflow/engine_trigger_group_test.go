@@ -10,7 +10,7 @@ import (
 func TestEvaluateRules_FlatTriggersBackwardCompat(t *testing.T) {
 	// Rules using flat triggers (no TriggerGroup) should work unchanged
 	tasks := []*models.Task{
-		{ID: "1", Title: "Task", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
+		{ID: "1", Title: "Task", Priority: 1, WorkflowState: models.StateReady, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -37,10 +37,10 @@ func TestEvaluateRules_FlatTriggersBackwardCompat(t *testing.T) {
 func TestEvaluateRules_TriggerGroupANDofORs(t *testing.T) {
 	// (status=todo OR status=in_progress) AND (priority=1 OR priority=2)
 	tasks := []*models.Task{
-		{ID: "1", Title: "Todo P1", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
-		{ID: "2", Title: "IP P2", Priority: 2, Status: models.StatusInProgress, Tags: []string{}},
-		{ID: "3", Title: "Todo P3", Priority: 3, Status: models.StatusTodo, Tags: []string{}},
-		{ID: "4", Title: "Done P1", Priority: 1, Status: models.StatusDone, Tags: []string{}},
+		{ID: "1", Title: "Todo P1", Priority: 1, WorkflowState: models.StateReady, Tags: []string{}},
+		{ID: "2", Title: "IP P2", Priority: 2, WorkflowState: models.StateInProgress, Tags: []string{}},
+		{ID: "3", Title: "Todo P3", Priority: 3, WorkflowState: models.StateReady, Tags: []string{}},
+		{ID: "4", Title: "Done P1", Priority: 1, WorkflowState: models.StateDone, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -94,10 +94,10 @@ func TestEvaluateRules_TriggerGroupANDofORs(t *testing.T) {
 func TestEvaluateRules_TriggerGroupORofANDs(t *testing.T) {
 	// (status=todo AND priority=1) OR (status=in_progress AND tags contains urgent)
 	tasks := []*models.Task{
-		{ID: "1", Title: "Todo P1", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
-		{ID: "2", Title: "IP urgent", Priority: 3, Status: models.StatusInProgress, Tags: []string{"urgent"}},
-		{ID: "3", Title: "Todo P3", Priority: 3, Status: models.StatusTodo, Tags: []string{}},
-		{ID: "4", Title: "IP not urgent", Priority: 3, Status: models.StatusInProgress, Tags: []string{}},
+		{ID: "1", Title: "Todo P1", Priority: 1, WorkflowState: models.StateReady, Tags: []string{}},
+		{ID: "2", Title: "IP urgent", Priority: 3, WorkflowState: models.StateInProgress, Tags: []string{"urgent"}},
+		{ID: "3", Title: "Todo P3", Priority: 3, WorkflowState: models.StateReady, Tags: []string{}},
+		{ID: "4", Title: "IP not urgent", Priority: 3, WorkflowState: models.StateInProgress, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -145,12 +145,17 @@ func TestEvaluateRules_TriggerGroupORofANDs(t *testing.T) {
 }
 
 func TestEvaluateRules_TriggerGroupMixedTriggersAndSubGroups(t *testing.T) {
-	// Root AND: section=Inbox AND (status=todo OR status=blocked)
+	// Root AND: type=task AND (status=todo OR status=blocked). The status legs
+	// are read via the canonical state (LegacyStatusForState), so a Waiting-state
+	// task reports status "blocked". The root trigger is type-based (not
+	// section-based) because a section and a blocked status cannot coexist under
+	// the state model — a blocked task collapses to StateWaiting with no section —
+	// which would make a "section=Inbox AND status=blocked" rule unsatisfiable.
 	tasks := []*models.Task{
-		{ID: "1", Title: "Inbox todo", Status: models.StatusTodo, Section: "Inbox", Tags: []string{}},
-		{ID: "2", Title: "Inbox blocked", Status: models.StatusBlocked, Section: "Inbox", Tags: []string{}},
-		{ID: "3", Title: "Active todo", Status: models.StatusTodo, Section: "", Tags: []string{}},
-		{ID: "4", Title: "Inbox done", Status: models.StatusDone, Section: "Inbox", Tags: []string{}},
+		{ID: "1", Title: "Todo", Type: models.TaskTypeTask, WorkflowState: models.StateReady, Tags: []string{}},
+		{ID: "2", Title: "Blocked", Type: models.TaskTypeTask, WorkflowState: models.StateWaiting, Tags: []string{}},
+		{ID: "3", Title: "In progress", Type: models.TaskTypeTask, WorkflowState: models.StateInProgress, Tags: []string{}},
+		{ID: "4", Title: "Done", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -161,7 +166,7 @@ func TestEvaluateRules_TriggerGroupMixedTriggersAndSubGroups(t *testing.T) {
 			TriggerGroup: &TriggerGroup{
 				Logic: LogicAnd,
 				Triggers: []RuleTrigger{
-					{Field: FieldSection, Operation: OpEquals, Value: "Inbox"},
+					{Field: FieldType, Operation: OpEquals, Value: "task"},
 				},
 				Groups: []TriggerGroup{
 					{
@@ -180,16 +185,16 @@ func TestEvaluateRules_TriggerGroupMixedTriggersAndSubGroups(t *testing.T) {
 	EvaluateRules(tasks, rules)
 
 	if !tasks[0].HasTag("matched") {
-		t.Error("task 1 (Inbox, todo) should match")
+		t.Error("task 1 (task, todo) should match via the todo leg")
 	}
 	if !tasks[1].HasTag("matched") {
-		t.Error("task 2 (Inbox, blocked) should match")
+		t.Error("task 2 (task, blocked→waiting) should match via the blocked leg")
 	}
 	if tasks[2].HasTag("matched") {
-		t.Error("task 3 (Active, todo) should NOT match (wrong section)")
+		t.Error("task 3 (task, in_progress) should NOT match (neither status leg)")
 	}
 	if tasks[3].HasTag("matched") {
-		t.Error("task 4 (Inbox, done) should NOT match (wrong status)")
+		t.Error("task 4 (task, done) should NOT match (neither status leg)")
 	}
 }
 

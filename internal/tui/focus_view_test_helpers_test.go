@@ -27,15 +27,16 @@ func newTestFocusProject(t *testing.T, name string) *models.Project {
 	return project
 }
 
-// newTestFocusTask creates a task with optional active flag.
-func newTestFocusTask(t *testing.T, title string, priority int, active bool) *models.Task {
+// newTestFocusTask creates a task. The active flag is retired (membership is now
+// derived from the Focus Queue), so it is accepted for call-site compatibility
+// but no longer applied to the task.
+func newTestFocusTask(t *testing.T, title string, priority int, _ bool) *models.Task {
 	t.Helper()
 	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
 	if err != nil {
 		t.Fatal(err)
 	}
 	task.Priority = priority
-	task.Active = active
 	return task
 }
 

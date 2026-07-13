@@ -40,7 +40,7 @@ func renderSearchHelpPane(width, height int) string {
 	b.WriteString(muted.Render("  " + wrapValues([]string{
 		"description", "comment", "checklist", "attachment", "issue",
 		"due", "dependency", "relation", "recurrence",
-		"url", "stage", "parent", "children", "tag",
+		"url", "parent", "children", "tag",
 	}, wrapWidth)))
 	b.WriteString("\n")
 	b.WriteString(prefix.Render("no:X") + muted.Render("  Negation of has: (same values)"))

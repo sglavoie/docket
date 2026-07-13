@@ -14,11 +14,11 @@ func TestBuildSectionPickerList_NonGTDSectionsCountAsActive(t *testing.T) {
 		Sections:      []string{"Next"},
 		SectionColors: map[string]string{},
 		Tasks: []*models.Task{
-			{ID: "1", Section: "Next"},
-			{ID: "2", Section: "Next"},
-			{ID: "3", Section: "Sprint-1"}, // legacy non-GTD section
-			{ID: "4", Section: "Sprint-1"}, // legacy non-GTD section
-			{ID: "5", Section: ""},         // Active (no section)
+			{ID: "1", WorkflowState: models.StateNext},
+			{ID: "2", WorkflowState: models.StateNext},
+			{ID: "3"}, // legacy non-GTD section -> resolves to active/ready
+			{ID: "4"}, // legacy non-GTD section -> resolves to active/ready
+			{ID: "5"}, // Active (no section)
 		},
 	}
 
@@ -51,9 +51,9 @@ func TestBuildSectionPickerList_OnlyGTDSections(t *testing.T) {
 		Sections:      []string{"Next"},
 		SectionColors: map[string]string{},
 		Tasks: []*models.Task{
-			{ID: "1", Section: "Next"},
-			{ID: "2", Section: "Waiting"},
-			{ID: "3", Section: ""},
+			{ID: "1", WorkflowState: models.StateNext},
+			{ID: "2", WorkflowState: models.StateWaiting},
+			{ID: "3"},
 		},
 	}
 

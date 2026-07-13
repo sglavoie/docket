@@ -11,19 +11,19 @@ import (
 func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 	pinnedAt := time.Date(2024, 6, 15, 10, 30, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:        "test-id",
-		ShortID:   1,
-		Type:      models.TaskTypeTask,
-		Title:     "Test Task",
-		Status:    models.StatusTodo,
-		Priority:  3,
-		Pinned:    true,
-		PinnedAt:  &pinnedAt,
-		Tags:      []string{},
-		DependsOn: []string{},
-		RelatedTo: []string{},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:            "test-id",
+		ShortID:       1,
+		Type:          models.TaskTypeTask,
+		Title:         "Test Task",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Pinned:        true,
+		PinnedAt:      &pinnedAt,
+		Tags:          []string{},
+		DependsOn:     []string{},
+		RelatedTo:     []string{},
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	// Build the JSON entry the same way displayTaskShowJSON does
@@ -32,7 +32,7 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 		ShortID:         task.ShortID,
 		Type:            task.Type.String(),
 		Title:           task.Title,
-		Status:          task.Status.String(),
+		Status:          models.LegacyStatusForState(task.State()).String(),
 		Priority:        task.Priority,
 		Tags:            task.Tags,
 		DependsOn:       task.DependsOn,
@@ -67,12 +67,12 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 
 func TestTaskShowJSONIncludesActivity(t *testing.T) {
 	task := &models.Task{
-		ID:       "test-id",
-		ShortID:  1,
-		Type:     models.TaskTypeTask,
-		Title:    "Test Task",
-		Status:   models.StatusInProgress,
-		Priority: 3,
+		ID:            "test-id",
+		ShortID:       1,
+		Type:          models.TaskTypeTask,
+		Title:         "Test Task",
+		WorkflowState: models.StateInProgress,
+		Priority:      3,
 		Activity: []*models.ActivityEntry{
 			{
 				Timestamp: time.Date(2024, 6, 15, 10, 0, 0, 0, time.UTC),
@@ -93,7 +93,7 @@ func TestTaskShowJSONIncludesActivity(t *testing.T) {
 		ShortID:         task.ShortID,
 		Type:            task.Type.String(),
 		Title:           task.Title,
-		Status:          task.Status.String(),
+		Status:          models.LegacyStatusForState(task.State()).String(),
 		Priority:        task.Priority,
 		Tags:            task.Tags,
 		DependsOn:       task.DependsOn,

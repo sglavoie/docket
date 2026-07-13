@@ -87,7 +87,7 @@ func TestComputeCrossProjectScore(t *testing.T) {
 			t.Fatal(err)
 		}
 		inProgress.Priority = 3
-		inProgress.Status = models.StatusInProgress
+		inProgress.WorkflowState = models.StateInProgress
 
 		sTodo := computeCrossProjectScore(todo, project, nil, now)
 		sIP := computeCrossProjectScore(inProgress, project, nil, now)
@@ -316,7 +316,7 @@ func TestAllChildrenComplete(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		child.Status = models.StatusDone
+		child.WorkflowState = models.StateDone
 		parent.Children = []*models.Task{child}
 		if !allChildrenComplete(parent) {
 			t.Error("expected true when all children are done")
@@ -389,26 +389,27 @@ func TestScoringFactors(t *testing.T) {
 
 	t.Run("section scoring ordering", func(t *testing.T) {
 		next := baseTask()
-		next.Section = models.SectionNext
+		next.WorkflowState = models.StateNext
 		nextScore := computeCrossProjectScore(next, project, nil, now)
 
 		inbox := baseTask()
+		inbox.WorkflowState = models.StateInbox
 		inboxScore := computeCrossProjectScore(inbox, project, nil, now)
 
 		waiting := baseTask()
-		waiting.Section = models.SectionWaiting
+		waiting.WorkflowState = models.StateWaiting
 		waitingScore := computeCrossProjectScore(waiting, project, nil, now)
 
 		review := baseTask()
-		review.Section = models.SectionReview
+		review.WorkflowState = models.StateReview
 		reviewScore := computeCrossProjectScore(review, project, nil, now)
 
 		standby := baseTask()
-		standby.Section = models.SectionStandby
+		standby.WorkflowState = models.StatePaused
 		standbyScore := computeCrossProjectScore(standby, project, nil, now)
 
 		someday := baseTask()
-		someday.Section = models.SectionSomeday
+		someday.WorkflowState = models.StateSomeday
 		somedayScore := computeCrossProjectScore(someday, project, nil, now)
 
 		if nextScore <= inboxScore {
@@ -417,8 +418,12 @@ func TestScoringFactors(t *testing.T) {
 		if inboxScore <= waitingScore {
 			t.Errorf("Inbox score (%d) should be > Waiting score (%d)", inboxScore, waitingScore)
 		}
-		if reviewScore != waitingScore {
-			t.Errorf("Review score (%d) should equal Waiting score (%d)", reviewScore, waitingScore)
+		// 33.7.6.4 recalibration: the legacy review status/section collapse into
+		// StateReview, which is now rewarded as active pipeline work (+250) rather
+		// than penalized as a holding bucket, so a Review-section task now outranks
+		// even a Next-section task instead of tying with Waiting.
+		if reviewScore <= nextScore {
+			t.Errorf("Review score (%d) should be > Next score (%d)", reviewScore, nextScore)
 		}
 		if waitingScore <= standbyScore {
 			t.Errorf("Waiting score (%d) should be > Standby score (%d)", waitingScore, standbyScore)
@@ -450,18 +455,23 @@ func TestScoringFactors(t *testing.T) {
 		project.Tasks = nil
 	})
 
-	t.Run("active flag bonus", func(t *testing.T) {
-		active := baseTask()
-		active.Active = true
-		activeScore := computeCrossProjectScore(active, project, nil, now)
-		if activeScore <= baseScore {
-			t.Errorf("active score (%d) should be > base score (%d)", activeScore, baseScore)
+	t.Run("focus queue bonus", func(t *testing.T) {
+		// 33.7.6.4: the retired Task.Active flag's scoring bonus is now driven by
+		// Focus Queue membership. Score the same task with and without membership
+		// to isolate the bonus.
+		queued := baseTask()
+		cfg := config.NewConfig()
+		cfg.AddToFocusQueue(queued.ID, project.ID)
+		queuedScore := computeCrossProjectScore(queued, project, cfg, now)
+		unqueuedScore := computeCrossProjectScore(queued, project, nil, now)
+		if queuedScore <= unqueuedScore {
+			t.Errorf("focus-queue score (%d) should be > unqueued score (%d)", queuedScore, unqueuedScore)
 		}
 	})
 
 	t.Run("review status bonus", func(t *testing.T) {
 		review := baseTask()
-		review.Status = models.StatusReview
+		review.WorkflowState = models.StateReview
 		reviewScore := computeCrossProjectScore(review, project, nil, now)
 		if reviewScore <= baseScore {
 			t.Errorf("review score (%d) should be > base score (%d)", reviewScore, baseScore)
@@ -484,7 +494,7 @@ func TestScoringFactors(t *testing.T) {
 			t.Fatal(err)
 		}
 		doneDep.DependsOn = []string{blocker.ID}
-		doneDep.Status = models.StatusDone
+		doneDep.WorkflowState = models.StateDone
 
 		openDep, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Open dep")
 		if err != nil {
@@ -536,7 +546,7 @@ func TestScoringFactors(t *testing.T) {
 			t.Fatal(err)
 		}
 		soloDoneDep.DependsOn = []string{soloBlocker.ID}
-		soloDoneDep.Status = models.StatusDone
+		soloDoneDep.WorkflowState = models.StateDone
 		soloProject.Tasks = []*models.Task{soloBlocker, soloDoneDep}
 		soloProject.BuildTaskTree()
 

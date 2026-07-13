@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/appearance"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -117,6 +118,7 @@ const (
 	ViewRoadmap
 	ViewTaskDecisions
 	ViewAttrFilterPicker
+	ViewConflictResolution
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree
@@ -158,6 +160,28 @@ type AppModel struct {
 
 	// Persister for project persistence operations (enables testing with mocks)
 	persister Persister
+
+	// features are the application-backed coordinators the primary feature views
+	// dispatch their mutations and queries through. They route persistence
+	// through the application layer (one atomic ChangeSet per mutation) instead of
+	// letting a view mutate and save its own model copy. See feature_coordinator.go.
+	features FeatureCoordinators
+
+	// secondaryFeatures are the application-backed coordinators the secondary
+	// views and overlays (bulk operations, attachments, tags, blockers, settings,
+	// workflow/scoring editors) dispatch their mutations through. Each depends on
+	// a narrow host port satisfied by the same application service, so an overlay
+	// routes persistence through one atomic ChangeSet (or config write) instead of
+	// a direct saveProjectSync / configManager.Save call. See
+	// feature_coordinator_secondary.go.
+	secondaryFeatures SecondaryCoordinators
+
+	// appService is the same application service the feature coordinators wrap,
+	// retained directly for the few AppModel-owned overlays that mutate
+	// synchronously in Update() and need the typed result inline (the pinned-task
+	// popup: unpin/repin/reorder). Routing through it keeps those mutations atomic
+	// and ledger-undoable without a direct raw save.
+	appService *app.Service
 
 	// View stack for navigation
 	viewStack []ViewType

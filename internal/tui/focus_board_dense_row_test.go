@@ -35,7 +35,7 @@ func newDenseRowTask(t *testing.T, id string, shortID int, title string) *models
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 	return task
 }
 
@@ -206,19 +206,19 @@ func TestFocusBoardCompletedAndCanceledRowsAreQuiet(t *testing.T) {
 	today := time.Now()
 
 	done := newDenseRowTask(t, "done-id", 8, "Completed overdue task")
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 	done.DueDate = &yesterday
 
 	canceled := newDenseRowTask(t, "canceled-id", 9, "Canceled overdue task")
-	canceled.Status = models.StatusCanceled
+	canceled.WorkflowState = models.StateCanceled
 	canceled.DueDate = &yesterday
 
 	doneToday := newDenseRowTask(t, "done-today-id", 10, "Completed closed task")
-	doneToday.Status = models.StatusDone
+	doneToday.WorkflowState = models.StateDone
 	doneToday.DueDate = &today
 
 	canceledToday := newDenseRowTask(t, "canceled-today-id", 12, "Canceled closed task")
-	canceledToday.Status = models.StatusCanceled
+	canceledToday.WorkflowState = models.StateCanceled
 	canceledToday.DueDate = &today
 
 	project := newDenseRowProject(t)
@@ -231,13 +231,13 @@ func TestFocusBoardCompletedAndCanceledRowsAreQuiet(t *testing.T) {
 		row := boardRow{Task: task, Project: project, Source: project.Name}
 		line := ansi.Strip(m.renderRow(row, false, 100, "", false, nil))
 		if strings.Contains(line, "Overdue") {
-			t.Fatalf("quiet %s row should not carry overdue inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not carry overdue inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 		if strings.Contains(line, yesterday.Format("Jan 2")) {
-			t.Fatalf("quiet %s row should not surface due date inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not surface due date inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 		if strings.Contains(line, "today") {
-			t.Fatalf("quiet %s row should not carry due-today inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not carry due-today inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 	}
 }

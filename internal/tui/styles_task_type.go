@@ -43,5 +43,4 @@ var (
 	StandbyBadgeStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	MaybeBadgeStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	CanceledBadgeStyle   = makeBadgeStyle("248", "236")
-	StageBadgeStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("183"))
 )

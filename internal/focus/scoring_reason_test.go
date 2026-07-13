@@ -109,7 +109,7 @@ func TestGetSuggestionReasonRecentActivityMatchesScoreWindow(t *testing.T) {
 		task.Priority = 3
 		task.CreatedAt = now.AddDate(0, 0, -30)
 		task.UpdatedAt = now.AddDate(0, 0, -daysAgo)
-		task.Status = models.StatusTodo
+		task.WorkflowState = models.StateReady
 
 		reason := getSuggestionReason(task, project, nil, now)
 		if !strings.Contains(reason, "ecent activity") {
@@ -125,7 +125,7 @@ func TestGetSuggestionReasonRecentActivityMatchesScoreWindow(t *testing.T) {
 	stale.Priority = 3
 	stale.CreatedAt = now.AddDate(0, 0, -30)
 	stale.UpdatedAt = now.AddDate(0, 0, -4)
-	stale.Status = models.StatusTodo
+	stale.WorkflowState = models.StateReady
 	if reason := getSuggestionReason(stale, project, nil, now); strings.Contains(reason, "ecent activity") {
 		t.Errorf("4-day-old task should not list 'recent activity', got %q", reason)
 	}
@@ -138,7 +138,7 @@ func TestGetSuggestionReasonRecentActivityMatchesScoreWindow(t *testing.T) {
 	inProgress.Priority = 3
 	inProgress.CreatedAt = now.AddDate(0, 0, -30)
 	inProgress.UpdatedAt = now.AddDate(0, 0, -1)
-	inProgress.Status = models.StatusInProgress
+	inProgress.WorkflowState = models.StateInProgress
 	if reason := getSuggestionReason(inProgress, project, nil, now); strings.Contains(reason, "ecent activity") {
 		t.Errorf("in-progress task should suppress redundant 'recent activity', got %q", reason)
 	}

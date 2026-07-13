@@ -53,7 +53,7 @@ func TestRoadmapStorageSummariesForMetricsPreservesEffortFields(t *testing.T) {
 	got := roadmapStorageSummariesForMetrics([]storage.ArchiveTaskSummary{
 		{
 			ID:             "archived",
-			Status:         models.StatusDone,
+			WorkflowState:  models.StateDone,
 			CompletedAt:    &completedAt,
 			FirstStartedAt: &startedAt,
 			EstimatedDays:  5,
@@ -66,7 +66,7 @@ func TestRoadmapStorageSummariesForMetricsPreservesEffortFields(t *testing.T) {
 		t.Fatalf("got %d summaries, want 1", len(got))
 	}
 	if got[0].ID != "archived" ||
-		got[0].Status != models.StatusDone ||
+		got[0].WorkflowState != models.StateDone ||
 		got[0].CompletedAt != &completedAt ||
 		got[0].FirstStartedAt != &startedAt ||
 		got[0].EstimatedDays != 5 ||

@@ -13,9 +13,9 @@ import (
 func TestCheckBlockedTasks_NoActivityZeroUpdatedAtSkipped(t *testing.T) {
 	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:     "blk-zero",
-		Title:  "blocked but zero",
-		Status: models.StatusBlocked,
+		ID:            "blk-zero",
+		Title:         "blocked but zero",
+		WorkflowState: models.StateWaiting,
 		// UpdatedAt intentionally zero, Activity nil
 	}
 	projects := []ProjectData{{
@@ -37,8 +37,8 @@ func TestCheckBlockedTasks_NoActivityZeroUpdatedAtSkipped(t *testing.T) {
 func TestCheckProjectHealth_AllZeroUpdatedAtSkipped(t *testing.T) {
 	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
 	tasks := []*models.Task{
-		{ID: "t1", Title: "T1", Status: models.StatusTodo}, // UpdatedAt zero
-		{ID: "t2", Title: "T2", Status: models.StatusInProgress},
+		{ID: "t1", Title: "T1", WorkflowState: models.StateReady}, // UpdatedAt zero
+		{ID: "t2", Title: "T2", WorkflowState: models.StateInProgress},
 	}
 	projects := []ProjectData{{
 		Project: &models.Project{ID: "p1", Name: "P1"},
@@ -57,9 +57,9 @@ func TestCheckProjectHealth_AllZeroUpdatedAtSkipped(t *testing.T) {
 func TestCheckStaleTasks_ZeroUpdatedAtSkipped(t *testing.T) {
 	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:     "stale-zero",
-		Title:  "active but zero",
-		Status: models.StatusTodo,
+		ID:            "stale-zero",
+		Title:         "active but zero",
+		WorkflowState: models.StateReady,
 		// UpdatedAt intentionally zero.
 	}
 	projects := []ProjectData{{
@@ -80,11 +80,11 @@ func TestCheckOverdueTasks_TimedDueEarlierToday(t *testing.T) {
 	now := time.Date(2026, 6, 10, 14, 0, 0, 0, time.UTC)
 	dueAt := time.Date(2026, 6, 10, 9, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:      "timed-overdue",
-		Title:   "Timed task past due",
-		Status:  models.StatusTodo,
-		DueDate: &dueAt,
-		HasTime: true,
+		ID:            "timed-overdue",
+		Title:         "Timed task past due",
+		WorkflowState: models.StateReady,
+		DueDate:       &dueAt,
+		HasTime:       true,
 	}
 	projects := []ProjectData{{
 		Project: &models.Project{ID: "p1", Name: "P1"},
@@ -113,12 +113,11 @@ func TestCheckers_NilProjectSkipped(t *testing.T) {
 	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
 	due := now.AddDate(0, 0, -5)
 	taskWithDue := &models.Task{
-		ID:        "t-due",
-		Title:     "due",
-		Status:    models.StatusTodo,
-		DueDate:   &due,
-		UpdatedAt: now,
-		Section:   models.SectionInbox,
+		ID:            "t-due",
+		Title:         "due",
+		WorkflowState: models.StateInbox,
+		DueDate:       &due,
+		UpdatedAt:     now,
 	}
 	projects := []ProjectData{{
 		Project: nil,
@@ -154,18 +153,17 @@ func TestCheckers_NilTaskSkipped(t *testing.T) {
 	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
 	due := now.AddDate(0, 0, -5)
 	realTask := &models.Task{
-		ID:        "t-real",
-		Title:     "real overdue",
-		Status:    models.StatusTodo,
-		DueDate:   &due,
-		UpdatedAt: now.AddDate(0, 0, -30),
-		Section:   models.SectionInbox,
+		ID:            "t-real",
+		Title:         "real overdue",
+		WorkflowState: models.StateInbox,
+		DueDate:       &due,
+		UpdatedAt:     now.AddDate(0, 0, -30),
 	}
 	blockedTask := &models.Task{
-		ID:        "t-blocked",
-		Title:     "blocked",
-		Status:    models.StatusBlocked,
-		UpdatedAt: now.AddDate(0, 0, -30),
+		ID:            "t-blocked",
+		Title:         "blocked",
+		WorkflowState: models.StateWaiting,
+		UpdatedAt:     now.AddDate(0, 0, -30),
 		Activity: []*models.ActivityEntry{
 			{Field: "status", NewValue: string(models.StatusBlocked), Timestamp: now.AddDate(0, 0, -10)},
 		},
@@ -203,10 +201,10 @@ func TestFindLastBlockedTransition_NilEntrySkipped(t *testing.T) {
 	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
 	blockedAt := now.AddDate(0, 0, -10)
 	task := &models.Task{
-		ID:        "blk-nil-activity",
-		Title:     "blocked with nil entry",
-		Status:    models.StatusBlocked,
-		UpdatedAt: now.AddDate(0, 0, -1),
+		ID:            "blk-nil-activity",
+		Title:         "blocked with nil entry",
+		WorkflowState: models.StateWaiting,
+		UpdatedAt:     now.AddDate(0, 0, -1),
 		Activity: []*models.ActivityEntry{
 			nil,
 			{Field: "status", NewValue: string(models.StatusBlocked), Timestamp: blockedAt},
@@ -248,11 +246,11 @@ func TestCheckDueSoonTasks_TimedDueLaterToday(t *testing.T) {
 	now := time.Date(2026, 6, 10, 8, 0, 0, 0, time.UTC)
 	dueAt := time.Date(2026, 6, 10, 17, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:      "timed-due-soon",
-		Title:   "Timed task due later",
-		Status:  models.StatusTodo,
-		DueDate: &dueAt,
-		HasTime: true,
+		ID:            "timed-due-soon",
+		Title:         "Timed task due later",
+		WorkflowState: models.StateReady,
+		DueDate:       &dueAt,
+		HasTime:       true,
 	}
 	projects := []ProjectData{{
 		Project: &models.Project{ID: "p1", Name: "P1"},

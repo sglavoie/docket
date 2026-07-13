@@ -174,7 +174,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 
 	// 6: Flags
 	b.WriteString(renderFormLabelWithWidth("Flags:", lw, m.focusIndex == 6))
-	b.WriteString(renderFormFlagsValue(m.draft.pinned, m.draft.active, m.draft.dimmed, m.focusIndex == 6))
+	b.WriteString(renderFormFlagsValue(m.draft.pinned, m.draft.dimmed, m.focusIndex == 6))
 	b.WriteString("\n")
 
 	// 7: Tags
@@ -205,13 +205,10 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 }
 
 // renderFormFlagsValue renders the flag badges for a row value.
-func renderFormFlagsValue(pinned, active, dimmed bool, focused bool) string {
+func renderFormFlagsValue(pinned, dimmed bool, focused bool) string {
 	var parts []string
 	if pinned {
 		parts = append(parts, "Pinned")
-	}
-	if active {
-		parts = append(parts, "Active")
 	}
 	if dimmed {
 		parts = append(parts, "Dimmed")

@@ -12,15 +12,19 @@ type BlockersModel struct {
 	project  *models.Project
 	blockers []*models.Blocker
 	state    blockerViewState
+	// coordinator commits blocker-list replacements through the application
+	// layer as one transaction. See feature_coordinator_secondary.go.
+	coordinator BlockerCoordinator
 }
 
 // NewBlockersModelWithEditor creates a blockers viewer with editor config.
-func NewBlockersModelWithEditor(project *models.Project, editor string) *BlockersModel {
+func NewBlockersModelWithEditor(project *models.Project, editor string, coordinator BlockerCoordinator) *BlockersModel {
 	blockers, _ := storage.LoadBlockers(project)
 	return &BlockersModel{
-		project:  project,
-		blockers: blockers,
-		state:    newBlockerViewState(editor),
+		project:     project,
+		blockers:    blockers,
+		state:       newBlockerViewState(editor),
+		coordinator: coordinator,
 	}
 }
 
@@ -120,16 +124,16 @@ func (m *BlockersModel) findItemIndex(blocker *models.Blocker) int {
 }
 
 func (m *BlockersModel) saveBlockerData(_ *models.Blocker, _ *models.Project) error {
-	return storage.SaveBlockers(m.project, m.blockers)
+	return commitBlockersThroughCoordinator(m.coordinator, m.project, m.blockers)
 }
 
 func (m *BlockersModel) deleteBlockerData(idx int) (*models.Project, error) {
 	m.blockers = append(m.blockers[:idx], m.blockers[idx+1:]...)
-	return m.project, storage.SaveBlockers(m.project, m.blockers)
+	return m.project, commitBlockersThroughCoordinator(m.coordinator, m.project, m.blockers)
 }
 
 func (m *BlockersModel) updateBlockerData(_ int) (*models.Project, error) {
-	return m.project, storage.SaveBlockers(m.project, m.blockers)
+	return m.project, commitBlockersThroughCoordinator(m.coordinator, m.project, m.blockers)
 }
 
 func (m *BlockersModel) getAddProject() *models.Project {

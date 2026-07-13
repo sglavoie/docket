@@ -16,10 +16,16 @@ import (
 // configured WeekEndDay flows through MetricsDashboardModel.computeMetrics
 // into the weekly throughput bucket labels, instead of defaulting to Monday.
 func TestMetricsDashboardWeekStartPropagation(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "tt.json")
+	manager := config.NewManager(configPath)
 	cfg := config.NewConfig()
+	cfg.DataDir = config.WorkspaceRootFromConfigPath(configPath)
 	cfg.WeekEndDay = "sat" // week ends Saturday → starts Sunday
+	if err := manager.Save(cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
 
-	m := NewMetricsDashboardModel(cfg)
+	m := NewMetricsDashboardModel(manager)
 	m.timeRange = metrics.TimeRange90d // forces weekly granularity
 	m.computeMetrics()
 
@@ -27,7 +33,7 @@ func TestMetricsDashboardWeekStartPropagation(t *testing.T) {
 		t.Fatal("expected metrics to be computed")
 	}
 
-	want := metrics.WeekStartFromWeekEnd(cfg.GetWeekEndDay())
+	want := metrics.WeekStartFromWeekEnd("sat")
 	if want != time.Sunday {
 		t.Fatalf("test fixture broken: WeekStartFromWeekEnd(\"sat\") = %v, want Sunday", want)
 	}
@@ -79,7 +85,7 @@ func TestMetricsDashboardLoadsArchivedSummaries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new archived task: %v", err)
 	}
-	archived.Status = models.StatusDone
+	archived.WorkflowState = models.StateDone
 	archived.CompletedAt = &completedAt
 	archived.Activity = []*models.ActivityEntry{
 		{Timestamp: startedAt, Field: "status", OldValue: string(models.StatusTodo), NewValue: string(models.StatusInProgress)},
@@ -99,9 +105,8 @@ func TestMetricsDashboardLoadsArchivedSummaries(t *testing.T) {
 		_ = os.Chmod(archivePath, storage.FilePermissions)
 	}()
 
-	cfg := config.NewConfig()
-	cfg.Projects = []*models.Project{project}
-	model := NewMetricsDashboardModel(cfg)
+	manager := config.NewManager(filepath.Join(t.TempDir(), "tt.json"))
+	model := NewMetricsDashboardModelForProject(manager, project)
 
 	if model.metrics == nil {
 		t.Fatal("expected metrics to be computed")

@@ -130,17 +130,43 @@ func resolveEditorDefault() string {
 	return "vi" // last resort even if not found
 }
 
-// Load loads the configuration from file.
-func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
-	// Activate first-run copy-then-switch migration before reading the config so
-	// a legacy ~/.tt default install is migrated into the active iCloud root and
-	// the migrated config is visible below. No-op unless every gate holds.
-	if err := m.maybeMigrateDefaultInstall(); err != nil {
-		return nil, fmt.Errorf("first-run data migration failed: %w", err)
+// Load loads the configuration. Persistence is the five decomposed domain files
+// (workspace/planning/settings/automation.json under <data>/.tt/, plus the
+// machine-local machine.json); the legacy monolithic .tt.json is read only as a
+// migration fallback when no domain files exist yet.
+//
+// Automatic first-run migration into iCloud has been removed. New installs are
+// local-first (see ActiveDefaultDataDir); an existing iCloud workspace is
+// selected only when its config already exists, and relocating a workspace is
+// now the explicit `tt workspace move` flow (config.MoveWorkspace).
+func (m *Manager) Load() (*Config, error) {
+	dataDir := m.workspaceDataDir()
+	store := NewDomainFileStore(dataDir)
+	if m.domainFilesExist(store) {
+		cfg, err := m.recomposeFromDomains(store, dataDir)
+		if err != nil {
+			return nil, err
+		}
+		return m.finalize(cfg)
 	}
+	return m.loadLegacy()
+}
 
+// loadLegacy reads the pre-domain monolithic .tt.json config. It is retained
+// only for migration: an install that predates the split stores is read here and
+// re-persisted into the domain files on the next Save (finalize triggers a Save
+// for version/filter/palette migrations). A missing file yields a fresh,
+// defaulted config.
+func (m *Manager) loadLegacy() (*Config, error) {
 	if _, err := os.Stat(m.configPath); os.IsNotExist(err) {
 		cfg := NewConfig()
+		// Root a fresh workspace at the data directory that owns this manager's
+		// config path — the same directory a domain reload derives (and where Save
+		// writes the domain files). For the default manager this equals
+		// ActiveDefaultDataDir; for an explicit --config/--data-dir workspace it
+		// keeps project paths, domain files, and the reload's derived DataDir
+		// consistent instead of diverging to the home-relative default.
+		cfg.DataDir = m.workspaceDataDir()
 		// Respect $EDITOR/$VISUAL and PATH availability instead of always
 		// defaulting to "code" which may not be installed.
 		cfg.Editor = resolveEditorDefault()
@@ -167,6 +193,16 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		return nil, fmt.Errorf("config version %d not supported, please upgrade tt", config.Version)
 	}
 
+	return m.finalize(&config)
+}
+
+// finalize applies the shared post-load normalization: field defaults, range
+// clamps, project validation/dedup, stale-reference pruning, and the version/
+// filter/palette migrations. Both the domain-file load path and the legacy
+// monolithic fallback call it so a config loaded either way is normalized
+// identically. Migrations that must persist call m.Save, which now writes the
+// domain files.
+func (m *Manager) finalize(config *Config) (*Config, error) { //nolint:gocyclo
 	// Ensure defaults for missing fields
 	if config.DataDir == "" {
 		config.DataDir = ActiveDefaultDataDir()
@@ -404,14 +440,14 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	// Migrate legacy savedViews and smartLists to unified SavedFilters.
 	if config.MigrateLegacyFilters() {
 		// Auto-save so legacy fields are cleared on disk.
-		if err := m.Save(&config); err != nil {
+		if err := m.Save(config); err != nil {
 			return nil, fmt.Errorf("failed to save config after filter migration: %w", err)
 		}
 	}
 
 	// Migrate legacy flat palette/bg/cursor fields into ThemeDark/ThemeLight.
 	if config.MigratePaletteToThemes() {
-		if err := m.Save(&config); err != nil {
+		if err := m.Save(config); err != nil {
 			return nil, fmt.Errorf("failed to save config after palette theme migration: %w", err)
 		}
 	}
@@ -420,7 +456,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	pruned := config.PruneExpiredAlertDismissals()
 	pruned = config.PruneFocusDismissedIDs() || pruned
 	if pruned {
-		if err := m.Save(&config); err != nil {
+		if err := m.Save(config); err != nil {
 			logging.Warn("failed to save config after pruning stale data: %v", err)
 		}
 	}
@@ -436,7 +472,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	// Bump CurrentConfigVersion in config_core.go to match.
 	if config.Version == 0 {
 		config.Version = 1
-		if err := m.Save(&config); err != nil {
+		if err := m.Save(config); err != nil {
 			return nil, fmt.Errorf("failed to save config after version migration: %w", err)
 		}
 	}
@@ -444,7 +480,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		// v1 → v2: palette data already migrated into ThemeDark/ThemeLight by
 		// MigratePaletteToThemes() above. Just bump the version and save.
 		config.Version = 2
-		if err := m.Save(&config); err != nil {
+		if err := m.Save(config); err != nil {
 			return nil, fmt.Errorf("failed to save config after v1→v2 version bump: %w", err)
 		}
 	}
@@ -452,48 +488,185 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		// v2 -> v3: notes_editor was renamed to external_editor by the raw
 		// key migration before unmarshalling.
 		config.Version = 3
-		if err := m.Save(&config); err != nil {
+		if err := m.Save(config); err != nil {
 			return nil, fmt.Errorf("failed to save config after v2->v3 version bump: %w", err)
 		}
 	}
 
-	return &config, nil
+	return config, nil
 }
 
-// Save saves the configuration to file.
-// A backup of the existing config is created before writing, enabling
-// recovery if the new file is corrupted.
+// workspaceDataDir returns the workspace root (data directory) that owns this
+// manager's config, derived from the config path. It is where the synced domain
+// files live (under <data>/.tt/) and the DataDir a domain-loaded config carries
+// so project paths derive correctly.
+func (m *Manager) workspaceDataDir() string {
+	return WorkspaceRootFromConfigPath(m.configPath)
+}
+
+// domainStore builds a DomainFileStore rooted at this manager's workspace data
+// directory.
+func (m *Manager) domainStore() *DomainFileStore {
+	return NewDomainFileStore(m.workspaceDataDir())
+}
+
+// allDomainKinds is the fixed order of the five decomposed configuration domains
+// the manager persists and restores together.
+var allDomainKinds = []domainKind{domainCatalog, domainPlanning, domainSettings, domainAutomation, domainMachine}
+
+// domainFilesExist reports whether any of the five domain artifacts already
+// exist on disk. When true, Load reads the domain files; when false, Load falls
+// back to the legacy monolithic .tt.json for one-time migration.
+func (m *Manager) domainFilesExist(store *DomainFileStore) bool {
+	for _, kind := range allDomainKinds {
+		if _, err := os.Stat(store.pathFor(kind)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// domainFilePaths returns the on-disk paths of all five domain artifacts for
+// backup/restore, in the fixed domain order.
+func (m *Manager) domainFilePaths() []string {
+	store := m.domainStore()
+	paths := make([]string, 0, len(allDomainKinds))
+	for _, kind := range allDomainKinds {
+		paths = append(paths, store.pathFor(kind))
+	}
+	return paths
+}
+
+// recomposeFromDomains loads the five domain files and rebuilds the temporary
+// in-memory Config shape existing callers still consume. DataDir is set to the
+// workspace root before ApplyTo so cataloged project paths derive correctly; the
+// retired custom-stage fields have no domain owner and stay at their NewConfig
+// defaults.
+func (m *Manager) recomposeFromDomains(store *DomainFileStore, dataDir string) (*Config, error) {
+	catalog, err := store.LoadCatalog()
+	if err != nil {
+		return nil, err
+	}
+	planning, err := store.LoadPlanning()
+	if err != nil {
+		return nil, err
+	}
+	settings, err := store.LoadSettings()
+	if err != nil {
+		return nil, err
+	}
+	automation, err := store.LoadAutomation()
+	if err != nil {
+		return nil, err
+	}
+	machine, err := store.LoadMachine()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := NewConfig()
+	cfg.DataDir = dataDir
+	cfg.Projects = nil
+	(&Domains{
+		Catalog:    catalog,
+		Planning:   planning,
+		Settings:   settings,
+		Automation: automation,
+		Machine:    machine,
+	}).ApplyTo(cfg)
+	return cfg, nil
+}
+
+// Save persists the configuration by decomposing it into the five domain files
+// through the DomainFileStore. It never writes the legacy monolithic .tt.json.
+// Each domain write is locked, atomic, backed up with a .bak sidecar, and
+// stamped with the workspace ID (adopted from an existing catalog or minted).
 func (m *Manager) Save(config *Config) error {
 	if config == nil {
 		return fmt.Errorf("config is required")
 	}
-	dir := filepath.Dir(m.configPath)
-	if err := os.MkdirAll(dir, DirPermissions); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
+	store := m.domainStore()
+	// Adopt an existing on-disk workspace ID (or mint one) so every domain
+	// artifact this save writes agrees on the workspace identity.
+	if _, err := store.LoadCatalog(); err != nil {
+		return err
 	}
+	workspaceID := store.EnsureWorkspaceID()
 
-	lockPath := m.configPath + ".lock"
-	return util.WithFileLock(lockPath, true, func() error {
-		// Backup current config before overwriting (best-effort).
-		// On failure, try an alternate path before giving up.
-		if err := m.BackupConfig(); err != nil {
-			altPath := m.configPath + ".bak2"
-			if altErr := m.backupConfigToPath(altPath); altErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: config backup failed (primary: %v; alt %s: %v)\n", err, altPath, altErr)
-			}
-		}
+	d := Decompose(config)
+	d.Catalog.WorkspaceID = workspaceID
+	if err := store.SaveCatalog(d.Catalog); err != nil {
+		return err
+	}
+	if err := store.SavePlanning(d.Planning); err != nil {
+		return err
+	}
+	if err := store.SaveSettings(d.Settings); err != nil {
+		return err
+	}
+	if err := store.SaveAutomation(d.Automation); err != nil {
+		return err
+	}
+	if err := store.SaveMachine(d.Machine); err != nil {
+		return err
+	}
+	return nil
+}
 
-		data, err := json.MarshalIndent(config, "", "  ")
+// DomainArtifact is one synced domain file's on-disk path and its
+// envelope-encoded bytes, ready for a transactional writer in the cmd/tui layer
+// to wrap in a storage.ArtifactChange (which config must not import). It is the
+// unit produced by SyncedDomainArtifacts.
+type DomainArtifact struct {
+	Path string
+	Data []byte
+}
+
+// SyncedDomainArtifacts renders the four synced configuration domains
+// (workspace, planning, settings, automation) of cfg into their canonical
+// envelope-encoded on-disk artifacts under <data>/.tt/, byte-compatible with
+// what Save writes. It is the transactional counterpart of Save: a config
+// mutation that must ride the same atomic commit as an accompanying task write
+// is encoded here and committed as ArtifactChange entries, so no config mutation
+// is lost on a domain-file reload.
+//
+// machine.json is deliberately excluded: it is machine-local, lives outside the
+// workspace data dir and the commit service's approved root, and its references
+// are repaired separately after a commit.
+func (m *Manager) SyncedDomainArtifacts(cfg *Config) ([]DomainArtifact, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config is required")
+	}
+	dataDir := m.workspaceDataDir()
+	store := m.domainStore()
+	// Adopt the on-disk workspace ID (or mint one) so the transactional artifacts
+	// carry the same identity Save stamps.
+	if _, err := store.LoadCatalog(); err != nil {
+		return nil, err
+	}
+	workspaceID := store.EnsureWorkspaceID()
+
+	d := Decompose(cfg)
+	d.Catalog.WorkspaceID = workspaceID
+	specs := []struct {
+		kind    domainKind
+		path    string
+		payload any
+	}{
+		{domainCatalog, WorkspaceCatalogPath(dataDir), d.Catalog},
+		{domainPlanning, PlanningStatePath(dataDir), d.Planning},
+		{domainSettings, SettingsPath(dataDir), d.Settings},
+		{domainAutomation, AutomationPath(dataDir), d.Automation},
+	}
+	arts := make([]DomainArtifact, 0, len(specs))
+	for _, s := range specs {
+		data, err := encodeDomainEnvelope(s.kind, workspaceID, s.payload)
 		if err != nil {
-			return fmt.Errorf("failed to marshal config: %w", err)
+			return nil, err
 		}
-
-		if err := util.AtomicWriteFile(m.configPath, data, FilePermissions); err != nil {
-			return fmt.Errorf("failed to write config file: %w", err)
-		}
-
-		return nil
-	})
+		arts = append(arts, DomainArtifact{Path: s.path, Data: data})
+	}
+	return arts, nil
 }
 
 // GetConfigPath returns the current config file path.
@@ -501,8 +674,13 @@ func (m *Manager) GetConfigPath() string {
 	return m.configPath
 }
 
-// Exists checks if the config file exists.
+// Exists reports whether persisted configuration exists — either the decomposed
+// domain files or a legacy monolithic .tt.json awaiting migration. LoadOrCreate
+// uses it to decide whether an initial Save is needed.
 func (m *Manager) Exists() bool {
+	if m.domainFilesExist(m.domainStore()) {
+		return true
+	}
 	_, err := os.Stat(m.configPath)
 	return err == nil
 }
@@ -523,70 +701,72 @@ func (m *Manager) LoadOrCreate() (*Config, error) {
 	return config, nil
 }
 
-// GetBackupPath returns the path to the config backup file.
+// GetBackupPath returns the representative backup path for the config. Backups
+// now span all five domain files; this returns the workspace catalog's .bak
+// sidecar as the canonical representative (used by future-version load guards
+// that assert no backup was created).
 func (m *Manager) GetBackupPath() string {
-	return m.configPath + ".bak"
+	return WorkspaceCatalogPath(m.workspaceDataDir()) + ".bak"
 }
 
-// ConfigBackupExists checks if a config backup file exists.
+// ConfigBackupExists reports whether any domain artifact has a .bak sidecar.
 func (m *Manager) ConfigBackupExists() bool {
-	_, err := os.Stat(m.GetBackupPath())
-	return err == nil
+	for _, path := range m.domainFilePaths() {
+		if _, err := os.Stat(path + ".bak"); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
-// backupConfigToPath writes the current config file to an arbitrary backup path.
-func (m *Manager) backupConfigToPath(path string) error {
-	content, err := os.ReadFile(m.configPath)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read config file for backup: %w", err)
-	}
-	if err := util.AtomicWriteFile(path, content, FilePermissions); err != nil {
-		return fmt.Errorf("failed to write config backup to %s: %w", path, err)
+// BackupConfig snapshots every existing domain artifact to its .bak sidecar,
+// mirroring the per-file backup the DomainFileStore also writes on each save.
+func (m *Manager) BackupConfig() error {
+	for _, path := range m.domainFilePaths() {
+		content, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read %s for backup: %w", filepath.Base(path), err)
+		}
+		if err := util.AtomicWriteFile(path+".bak", content, FilePermissions); err != nil {
+			return fmt.Errorf("failed to write backup for %s: %w", filepath.Base(path), err)
+		}
 	}
 	return nil
 }
 
-// BackupConfig creates a backup of the current config file.
-func (m *Manager) BackupConfig() error {
-	return m.backupConfigToPath(m.GetBackupPath())
-}
-
-// RestoreConfigFromBackup swaps the current config file with the backup.
-// This makes the operation reversible - running restore again undoes the restore.
+// RestoreConfigFromBackup swaps each domain artifact with its .bak sidecar. The
+// swap keeps the operation reversible: running restore again undoes it. Domains
+// without a backup are left untouched.
 func (m *Manager) RestoreConfigFromBackup() error {
-	backupPath := m.GetBackupPath()
-
-	// Check if backup exists
 	if !m.ConfigBackupExists() {
 		return fmt.Errorf("no config backup available")
 	}
+	for _, path := range m.domainFilePaths() {
+		backupPath := path + ".bak"
+		backupContent, err := os.ReadFile(backupPath)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read backup for %s: %w", filepath.Base(path), err)
+		}
 
-	// Read backup content
-	backupContent, err := os.ReadFile(backupPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config backup file: %w", err)
+		currentContent, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			currentContent = []byte{}
+		} else if err != nil {
+			return fmt.Errorf("failed to read current %s: %w", filepath.Base(path), err)
+		}
+
+		if err := util.AtomicWriteFile(path, backupContent, FilePermissions); err != nil {
+			return fmt.Errorf("failed to restore %s: %w", filepath.Base(path), err)
+		}
+		if err := util.AtomicWriteFile(backupPath, currentContent, FilePermissions); err != nil {
+			return fmt.Errorf("failed to update backup for %s: %w", filepath.Base(path), err)
+		}
 	}
-
-	// Read current content (may not exist)
-	currentContent, err := os.ReadFile(m.configPath)
-	if os.IsNotExist(err) {
-		currentContent = []byte{}
-	} else if err != nil {
-		return fmt.Errorf("failed to read current config file: %w", err)
-	}
-
-	// Write backup content to main file
-	if err := util.AtomicWriteFile(m.configPath, backupContent, FilePermissions); err != nil {
-		return fmt.Errorf("failed to restore config file: %w", err)
-	}
-
-	// Write current content to backup (for reversibility)
-	if err := util.AtomicWriteFile(backupPath, currentContent, FilePermissions); err != nil {
-		return fmt.Errorf("failed to update config backup file: %w", err)
-	}
-
 	return nil
 }

@@ -6,58 +6,40 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func TestFormFlagsPicker_ActiveDimmedMutualExclusion(t *testing.T) {
-	t.Run("setting active clears dimmed", func(t *testing.T) {
-		p := newFormFlagsPicker(false, false, true)
-		if !p.dimmed {
-			t.Fatal("precondition: dimmed should be true")
-		}
-		p.cursor = 1
+// TestFormFlagsPicker_TogglesPinnedAndDimmed verifies the surviving two-flag
+// picker (Pinned/Dimmed). The retired Active flag is gone, so there is no
+// longer any mutual-exclusion behavior to enforce.
+func TestFormFlagsPicker_TogglesPinnedAndDimmed(t *testing.T) {
+	t.Run("cursor 0 toggles pinned", func(t *testing.T) {
+		p := newFormFlagsPicker(false, false)
+		p.cursor = 0
 		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
-		if !p.active {
-			t.Error("active should be true after toggle")
-		}
-		if p.dimmed {
-			t.Error("dimmed should be cleared when active is set")
-		}
-	})
-
-	t.Run("setting dimmed clears active", func(t *testing.T) {
-		p := newFormFlagsPicker(false, true, false)
-		if !p.active {
-			t.Fatal("precondition: active should be true")
-		}
-		p.cursor = 2
-		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
-		if !p.dimmed {
-			t.Error("dimmed should be true after toggle")
-		}
-		if p.active {
-			t.Error("active should be cleared when dimmed is set")
-		}
-	})
-
-	t.Run("unsetting active does not affect dimmed", func(t *testing.T) {
-		p := newFormFlagsPicker(false, true, false)
-		p.cursor = 1
-		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
-		if p.active {
-			t.Error("active should be false after toggle off")
+		if !p.pinned {
+			t.Error("pinned should be true after toggle")
 		}
 		if p.dimmed {
 			t.Error("dimmed should remain false")
 		}
 	})
 
-	t.Run("unsetting dimmed does not affect active", func(t *testing.T) {
-		p := newFormFlagsPicker(false, false, true)
-		p.cursor = 2
+	t.Run("cursor 1 toggles dimmed", func(t *testing.T) {
+		p := newFormFlagsPicker(false, false)
+		p.cursor = 1
 		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
-		if p.dimmed {
-			t.Error("dimmed should be false after toggle off")
+		if !p.dimmed {
+			t.Error("dimmed should be true after toggle")
 		}
-		if p.active {
-			t.Error("active should remain false")
+		if p.pinned {
+			t.Error("pinned should remain false")
+		}
+	})
+
+	t.Run("cursor does not advance past last row", func(t *testing.T) {
+		p := newFormFlagsPicker(false, false)
+		p.cursor = 1
+		p.handleKey(tea.KeyPressMsg{Code: 'j'}) //nolint:errcheck
+		if p.cursor != 1 {
+			t.Errorf("cursor = %d, want clamped at 1", p.cursor)
 		}
 	})
 }

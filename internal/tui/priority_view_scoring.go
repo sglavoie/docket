@@ -16,7 +16,7 @@ import (
 // Builds on the shared urgency score with additional factors for
 // actionability. Higher scores = more recommended as the suggested next task.
 func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
-	score := ComputeUrgencyScore(task)
+	score := ComputeUrgencyScore(task, m.queueIDs[task.ID])
 
 	// Leaf task bonus: prefer actionable leaf tasks over containers
 	if task.IsLeaf() {
@@ -52,8 +52,8 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 		3)
 	score += unblockingBonus * 150
 
-	// Section scoring: Next is boosted, Waiting/Review/Standby/Someday penalized
-	switch task.Section {
+	// State-bucket scoring: Next is boosted, Waiting/Review/Standby/Someday penalized
+	switch taskSectionBucket(task) {
 	case models.SectionNext:
 		score += 100
 	case models.SectionWaiting:
@@ -72,7 +72,7 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 // allChildrenComplete returns true if all children of the task are complete.
 func (m *PriorityViewModel) allChildrenComplete(task *models.Task) bool {
 	for _, child := range task.Children {
-		if !child.Status.IsComplete() {
+		if !child.IsTerminalState() {
 			return false
 		}
 	}
@@ -149,14 +149,14 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 		}
 	}
 
-	// In-progress status
-	if task.Status == models.StatusInProgress {
+	// In-progress state
+	if task.IsInState(models.StateInProgress) {
 		reasons = append(reasons, "in progress")
 	}
 
-	// Active flag
-	if task.Active {
-		reasons = append(reasons, "flagged active")
+	// Focus Queue membership (successor of the legacy Active flag)
+	if m.queueIDs[task.ID] {
+		reasons = append(reasons, "in focus queue")
 	}
 
 	// Unblocking count
@@ -171,7 +171,7 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 
 	// Momentum
 	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, time.Now())
-	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
+	if daysSinceUpdated == 0 && !task.IsInState(models.StateInProgress) {
 		reasons = append(reasons, "recent activity")
 	}
 
@@ -224,22 +224,24 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 	task := m.suggestion.Task.Task
 
 	// If already in progress, just jump to it in the list
-	if task.Status == models.StatusInProgress {
+	if task.IsInState(models.StateInProgress) {
 		m.jumpToTask(task)
 		return m, nil
 	}
 
-	pf := workflowPersist(func() WorkflowSaveOptions {
-		return BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, nil, "", "", nil)
-	})
-	result := applyStatusChange(pf, m.project, task.ID, models.StatusInProgress)
-	if result.Err != nil {
-		m.SetError(result.Err)
-	} else if result.StatusMessage != "" {
-		m.setStatus(result.StatusMessage)
+	if reason := task.CanTransitionTo(models.StatusInProgress); reason != "" {
+		m.setStatus(reason)
+		return m, nil
 	}
-	m.loadActionableTasks()
-	m.clampCursor()
 
-	return m, result.Cmd
+	// Commit the start through the application-layer single-task coordinator; the
+	// shell's transaction-result handler reloads the project and refreshes the
+	// priority view (reloadData + clampCursor), so no inline reload is needed.
+	cmd := m.taskItem.Transition(task.ID, models.TargetStateForStatus(models.StatusInProgress))
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		m.SetError(em.Err)
+		return m, nil
+	}
+	return m, func() tea.Msg { return msg }
 }

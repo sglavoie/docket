@@ -168,14 +168,6 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		cmd, _ := handleTypeChangeKey(key, m)
 		return m, cmd, true
 
-	case "*":
-		if m.project == nil {
-			cmd, _ := m.crossToggleActive()
-			return m, cmd, true
-		}
-		cmd, _ := handleToggleActiveKey(m)
-		return m, cmd, true
-
 	case "shift+left", "shift+right":
 		if tabs := m.pinnedTagTabs(); tabs != nil {
 			tab := m.pinnedTagTabIndex()

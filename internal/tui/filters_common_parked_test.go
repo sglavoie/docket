@@ -13,10 +13,10 @@ func TestCommonFilterParkedMatching(t *testing.T) {
 	filter := newFilterState()
 	filter.Parked = true
 
-	if !passesCommonFilters(parkedTask, &filter, "", nil) {
+	if !passesCommonFilters(parkedTask, &filter, nil, nil) {
 		t.Fatal("parked task should pass the parked filter")
 	}
-	if passesCommonFilters(plainTask, &filter, "", nil) {
+	if passesCommonFilters(plainTask, &filter, nil, nil) {
 		t.Fatal("plain task should not pass the parked filter")
 	}
 }
@@ -34,10 +34,10 @@ func TestCommonFilterParkedComposesWithOtherFilters(t *testing.T) {
 	filter.Parked = true
 	filter.Priority = 1
 
-	if !passesCommonFilters(parkedHigh, &filter, "", nil) {
+	if !passesCommonFilters(parkedHigh, &filter, nil, nil) {
 		t.Fatal("parked high-priority task should pass parked+priority filters")
 	}
-	if passesCommonFilters(parkedLow, &filter, "", nil) {
+	if passesCommonFilters(parkedLow, &filter, nil, nil) {
 		t.Fatal("parked low-priority task should fail the additional priority filter")
 	}
 }

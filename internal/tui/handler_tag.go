@@ -16,9 +16,9 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 	switch msg := msg.(type) {
 	case ShowTagManagerMsg:
 		if msg.ProjectTree != nil {
-			m.showView(ViewTagManager, NewTagManagerModel(msg.ProjectTree))
+			m.showView(ViewTagManager, NewTagManagerModel(msg.ProjectTree, m.secondaryFeatures.Tag))
 		} else if msg.Project != nil {
-			m.showView(ViewTagManager, NewTagManagerModelForProject(msg.Project))
+			m.showView(ViewTagManager, NewTagManagerModelForProject(msg.Project, m.secondaryFeatures.Tag))
 		}
 		return true, nil
 
@@ -122,7 +122,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.configManager))
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.secondaryFeatures.Tag, m.configManager))
 		return true, nil
 
 	case GlobalTagRenamedMsg:

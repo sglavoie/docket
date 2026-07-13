@@ -157,9 +157,9 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 		add(base+i, tabOutliner, 2, "Views > Column Visibility", label, "outliner column visible hidden", "Visible")
 	}
 
-	// Tab 7: Kanban (10 fields)
+	// Tab 7: Kanban (9 fields)
 	base = tabFieldStart[tabKanban]
-	add(base+0, tabKanban, 0, "Views > Kanban", "Default Mode", "kanban mode section status priority stages", "Section (GTD)")
+	add(base+0, tabKanban, 0, "Views > Kanban", "Default Mode", "kanban mode section status priority", "Section (GTD)")
 	add(base+1, tabKanban, 0, "Views > Kanban", "Default Start Column", "kanban start column inbox", "inbox")
 	add(base+2, tabKanban, 0, "Views > Kanban", "Show Empty Columns", "kanban empty columns show hide", "Hidden")
 	add(base+3, tabKanban, 0, "Views > Kanban", "Detail Pane", "kanban detail pane visible bottom", "Visible")
@@ -190,10 +190,6 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	base = subTabFieldStart(tabNotifications, 2)
 	add(base+0, tabNotifications, 2, "Notifications > Projects", "Project Health Alert", "project health notification stale", "Enabled")
 	add(base+1, tabNotifications, 2, "Notifications > Projects", "Project Stale Days", "project stale days notification threshold", strconv.Itoa(config.DefaultAlertProjectStaleDays))
-
-	// Tab 9: Stages (1 field)
-	base = tabFieldStart[tabStages]
-	add(base+0, tabStages, 0, "Notifications > Stages", "Stages", "stages workflow kanban pipeline custom", "")
 
 	// Tab 10: Appearance (5 fields)
 	base = tabFieldStart[tabAppearance]

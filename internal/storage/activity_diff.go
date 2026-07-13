@@ -59,13 +59,11 @@ func diffTask(old, new *models.Task) {
 		}
 	}
 
-	recordIfDiff("status", string(old.Status), string(new.Status))
+	// Workflow state replaces the legacy status/section/stage triplet: one
+	// canonical entry per lifecycle move instead of parallel legacy-field diffs.
+	recordIfDiff("state", string(old.State()), string(new.State()))
 	recordIfDiff("priority", fmt.Sprintf("%d", old.Priority), fmt.Sprintf("%d", new.Priority))
 
-	// Section: normalize empty to "Active"
-	recordIfDiff("section", orDefault(old.Section, "Active"), orDefault(new.Section, "Active"))
-
-	recordIfDiff("stage", old.Stage, new.Stage)
 	recordIfDiff("title", old.Title, new.Title)
 	recordIfDiff("type", string(old.Type), string(new.Type))
 
@@ -77,9 +75,9 @@ func diffTask(old, new *models.Task) {
 	recordIfDiff("due", formatDuePtr(old.DueDate, old.HasTime), formatDuePtr(new.DueDate, new.HasTime))
 	recordIfDiff("snoozed", formatTimePtr(old.SnoozedUntil), formatTimePtr(new.SnoozedUntil))
 
-	// Boolean fields
+	// Boolean fields. The legacy Active flag is intentionally not diffed: it
+	// maps to Focus Queue membership (a planning collection), not task state.
 	recordIfDiff("pinned", fmt.Sprintf("%v", old.Pinned), fmt.Sprintf("%v", new.Pinned))
-	recordIfDiff("active", fmt.Sprintf("%v", old.Active), fmt.Sprintf("%v", new.Active))
 	recordIfDiff("dimmed", fmt.Sprintf("%v", old.Dimmed), fmt.Sprintf("%v", new.Dimmed))
 
 	// Description (hash-based, don't store full text)

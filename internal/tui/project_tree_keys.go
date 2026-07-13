@@ -99,9 +99,6 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		for id := range m.selectedTasks {
 			if m.project.MutateTask(id, func(t *models.Task) {
 				t.SetSection(section)
-				if section == "" {
-					t.Activate()
-				}
 			}) {
 				m.project.RelocateTaskToEndOfSection(id, section)
 				count++
@@ -128,9 +125,6 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	}
 	m.project.MutateTask(taskID, func(t *models.Task) {
 		t.SetSection(section)
-		if section == "" {
-			t.Activate()
-		}
 	})
 	m.project.RelocateTaskToEndOfSection(taskID, section)
 	m.setUndoContext(label, task.Title)

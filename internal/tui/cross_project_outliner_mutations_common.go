@@ -1,10 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -39,56 +35,6 @@ func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.
 		return outlinerRow{}, nil, false
 	}
 	return row, proj, true
-}
-
-// crossPersistFn returns a persistFn scoped to the given project. It records
-// an undo snapshot, calls Backup() before the mutation and Save() after,
-// ensuring only the owning project is written to disk.
-func (m *OutlinerModel) crossPersistFn(_ *models.Project) persistFn {
-	svc := m.projectService
-	undoCtx := &m.crossUndoCtx
-	cfg := m.config
-	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
-		if project.GetTaskByID(taskID) == nil {
-			return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-		}
-		// Record undo snapshot before mutation (reads current tasks.md)
-		if cfg != nil && cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-			_ = svc.RecordUndoSnapshot(project, undoCtx.Action, undoCtx.Context, *cfg.UndoHistoryDepth, nil)
-		}
-		if err := svc.Backup(project); err != nil {
-			return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-		}
-		project.MutateTask(taskID, mutate)
-		// Match withPersist parity: auto-unblock dependents, reopen any parent
-		// left complete while a child is incomplete, and generate recurring
-		// instances before saving. The full-file undo snapshot recorded above
-		// (nil TaskIDs) already covers any reopened parent, so no widening.
-		project.CheckAndAutoUnblock()
-		project.ReconcileParentCompletion()
-		project.GenerateRecurringInstances()
-		if err := svc.Save(project); err != nil {
-			return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
-		}
-		_ = svc.Load(project)
-		return TaskOpResult{}
-	}
-}
-
-// crossSaveProject returns a tea.Cmd that performs backup -> save -> reload for
-// a single project. Used by J/K/right/left in cross-project mode.
-func (m *OutlinerModel) crossSaveProject(proj *models.Project) tea.Cmd {
-	svc := m.projectService
-	return func() tea.Msg {
-		if err := svc.Backup(proj); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
-		}
-		if err := svc.Save(proj); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
-		}
-		_ = svc.Load(proj)
-		return outlinerRefreshMsg{}
-	}
 }
 
 // crossFindProjectForTask scans m.loadedProjects to find the project that

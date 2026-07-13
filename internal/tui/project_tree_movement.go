@@ -52,7 +52,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 						return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
 					}
 				}
-				if m.viewMode == ViewModeActive && task.Active != siblingAbove.Active {
+				if m.viewMode == ViewModeActive && m.queueIDs[task.ID] != m.queueIDs[siblingAbove.ID] {
 					return true, func() tea.Msg {
 						return MoveBlockedMsg{Reason: "cannot reorder across active/non-active boundary"}
 					}
@@ -86,7 +86,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 						return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
 					}
 				}
-				if m.viewMode == ViewModeActive && task.Active != siblingBelow.Active {
+				if m.viewMode == ViewModeActive && m.queueIDs[task.ID] != m.queueIDs[siblingBelow.ID] {
 					return true, func() tea.Msg {
 						return MoveBlockedMsg{Reason: "cannot reorder across active/non-active boundary"}
 					}

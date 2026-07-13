@@ -5,70 +5,61 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleCommandPaletteBulkAction handles bulk actions on multiple selected tasks.
+// The transition commits through the application layer's bulk-transition use case:
+// every touched project (including workflow-rule move destinations) commits as one
+// transaction with a workspace-ledger undo entry, and the workflow-rule cascade
+// runs exactly as it does on a single-task save. SkipInvalid makes the batch
+// best-effort — tasks that cannot transition (already terminal, dependency-blocked
+// completion, or incomplete children) are dropped and the toast reports the count
+// actually changed — preserving the legacy multiselect semantics.
 func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMsg) (bool, tea.Cmd) {
 	if len(msg.Tasks) == 0 {
 		return true, nil
 	}
 
 	refs := validTaskProjectRefs(msg.Tasks)
+	taskIDs := taskIDsFromTaskRefs(refs)
+	if len(taskIDs) == 0 {
+		return true, nil
+	}
 
-	// Map action name to target status
-	var targetStatus models.TaskStatus
+	var target models.WorkflowState
+	var undoAction, actionPast string
 	switch msg.Action {
 	case "complete":
-		targetStatus = models.StatusDone
+		target, undoAction, actionPast = models.StateDone, "Complete Task", "completed"
 	case "start":
-		targetStatus = models.StatusInProgress
+		target, undoAction, actionPast = models.StateInProgress, "Start Task", "started"
 	case "review":
-		targetStatus = models.StatusReview
+		target, undoAction, actionPast = models.StateReview, "Review Task", "sent to review"
 	default:
 		return true, nil
 	}
 
-	// Apply action to all tasks. Gate the transition check outside MutateTask
-	// so skipped tasks neither inflate the count nor have their UpdatedAt bumped.
-	count, _, err := m.applyBulkTaskRefsWithWorkflow(refs, StatusVerb(targetStatus)+" Task",
-		func(project *models.Project, taskID string) bool {
-			task := project.GetTaskByID(taskID)
-			if task == nil || task.CanTransitionTo(targetStatus) != "" {
-				return false
+	// Defer clearing the multiselect to the shell's batch-result handler: the
+	// transition commits asynchronously through the application layer, and the
+	// selection is cleared only once the commit succeeds (a rejected batch keeps it
+	// so the user can retry).
+	cmd := m.secondaryFeatures.Bulk.TransitionWithWorkflow(
+		app.BulkTransitionRequest{
+			TaskIDs:     taskIDs,
+			Target:      target,
+			Rules:       m.config.GetEnabledWorkflowRules(),
+			UndoAction:  undoAction,
+			UndoContext: fmt.Sprintf("%d tasks", len(taskIDs)),
+			SkipInvalid: true,
+		},
+		func(changed int) string {
+			if changed == 0 {
+				return "No tasks were changed"
 			}
-			if targetStatus.IsComplete() && task.HasIncompleteChildren() {
-				return false
-			}
-			return project.MutateTask(taskID, func(t *models.Task) {
-				t.ApplyTransition(targetStatus)
-			})
-		})
-	if err != nil {
-		return true, errorCmd("save failed: %w", err)
-	}
-
-	if count > 0 {
-		m.clearBulkTaskSelectionsForRefs(refs)
-	}
-
-	if count == 0 {
-		m.setInfoStatus("No tasks were changed")
-		return true, defaultStatusTimeout()
-	}
-
-	actionPast := msg.Action + "d"
-	switch msg.Action {
-	case "complete":
-		actionPast = "completed"
-	case "start":
-		actionPast = "started"
-	case "review":
-		actionPast = "sent to review"
-	}
-	successMsg := fmt.Sprintf("%d tasks %s", count, actionPast)
-	m.setSuccessStatus(successMsg)
-	cmds := m.refreshTaskViewsAfterSave()
-	cmds = append(cmds, defaultStatusTimeout())
-	return true, tea.Batch(cmds...)
+			return fmt.Sprintf("%d tasks %s", changed, actionPast)
+		},
+	)
+	return true, finalizeBatchResult(cmd, taskIDs, "")
 }

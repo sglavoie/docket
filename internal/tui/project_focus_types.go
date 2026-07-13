@@ -16,6 +16,12 @@ type ProjectFocusViewModel struct {
 	project *models.Project
 	cfg     *config.Config
 
+	// taskItem routes the view's single-task mutations (remove-from-focus,
+	// priority) through the application layer. The shell wires it via
+	// SetTaskItemCoordinator when the view is shown; a zero value means the view
+	// was built in isolation.
+	taskItem TaskItemCoordinator
+
 	// Tasks
 	tasks []*models.Task
 

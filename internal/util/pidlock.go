@@ -1,133 +1,127 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
-// maxLockAge is the maximum age for a lock file before it's considered stale,
-// regardless of whether the PID appears alive (handles zombie/orphaned locks).
-const maxLockAge = 24 * time.Hour
+// PIDLock is an exclusive, OS-enforced lock on a lock file, held for the
+// lifetime of the owning process.
+//
+// Authority comes from a held advisory OS lock (flock), not from the lock
+// file's age or the liveness of the recorded PID. While the owner is alive the
+// kernel keeps the lock, so a second acquire fails immediately; when the owner
+// dies — even uncleanly — the kernel releases the lock automatically, so a
+// leftover lock file never blocks a new acquire regardless of how old it is.
+//
+// The PID and start identity written into the file are diagnostics only,
+// surfaced in the "already running" error to help a human identify the holder.
+type PIDLock struct {
+	path string
+	file *os.File
+}
 
-// AcquirePIDLock creates a lock file containing the current PID. If the file
-// already exists and the recorded PID is still alive, it returns an error.
-// Stale lock files (where the PID is no longer running or the lock is older
-// than maxLockAge) are removed and the lock is re-acquired. The lock file is
-// written via a temp-and-rename dance so concurrent readers never observe a
-// half-written PID.
-func AcquirePIDLock(path string) error {
-	if err := tryCreateLock(path); err == nil {
-		return nil
-	} else if !os.IsExist(err) {
-		return err
-	}
+// lockOwner is the diagnostic identity recorded in a lock file. startedAt tags
+// the moment the lock was acquired so a reused PID can be told apart from the
+// original holder when inspecting the file.
+type lockOwner struct {
+	pid       int
+	startedAt string
+}
 
-	// Lock file already exists — inspect it.
-	data, readErr := os.ReadFile(path)
-	if readErr != nil {
-		// File raced away between OpenFile and ReadFile; retry once.
-		if os.IsNotExist(readErr) {
-			return tryCreateLock(path)
-		}
-		return fmt.Errorf("read lock file: %w", readErr)
-	}
-	pidStr := strings.TrimSpace(string(data))
-	pid, parseErr := strconv.Atoi(pidStr)
-	if parseErr != nil {
-		// Empty or garbage content — treat as stale only if the file is also
-		// old enough that we're sure no fresh writer is mid-flight.
-		if !isLockStale(path) {
-			return fmt.Errorf("tt TUI lock file unreadable (lock contention)")
-		}
-	} else if isProcessAlive(pid) && !isLockStale(path) {
-		return fmt.Errorf("tt TUI already running (PID %d)", pid)
+// AcquirePIDLock opens (creating if needed) the lock file at path and takes an
+// exclusive, non-blocking OS lock on it. It returns an error if another live
+// process already holds the lock. On success the returned *PIDLock keeps the
+// underlying file descriptor open — the OS lock is held until Release is called
+// or the process exits.
+func AcquirePIDLock(path string) (*PIDLock, error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, FilePermissions)
+	if err != nil {
+		return nil, fmt.Errorf("open lock file: %w", err)
 	}
 
-	// Stale lock — remove and retry once with O_EXCL so a competing process
-	// that wins the race surfaces as ErrExist rather than overwriting.
-	if removeErr := os.Remove(path); removeErr != nil && !os.IsNotExist(removeErr) {
-		return removeErr
-	}
-	if err := tryCreateLock(path); err != nil {
-		if os.IsExist(err) {
-			return fmt.Errorf("tt TUI already running (lock contention)")
+	if lockErr := flockExclusiveNB(f); lockErr != nil {
+		if errors.Is(lockErr, errLockWouldBlock) {
+			diag := formatLockOwner(readLockOwner(f))
+			_ = f.Close()
+			return nil, fmt.Errorf("tt TUI already running%s", diag)
 		}
-		return err
+		_ = f.Close()
+		return nil, fmt.Errorf("acquire lock: %w", lockErr)
+	}
+
+	if err := writeLockOwner(f); err != nil {
+		_ = flockUnlock(f)
+		_ = f.Close()
+		return nil, err
+	}
+
+	return &PIDLock{path: path, file: f}, nil
+}
+
+// Release drops the OS lock and closes the lock file. The lock file itself is
+// intentionally left in place: the held OS lock — not the file's presence — is
+// what provides mutual exclusion, so leaving it avoids the classic unlink/flock
+// race where two processes end up locking different inodes for the same path.
+// Release is safe to call on a nil receiver and more than once.
+func (l *PIDLock) Release() {
+	if l == nil || l.file == nil {
+		return
+	}
+	_ = flockUnlock(l.file)
+	_ = l.file.Close()
+	l.file = nil
+}
+
+// writeLockOwner truncates the lock file and records the current process
+// identity for diagnostics.
+func writeLockOwner(f *os.File) error {
+	body := fmt.Sprintf("pid=%d\nstarted=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
+	if err := f.Truncate(0); err != nil {
+		return fmt.Errorf("truncate lock file: %w", err)
+	}
+	if _, err := f.WriteAt([]byte(body), 0); err != nil {
+		return fmt.Errorf("write lock file: %w", err)
+	}
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("sync lock file: %w", err)
 	}
 	return nil
 }
 
-// tryCreateLock atomically creates the lock file with the current PID using a
-// temp file + rename so concurrent readers never see an empty/half-written lock.
-// Returns os.ErrExist (wrapped) if the destination already exists.
-func tryCreateLock(path string) error {
-	// Pre-flight existence check before creating a temp file so we don't
-	// generate noise in the lock dir on the common already-held path.
-	if _, err := os.Stat(path); err == nil {
-		return &os.PathError{Op: "open", Path: path, Err: syscall.EEXIST}
+// readLockOwner parses the diagnostic identity from an already-open lock file.
+// Missing or malformed fields degrade gracefully to a zero-valued owner.
+func readLockOwner(f *os.File) lockOwner {
+	owner := lockOwner{pid: -1}
+	buf := make([]byte, 256)
+	n, _ := f.ReadAt(buf, 0)
+	for _, line := range strings.Split(string(buf[:n]), "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "pid="):
+			if v, err := strconv.Atoi(strings.TrimPrefix(line, "pid=")); err == nil {
+				owner.pid = v
+			}
+		case strings.HasPrefix(line, "started="):
+			owner.startedAt = strings.TrimPrefix(line, "started=")
+		}
 	}
-	dir := filepath.Dir(path)
-	base := filepath.Base(path)
-	tmp, err := os.CreateTemp(dir, base+".tmp.*")
-	if err != nil {
-		return err
-	}
-	tmpPath := tmp.Name()
-	if _, writeErr := tmp.WriteString(strconv.Itoa(os.Getpid())); writeErr != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmpPath)
-		return writeErr
-	}
-	if closeErr := tmp.Close(); closeErr != nil {
-		_ = os.Remove(tmpPath)
-		return closeErr
-	}
-	// os.Link is atomic on POSIX and fails with EEXIST if the destination
-	// already exists, giving us mutual exclusion that os.Rename lacks.
-	if linkErr := os.Link(tmpPath, path); linkErr != nil {
-		_ = os.Remove(tmpPath)
-		return linkErr
-	}
-	_ = os.Remove(tmpPath)
-	return nil
+	return owner
 }
 
-// ReleasePIDLock removes the lock file only when it is still owned by the
-// current process.
-func ReleasePIDLock(path string) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
+// formatLockOwner renders a human-readable suffix for the "already running"
+// error, or an empty string when no useful identity was recorded.
+func formatLockOwner(o lockOwner) string {
+	switch {
+	case o.pid > 0 && o.startedAt != "":
+		return fmt.Sprintf(" (PID %d, started %s)", o.pid, o.startedAt)
+	case o.pid > 0:
+		return fmt.Sprintf(" (PID %d)", o.pid)
+	default:
+		return ""
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil || pid != os.Getpid() {
-		return
-	}
-	_ = os.Remove(path)
-}
-
-// isLockStale returns true if the lock file is older than maxLockAge.
-func isLockStale(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return time.Since(info.ModTime()) > maxLockAge
-}
-
-func isProcessAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	err = proc.Signal(syscall.Signal(0))
-	return err == nil
 }

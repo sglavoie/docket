@@ -76,7 +76,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 				badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
 			}
 
-			statusIcon := GetStatusStyle(string(entry.Task.Status)).Render(entry.Task.Status.Icon())
+			statusIcon := GetStateStyle(entry.Task.State()).Render(entry.Task.State().Icon())
 			priorityBadge := renderPriorityBadge(entry.Task.Priority)
 			projectName := entry.Project.Name
 

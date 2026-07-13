@@ -18,6 +18,18 @@ type KanbanModel struct {
 	configManager *config.Manager
 	svc           *ProjectService
 
+	// bulk routes coordinator-supported multiselect mutations (status, priority,
+	// due-date, snooze, section-as-state) through the application layer. The shell
+	// wires it via SetBulkCoordinator when the view is shown; a zero value (nil
+	// mutator) means the view was built in isolation and its migrated bulk handlers
+	// are not exercised.
+	bulk BulkCoordinator
+
+	// taskItem routes the single-card priority move through the application layer,
+	// parallel to bulk. The shell wires it via SetTaskItemCoordinator when the view
+	// is shown; a zero value (nil mutator) means the view was built in isolation.
+	taskItem TaskItemCoordinator
+
 	// Scope
 	project        *models.Project // nil for cross-project mode
 	crossProject   bool
@@ -198,15 +210,11 @@ func (m *KanbanModel) filteredCards() []KanbanCard {
 	}
 	result := make([]KanbanCard, 0, len(m.allCards))
 	for _, card := range m.allCards {
-		if hideCanceled && card.Task.Status == models.StatusCanceled {
+		if hideCanceled && card.Task.State() == models.StateCanceled {
 			continue
 		}
 		if hasFilters {
-			projectID := ""
-			if card.Project != nil {
-				projectID = card.Project.ID
-			}
-			if !passesCommonFilters(card.Task, &m.filter, projectID, m.config) {
+			if !passesCommonFilters(card.Task, &m.filter, card.Project, m.config) {
 				continue
 			}
 		}
@@ -221,7 +229,6 @@ func (m *KanbanModel) filteredCards() []KanbanCard {
 // rebuildCols distributes m.allCards into columns for the current mode.
 func (m *KanbanModel) rebuildCols() {
 	ks := m.config.KanbanSettings
-	stages := collectStages(m.config.Stages, m.loadedProjects)
 
 	m.columns = rebuildColumns(
 		m.filteredCards(),
@@ -229,7 +236,6 @@ func (m *KanbanModel) rebuildCols() {
 		m.columns,
 		ks.SectionColumnOrder,
 		ks.StatusColumnOrder,
-		stages,
 		m.config,
 	)
 
@@ -283,13 +289,11 @@ func (m *KanbanModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	prefix := m.Dispatcher.PendingPrefix()
-	var currentStage string
 	var currentPriority int
 	if task, _ := m.getTaskRef(); task != nil {
-		currentStage = task.Stage
 		currentPriority = task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	hints := CommonTaskActionPrefixHints(currentPriority)
 	// In Kanban, starting a task also moves its card to the In Progress column
 	hints[","] = overrideHintDetail(hints[","], "s", "move to In Progress column")
 	hints["g"] = KanbanNavigationPrefixHints

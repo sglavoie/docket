@@ -44,7 +44,7 @@ func TestTaskJumperViewRespectsVisualWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 	project.Tasks = []*models.Task{task}
 
 	m := NewTaskJumperModel(project)
@@ -68,7 +68,7 @@ func TestCrossProjectTaskJumperViewRespectsVisualWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 	project.Tasks = []*models.Task{task}
 
 	m := NewCrossProjectTaskJumperModel([]*models.Project{project})

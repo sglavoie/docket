@@ -38,17 +38,17 @@ func TestRoundTrip_DescriptionWithHeadingLikeLines(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tasks := []*models.Task{
 				{
-					ID:          "t1",
-					ShortID:     1,
-					Type:        models.TaskTypeTask,
-					Title:       "Test Task",
-					Description: tc.desc,
-					Status:      models.StatusTodo,
-					Priority:    3,
-					Tags:        []string{},
-					DependsOn:   []string{},
-					RelatedTo:   []string{},
-					CreatedAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					ID:            "t1",
+					ShortID:       1,
+					Type:          models.TaskTypeTask,
+					Title:         "Test Task",
+					Description:   tc.desc,
+					WorkflowState: models.StateReady,
+					Priority:      3,
+					Tags:          []string{},
+					DependsOn:     []string{},
+					RelatedTo:     []string{},
+					CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			}
 
@@ -80,17 +80,17 @@ func TestRoundTrip_DescriptionWithLiteralBackslashHash(t *testing.T) {
 
 	tasks := []*models.Task{
 		{
-			ID:          "t1",
-			ShortID:     1,
-			Type:        models.TaskTypeTask,
-			Title:       "Test Task",
-			Description: desc,
-			Status:      models.StatusTodo,
-			Priority:    3,
-			Tags:        []string{},
-			DependsOn:   []string{},
-			RelatedTo:   []string{},
-			CreatedAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Test Task",
+			Description:   desc,
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			Tags:          []string{},
+			DependsOn:     []string{},
+			RelatedTo:     []string{},
+			CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -128,17 +128,17 @@ func TestRoundTrip_DescriptionEmptyAndWhitespace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tasks := []*models.Task{
 				{
-					ID:          "t1",
-					ShortID:     1,
-					Type:        models.TaskTypeTask,
-					Title:       "Test Task",
-					Description: tc.desc,
-					Status:      models.StatusTodo,
-					Priority:    3,
-					Tags:        []string{},
-					DependsOn:   []string{},
-					RelatedTo:   []string{},
-					CreatedAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					ID:            "t1",
+					ShortID:       1,
+					Type:          models.TaskTypeTask,
+					Title:         "Test Task",
+					Description:   tc.desc,
+					WorkflowState: models.StateReady,
+					Priority:      3,
+					Tags:          []string{},
+					DependsOn:     []string{},
+					RelatedTo:     []string{},
+					CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			}
 
@@ -279,17 +279,17 @@ func TestRoundTrip_DescriptionWithBlockMarkers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tasks := []*models.Task{
 				{
-					ID:          "t1",
-					ShortID:     1,
-					Type:        models.TaskTypeTask,
-					Title:       "Test Task",
-					Description: tc.desc,
-					Status:      models.StatusTodo,
-					Priority:    3,
-					Tags:        []string{},
-					DependsOn:   []string{},
-					RelatedTo:   []string{},
-					CreatedAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					ID:            "t1",
+					ShortID:       1,
+					Type:          models.TaskTypeTask,
+					Title:         "Test Task",
+					Description:   tc.desc,
+					WorkflowState: models.StateReady,
+					Priority:      3,
+					Tags:          []string{},
+					DependsOn:     []string{},
+					RelatedTo:     []string{},
+					CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			}
 
@@ -328,17 +328,17 @@ func TestRoundTrip_DescriptionWithHTMLCommentLikeMetadata(t *testing.T) {
 
 	tasks := []*models.Task{
 		{
-			ID:          "t1",
-			ShortID:     1,
-			Type:        models.TaskTypeTask,
-			Title:       "Test Task",
-			Description: desc,
-			Status:      models.StatusTodo,
-			Priority:    3,
-			Tags:        []string{},
-			DependsOn:   []string{},
-			RelatedTo:   []string{},
-			CreatedAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Test Task",
+			Description:   desc,
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			Tags:          []string{},
+			DependsOn:     []string{},
+			RelatedTo:     []string{},
+			CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 

@@ -17,13 +17,12 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	pinnedAt := time.Date(2026, 1, 12, 14, 30, 45, 0, time.Local)
 
 	task := &models.Task{
-		ID:           "kitchen-sink-1",
-		Type:         models.TaskTypeBug,
-		Status:       models.StatusDone,
-		Priority:     1,
-		Tags:         []string{"backend", "urgent", "p0"},
-		Section:      "",
-		CreatedAt:    created,
+		ID:            "kitchen-sink-1",
+		Type:          models.TaskTypeBug,
+		WorkflowState: models.StateDone,
+		Priority:      1,
+		Tags:          []string{"backend", "urgent", "p0"},
+		CreatedAt:     created,
 		UpdatedAt:    updated,
 		CompletedAt:  &completed,
 		DueDate:      &due,
@@ -31,7 +30,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 		RelatedTo:    []string{"rel-1", "rel-2"},
 		Pinned:       true,
 		PinnedAt:     &pinnedAt,
-		Active:       true,
 		SnoozedUntil: &snoozed,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  2,
@@ -58,7 +56,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 			{Text: "Step one", Done: true},
 			{Text: "Step two", Done: false},
 		},
-		Stage:  "Implement",
 		Source: "github",
 		URL:    "https://github.com/org/repo/issues/42",
 		ScoreDimensions: map[string]int{
@@ -82,8 +79,8 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	if parsed.ID != task.ID {
 		t.Errorf("ID = %q, want %q", parsed.ID, task.ID)
 	}
-	if parsed.Status != task.Status {
-		t.Errorf("Status = %q, want %q", parsed.Status, task.Status)
+	if parsed.State() != task.State() {
+		t.Errorf("State = %q, want %q", parsed.State(), task.State())
 	}
 	if parsed.Priority != task.Priority {
 		t.Errorf("Priority = %d, want %d", parsed.Priority, task.Priority)
@@ -91,8 +88,14 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	if !stringSlicesEqual(parsed.Tags, task.Tags) {
 		t.Errorf("Tags = %v, want %v", parsed.Tags, task.Tags)
 	}
-	if parsed.Section != task.Section {
-		t.Errorf("Section = %q, want %q", parsed.Section, task.Section)
+	// v2 collapses the legacy lifecycle fields into `state`; a done task
+	// reconstitutes to state=done with its canonical Completed section shim
+	// (the original task carried status=done, section="").
+	if parsed.State() != models.StateDone {
+		t.Errorf("State = %q, want %q", parsed.State(), models.StateDone)
+	}
+	if models.SectionForState(parsed.State()) != models.SectionCompleted {
+		t.Errorf("Section = %q, want %q (canonical done shim)", models.SectionForState(parsed.State()), models.SectionCompleted)
 	}
 	if parsed.CreatedAt.Format("2006-01-02 15:04") != created.Format("2006-01-02 15:04") {
 		t.Errorf("CreatedAt = %v, want %v", parsed.CreatedAt, created)
@@ -120,9 +123,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	}
 	if !parsed.Pinned {
 		t.Errorf("Pinned = false, want true")
-	}
-	if !parsed.Active {
-		t.Errorf("Active = false, want true")
 	}
 	if parsed.PinnedAt == nil {
 		t.Fatal("PinnedAt is nil")
@@ -162,9 +162,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	}
 	if parsed.Checklist[1].Text != "Step two" || parsed.Checklist[1].Done {
 		t.Errorf("checklist[1] = {%q, %v}, want {%q, false}", parsed.Checklist[1].Text, parsed.Checklist[1].Done, "Step two")
-	}
-	if parsed.Stage != "Implement" {
-		t.Errorf("Stage = %q, want %q", parsed.Stage, "Implement")
 	}
 	if parsed.Source != "github" {
 		t.Errorf("Source = %q, want %q", parsed.Source, "github")

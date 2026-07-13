@@ -13,11 +13,11 @@ func makeRemainingScrollTasks(count int) []*models.Task {
 	tasks := make([]*models.Task, 0, count)
 	for i := range count {
 		tasks = append(tasks, &models.Task{
-			ID:      fmt.Sprintf("task-%02d", i),
-			ShortID: i + 1,
-			Title:   fmt.Sprintf("Task %02d", i),
-			Type:    models.TaskTypeTask,
-			Status:  models.StatusTodo,
+			ID:            fmt.Sprintf("task-%02d", i),
+			ShortID:       i + 1,
+			Title:         fmt.Sprintf("Task %02d", i),
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateReady,
 		})
 	}
 	return tasks

@@ -71,15 +71,34 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 
 // handleTaskCreated handles the TaskCreatedMsg.
 func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
-	if msg.Task != nil {
-		m.sessionStats.tasksCreated++
-	}
-	// Capture whether this creation originated from the Quick Capture view
-	// before handleWithRefresh pops it off the stack.
+	// Capture whether this creation originated from the Quick Capture view and the
+	// pre-capture task count before handleWithRefresh pops the view / reloads.
 	fromQuickCapture := m.currentView() == ViewQuickCapture
 	preCaptureCount := 0
 	if m.currentProject != nil {
 		preCaptureCount = len(m.currentProject.Tasks)
+	}
+
+	// Coordinator path: the capture committed one atomic ChangeSet through the
+	// application layer, so reload the committed project from disk and re-resolve
+	// the task by ID. The shared navigation/status/open-after logic below then runs
+	// off the reloaded pointers exactly as it did for the legacy in-place save.
+	if msg.Result != nil {
+		m.reloadProjectByID(msg.Result.ProjectID)
+		if project := m.config.GetProject(msg.Result.ProjectID); project != nil {
+			msg.Project = project
+			// OpenTaskID overrides the navigation/open target (task-form
+			// open-after-subtask targets a created child, not the parent).
+			targetID := msg.Result.TaskID
+			if msg.OpenTaskID != "" {
+				targetID = msg.OpenTaskID
+			}
+			msg.Task = project.GetTaskByID(targetID)
+		}
+	}
+
+	if msg.Task != nil {
+		m.sessionStats.tasksCreated++
 	}
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
@@ -96,8 +115,10 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	}
 
 	// Set status message showing section
-	if msg.Task != nil && msg.Task.Section != "" {
-		m.setSuccessStatus(fmt.Sprintf("Created in %s", msg.Task.Section))
+	if msg.Task != nil {
+		if bucket := taskSectionBucket(msg.Task); bucket != "" {
+			m.setSuccessStatus(fmt.Sprintf("Created in %s", bucket))
+		}
 	}
 
 	// Override with onboarding next-step hint when this was the first task captured
@@ -137,8 +158,29 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 
 // handleTaskUpdated handles the TaskUpdatedMsg.
 func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
+	// Coordinator path: the edit committed one atomic ChangeSet through the
+	// application layer, so reload the committed project from disk before the
+	// shared refresh runs.
+	if msg.Result != nil {
+		m.reloadProjectByID(msg.Result.ProjectID)
+	}
+
 	// Common pattern: pop view, reload, refresh
 	refreshCmd := m.handleWithRefresh(true, true, "")
+
+	// Re-resolve the live task pointer AFTER handleWithRefresh, which reloads the
+	// current project and replaces every task pointer. Resolving earlier would
+	// hand delegated views (task detail, inbox processor) an orphaned pointer.
+	if msg.Result != nil {
+		project := m.currentProject
+		if project == nil || project.ID != msg.Result.ProjectID {
+			project = m.config.GetProject(msg.Result.ProjectID)
+		}
+		if project != nil {
+			msg.Task = project.GetTaskByID(msg.Result.TaskID)
+		}
+	}
+
 	// Delegate to current view (e.g., inbox processor) so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
 	m.syncInboxProcessor()

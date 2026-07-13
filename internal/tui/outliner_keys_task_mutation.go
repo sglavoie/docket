@@ -14,7 +14,12 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 		}
 		task := m.rows[m.cursor].task
 		if m.project == nil {
-			row, proj, ok := m.crossGetMutationTarget()
+			// Cross-project: the completion-boundary and edge guards use VISIBLE
+			// siblings (preserving the silent no-op at the edge and the
+			// MoveBlockedMsg toast), but the swap itself is delegated to the app-layer
+			// MoveTaskDown seam, which reorders MODEL-order siblings and commits one
+			// ledger transaction; the shell reloads the cross outliner.
+			row, _, ok := m.crossGetMutationTarget()
 			if !ok {
 				return m, nil, true
 			}
@@ -28,14 +33,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 						return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
 					}, true
 				}
-				projectID := proj.ID
-				taskID := task.ID
-				proj.SwapTasks(task, siblingBelow)
-				m.crossUndoCtx.Set("Move Down", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{projectID}
-				m.rebuildRows()
-				m.moveCursorToProjectTask(taskID, projectID)
-				return m, m.crossSaveProject(proj), true
+				return m, m.taskItem.MoveDown(task.ID), true
 			}
 			return m, nil, true
 		}
@@ -64,7 +62,9 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 		}
 		task := m.rows[m.cursor].task
 		if m.project == nil {
-			row, proj, ok := m.crossGetMutationTarget()
+			// Cross-project: VISIBLE-sibling guards, MODEL-order swap via the
+			// app-layer MoveTaskUp seam (see the "J" branch).
+			row, _, ok := m.crossGetMutationTarget()
 			if !ok {
 				return m, nil, true
 			}
@@ -78,14 +78,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 						return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
 					}, true
 				}
-				projectID := proj.ID
-				taskID := task.ID
-				proj.SwapTasks(task, siblingAbove)
-				m.crossUndoCtx.Set("Move Up", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{projectID}
-				m.rebuildRows()
-				m.moveCursorToProjectTask(taskID, projectID)
-				return m, m.crossSaveProject(proj), true
+				return m, m.taskItem.MoveUp(task.ID), true
 			}
 			return m, nil, true
 		}
@@ -116,27 +109,17 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			return m, nil, true
 		}
 		if m.project == nil {
+			// Cross-project: require the visually-adjacent row above to be a task in
+			// the same project (matching the legacy same-project indent gate), then
+			// delegate the nest to the app-layer IndentTask seam, which resolves the
+			// model-above parent within the task's own project and commits one ledger
+			// transaction; the shell reloads the cross outliner.
 			curRow := m.rows[m.cursor]
 			aboveRow := m.rows[m.cursor-1]
 			if curRow.ProjectID != aboveRow.ProjectID {
 				return m, nil, true
 			}
-			proj := m.crossResolveProject(curRow.ProjectID)
-			if proj == nil {
-				return m, nil, true
-			}
-			task := proj.GetTaskByID(curRow.task.ID)
-			candidate := proj.GetTaskByID(aboveRow.task.ID)
-			if task == nil || candidate == nil {
-				return m, nil, true
-			}
-			if IndentTask(proj, task, candidate) {
-				m.crossUndoCtx.Set("Indent", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-				m.rebuildRows()
-				return m, m.crossSaveProject(proj), true
-			}
-			return m, nil, true
+			return m, m.taskItem.Indent(curRow.task.ID), true
 		}
 		task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
 		candidate := m.project.GetTaskByID(m.rows[m.cursor-1].task.ID)
@@ -157,22 +140,11 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			return m, nil, true
 		}
 		if m.project == nil {
+			// Cross-project: delegate the outdent to the app-layer OutdentTask seam,
+			// which validates the task has a parent and commits one ledger
+			// transaction; the shell reloads the cross outliner.
 			curRow := m.rows[m.cursor]
-			proj := m.crossResolveProject(curRow.ProjectID)
-			if proj == nil {
-				return m, nil, true
-			}
-			task := proj.GetTaskByID(curRow.task.ID)
-			if task == nil {
-				return m, nil, true
-			}
-			if OutdentTask(proj, task) {
-				m.crossUndoCtx.Set("Outdent", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-				m.rebuildRows()
-				return m, m.crossSaveProject(proj), true
-			}
-			return m, nil, true
+			return m, m.taskItem.Outdent(curRow.task.ID), true
 		}
 		task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
 		if task == nil {

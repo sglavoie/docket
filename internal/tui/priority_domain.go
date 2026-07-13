@@ -12,7 +12,7 @@ import (
 // view. Completed and snoozed tasks are excluded; parent/container tasks are
 // kept so they remain visible in priority listings.
 func IsEligibleForPriority(task *models.Task) bool {
-	if task.Status.IsComplete() {
+	if task.IsTerminalState() {
 		return false
 	}
 	if task.IsSnoozed() {
@@ -22,11 +22,11 @@ func IsEligibleForPriority(task *models.Task) bool {
 }
 
 // IsPriorityBlocked reports whether a task should be grouped under
-// Blocked/Waiting in the priority view. A task is blocked either because its
-// status is explicitly blocked or because it has unresolved dependencies in
-// the supplied project.
+// Blocked/Waiting in the priority view. A task is blocked either because it
+// sits in the waiting state or because it has unresolved dependencies in the
+// supplied project.
 func IsPriorityBlocked(project *models.Project, task *models.Task) bool {
-	if task.Status == models.StatusBlocked {
+	if task.IsInState(models.StateWaiting) {
 		return true
 	}
 	return project.HasIncompleteDependencies(task)
@@ -55,8 +55,9 @@ func CategorizeByDueDate(task *models.Task) PriorityGroup {
 
 // ComputeUrgencyScore calculates the urgency score for a task. Higher scores
 // are more urgent. The scoring is shared between single-project and
-// cross-project priority modes.
-func ComputeUrgencyScore(task *models.Task) int {
+// cross-project priority modes. inFocusQueue is the task's Focus Queue
+// membership (the successor of the deprecated Active flag).
+func ComputeUrgencyScore(task *models.Task, inFocusQueue bool) int {
 	score := (6 - task.Priority) * 1000
 
 	if task.Type == models.TaskTypeBug {
@@ -68,15 +69,15 @@ func ComputeUrgencyScore(task *models.Task) int {
 		score += (-daysUntil) * 50
 	}
 
-	if task.Status == models.StatusInProgress {
+	if task.IsInState(models.StateInProgress) {
 		score += 500
 	}
 
-	if task.Status == models.StatusReview {
+	if task.IsInState(models.StateReview) {
 		score += 250
 	}
 
-	if task.Active {
+	if inFocusQueue {
 		score += 200
 	}
 

@@ -57,9 +57,9 @@ func TestParseMetadata_RecurrenceFromCompletion(t *testing.T) {
 
 func TestMetadata_RecurrenceFromCompletionRoundtrip(t *testing.T) {
 	original := &models.Task{
-		ID:       "fc-rt-1",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "fc-rt-1",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  2,
 			Unit:      models.RecurrenceWeekly,
@@ -71,7 +71,7 @@ func TestMetadata_RecurrenceFromCompletionRoundtrip(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	meta := WriteMetadata(original)
+	meta := WriteMetadataV2(original)
 	metaStr := strings.TrimPrefix(meta, "<!-- ")
 	metaStr = strings.TrimSuffix(metaStr, " -->")
 

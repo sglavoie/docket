@@ -180,7 +180,7 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if !task.Status.IsActive() || task.DueDate == nil || isTaskSnoozedForAlerts(task, now) {
+			if task.IsTerminalState() || task.DueDate == nil || isTaskSnoozedForAlerts(task, now) {
 				continue
 			}
 			// Anchor the due-day comparison to the user's current location so
@@ -229,7 +229,7 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if !task.Status.IsActive() || task.DueDate == nil || isTaskSnoozedForAlerts(task, now) {
+			if task.IsTerminalState() || task.DueDate == nil || isTaskSnoozedForAlerts(task, now) {
 				continue
 			}
 			// Anchor in user's current location for the same reason as
@@ -270,7 +270,7 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 			if task == nil {
 				continue
 			}
-			if !task.Status.IsActive() || isTaskSnoozedForAlerts(task, now) || task.Section == models.SectionSomeday || task.UpdatedAt.IsZero() {
+			if task.IsTerminalState() || isTaskSnoozedForAlerts(task, now) || task.IsInState(models.StateSomeday) || task.UpdatedAt.IsZero() {
 				continue
 			}
 			if task.UpdatedAt.Before(staleThreshold) {
@@ -303,7 +303,7 @@ func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if task.Status.IsActive() && task.Section == models.SectionInbox && !isTaskSnoozedForAlerts(task, now) {
+			if task.IsInState(models.StateInbox) && !isTaskSnoozedForAlerts(task, now) {
 				inboxCount++
 			}
 		}
@@ -334,7 +334,7 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if task.Status != models.StatusBlocked || isTaskSnoozedForAlerts(task, now) {
+			if !task.IsInState(models.StateWaiting) || isTaskSnoozedForAlerts(task, now) {
 				continue
 			}
 			// Use the activity log to find when the task last became blocked,

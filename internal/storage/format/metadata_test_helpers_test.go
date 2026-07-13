@@ -96,23 +96,14 @@ func assertTaskFields(t *testing.T, task, want *models.Task) {
 	if task.ID != want.ID {
 		t.Errorf("ID = %q, want %q", task.ID, want.ID)
 	}
-	if task.Status != want.Status {
-		t.Errorf("Status = %q, want %q", task.Status, want.Status)
+	if task.State() != want.State() {
+		t.Errorf("State = %q, want %q", task.State(), want.State())
 	}
 	if task.Priority != want.Priority {
 		t.Errorf("Priority = %d, want %d", task.Priority, want.Priority)
 	}
-	if task.Section != want.Section {
-		t.Errorf("Section = %q, want %q", task.Section, want.Section)
-	}
 	if task.Pinned != want.Pinned {
 		t.Errorf("Pinned = %v, want %v", task.Pinned, want.Pinned)
-	}
-	if task.Active != want.Active {
-		t.Errorf("Active = %v, want %v", task.Active, want.Active)
-	}
-	if task.Stage != want.Stage {
-		t.Errorf("Stage = %q, want %q", task.Stage, want.Stage)
 	}
 
 	if !stringSlicesEqual(task.Tags, want.Tags) {
@@ -144,6 +135,52 @@ func assertTaskFields(t *testing.T, task, want *models.Task) {
 	}
 }
 
+// assertTaskFieldsAfterV2RoundTrip verifies field preservation across a v2
+// write→parse round-trip. Unlike assertTaskFields (which is used by parse-only
+// tests where the legacy fields survive verbatim), it compares the derived
+// WorkflowState instead of the raw Status/Section shims and asserts the retired
+// Stage/Active fields are dropped, because the v2 writer collapses the legacy
+// lifecycle fields into the canonical `state`.
+func assertTaskFieldsAfterV2RoundTrip(t *testing.T, task, want *models.Task) {
+	t.Helper()
+	if task.ID != want.ID {
+		t.Errorf("ID = %q, want %q", task.ID, want.ID)
+	}
+	if task.State() != want.State() {
+		t.Errorf("State = %q, want %q", task.State(), want.State())
+	}
+	if task.Priority != want.Priority {
+		t.Errorf("Priority = %d, want %d", task.Priority, want.Priority)
+	}
+	if task.Pinned != want.Pinned {
+		t.Errorf("Pinned = %v, want %v", task.Pinned, want.Pinned)
+	}
+	if !stringSlicesEqual(task.Tags, want.Tags) {
+		t.Errorf("Tags = %v, want %v", task.Tags, want.Tags)
+	}
+	if !stringSlicesEqual(task.DependsOn, want.DependsOn) {
+		t.Errorf("DependsOn = %v, want %v", task.DependsOn, want.DependsOn)
+	}
+	if !stringPtrEqual(task.ParentID, want.ParentID) {
+		t.Errorf("ParentID = %v, want %v", ptrToStr(task.ParentID), ptrToStr(want.ParentID))
+	}
+	if !timePtrEqual(task.DueDate, want.DueDate) {
+		t.Errorf("DueDate = %v, want %v", ptrToTime(task.DueDate), ptrToTime(want.DueDate))
+	}
+	if !timePtrEqual(task.CompletedAt, want.CompletedAt) {
+		t.Errorf("CompletedAt = %v, want %v", ptrToTime(task.CompletedAt), ptrToTime(want.CompletedAt))
+	}
+	if !task.CreatedAt.Equal(want.CreatedAt) {
+		t.Errorf("CreatedAt = %v, want %v", task.CreatedAt, want.CreatedAt)
+	}
+	if !task.UpdatedAt.Equal(want.UpdatedAt) {
+		t.Errorf("UpdatedAt = %v, want %v", task.UpdatedAt, want.UpdatedAt)
+	}
+	if !recurrenceEqual(task.Recurrence, want.Recurrence) {
+		t.Errorf("Recurrence = %+v, want %+v", task.Recurrence, want.Recurrence)
+	}
+}
+
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[:len(substr)] == substr || containsString(s[1:], substr)))
 }
@@ -158,7 +195,7 @@ func hasWarningField(warnings []ParseWarning, field string) bool {
 }
 
 func parseWrittenMetadata(task, parsed *models.Task) []ParseWarning {
-	metaStr := WriteMetadata(task)
+	metaStr := WriteMetadataV2(task)
 	content := metaStr[5 : len(metaStr)-4]
 
 	return ParseMetadata(parsed, content)

@@ -9,8 +9,8 @@ import (
 
 func newSortedProjectTreeModel(t *testing.T) (*ProjectTreeModel, []*TreeNode) {
 	t.Helper()
-	t1 := &models.Task{ID: "t1", Title: "T1", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	t2 := &models.Task{ID: "t2", Title: "T2", Type: models.TaskTypeTask, Status: models.StatusTodo}
+	t1 := &models.Task{ID: "t1", Title: "T1", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	t2 := &models.Task{ID: "t2", Title: "T2", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
 	project := &models.Project{Tasks: []*models.Task{t1, t2}}
 
 	m := &ProjectTreeModel{
@@ -115,10 +115,10 @@ func TestMoveTaskToBottom_BlockedBySortActive(t *testing.T) {
 // completed root task cannot be moved above an uncompleted sibling, the cursor
 // stays put instead of jumping to the first sibling's old position.
 func TestMoveTaskToTop_BlockedByCompletionLeavesCursor(t *testing.T) {
-	b := &models.Task{ID: "b", Title: "B", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	c := &models.Task{ID: "c", Title: "C", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	d := &models.Task{ID: "d", Title: "D", Type: models.TaskTypeTask, Status: models.StatusTodo}
-	a := &models.Task{ID: "a", Title: "A", Type: models.TaskTypeTask, Status: models.StatusDone}
+	b := &models.Task{ID: "b", Title: "B", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	c := &models.Task{ID: "c", Title: "C", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	d := &models.Task{ID: "d", Title: "D", Type: models.TaskTypeTask, WorkflowState: models.StateReady}
+	a := &models.Task{ID: "a", Title: "A", Type: models.TaskTypeTask, WorkflowState: models.StateDone}
 	project := &models.Project{Tasks: []*models.Task{b, c, d, a}}
 
 	m := &ProjectTreeModel{
@@ -155,21 +155,17 @@ func TestHandleMovementKeys_J_DefaultSortNotBlocked(t *testing.T) {
 	m.sort = SortState{Field: SortByDefault, Ascending: true}
 	m.cursor = 0
 
-	handled, cmd := m.handleMovementKeys("J", visible)
+	handled, _ := m.handleMovementKeys("J", visible)
 	if !handled {
 		t.Fatal("J should be handled")
 	}
-	// With default sort and two siblings, a real swap will be attempted and
-	// produce a non-blocked cmd path. The key assertion is that the message
-	// returned is NOT MoveBlockedMsg with sort-active reason.
-	if cmd != nil {
-		if msg := cmd(); msg != nil {
-			if blocked, ok := msg.(MoveBlockedMsg); ok {
-				if blocked.Reason == "cannot reorder while a sort is active" {
-					t.Error("default sort should not produce sort-active block")
-				}
-			}
-		}
+	// With default sort and two siblings, the swap proceeds in-memory rather than
+	// being rejected by the sort-active guard. The persist itself now flows through
+	// the async coordinator (a BatchTransactionResultMsg), so asserting the
+	// synchronous swap — t1/t2 exchange positions — proves the guard did not fire.
+	if m.project.Tasks[0].ID != "t2" || m.project.Tasks[1].ID != "t1" {
+		t.Errorf("default sort should allow the swap; got order %s,%s, want t2,t1",
+			m.project.Tasks[0].ID, m.project.Tasks[1].ID)
 	}
 }
 

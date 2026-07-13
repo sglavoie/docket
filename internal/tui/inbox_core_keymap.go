@@ -80,7 +80,7 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 			return c.model, inboxOpenTaskEditor(c)
 		},
 		MarkDone: func() (tea.Model, tea.Cmd) {
-			return c.model, c.changeTaskStatus(models.StatusDone, StatusVerb(models.StatusDone))
+			return c.model, c.changeTaskState(models.StateDone, StateVerb(models.StateDone))
 		},
 		ManageTags: func() (tea.Model, tea.Cmd) {
 			return c.model, inboxOpenTagSelector(c)
@@ -107,10 +107,10 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 
 	// --- Status group: "," prefix ---
 	statusEntries := keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
+		ChangeState: func(state string) keymap.Action {
+			s := models.WorkflowState(state)
 			return func() (tea.Model, tea.Cmd) {
-				return c.model, c.changeTaskStatus(s, StatusVerb(s))
+				return c.model, c.changeTaskState(s, StateVerb(s))
 			}
 		},
 		HasRecurrence:  nil,
@@ -172,21 +172,6 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		},
 	})
 	entries = append(entries, snoozeEntries...)
-
-	// --- Stage group: "." prefix ---
-	var stages []string
-	if c.config != nil {
-		stages = c.config.Stages
-	}
-	stageEntries := keymap.StageGroup(keymap.StageDeps{
-		Stages: stages,
-		ChangeStage: func(stage string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return c.model, c.setStage(stage)
-			}
-		},
-	})
-	entries = append(entries, stageEntries...)
 
 	// --- Move group: "m" prefix ---
 	moveEntries := keymap.MoveGroup(keymap.MoveDeps{

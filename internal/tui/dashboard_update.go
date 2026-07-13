@@ -77,14 +77,13 @@ func (m *DashboardModel) HandledKeys() []string {
 
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 	dataDir := m.config.DataDir
+	// Snapshot config references now, before the ProjectDeletedMsg handler
+	// removes the project from config, so a later restore can re-establish them.
+	configRefs := marshalProjectReferences(m.config, project.ID, project.Slug)
 	return func() tea.Msg {
-		// Purge any existing trash entry with same slug
-		if err := storage.PurgeFromTrash(project.Slug, dataDir); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to purge old trash entry: %w", err)}
-		}
-
-		// Move project directory to trash
-		if err := storage.MoveProjectToTrash(project, dataDir); err != nil {
+		// Move project directory to a new versioned trash entry. Existing
+		// entries that share this slug are preserved (no silent purge).
+		if _, err := storage.MoveProjectToTrash(project, dataDir, "deleted via TUI", configRefs); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to move project to trash: %w", err)}
 		}
 

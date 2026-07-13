@@ -180,7 +180,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		}
 
 		if opts.IncludeStatus {
-			badge := GetStatusBadge(string(task.Status), task.Status.Icon())
+			badge := GetStateBadge(task.State())
 			if w := lipgloss.Width(badge); w > 0 {
 				cl.HasStatus = true
 				if w > cl.StatusWidth {

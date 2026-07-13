@@ -5,24 +5,35 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+var redoGlobal bool
 
 var redoCmd = &cobra.Command{
 	Use:   "redo",
 	Short: "Redo the last undone change to tasks",
 	Long: `Reapply the most recently undone change to the tasks file.
 
-Each undo operation pushes the undone state onto a redo stack.
-Running redo restores the most recent redo entry.
+Each undo operation pushes the undone transaction onto the workspace redo
+ledger. Running redo restores the most recent redo entry that touched the
+current project — including every other project, config artifact, and
+attachment the same transaction touched.
+
+With --global, the most recent undone transaction across the whole workspace
+is reapplied regardless of which project it touched.
 
 Examples:
-  tt redo              # Reapply last undone change`,
+  tt redo              # Reapply the current project's last undone change
+  tt redo --global     # Redo the latest undone workspace transaction`,
 	Args: cobra.NoArgs,
 	RunE: runRedo,
 }
 
 func init() {
+	redoCmd.Flags().BoolVar(&redoGlobal, "global", false, "redo the most recent undone transaction across the whole workspace")
 	rootCmd.AddCommand(redoCmd)
 }
 
@@ -32,6 +43,52 @@ func runRedo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	ledger := workspaceLedgerForRestore(cfg)
+	scope := storage.ProjectScope(project.ID)
+	if redoGlobal {
+		scope = storage.GlobalScope()
+	}
+
+	entry, ledgerHas, err := ledger.SelectNewestRedo(scope)
+	if err != nil {
+		return fmt.Errorf("redo failed: %w", err)
+	}
+
+	// Migration-window fallback: mutations not yet routed through the
+	// application layer (chiefly TUI flows still on the legacy persist
+	// pipeline) record only per-project history. Prefer whichever system holds
+	// the more recent entry so interleaved histories restore in order; the
+	// fallback dies with the legacy pipeline. Global scope is ledger-only —
+	// the legacy system has no workspace-wide notion.
+	if !redoGlobal && legacyHistoryIsNewer(project, entry, ledgerHas, storage.LoadRedoHistory) {
+		return runLegacyRedo(project, cfg, configManager)
+	}
+	if !ledgerHas {
+		if redoGlobal {
+			return fmt.Errorf("no redo history available")
+		}
+		return fmt.Errorf("no redo history available for project '%s'", project.Name)
+	}
+
+	actionDesc, err := ledger.Redo(scope)
+	if err != nil {
+		return fmt.Errorf("redo failed: %w", err)
+	}
+	if err := repairConfigRefsAfterLedgerRestore(configManager, entry.ProjectIDs); err != nil {
+		return err
+	}
+
+	fmt.Printf("Redo: %s\n", actionDesc)
+	if remaining, countErr := ledger.RedoCount(scope); countErr == nil && remaining > 0 {
+		fmt.Printf("%d more redo step(s) available.\n", remaining)
+	}
+	return nil
+}
+
+// runLegacyRedo restores through the per-project redo history. It is reachable
+// only from the migration-window fallback in runRedo and is removed with the
+// legacy persist pipeline.
+func runLegacyRedo(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
 	if !storage.RedoHistoryExists(project) {
 		return fmt.Errorf("no redo history available for project '%s'", project.Name)
 	}

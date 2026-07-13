@@ -2,66 +2,59 @@ package tui
 
 import (
 	"testing"
-	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // TestCommandPaletteBulkActionSkipsInvalidTransitions verifies that the bulk
-// "complete" action does not mutate tasks that cannot transition to Done.
-// A Done task selected alongside a Todo task must remain Done with its
-// CompletedAt preserved and UpdatedAt untouched; only the Todo task should
-// transition.
+// "complete" action, now routed through the application-layer bulk-transition
+// use case, is best-effort: a Done task selected alongside a Ready task is
+// skipped (it cannot transition to Done again) while the Ready task moves to
+// Done, and the toast reports only the one task actually changed. The whole
+// batch commits as one workspace-ledger transaction, so ledger undo restores
+// the changed task's prior state.
 func TestCommandPaletteBulkActionSkipsInvalidTransitions(t *testing.T) {
-	app := newTestAppModel()
+	todo := seedTask(t, 1, "todo task", models.StateReady)
+	done := seedTask(t, 2, "done task", models.StateDone)
+	env, features := newSecondaryEnv(t, "cmdbulk", todo, done)
 
-	project, err := models.NewProject(uuid.New().String(), "Test", "")
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
+	m := &AppModel{
+		config:            testutil.NewTestConfig(),
+		secondaryFeatures: features,
+		views:             NewViewRegistry(),
 	}
-
-	todoTask, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "todo task")
-	if err != nil {
-		t.Fatalf("NewTask todo: %v", err)
-	}
-	todoTask.Status = models.StatusTodo
-
-	doneTask, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "done task")
-	if err != nil {
-		t.Fatalf("NewTask done: %v", err)
-	}
-	completedAt := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	doneTask.Status = models.StatusDone
-	doneTask.CompletedAt = &completedAt
-	doneTask.UpdatedAt = completedAt
-
-	project.Tasks = []*models.Task{todoTask, doneTask}
 
 	msg := CommandPaletteBulkActionMsg{
 		Action: "complete",
 		Tasks: []TaskProjectRef{
-			{Task: todoTask, Project: project},
-			{Task: doneTask, Project: project},
+			{Task: todo, Project: env.project},
+			{Task: done, Project: env.project},
 		},
 	}
 
-	handled, _ := app.handleCommandPaletteBulkAction(msg)
+	handled, cmd := m.handleCommandPaletteBulkAction(msg)
 	if !handled {
 		t.Fatal("expected handled=true")
 	}
 
-	if todoTask.Status != models.StatusDone {
-		t.Errorf("todo task should be Done, got %s", todoTask.Status)
+	result := runBatchResult(t, cmd)
+	if result.Summary != "1 tasks completed" {
+		t.Errorf("summary = %q, want %q", result.Summary, "1 tasks completed")
 	}
-	if doneTask.Status != models.StatusDone {
-		t.Errorf("done task should remain Done, got %s", doneTask.Status)
+
+	reloaded := env.reload(t)
+	if got := reloaded.GetTaskByID(todo.ID); got == nil || got.State() != models.StateDone {
+		t.Errorf("ready task should be Done, got %v", got)
 	}
-	if doneTask.CompletedAt == nil || !doneTask.CompletedAt.Equal(completedAt) {
-		t.Errorf("done task CompletedAt should be preserved, got %v", doneTask.CompletedAt)
+	if got := reloaded.GetTaskByID(done.ID); got == nil || got.State() != models.StateDone {
+		t.Errorf("done task should remain Done, got %v", got)
 	}
-	if !doneTask.UpdatedAt.Equal(completedAt) {
-		t.Errorf("done task UpdatedAt should not be bumped for a no-op, got %v (want %v)", doneTask.UpdatedAt, completedAt)
+
+	// The batch committed one ledger transaction; undo restores the changed task.
+	env.undo(t)
+	reloaded = env.reload(t)
+	if got := reloaded.GetTaskByID(todo.ID); got == nil || got.State() != models.StateReady {
+		t.Errorf("undo should restore the ready task, got %v", got)
 	}
 }

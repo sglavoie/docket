@@ -13,6 +13,19 @@ func (c *Config) GetWeekEndDay() string {
 	}
 }
 
+// GetWeekEndDay returns the configured week-end day abbreviation ("fri", "sat",
+// or "sun") from the settings domain, defaulting to "sun" when unset or invalid.
+// It mirrors (*Config).GetWeekEndDay so a caller that reads the settings domain
+// directly (instead of the config facade) normalizes the value identically.
+func (s *Settings) GetWeekEndDay() string {
+	switch s.WeekEndDay {
+	case "fri", "sat", "sun":
+		return s.WeekEndDay
+	default:
+		return "sun"
+	}
+}
+
 // ValidateWeekEndDay returns an error if s is not a valid week-end day value.
 // Valid values: "" (use default), "fri", "sat", "sun".
 func ValidateWeekEndDay(s string) error {

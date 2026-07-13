@@ -166,7 +166,7 @@ func TestDashboardResumeCardSortsAndLimitsParkedTasks(t *testing.T) {
 	middle := parkedDashboardTask("middle parked", "second choice", now.Add(-2*time.Hour))
 	oldest := parkedDashboardTask("oldest parked", "too old for limit", now.Add(-3*time.Hour))
 	completed := parkedDashboardTask("completed parked", "done already", now)
-	completed.Status = models.StatusDone
+	completed.WorkflowState = models.StateDone
 	project.Tasks = []*models.Task{oldest, completed, middle, newest}
 
 	m := &DashboardModel{
@@ -275,7 +275,7 @@ func TestDashboardResumeCollectorClampsLimit(t *testing.T) {
 
 func parkedDashboardTask(title, note string, parkedAt time.Time) *models.Task {
 	task := testutil.NewTestTask(title, models.TaskTypeTask)
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 	task.ParkedNote = note
 	task.ParkedAt = &parkedAt
 	return task

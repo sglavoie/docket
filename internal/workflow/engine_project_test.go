@@ -18,10 +18,10 @@ func makeProject(statusIcon string) *models.Project {
 
 func makeTask(status models.TaskStatus, taskType models.TaskType) *models.Task {
 	return &models.Task{
-		ID:        "task-" + string(status) + "-" + string(taskType),
-		Status:    status,
-		Type:      taskType,
-		UpdatedAt: time.Now(),
+		ID:            "task-" + string(status) + "-" + string(taskType),
+		WorkflowState: models.DeriveWorkflowState(status, "", ""),
+		Type:          taskType,
+		UpdatedAt:     time.Now(),
 	}
 }
 

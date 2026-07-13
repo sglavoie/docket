@@ -41,7 +41,7 @@ func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *
 				if task == nil {
 					continue
 				}
-				if !task.Status.IsComplete() {
+				if !task.IsComplete() {
 					hasTopScored = true
 					break
 				}
@@ -156,7 +156,7 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 		scoringProfile = m.config.GetProjectScoringProfile(selected.ID)
 		if scoringProfile != nil {
 			for _, task := range selected.Tasks {
-				if task == nil || task.Status.IsComplete() {
+				if task == nil || task.IsComplete() {
 					continue
 				}
 				score := scoring.ComputeScore(task, scoringProfile)
@@ -368,7 +368,7 @@ func (m *DashboardModel) collectParkedResumeTasks(limit int) []parkedResumeEntry
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.Status.IsComplete() || !task.IsParked() {
+			if task == nil || task.IsComplete() || !task.IsParked() {
 				continue
 			}
 			entries = append(entries, parkedResumeEntry{task: task, project: project})
@@ -412,7 +412,7 @@ func (m *DashboardModel) renderResumeCardContent(entries []parkedResumeEntry, co
 func renderResumeCardLine(entry parkedResumeEntry, contentWidth int) string {
 	task := entry.task
 	typeBadge := GetTypeBadge(string(task.Type), task.Type.Icon())
-	statusBadge := GetStatusBadge(string(task.Status), task.Status.Icon())
+	statusBadge := GetStateBadge(task.State())
 	prefix := fmt.Sprintf("%s %s ", typeBadge, statusBadge)
 
 	suffixParts := []string{parkedResumeSnippetForRowWidth(task, contentWidth)}
@@ -438,10 +438,10 @@ func bestScoredTask(project *models.Project, profile *scoring.ScoringProfile) *m
 	var best *models.Task
 	var bestScore float64
 	for _, task := range project.Tasks {
-		if task == nil || task.Status.IsComplete() {
+		if task == nil || task.IsComplete() {
 			continue
 		}
-		if task.Section == models.SectionSomeday || task.Section == models.SectionCompleted {
+		if task.IsInState(models.StateSomeday) {
 			continue
 		}
 		if profile != nil {
@@ -479,7 +479,7 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 	title := TaskTitleStyleFor(bestTask, TaskTitleStyleOptions{}).
 		Render(truncateToVisualWidth(bestTask.Title, titleWidth))
 	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
-	statusIcon := GetStatusBadge(string(bestTask.Status), bestTask.Status.Icon())
+	statusIcon := GetStateBadge(bestTask.State())
 
 	return fmt.Sprintf("%s %s %s %s %s", bar, badge, typeIcon, statusIcon, title)
 }
@@ -505,7 +505,7 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 	for _, task := range recentTasks {
 		timeStr := storage.FormatRelativeTime(task.UpdatedAt)
 		typeBadge := GetTypeBadge(string(task.Type), task.Type.Icon())
-		statusBadge := GetStatusBadge(string(task.Status), task.Status.Icon())
+		statusBadge := GetStateBadge(task.State())
 		if layout != nil && layout.HasType {
 			typeBadge = PadBadge(typeBadge, layout.TypeWidth)
 		}

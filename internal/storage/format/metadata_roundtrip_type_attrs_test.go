@@ -14,10 +14,10 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 		{
 			name: "bug with all attrs",
 			task: &models.Task{
-				ID:       "bug-round",
-				Type:     models.TaskTypeBug,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "bug-round",
+				Type:          models.TaskTypeBug,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				BugAttrs: &models.BugAttrs{
 					Reproducible: models.BugReproducibleSometimes,
 					Severity:     models.BugSeverityMinor,
@@ -28,10 +28,10 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 		{
 			name: "idea with all attrs",
 			task: &models.Task{
-				ID:       "idea-round",
-				Type:     models.TaskTypeIdea,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "idea-round",
+				Type:          models.TaskTypeIdea,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				IdeaAttrs: &models.IdeaAttrs{
 					Category:  models.IdeaCategoryResearch,
 					Effort:    models.EffortLarge,
@@ -43,10 +43,10 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 		{
 			name: "task with all attrs",
 			task: &models.Task{
-				ID:       "task-round",
-				Type:     models.TaskTypeTask,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "task-round",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				TaskAttrs: &models.TaskAttrs{
 					Effort:   models.EffortMedium,
 					WorkType: models.WorkTypeTesting,
@@ -56,10 +56,10 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 		{
 			name: "story with all attrs",
 			task: &models.Task{
-				ID:       "story-round",
-				Type:     models.TaskTypeStory,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "story-round",
+				Type:          models.TaskTypeStory,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				StoryAttrs: &models.StoryAttrs{
 					StoryPoints: 8,
 					Persona:     "As a user\nI want to\nSo that",
@@ -69,10 +69,10 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 		{
 			name: "epic with all attrs",
 			task: &models.Task{
-				ID:       "epic-round",
-				Type:     models.TaskTypeEpic,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "epic-round",
+				Type:          models.TaskTypeEpic,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				EpicAttrs: &models.EpicAttrs{
 					Scope:          models.EpicScopeEvolving,
 					Milestone:      "Q2 2025",
@@ -84,7 +84,7 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			metaStr := WriteMetadata(tc.task)
+			metaStr := WriteMetadataV2(tc.task)
 
 			if len(metaStr) < 8 || metaStr[:4] != "<!--" || metaStr[len(metaStr)-3:] != "-->" {
 				t.Fatalf("Invalid metadata format: %q", metaStr)
@@ -180,17 +180,17 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 // re-parser cannot match the now-multi-line comment).
 func TestEpicMilestone_NewlinesEscaped(t *testing.T) {
 	original := &models.Task{
-		ID:       "epic-newline",
-		Type:     models.TaskTypeEpic,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "epic-newline",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		EpicAttrs: &models.EpicAttrs{
 			Scope:     models.EpicScopeDefined,
 			Milestone: "Line one\nLine two\nLine three",
 		},
 	}
 
-	metaStr := WriteMetadata(original)
+	metaStr := WriteMetadataV2(original)
 
 	// Sanity: the entire metadata string must remain a single line so the
 	// surrounding parser (which scans line-by-line) does not break apart.
@@ -218,17 +218,17 @@ func TestEpicMilestone_NewlinesEscaped(t *testing.T) {
 
 func TestBugWorkaround_CommaKeyPatternRoundTrip(t *testing.T) {
 	original := &models.Task{
-		ID:       "bug-comma-key",
-		Type:     models.TaskTypeBug,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "bug-comma-key",
+		Type:          models.TaskTypeBug,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		BugAttrs: &models.BugAttrs{
 			Severity:   models.BugSeverityMajor,
 			Workaround: "Use fallback, story.persona: admin flow, score.impact: 5",
 		},
 	}
 
-	metaStr := WriteMetadata(original)
+	metaStr := WriteMetadataV2(original)
 	content := metaStr[5 : len(metaStr)-4]
 
 	parsed := &models.Task{Type: models.TaskTypeBug}

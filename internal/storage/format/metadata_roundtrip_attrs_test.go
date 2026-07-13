@@ -8,10 +8,10 @@ import (
 
 func TestRoundTrip_BugAttrs(t *testing.T) {
 	task := &models.Task{
-		ID:       "bug-1",
-		Type:     models.TaskTypeBug,
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "bug-1",
+		Type:          models.TaskTypeBug,
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		BugAttrs: &models.BugAttrs{
 			Reproducible: models.BugReproducibleYes,
 			Severity:     models.BugSeverityCritical,
@@ -42,10 +42,10 @@ func TestRoundTrip_BugAttrs(t *testing.T) {
 
 func TestRoundTrip_IdeaAttrs(t *testing.T) {
 	task := &models.Task{
-		ID:       "idea-1",
-		Type:     models.TaskTypeIdea,
-		Status:   models.StatusTodo,
-		Priority: 3,
+		ID:            "idea-1",
+		Type:          models.TaskTypeIdea,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 		IdeaAttrs: &models.IdeaAttrs{
 			Category:  models.IdeaCategoryFeature,
 			Effort:    models.EffortMedium,
@@ -80,12 +80,12 @@ func TestRoundTrip_IdeaAttrs(t *testing.T) {
 
 func TestRoundTrip_SourceAndURL(t *testing.T) {
 	task := &models.Task{
-		ID:       "src-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
-		Source:   "cli",
-		URL:      "https://example.com",
+		ID:            "src-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		Source:        "cli",
+		URL:           "https://example.com",
 	}
 
 	parsed := &models.Task{}
@@ -119,10 +119,10 @@ func TestRoundTrip_NewlineEscapingWithLiteralBackslash(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:       "escape-test",
-				Type:     models.TaskTypeBug,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "escape-test",
+				Type:          models.TaskTypeBug,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				BugAttrs: &models.BugAttrs{
 					Workaround: tc.input,
 				},
@@ -147,10 +147,10 @@ func TestRoundTrip_NewlineEscapingWithLiteralBackslash(t *testing.T) {
 func TestRoundTrip_StoryPersonaWithBackslash(t *testing.T) {
 	input := `Admin uses \n and \\path`
 	task := &models.Task{
-		ID:       "story-esc-1",
-		Type:     models.TaskTypeStory,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "story-esc-1",
+		Type:          models.TaskTypeStory,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		StoryAttrs: &models.StoryAttrs{
 			Persona: input,
 		},
@@ -173,10 +173,10 @@ func TestRoundTrip_StoryPersonaWithBackslash(t *testing.T) {
 func TestRoundTrip_EpicMetricsWithBackslash(t *testing.T) {
 	input := "metric1\nmetric2 with \\n literal"
 	task := &models.Task{
-		ID:       "epic-esc-1",
-		Type:     models.TaskTypeEpic,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "epic-esc-1",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		EpicAttrs: &models.EpicAttrs{
 			SuccessMetrics: input,
 		},
@@ -205,10 +205,10 @@ func TestRoundTrip_FreeTextAttrsWithFixedPointPayloads(t *testing.T) {
 		{
 			name: "bug workaround",
 			task: &models.Task{
-				ID:       "bug-fixed-point",
-				Type:     models.TaskTypeBug,
-				Status:   models.StatusTodo,
-				Priority: 1,
+				ID:            "bug-fixed-point",
+				Type:          models.TaskTypeBug,
+				WorkflowState: models.StateReady,
+				Priority:      1,
 				BugAttrs: &models.BugAttrs{
 					Reproducible: models.BugReproducibleYes,
 					Severity:     models.BugSeverityCritical,
@@ -229,10 +229,10 @@ func TestRoundTrip_FreeTextAttrsWithFixedPointPayloads(t *testing.T) {
 		{
 			name: "story persona",
 			task: &models.Task{
-				ID:       "story-fixed-point",
-				Type:     models.TaskTypeStory,
-				Status:   models.StatusInProgress,
-				Priority: 2,
+				ID:            "story-fixed-point",
+				Type:          models.TaskTypeStory,
+				WorkflowState: models.StateInProgress,
+				Priority:      2,
 				StoryAttrs: &models.StoryAttrs{
 					StoryPoints: 5,
 					Persona:     "As operator, priority: 2\n### Story: keep literal\n<!-- persona marker -->",
@@ -252,10 +252,10 @@ func TestRoundTrip_FreeTextAttrsWithFixedPointPayloads(t *testing.T) {
 		{
 			name: "epic metrics",
 			task: &models.Task{
-				ID:       "epic-fixed-point",
-				Type:     models.TaskTypeEpic,
-				Status:   models.StatusTodo,
-				Priority: 1,
+				ID:            "epic-fixed-point",
+				Type:          models.TaskTypeEpic,
+				WorkflowState: models.StateReady,
+				Priority:      1,
 				EpicAttrs: &models.EpicAttrs{
 					Scope:          models.EpicScopeDefined,
 					Milestone:      "Phase 1, status: steady",
@@ -285,7 +285,7 @@ func TestRoundTrip_FreeTextAttrsWithFixedPointPayloads(t *testing.T) {
 
 			tc.check(t, parsed)
 
-			if got, want := WriteMetadata(parsed), WriteMetadata(tc.task); got != want {
+			if got, want := WriteMetadataV2(parsed), WriteMetadataV2(tc.task); got != want {
 				t.Fatalf("metadata fixed point mismatch:\n got: %s\nwant: %s", got, want)
 			}
 		})

@@ -98,7 +98,7 @@ func newBaselineInboxProject(name string) *models.Project {
 	}
 	for i, title := range titles {
 		task, _ := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, title)
-		task.Section = models.SectionInbox
+		task.SetSection(models.SectionInbox)
 		project.Tasks = append(project.Tasks, task)
 	}
 	return project
@@ -115,7 +115,7 @@ func newBaselineAlertProjects() []*models.Project {
 	hotspot.EnsureDefaultSections()
 	for i := 0; i < 6; i++ {
 		task, _ := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, fmt.Sprintf("Inbox item %d", i))
-		task.Section = models.SectionInbox
+		task.SetSection(models.SectionInbox)
 		hotspot.Tasks = append(hotspot.Tasks, task)
 	}
 	projects = append(projects, hotspot)
@@ -125,11 +125,11 @@ func newBaselineAlertProjects() []*models.Project {
 	overdue, _ := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Overdue deliverable")
 	overdueDue := now.Add(-48 * time.Hour)
 	overdue.DueDate = &overdueDue
-	overdue.Section = models.SectionNext
+	overdue.SetSection(models.SectionNext)
 	dueToday, _ := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Due today checkpoint")
 	dueTodayDue := now
 	dueToday.DueDate = &dueTodayDue
-	dueToday.Section = models.SectionNext
+	dueToday.SetSection(models.SectionNext)
 	planning.Tasks = append(planning.Tasks, overdue, dueToday)
 	projects = append(projects, planning)
 

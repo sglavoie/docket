@@ -90,9 +90,9 @@ func BuildTaskContext(project *models.Project) string {
 		b.WriteString("Current tasks:\n")
 		for _, task := range project.Tasks {
 			fmt.Fprintf(&b, "- #%d [%s] %s: \"%s\" (status: %s, priority: %d",
-				task.ShortID, task.Type, task.Type.HeadingPrefix(), task.Title, task.Status, task.Priority)
-			if task.Section != "" {
-				fmt.Fprintf(&b, ", section: %s", task.Section)
+				task.ShortID, task.Type, task.Type.HeadingPrefix(), task.Title, models.LegacyStatusForState(task.State()), task.Priority)
+			if section := models.SectionForState(task.State()); section != "" {
+				fmt.Fprintf(&b, ", section: %s", section)
 			}
 			if len(task.Tags) > 0 {
 				fmt.Fprintf(&b, ", tags: %s", strings.Join(task.Tags, ","))

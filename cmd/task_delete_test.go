@@ -1,10 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -95,115 +96,43 @@ func TestRunTaskDelete_Validation(t *testing.T) {
 	})
 }
 
-func TestFilterDeletedTasks_UnblocksTaskWhenLastBlockerDeleted(t *testing.T) {
-	blocker, err := models.NewTask("blocker-id", 1, models.TaskTypeTask, "Blocker")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dependent, err := models.NewTask("dep-id", 2, models.TaskTypeTask, "Dependent")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if depErr := dependent.AddDependency(blocker.ID); depErr != nil {
-		t.Fatal(depErr)
-	}
-	dependent.Status = models.StatusBlocked
+// TestDeleteRoutesThroughAppAndCleansPlanningRefs proves `tt task delete` routes
+// the removal through the application-layer Delete use case, removes the task from
+// the persisted project, and cleans BOTH the durable planning refs (Focus Queue,
+// committed as a config artifact in the delete transaction) and the machine-local
+// recent visits (repaired separately after the commit) for the deleted task.
+func TestDeleteRoutesThroughAppAndCleansPlanningRefs(t *testing.T) {
+	deps, project := setupStateTest(t)
+	task := findTodoLeaf(t, project)
 
-	idsToDelete := map[string]bool{blocker.ID: true}
-	remaining := filterDeletedTasks([]*models.Task{blocker, dependent}, idsToDelete)
+	// Seed durable planning refs and a machine-local recent visit for the task, then
+	// persist the config so LoadCurrentProject inside the command sees them.
+	deps.Config.FocusQueue = []config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}}
+	deps.Config.RecentTaskVisits = []config.RecentTaskVisit{{TaskID: task.ID, ProjectID: project.ID}}
+	manager := config.NewManager(deps.ConfigPath)
+	testutil.AssertNoError(t, manager.Save(deps.Config))
 
-	if len(remaining) != 1 {
-		t.Fatalf("expected 1 surviving task, got %d", len(remaining))
-	}
-	if len(remaining[0].DependsOn) != 0 {
-		t.Errorf("expected DependsOn to be cleared, got %v", remaining[0].DependsOn)
-	}
-	if remaining[0].Status == models.StatusBlocked {
-		t.Errorf("expected dependent to be unblocked after last blocker deleted, still %s", remaining[0].Status)
-	}
-}
+	prevForce := taskDeleteForce
+	taskDeleteForce = true
+	t.Cleanup(func() { taskDeleteForce = prevForce })
 
-func TestFilterDeletedTasks_KeepsBlockedWhenOtherBlockersRemain(t *testing.T) {
-	b1, _ := models.NewTask("b1", 1, models.TaskTypeTask, "B1")
-	b2, _ := models.NewTask("b2", 2, models.TaskTypeTask, "B2")
-	dependent, _ := models.NewTask("dep", 3, models.TaskTypeTask, "Dep")
-	_ = dependent.AddDependency(b1.ID)
-	_ = dependent.AddDependency(b2.ID)
-	dependent.Status = models.StatusBlocked
+	cmd := newStateTestCmd()
+	err := runTaskDelete(cmd, []string{fmt.Sprintf("%d", task.ShortID)})
+	testutil.AssertNoError(t, err)
 
-	idsToDelete := map[string]bool{b1.ID: true}
-	remaining := filterDeletedTasks([]*models.Task{b1, b2, dependent}, idsToDelete)
-
-	var dep *models.Task
-	for _, t := range remaining {
-		if t.ID == dependent.ID {
-			dep = t
-		}
-	}
-	if dep == nil {
-		t.Fatal("dependent task missing from remaining")
-	}
-	if dep.Status != models.StatusBlocked {
-		t.Errorf("expected dependent to remain blocked (other blocker still present), got %s", dep.Status)
-	}
-	if len(dep.DependsOn) != 1 || dep.DependsOn[0] != b2.ID {
-		t.Errorf("expected DependsOn to contain only b2, got %v", dep.DependsOn)
-	}
-}
-
-func TestCleanDeletedTaskCrossProjectRefs_UnblocksWhenLastBlockerDeleted(t *testing.T) {
-	// Set up a project on disk that has a task blocked by a cross-project dep.
-	dir := t.TempDir()
-	otherProject := &models.Project{
-		ID:   "other-proj-id",
-		Name: "Other Project",
-		Slug: "other-proj",
-		Path: dir,
-	}
-	dependent, err := models.NewTask("dep-id", 1, models.TaskTypeTask, "Dependent")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dependent.DependsOn = []string{"other-proj:remote-task-id"}
-	dependent.Status = models.StatusBlocked
-	otherProject.Tasks = []*models.Task{dependent}
-
-	if saveErr := storage.SaveProjectLocked(otherProject); saveErr != nil {
-		t.Fatalf("failed to save project: %v", saveErr)
+	// Task removed from the persisted project.
+	saved := deps.Repository.Projects[project.ID]
+	if saved.GetTaskByID(task.ID) != nil {
+		t.Errorf("task %s still present after delete", task.ID)
 	}
 
-	deletedProjectID := "source-proj-id"
-	deletedProjectSlug := "other-proj"
-	deletedTaskIDs := map[string]bool{"remote-task-id": true}
-
-	if cleanErr := cleanDeletedTaskCrossProjectRefs(
-		[]*models.Project{otherProject},
-		deletedProjectID,
-		deletedProjectSlug,
-		deletedTaskIDs,
-	); cleanErr != nil {
-		t.Fatalf("cleanDeletedTaskCrossProjectRefs error: %v", cleanErr)
+	// Both the durable and machine-local refs are gone from the on-disk config.
+	reloaded, loadErr := manager.Load()
+	testutil.AssertNoError(t, loadErr)
+	if len(reloaded.FocusQueue) != 0 {
+		t.Errorf("durable focus-queue ref survived delete: %v", reloaded.FocusQueue)
 	}
-
-	// Reload to confirm the saved state
-	loaded := &models.Project{
-		ID:   otherProject.ID,
-		Name: otherProject.Name,
-		Slug: otherProject.Slug,
-		Path: otherProject.Path,
-	}
-	if loadErr := storage.LoadProject(loaded); loadErr != nil {
-		t.Fatalf("failed to reload project: %v", loadErr)
-	}
-
-	if len(loaded.Tasks) != 1 {
-		t.Fatalf("expected 1 task, got %d", len(loaded.Tasks))
-	}
-	dep := loaded.Tasks[0]
-	if dep.Status == models.StatusBlocked {
-		t.Errorf("expected task to be unblocked after last cross-project blocker deleted, still %s", dep.Status)
-	}
-	if len(dep.DependsOn) != 0 {
-		t.Errorf("expected DependsOn to be empty, got %v", dep.DependsOn)
+	if len(reloaded.RecentTaskVisits) != 0 {
+		t.Errorf("machine-local recent-visit ref survived delete: %v", reloaded.RecentTaskVisits)
 	}
 }

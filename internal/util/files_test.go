@@ -104,3 +104,94 @@ func TestWithFileLock_PropagatesFnError(t *testing.T) {
 		t.Errorf("expected ErrPermission, got %v", err)
 	}
 }
+
+// TestAtomicWriteFile_NewFileUsesRequestedMode verifies a brand-new file is
+// created with exactly the requested (private) mode.
+func TestAtomicWriteFile_NewFileUsesRequestedMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "new.txt")
+	if err := AtomicWriteFile(path, []byte("data"), FilePermissions); err != nil {
+		t.Fatalf("AtomicWriteFile: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(FilePermissions); got != want {
+		t.Errorf("mode = %04o, want %04o", got, want)
+	}
+}
+
+// TestAtomicWriteFile_TightensLooserExistingMode verifies a world-readable
+// existing file is tightened down to the private default on rewrite.
+func TestAtomicWriteFile_TightensLooserExistingMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "loose.txt")
+	if err := os.WriteFile(path, []byte("old"), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	if err := AtomicWriteFile(path, []byte("new"), FilePermissions); err != nil {
+		t.Fatalf("AtomicWriteFile: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0o600); got != want {
+		t.Errorf("mode = %04o, want %04o (looser existing mode should be tightened)", got, want)
+	}
+}
+
+// TestAtomicWriteFile_PreservesStricterExistingMode verifies a user-hardened
+// read-only file keeps its stricter mode rather than being widened to the
+// default.
+func TestAtomicWriteFile_PreservesStricterExistingMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "strict.txt")
+	if err := os.WriteFile(path, []byte("old"), 0o400); err != nil {
+		t.Fatal(err)
+	}
+	if err := AtomicWriteFile(path, []byte("new"), FilePermissions); err != nil {
+		t.Fatalf("AtomicWriteFile: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0o400); got != want {
+		t.Errorf("mode = %04o, want %04o (stricter existing mode should be preserved)", got, want)
+	}
+}
+
+// TestAtomicWriteFile_SyncsParentDirectory verifies the rename durability hook
+// fsyncs the parent directory of the written file.
+func TestAtomicWriteFile_SyncsParentDirectory(t *testing.T) {
+	orig := syncDir
+	t.Cleanup(func() { syncDir = orig })
+
+	var synced []string
+	syncDir = func(dir string) error {
+		synced = append(synced, dir)
+		return orig(dir)
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "durable.txt")
+	if err := AtomicWriteFile(path, []byte("data"), FilePermissions); err != nil {
+		t.Fatalf("AtomicWriteFile: %v", err)
+	}
+	if len(synced) != 1 || synced[0] != dir {
+		t.Errorf("syncDir calls = %v, want exactly [%q]", synced, dir)
+	}
+}
+
+// TestAtomicWriteFile_SyncDirErrorPropagates verifies a failure in the
+// durability hook is surfaced to the caller.
+func TestAtomicWriteFile_SyncDirErrorPropagates(t *testing.T) {
+	orig := syncDir
+	t.Cleanup(func() { syncDir = orig })
+	syncDir = func(string) error { return os.ErrPermission }
+
+	path := filepath.Join(t.TempDir(), "fail.txt")
+	err := AtomicWriteFile(path, []byte("data"), FilePermissions)
+	if !errors.Is(err, os.ErrPermission) {
+		t.Errorf("expected propagated ErrPermission, got %v", err)
+	}
+}

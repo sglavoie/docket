@@ -1,9 +1,10 @@
 package keymap
 
-// StatusDeps holds action closures for the status prefix group.
+// StatusDeps holds action closures for the "," workflow-state prefix group.
 type StatusDeps struct {
-	// ChangeStatus returns an Action that sets the given status string.
-	ChangeStatus func(status string) Action
+	// ChangeState returns an Action that transitions the task to the given
+	// canonical WorkflowState string (one of the ten states).
+	ChangeState func(state string) Action
 	// HasRecurrence reports whether the current task has a recurrence rule.
 	HasRecurrence func() bool
 	// SkipRecurrence is the action for ,k (skip one recurrence).
@@ -12,19 +13,20 @@ type StatusDeps struct {
 	DeferChildren []Entry
 }
 
-// StatusGroup returns entries for the "," prefix: status transitions and
-// optional recurrence operations.
+// StatusGroup returns entries for the "," prefix: workflow-state transitions and
+// optional recurrence operations. The keys map to canonical WorkflowState values
+// (b→waiting, o→inbox/reopen, S→paused, m→someday).
 func StatusGroup(deps StatusDeps) []Entry {
 	cat := "Status"
 	children := []Entry{
-		Bind("s", "Start (in progress)", cat, deps.ChangeStatus("in_progress")),
-		Bind("d", "Mark done", cat, deps.ChangeStatus("done")),
-		Bind("b", "Block task", cat, deps.ChangeStatus("blocked")),
-		Bind("o", "Reopen (todo)", cat, deps.ChangeStatus("todo")),
-		Bind("x", "Cancel task", cat, deps.ChangeStatus("canceled")),
-		Bind("r", "Send to review", cat, deps.ChangeStatus("review")),
-		Bind("S", "Put task on standby", cat, deps.ChangeStatus("standby")),
-		Bind("m", "Set to maybe", cat, deps.ChangeStatus("maybe")),
+		Bind("s", "Start (in progress)", cat, deps.ChangeState("in_progress")),
+		Bind("d", "Mark done", cat, deps.ChangeState("done")),
+		Bind("b", "Waiting (blocked)", cat, deps.ChangeState("waiting")),
+		Bind("o", "Reopen (inbox)", cat, deps.ChangeState("inbox")),
+		Bind("x", "Cancel task", cat, deps.ChangeState("canceled")),
+		Bind("r", "Send to review", cat, deps.ChangeState("review")),
+		Bind("S", "Pause task", cat, deps.ChangeState("paused")),
+		Bind("m", "Set to someday", cat, deps.ChangeState("someday")),
 	}
 
 	if deps.SkipRecurrence != nil {

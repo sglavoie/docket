@@ -134,11 +134,11 @@ func TestTaskSectionAssignment(t *testing.T) {
 	}
 
 	// Default section should be empty (Active view)
-	testutil.AssertEqual(t, task.Section, "")
+	testutil.AssertEqual(t, models.SectionForState(task.State()), "")
 
 	// Assign to GTD section
-	task.Section = models.SectionInbox
-	testutil.AssertEqual(t, task.Section, models.SectionInbox)
+	task.SetSection(models.SectionInbox)
+	testutil.AssertEqual(t, models.SectionForState(task.State()), models.SectionInbox)
 
 	// Ensure non-GTD section is ignored
 	project.EnsureSection("Active")
@@ -174,9 +174,9 @@ func TestNewTaskDefaults(t *testing.T) {
 	testutil.AssertEqual(t, task.ShortID, 42)
 	testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 	testutil.AssertEqual(t, task.Title, "Test Title")
-	testutil.AssertEqual(t, task.Status, models.StatusTodo)
+	testutil.AssertEqual(t, models.LegacyStatusForState(task.State()), models.StatusTodo)
 	testutil.AssertEqual(t, task.Priority, 3)
-	testutil.AssertEqual(t, task.Section, "") // Empty section = Active view
+	testutil.AssertEqual(t, models.SectionForState(task.State()), "") // Empty section = Active view
 	testutil.AssertEqual(t, task.Description, "")
 
 	if task.ParentID != nil {

@@ -51,24 +51,25 @@ func (m *FocusBoardModel) loadItems() {
 			}
 
 			// Collect closed tasks for the Closed tab
-			if task.Status.IsComplete() {
+			if task.IsTerminalState() {
 				m.closedRows = append(m.closedRows, row)
 			}
 
 			// Skip completed/snoozed for active tabs
-			if task.Status.IsComplete() || task.IsSnoozed() {
+			if task.IsTerminalState() || task.IsSnoozed() {
 				continue
 			}
 
 			// All non-complete, non-snoozed tasks for the "All" tab
 			m.allRows = append(m.allRows, row)
 
-			// Collect Next-section tasks (empty section defaults to Next).
-			if task.Section == "" || task.Section == models.SectionNext {
+			// Collect Next-bucket tasks (the active ready/in_progress bucket
+			// shares the Next tab, matching the legacy empty-section default).
+			if bucket := taskSectionBucket(task); bucket == "" || bucket == models.SectionNext {
 				m.nextRows = append(m.nextRows, row)
 			}
 
-			isActive := task.Active
+			isActive := m.queueIDs[task.ID]
 			isDueSoon := task.DueDate != nil && util.StartOfDay(*task.DueDate).Before(today.AddDate(0, 0, 1))
 			if isActive || isDueSoon {
 				m.rows = append(m.rows, row)
@@ -76,14 +77,14 @@ func (m *FocusBoardModel) loadItems() {
 		}
 	}
 
-	// Sort today rows by status activeness, then by dailyPlan position within same status group
+	// Sort today rows by state activeness, then by dailyPlan position within same state group
 	posMap := make(map[string]int, len(*m.dailyPlan))
 	for i, ft := range *m.dailyPlan {
 		posMap[ft.Task.ID] = i
 	}
 	sort.SliceStable(m.todayRows, func(i, j int) bool {
-		iOrd := TodayStatusOrder(m.todayRows[i].Task.Status)
-		jOrd := TodayStatusOrder(m.todayRows[j].Task.Status)
+		iOrd := TodayStateOrder(m.todayRows[i].Task.State())
+		jOrd := TodayStateOrder(m.todayRows[j].Task.State())
 		if iOrd != jOrd {
 			return iOrd < jOrd
 		}
@@ -116,7 +117,7 @@ func (m *FocusBoardModel) loadItems() {
 func (m *FocusBoardModel) completedTodayCount() int {
 	count := 0
 	for _, row := range m.todayRows {
-		if row.Task.Status.IsComplete() {
+		if row.Task.IsTerminalState() {
 			count++
 		}
 	}
@@ -148,7 +149,7 @@ func (m *FocusBoardModel) applyFilter() {
 	if hasActiveCommonFilters(&m.filter) || m.searchQuery != "" {
 		var passed []boardRow
 		for _, r := range m.filtered {
-			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(r.Task, &m.filter, r.Project.ID, m.config) {
+			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(r.Task, &m.filter, r.Project, m.config) {
 				continue
 			}
 			if m.searchQuery != "" && !m.matchesSearch(r) {
@@ -257,7 +258,7 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 		}
 	}
 	sort.SliceStable(visible, func(i, j int) bool {
-		return !visible[i].Status.IsComplete() && visible[j].Status.IsComplete()
+		return !visible[i].IsTerminalState() && visible[j].IsTerminalState()
 	})
 	for i, child := range visible {
 		seen[child.ID] = true

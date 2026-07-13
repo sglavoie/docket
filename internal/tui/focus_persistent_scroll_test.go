@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -70,13 +71,15 @@ func TestFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 func TestProjectFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	project := testutil.NewTestProject("focus-test")
+	queue := make([]config.FocusQueueItem, 0, 8)
 	for i := range 8 {
 		task := mustNewTestTask(project, fmt.Sprintf("Task %02d", i))
-		task.Active = true
 		task.Priority = i + 1
 		project.Tasks = append(project.Tasks, task)
+		queue = append(queue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
 	}
 	project.BuildTaskTree()
+	cfg.SetFocusQueue(queue)
 
 	m := NewProjectFocusViewModel(project, cfg)
 	m.SetSize(100, 11)

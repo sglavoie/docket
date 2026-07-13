@@ -117,7 +117,7 @@ func NewTaskFormModelEdit(
 	cfg *config.Config,
 	mgr *config.Manager,
 ) *TaskFormModel {
-	effectiveSection := task.Section
+	effectiveSection := taskSectionBucket(task)
 
 	draft := taskFormDraft{
 		taskType:           task.Type,
@@ -125,7 +125,6 @@ func NewTaskFormModelEdit(
 		parentID:           task.ParentID,
 		section:            effectiveSection,
 		pinned:             task.Pinned,
-		active:             task.Active,
 		dimmed:             task.Dimmed,
 		tags:               append([]string{}, task.Tags...),
 		dueDate:            cloneTime(task.DueDate),

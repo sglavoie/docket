@@ -14,7 +14,7 @@ func (p *Project) GetRootTasks() []*Task {
 // GetTaskByID finds a task by its UUID. An empty id always returns nil so
 // that a caller passing an unset identifier cannot accidentally match a task
 // whose own ID became empty after a malformed parse (mirrors the guard in
-// FindActionTaskByID).
+// FindTaskGloballyByID).
 func (p *Project) GetTaskByID(id string) *Task {
 	if id == "" {
 		return nil
@@ -53,10 +53,10 @@ func (p *Project) GetCompletedTasks() []*Task {
 	})
 }
 
-// GetTasksByStatus returns tasks filtered by status.
-func (p *Project) GetTasksByStatus(status TaskStatus) []*Task {
+// GetTasksByState returns tasks filtered by workflow state.
+func (p *Project) GetTasksByState(state WorkflowState) []*Task {
 	return p.FilterTasks(func(t *Task) bool {
-		return t.Status == status
+		return t.IsInState(state)
 	})
 }
 

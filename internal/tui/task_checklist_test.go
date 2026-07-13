@@ -22,6 +22,7 @@ func TestTaskChecklistSpaceTogglesItem(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	updatedModel, cmd := model.Update(syntheticSpecialKey(tea.KeySpace))
 	if cmd == nil {
 		t.Fatal("expected toggle command for space key")
@@ -61,6 +62,7 @@ func TestTaskChecklistSaveItemMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 
 	// Enter add mode
 	model.addMode = true
@@ -104,6 +106,7 @@ func TestTaskChecklistDeleteMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 1 // Point to second item
 
 	// executeDelete should mutate model state synchronously
@@ -142,6 +145,7 @@ func TestTaskChecklistReorderOOBAfterResolve(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 0
 
 	// Simulate external deletion that makes indices invalid
@@ -168,6 +172,7 @@ func TestTaskChecklistToggleOOBAfterResolve(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 0
 
 	// Simulate external deletion
@@ -194,6 +199,7 @@ func TestTaskChecklistDeleteOOBAfterResolve(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 0
 
 	// Simulate external deletion
@@ -220,6 +226,7 @@ func TestTaskChecklistEditExternalEditorFromEditModeOOB(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 
@@ -250,6 +257,7 @@ func TestTaskChecklistSaveEditMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskChecklistModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 	model.editTextInput.SetValue("edited text")

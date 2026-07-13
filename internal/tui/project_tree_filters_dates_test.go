@@ -21,48 +21,48 @@ func TestIsOverdue(t *testing.T) {
 		{
 			name: "overdue task returns true",
 			task: &models.Task{
-				DueDate: &yesterday,
-				Status:  models.StatusTodo,
+				DueDate:       &yesterday,
+				WorkflowState: models.StateReady,
 			},
 			want: true,
 		},
 		{
 			name: "completed overdue task returns false",
 			task: &models.Task{
-				DueDate: &yesterday,
-				Status:  models.StatusDone,
+				DueDate:       &yesterday,
+				WorkflowState: models.StateDone,
 			},
 			want: false,
 		},
 		{
 			name: "future due date returns false",
 			task: &models.Task{
-				DueDate: &tomorrow,
-				Status:  models.StatusTodo,
+				DueDate:       &tomorrow,
+				WorkflowState: models.StateReady,
 			},
 			want: false,
 		},
 		{
 			name: "nil due date returns false",
 			task: &models.Task{
-				DueDate: nil,
-				Status:  models.StatusTodo,
+				DueDate:       nil,
+				WorkflowState: models.StateReady,
 			},
 			want: false,
 		},
 		{
 			name: "due today returns false",
 			task: &models.Task{
-				DueDate: &now,
-				Status:  models.StatusTodo,
+				DueDate:       &now,
+				WorkflowState: models.StateReady,
 			},
 			want: false,
 		},
 		{
 			name: "in progress overdue returns true",
 			task: &models.Task{
-				DueDate: &yesterday,
-				Status:  models.StatusInProgress,
+				DueDate:       &yesterday,
+				WorkflowState: models.StateInProgress,
 			},
 			want: true,
 		},
@@ -219,64 +219,64 @@ func TestFormatDueDate(t *testing.T) {
 		{
 			name: "no due date returns empty",
 			task: &models.Task{
-				DueDate: nil,
-				Status:  models.StatusTodo,
+				DueDate:       nil,
+				WorkflowState: models.StateReady,
 			},
 			shouldEmpty: true,
 		},
 		{
 			name: "completed task returns empty",
 			task: &models.Task{
-				DueDate: &today,
-				Status:  models.StatusDone,
+				DueDate:       &today,
+				WorkflowState: models.StateDone,
 			},
 			shouldEmpty: true,
 		},
 		{
 			name: "canceled task returns empty",
 			task: &models.Task{
-				DueDate: &today,
-				Status:  models.StatusCanceled,
+				DueDate:       &today,
+				WorkflowState: models.StateCanceled,
 			},
 			shouldEmpty: true,
 		},
 		{
 			name: "due today contains Today",
 			task: &models.Task{
-				DueDate: &today,
-				Status:  models.StatusTodo,
+				DueDate:       &today,
+				WorkflowState: models.StateReady,
 			},
 			contains: "Today",
 		},
 		{
 			name: "due tomorrow contains Tomorrow",
 			task: &models.Task{
-				DueDate: &tomorrow,
-				Status:  models.StatusTodo,
+				DueDate:       &tomorrow,
+				WorkflowState: models.StateReady,
 			},
 			contains: "Tomorrow",
 		},
 		{
 			name: "overdue shows date",
 			task: &models.Task{
-				DueDate: &yesterday,
-				Status:  models.StatusTodo,
+				DueDate:       &yesterday,
+				WorkflowState: models.StateReady,
 			},
 			contains: yesterday.Format("Jan 2"),
 		},
 		{
 			name: "next week shows date",
 			task: &models.Task{
-				DueDate: &nextWeek,
-				Status:  models.StatusInProgress,
+				DueDate:       &nextWeek,
+				WorkflowState: models.StateInProgress,
 			},
 			contains: nextWeek.Format("Jan 2"),
 		},
 		{
 			name: "next year includes year",
 			task: &models.Task{
-				DueDate: &nextYear,
-				Status:  models.StatusTodo,
+				DueDate:       &nextYear,
+				WorkflowState: models.StateReady,
 			},
 			contains: nextYear.Format("'06"),
 		},

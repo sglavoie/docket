@@ -54,8 +54,8 @@ func TestSaveProject_Roundtrip(t *testing.T) {
 		if task.Type != original.Type {
 			t.Errorf("task %s: expected type %s, got %s", task.ID, original.Type, task.Type)
 		}
-		if task.Status != original.Status {
-			t.Errorf("task %s: expected status %s, got %s", task.ID, original.Status, task.Status)
+		if task.State() != original.State() {
+			t.Errorf("task %s: expected state %s, got %s", task.ID, original.State(), task.State())
 		}
 		if task.Priority != original.Priority {
 			t.Errorf("task %s: expected priority %d, got %d", task.ID, original.Priority, task.Priority)
@@ -79,7 +79,7 @@ func TestSaveProject_WithSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = models.SectionInbox
+	task.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{task}
 
 	if err := SaveProject(project); err != nil {
@@ -107,8 +107,8 @@ func TestSaveProject_WithSections(t *testing.T) {
 		t.Fatalf("expected 1 task, got %d", len(loadedProject.Tasks))
 	}
 
-	if loadedProject.Tasks[0].Section != models.SectionInbox {
-		t.Errorf("expected task section Inbox, got %s", loadedProject.Tasks[0].Section)
+	if got := models.SectionForState(loadedProject.Tasks[0].State()); got != models.SectionInbox {
+		t.Errorf("expected task section Inbox, got %s", got)
 	}
 }
 
@@ -357,10 +357,11 @@ func Test_deleteProjectDir(t *testing.T) {
 	}
 }
 
-// TestSaveProject_FilePermissions verifies that SaveProject always writes the
-// tasks file with FilePermissions (0644), even when the existing file has
-// different permissions. The atomic write via a temp file + rename is what
-// enforces this: permissions are set on the temp file before rename.
+// TestSaveProject_FilePermissions verifies that SaveProject tightens a
+// world-readable tasks file down to the private FilePermissions (0600) default.
+// The atomic write via a temp file + rename is what enforces this: permissions
+// are set on the temp file before rename, and a looser existing mode is
+// narrowed rather than preserved.
 func TestSaveProject_FilePermissions(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
@@ -368,12 +369,13 @@ func TestSaveProject_FilePermissions(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 	project.Path = filepath.Join(dir, "perm-test-project")
 
-	// Create the project dir and a tasks.md with wrong permissions (0600).
+	// Create the project dir and a tasks.md with a looser mode (0644) than the
+	// private default so we can assert it gets tightened.
 	if err := os.MkdirAll(project.Path, 0755); err != nil {
 		t.Fatal(err)
 	}
 	tasksPath := filepath.Join(project.Path, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte("# Project: Test Project\n\n"), 0600); err != nil {
+	if err := os.WriteFile(tasksPath, []byte("# Project: Test Project\n\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 

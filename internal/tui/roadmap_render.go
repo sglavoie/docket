@@ -413,7 +413,7 @@ func (m *RoadmapModel) renderCriticalPathTab(height int) string {
 		if slack == 0 {
 			slackStr = accentSt.Render(slackStr)
 		}
-		statusStr := string(task.Status)
+		statusStr := string(task.State())
 		line := fmt.Sprintf("%-4d %s %s %12s", i+1, titleCell, slackStr, statusStr)
 		if i == m.cursor {
 			lines = append(lines, SelectedLine(line, 0))

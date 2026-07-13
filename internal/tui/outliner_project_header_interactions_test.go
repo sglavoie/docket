@@ -16,12 +16,12 @@ func crossProjectHeaderFixture(t *testing.T) (m *OutlinerModel, alphaHeader, bet
 	t.Helper()
 
 	alphaTask := makeTask("alpha-active", "Alpha active task", "")
-	alphaTask.Status = models.StatusInProgress
+	alphaTask.WorkflowState = models.StateInProgress
 	alpha := &models.Project{ID: "proj-alpha", Name: "Alpha", Slug: "alpha", Tasks: []*models.Task{alphaTask}}
 	alpha.BuildTaskTree()
 
 	betaTask := makeTask("beta-active", "Beta active task", "")
-	betaTask.Status = models.StatusInProgress
+	betaTask.WorkflowState = models.StateInProgress
 	beta := &models.Project{ID: "proj-beta", Name: "Beta", Slug: "beta", Tasks: []*models.Task{betaTask}}
 	beta.BuildTaskTree()
 
@@ -110,23 +110,23 @@ func TestOutlinerProjectHeaderMutationIgnored(t *testing.T) {
 	} else if cmd != nil {
 		t.Errorf("crossHandlePriorityMutation on project header must return nil cmd, got %T", cmd())
 	}
-	if got := *alpha.Tasks[0]; got.Priority != alphaTaskBefore.Priority || got.Status != alphaTaskBefore.Status {
+	if got := *alpha.Tasks[0]; got.Priority != alphaTaskBefore.Priority || got.State() != alphaTaskBefore.State() {
 		t.Errorf("project header priority mutation leaked into task state: before=%+v after=%+v", alphaTaskBefore, got)
 	}
 
 	// Status mutation: same defensive contract.
-	model, cmd, handled := m.crossHandleStatusMutation(models.StatusDone)
+	model, cmd, handled := m.crossHandleStateMutation(models.StateDone)
 	if !handled {
-		t.Error("crossHandleStatusMutation must report handled=true in cross-project mode even when cursor is on project header")
+		t.Error("crossHandleStateMutation must report handled=true in cross-project mode even when cursor is on project header")
 	}
 	if cmd != nil {
-		t.Errorf("crossHandleStatusMutation on project header must return nil cmd, got %T", cmd())
+		t.Errorf("crossHandleStateMutation on project header must return nil cmd, got %T", cmd())
 	}
 	if model != m {
-		t.Errorf("crossHandleStatusMutation on project header must return the same model, got %T", model)
+		t.Errorf("crossHandleStateMutation on project header must return the same model, got %T", model)
 	}
-	if got := *alpha.Tasks[0]; got.Status != alphaTaskBefore.Status {
-		t.Errorf("project header status mutation leaked into task state: before=%q after=%q", alphaTaskBefore.Status, got.Status)
+	if got := *alpha.Tasks[0]; got.State() != alphaTaskBefore.State() {
+		t.Errorf("project header status mutation leaked into task state: before=%q after=%q", alphaTaskBefore.State(), got.State())
 	}
 }
 

@@ -1,0 +1,22 @@
+# Generated mutation-callsite inventory — direct storage mutation calls in cmd/ and internal/tui/.
+# Do not edit by hand. Regenerate with:
+#   UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline
+# Total callsites: 18
+cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)
+cmd/app_service.go:(*cliRepository).RawSaveProject:storage.SaveProject(project)
+cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)
+cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)
+cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)
+cmd/project_delete.go:cleanCrossProjectRefs:storage.SaveProjectLocked(p)
+cmd/project_edit.go:runProjectEdit:storage.SaveProjectLocked(project)
+cmd/project_edit.go:updateCrossProjectRefs:storage.SaveProjectLocked(p)
+cmd/project_ops.go:SaveProject:storage.SaveProject(project)
+cmd/project_ops.go:processDeferredMovesWithUndo:storage.SaveProject(destProject)
+cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)
+internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)
+internal/tui/app_run.go:evaluateWorkflowAtStartup:storage.SaveProjectLocked(project)
+internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)
+internal/tui/handler_project.go:(*AppModel).executeSandboxReset:storage.SaveProjectLocked(sandbox)
+internal/tui/project_service.go:(*ProjectService).Save:storage.SaveProjectLocked(project)
+internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)
+internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)

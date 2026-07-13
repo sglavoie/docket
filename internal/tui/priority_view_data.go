@@ -23,7 +23,7 @@ func (m *PriorityViewModel) loadActionableTasks() {
 
 		pt := &PriorityTask{
 			Task:         task,
-			UrgencyScore: ComputeUrgencyScore(task),
+			UrgencyScore: ComputeUrgencyScore(task, m.queueIDs[task.ID]),
 			ParentTitle:  m.getParentTitle(task),
 			RelativeDue:  FormatRelativeDue(task.DueDate, false),
 		}

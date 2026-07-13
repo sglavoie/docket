@@ -20,12 +20,12 @@ func TestTasksToSelectorItems(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task1.Status = models.StatusTodo
+		task1.WorkflowState = models.StateReady
 		task2, err := models.NewTask("uuid-2", 42, models.TaskTypeBug, "Bug Report")
 		if err != nil {
 			t.Fatal(err)
 		}
-		task2.Status = models.StatusInProgress
+		task2.WorkflowState = models.StateInProgress
 
 		items := TasksToSelectorItems([]*models.Task{task1, task2})
 

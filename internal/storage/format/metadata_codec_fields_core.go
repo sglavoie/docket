@@ -16,7 +16,8 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 			func(task *models.Task, value string) { task.ID = value },
 			func(task *models.Task) string { return task.ID },
 		),
-		metadataStatusFieldCodec(),
+		legacyStatusFieldCodec(),
+		metadataStateFieldCodec(),
 		metadataPriorityFieldCodec(),
 		coreStringPtrField("parent",
 			func(task *models.Task, value *string) { task.ParentID = value },
@@ -26,10 +27,7 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 			func(task *models.Task, values []string) { task.Tags = append(task.Tags, values...) },
 			func(task *models.Task) []string { return task.Tags },
 		),
-		coreStringField("section",
-			func(task *models.Task, value string) { task.Section = value },
-			func(task *models.Task) string { return task.Section },
-		),
+		legacySectionFieldCodec(),
 		coreTimeField("created",
 			func(task *models.Task, value time.Time) { task.CreatedAt = value },
 			func(task *models.Task) time.Time { return task.CreatedAt },
@@ -61,10 +59,7 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 			func(task *models.Task) bool { return task.Pinned },
 		),
 		metadataPinnedAtFieldCodec(),
-		coreBoolTrueField("active",
-			func(task *models.Task, value bool) { task.Active = value },
-			func(task *models.Task) bool { return task.Active },
-		),
+		legacyActiveFieldCodec(),
 		coreBoolTrueField("dimmed",
 			func(task *models.Task, value bool) { task.Dimmed = value },
 			func(task *models.Task) bool { return task.Dimmed },
@@ -133,10 +128,7 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 		),
 		metadataAttachmentsFieldCodec(),
 		metadataChecklistFieldCodec(),
-		coreEscapedStringField("stage",
-			func(task *models.Task, value string) { task.Stage = value },
-			func(task *models.Task) string { return task.Stage },
-		),
+		legacyStageFieldCodec(),
 		coreEscapedStringField("source",
 			func(task *models.Task, value string) { task.Source = value },
 			func(task *models.Task) string { return task.Source },
@@ -271,21 +263,6 @@ func coreRecurSubField(key string, set func(*metadataParseState, int), get func(
 					appendMetadataPart(parts, key, strconv.Itoa(value))
 				}
 			}
-		},
-	)
-}
-
-func metadataStatusFieldCodec() metadataFieldCodec {
-	return metadataField("status",
-		func(task *models.Task, value string, _ *metadataParseState, warnings *[]ParseWarning) {
-			if status, ok := models.ParseTaskStatus(value); ok {
-				task.Status = status
-				return
-			}
-			addValidationWarning(warnings, "status", "invalid status %q, using default", value)
-		},
-		func(task *models.Task, parts *[]string) {
-			appendMetadataPart(parts, "status", string(task.Status))
 		},
 	)
 }

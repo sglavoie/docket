@@ -187,7 +187,7 @@ func TestWeeklyReview_UpcomingWeekWindowIsSevenDays(t *testing.T) {
 		t.Fatal(err)
 	}
 	task6.DueDate = &dueIn6
-	task6.Status = models.StatusTodo
+	task6.WorkflowState = models.StateReady
 
 	dueIn7 := today.AddDate(0, 0, 7).Add(12 * time.Hour)
 	task7, err := models.NewTask("t7", 2, models.TaskTypeTask, "Out of window")
@@ -195,7 +195,7 @@ func TestWeeklyReview_UpcomingWeekWindowIsSevenDays(t *testing.T) {
 		t.Fatal(err)
 	}
 	task7.DueDate = &dueIn7
-	task7.Status = models.StatusTodo
+	task7.WorkflowState = models.StateReady
 	storedProject.Tasks = []*models.Task{task6, task7}
 	mockRepo.Projects[storedProject.ID] = storedProject
 
@@ -250,7 +250,7 @@ func TestWeeklyReview_LoadDataAppliesCommonFiltersToTaskSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	matching.Status = models.StatusTodo
+	matching.WorkflowState = models.StateReady
 	matching.Priority = 1
 	matching.CreatedAt = oldUpdate
 	matching.UpdatedAt = oldUpdate
@@ -261,7 +261,7 @@ func TestWeeklyReview_LoadDataAppliesCommonFiltersToTaskSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filteredOut.Status = models.StatusTodo
+	filteredOut.WorkflowState = models.StateReady
 	filteredOut.Priority = 1
 	filteredOut.CreatedAt = oldUpdate
 	filteredOut.UpdatedAt = oldUpdate

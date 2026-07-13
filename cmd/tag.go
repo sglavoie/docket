@@ -7,6 +7,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -167,51 +168,46 @@ func normalizeCLIProjectTag(input string) (string, error) {
 }
 
 func pinProjectTag(out MutateOutput, tag string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	changed, err := project.PinTag(tag)
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.ProjectTagResult, error) {
+		return svc.PinProjectTag(project.ID, tag)
+	})
 	if err != nil {
-		return err
-	}
-
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Pin Tag", UndoContext: tag,
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
+		return translateAppError(err)
 	}
 
 	return outputTagMutation(out, tagMutationResult{
-		Tag:     tag,
+		Tag:     res.Tag,
 		Pinned:  true,
-		Changed: changed,
-		Project: project.Name,
+		Changed: res.Changed,
+		Project: res.ProjectName,
 	})
 }
 
 func unpinProjectTag(out MutateOutput, tag string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	changed := project.UnpinTag(tag)
-
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Unpin Tag", UndoContext: tag,
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.ProjectTagResult, error) {
+		return svc.UnpinProjectTag(project.ID, tag)
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
 
 	return outputTagMutation(out, tagMutationResult{
-		Tag:     tag,
+		Tag:     res.Tag,
 		Pinned:  false,
-		Changed: changed,
-		Project: project.Name,
+		Changed: res.Changed,
+		Project: res.ProjectName,
 	})
 }
 

@@ -21,10 +21,38 @@ func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *Evalu
 		return applyCreateFollowup(task, action, result)
 	case ActionMoveToProject:
 		return applyMoveToProject(task, action, evalCtx, result)
+	case ActionSetActive:
+		return applySetActive(task, action, result)
 	default:
 	}
 
 	return applyAction(task, action)
+}
+
+// applySetActive records a deferred Focus Queue membership change instead of
+// mutating the retired task.Active flag. The engine has no config/focus-queue
+// access, so — like applyMoveToProject — it only records the request; a
+// config-aware caller consumes result.FocusChanges to add/remove membership.
+// An invalid value is a no-op. A second focus change queued for the same task
+// is skipped so a rule cascade cannot record conflicting add/remove requests
+// the caller would have to arbitrate silently (mirrors applyMoveToProject).
+func applySetActive(task *models.Task, action RuleAction, result *EvaluationResult) bool {
+	if action.Value != "true" && action.Value != "false" {
+		return false
+	}
+	if result == nil {
+		return false
+	}
+	for _, existing := range result.FocusChanges {
+		if existing.TaskID == task.ID {
+			return false
+		}
+	}
+	result.FocusChanges = append(result.FocusChanges, FocusChange{
+		TaskID: task.ID,
+		Add:    action.Value == "true",
+	})
+	return true
 }
 
 // applyHierarchicalAction applies actions that operate on parent/children.
@@ -41,7 +69,7 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 		}
 
 	case ActionBlockParent:
-		if task.Parent != nil && task.Parent.Status != models.StatusBlocked {
+		if task.Parent != nil && !task.Parent.IsInState(models.StateWaiting) {
 			task.Parent.Block()
 			recordModified(result, task.Parent)
 			return true
@@ -160,7 +188,10 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	switch action.ActionType {
 	case ActionSetStatus:
 		newStatus := models.TaskStatus(action.Value)
-		if !newStatus.IsValid() || task.Status == newStatus {
+		// Idempotency is checked against the canonical state the target status
+		// realizes (TargetStateForStatus mirrors ApplyTransition's routing), so
+		// the guard no longer reads the retired task.Status field.
+		if !newStatus.IsValid() || task.State() == models.TargetStateForStatus(newStatus) {
 			return false
 		}
 		// Use lifecycle methods to ensure side effects (timestamps, sections, flags)
@@ -176,7 +207,10 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 			return true
 		}
 	case ActionSetSection:
-		if (models.IsGTDSection(action.Value) || action.Value == "") && task.Section != action.Value {
+		// Compare the target against the section the task's canonical state
+		// currently occupies (SectionForState) instead of the retired
+		// task.Section field, so a no-op set is still skipped.
+		if (models.IsGTDSection(action.Value) || action.Value == "") && models.SectionForState(task.State()) != action.Value {
 			task.SetSection(action.Value)
 			task.UpdatedAt = time.Now()
 			return true
@@ -211,19 +245,6 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 			task.DueDate = nil
 			task.HasTime = false
 			task.UpdatedAt = time.Now()
-			return true
-		}
-	case ActionSetActive:
-		if action.Value != "true" && action.Value != "false" {
-			return false
-		}
-		active := action.Value == "true"
-		if task.Active != active {
-			if active {
-				task.Activate()
-			} else {
-				task.Deactivate()
-			}
 			return true
 		}
 	case ActionSetPinned:

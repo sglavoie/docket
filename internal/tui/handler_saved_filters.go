@@ -348,8 +348,9 @@ func (m *AppModel) buildCurrentViewSummary() string {
 		return m.buildOutlinerSummaryFrom(m.crossOutliner)
 	case ViewOutliner:
 		return m.buildOutlinerViewSummary()
+	default:
+		return m.buildProjectTreeViewSummary()
 	}
-	return m.buildProjectTreeViewSummary()
 }
 
 // buildProjectTreeViewSummary returns a summary of the project tree's filter state.

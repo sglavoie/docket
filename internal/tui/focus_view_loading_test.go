@@ -18,7 +18,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 		m := newTestFocusViewModel(cfg)
 
 		for _, task := range project.Tasks {
-			if task.Status.IsComplete() {
+			if task.IsComplete() {
 				continue
 			}
 			m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
@@ -32,10 +32,10 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 	t.Run("skips completed tasks", func(t *testing.T) {
 		project := newTestFocusProject(t, "Test")
 		done := newTestFocusTask(t, "Done task", 3, true)
-		done.Status = models.StatusDone
+		done.WorkflowState = models.StateDone
 
 		canceled := newTestFocusTask(t, "Canceled task", 3, true)
-		canceled.Status = models.StatusCanceled
+		canceled.WorkflowState = models.StateCanceled
 
 		active := newTestFocusTask(t, "Active task", 3, true)
 		project.Tasks = []*models.Task{done, canceled, active}
@@ -44,7 +44,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 		m := newTestFocusViewModel(cfg)
 
 		for _, task := range project.Tasks {
-			if task.Status.IsComplete() {
+			if task.IsComplete() {
 				continue
 			}
 			m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
@@ -58,14 +58,14 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 	t.Run("includes blocked-status tasks (dependency check is separate)", func(t *testing.T) {
 		project := newTestFocusProject(t, "Test")
 		blocked := newTestFocusTask(t, "Blocked task", 3, true)
-		blocked.Status = models.StatusBlocked
+		blocked.WorkflowState = models.StateWaiting
 		project.Tasks = []*models.Task{blocked}
 
 		cfg := newTestFocusConfig([]*models.Project{project})
 		m := newTestFocusViewModel(cfg)
 
 		for _, task := range project.Tasks {
-			if task.Status.IsComplete() {
+			if task.IsComplete() {
 				continue
 			}
 			m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
@@ -89,7 +89,7 @@ func TestFocusViewLoadTasks_ExcludesSnoozedTasks(t *testing.T) {
 	m := newTestFocusViewModel(cfg)
 
 	for _, task := range project.Tasks {
-		if task.Status.IsComplete() {
+		if task.IsComplete() {
 			continue
 		}
 		if task.IsSnoozed() {
@@ -117,7 +117,7 @@ func TestFocusViewLoadTasks_ExcludesDependencyBlockedTasks(t *testing.T) {
 	m := newTestFocusViewModel(cfg)
 
 	for _, task := range project.Tasks {
-		if task.Status.IsComplete() {
+		if task.IsComplete() {
 			continue
 		}
 		if task.IsSnoozed() {
@@ -152,7 +152,7 @@ func TestFocusViewMultipleProjects(t *testing.T) {
 
 		for _, project := range []*models.Project{project1, project2} {
 			for _, task := range project.Tasks {
-				if !task.Status.IsComplete() {
+				if !task.IsComplete() {
 					m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
 				}
 			}

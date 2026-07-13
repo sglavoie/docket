@@ -169,13 +169,13 @@ func TestTaskForm_Edit_PreservesHasTime(t *testing.T) {
 	}
 	dueDate := time.Date(2026, 6, 15, 14, 30, 0, 0, time.Local)
 	task := &models.Task{
-		ID:      "task-1",
-		ShortID: 1,
-		Type:    models.TaskTypeTask,
-		Title:   "Test task",
-		Status:  models.StatusTodo,
-		DueDate: &dueDate,
-		HasTime: true,
+		ID:            "task-1",
+		ShortID:       1,
+		Type:          models.TaskTypeTask,
+		Title:         "Test task",
+		WorkflowState: models.StateReady,
+		DueDate:       &dueDate,
+		HasTime:       true,
 	}
 	project.Tasks = []*models.Task{task}
 

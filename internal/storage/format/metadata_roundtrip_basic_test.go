@@ -15,14 +15,13 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 		{
 			name: "complete task",
 			task: &models.Task{
-				ID:        "task-round-1",
-				Type:      models.TaskTypeTask,
-				Status:    models.StatusInProgress,
-				Priority:  2,
-				Tags:      []string{"work", "urgent"},
-				Pinned:    true,
-				Active:    true,
-				DependsOn: []string{"dep1", "dep2"},
+				ID:            "task-round-1",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateInProgress,
+				Priority:      2,
+				Tags:          []string{"work", "urgent"},
+				Pinned:        true,
+				DependsOn:     []string{"dep1", "dep2"},
 				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
 				UpdatedAt: time.Date(2025, 1, 16, 14, 20, 0, 0, time.Local),
 				DueDate:   timePtr(time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local)),
@@ -36,27 +35,26 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 		{
 			name: "minimal task",
 			task: &models.Task{
-				ID:       "task-round-2",
-				Type:     models.TaskTypeTask,
-				Status:   models.StatusTodo,
-				Priority: 3,
+				ID:            "task-round-2",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      3,
 			},
 		},
 		{
-			name: "task with stage",
+			name: "task with in-progress state",
 			task: &models.Task{
-				ID:       "task-round-3",
-				Type:     models.TaskTypeTask,
-				Status:   models.StatusInProgress,
-				Priority: 2,
-				Stage:    "Design",
+				ID:            "task-round-3",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateInProgress,
+				Priority:      2,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metaStr := WriteMetadata(tt.task)
+			metaStr := WriteMetadataV2(tt.task)
 
 			if len(metaStr) < 8 || metaStr[:4] != "<!--" || metaStr[len(metaStr)-3:] != "-->" {
 				t.Fatalf("Invalid metadata format: %q", metaStr)
@@ -67,7 +65,7 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 			parsed := &models.Task{}
 			ParseMetadata(parsed, content)
 
-			assertTaskFields(t, parsed, tt.task)
+			assertTaskFieldsAfterV2RoundTrip(t, parsed, tt.task)
 		})
 	}
 }

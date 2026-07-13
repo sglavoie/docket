@@ -23,7 +23,6 @@ type DateInputModel struct {
 	canceled     bool
 	initialValue string
 	weekEndDay   string
-	deferApply   bool
 	discardConfirmState
 }
 
@@ -101,17 +100,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear due date
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
-				if m.deferApply {
-					return m, dueDateChangedCmd(m.task, m.project, nil, false, true)
-				}
-				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
-					t.DueDate = nil
-					t.HasTime = false
-				}) {
-					m.err = fmt.Errorf("task no longer exists in project")
-					return m, func() tea.Msg { return BackMsg{} }
-				}
-				return m, m.saveAndReturn()
+				return m, dueDateChangedCmd(m.task, m.project, nil, false, true)
 			}
 
 			// Parse the date (supports optional time-of-day suffix like "5pm")
@@ -121,38 +110,13 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if m.deferApply {
-				return m, dueDateChangedCmd(m.task, m.project, &date, hasTime, true)
-			}
-			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
-				t.DueDate = &date
-				t.HasTime = hasTime
-			}) {
-				m.err = fmt.Errorf("task no longer exists in project")
-				return m, func() tea.Msg { return BackMsg{} }
-			}
-			return m, m.saveAndReturn()
+			return m, dueDateChangedCmd(m.task, m.project, &date, hasTime, true)
 		}
 	}
 
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
-}
-
-func (m *DateInputModel) saveAndReturn() tea.Cmd {
-	project := m.project
-	task := m.task
-	dueDate := task.DueDate
-	hasTime := task.HasTime
-	explicit := true
-	return func() tea.Msg {
-		// Save project with backup for undo support
-		if err := saveProjectSync(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return DueDateChangedMsg{Task: task, Project: project, DueDate: dueDate, HasTime: hasTime, HasExplicitValue: explicit}
-	}
 }
 
 func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time.Time, hasTime, explicit bool) tea.Cmd {

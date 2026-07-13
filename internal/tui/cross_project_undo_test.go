@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,269 +9,169 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func TestCrossProjectUndoOrchestration(t *testing.T) { //nolint:gocyclo // integration-style test pins a full undo/redo orchestration path.
-	strPtr := func(s string) *string { return &s }
-
-	alphaDir := t.TempDir()
-	betaDir := t.TempDir()
-
-	const (
-		alphaEpicID       = "alpha-epic-001"
-		alphaStoryID      = "alpha-story-001"
-		alphaLeafID       = "alpha-task-001"
-		alphaStandaloneID = "alpha-task-002"
-	)
-
-	alphaEpic, _ := models.NewTask(alphaEpicID, 1, models.TaskTypeEpic, "Epic: Authentication")
-	alphaStory, _ := models.NewTask(alphaStoryID, 2, models.TaskTypeStory, "Story: Login Flow")
-	alphaStory.ParentID = strPtr(alphaEpicID)
-	alphaLeaf, _ := models.NewTask(alphaLeafID, 3, models.TaskTypeTask, "Implement login endpoint")
-	alphaLeaf.ParentID = strPtr(alphaStoryID)
-	alphaStandalone, _ := models.NewTask(alphaStandaloneID, 4, models.TaskTypeTask, "Fix typo in readme")
-
-	alpha := &models.Project{ID: "alpha-proj", Name: "Alpha", Path: alphaDir}
-	alpha.Tasks = []*models.Task{alphaEpic, alphaStory, alphaLeaf, alphaStandalone}
-	alpha.BuildTaskTree()
-	if err := storage.SaveProject(alpha); err != nil {
-		t.Fatalf("save alpha: %v", err)
-	}
-
-	const (
-		betaParentID     = "beta-task-001"
-		betaChild1ID     = "beta-task-002"
-		betaChild2ID     = "beta-task-003"
-		betaStandaloneID = "beta-task-004"
-	)
-
-	betaParent, _ := models.NewTask(betaParentID, 1, models.TaskTypeEpic, "Setup CI pipeline")
-	betaChild1, _ := models.NewTask(betaChild1ID, 2, models.TaskTypeTask, "Configure lint")
-	betaChild1.ParentID = strPtr(betaParentID)
-	betaChild2, _ := models.NewTask(betaChild2ID, 3, models.TaskTypeTask, "Configure tests")
-	betaChild2.ParentID = strPtr(betaParentID)
-	betaStandalone, _ := models.NewTask(betaStandaloneID, 4, models.TaskTypeTask, "Write API docs")
-
-	beta := &models.Project{ID: "beta-proj", Name: "Beta", Path: betaDir}
-	beta.Tasks = []*models.Task{betaParent, betaChild1, betaChild2, betaStandalone}
-	beta.BuildTaskTree()
-	if err := storage.SaveProject(beta); err != nil {
-		t.Fatalf("save beta: %v", err)
-	}
-
-	if err := storage.LoadProject(alpha); err != nil {
-		t.Fatalf("load alpha: %v", err)
-	}
-	if err := storage.LoadProject(beta); err != nil {
-		t.Fatalf("load beta: %v", err)
-	}
-
-	originalAlpha := readCrossTestFile(t, filepath.Join(alphaDir, "tasks.md"))
-	originalBeta := readCrossTestFile(t, filepath.Join(betaDir, "tasks.md"))
-
-	undoDepth := 5
+// newCrossOutlinerFromEnv builds a cross-project OutlinerModel wired to the
+// seeded projects' BulkCoordinator and workspace ledger (via cfg.DataDir), so its
+// bulk mutations commit through the application layer and its u/ctrl+r handlers
+// restore from the same ledger the coordinator wrote to.
+func newCrossOutlinerFromEnv(env *kanbanBulkEnv) *OutlinerModel {
 	cfg := config.NewConfig()
-	cfg.UndoHistoryDepth = &undoDepth
+	cfg.DataDir = env.dataDir
+	cfg.Projects = env.projects
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[string]bool),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		activePerspective: 1,
-		loadedProjects:    []*models.Project{alpha, beta},
+		loadedProjects:    env.projects,
 	}
+	m.bulk = env.bulk
+	m.taskItem = env.taskItem
+	return m
+}
 
-	selectedAlpha := alpha.GetTaskByID(alphaLeafID)
-	selectedBeta := beta.GetTaskByID(betaChild1ID)
-	if selectedAlpha == nil || selectedBeta == nil {
-		t.Fatal("could not find selected tasks in loaded projects after reload")
-	}
-	bulkTasks := []*models.Task{selectedAlpha, selectedBeta}
-	m.bulkOp.SetOperation(models.StatusInProgress, bulkTasks, 0, nil)
+// TestCrossProjectUndoOrchestration pins the migrated cross-project bulk status
+// change: it commits ONE workspace-ledger transaction across two projects through
+// the BulkCoordinator (no legacy per-project .undo backups), and the cross-project
+// u / ctrl+r handlers undo and redo it from the ledger end to end.
+func TestCrossProjectUndoOrchestration(t *testing.T) { //nolint:gocyclo // integration-style test pins a full undo/redo orchestration path.
+	alpha1 := seedTask(t, 1, "Implement login endpoint", models.StateReady)
+	alpha2 := seedTask(t, 2, "Fix typo in readme", models.StateReady)
+	beta1 := seedTask(t, 1, "Configure lint", models.StateReady)
+	beta2 := seedTask(t, 2, "Write API docs", models.StateReady)
 
-	resultModel, _ := m.crossExecutePendingBulkStatus()
+	env := newKanbanBulkEnv(t, []*models.Task{alpha1, alpha2}, []*models.Task{beta1, beta2})
+	m := newCrossOutlinerFromEnv(env)
+
+	m.bulkOp.SetOperation(models.StateInProgress, []*models.Task{alpha1, beta1}, 0, nil)
+
+	resultModel, cmd := m.crossExecutePendingBulkStatus()
 	m = resultModel.(*OutlinerModel)
-
-	alphaBackupPath := storage.GetBackupFilePath(alpha)
-	betaBackupPath := storage.GetBackupFilePath(beta)
-
-	if got := readCrossTestFile(t, alphaBackupPath); got != originalAlpha {
-		t.Error("Alpha backup should contain pre-mutation tasks.md content")
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Changed 2 tasks to in_progress" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Changed 2 tasks to in_progress")
 	}
-	if got := readCrossTestFile(t, betaBackupPath); got != originalBeta {
-		t.Error("Beta backup should contain pre-mutation tasks.md content")
+	if len(msg.TouchedProjectIDs) != 2 {
+		t.Errorf("touched projects = %v, want 2 (cross-project)", msg.TouchedProjectIDs)
 	}
 
-	if got := readCrossTestFile(t, filepath.Join(alphaDir, "tasks.md")); got == originalAlpha {
-		t.Error("Alpha tasks.md should be mutated after bulk status change")
+	// The batch committed the transition to disk in both projects.
+	if got := env.reload(t, 0).GetTaskByID(alpha1.ID); got == nil || got.State() != models.StateInProgress {
+		t.Fatalf("alpha1 committed state = %v, want in_progress", got)
 	}
-	if got := readCrossTestFile(t, filepath.Join(betaDir, "tasks.md")); got == originalBeta {
-		t.Error("Beta tasks.md should be mutated after bulk status change")
-	}
-
-	wantMutMsg := fmt.Sprintf("Changed %d tasks to %s", len(bulkTasks), models.StatusInProgress)
-	if m.statusMessage != wantMutMsg {
-		t.Errorf("status after mutation: want %q, got %q", wantMutMsg, m.statusMessage)
-	}
-	if got := len(m.crossUndoCtx.ProjectIDs); got != 2 {
-		t.Errorf("undo context: want 2 project IDs, got %d", got)
-	}
-	alphaUndo, err := storage.LoadUndoHistory(alpha)
-	if err != nil {
-		t.Fatalf("load alpha undo history: %v", err)
-	}
-	betaUndo, err := storage.LoadUndoHistory(beta)
-	if err != nil {
-		t.Fatalf("load beta undo history: %v", err)
-	}
-	if len(alphaUndo) != 1 || len(betaUndo) != 1 {
-		t.Fatalf("expected one undo entry per project, got alpha=%d beta=%d", len(alphaUndo), len(betaUndo))
-	}
-	if alphaUndo[0].GroupID == "" || alphaUndo[0].GroupID != betaUndo[0].GroupID {
-		t.Fatalf("undo group IDs should match and be non-empty, got %q and %q", alphaUndo[0].GroupID, betaUndo[0].GroupID)
-	}
-	if got := strings.Join(alphaUndo[0].GroupProjectIDs, ","); got != "alpha-proj,beta-proj" {
-		t.Fatalf("group project IDs = %q, want alpha-proj,beta-proj", got)
+	if got := env.reload(t, 1).GetTaskByID(beta1.ID); got == nil || got.State() != models.StateInProgress {
+		t.Fatalf("beta1 committed state = %v, want in_progress", got)
 	}
 
+	// The workspace ledger backs the batch (its newest entry is the bulk change),
+	// and no legacy per-project .undo backups were written.
+	entry, ok, err := env.ledger.SelectNewestUndo(storage.GlobalScope())
+	if err != nil || !ok {
+		t.Fatalf("ledger has no undo entry after bulk change (ok=%v err=%v)", ok, err)
+	}
+	if entry.Action != "Bulk Status Change" {
+		t.Errorf("newest ledger entry action = %q, want %q", entry.Action, "Bulk Status Change")
+	}
+	if storage.UndoHistoryExists(env.projects[0]) || storage.UndoHistoryExists(env.projects[1]) {
+		t.Fatal("no legacy per-project undo history should exist after a ledger-backed bulk change")
+	}
+
+	// Undo via the cross-project handler restores both projects from the ledger.
 	undoResult, _, ok := m.crossHandleUndo("u")
 	if !ok {
 		t.Fatal("crossHandleUndo returned ok=false in cross-project mode")
 	}
 	m = undoResult.(*OutlinerModel)
-
-	undoMsg := m.statusMessage
-	if !strings.HasPrefix(undoMsg, "Undid: Bulk Status Change") {
-		t.Errorf("undo status should describe persistent undo, got %q", undoMsg)
+	if !strings.HasPrefix(m.statusMessage, "Undid: Bulk Status Change") {
+		t.Errorf("undo status should describe the ledger restore, got %q", m.statusMessage)
+	}
+	if got := env.reload(t, 0).GetTaskByID(alpha1.ID); got == nil || got.State() != models.StateReady {
+		t.Fatalf("alpha1 state after undo = %v, want ready", got)
+	}
+	if got := env.reload(t, 1).GetTaskByID(beta1.ID); got == nil || got.State() != models.StateReady {
+		t.Fatalf("beta1 state after undo = %v, want ready", got)
 	}
 
-	if err := storage.LoadProject(alpha); err != nil {
-		t.Fatalf("reload alpha after undo: %v", err)
-	}
-	if err := storage.LoadProject(beta); err != nil {
-		t.Fatalf("reload beta after undo: %v", err)
-	}
-	if got := alpha.GetTaskByID(alphaLeafID).Status; got != models.StatusTodo {
-		t.Errorf("alpha task status after undo = %s, want %s", got, models.StatusTodo)
-	}
-	if got := beta.GetTaskByID(betaChild1ID).Status; got != models.StatusTodo {
-		t.Errorf("beta task status after undo = %s, want %s", got, models.StatusTodo)
-	}
-	if got := len(m.crossUndoCtx.ProjectIDs); got != 0 {
-		t.Errorf("undo context should be cleared after undo, got %d IDs", got)
-	}
-
+	// Redo via the cross-project handler replays the batch from the ledger.
 	redoResult, _, ok := m.crossHandleRedo("ctrl+r")
 	if !ok {
 		t.Fatal("crossHandleRedo returned ok=false in cross-project mode")
 	}
 	m = redoResult.(*OutlinerModel)
 	if !strings.HasPrefix(m.statusMessage, "Redo: Bulk Status Change") {
-		t.Errorf("redo status should describe persistent redo, got %q", m.statusMessage)
+		t.Errorf("redo status should describe the ledger replay, got %q", m.statusMessage)
 	}
-	if err := storage.LoadProject(alpha); err != nil {
-		t.Fatalf("reload alpha after redo: %v", err)
+	if got := env.reload(t, 0).GetTaskByID(alpha1.ID); got == nil || got.State() != models.StateInProgress {
+		t.Fatalf("alpha1 state after redo = %v, want in_progress", got)
 	}
-	if err := storage.LoadProject(beta); err != nil {
-		t.Fatalf("reload beta after redo: %v", err)
-	}
-	if got := alpha.GetTaskByID(alphaLeafID).Status; got != models.StatusInProgress {
-		t.Errorf("alpha task status after redo = %s, want %s", got, models.StatusInProgress)
-	}
-	if got := beta.GetTaskByID(betaChild1ID).Status; got != models.StatusInProgress {
-		t.Errorf("beta task status after redo = %s, want %s", got, models.StatusInProgress)
+	if got := env.reload(t, 1).GetTaskByID(beta1.ID); got == nil || got.State() != models.StateInProgress {
+		t.Fatalf("beta1 state after redo = %v, want in_progress", got)
 	}
 }
 
-func TestCrossProjectUndoRedoReappliesPostRestoreSideEffects(t *testing.T) {
-	const (
-		doneID   = "done-first"
-		activeID = "active-second"
-	)
+// TestCrossProjectSingleTaskUndoOrchestration pins the migrated cross-project
+// single-task status change: crossHandleStateMutation routes ONE task through
+// the TaskItemCoordinator, committing a single workspace-ledger transaction (no
+// legacy per-project .undo backups), and the cross-project u / ctrl+r handlers
+// undo and redo it from that same ledger end to end.
+func TestCrossProjectSingleTaskUndoOrchestration(t *testing.T) {
+	alpha1 := seedTask(t, 1, "Implement login endpoint", models.StateReady)
+	beta1 := seedTask(t, 1, "Configure lint", models.StateReady)
 
-	doneTask, err := models.NewTask(doneID, 1, models.TaskTypeTask, "Completed first")
-	if err != nil {
-		t.Fatalf("new done task: %v", err)
-	}
-	doneTask.Complete()
-	activeTask, err := models.NewTask(activeID, 2, models.TaskTypeTask, "Active second")
-	if err != nil {
-		t.Fatalf("new active task: %v", err)
-	}
+	env := newKanbanBulkEnv(t, []*models.Task{alpha1}, []*models.Task{beta1})
+	m := newCrossOutlinerFromEnv(env)
 
-	project := &models.Project{
-		ID:          "alpha-proj",
-		Name:        "Alpha",
-		Path:        t.TempDir(),
-		Tasks:       []*models.Task{doneTask, activeTask},
-		NextShortID: 3,
+	// Place the cursor on beta1 (project index 1) as a single-task target.
+	m.rows = []outlinerRow{{task: beta1, ProjectID: env.projects[1].ID}}
+	m.cursor = 0
+
+	_, cmd, ok := m.crossHandleStateMutation(models.StateInProgress)
+	if !ok {
+		t.Fatal("crossHandleStateMutation returned ok=false in cross-project mode")
 	}
-	project.BuildTaskTree()
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("save original project: %v", err)
-	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("load original project: %v", err)
+	if res := runResult(t, cmd); res.Title != "Configure lint" {
+		t.Errorf("result title = %q, want %q", res.Title, "Configure lint")
 	}
 
-	const undoDepth = 5
-	if err := storage.RecordUndoSnapshot(project, "Edit Task", "active-second", undoDepth, nil); err != nil {
-		t.Fatalf("record undo snapshot: %v", err)
+	// The single-task transition committed to disk in the owning project only.
+	if got := env.reload(t, 1).GetTaskByID(beta1.ID); got == nil || got.State() != models.StateInProgress {
+		t.Fatalf("beta1 committed state = %v, want in_progress", got)
+	}
+	if got := env.reload(t, 0).GetTaskByID(alpha1.ID); got == nil || got.State() != models.StateReady {
+		t.Fatalf("alpha1 state = %v, want untouched ready", got)
 	}
 
-	project.GetTaskByID(activeID).Status = models.StatusInProgress
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("save current project: %v", err)
+	// The workspace ledger backs the change; no legacy per-project .undo backups.
+	if _, has, err := env.ledger.SelectNewestUndo(storage.GlobalScope()); err != nil || !has {
+		t.Fatalf("ledger has no undo entry after single-task change (has=%v err=%v)", has, err)
 	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("load current project: %v", err)
-	}
-
-	cfg := config.NewConfig()
-	cfg.UndoHistoryDepth = intPtr(undoDepth)
-	cfg.Projects = []*models.Project{project}
-	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
-		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		activePerspective: 1,
-		loadedProjects:    []*models.Project{project},
+	if storage.UndoHistoryExists(env.projects[0]) || storage.UndoHistoryExists(env.projects[1]) {
+		t.Fatal("no legacy per-project undo history should exist after a ledger-backed change")
 	}
 
+	// Undo via the cross-project handler restores the task from the ledger.
 	undoResult, _, ok := m.crossHandleUndo("u")
 	if !ok {
 		t.Fatal("crossHandleUndo returned ok=false in cross-project mode")
 	}
 	m = undoResult.(*OutlinerModel)
-	if !strings.HasPrefix(m.statusMessage, "Undid: Edit Task") {
-		t.Fatalf("undo status = %q, want persistent undo", m.statusMessage)
+	if !strings.HasPrefix(m.statusMessage, "Undid:") {
+		t.Errorf("undo status = %q, want an Undid: message", m.statusMessage)
 	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("load after undo: %v", err)
+	if got := env.reload(t, 1).GetTaskByID(beta1.ID); got == nil || got.State() != models.StateReady {
+		t.Fatalf("beta1 state after undo = %v, want ready", got)
 	}
-	assertProjectTaskOrderAndStatus(t, project, activeID, models.StatusTodo)
 
+	// Redo via the cross-project handler replays it from the ledger.
 	redoResult, _, ok := m.crossHandleRedo("ctrl+r")
 	if !ok {
 		t.Fatal("crossHandleRedo returned ok=false in cross-project mode")
 	}
 	m = redoResult.(*OutlinerModel)
-	if !strings.HasPrefix(m.statusMessage, "Redo: Edit Task") {
-		t.Fatalf("redo status = %q, want persistent redo", m.statusMessage)
+	if !strings.HasPrefix(m.statusMessage, "Redo:") {
+		t.Errorf("redo status = %q, want a Redo: message", m.statusMessage)
 	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("load after redo: %v", err)
-	}
-	assertProjectTaskOrderAndStatus(t, project, activeID, models.StatusInProgress)
-}
-
-func assertProjectTaskOrderAndStatus(t *testing.T, project *models.Project, firstTaskID string, firstStatus models.TaskStatus) {
-	t.Helper()
-	if len(project.Tasks) < 2 {
-		t.Fatalf("project has %d tasks, want at least 2", len(project.Tasks))
-	}
-	if got := project.Tasks[0].ID; got != firstTaskID {
-		t.Fatalf("first task ID = %q, want %q after post-restore reordering", got, firstTaskID)
-	}
-	if got := project.Tasks[0].Status; got != firstStatus {
-		t.Fatalf("first task status = %s, want %s", got, firstStatus)
+	if got := env.reload(t, 1).GetTaskByID(beta1.ID); got == nil || got.State() != models.StateInProgress {
+		t.Fatalf("beta1 state after redo = %v, want in_progress", got)
 	}
 }

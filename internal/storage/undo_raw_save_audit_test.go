@@ -18,108 +18,32 @@ const (
 	rawSaveCLIHelper     = "CLI save helper implementation; undo-aware callers use SaveOptions metadata"
 	rawSaveCLIMigration  = "legacy CLI mutation path explicitly allowed while undo coverage is audited; new callsites must use undo metadata"
 	rawSaveRepair        = "repair/side-effect save path outside direct user mutation; excluded from user undo history"
-	rawSaveTUIHelper     = "TUI save helper implementation; undo-aware callers use ProjectSaveOptions metadata"
-	rawSaveTUIMigration  = "legacy TUI mutation path explicitly allowed while undo coverage is audited; new callsites must use undo-aware save options"
-	rawSaveTUIRecorded   = "TUI path records undo before saving through a noncanonical helper"
+	rawSaveTUIHelper     = "Persister.Save implementation backing the undo/redo restore reapply path (reapplySideEffects); user mutations commit through the application-layer transaction boundary"
+	rawSaveTUIRecorded   = "sandbox-reset maintenance path: records an undo snapshot before a whole-project clear/reset, not a per-task user-mutation persistence tier"
 	rawSaveRestoreResult = "undo/redo restore result save; not a new user mutation"
 	rawSaveReviewFixture = "tui-test review-harness fixture save into an isolated throwaway temp workspace; never user-visible data, so undo tracking is out of scope"
+	rawSaveAppTestRepo   = "app.Repository Commit fallback used only for non-filesystem test doubles; the production filesystem path commits through the undo-aware transaction journal + workspace ledger, so this raw save never runs against real user data"
 )
 
 var rawProjectSaveAllowlist = map[string]string{
-	"cmd/board_add.go:runBoardAdd:storage.SaveProjectLocked(targetProject)":                                                              rawSaveCLIMigration,
-	"cmd/board_delete.go:runBoardDelete:SaveProject(project, &SaveOptions{Config: cfg, ConfigManager: mgr})":                             rawSaveCLIMigration,
-	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":                                                                   rawSaveRepair,
-	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                                                         rawSaveRepair,
-	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":                                                      rawSaveRepair,
-	"cmd/project_delete.go:cleanCrossProjectRefs:storage.SaveProjectLocked(p)":                                                           rawSaveRepair,
-	"cmd/project_edit.go:runProjectEdit:storage.SaveProjectLocked(project)":                                                              rawSaveCLIMigration,
-	"cmd/project_edit.go:updateCrossProjectRefs:storage.SaveProjectLocked(p)":                                                            rawSaveRepair,
-	"cmd/project_ops.go:SaveProject:storage.SaveProject(project)":                                                                        rawSaveCLIHelper,
-	"cmd/project_ops.go:processDeferredMovesWithUndo:storage.SaveProject(destProject)":                                                   rawSaveCLIMigration,
-	"cmd/sandbox_reset.go:runSandboxReset:SaveProject(sandbox, &SaveOptions{Config: cfg, ConfigManager: configManager})":                 rawSaveCLIMigration,
-	"cmd/task_delete.go:cleanDeletedTaskCrossProjectRefs:storage.SaveProjectLocked(p)":                                                   rawSaveRepair,
-	"cmd/task_delete.go:runTaskDelete:SaveProject(project, &SaveOptions{ Config: cfg, ConfigManager: configManager, })":                  rawSaveCLIMigration,
-	"cmd/task_move_to.go:runTaskMoveTo:SaveProject(destProject, &SaveOptions{Config: cfg, ConfigManager: configManager})":                rawSaveCLIMigration,
-	"cmd/task_move_to.go:runTaskMoveTo:SaveProject(sourceProject, &SaveOptions{Config: cfg, ConfigManager: configManager})":              rawSaveCLIMigration,
-	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":                                                                 rawSaveRestoreResult,
-	"internal/tui/app_handlers.go:(*AppModel).applyTagsToTask:saveProjectSync(project)":                                                  rawSaveTUIMigration,
-	"internal/tui/app_pinned_tasks_update.go:(*AppModel).reorderPinnedTask:m.persister.SaveWithBackupSync(a.Project)":                    rawSaveTUIMigration,
-	"internal/tui/app_pinned_tasks_update.go:(*AppModel).reorderPinnedTask:m.persister.SaveWithBackupSync(b.Project)":                    rawSaveTUIMigration,
-	"internal/tui/app_pinned_tasks_update.go:(*AppModel).repinFromPopup:m.persister.SaveWithBackupSync(entry.Project)":                   rawSaveTUIMigration,
-	"internal/tui/app_pinned_tasks_update.go:(*AppModel).unpinFromPopup:m.persister.SaveWithBackupSync(entry.Project)":                   rawSaveTUIMigration,
-	"internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)":                                                                  rawSaveRepair,
-	"internal/tui/app_run.go:evaluateWorkflowAtStartup:storage.SaveProjectLocked(project)":                                               rawSaveRepair,
-	"internal/tui/async_save.go:SaveMultipleProjectsAsync:projectService.SaveMultiple(projects, successMsg)":                             rawSaveTUIHelper,
-	"internal/tui/bulk_capture.go:(*BulkCaptureModel).createTasks:saveProjectSync(m.project)":                                            rawSaveTUIMigration,
-	"internal/tui/cross_project_linker_update.go:(*CrossProjectLinkerModel).createLink:storage.SaveProjectLocked(srcProj)":               rawSaveTUIMigration,
-	"internal/tui/cross_project_linker_update.go:(*CrossProjectLinkerModel).createLink:storage.SaveProjectLocked(tgtProj)":               rawSaveTUIMigration,
-	"internal/tui/cross_project_outliner_mutations_actions.go:(*OutlinerModel).crossSendTaskToSection:svc.Save(proj)":                    rawSaveTUIRecorded,
-	"internal/tui/cross_project_outliner_mutations_common.go:(*OutlinerModel).crossPersistFn:svc.Save(project)":                          rawSaveTUIRecorded,
-	"internal/tui/cross_project_outliner_mutations_common.go:(*OutlinerModel).crossSaveProject:svc.Save(proj)":                           rawSaveTUIMigration,
-	"internal/tui/cross_project_outliner_mutations_fields.go:(*OutlinerModel).crossHandleDeferRecurrence:m.projectService.Save(proj)":    rawSaveTUIRecorded,
-	"internal/tui/cross_project_outliner_mutations_fields.go:(*OutlinerModel).crossHandleSkipRecurrence:m.projectService.Save(proj)":     rawSaveTUIRecorded,
-	"internal/tui/cross_project_outliner_mutations_fields.go:(*OutlinerModel).crossHandleSnoozeMutation:m.projectService.Save(proj)":     rawSaveTUIRecorded,
-	"internal/tui/cross_project_outliner_mutations_status.go:(*OutlinerModel).crossExecutePendingBulkStatus:svc.Save(group.proj)":        rawSaveTUIRecorded,
-	"internal/tui/date_input.go:(*DateInputModel).saveAndReturn:saveProjectSync(project)":                                                rawSaveTUIMigration,
-	"internal/tui/focus_board_input.go:(*FocusBoardModel).createItemFromInput:storage.SaveProjectLocked(targetProject)":                  rawSaveTUIMigration,
-	"internal/tui/global_inbox_processor.go:(*GlobalInboxProcessorModel).saveProjectCmd:saveProjectSync(project)":                        rawSaveTUIMigration,
-	"internal/tui/handler_project.go:(*AppModel).executeSandboxReset:storage.SaveProjectLocked(sandbox)":                                 rawSaveTUIRecorded,
-	"internal/tui/handler_task_move.go:(*AppModel).saveBothProjectsAsync:persister.Save(dest)":                                           rawSaveTUIMigration,
-	"internal/tui/handler_task_move.go:(*AppModel).saveBothProjectsAsync:persister.Save(source)":                                         rawSaveTUIMigration,
-	"internal/tui/inbox_processor.go:(*InboxProcessorModel).saveProjectCmd:saveProjectSync(project)":                                     rawSaveTUIMigration,
-	"internal/tui/linked_task_creator.go:(*LinkedTaskCreatorModel).createTask:saveProjectSync(m.project)":                                rawSaveTUIMigration,
-	"internal/tui/linked_task_selector_update.go:(*LinkedTaskSelectorModel).unlinkTask:storage.SaveProjectLocked(project)":               rawSaveTUIMigration,
-	"internal/tui/outliner_sidebar.go:(*OutlinerModel).UnlinkSelectedSidebarTask:storage.SaveProjectLocked(targetProject)":               rawSaveTUIMigration,
-	"internal/tui/project_service.go:(*ProjectService).Save:storage.SaveProjectLocked(project)":                                          rawSaveTUIHelper,
-	"internal/tui/project_service.go:(*ProjectService).SaveMultipleOptions:saveProjectCore(project, true, opts)":                         rawSaveTUIHelper,
-	"internal/tui/project_service.go:(*ProjectService).SaveMultipleSyncOptions:saveProjectCore(project, true, opts)":                     rawSaveTUIHelper,
-	"internal/tui/project_service.go:(*ProjectService).SaveWithBackupOptions:saveProjectCore(project, true, opts)":                       rawSaveTUIHelper,
-	"internal/tui/project_service.go:(*ProjectService).SaveWithBackupSyncOptions:saveProjectCore(project, true, opts)":                   rawSaveTUIHelper,
-	"internal/tui/project_service.go:saveProjectCore:storage.SaveProject(project)":                                                       rawSaveTUIHelper,
-	"internal/tui/project_service.go:saveProjectNoReload:saveProjectCore(project, false, ProjectSaveOptions{})":                          rawSaveTUIHelper,
-	"internal/tui/project_service.go:saveProjectSync:saveProjectCore(project, true, ProjectSaveOptions{})":                               rawSaveTUIHelper,
-	"internal/tui/project_tree_sidebar_host.go:(*ProjectTreeModel).UnlinkSelectedSidebarTask:ps.Save(project)":                           rawSaveTUIMigration,
-	"internal/tui/project_tree_sidebar_host.go:(*ProjectTreeModel).UnlinkSelectedSidebarTask:storage.SaveProjectLocked(targetProject)":   rawSaveTUIMigration,
-	"internal/tui/quick_capture.go:(*QuickCaptureModel).createTask:saveProjectSync(targetProject)":                                       rawSaveTUIMigration,
-	"internal/tui/quick_note_overlay.go:(*QuickNoteOverlay).handleKey:saveProjectNoReload(q.project)":                                    rawSaveTUIMigration,
-	"internal/tui/score_editor.go:(*ScoreEditorModel).save:saveProjectNoReload(project)":                                                 rawSaveTUIMigration,
-	"internal/tui/section_manager_actions.go:(*SectionManagerModel).setSectionColor:saveProjectSync(proj)":                               rawSaveTUIMigration,
-	"internal/tui/section_manager_actions.go:(*SectionManagerModel).setSectionColor:storage.SaveProjectLocked(p)":                        rawSaveRepair,
-	"internal/tui/shared_secondary_ops_bulk.go:saveAffectedProjectsAsync:SaveMultipleProjectsAsync(projects, successMsg)":                rawSaveTUIMigration,
-	"internal/tui/shared_task_ops_persist.go:persistWithWorkflow:opts.Persister.Save(opts.Project)":                                      rawSaveTUIRecorded,
-	"internal/tui/shared_task_ops_persist.go:processTUIDeferredMoves:p.Save(destProject)":                                                rawSaveTUIRecorded,
-	"internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)":                                                 rawSaveRestoreResult,
-	"internal/tui/shared_task_ops_persist.go:withPersist:p.Save(project)":                                                                rawSaveTUIRecorded,
-	"internal/tui/shared_task_ops_persist.go:withPersistUndo:p.Save(project)":                                                            rawSaveTUIRecorded,
-	"internal/tui/snooze_input.go:(*SnoozeInputModel).saveAndReturn:saveProjectSync(project)":                                            rawSaveTUIMigration,
-	"internal/tui/tag_manager.go:(*TagManagerModel).addProjectTag:saveProjectSync(project)":                                              rawSaveTUIMigration,
-	"internal/tui/tag_manager.go:(*TagManagerModel).removeProjectTag:saveProjectSync(project)":                                           rawSaveTUIMigration,
-	"internal/tui/tag_manager.go:(*TagManagerModel).renameTag:saveProjectSync(project)":                                                  rawSaveTUIMigration,
-	"internal/tui/tag_manager.go:(*TagManagerModel).togglePinnedTag:saveProjectSync(project)":                                            rawSaveTUIMigration,
-	"internal/tui/task_attachments_actions.go:(*TaskAttachmentsModel).addCodeReference:saveProjectNoReload(project)":                     rawSaveTUIMigration,
-	"internal/tui/task_attachments_actions.go:(*TaskAttachmentsModel).addFileAttachment:saveProjectNoReload(project)":                    rawSaveTUIMigration,
-	"internal/tui/task_attachments_actions.go:(*TaskAttachmentsModel).addURLAttachment:saveProjectNoReload(project)":                     rawSaveTUIMigration,
-	"internal/tui/task_attachments_actions.go:(*TaskAttachmentsModel).executeDelete:saveProjectNoReload(project)":                        rawSaveTUIMigration,
-	"internal/tui/task_attachments_actions.go:(*TaskAttachmentsModel).executeKeep:saveProjectNoReload(project)":                          rawSaveTUIMigration,
-	"internal/tui/task_attachments_actions.go:(*TaskAttachmentsModel).reorderAttachment:saveProjectNoReload(project)":                    rawSaveTUIMigration,
-	"internal/tui/task_checklist_actions.go:(*TaskChecklistModel).executeDelete:saveProjectNoReload(project)":                            rawSaveTUIMigration,
-	"internal/tui/task_checklist_actions.go:(*TaskChecklistModel).reorderItem:saveProjectNoReload(project)":                              rawSaveTUIMigration,
-	"internal/tui/task_checklist_actions.go:(*TaskChecklistModel).saveEditedItem:saveProjectNoReload(project)":                           rawSaveTUIMigration,
-	"internal/tui/task_checklist_actions.go:(*TaskChecklistModel).saveItem:saveProjectNoReload(project)":                                 rawSaveTUIMigration,
-	"internal/tui/task_checklist_actions.go:(*TaskChecklistModel).toggleItem:saveProjectNoReload(project)":                               rawSaveTUIMigration,
-	"internal/tui/task_checklist_editor.go:(*TaskChecklistModel).addItemInExternalEditor:saveProjectNoReload(project)":                   rawSaveTUIMigration,
-	"internal/tui/task_checklist_editor.go:(*TaskChecklistModel).editInExternalEditor:saveProjectNoReload(project)":                      rawSaveTUIMigration,
-	"internal/tui/task_checklist_editor.go:(*TaskChecklistModel).editItemInExternalEditorFromEditMode:saveProjectNoReload(project)":      rawSaveTUIMigration,
-	"internal/tui/task_comments_actions.go:(*TaskCommentsModel).addCommentInExternalEditor:saveProjectNoReload(project)":                 rawSaveTUIMigration,
-	"internal/tui/task_comments_actions.go:(*TaskCommentsModel).editCommentInExternalEditorFromEditMode:saveProjectNoReload(project)":    rawSaveTUIMigration,
-	"internal/tui/task_comments_actions.go:(*TaskCommentsModel).editInExternalEditor:saveProjectNoReload(project)":                       rawSaveTUIMigration,
-	"internal/tui/task_decisions_actions.go:(*TaskDecisionsModel).addDecisionInExternalEditor:saveProjectNoReload(project)":              rawSaveTUIMigration,
-	"internal/tui/task_decisions_actions.go:(*TaskDecisionsModel).editDecisionInExternalEditorFromEditMode:saveProjectNoReload(project)": rawSaveTUIMigration,
-	"internal/tui/task_decisions_actions.go:(*TaskDecisionsModel).editInExternalEditor:saveProjectNoReload(project)":                     rawSaveTUIMigration,
-	"internal/tui/task_form_save.go:(*TaskFormModel).saveCreate:saveProjectSync(m.project)":                                              rawSaveTUIMigration,
-	"internal/tui/task_form_save.go:(*TaskFormModel).saveEdit:saveProjectSync(m.project)":                                                rawSaveTUIMigration,
-	"internal/tui/task_item_panel_shared.go:persistTaskItemMutation:saveProjectNoReload(project)":                                        rawSaveTUIMigration,
-	"internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)":                                         rawSaveReviewFixture,
+	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":                         rawSaveAppTestRepo,
+	"cmd/app_service.go:(*cliRepository).RawSaveProject:storage.SaveProject(project)":                    rawSaveRepair,
+	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":                                   rawSaveRepair,
+	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                         rawSaveRepair,
+	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":                      rawSaveRepair,
+	"cmd/project_delete.go:cleanCrossProjectRefs:storage.SaveProjectLocked(p)":                           rawSaveRepair,
+	"cmd/project_edit.go:runProjectEdit:storage.SaveProjectLocked(project)":                              rawSaveCLIMigration,
+	"cmd/project_edit.go:updateCrossProjectRefs:storage.SaveProjectLocked(p)":                            rawSaveRepair,
+	"cmd/project_ops.go:SaveProject:storage.SaveProject(project)":                                        rawSaveCLIHelper,
+	"cmd/project_ops.go:processDeferredMovesWithUndo:storage.SaveProject(destProject)":                   rawSaveCLIMigration,
+	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":                                 rawSaveRestoreResult,
+	"internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)":                                  rawSaveRepair,
+	"internal/tui/app_run.go:evaluateWorkflowAtStartup:storage.SaveProjectLocked(project)":               rawSaveRepair,
+	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)":         rawSaveAppTestRepo,
+	"internal/tui/handler_project.go:(*AppModel).executeSandboxReset:storage.SaveProjectLocked(sandbox)": rawSaveTUIRecorded,
+	"internal/tui/project_service.go:(*ProjectService).Save:storage.SaveProjectLocked(project)":          rawSaveTUIHelper,
+	"internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)":                 rawSaveRestoreResult,
+	"internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)":         rawSaveReviewFixture,
 }
 
 func TestRawProjectSaveCallsitesAreAllowlisted(t *testing.T) {
@@ -261,12 +185,10 @@ func rawProjectSaveIdentKind(relPath, name string, call *ast.CallExpr) string {
 	if strings.HasPrefix(relPath, "cmd/") && name == "SaveProject" && !saveProjectCallHasUndoAction(call) {
 		return "cmd-save-without-undo-action"
 	}
-	if strings.HasPrefix(relPath, "internal/tui/") {
-		switch name {
-		case "SaveProjectAsync", "SaveMultipleProjectsAsync", "saveProjectSync", "saveProjectNoReload", "saveProjectCore":
-			return "tui-save-helper-without-undo-options"
-		}
-	}
+	// The TUI user-mutation save helpers (SaveProjectAsync, SaveMultipleProjectsAsync,
+	// saveProjectSync, saveProjectNoReload, saveProjectCore) were deleted once every
+	// mutation moved behind the application-layer transaction boundary, so there is
+	// no longer a bare-ident save helper to detect in internal/tui.
 	return ""
 }
 
@@ -277,10 +199,10 @@ func rawProjectSaveSelectorKind(receiver, name string) string {
 			return "direct-storage-save"
 		}
 	}
-	switch name {
-	case "SaveWithBackup", "SaveWithBackupSync", "SaveMultiple", "SaveMultipleSync":
-		return "persister-save-without-undo-options"
-	case "Save":
+	// The Persister SaveWithBackup*/SaveMultiple* tiers were deleted; only the raw
+	// Persister.Save (restore reapply path) remains detectable on a persister-typed
+	// receiver.
+	if name == "Save" {
 		switch receiver {
 		case "m.projectService", "m.persister", "opts.Persister", "p", "persister", "ps", "svc":
 			return "persister-save-without-undo-options"

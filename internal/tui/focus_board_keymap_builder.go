@@ -9,11 +9,6 @@ import (
 
 // buildFocusBoardKeyMap constructs the declarative KeyMap for FocusBoardModel.
 func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
-	var stages []string
-	if m.config != nil {
-		stages = m.config.Stages
-	}
-
 	var entries []keymap.Entry
 
 	// --- List navigation: j, k, G, ctrl+u, ctrl+d ---
@@ -154,7 +149,7 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fs", key) }
 		},
 		DueDateKey: func(key string) keymap.Action {
@@ -172,10 +167,6 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("F.", key) }
-		},
-		StageFilterNames: stages,
 	})...)
 
 	return &keymap.KeyMap{
@@ -185,19 +176,14 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 }
 
 func (m *FocusBoardModel) focusBoardTaskKeymapDeps() TaskKeymapDeps {
-	var stages []string
-	if m.config != nil {
-		stages = m.config.Stages
-	}
 	return TaskKeymapDeps{
 		View:                m,
 		HasItem:             m.focusBoardHasItem,
-		Stages:              stages,
 		ToggleHelp:          m.toggleHelpAction,
 		NewTask:             m.focusBoardCreateTaskAction(true),
 		NewTaskWithTemplate: m.focusBoardCreateTaskAction(false),
 		DeleteTask:          m.focusBoardDeleteTask,
-		StatusChange:        m.focusBoardStatusChangeAction,
+		StateChange:         m.focusBoardStatusChangeAction,
 		MarkDone:            m.markDone,
 		OpenURL:             m.focusBoardOpenURL,
 		MoveToProject:       m.focusBoardMoveToProject,
@@ -263,15 +249,15 @@ func (m *FocusBoardModel) focusBoardDeleteTask() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *FocusBoardModel) focusBoardStatusChangeAction(status string) keymap.Action {
-	s, ok := models.ParseTaskStatus(status)
+func (m *FocusBoardModel) focusBoardStatusChangeAction(state string) keymap.Action {
+	s, ok := models.ParseWorkflowState(state)
 	if !ok {
 		return func() (tea.Model, tea.Cmd) { return m, nil }
 	}
-	if s == models.StatusDone {
+	if s == models.StateDone {
 		return m.markDone
 	}
-	return func() (tea.Model, tea.Cmd) { return taskOpsChangeStatus(m, s) }
+	return func() (tea.Model, tea.Cmd) { return m, wfChangeState(m, s) }
 }
 
 func (m *FocusBoardModel) focusBoardOpenURL() (tea.Model, tea.Cmd) {

@@ -38,40 +38,17 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) addURLAttachment(input string) tea.Cmd {
-	if err := m.task.AddAttachment(input, true, input); err != nil {
-		m.err = err
-		return nil
-	}
-
-	m.finishSynchronousAdd()
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return AttachmentAddedMsg{Task: task}
-	}
+	m.finishOptimisticAdd()
+	return m.coordinator.AttachURL(m.task.ID, input)
 }
 
 func (m *TaskAttachmentsModel) addCodeReference(codePath string, lineNum int) tea.Cmd {
-	if err := m.task.AddCodeReference(codePath, lineNum); err != nil {
-		m.err = err
-		return nil
-	}
 	if !storage.CodeReferenceFileExists(codePath) {
 		m.setStatus("Code reference added (file may not exist)")
 	}
 
-	m.finishSynchronousAdd()
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return AttachmentAddedMsg{Task: task}
-	}
+	m.finishOptimisticAdd()
+	return m.coordinator.AttachCodeReference(m.task.ID, codePath, lineNum)
 }
 
 func (m *TaskAttachmentsModel) addFileAttachment(input string) tea.Cmd {
@@ -95,32 +72,18 @@ func (m *TaskAttachmentsModel) addFileAttachment(input string) tea.Cmd {
 		return nil
 	}
 
-	m.addMode = false
-	m.textInput.Reset()
-	m.err = nil
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		filename, copyErr := storage.CopyAttachment(project, task, absPath)
-		if copyErr != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to copy: %w", copyErr)}
-		}
-		if err := task.AddAttachment(filename, false, absPath); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return AttachmentAddedMsg{Task: task}
-	}
+	m.finishOptimisticAdd()
+	return m.coordinator.AttachFile(m.task.ID, absPath)
 }
 
-func (m *TaskAttachmentsModel) finishSynchronousAdd() {
+// finishOptimisticAdd exits add mode before the transaction commits; the new
+// attachment lands at the end of the list, so the cursor targets that slot and
+// refreshAfterReload clamps it if the commit is rejected.
+func (m *TaskAttachmentsModel) finishOptimisticAdd() {
 	m.addMode = false
 	m.textInput.Reset()
 	m.err = nil
-	m.cursor = len(m.task.Attachments) - 1
+	m.cursor = len(m.task.Attachments)
 }
 
 func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
@@ -128,62 +91,28 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
-	isURL := m.task.Attachments[m.cursor].IsURL
-
-	removed, ok := m.task.RemoveAttachment(m.cursor)
-	if !ok {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to remove attachment")} }
-	}
-	if m.cursor >= len(m.task.Attachments) && m.cursor > 0 {
-		m.cursor--
-	}
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if !isURL {
-			_ = storage.RemoveAttachmentFile(project, task, removed.Filename)
-		}
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return AttachmentDeletedMsg{Task: task}
-	}
+	// URL attachments have no bytes on disk; the file-backed ones delete their
+	// copied bytes in the same transaction (matching the old RemoveAttachmentFile).
+	deleteFile := !m.task.Attachments[m.cursor].IsURL
+	return m.coordinator.RemoveAttachment(m.task.ID, m.cursor, deleteFile)
 }
 
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	m.resolveTask()
-	_, ok := m.task.RemoveAttachment(m.cursor)
-	if !ok {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to unlink attachment")} }
+	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
-	if m.cursor >= len(m.task.Attachments) && m.cursor > 0 {
-		m.cursor--
-	}
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return AttachmentDeletedMsg{Task: task}
-	}
+	return m.coordinator.RemoveAttachment(m.task.ID, m.cursor, false)
 }
 
 func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
+	// Swap locally for immediate render; the coordinator commit re-applies the
+	// swap against a fresh snapshot and refreshAfterReload re-resolves the view.
 	m.resolveTask()
 	m.task.Attachments[from], m.task.Attachments[to] = m.task.Attachments[to], m.task.Attachments[from]
 	m.cursor = to
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return AttachmentReorderedMsg{Task: task}
-	}
+	return m.coordinator.Reorder(m.task.ID, from, to)
 }
 
 func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {

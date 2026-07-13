@@ -25,7 +25,7 @@ func TestWorkflowDryRun(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusTodo
+		task.WorkflowState = models.StateReady
 		task.Priority = 1
 		project.Tasks = append(project.Tasks, task)
 		deps.Repository.Projects[project.ID] = project

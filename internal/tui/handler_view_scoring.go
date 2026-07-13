@@ -27,7 +27,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			} else {
 				m.config.SetProjectScoringProfile(msg.ProjectID, msg.ProfileID)
 			}
-			if err := m.configManager.Save(m.config); err != nil {
+			if err := m.secondaryFeatures.Workflow.SaveNow(m.config); err != nil {
 				logging.Warn("failed to save config: %v", err)
 			}
 			// Refresh the preview viewport content if it's visible
@@ -41,7 +41,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowScoreEditorMsg:
 		if msg.Task != nil && msg.Project != nil {
-			editor := NewScoreEditorModel(msg.Task, msg.Project, m.config)
+			editor := NewScoreEditorModel(msg.Task, msg.Project, m.config, m.secondaryFeatures.TaskItem)
 			if editor != nil {
 				m.showView(ViewScoreEditor, editor)
 			} else {
@@ -81,6 +81,12 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ScoreEditorDoneMsg:
 		popCmd := m.popView()
 		if msg.Saved {
+			// The dimensions committed through the application layer against a
+			// fresh snapshot, so reload the owning project's in-memory copy before
+			// rebuilding the score-bearing views.
+			if msg.Project != nil {
+				m.reloadProjectByID(msg.Project.ID)
+			}
 			if m.projectTree != nil {
 				m.projectTree.buildTree()
 			}

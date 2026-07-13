@@ -15,7 +15,7 @@ func newRankedDateScrollTask(t *testing.T, id string, shortID int, title string)
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 	task.Priority = 3
 	return task
 }

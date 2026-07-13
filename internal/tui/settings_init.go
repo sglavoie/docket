@@ -16,7 +16,6 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	contexts := cfg.GetAllContexts()
-	stages := append([]string{}, cfg.Stages...)
 
 	activeName := cfg.ActiveTheme
 	if activeName == "" {
@@ -24,6 +23,13 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	activeTheme := cfg.ActiveThemeConfig()
+
+	// The manager can be nil in isolated render tests; fall back to the config's
+	// own data dir so the workspace panel still shows a sensible location.
+	workspaceDataDir := cfg.DataDir
+	if manager != nil {
+		workspaceDataDir = config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
+	}
 
 	var inactiveCfg config.Theme
 	var activePresetName, inactivePresetName string
@@ -37,9 +43,17 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		inactivePresetName = cfg.ThemeLightName
 	}
 
+	var coordinator SettingsCoordinator
+	if manager != nil {
+		coordinator = newSettingsCoordinator(manager)
+	}
+
 	return &SettingsModel{
 		config:                   cfg,
 		configManager:            manager,
+		coordinator:              coordinator,
+		workspaceLocation:        config.DisplayPath(workspaceDataDir),
+		workspaceStorage:         config.StorageLocationLabel(workspaceDataDir),
 		editorInput:              newSettingsInput("code", 256, 40, cfg.Editor, true),
 		externalEditorInput:      newSettingsInput("code", 256, 40, cfg.ExternalEditor, false),
 		contextInput:             newSettingsInput("personal", 50, 30, cfg.DefaultContext, false),
@@ -89,9 +103,6 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		useEmoji:                 cfg.GetUseEmoji(),
 		contexts:                 contexts,
 		contextCursor:            settingsOptionCursor(contexts, cfg.DefaultContext, -1),
-		savedStages:              append([]string{}, stages...),
-		stages:                   stages,
-		stageInput:               newSettingsInput("Stage name", 30, 30, "", false),
 		alertDailyReviewEnabled:  cfg.GetAlertDailyReviewEnabled(),
 		alertDailyReviewHourInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertDailyReviewHour),
@@ -255,8 +266,8 @@ func initKanbanDetailHeight(h *int) int {
 
 // initKanbanEnabledModes converts a slice of mode ID strings to a [5]bool toggle array.
 // nil or empty slice means all modes are enabled.
-func initKanbanEnabledModes(ids []string) [5]bool {
-	var result [5]bool
+func initKanbanEnabledModes(ids []string) [4]bool {
+	var result [4]bool
 	if len(ids) == 0 {
 		// All enabled by default.
 		for i := range result {

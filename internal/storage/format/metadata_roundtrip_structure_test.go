@@ -11,8 +11,8 @@ func TestRoundTrip_RelatedTo(t *testing.T) {
 	task := &models.Task{
 		ID:        "rel-1",
 		Type:      models.TaskTypeTask,
-		Status:    models.StatusTodo,
-		Priority:  2,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		RelatedTo: []string{"id1", "id2"},
 	}
 
@@ -30,14 +30,14 @@ func TestRoundTrip_RelatedTo(t *testing.T) {
 func TestRoundTrip_ParentID(t *testing.T) {
 	parentID := "parent-abc-123"
 	task := &models.Task{
-		ID:       "child-xyz-456",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
-		ParentID: &parentID,
+		ID:            "child-xyz-456",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		ParentID:      &parentID,
 	}
 
-	metaStr := WriteMetadata(task)
+	metaStr := WriteMetadataV2(task)
 	if !strings.Contains(metaStr, "parent: parent-abc-123") {
 		t.Errorf("WriteMetadata should include parent field, got: %s", metaStr)
 	}
@@ -58,13 +58,13 @@ func TestRoundTrip_ParentID(t *testing.T) {
 
 func TestRoundTrip_NilParentID(t *testing.T) {
 	task := &models.Task{
-		ID:       "root-task-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "root-task-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      1,
 	}
 
-	metaStr := WriteMetadata(task)
+	metaStr := WriteMetadataV2(task)
 	if strings.Contains(metaStr, "parent:") {
 		t.Errorf("WriteMetadata should not include parent field for nil ParentID, got: %s", metaStr)
 	}
@@ -82,10 +82,10 @@ func TestRoundTrip_NilParentID(t *testing.T) {
 
 func TestRoundTrip_DependsOnCrossProject(t *testing.T) {
 	task := &models.Task{
-		ID:       "local-task-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "local-task-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		DependsOn: []string{
 			"local-dep-abc",
 			"projID:task-xyz",
@@ -109,20 +109,18 @@ func TestRoundTrip_DependsOnCrossProject(t *testing.T) {
 func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
 	parentID := "parent-epic-001"
 	task := &models.Task{
-		ID:        "full-task-1",
-		Type:      models.TaskTypeTask,
-		Status:    models.StatusInProgress,
-		Priority:  1,
-		ParentID:  &parentID,
-		Tags:      []string{"alpha", "beta"},
-		Section:   "Next",
-		DependsOn: []string{"dep-local", "proj2:dep-cross"},
+		ID:            "full-task-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateInProgress,
+		Priority:      1,
+		ParentID:      &parentID,
+		Tags:          []string{"alpha", "beta"},
+		DependsOn:     []string{"dep-local", "proj2:dep-cross"},
 		RelatedTo: []string{"rel-1"},
 		Recurrence: &models.RecurrencePattern{
 			Interval: 3,
 			Unit:     models.RecurrenceMonthly,
 		},
-		Stage:  "Design",
 		Source: "jira",
 		URL:    "https://jira.example.com/browse/PROJ-1",
 		ScoreDimensions: map[string]int{

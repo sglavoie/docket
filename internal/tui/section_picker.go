@@ -52,7 +52,7 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 
 	var currentSection string
 	if task != nil {
-		currentSection = task.Section
+		currentSection = taskSectionBucket(task)
 	}
 	picker.SetCursorToID(currentSection)
 
@@ -71,7 +71,7 @@ func buildSectionPickerList(project *models.Project, _ *models.Task) []SectionIn
 	sectionCounts := make(map[string]int)
 
 	for _, task := range project.Tasks {
-		section := task.Section
+		section := taskSectionBucket(task)
 		if section != "" && !models.IsGTDSection(section) {
 			section = ""
 		}
@@ -189,8 +189,10 @@ func (m *SectionPickerModel) View() tea.View {
 
 	// Current section
 	var currentParts []string
-	if m.task != nil && m.task.Section != "" {
-		currentParts = append(currentParts, m.task.Section)
+	if m.task != nil {
+		if bucket := taskSectionBucket(m.task); bucket != "" {
+			currentParts = append(currentParts, bucket)
+		}
 	}
 	currentDisplay := "(no section)"
 	if len(currentParts) > 0 {

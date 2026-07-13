@@ -127,8 +127,8 @@ func TestSession6_SendToNextHandlerReturnsCmdResult(t *testing.T) {
 	if result.Cmd == nil {
 		t.Error("PaletteCommandResultMsg.Cmd should be non-nil for send to next")
 	}
-	if task.Section != models.SectionNext {
-		t.Errorf("task.Section = %q, want %q after send to next", task.Section, models.SectionNext)
+	if task.State() != models.StateNext {
+		t.Errorf("task.State() = %q, want %q after send to next", task.State(), models.StateNext)
 	}
 }
 

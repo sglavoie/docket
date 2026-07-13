@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -43,27 +44,31 @@ func (m *AppModel) handleParkNoteDone(msg ParkNoteDoneMsg) (bool, tea.Cmd) {
 	}
 	markParkPrompted(msg.Task.ID)
 
-	action := "Park Task"
-	if msg.Unparked {
-		action = "Unpark Task"
-	}
-	// Save synchronously so the tasks.md write completes before popView's
-	// ViewDidAppearMsg triggers reloadCrossProjects. That reload calls
-	// storage.LoadProject on the SAME shared *models.Project pointer this save
-	// serializes (cross-project loadedProjects are the config's own pointers).
-	// An async save here races the reload, which can replace the parked task
-	// with unparked disk state before serialization, silently dropping the
-	// park. Every other cross-project mutation already saves synchronously.
-	if err := m.persister.SaveWithBackupSyncOptions(
-		msg.Project,
-		m.taskMutationSaveOptions(msg.Task, action),
-	); err != nil {
+	// Commit through the application layer. The Park/Unpark use cases load a
+	// fresh snapshot from disk, re-apply the mutation, and commit one
+	// ledger-undoable ChangeSet synchronously, so the tasks.md write completes
+	// before popView's ViewDidAppearMsg triggers reloadCrossProjects — an async
+	// save would race that reload and could replace the parked task with unparked
+	// disk state, silently dropping the park.
+	res, err := m.applyParkMutation(msg)
+	if err != nil {
 		m.err = fmt.Errorf("park save failed: %w", err)
 		return true, popCmd
 	}
+	m.reloadProjectByID(res.ProjectID)
 
 	refreshCmd := m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: parkNoteStatusMessage(msg)})
 	return true, tea.Batch(popCmd, refreshCmd)
+}
+
+// applyParkMutation commits a park or unpark for the task in msg through the
+// application layer, returning the mutation result. Unpark discards the note;
+// Park stores it (preserving any prior note as a timestamped comment).
+func (m *AppModel) applyParkMutation(msg ParkNoteDoneMsg) (app.TaskResult, error) {
+	if msg.Unparked {
+		return m.appService.Unpark(msg.Task.ID)
+	}
+	return m.appService.Park(msg.Task.ID, msg.Note)
 }
 
 func parkNoteStatusMessage(msg ParkNoteDoneMsg) string {

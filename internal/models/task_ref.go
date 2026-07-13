@@ -45,3 +45,20 @@ func (r TaskRef) IsCrossProject() bool {
 func (r TaskRef) IsEmpty() bool {
 	return r.TaskID == ""
 }
+
+// IsNumericShortID reports whether the reference is an unqualified, purely
+// numeric short ID. Short IDs are only unique within a single project, so an
+// unqualified numeric reference is ambiguous across projects and must not be
+// accepted by cross-project destructive operations without a project
+// qualifier (project-slug:#short-id) or an unambiguous UUID/prefix.
+func (r TaskRef) IsNumericShortID() bool {
+	if r.ProjectID != "" || r.TaskID == "" {
+		return false
+	}
+	for _, c := range r.TaskID {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}

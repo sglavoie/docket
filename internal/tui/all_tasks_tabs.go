@@ -149,7 +149,7 @@ func (m *AllTasksViewModel) applyBuiltInTabFilter(tasks []CrossProjectTask, buil
 	case builtInTabActive:
 		var result []CrossProjectTask
 		for _, item := range tasks {
-			if item.Task.Status == models.StatusInProgress {
+			if item.Task.IsInState(models.StateInProgress) {
 				result = append(result, item)
 			}
 		}
@@ -190,7 +190,7 @@ func (m *AllTasksViewModel) applyBuiltInTabFilter(tasks []CrossProjectTask, buil
 	case builtInTabBlocked:
 		var result []CrossProjectTask
 		for _, item := range tasks {
-			if item.Task.Status == models.StatusBlocked {
+			if item.Task.IsInState(models.StateWaiting) {
 				result = append(result, item)
 			}
 		}
@@ -224,7 +224,7 @@ func (m *AllTasksViewModel) applySavedFilterToAllTasks(tasks []CrossProjectTask,
 	var result []CrossProjectTask
 	for _, item := range tasks {
 		// Skip completed tasks unless explicitly included
-		if item.Task.Status.IsComplete() && !sf.IncludeCompleted {
+		if item.Task.IsTerminalState() && !sf.IncludeCompleted {
 			continue
 		}
 		if passesSavedFilterCriteria(item.Task, item.Project, sf, m.config) {

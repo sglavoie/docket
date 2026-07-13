@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // =============================================================================
 // Task CRUD Messages
@@ -20,9 +23,17 @@ type EditTaskMsg struct {
 }
 
 // TaskCreatedMsg signals a new task was created.
+//
+// Result, when non-nil, is the committed application-layer outcome from a capture
+// coordinator. handleTaskCreated reloads the committed project by
+// Result.ProjectID and re-resolves the task by Result.TaskID before running the
+// shared navigation/status logic, so the legacy Task/Project fields (still set by
+// the not-yet-migrated task form) and the coordinator path share one handler.
 type TaskCreatedMsg struct {
 	Task        *models.Task
 	Project     *models.Project // target project (for cross-project + open-after)
+	Result      *app.TaskResult // committed capture-coordinator outcome (nil on the legacy path)
+	OpenTaskID  string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
 	OpenContent bool            // open description editor after creation
 	OpenDetail  bool            // open task detail view after creation
 }
@@ -34,7 +45,15 @@ type TaskCreatedMsg struct {
 // May be nil only if the task was concurrently deleted (rare); handlers must
 // nil-check before dereferencing. Empty TaskUpdatedMsg{} (Task=nil) is used
 // in tests to exercise the no-op path.
-type TaskUpdatedMsg struct{ Task *models.Task }
+//
+// Result, when non-nil, is the committed application-layer outcome from the
+// task-form edit coordinator. handleTaskUpdated reloads the committed project by
+// Result.ProjectID and re-resolves the live Task pointer before delegating, so
+// the coordinator path and the legacy in-place path share one handler.
+type TaskUpdatedMsg struct {
+	Task   *models.Task
+	Result *app.TaskResult
+}
 
 // TaskDeletedMsg signals a task was deleted. Project carries the project
 // the task was deleted from so the post-delete handler can wire an undo
@@ -383,9 +402,6 @@ type AttachmentAddedMsg struct{ Task *models.Task }
 // AttachmentDeletedMsg signals an attachment was deleted.
 type AttachmentDeletedMsg struct{ Task *models.Task }
 
-// AttachmentReorderedMsg signals an attachment was reordered.
-type AttachmentReorderedMsg struct{ Task *models.Task }
-
 // =============================================================================
 // Cross-Project Move Messages (Show/Close/Done Pattern)
 // =============================================================================
@@ -460,10 +476,16 @@ type CreateLinkedTaskMsg struct {
 }
 
 // LinkedTaskCreatedMsg signals a linked task was created.
+//
+// Result, when non-nil, is the committed application-layer outcome from the
+// capture coordinator. handleLinkedTaskCreated reloads the committed project and
+// re-resolves both the new and source tasks before running the shared
+// navigation/status logic.
 type LinkedTaskCreatedMsg struct {
 	SourceTask  *models.Task
 	NewTask     *models.Task
 	Project     *models.Project
+	Result      *app.LinkedTaskResult
 	LinkType    LinkType
 	OpenContent bool
 	OpenDetail  bool
@@ -494,6 +516,11 @@ type LinkedTaskSelectedMsg struct {
 type LinkRemovedMsg struct {
 	SourceTask *models.Task
 	Section    int // 0=blocked by, 1=blocking, 2=related
+	// TouchedProjectIDs lists the projects the removal committed through the
+	// application layer, so the shell reloads exactly those in-memory copies
+	// before adjusting sidebar cursors (a cross-project related unlink touches
+	// two projects).
+	TouchedProjectIDs []string
 }
 
 // =============================================================================

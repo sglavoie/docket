@@ -8,7 +8,10 @@ import (
 
 const (
 	archiveIndexFileName = ".completed.index.json"
-	archiveIndexVersion  = 1
+	// archiveIndexVersion 2 replaced ArchiveTaskSummary's legacy `status`
+	// (models.TaskStatus) field with `state` (models.WorkflowState); a stale v1
+	// index deserializes an empty state, so the version bump forces a rebuild.
+	archiveIndexVersion = 2
 )
 
 // ArchiveIndexIssue identifies why the derived archive index needs rebuilding.
@@ -19,6 +22,11 @@ const (
 	ArchiveIndexIssueMissing ArchiveIndexIssue = "missing"
 	ArchiveIndexIssueStale   ArchiveIndexIssue = "stale"
 	ArchiveIndexIssueCorrupt ArchiveIndexIssue = "corrupt"
+	// ArchiveIndexIssueUnhealthySource marks that one or more canonical archive
+	// files could not be parsed. The index itself is readable; the corruption is
+	// in the source markdown, so the fix is to repair or remove the archive file,
+	// not merely to rebuild the derived index.
+	ArchiveIndexIssueUnhealthySource ArchiveIndexIssue = "unhealthy_source"
 )
 
 // ArchiveIndexStatus describes the derived archive index without repairing it.
@@ -33,6 +41,13 @@ type ArchiveIndexStatus struct {
 	NeedsRebuild     bool
 	Issue            ArchiveIndexIssue
 	Detail           string
+	// UnhealthySources counts archive source files the index recorded as
+	// unparseable. A non-zero value means the canonical markdown is corrupt.
+	UnhealthySources int
+	// HashMismatch reports that a source file's bytes no longer match the
+	// content hash the index recorded, even when its size still matches — a
+	// deeper integrity check than size and mtime alone.
+	HashMismatch bool
 }
 
 // ArchiveIndex is derived from the canonical archive markdown files.
@@ -57,7 +72,15 @@ type ArchiveIndexSource struct {
 	ModTime   time.Time `json:"mod_time"`
 	SHA256    string    `json:"sha256,omitempty"`
 	TaskCount int       `json:"task_count"`
+	// ParseError is non-empty when this source's canonical markdown could not be
+	// parsed while the index was built. Its presence marks the source unhealthy:
+	// the good sources are still indexed, but this file's tasks are missing and
+	// its content needs repair. Absence means the source parsed cleanly.
+	ParseError string `json:"parse_error,omitempty"`
 }
+
+// Unhealthy reports whether this source failed to parse when the index was built.
+func (s ArchiveIndexSource) Unhealthy() bool { return s.ParseError != "" }
 
 // ArchiveTaskSource points an archived task summary back to the canonical
 // archive file. Detail views can parse only this file to recover the full task.
@@ -71,7 +94,7 @@ type ArchiveTaskSource struct {
 //
 // Invariants:
 //   - ID is non-empty and unique within a project archive index.
-//   - Status is a resolved status and CompletedAt is set.
+//   - WorkflowState is a terminal state (done or canceled) and CompletedAt is set.
 //   - Source.FileName names completed.md or a numeric completed.N.md file.
 //   - Large task bodies, comments, decisions, attachments, and full activity
 //     logs stay in canonical markdown and are intentionally not duplicated here.
@@ -80,7 +103,7 @@ type ArchiveTaskSummary struct {
 	ShortID        int                   `json:"short_id"`
 	Type           models.TaskType       `json:"type"`
 	Title          string                `json:"title"`
-	Status         models.TaskStatus     `json:"status"`
+	WorkflowState  models.WorkflowState  `json:"state"`
 	Priority       int                   `json:"priority"`
 	CreatedAt      time.Time             `json:"created_at"`
 	CompletedAt    *time.Time            `json:"completed_at"`

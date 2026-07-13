@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -70,25 +71,31 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	project, cfg, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+
 	// 1 arg: interactive task selection; date is the only arg
 	// 2 args: args[0]=task-id, args[1]=date
-	var taskID, dateStr string
+	var task *models.Task
+	var dateStr string
 	if len(args) == 1 {
 		dateStr = args[0]
-		project, _, _, loadErr := LoadCurrentProject()
-		if loadErr != nil {
-			return loadErr
-		}
 		selectedTask, selErr := SelectTask(project, nil,
-			func(t *models.Task) bool { return !t.Status.IsComplete() },
+			func(t *models.Task) bool { return !t.IsTerminalState() },
 			"Select task to snooze:", "No active tasks found.")
 		if selErr != nil {
 			return selErr
 		}
-		taskID = selectedTask.ID
+		task = selectedTask
 	} else {
-		taskID = args[0]
 		dateStr = args[1]
+		found, findErr := FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
+		}
+		task = found
 	}
 
 	var snoozeDate *time.Time
@@ -111,50 +118,31 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		desc = parsed.Format(util.DateFormat)
 	}
 
-	// Pre-check: skip the save if clearing snooze on a non-snoozed task
-	if snoozeDate == nil {
-		project, _, _, loadErr := LoadCurrentProject()
-		if loadErr != nil {
-			return loadErr
-		}
-		preTask, findErr := FindTaskByIdentifier(project, taskID)
-		if findErr != nil {
-			return findErr
-		}
-		if preTask.SnoozedUntil == nil {
-			fmt.Printf("Task #%d is not snoozed.\n", preTask.ShortID)
-			return nil
-		}
+	// Pre-check: skip the mutation if clearing snooze on a non-snoozed task. This is
+	// a read-only adapter guard that keeps the friendly no-op message; the completed
+	// and in-progress guards for the snooze-set path now live in the application
+	// service (Service.Snooze).
+	if snoozeDate == nil && task.SnoozedUntil == nil {
+		fmt.Printf("Task #%d is not snoozed.\n", task.ShortID)
+		return nil
 	}
 
-	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-		if snoozeDate != nil {
-			// Prevent snoozing completed/canceled tasks (it makes no sense to hide them)
-			if task.Status.IsComplete() {
-				return fmt.Errorf("cannot snooze a %s task", task.Status)
-			}
-			// Prevent snoozing in_progress tasks — hiding an actively worked-on task
-			// is contradictory. Change its status first if you want to snooze it.
-			if task.Status == models.StatusInProgress {
-				return fmt.Errorf("cannot snooze an in-progress task (change status first)")
-			}
-		}
-		task.SnoozedUntil = snoozeDate
-		return nil
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.Snooze(task.ID, snoozeDate)
 	})
-
 	if err != nil {
-		return err
+		return translateAppError(err)
 	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return emitMutation(out, "", res)
 	}
 	if !out.Quiet {
 		if snoozeDate == nil {
-			fmt.Printf("Cleared snooze from task #%d: %s\n", task.ShortID, task.Title)
+			fmt.Printf("Cleared snooze from task #%d: %s\n", task.ShortID, res.Title)
 		} else {
-			fmt.Printf("Snoozed task #%d until %s: %s\n", task.ShortID, desc, task.Title)
+			fmt.Printf("Snoozed task #%d until %s: %s\n", task.ShortID, desc, res.Title)
 		}
 	}
 	return nil

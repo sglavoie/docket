@@ -47,10 +47,10 @@ func TestMoveToTodayUpdatesStatus(t *testing.T) {
 	task.SetSection(models.SectionNext)
 
 	if !task.InSection(models.SectionNext) {
-		t.Errorf("section: got %q, want %q", task.Section, models.SectionNext)
+		t.Errorf("section: got %q, want %q", models.SectionForState(task.State()), models.SectionNext)
 	}
-	if task.Status != models.StatusTodo {
-		t.Errorf("status: got %q, want %q (moving section must not change status)", task.Status, models.StatusTodo)
+	if got := models.LegacyStatusForState(task.State()); got != models.StatusTodo {
+		t.Errorf("status: got %q, want %q (moving section must not change status)", got, models.StatusTodo)
 	}
 }
 
@@ -63,15 +63,14 @@ func TestCompleteTodayTaskUpdatesProgress(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 	task.SetSection(models.SectionNext)
-	task.Status = models.StatusTodo
 
 	task.Complete()
 
-	if task.Status != models.StatusDone {
-		t.Errorf("status: got %q, want %q", task.Status, models.StatusDone)
+	if task.State() != models.StateDone {
+		t.Errorf("state: got %q, want %q", task.State(), models.StateDone)
 	}
-	if task.Section != models.SectionCompleted {
-		t.Errorf("section: got %q, want %q", task.Section, models.SectionCompleted)
+	if got := models.SectionForState(task.State()); got != models.SectionCompleted {
+		t.Errorf("section: got %q, want %q", got, models.SectionCompleted)
 	}
 	if task.CompletedAt == nil {
 		t.Error("CompletedAt: expected non-nil after Complete()")
@@ -81,7 +80,7 @@ func TestCompleteTodayTaskUpdatesProgress(t *testing.T) {
 // newParentChildProject builds a project with a Story parent (in_progress) and a
 // single Task child, wiring up the tree so HasIncompleteChildren works. The
 // child status is caller-controlled. Returns the project and the parent task.
-func newParentChildProject(t *testing.T, childStatus models.TaskStatus) (*models.Project, *models.Task) {
+func newParentChildProject(t *testing.T, childState models.WorkflowState) (*models.Project, *models.Task) {
 	t.Helper()
 	project := testutil.NewTestProject("bulk")
 
@@ -89,7 +88,7 @@ func newParentChildProject(t *testing.T, childStatus models.TaskStatus) (*models
 	if err != nil {
 		t.Fatalf("NewTask parent: %v", err)
 	}
-	parent.Status = models.StatusInProgress
+	parent.WorkflowState = models.StateInProgress
 	parent.Priority = 3
 
 	child, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child")
@@ -97,7 +96,7 @@ func newParentChildProject(t *testing.T, childStatus models.TaskStatus) (*models
 		t.Fatalf("NewTask child: %v", err)
 	}
 	child.ParentID = &parent.ID
-	child.Status = childStatus
+	child.WorkflowState = childState
 
 	project.Tasks = []*models.Task{parent, child}
 	project.BuildTaskTree()
@@ -108,7 +107,7 @@ func newParentChildProject(t *testing.T, childStatus models.TaskStatus) (*models
 // path: a status→done change is skipped for a parent with an incomplete child,
 // but other pending fields (priority, tag) still apply on the same pass.
 func TestBulkEditSkipsParentCompletionButAppliesOtherFields(t *testing.T) {
-	project, parent := newParentChildProject(t, models.StatusTodo)
+	project, parent := newParentChildProject(t, models.StateReady)
 	m := NewProjectTreeModel(project, nil, nil)
 
 	done := models.StatusDone
@@ -119,8 +118,8 @@ func TestBulkEditSkipsParentCompletionButAppliesOtherFields(t *testing.T) {
 		AddTags:     []string{"urgent"},
 	}, []*models.Task{parent})
 
-	if parent.Status != models.StatusInProgress {
-		t.Errorf("status: got %q, want %q (completion must be skipped for parent with incomplete child)", parent.Status, models.StatusInProgress)
+	if parent.State() != models.StateInProgress {
+		t.Errorf("state: got %q, want %q (completion must be skipped for parent with incomplete child)", parent.State(), models.StateInProgress)
 	}
 	if parent.Priority != newPriority {
 		t.Errorf("priority: got %d, want %d (other fields must still apply)", parent.Priority, newPriority)
@@ -133,14 +132,14 @@ func TestBulkEditSkipsParentCompletionButAppliesOtherFields(t *testing.T) {
 // TestBulkEditCompletesParentWhenChildrenDone is the positive control: with all
 // children complete, the same status→done bulk edit is applied to the parent.
 func TestBulkEditCompletesParentWhenChildrenDone(t *testing.T) {
-	project, parent := newParentChildProject(t, models.StatusDone)
+	project, parent := newParentChildProject(t, models.StateDone)
 	m := NewProjectTreeModel(project, nil, nil)
 
 	done := models.StatusDone
 	m.applyBulkChanges(PendingChanges{SetStatus: &done}, []*models.Task{parent})
 
-	if parent.Status != models.StatusDone {
-		t.Errorf("status: got %q, want %q (parent should complete when all children done)", parent.Status, models.StatusDone)
+	if parent.State() != models.StateDone {
+		t.Errorf("state: got %q, want %q (parent should complete when all children done)", parent.State(), models.StateDone)
 	}
 }
 
@@ -160,21 +159,36 @@ func newCompletedStoryWithDoneChild(t *testing.T) (project *models.Project, pare
 	return project, parent.ID, child.ID
 }
 
-// reopenChildThroughWorkflow reopens the given child through the full TUI save
-// pipeline (persistWithWorkflow), mirroring a single-task status change with a
-// targeted undo snapshot. It reloads the project from disk on return.
+// reopenChildThroughWorkflow reopens the given child through the same
+// post-mutation pipeline the shared save path runs (auto-unblock, reverse
+// parent-completion reconcile, recurring generation, root reorder), records a
+// targeted undo snapshot widened with the reopened parent IDs, then persists and
+// reloads the project from disk — mirroring a single-task status change.
 func reopenChildThroughWorkflow(t *testing.T, project *models.Project, childID string) {
 	t.Helper()
 	project.MutateTask(childID, func(tk *models.Task) { tk.ApplyTransition(models.StatusTodo) })
-	if err := persistWithWorkflow(WorkflowSaveOptions{
-		Persister:   NewProjectService(),
-		Project:     project,
-		UndoAction:  "Reopen Task",
-		UndoContext: "#2 Child",
-		UndoDepth:   10,
-		UndoTaskIDs: []string{childID},
+	project.CheckAndAutoUnblock()
+	reopened := project.ReconcileParentCompletion()
+	project.GenerateRecurringInstances()
+	project.ReorderRootTasksByCompletion()
+
+	taskIDs := append([]string{childID}, reopened...)
+	if err := storage.RecordUndoSnapshotWithOptions(project, storage.UndoSnapshotOptions{
+		Action:   "Reopen Task",
+		Context:  "#2 Child",
+		MaxDepth: 10,
+		TaskIDs:  taskIDs,
 	}); err != nil {
-		t.Fatalf("persistWithWorkflow: %v", err)
+		t.Fatalf("RecordUndoSnapshotWithOptions: %v", err)
+	}
+	if err := storage.BackupProject(project); err != nil {
+		t.Fatalf("BackupProject: %v", err)
+	}
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("LoadProject: %v", err)
 	}
 }
 
@@ -193,8 +207,8 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	if story == nil {
 		t.Fatal("story missing after reopening child")
 	}
-	if story.Status != models.StatusInProgress {
-		t.Fatalf("story status = %q, want in_progress after reopening its child", story.Status)
+	if story.State() != models.StateInProgress {
+		t.Fatalf("story state = %q, want in_progress after reopening its child", story.State())
 	}
 
 	// Outdent the now-incomplete child to the Story's (root) level.
@@ -210,8 +224,8 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	if story == nil {
 		t.Fatal("story vanished from project after outdenting its last child")
 	}
-	if story.Status != models.StatusInProgress {
-		t.Errorf("story status = %q, want in_progress after outdent", story.Status)
+	if story.State() != models.StateInProgress {
+		t.Errorf("story state = %q, want in_progress after outdent", story.State())
 	}
 
 	// In the default active view a completed task is hidden; an in_progress
@@ -232,10 +246,10 @@ func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
 
 	reopenChildThroughWorkflow(t, project, childID)
 
-	if got := project.GetTaskByID(parentID).Status; got != models.StatusInProgress {
+	if got := models.LegacyStatusForState(project.GetTaskByID(parentID).State()); got != models.StatusInProgress {
 		t.Fatalf("parent status = %q, want in_progress after reopening child", got)
 	}
-	if got := project.GetTaskByID(childID).Status; got != models.StatusTodo {
+	if got := models.LegacyStatusForState(project.GetTaskByID(childID).State()); got != models.StatusTodo {
 		t.Fatalf("child status = %q, want todo after reopen", got)
 	}
 
@@ -245,10 +259,10 @@ func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
 	if err := storage.LoadProject(project); err != nil {
 		t.Fatalf("LoadProject after undo: %v", err)
 	}
-	if got := project.GetTaskByID(parentID).Status; got != models.StatusDone {
+	if got := models.LegacyStatusForState(project.GetTaskByID(parentID).State()); got != models.StatusDone {
 		t.Errorf("after undo parent status = %q, want done (cascade must revert atomically)", got)
 	}
-	if got := project.GetTaskByID(childID).Status; got != models.StatusDone {
+	if got := models.LegacyStatusForState(project.GetTaskByID(childID).State()); got != models.StatusDone {
 		t.Errorf("after undo child status = %q, want done", got)
 	}
 
@@ -258,10 +272,10 @@ func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
 	if err := storage.LoadProject(project); err != nil {
 		t.Fatalf("LoadProject after redo: %v", err)
 	}
-	if got := project.GetTaskByID(parentID).Status; got != models.StatusInProgress {
+	if got := models.LegacyStatusForState(project.GetTaskByID(parentID).State()); got != models.StatusInProgress {
 		t.Errorf("after redo parent status = %q, want in_progress", got)
 	}
-	if got := project.GetTaskByID(childID).Status; got != models.StatusTodo {
+	if got := models.LegacyStatusForState(project.GetTaskByID(childID).State()); got != models.StatusTodo {
 		t.Errorf("after redo child status = %q, want todo", got)
 	}
 }

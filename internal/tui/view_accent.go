@@ -7,57 +7,17 @@ import "image/color"
 var viewAccentMap map[ViewType]color.Color
 
 // buildViewAccentMap initializes the accent map. Called from ApplyTheme so that
-// palette overrides (if we add them later) are reflected on every theme change.
+// palette overrides are reflected on every theme change. The view→category
+// assignment lives declaratively in the route table (see route.go); this
+// resolves each route's accent category to the active theme color.
 func buildViewAccentMap() {
-	viewAccentMap = map[ViewType]color.Color{
-		// Dashboard
-		ViewDashboard: AccentDashboard,
-
-		// Capture stage (coral/salmon)
-		ViewQuickCapture: AccentCapture,
-		ViewBulkCapture:  AccentCapture,
-
-		// Triage stage (sky blue)
-		ViewAllTasks:             AccentTriage,
-		ViewGlobalInboxProcessor: AccentTriage,
-		ViewInboxProcessor:       AccentTriage,
-		ViewCrossProjectOutliner: AccentTriage,
-		ViewCrossProjectKanban:   AccentTriage,
-
-		// Plan stage (green)
-		ViewFocusView:        AccentPlan,
-		ViewProjectFocusView: AccentPlan,
-		ViewFocusBoard:       AccentWork,
-		ViewDueDateOverview:  AccentPlan,
-		ViewDailyReview:      AccentPlan,
-		ViewPriorityView:     AccentPlan,
-
-		// Execute stage (cyan)
-		ViewProjectTree:       AccentExecute,
-		ViewOutliner:          AccentExecute,
-		ViewTemporaryOutliner: AccentExecute,
-		ViewKanban:            AccentExecute,
-
-		// Review stage (yellow)
-		ViewWeeklyReview:     AccentReview,
-		ViewMetricsDashboard: AccentReview,
-		ViewRecentActivity:   AccentReview,
-		ViewRoadmap:          AccentPlan,
-
-		// Support stage (muted gray)
-		ViewGlobalBlockers:     AccentSupport,
-		ViewGlobalNotes:        AccentSupport,
-		ViewNotes:              AccentSupport,
-		ViewWorkflowRules:      AccentSupport,
-		ViewNotificationCenter: AccentSupport,
-
-		// Search / Command (magenta)
-		ViewGlobalSearch:   AccentSearch,
-		ViewCommandPalette: AccentSearch,
-
-		// Pipeline Hub (neutral — spans all stages)
-		ViewPipelineHub: AccentDashboard,
+	m := make(map[ViewType]color.Color)
+	for _, vt := range allViewTypes() {
+		if c := accentColorForCategory(routeFor(vt).Accent); c != nil {
+			m[vt] = c
+		}
 	}
+	viewAccentMap = m
 }
 
 // ViewAccentColor returns the accent color for a view type, or nil if unmapped.

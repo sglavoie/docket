@@ -135,7 +135,7 @@ func (m *FocusBoardModel) todayStats() focusBoardTodayStats {
 			continue
 		}
 		stats.plannedTotal++
-		if row.Task.Status.IsComplete() {
+		if row.Task.IsTerminalState() {
 			stats.completedToday++
 		}
 	}
@@ -273,12 +273,12 @@ func (m *FocusBoardModel) renderBoardRowContent(row boardRow, segments focusBoar
 
 func (m *FocusBoardModel) renderBoardSelectableLine(row boardRow, content string, isSelected bool, isFirstPlanItem bool) string {
 	task := row.Task
-	isClosed := task.Status.IsComplete()
+	isClosed := task.IsTerminalState()
 	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday) || (m.focusMode == focusModeTunnel && !isSelected)
 	isOverdue := task.IsOverdue()
-	isBlocked := task.Status == models.StatusBlocked || row.Project.HasIncompleteDependencies(task)
+	isBlocked := task.IsInState(models.StateWaiting) || row.Project.HasIncompleteDependencies(task)
 
-	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
+	line := RenderSelectableRow(isSelected, m.queueIDs[task.ID], task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
 	if isSelected && m.mutationFlash {
 		line = MutationFlashLine(line, m.width-2, m.mutationFlashBg)
 	}
@@ -310,7 +310,7 @@ func renderBoardRowPrefix(rowNum string, isFirstPlanItem bool) string {
 }
 
 func renderBoardStatusIcon(task *models.Task, colLayout *ColumnLayout) string {
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	statusIcon := GetStateBadge(task.State())
 	if colLayout != nil && colLayout.HasStatus {
 		return PadBadge(statusIcon, colLayout.StatusWidth)
 	}
@@ -470,7 +470,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	var body strings.Builder
 	body.WriteString(renderPriorityBadge(task.Priority))
 	body.WriteString("  ")
-	body.WriteString(GetStatusBadge(string(task.Status), task.Status.Icon()))
+	body.WriteString(GetStateBadge(task.State()))
 	body.WriteString("  ")
 	body.WriteString(GetTypeStyle(string(task.Type)).Render(task.Type.Icon()))
 	body.WriteString("\n")
@@ -522,7 +522,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	// Footer hint
 	remaining := 0
 	for _, row := range m.filtered {
-		if row.Task != nil && !row.Task.Status.IsComplete() {
+		if row.Task != nil && !row.Task.IsTerminalState() {
 			remaining++
 		}
 	}

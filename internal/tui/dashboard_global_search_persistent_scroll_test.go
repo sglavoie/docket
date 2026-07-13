@@ -143,11 +143,11 @@ func makeGlobalSearchScrollResults(count int) []filteredSearchResult {
 	results := make([]filteredSearchResult, 0, count)
 	for i := range count {
 		task := &models.Task{
-			ID:      fmt.Sprintf("task-%02d", i),
-			ShortID: i + 1,
-			Title:   fmt.Sprintf("Task %02d", i),
-			Type:    models.TaskTypeTask,
-			Status:  models.StatusTodo,
+			ID:            fmt.Sprintf("task-%02d", i),
+			ShortID:       i + 1,
+			Title:         fmt.Sprintf("Task %02d", i),
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateReady,
 		}
 		results = append(results, filteredSearchResult{
 			result: models.SearchResult{Task: task, Project: project},

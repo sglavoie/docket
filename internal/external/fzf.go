@@ -153,7 +153,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
 			t.ShortID,
 			t.Type.Icon(),
-			t.Status.Icon(),
+			t.State().Icon(),
 			sanitizeFzfField(t.Title))
 		lines = append(lines, line)
 		taskMap[t.ShortID] = t
@@ -313,7 +313,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
 			t.ShortID,
 			t.Type.Icon(),
-			t.Status.Icon(),
+			t.State().Icon(),
 			sanitizeFzfField(t.Title))
 		lines = append(lines, line)
 		taskMap[t.ShortID] = t

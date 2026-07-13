@@ -13,7 +13,10 @@ import (
 func TestConfigManager_BackupConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.json")
-	backupPath := configPath + ".bak"
+	// Persistence and backups are per-domain now; assert against the workspace
+	// catalog domain file and its .bak sidecar.
+	catalogPath := WorkspaceCatalogPath(tmpDir)
+	backupPath := catalogPath + ".bak"
 
 	manager := NewManager(configPath)
 
@@ -31,7 +34,7 @@ func TestConfigManager_BackupConfig(t *testing.T) {
 		t.Error("backup should exist after Save (auto-backup)")
 	}
 
-	preModContent, _ := os.ReadFile(configPath)
+	preModContent, _ := os.ReadFile(catalogPath)
 	cfg.Editor = "nano"
 	if err := manager.Save(cfg); err != nil {
 		t.Fatalf("Save failed: %v", err)
@@ -103,7 +106,6 @@ func TestConfigManager_RestoreConfigFromBackup_Reversibility(t *testing.T) {
 func TestConfigManager_ConfigBackupExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.json")
-	backupPath := configPath + ".bak"
 
 	manager := NewManager(configPath)
 
@@ -117,6 +119,11 @@ func TestConfigManager_ConfigBackupExists(t *testing.T) {
 		t.Error("backup should not exist after LoadOrCreate")
 	}
 
+	// A .bak sidecar next to any domain artifact counts as a config backup.
+	backupPath := manager.GetBackupPath()
+	if err := os.MkdirAll(filepath.Dir(backupPath), 0755); err != nil {
+		t.Fatal(err)
+	}
 	_ = os.WriteFile(backupPath, []byte("{}"), 0644)
 
 	if !manager.ConfigBackupExists() {
@@ -128,7 +135,9 @@ func TestConfigManager_GetBackupPath(t *testing.T) {
 	configPath := "/home/user/.tt.json"
 	manager := NewManager(configPath)
 
-	expected := "/home/user/.tt.json.bak"
+	// Backups span the decomposed domain files; GetBackupPath returns the
+	// workspace catalog domain's .bak sidecar as the representative path.
+	expected := WorkspaceCatalogPath("/home/user") + ".bak"
 	if manager.GetBackupPath() != expected {
 		t.Errorf("expected backup path '%s', got '%s'", expected, manager.GetBackupPath())
 	}

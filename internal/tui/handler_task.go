@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -124,7 +125,7 @@ func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TaskStatusChangedMsg:
-		if msg.Task != nil && msg.Task.Status == models.StatusDone {
+		if msg.Task != nil && msg.Task.State() == models.StateDone {
 			m.sessionStats.tasksCompleted++
 			m.updateStreak()
 			m.handleWithRefresh(false, false, "")
@@ -142,28 +143,30 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 		cmd := m.views.Update(m.currentView(), msg)
 		m.syncInboxProcessor()
 		if msg.NeedsSave && m.currentProject != nil {
-			cmd = tea.Batch(cmd, SaveProjectAsyncWithOptions(m.currentProject, "", m.projectSaveOptionsFromTaskPropertyMsg(msg)))
+			// The palette/command handlers already applied the property change to the
+			// task(s) in m.currentProject in memory (toggle active/pin, set priority,
+			// set due date). Commit that mutated project through the application layer
+			// so the durable write flows through the transactional repository and
+			// workspace ledger instead of the legacy async save wrapper. No workflow
+			// rules run (empty rules), matching the legacy no-cascade save behavior;
+			// the shell reloads the touched project via the BatchTransactionResultMsg.
+			cmd = tea.Batch(cmd, m.secondaryFeatures.TaskItem.CommitProjectWorkflow(m.currentProject, projectWorkflowOptsFromTaskPropertyMsg(msg), ""))
 		}
 		return true, cmd
 	}
 	return false, nil
 }
 
-func (m *AppModel) projectSaveOptionsFromTaskPropertyMsg(msg TaskPropertyChangedMsg) ProjectSaveOptions {
-	opts := ProjectSaveOptions{
-		UndoAction:          msg.UndoAction,
-		UndoContext:         msg.UndoContext,
-		UndoTaskIDs:         msg.UndoTaskIDs,
-		UndoGroupID:         msg.UndoGroupID,
-		UndoGroupProjectIDs: msg.UndoGroupProjectIDs,
+// projectWorkflowOptsFromTaskPropertyMsg builds the project-scoped commit options
+// for an in-place task property change. Rules are intentionally empty so the
+// commit runs no workflow cascade — preserving the legacy plain-save behavior of
+// the command-palette property paths — while the undo action/context label the
+// ledger entry.
+func projectWorkflowOptsFromTaskPropertyMsg(msg TaskPropertyChangedMsg) app.ProjectWorkflowOptions {
+	return app.ProjectWorkflowOptions{
+		UndoAction:  msg.UndoAction,
+		UndoContext: msg.UndoContext,
 	}
-	if m.config != nil && m.config.UndoHistoryDepth != nil {
-		opts.UndoDepth = *m.config.UndoHistoryDepth
-	}
-	if len(opts.UndoTaskIDs) == 0 && msg.Task != nil && opts.hasUndoMetadata() {
-		opts.UndoTaskIDs = []string{msg.Task.ID}
-	}
-	return opts
 }
 
 // handleTaskPaletteMessages handles command palette task action messages.

@@ -92,7 +92,6 @@ type OutlinerModel struct {
 	crossLoading          bool              // True while cross-project load is in progress
 	crossSpinnerVisible   bool              // True once the 200ms delay has elapsed during load
 	crossLoadGen          int               // Generation counter; discards stale load results
-	crossUndoCtx          UndoContext       // Undo context scoped to cross-project operations
 	crossSpinner          SpinnerModel      // View-local spinner, independent of global save spinner
 	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
 	crossReloadTabName    string            // Pinned tag tab name preserved while async reload clears loadedProjects
@@ -224,7 +223,6 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		m.filter.HideDimmed = cfg.CrossOutlinerFilterHideDimmed
 		m.filter.GitHubIssue = cfg.CrossOutlinerFilterGitHubIssue
 		m.filter.Parked = cfg.CrossOutlinerFilterParked
-		m.filter.Stage = cfg.CrossOutlinerFilterStage
 		m.filter.ScoreMin = cfg.CrossOutlinerFilterScoreMin
 		m.sort.Field = SortField(cfg.CrossOutlinerSortField)
 		m.sort.Ascending = cfg.CrossOutlinerSortAscending

@@ -326,15 +326,15 @@ func TestFindArchivedTaskReportsDuplicateFullIDs(t *testing.T) {
 
 func archiveIndexTestTask(id string, shortID int, taskType models.TaskType, title string, completedAt time.Time) *models.Task {
 	return &models.Task{
-		ID:          id,
-		ShortID:     shortID,
-		Type:        taskType,
-		Title:       title,
-		Status:      models.StatusDone,
-		Priority:    2,
-		CreatedAt:   completedAt.AddDate(0, 0, -1),
-		UpdatedAt:   completedAt,
-		CompletedAt: &completedAt,
+		ID:            id,
+		ShortID:       shortID,
+		Type:          taskType,
+		Title:         title,
+		WorkflowState: models.StateDone,
+		Priority:      2,
+		CreatedAt:     completedAt.AddDate(0, 0, -1),
+		UpdatedAt:     completedAt,
+		CompletedAt:   &completedAt,
 	}
 }
 

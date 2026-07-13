@@ -93,7 +93,6 @@ func (m *AppModel) saveProjectTreeState() {
 	state.FilterHideDimmed = m.projectTree.filter.HideDimmed
 	state.FilterGitHubIssue = m.projectTree.filter.GitHubIssue
 	state.FilterParked = m.projectTree.filter.Parked
-	state.FilterStage = m.projectTree.filter.Stage
 	state.SortField = int(m.projectTree.sort.Field)
 	state.SortAscending = m.projectTree.sort.Ascending
 	state.SidebarEnabled = m.projectTree.sidebar.IsEnabled()
@@ -148,7 +147,6 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filter.HideDimmed = state.FilterHideDimmed
 	m.projectTree.filter.GitHubIssue = state.FilterGitHubIssue
 	m.projectTree.filter.Parked = state.FilterParked
-	m.projectTree.filter.Stage = state.FilterStage
 	m.projectTree.sort.Field = SortField(state.SortField)
 	m.projectTree.sort.Ascending = state.SortAscending
 	m.projectTree.sidebar.SetEnabled(state.SidebarEnabled)

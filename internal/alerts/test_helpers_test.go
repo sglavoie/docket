@@ -15,10 +15,10 @@ func testProject(name string, tasks ...*models.Task) ProjectData {
 
 func testTask(title string, status models.TaskStatus, updatedAt time.Time) *models.Task {
 	return &models.Task{
-		ID:        "task-" + title,
-		Title:     title,
-		Status:    status,
-		UpdatedAt: updatedAt,
+		ID:            "task-" + title,
+		Title:         title,
+		WorkflowState: models.DeriveWorkflowState(status, "", ""),
+		UpdatedAt:     updatedAt,
 	}
 }
 

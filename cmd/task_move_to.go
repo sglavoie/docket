@@ -107,7 +107,11 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			Context string
 			Tasks   int
 		}
-		for _, p := range cfg.GetActiveProjects() {
+		active, activeErr := activeProjects(configManager)
+		if activeErr != nil {
+			return activeErr
+		}
+		for _, p := range active {
 			if p.ID != sourceProject.ID {
 				taskCount := 0
 				if loadErr := storage.LoadProject(p); loadErr == nil {
@@ -150,7 +154,10 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		destProjectID = selected.ID
 	}
 
-	destProject := cfg.GetProject(destProjectID)
+	destProject, err := lookupProject(configManager, destProjectID)
+	if err != nil {
+		return err
+	}
 	if destProject == nil {
 		return fmt.Errorf("destination %w", tterrors.NewProjectNotFoundError(destProjectID))
 	}
@@ -162,10 +169,12 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("failed to load destination project: %w", loadErr)
 	}
 
-	// Build tree to count descendants and check dependencies
+	// Build the moved set (root + descendants) from the loaded source project so the
+	// dep-clear confirmation and durable planning reassignment can be computed at the
+	// CLI edge before the application layer performs the move. Task UUIDs are stable
+	// across the move, so this set keys the config reassignment correctly regardless
+	// of the fresh snapshot the use case loads.
 	sourceProject.BuildTaskTree()
-
-	// Build moved set to check for cross-project deps
 	movedSet := make(map[string]bool)
 	var collectMovedIDs func(taskID string)
 	collectMovedIDs = func(taskID string) {
@@ -179,11 +188,10 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 	}
 	collectMovedIDs(task.ID)
-	descendants := len(movedSet) - 1 // Exclude the root task itself
 
-	// Check for dependencies that will be cleared
-	// Cross-project refs (format "projectID:taskID") are preserved during the move,
-	// so only count same-project refs that point outside the moved set.
+	// Check for dependencies that will be cleared. Cross-project refs
+	// ("projectID:taskID") are preserved during the move, so only count same-project
+	// refs that point outside the moved set.
 	var depsToBeCleared int
 	for id := range movedSet {
 		t := sourceProject.GetTaskByID(id)
@@ -211,70 +219,48 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 	}
 
-	// Record matching undo snapshots for both projects before either side of
-	// the cross-project move is mutated.
-	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-		if _, snapshotErr := recordGroupedUndoSnapshots([]*models.Project{sourceProject, destProject}, "Move Task to Project",
-			fmt.Sprintf("#%d %s → %s", task.ShortID, task.Title, destProject.Name), *cfg.UndoHistoryDepth); snapshotErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
+	// Reassign the DURABLE planning refs (Focus Queue, Daily Plan) to the destination
+	// project and fold them into the move transaction as a config artifact, so a
+	// partial move can never leave planning refs pointing at the old project. The
+	// machine-local recent visits are intentionally excluded here and reassigned
+	// separately after a successful commit.
+	var artifacts []storage.ArtifactChange
+	if cfg.ReassignDurablePlanningProject(movedSet, destProject.ID) > 0 {
+		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+		if artErr != nil {
+			return artErr
 		}
+		artifacts = arts
 	}
 
-	// Perform the move
-	result, err := sourceProject.MoveTaskToProject(task, destProject)
+	// Route the move through the application layer: source removal, destination
+	// insertion, each moved task's attachment directory, and the durable planning
+	// artifact all commit as ONE transaction, revision-checked and undoable.
+	svc := newAppService(cfg)
+	res, err := svc.MoveToProject(task.ID, destProject.ID, artifacts...)
 	if err != nil {
-		return fmt.Errorf("failed to move task: %w", err)
-	}
-	if result == nil {
-		return fmt.Errorf("move operation returned no result")
+		return translateAppError(err)
 	}
 
-	// Move attachment directories for each moved task. Task UUIDs are
-	// preserved across the move, so destination metadata continues to
-	// reference the same filenames; without this step those files remain
-	// in the source project's .attachments/ tree and the destination
-	// metadata becomes dangling.
-	for _, mt := range result.MovedTasks {
-		if mvErr := storage.MoveTaskAttachments(sourceProject, destProject, mt); mvErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to move attachments for task #%d: %v\n", mt.ShortID, mvErr)
+	// Repair the machine-local recent visits separately — non-authoritative UI state
+	// updated only after the durable commit succeeded. A failure here is a warning,
+	// not an error: the move is already committed and recent visits are best-effort.
+	if cfg.ReassignRecentVisitsProject(movedSet, destProject.ID) > 0 {
+		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
 	}
 
-	// Update FocusQueue, DailyPlan, and RecentTaskVisits to point to the new project
-	movedTaskIDs := make(map[string]bool, len(result.MovedTasks))
-	for _, t := range result.MovedTasks {
-		movedTaskIDs[t.ID] = true
-	}
-	cfg.ReassignTaskProject(movedTaskIDs, destProject.ID)
-
-	// Save both projects (undo snapshot already recorded above for source project)
-	if err := SaveProject(sourceProject, &SaveOptions{Config: cfg, ConfigManager: configManager}); err != nil {
+	if err := emitMutation(out, "Moved", res.Task); err != nil {
 		return err
 	}
-	if err := SaveProject(destProject, &SaveOptions{Config: cfg, ConfigManager: configManager}); err != nil {
-		return err
-	}
-
-	// Save config if needed (NextShortID is in tasks.md, not config)
-	if err := saveConfig(configManager, cfg); err != nil {
-		return err
-	}
-
-	if out.JSON {
-		return outputSingleTaskJSON(task)
-	}
-	if !out.Quiet {
-		if descendants > 0 {
-			fmt.Printf("Moved #%d: %s (and %d descendants) to %s\n",
-				result.OldShortIDs[0], task.Title, descendants, destProject.Name)
-		} else {
-			fmt.Printf("Moved #%d: %s to %s\n",
-				result.OldShortIDs[0], task.Title, destProject.Name)
+	if !out.Quiet && !out.JSON {
+		if descendants := res.MovedCount - 1; descendants > 0 {
+			fmt.Printf("  Moved %d descendant(s) with it.\n", descendants)
 		}
-		if len(result.ClearedDeps) > 0 {
-			fmt.Printf("Cleared %d dependencies that pointed to tasks in the source project.\n", len(result.ClearedDeps))
+		if len(res.ClearedDeps) > 0 {
+			fmt.Printf("  Cleared %d dependencies that pointed to tasks in the source project.\n", len(res.ClearedDeps))
 		}
-		fmt.Printf("New task ID in %s: #%d\n", destProject.Name, task.ShortID)
 	}
 	return nil
 }

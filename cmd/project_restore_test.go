@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -14,250 +14,78 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestListTrashedProjects_Empty(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	trashDir := filepath.Join(tempDir, ".tt", "trash")
-	if err := os.MkdirAll(trashDir, 0755); err != nil {
-		t.Fatalf("failed to create trash dir: %v", err)
-	}
-
-	projects, err := storage.ListTrashedProjects(tempDir)
-	testutil.AssertNoError(t, err)
-
-	if len(projects) != 0 {
-		t.Errorf("expected 0 trashed projects, got %d", len(projects))
-	}
-}
-
-func TestListTrashedProjects_WithProjects(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	trashDir := filepath.Join(tempDir, ".tt", "trash")
-	if err := os.MkdirAll(trashDir, 0755); err != nil {
-		t.Fatalf("failed to create trash dir: %v", err)
-	}
-
-	projectDir := filepath.Join(trashDir, "test-project")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+// seedTrashEntry creates a project directory, moves it into versioned trash, and
+// returns the resulting entry ID.
+func seedTrashEntry(t *testing.T, dataDir, id, slug string) string {
+	t.Helper()
+	dir := filepath.Join(dataDir, "projects", slug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("failed to create project dir: %v", err)
 	}
-
-	projects, err := storage.ListTrashedProjects(tempDir)
-	testutil.AssertNoError(t, err)
-
-	testutil.AssertEqual(t, len(projects), 1)
-	testutil.AssertEqual(t, projects[0], "test-project")
-}
-
-func TestTrashEntryExists_True(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	trashDir := filepath.Join(tempDir, ".tt", "trash")
-	projectDir := filepath.Join(trashDir, "existing-project")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	exists := storage.TrashEntryExists("existing-project", tempDir)
-	if !exists {
-		t.Error("expected trash entry to exist")
-	}
-}
-
-func TestTrashEntryExists_False(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	trashDir := filepath.Join(tempDir, ".tt", "trash")
-	if err := os.MkdirAll(trashDir, 0755); err != nil {
-		t.Fatalf("failed to create trash dir: %v", err)
-	}
-
-	exists := storage.TrashEntryExists("nonexistent-project", tempDir)
-	if exists {
-		t.Error("expected trash entry to not exist")
-	}
-}
-
-func TestReconstructProjectFromDir(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	projectDir := filepath.Join(tempDir, "test-project")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	tasksContent := `# Test Project
-
-## Task: Sample Task
-<!-- id: task-1, status: todo, priority: 3 -->
-
-A sample task.
-`
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte("# Project: "+slug+"\n"), 0o644); err != nil {
 		t.Fatalf("failed to write tasks.md: %v", err)
 	}
-
-	project, err := reconstructProjectFromDir("test-project", projectDir)
-	testutil.AssertNoError(t, err)
-
-	if project == nil {
-		t.Fatal("expected non-nil project")
+	entryID, err := storage.MoveProjectToTrash(&models.Project{ID: id, Slug: slug, Name: slug, Path: dir}, dataDir, "test", nil)
+	if err != nil {
+		t.Fatalf("MoveProjectToTrash failed: %v", err)
 	}
-
-	testutil.AssertEqual(t, project.Slug, "test-project")
-	testutil.AssertEqual(t, project.Path, projectDir)
-
-	if project.ID == "" {
-		t.Error("expected project to have a generated ID")
-	}
+	return entryID
 }
 
-func TestReconstructProjectFromDir_ParsesProjectName(t *testing.T) {
+func TestResolveTrashEntry_NotFound(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	projectDir := filepath.Join(tempDir, "my-project")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	tasksContent := `# Project: My Awesome Project
-
-## Task: First Task
-<!-- id: task-1, status: todo, priority: 3 -->
-
-Task content.
-`
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	project, err := reconstructProjectFromDir("my-project", projectDir)
-	testutil.AssertNoError(t, err)
-
-	testutil.AssertEqual(t, project.Name, "My Awesome Project")
-}
-
-func TestReconstructProjectFromDir_FallsBackToSlug(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	projectDir := filepath.Join(tempDir, "slug-only")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	tasksContent := `## Task: Only Task
-<!-- id: task-1, status: todo, priority: 3 -->
-
-Task without project header.
-`
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	project, err := reconstructProjectFromDir("slug-only", projectDir)
-	testutil.AssertNoError(t, err)
-
-	testutil.AssertEqual(t, project.Name, "slug-only")
-}
-
-func TestReconstructProjectFromDir_SetsDefaultContext(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	projectDir := filepath.Join(tempDir, "context-test")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	tasksContent := `# Context Test Project
-`
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	project, err := reconstructProjectFromDir("context-test", projectDir)
-	testutil.AssertNoError(t, err)
-
-	testutil.AssertEqual(t, project.Context, "personal")
-}
-
-func TestReconstructProjectFromDir_SetsTimestamps(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	projectDir := filepath.Join(tempDir, "timestamps-test")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	tasksContent := `# Timestamps Test
-`
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	beforeRestore := time.Now().Add(-time.Second)
-	project, err := reconstructProjectFromDir("timestamps-test", projectDir)
-	testutil.AssertNoError(t, err)
-	afterRestore := time.Now().Add(time.Second)
-
-	if project.CreatedAt.Before(beforeRestore) {
-		t.Error("CreatedAt should be after test start")
-	}
-	if project.CreatedAt.After(afterRestore) {
-		t.Error("CreatedAt should be before test end")
-	}
-	if project.UpdatedAt.Before(beforeRestore) {
-		t.Error("UpdatedAt should be after test start")
-	}
-	if project.UpdatedAt.After(afterRestore) {
-		t.Error("UpdatedAt should be before test end")
+	if _, err := resolveTrashEntry(tempDir, "nope"); err == nil {
+		t.Error("expected error resolving an unknown reference")
 	}
 }
 
-func TestReconstructProjectFromDir_LoadsTasks(t *testing.T) {
+func TestResolveTrashEntry_Single(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	projectDir := filepath.Join(tempDir, "tasks-test")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
+	entryID := seedTrashEntry(t, tempDir, "id-1", "solo")
 
-	tasksContent := `# Tasks Test Project
-
-## Task: Task One
-<!-- id: task-1, status: todo, priority: 1 -->
-
-First task.
-
-## Task: Task Two
-<!-- id: task-2, status: in_progress, priority: 2 -->
-
-Second task.
-`
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	project, err := reconstructProjectFromDir("tasks-test", projectDir)
+	entry, err := resolveTrashEntry(tempDir, "solo")
 	testutil.AssertNoError(t, err)
+	if entry.EntryID != entryID {
+		t.Errorf("resolved entry %q, want %q", entry.EntryID, entryID)
+	}
+}
 
-	testutil.AssertEqual(t, len(project.Tasks), 2)
+func TestResolveTrashEntry_MultipleRequiresEntryID(t *testing.T) {
+	tempDir, cleanup := testutil.TempProjectDir(t)
+	defer cleanup()
+
+	e1 := seedTrashEntry(t, tempDir, "id-1", "dup")
+	e2 := seedTrashEntry(t, tempDir, "id-2", "dup")
+
+	_, err := resolveTrashEntry(tempDir, "dup")
+	if err == nil {
+		t.Fatal("expected an error requiring explicit selection for a shared slug")
+	}
+	if !strings.Contains(err.Error(), "multiple") {
+		t.Errorf("error should mention multiple generations: %v", err)
+	}
+	// Both entry IDs should be listed as candidates.
+	if !strings.Contains(err.Error(), e1) || !strings.Contains(err.Error(), e2) {
+		t.Errorf("error should list both candidate entry IDs: %v", err)
+	}
+}
+
+func TestResolveTrashEntry_ByEntryID(t *testing.T) {
+	tempDir, cleanup := testutil.TempProjectDir(t)
+	defer cleanup()
+
+	e1 := seedTrashEntry(t, tempDir, "id-1", "dup")
+	_ = seedTrashEntry(t, tempDir, "id-2", "dup")
+
+	entry, err := resolveTrashEntry(tempDir, e1)
+	testutil.AssertNoError(t, err)
+	if entry.EntryID != e1 {
+		t.Errorf("resolved entry %q, want %q", entry.EntryID, e1)
+	}
 }
 
 func TestProjectRestore_ActiveProjectConflict(t *testing.T) {
@@ -276,105 +104,6 @@ func TestProjectRestore_ActiveProjectConflict(t *testing.T) {
 	}
 }
 
-func TestListTrashedProjects_ErrorHandling(t *testing.T) {
-	projects, err := storage.ListTrashedProjects("/nonexistent/path/that/does/not/exist")
-	// Either error or empty result is acceptable for nonexistent path
-	if err == nil && len(projects) > 0 {
-		t.Error("expected empty result or error for nonexistent path")
-	}
-}
-
-func TestMoveProjectToTrash_Basic(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	projectDir := filepath.Join(tempDir, "to-trash")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-
-	tasksPath := filepath.Join(projectDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte("# To Trash\n"), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	project := &models.Project{
-		ID:   uuid.New().String(),
-		Slug: "to-trash",
-		Name: "To Trash",
-		Path: projectDir,
-	}
-
-	err := storage.MoveProjectToTrash(project, tempDir)
-	testutil.AssertNoError(t, err)
-
-	exists := storage.TrashEntryExists("to-trash", tempDir)
-	if !exists {
-		t.Error("expected project to be in trash")
-	}
-
-	if _, err := os.Stat(projectDir); !os.IsNotExist(err) {
-		t.Error("expected original project dir to not exist")
-	}
-}
-
-func TestRestoreProjectFromTrash(t *testing.T) {
-	tempDir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	trashDir := filepath.Join(tempDir, ".tt", "trash")
-	projectTrashDir := filepath.Join(trashDir, "to-restore")
-	if err := os.MkdirAll(projectTrashDir, 0755); err != nil {
-		t.Fatalf("failed to create trash project dir: %v", err)
-	}
-
-	tasksPath := filepath.Join(projectTrashDir, "tasks.md")
-	if err := os.WriteFile(tasksPath, []byte("# To Restore\n"), 0644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	// Create projects dir for restore destination
-	if err := os.MkdirAll(filepath.Join(tempDir, "projects"), 0755); err != nil {
-		t.Fatalf("failed to create projects dir: %v", err)
-	}
-
-	err := storage.RestoreProjectFromTrash("to-restore", tempDir)
-	testutil.AssertNoError(t, err)
-
-	restoredDir := filepath.Join(tempDir, "projects", "to-restore")
-	if _, err := os.Stat(restoredDir); os.IsNotExist(err) {
-		t.Error("expected restored project dir to exist")
-	}
-
-	exists := storage.TrashEntryExists("to-restore", tempDir)
-	if exists {
-		t.Error("expected project to not be in trash after restore")
-	}
-}
-
-func TestListTrashedProjects_Function(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = "/tmp/test-data"
-
-	testCases := []struct {
-		name     string
-		projects []string
-		expected int
-	}{
-		{"empty list", []string{}, 0},
-		{"single project", []string{"proj1"}, 1},
-		{"multiple projects", []string{"proj1", "proj2", "proj3"}, 3},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			if len(tc.projects) != tc.expected {
-				t.Errorf("expected %d projects, got %d", tc.expected, len(tc.projects))
-			}
-		})
-	}
-}
-
 func TestConfigAddProjectOnRestore(t *testing.T) {
 	cfg := &config.Config{}
 
@@ -385,15 +114,13 @@ func TestConfigAddProjectOnRestore(t *testing.T) {
 	testutil.AssertEqual(t, cfg.Projects[0].Name, "Test Project")
 }
 
-// TestProjectRestoreRejectsEmptySlug guards against the empty-string slug
-// reaching storage.RestoreProjectFromTrash, where filepath.Join(...,"") would
-// resolve to the trash dir itself and attempt to rename the entire trash
-// folder into projects/.
+// TestProjectRestoreRejectsEmptySlug guards against an empty-string reference
+// reaching the trash layer. The command must reject it up front, leaving any
+// existing trash untouched.
 func TestProjectRestoreRejectsEmptySlug(t *testing.T) {
 	deps, _ := setupProjectTest(t)
 
-	// Seed the trash so TrashEntryExists("") would otherwise return true,
-	// reaching the dangerous RestoreProjectFromTrash("") code path.
+	// Seed a legacy trash directory that must survive an empty-ref restore.
 	trashDir := filepath.Join(deps.Config.DataDir, ".tt", "trash")
 	siblingDir := filepath.Join(trashDir, "sibling-project")
 	if err := os.MkdirAll(siblingDir, 0755); err != nil {

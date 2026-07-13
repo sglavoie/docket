@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -18,10 +20,21 @@ func getAttachmentsDir(project *models.Project) string {
 	return filepath.Join(project.Path, attachmentsDirName)
 }
 
-// GetTaskAttachmentsDir returns the path to the attachments directory for a specific task.
-// Uses the task's UUID as the directory name for stability (short IDs can be reused after archive).
+// taskAttachmentsDirName returns the on-disk directory name for a task's
+// attachments: the lowercase hex SHA-256 of the task's stable UUID. Hashing
+// yields a fixed 64-character [0-9a-f] name that is always a safe single path
+// component, so a crafted or malformed task ID can never shape the directory
+// layout or escape the project's .attachments tree. Short IDs are avoided
+// because they can be reused after archive; the UUID is stable.
+func taskAttachmentsDirName(taskID string) string {
+	sum := sha256.Sum256([]byte(taskID))
+	return hex.EncodeToString(sum[:])
+}
+
+// GetTaskAttachmentsDir returns the path to the attachments directory for a
+// specific task, addressed by sha256(task.ID) for a stable, path-safe name.
 func GetTaskAttachmentsDir(project *models.Project, task *models.Task) string {
-	return filepath.Join(getAttachmentsDir(project), task.ID)
+	return filepath.Join(getAttachmentsDir(project), taskAttachmentsDirName(task.ID))
 }
 
 // GetAttachmentPath returns the full path to a specific attachment file.
@@ -29,34 +42,122 @@ func GetAttachmentPath(project *models.Project, task *models.Task, filename stri
 	return filepath.Join(GetTaskAttachmentsDir(project, task), filename)
 }
 
+// resolveTaskAttachmentsDir is the single resolver shared by every attachment
+// read/write path (copy, remove, cleanup, move, existence, size). It addresses
+// the task's directory by sha256(task.ID) and re-verifies, via SafeJoin against
+// the project root, that the result stays inside the project's .attachments
+// tree even when a parent component is a symlink that escapes the project.
+func resolveTaskAttachmentsDir(project *models.Project, task *models.Task) (string, error) {
+	if err := validateAttachmentTask(task); err != nil {
+		return "", err
+	}
+	rel := filepath.Join(attachmentsDirName, taskAttachmentsDirName(task.ID))
+	dir, err := SafeJoin(project.Path, rel)
+	if err != nil {
+		return "", fmt.Errorf("invalid attachments directory for task %q: %w", task.ID, err)
+	}
+	return dir, nil
+}
+
+// resolveAttachmentPath resolves the contained path to a single attachment
+// file, validating the filename and re-verifying containment after the final
+// join so a crafted filename cannot escape the task's attachment directory.
+func resolveAttachmentPath(project *models.Project, task *models.Task, filename string) (string, error) {
+	if err := validateAttachmentFilename(filename); err != nil {
+		return "", err
+	}
+	if err := validateAttachmentTask(task); err != nil {
+		return "", err
+	}
+	rel := filepath.Join(attachmentsDirName, taskAttachmentsDirName(task.ID), filename)
+	path, err := SafeJoin(project.Path, rel)
+	if err != nil {
+		return "", fmt.Errorf("invalid attachment path %q: %w", filename, err)
+	}
+	return path, nil
+}
+
 func validateAttachmentTask(task *models.Task) error {
 	if task == nil || task.ID == "" {
 		return fmt.Errorf("task ID cannot be empty for attachments")
 	}
+	// The task ID is hashed (see taskAttachmentsDirName) before it becomes a
+	// directory name, so a malformed or crafted ID can no longer influence the
+	// on-disk path. Containment is enforced by the hash plus a SafeJoin check
+	// in the resolver; no path-component validation of the raw ID is required.
 	return nil
 }
 
 func validateAttachmentFilename(filename string) error {
-	switch {
-	case filename == "":
-		return fmt.Errorf("invalid attachment filename %q: empty filename", filename)
-	case filepath.IsAbs(filename):
-		return fmt.Errorf("invalid attachment filename %q: absolute paths are not allowed", filename)
-	case filename == "." || filename == "..":
-		return fmt.Errorf("invalid attachment filename %q: path traversal is not allowed", filename)
-	case strings.Contains(filename, "/") || strings.Contains(filename, "\\"):
-		return fmt.Errorf("invalid attachment filename %q: path separators are not allowed", filename)
-	default:
-		return nil
+	if err := SafeChildName(filename); err != nil {
+		return fmt.Errorf("invalid attachment filename %q: %w", filename, err)
 	}
+	return nil
+}
+
+// LegacyAttachmentDir describes a pre-hash attachment directory found during
+// migration: a directory under .attachments whose name is a raw task ID rather
+// than a sha256 address.
+type LegacyAttachmentDir struct {
+	// TaskID is the raw directory name, which for legacy layouts is the task's
+	// UUID (or short ID). Callers derive the new hashed home from it.
+	TaskID string
+	// Path is the absolute path of the legacy directory.
+	Path string
+}
+
+// isHashedAttachmentDirName reports whether name is a sha256 attachment address
+// (a 64-character lowercase hex string). Any other directory name under
+// .attachments is treated as a legacy raw-ID directory.
+func isHashedAttachmentDirName(name string) bool {
+	if len(name) != sha256.Size*2 {
+		return false
+	}
+	for _, c := range name {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// DiscoverLegacyAttachmentDirs returns the raw-ID attachment directories under a
+// project's .attachments tree that predate sha256 addressing. It exists solely
+// for the eventual live migration (see the program plan); no operational
+// read/write path calls it. A missing .attachments directory yields no entries
+// and no error.
+func DiscoverLegacyAttachmentDirs(project *models.Project) ([]LegacyAttachmentDir, error) {
+	base := getAttachmentsDir(project)
+	entries, err := os.ReadDir(base)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read attachments directory: %w", err)
+	}
+	var legacy []LegacyAttachmentDir
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if isHashedAttachmentDirName(name) {
+			continue
+		}
+		legacy = append(legacy, LegacyAttachmentDir{
+			TaskID: name,
+			Path:   filepath.Join(base, name),
+		})
+	}
+	return legacy, nil
 }
 
 // EnsureTaskAttachmentsDir creates the attachments directory for a task if it doesn't exist.
 func EnsureTaskAttachmentsDir(project *models.Project, task *models.Task) error {
-	if err := validateAttachmentTask(task); err != nil {
+	dir, err := resolveTaskAttachmentsDir(project, task)
+	if err != nil {
 		return err
 	}
-	dir := GetTaskAttachmentsDir(project, task)
 	return os.MkdirAll(dir, DirPermissions)
 }
 
@@ -67,12 +168,12 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 		return "", fmt.Errorf("failed to create attachments directory: %w", err)
 	}
 
-	// Get the base filename
+	// Get the base filename and resolve its contained destination.
 	filename = filepath.Base(sourcePath)
-	if err = validateAttachmentFilename(filename); err != nil {
+	destPath, err := resolveAttachmentPath(project, task, filename)
+	if err != nil {
 		return "", err
 	}
-	destPath := GetAttachmentPath(project, task, filename)
 
 	// Check if file already exists
 	if _, statErr := os.Stat(destPath); statErr == nil {
@@ -115,13 +216,10 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 // RemoveAttachmentFile removes an attachment file from disk.
 // This does not modify the task's Attachments slice.
 func RemoveAttachmentFile(project *models.Project, task *models.Task, filename string) error {
-	if err := validateAttachmentTask(task); err != nil {
+	attachmentPath, err := resolveAttachmentPath(project, task, filename)
+	if err != nil {
 		return err
 	}
-	if err := validateAttachmentFilename(filename); err != nil {
-		return err
-	}
-	attachmentPath := GetAttachmentPath(project, task, filename)
 	if err := os.Remove(attachmentPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove attachment file: %w", err)
 	}
@@ -139,13 +237,19 @@ func MoveTaskAttachments(src, dest *models.Project, task *models.Task) error {
 	if task == nil || task.ID == "" {
 		return nil
 	}
-	srcDir := GetTaskAttachmentsDir(src, task)
-	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("failed to stat source attachments directory: %w", err)
+	srcDir, err := resolveTaskAttachmentsDir(src, task)
+	if err != nil {
+		return err
 	}
-	destDir := GetTaskAttachmentsDir(dest, task)
+	if _, statErr := os.Stat(srcDir); os.IsNotExist(statErr) {
+		return nil
+	} else if statErr != nil {
+		return fmt.Errorf("failed to stat source attachments directory: %w", statErr)
+	}
+	destDir, err := resolveTaskAttachmentsDir(dest, task)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(destDir), DirPermissions); err != nil {
 		return fmt.Errorf("failed to create destination attachments parent: %w", err)
 	}
@@ -168,42 +272,60 @@ func CleanupTaskAttachments(project *models.Project, task *models.Task) error {
 	if task == nil || task.ID == "" {
 		return nil
 	}
-	dir := GetTaskAttachmentsDir(project, task)
+	dir, err := resolveTaskAttachmentsDir(project, task)
+	if err != nil {
+		return err
+	}
 	if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove attachments directory: %w", err)
 	}
 	return nil
 }
 
+// listTaskAttachmentFiles returns the absolute paths of the regular files directly
+// inside dir. Attachment directories are flat by construction — CopyAttachment
+// writes files directly under the task directory — so a nested directory is
+// unexpected and reported as an error rather than silently skipped, since the
+// transaction journal's delete primitive is a non-recursive removal. exists is
+// false when the directory itself is absent, letting callers treat a delete or move
+// of a task with no attachments as a no-op.
+func listTaskAttachmentFiles(dir string) (files []string, exists bool, err error) {
+	entries, readErr := os.ReadDir(dir)
+	if os.IsNotExist(readErr) {
+		return nil, false, nil
+	}
+	if readErr != nil {
+		return nil, false, fmt.Errorf("failed to read task attachments directory: %w", readErr)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return nil, true, fmt.Errorf("unexpected nested directory in attachments: %s", filepath.Join(dir, entry.Name()))
+		}
+		files = append(files, filepath.Join(dir, entry.Name()))
+	}
+	return files, true, nil
+}
+
 // AttachmentExists checks if an attachment file exists on disk.
 func AttachmentExists(project *models.Project, task *models.Task, filename string) bool {
-	if err := validateAttachmentTask(task); err != nil {
+	path, err := resolveAttachmentPath(project, task, filename)
+	if err != nil {
 		return false
 	}
-	if err := validateAttachmentFilename(filename); err != nil {
-		return false
-	}
-	path := GetAttachmentPath(project, task, filename)
-	_, err := os.Stat(path)
+	_, err = os.Stat(path)
 	return err == nil
 }
 
 // GetAttachmentSize returns the size of an attachment file in bytes.
 // Returns 0 if the file doesn't exist or is a URL.
 func GetAttachmentSize(project *models.Project, task *models.Task, attachment *models.Attachment) int64 {
-	if err := validateAttachmentTask(task); err != nil {
+	if attachment == nil || attachment.IsURL {
 		return 0
 	}
-	if attachment == nil {
+	path, err := resolveAttachmentPath(project, task, attachment.Filename)
+	if err != nil {
 		return 0
 	}
-	if attachment.IsURL {
-		return 0
-	}
-	if err := validateAttachmentFilename(attachment.Filename); err != nil {
-		return 0
-	}
-	path := GetAttachmentPath(project, task, attachment.Filename)
 	info, err := os.Stat(path)
 	if err != nil {
 		return 0

@@ -43,7 +43,7 @@ func addOverdue(task *models.Task) {
 // completedToday makes a task look like it was completed earlier today so the
 // "Today: N done" counter increments.
 func completedToday(task *models.Task) {
-	task.Status = models.StatusDone
+	task.WorkflowState = models.StateDone
 	now := time.Now()
 	task.CompletedAt = &now
 }
@@ -69,15 +69,15 @@ func TestAlertHierarchyTriageWinsFirstLine(t *testing.T) {
 
 	project := testutil.NewTestProject("Mixed Signals")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 	overdue := testutil.NewTestTask("late task", models.TaskTypeTask)
-	overdue.Section = models.SectionNext
+	overdue.SetSection(models.SectionNext)
 	addOverdue(overdue)
 	blocked := testutil.NewTestTask("stuck task", models.TaskTypeTask)
-	blocked.Section = models.SectionNext
-	blocked.Status = models.StatusBlocked
+	blocked.SetSection(models.SectionNext)
+	blocked.WorkflowState = models.StateWaiting
 	planned := testutil.NewTestTask("planned task", models.TaskTypeTask)
-	planned.Section = models.SectionNext
+	planned.SetSection(models.SectionNext)
 	project.Tasks = []*models.Task{inbox, overdue, blocked, planned}
 
 	m := urgencyDashboard(t, project)
@@ -100,14 +100,14 @@ func TestAlertHierarchyOverdueWinsWhenNoTriage(t *testing.T) {
 
 	project := testutil.NewTestProject("Mixed Signals")
 	overdue := testutil.NewTestTask("late task", models.TaskTypeTask)
-	overdue.Section = models.SectionNext
+	overdue.SetSection(models.SectionNext)
 	addOverdue(overdue)
 	dueToday := testutil.NewTestTask("due today task", models.TaskTypeTask)
-	dueToday.Section = models.SectionNext
+	dueToday.SetSection(models.SectionNext)
 	addDueToday(dueToday)
 	blocked := testutil.NewTestTask("stuck task", models.TaskTypeTask)
-	blocked.Section = models.SectionNext
-	blocked.Status = models.StatusBlocked
+	blocked.SetSection(models.SectionNext)
+	blocked.WorkflowState = models.StateWaiting
 	project.Tasks = []*models.Task{overdue, dueToday, blocked}
 
 	m := urgencyDashboard(t, project)
@@ -133,11 +133,11 @@ func TestAlertHierarchyDueTodayWinsWhenNoUrgent(t *testing.T) {
 
 	project := testutil.NewTestProject("Mixed Signals")
 	dueToday := testutil.NewTestTask("due today task", models.TaskTypeTask)
-	dueToday.Section = models.SectionNext
+	dueToday.SetSection(models.SectionNext)
 	addDueToday(dueToday)
 	blocked := testutil.NewTestTask("stuck task", models.TaskTypeTask)
-	blocked.Section = models.SectionNext
-	blocked.Status = models.StatusBlocked
+	blocked.SetSection(models.SectionNext)
+	blocked.WorkflowState = models.StateWaiting
 	project.Tasks = []*models.Task{dueToday, blocked}
 
 	m := urgencyDashboard(t, project)
@@ -160,13 +160,13 @@ func TestAlertHierarchyTodayProgressBeatsBlocked(t *testing.T) {
 
 	project := testutil.NewTestProject("Mixed Signals")
 	planned := testutil.NewTestTask("planned task", models.TaskTypeTask)
-	planned.Section = models.SectionNext
+	planned.SetSection(models.SectionNext)
 	done := testutil.NewTestTask("finished task", models.TaskTypeTask)
-	done.Section = models.SectionCompleted
+	done.SetSection(models.SectionCompleted)
 	completedToday(done)
 	blocked := testutil.NewTestTask("stuck task", models.TaskTypeTask)
-	blocked.Section = models.SectionWaiting
-	blocked.Status = models.StatusBlocked
+	blocked.SetSection(models.SectionWaiting)
+	blocked.WorkflowState = models.StateWaiting
 	project.Tasks = []*models.Task{planned, done, blocked}
 
 	m := urgencyDashboard(t, project)
@@ -208,8 +208,8 @@ func TestAlertHierarchyBlockedAndBlockersMerge(t *testing.T) {
 	project := testutil.NewTestProject("Mixed Signals")
 	project.Path = filepath.Join(t.TempDir(), "mixed")
 	blocked := testutil.NewTestTask("stuck task", models.TaskTypeTask)
-	blocked.Section = models.SectionWaiting
-	blocked.Status = models.StatusBlocked
+	blocked.SetSection(models.SectionWaiting)
+	blocked.WorkflowState = models.StateWaiting
 	project.Tasks = []*models.Task{blocked}
 	if err := storage.SaveBlockers(project, []*models.Blocker{models.NewBlocker("the blocker")}); err != nil {
 		t.Fatalf("SaveBlockers: %v", err)
@@ -250,7 +250,7 @@ func TestAlertHierarchyDropsInboxHotspots(t *testing.T) {
 	project := testutil.NewTestProject("Inboxy")
 	for i := 0; i < 6; i++ {
 		task := testutil.NewTestTask("inbox", models.TaskTypeTask)
-		task.Section = models.SectionInbox
+		task.SetSection(models.SectionInbox)
 		project.Tasks = append(project.Tasks, task)
 	}
 
@@ -273,9 +273,9 @@ func TestAlertHierarchyTriageFoldsSelectedProjectHint(t *testing.T) {
 
 	project := testutil.NewTestProject("Inboxy")
 	inboxA := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inboxA.Section = models.SectionInbox
+	inboxA.SetSection(models.SectionInbox)
 	inboxB := testutil.NewTestTask("triage me too", models.TaskTypeTask)
-	inboxB.Section = models.SectionInbox
+	inboxB.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inboxA, inboxB}
 
 	m := urgencyDashboard(t, project)
@@ -306,9 +306,9 @@ func TestAlertHierarchyTodayProgressCombinesPlannedAndDone(t *testing.T) {
 
 	project := testutil.NewTestProject("Mixed Signals")
 	planned := testutil.NewTestTask("planned task", models.TaskTypeTask)
-	planned.Section = models.SectionNext
+	planned.SetSection(models.SectionNext)
 	done := testutil.NewTestTask("finished task", models.TaskTypeTask)
-	done.Section = models.SectionCompleted
+	done.SetSection(models.SectionCompleted)
 	completedToday(done)
 	project.Tasks = []*models.Task{planned, done}
 
@@ -342,9 +342,9 @@ func TestAlertHierarchyTodayProgressUsesDailyPlanNotNextSection(t *testing.T) {
 
 	project := testutil.NewTestProject("Daily Plan")
 	nextOnly := testutil.NewTestTask("backlog next", models.TaskTypeTask)
-	nextOnly.Section = models.SectionNext
+	nextOnly.SetSection(models.SectionNext)
 	planned := testutil.NewTestTask("actual daily plan", models.TaskTypeTask)
-	planned.Section = models.SectionWaiting
+	planned.SetSection(models.SectionWaiting)
 	project.Tasks = []*models.Task{nextOnly, planned}
 
 	m := urgencyDashboard(t, project)
@@ -383,24 +383,24 @@ func TestAlertHierarchyAllTiersOrdering(t *testing.T) {
 
 	project := testutil.NewTestProject("All Tiers")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 	overdue := testutil.NewTestTask("late task", models.TaskTypeTask)
-	overdue.Section = models.SectionNext
+	overdue.SetSection(models.SectionNext)
 	addOverdue(overdue)
 	dueToday := testutil.NewTestTask("due today task", models.TaskTypeTask)
-	dueToday.Section = models.SectionNext
+	dueToday.SetSection(models.SectionNext)
 	addDueToday(dueToday)
 	planned := testutil.NewTestTask("planned task", models.TaskTypeTask)
-	planned.Section = models.SectionNext
+	planned.SetSection(models.SectionNext)
 	blocked := testutil.NewTestTask("stuck task", models.TaskTypeTask)
-	blocked.Section = models.SectionWaiting
-	blocked.Status = models.StatusBlocked
+	blocked.SetSection(models.SectionWaiting)
+	blocked.WorkflowState = models.StateWaiting
 	done := testutil.NewTestTask("finished task", models.TaskTypeTask)
-	done.Section = models.SectionCompleted
+	done.SetSection(models.SectionCompleted)
 	completedToday(done)
 	earlierThisWeek := testutil.NewTestTask("earlier this week", models.TaskTypeTask)
-	earlierThisWeek.Section = models.SectionCompleted
-	earlierThisWeek.Status = models.StatusDone
+	earlierThisWeek.SetSection(models.SectionCompleted)
+	earlierThisWeek.WorkflowState = models.StateDone
 	twoDaysAgo := time.Now().Add(-48 * time.Hour)
 	earlierThisWeek.CompletedAt = &twoDaysAgo
 	project.Tasks = []*models.Task{inbox, overdue, dueToday, planned, blocked, done, earlierThisWeek}

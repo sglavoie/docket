@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -118,14 +118,13 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 
 func runQuickAdd(cmd *cobra.Command, args []string) error {
 	var (
-		project       *models.Project
-		cfg           *config.Config
-		configManager *config.Manager
-		err           error
+		project *models.Project
+		cfg     *config.Config
+		err     error
 	)
 
 	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
-		cfg, configManager, err = LoadConfig()
+		cfg, _, err = LoadConfig()
 		if err != nil {
 			return err
 		}
@@ -137,7 +136,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load project %s: %w", slug, err)
 		}
 	} else {
-		project, cfg, configManager, err = LoadCurrentProject()
+		project, cfg, _, err = LoadCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -177,41 +176,48 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Create task
-	taskID := uuid.New().String()
-	shortID := project.GetNextShortID()
-	task, err := models.NewTask(taskID, shortID, taskType, title)
-	if err != nil {
-		return err
-	}
-	task.Priority = priority
+	// Tags: explicit flags first, then inline (preserving legacy ordering); the
+	// application-layer AddTask use case normalizes, validates, and dedups them.
+	tags := make([]string, 0, len(addTags)+len(inlineTags))
+	tags = append(tags, addTags...)
+	tags = append(tags, inlineTags...)
 
-	// Add tags: explicit flags first, then inline
-	for _, tag := range addTags {
-		task.AddTag(tag)
-	}
-	for _, tag := range inlineTags {
-		task.AddTag(tag)
-	}
-
-	// Handle parent
+	// Resolve the parent to its stable UUID (with the legacy hierarchy/depth
+	// checks); the use case re-validates against the fresh snapshot.
+	var parentID *string
 	if addParentFlag != "" {
-		parent, err := ValidateParentTask(project, addParentFlag, task.Type)
+		parent, err := ValidateParentTask(project, addParentFlag, taskType)
 		if err != nil {
 			return err
 		}
-		task.ParentID = &parent.ID
+		pid := parent.ID
+		parentID = &pid
 	}
 
-	// Add to project
-	project.Tasks = append(project.Tasks, task)
+	// Route through the same application-layer use case as `tt task add`: the
+	// service owns ID/short-ID minting, validation, the workspace-ledger undo
+	// record, and the single atomic ChangeSet commit. Quick-add and `tt task add`
+	// are the same task-capture family, so both share this path.
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.AddTask(app.AddTaskRequest{
+			ProjectID: project.ID,
+			Title:     title,
+			Type:      taskType,
+			Priority:  priority,
+			Tags:      tags,
+			ParentID:  parentID,
+		})
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
 
-	// Save with workflow rules evaluation (state-based rules will fire for new tasks)
-	if err := SaveProject(project, &SaveOptions{
-		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
-		UndoAction: "Add Task", UndoContext: fmt.Sprintf("#%d %s", shortID, title),
-	}); err != nil {
-		return fmt.Errorf("failed to save task: %w", err)
+	// Reconstruct the display tag list with the same normalize/dedup semantics the
+	// use case applied, keeping the explicit-then-inline order for the message.
+	var displayTags models.Task
+	for _, tag := range tags {
+		displayTags.AddTag(tag)
 	}
 
 	// Build output message
@@ -219,11 +225,11 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	if priority != 3 {
 		extras = append(extras, fmt.Sprintf("priority %d", priority))
 	}
-	if len(task.Tags) > 0 {
-		extras = append(extras, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ", ")))
+	if len(displayTags.Tags) > 0 {
+		extras = append(extras, fmt.Sprintf("tags: %s", strings.Join(displayTags.Tags, ", ")))
 	}
 
-	msg := fmt.Sprintf("[%s] Created %s #%d: %s", project.Name, taskType.HeadingPrefix(), shortID, title)
+	msg := fmt.Sprintf("[%s] Created %s #%d: %s", project.Name, taskType.HeadingPrefix(), res.ShortID, title)
 	if len(extras) > 0 {
 		msg += fmt.Sprintf(" (%s)", strings.Join(extras, ", "))
 	}

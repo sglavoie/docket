@@ -149,7 +149,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {
 			continue
 		}
-		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
+		statusIcon := GetStateBadge(t.State())
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
 		prefix := fmt.Sprintf("  %s %s #%d ", statusIcon, typeIcon, t.ShortID)
 		maxTitleLen := max(contentWidth-lipgloss.Width(prefix), 1)

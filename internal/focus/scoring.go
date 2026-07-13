@@ -55,17 +55,23 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	}
 
 	// In-progress bonus
-	if task.Status == models.StatusInProgress {
+	if task.IsInState(models.StateInProgress) {
 		score += 500
 	}
 
-	// Review bonus
-	if task.Status == models.StatusReview {
+	// Review bonus, now keyed on the canonical StateReview. Under the workflow
+	// state model the legacy review *status* and the Review holding *section*
+	// collapse into one StateReview, so a task awaiting review is treated as
+	// active pipeline work and rewarded here rather than penalized as a holding
+	// bucket (33.7.6.4 recalibration; see the state switch below, which no longer
+	// carries a Review case).
+	if task.IsInState(models.StateReview) {
 		score += 250
 	}
 
-	// Active flag bonus
-	if task.Active {
+	// Focus Queue bonus: the config-aware successor to the retired Task.Active
+	// flag. A nil cfg (callers scoring without config) yields no bonus.
+	if taskInFocusQueue(task, cfg) {
 		score += 200
 	}
 
@@ -105,17 +111,18 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	unblockingBonus := min(blockedByThisCount, 3)
 	score += unblockingBonus * 150
 
-	// Section scoring: Next is boosted, Waiting/Review/Standby/Someday penalized
-	switch task.Section {
-	case models.SectionNext:
+	// State scoring: Next is boosted, Waiting/Paused/Someday penalized. Review is
+	// intentionally absent — it is rewarded by the review bonus above, not
+	// penalized as a holding bucket (33.7.6.4 recalibration off the legacy
+	// section switch).
+	switch task.State() {
+	case models.StateNext:
 		score += 100
-	case models.SectionWaiting:
+	case models.StateWaiting:
 		score -= 100
-	case models.SectionReview:
-		score -= 100
-	case models.SectionStandby:
+	case models.StatePaused:
 		score -= 200
-	case models.SectionSomeday:
+	case models.StateSomeday:
 		score -= 300
 	}
 
@@ -159,12 +166,12 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 		}
 	}
 
-	if task.Status == models.StatusInProgress {
+	if task.IsInState(models.StateInProgress) {
 		reasons = append(reasons, "in progress")
 	}
 
-	if task.Active {
-		reasons = append(reasons, "flagged active")
+	if taskInFocusQueue(task, cfg) {
+		reasons = append(reasons, "in focus queue")
 	}
 
 	blockedByThisCount := countIncompleteDependents(task, project)
@@ -177,7 +184,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 	}
 
 	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, now)
-	if daysSinceUpdated <= 3 && task.Status != models.StatusInProgress {
+	if daysSinceUpdated <= 3 && !task.IsInState(models.StateInProgress) {
 		reasons = append(reasons, "recent activity")
 	}
 
@@ -266,6 +273,22 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 	return scored
 }
 
+// taskInFocusQueue reports whether the task is a member of the persisted Focus
+// Queue — the config-aware successor to the retired Task.Active flag under the
+// workflow-state model. A nil task or nil cfg (callers scoring without config,
+// e.g. previews) yields false.
+func taskInFocusQueue(task *models.Task, cfg *config.Config) bool {
+	if task == nil || cfg == nil {
+		return false
+	}
+	for _, item := range cfg.GetFocusQueue() {
+		if item.TaskID == task.ID {
+			return true
+		}
+	}
+	return false
+}
+
 // countIncompleteDependents returns the number of open (non-complete)
 // tasks that depend on the given task. A completed dependent does not
 // need this task to unblock it, so it must not contribute to the
@@ -282,7 +305,7 @@ func countIncompleteDependents(task *models.Task, project *models.Project) int {
 		if !dependent.HasDependency(task.ID) {
 			continue
 		}
-		if dependent.Status.IsComplete() {
+		if dependent.IsTerminalState() {
 			continue
 		}
 		count++
@@ -355,7 +378,7 @@ func allChildrenComplete(task *models.Task) bool {
 		if child == nil {
 			continue
 		}
-		if !child.Status.IsComplete() {
+		if !child.IsTerminalState() {
 			return false
 		}
 	}

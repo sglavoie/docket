@@ -29,50 +29,16 @@ func recordRepeatPriority(priority int) tea.Cmd {
 					if task == nil {
 						return nil
 					}
-					project := v.getProject()
-					v.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", p, task.Title))
-					result := applyPriorityChange(v.workflowPersistFn(), project, task.ID, p)
-					if result.Err != nil {
-						return func() tea.Msg { return ErrorMsg{Err: result.Err} }
-					}
-					if result.StatusMessage != "" {
-						v.setStatusMessage(result.StatusMessage)
-					}
-					v.setMutationFlash(priorityMutationFlashBg(p))
-					v.refreshView()
-					return tea.Batch(result.Cmd, mutationFlashTimeout())
-				},
-			},
-		}
-	}
-}
-
-func recordRepeatStage(stage string) tea.Cmd {
-	s := stage
-	label := s
-	if label == "" {
-		label = "(cleared)"
-	}
-	return func() tea.Msg {
-		return RecordRepeatableActionMsg{
-			Action: &repeatableAction{
-				label: "Set Stage " + label,
-				apply: func(v prefixableView) tea.Cmd {
-					task := v.getCursorTask()
-					if task == nil {
+					if task.Priority == p {
 						return nil
 					}
-					project := v.getProject()
-					v.setUndoContext("Set Stage", fmt.Sprintf("%s: %s", label, task.Title))
-					result := applyStageChange(v.workflowPersistFn(), project, task.ID, s)
-					if result.Err != nil {
-						return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+					cmd := v.singleTaskCoordinator().SetPriority(task.ID, p)
+					msg := cmd()
+					if em, ok := msg.(TransactionErrorMsg); ok {
+						return func() tea.Msg { return ErrorMsg{Err: em.Err} }
 					}
-					if result.StatusMessage != "" {
-						v.setStatusMessage(result.StatusMessage)
-					}
-					v.refreshView()
-					return result.Cmd
+					v.setMutationFlash(priorityMutationFlashBg(p))
+					return tea.Batch(func() tea.Msg { return msg }, mutationFlashTimeout())
 				},
 			},
 		}
@@ -90,17 +56,13 @@ func recordRepeatQuickDueDate(days int) tea.Cmd {
 					if task == nil {
 						return nil
 					}
-					project := v.getProject()
-					v.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(d), task.Title))
-					result := applyQuickDueDate(v.workflowPersistFn(), project, task.ID, d)
-					if result.Err != nil {
-						return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+					due, _ := dueDateFromDays(d, false)
+					cmd := v.singleTaskCoordinator().SetDueDate(task.ID, due, false)
+					msg := cmd()
+					if em, ok := msg.(TransactionErrorMsg); ok {
+						return func() tea.Msg { return ErrorMsg{Err: em.Err} }
 					}
-					if result.StatusMessage != "" {
-						v.setStatusMessage(result.StatusMessage)
-					}
-					v.refreshView()
-					return result.Cmd
+					return func() tea.Msg { return msg }
 				},
 			},
 		}
@@ -117,17 +79,15 @@ func recordRepeatClearDueDate() tea.Cmd {
 					if task == nil {
 						return nil
 					}
-					project := v.getProject()
-					v.setUndoContext("Set Due Date", "cleared: "+task.Title)
-					result := applyClearDueDate(v.workflowPersistFn(), project, task.ID)
-					if result.Err != nil {
-						return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+					if task.DueDate == nil {
+						return nil
 					}
-					if result.StatusMessage != "" {
-						v.setStatusMessage(result.StatusMessage)
+					cmd := v.singleTaskCoordinator().SetDueDate(task.ID, nil, false)
+					msg := cmd()
+					if em, ok := msg.(TransactionErrorMsg); ok {
+						return func() tea.Msg { return ErrorMsg{Err: em.Err} }
 					}
-					v.refreshView()
-					return result.Cmd
+					return func() tea.Msg { return msg }
 				},
 			},
 		}

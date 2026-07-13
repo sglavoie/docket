@@ -40,7 +40,7 @@ func computeCycleTimeSummaries(tasks []TaskSummary, cutoff, now time.Time, bucke
 	}
 
 	for _, t := range tasks {
-		if t.CompletedAt == nil || t.Status != models.StatusDone {
+		if t.CompletedAt == nil || t.WorkflowState != models.StateDone {
 			continue
 		}
 		completedAt := *t.CompletedAt

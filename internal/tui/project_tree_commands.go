@@ -7,7 +7,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -38,19 +40,31 @@ func (m *ProjectTreeModel) performRedo() tea.Cmd {
 	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
 }
 
-// buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
-// state, draining the pending undo context. Must be called at persist time
-// (inside closures) so the undo context reflects the latest state.
-func (m *ProjectTreeModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context, m.undo.TaskIDs)
+// commitWorkflowOpts constructs the project-scoped workflow options for the
+// application-layer commit, draining the pending undo context. Must be called at
+// persist time so the undo action/context reflect the latest state. Workflow rules
+// come from config (nil-guarded for isolated render/unit tests); a nil prevStates
+// selects stateless evaluation, a captured snapshot selects contextual evaluation.
+func (m *ProjectTreeModel) commitWorkflowOpts(prevStates map[string]*models.Task) app.ProjectWorkflowOptions {
+	var rules []workflow.WorkflowRule
+	if m.config != nil {
+		rules = m.config.GetEnabledWorkflowRules()
+	}
+	action, context := m.undo.Action, m.undo.Context
 	m.undo.Clear()
-	return opts
+	return app.ProjectWorkflowOptions{
+		Rules:       rules,
+		PrevStates:  prevStates,
+		UndoAction:  action,
+		UndoContext: context,
+	}
 }
 
-// workflowPersistFn returns a persistFn that runs the full save pipeline
-// used by ProjectTree: auto-unblock, recurring, workflow rules, undo snapshots.
-func (m *ProjectTreeModel) workflowPersistFn() persistFn {
-	return newWorkflowPersistFn(m)
+// singleTaskCoordinator exposes the application-layer single-task coordinator so
+// the shared primary-view helpers route single-task mutations through the
+// coordinator (bulk paths remain on saveAndRefreshBulk).
+func (m *ProjectTreeModel) singleTaskCoordinator() TaskItemCoordinator {
+	return m.taskItem
 }
 
 // setUndoContext sets the action context for the next save operation.
@@ -117,16 +131,11 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 
 // saveAndRefreshWithPrevStates saves the project with event trigger support.
 // If prevStates is provided, event-based workflow triggers will be evaluated.
+// The view has already applied its mutation to m.project in memory; this commits
+// that state through the application layer (workflow cascade + grouped ledger
+// undo) and the shell reloads the tree on the resulting BatchTransactionResultMsg.
 func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*models.Task) tea.Cmd {
-	opts := m.buildWorkflowOpts(prevStates)
-
-	return func() tea.Msg {
-		if err := persistWithWorkflow(opts); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		// Note: m.buildTree() is called by the Update handler on treeRefreshMsg
-		return treeRefreshMsg{}
-	}
+	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(prevStates), "")
 }
 
 // captureTaskStates creates a snapshot of task states for event trigger detection.
@@ -199,27 +208,32 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 	task := m.deleteTarget
 	m.deleteTarget = nil
 
-	m.setUndoContext("Delete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	deleteIDs := collectDescendantIDs(m.project.Tasks, map[string]bool{task.ID: true})
-	m.setUndoTaskIDs(slices.Collect(maps.Keys(deleteIDs)))
 
 	// Exit focus mode if focused task is being deleted
 	if m.focusedTask != nil && m.focusedTask.ID == task.ID {
 		m.focusedTask = nil
 	}
 
-	pf := m.workflowPersistFn()
-	result := applyDeleteTask(pf, m.projectService, m.project, task.ID)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	artifacts, err := m.deleteConfigArtifacts(deleteIDs)
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
+	return m.bulk.Delete([]string{task.ID}, artifacts...)
+}
 
-	// Clean up FocusQueue, DailyPlan, and RecentTaskVisits references.
-	cleanupConfigTaskRefs(m.config, m.configManager, deleteIDs)
-
-	m.buildTree()
-	m.clampCursor()
-	return result.Cmd
+// deleteConfigArtifacts folds the durable planning-ref cleanup (Focus Queue,
+// Daily Plan, dismissals) for the removed subtree into the delete transaction as
+// a config artifact, mirroring the cross-project outliner delete. Machine-local
+// recent visits are repaired by the shell after the commit from RemovedTaskIDs.
+func (m *ProjectTreeModel) deleteConfigArtifacts(deleteIDs map[string]bool) ([]storage.ArtifactChange, error) {
+	if m.config == nil || m.configManager == nil {
+		return nil, nil
+	}
+	if m.config.RemoveDurableTaskRefs(deleteIDs) == 0 {
+		return nil, nil
+	}
+	return configDomainArtifacts(m.configManager, m.config)
 }
 
 // bulkDeleteTasks removes all selected tasks and their children from the project.
@@ -229,30 +243,21 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 		return nil
 	}
 
-	m.setUndoContext("Delete Tasks", fmt.Sprintf("%d tasks", taskCount))
 	allDeleteIDs := collectDescendantIDs(m.project.Tasks, m.selectedTasks)
-	m.setUndoTaskIDs(slices.Collect(maps.Keys(allDeleteIDs)))
 
 	// Exit focus mode if focused task is among those being deleted
 	if m.focusedTask != nil && m.selectedTasks[m.focusedTask.ID] {
 		m.focusedTask = nil
 	}
 
-	pf := m.workflowPersistFn()
-	for taskID := range m.selectedTasks {
-		result := applyDeleteTask(pf, m.projectService, m.project, taskID)
-		if result.Err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: result.Err} }
-		}
+	rootIDs := slices.Collect(maps.Keys(m.selectedTasks))
+
+	artifacts, err := m.deleteConfigArtifacts(allDeleteIDs)
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-
-	// Clean up FocusQueue, DailyPlan, and RecentTaskVisits references.
-	cleanupConfigTaskRefs(m.config, m.configManager, allDeleteIDs)
-
 	m.clearSelection()
-	m.buildTree()
-	m.clampCursor()
-	return func() tea.Msg { return treeRefreshMsg{} }
+	return m.bulk.Delete(rootIDs, artifacts...)
 }
 
 // applyBulkChanges applies bulk edit changes to the given tasks.
@@ -313,9 +318,10 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		// transition is invalid or would complete a parent with incomplete
 		// children, while still applying the other field changes below.
 		applyStatus := false
+		var targetState models.WorkflowState
 		if changes.SetStatus != nil {
-			target := *changes.SetStatus
-			if task.CanTransitionTo(target) == "" && (!target.IsComplete() || !task.HasIncompleteChildren()) {
+			targetState = models.TargetStateForStatus(*changes.SetStatus)
+			if models.CanTransitionState(task.State(), targetState) == "" && (!targetState.IsTerminal() || !task.HasIncompleteChildren()) {
 				applyStatus = true
 			} else {
 				statusSkipped++
@@ -324,7 +330,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 		m.project.MutateTask(task.ID, func(t *models.Task) {
 			if applyStatus {
-				t.ApplyTransition(*changes.SetStatus)
+				t.ApplyStateTransition(targetState)
 			}
 			if changes.SetPriority != nil {
 				t.Priority = *changes.SetPriority
@@ -414,17 +420,10 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		m.project.BuildTaskTree()
 	}
 
-	opts := m.buildWorkflowOpts(prevStates)
+	opts := m.commitWorkflowOpts(prevStates)
 	m.clearSelection()
 
-	// Only I/O in the goroutine
-	return func() tea.Msg {
-		if err := persistWithWorkflow(opts); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		return treeRefreshMsg{}
-	}
+	return m.taskItem.CommitProjectWorkflow(m.project, opts, "")
 }
 
 // archiveCompletedTasks moves all completed tasks to the archive file.

@@ -33,10 +33,10 @@ func (b *projectTreeKeymapBuilder) statusEntries() []keymap.Entry {
 	)
 
 	return b.gateOnTask(keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
+		ChangeState: func(state string) keymap.Action {
+			s := models.WorkflowState(state)
 			return func() (tea.Model, tea.Cmd) {
-				_, cmd := m.handleStatusTransition(s, b.visible())
+				_, cmd := m.handleStateTransition(s, b.visible())
 				return m, cmd
 			}
 		},
@@ -355,23 +355,6 @@ func (b *projectTreeKeymapBuilder) taskPrefixEntries() []keymap.Entry {
 	}))
 }
 
-func (b *projectTreeKeymapBuilder) stageEntries() []keymap.Entry {
-	m := b.model
-
-	return b.gateOnTask(keymap.StageGroup(keymap.StageDeps{
-		Stages: b.stages,
-		ChangeStage: func(stage string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				if key := StageKeyForName(stage, b.stages); key != "" {
-					cmd, _ := handleStagePrefix(key, m, b.stages)
-					return m, cmd
-				}
-				return m, nil
-			}
-		},
-	}))
-}
-
 func (b *projectTreeKeymapBuilder) blockerEntries() []keymap.Entry {
 	m := b.model
 
@@ -408,7 +391,7 @@ func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fs", key) }
 		},
 		DueDateKey: func(key string) keymap.Action {
@@ -434,10 +417,6 @@ func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 			m.scoreFilterInput.Enter(custom)
 			return m, nil
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("F.", key) }
-		},
-		StageFilterNames: b.stages,
 	})
 	if len(entries) > 0 && entries[0].PrefixNode != nil {
 		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children,

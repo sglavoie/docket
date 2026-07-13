@@ -8,8 +8,8 @@ import (
 
 func TestMatchesTrigger_Status(t *testing.T) {
 	task := &models.Task{
-		ID:     "task-1",
-		Status: models.StatusBlocked,
+		ID:            "task-1",
+		WorkflowState: models.StateWaiting,
 	}
 
 	tests := []struct {

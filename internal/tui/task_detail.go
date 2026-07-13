@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TaskDetailModel is a full-screen read-only view of a single task.
@@ -19,6 +20,12 @@ type TaskDetailModel struct {
 	project       *models.Project
 	config        *config.Config
 	configManager *config.Manager
+
+	// taskItem routes the detail view's own status/priority mutations through the
+	// application-layer single-task coordinator. The shell wires it via
+	// SetTaskItemCoordinator (taskItemWireable) from showView; a zero value is
+	// only reachable in isolated tests that never dispatch a mutation.
+	taskItem TaskItemCoordinator
 
 	scrollOffset      int
 	totalLines        int
@@ -38,6 +45,30 @@ type TaskDetailModel struct {
 
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
 func (m *TaskDetailModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
+
+// SetTaskItemCoordinator injects the application-layer single-task coordinator
+// so the detail view's status/priority mutations commit through the ledger
+// (taskItemWireable). Wired by the shell from showView/replaceView.
+func (m *TaskDetailModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem = c }
+
+// refreshAfterReload reloads the detail view's project from disk and re-resolves
+// the shown task after a coordinator commit. The single-task coordinator commits
+// to disk and reloads the shell's shared project pointer, but the detail view may
+// hold a distinct (e.g. cross-project) pointer, so it reloads its own copy here.
+// Called by the shell's refreshTaskViewsAfterSave after every committed mutation.
+func (m *TaskDetailModel) refreshAfterReload() {
+	if m.project == nil || m.task == nil {
+		return
+	}
+	if err := storage.LoadProject(m.project); err != nil {
+		logging.Warn("failed to reload project %s in task detail: %v", m.project.Name, err)
+		return
+	}
+	if fresh := m.project.GetTaskByID(m.task.ID); fresh != nil {
+		m.task = fresh
+		m.renderedDesc = ""
+	}
+}
 
 // NewTaskDetailModel creates a new task detail view.
 func NewTaskDetailModel(task *models.Task, project *models.Project, cfg *config.Config, mgr *config.Manager) *TaskDetailModel {
@@ -122,20 +153,12 @@ func (m *TaskDetailModel) prefixHints() PrefixHints {
 	if m.task != nil {
 		statusHints := make([]PrefixHint, len(StatusPrefixHints))
 		copy(statusHints, StatusPrefixHints)
+		state := m.task.State()
 		for i := range statusHints {
-			switch statusHints[i].Key {
-			case "s":
-				statusHints[i].Active = m.task.Status == models.StatusInProgress
-			case "d":
-				statusHints[i].Active = m.task.Status == models.StatusDone
-			case "b":
-				statusHints[i].Active = m.task.Status == models.StatusBlocked
-			case "x":
-				statusHints[i].Active = m.task.Status == models.StatusCanceled
-			case "o":
-				statusHints[i].Active = m.task.Status == models.StatusTodo
-			case "r":
-				statusHints[i].Active = m.task.Status == models.StatusReview
+			// Each "," prefix key maps directly to the workflow state it applies;
+			// the hint is active when the task is already in that state.
+			if target, ok := StateForPrefixKey(statusHints[i].Key); ok {
+				statusHints[i].Active = state == target
 			}
 		}
 		hints[","] = statusHints

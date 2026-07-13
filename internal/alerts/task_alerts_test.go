@@ -239,7 +239,7 @@ func TestCheckStaleTasks_CompletedIgnored(t *testing.T) {
 func TestCheckStaleTasks_SomedayIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	task := testTask("someday stale", models.StatusTodo, now.AddDate(0, 0, -30))
-	task.Section = models.SectionSomeday
+	task.WorkflowState = models.StateSomeday
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
@@ -265,7 +265,7 @@ func TestCheckInboxBacklog_AboveThreshold(t *testing.T) {
 	for i := range 6 {
 		task := testTask("inbox", models.StatusTodo, now)
 		task.ID = "inbox-" + string(rune('a'+i))
-		task.Section = models.SectionInbox
+		task.WorkflowState = models.StateInbox
 		tasks = append(tasks, task)
 	}
 
@@ -287,7 +287,7 @@ func TestCheckInboxBacklog_ProjectContextStoredSeparately(t *testing.T) {
 	for i := range 6 {
 		task := testTask("inbox", models.StatusTodo, now)
 		task.ID = "inbox-" + string(rune('a'+i))
-		task.Section = models.SectionInbox
+		task.WorkflowState = models.StateInbox
 		tasks = append(tasks, task)
 	}
 
@@ -312,7 +312,7 @@ func TestCheckInboxBacklog_ProjectContextStoredSeparately(t *testing.T) {
 func TestCheckInboxBacklog_BelowThreshold(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	task := testTask("inbox1", models.StatusTodo, now)
-	task.Section = models.SectionInbox
+	task.WorkflowState = models.StateInbox
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkInboxBacklog(DefaultAlertConfig(), projects, now)
@@ -339,7 +339,7 @@ func TestCheckInboxBacklog_SnoozedInboxIgnored(t *testing.T) {
 	for i := range 6 {
 		task := testTask("snoozed-inbox", models.StatusTodo, now)
 		task.ID = "snoozed-" + string(rune('a'+i))
-		task.Section = models.SectionInbox
+		task.WorkflowState = models.StateInbox
 		task.SnoozedUntil = &snoozeDate
 		tasks = append(tasks, task)
 	}
@@ -375,7 +375,9 @@ func TestCheckInboxBacklog_CompletedInboxIgnored(t *testing.T) {
 	for i := range 6 {
 		task := testTask("done-inbox", models.StatusDone, now)
 		task.ID = "done-" + string(rune('a'+i))
-		task.Section = models.SectionInbox
+		// A completed task resolves to StateDone even though it was captured in
+		// the inbox; the checker must not count it toward the inbox backlog.
+		task.WorkflowState = models.StateDone
 		tasks = append(tasks, task)
 	}
 

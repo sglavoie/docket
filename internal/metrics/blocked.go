@@ -94,8 +94,9 @@ func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEn
 		}
 	}
 
-	// If still in a blocked period and task is currently blocked, extend to now
-	if inBlockedPeriod && t.Status == models.StatusBlocked {
+	// If still in a blocked period and task is currently blocked, extend to now.
+	// The legacy blocked status maps to the canonical StateWaiting.
+	if inBlockedPeriod && t.IsInState(models.StateWaiting) {
 		duration := blockedDurationInRange(blockedStart, now, cutoff, now)
 		if duration > 0 {
 			entry.TotalBlocked = addDurationSaturating(entry.TotalBlocked, duration)

@@ -206,19 +206,19 @@ func TestProjectTreeCompletedAndCanceledRowsAreQuiet(t *testing.T) {
 	today := time.Now()
 
 	done := newTestProjectTreeTask(t, "Completed overdue task")
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 	done.DueDate = &yesterday
 
 	canceled := newTestProjectTreeTask(t, "Canceled overdue task")
-	canceled.Status = models.StatusCanceled
+	canceled.WorkflowState = models.StateCanceled
 	canceled.DueDate = &yesterday
 
 	doneToday := newTestProjectTreeTask(t, "Completed closed task")
-	doneToday.Status = models.StatusDone
+	doneToday.WorkflowState = models.StateDone
 	doneToday.DueDate = &today
 
 	canceledToday := newTestProjectTreeTask(t, "Canceled closed task")
-	canceledToday.Status = models.StatusCanceled
+	canceledToday.WorkflowState = models.StateCanceled
 	canceledToday.DueDate = &today
 
 	project := newTestProjectTreeProject(t, "Quiet", []*models.Task{done, canceled, doneToday, canceledToday})
@@ -237,13 +237,13 @@ func TestProjectTreeCompletedAndCanceledRowsAreQuiet(t *testing.T) {
 		}
 		line := ansi.Strip(m.renderNodeWithWidth(node, false, false, width))
 		if strings.Contains(line, "Overdue") {
-			t.Fatalf("quiet %s row should not carry overdue inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not carry overdue inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 		if strings.Contains(line, yesterday.Format("Jan 2")) {
-			t.Fatalf("quiet %s row should not surface due text inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not surface due text inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 		if strings.Contains(line, "Today") {
-			t.Fatalf("quiet %s row should not carry due-today inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not carry due-today inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 	}
 }

@@ -26,7 +26,7 @@ func TestApplyAction_AddTagSilentValidationFailure(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{ID: "t1", Status: models.StatusTodo}
+			task := &models.Task{ID: "t1", WorkflowState: models.StateReady}
 			action := RuleAction{ActionType: ActionAddTag, Value: tc.value}
 
 			modified := applyAction(task, action)
@@ -41,7 +41,7 @@ func TestApplyAction_AddTagSilentValidationFailure(t *testing.T) {
 	}
 
 	t.Run("valid tag still reports modification", func(t *testing.T) {
-		task := &models.Task{ID: "t1", Status: models.StatusTodo}
+		task := &models.Task{ID: "t1", WorkflowState: models.StateReady}
 		action := RuleAction{ActionType: ActionAddTag, Value: "valid-tag"}
 
 		if !applyAction(task, action) {

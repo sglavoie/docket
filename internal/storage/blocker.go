@@ -230,6 +230,26 @@ func renderBlockersMarkdown(blockers []*models.Blocker) string {
 	return b.String()
 }
 
+// RenderBlockersContent renders a project's blockers to the canonical blockers.md
+// body. It exposes the byte form so a caller (the application layer) can commit
+// the whole blocker list as a transaction artifact instead of writing the file
+// directly through SaveBlockers.
+func RenderBlockersContent(blockers []*models.Blocker) string {
+	return renderBlockersMarkdown(blockers)
+}
+
+// ParseBlockersContent parses blockers.md content into Blocker structs, the inverse
+// of RenderBlockersContent.
+func ParseBlockersContent(content string) ([]*models.Blocker, error) {
+	return parseBlockersMarkdown(content)
+}
+
+// BlockersFilePath returns the absolute path to a project's blockers.md file, so a
+// caller can address it as a transaction artifact target.
+func BlockersFilePath(project *models.Project) string {
+	return blockersPath(project)
+}
+
 // FindBlockerByPrefix finds a blocker by ID prefix (for CLI convenience).
 func FindBlockerByPrefix(blockers []*models.Blocker, prefix string) *models.Blocker {
 	prefix = strings.ToLower(prefix)

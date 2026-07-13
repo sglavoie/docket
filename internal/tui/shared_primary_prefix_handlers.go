@@ -34,70 +34,16 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	if task == nil {
 		return nil, true
 	}
-	v.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
-	result := applyPriorityChange(v.workflowPersistFn(), project, task.ID, priority)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
-	}
-	if result.StatusMessage != "" {
-		v.setStatusMessage(result.StatusMessage)
-	}
-	v.setMutationFlash(priorityMutationFlashBg(priority))
-	v.refreshView()
-	return tea.Batch(result.Cmd, mutationFlashTimeout(), recordRepeatPriority(priority)), true
-}
-
-// handleStagePrefix handles the s prefix key for setting workflow stage.
-// Returns (cmd, handled). When handled is false the key was not recognized.
-func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, bool) {
-	stage := StageForPrefixKey(key, stages)
-	if stage == nil {
-		return nil, false
-	}
-
-	project := v.getProject()
-
-	if tasks := v.getMultiSelectedTasks(); tasks != nil {
-		prevStates := captureTaskStates(project.Tasks)
-		count := 0
-		for _, t := range tasks {
-			if t.Stage != *stage {
-				project.MutateTask(t.ID, func(mt *models.Task) {
-					mt.Stage = *stage
-				})
-				count++
-			}
-		}
-		v.clearMultiSelect()
-		label := *stage
-		if label == "" {
-			label = "cleared"
-		}
-		msg := fmt.Sprintf("Set stage %s on %d tasks (u to undo)", label, count)
-		v.setUndoContext("Set Stage", msg)
-		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
-		v.setStatusMessage(msg)
-		return v.saveAndRefreshBulk(prevStates), true
-	}
-
-	task := v.getCursorTask()
-	if task == nil {
+	if task.Priority == priority {
 		return nil, true
 	}
-	label := *stage
-	if label == "" {
-		label = "(cleared)"
+	cmd := v.singleTaskCoordinator().SetPriority(task.ID, priority)
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		return func() tea.Msg { return ErrorMsg{Err: em.Err} }, true
 	}
-	v.setUndoContext("Set Stage", fmt.Sprintf("%s: %s", label, task.Title))
-	result := applyStageChange(v.workflowPersistFn(), project, task.ID, *stage)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
-	}
-	if result.StatusMessage != "" {
-		v.setStatusMessage(result.StatusMessage)
-	}
-	v.refreshView()
-	return tea.Batch(result.Cmd, recordRepeatStage(*stage)), true
+	v.setMutationFlash(priorityMutationFlashBg(priority))
+	return tea.Batch(func() tea.Msg { return msg }, mutationFlashTimeout(), recordRepeatPriority(priority)), true
 }
 
 // handleDueDatePrefix handles the d prefix key for setting due dates.
@@ -119,25 +65,25 @@ func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 		if task == nil {
 			return nil, true
 		}
-		var result TaskOpResult
+		var cmd tea.Cmd
 		var recordCmd tea.Cmd
 		if isClear {
-			v.setUndoContext("Set Due Date", fmt.Sprintf("cleared: %s", task.Title))
-			result = applyClearDueDate(v.workflowPersistFn(), project, task.ID)
+			if task.DueDate == nil {
+				v.setStatusMessage("Task has no due date")
+				return nil, true
+			}
+			cmd = v.singleTaskCoordinator().SetDueDate(task.ID, nil, false)
 			recordCmd = recordRepeatClearDueDate()
 		} else {
-			v.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), task.Title))
-			result = applyQuickDueDate(v.workflowPersistFn(), project, task.ID, days)
+			due, _ := dueDateFromDays(days, false)
+			cmd = v.singleTaskCoordinator().SetDueDate(task.ID, due, false)
 			recordCmd = recordRepeatQuickDueDate(days)
 		}
-		if result.Err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+		msg := cmd()
+		if em, ok := msg.(TransactionErrorMsg); ok {
+			return func() tea.Msg { return ErrorMsg{Err: em.Err} }, true
 		}
-		if result.StatusMessage != "" {
-			v.setStatusMessage(result.StatusMessage)
-		}
-		v.refreshView()
-		return tea.Batch(result.Cmd, recordCmd), true
+		return tea.Batch(func() tea.Msg { return msg }, recordCmd), true
 	}
 
 	if key == "d" {
@@ -316,21 +262,20 @@ func handleToggleKey(v prefixableView, spec toggleSpec, undoAction, bulkLabel st
 	if task == nil {
 		return nil, true
 	}
-	v.setUndoContext(undoAction, task.Title)
-	result := applyToggleBool(v.workflowPersistFn(), project, task.ID, spec)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	var cmd tea.Cmd
+	switch spec.kind {
+	case toggleFlagPinned:
+		cmd = v.singleTaskCoordinator().SetPinned(task.ID, !task.Pinned)
+	case toggleFlagDimmed:
+		cmd = v.singleTaskCoordinator().ToggleDimmed(task.ID)
+	default:
+		return nil, true
 	}
-	if result.StatusMessage != "" {
-		v.setStatusMessage(result.StatusMessage)
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		return func() tea.Msg { return ErrorMsg{Err: em.Err} }, true
 	}
-	v.refreshView()
-	return result.Cmd, true
-}
-
-// handleToggleActiveKey handles the * key for toggling the Active flag.
-func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
-	return handleToggleKey(v, toggleActive, "Toggle Active", "active")
+	return func() tea.Msg { return msg }, true
 }
 
 // handleTogglePinnedKey handles the tp prefix key for toggling the Pinned flag.

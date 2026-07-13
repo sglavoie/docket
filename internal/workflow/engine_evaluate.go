@@ -260,7 +260,7 @@ func shouldSkipAllChildrenDoneRecomplete(task, prev *models.Task, rule WorkflowR
 	if task == nil || prev == nil {
 		return false
 	}
-	if !prev.Status.IsComplete() || task.Status.IsComplete() {
+	if !prev.IsTerminalState() || task.IsTerminalState() {
 		return false
 	}
 	if action.ActionType != ActionSetStatus {

@@ -471,7 +471,7 @@ func (p *Project) ReconcileParentCompletion() []string {
 	for changed := true; changed; {
 		changed = false
 		for _, t := range p.Tasks {
-			if t.Status.IsComplete() && t.HasIncompleteChildren() {
+			if t.IsTerminalState() && t.HasIncompleteChildren() {
 				t.Uncomplete()
 				reopened = append(reopened, t.ID)
 				changed = true

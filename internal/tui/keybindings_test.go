@@ -185,10 +185,10 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
 		"g", "gg", "gp", "n", "N",
 		"f", "fp",
-		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS", "F.",
+		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS",
 		"1", "2", "3", "4", "5", "0",
 		",", ",d", "!", "!1", "d", "dd", "z", "zd", "m", "mn", "c", "cb", "t", "tn", "tN", "tD",
-		"s", "s0", "b", "bb", "o", "D", "e", "*", "S", "O", "ctrl+b", "ctrl+.",
+		"b", "bb", "o", "D", "e", "S", "O", "ctrl+b", "ctrl+.",
 	} {
 		if !slices.Contains(keys, key) {
 			t.Errorf("FocusBoard HandledKeys missing canonical key %q", key)
@@ -223,7 +223,6 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: "o", Description: "View task details"},
 		{Key: "D", Description: "Mark done"},
 		{Key: "e", Description: "Edit task"},
-		{Key: "*", Description: "Toggle active flag"},
 		{Key: "S", Description: "Edit score dimensions"},
 		{Key: "O", Description: "Open URL in browser"},
 		{Key: "ctrl+b", Description: "Move task to project"},

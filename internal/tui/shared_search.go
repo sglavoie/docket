@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -34,10 +35,11 @@ func TaskMatchesSearch(task *models.Task, query string) bool {
 }
 
 // TaskMatchesStructuredSearch parses structured filters from the query, applies
-// them, and then fuzzy-matches the remaining text portion.
-func TaskMatchesStructuredSearch(task *models.Task, query string) bool {
+// them, and then fuzzy-matches the remaining text portion. The config resolves
+// Focus Queue membership for active-flag filters.
+func TaskMatchesStructuredSearch(task *models.Task, query string, cfg *config.Config) bool {
 	parsed := ParseSearchQuery(query)
-	if !TaskMatchesFilters(task, parsed) {
+	if !TaskMatchesFilters(task, parsed, cfg) {
 		return false
 	}
 	return TaskMatchesSearch(task, parsed.TextQuery)

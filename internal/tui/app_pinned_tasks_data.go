@@ -31,7 +31,7 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 			if task == nil {
 				continue
 			}
-			if task.Pinned && !task.Status.IsComplete() {
+			if task.Pinned && !task.IsComplete() {
 				info := pinnedTaskInfo{
 					Title:       task.Title,
 					ShortID:     task.ShortID,

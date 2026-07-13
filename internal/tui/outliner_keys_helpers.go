@@ -78,45 +78,42 @@ func (m *OutlinerModel) collapseToDepth(depth int) {
 	m.rebuildRows()
 }
 
-// sendTaskToSection moves the cursor task to the specified section.
+// sendTaskToSection moves the cursor task to the specified section through the
+// canonical single-task coordinator (app Service.SetSection). This is the
+// finalized retired-section decision: the coordinator writes only the GTD
+// section field (resyncing the derived workflow state); the legacy overlay
+// composition — reviving the retired Active flag when the section is empty and
+// RelocateTaskToEndOfSection cosmetic reordering — is intentionally NOT applied.
+// The coordinator commits one ledger-backed transaction and the shell owns
+// reload + toast. Mirrors the cross-project crossSendTaskToSection.
 func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (tea.Model, tea.Cmd) {
 	if task == nil {
 		return m, nil
 	}
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.SetSection(section)
-		if section == "" {
-			t.Activate()
-		}
-	})
-	m.project.RelocateTaskToEndOfSection(task.ID, section)
-	label := "Move to " + section
-	if section == "" {
-		label = "Move to Active"
-	}
-	m.setUndoContext(label, task.Title)
-	m.undo.TaskIDs = []string{task.ID}
-	m.rebuildRows()
-	return m, m.saveWithWorkflow()
+	return m, m.taskItem.SetSection(task.ID, section)
 }
 
 // sendTasksToSectionBulk moves all selected tasks to the specified section.
+// It applies the canonical Task.SetSection to each selected task and commits
+// once atomically — the retired Active flag and RelocateTaskToEndOfSection
+// cosmetic reorder are intentionally NOT applied, matching sendTaskToSection's
+// finalized retired-section behavior. This multi-task path stays on the atomic
+// workflow save (there is no bulk SetSection coordinator seam; looping the
+// single-task coordinator would commit each task as a separate last-write-wins
+// transaction and lose updates); the coordinator migration for outliner bulk
+// section is deferred to the later bulk-owning child.
 func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.Cmd) {
 	count := 0
 	for id := range m.selectedTasks {
 		if m.project.MutateTask(id, func(t *models.Task) {
 			t.SetSection(section)
-			if section == "" {
-				t.Activate()
-			}
 		}) {
-			m.project.RelocateTaskToEndOfSection(id, section)
 			count++
 		}
 	}
 	label := "Move to " + section
 	if section == "" {
-		label = "Move to Active"
+		label = "Move to Ready"
 	}
 	selectedIDs := make([]string, 0, len(m.selectedTasks))
 	for id := range m.selectedTasks {
@@ -180,55 +177,24 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 	return m, m.saveWithWorkflow()
 }
 
-// crossMoveTaskToPosition handles moveTaskToPosition in cross-project mode.
+// crossMoveTaskToPosition handles moveTaskToPosition in cross-project mode by
+// delegating to the app-layer MoveToTop/MoveToBottom seams. Those bubble the task
+// to the edge of its MODEL-order siblings (honoring the same root completion
+// boundary) and commit one ledger transaction; the shell reloads the cross
+// outliner. This is the documented VISIBLE-vs-MODEL ordering decision for the
+// cross-project structural mutations: at the sibling edge, model-order and the
+// legacy visible-order converge on the same terminal position, so move-to-top /
+// move-to-bottom keep their user-visible outcome while unifying on the app layer's
+// single source of truth.
 func (m *OutlinerModel) crossMoveTaskToPosition(task *models.Task, toTop bool) (tea.Model, tea.Cmd) {
-	row, proj, ok := m.crossGetMutationTarget()
+	row, _, ok := m.crossGetMutationTarget()
 	if !ok || row.task.ID != task.ID {
 		return m, nil
 	}
-	siblings := m.visibleSiblings(m.cursor)
-	idx := -1
-	for i, s := range siblings {
-		if s.ID == task.ID {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		return m, nil
-	}
-	if toTop && idx == 0 {
-		return m, nil
-	}
-	if !toTop && idx == len(siblings)-1 {
-		return m, nil
-	}
 	if toTop {
-		for i := idx - 1; i >= 0; i-- {
-			if task.IsRoot() && task.IsComplete() && !siblings[i].IsComplete() {
-				break
-			}
-			proj.SwapTasks(task, siblings[i])
-		}
-	} else {
-		for i := idx + 1; i < len(siblings); i++ {
-			if task.IsRoot() && !task.IsComplete() && siblings[i].IsComplete() {
-				break
-			}
-			proj.SwapTasks(task, siblings[i])
-		}
+		return m, m.taskItem.MoveToTop(task.ID)
 	}
-	label := "Move to Top"
-	if !toTop {
-		label = "Move to Bottom"
-	}
-	projectID := proj.ID
-	taskID := task.ID
-	m.crossUndoCtx.Set(label, task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{projectID}
-	m.rebuildRows()
-	m.moveCursorToProjectTask(taskID, projectID)
-	return m, m.crossSaveProject(proj)
+	return m, m.taskItem.MoveToBottom(task.ID)
 }
 
 // jumpToNextSection moves the cursor to the next (direction=1) or previous

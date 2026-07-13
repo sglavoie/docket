@@ -45,12 +45,12 @@ func TestPerformTargetedUndo(t *testing.T) {
 		taskMap[task.ID] = task
 	}
 
-	if taskMap["task-a"].Status != models.StatusTodo {
-		t.Errorf("expected task-a status 'todo', got %q", taskMap["task-a"].Status)
+	if taskMap["task-a"].State() != models.StateReady {
+		t.Errorf("expected task-a state 'ready', got %q", taskMap["task-a"].State())
 	}
 
-	if taskMap["task-b"].Status != models.StatusDone {
-		t.Errorf("expected task-b status 'done' (side effect preserved), got %q", taskMap["task-b"].Status)
+	if taskMap["task-b"].State() != models.StateDone {
+		t.Errorf("expected task-b state 'done' (side effect preserved), got %q", taskMap["task-b"].State())
 	}
 }
 
@@ -93,12 +93,12 @@ func TestPerformTargetedRedo(t *testing.T) {
 		taskMap[task.ID] = task
 	}
 
-	if taskMap["task-a"].Status != models.StatusDone {
-		t.Errorf("expected task-a status 'done' after redo, got %q", taskMap["task-a"].Status)
+	if taskMap["task-a"].State() != models.StateDone {
+		t.Errorf("expected task-a state 'done' after redo, got %q", taskMap["task-a"].State())
 	}
 
-	if taskMap["task-b"].Status != models.StatusDone {
-		t.Errorf("expected task-b status 'done' after redo, got %q", taskMap["task-b"].Status)
+	if taskMap["task-b"].State() != models.StateDone {
+		t.Errorf("expected task-b state 'done' after redo, got %q", taskMap["task-b"].State())
 	}
 }
 
@@ -155,7 +155,7 @@ func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
 			ShortID:   1,
 			Type:      models.TaskTypeTask,
 			Title:     "Existing child",
-			Status:    models.StatusTodo,
+			WorkflowState: models.StateReady,
 			Priority:  3,
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -174,7 +174,7 @@ func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
 			ShortID:   2,
 			Type:      models.TaskTypeTask,
 			Title:     "New parent",
-			Status:    models.StatusTodo,
+			WorkflowState: models.StateReady,
 			Priority:  3,
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -184,7 +184,7 @@ func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
 			ShortID:   1,
 			Type:      models.TaskTypeTask,
 			Title:     "Existing child",
-			Status:    models.StatusTodo,
+			WorkflowState: models.StateReady,
 			Priority:  3,
 			ParentID:  &parentID,
 			DependsOn: []string{parentID, "keep-dep"},
@@ -324,7 +324,7 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 			ShortID:   1,
 			Type:      models.TaskTypeTask,
 			Title:     "Task A",
-			Status:    models.StatusTodo,
+			WorkflowState: models.StateReady,
 			Priority:  3,
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -342,7 +342,7 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 			ShortID:   2,
 			Type:      models.TaskTypeTask,
 			Title:     "Task B",
-			Status:    models.StatusTodo,
+			WorkflowState: models.StateReady,
 			Priority:  2,
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -368,7 +368,7 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 			ShortID:   1,
 			Type:      models.TaskTypeTask,
 			Title:     "Task A",
-			Status:    models.StatusTodo,
+			WorkflowState: models.StateReady,
 			Priority:  3,
 			CreatedAt: now,
 			UpdatedAt: now.Add(2 * time.Hour),
@@ -387,7 +387,7 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 			ShortID:   2,
 			Type:      models.TaskTypeTask,
 			Title:     "Task B",
-			Status:    models.StatusDone,
+			WorkflowState: models.StateDone,
 			Priority:  2,
 			CreatedAt: now,
 			UpdatedAt: now.Add(2 * time.Hour),
@@ -439,8 +439,8 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 	if taskB.Decisions[0].Text != "Build a web UI" {
 		t.Errorf("task-b decision text = %q, want %q", taskB.Decisions[0].Text, "Build a web UI")
 	}
-	if taskB.Status != models.StatusDone {
-		t.Errorf("task-b status = %q, want %q", taskB.Status, models.StatusDone)
+	if taskB.State() != models.StateDone {
+		t.Errorf("task-b state = %q, want %q", taskB.State(), models.StateDone)
 	}
 }
 
@@ -450,7 +450,7 @@ func TestRestoreTaskFieldsPreservesStartDateAndEstimatedDays(t *testing.T) {
 		ID:            "test-id",
 		StartDate:     &startDate,
 		EstimatedDays: 5.5,
-		Status:        models.StatusTodo,
+		WorkflowState: models.StateReady,
 		Title:         "Task with scheduling",
 	}
 
@@ -482,7 +482,7 @@ func TestRestoreTaskFieldsPreservesHasTime(t *testing.T) {
 	src := &models.Task{
 		ID:      "test-id",
 		HasTime: true,
-		Status:  models.StatusTodo,
+		WorkflowState: models.StateReady,
 		Title:   "Task with time",
 	}
 	restoreTaskFields(dst, src)

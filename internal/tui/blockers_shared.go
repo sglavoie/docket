@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
@@ -96,6 +98,21 @@ func (s *blockerViewState) hasTextInput() bool {
 
 func (s *blockerViewState) shouldCaptureEsc() bool {
 	return s.expandedView || s.confirm.IsActive() || s.addMode || s.editMode
+}
+
+// commitBlockersThroughCoordinator replaces a project's whole blocker list as
+// one application-layer transaction and adapts the coordinator's message
+// contract back to the data-source error contract the shared blocker actions
+// consume. The views keep their local slices as the render source of truth,
+// exactly as they did around the old storage.SaveBlockers call.
+func commitBlockersThroughCoordinator(c BlockerCoordinator, project *models.Project, blockers []*models.Blocker) error {
+	if project == nil {
+		return fmt.Errorf("no project available")
+	}
+	if errMsg, ok := c.Set(project.ID, blockers)().(TransactionErrorMsg); ok {
+		return errMsg.Err
+	}
+	return nil
 }
 
 // blockerDataSource abstracts the differences between project-local and global blocker views.

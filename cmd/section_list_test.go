@@ -15,9 +15,9 @@ func TestSectionList(t *testing.T) {
 		project.EnsureSection(models.SectionWaiting)
 
 		task1 := testutil.NewTestTask("Task 1", models.TaskTypeTask)
-		task1.Section = models.SectionInbox
+		task1.SetSection(models.SectionInbox)
 		task2 := testutil.NewTestTask("Task 2", models.TaskTypeTask)
-		task2.Section = models.SectionWaiting
+		task2.SetSection(models.SectionWaiting)
 		project.Tasks = append(project.Tasks, task1, task2)
 
 		deps.Repository.Projects[project.ID] = project

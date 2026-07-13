@@ -16,10 +16,10 @@ import (
 func TestRoundTrip_PlainAttachmentNamedLikeCodeOrURL(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	task := &models.Task{
-		ID:       "t1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "t1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		Attachments: []models.Attachment{
 			{Filename: "code:weird.txt", AddedAt: now},
 			{Filename: "url:also-weird.txt", AddedAt: now},
@@ -79,11 +79,11 @@ func TestRoundTrip_EscapeNewlinesIncludesCR(t *testing.T) {
 func TestRoundTrip_BugWorkaroundWithCRLF(t *testing.T) {
 	original := "Step 1: restart\r\nStep 2: retry"
 	task := &models.Task{
-		ID:       "bug-1",
-		Type:     models.TaskTypeBug,
-		Status:   models.StatusTodo,
-		Priority: 2,
-		BugAttrs: &models.BugAttrs{Workaround: original},
+		ID:            "bug-1",
+		Type:          models.TaskTypeBug,
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		BugAttrs:      &models.BugAttrs{Workaround: original},
 	}
 	parsed := &models.Task{Type: models.TaskTypeBug}
 	if w := parseWrittenMetadata(task, parsed); len(w) != 0 {

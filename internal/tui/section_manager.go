@@ -94,7 +94,7 @@ func (m *SectionManagerModel) buildSectionList() {
 	}
 	sectionCounts := make(map[string]int)
 	for _, task := range proj.Tasks {
-		section := task.Section
+		section := taskSectionBucket(task)
 		if section != "" && !models.IsGTDSection(section) {
 			section = ""
 		}

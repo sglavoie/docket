@@ -201,8 +201,8 @@ Description here.
 	if t2.ID != "t2" {
 		t.Errorf("expected ID 't2', got %q", t2.ID)
 	}
-	if t2.Status != models.StatusInProgress {
-		t.Errorf("expected status in_progress, got %q", t2.Status)
+	if t2.State() != models.StateInProgress {
+		t.Errorf("expected state in_progress, got %q", t2.State())
 	}
 }
 
@@ -231,8 +231,8 @@ func TestParseTasksMarkdown_CorruptedMetadataValues(t *testing.T) {
 	if t1.ID != "t1" {
 		t.Errorf("expected ID 't1', got %q", t1.ID)
 	}
-	if t1.Status != models.StatusTodo {
-		t.Errorf("expected status todo, got %q", t1.Status)
+	if t1.State() != models.StateReady {
+		t.Errorf("expected state ready, got %q", t1.State())
 	}
 
 	t2 := result.Tasks[1]

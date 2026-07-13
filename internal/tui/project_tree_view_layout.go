@@ -160,15 +160,15 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	}
 
 	// Stats by status (compact for narrower width)
-	statusCounts := make(map[models.TaskStatus]int)
+	stateCounts := make(map[models.WorkflowState]int)
 	for _, task := range m.project.Tasks {
-		statusCounts[task.Status]++
+		stateCounts[task.State()]++
 	}
 
 	var statusStats []string
-	for _, s := range models.AllTaskStatuses() {
-		if count := statusCounts[s]; count > 0 {
-			style := GetStatusStyle(string(s))
+	for _, s := range models.AllWorkflowStates() {
+		if count := stateCounts[s]; count > 0 {
+			style := GetStateStyle(s)
 			statusStats = append(statusStats, style.Render(fmt.Sprintf("%s:%d", s.Icon(), count)))
 		}
 	}

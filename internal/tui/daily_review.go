@@ -92,8 +92,10 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
 				if confirmed, handled := m.HandleConfirmKey(key); handled {
 					if confirmed {
-						model, cmd := taskOpsDeleteTask(m)
-						return model, cmd, true
+						// Delete through the coordinator-backed workflow path (folds the
+						// durable planning-ref cleanup into the same transaction); the shell
+						// reloads Daily Review from the async BatchTransactionResultMsg.
+						return m, wfDeleteTask(m, m.getConfig(), m.getConfigManager()), true
 					}
 					return m, nil, true
 				}

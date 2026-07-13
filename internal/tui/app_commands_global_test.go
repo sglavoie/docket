@@ -93,16 +93,11 @@ func TestGlobalCommands_AskAI(t *testing.T) {
 	}
 }
 
-func TestGlobalCommands_StagesSettings(t *testing.T) {
+func TestGlobalCommands_NoStagesSettings(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.globalCommands()
-	cmd := findCommand(cmds, "stages settings")
-	if cmd == nil {
-		t.Fatal("expected 'stages settings' command")
-	}
-	msg := cmd.Handler()
-	if _, ok := msg.(SettingsStagesMsg); !ok {
-		t.Errorf("expected SettingsStagesMsg, got %T", msg)
+	if cmd := findCommand(cmds, "stages settings"); cmd != nil {
+		t.Fatal("stages settings command should be retired")
 	}
 }
 

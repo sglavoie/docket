@@ -79,16 +79,10 @@ func runBulkPickerBatchCmd(t *testing.T, cmd tea.Cmd) []tea.Msg {
 	return msgs
 }
 
-func requireBulkPickerSaveComplete(t *testing.T, msgs []tea.Msg) {
-	t.Helper()
-	for _, msg := range msgs {
-		if _, ok := msg.(SaveCompleteMsg); ok {
-			return
-		}
-	}
-	t.Fatalf("expected SaveCompleteMsg, got %#v", msgs)
-}
-
+// assertBulkPickerUndoTaskIDs reads a project's per-project .undo/meta.json and
+// asserts the most recent entry's task IDs. Used by flows that still persist
+// through the legacy per-project undo (e.g. park), NOT by the migrated shared
+// picker/palette paths (which record through the workspace ledger).
 func assertBulkPickerUndoTaskIDs(t *testing.T, project *models.Project, want []string) {
 	t.Helper()
 

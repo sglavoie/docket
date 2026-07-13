@@ -55,8 +55,8 @@ func TestDashboardNoLongerRendersPlannedTodayRecommendation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	planned.Status = models.StatusInProgress
-	planned.Section = models.SectionNext
+	planned.WorkflowState = models.StateInProgress
+	planned.SetSection(models.SectionNext)
 	project.Tasks = []*models.Task{planned}
 	cfg.Projects = []*models.Project{project}
 	todayKey := util.StartOfDay(time.Now()).Format(util.DateFormat)
@@ -93,7 +93,7 @@ func TestDashboardNoLongerRendersPlannedTodayRecommendation(t *testing.T) {
 func TestDashboardNoLongerRendersInboxOnlyRecommendation(t *testing.T) {
 	project := testutil.NewTestProject("Inboxy")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inbox}
 
 	m := dashboardWithProjects(120, 30, []*models.Project{project})

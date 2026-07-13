@@ -40,7 +40,10 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		if auditErr := auditLoadedProject(project); auditErr != nil {
 			return nil, auditErr
 		}
-		return &ProjectLoadResult{}, nil
+		// A missing tasks file is a successful load of an empty project; return a
+		// non-nil (empty) migration audit so callers can rely on it being present
+		// whenever the load succeeds.
+		return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tasks file: %w", err)
@@ -69,13 +72,15 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	project.BuildTaskTree()
 
 	validateCrossProjectRefs(project, result)
-	reassignUnknownSections(project, result)
 	populateProjectWarnings(project, result.Warnings)
 	if err := auditLoadedProject(project); err != nil {
 		return nil, err
 	}
 
-	return &ProjectLoadResult{Warnings: result.Warnings}, nil
+	return &ProjectLoadResult{
+		Warnings:       result.Warnings,
+		MigrationAudit: NewMigrationAudit(project.ID, result.MigrationAudit),
+	}, nil
 }
 
 func validateCrossProjectRefs(project *models.Project, result *ParseResult) {
@@ -85,10 +90,10 @@ func validateCrossProjectRefs(project *models.Project, result *ParseResult) {
 		task.DependsOn = filterProjectRefs(task.DependsOn, dataDir, "depends", task.ID, func(projectID string) string {
 			return fmt.Sprintf("task %s has dependency on non-existent project %q, removing", task.ID, projectID)
 		}, &result.Warnings)
-		// A Blocked task whose only remaining deps were cross-project refs to
-		// now-deleted projects has no resolvable reason to stay blocked. Reopen
+		// A waiting task whose only remaining deps were cross-project refs to
+		// now-deleted projects has no resolvable reason to stay waiting. Reopen
 		// it so it is not silently stuck on load.
-		if task.Status == models.StatusBlocked && origDeps > 0 && len(task.DependsOn) == 0 {
+		if task.IsInState(models.StateWaiting) && origDeps > 0 && len(task.DependsOn) == 0 {
 			task.Reopen()
 		}
 
@@ -120,26 +125,6 @@ func filterProjectRefs(refs []string, dataDir, field, taskID string, warningMess
 		kept = append(kept, refValue)
 	}
 	return kept
-}
-
-func reassignUnknownSections(project *models.Project, result *ParseResult) {
-	sectionSet := make(map[string]bool, len(project.GetSections()))
-	for _, section := range project.GetSections() {
-		sectionSet[section] = true
-	}
-
-	for _, task := range project.Tasks {
-		if task.Section != "" && !sectionSet[task.Section] {
-			oldSection := task.Section
-			task.SetSection(models.SectionInbox)
-			result.Warnings = append(result.Warnings, ParseWarning{
-				Type:    format.WarningDataCorrection,
-				TaskID:  task.ID,
-				Field:   "section",
-				Message: fmt.Sprintf("task #%d section %q not in project sections, reassigned to %q", task.ShortID, oldSection, models.SectionInbox),
-			})
-		}
-	}
 }
 
 func populateProjectWarnings(project *models.Project, warnings []ParseWarning) {

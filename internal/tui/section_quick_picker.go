@@ -91,7 +91,7 @@ func newSectionChangeQuickPicker(project *models.Project, task *models.Task, bac
 		entries = append(entries, sectionPickerEntry{displayName: s, section: s})
 	}
 
-	currentSection := task.Section
+	currentSection := taskSectionBucket(task)
 	cursor := 0
 	for i, e := range entries {
 		if e.section == currentSection {

@@ -80,8 +80,10 @@ func (m *InboxProcessorModel) saveProjectCmd(project *models.Project) tea.Cmd {
 	if project == nil {
 		project = m.project
 	}
+	dataDir := m.config.DataDir
+	deps := m.configManager.RuntimeDependencies()
 	return func() tea.Msg {
-		if err := saveProjectSync(project); err != nil {
+		if err := commitInboxProject(dataDir, deps, project); err != nil {
 			return InboxProjectSavedMsg{Error: fmt.Errorf("save failed: %w", err)}
 		}
 		return InboxProjectSavedMsg{Error: nil}
@@ -118,8 +120,8 @@ func (m *InboxProcessorModel) shouldProcessOnSectionChange(task *models.Task, pr
 	return current != nil && willLeaveInbox(current)
 }
 
-func (m *InboxProcessorModel) shouldProcessOnStatusChange(newStatus models.TaskStatus) bool {
-	return newStatus.IsComplete()
+func (m *InboxProcessorModel) shouldProcessOnStateChange(newState models.WorkflowState) bool {
+	return newState.IsTerminal()
 }
 
 func (m *InboxProcessorModel) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {

@@ -36,7 +36,7 @@ type inboxBackend interface {
 	// Behavioral hooks
 	markDeletedProcessed() bool
 	shouldProcessOnSectionChange(task *models.Task, project *models.Project) bool
-	shouldProcessOnStatusChange(newStatus models.TaskStatus) bool
+	shouldProcessOnStateChange(newState models.WorkflowState) bool
 
 	// findTaskByID locates a task by ID (and optional project ID hint) so undo
 	// can restore an action's task even after auto-advance has moved the cursor

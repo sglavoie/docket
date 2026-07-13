@@ -20,10 +20,10 @@ func TestRemoveCompletedTasks(t *testing.T) {
 			ID:   "proj-1",
 			Name: "Test",
 			Tasks: []*models.Task{
-				{ID: "1", Title: "Todo task", Status: models.StatusTodo},
-				{ID: "2", Title: "Done task", Status: models.StatusDone, CompletedAt: &now},
-				{ID: "3", Title: "In progress task", Status: models.StatusInProgress},
-				{ID: "4", Title: "Another done task", Status: models.StatusDone, CompletedAt: &now},
+				{ID: "1", Title: "Todo task", WorkflowState: models.StateReady},
+				{ID: "2", Title: "Done task", WorkflowState: models.StateDone, CompletedAt: &now},
+				{ID: "3", Title: "In progress task", WorkflowState: models.StateInProgress},
+				{ID: "4", Title: "Another done task", WorkflowState: models.StateDone, CompletedAt: &now},
 			},
 		}
 
@@ -34,7 +34,7 @@ func TestRemoveCompletedTasks(t *testing.T) {
 		}
 
 		for _, task := range project.Tasks {
-			if task.Status == models.StatusDone {
+			if task.State() == models.StateDone {
 				t.Error("completed tasks should be removed")
 			}
 		}
@@ -45,8 +45,8 @@ func TestRemoveCompletedTasks(t *testing.T) {
 			ID:   "proj-1",
 			Name: "Test",
 			Tasks: []*models.Task{
-				{ID: "1", Title: "Todo task", Status: models.StatusTodo},
-				{ID: "2", Title: "In progress task", Status: models.StatusInProgress},
+				{ID: "1", Title: "Todo task", WorkflowState: models.StateReady},
+				{ID: "2", Title: "In progress task", WorkflowState: models.StateInProgress},
 			},
 		}
 
@@ -87,9 +87,9 @@ func TestArchiveTasks(t *testing.T) {
 			Slug: "test-project",
 			Path: projectPath,
 			Tasks: []*models.Task{
-				{ID: "1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, Status: models.StatusTodo, Priority: 3},
-				{ID: "2", ShortID: 2, Title: "Done task", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
-				{ID: "3", ShortID: 3, Title: "Another done", Type: models.TaskTypeBug, Status: models.StatusDone, Priority: 2, CompletedAt: &now},
+				{ID: "1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, WorkflowState: models.StateReady, Priority: 3},
+				{ID: "2", ShortID: 2, Title: "Done task", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Priority: 3, CompletedAt: &now},
+				{ID: "3", ShortID: 3, Title: "Another done", Type: models.TaskTypeBug, WorkflowState: models.StateDone, Priority: 2, CompletedAt: &now},
 			},
 			NextShortID: 4,
 		}
@@ -139,8 +139,8 @@ func TestArchiveTasks(t *testing.T) {
 			Slug: "test-project",
 			Path: projectPath,
 			Tasks: []*models.Task{
-				{ID: "1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, Status: models.StatusTodo, Priority: 3},
-				{ID: "2", ShortID: 2, Title: "In progress", Type: models.TaskTypeTask, Status: models.StatusInProgress, Priority: 3},
+				{ID: "1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, WorkflowState: models.StateReady, Priority: 3},
+				{ID: "2", ShortID: 2, Title: "In progress", Type: models.TaskTypeTask, WorkflowState: models.StateInProgress, Priority: 3},
 			},
 			NextShortID: 3,
 		}
@@ -184,7 +184,7 @@ func TestArchiveTasks(t *testing.T) {
 			Slug: "test-project",
 			Path: projectPath,
 			Tasks: []*models.Task{
-				{ID: "1", ShortID: 1, Title: "New done task", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
+				{ID: "1", ShortID: 1, Title: "New done task", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Priority: 3, CompletedAt: &now},
 			},
 			NextShortID: 2,
 		}
@@ -225,7 +225,7 @@ func TestArchiveTasks(t *testing.T) {
 			Slug: "test-project",
 			Path: projectPath,
 			Tasks: []*models.Task{
-				{ID: "1", ShortID: 1, Title: "Task to archive", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
+				{ID: "1", ShortID: 1, Title: "Task to archive", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Priority: 3, CompletedAt: &now},
 			},
 			NextShortID: 2,
 		}
@@ -264,9 +264,9 @@ func TestArchiveTasksRefreshesArchiveIndexAfterSuccess(t *testing.T) {
 		Slug: "test-project",
 		Path: projectPath,
 		Tasks: []*models.Task{
-			{ID: "active-1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, Status: models.StatusTodo, Priority: 3},
-			{ID: "done-1", ShortID: 2, Title: "Done task", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
-			{ID: "done-2", ShortID: 3, Title: "Done bug", Type: models.TaskTypeBug, Status: models.StatusDone, Priority: 2, CompletedAt: &now},
+			{ID: "active-1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, WorkflowState: models.StateReady, Priority: 3},
+			{ID: "done-1", ShortID: 2, Title: "Done task", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Priority: 3, CompletedAt: &now},
+			{ID: "done-2", ShortID: 3, Title: "Done bug", Type: models.TaskTypeBug, WorkflowState: models.StateDone, Priority: 2, CompletedAt: &now},
 		},
 		NextShortID: 4,
 	}
@@ -321,7 +321,7 @@ func TestArchiveTasksRefreshesIndexAfterRotation(t *testing.T) {
 		Slug: "test-project",
 		Path: projectPath,
 		Tasks: []*models.Task{
-			{ID: "new-archived", ShortID: 2, Title: "New archived task", Type: models.TaskTypeBug, Status: models.StatusDone, Priority: 2, CompletedAt: &now},
+			{ID: "new-archived", ShortID: 2, Title: "New archived task", Type: models.TaskTypeBug, WorkflowState: models.StateDone, Priority: 2, CompletedAt: &now},
 		},
 		NextShortID: 3,
 	}
@@ -367,7 +367,7 @@ func TestArchiveTasksKeepsSuccessIndependentFromIndexWriteFailure(t *testing.T) 
 		Slug: "test-project",
 		Path: projectPath,
 		Tasks: []*models.Task{
-			{ID: "done-1", ShortID: 1, Title: "Done task", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
+			{ID: "done-1", ShortID: 1, Title: "Done task", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Priority: 3, CompletedAt: &now},
 		},
 		NextShortID: 2,
 	}
@@ -411,9 +411,9 @@ func TestClearOrphanedParentRefs(t *testing.T) {
 			ID:   "proj-1",
 			Name: "Test",
 			Tasks: []*models.Task{
-				{ID: "child-1", Title: "Child 1", ParentID: &parentID, Status: models.StatusTodo},
-				{ID: "child-2", Title: "Child 2", ParentID: &parentID, Status: models.StatusInProgress},
-				{ID: "unrelated", Title: "Unrelated", Status: models.StatusTodo},
+				{ID: "child-1", Title: "Child 1", ParentID: &parentID, WorkflowState: models.StateReady},
+				{ID: "child-2", Title: "Child 2", ParentID: &parentID, WorkflowState: models.StateInProgress},
+				{ID: "unrelated", Title: "Unrelated", WorkflowState: models.StateReady},
 			},
 		}
 		removedIDs := map[string]bool{"parent-1": true}
@@ -432,8 +432,8 @@ func TestClearOrphanedParentRefs(t *testing.T) {
 			ID:   "proj-1",
 			Name: "Test",
 			Tasks: []*models.Task{
-				{ID: "t1", Title: "Task 1", DependsOn: []string{"removed-1", "remaining-1"}, RelatedTo: []string{"removed-1"}, Status: models.StatusTodo},
-				{ID: "t2", Title: "Task 2", DependsOn: []string{"remaining-1"}, Status: models.StatusTodo},
+				{ID: "t1", Title: "Task 1", DependsOn: []string{"removed-1", "remaining-1"}, RelatedTo: []string{"removed-1"}, WorkflowState: models.StateReady},
+				{ID: "t2", Title: "Task 2", DependsOn: []string{"remaining-1"}, WorkflowState: models.StateReady},
 			},
 		}
 		removedIDs := map[string]bool{"removed-1": true}
@@ -457,7 +457,7 @@ func TestClearOrphanedParentRefs(t *testing.T) {
 			ID:   "proj-1",
 			Name: "Test",
 			Tasks: []*models.Task{
-				{ID: "child-1", Title: "Child", ParentID: &keepParentID, Status: models.StatusTodo},
+				{ID: "child-1", Title: "Child", ParentID: &keepParentID, WorkflowState: models.StateReady},
 			},
 		}
 		removedIDs := map[string]bool{"other-parent": true}

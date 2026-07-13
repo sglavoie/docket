@@ -75,10 +75,10 @@ func TestCheckOverdueTasks_CrossTimezoneDueToday(t *testing.T) {
 	now := time.Date(2026, 2, 28, 14, 0, 0, 0, time.UTC).In(loc)
 
 	task := &models.Task{
-		ID:      "due-today",
-		Title:   "Due today",
-		Status:  models.StatusTodo,
-		DueDate: &dueDate,
+		ID:            "due-today",
+		Title:         "Due today",
+		WorkflowState: models.StateReady,
+		DueDate:       &dueDate,
 	}
 	projects := []ProjectData{{
 		Project: &models.Project{ID: "p1", Name: "P1"},
@@ -116,11 +116,11 @@ func TestCheckOverdueTasks_SnoozeUntilTodayCrossTimezone(t *testing.T) {
 	dueDate := time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC)
 	snoozedUntil := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:           "unsnoozed-today",
-		Title:        "Unsnoozed today",
-		Status:       models.StatusTodo,
-		DueDate:      &dueDate,
-		SnoozedUntil: &snoozedUntil,
+		ID:            "unsnoozed-today",
+		Title:         "Unsnoozed today",
+		WorkflowState: models.StateReady,
+		DueDate:       &dueDate,
+		SnoozedUntil:  &snoozedUntil,
 	}
 	projects := []ProjectData{{
 		Project: &models.Project{ID: "p1", Name: "P1"},

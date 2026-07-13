@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var recentActivityTabNames = []string{"All", "Active", "Completed"}
@@ -19,6 +20,12 @@ type RecentActivityModel struct {
 	InteractiveViewState
 	config        *config.Config
 	configManager *config.Manager
+
+	// taskItem routes the standard single-task keymap mutations through the
+	// application-layer coordinator, running the workflow cascade. The shell wires
+	// it via SetTaskItemCoordinator (taskItemWireable) when the view is shown; a
+	// zero value means the view was built in isolation (render-only test).
+	taskItem TaskItemCoordinator
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -73,6 +80,23 @@ func NewProjectRecentActivityModel(cfg *config.Config, mgr *config.Manager, proj
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m
+}
+
+// SetTaskItemCoordinator injects the application-layer single-task coordinator so
+// the shell wires it from the shared showView/replaceView site (taskItemWireable).
+func (m *RecentActivityModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem = c }
+
+// taskItemCoordinator exposes the single-task coordinator to the shared
+// workflow-aware secondary-view helpers (workflowOpsView).
+func (m *RecentActivityModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }
+
+// workflowRules is the workflowOpsView accessor for the enabled workflow rules;
+// it returns nil when no config is bound (isolated render tests).
+func (m *RecentActivityModel) workflowRules() []workflow.WorkflowRule {
+	if m.config == nil {
+		return nil
+	}
+	return m.config.GetEnabledWorkflowRules()
 }
 
 func (m *RecentActivityModel) resetViewScrollOffset() {

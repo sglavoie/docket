@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -84,7 +85,11 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 		cfg.RemoveTaskRefs(taskIDs)
 	}
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	// Archiving a project changes only catalog/config state (the archived flag, the
+	// current-project pointer, the archived project's planning references), so its
+	// whole durable effect is one config rewrite committed through the application
+	// layer's journaled transaction boundary.
+	if err := commitConfigChange(cfg, configManager); err != nil {
 		return err
 	}
 
@@ -94,6 +99,25 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Note: '%s' was the current project. Use 'tt select' to choose another.\n", project.Name)
 		}
 	})
+}
+
+// commitConfigChange encodes the current config and commits it as one atomic
+// journaled transaction through the application layer, the config-only counterpart
+// of routing a task mutation through the app service. It is used by the project
+// archive/unarchive commands, whose only durable effect is a config rewrite.
+func commitConfigChange(cfg *config.Config, configManager *config.Manager) error {
+	arts, err := encodeConfigArtifacts(configManager, cfg)
+	if err != nil {
+		return err
+	}
+	if err := translateAppError(newAppService(cfg).CommitConfig(arts...)); err != nil {
+		return err
+	}
+	// The archive's machine-local effects — the cleared current-project pointer and
+	// the archived project's recent-visit cleanup — cannot ride the workspace
+	// transaction because machine.json lives outside the commit service's approved
+	// root. Persist them with a separate domain save after the synced commit.
+	return saveConfig(configManager, cfg)
 }
 
 func runProjectUnarchive(cmd *cobra.Command, args []string) error {
@@ -130,7 +154,7 @@ func runProjectUnarchive(cmd *cobra.Command, args []string) error {
 
 	project.Unarchive()
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitConfigChange(cfg, configManager); err != nil {
 		return err
 	}
 

@@ -81,7 +81,6 @@ var visualTabSubTabs = [][]visualSubTabRef{
 		{"Reviews", tabNotifications, 0},
 		{"Tasks", tabNotifications, 1},
 		{"Projects", tabNotifications, 2},
-		{"Stages", tabStages, 0},
 	},
 }
 
@@ -106,7 +105,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 5, 20, 2, 15, 24, 10, 15, 1, 5}
+	tabFieldCount = []int{5, 18, 5, 20, 2, 15, 24, 9, 15, 0, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -165,13 +164,13 @@ var (
 	timeFormatValues = []string{"12h", "24h"}
 
 	// kanbanModeOptions lists the display labels for the kanban mode selector.
-	kanbanModeOptions = []string{"Section (GTD)", "Status", "Priority", "Stages", "Score Buckets"}
+	kanbanModeOptions = []string{"Section (GTD)", "Status", "Priority", "Score Buckets"}
 
 	// kanbanModeValues maps cursor index to the KanbanMode ID string.
-	kanbanModeValues = []string{"section", "status", "priority", "stages", "score_buckets"}
+	kanbanModeValues = []string{"section", "status", "priority", "score_buckets"}
 
 	// kanbanModeLabels are short labels shown in the enabled-modes checkbox list.
-	kanbanModeLabels = []string{"Section (GTD)", "Status", "Priority", "Stages", "Score Buckets"}
+	kanbanModeLabels = []string{"Section (GTD)", "Status", "Priority", "Score Buckets"}
 
 	// kanbanDetailHeightOptions lists the allowed detail pane heights.
 	kanbanDetailHeightOptions = []string{"1", "2", "3", "4", "5"}
@@ -261,6 +260,16 @@ func subTabForField(focusIndex int) int {
 type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
+	// coordinator routes the durable config write through the secondary
+	// feature-coordinator seam (feature_coordinator_secondary.go).
+	coordinator SettingsCoordinator
+
+	// workspaceLocation/workspaceStorage are read-only, captured when the
+	// settings view opens, and surfaced in the General tab so the workspace
+	// data directory is discoverable. Relocation itself is the CLI-first
+	// `tt workspace move` flow.
+	workspaceLocation string
+	workspaceStorage  string
 
 	editorInput              textinput.Model
 	externalEditorInput      textinput.Model
@@ -328,16 +337,7 @@ type SettingsModel struct {
 	kanbanShowEmptyColumns   bool            // Show columns even when empty
 	kanbanDetailPaneVisible  bool            // Bottom detail pane shown by default
 	kanbanDetailHeightCursor int             // Index into kanbanDetailHeightOptions (0=1 line .. 4=5 lines)
-	kanbanEnabledModes       [5]bool         // Enabled mode toggles (indexed by AllKanbanModes order)
-
-	// Stages settings (Stages tab, index 76)
-	savedStages        []string // snapshot at load time, for dirty detection
-	stages             []string
-	stageInput         textinput.Model
-	stageCursor        int
-	stageEditMode      bool // true when adding or editing a stage
-	stageAddMode       bool // true when adding (vs editing)
-	stageConfirmDelete ConfirmDialog
+	kanbanEnabledModes       [4]bool         // Enabled mode toggles (indexed by AllKanbanModes order)
 
 	// Alert settings (Notifications tab, indices 75-89)
 	alertDailyReviewEnabled    bool

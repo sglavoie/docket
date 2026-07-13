@@ -15,7 +15,7 @@ func actFn() Action { return nilAction }
 
 func TestStatusGroup(t *testing.T) {
 	deps := StatusDeps{
-		ChangeStatus:   func(string) Action { return nilAction },
+		ChangeState:    func(string) Action { return nilAction },
 		HasRecurrence:  func() bool { return true },
 		SkipRecurrence: nil,
 	}
@@ -44,7 +44,7 @@ func TestStatusGroup(t *testing.T) {
 
 func TestStatusGroupWithDeferChildren(t *testing.T) {
 	deps := StatusDeps{
-		ChangeStatus:  func(string) Action { return nilAction },
+		ChangeState:   func(string) Action { return nilAction },
 		HasRecurrence: func() bool { return true },
 		DeferChildren: DeferRecurrenceGroup(nilAction, nilAction, nilAction, nilAction, nilAction),
 	}
@@ -382,70 +382,6 @@ func TestFoldGroup_WithToggleAllSectionFolds(t *testing.T) {
 	}
 }
 
-func TestStageGroup_Empty(t *testing.T) {
-	deps := StageDeps{ChangeStage: func(string) Action { return nilAction }}
-	entries := StageGroup(deps)
-	if len(entries) != 1 {
-		t.Fatalf("StageGroup: want 1 top-level entry")
-	}
-	pn := entries[0].PrefixNode
-	if pn.Key != "s" {
-		t.Errorf("StageGroup: want key 's', got %q", pn.Key)
-	}
-	// Only "0" (clear) when no stages
-	if len(pn.Children) != 1 {
-		t.Errorf("StageGroup (empty): want 1 child, got %d", len(pn.Children))
-	}
-	if pn.Children[0].Binding.Key != "0" {
-		t.Errorf("StageGroup (empty): want child key '0', got %q", pn.Children[0].Binding.Key)
-	}
-}
-
-func TestStageGroup_WithStages(t *testing.T) {
-	stages := []string{"Backlog", "In Review", "Staging"}
-	deps := StageDeps{
-		ChangeStage: func(string) Action { return nilAction },
-		Stages:      stages,
-	}
-	entries := StageGroup(deps)
-	pn := entries[0].PrefixNode
-	// 1 clear + 3 stage keys
-	if len(pn.Children) != 4 {
-		t.Errorf("StageGroup (3 stages): want 4 children, got %d", len(pn.Children))
-	}
-	keys := childBindingKeys(pn.Children)
-	for _, k := range []string{"0", "1", "2", "3"} {
-		if !slices.Contains(keys, k) {
-			t.Errorf("StageGroup: missing key %q", k)
-		}
-	}
-}
-
-func TestStageGroup_DescriptionContainsStageName(t *testing.T) {
-	stages := []string{"Discovery"}
-	deps := StageDeps{
-		ChangeStage: func(string) Action { return nilAction },
-		Stages:      stages,
-	}
-	entries := StageGroup(deps)
-	pn := entries[0].PrefixNode
-	var stageEntry *Entry
-	for i := range pn.Children {
-		if pn.Children[i].Binding != nil && pn.Children[i].Binding.Key == "1" {
-			e := pn.Children[i]
-			stageEntry = &e
-			break
-		}
-	}
-	if stageEntry == nil {
-		t.Fatal("StageGroup: missing key '1' for stage 'Discovery'")
-	}
-	if stageEntry.Binding.Description != "Set stage: Discovery" {
-		t.Errorf("StageGroup: want desc 'Set stage: Discovery', got %q",
-			stageEntry.Binding.Description)
-	}
-}
-
 func TestBlockerGroup(t *testing.T) {
 	deps := BlockerDeps{}
 	entries := BlockerGroup(deps)
@@ -470,7 +406,7 @@ func TestBlockerGroup(t *testing.T) {
 func TestFilterGroup_Base(t *testing.T) {
 	deps := FilterDeps{
 		TypeKey:        func(string) Action { return nilAction },
-		StatusKey:      func(string) Action { return nilAction },
+		StateKey:       func(string) Action { return nilAction },
 		AttrDirectKey:  func(string) Action { return nilAction },
 		AttrSubKey:     func(string, string) Action { return nilAction },
 		OpenAttrPicker: nilAction,
@@ -497,30 +433,28 @@ func TestFilterGroup_Base(t *testing.T) {
 	}
 }
 
-func TestFilterGroup_WithDueDateAndStage(t *testing.T) {
+func TestFilterGroup_WithDueDate(t *testing.T) {
 	deps := FilterDeps{
-		TypeKey:          func(string) Action { return nilAction },
-		StatusKey:        func(string) Action { return nilAction },
-		DueDateKey:       func(string) Action { return nilAction },
-		AttrDirectKey:    func(string) Action { return nilAction },
-		AttrSubKey:       func(string, string) Action { return nilAction },
-		OpenAttrPicker:   nilAction,
-		ScoreKey:         func(string) Action { return nilAction },
-		StageFilterKey:   func(string) Action { return nilAction },
-		StageFilterNames: []string{"Backlog"},
+		TypeKey:        func(string) Action { return nilAction },
+		StateKey:       func(string) Action { return nilAction },
+		DueDateKey:     func(string) Action { return nilAction },
+		AttrDirectKey:  func(string) Action { return nilAction },
+		AttrSubKey:     func(string, string) Action { return nilAction },
+		OpenAttrPicker: nilAction,
+		ScoreKey:       func(string) Action { return nilAction },
 	}
 	entries := FilterGroup(deps)
 	pn := entries[0].PrefixNode
-	// Ft, Fs, Fd, Fa, FS, F. + #, p, h, i, k, x = 12
-	if len(pn.Children) != 12 {
-		t.Errorf("FilterGroup (full): want 12 children, got %d", len(pn.Children))
+	// Ft, Fs, Fd, Fa, FS + #, p, h, i, k, x = 11
+	if len(pn.Children) != 11 {
+		t.Errorf("FilterGroup (full): want 11 children, got %d", len(pn.Children))
 	}
 }
 
 func TestFilterGroup_AttrPickerBind(t *testing.T) {
 	deps := FilterDeps{
 		TypeKey:        func(string) Action { return nilAction },
-		StatusKey:      func(string) Action { return nilAction },
+		StateKey:       func(string) Action { return nilAction },
 		AttrDirectKey:  func(string) Action { return nilAction },
 		AttrSubKey:     func(string, string) Action { return nilAction },
 		OpenAttrPicker: nilAction,

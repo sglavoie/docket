@@ -24,12 +24,12 @@ func TestRoundTripEdgeCaseTitleChars(t *testing.T) {
 		t.Run(title, func(t *testing.T) {
 			tasks := []*models.Task{
 				{
-					ID:      "task1",
-					ShortID: 1,
-					Type:    models.TaskTypeTask,
-					Title:   title,
-					Status:  models.StatusTodo,
-					Tags:    []string{},
+					ID:            "task1",
+					ShortID:       1,
+					Type:          models.TaskTypeTask,
+					Title:         title,
+					WorkflowState: models.StateReady,
+					Tags:          []string{},
 				},
 			}
 

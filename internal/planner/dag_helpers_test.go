@@ -32,7 +32,7 @@ func withDep(t *models.Task, depIDs ...string) *models.Task {
 
 // withStatus marks a task's status and returns the task.
 func withStatus(t *models.Task, s models.TaskStatus) *models.Task {
-	t.Status = s
+	t.WorkflowState = models.DeriveWorkflowState(s, "", "")
 	return t
 }
 

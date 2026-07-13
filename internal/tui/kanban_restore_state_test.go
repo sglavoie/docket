@@ -11,7 +11,7 @@ import (
 func newKanbanRestoreStateFixture() (*AppModel, *KanbanModel, *models.Project) {
 	proj := testutil.NewTestProject("p")
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	task.Section = models.SectionInbox
+	task.SetSection(models.SectionInbox)
 	proj.Tasks = []*models.Task{task}
 
 	cfg := &config.Config{}

@@ -41,7 +41,7 @@ func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
 	for i := range 6 {
 		id := fmt.Sprintf("alpha-task-%03d", seq)
 		task, _ := models.NewTask(id, seq, models.TaskTypeTask, fmt.Sprintf("Alpha standalone %d", i+1))
-		task.Section = sections[i%len(sections)]
+		task.SetSection(sections[i%len(sections)])
 		seq++
 		alphaTasks = append(alphaTasks, task)
 	}
@@ -73,7 +73,7 @@ func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
 	for i := range 12 {
 		id := fmt.Sprintf("beta-task-%03d", seq)
 		task, _ := models.NewTask(id, seq, models.TaskTypeTask, fmt.Sprintf("Beta standalone %d", i+1))
-		task.Section = sections[i%len(sections)]
+		task.SetSection(sections[i%len(sections)])
 		seq++
 		betaTasks = append(betaTasks, task)
 	}
@@ -133,14 +133,14 @@ func BenchmarkCrossProjectRowBuilding(b *testing.B) {
 		for parentIdx := range 10 {
 			parentID := fmt.Sprintf("%s-task-%03d", projID, seq)
 			parent := makeTask(parentID, fmt.Sprintf("Parent %d-%d", p, parentIdx), sections[seq%len(sections)])
-			parent.Status = models.StatusInProgress
+			parent.WorkflowState = models.StateInProgress
 			seq++
 			tasks = append(tasks, parent)
 
 			for childIdx := range 9 {
 				childID := fmt.Sprintf("%s-task-%03d", projID, seq)
 				child := makeTask(childID, fmt.Sprintf("Child %d-%d-%d", p, parentIdx, childIdx), sections[seq%len(sections)])
-				child.Status = models.StatusInProgress
+				child.WorkflowState = models.StateInProgress
 				seq++
 				tasks = append(tasks, child)
 			}
@@ -207,7 +207,7 @@ func BenchmarkRecommend(b *testing.B) {
 		for i := range tasksPerProject {
 			id := fmt.Sprintf("%s-task-%04d", projID, i)
 			task := makeTask(id, fmt.Sprintf("Task %d-%d", p, i), sections[i%len(sections)])
-			task.Status = models.StatusInProgress
+			task.WorkflowState = models.StateInProgress
 			task.UpdatedAt = now.Add(-time.Duration(i%30) * 24 * time.Hour)
 			task.CreatedAt = task.UpdatedAt
 
@@ -221,7 +221,7 @@ func BenchmarkRecommend(b *testing.B) {
 			case 2:
 				task.Priority = 1
 			case 3:
-				task.Status = models.StatusBlocked
+				task.WorkflowState = models.StateWaiting
 			case 4:
 				plan = append(plan, config.DailyPlanItem{
 					ProjectID:   projID,

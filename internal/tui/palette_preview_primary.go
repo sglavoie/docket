@@ -74,11 +74,12 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 	b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(styledHeader))
 	b.WriteString("\n\n")
 
-	statusStyle := GetStatusStyle(string(task.Status))
+	state := task.State()
+	statusStyle := GetStateStyle(state)
 	fmt.Fprintf(&b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
-		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status)))
+		statusStyle.Render(state.Icon()),
+		statusStyle.Render(string(state)))
 
 	priorityStyle := GetPriorityStyle(task.Priority)
 	fmt.Fprintf(&b, "%s %s\n",
@@ -95,10 +96,10 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 			strings.Join(tags, ", "))
 	}
 
-	if task.Section != "" {
+	if bucket := taskSectionBucket(task); bucket != "" {
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Section:"),
-			task.Section)
+			bucket)
 	}
 
 	if task.DueDate != nil {
@@ -128,7 +129,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 	if len(task.Children) > 0 {
 		completed := 0
 		for _, child := range task.Children {
-			if child.Status.IsComplete() {
+			if child.IsComplete() {
 				completed++
 			}
 		}
@@ -156,13 +157,13 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		var actions []string
 		actions = append(actions, HelpKeyStyle.Render("e")+" edit")
 		actions = append(actions, HelpKeyStyle.Render("g")+" view")
-		if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
+		if !task.IsTerminalState() {
 			actions = append(actions, HelpKeyStyle.Render("x")+" done")
 		}
-		if task.Status == models.StatusTodo {
+		if taskInPlanningState(task) {
 			actions = append(actions, HelpKeyStyle.Render("s")+" start")
 		}
-		if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
+		if task.IsTerminalState() {
 			actions = append(actions, HelpKeyStyle.Render("r")+" reopen")
 		}
 		b.WriteString(MutedStyle.Render(strings.Join(actions, "  ")))
@@ -180,8 +181,8 @@ func (m *CommandPaletteModel) writeTaskDependencyPreview(b *strings.Builder, pro
 		var refs []string
 		for i := range maxShow {
 			blocker := blockers[i]
-			statusStyle := GetStatusStyle(string(blocker.Status))
-			ref := fmt.Sprintf("%s #%d", statusStyle.Render(blocker.Status.Icon()), blocker.ShortID)
+			statusStyle := GetStateStyle(blocker.State())
+			ref := fmt.Sprintf("%s #%d", statusStyle.Render(blocker.State().Icon()), blocker.ShortID)
 			refs = append(refs, ref)
 		}
 		b.WriteString(strings.Join(refs, ", "))
@@ -198,8 +199,8 @@ func (m *CommandPaletteModel) writeTaskDependencyPreview(b *strings.Builder, pro
 		var refs []string
 		for i := range maxShow {
 			dep := blocked[i]
-			statusStyle := GetStatusStyle(string(dep.Status))
-			ref := fmt.Sprintf("%s #%d", statusStyle.Render(dep.Status.Icon()), dep.ShortID)
+			statusStyle := GetStateStyle(dep.State())
+			ref := fmt.Sprintf("%s #%d", statusStyle.Render(dep.State().Icon()), dep.ShortID)
 			refs = append(refs, ref)
 		}
 		b.WriteString(strings.Join(refs, ", "))
@@ -256,7 +257,7 @@ func (m *CommandPaletteModel) writeProjectHealthPreview(b *strings.Builder, proj
 	highPriority, blocked := 0, 0
 
 	for _, task := range project.Tasks {
-		if task.Status.IsComplete() {
+		if task.IsComplete() {
 			completed++
 			continue
 		}
@@ -265,7 +266,7 @@ func (m *CommandPaletteModel) writeProjectHealthPreview(b *strings.Builder, proj
 		if task.Priority <= 2 {
 			highPriority++
 		}
-		if task.Status == models.StatusBlocked {
+		if task.IsInState(models.StateWaiting) {
 			blocked++
 		}
 		if task.DueDate != nil {

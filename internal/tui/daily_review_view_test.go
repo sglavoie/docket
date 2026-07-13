@@ -143,7 +143,7 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 	}
 
 	task := newTestDailyReviewTask(t, "Important task")
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 	m.inProgress = []CrossProjectTask{{Task: task, Project: project}}
 
 	// Switch to Active tab (index 2) which shows in_progress and blocked
@@ -167,7 +167,7 @@ func TestDailyReviewPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.
 	}
 	for range 24 {
 		task := newTestDailyReviewTask(t, "Review task")
-		task.Status = models.StatusInProgress
+		task.WorkflowState = models.StateInProgress
 		m.inProgress = append(m.inProgress, CrossProjectTask{Task: task, Project: project})
 	}
 

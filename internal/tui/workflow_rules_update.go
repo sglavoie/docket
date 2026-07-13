@@ -212,15 +212,7 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 		}
 	}
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
-		return WorkflowRulesUpdatedMsg{}
-	}
+	return m.coordinator.SaveThen(m.config, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
 }
 
 func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
@@ -245,15 +237,7 @@ func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
 		}
 	}
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
-		return WorkflowRulesUpdatedMsg{}
-	}
+	return m.coordinator.SaveThen(m.config, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
 }
 
 func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
@@ -271,12 +255,5 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 	m.defaultCount = len(defaultRules)
 	m.filterRules()
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-		return WorkflowRulesUpdatedMsg{}
-	}
+	return m.coordinator.SaveThen(m.config, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
 }

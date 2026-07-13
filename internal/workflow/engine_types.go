@@ -19,6 +19,17 @@ type DeferredMove struct {
 	Destination string // project name
 }
 
+// FocusChange represents a requested Focus Queue membership change produced by a
+// set_active action. The engine has no access to the config-backed Focus Queue,
+// so the change is deferred: a config-aware caller applies it (add/remove
+// membership) after evaluation. Under the workflow-state model, Focus Queue
+// membership is the canonical replacement for the retired Task.Active flag, so
+// set_active no longer mutates the task itself.
+type FocusChange struct {
+	TaskID string
+	Add    bool // true = add to Focus Queue, false = remove
+}
+
 // EvaluationResult contains the result of rule evaluation.
 type EvaluationResult struct {
 	ModifiedTasks     []*models.Task
@@ -27,6 +38,7 @@ type EvaluationResult struct {
 	RuleTriggerCounts map[string]int      // ruleID -> count of tasks affected
 	NewFollowupTasks  []*models.Task      // tasks created by create_followup action
 	DeferredMoves     []DeferredMove      // moves requested by move_to_project action
+	FocusChanges      []FocusChange       // Focus Queue changes requested by set_active action
 }
 
 // TaskChangeContext provides context for event-based triggers.

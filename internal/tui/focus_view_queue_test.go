@@ -10,9 +10,9 @@ func TestStaleQueuePruning(t *testing.T) {
 	project := newTestFocusProject(t, "Test")
 	task1 := newTestFocusTask(t, "Active", 1, true)
 	task2 := newTestFocusTask(t, "Done", 2, false)
-	task2.Status = models.StatusDone
+	task2.WorkflowState = models.StateDone
 	task3 := newTestFocusTask(t, "Canceled", 3, false)
-	task3.Status = models.StatusCanceled
+	task3.WorkflowState = models.StateCanceled
 
 	cfg := newTestFocusConfig([]*models.Project{project})
 	m := newTestFocusViewModel(cfg)
@@ -56,15 +56,15 @@ func TestQueuePointerReconciliation(t *testing.T) {
 		*m.queue = []FocusTask{{Task: &staleTask, Project: project}}
 		m.queueIDs[task.ID] = true
 
-		task.Status = models.StatusInProgress
+		task.WorkflowState = models.StateInProgress
 
-		if (*m.queue)[0].Task.Status == models.StatusInProgress {
+		if (*m.queue)[0].Task.State() == models.StateInProgress {
 			t.Fatal("stale pointer should not reflect status change before reconciliation")
 		}
 
 		m.tasks = nil
 		for _, tk := range project.Tasks {
-			if !tk.Status.IsComplete() {
+			if !tk.IsComplete() {
 				m.tasks = append(m.tasks, FocusTask{Task: tk, Project: project})
 			}
 		}
@@ -81,8 +81,8 @@ func TestQueuePointerReconciliation(t *testing.T) {
 		}
 		*m.queue = q
 
-		if (*m.queue)[0].Task.Status != models.StatusInProgress {
-			t.Errorf("expected reconciled status InProgress, got %v", (*m.queue)[0].Task.Status)
+		if (*m.queue)[0].Task.State() != models.StateInProgress {
+			t.Errorf("expected reconciled status InProgress, got %v", (*m.queue)[0].Task.State())
 		}
 	})
 
@@ -90,7 +90,7 @@ func TestQueuePointerReconciliation(t *testing.T) {
 		project := newTestFocusProject(t, "Test")
 		task1 := newTestFocusTask(t, "Active", 1, true)
 		task2 := newTestFocusTask(t, "Completed", 2, false)
-		task2.Status = models.StatusDone
+		task2.WorkflowState = models.StateDone
 		project.Tasks = []*models.Task{task1, task2}
 
 		cfg := newTestFocusConfig([]*models.Project{project})
@@ -105,7 +105,7 @@ func TestQueuePointerReconciliation(t *testing.T) {
 
 		m.tasks = nil
 		for _, tk := range project.Tasks {
-			if !tk.Status.IsComplete() {
+			if !tk.IsComplete() {
 				m.tasks = append(m.tasks, FocusTask{Task: tk, Project: project})
 			}
 		}

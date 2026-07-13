@@ -99,13 +99,11 @@ func TestFocusBoardBuildTagCmd_UsesAllRows(t *testing.T) {
 
 	// Active task with tag "urgent" — present in both rows and allRows
 	activeTask := makeBoardTask(t, "id-active", 1, "Active Task")
-	activeTask.Active = true
 	activeTask.Tags = []string{"urgent"}
 	activeRow := boardRow{Task: activeTask, Project: project, Source: project.Name}
 
 	// Non-active task with tag "backlog" — only in allRows, NOT in rows
 	nextTask := makeBoardTask(t, "id-next", 2, "Next Task")
-	nextTask.Active = false
 	nextTask.Tags = []string{"backlog"}
 	nextRow := boardRow{Task: nextTask, Project: project, Source: project.Name}
 
@@ -139,15 +137,15 @@ func TestFocusBoardNextTab_ExcludesNonGTDSectionTasks(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	nextTask := makeBoardTask(t, "id-next", 1, "Next Task")
-	nextTask.Section = ""
+	nextTask.SetSection("")
 	nextRow := boardRow{Task: nextTask, Project: project, Source: project.Name}
 
 	explicitNext := makeBoardTask(t, "id-explicit-next", 2, "Explicit Next")
-	explicitNext.Section = models.SectionNext
+	explicitNext.SetSection(models.SectionNext)
 	explicitNextRow := boardRow{Task: explicitNext, Project: project, Source: project.Name}
 
 	legacyTask := makeBoardTask(t, "id-legacy", 3, "Legacy Section Task")
-	legacyTask.Section = "MyBoard"
+	legacyTask.SetSection("MyBoard")
 	legacyRow := boardRow{Task: legacyTask, Project: project, Source: project.Name}
 
 	m := newTestFocusBoard()

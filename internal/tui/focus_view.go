@@ -87,8 +87,7 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
 				if confirmed, handled := m.HandleConfirmKey(key); handled {
 					if confirmed {
-						model, cmd := taskOpsDeleteTask(m)
-						return model, cmd, true
+						return m, wfDeleteTask(m, m.config, m.configManager), true
 					}
 					return m, nil, true
 				}

@@ -160,11 +160,9 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
 				if confirmed, handled := m.HandleConfirmKey(key); handled {
 					if confirmed {
-						model, cmd := taskOpsDeleteTask(m)
-						if m.err == nil {
-							m.trackMutation("delete")
-						}
-						return model, cmd, true
+						cmd := wfDeleteTask(m, m.config, m.configManager)
+						m.trackMutation("delete")
+						return m, cmd, true
 					}
 					return m, nil, true
 				}

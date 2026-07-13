@@ -54,8 +54,8 @@ func TestMatchesEventTrigger_StatusChanged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prev := &models.Task{ID: "1", Status: tt.prevStatus}
-			curr := &models.Task{ID: "1", Status: tt.currStatus}
+			prev := &models.Task{ID: "1", WorkflowState: models.DeriveWorkflowState(tt.prevStatus, "", "")}
+			curr := &models.Task{ID: "1", WorkflowState: models.DeriveWorkflowState(tt.currStatus, "", "")}
 			trigger := RuleTrigger{Field: FieldStatusChanged, Operation: OpEquals, Value: tt.pattern}
 
 			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
@@ -68,10 +68,10 @@ func TestMatchesEventTrigger_StatusChanged(t *testing.T) {
 func TestMatchesEventTrigger_RequiresPreviousTask(t *testing.T) {
 	now := time.Now()
 	curr := &models.Task{
-		ID:      "1",
-		Status:  models.StatusDone,
-		Tags:    []string{"urgent"},
-		DueDate: &now,
+		ID:            "1",
+		WorkflowState: models.StateDone,
+		Tags:          []string{"urgent"},
+		DueDate:       &now,
 	}
 
 	triggers := []RuleTrigger{
@@ -123,8 +123,8 @@ func TestMatchesEventTrigger_Completed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prev := &models.Task{ID: "1", Status: tt.prevStatus}
-			curr := &models.Task{ID: "1", Status: tt.currStatus}
+			prev := &models.Task{ID: "1", WorkflowState: models.DeriveWorkflowState(tt.prevStatus, "", "")}
+			curr := &models.Task{ID: "1", WorkflowState: models.DeriveWorkflowState(tt.currStatus, "", "")}
 			trigger := RuleTrigger{Field: FieldCompleted, Operation: OpEquals, Value: "true"}
 
 			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
@@ -207,8 +207,8 @@ func TestMatchesEventTrigger_Reopened(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prev := &models.Task{ID: "1", Status: tt.prevStatus}
-			curr := &models.Task{ID: "1", Status: tt.currStatus}
+			prev := &models.Task{ID: "1", WorkflowState: models.DeriveWorkflowState(tt.prevStatus, "", "")}
+			curr := &models.Task{ID: "1", WorkflowState: models.DeriveWorkflowState(tt.currStatus, "", "")}
 			trigger := RuleTrigger{Field: FieldReopened, Operation: OpEquals, Value: "true"}
 
 			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
@@ -284,8 +284,8 @@ func TestMatchesEventTrigger_TypeChanged(t *testing.T) {
 }
 
 func TestEvaluateRulesWithContext_EventTrigger(t *testing.T) {
-	prevTask := &models.Task{ID: "1", Status: models.StatusBlocked, Tags: []string{}}
-	currTask := &models.Task{ID: "1", Status: models.StatusInProgress, Tags: []string{}}
+	prevTask := &models.Task{ID: "1", WorkflowState: models.StateWaiting, Tags: []string{}}
+	currTask := &models.Task{ID: "1", WorkflowState: models.StateInProgress, Tags: []string{}}
 
 	evalCtx := &EvaluationContext{
 		Changes: []TaskChangeContext{

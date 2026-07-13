@@ -8,30 +8,20 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // buildKeyMap constructs the declarative KeyMap for DailyReviewModel.
 func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
-	stages := m.dailyReviewStages()
-
 	var entries []keymap.Entry
 	entries = append(entries, m.dailyReviewNavigationEntries()...)
-	entries = append(entries, m.dailyReviewTaskActionEntries(stages)...)
-	entries = append(entries, m.dailyReviewFilterEntries(stages)...)
+	entries = append(entries, m.dailyReviewTaskActionEntries()...)
+	entries = append(entries, m.dailyReviewFilterEntries()...)
 	entries = append(entries, m.dailyReviewDirectEntries()...)
 
 	return &keymap.KeyMap{
 		ViewName: "Daily Review",
 		Entries:  entries,
 	}
-}
-
-func (m *DailyReviewModel) dailyReviewStages() []string {
-	if m.config == nil {
-		return nil
-	}
-	return m.config.Stages
 }
 
 func (m *DailyReviewModel) dailyReviewNavigationEntries() []keymap.Entry {
@@ -107,25 +97,23 @@ func (m *DailyReviewModel) dailyReviewNavigationEntries() []keymap.Entry {
 	return entries
 }
 
-func (m *DailyReviewModel) dailyReviewTaskActionEntries(stages []string) []keymap.Entry {
-	return buildStandardTaskActionEntries(m.dailyReviewTaskActionDeps(stages))
+func (m *DailyReviewModel) dailyReviewTaskActionEntries() []keymap.Entry {
+	return buildStandardTaskActionEntries(m.dailyReviewTaskActionDeps())
 }
 
-func (m *DailyReviewModel) dailyReviewTaskActionDeps(stages []string) TaskKeymapDeps {
+func (m *DailyReviewModel) dailyReviewTaskActionDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.dailyReviewHasItem,
-		Stages:           stages,
 		ToggleHelp:       m.dailyReviewToggleHelp,
 		SelectedTaskRefs: m.dailyReviewSelectedTaskRefs,
 		DeleteTask:       m.dailyReviewDeleteTask,
-		StatusChange:     m.dailyReviewStatusChangeAction,
+		StateChange:      m.dailyReviewStatusChangeAction,
 		PriorityChange:   m.dailyReviewPriorityChangeAction,
 		DueDateSet:       m.dailyReviewDueDateSetAction,
 		DueDateClear:     m.dailyReviewClearDueDate,
 		SnoozeDate:       m.dailyReviewSnoozeDateAction,
 		SectionMove:      m.dailyReviewSectionMoveAction,
-		StageChange:      m.dailyReviewStageChangeAction,
 		OpenURL:          m.dailyReviewOpenURL,
 		MoveToProject:    m.dailyReviewMoveToProject,
 		QuickNote:        m.dailyReviewQuickNote,
@@ -153,31 +141,16 @@ func (m *DailyReviewModel) dailyReviewDeleteTask() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *DailyReviewModel) dailyReviewStatusChangeAction(status string) keymap.Action {
-	s := models.TaskStatus(status)
+func (m *DailyReviewModel) dailyReviewStatusChangeAction(state string) keymap.Action {
+	s := models.WorkflowState(state)
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, StatusVerb(s)+" Task",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.CanTransitionTo(s) != "" {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.ApplyTransition(s) })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Changed %d tasks to %s", count, s))
+			if cmd := bulkListStateCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), s); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return reviewChangeStatus(m, s)
+		return reviewChangeState(m, s)
 	}
 }
 
@@ -185,23 +158,8 @@ func (m *DailyReviewModel) dailyReviewPriorityChangeAction(key string) keymap.Ac
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
 			p, _ := PriorityForPrefixKey(key)
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Priority",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.Priority == p {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.Priority = p })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Set priority %d on %d tasks", p, count))
+			if cmd := bulkListPriorityCmd(m.bulk, m.getSelectedBulkItems(), p); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -212,22 +170,8 @@ func (m *DailyReviewModel) dailyReviewPriorityChangeAction(key string) keymap.Ac
 func (m *DailyReviewModel) dailyReviewDueDateSetAction(days int) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Due Date",
-				func(proj *models.Project, taskID string) bool {
-					proj.MutateTask(taskID, func(t *models.Task) {
-						d := dueDate
-						t.DueDate = &d
-						t.HasTime = false
-					})
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else {
-				m.setStatus(fmt.Sprintf("Due date set on %d tasks", count))
+			if cmd := bulkListDueDateCmd(m.bulk, m.getSelectedBulkItems(), days); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -237,20 +181,8 @@ func (m *DailyReviewModel) dailyReviewDueDateSetAction(days int) keymap.Action {
 
 func (m *DailyReviewModel) dailyReviewClearDueDate() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && m.SelectedCount() > 0 {
-		items := m.getSelectedBulkItems()
-		count, err := taskOpsApplyBulk(m, items, "Clear Due Date",
-			func(proj *models.Project, taskID string) bool {
-				proj.MutateTask(taskID, func(t *models.Task) {
-					t.DueDate = nil
-					t.HasTime = false
-				})
-				return true
-			})
-		m.ExitMultiSelect()
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Error: %v", err))
-		} else {
-			m.setStatus(fmt.Sprintf("Cleared due date on %d tasks", count))
+		if cmd := bulkListClearDueDateCmd(m.bulk, m.getSelectedBulkItems()); cmd != nil {
+			return m, cmd
 		}
 		return m, nil
 	}
@@ -264,17 +196,8 @@ func (m *DailyReviewModel) dailyReviewSnoozeDateAction(key string) keymap.Action
 			return m, nil
 		}
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Snooze",
-				func(proj *models.Project, taskID string) bool {
-					proj.MutateTask(taskID, func(t *models.Task) { t.SnoozedUntil = snoozeDate })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else {
-				m.setStatus(fmt.Sprintf("Snoozed %d tasks", count))
+			if cmd := bulkListSnoozeCmd(m.bulk, m.getSelectedBulkItems(), snoozeDate); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -285,54 +208,13 @@ func (m *DailyReviewModel) dailyReviewSnoozeDateAction(key string) keymap.Action
 func (m *DailyReviewModel) dailyReviewSectionMoveAction(section string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Move to Section",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.InSection(section) {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.SetSection(section) })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were moved")
-			} else {
-				m.setStatus(fmt.Sprintf("Moved %d tasks to %s", count, section))
+			cmd, ok := bulkListSectionMoveCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), section)
+			if !ok {
+				m.setStatus(fmt.Sprintf("Unknown section %q", section))
 			}
-			return m, nil
+			return m, cmd
 		}
 		return reviewSectionMove(m, section)
-	}
-}
-
-func (m *DailyReviewModel) dailyReviewStageChangeAction(stage string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Stage",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.Stage == stage {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.Stage = stage })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Set stage on %d tasks", count))
-			}
-			return m, nil
-		}
-		return reviewChangeStage(m, stage)
 	}
 }
 
@@ -360,7 +242,7 @@ func (m *DailyReviewModel) dailyReviewQuickNote() (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 }
 
-func (m *DailyReviewModel) dailyReviewFilterEntries(stages []string) []keymap.Entry {
+func (m *DailyReviewModel) dailyReviewFilterEntries() []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("#") },
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("p") },
@@ -371,7 +253,7 @@ func (m *DailyReviewModel) dailyReviewFilterEntries(stages []string) []keymap.En
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("Ft", key) }
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("Fs", key) }
 		},
 		DueDateKey: func(key string) keymap.Action {
@@ -389,10 +271,6 @@ func (m *DailyReviewModel) dailyReviewFilterEntries(stages []string) []keymap.En
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("FS", key) }
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("F.", key) }
-		},
-		StageFilterNames: stages,
 	})
 }
 

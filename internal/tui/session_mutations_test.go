@@ -35,24 +35,3 @@ func TestSessionMutationRegistryConcurrentSafeAndReset(t *testing.T) {
 		t.Fatal("prompted tasks should be cleared after reset")
 	}
 }
-
-func TestRecordUndoSnapshotForSaveMarksMutationWithoutUndoDepth(t *testing.T) {
-	resetSessionMutations()
-	t.Cleanup(resetSessionMutations)
-
-	task := newBulkPickerTestTask(t, 1, "record mutation")
-	project := newBulkPickerTestProject(t, "Record Mutation", task)
-
-	recordUndoSnapshotForSave(project, ProjectSaveOptions{
-		UndoAction:  "Edit Task",
-		UndoTaskIDs: []string{task.ID},
-	})
-
-	mutation, ok := lastSessionMutation()
-	if !ok {
-		t.Fatal("recordUndoSnapshotForSave should mark task mutations even when undo depth is disabled")
-	}
-	if mutation.ProjectID != project.ID || mutation.TaskID != task.ID {
-		t.Fatalf("mutation = (%q, %q), want (%q, %q)", mutation.ProjectID, mutation.TaskID, project.ID, task.ID)
-	}
-}

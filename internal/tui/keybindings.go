@@ -115,6 +115,7 @@ func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
 		ViewProjectPreview:        (&ProjectPreviewModel{}).buildKeyMap(),
 		ViewCustomContextEditor:   (&CustomContextEditorModel{}).buildKeyMap(),
 		ViewSettings:              (&SettingsModel{}).buildKeyMap(),
+		ViewConflictResolution:    (&ConflictResolutionModel{}).buildKeyMap(),
 	}
 }
 

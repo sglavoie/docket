@@ -172,18 +172,18 @@ func formatSidebarLinkedTask(linked sidebarLinkedTask, innerWidth int, cursor, i
 		return line
 	}
 
-	depStatus := GetStatusStyle(string(linked.Task.Status))
+	depStatus := GetStateStyle(linked.Task.State())
 	prefix := cursorStr
 	if linked.Project != nil {
 		projectName := truncateToVisualWidth(linked.Project.Name, max(innerWidth/3, 8))
 		prefix += MutedStyle.Render(fmt.Sprintf("[%s] ", projectName))
 	}
-	prefix += fmt.Sprintf("#%-3d %s ", linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()))
+	prefix += fmt.Sprintf("#%-3d %s ", linked.Task.ShortID, depStatus.Render(linked.Task.State().Icon()))
 
 	titleWidth := max(innerWidth-lipgloss.Width(prefix), 1)
 	if linked.Project != nil && titleWidth < 6 {
 		projectName := truncateToVisualWidth(linked.Project.Name, max(innerWidth/4, 4))
-		prefix = cursorStr + MutedStyle.Render(fmt.Sprintf("[%s] ", projectName)) + fmt.Sprintf("#%-3d %s ", linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()))
+		prefix = cursorStr + MutedStyle.Render(fmt.Sprintf("[%s] ", projectName)) + fmt.Sprintf("#%-3d %s ", linked.Task.ShortID, depStatus.Render(linked.Task.State().Icon()))
 		titleWidth = max(innerWidth-lipgloss.Width(prefix), 1)
 	}
 

@@ -111,8 +111,8 @@ func TestCompleteClearsParkedStateAndRollsNote(t *testing.T) {
 	if task.IsParked() {
 		t.Fatal("completed task should not remain parked")
 	}
-	if task.Status != StatusDone {
-		t.Errorf("Status = %q, want %q", task.Status, StatusDone)
+	if task.State() != StateDone {
+		t.Errorf("State = %q, want %q", task.State(), StateDone)
 	}
 	if len(task.Comments) != 1 {
 		t.Fatalf("got %d comments, want 1", len(task.Comments))

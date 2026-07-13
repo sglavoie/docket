@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // ViewBundle groups the config and config manager fields shared by all views.
@@ -11,7 +12,59 @@ import (
 type ViewBundle struct {
 	config        *config.Config
 	configManager *config.Manager
+
+	// bulk routes multiselect mutations through the application layer. The shell
+	// wires it via SetBulkCoordinator when the view is shown; a zero value (nil
+	// mutator) means the view was built in isolation (e.g. a render-only test) and
+	// its bulk handlers are not exercised.
+	bulk BulkCoordinator
+
+	// taskItem routes single-task outliner mutations through the application
+	// layer, parallel to bulk. The shell wires it via SetTaskItemCoordinator; a
+	// zero value (nil mutator) means the view was built in isolation. No caller
+	// routes through it yet — it is the migration seam for the cross-project
+	// single-task raw-save family.
+	taskItem TaskItemCoordinator
+
+	// link routes task-link mutations (dependency/related edge removal) through
+	// the application layer. The shell wires it via SetLinkCoordinator; a zero
+	// value (nil mutator) means the view was built in isolation. The sidebar
+	// unlink flow routes through it.
+	link LinkCoordinator
 }
+
+// SetBulkCoordinator injects the application-layer bulk coordinator. It is
+// promoted to every view that embeds ViewBundle, so the shell wires all bulk
+// views from a single site (showView/replaceView) through the bulkWireable
+// interface.
+func (b *ViewBundle) SetBulkCoordinator(c BulkCoordinator) { b.bulk = c }
+
+// SetTaskItemCoordinator injects the application-layer single-task coordinator,
+// promoted to every view that embeds ViewBundle so the shell wires it from the
+// same showView/replaceView site as the bulk coordinator (via taskItemWireable).
+func (b *ViewBundle) SetTaskItemCoordinator(c TaskItemCoordinator) { b.taskItem = c }
+
+// SetLinkCoordinator injects the application-layer link coordinator, promoted to
+// every view that embeds ViewBundle so the shell wires it from the same
+// showView/replaceView site as the other coordinators (via linkWireable).
+func (b *ViewBundle) SetLinkCoordinator(c LinkCoordinator) { b.link = c }
+
+// enabledWorkflowRules returns the workspace's enabled workflow rules, or nil
+// when no config is bound (isolated render tests).
+func (b *ViewBundle) enabledWorkflowRules() []workflow.WorkflowRule {
+	if b.config == nil {
+		return nil
+	}
+	return b.config.GetEnabledWorkflowRules()
+}
+
+// taskItemCoordinator exposes the single-task coordinator to the shared
+// workflow-aware secondary-view helpers (workflowOpsView). It is promoted to
+// every view that embeds ViewBundle.
+func (b *ViewBundle) taskItemCoordinator() TaskItemCoordinator { return b.taskItem }
+
+// workflowRules is the workflowOpsView accessor for the enabled workflow rules.
+func (b *ViewBundle) workflowRules() []workflow.WorkflowRule { return b.enabledWorkflowRules() }
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.

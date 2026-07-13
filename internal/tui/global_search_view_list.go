@@ -87,7 +87,7 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 	if colLayout != nil && colLayout.HasType {
 		typeIcon = PadBadge(typeIcon, colLayout.TypeWidth)
 	}
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	statusIcon := GetStateBadge(task.State())
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
 	}

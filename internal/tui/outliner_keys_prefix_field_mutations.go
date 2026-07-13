@@ -19,20 +19,6 @@ func (m *OutlinerModel) handlePerspectivePrefix(key string) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-// handleStagePrefixOutliner handles the s prefix key for setting workflow stage.
-func (m *OutlinerModel) handleStagePrefixOutliner(key string) (tea.Model, tea.Cmd) {
-	if m.project == nil {
-		if cmd, ok := m.crossHandleStageMutation(key); ok {
-			return m, cmd
-		}
-		return m, nil
-	}
-	if cmd, ok := handleStagePrefix(key, m, m.config.Stages); ok {
-		return m, cmd
-	}
-	return m, nil
-}
-
 // handlePriorityPrefixOutliner handles the ! prefix key for setting priority.
 func (m *OutlinerModel) handlePriorityPrefixOutliner(key string) (tea.Model, tea.Cmd) {
 	if m.project == nil {

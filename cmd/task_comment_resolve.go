@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -38,35 +38,41 @@ func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("task ID and comment index")
 	}
 
-	var commentIndex int
-	var state string
+	// Resolve the task in the current project; index validation runs against the
+	// loaded copy so error messages match the legacy surface, and the toggle
+	// itself persists through the application layer.
+	project, cfg, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+	task, findErr := FindTaskByIdentifier(project, args[0])
+	if findErr != nil {
+		return findErr
+	}
 
-	task, err := WithTaskUpdate(args[0], func(task *models.Task) error {
-		index, errParse := parseItemIndex(args[1], len(task.Comments), "comment")
-		if errParse != nil {
-			return errParse
-		}
-
-		if !task.ToggleCommentResolved(index) {
-			return fmt.Errorf("failed to toggle comment at index %d", index)
-		}
-
-		commentIndex = index
-		state = "resolved"
-		if !task.Comments[index].Resolved {
-			state = "unresolved"
-		}
-		return nil
-	})
+	index, err := parseItemIndex(args[1], len(task.Comments), "comment")
 	if err != nil {
 		return err
 	}
 
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.CommentResult, error) {
+		return svc.ToggleCommentResolved(task.ID, index)
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
+
+	state := "resolved"
+	if !res.Resolved {
+		state = "unresolved"
+	}
+
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return printMutationJSON(res.Task)
 	}
 	if !out.Quiet {
-		fmt.Printf("Comment %d marked as %s on #%d: %s\n", commentIndex, state, task.ShortID, task.Title)
+		fmt.Printf("Comment %d marked as %s on #%d: %s\n", res.Index, state, res.Task.ShortID, res.Task.Title)
 	}
 	return nil
 }

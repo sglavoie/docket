@@ -96,7 +96,10 @@ func tasksMarkdown(projectName, taskTitle string) string {
 
 func newGroupedRestoreProject(t *testing.T, root, id, slug, name, content string) *models.Project {
 	t.Helper()
-	projectPath := filepath.Join(root, slug)
+	// The workspace catalog derives every project's path as <data>/projects/<slug>
+	// (absolute paths are no longer persisted), so a config reload resolves the
+	// project here; the on-disk tasks.md and .undo history must live at that path.
+	projectPath := filepath.Join(root, "projects", slug)
 	if err := os.MkdirAll(projectPath, 0o755); err != nil {
 		t.Fatalf("failed to create project dir: %v", err)
 	}

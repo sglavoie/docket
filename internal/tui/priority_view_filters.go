@@ -8,21 +8,11 @@ import (
 
 // passesFilters checks if a task passes all current priority view filters.
 func (m *PriorityViewModel) passesFilters(task *models.Task) bool {
-	if !passesCommonFilters(task, &m.filter, m.project.ID, m.config) {
+	if !passesCommonFilters(task, &m.filter, m.project, m.config) {
 		return false
 	}
-	if m.filter.Actionable {
-		if m.project.HasIncompleteDependencies(task) {
-			return false
-		}
-		if task.Status == models.StatusBlocked {
-			return false
-		}
-		if task.Section == models.SectionInbox || task.Section == models.SectionNext ||
-			task.Section == models.SectionWaiting || task.Section == models.SectionSomeday ||
-			task.Section == models.SectionReview || task.Section == models.SectionStandby {
-			return false
-		}
+	if m.filter.Actionable && !taskIsActionableState(task, m.project) {
+		return false
 	}
 	return true
 }

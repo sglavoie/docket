@@ -32,8 +32,8 @@ func TestHandleArchiveCompletedTasksUsesLiveCount(t *testing.T) {
 	// closure), the cmd would still proceed to backup + archive based on
 	// the stale non-zero count.
 	for _, task := range project.Tasks {
-		if task.Status == models.StatusDone {
-			task.Status = models.StatusTodo
+		if task.State() == models.StateDone {
+			task.WorkflowState = models.StateReady
 			task.CompletedAt = nil
 		}
 	}

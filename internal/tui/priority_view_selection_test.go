@@ -145,7 +145,7 @@ func TestJumpToTask_BlockedTab(t *testing.T) {
 	project := newTestPriorityProject(t)
 
 	blockedTask := newTestTaskWithDueDate(t, "Blocked task", 1)
-	blockedTask.Status = models.StatusBlocked
+	blockedTask.WorkflowState = models.StateWaiting
 
 	normalTask := newTestTaskWithDueDate(t, "Normal task", 0)
 

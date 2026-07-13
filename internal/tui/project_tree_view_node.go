@@ -48,7 +48,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Status icon with color
-	statusStyle := GetStatusStyle(string(task.Status))
+	statusStyle := GetStateStyle(task.State())
 
 	// Override status style if task has incomplete dependencies
 	if m.project.HasIncompleteDependencies(task) {
@@ -67,11 +67,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	var statusIcon string
 	if node.IsContextNode {
-		statusIcon = statusStyle.Render(task.Status.Icon())
+		statusIcon = statusStyle.Render(task.State().Icon())
 	} else if m.project.HasIncompleteDependencies(task) {
-		statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
+		statusIcon = BlockedByDepsStyle.Render(task.State().Icon())
 	} else {
-		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
+		statusIcon = GetStateBadge(task.State())
 	}
 
 	if m.colLayout != nil && m.colLayout.HasStatus {
@@ -166,8 +166,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, idStr, title, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
 	isOverdue := task.IsOverdue()
-	isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
-	row := RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, maxWidth, isDimmed)
+	isBlocked := task.IsInState(models.StateWaiting) || m.project.HasIncompleteDependencies(task)
+	row := RenderSelectableRow(selected, m.queueIDs[task.ID], task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, maxWidth, isDimmed)
 	if !zebraEnabled && !selected && !isDimmed && !isOverdue && !isBlocked && node.TopGroupIndex%2 == 1 {
 		row = TreeGroupOddBgStyle.Width(maxWidth).Render(row)
 	}
@@ -227,7 +227,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 
 	// Type and status icons
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	statusIcon := GetStateBadge(task.State())
 
 	priorityBadge := renderPriorityBadge(task.Priority)
 	prioritySegment := ""

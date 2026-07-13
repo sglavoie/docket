@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -68,26 +69,32 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 				}
 			}
 			if msg.Project != nil {
-				undoOpts := m.taskMutationSaveOptions(msg.Task, taskContentUndoAction(titleChanged, descChanged))
-				// Re-lookup task in project to avoid stale pointer after concurrent reload
-				if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-					t.Title = msg.NewTitle
-					t.Description = msg.NewDescription
-				}) {
-					return true, errorCmd("task no longer exists in project")
+				req := app.EditRequest{TaskID: msg.Task.ID}
+				if titleChanged {
+					req.Title = &msg.NewTitle
 				}
+				if descChanged {
+					req.Description = &msg.NewDescription
+				}
+				res, err := m.appService.Edit(req)
+				if err != nil {
+					return true, errorCmd("%s", err)
+				}
+				m.reloadProjectByID(res.ProjectID)
 
-				// Refresh task editor view first if it's open
+				// Refresh task editor view first if it's open, sourcing the fresh
+				// task from the reloaded project so it reflects the committed edit.
 				if m.currentView() == ViewTaskForm {
-					current := msg.Project.GetTaskByID(msg.Task.ID)
-					taskEditor := NewTaskFormModelEdit(msg.Project, current, m.config, m.configManager)
+					reloaded := m.config.GetProject(res.ProjectID)
+					if reloaded == nil {
+						reloaded = msg.Project
+					}
+					current := reloaded.GetTaskByID(msg.Task.ID)
+					taskEditor := NewTaskFormModelEdit(reloaded, current, m.config, m.configManager)
 					taskEditor.SetSize(m.width, m.height-2)
 					m.views.Register(ViewTaskForm, taskEditor)
 				}
-				return true, tea.Batch(
-					startLoading("Saving..."),
-					m.appPersister().SaveWithBackupOptions(msg.Project, "Task updated", undoOpts),
-				)
+				return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: "Task updated"})
 			}
 		}
 	}
@@ -118,30 +125,14 @@ func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bo
 		return true, nil
 	}
 
-	undoOpts := m.taskMutationSaveOptions(msg.Task, "Edit Description")
-
-	// Update the task description
-	if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-		t.Description = msg.NewDescription
-	}) {
-		return true, errorCmd("task no longer exists in project")
+	res, err := m.appService.Edit(app.EditRequest{
+		TaskID:      msg.Task.ID,
+		Description: &msg.NewDescription,
+	})
+	if err != nil {
+		return true, errorCmd("%s", err)
 	}
-
-	// Refresh project tree and save
+	m.reloadProjectByID(res.ProjectID)
 	m.refreshAllViews()
-	return true, tea.Batch(
-		startLoading("Saving..."),
-		m.appPersister().SaveWithBackupOptions(msg.Project, "Description updated", undoOpts),
-	)
-}
-
-func taskContentUndoAction(titleChanged, descChanged bool) string {
-	switch {
-	case titleChanged && descChanged:
-		return "Edit Task"
-	case titleChanged:
-		return "Rename Task"
-	default:
-		return "Edit Description"
-	}
+	return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: "Description updated"})
 }

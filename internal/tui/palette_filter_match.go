@@ -46,7 +46,7 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 			}
 
 		case "status":
-			taskStatus := strings.ToLower(string(task.Status))
+			taskStatus := legacyStatusColumnForState(task.State())
 			if f.op == "eq" {
 				if !strings.Contains(taskStatus, strings.ToLower(f.value)) {
 					return false
@@ -81,7 +81,7 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 			case "overdue":
 				// Completed/canceled tasks are not overdue.
 				// When HasTime is set, compare against current time; else compare date.
-				if task.Status.IsComplete() {
+				if task.IsComplete() {
 					return false
 				}
 				if task.HasTime {
@@ -141,13 +141,13 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 
 		case "section":
 			if f.op == "eq" {
-				if !strings.EqualFold(task.Section, f.value) {
+				if !strings.EqualFold(taskSectionBucket(task), f.value) {
 					return false
 				}
 			} else if f.op == "in" {
 				found := false
 				for _, alt := range f.alt {
-					if strings.EqualFold(task.Section, alt) {
+					if strings.EqualFold(taskSectionBucket(task), alt) {
 						found = true
 						break
 					}

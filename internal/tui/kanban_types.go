@@ -12,7 +12,6 @@ const (
 	KanbanModeSection      KanbanMode = iota // GTD sections: Inbox, Next, Active, Waiting, Someday, Review, Standby, Completed
 	KanbanModeStatus                         // Status: Todo, InProgress, Review, Blocked, Standby, Done, Canceled
 	KanbanModePriority                       // Priority: P1–P5, Unset
-	KanbanModeStages                         // Project workflow stages
 	KanbanModeScoreBuckets                   // Score ranges: 0–25%, 26–50%, 51–75%, 76–100%
 )
 
@@ -21,7 +20,6 @@ var KanbanModeNames = map[KanbanMode]string{
 	KanbanModeSection:      "Section",
 	KanbanModeStatus:       "Status",
 	KanbanModePriority:     "Priority",
-	KanbanModeStages:       "Stages",
 	KanbanModeScoreBuckets: "Score Buckets",
 }
 
@@ -30,7 +28,6 @@ var KanbanModeIcons = map[KanbanMode]string{
 	KanbanModeSection:      "§",
 	KanbanModeStatus:       "◎",
 	KanbanModePriority:     "!",
-	KanbanModeStages:       IconInProgress,
 	KanbanModeScoreBuckets: icons.Get("score_bucket"),
 }
 
@@ -40,7 +37,6 @@ func (m KanbanMode) ID() string {
 		KanbanModeSection:      "section",
 		KanbanModeStatus:       "status",
 		KanbanModePriority:     "priority",
-		KanbanModeStages:       "stages",
 		KanbanModeScoreBuckets: "score_buckets",
 	}
 	if id, ok := ids[m]; ok {
@@ -55,7 +51,6 @@ func KanbanModeFromID(id string) KanbanMode {
 		KanbanModeSection:      "section",
 		KanbanModeStatus:       "status",
 		KanbanModePriority:     "priority",
-		KanbanModeStages:       "stages",
 		KanbanModeScoreBuckets: "score_buckets",
 	} {
 		if mid == id {
@@ -71,7 +66,6 @@ func AllKanbanModes() []KanbanMode {
 		KanbanModeSection,
 		KanbanModeStatus,
 		KanbanModePriority,
-		KanbanModeStages,
 		KanbanModeScoreBuckets,
 	}
 }

@@ -11,7 +11,7 @@ func TestSubtreeHasMatch_MatchingSelf(t *testing.T) {
 	task := testutil.NewTestTaskWithStatus("Active", models.StatusTodo)
 	task.Children = []*models.Task{}
 
-	matches := func(t *models.Task) bool { return !t.Status.IsComplete() }
+	matches := func(t *models.Task) bool { return !t.IsComplete() }
 
 	if !subtreeHasMatch(task, matches) {
 		t.Error("expected active task to match")
@@ -22,7 +22,7 @@ func TestSubtreeHasMatch_NonMatchingSelfNoChildren(t *testing.T) {
 	task := testutil.NewTestTaskWithStatus("Done", models.StatusDone)
 	task.Children = []*models.Task{}
 
-	matches := func(t *models.Task) bool { return !t.Status.IsComplete() }
+	matches := func(t *models.Task) bool { return !t.IsComplete() }
 
 	if subtreeHasMatch(task, matches) {
 		t.Error("expected completed leaf task to not match")
@@ -38,7 +38,7 @@ func TestSubtreeHasMatch_NonMatchingParentWithMatchingChild(t *testing.T) {
 
 	parent.Children = []*models.Task{child}
 
-	matches := func(t *models.Task) bool { return !t.Status.IsComplete() }
+	matches := func(t *models.Task) bool { return !t.IsComplete() }
 
 	if !subtreeHasMatch(parent, matches) {
 		t.Error("expected completed parent with active child to match via subtree")
@@ -58,7 +58,7 @@ func TestSubtreeHasMatch_NonMatchingParentWithMatchingGrandchild(t *testing.T) {
 	parent.Children = []*models.Task{child}
 	grandparent.Children = []*models.Task{parent}
 
-	matches := func(t *models.Task) bool { return !t.Status.IsComplete() }
+	matches := func(t *models.Task) bool { return !t.IsComplete() }
 
 	if !subtreeHasMatch(grandparent, matches) {
 		t.Error("expected completed grandparent with active grandchild to match via subtree")
@@ -74,7 +74,7 @@ func TestSubtreeHasMatch_AllNonMatching(t *testing.T) {
 
 	parent.Children = []*models.Task{child}
 
-	matches := func(t *models.Task) bool { return !t.Status.IsComplete() }
+	matches := func(t *models.Task) bool { return !t.IsComplete() }
 
 	if subtreeHasMatch(parent, matches) {
 		t.Error("expected all-completed subtree to not match")

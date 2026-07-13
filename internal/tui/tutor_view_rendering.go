@@ -115,13 +115,6 @@ func init() {
 		// "Press . " and "F then ." patterns
 		{`Press (\.) `, keybindStyle, 1},
 		{`then (\.) to`, keybindStyle, 1},
-		// F. prefix
-		{`\bF\.\b`, keybindStyle, 0},
-		// Default stage names rendered with badge style
-		{`\bBrainstorm\b`, StageBadgeStyle, 0},
-		{`\bDesign\b`, StageBadgeStyle, 0},
-		{`\bImplement\b`, StageBadgeStyle, 0},
-		{`\bDeploy\b`, StageBadgeStyle, 0},
 	}
 
 	for _, r := range rules {

@@ -20,6 +20,7 @@ func TestTaskCommentsSaveCommentMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.addMode = true
 	model.textInput.SetValue("New comment")
 
@@ -59,6 +60,7 @@ func TestTaskCommentsSaveCommentEmptyText(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.addMode = true
 	model.textInput.SetValue("   ")
 
@@ -88,6 +90,7 @@ func TestTaskCommentsDeleteMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 1
 
 	cmd := model.executeDelete()
@@ -124,6 +127,7 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 	model.editTextInput.SetValue("edited text")
@@ -165,6 +169,7 @@ func TestTaskCommentsRenderEditModeOOB(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 
@@ -194,6 +199,7 @@ func TestTaskCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 
@@ -226,6 +232,7 @@ func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 	model.editTextInput.SetValue("edited text")
@@ -260,6 +267,7 @@ func TestTaskCommentsHasUnsavedEditChangesIgnoresSurroundingWhitespace(t *testin
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 	// User opens edit; textarea is populated with the stored value but trims on input.
@@ -286,6 +294,7 @@ func TestTaskCommentsToggleResolvedMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 0
 
 	cmd := model.toggleResolved()

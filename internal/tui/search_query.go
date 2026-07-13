@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -190,8 +191,10 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	return result
 }
 
-// TaskMatchesFilters checks if a task matches all the specified filters.
-func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
+// TaskMatchesFilters checks if a task matches all the specified filters. The
+// config resolves Focus Queue membership for the active filters (the successor
+// of the deprecated Task.Active flag); a nil config matches no task as active.
+func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, cfg *config.Config) bool {
 	if filters == nil {
 		return true
 	}
@@ -212,9 +215,15 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 		}
 	}
 
-	// Status filter
+	// Status filter (legacy vocabulary mapped onto workflow states)
 	if len(filters.Statuses) > 0 {
-		found := slices.Contains(filters.Statuses, task.Status)
+		found := false
+		for _, status := range filters.Statuses {
+			if stateMatchesLegacyStatus(task.State(), status) {
+				found = true
+				break
+			}
+		}
 		if !found {
 			return false
 		}
@@ -235,15 +244,15 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 		}
 	}
 
-	// Section filter (case-insensitive)
+	// Section filter (case-insensitive, against the state's section bucket)
 	if filters.Section != "" {
-		if !strings.EqualFold(task.Section, filters.Section) {
+		if !strings.EqualFold(taskSectionBucket(task), filters.Section) {
 			return false
 		}
 	}
 
-	// Active flag filter
-	if filters.ActiveOnly && !task.Active {
+	// Active filter (Focus Queue membership)
+	if filters.ActiveOnly && !TaskInFocusQueue(cfg, task.ID) {
 		return false
 	}
 
@@ -263,7 +272,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 
 	// is: filters (must match the state)
 	for _, f := range filters.IsState {
-		if !matchesIsFilter(task, f) {
+		if !matchesIsFilter(task, f, cfg) {
 			return false
 		}
 	}
@@ -304,7 +313,7 @@ func matchesDueDateFilter(task *models.Task, filter string) bool {
 			return false
 		}
 		// Only active (non-complete) tasks can be overdue
-		if task.Status.IsComplete() {
+		if task.IsTerminalState() {
 			return false
 		}
 		dueDay := util.StartOfDay(*task.DueDate)
@@ -354,8 +363,6 @@ func matchesHasFilter(task *models.Task, filter string) bool {
 		return task.Recurrence != nil
 	case "url":
 		return task.URL != ""
-	case "stage":
-		return task.Stage != ""
 	case "parent":
 		return task.ParentID != nil
 	case "children":
@@ -367,18 +374,18 @@ func matchesHasFilter(task *models.Task, filter string) bool {
 }
 
 // matchesIsFilter returns true if the task matches the specified state.
-func matchesIsFilter(task *models.Task, filter string) bool {
+func matchesIsFilter(task *models.Task, filter string, cfg *config.Config) bool {
 	switch filter {
 	case "note":
 		return false
 	case "pinned":
 		return task.Pinned
 	case "active":
-		return task.Active
+		return TaskInFocusQueue(cfg, task.ID)
 	case "dimmed":
 		return task.Dimmed
 	case "blocked":
-		return task.Status == models.StatusBlocked
+		return task.IsInState(models.StateWaiting)
 	case "overdue":
 		return task.IsOverdue()
 	case "snoozed":

@@ -100,8 +100,12 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	if trimmedContext == "" {
 		return tterrors.NewInvalidValueError("context", projectContext, "cannot be empty")
 	}
-	if !isKnownContext(trimmedContext, cfg) {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", trimmedContext, knownContextList(cfg))
+	customNames, err := customContextNames(configManager)
+	if err != nil {
+		return err
+	}
+	if !isKnownContext(trimmedContext, customNames) {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", trimmedContext, knownContextList(customNames))
 	}
 
 	// Create project
@@ -129,12 +133,9 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%w: data directory: %w", tterrors.ErrWriteFailed, err)
 	}
 
-	// Purge any existing trash entry with same slug to allow recreation
-	if err := storage.PurgeFromTrash(slug, cfg.DataDir); err != nil {
-		return fmt.Errorf("failed to purge old trash entry: %w", err)
-	}
-
 	// Create project directory and initial tasks.md
+	// (A same-slug project may still exist as one or more trashed generations;
+	// versioned trash keeps them, so there is no need to purge here.)
 	if err := storage.CreateProjectDir(project); err != nil {
 		return tterrors.NewSaveProjectError(name, err)
 	}

@@ -102,15 +102,15 @@ func (m *ParkInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.task = resolvedTask
-			var completedStatus models.TaskStatus
+			var terminalState models.WorkflowState
 			if !m.project.MutateTask(resolvedTask.ID, func(t *models.Task) {
 				if note == "" && t.IsParked() {
 					t.Unpark(false)
 					unparked = true
 					return
 				}
-				if t.Status.IsComplete() {
-					completedStatus = t.Status
+				if t.IsComplete() {
+					terminalState = t.State()
 					return
 				}
 				t.Park(note)
@@ -118,8 +118,8 @@ func (m *ParkInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = fmt.Errorf("task no longer exists in project")
 				return m, nil
 			}
-			if completedStatus.IsComplete() {
-				m.err = fmt.Errorf("cannot park a %s task", completedStatus)
+			if terminalState != "" {
+				m.err = fmt.Errorf("cannot park a %s task", terminalState)
 				return m, nil
 			}
 			if fresh := m.project.GetTaskByID(resolvedTask.ID); fresh != nil {

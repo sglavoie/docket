@@ -1,12 +1,11 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -67,18 +66,16 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 		}
 		if m.editIdx >= 0 && m.editIdx < len(m.filtered) {
 			row := m.filtered[m.editIdx]
-			oldTitle := row.Task.Title
-			row.Project.MutateTask(row.Task.ID, func(t *models.Task) {
-				t.Title = value
-			})
-			opts := BuildWorkflowOpts(m.projectService, row.Project, m.getConfig(), m.configManager, nil, "Edit Title", oldTitle, nil)
-			if err := persistWithWorkflow(opts); err != nil {
-				m.setStatus("Failed to save: " + err.Error())
+			// Commit the title edit through the application-layer single-task
+			// coordinator; the shell's transaction-result handler reloads the
+			// committed project and refreshes the board (refreshData).
+			cmd := m.taskItem.Edit(app.EditRequest{TaskID: row.Task.ID, Title: &value})
+			msg := cmd()
+			if em, ok := msg.(TransactionErrorMsg); ok {
+				m.setStatus("Failed to save: " + em.Err.Error())
 				return m, nil
 			}
-			return m, func() tea.Msg {
-				return SaveCompleteMsg{SuccessMessage: "Title updated"}
-			}
+			return m, func() tea.Msg { return msg }
 		}
 		return m, nil
 	default:
@@ -88,7 +85,15 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 	}
 }
 
-// createItemFromInput parses the add input and creates a task.
+// SetCaptureCoordinator injects the shared capture coordinator (captureWireable).
+func (m *FocusBoardModel) SetCaptureCoordinator(c CaptureCoordinator) { m.capture = c }
+
+// SetTaskItemCoordinator injects the shared single-task coordinator so the board's
+// inline title edit commits through the application layer (taskItemWireable).
+func (m *FocusBoardModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem = c }
+
+// createItemFromInput parses the add input and creates a task through the
+// application-layer capture coordinator.
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
 	m.addMode = false
 	m.addInput.Blur()
@@ -96,7 +101,7 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 
 	result := parseBoardAddInput(input)
 
-	// Determine target project
+	// Determine target project.
 	var targetProject *models.Project
 
 	if result.projectSlug != "" {
@@ -109,17 +114,15 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	}
 
 	if targetProject == nil {
-		// Use action inbox as default
+		// Use the action inbox as default, creating it on first use. The empty
+		// project's tasks.md is written by the capture transaction below (the
+		// commit creates the file), so no separate raw project save is needed —
+		// only the directory and the config catalog entry are established here.
 		project, created := m.config.EnsureActionInboxProject()
 		targetProject = project
 		if created {
-			// Ensure project directory exists and save config
 			if err := storage.CreateProjectDir(targetProject); err != nil {
 				m.setStatus("Failed to create action inbox: " + err.Error())
-				return m, nil
-			}
-			if err := storage.SaveProjectLocked(targetProject); err != nil {
-				m.setStatus("Failed to save action inbox: " + err.Error())
 				return m, nil
 			}
 			if m.configManager != nil {
@@ -130,52 +133,36 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 		}
 	}
 
-	if err := m.projectService.Load(targetProject); err != nil {
-		m.setStatus("Failed to load project: " + err.Error())
-		return m, nil
-	}
-
-	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeTask, result.title)
-	if err != nil {
+	if err := models.ValidateTaskTitle(result.title); err != nil {
 		m.setStatus("Invalid task: " + err.Error())
 		return m, nil
 	}
-	if result.source != "" {
-		task.Source = result.source
+
+	// Non-GTD section input is preserved as a tag (custom section writes are
+	// retired under the workflow-state model), matching Bulk Capture.
+	section := result.section
+	tags := result.tags
+	if section != "" && !models.IsGTDSection(section) {
+		tags = append(tags, section)
+		section = ""
 	}
-	if result.url != "" {
-		task.URL = result.url
-	}
+
+	priority := 0
 	if result.priority >= 1 && result.priority <= 5 {
-		task.Priority = result.priority
-	}
-	if len(result.tags) > 0 {
-		task.Tags = result.tags
-	}
-	for _, tag := range result.tagsToRemove {
-		task.RemoveTag(tag)
-	}
-	if result.dueDate != nil {
-		task.DueDate = result.dueDate
-		task.HasTime = false
-	}
-	if result.section != "" {
-		task.SetSection(result.section)
-	}
-	if result.statusSet {
-		task.Status = result.status
+		priority = result.priority
 	}
 
-	targetProject.Tasks = append(targetProject.Tasks, task)
-	targetProject.BuildTaskTree()
-
-	opts := BuildWorkflowOpts(m.projectService, targetProject, m.getConfig(), m.configManager, nil, "Add Task", task.Title, nil)
-	if err := persistWithWorkflow(opts); err != nil {
-		m.setStatus("Failed to save: " + err.Error())
-		return m, nil
+	req := app.CaptureRequest{
+		ProjectID:  targetProject.ID,
+		Title:      result.title,
+		Priority:   priority,
+		Tags:       tags,
+		RemoveTags: result.tagsToRemove,
+		Section:    section,
+		Due:        result.dueDate,
+		URL:        result.url,
+		Source:     result.source,
+		State:      captureStateForStatus(result.status),
 	}
-
-	return m, func() tea.Msg {
-		return SaveCompleteMsg{SuccessMessage: fmt.Sprintf("Added #%d: %s", task.ShortID, task.Title)}
-	}
+	return m, m.capture.CaptureBoard(req)
 }

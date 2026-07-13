@@ -1,185 +1,34 @@
 package tui
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 	"time"
-
-	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
-var errNilProject = errors.New("internal: nil project")
-
-// analyzeBulkStatusTransition separates tasks that can transition to newStatus
+// analyzeBulkStateTransition separates tasks that can transition to newState
 // from those blocked by transition rules, incomplete dependencies (completion
-// only), or incomplete children (any completion state).
-func analyzeBulkStatusTransition(project *models.Project, tasks []*models.Task, newStatus models.TaskStatus) (valid []*models.Task, blockedCount int) {
+// only), or incomplete children (any terminal state).
+func analyzeBulkStateTransition(project *models.Project, tasks []*models.Task, newState models.WorkflowState) (valid []*models.Task, blockedCount int) {
 	for _, task := range tasks {
-		if task.CanTransitionTo(newStatus) != "" {
+		if models.CanTransitionState(task.State(), newState) != "" {
 			continue
 		}
-		if newStatus == models.StatusDone && project.HasIncompleteDependencies(task) {
+		if newState == models.StateDone && project.HasIncompleteDependencies(task) {
 			blockedCount++
 			continue
 		}
-		if newStatus.IsComplete() && task.HasIncompleteChildren() {
+		if newState.IsTerminal() && task.HasIncompleteChildren() {
 			blockedCount++
 			continue
 		}
 		valid = append(valid, task)
 	}
 	return
-}
-
-// applyStatusChange validates and applies a status transition on the given task.
-// It handles backup, mutation, save, and reload. The caller is responsible for
-// refreshing its view-specific data (loadTasks, clampCursor, etc.).
-func applyStatusChange(pf persistFn, project *models.Project, taskID string, newStatus models.TaskStatus) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	if msg := task.CanTransitionTo(newStatus); msg != "" {
-		return TaskOpResult{StatusMessage: msg}
-	}
-
-	if newStatus == models.StatusDone && project.HasIncompleteDependencies(task) {
-		return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
-	}
-
-	if newStatus.IsComplete() {
-		if incompleteChildren := task.IncompleteChildren(); len(incompleteChildren) > 0 {
-			verb := "complete"
-			if newStatus == models.StatusCanceled {
-				verb = "cancel"
-			}
-			var msg strings.Builder
-			fmt.Fprintf(&msg, "cannot %s #%d: has %d incomplete children:", verb, task.ShortID, len(incompleteChildren))
-			for _, child := range incompleteChildren {
-				fmt.Fprintf(&msg, " #%d", child.ShortID)
-			}
-			return TaskOpResult{StatusMessage: msg.String()}
-		}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.ApplyTransition(newStatus)
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	result.StatusMessage = fmt.Sprintf("Task #%d -> %s (u to undo)", task.ShortID, newStatus)
-	result.Cmd = func() tea.Msg { return TaskStatusChangedMsg{Task: task} }
-	return result
-}
-
-// applyPriorityChange sets the priority on a task.
-func applyPriorityChange(pf persistFn, project *models.Project, taskID string, priority int) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-	if task.Priority == priority {
-		return TaskOpResult{}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.Priority = priority
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	result.StatusMessage = fmt.Sprintf("Priority set to %d (u to undo)", priority)
-	return result
-}
-
-// applyStageChange sets the workflow stage on a task.
-func applyStageChange(pf persistFn, project *models.Project, taskID string, stage string) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-	if task.Stage == stage {
-		return TaskOpResult{}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.Stage = stage
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	if stage == "" {
-		result.StatusMessage = "Stage cleared (u to undo)"
-	} else {
-		result.StatusMessage = fmt.Sprintf("Stage set to %s (u to undo)", stage)
-	}
-	return result
-}
-
-// applyQuickDueDate sets the due date relative to today.
-func applyQuickDueDate(pf persistFn, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	newDate := time.Now().AddDate(0, 0, daysFromNow)
-	newDate = util.StartOfDay(newDate)
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.DueDate = &newDate
-		t.HasTime = false // Quick presets are always date-only.
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	result.StatusMessage = fmt.Sprintf("Due date set to %s", dueDateLabel(daysFromNow))
-	return result
-}
-
-// applyClearDueDate removes the due date from a task.
-func applyClearDueDate(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-	if task.DueDate == nil {
-		return TaskOpResult{StatusMessage: "Task has no due date"}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.DueDate = nil
-		t.HasTime = false
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	result.StatusMessage = "Due date cleared"
-	return result
 }
 
 // resolveQuickSnoozeDate maps a snooze sub-key to a snooze date and description.
@@ -212,33 +61,19 @@ func resolveQuickSnoozeDate(key string) (snoozeDate *time.Time, desc string, ok 
 	}
 }
 
-// applyQuickSnooze sets the snooze date on a task.
-func applyQuickSnooze(pf persistFn, project *models.Project, taskID string, snoozeDate *time.Time) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
+// toggleFlagKind identifies which boolean flag a toggleSpec operates on, so the
+// coordinator-backed single-task path can dispatch to the matching application
+// mutation (SetPinned / ToggleDimmed).
+type toggleFlagKind int
 
-	result := pf(project, taskID, func(t *models.Task) {
-		t.SnoozedUntil = snoozeDate
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	if snoozeDate == nil {
-		result.StatusMessage = "Snooze cleared"
-	} else {
-		result.StatusMessage = fmt.Sprintf("Snoozed until %s", snoozeDate.Format("Mon Jan 2"))
-	}
-	return result
-}
+const (
+	toggleFlagPinned toggleFlagKind = iota
+	toggleFlagDimmed
+)
 
 // toggleSpec describes a boolean toggle operation on a task.
 type toggleSpec struct {
+	kind     toggleFlagKind            // which flag this spec toggles
 	mutateFn func(t *models.Task)      // e.g. (*Task).TogglePinned
 	readFlag func(t *models.Task) bool // post-state getter, e.g. func(t) { return t.Pinned }
 	onFmt    string                    // format string when flag is true,  e.g. "Pinned task #%d"
@@ -246,191 +81,21 @@ type toggleSpec struct {
 }
 
 var (
-	toggleActive = toggleSpec{
-		mutateFn: (*models.Task).ToggleActive,
-		readFlag: func(t *models.Task) bool { return t.Active },
-		onFmt:    "Task #%d marked active",
-		offFmt:   "Task #%d unmarked active",
-	}
 	togglePinned = toggleSpec{
+		kind:     toggleFlagPinned,
 		mutateFn: (*models.Task).TogglePinned,
 		readFlag: func(t *models.Task) bool { return t.Pinned },
 		onFmt:    "Pinned task #%d",
 		offFmt:   "Unpinned task #%d",
 	}
 	toggleDimmed = toggleSpec{
+		kind:     toggleFlagDimmed,
 		mutateFn: (*models.Task).ToggleDimmed,
 		readFlag: func(t *models.Task) bool { return t.Dimmed },
 		onFmt:    "Dimmed task #%d",
 		offFmt:   "Undimmed task #%d",
 	}
 )
-
-// applyToggleBool toggles a boolean flag on a task using the given spec.
-func applyToggleBool(pf persistFn, project *models.Project, taskID string, spec toggleSpec) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	result := pf(project, taskID, spec.mutateFn)
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	updated := project.GetTaskByID(taskID)
-	if updated != nil && spec.readFlag(updated) {
-		result.StatusMessage = fmt.Sprintf(spec.onFmt, updated.ShortID)
-	} else if updated != nil {
-		result.StatusMessage = fmt.Sprintf(spec.offFmt, updated.ShortID)
-	}
-	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
-	return result
-}
-
-// applyToggleActive toggles the Active flag on a task.
-func applyToggleActive(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	return applyToggleBool(pf, project, taskID, toggleActive)
-}
-
-// applyTogglePinned toggles the Pinned flag on a task.
-func applyTogglePinned(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	return applyToggleBool(pf, project, taskID, togglePinned)
-}
-
-// applyToggleDimmed toggles the Dimmed flag on a task.
-func applyToggleDimmed(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	return applyToggleBool(pf, project, taskID, toggleDimmed)
-}
-
-// applyRemoveFromFocus always sets Active = false (used by FocusView specifically).
-func applyRemoveFromFocus(pf persistFn, project *models.Project, taskID string, shortID int) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.Active = false
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	result.StatusMessage = fmt.Sprintf("Removed #%d from focus", shortID)
-	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
-	return result
-}
-
-// applySectionChange sets the GTD section on a task.
-func applySectionChange(pf persistFn, project *models.Project, taskID string, section string) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		assignSection(t, section)
-		if section != "" {
-			project.EnsureSection(section)
-		}
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	sectionName := section
-	if sectionName == "" {
-		sectionName = "Active"
-	}
-	result.StatusMessage = fmt.Sprintf("Moved to %s (u to undo)", sectionName)
-	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
-	return result
-}
-
-// applyDeleteTask removes a task and its descendants from a project.
-// It handles attachment cleanup, descendant collection, and dangling parent references.
-func applyDeleteTask(pf persistFn, _ Persister, project *models.Project, taskID string) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	shortID := task.ShortID
-
-	// Collect the task and all its descendants
-	idsToDelete := collectDescendantIDs(project.Tasks, map[string]bool{taskID: true})
-
-	result := pf(project, taskID, func(*models.Task) {
-		deleteTasksFromProject(project, idsToDelete)
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	return TaskOpResult{
-		StatusMessage: fmt.Sprintf("Deleted task #%d (u to undo)", shortID),
-		Cmd: func() tea.Msg {
-			return TaskDeletedMsg{Task: task, Project: project}
-		},
-	}
-}
-
-func deleteTasksFromProject(project *models.Project, idsToDelete map[string]bool) {
-	// Clean up attachments for all tasks being deleted.
-	for _, t := range project.Tasks {
-		if idsToDelete[t.ID] {
-			if err := storage.CleanupTaskAttachments(project, t); err != nil {
-				logging.Warn("failed to clean up attachments for task %s: %v", t.ID, err)
-			}
-		}
-	}
-
-	// Filter out deleted tasks and clear dangling references
-	var remaining []*models.Task
-	for _, t := range project.Tasks {
-		if !idsToDelete[t.ID] {
-			if t.ParentID != nil && idsToDelete[*t.ParentID] {
-				t.ParentID = nil
-			}
-			// Clear dangling DependsOn references to deleted tasks
-			if len(t.DependsOn) > 0 {
-				cleaned := t.DependsOn[:0]
-				for _, depID := range t.DependsOn {
-					if !idsToDelete[depID] {
-						cleaned = append(cleaned, depID)
-					}
-				}
-				t.DependsOn = cleaned
-			}
-			// Clear dangling RelatedTo references to deleted tasks
-			if len(t.RelatedTo) > 0 {
-				cleaned := t.RelatedTo[:0]
-				for _, relID := range t.RelatedTo {
-					if !idsToDelete[relID] {
-						cleaned = append(cleaned, relID)
-					}
-				}
-				t.RelatedTo = cleaned
-			}
-			remaining = append(remaining, t)
-		}
-	}
-	project.Tasks = remaining
-	project.BuildTaskTree()
-}
 
 // dueDateLabel returns a human-friendly label for a relative due date.
 func dueDateLabel(daysFromNow int) string {

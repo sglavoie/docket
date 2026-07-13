@@ -12,8 +12,6 @@ type CommonTaskActionDeps struct {
 	EditTask Action
 	// ToggleHelp shows or hides the help panel.
 	ToggleHelp Action
-	// ToggleActive toggles the active flag on the task.
-	ToggleActive Action
 	// EditScore opens the score-dimensions editor.
 	EditScore Action
 	// OpenURL opens the task's URL in a browser. Nil if not supported.
@@ -25,7 +23,7 @@ type CommonTaskActionDeps struct {
 }
 
 // CommonTaskActionGroup returns top-level task-action bindings shared across
-// primary views: o, Z, D, e, ?, *, S, and optional O / ctrl+b / ctrl+.
+// primary views: o, Z, D, e, ?, S, and optional O / ctrl+b / ctrl+.
 func CommonTaskActionGroup(deps CommonTaskActionDeps) []Entry {
 	cat := "Task Actions"
 	entries := []Entry{
@@ -34,7 +32,6 @@ func CommonTaskActionGroup(deps CommonTaskActionDeps) []Entry {
 		Bind("D", "Mark done", cat, deps.MarkDone),
 		Bind("e", "Edit task", cat, deps.EditTask),
 		Bind("?", "Toggle help", cat, deps.ToggleHelp),
-		Bind("*", "Toggle active flag", cat, deps.ToggleActive),
 		Bind("S", "Edit score dimensions", cat, deps.EditScore),
 	}
 	if deps.OpenURL != nil {

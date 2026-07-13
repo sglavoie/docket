@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -64,60 +65,53 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return errValidate
 	}
 
+	// Resolve every referenced task within the current project, then route each
+	// priority change through the application service so it commits atomically,
+	// revision-checked, and undoably (via the workspace ledger) with stale-revision
+	// retry. Batch semantics are preserved: per-task errors are aggregated and
+	// reported as partial success, matching the legacy loop.
+	project, cfg, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+	svc := newAppService(cfg)
+
 	var errs []string
 	succeeded := 0
-	var updated []*models.Task
 	for _, taskID := range taskIDs {
-		var oldPriority int
-
-		alreadyAtPriority := false
-		task, err := WithTaskUpdate(taskID, func(task *models.Task) error {
-			oldPriority = task.Priority
-
-			if oldPriority == priority {
-				alreadyAtPriority = true
-				return fmt.Errorf("already at priority %d", priority)
-			}
-
-			task.Priority = priority
-			return nil
-		})
-
-		if err != nil {
-			if alreadyAtPriority {
-				// Treat "already at target priority" as a no-op success in both
-				// single-task and batch modes; surfacing it as an error caused
-				// non-zero exit codes for what is effectively idempotent input.
-				if !out.Quiet && !out.JSON && len(taskIDs) == 1 {
-					// FindTaskByIdentifier already validated the ID exists, so
-					// re-look up the short ID for a friendlier message.
-					if project, _, _, lookupErr := LoadCurrentProject(); lookupErr == nil {
-						if t, findErr := FindTaskByIdentifier(project, taskID); findErr == nil {
-							fmt.Printf("Task #%d is already at priority %d.\n", t.ShortID, priority)
-						}
-					}
-				}
-				continue
-			}
-			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))
+		task, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, findErr))
 			continue
 		}
 
-		updated = append(updated, task)
-		if !out.Quiet && !out.JSON {
-			fmt.Println(successMsg("Updated priority for task #%d: %d -> %d (%s)", task.ShortID, oldPriority, priority, task.Title))
+		oldPriority := task.Priority
+		if oldPriority == priority {
+			// Treat "already at target priority" as a no-op success: skip the commit
+			// entirely so UpdatedAt is untouched, and surface a friendly line only in
+			// single-task human mode (matching the legacy idempotent behavior).
+			if !out.Quiet && !out.JSON && len(taskIDs) == 1 {
+				fmt.Printf("Task #%d is already at priority %d.\n", task.ShortID, priority)
+			}
+			continue
 		}
-		succeeded++
-	}
 
-	if out.JSON {
-		if updated == nil {
-			updated = []*models.Task{}
+		res, mutErr := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.SetPriority(task.ID, priority)
+		})
+		if mutErr != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, translateAppError(mutErr)))
+			continue
 		}
-		if err := outputTasksJSON(updated); err != nil {
-			return err
+
+		succeeded++
+		if out.JSON {
+			if err := emitMutation(out, "", res); err != nil {
+				return err
+			}
+		} else if !out.Quiet {
+			fmt.Println(successMsg("Updated priority for task #%d: %d -> %d (%s)", task.ShortID, oldPriority, priority, res.Title))
 		}
-		return ReportBatchErrors(succeeded, errs)
 	}
 
 	return ReportBatchErrors(succeeded, errs)

@@ -1,56 +1,63 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	"fmt"
 
-// finalizeGlobalOp converts a TaskOpResult into the (bool, tea.Cmd) pair
-// used by handleGlobal*Applied methods: show success status, forward any
-// workflow command, and append the default status timeout.
-func (m *AppModel) finalizeGlobalOp(result TaskOpResult) (bool, tea.Cmd) {
-	if result.Err != nil {
-		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/app"
+)
+
+// finalizeGlobalOp converts an application-layer mutation outcome into the
+// (bool, tea.Cmd) pair used by handleGlobal*Applied methods: on error it
+// surfaces an error toast; on success it reloads the committed project, shows a
+// success status, and appends the default status timeout. The single-task
+// coordinator seam these handlers now use commits one ledger-backed transaction,
+// so the event-rule cascade and completion gamification the legacy simplePersist
+// path fired are intentionally dropped (matching the primary-view migration).
+func (m *AppModel) finalizeGlobalOp(res app.TaskResult, err error, successMsg string) (bool, tea.Cmd) {
+	if err != nil {
+		return true, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-	if result.StatusMessage != "" {
-		m.setSuccessStatus(result.StatusMessage)
+	m.reloadProjectByID(res.ProjectID)
+	if successMsg != "" {
+		m.setSuccessStatus(successMsg)
 	}
-	var cmds []tea.Cmd
-	if result.Cmd != nil {
-		cmds = append(cmds, result.Cmd)
-	}
-	cmds = append(cmds, defaultStatusTimeout())
-	return true, tea.Batch(cmds...)
+	return true, defaultStatusTimeout()
 }
 
-// handleGlobalStatusApplied applies a status change from the global status update flow.
+// handleGlobalStatusApplied applies a workflow-state change from the global
+// state update flow.
 func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
 	m.statusQuickPicker = nil
-	result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(msg.NewStatus)+" Task"), msg.Project, msg.Task.ID, msg.NewStatus)
-	return m.finalizeGlobalOp(result)
+	res, err := m.appService.Transition(app.StateRequest{TaskID: msg.Task.ID, Target: msg.NewState})
+	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Task #%d -> %s", res.ShortID, msg.NewState))
 }
 
 // handleGlobalPriorityApplied applies a priority change from the global priority update flow.
 func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bool, tea.Cmd) {
 	m.priorityQuickPicker = nil
-	result := applyPriorityChange(simplePersistWithUndo(m.persister, m.config, "Set Priority"), msg.Project, msg.Task.ID, msg.NewPriority)
-	return m.finalizeGlobalOp(result)
+	res, err := m.appService.SetPriority(msg.Task.ID, msg.NewPriority)
+	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Priority set to %d", msg.NewPriority))
 }
 
 // handleGlobalDueDateApplied applies a due date change from the global ;td due date flow.
 func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool, tea.Cmd) {
 	m.dueDateQuickPicker = nil
-	var result TaskOpResult
 	if msg.Clear {
-		result = applyClearDueDate(simplePersistWithUndo(m.persister, m.config, "Clear Due Date"), msg.Project, msg.Task.ID)
-	} else {
-		result = applyQuickDueDate(simplePersistWithUndo(m.persister, m.config, "Set Due Date"), msg.Project, msg.Task.ID, msg.DaysFromNow)
+		res, err := m.appService.SetDueDate(msg.Task.ID, nil, false)
+		return m.finalizeGlobalOp(res, err, "Due date cleared")
 	}
-	return m.finalizeGlobalOp(result)
+	due, label := dueDateFromDays(msg.DaysFromNow, false)
+	res, err := m.appService.SetDueDate(msg.Task.ID, due, false)
+	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Due date set to %s", label))
 }
 
 // handleGlobalSectionChanged applies a section change from the global ;ts section change flow.
 func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool, tea.Cmd) {
 	m.sectionChangeQuickPicker = nil
-	result := applySectionChange(simplePersistWithUndo(m.persister, m.config, "Move to Section"), msg.Project, msg.Task.ID, msg.Section)
-	return m.finalizeGlobalOp(result)
+	res, err := m.appService.SetSection(msg.Task.ID, msg.Section)
+	return m.finalizeGlobalOp(res, err, "Moved to section")
 }
 
 // handleGlobalMoveSectionSelected completes the ;tm global task-move workflow.

@@ -71,11 +71,10 @@ func TestRenderCrossProjectTaskLineShowDescription(t *testing.T) {
 // the row would defeat the compaction.
 func TestTaskLineNoLongerRendersStageBadge(t *testing.T) {
 	task := &models.Task{
-		Title:    "title",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Stage:    "design",
+		Title:         "title",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 	}
 	line := TaskLine{
 		Task:      task,
@@ -92,7 +91,7 @@ func TestTaskLineNoLongerRendersStageBadge(t *testing.T) {
 // invariant for the cross-project shared renderer.
 func TestRenderCrossProjectTaskLineNoLongerRendersStageBadge(t *testing.T) {
 	proj := &models.Project{ID: "p1", Name: "Proj"}
-	task := &models.Task{ID: "t1", Title: "title", Stage: "design"}
+	task := &models.Task{ID: "t1", Title: "title"}
 	got := RenderCrossProjectTaskLine(task, proj, nil, false, 120, 40, CrossProjectTaskLineOpts{})
 	plain := ansi.Strip(got)
 	if strings.Contains(plain, "design") {
@@ -102,12 +101,12 @@ func TestRenderCrossProjectTaskLineNoLongerRendersStageBadge(t *testing.T) {
 
 func TestTaskLineShowsParkedSnippet(t *testing.T) {
 	task := &models.Task{
-		ID:         "t1",
-		Title:      "parked task",
-		Type:       models.TaskTypeTask,
-		Status:     models.StatusTodo,
-		Priority:   3,
-		ParkedNote: "resume API",
+		ID:            "t1",
+		Title:         "parked task",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		ParkedNote:    "resume API",
 	}
 
 	line := TaskLine{Task: task, MaxTitle: 40, ViewWidth: 80}.Render()
@@ -120,12 +119,12 @@ func TestTaskLineShowsParkedSnippet(t *testing.T) {
 func TestTaskLineShowsParkedFallbackForBlankNote(t *testing.T) {
 	parkedAt := time.Now()
 	task := &models.Task{
-		ID:       "t1",
-		Title:    "blank-note parked task",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
-		ParkedAt: &parkedAt,
+		ID:            "t1",
+		Title:         "blank-note parked task",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		ParkedAt:      &parkedAt,
 	}
 
 	line := TaskLine{Task: task, MaxTitle: 40, ViewWidth: 80}.Render()
@@ -180,12 +179,12 @@ func TestRenderCrossProjectTaskLineShowsParkedFallbackWithExistingPostTitle(t *t
 
 func TestTaskLineParkedSnippetStaysWithinViewWidth(t *testing.T) {
 	task := &models.Task{
-		ID:         "t1",
-		Title:      "parked task with a title long enough to pressure the row",
-		Type:       models.TaskTypeTask,
-		Status:     models.StatusTodo,
-		Priority:   3,
-		ParkedNote: "very long resume note that must be truncated before it widens the row",
+		ID:            "t1",
+		Title:         "parked task with a title long enough to pressure the row",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		ParkedNote:    "very long resume note that must be truncated before it widens the row",
 	}
 
 	const viewWidth = 52
@@ -197,12 +196,12 @@ func TestTaskLineParkedSnippetStaysWithinViewWidth(t *testing.T) {
 
 func TestTaskLineParkedSnippetExpandsWithViewWidth(t *testing.T) {
 	task := &models.Task{
-		ID:         "t1",
-		Title:      "parked task",
-		Type:       models.TaskTypeTask,
-		Status:     models.StatusTodo,
-		Priority:   3,
-		ParkedNote: "resume alpha beta gamma delta marker epsilon zeta",
+		ID:            "t1",
+		Title:         "parked task",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		ParkedNote:    "resume alpha beta gamma delta marker epsilon zeta",
 	}
 
 	narrow := ansi.Strip(TaskLine{Task: task, MaxTitle: 20, ViewWidth: 54}.Render())
@@ -221,12 +220,12 @@ func TestCrossProjectSelectedStripDoesNotRepeatInlineStaleBadge(t *testing.T) {
 	cfg := &config.Config{StaleTaskDays: &staleDays}
 	proj := &models.Project{ID: "p1", Name: "Proj"}
 	task := &models.Task{
-		ID:        "t1",
-		Title:     "old cross-project task",
-		Status:    models.StatusTodo,
-		Priority:  2,
-		CreatedAt: time.Now().Add(-30 * 24 * time.Hour),
-		UpdatedAt: time.Now().Add(-30 * 24 * time.Hour),
+		ID:            "t1",
+		Title:         "old cross-project task",
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		CreatedAt:     time.Now().Add(-30 * 24 * time.Hour),
+		UpdatedAt:     time.Now().Add(-30 * 24 * time.Hour),
 	}
 
 	row := RenderCrossProjectTaskLine(task, proj, cfg, true, 120, 40, CrossProjectTaskLineOpts{})
@@ -324,9 +323,9 @@ func staleCrossProjectViewFixture(t *testing.T) (*config.Config, *models.Project
 		t.Fatal(err)
 	}
 	old := time.Now().Add(-30 * 24 * time.Hour)
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 	task.Priority = 2
-	task.Section = models.SectionNext
+	task.SetSection(models.SectionNext)
 	task.UpdatedAt = old
 	task.CreatedAt = old
 	proj.Tasks = []*models.Task{task}
@@ -338,13 +337,12 @@ func staleCrossProjectViewFixture(t *testing.T) (*config.Config, *models.Project
 // shared rows entirely, so width must be identical with and without a stage.
 func TestTaskLineLongStageDoesNotAffectWidth(t *testing.T) {
 	base := &models.Task{
-		Title:    "title",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
+		Title:         "title",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 	}
 	staged := *base
-	staged.Stage = "a-really-long-stage-label-that-would-have-pushed-the-title"
 
 	baseLine := TaskLine{Task: base, MaxTitle: 40, ViewWidth: 80}.Render()
 	stagedLine := TaskLine{Task: &staged, MaxTitle: 40, ViewWidth: 80}.Render()
@@ -362,11 +360,10 @@ func TestTaskLineLongStageDoesNotAffectWidth(t *testing.T) {
 // layout without inheriting it from the shared helper.
 func TestComputeTaskLineColumnLayoutIgnoresStage(t *testing.T) {
 	t1 := &models.Task{
-		Title:    "alpha",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusInProgress,
-		Priority: 2,
-		Stage:    "design",
+		Title:         "alpha",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateInProgress,
+		Priority:      2,
 	}
 	cl := ComputeTaskLineColumnLayout([]*models.Task{t1}, false)
 	if cl == nil {
@@ -389,15 +386,12 @@ func TestSharedRowLongStageManySiblingsConsistentWidth(t *testing.T) {
 	tasks := make([]*models.Task, 0, 12)
 	for i := 0; i < 12; i++ {
 		tasks = append(tasks, &models.Task{
-			Title:    "Task " + strings.Repeat("x", 4),
-			Type:     models.TaskTypeTask,
-			Status:   models.StatusTodo,
-			Priority: 3,
+			Title:         "Task " + strings.Repeat("x", 4),
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateReady,
+			Priority:      3,
 		})
 	}
-	// One sibling carries a long stage label that pre-plan would have
-	// widened the row.
-	tasks[5].Stage = "Implement initial version"
 
 	layout := ComputeTaskLineColumnLayout(tasks, false)
 	if layout == nil {
@@ -431,14 +425,13 @@ func TestCrossProjectRowLongStageGroupedListConsistentWidth(t *testing.T) {
 	tasks := make([]*models.Task, 0, 8)
 	for i := 0; i < 8; i++ {
 		tasks = append(tasks, &models.Task{
-			ID:       "t" + strings.Repeat("x", i+1),
-			Title:    "Grouped row task " + strings.Repeat("x", 3),
-			Type:     models.TaskTypeTask,
-			Status:   models.StatusTodo,
-			Priority: 3,
+			ID:            "t" + strings.Repeat("x", i+1),
+			Title:         "Grouped row task " + strings.Repeat("x", 3),
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateReady,
+			Priority:      3,
 		})
 	}
-	tasks[2].Stage = "Implement initial version"
 
 	layout := ComputeBadgeWidths(tasks, BadgeWidthOpts{
 		IncludeStatus: true,
@@ -471,11 +464,11 @@ func TestCrossProjectRowLongStageGroupedListConsistentWidth(t *testing.T) {
 // match a non-overdue dimmed sibling exactly.
 func TestTaskLineDimmedOverdueSkipsHeroDemotion(t *testing.T) {
 	base := &models.Task{
-		Title:    "dim row",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Dimmed:   true,
+		Title:         "dim row",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Dimmed:        true,
 	}
 	yesterday := time.Now().Add(-48 * time.Hour)
 	overdue := *base
@@ -509,10 +502,10 @@ func TestTaskLinePrioritySegmentDemotionPreservesAlignment(t *testing.T) {
 	// Baseline: low-priority hidden, but no hero (Priority=3 is not P1, not
 	// overdue, not in_review). prioritySegment should be PadBadge("",1)+" " = "  ".
 	baselineTask := &models.Task{
-		Title:    "samename",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
+		Title:         "samename",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 	}
 	baseline := TaskLine{
 		Task:            baselineTask,
@@ -525,11 +518,11 @@ func TestTaskLinePrioritySegmentDemotionPreservesAlignment(t *testing.T) {
 	// triggers demotion of prioritySegment via demotedTaskLineSegment.
 	yesterday := time.Now().Add(-48 * time.Hour)
 	demotedTask := &models.Task{
-		Title:    "samename",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
-		DueDate:  &yesterday,
+		Title:         "samename",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		DueDate:       &yesterday,
 	}
 	demoted := TaskLine{
 		Task:            demotedTask,

@@ -36,9 +36,7 @@ func (m *AppModel) handleSetDueDate(msg SetDueDateMsg) (bool, tea.Cmd) {
 		if m.config != nil {
 			weekEndDay = m.config.GetWeekEndDay()
 		}
-		input := NewDateInputModel(first.Task, first.Project, weekEndDay)
-		input.deferApply = true
-		m.showView(ViewDateInput, input)
+		m.showView(ViewDateInput, NewDateInputModel(first.Task, first.Project, weekEndDay))
 		return true, nil
 	}
 	m.pendingBulkTasks = nil
@@ -58,9 +56,7 @@ func (m *AppModel) handleSetSnoozeDate(msg SetSnoozeDateMsg) (bool, tea.Cmd) {
 	if refs := validTaskProjectRefs(msg.TaskRefs); len(refs) > 0 {
 		m.pendingBulkTasks = refs
 		first := refs[0]
-		input := NewSnoozeInputModel(first.Task, first.Project)
-		input.deferApply = true
-		m.showView(ViewSnoozeInput, input)
+		m.showView(ViewSnoozeInput, NewSnoozeInputModel(first.Task, first.Project))
 		return true, nil
 	}
 	m.pendingBulkTasks = nil
@@ -77,70 +73,55 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 
 	refs := validTaskProjectRefs(m.pendingBulkTasks)
 	if len(refs) > 0 && msg.HasExplicitValue {
-		newSnooze := msg.SnoozedUntil
-		count, _, err := m.applyBulkTaskRefsWithWorkflow(refs, "Snooze", func(project *models.Project, taskID string) bool {
-			return project.MutateTask(taskID, func(t *models.Task) {
-				if newSnooze != nil {
-					snoozeCopy := *newSnooze
-					t.SnoozedUntil = &snoozeCopy
-				} else {
-					t.SnoozedUntil = nil
-				}
-			})
-		})
+		// Multiselect snooze picker (explicit value): commit every selected task's
+		// snooze as one asynchronous cross-project transaction through the
+		// BulkCoordinator. Snooze is an attribute mutation, so no workflow rules run;
+		// the shell owns reload and selection-clear via the batch result.
+		taskIDs := taskIDsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
-		if err != nil {
-			return true, errorCmd("save failed: %w", err)
-		}
-
-		var successMsg string
-		if newSnooze != nil {
-			successMsg = fmt.Sprintf("Snoozed %d tasks until %s", count, newSnooze.Format("2006-01-02"))
+		var summary string
+		if msg.SnoozedUntil != nil {
+			summary = fmt.Sprintf("Snoozed %d tasks until %s", len(taskIDs), msg.SnoozedUntil.Format("2006-01-02"))
 		} else {
-			successMsg = fmt.Sprintf("Cleared snooze for %d tasks", count)
+			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(taskIDs))
 		}
-		m.clearBulkTaskSelectionsForRefs(refs)
-		m.setSuccessStatus(successMsg)
-		cmds := m.refreshTaskViewsAfterSave()
-		cmds = append(cmds, defaultStatusTimeout())
-		return true, tea.Batch(cmds...)
+		cmd := m.secondaryFeatures.Bulk.Snooze(taskIDs, msg.SnoozedUntil)
+		return true, finalizeBatchResult(cmd, taskIDs, summary)
+	}
+
+	// Single-task snooze overlay (explicit value, no pending bulk selection):
+	// commit the one task through the one-task BulkCoordinator wrapper so the
+	// durable write flows through the application layer / workspace ledger instead
+	// of a raw save. The shell owns reload and toast via the batch result.
+	if len(refs) == 0 && msg.Task != nil && msg.HasExplicitValue {
+		m.pendingBulkTasks = nil
+		cmd := m.secondaryFeatures.Bulk.Snooze([]string{msg.Task.ID}, msg.SnoozedUntil)
+		var summary string
+		if msg.SnoozedUntil != nil {
+			summary = fmt.Sprintf("Snoozed #%d until %s", msg.Task.ShortID, msg.SnoozedUntil.Format("2006-01-02"))
+		} else {
+			summary = fmt.Sprintf("Cleared snooze for #%d", msg.Task.ShortID)
+		}
+		return true, finalizeBatchResult(cmd, nil, summary)
 	}
 
 	if len(refs) > 1 && msg.Task != nil {
-		newSnooze := msg.Task.SnoozedUntil
-		count := 1 // First task was already updated and saved by SnoozeInputModel.
-
-		for i, ref := range refs {
-			if i == 0 {
-				continue
-			}
-			if ref.Project.MutateTask(ref.Task.ID, func(t *models.Task) {
-				if newSnooze != nil {
-					snoozeCopy := *newSnooze
-					t.SnoozedUntil = &snoozeCopy
-				} else {
-					t.SnoozedUntil = nil
-				}
-			}) {
-				count++
-			}
-		}
-
-		var successMsg string
-		if newSnooze != nil {
-			successMsg = fmt.Sprintf("Snoozed %d tasks until %s", count, newSnooze.Format("2006-01-02"))
-		} else {
-			successMsg = fmt.Sprintf("Cleared snooze for %d tasks", count)
-		}
+		// Non-explicit multiselect fallback: the snooze value already lives on the
+		// first task (updated by SnoozeInputModel); apply it to every selected task
+		// through the BulkCoordinator as one asynchronous cross-project transaction,
+		// mirroring the explicit-value picker path above. The shell owns reload and
+		// selection-clear via the batch result.
+		taskIDs := taskIDsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
-		m.clearBulkTaskSelectionsForRefs(refs)
-
-		if cmd := saveAffectedProjectsAsync(refs, successMsg); cmd != nil {
-			return true, cmd
+		newSnooze := msg.Task.SnoozedUntil
+		cmd := m.secondaryFeatures.Bulk.Snooze(taskIDs, newSnooze)
+		var summary string
+		if newSnooze != nil {
+			summary = fmt.Sprintf("Snoozed %d tasks until %s", len(taskIDs), newSnooze.Format("2006-01-02"))
+		} else {
+			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(taskIDs))
 		}
-		m.setSuccessStatus(successMsg)
-		m.refreshAllViews()
-		return true, defaultStatusTimeout()
+		return true, finalizeBatchResult(cmd, taskIDs, summary)
 	}
 
 	m.pendingBulkTasks = nil
@@ -155,76 +136,65 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 	// Check if this is a bulk operation from palette
 	refs := validTaskProjectRefs(m.pendingBulkTasks)
 	if len(refs) > 0 && msg.HasExplicitValue {
-		newDate := msg.DueDate
-		newHasTime := msg.HasTime
-		count, _, err := m.applyBulkTaskRefsWithWorkflow(refs, "Set Due Date", func(project *models.Project, taskID string) bool {
-			return project.MutateTask(taskID, func(t *models.Task) {
-				if newDate != nil {
-					dateCopy := *newDate
-					t.DueDate = &dateCopy
-				} else {
-					t.DueDate = nil
-				}
-				t.HasTime = newHasTime
-			})
-		})
+		// Multiselect due-date picker (explicit value): commit every selected task's
+		// due date as one asynchronous cross-project transaction through the
+		// BulkCoordinator. Date-only vs timed semantics ride msg.HasTime. Setting a
+		// due date is an attribute mutation, so no workflow rules run; the shell owns
+		// reload and selection-clear via the batch result.
+		taskIDs := taskIDsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
-		if err != nil {
-			return true, errorCmd("save failed: %w", err)
-		}
-
-		var successMsg string
-		if newDate != nil {
-			successMsg = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
+		var cmd tea.Cmd
+		var summary string
+		if msg.DueDate != nil {
+			cmd = m.secondaryFeatures.Bulk.SetDueDate(taskIDs, *msg.DueDate, msg.HasTime)
+			summary = fmt.Sprintf("Set due date to %s for %d tasks", msg.DueDate.Format("2006-01-02"), len(taskIDs))
 		} else {
-			successMsg = fmt.Sprintf("Cleared due date for %d tasks", count)
+			cmd = m.secondaryFeatures.Bulk.ClearDueDate(taskIDs)
+			summary = fmt.Sprintf("Cleared due date for %d tasks", len(taskIDs))
 		}
-		m.clearBulkTaskSelectionsForRefs(refs)
-		m.setSuccessStatus(successMsg)
-		cmds := m.refreshTaskViewsAfterSave()
-		cmds = append(cmds, defaultStatusTimeout())
-		return true, tea.Batch(cmds...)
+		return true, finalizeBatchResult(cmd, taskIDs, summary)
+	}
+
+	// Single-task due-date overlay (explicit value, no pending bulk selection):
+	// commit the one task through the one-task BulkCoordinator wrapper so the
+	// durable write flows through the application layer / workspace ledger instead
+	// of a raw save. Date-only vs timed semantics ride msg.HasTime; a nil DueDate
+	// clears the date. The shell owns reload and toast via the batch result.
+	if len(refs) == 0 && msg.Task != nil && msg.HasExplicitValue {
+		m.pendingBulkTasks = nil
+		var cmd tea.Cmd
+		var summary string
+		if msg.DueDate != nil {
+			cmd = m.secondaryFeatures.Bulk.SetDueDate([]string{msg.Task.ID}, *msg.DueDate, msg.HasTime)
+			summary = fmt.Sprintf("Set due date for #%d", msg.Task.ShortID)
+		} else {
+			cmd = m.secondaryFeatures.Bulk.ClearDueDate([]string{msg.Task.ID})
+			summary = fmt.Sprintf("Cleared due date for #%d", msg.Task.ShortID)
+		}
+		return true, finalizeBatchResult(cmd, nil, summary)
 	}
 
 	if len(refs) > 1 && msg.Task != nil {
-		// The first task was already updated and saved by DateInputModel.
-		// Apply the same date to remaining tasks.
+		// Non-explicit multiselect fallback: the due date already lives on the first
+		// task (updated by DateInputModel); apply it to every selected task through
+		// the BulkCoordinator as one asynchronous cross-project transaction, mirroring
+		// the explicit-value picker path above. Date-only vs timed semantics ride the
+		// first task's HasTime flag. The shell owns reload and selection-clear via the
+		// batch result.
+		taskIDs := taskIDsFromTaskRefs(refs)
+		m.pendingBulkTasks = nil
 		newDate := msg.Task.DueDate
 		newHasTime := msg.Task.HasTime
-		count := 1
-
-		for i, item := range refs {
-			if i == 0 {
-				continue
-			}
-			if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
-				if newDate != nil {
-					dateCopy := *newDate
-					t.DueDate = &dateCopy
-				} else {
-					t.DueDate = nil
-				}
-				t.HasTime = newHasTime
-			}) {
-				count++
-			}
-		}
-
-		var successMsg string
+		var cmd tea.Cmd
+		var summary string
 		if newDate != nil {
-			successMsg = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
+			cmd = m.secondaryFeatures.Bulk.SetDueDate(taskIDs, *newDate, newHasTime)
+			summary = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), len(taskIDs))
 		} else {
-			successMsg = fmt.Sprintf("Cleared due date for %d tasks", count)
+			cmd = m.secondaryFeatures.Bulk.ClearDueDate(taskIDs)
+			summary = fmt.Sprintf("Cleared due date for %d tasks", len(taskIDs))
 		}
-		m.pendingBulkTasks = nil
-		m.clearBulkTaskSelectionsForRefs(refs)
-
-		if cmd := saveAffectedProjectsAsync(refs, successMsg); cmd != nil {
-			return true, cmd
-		}
-		m.setSuccessStatus(successMsg)
-		m.refreshAllViews()
-		return true, defaultStatusTimeout()
+		return true, finalizeBatchResult(cmd, taskIDs, summary)
 	}
 
 	m.pendingBulkTasks = nil

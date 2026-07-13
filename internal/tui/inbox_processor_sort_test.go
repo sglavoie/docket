@@ -17,11 +17,10 @@ func TestInboxProcessor_SortStableTiebreakOnID(t *testing.T) {
 
 	mkInbox := func(id string, ts time.Time) *models.Task {
 		return &models.Task{
-			ID:        id,
-			CreatedAt: ts,
-			Section:   models.SectionInbox,
-			Type:      models.TaskTypeTask,
-			Status:    models.StatusTodo,
+			ID:            id,
+			CreatedAt:     ts,
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateInbox,
 		}
 	}
 

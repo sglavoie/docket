@@ -10,13 +10,13 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 
 	t.Run("BugAttrs copied to new instance", func(t *testing.T) {
 		task := &Task{
-			ID:         "task-1",
-			ShortID:    1,
-			Type:       TaskTypeBug,
-			Title:      "Recurring Bug",
-			Status:     StatusDone,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+			ID:            "task-1",
+			ShortID:       1,
+			Type:          TaskTypeBug,
+			Title:         "Recurring Bug",
+			WorkflowState: StateDone,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
 			BugAttrs: &BugAttrs{
 				Severity:     BugSeverityCritical,
 				Reproducible: BugReproducibleYes,
@@ -47,13 +47,13 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 
 	t.Run("TaskAttrs copied to new instance", func(t *testing.T) {
 		task := &Task{
-			ID:         "task-2",
-			ShortID:    1,
-			Type:       TaskTypeTask,
-			Title:      "Recurring Task",
-			Status:     StatusDone,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+			ID:            "task-2",
+			ShortID:       1,
+			Type:          TaskTypeTask,
+			Title:         "Recurring Task",
+			WorkflowState: StateDone,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 			TaskAttrs: &TaskAttrs{
 				Effort:   EffortSmall,
 				WorkType: WorkTypeDevelopment,
@@ -76,13 +76,13 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 
 	t.Run("IdeaAttrs copied to new instance", func(t *testing.T) {
 		task := &Task{
-			ID:         "task-3",
-			ShortID:    1,
-			Type:       TaskTypeIdea,
-			Title:      "Recurring Idea",
-			Status:     StatusDone,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
+			ID:            "task-3",
+			ShortID:       1,
+			Type:          TaskTypeIdea,
+			Title:         "Recurring Idea",
+			WorkflowState: StateDone,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
 			IdeaAttrs: &IdeaAttrs{
 				Category:  IdeaCategoryFeature,
 				Effort:    EffortLarge,
@@ -107,15 +107,15 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 
 	t.Run("Source and URL copied to new instance", func(t *testing.T) {
 		task := &Task{
-			ID:         "task-4",
-			ShortID:    1,
-			Type:       TaskTypeTask,
-			Title:      "Recurring with metadata",
-			Status:     StatusDone,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
-			Source:     "github",
-			URL:        "https://github.com/example/issue/42",
+			ID:            "task-4",
+			ShortID:       1,
+			Type:          TaskTypeTask,
+			Title:         "Recurring with metadata",
+			WorkflowState: StateDone,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+			Source:        "github",
+			URL:           "https://github.com/example/issue/42",
 		}
 		project := &Project{Tasks: []*Task{task}, NextShortID: 2}
 		project.GenerateRecurringInstances()
@@ -132,13 +132,13 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 	t.Run("EpicAttrs deep-copies ScopeBaselinedAt pointer", func(t *testing.T) {
 		baseline := time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC)
 		task := &Task{
-			ID:         "task-epic",
-			ShortID:    1,
-			Type:       TaskTypeEpic,
-			Title:      "Recurring Epic",
-			Status:     StatusDone,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
+			ID:            "task-epic",
+			ShortID:       1,
+			Type:          TaskTypeEpic,
+			Title:         "Recurring Epic",
+			WorkflowState: StateDone,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
 			EpicAttrs: &EpicAttrs{
 				Scope:             EpicScopeDefined,
 				Milestone:         "Q1",
@@ -173,13 +173,13 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 
 	t.Run("nil attrs not copied", func(t *testing.T) {
 		task := &Task{
-			ID:         "task-5",
-			ShortID:    1,
-			Type:       TaskTypeTask,
-			Title:      "Plain recurring",
-			Status:     StatusDone,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+			ID:            "task-5",
+			ShortID:       1,
+			Type:          TaskTypeTask,
+			Title:         "Plain recurring",
+			WorkflowState: StateDone,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 		}
 		project := &Project{Tasks: []*Task{task}, NextShortID: 2}
 		project.GenerateRecurringInstances()

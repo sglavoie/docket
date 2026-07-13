@@ -14,19 +14,12 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 }
 
 type projectTreeKeymapBuilder struct {
-	model  *ProjectTreeModel
-	stages []string
+	model *ProjectTreeModel
 }
 
 func newProjectTreeKeymapBuilder(m *ProjectTreeModel) *projectTreeKeymapBuilder {
-	var stages []string
-	if m.config != nil {
-		stages = m.config.Stages
-	}
-
 	return &projectTreeKeymapBuilder{
-		model:  m,
-		stages: stages,
+		model: m,
 	}
 }
 
@@ -44,7 +37,6 @@ func (b *projectTreeKeymapBuilder) entries() []keymap.Entry {
 	entries = append(entries, b.moveEntries()...)
 	entries = append(entries, b.linkedTaskEntries()...)
 	entries = append(entries, b.taskPrefixEntries()...)
-	entries = append(entries, b.stageEntries()...)
 	entries = append(entries, b.blockerEntries()...)
 	entries = append(entries, b.filterEntries()...)
 	entries = append(entries, b.typeChangeEntries()...)

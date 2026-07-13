@@ -16,17 +16,17 @@ func TestFilterTasks_CombinedFilters_TypeAndStatus(t *testing.T) {
 	tasks := []*models.Task{
 		func() *models.Task {
 			task := testutil.NewTestTask("Todo task", models.TaskTypeTask)
-			task.Status = models.StatusTodo
+			task.WorkflowState = models.StateReady
 			return task
 		}(),
 		func() *models.Task {
 			task := testutil.NewTestTask("InProgress task", models.TaskTypeTask)
-			task.Status = models.StatusInProgress
+			task.WorkflowState = models.StateInProgress
 			return task
 		}(),
 		func() *models.Task {
 			task := testutil.NewTestTask("Todo bug", models.TaskTypeBug)
-			task.Status = models.StatusTodo
+			task.WorkflowState = models.StateReady
 			return task
 		}(),
 	}
@@ -40,8 +40,8 @@ func TestFilterTasks_CombinedFilters_TypeAndStatus(t *testing.T) {
 		if result[0].Type != models.TaskTypeTask {
 			t.Errorf("expected type task, got %s", result[0].Type)
 		}
-		if result[0].Status != models.StatusTodo {
-			t.Errorf("expected status todo, got %s", result[0].Status)
+		if result[0].State() != models.StateReady {
+			t.Errorf("expected state ready, got %s", result[0].State())
 		}
 	}
 }
@@ -83,7 +83,7 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 
 	matchingTask := func() *models.Task {
 		task := testutil.NewTestTask("Critical bug", models.TaskTypeBug)
-		task.Status = models.StatusInProgress
+		task.WorkflowState = models.StateInProgress
 		task.Priority = 1
 		task.Tags = []string{"critical", "backend"}
 		return task
@@ -91,7 +91,7 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 
 	wrongType := func() *models.Task {
 		task := testutil.NewTestTask("Critical task", models.TaskTypeTask)
-		task.Status = models.StatusInProgress
+		task.WorkflowState = models.StateInProgress
 		task.Priority = 1
 		task.Tags = []string{"critical"}
 		return task
@@ -99,7 +99,7 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 
 	wrongStatus := func() *models.Task {
 		task := testutil.NewTestTask("Todo bug", models.TaskTypeBug)
-		task.Status = models.StatusTodo
+		task.WorkflowState = models.StateReady
 		task.Priority = 1
 		task.Tags = []string{"critical"}
 		return task
@@ -107,7 +107,7 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 
 	wrongPriority := func() *models.Task {
 		task := testutil.NewTestTask("P2 bug", models.TaskTypeBug)
-		task.Status = models.StatusInProgress
+		task.WorkflowState = models.StateInProgress
 		task.Priority = 2
 		task.Tags = []string{"critical"}
 		return task
@@ -115,7 +115,7 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 
 	missingTag := func() *models.Task {
 		task := testutil.NewTestTask("Non-critical bug", models.TaskTypeBug)
-		task.Status = models.StatusInProgress
+		task.WorkflowState = models.StateInProgress
 		task.Priority = 1
 		task.Tags = []string{"minor"}
 		return task

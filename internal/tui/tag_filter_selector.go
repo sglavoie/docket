@@ -111,7 +111,7 @@ func addTaskTagCounts(tagCounts map[string]int, tasks []*models.Task, excludeCom
 		if task == nil {
 			continue
 		}
-		if excludeCompleted && task.Status.IsComplete() {
+		if excludeCompleted && task.IsComplete() {
 			continue
 		}
 		for _, tag := range models.DedupeTags(task.Tags) {

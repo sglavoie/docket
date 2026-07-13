@@ -205,15 +205,15 @@ func TestParseSearchQuery_AllStatuses(t *testing.T) {
 
 func TestTaskMatchesFilters_SectionMatchesGTDOnly(t *testing.T) {
 	gtdTask := &models.Task{
-		Title:   "GTD task",
-		Section: "Next",
+		Title:         "GTD task",
+		WorkflowState: models.StateNext,
 	}
 	activeTask := &models.Task{
 		Title: "Active task",
 	}
 	bothTask := &models.Task{
-		Title:   "Both task",
-		Section: "Next",
+		Title:         "Both task",
+		WorkflowState: models.StateNext,
 	}
 
 	tests := []struct {
@@ -235,9 +235,9 @@ func TestTaskMatchesFilters_SectionMatchesGTDOnly(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			filters := &ParsedSearchQuery{Section: tt.section}
-			got := TaskMatchesFilters(tt.task, filters)
+			got := TaskMatchesFilters(tt.task, filters, nil)
 			if got != tt.want {
-				t.Errorf("TaskMatchesFilters(section=%q) = %v, want %v", tt.section, got, tt.want)
+				t.Errorf("TaskMatchesFilters(section=%q, nil) = %v, want %v", tt.section, got, tt.want)
 			}
 		})
 	}
@@ -245,15 +245,15 @@ func TestTaskMatchesFilters_SectionMatchesGTDOnly(t *testing.T) {
 
 func TestTaskMatchesFilters_SectionViaSearchQuery(t *testing.T) {
 	task := &models.Task{
-		Title:  "My task",
-		Status: models.StatusTodo,
+		Title:         "My task",
+		WorkflowState: models.StateReady,
 	}
 
 	filters := ParseSearchQuery("/Design")
 	if filters.Section != "Design" {
 		t.Fatalf("ParseSearchQuery(/Design).Section = %q, want %q", filters.Section, "Design")
 	}
-	if TaskMatchesFilters(task, filters) {
+	if TaskMatchesFilters(task, filters, nil) {
 		t.Error("TaskMatchesFilters should not match non-GTD section via /Design search query")
 	}
 }
@@ -399,9 +399,9 @@ func TestTaskMatchesFilters_HasPresence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := TaskMatchesFilters(tt.task, tt.filters)
+			got := TaskMatchesFilters(tt.task, tt.filters, nil)
 			if got != tt.want {
-				t.Errorf("TaskMatchesFilters() = %v, want %v", got, tt.want)
+				t.Errorf("TaskMatchesFilters(, nil) = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -417,12 +417,12 @@ func TestTaskMatchesFilters_Combinations(t *testing.T) {
 	}
 
 	filters := ParseSearchQuery("#backend has:comment is:pinned")
-	if !TaskMatchesFilters(task, filters) {
+	if !TaskMatchesFilters(task, filters, nil) {
 		t.Error("expected task to match #backend has:comment is:pinned")
 	}
 
 	filters2 := ParseSearchQuery("is:pinned no:due")
-	if TaskMatchesFilters(task, filters2) {
+	if TaskMatchesFilters(task, filters2, nil) {
 		t.Error("expected task NOT to match is:pinned no:due (task has due date)")
 	}
 }

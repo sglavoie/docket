@@ -39,12 +39,17 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 
 	ruleID := args[0]
 
-	cfg, _, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
 
-	rule := cfg.GetWorkflowRule(ruleID)
+	automation, err := automationStore(configManager).LoadAutomation()
+	if err != nil {
+		return err
+	}
+
+	rule := automation.GetWorkflowRule(ruleID)
 	if rule == nil {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}

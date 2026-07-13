@@ -7,13 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// WriteMetadata generates the metadata comment for a task.
-func WriteMetadata(task *models.Task) string {
-	var parts []string
-	metadataFieldRegistry.appendWrittenParts(task, &parts)
-	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
-}
-
 // FormatRecurrence converts a RecurrencePattern to its string representation for storage.
 func FormatRecurrence(r *models.RecurrencePattern) string {
 	if r == nil {

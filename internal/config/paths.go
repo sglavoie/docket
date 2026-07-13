@@ -3,9 +3,13 @@ package config
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Path resolution constants. All default data-dir and config-path decisions
@@ -32,7 +36,188 @@ const (
 	// machine-local runtime state keyed by data dir when the durable data dir
 	// is not the local default.
 	runtimeDirName = "runtime"
+
+	// DataDirEnvVar is the environment variable that selects the workspace data
+	// directory when no explicit --data-dir flag is given. It sits between the
+	// flag and the machine-local active-workspace pointer in the resolution
+	// precedence (see ResolveWorkspaceDataDir).
+	DataDirEnvVar = "TT_DATA_DIR"
+
+	// activeWorkspacePointerName is the machine-local file that records which
+	// data directory this machine last opened. It lives under the local runtime
+	// root (never synced) at a fixed location so it can select the data dir
+	// before any data dir is known.
+	activeWorkspacePointerName = "active-workspace.json"
+
+	// machineStateFileName is the machine-local decomposed-config file that holds
+	// editors, navigation, histories, and layout state. It lives under the local
+	// runtime dir keyed by the data dir so distinct workspaces stay isolated and
+	// nothing machine-specific ever syncs.
+	machineStateFileName = "machine.json"
 )
+
+// InternalDir returns the internal ".tt" directory inside a data directory. This
+// is where the synced decomposed-config files (workspace/planning/settings/
+// automation.json) live. It mirrors Config.GetInternalDir but is available
+// without a loaded Config so path helpers share one derivation point.
+func InternalDir(dataDir string) string {
+	return filepath.Join(dataDir, dataDirName)
+}
+
+// ConfigPathForDataDir returns the legacy single-file config path inside a data
+// directory. It is the inverse of WorkspaceRootFromConfigPath and lets callers
+// derive the config path once a data directory has been resolved.
+func ConfigPathForDataDir(dataDir string) string {
+	return filepath.Join(dataDir, configFileName)
+}
+
+// WorkspaceRootFromConfigPath returns the workspace root (data directory) that
+// owns a config file. The legacy --config flag is now an isolation-compatible
+// alias: whatever directory holds the named config file becomes the workspace
+// root, so pointing --config at a temp dir isolates an entire workspace there.
+func WorkspaceRootFromConfigPath(configPath string) string {
+	return filepath.Dir(configPath)
+}
+
+// WorkspaceCatalogPath returns the synced workspace.json path for a data dir.
+func WorkspaceCatalogPath(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "workspace.json")
+}
+
+// PlanningStatePath returns the synced planning.json path for a data dir.
+func PlanningStatePath(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "planning.json")
+}
+
+// SettingsPath returns the synced settings.json path for a data dir.
+func SettingsPath(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "settings.json")
+}
+
+// AutomationPath returns the synced automation.json path for a data dir.
+func AutomationPath(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "automation.json")
+}
+
+// TransactionsDir returns the durable directory that holds prepared and
+// recovering transaction manifests for a data dir. It lives under the synced
+// internal ".tt" directory so any machine that opens the workspace can inspect
+// in-flight transactions and drive crash recovery.
+func TransactionsDir(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "transactions")
+}
+
+// UndoLedgerDir returns the durable directory that holds the workspace undo
+// ledger and its retained before/after artifact blobs for a data dir. It lives
+// under the synced internal ".tt" directory so the append-only global
+// transaction ledger travels with the workspace, mirroring TransactionsDir.
+func UndoLedgerDir(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "undo")
+}
+
+// ConflictsDir returns the durable directory that holds persisted three-way
+// merge conflict bundles (base/local/remote documents plus structured conflict
+// metadata) for a data dir. It lives under the synced internal ".tt" directory
+// so a recorded conflict travels with the workspace and can be inspected and
+// resolved from any machine that opens it, mirroring TransactionsDir.
+func ConflictsDir(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "conflicts")
+}
+
+// MachineStatePath returns the machine-local machine.json path for a data dir.
+// It always lives under the local runtime root keyed by the data dir, so it
+// never follows a synced (e.g. iCloud) workspace between machines.
+func MachineStatePath(dataDir string) string {
+	return filepath.Join(LocalRuntimeDirForDataDir(dataDir), machineStateFileName)
+}
+
+// activeWorkspacePointerPath returns the fixed machine-local path of the
+// active-workspace pointer. It lives under the local runtime dir (not keyed by
+// any data dir) because it is consulted before a data dir has been selected.
+func activeWorkspacePointerPath() string {
+	return filepath.Join(LocalDataRoot(), runtimeDirName, activeWorkspacePointerName)
+}
+
+// activeWorkspacePointer is the machine-local record of the last-opened data
+// directory. It carries a schema version and the workspace ID so a future
+// migration can reason about it, but its authoritative field is DataDir.
+type activeWorkspacePointer struct {
+	SchemaVersion int    `json:"schema_version"`
+	WorkspaceID   string `json:"workspace_id,omitempty"`
+	DataDir       string `json:"data_dir"`
+}
+
+// ReadActiveWorkspacePointer returns the data directory recorded by the
+// machine-local active-workspace pointer and whether one was found. A missing,
+// unreadable, or malformed pointer reports (\"\", false) so resolution falls
+// through to the next precedence tier rather than failing.
+func ReadActiveWorkspacePointer() (string, bool) {
+	data, err := os.ReadFile(activeWorkspacePointerPath())
+	if err != nil {
+		return "", false
+	}
+	var ptr activeWorkspacePointer
+	if err := json.Unmarshal(data, &ptr); err != nil {
+		return "", false
+	}
+	if ptr.DataDir == "" {
+		return "", false
+	}
+	return filepath.Clean(ptr.DataDir), true
+}
+
+// WriteActiveWorkspacePointer records the active data directory (and optional
+// workspace ID) in the machine-local pointer, written atomically with private
+// permissions. It is the machine-local half of workspace selection; the synced
+// workspace catalog remains the source of truth for workspace identity.
+func WriteActiveWorkspacePointer(dataDir, workspaceID string) error {
+	if dataDir == "" {
+		return fmt.Errorf("config: active-workspace pointer requires a data dir")
+	}
+	path := activeWorkspacePointerPath()
+	if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
+		return fmt.Errorf("failed to create active-workspace pointer dir: %w", err)
+	}
+	ptr := activeWorkspacePointer{
+		SchemaVersion: CurrentDomainSchemaVersion,
+		WorkspaceID:   workspaceID,
+		DataDir:       filepath.Clean(dataDir),
+	}
+	data, err := json.MarshalIndent(ptr, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to encode active-workspace pointer: %w", err)
+	}
+	if err := util.AtomicWriteFile(path, data, FilePermissions); err != nil {
+		return fmt.Errorf("failed to write active-workspace pointer: %w", err)
+	}
+	return nil
+}
+
+// ResolveWorkspaceDataDir resolves the workspace data directory following the
+// documented precedence: explicit flag, then the TT_DATA_DIR environment
+// variable, then the machine-local active-workspace pointer, and finally the
+// local default (~/.tt). The bool reports whether an explicit selection was
+// made (any of the first three tiers); callers that must preserve the legacy
+// iCloud default when nothing is selected can branch on it.
+func ResolveWorkspaceDataDir(flagValue string) (string, bool) {
+	if flagValue != "" {
+		return filepath.Clean(flagValue), true
+	}
+	if env := os.Getenv(DataDirEnvVar); env != "" {
+		return filepath.Clean(env), true
+	}
+	if ptr, ok := ReadActiveWorkspacePointer(); ok {
+		return ptr, true
+	}
+	return LocalDataRoot(), false
+}
+
+// ResolveDataDir returns only the resolved data directory from
+// ResolveWorkspaceDataDir, discarding the explicit-selection flag.
+func ResolveDataDir(flagValue string) string {
+	dir, _ := ResolveWorkspaceDataDir(flagValue)
+	return dir
+}
 
 // resolveHomeDir returns the user's home directory and whether it could be
 // determined. It is the single wrapper over os.UserHomeDir so every path helper
@@ -73,11 +258,18 @@ func iCloudDataRoot() (string, bool) {
 }
 
 // ActiveDefaultDataDir returns the data directory tt uses by default when the
-// user has not overridden it: the iCloud Drive root when iCloud Drive is
-// available, otherwise the local ~/.tt root.
+// user has made no explicit workspace selection.
+//
+// New installations are local-first: the local ~/.tt root is used unless an
+// iCloud Drive workspace already exists (an existing active iCloud install), in
+// which case that workspace is preserved. Automatic migration of a local
+// install into iCloud has been removed; relocating a workspace to (or from)
+// iCloud is now an explicit action — see MoveWorkspace and `tt workspace move`.
 func ActiveDefaultDataDir() string {
 	if root, ok := iCloudDataRoot(); ok {
-		return root
+		if _, err := os.Stat(filepath.Join(root, configFileName)); err == nil {
+			return root
+		}
 	}
 	return LocalDataRoot()
 }

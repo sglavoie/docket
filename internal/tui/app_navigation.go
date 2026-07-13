@@ -287,16 +287,7 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.showProjectCyclePicker = false
 	m.showProjectCycle = false
 
-	m.quickNoteOverlay = nil
-	m.globalProjectPicker = nil
-	m.globalTaskPicker = nil
-	m.statusQuickPicker = nil
-	m.sectionQuickPicker = nil
-	m.sectionChangeQuickPicker = nil
-	m.linkTypeQuickPicker = nil
-	m.linkModeQuickPicker = nil
-	m.priorityQuickPicker = nil
-	m.dueDateQuickPicker = nil
+	m.Overlays().ClearAll()
 
 	m.pendingBulkTasks = nil
 	m.pendingBulkSectionTasks = nil
@@ -319,16 +310,9 @@ func (m *AppModel) clearTransientNavigationState() {
 
 // isGlobalOverlayView returns true for views launched via the global ";" overlay prefix.
 // These views can be opened from any context and should return to an anchor view when closed.
+// Defined declaratively by the route table's GlobalOverlay flag (see route.go).
 func isGlobalOverlayView(v ViewType) bool {
-	switch v {
-	case ViewFocusView, ViewFocusBoard, ViewGlobalInboxProcessor,
-		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
-		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules,
-		ViewPipelineHub, ViewRoadmap:
-		return true
-	default:
-	}
-	return false
+	return routeFor(v).GlobalOverlay
 }
 
 // popToAnchorView pops the view stack until the top is a project-level view
@@ -389,11 +373,72 @@ func (m *AppModel) setAccentOnView(view View) {
 
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
 // This consolidates the common pattern used by Show*Msg handlers.
+// bulkWireable is implemented by every view that routes its multiselect
+// mutations through the application-layer BulkCoordinator. The shell wires them
+// all from the single showView/replaceView site so no construction path can
+// forget to inject the coordinator (a nil mutator would panic in a bulk handler).
+type bulkWireable interface {
+	SetBulkCoordinator(BulkCoordinator)
+}
+
+// taskItemWireable is implemented by every view that routes its single-task
+// mutations through the application-layer TaskItemCoordinator, parallel to
+// bulkWireable. The shell wires them all from the single showView/replaceView
+// site so no construction path forgets to inject the coordinator.
+type taskItemWireable interface {
+	SetTaskItemCoordinator(TaskItemCoordinator)
+}
+
+// linkWireable is implemented by every view that routes its task-link mutations
+// through the application-layer LinkCoordinator, parallel to bulkWireable. The
+// shell wires them all from the single showView/replaceView site so no
+// construction path forgets to inject the coordinator.
+type linkWireable interface {
+	SetLinkCoordinator(LinkCoordinator)
+}
+
+// captureWireable is implemented by every capture-creation view that routes its
+// task creation through the application-layer CaptureCoordinator. The shell wires
+// them from the single showView/replaceView site so no construction path can
+// forget to inject the coordinator (a nil mutator would panic in a create
+// handler).
+type captureWireable interface {
+	SetCaptureCoordinator(CaptureCoordinator)
+}
+
+// taskFormWireable is implemented by the create/edit task form, which routes its
+// create and edit mutations through the application-layer TaskFormCoordinator.
+type taskFormWireable interface {
+	SetTaskFormCoordinator(TaskFormCoordinator)
+}
+
+// wireSecondaryCoordinators injects the shell's shared coordinators into a view
+// as it is registered, so a view's mutation handlers can commit through the
+// application layer without every construction site threading the coordinator.
+func (m *AppModel) wireSecondaryCoordinators(view View) {
+	if w, ok := view.(bulkWireable); ok {
+		w.SetBulkCoordinator(m.secondaryFeatures.Bulk)
+	}
+	if w, ok := view.(taskItemWireable); ok {
+		w.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
+	}
+	if w, ok := view.(linkWireable); ok {
+		w.SetLinkCoordinator(m.secondaryFeatures.Link)
+	}
+	if w, ok := view.(captureWireable); ok {
+		w.SetCaptureCoordinator(m.features.Capture)
+	}
+	if w, ok := view.(taskFormWireable); ok {
+		w.SetTaskFormCoordinator(m.features.TaskForm)
+	}
+}
+
 func (m *AppModel) showView(viewType ViewType, view View) {
 	// All views (including full-height ones) are sized to height-2. Register
 	// re-applies the registry's stored height-2, so a full-height SetSize here
 	// would be immediately clobbered anyway; this also matches handleWindowSize.
 	view.SetSize(m.width, m.height-2)
+	m.wireSecondaryCoordinators(view)
 	m.views.Register(viewType, view)
 	m.pushView(viewType)
 	m.setAccentOnView(view)
@@ -413,6 +458,7 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 	// See showView: all views are sized to height-2 here; Register re-applies
 	// the registry's stored height-2 regardless, matching handleWindowSize.
 	view.SetSize(m.width, m.height-2)
+	m.wireSecondaryCoordinators(view)
 	m.views.Register(viewType, view)
 	if len(m.viewStack) > 1 {
 		m.viewStack[len(m.viewStack)-1] = viewType

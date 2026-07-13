@@ -28,8 +28,8 @@ func TestSetSection_RejectsNonGTDName(t *testing.T) {
 				t.Fatal(err)
 			}
 			task.SetSection(tc.input)
-			if task.Section != "" {
-				t.Errorf("expected Section empty for non-GTD name %q, got %q", tc.input, task.Section)
+			if got := SectionForState(task.State()); got != "" {
+				t.Errorf("expected Section empty for non-GTD name %q, got %q", tc.input, got)
 			}
 		})
 	}
@@ -43,13 +43,13 @@ func TestSetSection_InvalidNamePreservesPriorState(t *testing.T) {
 		t.Fatal(err)
 	}
 	task.SetSection(SectionInbox)
-	if task.Section != SectionInbox {
-		t.Fatalf("precondition: expected Inbox, got %q", task.Section)
+	if got := SectionForState(task.State()); got != SectionInbox {
+		t.Fatalf("precondition: expected Inbox, got %q", got)
 	}
 	// Attempt to set an invalid name; should be a no-op leaving prior state.
 	task.SetSection("bad name")
-	if task.Section != SectionInbox {
-		t.Errorf("expected Section unchanged after invalid SetSection, got %q", task.Section)
+	if got := SectionForState(task.State()); got != SectionInbox {
+		t.Errorf("expected Section unchanged after invalid SetSection, got %q", got)
 	}
 }
 
@@ -450,13 +450,13 @@ func TestSetSection_RejectsCaseVariantGTDName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = SectionInbox
+	task.SetSection(SectionInbox)
 
 	task.SetSection("inbox")
 	// Section must remain unchanged when the call is rejected; otherwise the
 	// task silently drops out of its current bucket on invalid input.
-	if task.Section != SectionInbox {
-		t.Errorf("Section should be preserved when SetSection rejects input, got %q", task.Section)
+	if got := SectionForState(task.State()); got != SectionInbox {
+		t.Errorf("Section should be preserved when SetSection rejects input, got %q", got)
 	}
 }
 
@@ -644,13 +644,13 @@ func TestCheckAndAutoUnblock_DanglingDepDoesNotBlock(t *testing.T) {
 	// Inject a dangling dep + blocked status directly (bypassing AddDependency
 	// so we test what happens when storage delivers a stale ref).
 	task.DependsOn = []string{"ghost-id"}
-	task.Status = StatusBlocked
+	task.WorkflowState = StateWaiting
 	p.Tasks = []*Task{task}
 
 	p.CheckAndAutoUnblock()
 
-	if task.Status != StatusTodo {
-		t.Errorf("expected dangling-only dep to auto-unblock to todo, got %s", task.Status)
+	if task.State() != StateInbox {
+		t.Errorf("expected dangling-only dep to auto-unblock to inbox, got %s", task.State())
 	}
 }
 
@@ -672,13 +672,13 @@ func TestCheckAndAutoUnblock_DanglingMixedWithIncompleteStaysBlocked(t *testing.
 	}
 	_ = task.AddDependency(blocker.ID)
 	task.DependsOn = append(task.DependsOn, "ghost-id")
-	task.Status = StatusBlocked
+	task.WorkflowState = StateWaiting
 	p.Tasks = []*Task{blocker, task}
 
 	p.CheckAndAutoUnblock()
 
-	if task.Status != StatusBlocked {
-		t.Errorf("expected task to remain blocked while real blocker is incomplete, got %s", task.Status)
+	if task.State() != StateWaiting {
+		t.Errorf("expected task to remain waiting while real blocker is incomplete, got %s", task.State())
 	}
 }
 
@@ -700,13 +700,13 @@ func TestCheckAndAutoUnblock_DanglingPlusResolvedUnblocks(t *testing.T) {
 	}
 	_ = task.AddDependency(blocker.ID)
 	task.DependsOn = append(task.DependsOn, "ghost-id")
-	task.Status = StatusBlocked
+	task.WorkflowState = StateWaiting
 	p.Tasks = []*Task{blocker, task}
 
 	blocker.Complete()
 	p.CheckAndAutoUnblock()
 
-	if task.Status != StatusTodo {
-		t.Errorf("expected task to be unblocked (resolved blocker + dangling ref), got %s", task.Status)
+	if task.State() != StateInbox {
+		t.Errorf("expected task to be unblocked to inbox (resolved blocker + dangling ref), got %s", task.State())
 	}
 }

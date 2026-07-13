@@ -7,27 +7,37 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+var undoGlobal bool
 
 var undoCmd = &cobra.Command{
 	Use:   "undo",
 	Short: "Undo the last change to tasks",
 	Long: `Restore the previous state of the tasks file.
 
-Each mutating operation (add, complete, edit, etc.) creates an undo snapshot.
-Running undo restores the most recent snapshot.
-Multiple levels of undo are supported (configurable via undo_history_depth).
+Each mutating operation (add, complete, edit, etc.) records an entry in the
+workspace undo ledger. Running undo restores the most recent entry that touched
+the current project — including every other project, config artifact, and
+attachment the same transaction touched. Multiple levels of undo are supported
+(configurable via undo_history_depth).
+
+With --global, the most recent transaction across the whole workspace is undone
+regardless of which project it touched.
 
 Examples:
-  tt undo              # Restore previous state`,
+  tt undo              # Restore the current project's previous state
+  tt undo --global     # Undo the latest workspace transaction`,
 	Args: cobra.NoArgs,
 	RunE: runUndo,
 }
 
 func init() {
+	undoCmd.Flags().BoolVar(&undoGlobal, "global", false, "undo the most recent transaction across the whole workspace")
 	rootCmd.AddCommand(undoCmd)
 }
 
@@ -37,35 +47,128 @@ func runUndo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Try multi-level undo system first
-	if storage.UndoHistoryExists(project) {
-		projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, cfg.Projects, loadUndoHistoryEntries)
-		actionDesc, err := storage.PerformUndoForProjects(project, cfg.Projects)
-		if err != nil {
-			return restoreCommandError("undo", grouped, err)
-		}
-
-		// Reload restored project(s) and re-run side effects (auto-unblock, recurring
-		// generation, reorder) so the restored state is consistent — matching
-		// the TUI's reapplySideEffects behavior.
-		if err := reapplyRestoreSideEffectsAndSave(projectsToReload, "undo"); err != nil {
-			return err
-		}
-		if err := repairConfigTaskRefsToLoadedProjects(configManager, cfg, projectsToReload); err != nil {
-			return err
-		}
-
-		fmt.Printf("Undone: %s\n", actionDesc)
-
-		// Check remaining undo history
-		entries, _ := storage.LoadUndoHistory(project)
-		if len(entries) > 0 {
-			fmt.Printf("%d more undo step(s) available.\n", len(entries))
-		}
-		return nil
+	ledger := workspaceLedgerForRestore(cfg)
+	scope := storage.ProjectScope(project.ID)
+	if undoGlobal {
+		scope = storage.GlobalScope()
 	}
 
-	return fmt.Errorf("no undo history available for project '%s'", project.Name)
+	entry, ledgerHas, err := ledger.SelectNewestUndo(scope)
+	if err != nil {
+		return fmt.Errorf("undo failed: %w", err)
+	}
+
+	// Migration-window fallback: mutations not yet routed through the
+	// application layer (chiefly TUI flows still on the legacy persist
+	// pipeline) record only per-project history. Prefer whichever system holds
+	// the more recent entry so interleaved histories restore in order; the
+	// fallback dies with the legacy pipeline. Global scope is ledger-only —
+	// the legacy system has no workspace-wide notion.
+	if !undoGlobal && legacyHistoryIsNewer(project, entry, ledgerHas, storage.LoadUndoHistory) {
+		return runLegacyUndo(project, cfg, configManager)
+	}
+	if !ledgerHas {
+		if undoGlobal {
+			return fmt.Errorf("no undo history available")
+		}
+		return fmt.Errorf("no undo history available for project '%s'", project.Name)
+	}
+
+	actionDesc, err := ledger.Undo(scope)
+	if err != nil {
+		return fmt.Errorf("undo failed: %w", err)
+	}
+	if err := repairConfigRefsAfterLedgerRestore(configManager, entry.ProjectIDs); err != nil {
+		return err
+	}
+
+	fmt.Printf("Undone: %s\n", actionDesc)
+	if remaining, countErr := ledger.UndoCount(scope); countErr == nil && remaining > 0 {
+		fmt.Printf("%d more undo step(s) available.\n", remaining)
+	}
+	return nil
+}
+
+// runLegacyUndo restores through the per-project undo history. It is reachable
+// only from the migration-window fallback in runUndo and is removed with the
+// legacy persist pipeline.
+func runLegacyUndo(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
+	projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, cfg.Projects, loadUndoHistoryEntries)
+	actionDesc, err := storage.PerformUndoForProjects(project, cfg.Projects)
+	if err != nil {
+		return restoreCommandError("undo", grouped, err)
+	}
+
+	// Reload restored project(s) and re-run side effects (auto-unblock, recurring
+	// generation, reorder) so the restored state is consistent — matching
+	// the TUI's reapplySideEffects behavior.
+	if err := reapplyRestoreSideEffectsAndSave(projectsToReload, "undo"); err != nil {
+		return err
+	}
+	if err := repairConfigTaskRefsToLoadedProjects(configManager, cfg, projectsToReload); err != nil {
+		return err
+	}
+
+	fmt.Printf("Undone: %s\n", actionDesc)
+
+	// Check remaining undo history
+	entries, _ := storage.LoadUndoHistory(project)
+	if len(entries) > 0 {
+		fmt.Printf("%d more undo step(s) available.\n", len(entries))
+	}
+	return nil
+}
+
+// workspaceLedgerForRestore opens the workspace undo ledger the transactional
+// commit boundary records to, sized from the configured history depth — the same
+// construction newCLIRepository uses, so undo reads exactly what mutations wrote.
+func workspaceLedgerForRestore(cfg *config.Config) *storage.WorkspaceLedger {
+	depth := config.DefaultUndoHistoryDepth
+	if cfg.UndoHistoryDepth != nil {
+		depth = *cfg.UndoHistoryDepth
+	}
+	return storage.NewWorkspaceLedger(config.UndoLedgerDir(cfg.DataDir), depth, []string{cfg.DataDir})
+}
+
+// legacyHistoryIsNewer reports whether the legacy per-project history holds an
+// entry more recent than the selected ledger entry (or the only entry at all),
+// in which case the fallback path should restore it first.
+func legacyHistoryIsNewer(project *models.Project, ledgerEntry storage.LedgerEntry, ledgerHas bool, load historyLoader) bool {
+	entries, err := load(project)
+	if err != nil || len(entries) == 0 {
+		return false
+	}
+	if !ledgerHas {
+		return true
+	}
+	return entries[0].Timestamp.After(ledgerEntry.Timestamp)
+}
+
+// repairConfigRefsAfterLedgerRestore re-points focus queue, daily plan, and
+// recent-visit references to the project where each task exists after a ledger
+// restore. The restore may have rewritten the config file itself (artifacts that
+// rode the undone transaction), so the config is reloaded from disk first —
+// repairing against the stale in-memory copy would clobber restored bytes.
+func repairConfigRefsAfterLedgerRestore(mgr *config.Manager, projectIDs []string) error {
+	if mgr == nil || len(projectIDs) == 0 {
+		return nil
+	}
+	freshCfg, err := mgr.Load()
+	if err != nil {
+		return fmt.Errorf("failed to reload config after restore: %w", err)
+	}
+	restored := make([]*models.Project, 0, len(projectIDs))
+	for _, id := range projectIDs {
+		p := freshCfg.GetProject(id)
+		if p == nil {
+			continue
+		}
+		if err := storage.LoadProject(p); err != nil {
+			continue
+		}
+		restored = append(restored, p)
+	}
+	return repairConfigTaskRefsToLoadedProjects(mgr, freshCfg, restored)
 }
 
 type historyLoader func(*models.Project) ([]storage.UndoEntry, error)

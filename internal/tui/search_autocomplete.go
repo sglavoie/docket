@@ -173,7 +173,6 @@ func searchHasSuggestions(partial string) []ACSuggestion {
 		{"relation", "has related tasks"},
 		{"recurrence", "has recurrence pattern"},
 		{"url", "has external URL"},
-		{"stage", "has workflow stage"},
 		{"parent", "has a parent task"},
 		{"children", "has child tasks"},
 	}

@@ -138,8 +138,7 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 							model, cmd := m.handleBulkDelete()
 							return model, cmd, true
 						}
-						model, cmd := taskOpsDeleteTask(m)
-						return model, cmd, true
+						return m, wfDeleteTask(m, m.config, m.configManager), true
 					}
 					return m, nil, true
 				}

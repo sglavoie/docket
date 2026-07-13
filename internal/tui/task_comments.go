@@ -11,8 +11,9 @@ import (
 type TaskCommentsModel struct {
 	BaseView
 	InteractiveViewState
-	task    *models.Task
-	project *models.Project
+	task        *models.Task
+	project     *models.Project
+	coordinator SubviewCoordinator
 
 	// Add mode
 	addMode   bool
@@ -54,10 +55,12 @@ func NewTaskCommentsModel(task *models.Task, project *models.Project) *TaskComme
 	}
 }
 
-// NewTaskCommentsModelWithEditor creates a task comments viewer with editor config.
-func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, editor string) *TaskCommentsModel {
+// NewTaskCommentsModelWithEditor creates a task comments viewer with editor
+// config and the coordinator its mutations commit through.
+func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, editor string, coordinator SubviewCoordinator) *TaskCommentsModel {
 	m := NewTaskCommentsModel(task, project)
 	m.editor = editor
+	m.coordinator = coordinator
 	return m
 }
 

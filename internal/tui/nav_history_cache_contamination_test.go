@@ -20,7 +20,7 @@ func TestReconstructProjectViewRefreshesCachedMetricsDashboardProject(t *testing
 
 	// Simulate the user having opened the metrics dashboard for project A.
 	app.currentProject = projectA
-	app.metricsDashboard = NewMetricsDashboardModelForProject(app.config, projectA)
+	app.metricsDashboard = NewMetricsDashboardModelForProject(app.configManager, projectA)
 	if app.metricsDashboard.project != projectA {
 		t.Fatalf("setup precondition: expected metrics dashboard pinned to project A")
 	}

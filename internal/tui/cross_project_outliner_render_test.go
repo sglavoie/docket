@@ -180,7 +180,7 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabs(t *testing.T) {
 	m.SetSize(width, 12)
 
 	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
-	task.Section = "Sprint-1"
+	// Section "Sprint-1" is a retired custom section; grouping now lives in tags.
 	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{task})
 	project.Sections = []string{"Sprint-1"}
 
@@ -201,7 +201,7 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabColors(t *testing.T)
 	m.SetSize(width, 12)
 
 	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
-	task.Section = "Sprint-1"
+	// Section "Sprint-1" is a retired custom section; grouping now lives in tags.
 	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{task})
 	project.Sections = []string{models.SectionNext, "Sprint-1"}
 	project.SectionColors = map[string]string{"Sprint-1": "green"}
@@ -229,11 +229,9 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabsInEmptyState(t *tes
 }
 
 // TestOutlinerLongStageDoesNotShiftSiblingRows guards the plan's primary
-// regression for the outliner: one task carrying the literal long-stage label
-// "Implement initial version" must not change the rendered width of any
-// sibling row in the same outliner. Stage now lives only in the bottom
-// metadata strip; the row format has no stage column, so all task rows of the
-// same width category must render to the same width.
+// regression for the outliner: the row format has no stage column (stage was
+// retired from models.Task entirely), so all task rows of the same width
+// category must render to the same width.
 func TestOutlinerLongStageDoesNotShiftSiblingRows(t *testing.T) {
 	cfg := config.NewConfig()
 	m := NewOutlinerModel(nil, cfg, nil)
@@ -252,7 +250,6 @@ func TestOutlinerLongStageDoesNotShiftSiblingRows(t *testing.T) {
 			models.SectionNext)
 		tasks = append(tasks, task)
 	}
-	tasks[3].Stage = "Implement initial version"
 
 	project := renderFixtureProject(t, "proj-long-stage", "lng", "Long Stage", tasks)
 	m.project = project
@@ -331,9 +328,8 @@ func renderFixtureTask(t *testing.T, id string, shortID int, taskType models.Tas
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}
-	task.Status = status
+	task.WorkflowState = legacyStateForStatusSection(status, section)
 	task.Priority = priority
-	task.Section = section
 	return task
 }
 

@@ -18,9 +18,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "basic task metadata",
 			metaStr: "id: task-123, status: todo, priority: 3",
 			want: &models.Task{
-				ID:       "task-123",
-				Status:   models.StatusTodo,
-				Priority: 3,
+				ID:            "task-123",
+				WorkflowState: models.StateReady,
+				Priority:      3,
 			},
 			warnings: 0,
 		},
@@ -28,10 +28,10 @@ func TestParseMetadata(t *testing.T) {
 			name:    "non-GTD section is cleared",
 			metaStr: "id: task-456, status: done, priority: 1, tags: work;urgent, section: Backend",
 			want: &models.Task{
-				ID:       "task-456",
-				Status:   models.StatusDone,
-				Priority: 1,
-				Tags:     []string{"work", "urgent"},
+				ID:            "task-456",
+				WorkflowState: models.StateDone,
+				Priority:      1,
+				Tags:          []string{"work", "urgent"},
 			},
 			warnings: 1,
 		},
@@ -39,9 +39,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with dates",
 			metaStr: "id: t1, status: todo, priority: 2, created: 2025-01-15 10:30, updated: 2025-01-16 14:20, due: 2025-02-01",
 			want: &models.Task{
-				ID:        "t1",
-				Status:    models.StatusTodo,
-				Priority:  2,
+				ID:            "t1",
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
 				UpdatedAt: time.Date(2025, 1, 16, 14, 20, 0, 0, time.Local),
 				DueDate:   timePtr(time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local)),
@@ -52,10 +52,10 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with completed timestamp",
 			metaStr: "id: t2, status: done, priority: 1, completed: 2025-01-20 09:15",
 			want: &models.Task{
-				ID:          "t2",
-				Status:      models.StatusDone,
-				Priority:    1,
-				CompletedAt: timePtr(time.Date(2025, 1, 20, 9, 15, 0, 0, time.Local)),
+				ID:            "t2",
+				WorkflowState: models.StateDone,
+				Priority:      1,
+				CompletedAt:   timePtr(time.Date(2025, 1, 20, 9, 15, 0, 0, time.Local)),
 			},
 			warnings: 0,
 		},
@@ -63,10 +63,10 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with dependencies",
 			metaStr: "id: t3, status: blocked, priority: 2, depends: task-1;task-2;task-3",
 			want: &models.Task{
-				ID:        "t3",
-				Status:    models.StatusBlocked,
-				Priority:  2,
-				DependsOn: []string{"task-1", "task-2", "task-3"},
+				ID:            "t3",
+				WorkflowState: models.StateWaiting,
+				Priority:      2,
+				DependsOn:     []string{"task-1", "task-2", "task-3"},
 			},
 			warnings: 0,
 		},
@@ -74,10 +74,10 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with parent",
 			metaStr: "id: subtask-1, status: todo, priority: 3, parent: parent-task-1",
 			want: &models.Task{
-				ID:       "subtask-1",
-				Status:   models.StatusTodo,
-				Priority: 3,
-				ParentID: strPtr("parent-task-1"),
+				ID:            "subtask-1",
+				WorkflowState: models.StateReady,
+				Priority:      3,
+				ParentID:      strPtr("parent-task-1"),
 			},
 			warnings: 0,
 		},
@@ -85,11 +85,10 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with boolean flags",
 			metaStr: "id: t4, status: todo, priority: 2, pinned: true, active: true",
 			want: &models.Task{
-				ID:       "t4",
-				Status:   models.StatusTodo,
-				Priority: 2,
-				Pinned:   true,
-				Active:   true,
+				ID:            "t4",
+				WorkflowState: models.StateReady,
+				Priority:      2,
+				Pinned:        true,
 			},
 			warnings: 0,
 		},
@@ -97,9 +96,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with simple recurrence",
 			metaStr: "id: t5, status: todo, priority: 1, recur: 1d",
 			want: &models.Task{
-				ID:       "t5",
-				Status:   models.StatusTodo,
-				Priority: 1,
+				ID:            "t5",
+				WorkflowState: models.StateReady,
+				Priority:      1,
 				Recurrence: &models.RecurrencePattern{
 					Interval: 1,
 					Unit:     models.RecurrenceDaily,
@@ -111,9 +110,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with weekly recurrence and weekdays",
 			metaStr: "id: t6, status: todo, priority: 2, recur: 1w:mon,wed,fri",
 			want: &models.Task{
-				ID:       "t6",
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "t6",
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				Recurrence: &models.RecurrencePattern{
 					Interval: 1,
 					Unit:     models.RecurrenceWeekly,
@@ -126,9 +125,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "invalid priority - out of range",
 			metaStr: "id: t7, status: todo, priority: 10",
 			want: &models.Task{
-				ID:       "t7",
-				Status:   models.StatusTodo,
-				Priority: 0,
+				ID:            "t7",
+				WorkflowState: models.StateReady,
+				Priority:      0,
 			},
 			warnings: 1,
 		},
@@ -136,9 +135,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "invalid priority - non-numeric",
 			metaStr: "id: t8, status: todo, priority: high",
 			want: &models.Task{
-				ID:       "t8",
-				Status:   models.StatusTodo,
-				Priority: 0,
+				ID:            "t8",
+				WorkflowState: models.StateReady,
+				Priority:      0,
 			},
 			warnings: 1,
 		},
@@ -146,9 +145,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "empty tags and dependencies are handled",
 			metaStr: "id: t9, status: todo, priority: 1, tags: , depends: ",
 			want: &models.Task{
-				ID:       "t9",
-				Status:   models.StatusTodo,
-				Priority: 1,
+				ID:            "t9",
+				WorkflowState: models.StateReady,
+				Priority:      1,
 			},
 			warnings: 0,
 		},
@@ -156,10 +155,9 @@ func TestParseMetadata(t *testing.T) {
 			name:    "task with stage",
 			metaStr: "id: t11, status: todo, priority: 2, stage: Design",
 			want: &models.Task{
-				ID:       "t11",
-				Status:   models.StatusTodo,
-				Priority: 2,
-				Stage:    "Design",
+				ID:            "t11",
+				WorkflowState: models.StateReady,
+				Priority:      2,
 			},
 			warnings: 0,
 		},
@@ -167,11 +165,11 @@ func TestParseMetadata(t *testing.T) {
 			name:    "whitespace handling in tags and dependencies",
 			metaStr: "id: t10, status: todo, priority: 1, tags:  work ; urgent  , depends:  dep1 ; dep2  ",
 			want: &models.Task{
-				ID:        "t10",
-				Status:    models.StatusTodo,
-				Priority:  1,
-				Tags:      []string{"work", "urgent"},
-				DependsOn: []string{"dep1", "dep2"},
+				ID:            "t10",
+				WorkflowState: models.StateReady,
+				Priority:      1,
+				Tags:          []string{"work", "urgent"},
+				DependsOn:     []string{"dep1", "dep2"},
 			},
 			warnings: 0,
 		},
@@ -195,8 +193,8 @@ func TestNonGTDSectionClearedFromOldFormat(t *testing.T) {
 	task := &models.Task{}
 	warnings := ParseMetadata(task, "id: m1, status: todo, priority: 2, section: Backend")
 
-	if task.Section != "" {
-		t.Errorf("Section = %q, want empty", task.Section)
+	if task.State() != models.StateReady {
+		t.Errorf("State = %q, want %q (non-GTD section cleared)", task.State(), models.StateReady)
 	}
 	if len(warnings) != 1 || warnings[0].Type != WarningDataCorrection {
 		t.Fatalf("warnings = %#v, want one data-correction warning", warnings)
@@ -207,8 +205,8 @@ func TestGTDSectionNotMigrated(t *testing.T) {
 	task := &models.Task{}
 	ParseMetadata(task, "id: m2, status: todo, priority: 2, section: Next")
 
-	if task.Section != "Next" {
-		t.Errorf("Section = %q, want %q", task.Section, "Next")
+	if task.State() != models.StateNext {
+		t.Errorf("State = %q, want %q", task.State(), models.StateNext)
 	}
 }
 
@@ -216,8 +214,8 @@ func TestNonGTDSectionClearedWhenLegacySectionFieldPresent(t *testing.T) {
 	task := &models.Task{}
 	warnings := ParseMetadata(task, "id: m3, status: todo, priority: 2, section: Backend, "+legacyTaskSectionField+": Frontend")
 
-	if task.Section != "" {
-		t.Errorf("Section = %q, want empty (non-GTD value should be cleared)", task.Section)
+	if task.State() != models.StateReady {
+		t.Errorf("State = %q, want %q (non-GTD value should be cleared)", task.State(), models.StateReady)
 	}
 	if len(warnings) != 1 || warnings[0].Type != WarningDataCorrection {
 		t.Fatalf("warnings = %#v, want one data-correction warning", warnings)
@@ -228,8 +226,8 @@ func TestLegacySectionMetadataIsUnsupported(t *testing.T) {
 	task := &models.Task{}
 	warnings := ParseMetadata(task, "id: m4, status: todo, priority: 2, section: Next, "+legacyTaskSectionField+": Frontend")
 
-	if task.Section != "" {
-		t.Errorf("Section = %q, want empty after unsupported legacy metadata correction", task.Section)
+	if task.State() != models.StateReady {
+		t.Errorf("State = %q, want %q after unsupported legacy metadata correction", task.State(), models.StateReady)
 	}
 	if len(warnings) != 1 || warnings[0].Type != WarningDataCorrection {
 		t.Fatalf("warnings = %#v, want one data-correction warning", warnings)
@@ -314,9 +312,9 @@ func TestParseMetadata_NoDuplicateWithSingleDep(t *testing.T) {
 
 func TestParseMetadata_InvalidStatusWarnsAndPreservesExistingValue(t *testing.T) {
 	task := &models.Task{
-		ID:       "existing-id",
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "existing-id",
+		WorkflowState: models.StateReady,
+		Priority:      2,
 	}
 
 	warnings := ParseMetadata(task, "id: parsed-id, status: invalid_status, priority: 2")
@@ -324,8 +322,8 @@ func TestParseMetadata_InvalidStatusWarnsAndPreservesExistingValue(t *testing.T)
 	if task.ID != "parsed-id" {
 		t.Errorf("ID = %q, want %q", task.ID, "parsed-id")
 	}
-	if task.Status != models.StatusTodo {
-		t.Errorf("Status = %q, want %q", task.Status, models.StatusTodo)
+	if task.State() != models.StateReady {
+		t.Errorf("State = %q, want %q", task.State(), models.StateReady)
 	}
 	if len(warnings) != 1 {
 		t.Fatalf("got %d warnings, want 1: %v", len(warnings), warnings)

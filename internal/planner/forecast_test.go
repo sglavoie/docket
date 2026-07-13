@@ -200,14 +200,14 @@ func TestWeightedVelocityMixedEffort(t *testing.T) {
 func TestWeightedVelocityWithSummariesIncludesArchivedEffort(t *testing.T) {
 	throughput := metrics.ThroughputResult{Total: 2, AvgPerDay: 1.0}
 	live := metrics.TaskSummary{
-		ID:     "live",
-		Status: models.StatusDone,
-		Effort: models.EffortSmall,
+		ID:            "live",
+		WorkflowState: models.StateDone,
+		Effort:        models.EffortSmall,
 	}
 	archived := metrics.TaskSummary{
-		ID:     "archived",
-		Status: models.StatusDone,
-		Effort: models.EffortLarge,
+		ID:            "archived",
+		WorkflowState: models.StateDone,
+		Effort:        models.EffortLarge,
 	}
 
 	got := WeightedVelocityWithSummaries(throughput, []metrics.TaskSummary{live}, []metrics.TaskSummary{archived})

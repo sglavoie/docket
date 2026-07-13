@@ -16,7 +16,8 @@ import (
 
 func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	// Mutate model state synchronously in Update() to avoid data races with View().
-	task, err := appendComment(m.project, m.task.ID, m.textInput.Value())
+	text := m.textInput.Value()
+	task, err := appendComment(m.project, m.task.ID, text)
 	if err != nil {
 		m.err = err
 		return nil
@@ -27,7 +28,9 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Comments) - 1
 
-	return persistTaskItemMutation(m.project, CommentAddedMsg{Task: task})
+	return commitTaskItemMutation(m.project, task, m.coordinator.AddComment(task.ID, text), func(fresh *models.Task) tea.Msg {
+		return CommentAddedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
@@ -42,6 +45,7 @@ func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 			return len(task.Comments)
 		},
 		errorMessage: "failed to remove comment",
+		commit:       m.coordinator.RemoveComment,
 		success: func(task *models.Task) tea.Msg {
 			return CommentDeletedMsg{Task: task}
 		},
@@ -71,11 +75,14 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
 	}
 
-	m.task.Comments[m.editIndex].Text = text
+	editIndex := m.editIndex
+	m.task.Comments[editIndex].Text = text
 	m.cancelEditMode()
 	m.err = nil
 
-	return persistTaskItemMutation(m.project, CommentEditedMsg{Task: m.task})
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditComment(m.task.ID, editIndex, text), func(fresh *models.Task) tea.Msg {
+		return CommentEditedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
@@ -85,6 +92,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	return m.editCommentWithExternalEditor(content, true, func(newText string) tea.Msg {
 		if newText == comment.Text {
 			return nil
@@ -97,11 +105,9 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		}
 
 		task.Comments[editIndex].Text = newText
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return CommentEditedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.EditComment(task.ID, editIndex, newText), func(fresh *models.Task) tea.Msg {
+			return CommentEditedMsg{Task: fresh}
+		})()
 	})
 }
 
@@ -111,6 +117,7 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	m.cancelAddMode()
 
 	return m.editCommentWithExternalEditor(content, false, func(newText string) tea.Msg {
@@ -122,11 +129,9 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 		}
 
 		task.AddComment(newText)
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return CommentAddedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.AddComment(task.ID, newText), func(fresh *models.Task) tea.Msg {
+			return CommentAddedMsg{Task: fresh}
+		})()
 	})
 }
 
@@ -139,6 +144,7 @@ func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
 			return task.ToggleCommentResolved(index)
 		},
 		errorMessage: "failed to toggle comment resolved state",
+		commit:       m.coordinator.ToggleCommentResolved,
 		success: func(task *models.Task) tea.Msg {
 			return CommentResolvedMsg{Task: task}
 		},
@@ -157,6 +163,7 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	originalText := comment.Text
 	m.cancelEditMode()
 
@@ -172,11 +179,9 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		}
 
 		task.Comments[editIndex].Text = newText
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return CommentEditedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.EditComment(task.ID, editIndex, newText), func(fresh *models.Task) tea.Msg {
+			return CommentEditedMsg{Task: fresh}
+		})()
 	})
 }
 

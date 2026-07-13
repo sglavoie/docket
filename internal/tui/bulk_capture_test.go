@@ -91,8 +91,20 @@ func TestBulkCaptureModel_parseAllLines(t *testing.T) {
 	}
 }
 
-// TestBulkCaptureModel_validTaskCreation tests that valid tasks are created in-memory.
-// These tests check created count and task properties before storage is called.
+// newBulkCaptureEnv wires a BulkCaptureModel over the real transactional stack so
+// createTasks commits through the CaptureCoordinator (CaptureMany) and its output
+// can be reloaded from disk, mirroring production.
+func newBulkCaptureEnv(t *testing.T, seed ...*models.Task) (*BulkCaptureModel, *scenarioEnv) {
+	t.Helper()
+	env := newScenarioEnv(t, "bulk", seed...)
+	m := NewBulkCaptureModel(env.project)
+	m.SetCaptureCoordinator(env.features.Capture)
+	return m, env
+}
+
+// TestBulkCaptureModel_validTaskCreation tests that valid tasks are created and
+// committed through the coordinator. It checks the created count and that the
+// reloaded project holds the new tasks.
 func TestBulkCaptureModel_validTaskCreation(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -133,26 +145,31 @@ func TestBulkCaptureModel_validTaskCreation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testProject := &models.Project{
-				ID:   "test-project",
-				Name: "Test Project",
-				Tasks: []*models.Task{
-					{ID: "epic-1", ShortID: 1, Type: models.TaskTypeEpic, Title: "User Authentication"},
-					{ID: "story-2", ShortID: 2, Type: models.TaskTypeStory, Title: "Login Flow"},
-				},
+			epic, err := models.NewTask("epic-1", 1, models.TaskTypeEpic, "User Authentication")
+			if err != nil {
+				t.Fatalf("NewTask epic: %v", err)
 			}
-			testProject.BuildTaskTree()
-
-			m := NewBulkCaptureModel(testProject)
+			story, err := models.NewTask("story-2", 2, models.TaskTypeStory, "Login Flow")
+			if err != nil {
+				t.Fatalf("NewTask story: %v", err)
+			}
+			m, env := newBulkCaptureEnv(t, epic, story)
 			m.input.SetValue(tt.input)
 
 			cmd := m.createTasks()
 			if cmd != nil {
-				cmd() // Execute - storage will fail but created count is set first
+				if _, ok := cmd().(ErrorMsg); ok {
+					t.Fatalf("bulk capture commit failed for input %q", tt.input)
+				}
 			}
 
 			if m.created != tt.wantCreated {
 				t.Errorf("created = %d, want %d", m.created, tt.wantCreated)
+			}
+			// The committed project holds the two seeded tasks plus the new ones.
+			fresh := env.reload(t)
+			if got := len(fresh.Tasks); got != tt.wantCreated+2 {
+				t.Errorf("reloaded task count = %d, want %d", got, tt.wantCreated+2)
 			}
 		})
 	}
@@ -189,12 +206,7 @@ func TestBulkCaptureModel_lineErrorNumbers(t *testing.T) {
 }
 
 func TestBulkCaptureModel_tasksAddedToInbox(t *testing.T) {
-	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
-	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t)
 	m.input.SetValue("Task one\nTask two")
 
 	cmd := m.createTasks()
@@ -202,29 +214,25 @@ func TestBulkCaptureModel_tasksAddedToInbox(t *testing.T) {
 		cmd()
 	}
 
+	fresh := env.reload(t)
 	// Check that Inbox section was created
-	if !project.HasSection(models.SectionInbox) {
+	if !fresh.HasSection(models.SectionInbox) {
 		t.Error("Inbox section should have been created")
 	}
-
 	// Check that tasks are in the Inbox section
-	for _, task := range project.Tasks {
-		if task.Section != models.SectionInbox {
-			t.Errorf("task %q section = %q, want %q", task.Title, task.Section, models.SectionInbox)
+	for _, task := range fresh.Tasks {
+		if models.SectionForState(task.State()) != models.SectionInbox {
+			t.Errorf("task %q section = %q, want %q", task.Title, models.SectionForState(task.State()), models.SectionInbox)
 		}
 	}
 }
 
 func TestBulkCaptureModel_taskOrder(t *testing.T) {
-	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
-		Tasks: []*models.Task{
-			{ID: "existing", ShortID: 1, Title: "Existing task"},
-		},
+	existing, err := models.NewTask("existing", 1, models.TaskTypeTask, "Existing task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
 	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t, existing)
 	m.input.SetValue("New task one\nNew task two")
 
 	cmd := m.createTasks()
@@ -232,20 +240,19 @@ func TestBulkCaptureModel_taskOrder(t *testing.T) {
 		cmd()
 	}
 
+	fresh := env.reload(t)
 	// New tasks should be prepended, so they appear first
-	if len(project.Tasks) != 3 {
-		t.Fatalf("expected 3 tasks, got %d", len(project.Tasks))
+	if len(fresh.Tasks) != 3 {
+		t.Fatalf("expected 3 tasks, got %d", len(fresh.Tasks))
 	}
-
-	// First two should be the new ones
-	if project.Tasks[0].Title != "New task one" {
-		t.Errorf("first task = %q, want %q", project.Tasks[0].Title, "New task one")
+	if fresh.Tasks[0].Title != "New task one" {
+		t.Errorf("first task = %q, want %q", fresh.Tasks[0].Title, "New task one")
 	}
-	if project.Tasks[1].Title != "New task two" {
-		t.Errorf("second task = %q, want %q", project.Tasks[1].Title, "New task two")
+	if fresh.Tasks[1].Title != "New task two" {
+		t.Errorf("second task = %q, want %q", fresh.Tasks[1].Title, "New task two")
 	}
-	if project.Tasks[2].Title != "Existing task" {
-		t.Errorf("third task = %q, want %q", project.Tasks[2].Title, "Existing task")
+	if fresh.Tasks[2].Title != "Existing task" {
+		t.Errorf("third task = %q, want %q", fresh.Tasks[2].Title, "Existing task")
 	}
 }
 
@@ -284,12 +291,7 @@ func TestBulkCaptureModel_rejectsInvalidTitles(t *testing.T) {
 }
 
 func TestBulkCaptureModel_appliesRecurrence(t *testing.T) {
-	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
-	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t)
 	m.input.SetValue("Daily standup ~daily")
 
 	cmd := m.createTasks()
@@ -301,7 +303,11 @@ func TestBulkCaptureModel_appliesRecurrence(t *testing.T) {
 		t.Fatalf("created = %d, want 1", m.created)
 	}
 
-	task := project.Tasks[0]
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 {
+		t.Fatalf("reloaded tasks = %d, want 1", len(fresh.Tasks))
+	}
+	task := fresh.Tasks[0]
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
 	}
@@ -311,13 +317,7 @@ func TestBulkCaptureModel_appliesRecurrence(t *testing.T) {
 }
 
 func TestBulkCaptureModel_appliesSection(t *testing.T) {
-	project := &models.Project{
-		ID:       "test-project",
-		Name:     "Test Project",
-		Sections: []string{models.SectionInbox, "Next"},
-	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t)
 	m.input.SetValue("Important task /next")
 
 	cmd := m.createTasks()
@@ -329,19 +329,17 @@ func TestBulkCaptureModel_appliesSection(t *testing.T) {
 		t.Fatalf("created = %d, want 1", m.created)
 	}
 
-	task := project.Tasks[0]
-	if task.Section != "Next" {
-		t.Errorf("section = %q, want %q", task.Section, "Next")
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 {
+		t.Fatalf("reloaded tasks = %d, want 1", len(fresh.Tasks))
+	}
+	if models.SectionForState(fresh.Tasks[0].State()) != "Next" {
+		t.Errorf("section = %q, want %q", models.SectionForState(fresh.Tasks[0].State()), "Next")
 	}
 }
 
 func TestBulkCaptureModel_appliesStatus(t *testing.T) {
-	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
-	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t)
 	m.input.SetValue("Blocked task $blocked")
 
 	cmd := m.createTasks()
@@ -353,19 +351,19 @@ func TestBulkCaptureModel_appliesStatus(t *testing.T) {
 		t.Fatalf("created = %d, want 1", m.created)
 	}
 
-	task := project.Tasks[0]
-	if task.Status != models.StatusBlocked {
-		t.Errorf("status = %q, want %q", task.Status, models.StatusBlocked)
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 {
+		t.Fatalf("reloaded tasks = %d, want 1", len(fresh.Tasks))
+	}
+	// $blocked maps to the waiting state; v2 persists state, not the retired
+	// blocked status, so the reloaded task derives to waiting.
+	if got := fresh.Tasks[0].State(); got != models.StateWaiting {
+		t.Errorf("state = %q, want %q", got, models.StateWaiting)
 	}
 }
 
 func TestBulkCaptureModel_appliesStandbyStatus(t *testing.T) {
-	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
-	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t)
 	m.input.SetValue("On hold task $standby")
 
 	cmd := m.createTasks()
@@ -377,22 +375,23 @@ func TestBulkCaptureModel_appliesStandbyStatus(t *testing.T) {
 		t.Fatalf("created = %d, want 1", m.created)
 	}
 
-	task := project.Tasks[0]
-	if task.Status != models.StatusStandby {
-		t.Errorf("status = %q, want %q", task.Status, models.StatusStandby)
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 {
+		t.Fatalf("reloaded tasks = %d, want 1", len(fresh.Tasks))
 	}
-	if task.Section != models.SectionStandby {
-		t.Errorf("section = %q, want %q", task.Section, models.SectionStandby)
+	task := fresh.Tasks[0]
+	// $standby maps to the paused state (canonical section Standby); v2 persists
+	// the derived state, not the retired standby status.
+	if got := task.State(); got != models.StatePaused {
+		t.Errorf("state = %q, want %q", got, models.StatePaused)
+	}
+	if models.SectionForState(task.State()) != models.SectionStandby {
+		t.Errorf("section = %q, want %q", models.SectionForState(task.State()), models.SectionStandby)
 	}
 }
 
 func TestBulkCaptureModel_appliesReviewStatus(t *testing.T) {
-	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
-	}
-
-	m := NewBulkCaptureModel(project)
+	m, env := newBulkCaptureEnv(t)
 	m.input.SetValue("Review this $review")
 
 	cmd := m.createTasks()
@@ -404,12 +403,18 @@ func TestBulkCaptureModel_appliesReviewStatus(t *testing.T) {
 		t.Fatalf("created = %d, want 1", m.created)
 	}
 
-	task := project.Tasks[0]
-	if task.Status != models.StatusReview {
-		t.Errorf("status = %q, want %q", task.Status, models.StatusReview)
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 {
+		t.Fatalf("reloaded tasks = %d, want 1", len(fresh.Tasks))
 	}
-	if task.Section != models.SectionReview {
-		t.Errorf("section = %q, want %q", task.Section, models.SectionReview)
+	task := fresh.Tasks[0]
+	// $review maps to the review state (canonical section Review); v2 persists
+	// the derived state, not the retired review status.
+	if got := task.State(); got != models.StateReview {
+		t.Errorf("state = %q, want %q", got, models.StateReview)
+	}
+	if models.SectionForState(task.State()) != models.SectionReview {
+		t.Errorf("section = %q, want %q", models.SectionForState(task.State()), models.SectionReview)
 	}
 }
 

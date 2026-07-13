@@ -5,34 +5,37 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
-func TestTUITaskMoveRecordsGroupedUndoAndRepairsConfigOnRestore(t *testing.T) {
-	source, moved := newGroupedUndoProject(t, "source", "Source", "move-task-1", "Move me")
-	dest, _ := newGroupedUndoProject(t, "dest", "Dest", "", "")
-	cfg, mgr := newGroupedUndoConfig(t, source, dest)
-	cfg.FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
-	cfg.DailyPlan = []config.DailyPlanItem{{TaskID: moved.ID, ProjectID: source.ID, PlannedDate: "2026-06-18"}}
-	cfg.RecentTaskVisits = []config.RecentTaskVisit{{TaskID: moved.ID, ProjectID: source.ID}}
-	if err := mgr.Save(cfg); err != nil {
+// TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo verifies the migrated
+// cross-project move commits the source removal, destination insertion, and the
+// durable planning refs (Focus Queue, Daily Plan) as ONE app-layer transaction,
+// undoable/redoable through the workspace ledger — replacing the retired
+// saveBothProjectsAsync per-project raw-save + .undo orchestration.
+func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
+	env := newMoveHandlerEnv(t, "move-task-1", "Move me")
+	source, dest := env.source, env.dest
+	moved := source.GetTaskByID("move-task-1")
+
+	env.cfg.FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.DailyPlan = []config.DailyPlanItem{{TaskID: moved.ID, ProjectID: source.ID, PlannedDate: "2026-06-18"}}
+	env.cfg.RecentTaskVisits = []config.RecentTaskVisit{{TaskID: moved.ID, ProjectID: source.ID}}
+	if err := env.mgr.Save(env.cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 
-	app := &AppModel{
-		config:           cfg,
-		configManager:    mgr,
-		persister:        NewProjectService(),
-		focusQueue:       []FocusTask{{Task: moved, Project: source}},
-		focusQueueIDs:    map[string]bool{moved.ID: true},
-		dailyPlan:        []FocusTask{{Task: moved, Project: source}},
-		dailyPlanIDs:     map[string]bool{moved.ID: true},
-		recentTaskVisits: []RecentTaskVisitEntry{{Task: moved, Project: source}},
-	}
+	app := env.appModel()
+	app.focusQueue = []FocusTask{{Task: moved, Project: source}}
+	app.focusQueueIDs = map[string]bool{moved.ID: true}
+	app.dailyPlan = []FocusTask{{Task: moved, Project: source}}
+	app.dailyPlanIDs = map[string]bool{moved.ID: true}
+	app.recentTaskVisits = []RecentTaskVisitEntry{{Task: moved, Project: source}}
 
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task:          moved,
@@ -42,68 +45,63 @@ func TestTUITaskMoveRecordsGroupedUndoAndRepairsConfigOnRestore(t *testing.T) {
 	if !handled {
 		t.Fatal("move message was not handled")
 	}
-	msgs := drainTUITestCmd(t, cmd)
-	foundMoveMsg := false
-	for _, msg := range msgs {
-		switch msg := msg.(type) {
-		case SaveErrorMsg:
-			t.Fatalf("move save failed: %v", msg.Err)
-		case TaskMovedToProjectMsg:
-			foundMoveMsg = true
-		}
-	}
-	if !foundMoveMsg {
-		t.Fatalf("expected TaskMovedToProjectMsg, got %#v", msgs)
-	}
+	assertMoveMsg(t, cmd)
 
-	assertGroupedTopUndo(t, source, dest)
-	assertConfigRefsProject(t, cfg, moved.ID, dest.ID)
+	// Task committed to dest, removed from source (on disk).
+	if env.reloadProject(t, source).GetTaskByID(moved.ID) != nil {
+		t.Fatal("source should no longer contain moved task on disk")
+	}
+	if env.reloadProject(t, dest).GetTaskByID(moved.ID) == nil {
+		t.Fatal("dest should contain moved task on disk")
+	}
+	// Durable + recent config refs point to dest (recent updated post-commit).
+	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, true)
 	if app.focusQueue[0].Project.ID != dest.ID || app.dailyPlan[0].Project.ID != dest.ID || app.recentTaskVisits[0].Project.ID != dest.ID {
-		t.Fatalf("in-memory refs should point to dest after move")
+		t.Fatal("in-memory refs should point to dest after move")
 	}
 
-	undoMsg := performUndoForProjectsCmd(app.persister, source, cfg.Projects, app.repairTaskProjectRefsAfterRestore)()
-	if errMsg, ok := undoMsg.(ErrorMsg); ok {
-		t.Fatalf("undo failed: %v", errMsg.Err)
+	// Ledger undo restores the move and the folded durable config refs (Focus
+	// Queue, Daily Plan). Recent visits live in the machine-local machine.json,
+	// which is excluded from the workspace transaction, so undo does NOT move them
+	// back to source — assert on the durable refs only (checkRecent=false).
+	if _, err := env.ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger undo: %v", err)
 	}
-	if _, ok := undoMsg.(UndoPerformedMsg); !ok {
-		t.Fatalf("expected UndoPerformedMsg, got %T", undoMsg)
+	if env.reloadProject(t, source).GetTaskByID(moved.ID) == nil {
+		t.Fatal("source should contain task again after undo")
 	}
-	assertConfigRefsProject(t, cfg, moved.ID, source.ID)
-	if app.focusQueue[0].Project.ID != source.ID || app.dailyPlan[0].Project.ID != source.ID || app.recentTaskVisits[0].Project.ID != source.ID {
-		t.Fatalf("in-memory refs should point back to source after undo")
+	if env.reloadProject(t, dest).GetTaskByID(moved.ID) != nil {
+		t.Fatal("dest should not contain task after undo")
 	}
+	assertDiskConfigRef(t, env.mgr, moved.ID, source.ID, false)
 
-	redoMsg := performRedoForProjectsCmd(app.persister, source, cfg.Projects, app.repairTaskProjectRefsAfterRestore)()
-	if errMsg, ok := redoMsg.(ErrorMsg); ok {
-		t.Fatalf("redo failed: %v", errMsg.Err)
+	// Ledger redo re-applies the move and durable refs (recent visits, being
+	// non-transactional, are not restored by redo — asserted on durable refs only).
+	if _, err := env.ledger.Redo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger redo: %v", err)
 	}
-	if _, ok := redoMsg.(RedoPerformedMsg); !ok {
-		t.Fatalf("expected RedoPerformedMsg, got %T", redoMsg)
+	if env.reloadProject(t, dest).GetTaskByID(moved.ID) == nil {
+		t.Fatal("dest should contain task after redo")
 	}
-	assertConfigRefsProject(t, cfg, moved.ID, dest.ID)
-	if app.focusQueue[0].Project.ID != dest.ID || app.dailyPlan[0].Project.ID != dest.ID || app.recentTaskVisits[0].Project.ID != dest.ID {
-		t.Fatalf("in-memory refs should point to dest after redo")
-	}
+	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, false)
 }
 
-func TestTUITaskMoveCanonicalizesSourceTaskPointer(t *testing.T) {
-	source, moved := newGroupedUndoProject(t, "source", "Source", "move-task-1", "Move me")
-	dest, _ := newGroupedUndoProject(t, "dest", "Dest", "", "")
-	cfg, mgr := newGroupedUndoConfig(t, source, dest)
+// TestTUITaskMoveAppliesDestSectionAndCanonicalTask verifies the migrated move
+// resolves and moves the CANONICAL source task (not a stale view copy passed in
+// the message) and applies the chosen destination section as part of the move
+// transaction.
+func TestTUITaskMoveAppliesDestSectionAndCanonicalTask(t *testing.T) {
+	env := newMoveHandlerEnv(t, "move-task-1", "Move me")
+	source, dest := env.source, env.dest
+	moved := source.GetTaskByID("move-task-1")
+	oldCanonicalShortID := moved.ShortID
 
-	app := &AppModel{
-		config:        cfg,
-		configManager: mgr,
-		persister:     NewProjectService(),
-	}
-
+	app := env.appModel()
 	staleTask, err := models.NewTask(moved.ID, 99, models.TaskTypeTask, "Stale view copy")
 	if err != nil {
 		t.Fatalf("new stale task: %v", err)
 	}
 	destSection := models.SectionWaiting
-	oldCanonicalShortID := moved.ShortID
 
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task:          staleTask,
@@ -114,40 +112,196 @@ func TestTUITaskMoveCanonicalizesSourceTaskPointer(t *testing.T) {
 	if !handled {
 		t.Fatal("move message was not handled")
 	}
+	movedMsg := assertMoveMsg(t, cmd)
+	if movedMsg.OldShortID != oldCanonicalShortID {
+		t.Fatalf("OldShortID = %d, want canonical short ID %d", movedMsg.OldShortID, oldCanonicalShortID)
+	}
+	if models.SectionForState(staleTask.State()) != "" {
+		t.Fatalf("stale message task must not be mutated, got section %q", models.SectionForState(staleTask.State()))
+	}
 
+	if env.reloadProject(t, source).GetTaskByID(moved.ID) != nil {
+		t.Fatal("source should no longer contain moved task")
+	}
+	destTask := env.reloadProject(t, dest).GetTaskByID(moved.ID)
+	if destTask == nil {
+		t.Fatal("destination should contain moved task")
+	}
+	if destTask.Title != "Move me" {
+		t.Fatalf("destination task title = %q, want canonical %q", destTask.Title, "Move me")
+	}
+	if models.SectionForState(destTask.State()) != destSection {
+		t.Fatalf("destination task section = %q, want %q", models.SectionForState(destTask.State()), destSection)
+	}
+}
+
+// TestTUITaskMoveRollsBackOnCommitFailure verifies the whole move transaction
+// aborts with zero writes when the folded config artifact targets a path outside
+// the approved data-dir root: the task stays in the source project and the
+// destination stays empty.
+func TestTUITaskMoveRollsBackOnCommitFailure(t *testing.T) {
+	env := newMoveHandlerEnv(t, "move-task-1", "Move me")
+	source, dest := env.source, env.dest
+	moved := source.GetTaskByID("move-task-1")
+
+	// Point the config manager OUTSIDE the approved data-dir root so the durable
+	// planning-ref artifact folded into the move transaction has an out-of-root
+	// target the journal rejects, aborting the whole transaction.
+	outsideDir := t.TempDir()
+	env.mgr = config.NewManager(filepath.Join(outsideDir, ".tt.json"))
+	env.cfg.FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
+
+	app := env.appModel()
+	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
+		Task:          moved,
+		SourceProject: source,
+		DestProjectID: dest.ID,
+	})
+	if !handled {
+		t.Fatal("move message was not handled")
+	}
+	if _, ok := drainSingleMsg(t, cmd).(ErrorMsg); !ok {
+		t.Fatalf("expected ErrorMsg from failed move, got %T", drainSingleMsg(t, cmd))
+	}
+
+	if env.reloadProject(t, source).GetTaskByID(moved.ID) == nil {
+		t.Fatal("source should still contain task after failed move")
+	}
+	if env.reloadProject(t, dest).GetTaskByID(moved.ID) != nil {
+		t.Fatal("dest should be empty after failed move")
+	}
+}
+
+// moveHandlerEnv seeds a source (with one task) and destination project on disk
+// over a shared commit service + workspace ledger, wiring the app.Service the
+// migrated cross-project move handler drives.
+type moveHandlerEnv struct {
+	dataDir string
+	ledger  *storage.WorkspaceLedger
+	svc     *app.Service
+	mgr     *config.Manager
+	cfg     *config.Config
+	source  *models.Project
+	dest    *models.Project
+}
+
+func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *moveHandlerEnv {
+	t.Helper()
+	dataDir := t.TempDir()
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+
+	newProject := func(slug, name string, tasks []*models.Task) *models.Project {
+		p, err := models.NewProject(uuid.New().String(), slug, "")
+		if err != nil {
+			t.Fatalf("NewProject: %v", err)
+		}
+		p.Name = name
+		p.Slug = slug
+		p.Path = filepath.Join(dataDir, "projects", slug)
+		p.Tasks = tasks
+		next := 1
+		for _, tk := range tasks {
+			if tk.ShortID >= next {
+				next = tk.ShortID + 1
+			}
+		}
+		p.NextShortID = next
+		p.EnsureDefaultSections()
+		p.BuildTaskTree()
+		return p
+	}
+
+	task, err := models.NewTask(sourceTaskID, 1, models.TaskTypeTask, sourceTaskTitle)
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	source := newProject("source", "Source", []*models.Task{task})
+	dest := newProject("dest", "Dest", nil)
+
+	repo := newScenarioRepo(commitSvc, source, dest)
+	repo.seed(t)
+	svc := app.NewService(repo, nil, nil)
+
+	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
+	cfg := config.NewConfig()
+	depth := 50
+	cfg.UndoHistoryDepth = &depth
+	cfg.Projects = []*models.Project{source, dest}
+	cfg.CurrentProject = source.ID
+
+	return &moveHandlerEnv{dataDir: dataDir, ledger: ledger, svc: svc, mgr: mgr, cfg: cfg, source: source, dest: dest}
+}
+
+func (e *moveHandlerEnv) appModel() *AppModel {
+	return &AppModel{
+		config:                   e.cfg,
+		configManager:            e.mgr,
+		persister:                NewProjectService(),
+		appService:               e.svc,
+		views:                    NewViewRegistry(),
+		viewStack:                []ViewType{ViewDashboard},
+		width:                    80,
+		height:                   24,
+		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
+		projectLastView:          make(map[string]ViewType),
+		navHistory:               NewNavHistory(),
+		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+	}
+}
+
+func (e *moveHandlerEnv) reloadProject(t *testing.T, p *models.Project) *models.Project {
+	t.Helper()
+	fresh := &models.Project{ID: p.ID, Name: p.Name, Slug: p.Slug, Path: p.Path}
+	if err := storage.LoadProject(fresh); err != nil {
+		t.Fatalf("reload project %s: %v", p.Slug, err)
+	}
+	return fresh
+}
+
+// assertMoveMsg drains the handler command, fails on a SaveErrorMsg, and returns
+// the TaskMovedToProjectMsg it must emit.
+func assertMoveMsg(t *testing.T, cmd tea.Cmd) TaskMovedToProjectMsg {
+	t.Helper()
 	msgs := drainTUITestCmd(t, cmd)
-	var movedMsg TaskMovedToProjectMsg
-	foundMoveMsg := false
 	for _, msg := range msgs {
 		switch msg := msg.(type) {
 		case SaveErrorMsg:
 			t.Fatalf("move save failed: %v", msg.Err)
+		case ErrorMsg:
+			t.Fatalf("move failed: %v", msg.Err)
 		case TaskMovedToProjectMsg:
-			movedMsg = msg
-			foundMoveMsg = true
+			return msg
 		}
 	}
-	if !foundMoveMsg {
-		t.Fatalf("expected TaskMovedToProjectMsg, got %#v", msgs)
+	t.Fatalf("expected TaskMovedToProjectMsg, got %#v", msgs)
+	return TaskMovedToProjectMsg{}
+}
+
+func drainSingleMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("expected a command")
 	}
-	if movedMsg.OldShortID != oldCanonicalShortID {
-		t.Fatalf("OldShortID = %d, want canonical short ID %d", movedMsg.OldShortID, oldCanonicalShortID)
+	return cmd()
+}
+
+// assertDiskConfigRef reloads the config from disk and asserts the durable
+// planning refs (and optionally recent visits) for taskID point at projectID.
+func assertDiskConfigRef(t *testing.T, mgr *config.Manager, taskID, projectID string, checkRecent bool) {
+	t.Helper()
+	cfg, err := config.NewManager(mgr.GetConfigPath()).Load()
+	if err != nil {
+		t.Fatalf("load config from disk: %v", err)
 	}
-	if source.GetTaskByID(moved.ID) != nil {
-		t.Fatal("source should no longer contain moved task")
+	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != taskID || cfg.FocusQueue[0].ProjectID != projectID {
+		t.Fatalf("FocusQueue = %+v, want task %s in project %s", cfg.FocusQueue, taskID, projectID)
 	}
-	destTask := dest.GetTaskByID(moved.ID)
-	if destTask == nil {
-		t.Fatal("destination should contain moved task")
+	if len(cfg.DailyPlan) > 0 && (cfg.DailyPlan[0].TaskID != taskID || cfg.DailyPlan[0].ProjectID != projectID) {
+		t.Fatalf("DailyPlan = %+v, want task %s in project %s", cfg.DailyPlan, taskID, projectID)
 	}
-	if destTask == staleTask {
-		t.Fatal("destination should contain canonical source task, not stale view copy")
-	}
-	if destTask.Title != moved.Title {
-		t.Fatalf("destination task title = %q, want %q", destTask.Title, moved.Title)
-	}
-	if destTask.Section != destSection {
-		t.Fatalf("destination task section = %q, want %q", destTask.Section, destSection)
+	if checkRecent && len(cfg.RecentTaskVisits) > 0 && (cfg.RecentTaskVisits[0].TaskID != taskID || cfg.RecentTaskVisits[0].ProjectID != projectID) {
+		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.RecentTaskVisits, taskID, projectID)
 	}
 }
 
@@ -173,8 +327,8 @@ func TestGlobalMoveSectionSelectedCarriesDestSectionWithoutMutatingTask(t *testi
 	if cmd == nil {
 		t.Fatal("expected move command")
 	}
-	if task.Section != "" {
-		t.Fatalf("source task should not be mutated before move message, got section %q", task.Section)
+	if models.SectionForState(task.State()) != "" {
+		t.Fatalf("source task should not be mutated before move message, got section %q", models.SectionForState(task.State()))
 	}
 
 	rawMsg := cmd()
@@ -190,133 +344,6 @@ func TestGlobalMoveSectionSelectedCarriesDestSectionWithoutMutatingTask(t *testi
 	}
 	if app.globalMoveState.sourceProject != nil || app.globalMoveState.sourceTask != nil || app.globalMoveState.destProject != nil {
 		t.Fatal("global move state should be cleared")
-	}
-}
-
-func TestProcessTUIDeferredMovesRecordsGroupedUndo(t *testing.T) {
-	source, moved := newGroupedUndoProject(t, "source", "Source", "workflow-task-1", "Workflow move")
-	dest, _ := newGroupedUndoProject(t, "dest", "Dest", "", "")
-	cfg, mgr := newGroupedUndoConfig(t, source, dest)
-	cfg.FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
-	if err := mgr.Save(cfg); err != nil {
-		t.Fatalf("save config: %v", err)
-	}
-
-	svc := NewProjectService()
-	recorded, err := processTUIDeferredMoves(svc, source, []workflow.DeferredMove{
-		{TaskID: moved.ID, Destination: dest.ID},
-	}, cfg, mgr, tuiDeferredMoveUndoOptions{
-		Action:  "Workflow Move to Project",
-		Context: "#1 Workflow move",
-		Depth:   *cfg.UndoHistoryDepth,
-	})
-	if err != nil {
-		t.Fatalf("process deferred moves: %v", err)
-	}
-	if !recorded {
-		t.Fatal("expected grouped undo snapshot recording")
-	}
-	if err := svc.Backup(source); err != nil {
-		t.Fatalf("backup source: %v", err)
-	}
-	if err := svc.Save(source); err != nil {
-		t.Fatalf("save source: %v", err)
-	}
-
-	assertGroupedTopUndo(t, source, dest)
-	assertConfigRefsProject(t, cfg, moved.ID, dest.ID)
-
-	undoMsg := performUndoForProjectsCmd(svc, source, cfg.Projects, repairConfigTaskRefsAfterRestore(mgr, cfg))()
-	if errMsg, ok := undoMsg.(ErrorMsg); ok {
-		t.Fatalf("undo failed: %v", errMsg.Err)
-	}
-	if _, ok := undoMsg.(UndoPerformedMsg); !ok {
-		t.Fatalf("expected UndoPerformedMsg, got %T", undoMsg)
-	}
-	assertConfigRefsProject(t, cfg, moved.ID, source.ID)
-	if source.GetTaskByID(moved.ID) == nil {
-		t.Fatal("source task should be restored after undo")
-	}
-	if dest.GetTaskByID(moved.ID) != nil {
-		t.Fatal("destination task should be removed after undo")
-	}
-}
-
-func newGroupedUndoProject(t *testing.T, id, name, taskID, taskTitle string) (*models.Project, *models.Task) {
-	t.Helper()
-	project, err := models.NewProject(id, name, t.TempDir())
-	if err != nil {
-		t.Fatalf("new project: %v", err)
-	}
-	var task *models.Task
-	if taskID != "" {
-		task, err = models.NewTask(taskID, 1, models.TaskTypeTask, taskTitle)
-		if err != nil {
-			t.Fatalf("new task: %v", err)
-		}
-		project.Tasks = []*models.Task{task}
-		project.NextShortID = 2
-	}
-	project.BuildTaskTree()
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("save project: %v", err)
-	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("load project: %v", err)
-	}
-	if taskID != "" {
-		task = project.GetTaskByID(taskID)
-		if task == nil {
-			t.Fatalf("task %s missing after load", taskID)
-		}
-	}
-	return project, task
-}
-
-func newGroupedUndoConfig(t *testing.T, projects ...*models.Project) (*config.Config, *config.Manager) {
-	t.Helper()
-	cfg := config.NewConfig()
-	depth := 5
-	cfg.UndoHistoryDepth = &depth
-	cfg.Projects = projects
-	cfg.CurrentProject = projects[0].ID
-	mgr := config.NewManager(filepath.Join(t.TempDir(), "config.json"))
-	return cfg, mgr
-}
-
-func assertGroupedTopUndo(t *testing.T, first, second *models.Project) {
-	t.Helper()
-	firstEntries, err := storage.LoadUndoHistory(first)
-	if err != nil {
-		t.Fatalf("load first undo history: %v", err)
-	}
-	secondEntries, err := storage.LoadUndoHistory(second)
-	if err != nil {
-		t.Fatalf("load second undo history: %v", err)
-	}
-	if len(firstEntries) == 0 || len(secondEntries) == 0 {
-		t.Fatalf("expected undo history for both projects, got %d and %d", len(firstEntries), len(secondEntries))
-	}
-	if firstEntries[0].GroupID == "" || firstEntries[0].GroupID != secondEntries[0].GroupID {
-		t.Fatalf("group IDs should match and be non-empty, got %q and %q", firstEntries[0].GroupID, secondEntries[0].GroupID)
-	}
-	gotIDs := firstEntries[0].GroupProjectIDs
-	wantIDs := map[string]bool{first.ID: true, second.ID: true}
-	if len(gotIDs) != 2 || !wantIDs[gotIDs[0]] || !wantIDs[gotIDs[1]] || gotIDs[0] == gotIDs[1] {
-		t.Fatalf("group project IDs = %v, want %s and %s", gotIDs, first.ID, second.ID)
-	}
-}
-
-func assertConfigRefsProject(t *testing.T, cfg *config.Config, taskID, projectID string) {
-	t.Helper()
-	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != taskID || cfg.FocusQueue[0].ProjectID != projectID {
-		t.Fatalf("FocusQueue = %+v, want task %s in project %s", cfg.FocusQueue, taskID, projectID)
-	}
-	if len(cfg.DailyPlan) > 0 && (cfg.DailyPlan[0].TaskID != taskID || cfg.DailyPlan[0].ProjectID != projectID) {
-		t.Fatalf("DailyPlan = %+v, want task %s in project %s", cfg.DailyPlan, taskID, projectID)
-	}
-	if len(cfg.RecentTaskVisits) > 0 && (cfg.RecentTaskVisits[0].TaskID != taskID || cfg.RecentTaskVisits[0].ProjectID != projectID) {
-		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.RecentTaskVisits, taskID, projectID)
 	}
 }
 

@@ -9,18 +9,24 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// TrashedProjectItem represents a project in the trash.
+// TrashedProjectItem represents a single deleted generation in the trash.
 type TrashedProjectItem struct {
-	Slug string
+	EntryID   string
+	Slug      string
+	Name      string
+	DeletedAt string
 }
 
 // FilterText returns the text used for filtering.
 func (t TrashedProjectItem) FilterText() string {
-	return t.Slug
+	return t.Slug + " " + t.Name
 }
 
 // DisplayText returns the display text.
 func (t TrashedProjectItem) DisplayText() string {
+	if t.DeletedAt != "" {
+		return fmt.Sprintf("%s  (deleted %s)", t.Slug, t.DeletedAt)
+	}
 	return t.Slug
 }
 
@@ -29,9 +35,9 @@ func (t TrashedProjectItem) CountValue() int {
 	return 0
 }
 
-// ItemID returns the slug as the unique identifier.
+// ItemID returns the trash entry ID as the unique identifier.
 func (t TrashedProjectItem) ItemID() string {
-	return t.Slug
+	return t.EntryID
 }
 
 // TrashedProjectsModel displays trashed projects and allows restoration.
@@ -44,11 +50,16 @@ type TrashedProjectsModel struct {
 
 // NewTrashedProjectsModel creates a new trashed projects picker.
 func NewTrashedProjectsModel(dataDir string) *TrashedProjectsModel {
-	slugs, _ := storage.ListTrashedProjects(dataDir)
+	entries, _ := storage.ListTrashEntries(dataDir)
 
-	items := make([]TrashedProjectItem, len(slugs))
-	for i, slug := range slugs {
-		items[i] = TrashedProjectItem{Slug: slug}
+	items := make([]TrashedProjectItem, len(entries))
+	for i, e := range entries {
+		items[i] = TrashedProjectItem{
+			EntryID:   e.EntryID,
+			Slug:      e.Slug,
+			Name:      e.Name,
+			DeletedAt: storage.FormatRelativeTime(e.DeletedAt),
+		}
 	}
 
 	picker := NewBasePicker(items, PickerConfig{
@@ -85,10 +96,11 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			target := m.purgeTarget
 			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
 				if confirmed && target != nil {
+					entryID := target.EntryID
 					slug := target.Slug
 					m.purgeTarget = nil
 					return m, func() tea.Msg {
-						return PurgeFromTrashMsg{Slug: slug}
+						return PurgeFromTrashMsg{EntryID: entryID, Slug: slug}
 					}
 				}
 				m.purgeTarget = nil
@@ -112,9 +124,9 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
-				slug := m.Filtered[m.Cursor].Slug
+				selected := m.Filtered[m.Cursor]
 				return m, func() tea.Msg {
-					return RestoreFromTrashMsg{Slug: slug}
+					return RestoreFromTrashMsg{EntryID: selected.EntryID, Slug: selected.Slug}
 				}
 			}
 			return m, func() tea.Msg {

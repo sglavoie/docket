@@ -21,7 +21,6 @@ type TaskMetadataAlreadyShown struct {
 	Project  bool
 	Section  bool
 	Due      bool
-	Stage    bool
 	Score    bool
 	Stale    bool
 	Updated  bool
@@ -48,7 +47,6 @@ type metadataGroup int
 
 const (
 	metadataGroupProjectSection metadataGroup = iota
-	metadataGroupStage
 	metadataGroupLifecycle
 	metadataGroupScore
 	metadataGroupProgress
@@ -107,7 +105,6 @@ func buildMetadataParts(opts TaskMetadataStripOpts) []metadataPart {
 	parts := make([]metadataPart, 0, 12)
 
 	parts = appendProjectSectionParts(parts, opts)
-	parts = appendStagePart(parts, opts)
 	parts = appendLifecycleParts(parts, opts)
 	parts = appendScorePart(parts, opts)
 	parts = appendProgressParts(parts, opts)
@@ -155,8 +152,8 @@ func appendProjectSectionParts(parts []metadataPart, opts TaskMetadataStripOpts)
 			dropPriority: dropHigh,
 		})
 	}
-	if !opts.AlreadyShown.Section && opts.Task.Section != "" {
-		text := MutedStyle.Render(opts.Task.Section)
+	if bucket := taskSectionBucket(opts.Task); !opts.AlreadyShown.Section && bucket != "" {
+		text := MutedStyle.Render(bucket)
 		parts = append(parts, metadataPart{
 			group:        metadataGroupProjectSection,
 			text:         text,
@@ -164,21 +161,6 @@ func appendProjectSectionParts(parts []metadataPart, opts TaskMetadataStripOpts)
 		})
 	}
 	return parts
-}
-
-func appendStagePart(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if opts.AlreadyShown.Stage || opts.Task.Stage == "" {
-		return parts
-	}
-	badge := GetStageBadge(opts.Task.Stage)
-	if badge == "" {
-		return parts
-	}
-	return append(parts, metadataPart{
-		group:        metadataGroupStage,
-		text:         badge,
-		dropPriority: dropHigh,
-	})
 }
 
 func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {

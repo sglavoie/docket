@@ -1,38 +1,27 @@
 package tui
 
 import (
-	"fmt"
-	"time"
-
 	tea "charm.land/bubbletea/v2"
+	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // buildKeyMap constructs the declarative KeyMap for PriorityViewModel.
 func (m *PriorityViewModel) buildKeyMap() *keymap.KeyMap {
-	stages := m.priorityStages()
 	var entries []keymap.Entry
 	entries = append(entries, m.priorityNavigationEntries()...)
 	entries = append(entries, m.priorityGotoEntries()...)
 	entries = append(entries, m.priorityPreviewEntries()...)
-	entries = append(entries, buildStandardTaskActionEntries(m.priorityTaskActionDeps(stages))...)
-	entries = append(entries, m.priorityFilterEntries(stages)...)
+	entries = append(entries, buildStandardTaskActionEntries(m.priorityTaskActionDeps())...)
+	entries = append(entries, m.priorityFilterEntries()...)
 	entries = append(entries, m.priorityViewSpecificEntries()...)
 
 	return &keymap.KeyMap{
 		ViewName: "Priority",
 		Entries:  entries,
 	}
-}
-
-func (m *PriorityViewModel) priorityStages() []string {
-	if m.config == nil {
-		return nil
-	}
-	return m.config.Stages
 }
 
 func (m *PriorityViewModel) priorityNavigationEntries() []keymap.Entry {
@@ -129,24 +118,22 @@ func (m *PriorityViewModel) priorityTogglePreviewAction() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *PriorityViewModel) priorityTaskActionDeps(stages []string) TaskKeymapDeps {
+func (m *PriorityViewModel) priorityTaskActionDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.priorityHasItem,
-		Stages:           stages,
 		ToggleHelp:       m.priorityToggleHelpAction,
 		SelectedTaskRefs: m.prioritySelectedTaskRefs,
 		DeleteTask:       m.priorityDeleteTaskAction,
 		OpenURL:          m.priorityOpenURLAction,
 		MoveToProject:    m.priorityMoveToProjectAction,
 		QuickNote:        m.priorityQuickNoteAction,
-		StatusChange:     m.priorityStatusChangeAction,
+		StateChange:      m.priorityStatusChangeAction,
 		PriorityChange:   m.priorityPriorityChangeAction,
 		DueDateSet:       m.priorityDueDateSetAction,
 		DueDateClear:     m.priorityDueDateClearAction,
 		SnoozeDate:       m.prioritySnoozeDateAction,
 		SectionMove:      m.prioritySectionMoveAction,
-		StageChange:      m.priorityStageChangeAction,
 	}
 }
 
@@ -201,43 +188,16 @@ func (m *PriorityViewModel) hasBulkSelection() bool {
 	return m.multiSelectMode && m.SelectedCount() > 0
 }
 
-func (m *PriorityViewModel) runBulkAction(
-	action string,
-	zeroMsg string,
-	successMsg func(int) string,
-	mutate func(project *models.Project, taskID string) bool,
-) (tea.Model, tea.Cmd) {
-	items := m.getSelectedBulkItems()
-	count, err := taskOpsApplyBulk(m, items, action, mutate)
-	m.ExitMultiSelect()
-
-	switch {
-	case err != nil:
-		m.setStatus(fmt.Sprintf("Error: %v", err))
-	case count == 0 && zeroMsg != "":
-		m.setStatus(zeroMsg)
-	case successMsg != nil:
-		m.setStatus(successMsg(count))
-	}
-	return m, nil
-}
-
-func (m *PriorityViewModel) priorityStatusChangeAction(status string) keymap.Action {
-	s := models.TaskStatus(status)
+func (m *PriorityViewModel) priorityStatusChangeAction(state string) keymap.Action {
+	s := models.WorkflowState(state)
 	return func() (tea.Model, tea.Cmd) {
 		if m.hasBulkSelection() {
-			return m.runBulkAction(StatusVerb(s)+" Task", "No tasks were changed", func(count int) string {
-				return fmt.Sprintf("Changed %d tasks to %s", count, s)
-			}, func(proj *models.Project, taskID string) bool {
-				t := proj.GetTaskByID(taskID)
-				if t == nil || t.CanTransitionTo(s) != "" {
-					return false
-				}
-				proj.MutateTask(taskID, func(t *models.Task) { t.ApplyTransition(s) })
-				return true
-			})
+			if cmd := bulkListStateCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), s); cmd != nil {
+				return m, cmd
+			}
+			return m, nil
 		}
-		return taskOpsChangeStatus(m, s)
+		return m, wfChangeState(m, s)
 	}
 }
 
@@ -245,53 +205,35 @@ func (m *PriorityViewModel) priorityPriorityChangeAction(key string) keymap.Acti
 	return func() (tea.Model, tea.Cmd) {
 		if m.hasBulkSelection() {
 			priority, _ := PriorityForPrefixKey(key)
-			return m.runBulkAction("Set Priority", "No tasks were changed", func(count int) string {
-				return fmt.Sprintf("Set priority %d on %d tasks", priority, count)
-			}, func(proj *models.Project, taskID string) bool {
-				t := proj.GetTaskByID(taskID)
-				if t == nil || t.Priority == priority {
-					return false
-				}
-				proj.MutateTask(taskID, func(t *models.Task) { t.Priority = priority })
-				return true
-			})
+			if cmd := bulkListPriorityCmd(m.bulk, m.getSelectedBulkItems(), priority); cmd != nil {
+				return m, cmd
+			}
+			return m, nil
 		}
-		return taskOpsChangePriority(m, key)
+		return m, wfChangePriority(m, key)
 	}
 }
 
 func (m *PriorityViewModel) priorityDueDateSetAction(days int) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.hasBulkSelection() {
-			dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
-			return m.runBulkAction("Set Due Date", "", func(count int) string {
-				return fmt.Sprintf("Due date set on %d tasks", count)
-			}, func(proj *models.Project, taskID string) bool {
-				proj.MutateTask(taskID, func(t *models.Task) {
-					d := dueDate
-					t.DueDate = &d
-					t.HasTime = false
-				})
-				return true
-			})
+			if cmd := bulkListDueDateCmd(m.bulk, m.getSelectedBulkItems(), days); cmd != nil {
+				return m, cmd
+			}
+			return m, nil
 		}
-		return taskOpsSetQuickDueDate(m, days)
+		return m, wfSetQuickDueDate(m, days)
 	}
 }
 
 func (m *PriorityViewModel) priorityDueDateClearAction() (tea.Model, tea.Cmd) {
 	if m.hasBulkSelection() {
-		return m.runBulkAction("Clear Due Date", "", func(count int) string {
-			return fmt.Sprintf("Cleared due date on %d tasks", count)
-		}, func(proj *models.Project, taskID string) bool {
-			proj.MutateTask(taskID, func(t *models.Task) {
-				t.DueDate = nil
-				t.HasTime = false
-			})
-			return true
-		})
+		if cmd := bulkListClearDueDateCmd(m.bulk, m.getSelectedBulkItems()); cmd != nil {
+			return m, cmd
+		}
+		return m, nil
 	}
-	return taskOpsClearDueDate(m)
+	return m, wfClearDueDate(m)
 }
 
 func (m *PriorityViewModel) prioritySnoozeDateAction(key string) keymap.Action {
@@ -301,54 +243,29 @@ func (m *PriorityViewModel) prioritySnoozeDateAction(key string) keymap.Action {
 			return m, nil
 		}
 		if m.hasBulkSelection() {
-			return m.runBulkAction("Snooze", "", func(count int) string {
-				return fmt.Sprintf("Snoozed %d tasks", count)
-			}, func(proj *models.Project, taskID string) bool {
-				proj.MutateTask(taskID, func(t *models.Task) { t.SnoozedUntil = snoozeDate })
-				return true
-			})
+			if cmd := bulkListSnoozeCmd(m.bulk, m.getSelectedBulkItems(), snoozeDate); cmd != nil {
+				return m, cmd
+			}
+			return m, nil
 		}
-		return taskOpsQuickSnooze(m, snoozeDate)
+		return m, wfQuickSnooze(m, snoozeDate)
 	}
 }
 
 func (m *PriorityViewModel) prioritySectionMoveAction(section string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.hasBulkSelection() {
-			return m.runBulkAction("Move to Section", "No tasks were moved", func(count int) string {
-				return fmt.Sprintf("Moved %d tasks to %s", count, section)
-			}, func(proj *models.Project, taskID string) bool {
-				t := proj.GetTaskByID(taskID)
-				if t == nil || t.InSection(section) {
-					return false
-				}
-				proj.MutateTask(taskID, func(t *models.Task) { t.SetSection(section) })
-				return true
-			})
+			cmd, ok := bulkListSectionMoveCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), section)
+			if !ok {
+				m.setStatus(fmt.Sprintf("Unknown section %q", section))
+			}
+			return m, cmd
 		}
-		return taskOpsSectionMove(m, section)
+		return m, wfSectionMove(m, section)
 	}
 }
 
-func (m *PriorityViewModel) priorityStageChangeAction(stage string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		if m.hasBulkSelection() {
-			return m.runBulkAction("Set Stage", "No tasks were changed", func(count int) string {
-				return fmt.Sprintf("Set stage on %d tasks", count)
-			}, func(proj *models.Project, taskID string) bool {
-				t := proj.GetTaskByID(taskID)
-				if t == nil || t.Stage == stage {
-					return false
-				}
-				proj.MutateTask(taskID, func(t *models.Task) { t.Stage = stage })
-				return true
-			})
-		}
-		return taskOpsChangeStage(m, stage)
-	}
-}
-
-func (m *PriorityViewModel) priorityFilterEntries(stages []string) []keymap.Entry {
+func (m *PriorityViewModel) priorityFilterEntries() []keymap.Entry {
 	filterEntries := keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags:      m.priorityFilterPrefixAction("#"),
 		TogglePriority:    m.priorityFilterPrefixAction("p"),
@@ -357,7 +274,7 @@ func (m *PriorityViewModel) priorityFilterEntries(stages []string) []keymap.Entr
 		ToggleParked:      m.priorityFilterPrefixAction("k"),
 		ClearFilters:      m.priorityFilterPrefixAction("x"),
 		TypeKey:           m.priorityFilterKeyAction("Ft"),
-		StatusKey:         m.priorityFilterKeyAction("Fs"),
+		StateKey:          m.priorityFilterKeyAction("Fs"),
 		DueDateKey:        m.priorityFilterKeyAction("Fd"),
 		AttrDirectKey:     m.priorityFilterKeyAction("Fa"),
 		AttrSubKey: func(prefix, key string) keymap.Action {
@@ -366,9 +283,7 @@ func (m *PriorityViewModel) priorityFilterEntries(stages []string) []keymap.Entr
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewPriorityView} }
 		},
-		ScoreKey:         m.priorityFilterKeyAction("FS"),
-		StageFilterKey:   m.priorityFilterKeyAction("F."),
-		StageFilterNames: stages,
+		ScoreKey: m.priorityFilterKeyAction("FS"),
 	})
 	if len(filterEntries) > 0 && filterEntries[0].PrefixNode != nil {
 		filterEntries[0].PrefixNode.Children = append(filterEntries[0].PrefixNode.Children,

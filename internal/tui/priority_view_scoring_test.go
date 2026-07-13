@@ -12,6 +12,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 	tests := []struct {
 		name    string
 		task    *models.Task
+		inQueue bool
 		wantMin int
 		wantMax int
 	}{
@@ -62,38 +63,38 @@ func TestComputeUrgencyScore(t *testing.T) {
 					t.Fatal(err)
 				}
 				task.Priority = 3
-				task.Status = models.StatusInProgress
+				task.WorkflowState = models.StateInProgress
 				return task
 			}(),
 			wantMin: 3500,
 			wantMax: 3500,
 		},
 		{
-			name: "active flag bonus",
+			name: "focus queue bonus",
 			task: func() *models.Task {
-				task, err := models.NewTask("5", 5, models.TaskTypeTask, "Active task")
+				task, err := models.NewTask("5", 5, models.TaskTypeTask, "Queued task")
 				if err != nil {
 					t.Fatal(err)
 				}
 				task.Priority = 3
-				task.Active = true
 				return task
 			}(),
+			inQueue: true,
 			wantMin: 3200,
 			wantMax: 3200,
 		},
 		{
 			name: "combined bonuses",
 			task: func() *models.Task {
-				task, err := models.NewTask("6", 6, models.TaskTypeTask, "Active in progress")
+				task, err := models.NewTask("6", 6, models.TaskTypeTask, "Queued in progress")
 				if err != nil {
 					t.Fatal(err)
 				}
 				task.Priority = 1
-				task.Status = models.StatusInProgress
-				task.Active = true
+				task.WorkflowState = models.StateInProgress
 				return task
 			}(),
+			inQueue: true,
 			wantMin: 5700,
 			wantMax: 5700,
 		},
@@ -147,7 +148,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ComputeUrgencyScore(tt.task)
+			got := ComputeUrgencyScore(tt.task, tt.inQueue)
 			if got < tt.wantMin || got > tt.wantMax {
 				t.Errorf("computeUrgencyScore() = %d, want between %d and %d", got, tt.wantMin, tt.wantMax)
 			}
@@ -167,7 +168,7 @@ func TestComputeSuggestionScore_SectionOrdering(t *testing.T) {
 		task.Priority = 3
 		task.CreatedAt = time.Now().Add(-48 * time.Hour)
 		task.UpdatedAt = time.Now().Add(-48 * time.Hour)
-		task.Section = section
+		task.SetSection(section)
 		return task
 	}
 
@@ -184,8 +185,10 @@ func TestComputeSuggestionScore_SectionOrdering(t *testing.T) {
 	if inboxScore <= waitingScore {
 		t.Errorf("Inbox score (%d) should be > Waiting score (%d)", inboxScore, waitingScore)
 	}
-	if reviewScore != waitingScore {
-		t.Errorf("Review score (%d) should equal Waiting score (%d)", reviewScore, waitingScore)
+	// A Review-section task derives the review state, which carries the +250
+	// review urgency bonus on top of the same -100 holding-bucket penalty.
+	if reviewScore != waitingScore+250 {
+		t.Errorf("Review score (%d) should equal Waiting score (%d) + 250", reviewScore, waitingScore)
 	}
 	if waitingScore <= standbyScore {
 		t.Errorf("Waiting score (%d) should be > Standby score (%d)", waitingScore, standbyScore)

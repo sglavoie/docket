@@ -1,0 +1,208 @@
+package app
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// Service is the application-layer entry point. It owns the injected mutation
+// repository, clock, and ID generator, and exposes one method per task-mutation
+// use case. Every mutating method follows the same shape: load a
+// revision-consistent snapshot, resolve the target, capture the expected
+// revision, apply domain rules, run the shared post-mutation hooks, and commit
+// exactly one ChangeSet.
+type Service struct {
+	repo   Repository
+	clock  Clock
+	ids    IDGenerator
+	codec  ProjectArtifactCodec
+	reader ProjectArtifactReader
+}
+
+// NewService constructs a Service backed by the storage note/blocker artifact
+// ports. A nil clock or ID generator falls back to the system implementations, so
+// production callers can pass only the repository.
+func NewService(repo Repository, clock Clock, ids IDGenerator) *Service {
+	return NewServiceWithArtifacts(repo, clock, ids, nil, nil)
+}
+
+// NewServiceWithArtifacts constructs a Service with explicit note/blocker artifact
+// ports. A nil codec or reader falls back to the storage-backed implementation, so
+// production callers use NewService while tests inject in-memory ports to exercise
+// the same use cases against a non-filesystem backend.
+func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, codec ProjectArtifactCodec, reader ProjectArtifactReader) *Service {
+	if clock == nil {
+		clock = SystemClock()
+	}
+	if ids == nil {
+		ids = UUIDGenerator()
+	}
+	if codec == nil {
+		codec = storageArtifactCodec{}
+	}
+	if reader == nil {
+		reader = storageArtifactReader{}
+	}
+	return &Service{repo: repo, clock: clock, ids: ids, codec: codec, reader: reader}
+}
+
+// resolveProject loads a snapshot and resolves a project by its ID, returning the
+// snapshot, the project, and the revision it was loaded at. Project-scoped
+// mutations and queries (notes, blockers, workspace metadata) use it the way
+// resolveTask serves single-task mutations.
+func (s *Service) resolveProject(projectID string) (Snapshot, *models.Project, string, error) {
+	if strings.TrimSpace(projectID) == "" {
+		return nil, nil, "", invalidInput("project", "id is required")
+	}
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return nil, nil, "", err
+	}
+	project := snap.ProjectByID(projectID)
+	if project == nil {
+		return nil, nil, "", fmt.Errorf("%w: %s", ErrProjectNotFound, projectID)
+	}
+	return snap, project, snap.Revision(project.ID), nil
+}
+
+// loadTask loads a snapshot and resolves a task by its UUID, returning the task
+// reference, the snapshot it was resolved from, and the revision the owning
+// project was loaded at. Use cases that need workspace-wide context (dependency
+// resolution, cross-project moves) consume the snapshot directly; single-project
+// mutations go through resolveTask, which discards it.
+func (s *Service) loadTask(taskID string) (TaskRef, Snapshot, string, error) {
+	if strings.TrimSpace(taskID) == "" {
+		return TaskRef{}, nil, "", invalidInput("task", "id is required")
+	}
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return TaskRef{}, nil, "", err
+	}
+	ref, ok := snap.Lookup(taskID)
+	if !ok {
+		return TaskRef{}, nil, "", fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+	}
+	return ref, snap, snap.Revision(ref.Project.ID), nil
+}
+
+// resolveTask loads a snapshot and resolves a task by its UUID, returning the
+// task, its owning project, and the revision the project was loaded at.
+func (s *Service) resolveTask(taskID string) (TaskRef, string, error) {
+	ref, _, revision, err := s.loadTask(taskID)
+	return ref, revision, err
+}
+
+// mutateTask is the shared runner for every single-task mutation. It resolves
+// the task, applies mutate (which enforces domain rules and may return a typed
+// error), runs the post-mutation hooks, and commits one ChangeSet carrying the
+// captured expected revision plus the undo description. A mutate error aborts
+// before any commit, so a rejected mutation never persists.
+func (s *Service) mutateTask(taskID, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
+	ref, revision, err := s.resolveTask(taskID)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	if err := mutate(ref); err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProject(ref, revision, undoAction, undoContext)
+}
+
+// commitProject runs the post-mutation hooks on the resolved project and commits
+// one ChangeSet, returning the presentation-neutral result built from the new
+// revision. Capture uses it directly (the new task is appended before calling).
+func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoContext string) (TaskResult, error) {
+	return s.commitProjectWithArtifacts(ref, expectedRevision, nil, undoAction, undoContext)
+}
+
+// commitProjectWithArtifacts commits a project write plus zero or more auxiliary
+// durable artifacts (e.g. a config store carrying a bumped template use-count) as
+// ONE ChangeSet, so a mutation whose side effects live outside tasks.md stays
+// atomic with the task write — either the task and its side effects all land or
+// none do. It is the single-project analogue of the note/blocker commitArtifact
+// path, generalized to carry an already-encoded artifact set the caller assembled.
+func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
+	generated := applyPostMutationHooks(ref.Project)
+	results, err := s.repo.Commit(storage.ChangeSet{
+		Project:          ref.Project,
+		ExpectedRevision: expectedRevision,
+		Artifacts:        artifacts,
+		UndoAction:       undoAction,
+		UndoContext:      undoContext,
+	})
+	if err != nil {
+		return TaskResult{}, err
+	}
+	revision := ""
+	if len(results) > 0 && results[0] != nil {
+		revision = results[0].Revision
+	}
+	result := newTaskResult(ref, revision)
+	result.RecurringGenerated = generated
+	return result, nil
+}
+
+// projectCommit pairs a mutated project with the revision it was loaded at, so a
+// multi-project transaction can carry one optimistic-concurrency expectation per
+// project. It may also carry auxiliary durable artifacts (e.g. a config store with
+// reassigned planning refs) and attachment file side effects (e.g. a cross-project
+// attachment move) that must land in the same transaction as the project write.
+type projectCommit struct {
+	project          *models.Project
+	expectedRevision string
+	// artifacts are auxiliary durable files committed in the same transaction.
+	artifacts []storage.ArtifactChange
+	// attachmentOps are attachment file side effects (move/copy/delete) committed
+	// in the same transaction as the project write.
+	attachmentOps []storage.AttachmentOp
+}
+
+// commitProjects runs the post-mutation hooks on every project and commits their
+// ChangeSets as ONE transaction, so a cascade that spans projects (a cross-project
+// move, a workflow move_to_project) applies atomically or not at all. Any per-commit
+// artifacts and attachment ops ride the same transaction. The results are returned
+// in the same order as commits. A stale revision on any project aborts the whole
+// commit.
+func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) ([]*storage.CommitResult, error) {
+	changesets := make([]storage.ChangeSet, len(commits))
+	for i, c := range commits {
+		applyPostMutationHooks(c.project)
+		changesets[i] = storage.ChangeSet{
+			Project:          c.project,
+			ExpectedRevision: c.expectedRevision,
+			Artifacts:        c.artifacts,
+			AttachmentOps:    c.attachmentOps,
+			UndoAction:       undoAction,
+			UndoContext:      undoContext,
+		}
+	}
+	return s.repo.Commit(changesets...)
+}
+
+// revisionAt returns the new revision reported for the changeset at index i, or
+// "" when the results do not include it.
+func revisionAt(results []*storage.CommitResult, i int) string {
+	if i < 0 || i >= len(results) || results[i] == nil {
+		return ""
+	}
+	return results[i].Revision
+}
+
+// applyPostMutationHooks runs the same post-mutation reconciliation the legacy
+// SaveProject path runs, so a mutation committed through the application layer
+// leaves the project in the identical reconciled shape: dependents auto-unblock,
+// illegal completed-parent-with-incomplete-child states are reconciled, recurring
+// instances are generated for freshly completed recurring tasks, the task tree is
+// rebuilt, and root tasks are reordered by completion. It returns the number of
+// recurring instances generated so single-task callers can surface that count.
+func applyPostMutationHooks(project *models.Project) int {
+	project.CheckAndAutoUnblock()
+	project.ReconcileParentCompletion()
+	generated := project.GenerateRecurringInstances()
+	project.BuildTaskTree()
+	project.ReorderRootTasksByCompletion()
+	return generated
+}

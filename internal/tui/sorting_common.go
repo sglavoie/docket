@@ -57,50 +57,60 @@ func SortFieldForKey(key string) (SortField, bool, bool) {
 	return SortByDefault, false, false
 }
 
-// StatusOrder returns the sort order for a status (workflow order).
-// This is the single source of truth used by all views that sort by status.
-func StatusOrder(status models.TaskStatus) int {
-	switch status {
-	case models.StatusTodo:
+// StateOrder returns the sort order for a workflow state (workflow order).
+// This is the single source of truth used by all views that sort by
+// status/state. It mirrors the legacy StatusOrder with the three todo-ish
+// planning states slotted where todo sat (next, then inbox, then ready),
+// waiting where blocked sat, paused where standby sat, and someday where
+// maybe sat.
+func StateOrder(state models.WorkflowState) int {
+	switch state {
+	case models.StateNext:
 		return 0
-	case models.StatusInProgress:
+	case models.StateInbox:
 		return 1
-	case models.StatusReview:
+	case models.StateReady:
 		return 2
-	case models.StatusStandby:
+	case models.StateInProgress:
 		return 3
-	case models.StatusMaybe:
+	case models.StateReview:
 		return 4
-	case models.StatusBlocked:
+	case models.StatePaused:
 		return 5
-	case models.StatusDone:
+	case models.StateSomeday:
 		return 6
-	case models.StatusCanceled:
+	case models.StateWaiting:
 		return 7
-	default:
+	case models.StateDone:
 		return 8
+	case models.StateCanceled:
+		return 9
+	default:
+		return 10
 	}
 }
 
-// TodayStatusOrder ranks statuses by activeness for the Today tab.
-// In-progress first, review pushed below other active statuses, complete last.
-func TodayStatusOrder(status models.TaskStatus) int {
-	switch status {
-	case models.StatusInProgress:
+// TodayStateOrder ranks workflow states by activeness for the Today tab.
+// In-progress first, review pushed below other active states, terminal last.
+// The three todo-ish planning states share one rank so the daily-plan position
+// keeps ordering them.
+func TodayStateOrder(state models.WorkflowState) int {
+	switch state {
+	case models.StateInProgress:
 		return 0
-	case models.StatusTodo:
+	case models.StateInbox, models.StateReady, models.StateNext:
 		return 1
-	case models.StatusBlocked:
+	case models.StateWaiting:
 		return 2
-	case models.StatusStandby:
+	case models.StatePaused:
 		return 3
-	case models.StatusMaybe:
+	case models.StateSomeday:
 		return 4
-	case models.StatusReview:
+	case models.StateReview:
 		return 5
-	case models.StatusDone:
+	case models.StateDone:
 		return 6
-	case models.StatusCanceled:
+	case models.StateCanceled:
 		return 7
 	default:
 		return 8
@@ -142,7 +152,7 @@ func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, c
 		return a.CreatedAt.Compare(b.CreatedAt)
 
 	case SortByStatus:
-		return cmp.Compare(StatusOrder(a.Status), StatusOrder(b.Status))
+		return cmp.Compare(StateOrder(a.State()), StateOrder(b.State()))
 
 	case SortByScore:
 		profile := cfg.GetProjectScoringProfile(projectID)

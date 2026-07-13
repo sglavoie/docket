@@ -1,14 +1,9 @@
 package models
 
 import (
-	"errors"
-	"fmt"
 	"slices"
 	"time"
 )
-
-// ErrSectionAlreadyExists is returned when a section rename targets an existing name.
-var ErrSectionAlreadyExists = errors.New("section already exists")
 
 var defaultGTDSections = []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview, SectionStandby, SectionCompleted}
 
@@ -100,80 +95,8 @@ func (p *Project) EnsureSection(name string) {
 	}
 }
 
-// RemoveSection removes a section from the project.
-// Returns false if trying to remove the Next section or if section doesn't exist.
-// Tasks in the removed section will have their section cleared.
-func (p *Project) RemoveSection(name string) bool {
-	if IsGTDSection(name) {
-		return false // Cannot remove built-in sections
-	}
-	for i, s := range p.Sections {
-		if s == name {
-			p.Sections = append(p.Sections[:i], p.Sections[i+1:]...)
-			// Clear section from tasks that had this section
-			for _, task := range p.Tasks {
-				if task.Section == name {
-					task.Section = ""
-					task.UpdatedAt = time.Now()
-				}
-			}
-			// Remove color mapping
-			if p.SectionColors != nil {
-				delete(p.SectionColors, name)
-			}
-			p.UpdatedAt = time.Now()
-			return true
-		}
-	}
-	return false
-}
-
-// RenameSection renames a section and updates all tasks with that section.
-// Returns an error if the rename cannot be performed.
-func (p *Project) RenameSection(oldName, newName string) error {
-	if IsGTDSection(oldName) {
-		return fmt.Errorf("cannot rename built-in section '%s'", oldName)
-	}
-	if newName == "" {
-		return fmt.Errorf("new section name cannot be empty")
-	}
-	if err := ValidateSectionName(newName); err != nil {
-		return err
-	}
-	if IsGTDSectionNameCI(newName) && !IsGTDSection(newName) {
-		return fmt.Errorf("cannot rename section to %q: collides with built-in GTD section name", newName)
-	}
-	if !IsGTDSection(newName) {
-		return fmt.Errorf("cannot rename section to %q: flexible grouping now uses tags", newName)
-	}
-	if p.HasSection(newName) {
-		return fmt.Errorf("cannot rename section to %q: %w", newName, ErrSectionAlreadyExists)
-	}
-	for i, s := range p.Sections {
-		if s == oldName {
-			p.Sections[i] = newName
-			// Update tasks with this section.
-			for _, task := range p.Tasks {
-				if task.Section == oldName {
-					task.Section = newName
-					task.UpdatedAt = time.Now()
-				}
-			}
-			// Rename color mapping
-			if p.SectionColors != nil {
-				if color, exists := p.SectionColors[oldName]; exists {
-					delete(p.SectionColors, oldName)
-					p.SectionColors[newName] = color
-				}
-			}
-			p.UpdatedAt = time.Now()
-			return nil
-		}
-	}
-	return fmt.Errorf("section %q not found", oldName)
-}
-
-// GetTasksBySection returns tasks filtered by section.
+// GetTasksBySection returns tasks whose workflow state resolves to the given
+// section bucket (see Task.InSection).
 func (p *Project) GetTasksBySection(section string) []*Task {
 	var result []*Task
 	for _, task := range p.Tasks {
@@ -184,11 +107,13 @@ func (p *Project) GetTasksBySection(section string) []*Task {
 	return result
 }
 
-// CountTasksBySection returns the number of tasks in each section.
+// CountTasksBySection returns the number of tasks in each section bucket,
+// keyed by the bucket each task's workflow state resolves to (empty string is
+// the default active bucket).
 func (p *Project) CountTasksBySection() map[string]int {
 	counts := make(map[string]int)
 	for _, task := range p.Tasks {
-		counts[task.Section]++
+		counts[SectionForState(task.State())]++
 	}
 	return counts
 }

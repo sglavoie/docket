@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -67,107 +65,125 @@ func TestHandleTaskMessagesSetSnoozeDateNil(t *testing.T) {
 	}
 }
 
-// Regression: bulk due-date change skipped saving the first task's project,
-// losing in-memory mutations to other tasks in that same project.
+// Regression: the non-explicit multiselect due-date fallback (msg carries the
+// already-updated first task, no explicit value) applies the first task's date to
+// every selected task in the same project. Migrated onto the BulkCoordinator: one
+// async transaction commits all three tasks on disk, and the workspace ledger
+// restores the prior dates.
 func TestHandleDueDateChangedBulkSameProjectPersistsAllTasks(t *testing.T) {
-	app := newTestAppModel()
+	task1 := newBulkPickerTestTask(t, 1, "first")
+	task2 := newBulkPickerTestTask(t, 2, "second")
+	task3 := newBulkPickerTestTask(t, 3, "third")
+	initial := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	task1.DueDate = &initial
+	task2.DueDate = &initial
+	task3.DueDate = &initial
+	env := newAppBulkPickerEnv(t, []*models.Task{task1, task2, task3})
+	app := env.appModel()
 
-	project, err := models.NewProject(uuid.New().String(), "Test", "")
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	task1, _ := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "first")
-	task2, _ := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "second")
-	task3, _ := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "third")
-	project.Tasks = []*models.Task{task1, task2, task3}
-
-	// Simulate DateInputModel having already saved task1 with the new date.
-	dueDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	// Simulate DateInputModel having applied the new date to task1 in memory.
+	dueDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
 	task1.DueDate = &dueDate
 
-	app.pendingBulkTasks = []PaletteBulkTaskItem{
-		{Task: task1, Project: project},
-		{Task: task2, Project: project},
-		{Task: task3, Project: project},
-	}
+	app.pendingBulkTasks = env.refs(0, task1, task2, task3)
 	app.pushView(ViewDateInput)
 
 	handled, cmd := app.handleDueDateChanged(DueDateChangedMsg{Task: task1})
 	if !handled {
 		t.Fatal("DueDateChangedMsg should be handled")
 	}
-	if cmd == nil {
-		t.Fatal("expected non-nil cmd that triggers async save")
+	if app.pendingBulkTasks != nil {
+		t.Fatal("pending bulk tasks should be cleared once the batch is issued")
 	}
-
-	if task2.DueDate == nil || !task2.DueDate.Equal(dueDate) {
-		t.Errorf("task2 should have due date %v, got %v", dueDate, task2.DueDate)
-	}
-	if task3.DueDate == nil || !task3.DueDate.Equal(dueDate) {
-		t.Errorf("task3 should have due date %v, got %v", dueDate, task3.DueDate)
-	}
-
-	// The buggy path falls through to setSuccessStatus immediately when
-	// projectsToSave is empty. With the fix the status is set later via
-	// SaveCompleteMsg, so the field is empty right after the handler returns.
+	// The status line is set later via the async BatchTransactionResultMsg, not
+	// synchronously in the handler.
 	if app.statusMessage != "" {
-		t.Errorf("statusMessage should be empty until async save completes, got %q", app.statusMessage)
+		t.Errorf("statusMessage should be empty until the async batch commits, got %q", app.statusMessage)
 	}
+
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Set due date to 2026-06-15 for 3 tasks" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Set due date to 2026-06-15 for 3 tasks")
+	}
+
+	reloaded := env.reload(t, 0)
+	assertTaskDueDate(t, reloaded.GetTaskByID(task1.ID), dueDate, false)
+	assertTaskDueDate(t, reloaded.GetTaskByID(task2.ID), dueDate, false)
+	assertTaskDueDate(t, reloaded.GetTaskByID(task3.ID), dueDate, false)
+
+	env.undo(t)
+	undone := env.reload(t, 0)
+	assertTaskDueDate(t, undone.GetTaskByID(task1.ID), initial, false)
+	assertTaskDueDate(t, undone.GetTaskByID(task2.ID), initial, false)
+	assertTaskDueDate(t, undone.GetTaskByID(task3.ID), initial, false)
 }
 
 func TestHandleDueDateChangedBulkCrossProjectPersistsAllTasks(t *testing.T) {
-	app := newTestAppModel()
-
 	taskA := newBulkPickerTestTask(t, 1, "alpha due")
 	taskB := newBulkPickerTestTask(t, 1, "beta due")
-	projectA := newBulkPickerTestProject(t, "Alpha Due", taskA)
-	projectB := newBulkPickerTestProject(t, "Beta Due", taskB)
+	initialA := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	initialB := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	taskA.DueDate = &initialA
+	taskB.DueDate = &initialB
+	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
+	app := env.appModel()
 
-	dueDate := time.Date(2026, 6, 15, 14, 30, 0, 0, time.UTC)
+	// Simulate DateInputModel having applied the new timed date to taskA in memory.
+	dueDate := time.Date(2026, 6, 15, 14, 30, 0, 0, time.Local)
 	taskA.DueDate = &dueDate
 	taskA.HasTime = true
 
-	app.pendingBulkTasks = []PaletteBulkTaskItem{
-		{Task: taskA, Project: projectA},
-		{Task: taskB, Project: projectB},
-	}
+	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
 	app.pushView(ViewDateInput)
 
-	handled, cmd := app.handleDueDateChanged(DueDateChangedMsg{Task: taskA, Project: projectA})
+	handled, cmd := app.handleDueDateChanged(DueDateChangedMsg{Task: taskA, Project: env.projects[0]})
 	if !handled {
 		t.Fatal("DueDateChangedMsg should be handled")
 	}
 
-	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, cmd))
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Set due date to 2026-06-15 for 2 tasks" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Set due date to 2026-06-15 for 2 tasks")
+	}
+	if len(msg.ClearSelectionTaskIDs) != 2 {
+		t.Errorf("clear selection ids = %v, want 2", msg.ClearSelectionTaskIDs)
+	}
 
-	reloadedA := loadBulkPickerTestProject(t, projectA)
-	reloadedB := loadBulkPickerTestProject(t, projectB)
-	assertTaskDueDate(t, reloadedA.GetTaskByID(taskA.ID), dueDate, true)
-	assertTaskDueDate(t, reloadedB.GetTaskByID(taskB.ID), dueDate, true)
+	assertTaskDueDate(t, env.reload(t, 0).GetTaskByID(taskA.ID), dueDate, true)
+	assertTaskDueDate(t, env.reload(t, 1).GetTaskByID(taskB.ID), dueDate, true)
+
+	env.undo(t)
+	assertTaskDueDate(t, env.reload(t, 0).GetTaskByID(taskA.ID), initialA, false)
+	assertTaskDueDate(t, env.reload(t, 1).GetTaskByID(taskB.ID), initialB, false)
 }
 
-func TestHandleDueDateChangedBulkExplicitValueUsesWorkflowAndClearsSelection(t *testing.T) {
-	app := newTestAppModel()
-	undoDepth := 10
-	app.config.UndoHistoryDepth = &undoDepth
-
+// TestHandleDueDateChangedBulkExplicitValueMigratedCommitsAsync verifies the
+// explicit-value multiselect due-date picker now commits one asynchronous
+// cross-project transaction through the BulkCoordinator: the batch result
+// carries the selection to clear and the per-view summary, both projects' due
+// dates (with the timed flag preserved) are committed on disk, the shell clears
+// the cached All Tasks multi-select on commit, and the workspace ledger restores
+// the prior due dates.
+func TestHandleDueDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha explicit due")
 	taskB := newBulkPickerTestTask(t, 1, "beta explicit due")
-	projectA := newBulkPickerTestProject(t, "Alpha Explicit Due", taskA)
-	projectB := newBulkPickerTestProject(t, "Beta Explicit Due", taskB)
-	app.config.Projects = []*models.Project{projectA, projectB}
+	initialA := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	initialB := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	taskA.DueDate = &initialA
+	taskB.DueDate = &initialB
+	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
+	app := env.appModel()
 
 	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
 	app.allTasksView.multiSelectMode = true
 	app.allTasksView.selectedTasks[taskA.ID] = true
 	app.allTasksView.selectedTasks[taskB.ID] = true
-	app.pendingBulkTasks = []PaletteBulkTaskItem{
-		{Task: taskA, Project: projectA},
-		{Task: taskB, Project: projectB},
-	}
+	app.views.Register(ViewAllTasks, app.allTasksView)
+
+	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
 	app.pushView(ViewDateInput)
 
-	dueDate := time.Date(2026, 7, 1, 16, 45, 0, 0, time.UTC)
+	dueDate := time.Date(2026, 7, 1, 16, 45, 0, 0, time.Local)
 	handled, cmd := app.handleDueDateChanged(DueDateChangedMsg{
 		DueDate:          &dueDate,
 		HasTime:          true,
@@ -176,19 +192,29 @@ func TestHandleDueDateChangedBulkExplicitValueUsesWorkflowAndClearsSelection(t *
 	if !handled {
 		t.Fatal("DueDateChangedMsg should be handled")
 	}
-	if cmd == nil {
-		t.Fatal("expected status timeout command")
+	if app.pendingBulkTasks != nil {
+		t.Fatal("pending bulk tasks should be cleared once the batch is issued")
 	}
 
-	reloadedA := loadBulkPickerTestProject(t, projectA)
-	reloadedB := loadBulkPickerTestProject(t, projectB)
-	assertTaskDueDate(t, reloadedA.GetTaskByID(taskA.ID), dueDate, true)
-	assertTaskDueDate(t, reloadedB.GetTaskByID(taskB.ID), dueDate, true)
-	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
-		t.Fatal("bulk due-date completion should clear cached All Tasks multi-select")
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Set due date to 2026-07-01 for 2 tasks" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Set due date to 2026-07-01 for 2 tasks")
 	}
-	assertBulkPickerUndoTaskIDs(t, projectA, []string{taskA.ID})
-	assertBulkPickerUndoTaskIDs(t, projectB, []string{taskB.ID})
+	if len(msg.ClearSelectionTaskIDs) != 2 {
+		t.Errorf("clear selection ids = %v, want 2", msg.ClearSelectionTaskIDs)
+	}
+
+	assertTaskDueDate(t, env.reload(t, 0).GetTaskByID(taskA.ID), dueDate, true)
+	assertTaskDueDate(t, env.reload(t, 1).GetTaskByID(taskB.ID), dueDate, true)
+
+	app.handleBatchTransactionResult(msg)
+	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
+		t.Fatal("committed batch should clear cached All Tasks multi-select")
+	}
+
+	env.undo(t)
+	assertTaskDueDate(t, env.reload(t, 0).GetTaskByID(taskA.ID), initialA, false)
+	assertTaskDueDate(t, env.reload(t, 1).GetTaskByID(taskB.ID), initialB, false)
 }
 
 func TestHandleTaskMessagesSnoozeDateChanged(t *testing.T) {
@@ -295,33 +321,98 @@ func TestHandleSnoozeDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing
 }
 
 func TestHandleSnoozeDateChangedBulkCrossProjectPersistsAllTasks(t *testing.T) {
-	app := newTestAppModel()
-
 	taskA := newBulkPickerTestTask(t, 1, "alpha snooze")
 	taskB := newBulkPickerTestTask(t, 1, "beta snooze")
-	projectA := newBulkPickerTestProject(t, "Alpha Snooze", taskA)
-	projectB := newBulkPickerTestProject(t, "Beta Snooze", taskB)
+	initialA := time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local)
+	initialB := time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local)
+	taskA.SnoozedUntil = &initialA
+	taskB.SnoozedUntil = &initialB
+	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
+	app := env.appModel()
 
-	snoozeDate := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	// Simulate SnoozeInputModel having applied the new snooze to taskA in memory.
+	snoozeDate := time.Date(2026, 6, 20, 0, 0, 0, 0, time.Local)
 	taskA.SnoozedUntil = &snoozeDate
 
-	app.pendingBulkTasks = []PaletteBulkTaskItem{
-		{Task: taskA, Project: projectA},
-		{Task: taskB, Project: projectB},
-	}
+	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
 	app.pushView(ViewSnoozeInput)
 
-	handled, cmd := app.handleSnoozeDateChanged(SnoozeDateChangedMsg{Task: taskA, Project: projectA})
+	handled, cmd := app.handleSnoozeDateChanged(SnoozeDateChangedMsg{Task: taskA, Project: env.projects[0]})
 	if !handled {
 		t.Fatal("SnoozeDateChangedMsg should be handled")
 	}
 
-	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, cmd))
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Snoozed 2 tasks until 2026-06-20" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Snoozed 2 tasks until 2026-06-20")
+	}
+	if len(msg.ClearSelectionTaskIDs) != 2 {
+		t.Errorf("clear selection ids = %v, want 2", msg.ClearSelectionTaskIDs)
+	}
 
-	reloadedA := loadBulkPickerTestProject(t, projectA)
-	reloadedB := loadBulkPickerTestProject(t, projectB)
-	assertTaskSnoozedUntil(t, reloadedA.GetTaskByID(taskA.ID), snoozeDate)
-	assertTaskSnoozedUntil(t, reloadedB.GetTaskByID(taskB.ID), snoozeDate)
+	assertTaskSnoozedUntil(t, env.reload(t, 0).GetTaskByID(taskA.ID), snoozeDate)
+	assertTaskSnoozedUntil(t, env.reload(t, 1).GetTaskByID(taskB.ID), snoozeDate)
+
+	env.undo(t)
+	assertTaskSnoozedUntil(t, env.reload(t, 0).GetTaskByID(taskA.ID), initialA)
+	assertTaskSnoozedUntil(t, env.reload(t, 1).GetTaskByID(taskB.ID), initialB)
+}
+
+// TestHandleSnoozeDateChangedBulkExplicitValueMigratedCommitsAsync verifies the
+// explicit-value multiselect snooze picker now commits one asynchronous
+// cross-project transaction through the BulkCoordinator: the batch result
+// carries the selection and per-view summary, both projects' snooze dates are
+// committed on disk, and the workspace ledger restores the prior snooze.
+func TestHandleSnoozeDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing.T) {
+	taskA := newBulkPickerTestTask(t, 1, "alpha explicit snooze")
+	taskB := newBulkPickerTestTask(t, 1, "beta explicit snooze")
+	initialA := time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local)
+	initialB := time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local)
+	taskA.SnoozedUntil = &initialA
+	taskB.SnoozedUntil = &initialB
+	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
+	app := env.appModel()
+
+	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
+	app.allTasksView.multiSelectMode = true
+	app.allTasksView.selectedTasks[taskA.ID] = true
+	app.allTasksView.selectedTasks[taskB.ID] = true
+	app.views.Register(ViewAllTasks, app.allTasksView)
+
+	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
+	app.pushView(ViewSnoozeInput)
+
+	snooze := time.Date(2026, 7, 5, 0, 0, 0, 0, time.Local)
+	handled, cmd := app.handleSnoozeDateChanged(SnoozeDateChangedMsg{
+		SnoozedUntil:     &snooze,
+		HasExplicitValue: true,
+	})
+	if !handled {
+		t.Fatal("SnoozeDateChangedMsg should be handled")
+	}
+	if app.pendingBulkTasks != nil {
+		t.Fatal("pending bulk tasks should be cleared once the batch is issued")
+	}
+
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Snoozed 2 tasks until 2026-07-05" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Snoozed 2 tasks until 2026-07-05")
+	}
+	if len(msg.ClearSelectionTaskIDs) != 2 {
+		t.Errorf("clear selection ids = %v, want 2", msg.ClearSelectionTaskIDs)
+	}
+
+	assertTaskSnoozedUntil(t, env.reload(t, 0).GetTaskByID(taskA.ID), snooze)
+	assertTaskSnoozedUntil(t, env.reload(t, 1).GetTaskByID(taskB.ID), snooze)
+
+	app.handleBatchTransactionResult(msg)
+	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
+		t.Fatal("committed batch should clear cached All Tasks multi-select")
+	}
+
+	env.undo(t)
+	assertTaskSnoozedUntil(t, env.reload(t, 0).GetTaskByID(taskA.ID), initialA)
+	assertTaskSnoozedUntil(t, env.reload(t, 1).GetTaskByID(taskB.ID), initialB)
 }
 
 func assertTaskDueDate(t *testing.T, task *models.Task, want time.Time, wantHasTime bool) {

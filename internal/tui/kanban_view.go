@@ -311,7 +311,7 @@ func kanbanRender(m *KanbanModel) string {
 			}
 
 			card := dr.card
-			statusBadge := GetStatusBadge(string(card.Task.Status), card.Task.Status.Icon())
+			statusBadge := GetStateBadge(card.Task.State())
 			typeBadge := GetTypeBadge(string(card.Task.Type), card.Task.Type.Icon())
 
 			// Von Restorff: demote non-hero badges per card so a single attribute

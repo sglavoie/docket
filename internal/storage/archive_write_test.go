@@ -14,16 +14,15 @@ func TestWriteArchivedTasks(t *testing.T) {
 	t.Run("generates correct output format for single task", func(t *testing.T) {
 		now := time.Now()
 		task := &models.Task{
-			ID:          "task-123",
-			Title:       "Test task",
-			Type:        models.TaskTypeTask,
-			Status:      models.StatusDone,
-			Priority:    2,
-			Tags:        []string{"backend", "urgent"},
-			Section:     "Backlog",
-			CreatedAt:   now.Add(-24 * time.Hour),
-			CompletedAt: &now,
-			Description: "Task description here.",
+			ID:            "task-123",
+			Title:         "Test task",
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateDone,
+			Priority:      2,
+			Tags:          []string{"backend", "urgent"},
+			CreatedAt:     now.Add(-24 * time.Hour),
+			CompletedAt:   &now,
+			Description:   "Task description here.",
 		}
 
 		output := WriteArchivedTasks("My Project", []*models.Task{task})
@@ -40,8 +39,10 @@ func TestWriteArchivedTasks(t *testing.T) {
 		if !strings.Contains(output, "id: task-123") {
 			t.Error("output should contain task ID")
 		}
-		if !strings.Contains(output, "status: done") {
-			t.Error("output should contain task status")
+		// The archive uses the canonical v2 metadata writer: the done status
+		// serializes as state, and the retired section field is dropped.
+		if !strings.Contains(output, "state: done") {
+			t.Error("output should contain task state")
 		}
 		if !strings.Contains(output, "priority: 2") {
 			t.Error("output should contain task priority")
@@ -49,8 +50,8 @@ func TestWriteArchivedTasks(t *testing.T) {
 		if !strings.Contains(output, "tags: backend;urgent") {
 			t.Error("output should contain task tags")
 		}
-		if !strings.Contains(output, "section: Backlog") {
-			t.Error("output should contain task section")
+		if strings.Contains(output, "section:") {
+			t.Error("v2 archive output should not contain the retired section field")
 		}
 		if !strings.Contains(output, "Task description here.") {
 			t.Error("output should contain task description")
@@ -68,20 +69,20 @@ func TestWriteArchivedTasks(t *testing.T) {
 		now := time.Now()
 		tasks := []*models.Task{
 			{
-				ID:          "task-1",
-				Title:       "First task",
-				Type:        models.TaskTypeTask,
-				Status:      models.StatusDone,
-				Priority:    1,
-				CompletedAt: &now,
+				ID:            "task-1",
+				Title:         "First task",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateDone,
+				Priority:      1,
+				CompletedAt:   &now,
 			},
 			{
-				ID:          "task-2",
-				Title:       "Second task",
-				Type:        models.TaskTypeBug,
-				Status:      models.StatusDone,
-				Priority:    2,
-				CompletedAt: &now,
+				ID:            "task-2",
+				Title:         "Second task",
+				Type:          models.TaskTypeBug,
+				WorkflowState: models.StateDone,
+				Priority:      2,
+				CompletedAt:   &now,
 			},
 		}
 
@@ -102,13 +103,13 @@ func TestWriteArchivedTasks(t *testing.T) {
 		now := time.Now()
 		dueDate := now.Add(24 * time.Hour)
 		task := &models.Task{
-			ID:          "task-1",
-			Title:       "Task with due date",
-			Type:        models.TaskTypeTask,
-			Status:      models.StatusDone,
-			Priority:    3,
-			DueDate:     &dueDate,
-			CompletedAt: &now,
+			ID:            "task-1",
+			Title:         "Task with due date",
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateDone,
+			Priority:      3,
+			DueDate:       &dueDate,
+			CompletedAt:   &now,
 		}
 
 		output := WriteArchivedTasks("Project", []*models.Task{task})
@@ -126,20 +127,19 @@ func TestWriteArchivedTasks_DescriptionWithHeadingPattern(t *testing.T) {
 	now := time.Now()
 	completedAt := now
 	task := &models.Task{
-		ID:          uuid.New().String(),
-		ShortID:     1,
-		Title:       "Archived with heading desc",
-		Type:        models.TaskTypeTask,
-		Status:      models.StatusDone,
-		Priority:    2,
-		Tags:        []string{},
-		DependsOn:   []string{},
-		RelatedTo:   []string{},
-		Section:     models.SectionCompleted,
-		CreatedAt:   now.Add(-24 * time.Hour),
-		UpdatedAt:   now,
-		CompletedAt: &completedAt,
-		Description: "Some notes\n## Task: Looks like a heading\nMore notes",
+		ID:            uuid.New().String(),
+		ShortID:       1,
+		Title:         "Archived with heading desc",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateDone,
+		Priority:      2,
+		Tags:          []string{},
+		DependsOn:     []string{},
+		RelatedTo:     []string{},
+		CreatedAt:     now.Add(-24 * time.Hour),
+		UpdatedAt:     now,
+		CompletedAt:   &completedAt,
+		Description:   "Some notes\n## Task: Looks like a heading\nMore notes",
 	}
 
 	output := WriteArchivedTasks("Test Project", []*models.Task{task})

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 type focusBoardReloadMode int
@@ -28,19 +29,19 @@ type focusBoardReloadIntent struct {
 // markDone marks the current task as done via the shared workflow pipeline.
 func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 	m.captureReloadIntent(focusBoardReloadNextActionable)
-	model, cmd := taskOpsChangeStatus(m, models.StatusDone)
+	cmd := wfChangeState(m, models.StateDone)
 	m.setCompletionFlash()
 	m.zenAdvance()
-	return model, tea.Batch(cmd, completionFlashScheduler())
+	return m, tea.Batch(cmd, completionFlashScheduler())
 }
 
 // dismiss cancels the current task via the shared workflow pipeline.
 func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
 	m.captureReloadIntent(focusBoardReloadNextActionable)
-	model, cmd := taskOpsChangeStatus(m, models.StatusCanceled)
-	m.setMutationFlash(statusMutationFlashBg(models.StatusCanceled))
+	cmd := wfChangeState(m, models.StateCanceled)
+	m.setMutationFlash(stateMutationFlashBg(models.StateCanceled))
 	m.zenAdvance()
-	return model, tea.Batch(cmd, mutationFlashTimeout())
+	return m, tea.Batch(cmd, mutationFlashTimeout())
 }
 
 // zenAdvance moves the cursor to the next incomplete task when in zen/tunnel mode.
@@ -64,7 +65,7 @@ func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 
 // deleteItem deletes the task at cursor via the shared workflow pipeline.
 func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
-	return taskOpsDeleteTask(m)
+	return m, wfDeleteTask(m, m.config, m.configManager)
 }
 
 // taskOpsView implementation for FocusBoardModel.
@@ -80,6 +81,16 @@ func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *FocusBoardModel) getPersister() Persister           { return m.projectService }
 func (m *FocusBoardModel) getConfig() *config.Config         { return m.config }
 func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
+
+// workflowOpsView accessors: FocusBoard does not embed ViewBundle, so it exposes
+// its own single-task coordinator and enabled rules for the shared wf* helpers.
+func (m *FocusBoardModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }
+func (m *FocusBoardModel) workflowRules() []workflow.WorkflowRule {
+	if m.config == nil {
+		return nil
+	}
+	return m.config.GetEnabledWorkflowRules()
+}
 func (m *FocusBoardModel) reloadData() {
 	intent := m.consumeReloadIntent(focusBoardReloadPreserveSelection)
 	m.loadItems()
@@ -170,7 +181,7 @@ func (m *FocusBoardModel) nextActionableRowIndex(start int) int {
 }
 
 func (m *FocusBoardModel) isActionableFlowRow(row boardRow) bool {
-	return row.Task != nil && !row.Task.Status.IsComplete()
+	return row.Task != nil && !row.Task.IsComplete()
 }
 
 func (m *FocusBoardModel) setErr(err error)     { m.statusMessage = err.Error() }
@@ -206,7 +217,7 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	}
 
 	// Only reorder within the same completion group (active-first partition).
-	if curRow.Task.Status.IsComplete() != targetRow.Task.Status.IsComplete() {
+	if curRow.Task.IsComplete() != targetRow.Task.IsComplete() {
 		return m, nil
 	}
 

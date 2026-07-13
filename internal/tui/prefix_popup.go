@@ -73,7 +73,7 @@ var prefixCategoryNames = map[string]string{
 	"P":   "perspectives",
 	"F":   "filter",
 	"Ft":  "filter-type",
-	"Fs":  "filter-status",
+	"Fs":  "filter-state",
 	"Fd":  "filter-due",
 	"Fa":  "filter-attr",
 	"Fas": "severity",
@@ -85,9 +85,7 @@ var prefixCategoryNames = map[string]string{
 	"Fao": "scope",
 	"Fap": "points",
 	"FS":  "filter-score",
-	"F.":  "filter-stage",
 	"Fv":  "saved-filters",
-	"s":   "stage",
 	";":   "tt",
 	";t":  "task",
 }

@@ -165,7 +165,7 @@ func TestHandleCrossProjectsLoadedResetsMissingPersistedPinnedTagTab(t *testing.
 		ID:   "alpha",
 		Name: "Alpha",
 		Tasks: []*models.Task{
-			{ID: "backend", Title: "Backend", Status: models.StatusTodo, Tags: []string{"backend"}},
+			{ID: "backend", Title: "Backend", WorkflowState: models.StateReady, Tags: []string{"backend"}},
 		},
 	}
 	project.BuildTaskTree()
@@ -236,7 +236,7 @@ func TestReloadCrossProjectsClearsInMemoryPinnedTagTab(t *testing.T) {
 func TestReloadCrossProjectsResetsMissingInMemoryPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
 	app.config.GlobalPinnedTags = []string{"backend"}
-	backendTask := &models.Task{ID: "backend", Title: "Backend", Status: models.StatusTodo, Tags: []string{"backend"}}
+	backendTask := &models.Task{ID: "backend", Title: "Backend", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{
 		ID:    "alpha",
 		Name:  "Alpha",
@@ -253,7 +253,7 @@ func TestReloadCrossProjectsResetsMissingInMemoryPinnedTagTab(t *testing.T) {
 		ID:   "alpha",
 		Name: "Alpha",
 		Tasks: []*models.Task{
-			{ID: "frontend", Title: "Frontend", Status: models.StatusTodo, Tags: []string{"frontend"}},
+			{ID: "frontend", Title: "Frontend", WorkflowState: models.StateReady, Tags: []string{"frontend"}},
 		},
 	}
 	reloadedProject.BuildTaskTree()

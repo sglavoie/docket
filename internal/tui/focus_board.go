@@ -49,6 +49,8 @@ type FocusBoardModel struct {
 	config         *config.Config
 	configManager  *config.Manager
 	projectService *ProjectService
+	capture        CaptureCoordinator
+	taskItem       TaskItemCoordinator
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool

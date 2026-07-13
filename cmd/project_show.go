@@ -105,10 +105,10 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 		active := 0
 		done := 0
 		for _, task := range tasks {
-			if task.Status.IsActive() {
-				active++
-			} else if task.IsComplete() {
+			if task.IsTerminalState() {
 				done++
+			} else {
+				active++
 			}
 		}
 
@@ -170,10 +170,10 @@ func displayProjectShowJSON(project *models.Project) error {
 		active := 0
 		done := 0
 		for _, task := range tasks {
-			if task.Status.IsActive() {
-				active++
-			} else if task.IsComplete() {
+			if task.IsTerminalState() {
 				done++
+			} else {
+				active++
 			}
 		}
 		tasksByType = append(tasksByType, typeStats{

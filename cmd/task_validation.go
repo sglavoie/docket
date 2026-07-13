@@ -105,7 +105,7 @@ func checkIncompleteDependencies(project *models.Project, task *models.Task) err
 	var msg strings.Builder
 	fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n", task.ShortID)
 	for _, dep := range incompleteDeps {
-		fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+		fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.State())
 	}
 	crossProjectCount := countCrossProjectDeps(task)
 	if crossProjectCount > 0 {
@@ -125,7 +125,7 @@ func checkIncompleteChildren(task *models.Task) error {
 	var msg strings.Builder
 	fmt.Fprintf(&msg, "task #%d has %d incomplete children:\n", task.ShortID, len(incompleteChildren))
 	for _, child := range incompleteChildren {
-		fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
+		fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.State())
 	}
 	return fmt.Errorf("%s", msg.String())
 }

@@ -161,25 +161,6 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			},
 		},
 		{
-			Name:        "toggle active",
-			Description: "Toggle active flag on task",
-			Shortcut:    "*",
-			Category:    CategoryTasks,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"star task", "flag task", "active flag"},
-			Handler: func() tea.Msg {
-				if m.projectTreeHasBulkSelection() && m.projectTree != nil {
-					cmd, _ := handleToggleActiveKey(m.projectTree)
-					return m.runProjectTreeCmd(cmd)
-				}
-				if task := m.selectedTreeTask(); task != nil {
-					task.ToggleActive()
-					return taskPropertyChangedWithUndo(task, "Toggle Active")
-				}
-				return StatusMsg("No task selected")
-			},
-		},
-		{
 			Name:        "toggle pin",
 			Description: "Toggle pinned status on task",
 			Shortcut:    "ctrl+p",

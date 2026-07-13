@@ -172,7 +172,7 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 
 		icons := fmt.Sprintf("%s %s ",
 			GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon()),
-			GetStatusBadge(string(item.Task.Status), item.Task.Status.Icon()))
+			GetStateBadge(item.Task.State()))
 		content.WriteString(icons)
 		totalLen += 4
 	}

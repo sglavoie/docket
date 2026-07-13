@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -12,14 +14,13 @@ import (
 func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 	dueDate := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:          "test-id",
-		Status:      models.StatusInProgress,
-		Priority:    2,
-		Section:     "Next",
-		Tags:        []string{"backend", "urgent"},
-		Type:        models.TaskTypeBug,
-		DueDate:     &dueDate,
-		Description: "Fix the login bug",
+		ID:            "test-id",
+		WorkflowState: models.StateInProgress,
+		Priority:      2,
+		Tags:          []string{"backend", "urgent"},
+		Type:          models.TaskTypeBug,
+		DueDate:       &dueDate,
+		Description:   "Fix the login bug",
 		Recurrence: &models.RecurrencePattern{
 			Interval:    2,
 			Unit:        models.RecurrenceWeekly,
@@ -36,14 +37,15 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 	if copied.ID != task.ID {
 		t.Errorf("ID: got %q, want %q", copied.ID, task.ID)
 	}
-	if copied.Status != task.Status {
-		t.Errorf("Status: got %q, want %q", copied.Status, task.Status)
+	// CopyTaskState now carries the canonical WorkflowState rather than the
+	// retired Status/Section fields (33.7.6.4), so the snapshot preserves the
+	// task's lifecycle via State() (here in_progress, which outranks the Next
+	// section under the state model).
+	if copied.State() != task.State() {
+		t.Errorf("State: got %q, want %q", copied.State(), task.State())
 	}
 	if copied.Priority != task.Priority {
 		t.Errorf("Priority: got %d, want %d", copied.Priority, task.Priority)
-	}
-	if copied.Section != task.Section {
-		t.Errorf("Section: got %q, want %q", copied.Section, task.Section)
 	}
 	if copied.Type != task.Type {
 		t.Errorf("Type: got %q, want %q", copied.Type, task.Type)
@@ -105,9 +107,9 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 
 func TestCopyTaskStateNilRecurrence(t *testing.T) {
 	task := &models.Task{
-		ID:     "test-id",
-		Status: models.StatusTodo,
-		Tags:   []string{},
+		ID:            "test-id",
+		WorkflowState: models.StateReady,
+		Tags:          []string{},
 	}
 
 	copied := workflow.CopyTaskState(task)
@@ -125,20 +127,18 @@ func TestCopyTaskStateNilTask(t *testing.T) {
 
 func TestTaskStateChangedDetectsSection(t *testing.T) {
 	current := &models.Task{
-		ID:       "t1",
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Section:  models.SectionNext,
-		Tags:     []string{"backend"},
-		Type:     models.TaskTypeTask,
+		ID:            "t1",
+		WorkflowState: models.StateNext,
+		Priority:      3,
+		Tags:          []string{"backend"},
+		Type:          models.TaskTypeTask,
 	}
 	prev := &models.Task{
-		ID:       "t1",
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Section:  models.SectionInbox,
-		Tags:     []string{"backend"},
-		Type:     models.TaskTypeTask,
+		ID:            "t1",
+		WorkflowState: models.StateInbox,
+		Priority:      3,
+		Tags:          []string{"backend"},
+		Type:          models.TaskTypeTask,
 	}
 
 	if !workflow.TaskStateChanged(current, prev) {
@@ -151,18 +151,18 @@ func TestTaskStateChangedDetectsDueDateChange(t *testing.T) {
 	newDue := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	current := &models.Task{
-		ID:      "t1",
-		Status:  models.StatusTodo,
-		DueDate: &newDue,
-		Tags:    []string{},
-		Type:    models.TaskTypeTask,
+		ID:            "t1",
+		WorkflowState: models.StateReady,
+		DueDate:       &newDue,
+		Tags:          []string{},
+		Type:          models.TaskTypeTask,
 	}
 	prev := &models.Task{
-		ID:      "t1",
-		Status:  models.StatusTodo,
-		DueDate: &oldDue,
-		Tags:    []string{},
-		Type:    models.TaskTypeTask,
+		ID:            "t1",
+		WorkflowState: models.StateReady,
+		DueDate:       &oldDue,
+		Tags:          []string{},
+		Type:          models.TaskTypeTask,
 	}
 
 	if !workflow.TaskStateChanged(current, prev) {
@@ -174,10 +174,13 @@ func TestTaskStateChangedDetectsDueDateChange(t *testing.T) {
 // delete-recurring confirmation stops recurrence but does NOT delete the task.
 // This was a bug where "s" cleared recurrence then called executeDelete().
 func TestDeleteRecurringStopRecurrence_KeepsTask(t *testing.T) {
+	dir := t.TempDir()
 	project := &models.Project{
 		Name:        "Test",
 		ID:          "test-proj",
+		Slug:        "test-proj",
 		NextShortID: 2,
+		Path:        filepath.Join(dir, "projects", "test-proj"),
 	}
 	task, _ := models.NewTask("rec-task", 1, models.TaskTypeTask, "Recurring Task")
 	task.Recurrence = &models.RecurrencePattern{
@@ -186,8 +189,11 @@ func TestDeleteRecurringStopRecurrence_KeepsTask(t *testing.T) {
 		Streak:   5,
 	}
 	project.Tasks = []*models.Task{task}
+	project.BuildTaskTree()
 
-	// Simulate showing the delete-recurring confirm dialog
+	// Simulate showing the delete-recurring confirm dialog. Stop-recurrence now
+	// routes through the single-task coordinator (ledger-backed transaction), so
+	// wire it over a disk-backed service and assert on committed state.
 	m := &OutlinerModel{
 		PrimaryViewBundle: PrimaryViewBundle{
 			projectService: NewProjectService(),
@@ -199,18 +205,25 @@ func TestDeleteRecurringStopRecurrence_KeepsTask(t *testing.T) {
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		project:           project,
 	}
+	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
 	m.confirm.Show("delete-recurring", "Delete recurring task?")
 	m.deleteTarget = task
 
-	// Press "s" to stop recurrence
-	m.handleConfirmDialog("s")
-
-	// Task should still exist in the project
-	if len(project.Tasks) != 1 {
-		t.Fatalf("expected 1 task (kept), got %d (task was deleted)", len(project.Tasks))
+	// Press "s" to stop recurrence and run the committed transaction.
+	_, cmd := m.handleConfirmDialog("s")
+	if cmd != nil {
+		cmd()
 	}
-	// Recurrence should be cleared
-	if project.Tasks[0].Recurrence != nil {
+
+	// Task should still exist and recurrence cleared, on committed disk state.
+	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
+	if err := storage.LoadProject(fresh); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if len(fresh.Tasks) != 1 {
+		t.Fatalf("expected 1 task (kept), got %d (task was deleted)", len(fresh.Tasks))
+	}
+	if fresh.Tasks[0].Recurrence != nil {
 		t.Error("recurrence should be nil after stop recurrence")
 	}
 	// Confirm dialog should be dismissed
@@ -292,16 +305,16 @@ func TestTaskStateChangedDetectsDueDateAddedRemoved(t *testing.T) {
 	due := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// DueDate added
-	current := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
-	prev := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
+	current := &models.Task{ID: "t1", WorkflowState: models.StateReady, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
+	prev := &models.Task{ID: "t1", WorkflowState: models.StateReady, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
 
 	if !workflow.TaskStateChanged(current, prev) {
 		t.Error("taskStateChanged should detect DueDate being added")
 	}
 
 	// DueDate removed
-	current2 := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
-	prev2 := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
+	current2 := &models.Task{ID: "t1", WorkflowState: models.StateReady, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
+	prev2 := &models.Task{ID: "t1", WorkflowState: models.StateReady, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
 
 	if !workflow.TaskStateChanged(current2, prev2) {
 		t.Error("taskStateChanged should detect DueDate being removed")

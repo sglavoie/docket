@@ -19,7 +19,7 @@ func TestFocusViewSorting(t *testing.T) {
 		m := newTestFocusViewModel(cfg)
 
 		for _, task := range project.Tasks {
-			if !task.Status.IsComplete() {
+			if !task.IsComplete() {
 				m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
 			}
 		}
@@ -54,7 +54,7 @@ func TestFocusViewSorting(t *testing.T) {
 		m := newTestFocusViewModel(cfg)
 
 		for _, task := range project.Tasks {
-			if !task.Status.IsComplete() {
+			if !task.IsComplete() {
 				m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
 			}
 		}

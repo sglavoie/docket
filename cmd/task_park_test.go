@@ -13,7 +13,11 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func TestRunTaskParkPersistsMetadataAndUndoSnapshot(t *testing.T) {
+// TestRunTaskParkPersistsMetadataAndLedgerUndo proves the migrated park command
+// persists the parked metadata to tasks.md and records the mutation in the
+// workspace undo ledger (not the legacy per-project history). A ledger undo
+// reverses the park, restoring the un-parked task.
+func TestRunTaskParkPersistsMetadataAndLedgerUndo(t *testing.T) {
 	project, cleanup := setupTaskParkCLI(t, models.StatusTodo)
 	defer cleanup()
 
@@ -41,19 +45,20 @@ func TestRunTaskParkPersistsMetadataAndUndoSnapshot(t *testing.T) {
 		t.Fatalf("tasks.md should contain parked_at, got:\n%s", content)
 	}
 
-	entries, err := storage.LoadUndoHistory(project)
-	if err != nil {
-		t.Fatalf("LoadUndoHistory failed: %v", err)
+	ledger := parkTestLedger(project.Path)
+	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger.Undo failed: %v", err)
 	}
-	if len(entries) != 1 {
-		t.Fatalf("got %d undo entries, want 1", len(entries))
-	}
-	if entries[0].Action != "Park Task" {
-		t.Errorf("undo action = %q, want %q", entries[0].Action, "Park Task")
+	afterUndo := reloadParkTestProject(t, project)
+	if afterUndo.Tasks[0].IsParked() {
+		t.Fatal("ledger undo should restore the un-parked task")
 	}
 }
 
-func TestRunTaskUnparkClearsMetadataAndRecordsUndoSnapshot(t *testing.T) {
+// TestRunTaskUnparkClearsMetadataAndLedgerUndo proves unpark clears the parked
+// metadata and records the clear in the workspace ledger; a ledger undo restores
+// the parked state.
+func TestRunTaskUnparkClearsMetadataAndLedgerUndo(t *testing.T) {
 	project, cleanup := setupTaskParkCLI(t, models.StatusTodo)
 	defer cleanup()
 
@@ -65,8 +70,7 @@ func TestRunTaskUnparkClearsMetadataAndRecordsUndoSnapshot(t *testing.T) {
 	}
 
 	reloaded := reloadParkTestProject(t, project)
-	task := reloaded.Tasks[0]
-	if task.IsParked() {
+	if reloaded.Tasks[0].IsParked() {
 		t.Fatal("task should not be parked after unpark")
 	}
 
@@ -75,18 +79,20 @@ func TestRunTaskUnparkClearsMetadataAndRecordsUndoSnapshot(t *testing.T) {
 		t.Fatalf("tasks.md should not contain parked metadata after unpark, got:\n%s", content)
 	}
 
-	entries, err := storage.LoadUndoHistory(project)
-	if err != nil {
-		t.Fatalf("LoadUndoHistory failed: %v", err)
+	// Ledger undo of the unpark restores the parked state (the most recent
+	// transaction is the unpark).
+	ledger := parkTestLedger(project.Path)
+	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger.Undo failed: %v", err)
 	}
-	if len(entries) != 2 {
-		t.Fatalf("got %d undo entries, want 2", len(entries))
-	}
-	if entries[0].Action != "Unpark Task" {
-		t.Errorf("latest undo action = %q, want %q", entries[0].Action, "Unpark Task")
+	afterUndo := reloadParkTestProject(t, project)
+	if !afterUndo.Tasks[0].IsParked() {
+		t.Fatal("ledger undo of the unpark should restore the parked task")
 	}
 }
 
+// TestRunTaskUnparkNonParkedIsNoop proves unparking a task that is not parked is a
+// friendly no-op that records nothing in the workspace ledger.
 func TestRunTaskUnparkNonParkedIsNoop(t *testing.T) {
 	project, cleanup := setupTaskParkCLI(t, models.StatusTodo)
 	defer cleanup()
@@ -95,12 +101,10 @@ func TestRunTaskUnparkNonParkedIsNoop(t *testing.T) {
 		t.Fatalf("runTaskUnpark failed: %v", err)
 	}
 
-	entries, err := storage.LoadUndoHistory(project)
-	if err != nil {
-		t.Fatalf("LoadUndoHistory failed: %v", err)
-	}
-	if len(entries) != 0 {
-		t.Fatalf("got %d undo entries, want 0", len(entries))
+	// A no-op precedes any commit, so the ledger has no transaction to undo.
+	ledger := parkTestLedger(project.Path)
+	if _, err := ledger.Undo(storage.GlobalScope()); err == nil {
+		t.Fatal("expected ledger undo to fail with no recorded transaction")
 	}
 }
 
@@ -122,6 +126,14 @@ func TestRunTaskParkRejectsCompletedTask(t *testing.T) {
 	}
 }
 
+// parkTestLedger builds a workspace ledger over the data directory that owns the
+// given project path (tmpDir/projects/<slug> → tmpDir), matching the ledger the
+// CLI repository writes through so a test can undo the recorded transaction.
+func parkTestLedger(projectPath string) *storage.WorkspaceLedger {
+	dataDir := filepath.Dir(filepath.Dir(projectPath))
+	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), config.DefaultUndoHistoryDepth, []string{dataDir})
+}
+
 func setupTaskParkCLI(t *testing.T, status models.TaskStatus) (*models.Project, func()) {
 	t.Helper()
 
@@ -141,9 +153,10 @@ func setupTaskParkCLI(t *testing.T, status models.TaskStatus) (*models.Project, 
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.Status = status
 	if status.IsComplete() {
 		task.Complete()
+	} else {
+		task.WorkflowState = models.DeriveWorkflowState(status, "", "")
 	}
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2

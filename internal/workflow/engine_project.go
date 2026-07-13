@@ -193,11 +193,11 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 	switch trigger.Field {
 	case FieldHasInProgressTasks:
 		return compareBoolOp(anyTaskMatches(ctx.Tasks, func(t *models.Task) bool {
-			return t.Status == models.StatusInProgress
+			return t.IsInState(models.StateInProgress)
 		}), trigger.Operation, trigger.Value)
 
 	case FieldActiveTaskCount:
-		count := countTasks(ctx.Tasks, func(t *models.Task) bool { return t.Status.IsActive() })
+		count := countTasks(ctx.Tasks, func(t *models.Task) bool { return !t.IsTerminalState() })
 		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
 
 	case FieldAllTasksStatus:
@@ -207,7 +207,7 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		return matchesMajority(ctx, func(t *models.Task) string { return string(t.Type) }, trigger)
 
 	case FieldMajorityTaskStatus:
-		return matchesMajority(ctx, func(t *models.Task) string { return string(t.Status) }, trigger)
+		return matchesMajority(ctx, statusFieldValue, trigger)
 
 	case FieldCompletionRatio:
 		return matchCompletionRatio(ctx, trigger)
@@ -223,7 +223,7 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		// Honor not_equals as the logical inverse so a rule like
 		// "no task is in_progress" works as a user would expect.
 		has := anyTaskMatches(ctx.Tasks, func(t *models.Task) bool {
-			return strings.EqualFold(string(t.Status), trigger.Value)
+			return strings.EqualFold(statusFieldValue(t), trigger.Value)
 		})
 		if trigger.Operation == OpNotEquals {
 			return !has
@@ -267,12 +267,12 @@ func matchAllTasksStatus(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 	var status string
 	allSame := true
 	for _, t := range ctx.Tasks {
-		if t == nil || t.Status.IsComplete() {
+		if t == nil || t.IsTerminalState() {
 			continue
 		}
 		if status == "" {
-			status = string(t.Status)
-		} else if !strings.EqualFold(status, string(t.Status)) {
+			status = statusFieldValue(t)
+		} else if !strings.EqualFold(status, statusFieldValue(t)) {
 			allSame = false
 			break
 		}
@@ -289,7 +289,7 @@ func matchCompletionRatio(ctx *ProjectEvaluationContext, trigger RuleTrigger) bo
 	if total == 0 {
 		return compareValues("0", trigger.Operation, trigger.Value)
 	}
-	done := countTasks(ctx.Tasks, func(t *models.Task) bool { return t.Status.IsComplete() })
+	done := countTasks(ctx.Tasks, func(t *models.Task) bool { return t.IsTerminalState() })
 	ratio := done * 100 / total
 	return compareValues(strconv.Itoa(ratio), trigger.Operation, trigger.Value)
 }
@@ -321,7 +321,7 @@ func matchesMajority(ctx *ProjectEvaluationContext, fieldGetter func(*models.Tas
 		if t == nil {
 			continue
 		}
-		if !t.Status.IsActive() {
+		if t.IsTerminalState() {
 			continue
 		}
 		total++

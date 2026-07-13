@@ -21,7 +21,7 @@ func TestWriteIdempotency_TitleWhitespace(t *testing.T) {
 		t.Run(title, func(t *testing.T) {
 			tasks := []*models.Task{{
 				ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-				Title: title, Status: models.StatusTodo, Priority: 3,
+				Title: title, WorkflowState: models.StateReady, Priority: 3,
 				Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
 				CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			}}
@@ -46,7 +46,7 @@ func TestWriteIdempotency_EmptyCommentDropped(t *testing.T) {
 	ts := time.Date(2024, 1, 1, 10, 30, 0, 0, time.UTC)
 	tasks := []*models.Task{{
 		ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-		Title: "T1", Status: models.StatusTodo, Priority: 3,
+		Title: "T1", WorkflowState: models.StateReady, Priority: 3,
 		Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
 		CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Comments: []*models.Comment{
@@ -83,7 +83,7 @@ func TestWriteIdempotency_CommentAndDecisionWhitespace(t *testing.T) {
 	ts := time.Date(2024, 1, 1, 10, 30, 0, 0, time.UTC)
 	tasks := []*models.Task{{
 		ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-		Title: "T1", Status: models.StatusTodo, Priority: 3,
+		Title: "T1", WorkflowState: models.StateReady, Priority: 3,
 		Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
 		CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Comments: []*models.Comment{
@@ -123,7 +123,7 @@ func TestWriteIdempotency_DescriptionWhitespace(t *testing.T) {
 		t.Run(desc[:min(12, len(desc))], func(t *testing.T) {
 			tasks := []*models.Task{{
 				ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-				Title: "T1", Description: desc, Status: models.StatusTodo, Priority: 3,
+				Title: "T1", Description: desc, WorkflowState: models.StateReady, Priority: 3,
 				Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
 				CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			}}

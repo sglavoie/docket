@@ -21,10 +21,9 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 	t.Run("active P1 and P2 titles keep priority style", func(t *testing.T) {
 		for _, priority := range []int{1, 2} {
 			task := newTaskTitleRegressionTask(t, fmt.Sprintf("active-p%d", priority), priority, fmt.Sprintf("Active P%d title", priority))
-			task.Active = true
 			line := TaskLine{
 				Task:      task,
-				Active:    task.Active,
+				Active:    true,
 				MaxTitle:  80,
 				ViewWidth: 120,
 			}.Render()
@@ -61,7 +60,7 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 
 	t.Run("canceled and dimmed titles stay disabled", func(t *testing.T) {
 		canceled := newTaskTitleRegressionTask(t, "canceled-p1", 1, "Canceled priority title")
-		canceled.Status = models.StatusCanceled
+		canceled.WorkflowState = models.StateCanceled
 		canceledLine := TaskLine{Task: canceled, MaxTitle: 80, ViewWidth: 120}.Render()
 		if !strings.Contains(canceledLine, CanceledStyle.Render(canceled.Title)) {
 			t.Fatalf("expected canceled title style in:\n%s", ansi.Strip(canceledLine))

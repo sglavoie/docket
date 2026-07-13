@@ -6,9 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 func (m *LinkedTaskSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -133,37 +131,33 @@ func linkedTaskSearchText(rel LinkedTaskRelation) string {
 	return searchText
 }
 
-// unlinkTask removes the link at the given index.
+// unlinkTask removes the link at the given index, committing the edge removal
+// through the link coordinator (one ChangeSet with ledger undo) and closing the
+// selector on success, matching the legacy save-and-close behavior.
 func (m *LinkedTaskSelectorModel) unlinkTask(idx int) tea.Cmd {
 	if idx < 0 || idx >= len(m.relations) {
 		return nil
 	}
 
 	rel := m.relations[idx]
+	var commit tea.Cmd
 	switch rel.RelationType {
 	case "blocked by":
-		m.sourceTask.RemoveDependency(rel.TaskRef)
+		commit = m.coordinator.RemoveDependency(m.sourceTask.ID, rel.TaskRef)
 	case "related":
-		m.sourceTask.RemoveRelatedTo(rel.TaskRef)
+		commit = m.coordinator.RemoveRelated(m.sourceTask.ID, rel.TaskRef)
 	case "blocks":
 		if rel.Task != nil {
-			rel.Task.RemoveDependency(m.sourceTask.ID)
+			commit = m.coordinator.RemoveDependency(rel.Task.ID, m.sourceTask.ID)
 		}
+	}
+	if commit == nil {
+		return nil
 	}
 
-	project := m.project
-	return func() tea.Msg {
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to backup: %w", err)}
-		}
-		if err := storage.SaveProjectLocked(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-		if err := storage.LoadProject(project); err != nil {
-			logging.Warn("failed to reload project %s: %v", project.Name, err)
-		}
+	return adaptSubviewCommit(commit, func() tea.Msg {
 		return CloseLinkedTaskSelectorMsg{}
-	}
+	})
 }
 
 // unlinkTaskFromFiltered removes the link at the given index in the filtered list.

@@ -139,7 +139,7 @@ func (q *quickCaptureInput) initCaches() {
 	// Cache potential parent tasks (non-completed, can have children)
 	q.parentCache = make([]*models.Task, 0)
 	for _, task := range q.project.Tasks {
-		if !task.Status.IsComplete() && task.Type.CanHaveChildren() {
+		if !task.IsComplete() && task.Type.CanHaveChildren() {
 			q.parentCache = append(q.parentCache, task)
 		}
 	}
@@ -840,14 +840,6 @@ func statusShortcut(s models.TaskStatus) string {
 	default:
 		return string(s)
 	}
-}
-
-// renderAutocomplete renders the autocomplete dropdown.
-func (q *quickCaptureInput) renderAutocomplete() string {
-	if !q.ac.IsActive() {
-		return ""
-	}
-	return "\n" + q.ac.RenderDropdown("")
 }
 
 // isAutocompleteActive returns whether autocomplete is currently showing.

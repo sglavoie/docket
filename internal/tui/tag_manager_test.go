@@ -17,7 +17,7 @@ func TestTagManagerBuildListIncludesCatalogOnlyTags(t *testing.T) {
 	project.Tags = []string{"backend"}
 	project.Tasks = []*models.Task{newTagManagerTestTask(t, "1", 1, "frontend")}
 
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	got := summarizeTagInfos(m.tags)
 	want := []string{"backend:0", "frontend:1"}
@@ -31,7 +31,7 @@ func TestTagManagerBuildListMarksPinnedTags(t *testing.T) {
 	project.Tags = []string{"backend", "frontend"}
 	project.PinnedTags = []string{"frontend"}
 
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	if m.tags[0].Name != "backend" || m.tags[0].Pinned {
 		t.Fatalf("first tag = %#v, want unpinned backend", m.tags[0])
@@ -45,7 +45,7 @@ func TestTagManagerViewShowsPinnedMarker(t *testing.T) {
 	project := newTagManagerTestProject(t)
 	project.Tags = []string{"backend"}
 	project.PinnedTags = []string{"backend"}
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	plain := ansi.Strip(m.View().Content)
 	if !strings.Contains(plain, "* backend") {
@@ -55,7 +55,7 @@ func TestTagManagerViewShowsPinnedMarker(t *testing.T) {
 
 func TestTagManagerAddCatalogTagPersists(t *testing.T) {
 	project := newTagManagerTestProject(t)
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	msg := m.addProjectTag("  #backend  ")()
 	if _, ok := msg.(TagAddedMsg); !ok {
@@ -80,7 +80,7 @@ func TestTagManagerTogglePinnedTagPersists(t *testing.T) {
 	project := newTagManagerTestProject(t)
 	project.Tags = []string{"backend"}
 	saveAndReloadTagManagerProject(t, project)
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	m = updated.(*TagManagerModel)
@@ -126,7 +126,7 @@ func TestTagManagerRemoveZeroUseCatalogTagPersists(t *testing.T) {
 	project.Tags = []string{"backend"}
 	project.PinnedTags = []string{"backend"}
 	saveAndReloadTagManagerProject(t, project)
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	msg := m.removeProjectTag("backend")()
 	if _, ok := msg.(TagRemovedMsg); !ok {
@@ -154,7 +154,7 @@ func TestTagManagerDeleteTaskUsedTagPersistsAndRefreshesList(t *testing.T) {
 	project.PinnedTags = []string{"backend"}
 	project.Tasks = []*models.Task{newTagManagerTestTask(t, "1", 1, "backend")}
 	saveAndReloadTagManagerProject(t, project)
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	m = updated.(*TagManagerModel)
@@ -201,7 +201,7 @@ func TestTagManagerRenameCatalogOnlyTagPersists(t *testing.T) {
 	project.Tags = []string{"backend"}
 	project.PinnedTags = []string{"backend"}
 	saveAndReloadTagManagerProject(t, project)
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	msg := m.renameTag("backend", "frontend")()
 	renamed, ok := msg.(TagRenamedMsg)
@@ -237,7 +237,7 @@ func TestTagManagerRenameTaskUsedTagPersistsAndDedupes(t *testing.T) {
 	task3 := newTagManagerTestTask(t, "3", 3, "backend")
 	project.Tasks = []*models.Task{task1, task2, task3}
 	saveAndReloadTagManagerProject(t, project)
-	m := NewTagManagerModelForProject(project)
+	m := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 
 	msg := m.renameTag("frontend", "backend")()
 	if _, ok := msg.(TagRenamedMsg); !ok {

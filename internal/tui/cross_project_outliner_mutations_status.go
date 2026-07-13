@@ -5,51 +5,47 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// crossHandleStatusMutation resolves the owning project from the cursor row,
-// applies a status transition, and forces a row rebuild via rebuildRows.
+// crossHandleStateMutation resolves the owning project from the cursor row,
+// applies a workflow-state transition, and forces a row rebuild via rebuildRows.
 // It is called from handlePrefixKey when prefix="," and m.project==nil.
 //
-// In multi-select mode with selections active, routes to crossApplyBulkStatusChange.
+// In multi-select mode with selections active, routes to crossApplyBulkStateChange.
 //
-// Returns (model, cmd, true) when the status change was consumed.
+// Returns (model, cmd, true) when the state change was consumed.
 // Returns (nil, nil, false) when not in cross-project mode.
-func (m *OutlinerModel) crossHandleStatusMutation(status models.TaskStatus) (tea.Model, tea.Cmd, bool) {
+func (m *OutlinerModel) crossHandleStateMutation(state models.WorkflowState) (tea.Model, tea.Cmd, bool) {
 	if m.project != nil {
 		return nil, nil, false
 	}
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		model, cmd := m.crossApplyBulkStatusChange(status)
+		model, cmd := m.crossApplyBulkStateChange(state)
 		return model, cmd, true
 	}
-	row, proj, valid := m.crossGetMutationTarget()
+	row, _, valid := m.crossGetMutationTarget()
 	if !valid {
 		return m, nil, true
 	}
-	m.crossUndoCtx.Set(StatusVerb(status)+" Task", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-	pf := m.crossPersistFn(proj)
-	result := applyStatusChange(pf, proj, row.task.ID, status)
-	if result.Err != nil {
-		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
-	}
-	if result.StatusMessage != "" {
-		m.setStatus(result.StatusMessage)
-	}
-	if status == models.StatusDone {
+	// Route the transition through the single-task coordinator: the application
+	// layer commits one ledger-backed transaction and the shell owns reload +
+	// toast via handleTransactionResult. The completion-flash is the sole
+	// preserved view-local behavior — the per-key mutation flash for non-terminal
+	// transitions was dropped for the migrated cross handlers.
+	cmd := m.taskItem.Transition(row.task.ID, state)
+	if state == models.StateDone {
 		m.setCompletionFlash()
-		return m, tea.Batch(result.Cmd, completionFlashScheduler()), true
+		return m, tea.Batch(cmd, completionFlashScheduler()), true
 	}
-	m.setMutationFlash(statusMutationFlashBg(status))
-	return m, tea.Batch(result.Cmd, mutationFlashTimeout()), true
+	return m, cmd, true
 }
 
-// crossApplyBulkStatusChange collects selected tasks from current rows, shows a
+// crossApplyBulkStateChange collects selected tasks from current rows, shows a
 // confirmation dialog with the aggregate count, and stores the pending operation
 // in m.bulkOp for execution after the user confirms.
-func (m *OutlinerModel) crossApplyBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) crossApplyBulkStateChange(newState models.WorkflowState) (tea.Model, tea.Cmd) {
 	var tasks []*models.Task
 	for _, row := range m.rows {
 		if !row.isTaskRow() || row.task == nil {
@@ -62,114 +58,48 @@ func (m *OutlinerModel) crossApplyBulkStatusChange(newStatus models.TaskStatus) 
 	if len(tasks) == 0 {
 		return m, nil
 	}
-	m.bulkOp.SetOperation(newStatus, tasks, 0, nil)
-	m.confirm.Show("bulk-status", fmt.Sprintf("Change %d tasks to %s?", len(tasks), string(newStatus)))
+	m.bulkOp.SetOperation(newState, tasks, 0, nil)
+	m.confirm.Show("bulk-status", fmt.Sprintf("Change %d tasks to %s?", len(tasks), string(newState)))
 	m.clearMultiSelect()
 	return m, nil
 }
 
 // crossExecutePendingBulkStatus applies the pending cross-project bulk status
-// change after the user confirms the dialog. It groups the pending tasks by
-// project, calls Backup() then Save() per project, and halts on first failure
-// without processing remaining projects. All affected project IDs and backup
-// paths are stored in m.crossUndoCtx for undo.
+// change after the user confirms the dialog. It routes the transition through the
+// application-layer BulkCoordinator, which commits every touched project as ONE
+// atomic transaction with a workspace-ledger undo entry and runs the workflow-rule
+// cascade. SkipInvalid preserves the valid-subset behavior (tasks that cannot
+// transition — invalid transition or a complete/cancel guarded by incomplete
+// children — are dropped rather than aborting the batch). The shell owns project
+// reloads, selection-clear, and user feedback via finalizeBatchResult.
 func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
-	if len(m.bulkOp.GetTasks()) == 0 {
-		m.bulkOp.Clear()
+	tasks := m.bulkOp.GetTasks()
+	state := m.bulkOp.GetState()
+	m.bulkOp.Clear()
+	if len(tasks) == 0 {
 		return m, nil
 	}
 
-	status := m.bulkOp.GetStatus()
-	tasks := m.bulkOp.GetTasks()
-
-	// Group tasks by project.
-	type projectGroup struct {
-		proj  *models.Project
-		tasks []*models.Task
-	}
-	grouped := make(map[string]*projectGroup)
-	var projectOrder []string
+	taskIDs := make([]string, 0, len(tasks))
 	for _, task := range tasks {
-		proj := m.crossFindProjectForTask(task.ID)
-		if proj == nil {
-			continue
-		}
-		if _, exists := grouped[proj.ID]; !exists {
-			grouped[proj.ID] = &projectGroup{proj: proj}
-			projectOrder = append(projectOrder, proj.ID)
-		}
-		grouped[proj.ID].tasks = append(grouped[proj.ID].tasks, task)
+		taskIDs = append(taskIDs, task.ID)
 	}
 
-	svc := m.projectService
-	var projectIDs []string
-	skippedCount := 0
-
-	undoDepth := 0
-	if m.config != nil && m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
-	}
-	projectsToSnapshot := make([]*models.Project, 0, len(projectOrder))
-	for _, projID := range projectOrder {
-		projectsToSnapshot = append(projectsToSnapshot, grouped[projID].proj)
-	}
-	groupID, groupProjectIDs := undoGroupMetadataForProjects(projectsToSnapshot)
-
-	for _, projID := range projectOrder {
-		group := grouped[projID]
-		if undoDepth > 0 {
-			// Full-project (nil TaskIDs) snapshot: reconciliation below may reopen
-			// parents not in group.tasks, and the whole-file snapshot covers them.
-			if err := recordTUIUndoSnapshotWithGroup(svc, group.proj, "Bulk Status Change",
-				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth, nil, groupID, groupProjectIDs); err != nil {
-				m.bulkOp.Clear()
-				return m, func() tea.Msg { return ErrorMsg{Err: err} }
+	cmd := m.bulk.TransitionWithWorkflow(
+		app.BulkTransitionRequest{
+			TaskIDs:     taskIDs,
+			Target:      state,
+			Rules:       m.enabledWorkflowRules(),
+			UndoAction:  "Bulk Status Change",
+			UndoContext: fmt.Sprintf("%d tasks -> %s", len(taskIDs), state),
+			SkipInvalid: true,
+		},
+		func(changed int) string {
+			if changed == 0 {
+				return "No tasks were changed"
 			}
-		}
-		if err := svc.Backup(group.proj); err != nil {
-			m.bulkOp.Clear()
-			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
-		}
-		projectIDs = append(projectIDs, projID)
-		for _, task := range group.tasks {
-			t := group.proj.GetTaskByID(task.ID)
-			if t == nil || t.CanTransitionTo(status) != "" {
-				continue
-			}
-			// Never complete/cancel a parent with incomplete children (mirrors
-			// the single-task guard); ReconcileParentCompletion below is the net.
-			if status.IsComplete() && len(t.IncompleteChildren()) > 0 {
-				skippedCount++
-				continue
-			}
-			group.proj.MutateTask(task.ID, func(t *models.Task) {
-				t.ApplyTransition(status)
-			})
-		}
-		// Match single-mutation parity: auto-unblock dependents, reopen any parent
-		// left complete while a child is incomplete, and generate recurring
-		// instances before saving.
-		group.proj.CheckAndAutoUnblock()
-		group.proj.ReconcileParentCompletion()
-		group.proj.GenerateRecurringInstances()
-		if err := svc.Save(group.proj); err != nil {
-			m.bulkOp.Clear()
-			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }
-		}
-		_ = svc.Load(group.proj)
-	}
-
-	m.crossUndoCtx.Set("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
-	m.crossUndoCtx.ProjectIDs = projectIDs
-	m.crossUndoCtx.GroupID = groupID
-
-	changed := len(tasks) - skippedCount
-	statusMsg := fmt.Sprintf("Changed %d tasks to %s", changed, status)
-	if skippedCount > 0 {
-		statusMsg += fmt.Sprintf(" (%d skipped: incomplete children)", skippedCount)
-	}
-	m.setStatus(statusMsg)
-	m.bulkOp.Clear()
-	m.rebuildRows()
-	return m, nil
+			return fmt.Sprintf("Changed %d tasks to %s", changed, state)
+		},
+	)
+	return m, finalizeBatchResult(cmd, taskIDs, "")
 }

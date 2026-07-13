@@ -231,11 +231,11 @@ func (m *TaskActivityModel) getEntries() []*models.ActivityEntry {
 	for _, e := range source {
 		switch m.activeTab {
 		case activityTabStatus:
-			if e.Field == "status" || e.Field == "created" {
+			if e.Field == "state" || e.Field == "status" || e.Field == "created" {
 				filtered = append(filtered, e)
 			}
 		case activityTabEdits:
-			if e.Field != "status" && e.Field != "created" && e.Field != "comment" {
+			if e.Field != "state" && e.Field != "status" && e.Field != "created" && e.Field != "comment" {
 				filtered = append(filtered, e)
 			}
 		case activityTabComments:
@@ -266,7 +266,7 @@ func formatEntryText(entry *models.ActivityEntry) string {
 // fieldColorStyle returns a lipgloss style for the given field type.
 func fieldColorStyle(field string) lipgloss.Style {
 	switch field {
-	case "status":
+	case "state", "status":
 		return SuccessStyle
 	case "priority":
 		return makeColorStyle(ColorWarning)

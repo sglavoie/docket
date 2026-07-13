@@ -23,6 +23,7 @@ type LinkedTaskSelectorModel struct {
 	sourceTask    *models.Task
 	project       *models.Project
 	config        *config.Config
+	coordinator   LinkCoordinator
 	relations     []LinkedTaskRelation
 	filtered      []LinkedTaskRelation // filtered relations based on search
 	cursor        int
@@ -31,12 +32,15 @@ type LinkedTaskSelectorModel struct {
 	pendingPrefix string
 }
 
-// NewLinkedTaskSelectorModelWithConfig creates a new linked task selector with config for cross-project support.
-func NewLinkedTaskSelectorModelWithConfig(task *models.Task, project *models.Project, cfg *config.Config) *LinkedTaskSelectorModel {
+// NewLinkedTaskSelectorModelWithConfig creates a new linked task selector with
+// config for cross-project support; unlink mutations commit through the link
+// coordinator.
+func NewLinkedTaskSelectorModelWithConfig(task *models.Task, project *models.Project, cfg *config.Config, coordinator LinkCoordinator) *LinkedTaskSelectorModel {
 	m := &LinkedTaskSelectorModel{
-		sourceTask: task,
-		project:    project,
-		config:     cfg,
+		sourceTask:  task,
+		project:     project,
+		config:      cfg,
+		coordinator: coordinator,
 	}
 	m.InitSearchInput("Search linked tasks...", 50, 30)
 	m.loadRelations()

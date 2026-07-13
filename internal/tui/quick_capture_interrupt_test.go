@@ -12,10 +12,9 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	driver, _, project := newQuickCaptureInterruptFixture(t)
 	openFixtureOutliner(t, driver, project)
 
-	before := driver.Observe(ObserveOptions{})
 	outliner := driver.App().outliner
 	outliner.cursor = nthTaskRowIndex(t, outliner, 1)
-	before = driver.Observe(ObserveOptions{})
+	before := driver.Observe(ObserveOptions{})
 	beforeStack := slices.Clone(before.ViewStack)
 	// Quick capture is now a stack view pushed over the outliner, so the outliner
 	// is no longer the active view; read its cursor directly instead of via the
@@ -63,10 +62,9 @@ func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
 
 	driver.dispatch(ShowTaskDetailMsg{Task: task, Project: project})
 	driver.drain()
-	detail := currentTaskDetail(t, driver)
 
 	driveUITestKeys(t, driver, "j", "j")
-	detail = currentTaskDetail(t, driver)
+	detail := currentTaskDetail(t, driver)
 	if detail.scrollOffset == 0 {
 		t.Fatal("task detail scroll offset should be non-zero before opening capture")
 	}

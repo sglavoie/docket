@@ -5,28 +5,24 @@ func (p *Project) CountTasks() int {
 	return len(p.Tasks)
 }
 
-// CountActiveSectionTasks returns the number of tasks in the Active section
-// (empty section) or with in_progress status regardless of section.
+// CountActiveSectionTasks returns the number of tasks in the default active
+// bucket: work that is ready or in progress (the states SectionForState maps
+// to the empty section).
 func (p *Project) CountActiveSectionTasks() int {
 	count := 0
 	for _, task := range p.Tasks {
-		if task.IsComplete() {
-			continue
-		}
-		if task.Status == StatusInProgress {
-			count++
-		} else if task.Section == "" {
+		if st := task.State(); st == StateReady || st == StateInProgress {
 			count++
 		}
 	}
 	return count
 }
 
-// CountActiveTasks returns the number of non-completed tasks.
+// CountActiveTasks returns the number of tasks in a nonterminal workflow state.
 func (p *Project) CountActiveTasks() int {
 	count := 0
 	for _, task := range p.Tasks {
-		if task.Status.IsActive() {
+		if !task.IsTerminalState() {
 			count++
 		}
 	}
@@ -67,11 +63,12 @@ func (p *Project) CountDueSoonTasks(days int) int {
 	return count
 }
 
-// CountBlockedTasks returns the number of tasks with blocked status.
+// CountBlockedTasks returns the number of tasks in the waiting workflow state
+// (the legacy blocked status and the Waiting section both map there).
 func (p *Project) CountBlockedTasks() int {
 	count := 0
 	for _, task := range p.Tasks {
-		if task.Status == StatusBlocked {
+		if task.IsInState(StateWaiting) {
 			count++
 		}
 	}

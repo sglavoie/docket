@@ -27,6 +27,11 @@ const (
 // ProjectLoadResult contains the result of loading a project, including any warnings.
 type ProjectLoadResult struct {
 	Warnings []ParseWarning
+	// MigrationAudit records the retired schema-v1 lifecycle values the loaded
+	// tasks carried, for the Active -> Focus Queue migration and migration report.
+	// Nil when the project was not loaded through the markdown parser (e.g. an
+	// in-memory test repository) or the tasks file did not exist.
+	MigrationAudit *MigrationAudit
 }
 
 // DefaultMaxActivityEntries is the default maximum number of activity entries per task.
@@ -38,6 +43,13 @@ var MaxActivityEntries = DefaultMaxActivityEntries
 
 func tasksFilePath(projectPath string) string {
 	return filepath.Join(projectPath, tasksFileName)
+}
+
+// TasksFilePath returns the on-disk path of a project's canonical tasks.md.
+// It is the source file whose stat identity (mod time + size) the workspace
+// snapshot loader uses to decide whether a cached parse is still fresh.
+func TasksFilePath(projectPath string) string {
+	return tasksFilePath(projectPath)
 }
 
 func backupFilePath(projectPath string) string {

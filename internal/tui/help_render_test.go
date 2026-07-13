@@ -57,7 +57,6 @@ func TestIntentForItem_CategoryMapping(t *testing.T) {
 		{",s", "Status", "Resolve"},
 		{"!1", "Priority", "Resolve"},
 		{",r", "Recurrence", "Resolve"},
-		{".dev", "Stage (s prefix)", "Refine"},
 		{"cb", "Linked Tasks", "Refine"},
 		{"fa", "Folds", "View Controls"},
 		{"Ft", "Filters", "View Controls"},

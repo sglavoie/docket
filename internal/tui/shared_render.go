@@ -144,7 +144,7 @@ func RenderCrossProjectTaskLine(
 		MaxTitle:        maxTitleLen,
 		Queued:          opts.Queued,
 		DailyPlanned:    opts.DailyPlanned,
-		Active:          task.Active,
+		Active:          TaskInFocusQueue(cfg, task.ID),
 		Pinned:          task.Pinned,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
@@ -251,7 +251,7 @@ func (tl TaskLine) statusBadge() string {
 	if tl.StatusBadge != "" {
 		return tl.StatusBadge
 	}
-	return GetStatusBadge(string(tl.Task.Status), tl.Task.Status.Icon())
+	return GetStateBadge(tl.Task.State())
 }
 
 func (tl TaskLine) typeBadge() string {
@@ -391,7 +391,7 @@ func (tl TaskLine) applySelectedStyle(line string) string {
 
 func (tl TaskLine) applyUnselectedStyle(line string) string {
 	switch {
-	case tl.Task.Status == models.StatusBlocked:
+	case tl.Task.IsInState(models.StateWaiting):
 		return BlockedRowStyle.Width(tl.ViewWidth).Render(line)
 	case tl.Task.IsOverdue():
 		return OverdueRowStyle.Width(tl.ViewWidth).Render(line)

@@ -9,8 +9,11 @@ import (
 
 // ScoreProfileManagerModel manages scoring profiles and project assignment.
 type ScoreProfileManagerModel struct {
-	config           *config.Config
-	configManager    *config.Manager
+	config        *config.Config
+	configManager *config.Manager
+	// coordinator routes the durable config write through the secondary
+	// feature-coordinator seam (feature_coordinator_secondary.go).
+	coordinator      WorkflowCoordinator
 	profiles         []scoring.ScoringProfile
 	cursor           int
 	confirm          ConfirmDialog
@@ -31,9 +34,14 @@ type ScoreProfileManagerModel struct {
 func NewScoreProfileManagerModel(cfg *config.Config, manager *config.Manager, currentProjectID string) *ScoreProfileManagerModel {
 	profiles := make([]scoring.ScoringProfile, len(cfg.ScoringProfiles))
 	copy(profiles, cfg.ScoringProfiles)
+	var coordinator WorkflowCoordinator
+	if manager != nil {
+		coordinator = newWorkflowCoordinator(manager)
+	}
 	return &ScoreProfileManagerModel{
 		config:           cfg,
 		configManager:    manager,
+		coordinator:      coordinator,
 		profiles:         profiles,
 		currentProjectID: currentProjectID,
 	}

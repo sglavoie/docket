@@ -12,11 +12,11 @@ import (
 func TestRoundTrip_SnoozedUntil(t *testing.T) {
 	snoozed := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
 	task := &models.Task{
-		ID:           "snooze-1",
-		Type:         models.TaskTypeTask,
-		Status:       models.StatusTodo,
-		Priority:     2,
-		SnoozedUntil: &snoozed,
+		ID:            "snooze-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		SnoozedUntil:  &snoozed,
 	}
 
 	parsed := &models.Task{}
@@ -39,12 +39,12 @@ func TestRoundTrip_SnoozedUntil(t *testing.T) {
 func TestRoundTrip_PinnedAt(t *testing.T) {
 	pinnedAt := time.Date(2026, 3, 10, 14, 30, 45, 0, time.Local)
 	task := &models.Task{
-		ID:       "pin-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 1,
-		Pinned:   true,
-		PinnedAt: &pinnedAt,
+		ID:            "pin-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      1,
+		Pinned:        true,
+		PinnedAt:      &pinnedAt,
 	}
 
 	parsed := &models.Task{}
@@ -68,15 +68,15 @@ func TestRoundTrip_ParkedNoteAndParkedAt(t *testing.T) {
 	parkedAt := time.Date(2026, 7, 8, 10, 15, 0, 0, time.Local)
 	note := `Blocked, waiting on café path C:\tmp`
 	task := &models.Task{
-		ID:         "park-1",
-		Type:       models.TaskTypeTask,
-		Status:     models.StatusTodo,
-		Priority:   2,
-		ParkedNote: note,
-		ParkedAt:   &parkedAt,
+		ID:            "park-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		ParkedNote:    note,
+		ParkedAt:      &parkedAt,
 	}
 
-	metaStr := WriteMetadata(task)
+	metaStr := WriteMetadataV2(task)
 	if !strings.Contains(metaStr, `parked: Blocked\, waiting on café path C:\\tmp`) {
 		t.Errorf("written metadata did not escape parked note, got %q", metaStr)
 	}

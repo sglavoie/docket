@@ -27,8 +27,8 @@ func TestApplyAction_CreateFollowup(t *testing.T) {
 	if followup.Title != "Follow up on original" {
 		t.Errorf("expected title %q, got %q", "Follow up on original", followup.Title)
 	}
-	if followup.Status != models.StatusTodo {
-		t.Errorf("expected status todo, got %s", followup.Status)
+	if followup.State() != models.StateReady {
+		t.Errorf("expected status todo, got %s", followup.State())
 	}
 	if followup.Priority != models.PriorityDefault {
 		t.Errorf("expected priority %d, got %d", models.PriorityDefault, followup.Priority)
@@ -59,7 +59,7 @@ func TestApplyAction_CreateFollowup(t *testing.T) {
 }
 
 func TestApplyAction_MoveToProject(t *testing.T) {
-	task := &models.Task{ID: "task-1", Title: "Test task", Section: models.SectionNext}
+	task := &models.Task{ID: "task-1", Title: "Test task", WorkflowState: models.StateNext}
 	result := &EvaluationResult{
 		AppliedRules:      make(map[string][]string),
 		RuleTriggerCounts: make(map[string]int),
@@ -81,7 +81,7 @@ func TestApplyAction_MoveToProject(t *testing.T) {
 	if move.Destination != "DestProject" {
 		t.Errorf("expected Destination %q, got %q", "DestProject", move.Destination)
 	}
-	if task.Section != models.SectionNext {
+	if models.SectionForState(task.State()) != models.SectionNext {
 		t.Error("expected task section to remain unchanged")
 	}
 }

@@ -110,17 +110,6 @@ func priorityColumnDefs() []KanbanColumn {
 	}
 }
 
-// stageColumnDefs returns ordered KanbanColumn definitions for Stages mode.
-func stageColumnDefs(stages []string) []KanbanColumn {
-	// Always include an "Unset" bucket for tasks without a stage.
-	cols := make([]KanbanColumn, 0, len(stages)+1)
-	cols = append(cols, KanbanColumn{ID: "unset", Label: "Unset", Icon: "·"})
-	for _, s := range stages {
-		cols = append(cols, KanbanColumn{ID: s, Label: s, Icon: IconInProgress})
-	}
-	return cols
-}
-
 // scoreColumnDefs returns ordered KanbanColumn definitions for ScoreBuckets mode.
 func scoreColumnDefs() []KanbanColumn {
 	return []KanbanColumn{
@@ -131,23 +120,48 @@ func scoreColumnDefs() []KanbanColumn {
 	}
 }
 
+// legacyStatusColumnForState maps a workflow state onto the Status-mode column
+// vocabulary (statusColumnDefs keys columns by the legacy status strings). The
+// three todo-ish planning states share the todo column, waiting shares the
+// blocked column, paused maps to standby, and someday to maybe, mirroring the
+// state collapse.
+func legacyStatusColumnForState(state models.WorkflowState) string {
+	switch state {
+	case models.StateInbox, models.StateReady, models.StateNext:
+		return "todo"
+	case models.StateInProgress:
+		return "in_progress"
+	case models.StateWaiting:
+		return "blocked"
+	case models.StatePaused:
+		return "standby"
+	case models.StateReview:
+		return "review"
+	case models.StateSomeday:
+		return "maybe"
+	case models.StateDone:
+		return "done"
+	case models.StateCanceled:
+		return "canceled"
+	default:
+		return string(state)
+	}
+}
+
 // columnForTask returns the column ID that the task belongs to for the given mode.
 // For ScoreBuckets mode the profile is resolved per-project via cfg; if no
 // profile is assigned the task falls into "0-25".
 func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, projectID string) string {
 	switch mode {
 	case KanbanModeSection:
-		if task.Status.IsComplete() {
-			return sectionColumnID(models.SectionCompleted)
-		}
-		s := task.Section
+		s := taskSectionBucket(task)
 		if s == "" {
-			return "next" // empty section defaults to Next
+			return "next" // the active ready/in_progress bucket defaults to Next
 		}
 		return sectionColumnID(s)
 
 	case KanbanModeStatus:
-		return string(task.Status)
+		return legacyStatusColumnForState(task.State())
 
 	case KanbanModePriority:
 		switch task.Priority {
@@ -164,12 +178,6 @@ func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, proje
 		default:
 			return "unset"
 		}
-
-	case KanbanModeStages:
-		if task.Stage == "" {
-			return "unset"
-		}
-		return task.Stage
 
 	case KanbanModeScoreBuckets:
 		profile := cfg.GetProjectScoringProfile(projectID)
@@ -219,7 +227,7 @@ func rebuildColumns(
 	cards []KanbanCard,
 	mode KanbanMode,
 	prev []KanbanColumn,
-	sectionOrder, statusOrder, stages []string,
+	sectionOrder, statusOrder []string,
 	cfg *config.Config,
 ) []KanbanColumn {
 	// Build base column set.
@@ -231,8 +239,6 @@ func rebuildColumns(
 		cols = statusColumnDefs(statusOrder)
 	case KanbanModePriority:
 		cols = priorityColumnDefs()
-	case KanbanModeStages:
-		cols = stageColumnDefs(stages)
 	case KanbanModeScoreBuckets:
 		cols = scoreColumnDefs()
 	default:
@@ -314,26 +320,4 @@ func rebuildColumns(
 	}
 
 	return cols
-}
-
-// collectStages gathers all unique stage values across the provided project
-// list, merging with the global stage list from config.
-func collectStages(globalStages []string, projects []*models.Project) []string {
-	seen := make(map[string]bool, len(globalStages))
-	result := make([]string, 0, len(globalStages))
-	for _, s := range globalStages {
-		if s != "" && !seen[s] {
-			seen[s] = true
-			result = append(result, s)
-		}
-	}
-	for _, p := range projects {
-		for _, t := range p.Tasks {
-			if t.Stage != "" && !seen[t.Stage] {
-				seen[t.Stage] = true
-				result = append(result, t.Stage)
-			}
-		}
-	}
-	return result
 }

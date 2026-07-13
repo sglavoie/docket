@@ -11,11 +11,6 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for KanbanModel.
 func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
-	var stages []string
-	if m.config != nil {
-		stages = m.config.Stages
-	}
-
 	hasCard := func() bool { return m.getCursorCard() != nil }
 
 	var entries []keymap.Entry
@@ -156,11 +151,10 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// --- Task action groups (Status, Priority, DueDate, Snooze, Move, Linked, TaskPrefix, Stage, Blocker, CommonTaskAction) ---
+	// --- Task action groups (Status, Priority, DueDate, Snooze, Move, Linked, TaskPrefix, Blocker, CommonTaskAction) ---
 	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
 		View:    m,
 		HasItem: hasCard,
-		Stages:  stages,
 		SelectedTaskRefs: func() []TaskProjectRef {
 			return m.selectedTaskProjectRefs()
 		},
@@ -191,10 +185,10 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		DeleteTask: func() (tea.Model, tea.Cmd) {
 			return m.applySelectedBulkDelete()
 		},
-		StatusChange: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
+		StateChange: func(state string) keymap.Action {
+			s := models.WorkflowState(state)
 			return func() (tea.Model, tea.Cmd) {
-				return m.applySelectedBulkStatus(s)
+				return m.applySelectedBulkState(s)
 			}
 		},
 		PriorityChange: func(key string) keymap.Action {
@@ -220,16 +214,8 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 				return m.applySelectedBulkSectionMove(section)
 			}
 		},
-		StageChange: func(stage string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.applySelectedBulkStage(stage)
-			}
-		},
 		MarkDone: func() (tea.Model, tea.Cmd) {
-			return m.applySelectedBulkStatus(models.StatusDone)
-		},
-		ToggleActive: func() (tea.Model, tea.Cmd) {
-			return m.applySelectedBulkToggleActive()
+			return m.applySelectedBulkState(models.StateDone)
 		},
 		TogglePin: func() (tea.Model, tea.Cmd) {
 			return m.applySelectedBulkTogglePin()
@@ -250,7 +236,7 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fs", key) }
 		},
 		DueDateKey: func(key string) keymap.Action {
@@ -268,10 +254,6 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("F.", key) }
-		},
-		StageFilterNames: stages,
 	})
 	entries = append(entries, filterEntries...)
 

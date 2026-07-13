@@ -21,7 +21,6 @@ type SnoozeInputModel struct {
 	width        int
 	height       int
 	initialValue string
-	deferApply   bool
 	discardConfirmState
 }
 
@@ -88,16 +87,7 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear snooze
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
-				if m.deferApply {
-					return m, snoozeDateChangedCmd(m.task, m.project, nil, true)
-				}
-				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
-					t.SnoozedUntil = nil
-				}) {
-					m.err = fmt.Errorf("task no longer exists in project")
-					return m, func() tea.Msg { return BackMsg{} }
-				}
-				return m, m.saveAndReturn()
+				return m, snoozeDateChangedCmd(m.task, m.project, nil, true)
 			}
 
 			// Parse the date
@@ -107,34 +97,13 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if m.deferApply {
-				return m, snoozeDateChangedCmd(m.task, m.project, &date, true)
-			}
-			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
-				t.SnoozedUntil = &date
-			}) {
-				m.err = fmt.Errorf("task no longer exists in project")
-				return m, func() tea.Msg { return BackMsg{} }
-			}
-			return m, m.saveAndReturn()
+			return m, snoozeDateChangedCmd(m.task, m.project, &date, true)
 		}
 	}
 
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
-}
-
-func (m *SnoozeInputModel) saveAndReturn() tea.Cmd {
-	project := m.project
-	task := m.task
-	snoozedUntil := task.SnoozedUntil
-	return func() tea.Msg {
-		if err := saveProjectSync(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return SnoozeDateChangedMsg{Task: task, Project: project, SnoozedUntil: snoozedUntil, HasExplicitValue: true}
-	}
 }
 
 func snoozeDateChangedCmd(task *models.Task, project *models.Project, snoozedUntil *time.Time, explicit bool) tea.Cmd {

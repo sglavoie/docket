@@ -61,6 +61,9 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	cfg.DashboardVerticalSplitPct = &vertSplit
 	cfg.StartView = "focus-board"
 	cfg.DefaultProjectView = "project_tree"
+	// Stages is a retired custom-stage field with no domain owner; Decompose
+	// drops it, so a domain round-trip re-seeds the default 6 stages (asserted
+	// below) rather than preserving these 3.
 	cfg.Stages = []string{"S1", "S2", "S3"}
 	cfg.CustomContexts = map[string][]string{"work": {"p1"}}
 	cfg.SectionColors = map[string]string{"Active": "#ff0000"}
@@ -194,7 +197,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		{"TaskTemplateChecklistLen", len(loaded2.TaskTemplates[0].Checklist), 2},
 		{"SavedFiltersLen", len(loaded2.SavedFilters), 1},
 		{"SavedFilterName", loaded2.SavedFilters[0].Name, "MyFilter"},
-		{"StagesLen", len(loaded2.Stages), 3},
+		{"StagesLen", len(loaded2.Stages), 6}, // retired field: re-seeded to defaults, not round-tripped
 		{"CustomContextsLen", len(loaded2.CustomContexts["work"]), 1},
 		{"CycleProjectsLen", len(loaded2.CycleProjects), 2},
 		{"ContextCycleProjects", loaded2.ContextCycleProjects["work"][0], "p1"},

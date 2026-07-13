@@ -22,6 +22,7 @@ type CrossProjectLinkerModel struct {
 	sourceTask    *models.Task
 	sourceProject *models.Project
 	config        *config.Config
+	coordinator   LinkCoordinator
 
 	pendingPrefix string
 	step          CrossProjectLinkerStep
@@ -42,8 +43,9 @@ type CrossProjectLinkerModel struct {
 	linkTypeCursor int
 }
 
-// NewCrossProjectLinkerModel creates a new cross-project linker.
-func NewCrossProjectLinkerModel(sourceTask *models.Task, sourceProject *models.Project, cfg *config.Config) *CrossProjectLinkerModel {
+// NewCrossProjectLinkerModel creates a new cross-project linker; link creation
+// commits through the link coordinator.
+func NewCrossProjectLinkerModel(sourceTask *models.Task, sourceProject *models.Project, cfg *config.Config, coordinator LinkCoordinator) *CrossProjectLinkerModel {
 	// Get all active projects except the source
 	var projects []*models.Project
 	for _, p := range cfg.GetActiveProjects() {
@@ -56,6 +58,7 @@ func NewCrossProjectLinkerModel(sourceTask *models.Task, sourceProject *models.P
 		sourceTask:       sourceTask,
 		sourceProject:    sourceProject,
 		config:           cfg,
+		coordinator:      coordinator,
 		step:             StepSelectProject,
 		allProjects:      projects,
 		filteredProjects: projects,

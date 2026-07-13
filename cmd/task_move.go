@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -96,17 +97,20 @@ func init() {
 	taskOutdentCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
 }
 
-// runTaskMoveAction is the generic skeleton for all move subcommands:
-// Load → Select → validate → move → Save → print.
-func runTaskMoveAction(
-	args []string,
-	action string,
-	out MutateOutput,
-	validate func(*models.Project, *models.Task) error,
-	move func(*models.Project, *models.Task) error,
-	describe func(*models.Project, *models.Task) string,
-) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+// runTaskHierarchyMove is the shared skeleton for the sibling-ordering and
+// indent/outdent subcommands. Interactive selection stays at the CLI edge (it needs
+// the loaded project and the action-specific eligibility filter), but the mutation
+// itself routes through the application layer so the reorder commits atomically,
+// revision-checked, and undoably — with stale-revision retry — through one
+// ChangeSet. The domain guards (already-at-top/bottom, illegal completion crossing,
+// nesting-depth, type compatibility) live in the app use case, so an explicit ID
+// that is ineligible still produces the user-facing error.
+func runTaskHierarchyMove(cmd *cobra.Command, args []string, action, verb string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -119,140 +123,41 @@ func runTaskMoveAction(
 		return nil
 	}
 
-	if err := validate(project, task); err != nil {
-		return err
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		switch action {
+		case "up":
+			return svc.MoveTaskUp(task.ID)
+		case "down":
+			return svc.MoveTaskDown(task.ID)
+		case "indent":
+			return svc.IndentTask(task.ID)
+		case "outdent":
+			return svc.OutdentTask(task.ID)
+		default:
+			return app.TaskResult{}, fmt.Errorf("unknown action: %s", action)
+		}
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
-
-	if err := move(project, task); err != nil {
-		return fmt.Errorf("failed to %s task: %w", action, err)
-	}
-
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Move Task", UndoContext: fmt.Sprintf("%s #%d", action, task.ShortID),
-	}); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	if out.JSON {
-		return outputSingleTaskJSON(task)
-	}
-	if !out.Quiet {
-		fmt.Println(describe(project, task))
-	}
-	return nil
+	return emitMutation(out, verb, res)
 }
 
 func runTaskMoveUp(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return runTaskMoveAction(args, "up", out,
-		func(p *models.Project, t *models.Task) error {
-			siblings := p.GetSiblings(t)
-			idx := p.FindSiblingIndex(t)
-			if idx <= 0 {
-				return fmt.Errorf("task is already at the top of its siblings")
-			}
-			if t.IsRoot() && t.IsComplete() && !siblings[idx-1].IsComplete() {
-				return fmt.Errorf("cannot move completed task above uncompleted task")
-			}
-			return nil
-		},
-		func(p *models.Project, t *models.Task) error { return p.MoveTaskUp(t) },
-		func(p *models.Project, t *models.Task) string {
-			return fmt.Sprintf("Moved #%d: %s up", t.ShortID, t.Title)
-		},
-	)
+	return runTaskHierarchyMove(cmd, args, "up", "Moved up")
 }
 
 func runTaskMoveDown(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return runTaskMoveAction(args, "down", out,
-		func(p *models.Project, t *models.Task) error {
-			siblings := p.GetSiblings(t)
-			idx := p.FindSiblingIndex(t)
-			if idx == -1 || idx >= len(siblings)-1 {
-				return fmt.Errorf("task is already at the bottom of its siblings")
-			}
-			if t.IsRoot() && !t.IsComplete() && siblings[idx+1].IsComplete() {
-				return fmt.Errorf("cannot move uncompleted task below completed task")
-			}
-			return nil
-		},
-		func(p *models.Project, t *models.Task) error { return p.MoveTaskDown(t) },
-		func(p *models.Project, t *models.Task) string {
-			return fmt.Sprintf("Moved #%d: %s down", t.ShortID, t.Title)
-		},
-	)
+	return runTaskHierarchyMove(cmd, args, "down", "Moved down")
 }
 
 func runTaskIndent(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return runTaskMoveAction(args, "indent", out,
-		func(p *models.Project, t *models.Task) error {
-			targetParent := p.GetTaskAbove(t)
-			if targetParent == nil {
-				return fmt.Errorf("no task above to nest under")
-			}
-			if ok, reason := t.CanIndent(targetParent); !ok {
-				return fmt.Errorf("cannot indent: %s", reason)
-			}
-			return nil
-		},
-		func(p *models.Project, t *models.Task) error { return p.IndentTask(t) },
-		func(p *models.Project, t *models.Task) string {
-			if t.Parent != nil {
-				return fmt.Sprintf("Indented #%d: %s (now under #%d: %s)",
-					t.ShortID, t.Title, t.Parent.ShortID, t.Parent.Title)
-			}
-			return fmt.Sprintf("Indented #%d: %s", t.ShortID, t.Title)
-		},
-	)
+	return runTaskHierarchyMove(cmd, args, "indent", "Indented")
 }
 
 func runTaskOutdent(cmd *cobra.Command, args []string) error {
-	// Capture parent before the move since OutdentTask changes it
-	var oldParentShortID int
-	var oldParentTitle string
-
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-
-	return runTaskMoveAction(args, "outdent", out,
-		func(p *models.Project, t *models.Task) error {
-			if ok, reason := t.CanOutdent(); !ok {
-				return fmt.Errorf("cannot outdent: %s", reason)
-			}
-			if t.Parent != nil {
-				oldParentShortID = t.Parent.ShortID
-				oldParentTitle = t.Parent.Title
-			}
-			return nil
-		},
-		func(p *models.Project, t *models.Task) error { return p.OutdentTask(t) },
-		func(p *models.Project, t *models.Task) string {
-			if t.ParentID == nil {
-				return fmt.Sprintf("Outdented #%d: %s (now at root level, was under #%d: %s)",
-					t.ShortID, t.Title, oldParentShortID, oldParentTitle)
-			}
-			newParent := p.GetTaskByID(*t.ParentID)
-			if newParent == nil {
-				return fmt.Sprintf("Outdented #%d: %s", t.ShortID, t.Title)
-			}
-			return fmt.Sprintf("Outdented #%d: %s (now under #%d: %s)",
-				t.ShortID, t.Title, newParent.ShortID, newParent.Title)
-		},
-	)
+	return runTaskHierarchyMove(cmd, args, "outdent", "Outdented")
 }
 
 // selectTaskForMove finds a task by ID or presents an interactive selector.

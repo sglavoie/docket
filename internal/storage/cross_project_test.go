@@ -213,8 +213,8 @@ func TestLoadProject_InvalidSectionCleared(t *testing.T) {
 		t.Fatal("task not found in loaded project")
 	}
 
-	if task.Section != "" {
-		t.Errorf("expected task.Section to be cleared, got %q", task.Section)
+	if got := models.SectionForState(task.State()); got != "" {
+		t.Errorf("expected task section to be cleared, got %q (state %q)", got, task.State())
 	}
 
 	// A DataCorrection warning about the invalid section should have been emitted.
@@ -267,7 +267,7 @@ func TestLoadProject_LegacySectionMetadataUnsupported(t *testing.T) {
 		t.Fatal("task not found in loaded project")
 	}
 
-	if task.Section != "" {
-		t.Errorf("expected task.Section to be empty after unsupported legacy metadata correction, got %q", task.Section)
+	if got := models.SectionForState(task.State()); got != "" {
+		t.Errorf("expected task section to be empty after unsupported legacy metadata correction, got %q (state %q)", got, task.State())
 	}
 }

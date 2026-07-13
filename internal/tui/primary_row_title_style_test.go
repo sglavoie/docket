@@ -18,11 +18,12 @@ func TestProjectTreeActivePriorityTitlesUsePriorityStyle(t *testing.T) {
 		newPrimaryRowStyleTask(t, "tree-p1", 1, "Project tree active P1", 1),
 		newPrimaryRowStyleTask(t, "tree-p2", 2, "Project tree active P2", 2),
 	}
-	for _, task := range tasks {
-		task.Active = true
-	}
-
 	m := NewProjectTreeModel(newPrimaryRowStyleProject(t, "tree-project", tasks), config.NewConfig(), nil)
+	// Queue membership replaces the deprecated Active flag for the row marker.
+	m.queueIDs = map[string]bool{}
+	for _, task := range tasks {
+		m.queueIDs[task.ID] = true
+	}
 	for _, task := range tasks {
 		line := m.renderNodeWithWidth(m.findNodeByTaskID(task.ID), false, false, 120)
 		assertPrimaryRowTitleStyle(t, line, task)
@@ -38,11 +39,14 @@ func TestOutlinerActivePriorityTitlesUsePriorityStyle(t *testing.T) {
 		newPrimaryRowStyleTask(t, "outliner-p1", 1, "Outliner active P1", 1),
 		newPrimaryRowStyleTask(t, "outliner-p2", 2, "Outliner active P2", 2),
 	}
-	for _, task := range tasks {
-		task.Active = true
-	}
 
 	m := NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), config.NewConfig(), nil)
+	// The active marker now reflects Focus Queue membership, not the legacy
+	// Active flag.
+	m.queueIDs = map[string]bool{}
+	for _, task := range tasks {
+		m.queueIDs[task.ID] = true
+	}
 	m.SetSize(120, 20)
 	m.rebuildRows()
 

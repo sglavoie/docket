@@ -14,19 +14,19 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		done.Status = models.StatusDone
+		done.WorkflowState = models.StateDone
 
 		canceled, err := models.NewTask("2", 2, models.TaskTypeTask, "Canceled task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		canceled.Status = models.StatusCanceled
+		canceled.WorkflowState = models.StateCanceled
 
 		active, err := models.NewTask("3", 3, models.TaskTypeTask, "Active task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		active.Status = models.StatusTodo
+		active.WorkflowState = models.StateReady
 
 		project.Tasks = []*models.Task{done, canceled, active}
 
@@ -44,13 +44,13 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocked.Status = models.StatusBlocked
+		blocked.WorkflowState = models.StateWaiting
 
 		active, err := models.NewTask("2", 2, models.TaskTypeTask, "Active task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		active.Status = models.StatusTodo
+		active.WorkflowState = models.StateReady
 
 		project.Tasks = []*models.Task{blocked, active}
 
@@ -71,13 +71,13 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocker.Status = models.StatusTodo
+		blocker.WorkflowState = models.StateReady
 
 		dependent, err := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
 		if err != nil {
 			t.Fatal(err)
 		}
-		dependent.Status = models.StatusTodo
+		dependent.WorkflowState = models.StateReady
 		dependent.DependsOn = []string{blocker.ID}
 
 		project.Tasks = []*models.Task{blocker, dependent}
@@ -239,7 +239,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocked.Status = models.StatusBlocked
+		blocked.WorkflowState = models.StateWaiting
 
 		project.Tasks = []*models.Task{active1, active2, blocked}
 
@@ -272,13 +272,13 @@ func TestEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		done1.Status = models.StatusDone
+		done1.WorkflowState = models.StateDone
 
 		done2, err := models.NewTask("2", 2, models.TaskTypeTask, "Done 2")
 		if err != nil {
 			t.Fatal(err)
 		}
-		done2.Status = models.StatusCanceled
+		done2.WorkflowState = models.StateCanceled
 
 		project.Tasks = []*models.Task{done1, done2}
 
@@ -296,13 +296,13 @@ func TestEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocked1.Status = models.StatusBlocked
+		blocked1.WorkflowState = models.StateWaiting
 
 		blocked2, err := models.NewTask("2", 2, models.TaskTypeTask, "Blocked 2")
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocked2.Status = models.StatusBlocked
+		blocked2.WorkflowState = models.StateWaiting
 
 		project.Tasks = []*models.Task{blocked1, blocked2}
 
@@ -330,44 +330,49 @@ func TestPriorityViewActionableFilter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		inbox.Section = models.SectionInbox
+		inbox.SetSection(models.SectionInbox)
 
 		waiting, err := models.NewTask("3", 3, models.TaskTypeTask, "Waiting task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		waiting.Section = models.SectionWaiting
+		waiting.SetSection(models.SectionWaiting)
 
 		someday, err := models.NewTask("4", 4, models.TaskTypeTask, "Someday task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		someday.Section = models.SectionSomeday
+		someday.SetSection(models.SectionSomeday)
 
 		review, err := models.NewTask("5", 5, models.TaskTypeTask, "Review task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		review.Section = models.SectionReview
+		review.SetSection(models.SectionReview)
 
 		standby, err := models.NewTask("6", 6, models.TaskTypeTask, "Standby task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		standby.Section = models.SectionStandby
+		standby.SetSection(models.SectionStandby)
 
 		next, err := models.NewTask("7", 7, models.TaskTypeTask, "Next task")
 		if err != nil {
 			t.Fatal(err)
 		}
-		next.Section = models.SectionNext
+		next.SetSection(models.SectionNext)
 
 		project.Tasks = []*models.Task{actionable, inbox, waiting, someday, review, standby, next}
 
 		m := NewPriorityViewModel(project, nil, nil)
 
-		if len(m.backlog) != 7 {
-			t.Fatalf("without filter: expected 7 backlog tasks, got %d", len(m.backlog))
+		// The Waiting-section task derives the waiting state and groups under
+		// Waiting On, so only 6 of the 7 tasks land in the backlog.
+		if len(m.backlog) != 6 {
+			t.Fatalf("without filter: expected 6 backlog tasks, got %d", len(m.backlog))
+		}
+		if len(m.waitingOn) != 1 || m.waitingOn[0].Task.Title != "Waiting task" {
+			t.Fatalf("without filter: expected the Waiting task under waitingOn, got %d entries", len(m.waitingOn))
 		}
 
 		m.filter.Actionable = true
@@ -393,7 +398,7 @@ func TestPriorityViewActionableFilter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocked.Status = models.StatusBlocked
+		blocked.WorkflowState = models.StateWaiting
 
 		project.Tasks = []*models.Task{actionable, blocked}
 

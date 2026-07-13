@@ -11,15 +11,15 @@ func TestEvaluateCriterion_SectionMatchesGTDOnly(t *testing.T) {
 	project := &models.Project{Name: "test"}
 
 	gtdTask := &models.Task{
-		Title:   "GTD task",
-		Section: "Next",
+		Title:         "GTD task",
+		WorkflowState: models.StateNext,
 	}
 	activeTask := &models.Task{
 		Title: "Active task",
 	}
 	bothTask := &models.Task{
-		Title:   "Both task",
-		Section: "Next",
+		Title:         "Both task",
+		WorkflowState: models.StateNext,
 	}
 
 	tests := []struct {

@@ -11,23 +11,23 @@ import (
 func TestWriteTasksMarkdown(t *testing.T) {
 	tasks := []*models.Task{
 		{
-			ID:        "epic1",
-			ShortID:   1,
-			Type:      models.TaskTypeEpic,
-			Title:     "Test Epic",
-			Status:    models.StatusInProgress,
-			Priority:  1,
-			Tags:      []string{"backend", "urgent"},
-			CreatedAt: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			ID:            "epic1",
+			ShortID:       1,
+			Type:          models.TaskTypeEpic,
+			Title:         "Test Epic",
+			WorkflowState: models.StateInProgress,
+			Priority:      1,
+			Tags:          []string{"backend", "urgent"},
+			CreatedAt:     time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			ID:        "task1",
-			ShortID:   2,
-			Type:      models.TaskTypeTask,
-			Title:     "Test Task",
-			Status:    models.StatusTodo,
-			Priority:  3,
-			CreatedAt: time.Date(2024, 1, 16, 0, 0, 0, 0, time.UTC),
+			ID:            "task1",
+			ShortID:       2,
+			Type:          models.TaskTypeTask,
+			Title:         "Test Task",
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			CreatedAt:     time.Date(2024, 1, 16, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -45,8 +45,8 @@ func TestWriteTasksMarkdown(t *testing.T) {
 	if !strings.Contains(content, "id: epic1") {
 		t.Error("content should contain epic ID")
 	}
-	if !strings.Contains(content, "status: in_progress") {
-		t.Error("content should contain epic status")
+	if !strings.Contains(content, "state: in_progress") {
+		t.Error("content should contain epic state")
 	}
 	if !strings.Contains(content, "priority: 1") {
 		t.Error("content should contain epic priority")
@@ -67,33 +67,33 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 
 	tasks := []*models.Task{
 		{
-			ID:        "epic1",
-			ShortID:   1,
-			Type:      models.TaskTypeEpic,
-			Title:     "Parent Epic",
-			Status:    models.StatusInProgress,
-			Priority:  1,
-			CreatedAt: time.Now(),
+			ID:            "epic1",
+			ShortID:       1,
+			Type:          models.TaskTypeEpic,
+			Title:         "Parent Epic",
+			WorkflowState: models.StateInProgress,
+			Priority:      1,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:        "story1",
-			ShortID:   2,
-			Type:      models.TaskTypeStory,
-			Title:     "Child Story",
-			Status:    models.StatusTodo,
-			Priority:  2,
-			ParentID:  &epicID,
-			CreatedAt: time.Now(),
+			ID:            "story1",
+			ShortID:       2,
+			Type:          models.TaskTypeStory,
+			Title:         "Child Story",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			ParentID:      &epicID,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:        "task1",
-			ShortID:   3,
-			Type:      models.TaskTypeTask,
-			Title:     "Grandchild Task",
-			Status:    models.StatusTodo,
-			Priority:  3,
-			ParentID:  &storyID,
-			CreatedAt: time.Now(),
+			ID:            "task1",
+			ShortID:       3,
+			Type:          models.TaskTypeTask,
+			Title:         "Grandchild Task",
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			ParentID:      &storyID,
+			CreatedAt:     time.Now(),
 		},
 	}
 
@@ -116,7 +116,7 @@ func TestWriteTasksMarkdown_WithDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Status = models.StatusBlocked
+	task1.WorkflowState = models.StateWaiting
 	task1.DependsOn = []string{"blocker1", "blocker2"}
 
 	task2, err := models.NewTask("blocker1", 2, models.TaskTypeTask, "Blocker 1")
@@ -140,25 +140,25 @@ func TestRoundTrip(t *testing.T) {
 	// Create original tasks
 	original := []*models.Task{
 		{
-			ID:          "e1",
-			ShortID:     1,
-			Type:        models.TaskTypeEpic,
-			Title:       "Round Trip Epic",
-			Description: "Epic description",
-			Status:      models.StatusInProgress,
-			Priority:    1,
-			Tags:        []string{"test", "roundtrip"},
-			CreatedAt:   time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+			ID:            "e1",
+			ShortID:       1,
+			Type:          models.TaskTypeEpic,
+			Title:         "Round Trip Epic",
+			Description:   "Epic description",
+			WorkflowState: models.StateInProgress,
+			Priority:      1,
+			Tags:          []string{"test", "roundtrip"},
+			CreatedAt:     time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
 		},
 		{
-			ID:          "t1",
-			ShortID:     2,
-			Type:        models.TaskTypeTask,
-			Title:       "Round Trip Task",
-			Description: "Task description\nWith multiple lines",
-			Status:      models.StatusDone,
-			Priority:    2,
-			CreatedAt:   time.Date(2024, 1, 16, 11, 45, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       2,
+			Type:          models.TaskTypeTask,
+			Title:         "Round Trip Task",
+			Description:   "Task description\nWith multiple lines",
+			WorkflowState: models.StateDone,
+			Priority:      2,
+			CreatedAt:     time.Date(2024, 1, 16, 11, 45, 0, 0, time.UTC),
 		},
 	}
 
@@ -191,8 +191,8 @@ func TestRoundTrip(t *testing.T) {
 		if p.Title != orig.Title {
 			t.Errorf("task %d: Title mismatch: %s vs %s", i, p.Title, orig.Title)
 		}
-		if p.Status != orig.Status {
-			t.Errorf("task %d: Status mismatch: %s vs %s", i, p.Status, orig.Status)
+		if p.State() != orig.State() {
+			t.Errorf("task %d: State mismatch: %s vs %s", i, p.State(), orig.State())
 		}
 		if p.Priority != orig.Priority {
 			t.Errorf("task %d: Priority mismatch: %d vs %d", i, p.Priority, orig.Priority)
@@ -236,33 +236,33 @@ func TestParentIDRoundTrip(t *testing.T) {
 
 	tasks := []*models.Task{
 		{
-			ID:        "epic1",
-			ShortID:   1,
-			Type:      models.TaskTypeEpic,
-			Title:     "Parent Epic",
-			Status:    models.StatusInProgress,
-			Priority:  1,
-			CreatedAt: time.Now(),
+			ID:            "epic1",
+			ShortID:       1,
+			Type:          models.TaskTypeEpic,
+			Title:         "Parent Epic",
+			WorkflowState: models.StateInProgress,
+			Priority:      1,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:        "story1",
-			ShortID:   2,
-			Type:      models.TaskTypeStory,
-			Title:     "Child Story",
-			Status:    models.StatusTodo,
-			Priority:  2,
-			ParentID:  &parentID,
-			CreatedAt: time.Now(),
+			ID:            "story1",
+			ShortID:       2,
+			Type:          models.TaskTypeStory,
+			Title:         "Child Story",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			ParentID:      &parentID,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:        "task1",
-			ShortID:   3,
-			Type:      models.TaskTypeTask,
-			Title:     "Grandchild Task",
-			Status:    models.StatusTodo,
-			Priority:  3,
-			ParentID:  &storyID,
-			CreatedAt: time.Now(),
+			ID:            "task1",
+			ShortID:       3,
+			Type:          models.TaskTypeTask,
+			Title:         "Grandchild Task",
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			ParentID:      &storyID,
+			CreatedAt:     time.Now(),
 		},
 	}
 
@@ -350,33 +350,33 @@ func TestHeadingLevelCappedAtSix(t *testing.T) {
 
 	tasks := []*models.Task{
 		{
-			ID:        "epic1",
-			ShortID:   1,
-			Type:      models.TaskTypeEpic,
-			Title:     "Root Epic",
-			Status:    models.StatusTodo,
-			Priority:  1,
-			CreatedAt: time.Now(),
+			ID:            "epic1",
+			ShortID:       1,
+			Type:          models.TaskTypeEpic,
+			Title:         "Root Epic",
+			WorkflowState: models.StateReady,
+			Priority:      1,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:        "story1",
-			ShortID:   2,
-			Type:      models.TaskTypeStory,
-			Title:     "Child Story",
-			Status:    models.StatusTodo,
-			Priority:  2,
-			ParentID:  &epicID,
-			CreatedAt: time.Now(),
+			ID:            "story1",
+			ShortID:       2,
+			Type:          models.TaskTypeStory,
+			Title:         "Child Story",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			ParentID:      &epicID,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:        "task1",
-			ShortID:   3,
-			Type:      models.TaskTypeTask,
-			Title:     "Deep Task",
-			Status:    models.StatusTodo,
-			Priority:  3,
-			ParentID:  &storyID,
-			CreatedAt: time.Now(),
+			ID:            "task1",
+			ShortID:       3,
+			Type:          models.TaskTypeTask,
+			Title:         "Deep Task",
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			ParentID:      &storyID,
+			CreatedAt:     time.Now(),
 		},
 	}
 

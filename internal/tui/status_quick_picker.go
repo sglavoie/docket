@@ -12,28 +12,34 @@ import (
 
 // statusPickerEntry is a single entry in the StatusQuickPicker.
 type statusPickerEntry struct {
-	status models.TaskStatus
-	key    string // direct key shortcut
-	label  string // human-readable label
+	state models.WorkflowState
+	key   string // direct key shortcut
+	label string // human-readable label
 }
 
-// statusPickerEntries lists all statuses in display order with their direct key shortcuts.
+// statusPickerEntries lists all ten canonical workflow states in display order
+// with their direct key shortcuts. The keys mirror the Fw workflow-state filter
+// sub-prefix (i/r/n/s/w/p/v/m/d/x) so the same physical key means the same state
+// in the picker and the filter.
 var statusPickerEntries = []statusPickerEntry{
-	{models.StatusTodo, "o", "todo"},
-	{models.StatusInProgress, "s", "in progress"},
-	{models.StatusReview, "r", "review"},
-	{models.StatusStandby, "S", "standby"},
-	{models.StatusMaybe, "m", "maybe"},
-	{models.StatusDone, "d", "done"},
-	{models.StatusBlocked, "b", "blocked"},
-	{models.StatusCanceled, "x", "canceled"},
+	{models.StateInbox, "i", "inbox"},
+	{models.StateReady, "r", "ready"},
+	{models.StateNext, "n", "next"},
+	{models.StateInProgress, "s", "in progress"},
+	{models.StateWaiting, "w", "waiting"},
+	{models.StatePaused, "p", "paused"},
+	{models.StateReview, "v", "review"},
+	{models.StateSomeday, "m", "someday"},
+	{models.StateDone, "d", "done"},
+	{models.StateCanceled, "x", "canceled"},
 }
 
-// GlobalStatusAppliedMsg is emitted when the user picks a new status in StatusQuickPicker.
+// GlobalStatusAppliedMsg is emitted when the user picks a new workflow state in
+// StatusQuickPicker.
 type GlobalStatusAppliedMsg struct {
-	Task      *models.Task
-	Project   *models.Project
-	NewStatus models.TaskStatus
+	Task     *models.Task
+	Project  *models.Project
+	NewState models.WorkflowState
 }
 
 // StatusQuickPicker is an overlay that lets the user pick a new status for a task.
@@ -45,13 +51,13 @@ type StatusQuickPicker struct {
 	backMsg tea.Msg
 }
 
-var statusPickerBreadcrumb = []string{"Select Project", "Select Task", "Choose Status"}
+var statusPickerBreadcrumb = []string{"Select Project", "Select Task", "Choose State"}
 
 // newStatusQuickPicker creates a picker pre-selected on the task's current status.
 func newStatusQuickPicker(task *models.Task, project *models.Project, backMsg tea.Msg) *StatusQuickPicker {
 	cursor := 0
 	for i, e := range statusPickerEntries {
-		if e.status == task.Status {
+		if task.IsInState(e.state) {
 			cursor = i
 			break
 		}
@@ -73,9 +79,9 @@ func (p *StatusQuickPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.M
 
 	case "enter":
 		return nil, true, GlobalStatusAppliedMsg{
-			Task:      p.task,
-			Project:   p.project,
-			NewStatus: statusPickerEntries[p.cursor].status,
+			Task:     p.task,
+			Project:  p.project,
+			NewState: statusPickerEntries[p.cursor].state,
 		}
 
 	case "up", "ctrl+k", "ctrl+p", "k":
@@ -91,9 +97,9 @@ func (p *StatusQuickPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.M
 		for _, e := range statusPickerEntries {
 			if key == e.key {
 				return nil, true, GlobalStatusAppliedMsg{
-					Task:      p.task,
-					Project:   p.project,
-					NewStatus: e.status,
+					Task:     p.task,
+					Project:  p.project,
+					NewState: e.state,
 				}
 			}
 		}
@@ -121,7 +127,7 @@ func (p *StatusQuickPicker) render(width int) string {
 		taskTitle = taskTitle[:maxTitleLen-1] + "…"
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(
-		fmt.Sprintf("Set Status: %s", taskTitle),
+		fmt.Sprintf("Set State: %s", taskTitle),
 	)
 	footerText := HelpStyle.Render("Enter/key: select · j/k: navigate · Esc: back")
 
@@ -138,8 +144,8 @@ func (p *StatusQuickPicker) render(width int) string {
 	}
 
 	for i, e := range statusPickerEntries {
-		icon := e.status.Icon()
-		isCurrent := e.status == p.task.Status
+		icon := e.state.Icon()
+		isCurrent := p.task.IsInState(e.state)
 		keyHint := MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
 
 		currentMark := "  "

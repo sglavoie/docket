@@ -116,8 +116,8 @@ func TestFzfSelectTask_UsesCachedAbsolutePath(t *testing.T) {
 	t.Cleanup(func() { fzfCache = cachedPath{} })
 
 	tasks := []*models.Task{
-		{ShortID: 1, Type: models.TaskTypeTask, Status: models.StatusTodo, Title: "First task"},
-		{ShortID: 2, Type: models.TaskTypeBug, Status: models.StatusDone, Title: "Second task"},
+		{ShortID: 1, Type: models.TaskTypeTask, WorkflowState: models.StateReady, Title: "First task"},
+		{ShortID: 2, Type: models.TaskTypeBug, WorkflowState: models.StateDone, Title: "Second task"},
 	}
 	selected, err := FzfSelectTask(tasks, "pick", "")
 	if err != nil {
@@ -210,8 +210,8 @@ func TestParseProjectFzfOutput(t *testing.T) {
 
 func TestBuildTaskFzfInput(t *testing.T) {
 	tasks := []*models.Task{
-		{ShortID: 1, Type: models.TaskTypeTask, Status: models.StatusTodo, Title: "First task"},
-		{ShortID: 2, Type: models.TaskTypeBug, Status: models.StatusDone, Title: "Bug fix"},
+		{ShortID: 1, Type: models.TaskTypeTask, WorkflowState: models.StateReady, Title: "First task"},
+		{ShortID: 2, Type: models.TaskTypeBug, WorkflowState: models.StateDone, Title: "Bug fix"},
 	}
 
 	// Simulate the input building logic from FzfSelectTask
@@ -220,7 +220,7 @@ func TestBuildTaskFzfInput(t *testing.T) {
 		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			task.Title)
 		lines = append(lines, line)
 	}
@@ -382,7 +382,7 @@ func TestTaskTitleWithTabDoesNotBreakFzfInput(t *testing.T) {
 	// A task title containing a tab character would corrupt fzf's tab-delimited
 	// input — the column count would no longer be 4 and parsing would break.
 	tasks := []*models.Task{
-		{ShortID: 7, Type: models.TaskTypeTask, Status: models.StatusTodo, Title: "Title\twith\ttabs"},
+		{ShortID: 7, Type: models.TaskTypeTask, WorkflowState: models.StateReady, Title: "Title\twith\ttabs"},
 	}
 
 	var lines []string
@@ -390,7 +390,7 @@ func TestTaskTitleWithTabDoesNotBreakFzfInput(t *testing.T) {
 		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			sanitizeFzfField(task.Title))
 		lines = append(lines, line)
 	}

@@ -160,7 +160,7 @@ func runTaskArchiveShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(task)
+		return displayTaskShowJSON(cfg, task)
 	}
 	if out.Quiet {
 		return nil
@@ -265,7 +265,7 @@ func archiveSummaryMatches(summary storage.ArchiveTaskSummary, filters archiveLi
 	if filters.taskType != nil && summary.Type != *filters.taskType {
 		return false
 	}
-	if filters.status != nil && summary.Status != *filters.status {
+	if filters.status != nil && !stateMatchesLegacyStatus(summary.WorkflowState, *filters.status) {
 		return false
 	}
 	if filters.since != nil || filters.untilNext != nil {
@@ -310,7 +310,7 @@ func displayArchiveSummariesJSON(project *models.Project, summaries []storage.Ar
 			ShortID:       summary.ShortID,
 			Type:          summary.Type.String(),
 			Title:         summary.Title,
-			Status:        summary.Status.String(),
+			Status:        models.LegacyStatusForState(summary.WorkflowState).String(),
 			Priority:      summary.Priority,
 			CreatedAt:     summary.CreatedAt,
 			CompletedAt:   summary.CompletedAt,
@@ -334,7 +334,7 @@ func displayArchiveSummaryTable(project *models.Project, summaries []storage.Arc
 			shortDisplayID(summary.ID),
 			summary.ShortID,
 			summary.Type.Icon(),
-			summary.Status.Icon(),
+			summary.WorkflowState.Icon(),
 			formatArchiveCompletedAt(summary.CompletedAt),
 			util.Truncate(summary.Title, 40),
 			formatArchiveSource(summary.Source),

@@ -132,10 +132,10 @@ func TestSortTasks_StableSort(t *testing.T) {
 	testutil.AssertEqual(t, tasks[2].Title, "Third")
 }
 
-func TestStatusOrderCoversAllStatuses(t *testing.T) {
-	for _, status := range models.AllTaskStatuses() {
-		if _, ok := statusOrder[status]; !ok {
-			t.Errorf("statusOrder map is missing status %q", status)
+func TestStateOrderCoversAllStates(t *testing.T) {
+	for _, state := range models.AllWorkflowStates() {
+		if _, ok := stateOrder[state]; !ok {
+			t.Errorf("stateOrder map is missing state %q", state)
 		}
 	}
 }

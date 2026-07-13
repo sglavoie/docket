@@ -26,22 +26,22 @@ func (m *AppModel) handleTaskChecklistMessages(msg tea.Msg) (bool, tea.Cmd) {
 // handleChecklistItemAdded handles the ChecklistItemAddedMsg.
 func (m *AppModel) handleChecklistItemAdded(msg ChecklistItemAddedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Checklist item added")
-	return true, defaultStatusTimeout()
+	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }
 
 // handleChecklistItemDeleted handles the ChecklistItemDeletedMsg.
 func (m *AppModel) handleChecklistItemDeleted(msg ChecklistItemDeletedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Checklist item deleted")
-	return true, defaultStatusTimeout()
+	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }
 
 // handleChecklistItemEdited handles the ChecklistItemEditedMsg.
 func (m *AppModel) handleChecklistItemEdited(msg ChecklistItemEditedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Checklist item updated")
-	return true, defaultStatusTimeout()
+	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }
 
 // handleChecklistItemToggled handles the ChecklistItemToggledMsg.
 func (m *AppModel) handleChecklistItemToggled(msg ChecklistItemToggledMsg) (bool, tea.Cmd) {
-	return true, nil
+	return true, m.refreshAfterSubviewCommit()
 }

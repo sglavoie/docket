@@ -17,17 +17,6 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
 		return true, nil
 
-	case SettingsStagesMsg:
-		sm := NewSettingsModel(m.config, m.configManager)
-		sm.blurCurrentField()
-		sm.tabs.Active = tabStages
-		sm.subTab = 0
-		sm.focusIndex = tabFieldStart[tabStages]
-		sm.syncVisualFromOld()
-		sm.focusCurrentField()
-		m.showView(ViewSettings, sm)
-		return true, nil
-
 	case SettingsSavedMsg:
 		m.popView()
 		ApplyTheme(NewThemeConfig(m.config))
@@ -152,7 +141,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowDryRunMsg:
-		return m.showViewInit(ViewWorkflowDryRun, NewWorkflowDryRunModel(m.config, m.configManager, m.persister, msg.SingleRule))
+		return m.showViewInit(ViewWorkflowDryRun, NewWorkflowDryRunModel(m.config.DataDir, m.configManager, m.persister, msg.SingleRule))
 
 	case ShowFilterBuilderMsg:
 		return m.showViewInit(ViewFilterBuilder, NewFilterBuilderModel(m.config, m.configManager))

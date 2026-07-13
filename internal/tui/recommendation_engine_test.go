@@ -79,7 +79,7 @@ func TestRecommendOverdueBeatsEverythingElse(t *testing.T) {
 	plannedID := config.DailyPlanItem{TaskID: planned.ID, ProjectID: project.ID, PlannedDate: todayKeyFromNow()}
 
 	inbox := newEngineTask(t, project, "InboxItem")
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 
 	got := Recommend(RecommendationEngineInput{
 		Projects:  []*models.Project{project},
@@ -171,7 +171,7 @@ func TestRecommendCarriedOverReasonSurfaced(t *testing.T) {
 func TestRecommendInboxOnlyReturnsTriageInbox(t *testing.T) {
 	project := newEngineProject(t, "P")
 	inbox := newEngineTask(t, project, "Unprocessed")
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 
 	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
@@ -191,11 +191,11 @@ func TestRecommendInboxOnlyReturnsTriageInbox(t *testing.T) {
 func TestRecommendBlockedOnlyReturnsReviewBlocked(t *testing.T) {
 	project := newEngineProject(t, "P")
 	bTop := newEngineTask(t, project, "Blocked top")
-	bTop.Status = models.StatusBlocked
+	bTop.WorkflowState = models.StateWaiting
 	bTop.Priority = 2
 
 	bLow := newEngineTask(t, project, "Blocked low")
-	bLow.Status = models.StatusBlocked
+	bLow.WorkflowState = models.StateWaiting
 	bLow.Priority = 5
 
 	got := Recommend(RecommendationEngineInput{
@@ -241,7 +241,7 @@ func TestRecommendInboxPreemptsHighPriorityActionable(t *testing.T) {
 	highPri.Priority = 1
 
 	inboxTask := newEngineTask(t, project, "New idea")
-	inboxTask.Section = models.SectionInbox
+	inboxTask.SetSection(models.SectionInbox)
 
 	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
@@ -259,10 +259,10 @@ func TestRecommendBlockedPreemptsInboxAndHighPriorityActionable(t *testing.T) {
 	highPri.Priority = 1
 
 	inboxTask := newEngineTask(t, project, "New idea")
-	inboxTask.Section = models.SectionInbox
+	inboxTask.SetSection(models.SectionInbox)
 
 	blocked := newEngineTask(t, project, "Blocked decision")
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 	blocked.Priority = 3
 
 	got := Recommend(RecommendationEngineInput{
@@ -284,13 +284,13 @@ func TestRecommendBlockedUrgencyBeatsPriorityTiebreak(t *testing.T) {
 	project := newEngineProject(t, "P")
 
 	lowPriorityOverdue := newEngineTask(t, project, "Low priority but overdue")
-	lowPriorityOverdue.Status = models.StatusBlocked
+	lowPriorityOverdue.WorkflowState = models.StateWaiting
 	lowPriorityOverdue.Priority = 5
 	due := engineNow.Add(-24 * time.Hour)
 	lowPriorityOverdue.DueDate = &due
 
 	highPriorityBlocked := newEngineTask(t, project, "High priority blocked")
-	highPriorityBlocked.Status = models.StatusBlocked
+	highPriorityBlocked.WorkflowState = models.StateWaiting
 	highPriorityBlocked.Priority = 1
 
 	got := Recommend(RecommendationEngineInput{
@@ -330,12 +330,12 @@ func TestRecommendPlanTodayWhenOnlyFallbackActionable(t *testing.T) {
 func TestRecommendCompletedTasksExcluded(t *testing.T) {
 	project := newEngineProject(t, "P")
 	done := newEngineTask(t, project, "Done")
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 	completed := engineNow
 	done.CompletedAt = &completed
 
 	canceled := newEngineTask(t, project, "Canceled")
-	canceled.Status = models.StatusCanceled
+	canceled.WorkflowState = models.StateCanceled
 
 	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
@@ -354,11 +354,11 @@ func TestRecommendSnoozedTasksExcluded(t *testing.T) {
 	snoozedActionable.SnoozedUntil = &until
 
 	snoozedInbox := newEngineTask(t, project, "Snoozed inbox")
-	snoozedInbox.Section = models.SectionInbox
+	snoozedInbox.SetSection(models.SectionInbox)
 	snoozedInbox.SnoozedUntil = &until
 
 	snoozedBlocked := newEngineTask(t, project, "Snoozed blocked")
-	snoozedBlocked.Status = models.StatusBlocked
+	snoozedBlocked.WorkflowState = models.StateWaiting
 	snoozedBlocked.SnoozedUntil = &until
 
 	got := Recommend(RecommendationEngineInput{
@@ -397,7 +397,7 @@ func TestRecommendUrgentOutranksBlockedReview(t *testing.T) {
 	overdue.DueDate = &due
 
 	blocked := newEngineTask(t, project, "Blocked")
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 
 	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
@@ -594,12 +594,12 @@ func TestRecommendInboxPriorityBeatsCreatedAt(t *testing.T) {
 	project := newEngineProject(t, "P")
 
 	oldLow := newEngineTask(t, project, "Old low pri")
-	oldLow.Section = models.SectionInbox
+	oldLow.SetSection(models.SectionInbox)
 	oldLow.Priority = 4
 	oldLow.CreatedAt = engineNow.Add(-48 * time.Hour)
 
 	newHigh := newEngineTask(t, project, "New high pri")
-	newHigh.Section = models.SectionInbox
+	newHigh.SetSection(models.SectionInbox)
 	newHigh.Priority = 1
 	newHigh.CreatedAt = engineNow.Add(-1 * time.Hour)
 

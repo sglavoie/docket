@@ -152,10 +152,6 @@ func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
 			return m, helpCmd(helpView, helpTitle, GetKeybindingRegistry().GetForView(helpView))
 		},
-		ToggleActive: func() (tea.Model, tea.Cmd) {
-			model, cmd, _ := m.handleUtilityKey("*")
-			return model, cmd
-		},
 		EditScore: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()
 			if task == nil || project == nil {

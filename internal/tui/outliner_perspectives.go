@@ -32,13 +32,7 @@ func headerSectionForTask(t *models.Task) string {
 	if t == nil {
 		return ""
 	}
-	if t.Section == "" {
-		return ""
-	}
-	if !models.IsGTDSection(t.Section) {
-		return ""
-	}
-	return t.Section
+	return taskSectionBucket(t)
 }
 
 func sectionOrderCopy() []string {
@@ -77,63 +71,63 @@ var perspectives = [10]Perspective{
 		Name: "All",
 		Key:  1,
 		Filter: func(t *models.Task) bool {
-			return !t.Status.IsComplete() && !t.IsSnoozed()
+			return !t.IsTerminalState() && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Active",
 		Key:  2,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusInProgress && !t.IsSnoozed()
+			return t.IsInState(models.StateInProgress) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Next",
 		Key:  3,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusTodo && t.Priority >= 1 && t.Priority <= 2 && !t.IsSnoozed()
+			return taskInPlanningState(t) && t.Priority >= 1 && t.Priority <= 2 && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Inbox",
 		Key:  4,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusTodo && len(t.Tags) == 0 && !t.IsSnoozed()
+			return taskInPlanningState(t) && len(t.Tags) == 0 && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Standby",
 		Key:  5,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusStandby
+			return t.IsInState(models.StatePaused)
 		},
 	},
 	{
 		Name: "Waiting",
 		Key:  6,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusBlocked && !t.IsSnoozed()
+			return t.IsInState(models.StateWaiting) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Someday",
 		Key:  7,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusTodo && t.Priority >= 4 && t.Priority <= 5 && !t.IsSnoozed()
+			return taskInPlanningState(t) && t.Priority >= 4 && t.Priority <= 5 && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Completed",
 		Key:  8,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusDone
+			return t.IsInState(models.StateDone)
 		},
 	},
 	{
 		Name: "Review",
 		Key:  9,
 		Filter: func(t *models.Task) bool {
-			return t.Status == models.StatusReview && !t.IsSnoozed()
+			return t.IsInState(models.StateReview) && !t.IsSnoozed()
 		},
 	},
 }

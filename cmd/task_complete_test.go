@@ -11,10 +11,10 @@ import (
 func TestUpdateTaskStatusComplete(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	task := project.Tasks[0]
-	originalStatus := task.Status
+	originalStatus := models.LegacyStatusForState(task.State())
 
 	// Verify the task starts in a non-complete state
-	if task.Status == models.StatusDone {
+	if originalStatus == models.StatusDone {
 		t.Skip("test task already done")
 	}
 
@@ -124,7 +124,7 @@ func TestAutoUnblockAfterComplete(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = blocked.AddDependency(blocker.ID)
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 
 	project.Tasks = []*models.Task{blocker, blocked}
 
@@ -152,7 +152,7 @@ func TestAutoUnblockAfterCancel(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = blocked.AddDependency(blocker.ID)
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 
 	project.Tasks = []*models.Task{blocker, blocked}
 
@@ -289,8 +289,8 @@ func TestCompleteParentAllChildrenDone(t *testing.T) {
 	}
 	child1.ParentID = &parent.ID
 	child2.ParentID = &parent.ID
-	child1.Status = models.StatusDone
-	child2.Status = models.StatusCanceled
+	child1.WorkflowState = models.StateDone
+	child2.WorkflowState = models.StateCanceled
 
 	project.Tasks = []*models.Task{parent, child1, child2}
 	project.BuildTaskTree()
@@ -318,7 +318,7 @@ func TestCompleteParentBlockedByIncompleteChildren(t *testing.T) {
 	}
 	child1.ParentID = &parent.ID
 	child2.ParentID = &parent.ID
-	child2.Status = models.StatusDone
+	child2.WorkflowState = models.StateDone
 
 	project.Tasks = []*models.Task{parent, child1, child2}
 	project.BuildTaskTree()
@@ -381,7 +381,7 @@ func TestCancelLeafAndCompleteParentSucceed(t *testing.T) {
 		t.Fatal(err)
 	}
 	child.ParentID = &parent.ID
-	child.Status = models.StatusDone
+	child.WorkflowState = models.StateDone
 
 	project.Tasks = []*models.Task{leaf, parent, child}
 	project.BuildTaskTree()

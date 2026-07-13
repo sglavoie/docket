@@ -1,13 +1,16 @@
 package tui
 
 import (
+	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -152,7 +155,11 @@ func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	src := newSourceWorkspace(t)
 	srcProject := src.Config.Projects[0]
 	srcTasksPath := storage.GetTasksFilePath(srcProject)
-	srcConfigBefore := mustReadFile(t, src.ConfigPath)
+	// Persistence is the decomposed domain files, not the legacy monolithic
+	// .tt.json (which Manager.Save no longer writes), so the source "config" to
+	// guard against mutation is the workspace-catalog domain artifact.
+	srcCatalogPath := config.WorkspaceCatalogPath(src.DataDir)
+	srcConfigBefore := mustReadFile(t, srcCatalogPath)
 	srcTasksBefore := mustReadFile(t, srcTasksPath)
 
 	driver, ws, err := NewCopiedWorkspaceDriver(src.ConfigPath, 100, 30)
@@ -180,17 +187,23 @@ func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	if got := mustReadFile(t, srcTasksPath); got != srcTasksBefore {
 		t.Fatal("source tasks.md was mutated by copied-workspace writes")
 	}
-	if got := mustReadFile(t, src.ConfigPath); got != srcConfigBefore {
+	if got := mustReadFile(t, srcCatalogPath); got != srcConfigBefore {
 		t.Fatal("source config was mutated by copied-workspace launch")
 	}
 }
 
 func TestUITestWorkspaceIsolatesExternalProject(t *testing.T) {
-	ws, err := newUITestWorkspace()
-	if err != nil {
-		t.Fatalf("newUITestWorkspace error: %v", err)
+	// The domain-file catalog derives every project path from the data dir and
+	// never persists an absolute path, so a project stored OUTSIDE the data dir (a
+	// custom project location) survives only through the legacy monolithic .tt.json
+	// read fallback. This exercises that fallback plus the reroot-external copy
+	// path: NewCopiedWorkspaceDriver must relocate the external project INTO the
+	// copy rather than leave it pointed at the source tree.
+	root := t.TempDir()
+	dataDir := filepath.Join(root, "data")
+	if err := os.MkdirAll(dataDir, os.FileMode(0o700)); err != nil {
+		t.Fatalf("mkdir data dir: %v", err)
 	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	// A project stored OUTSIDE the source data dir (a custom project location).
 	externalDir := t.TempDir()
@@ -206,16 +219,23 @@ func TestUITestWorkspaceIsolatesExternalProject(t *testing.T) {
 	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject(external) error: %v", err)
 	}
-	ws.Config.Projects = append(ws.Config.Projects, project)
-	ws.Config.CurrentProject = project.ID
-	if err = ws.Manager.Save(ws.Config); err != nil {
-		t.Fatalf("Manager.Save error: %v", err)
-	}
+
+	// Persist a LEGACY monolithic config (no domain files) that records the
+	// external project's absolute path, so Manager.Load takes the migration-read
+	// fallback and preserves the custom location for the reroot to relocate.
+	cfg := config.NewConfig()
+	cfg.DataDir = dataDir
+	cfg.FzfEnabled = false
+	cfg.GlowEnabled = false
+	cfg.Projects = []*models.Project{project}
+	cfg.CurrentProject = project.ID
+	configPath := filepath.Join(dataDir, ".tt.json")
+	writeLegacyMonolithConfig(t, configPath, cfg)
 
 	externalTasksPath := storage.GetTasksFilePath(project)
 	externalBefore := mustReadFile(t, externalTasksPath)
 
-	driver, copyWs, err := NewCopiedWorkspaceDriver(ws.ConfigPath, 100, 30)
+	driver, copyWs, err := NewCopiedWorkspaceDriver(configPath, 100, 30)
 	if err != nil {
 		t.Fatalf("NewCopiedWorkspaceDriver error: %v", err)
 	}
@@ -276,6 +296,21 @@ func newSourceWorkspace(t *testing.T) *uitestWorkspace {
 		t.Fatalf("Manager.Save error: %v", err)
 	}
 	return ws
+}
+
+// writeLegacyMonolithConfig persists cfg in the pre-cutover single-file .tt.json
+// format (which Manager.Save no longer produces) so a test can exercise the
+// legacy migration-read fallback — including custom absolute project paths the
+// domain-file catalog would otherwise drop.
+func writeLegacyMonolithConfig(t *testing.T, path string, cfg *config.Config) {
+	t.Helper()
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal legacy config: %v", err)
+	}
+	if err := os.WriteFile(path, data, os.FileMode(0o600)); err != nil {
+		t.Fatalf("write legacy config %q: %v", path, err)
+	}
 }
 
 func mustReadFile(t *testing.T, path string) string {

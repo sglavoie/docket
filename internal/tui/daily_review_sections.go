@@ -95,14 +95,14 @@ func (m *DailyReviewModel) shouldSkipDailyReviewTask(task *models.Task, project 
 	if !hasActiveCommonFilters(&m.filter) {
 		return false
 	}
-	return !passesCommonFilters(task, &m.filter, project.ID, m.config)
+	return !passesCommonFilters(task, &m.filter, project, m.config)
 }
 
 func (m *DailyReviewModel) appendDailyReviewTask(dt CrossProjectTask, project *models.Project, thresholds dailyReviewThresholds) {
 	if m.appendCompletedDailyReviewTask(dt, thresholds) {
 		return
 	}
-	if dt.Task.Status.IsComplete() || dt.Task.IsSnoozed() {
+	if dt.Task.IsTerminalState() || dt.Task.IsSnoozed() {
 		return
 	}
 	if m.appendStandbyOrReviewTask(dt) {
@@ -119,7 +119,7 @@ func (m *DailyReviewModel) appendDailyReviewTask(dt CrossProjectTask, project *m
 
 func (m *DailyReviewModel) appendCompletedDailyReviewTask(dt CrossProjectTask, thresholds dailyReviewThresholds) bool {
 	task := dt.Task
-	if !task.Status.IsComplete() || task.CompletedAt == nil {
+	if !task.IsTerminalState() || task.CompletedAt == nil {
 		return false
 	}
 	if thresholds.completedHours > 0 && task.CompletedAt.After(thresholds.completedThreshold) {
@@ -130,11 +130,11 @@ func (m *DailyReviewModel) appendCompletedDailyReviewTask(dt CrossProjectTask, t
 
 func (m *DailyReviewModel) appendStandbyOrReviewTask(dt CrossProjectTask) bool {
 	task := dt.Task
-	if task.Section == models.SectionStandby || task.Status == models.StatusStandby {
+	if task.IsInState(models.StatePaused) {
 		m.inStandby = append(m.inStandby, dt)
 		return true
 	}
-	if task.Section == models.SectionReview || task.Status == models.StatusReview {
+	if task.IsInState(models.StateReview) {
 		m.inReview = append(m.inReview, dt)
 		return true
 	}
@@ -169,11 +169,11 @@ func (m *DailyReviewModel) appendDatedDailyReviewTask(dt CrossProjectTask, thres
 
 func (m *DailyReviewModel) appendBlockedOrProgressTask(dt CrossProjectTask, project *models.Project) bool {
 	task := dt.Task
-	if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
+	if task.IsInState(models.StateWaiting) || project.HasIncompleteDependencies(task) {
 		m.blocked = append(m.blocked, dt)
 		return true
 	}
-	if task.Status == models.StatusInProgress {
+	if task.IsInState(models.StateInProgress) {
 		m.inProgress = append(m.inProgress, dt)
 		return true
 	}

@@ -9,16 +9,15 @@ func TestGenerateRecurringInstances(t *testing.T) {
 	t.Run("completed recurring task generates new instance", func(t *testing.T) {
 		dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 		task := &Task{
-			ID:         "task-1",
-			ShortID:    1,
-			Type:       TaskTypeTask,
-			Title:      "Recurring Task",
-			Status:     StatusDone,
-			Priority:   2,
-			Section:    SectionNext,
-			Tags:       []string{"test", "recurring"},
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+			ID:            "task-1",
+			ShortID:       1,
+			Type:          TaskTypeTask,
+			Title:         "Recurring Task",
+			WorkflowState: StateDone,
+			Priority:      2,
+			Tags:          []string{"test", "recurring"},
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
 		}
 
 		project := &Project{
@@ -37,11 +36,8 @@ func TestGenerateRecurringInstances(t *testing.T) {
 		}
 
 		newTask := project.Tasks[0]
-		if newTask.Status != StatusTodo {
-			t.Errorf("new task Status = %s, want todo", newTask.Status)
-		}
-		if newTask.Section != SectionInbox {
-			t.Errorf("new task Section = %s, want inbox", newTask.Section)
+		if newTask.State() != StateInbox {
+			t.Errorf("new task State = %s, want inbox", newTask.State())
 		}
 		if newTask.Title != "Recurring Task" {
 			t.Errorf("new task Title = %s, want 'Recurring Task'", newTask.Title)
@@ -68,8 +64,8 @@ func TestGenerateRecurringInstances(t *testing.T) {
 
 	t.Run("non-recurring completed task does not generate", func(t *testing.T) {
 		task := &Task{
-			ID:     "task-1",
-			Status: StatusDone,
+			ID:            "task-1",
+			WorkflowState: StateDone,
 		}
 
 		project := &Project{
@@ -89,10 +85,10 @@ func TestGenerateRecurringInstances(t *testing.T) {
 	t.Run("recurring but not completed does not generate", func(t *testing.T) {
 		dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 		task := &Task{
-			ID:         "task-1",
-			Status:     StatusTodo,
-			DueDate:    &dueDate,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+			ID:            "task-1",
+			WorkflowState: StateReady,
+			DueDate:       &dueDate,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 		}
 
 		project := &Project{
@@ -117,26 +113,26 @@ func TestGenerateRecurringInstances(t *testing.T) {
 		due2 := time.Date(2024, 2, 1, 10, 0, 0, 0, time.UTC)
 
 		task1 := &Task{
-			ID:         "task-1",
-			ShortID:    1,
-			Title:      "Task 1",
-			Status:     StatusDone,
-			DueDate:    &due1,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+			ID:            "task-1",
+			ShortID:       1,
+			Title:         "Task 1",
+			WorkflowState: StateDone,
+			DueDate:       &due1,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 		}
 		task2 := &Task{
-			ID:         "task-2",
-			ShortID:    2,
-			Title:      "Task 2",
-			Status:     StatusDone,
-			DueDate:    &due2,
-			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
+			ID:            "task-2",
+			ShortID:       2,
+			Title:         "Task 2",
+			WorkflowState: StateDone,
+			DueDate:       &due2,
+			Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
 		}
 		task3 := &Task{
-			ID:      "task-3",
-			ShortID: 3,
-			Title:   "Task 3",
-			Status:  StatusDone,
+			ID:            "task-3",
+			ShortID:       3,
+			Title:         "Task 3",
+			WorkflowState: StateDone,
 		}
 
 		project := &Project{
@@ -157,12 +153,12 @@ func TestGenerateRecurringInstances(t *testing.T) {
 
 func TestGenerateRecurringInstancesNoDueDate(t *testing.T) {
 	task := &Task{
-		ID:         "task-1",
-		ShortID:    1,
-		Title:      "No Due Date Recurring",
-		Status:     StatusDone,
-		DueDate:    nil,
-		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "No Due Date Recurring",
+		WorkflowState: StateDone,
+		DueDate:       nil,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 	}
 
 	project := &Project{
@@ -200,12 +196,12 @@ func TestGenerateRecurringInstancesNoDueDate(t *testing.T) {
 func TestGenerateRecurringInstancesIdempotency(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:         "task-1",
-		ShortID:    1,
-		Title:      "Recurring Task",
-		Status:     StatusDone,
-		DueDate:    &dueDate,
-		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "Recurring Task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 	}
 
 	project := &Project{
@@ -230,18 +226,18 @@ func TestGenerateRecurringInstancesIdempotency(t *testing.T) {
 }
 
 func TestGenerateRecurringInstancesNonDoneStatuses(t *testing.T) {
-	statuses := []TaskStatus{StatusTodo, StatusInProgress, StatusBlocked, StatusCanceled}
+	states := []WorkflowState{StateReady, StateInProgress, StateWaiting, StateCanceled}
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 
-	for _, status := range statuses {
-		t.Run(string(status), func(t *testing.T) {
+	for _, state := range states {
+		t.Run(string(state), func(t *testing.T) {
 			task := &Task{
-				ID:         "task-1",
-				ShortID:    1,
-				Title:      "Non-done recurring",
-				Status:     status,
-				DueDate:    &dueDate,
-				Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+				ID:            "task-1",
+				ShortID:       1,
+				Title:         "Non-done recurring",
+				WorkflowState: state,
+				DueDate:       &dueDate,
+				Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 			}
 
 			project := &Project{
@@ -252,7 +248,7 @@ func TestGenerateRecurringInstancesNonDoneStatuses(t *testing.T) {
 			count := project.GenerateRecurringInstances()
 
 			if count != 0 {
-				t.Errorf("GenerateRecurringInstances() with status %s = %d, want 0", status, count)
+				t.Errorf("GenerateRecurringInstances() with state %s = %d, want 0", state, count)
 			}
 			if len(project.Tasks) != 1 {
 				t.Errorf("len(Tasks) = %d, want 1 (no new task)", len(project.Tasks))
@@ -267,14 +263,14 @@ func TestGenerateRecurringInstancesNonDoneStatuses(t *testing.T) {
 func TestGenerateRecurringInstances_NonRecurringCompleted_Skipped(t *testing.T) {
 	completedAt := time.Date(2025, 3, 10, 9, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "non-rec",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Normal completed task",
-		Status:      StatusDone,
-		CompletedAt: &completedAt,
-		Recurrence:  nil,
-		Tags:        []string{"important"},
+		ID:            "non-rec",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Normal completed task",
+		WorkflowState: StateDone,
+		CompletedAt:   &completedAt,
+		Recurrence:    nil,
+		Tags:          []string{"important"},
 	}
 
 	project := &Project{
@@ -294,8 +290,8 @@ func TestGenerateRecurringInstances_NonRecurringCompleted_Skipped(t *testing.T) 
 	if project.Tasks[0].Title != "Normal completed task" {
 		t.Error("original task should not be modified")
 	}
-	if project.Tasks[0].Status != StatusDone {
-		t.Error("original task status should remain done")
+	if project.Tasks[0].State() != StateDone {
+		t.Error("original task state should remain done")
 	}
 }
 
@@ -306,13 +302,13 @@ func TestGenerateRecurringInstancesPreservesTaskType(t *testing.T) {
 	for _, taskType := range types {
 		t.Run(string(taskType), func(t *testing.T) {
 			task := &Task{
-				ID:         "task-1",
-				ShortID:    1,
-				Type:       taskType,
-				Title:      "Recurring " + string(taskType),
-				Status:     StatusDone,
-				DueDate:    &dueDate,
-				Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+				ID:            "task-1",
+				ShortID:       1,
+				Type:          taskType,
+				Title:         "Recurring " + string(taskType),
+				WorkflowState: StateDone,
+				DueDate:       &dueDate,
+				Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
 			}
 
 			project := &Project{
@@ -367,13 +363,13 @@ func TestGenerateRecurringInstancesNewIDIsValidUUID(t *testing.T) {
 	// the new instance (not the old non-standard timestamp-based format).
 	dueDate := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:         "parent-id",
-		ShortID:    1,
-		Type:       TaskTypeTask,
-		Title:      "Recurring UUID test",
-		Status:     StatusDone,
-		DueDate:    &dueDate,
-		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+		ID:            "parent-id",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Recurring UUID test",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
 	}
 
 	project := &Project{

@@ -117,8 +117,6 @@ func (m *SettingsModel) focusLineInContent() int {
 		case 2:
 			return localIdx * 2
 		}
-	case tabStages:
-		return 3
 	case tabAppearance:
 		return 0
 	}
@@ -239,8 +237,6 @@ func (m *SettingsModel) View() tea.View {
 		content = m.renderKanbanTab()
 	case tabNotifications:
 		content = m.renderNotificationsTab()
-	case tabStages:
-		content = m.renderStagesTab()
 	case tabAppearance:
 		content = m.renderAppearanceTab()
 	}

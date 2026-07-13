@@ -45,8 +45,8 @@ func TestFilterTasks_ByStatus(t *testing.T) {
 			if len(result) != 1 {
 				t.Errorf("expected 1 task with status %s, got %d", tc.status, len(result))
 			}
-			if len(result) > 0 && result[0].Status != tc.expectedStatus {
-				t.Errorf("expected status %s, got %s", tc.expectedStatus, result[0].Status)
+			if len(result) > 0 && models.LegacyStatusForState(result[0].State()) != tc.expectedStatus {
+				t.Errorf("expected status %s, got %s", tc.expectedStatus, models.LegacyStatusForState(result[0].State()))
 			}
 		})
 	}
@@ -84,8 +84,8 @@ func TestFilterTasks_ByStatusReviewAndStandby(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1 review task, got %d", len(result))
 	}
-	if len(result) > 0 && result[0].Status != models.StatusReview {
-		t.Errorf("expected status review, got %s", result[0].Status)
+	if len(result) > 0 && result[0].State() != models.StateReview {
+		t.Errorf("expected state review, got %s", result[0].State())
 	}
 
 	listTaskStatus = "standby"
@@ -93,7 +93,7 @@ func TestFilterTasks_ByStatusReviewAndStandby(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1 standby task, got %d", len(result))
 	}
-	if len(result) > 0 && result[0].Status != models.StatusStandby {
-		t.Errorf("expected status standby, got %s", result[0].Status)
+	if len(result) > 0 && result[0].State() != models.StatePaused {
+		t.Errorf("expected state paused (standby), got %s", result[0].State())
 	}
 }

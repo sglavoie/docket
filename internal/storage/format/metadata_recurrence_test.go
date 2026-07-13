@@ -81,9 +81,9 @@ func TestParseMetadata_RecurrenceStreakFieldsIgnoredWithoutRecur(t *testing.T) {
 
 func TestWriteMetadata_RecurrenceStreakFields(t *testing.T) {
 	task := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  1,
 			Unit:      models.RecurrenceWeekly,
@@ -94,7 +94,7 @@ func TestWriteMetadata_RecurrenceStreakFields(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if !strings.Contains(result, "recur.skipped: 2") {
 		t.Errorf("expected recur.skipped: 2, got: %s", result)
 	}
@@ -108,9 +108,9 @@ func TestWriteMetadata_RecurrenceStreakFields(t *testing.T) {
 
 func TestWriteMetadata_RecurrenceStreakFieldsOmittedWhenZero(t *testing.T) {
 	task := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval: 1,
 			Unit:     models.RecurrenceDaily,
@@ -118,7 +118,7 @@ func TestWriteMetadata_RecurrenceStreakFieldsOmittedWhenZero(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if strings.Contains(result, "recur.skipped") {
 		t.Errorf("should not contain recur.skipped when 0, got: %s", result)
 	}
@@ -151,9 +151,9 @@ func TestParseMetadata_RecurrenceSubFieldsBeforeRecurKey(t *testing.T) {
 
 func TestMetadata_RecurrenceStreakRoundtrip(t *testing.T) {
 	original := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  2,
 			Unit:      models.RecurrenceWeekly,
@@ -165,7 +165,7 @@ func TestMetadata_RecurrenceStreakRoundtrip(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	meta := WriteMetadata(original)
+	meta := WriteMetadataV2(original)
 	metaStr := strings.TrimPrefix(meta, "<!-- ")
 	metaStr = strings.TrimSuffix(metaStr, " -->")
 
@@ -191,9 +191,9 @@ func TestParseMetadata_RecurrenceOriginalDay(t *testing.T) {
 
 func TestWriteMetadata_RecurrenceOriginalDay(t *testing.T) {
 	task := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval:    1,
 			Unit:        models.RecurrenceMonthly,
@@ -202,7 +202,7 @@ func TestWriteMetadata_RecurrenceOriginalDay(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if !strings.Contains(result, "recur.original_day: 31") {
 		t.Errorf("expected recur.original_day: 31, got: %s", result)
 	}
@@ -210,9 +210,9 @@ func TestWriteMetadata_RecurrenceOriginalDay(t *testing.T) {
 
 func TestWriteMetadata_RecurrenceOriginalDayOmittedWhenZero(t *testing.T) {
 	task := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval: 1,
 			Unit:     models.RecurrenceMonthly,
@@ -220,7 +220,7 @@ func TestWriteMetadata_RecurrenceOriginalDayOmittedWhenZero(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if strings.Contains(result, "recur.original_day") {
 		t.Errorf("should not contain recur.original_day when 0, got: %s", result)
 	}
@@ -228,9 +228,9 @@ func TestWriteMetadata_RecurrenceOriginalDayOmittedWhenZero(t *testing.T) {
 
 func TestMetadata_RecurrenceOriginalDayRoundtrip(t *testing.T) {
 	original := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval:    1,
 			Unit:        models.RecurrenceMonthly,
@@ -241,7 +241,7 @@ func TestMetadata_RecurrenceOriginalDayRoundtrip(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	meta := WriteMetadata(original)
+	meta := WriteMetadataV2(original)
 	metaStr := strings.TrimPrefix(meta, "<!-- ")
 	metaStr = strings.TrimSuffix(metaStr, " -->")
 

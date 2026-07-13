@@ -10,7 +10,7 @@ import (
 // formatDueDate returns a styled due date string for inline display.
 // timeFormat is a Go time layout string (e.g. "15:04" or "3:04pm").
 func formatDueDate(task *models.Task, timeFormat string) string {
-	if task.DueDate == nil || task.Status.IsComplete() {
+	if task.DueDate == nil || task.IsComplete() {
 		return ""
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)

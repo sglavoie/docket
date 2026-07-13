@@ -5,6 +5,8 @@ import (
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/app"
 )
 
 // handleQuickSwitchKey handles key events when the quick-switch popup is open.
@@ -38,12 +40,17 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, t
 	entry := m.recentTaskVisits[realIdx]
 
 	if prefix == "," {
-		status, ok := StatusForPrefixKey(key)
+		state, ok := StateForPrefixKey(key)
 		if !ok {
 			return m, nil
 		}
-		result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(status)+" Task"), entry.Project, entry.Task.ID, status)
-		m.setSuccessStatus(result.StatusMessage)
+		res, err := m.appService.Transition(app.StateRequest{TaskID: entry.Task.ID, Target: state})
+		if err != nil {
+			m.setInfoStatus(fmt.Sprintf("Failed to change status: %v", err))
+			return m, nil
+		}
+		m.reloadProjectByID(res.ProjectID)
+		m.setSuccessStatus(fmt.Sprintf("Task #%d -> %s", res.ShortID, state))
 	}
 
 	if prefix == "!" {
@@ -51,8 +58,13 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, t
 		if !ok {
 			return m, nil
 		}
-		result := applyPriorityChange(simplePersistWithUndo(m.persister, m.config, "Set Priority"), entry.Project, entry.Task.ID, priority)
-		m.setSuccessStatus(result.StatusMessage)
+		res, err := m.appService.SetPriority(entry.Task.ID, priority)
+		if err != nil {
+			m.setInfoStatus(fmt.Sprintf("Failed to set priority: %v", err))
+			return m, nil
+		}
+		m.reloadProjectByID(res.ProjectID)
+		m.setSuccessStatus(fmt.Sprintf("Priority set to %d", priority))
 	}
 
 	m.refreshRecentTaskVisits()

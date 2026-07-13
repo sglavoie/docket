@@ -42,19 +42,19 @@ func computeCompletionSummaries(tasks []TaskSummary, cutoff, now time.Time, buck
 			continue
 		}
 
-		if !t.Status.IsComplete() {
+		if !t.WorkflowState.IsTerminal() {
 			continue
 		}
 
 		result.Total++
-		if t.Status == models.StatusDone {
+		if t.WorkflowState == models.StateDone {
 			result.Completed++
 		}
 
 		idx := assignToBucket(completedAt, buckets)
 		if idx >= 0 {
 			bucketResolved[idx]++
-			if t.Status == models.StatusDone {
+			if t.WorkflowState == models.StateDone {
 				bucketDone[idx]++
 			}
 		}

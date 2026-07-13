@@ -52,7 +52,7 @@ func TestTaskMatchesFieldFilters_Priority(t *testing.T) {
 
 func TestTaskMatchesFieldFilters_Status(t *testing.T) {
 	m := &CommandPaletteModel{}
-	task := &models.Task{Status: models.StatusInProgress}
+	task := &models.Task{WorkflowState: models.StateInProgress}
 	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
 
 	tests := []struct {
@@ -136,7 +136,8 @@ func TestTaskMatchesFieldFilters_Tag(t *testing.T) {
 
 func TestTaskMatchesFieldFilters_Section(t *testing.T) {
 	m := &CommandPaletteModel{}
-	task := &models.Task{Section: "backlog"}
+	// Section filters match the state-derived GTD bucket, not the raw legacy field.
+	task := &models.Task{WorkflowState: models.StateNext}
 	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
 
 	tests := []struct {
@@ -146,22 +147,22 @@ func TestTaskMatchesFieldFilters_Section(t *testing.T) {
 	}{
 		{
 			name:    "exact match",
-			filters: []fieldFilter{{field: "section", op: "eq", value: "backlog"}},
+			filters: []fieldFilter{{field: "section", op: "eq", value: "next"}},
 			want:    true,
 		},
 		{
 			name:    "case insensitive",
-			filters: []fieldFilter{{field: "section", op: "eq", value: "BACKLOG"}},
+			filters: []fieldFilter{{field: "section", op: "eq", value: "NEXT"}},
 			want:    true,
 		},
 		{
 			name:    "no match",
-			filters: []fieldFilter{{field: "section", op: "eq", value: "sprint"}},
+			filters: []fieldFilter{{field: "section", op: "eq", value: "someday"}},
 			want:    false,
 		},
 		{
 			name:    "in match",
-			filters: []fieldFilter{{field: "section", op: "in", alt: []string{"sprint", "backlog"}}},
+			filters: []fieldFilter{{field: "section", op: "in", alt: []string{"someday", "next"}}},
 			want:    true,
 		},
 	}
@@ -178,7 +179,7 @@ func TestTaskMatchesFieldFilters_Section(t *testing.T) {
 
 func TestTaskMatchesFieldFilters_SectionGTDOnly(t *testing.T) {
 	m := &CommandPaletteModel{}
-	task := &models.Task{Section: models.SectionInbox}
+	task := &models.Task{WorkflowState: models.StateInbox}
 	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
 
 	tests := []struct {
@@ -230,12 +231,14 @@ func TestBuildSectionListIgnoresNonGTDSections(t *testing.T) {
 	}
 	project.Sections = []string{models.SectionNext, models.SectionInbox, "Sprint1"}
 
+	// Non-GTD custom sections are no longer representable on a task; the task
+	// state buckets to a GTD section. The non-GTD exclusion is still exercised
+	// via project.Sections above ("Sprint1"), which buildSectionList drops.
 	task1, _ := models.NewTask("1", 1, models.TaskTypeTask, "Task 1")
-	task1.Section = models.SectionInbox
-	task1.Section = "Sprint1"
+	task1.SetSection(models.SectionInbox)
 
 	task2, _ := models.NewTask("2", 2, models.TaskTypeTask, "Task 2")
-	task2.Section = "Sprint1"
+	task2.SetSection(models.SectionInbox)
 
 	project.Tasks = []*models.Task{task1, task2}
 
@@ -341,8 +344,8 @@ func TestTaskMatchesFieldFilters_OverdueExcludesCompleted(t *testing.T) {
 	yesterday := today.AddDate(0, 0, -1)
 
 	task := &models.Task{
-		DueDate: &yesterday,
-		Status:  models.StatusDone,
+		DueDate:       &yesterday,
+		WorkflowState: models.StateDone,
 	}
 	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
 	filters := []fieldFilter{{field: "date", op: "eq", value: "overdue"}}
@@ -352,13 +355,13 @@ func TestTaskMatchesFieldFilters_OverdueExcludesCompleted(t *testing.T) {
 		t.Error("completed task with past due date should not match @overdue filter")
 	}
 
-	task.Status = models.StatusCanceled
+	task.WorkflowState = models.StateCanceled
 	got = m.taskMatchesFieldFilters(item, filters)
 	if got {
 		t.Error("canceled task with past due date should not match @overdue filter")
 	}
 
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 	got = m.taskMatchesFieldFilters(item, filters)
 	if !got {
 		t.Error("active task with past due date should match @overdue filter")

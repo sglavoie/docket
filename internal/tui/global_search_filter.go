@@ -102,7 +102,7 @@ func (m *GlobalSearchModel) filterTasks() {
 
 		// Hide completed/canceled tasks when toggle is on and no explicit status filter
 		if m.hideCompleted && !result.IsNote() && len(m.parsedFilters.Statuses) == 0 {
-			if result.Task.Status.IsComplete() {
+			if result.Task.IsComplete() {
 				continue
 			}
 		}
@@ -147,7 +147,7 @@ func (m *GlobalSearchModel) filterTasks() {
 		}
 
 		// First apply structured filters
-		if !TaskMatchesFilters(result.Task, m.parsedFilters) {
+		if !TaskMatchesFilters(result.Task, m.parsedFilters, m.config) {
 			continue
 		}
 

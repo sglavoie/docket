@@ -38,7 +38,7 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 		return evalStringOp(string(task.Type), c.Operation, c.Value)
 
 	case "status":
-		return evalStringOp(string(task.Status), c.Operation, c.Value)
+		return evalStringOp(legacyStatusColumnForState(task.State()), c.Operation, c.Value)
 
 	case "priority":
 		taskVal := task.Priority
@@ -58,7 +58,7 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 		return evalDueDate(task, c.Value)
 
 	case "section":
-		return evalStringOp(task.Section, c.Operation, c.Value)
+		return evalStringOp(taskSectionBucket(task), c.Operation, c.Value)
 
 	case "score_min":
 		threshold, err := strconv.ParseFloat(c.Value, 64)
@@ -77,8 +77,7 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 
 	case "actionable":
 		wantActionable := strings.EqualFold(c.Value, "true")
-		isActionable := task.Status != models.StatusBlocked && !project.HasIncompleteDependencies(task)
-		return isActionable == wantActionable
+		return taskIsActionableState(task, project) == wantActionable
 
 	case "parked":
 		wantParked := strings.EqualFold(c.Value, "true")

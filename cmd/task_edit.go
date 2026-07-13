@@ -3,13 +3,12 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var taskEditCmd = &cobra.Command{
@@ -48,8 +47,9 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Load project and config once
-	project, cfg, configManager, err := LoadCurrentProject()
+	// Load project and config once (the config manager is no longer needed here:
+	// the mutation is persisted through the application layer, not a direct save).
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -104,20 +104,25 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Apply changes directly to the already-loaded task and save
-	prevStates := workflow.CaptureTaskStates(project.Tasks)
-	task.Title = newTitle
-	task.Description = newDesc
-	task.UpdatedAt = time.Now()
-
-	if err := SaveProject(project, &SaveOptions{
-		EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates,
-		UndoAction: "Edit Task", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
-	}); err != nil {
-		return err
+	// Route the persistence through the application layer so the edit commits
+	// atomically, revision-checked, and undoably via app.Service (with
+	// stale-revision retry). The interactive editor and content parse above stay
+	// local because they need the loaded task; only the mutation moves. The task
+	// was resolved from the current project, so its UUID targets the use case
+	// directly.
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.Edit(app.EditRequest{
+			TaskID:      task.ID,
+			Title:       &newTitle,
+			Description: &newDesc,
+		})
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
 
-	return out.OutputTask(project.Name, "Updated", task)
+	return emitMutation(out, "Updated", res)
 }
 
 // buildEditContent creates the content shown in the editor.

@@ -13,20 +13,18 @@ import (
 // TaskFormFlagsPickedMsg is emitted when the user confirms flag selection.
 type TaskFormFlagsPickedMsg struct {
 	Pinned bool
-	Active bool
 	Dimmed bool
 }
 
-// formFlagsPicker is an inline overlay for toggling task flags (Pinned/Active/Dimmed).
+// formFlagsPicker is an inline overlay for toggling task flags (Pinned/Dimmed).
 type formFlagsPicker struct {
 	cursor int
 	pinned bool
-	active bool
 	dimmed bool
 }
 
-func newFormFlagsPicker(pinned, active, dimmed bool) *formFlagsPicker {
-	return &formFlagsPicker{cursor: 0, pinned: pinned, active: active, dimmed: dimmed}
+func newFormFlagsPicker(pinned, dimmed bool) *formFlagsPicker {
+	return &formFlagsPicker{cursor: 0, pinned: pinned, dimmed: dimmed}
 }
 
 // handleKey processes a key press.
@@ -36,14 +34,14 @@ func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg
 	case "esc":
 		return nil, true, nil
 	case "enter":
-		return nil, true, TaskFormFlagsPickedMsg{Pinned: p.pinned, Active: p.active, Dimmed: p.dimmed}
+		return nil, true, TaskFormFlagsPickedMsg{Pinned: p.pinned, Dimmed: p.dimmed}
 	case "up", "k":
 		if p.cursor > 0 {
 			p.cursor--
 		}
 		return nil, false, nil
 	case "down", "j":
-		if p.cursor < 2 {
+		if p.cursor < 1 {
 			p.cursor++
 		}
 		return nil, false, nil
@@ -52,17 +50,7 @@ func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg
 		case 0:
 			p.pinned = !p.pinned
 		case 1:
-			p.active = !p.active
-			// Active and Dimmed are mutually exclusive (see task_lifecycle.go).
-			if p.active {
-				p.dimmed = false
-			}
-		case 2:
 			p.dimmed = !p.dimmed
-			// Active and Dimmed are mutually exclusive (see task_lifecycle.go).
-			if p.dimmed {
-				p.active = false
-			}
 		}
 		return nil, false, nil
 	}
@@ -84,7 +72,6 @@ func (p *formFlagsPicker) render(width int) string {
 	}
 	rows := []row{
 		{"Pinned", p.pinned},
-		{"Active", p.active},
 		{"Dimmed", p.dimmed},
 	}
 

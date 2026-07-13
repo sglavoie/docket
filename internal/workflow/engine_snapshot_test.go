@@ -136,8 +136,8 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 // snapshot has no business carrying these pointers at all.
 func TestCopyTaskState_DoesNotAliasParentOrChildren(t *testing.T) {
 	t.Run("Parent pointer is nil in snapshot", func(t *testing.T) {
-		parent := &models.Task{ID: "p", Status: models.StatusTodo}
-		child := &models.Task{ID: "c", Status: models.StatusInProgress, Parent: parent}
+		parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+		child := &models.Task{ID: "c", WorkflowState: models.StateInProgress, Parent: parent}
 
 		snap := CopyTaskState(child)
 		if snap.Parent != nil {

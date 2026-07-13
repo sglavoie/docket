@@ -65,7 +65,7 @@ func TestSaveCrossOutlinerStatePersistsPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
 	app.config.GlobalPinnedTags = []string{"backend"}
 	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
-	task := &models.Task{ID: "task", Title: "Backend task", Status: models.StatusTodo, Tags: []string{"backend"}}
+	task := &models.Task{ID: "task", Title: "Backend task", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	project.BuildTaskTree()
 	app.crossOutliner.loadedProjects = []*models.Project{project}
@@ -82,7 +82,7 @@ func TestHandleCrossProjectsLoadedRestoresPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
 	app.config.GlobalPinnedTags = []string{"backend"}
 	app.config.CrossOutlinerPinnedTagTab = "backend"
-	task := &models.Task{ID: "task", Title: "Backend task", Status: models.StatusTodo, Tags: []string{"backend"}}
+	task := &models.Task{ID: "task", Title: "Backend task", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	project.BuildTaskTree()
 	m := NewOutlinerModel(nil, app.config, app.configManager)

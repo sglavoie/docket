@@ -1,37 +1,25 @@
 package tui
 
 import (
-	"fmt"
-	"time"
-
 	tea "charm.land/bubbletea/v2"
+	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // buildKeyMap constructs the declarative KeyMap for FocusViewModel.
 func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
-	stages := m.focusStages()
-
 	var entries []keymap.Entry
 	entries = append(entries, m.focusNavigationEntries()...)
-	entries = append(entries, m.focusTaskActionEntries(stages)...)
-	entries = append(entries, m.focusFilterEntries(stages)...)
+	entries = append(entries, m.focusTaskActionEntries()...)
+	entries = append(entries, m.focusFilterEntries()...)
 	entries = append(entries, m.focusDirectEntries()...)
 
 	return &keymap.KeyMap{
 		ViewName: "Backlog",
 		Entries:  entries,
 	}
-}
-
-func (m *FocusViewModel) focusStages() []string {
-	if m.config == nil {
-		return nil
-	}
-	return m.config.Stages
 }
 
 func (m *FocusViewModel) focusNavigationEntries() []keymap.Entry {
@@ -89,25 +77,23 @@ func (m *FocusViewModel) focusNavigationEntries() []keymap.Entry {
 	return entries
 }
 
-func (m *FocusViewModel) focusTaskActionEntries(stages []string) []keymap.Entry {
-	return buildStandardTaskActionEntries(m.focusTaskActionDeps(stages))
+func (m *FocusViewModel) focusTaskActionEntries() []keymap.Entry {
+	return buildStandardTaskActionEntries(m.focusTaskActionDeps())
 }
 
-func (m *FocusViewModel) focusTaskActionDeps(stages []string) TaskKeymapDeps {
+func (m *FocusViewModel) focusTaskActionDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.focusHasItem,
-		Stages:           stages,
 		ToggleHelp:       m.focusToggleHelp,
 		SelectedTaskRefs: m.focusSelectedTaskRefs,
 		DeleteTask:       m.focusDeleteTask,
-		StatusChange:     m.focusStatusChangeAction,
+		StateChange:      m.focusStatusChangeAction,
 		PriorityChange:   m.focusPriorityChangeAction,
 		DueDateSet:       m.focusDueDateSetAction,
 		DueDateClear:     m.focusClearDueDate,
 		SnoozeDate:       m.focusSnoozeDateAction,
 		SectionMove:      m.focusSectionMoveAction,
-		StageChange:      m.focusStageChangeAction,
 		MarkDone:         m.focusMarkDone,
 		OpenURL:          m.focusOpenURL,
 		MoveToProject:    m.focusMoveToProject,
@@ -136,31 +122,16 @@ func (m *FocusViewModel) focusDeleteTask() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *FocusViewModel) focusStatusChangeAction(status string) keymap.Action {
-	s := models.TaskStatus(status)
+func (m *FocusViewModel) focusStatusChangeAction(state string) keymap.Action {
+	s := models.WorkflowState(state)
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, StatusVerb(s)+" Task",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.CanTransitionTo(s) != "" {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.ApplyTransition(s) })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Changed %d tasks to %s", count, s))
+			if cmd := bulkListStateCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), s); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsChangeStatus(m, s)
+		return m, wfChangeState(m, s)
 	}
 }
 
@@ -168,76 +139,35 @@ func (m *FocusViewModel) focusPriorityChangeAction(key string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
 			p, _ := PriorityForPrefixKey(key)
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Priority",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.Priority == p {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.Priority = p })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Set priority %d on %d tasks", p, count))
+			if cmd := bulkListPriorityCmd(m.bulk, m.getSelectedBulkItems(), p); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsChangePriority(m, key)
+		return m, wfChangePriority(m, key)
 	}
 }
 
 func (m *FocusViewModel) focusDueDateSetAction(days int) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Due Date",
-				func(proj *models.Project, taskID string) bool {
-					proj.MutateTask(taskID, func(t *models.Task) {
-						d := dueDate
-						t.DueDate = &d
-						t.HasTime = false
-					})
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else {
-				m.setStatus(fmt.Sprintf("Due date set on %d tasks", count))
+			if cmd := bulkListDueDateCmd(m.bulk, m.getSelectedBulkItems(), days); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsSetQuickDueDate(m, days)
+		return m, wfSetQuickDueDate(m, days)
 	}
 }
 
 func (m *FocusViewModel) focusClearDueDate() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && m.SelectedCount() > 0 {
-		items := m.getSelectedBulkItems()
-		count, err := taskOpsApplyBulk(m, items, "Clear Due Date",
-			func(proj *models.Project, taskID string) bool {
-				proj.MutateTask(taskID, func(t *models.Task) {
-					t.DueDate = nil
-					t.HasTime = false
-				})
-				return true
-			})
-		m.ExitMultiSelect()
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Error: %v", err))
-		} else {
-			m.setStatus(fmt.Sprintf("Cleared due date on %d tasks", count))
+		if cmd := bulkListClearDueDateCmd(m.bulk, m.getSelectedBulkItems()); cmd != nil {
+			return m, cmd
 		}
 		return m, nil
 	}
-	return taskOpsClearDueDate(m)
+	return m, wfClearDueDate(m)
 }
 
 func (m *FocusViewModel) focusSnoozeDateAction(key string) keymap.Action {
@@ -247,75 +177,25 @@ func (m *FocusViewModel) focusSnoozeDateAction(key string) keymap.Action {
 			return m, nil
 		}
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Snooze",
-				func(proj *models.Project, taskID string) bool {
-					proj.MutateTask(taskID, func(t *models.Task) { t.SnoozedUntil = snoozeDate })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else {
-				m.setStatus(fmt.Sprintf("Snoozed %d tasks", count))
+			if cmd := bulkListSnoozeCmd(m.bulk, m.getSelectedBulkItems(), snoozeDate); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsQuickSnooze(m, snoozeDate)
+		return m, wfQuickSnooze(m, snoozeDate)
 	}
 }
 
 func (m *FocusViewModel) focusSectionMoveAction(section string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Move to Section",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.InSection(section) {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.SetSection(section) })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were moved")
-			} else {
-				m.setStatus(fmt.Sprintf("Moved %d tasks to %s", count, section))
+			cmd, ok := bulkListSectionMoveCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), section)
+			if !ok {
+				m.setStatus(fmt.Sprintf("Unknown section %q", section))
 			}
-			return m, nil
+			return m, cmd
 		}
-		return taskOpsSectionMove(m, section)
-	}
-}
-
-func (m *FocusViewModel) focusStageChangeAction(stage string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Stage",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.Stage == stage {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.Stage = stage })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Set stage on %d tasks", count))
-			}
-			return m, nil
-		}
-		return taskOpsChangeStage(m, stage)
+		return m, wfSectionMove(m, section)
 	}
 }
 
@@ -326,7 +206,7 @@ func (m *FocusViewModel) focusMarkDone() (tea.Model, tea.Cmd) {
 		m.clampCursor()
 		return m, nil
 	}
-	return taskOpsChangeStatus(m, models.StatusDone)
+	return m, wfChangeState(m, models.StateDone)
 }
 
 func (m *FocusViewModel) focusOpenURL() (tea.Model, tea.Cmd) {
@@ -353,7 +233,7 @@ func (m *FocusViewModel) focusQuickNote() (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 }
 
-func (m *FocusViewModel) focusFilterEntries(stages []string) []keymap.Entry {
+func (m *FocusViewModel) focusFilterEntries() []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("#") },
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("p") },
@@ -366,7 +246,7 @@ func (m *FocusViewModel) focusFilterEntries(stages []string) []keymap.Entry {
 				return m.handleFocusFilterSubPrefix("Ft", key)
 			}
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleFocusFilterSubPrefix("Fs", key)
 			}
@@ -394,12 +274,6 @@ func (m *FocusViewModel) focusFilterEntries(stages []string) []keymap.Entry {
 				return m.handleFocusFilterSubPrefix("FS", key)
 			}
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleFocusFilterSubPrefix("F.", key)
-			}
-		},
-		StageFilterNames: stages,
 	})
 }
 
@@ -467,7 +341,7 @@ func (m *FocusViewModel) focusDirectEntries() []keymap.Entry {
 		key := k
 		entries = append(entries,
 			keymap.Bind(key, "Set priority "+key, "Actions", func() (tea.Model, tea.Cmd) {
-				return taskOpsChangePriority(m, key)
+				return m, wfChangePriority(m, key)
 			}, keymap.AsHidden()),
 		)
 	}

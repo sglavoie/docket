@@ -11,21 +11,20 @@ import (
 func TestCrossProjectRebuildRowsActionableFilter(t *testing.T) {
 	// Active task in empty section (actionable)
 	actionableTask := makeTask("act-1", "Actionable task", "")
-	actionableTask.Status = models.StatusTodo
+	actionableTask.WorkflowState = models.StateReady
 
 	// Task in Inbox section (not actionable)
 	inboxTask := makeTask("inbox-1", "Inbox task", models.SectionInbox)
-	inboxTask.Status = models.StatusTodo
 
 	// Blocked task (not actionable)
 	blockedTask := makeTask("blk-1", "Blocked task", "")
-	blockedTask.Status = models.StatusBlocked
+	blockedTask.WorkflowState = models.StateWaiting
 
 	// Task with incomplete dependency (not actionable)
 	blocker := makeTask("blocker-1", "Blocker", "")
-	blocker.Status = models.StatusTodo
+	blocker.WorkflowState = models.StateReady
 	depTask := makeTask("dep-1", "Depends on blocker", "")
-	depTask.Status = models.StatusTodo
+	depTask.WorkflowState = models.StateReady
 	depTask.DependsOn = []string{"blocker-1"}
 
 	proj := &models.Project{
@@ -141,11 +140,11 @@ func TestCrossProjectPinnedTagTabsIgnoreLegacyProjectSections(t *testing.T) {
 }
 
 func TestCrossProjectRebuildRowsIgnoresStalePinnedTagTabWithoutForce(t *testing.T) {
-	sprintTask := &models.Task{ID: "sprint", Title: "Sprint tagged task", Status: models.StatusTodo}
-	legacySprintTask := &models.Task{ID: "legacy", Title: "Legacy sprint task", Section: "Sprint-1", Status: models.StatusTodo}
-	designTask := &models.Task{ID: "design", Title: "Design task", Status: models.StatusTodo}
+	sprintTask := &models.Task{ID: "sprint", Title: "Sprint tagged task", WorkflowState: models.StateReady}
+	legacySprintTask := &models.Task{ID: "legacy", Title: "Legacy sprint task", WorkflowState: models.StateReady}
+	designTask := &models.Task{ID: "design", Title: "Design task", WorkflowState: models.StateReady}
 	activeTask := makeTask("active", "Active task", "")
-	activeTask.Status = models.StatusTodo
+	activeTask.WorkflowState = models.StateReady
 
 	proj := &models.Project{
 		ID:       "proj-custom-tabs",
@@ -187,10 +186,10 @@ func TestCrossProjectRebuildRowsIgnoresStalePinnedTagTabWithoutForce(t *testing.
 
 func TestCrossProjectRebuildRowsPinnedTagTabFiltersByGlobalPinnedTag(t *testing.T) {
 	backendTask := makeTask("backend", "Backend task", "")
-	backendTask.Status = models.StatusTodo
+	backendTask.WorkflowState = models.StateReady
 	backendTask.Tags = []string{"backend"}
 	frontendTask := makeTask("frontend", "Frontend task", "")
-	frontendTask.Status = models.StatusTodo
+	frontendTask.WorkflowState = models.StateReady
 	frontendTask.Tags = []string{"frontend"}
 	proj := &models.Project{
 		ID:    "proj-pinned-tabs",

@@ -2,7 +2,7 @@ package models
 
 import "testing"
 
-func TestMoveTaskToProjectPreservesGTDSectionsAndResetsNonGTDSections(t *testing.T) {
+func TestMoveTaskToProjectPreservesStateBuckets(t *testing.T) {
 	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
 	if err != nil {
 		t.Fatal(err)
@@ -19,13 +19,13 @@ func TestMoveTaskToProjectPreservesGTDSectionsAndResetsNonGTDSections(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = SectionInbox
+	task1.ApplyWorkflowState(StateInbox)
 
 	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = "LegacyBoard"
+	task2.ApplyWorkflowState(StateInProgress)
 
 	sourceProj.Tasks = []*Task{task1, task2}
 	sourceProj.BuildTaskTree()
@@ -34,16 +34,19 @@ func TestMoveTaskToProjectPreservesGTDSectionsAndResetsNonGTDSections(t *testing
 	if err != nil {
 		t.Fatalf("MoveTaskToProject failed: %v", err)
 	}
-	if task1.Section != SectionInbox {
-		t.Errorf("expected task1 to keep Inbox section, got %s", task1.Section)
+	if !task1.InSection(SectionInbox) {
+		t.Errorf("expected task1 to keep Inbox section, got %s", SectionForState(task1.State()))
 	}
 
 	result2, err := sourceProj.MoveTaskToProject(task2, destProj)
 	if err != nil {
 		t.Fatalf("MoveTaskToProject failed: %v", err)
 	}
-	if task2.Section != SectionNext {
-		t.Errorf("expected task2 section to reset to Next, got %s", task2.Section)
+	if task2.State() != StateInProgress {
+		t.Errorf("expected task2 to keep the in_progress state across the move, got %s", task2.State())
+	}
+	if !task2.InSection("") {
+		t.Errorf("expected task2 in the active bucket, got section %q", SectionForState(task2.State()))
 	}
 
 	if len(result1.MovedTasks) != 1 || len(result2.MovedTasks) != 1 {
@@ -74,13 +77,13 @@ func TestMoveTaskToProjectAddsGTDSectionToDestList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inboxTask.Section = SectionInbox
+	inboxTask.ApplyWorkflowState(StateInbox)
 
 	waitingTask, err := NewTask("waiting1", 2, TaskTypeTask, "Waiting Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitingTask.Section = SectionWaiting
+	waitingTask.ApplyWorkflowState(StateWaiting)
 
 	sourceProj.Tasks = []*Task{inboxTask, waitingTask}
 	sourceProj.BuildTaskTree()
@@ -116,19 +119,19 @@ func TestMoveTaskToProjectPreservesGTDSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inboxTask.Section = SectionInbox
+	inboxTask.ApplyWorkflowState(StateInbox)
 
 	waitingTask, err := NewTask("waiting1", 2, TaskTypeTask, "Waiting Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitingTask.Section = SectionWaiting
+	waitingTask.ApplyWorkflowState(StateWaiting)
 
 	somedayTask, err := NewTask("someday1", 3, TaskTypeTask, "Someday Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	somedayTask.Section = SectionSomeday
+	somedayTask.ApplyWorkflowState(StateSomeday)
 
 	sourceProj.Tasks = []*Task{inboxTask, waitingTask, somedayTask}
 	sourceProj.BuildTaskTree()
@@ -137,23 +140,23 @@ func TestMoveTaskToProjectPreservesGTDSections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MoveTaskToProject (inbox) failed: %v", err)
 	}
-	if inboxTask.Section != SectionInbox {
-		t.Errorf("expected inbox task to keep Inbox section, got %q", inboxTask.Section)
+	if !inboxTask.InSection(SectionInbox) {
+		t.Errorf("expected inbox task to keep Inbox section, got %q", SectionForState(inboxTask.State()))
 	}
 
 	_, err = sourceProj.MoveTaskToProject(waitingTask, destProj)
 	if err != nil {
 		t.Fatalf("MoveTaskToProject (waiting) failed: %v", err)
 	}
-	if waitingTask.Section != SectionWaiting {
-		t.Errorf("expected waiting task to keep Waiting section, got %q", waitingTask.Section)
+	if !waitingTask.InSection(SectionWaiting) {
+		t.Errorf("expected waiting task to keep Waiting section, got %q", SectionForState(waitingTask.State()))
 	}
 
 	_, err = sourceProj.MoveTaskToProject(somedayTask, destProj)
 	if err != nil {
 		t.Fatalf("MoveTaskToProject (someday) failed: %v", err)
 	}
-	if somedayTask.Section != SectionSomeday {
-		t.Errorf("expected someday task to keep Someday section, got %q", somedayTask.Section)
+	if !somedayTask.InSection(SectionSomeday) {
+		t.Errorf("expected someday task to keep Someday section, got %q", SectionForState(somedayTask.State()))
 	}
 }

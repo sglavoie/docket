@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -85,41 +86,29 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			return true, nil
 		}
 
-		// Check if this is a bulk operation from palette
+		// Bulk operation from palette (PaletteBulkPriorityMsg): commit every selected
+		// task's priority as one asynchronous cross-project transaction through the
+		// BulkCoordinator. Priority is an attribute mutation, so no workflow rules run;
+		// the shell owns reload and selection-clear via the batch result.
 		if len(m.pendingBulkTasks) > 0 {
 			refs := validTaskProjectRefs(m.pendingBulkTasks)
-			count, _, err := m.applyBulkTaskRefsWithWorkflow(refs, "Set Priority", func(project *models.Project, taskID string) bool {
-				return project.MutateTask(taskID, func(t *models.Task) {
-					t.Priority = msg.Priority
-				})
-			})
-
+			taskIDs := taskIDsFromTaskRefs(refs)
 			m.pendingBulkTasks = nil
-			if err != nil {
-				return true, errorCmd("save failed: %w", err)
-			}
-			m.clearBulkTaskSelectionsForRefs(refs)
-			successMsg := fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, count)
-			m.setSuccessStatus(successMsg)
-			cmds := m.refreshTaskViewsAfterSave()
-			cmds = append(cmds, defaultStatusTimeout())
-			return true, tea.Batch(cmds...)
+			cmd := m.secondaryFeatures.Bulk.SetPriority(taskIDs, msg.Priority)
+			return true, finalizeBatchResult(cmd, taskIDs, fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, len(taskIDs)))
 		}
 
-		// Single task operation
+		// Single task operation: commit through the application-layer priority
+		// mutation (one ledger-undoable ChangeSet), then reload and refresh.
 		if msg.Task != nil && msg.Project != nil {
-			undoOpts := m.taskMutationSaveOptions(msg.Task, "Set Priority")
-			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-				t.Priority = msg.Priority
-			}) {
-				return true, errorCmd("task no longer exists in project")
+			res, err := m.appService.SetPriority(msg.Task.ID, msg.Priority)
+			if err != nil {
+				return true, errorCmd("%s", err)
 			}
-
-			successMsg := fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				m.appPersister().SaveWithBackupOptions(msg.Project, successMsg, undoOpts),
-			)
+			m.reloadProjectByID(res.ProjectID)
+			return true, m.handleSaveComplete(SaveCompleteMsg{
+				SuccessMessage: fmt.Sprintf("Set priority %d for task #%d", msg.Priority, res.ShortID),
+			})
 		}
 		return true, nil
 
@@ -135,15 +124,16 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if len(m.pendingBulkSectionTasks) > 0 && m.pendingBulkSectionProject != nil {
 			project := m.pendingBulkSectionProject
 			count := 0
-			var changedIDs []string
+			var clearIDs []string
 			for _, task := range m.pendingBulkSectionTasks {
-				if task != nil {
-					if project.MutateTask(task.ID, func(t *models.Task) {
-						assignSection(t, msg.Section)
-					}) {
-						count++
-						changedIDs = append(changedIDs, task.ID)
-					}
+				if task == nil {
+					continue
+				}
+				clearIDs = append(clearIDs, task.ID)
+				if project.MutateTask(task.ID, func(t *models.Task) {
+					assignSection(t, msg.Section)
+				}) {
+					count++
 				}
 			}
 
@@ -155,7 +145,6 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			}
 			m.config.ApplyGlobalColorsToProject(project)
 
-			refs := taskProjectRefsFromTasks(m.pendingBulkSectionTasks, project)
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkSectionProject = nil
 
@@ -166,24 +155,18 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			default:
 				successMsg = fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
 			}
-			opts := BuildWorkflowOpts(
-				m.appPersister(),
-				project,
-				m.config,
-				m.configManager,
-				nil,
-				"Move to Section",
-				fmt.Sprintf("%d tasks", count),
-				changedIDs,
-			)
-			if err := persistWithWorkflow(opts); err != nil {
-				return true, errorCmd("save failed: %w", err)
+			// Commit the already-mutated project through the workflow-aware
+			// coordinator: grouped ledger undo plus the legacy rule cascade
+			// (stateless, matching the former nil-PrevStates save). The shell owns
+			// reload, selection-clear, and the status line via the async batch
+			// result, mirroring the migrated ProjectTree/Outliner section moves.
+			opts := app.ProjectWorkflowOptions{
+				Rules:       m.config.GetEnabledWorkflowRules(),
+				UndoAction:  "Move to Section",
+				UndoContext: fmt.Sprintf("%d tasks", count),
 			}
-			m.clearBulkTaskSelectionsForRefs(refs)
-			m.setSuccessStatus(successMsg)
-			cmds := m.refreshTaskViewsAfterSave()
-			cmds = append(cmds, defaultStatusTimeout())
-			return true, tea.Batch(cmds...)
+			cmd := m.secondaryFeatures.TaskItem.CommitProjectWorkflow(project, opts, successMsg)
+			return true, finalizeBatchResult(cmd, clearIDs, "")
 		}
 
 		// Form-based section pick (no task yet, e.g. TaskFormModel in create mode)
@@ -192,24 +175,18 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			return true, cmd
 		}
 
-		// Single task operation
+		// Single task operation: route through the canonical application-layer
+		// SetSection seam (one ledger-undoable ChangeSet). Matching the finalized
+		// retired-section decision (see handleGlobalSectionChanged), this no longer
+		// ensures the section on the project or applies global section colors — the
+		// section field is a retired legacy artifact resynced only into the derived
+		// workflow state.
 		if msg.Task != nil && msg.Project != nil {
-			undoOpts := m.taskMutationSaveOptions(msg.Task, "Move to Section")
-			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-				assignSection(t, msg.Section)
-			}) {
-				return true, errorCmd("task no longer exists in project")
+			res, err := m.appService.SetSection(msg.Task.ID, msg.Section)
+			if err != nil {
+				return true, errorCmd("%s", err)
 			}
-
-			if msg.Section != "" {
-				msg.Project.EnsureSection(msg.Section)
-				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
-					msg.Project.SetSectionColor(msg.Section, globalColor)
-				}
-			}
-
-			m.config.ApplyGlobalColorsToProject(msg.Project)
-
+			m.reloadProjectByID(res.ProjectID)
 			var successMsg string
 			switch msg.Section {
 			case "":
@@ -217,10 +194,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			default:
 				successMsg = fmt.Sprintf("Moved to %s", msg.Section)
 			}
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				m.appPersister().SaveWithBackupOptions(msg.Project, successMsg, undoOpts),
-			)
+			return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: successMsg})
 		}
 		return true, nil
 

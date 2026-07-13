@@ -16,17 +16,18 @@ func TestGroupByStatusIncludesStandby(t *testing.T) {
 	items := []CrossProjectTask{{Task: standbyTask, Project: proj}}
 	groups := m.groupByStatus(items)
 
+	// The legacy standby status maps to the paused workflow state.
 	found := false
 	for _, g := range groups {
-		if g.Name == string(models.StatusStandby) {
+		if g.Name == string(models.StatePaused) {
 			found = true
 			if len(g.Tasks) != 1 {
-				t.Errorf("standby group has %d tasks, want 1", len(g.Tasks))
+				t.Errorf("paused group has %d tasks, want 1", len(g.Tasks))
 			}
 		}
 	}
 	if !found {
-		t.Error("groupByStatus did not produce a group for standby tasks")
+		t.Error("groupByStatus did not produce a group for paused (standby) tasks")
 	}
 }
 
@@ -48,9 +49,10 @@ func TestGroupByStatusIncludesAllActiveStatuses(t *testing.T) {
 		groupNames[g.Name] = true
 	}
 
-	for _, s := range statuses {
-		if !groupNames[string(s)] {
-			t.Errorf("groupByStatus missing group for status %q", s)
+	// Every task groups under its derived workflow state.
+	for _, item := range items {
+		if !groupNames[string(item.Task.State())] {
+			t.Errorf("groupByStatus missing group for state %q (task %q)", item.Task.State(), item.Task.Title)
 		}
 	}
 }

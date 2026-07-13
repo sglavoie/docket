@@ -14,13 +14,10 @@ import (
 )
 
 func (m *TaskDecisionsModel) saveDecision() tea.Cmd {
-	task, err := appendDecision(
-		m.project,
-		m.task.ID,
-		m.textInput.Value(),
-		strings.TrimSpace(m.rationaleInput.Value()),
-		m.selectedCategory(),
-	)
+	text := m.textInput.Value()
+	rationale := strings.TrimSpace(m.rationaleInput.Value())
+	category := m.selectedCategory()
+	task, err := appendDecision(m.project, m.task.ID, text, rationale, category)
 	if err != nil {
 		m.err = err
 		return nil
@@ -31,7 +28,9 @@ func (m *TaskDecisionsModel) saveDecision() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Decisions) - 1
 
-	return persistTaskItemMutation(m.project, DecisionAddedMsg{Task: task})
+	return commitTaskItemMutation(m.project, task, m.coordinator.AddDecision(task.ID, text, rationale, category), func(fresh *models.Task) tea.Msg {
+		return DecisionAddedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskDecisionsModel) executeDelete() tea.Cmd {
@@ -46,6 +45,7 @@ func (m *TaskDecisionsModel) executeDelete() tea.Cmd {
 			return len(task.Decisions)
 		},
 		errorMessage: "failed to remove decision",
+		commit:       m.coordinator.RemoveDecision,
 		success: func(task *models.Task) tea.Msg {
 			return DecisionDeletedMsg{Task: task}
 		},
@@ -78,13 +78,18 @@ func (m *TaskDecisionsModel) saveEditedDecision() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("decision was deleted externally")} }
 	}
 
-	m.task.Decisions[m.editIndex].Text = text
-	m.task.Decisions[m.editIndex].Rationale = strings.TrimSpace(m.editRationale.Value())
-	m.task.Decisions[m.editIndex].Category = m.selectedEditCategory()
+	editIndex := m.editIndex
+	rationale := strings.TrimSpace(m.editRationale.Value())
+	category := m.selectedEditCategory()
+	m.task.Decisions[editIndex].Text = text
+	m.task.Decisions[editIndex].Rationale = rationale
+	m.task.Decisions[editIndex].Category = category
 	m.cancelEditMode()
 	m.err = nil
 
-	return persistTaskItemMutation(m.project, DecisionEditedMsg{Task: m.task})
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditDecision(m.task.ID, editIndex, text, rationale, &category), func(fresh *models.Task) tea.Msg {
+		return DecisionEditedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskDecisionsModel) editInExternalEditor() tea.Cmd {
@@ -94,6 +99,7 @@ func (m *TaskDecisionsModel) editInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	return m.editDecisionWithExternalEditor(content, true, func(newText, newRationale string) tea.Msg {
 		if newText == decision.Text && newRationale == decision.Rationale {
 			return nil
@@ -107,11 +113,9 @@ func (m *TaskDecisionsModel) editInExternalEditor() tea.Cmd {
 
 		task.Decisions[editIndex].Text = newText
 		task.Decisions[editIndex].Rationale = newRationale
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return DecisionEditedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.EditDecision(task.ID, editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
+			return DecisionEditedMsg{Task: fresh}
+		})()
 	})
 }
 
@@ -122,6 +126,7 @@ func (m *TaskDecisionsModel) addDecisionInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	category := m.selectedCategory()
 	m.cancelAddMode()
 
@@ -134,11 +139,9 @@ func (m *TaskDecisionsModel) addDecisionInExternalEditor() tea.Cmd {
 		}
 
 		task.AddDecision(newText, newRationale, category)
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return DecisionAddedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.AddDecision(task.ID, newText, newRationale, category), func(fresh *models.Task) tea.Msg {
+			return DecisionAddedMsg{Task: fresh}
+		})()
 	})
 }
 
@@ -151,6 +154,7 @@ func (m *TaskDecisionsModel) toggleResolved() tea.Cmd {
 			return task.ToggleDecisionResolved(index)
 		},
 		errorMessage: "failed to toggle decision resolved state",
+		commit:       m.coordinator.ToggleDecisionResolved,
 		success: func(task *models.Task) tea.Msg {
 			return DecisionResolvedMsg{Task: task}
 		},
@@ -170,6 +174,7 @@ func (m *TaskDecisionsModel) editDecisionInExternalEditorFromEditMode() tea.Cmd 
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	originalText := decision.Text
 	originalRationale := decision.Rationale
 	m.cancelEditMode()
@@ -187,11 +192,9 @@ func (m *TaskDecisionsModel) editDecisionInExternalEditorFromEditMode() tea.Cmd 
 
 		task.Decisions[editIndex].Text = newText
 		task.Decisions[editIndex].Rationale = newRationale
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return DecisionEditedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.EditDecision(task.ID, editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
+			return DecisionEditedMsg{Task: fresh}
+		})()
 	})
 }
 

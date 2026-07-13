@@ -5,14 +5,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 // Shell completion values for enumerated flags.
 var (
 	taskTypeCompletions   = []string{"epic", "story", "task", "bug", "idea"}
 	statusCompletions     = []string{"todo", "in_progress", "review", "standby", "maybe", "done", "blocked", "canceled"}
+	stateCompletions      = []string{"inbox", "ready", "next", "in_progress", "waiting", "paused", "review", "someday", "done", "canceled"}
 	sortCompletions       = []string{"priority", "created", "updated", "status", "title"}
 	categoryCompletions   = []string{"bug", "feature", "process"}
 	statusIconCompletions = []string{"planning", "wip", "active", "review", "testing", "stabilizing", "maintenance", "bugfix", "paused", "archived"}
@@ -43,11 +42,14 @@ func completeProjectSections() func(*cobra.Command, []string, string) ([]string,
 // with any custom contexts defined in the user's config.
 func completeContexts() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		cfg, _, err := LoadConfig()
+		_, mgr, err := LoadConfig()
 		if err != nil {
 			return builtinContexts, cobra.ShellCompDirectiveNoFileComp
 		}
-		custom := cfg.GetCustomContextNames()
+		custom, err := customContextNames(mgr)
+		if err != nil {
+			return builtinContexts, cobra.ShellCompDirectiveNoFileComp
+		}
 		all := make([]string, 0, len(builtinContexts)+len(custom))
 		all = append(all, builtinContexts...)
 		all = append(all, custom...)
@@ -56,13 +58,14 @@ func completeContexts() func(*cobra.Command, []string, string) ([]string, cobra.
 }
 
 // isKnownContext reports whether ctx matches a built-in or custom context name.
-func isKnownContext(ctx string, cfg *config.Config) bool {
+// customNames is the sorted custom-context list loaded from the machine domain.
+func isKnownContext(ctx string, customNames []string) bool {
 	for _, b := range builtinContexts {
 		if strings.EqualFold(ctx, b) {
 			return true
 		}
 	}
-	for _, c := range cfg.GetCustomContextNames() {
+	for _, c := range customNames {
 		if strings.EqualFold(ctx, c) {
 			return true
 		}
@@ -70,11 +73,12 @@ func isKnownContext(ctx string, cfg *config.Config) bool {
 	return false
 }
 
-// knownContextList returns a human-readable comma-joined list of all known contexts.
-func knownContextList(cfg *config.Config) string {
-	all := make([]string, 0, len(builtinContexts)+len(cfg.GetCustomContextNames()))
+// knownContextList returns a human-readable comma-joined list of all known
+// contexts, given the custom-context names loaded from the machine domain.
+func knownContextList(customNames []string) string {
+	all := make([]string, 0, len(builtinContexts)+len(customNames))
 	all = append(all, builtinContexts...)
-	all = append(all, cfg.GetCustomContextNames()...)
+	all = append(all, customNames...)
 	return strings.Join(all, ", ")
 }
 
@@ -96,12 +100,16 @@ func completeCurrentProjectTaskIDs() func(*cobra.Command, []string, string) ([]s
 // completeProjectSlugs returns a completion function that lists active project slugs.
 func completeProjectSlugs() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		cfg, _, err := LoadConfig()
+		_, mgr, err := LoadConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		projects, err := activeProjects(mgr)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		var slugs []string
-		for _, p := range cfg.GetActiveProjects() {
+		for _, p := range projects {
 			slugs = append(slugs, p.Slug)
 		}
 		return slugs, cobra.ShellCompDirectiveNoFileComp
@@ -122,12 +130,16 @@ func completeConfigStages() func(*cobra.Command, []string, string) ([]string, co
 // completeTemplates returns a completion function that lists task template IDs and names.
 func completeTemplates() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		cfg, _, err := LoadConfig()
+		_, mgr, err := LoadConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		templates, err := taskTemplates(mgr)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		var completions []string
-		for _, t := range cfg.TaskTemplates {
+		for _, t := range templates {
 			completions = append(completions, t.ID+"\t"+t.Name)
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp

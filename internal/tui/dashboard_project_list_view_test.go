@@ -23,7 +23,7 @@ func TestProjectStatusWidthBlockedMatchesIndicator(t *testing.T) {
 		ID:   "p1",
 		Name: "Project",
 		Tasks: []*models.Task{
-			{ID: "t1", Title: "blocked task", Status: models.StatusBlocked},
+			{ID: "t1", Title: "blocked task", WorkflowState: models.StateWaiting},
 		},
 	}
 

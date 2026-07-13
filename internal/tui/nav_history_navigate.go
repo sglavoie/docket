@@ -132,7 +132,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewGlobalSearch, m.globalSearch)
 		return m.globalSearch.Init()
 	case ViewGlobalBlockers:
-		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config))
+		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config, m.secondaryFeatures.Blocker))
 	case ViewGlobalNotes:
 		dir := storage.GlobalNotesDir(m.config.DataDir)
 		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.config))
@@ -141,7 +141,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.globalInboxProcessor = processor
 		m.showView(ViewGlobalInboxProcessor, processor)
 	case ViewGlobalTagManager:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.configManager))
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.secondaryFeatures.Tag, m.configManager))
 	case ViewSettings:
 		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
 	case ViewWorkflowRules:
@@ -160,7 +160,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		// Recreate when cached model is project-scoped so the global view is
 		// not contaminated by a previous project's metrics.
 		if m.metricsDashboard == nil || !m.metricsDashboard.isGlobal {
-			m.metricsDashboard = NewMetricsDashboardModel(m.config)
+			m.metricsDashboard = NewMetricsDashboardModel(m.configManager)
 		} else {
 			m.metricsDashboard.computeMetrics()
 		}
@@ -183,6 +183,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewFocusBoard, fb)
 	case ViewAllTasks:
 		atv := NewAllTasksViewModel(m.config, m.configManager)
+		atv.bulk = m.secondaryFeatures.Bulk
 		atv.queueIDs = m.focusQueueIDs
 		atv.dailyPlanIDs = m.dailyPlanIDs
 		if m.allTasksFilterCache != nil {
@@ -226,7 +227,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	case ViewNotes:
 		m.showView(ViewNotes, NewNotesViewModel(project, m.config))
 	case ViewBlockers:
-		m.showView(ViewBlockers, NewBlockersModelWithEditor(project, m.config.Editor))
+		m.showView(ViewBlockers, NewBlockersModelWithEditor(project, m.config.Editor, m.secondaryFeatures.Blocker))
 	case ViewInboxProcessor:
 		processor := NewInboxProcessorModel(project, m.config, m.configManager)
 		m.inboxProcessor = processor
@@ -246,7 +247,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		// Recreate when cached model is for a different project (or global)
 		// to avoid leaking the previous project's metrics into this view.
 		if m.metricsDashboard == nil || m.metricsDashboard.isGlobal || m.metricsDashboard.project != project {
-			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, project)
+			m.metricsDashboard = NewMetricsDashboardModelForProject(m.configManager, project)
 		} else {
 			m.metricsDashboard.computeMetrics()
 		}
@@ -290,16 +291,16 @@ func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
 	switch entry.ViewType {
 	case ViewTaskComments:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(task, project, m.config.Editor))
+		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(task, project, m.config.Editor, m.secondaryFeatures.Subview))
 	case ViewTaskDecisions:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(task, project, m.config.Editor))
+		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(task, project, m.config.Editor, m.secondaryFeatures.Subview))
 	case ViewTaskChecklist:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(task, project, m.config.Editor))
+		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(task, project, m.config.Editor, m.secondaryFeatures.Subview))
 	case ViewTaskAttachments:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(task, project, m.config))
+		m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(task, project, m.config, m.secondaryFeatures.Attachment))
 	case ViewTaskActivity:
 		m.lastNavigatedTaskID = task.ID
 		m.showView(ViewTaskActivity, NewTaskActivityModel(task, project))

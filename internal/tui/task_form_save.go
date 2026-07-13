@@ -10,6 +10,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -173,102 +174,65 @@ func (m *TaskFormModel) buildDraftTaskAttrs() (
 	return
 }
 
-// saveCreate creates a new task from the draft, appends subtasks, saves the
-// project, and returns a Cmd that emits TaskCreatedMsg.
+// saveCreate builds an AddTaskRequest from the draft and routes creation through
+// the task-form coordinator, which commits the new task (and any subtasks and
+// template artifact) as one atomic ChangeSet. The returned Cmd emits a
+// TaskCreatedMsg carrying the committed result; the shell reloads and re-resolves
+// the task pointers for navigation, status, and open-after.
 func (m *TaskFormModel) saveCreate() tea.Cmd {
-	now := time.Now()
 	bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildDraftTaskAttrs()
 
-	task := &models.Task{
-		ID:              uuid.New().String(),
-		ShortID:         m.project.GetNextShortID(),
-		Type:            m.draft.taskType,
-		Title:           m.draft.title,
-		Description:     strings.TrimSpace(m.draft.desc),
-		Status:          models.StatusTodo,
-		Priority:        m.draft.priority,
-		ParentID:        m.draft.parentID,
-		DueDate:         m.draft.dueDate,
-		HasTime:         m.draft.hasTime,
-		StartDate:       m.draft.startDate,
-		EstimatedDays:   m.draft.estimatedDays,
-		Pinned:          m.draft.pinned,
-		Active:          m.draft.active,
-		Dimmed:          m.draft.dimmed,
-		Recurrence:      m.draft.recurrence,
-		URL:             m.draft.url,
-		Source:          m.draft.source,
-		BugAttrs:        bugAttrs,
-		IdeaAttrs:       ideaAttrs,
-		TaskAttrs:       taskAttrs,
-		StoryAttrs:      storyAttrs,
-		EpicAttrs:       epicAttrs,
-		DependsOn:       []string{},
-		RelatedTo:       []string{},
-		ScoreDimensions: map[string]int{},
-		Children:        []*models.Task{},
-		CreatedAt:       now,
-		UpdatedAt:       now,
-	}
-
-	task.SetSection(m.draft.section)
-
-	if m.draft.pinned {
-		task.PinnedAt = &now
-	}
-
-	task.Tags = append([]string{}, m.draft.tags...)
-
-	// Build checklist from draft items (skip blank entries).
-	for _, item := range m.draft.checklist {
-		text := strings.TrimSpace(item.Text)
-		if text == "" {
-			continue
-		}
-		task.Checklist = append(task.Checklist, models.ChecklistItem{
-			Text: text,
-			Done: item.Done,
-		})
-	}
-
-	m.project.Tasks = insertBeforeDimmedInSection(m.project.Tasks, task)
-
-	// Create subtask children for Epic/Story (create mode only).
-	var openAfterSubtask *models.Task
+	// Build the subtask request list (blank titles skipped) and map the draft
+	// open-after index onto the created (non-blank) subtask index.
+	var subReqs []app.AddSubtaskRequest
+	openCreatedIdx := -1
 	if formTypeCanHaveSubtasks(m.draft.taskType) {
-		draftIdx := 0
-		for _, st := range m.draft.subtasks {
-			stTitle := strings.TrimSpace(st.title)
-			if stTitle == "" {
-				draftIdx++
+		wantOpen := m.subtaskOpenDetail || m.subtaskOpenContent
+		created := 0
+		for i, st := range m.draft.subtasks {
+			title := strings.TrimSpace(st.title)
+			if title == "" {
 				continue
 			}
-			subtask := &models.Task{
-				ID:              uuid.New().String(),
-				ShortID:         m.project.GetNextShortID(),
-				Type:            st.taskType,
-				Title:           stTitle,
-				Status:          models.StatusTodo,
-				Priority:        m.draft.priority,
-				ParentID:        &task.ID,
-				DependsOn:       []string{},
-				RelatedTo:       []string{},
-				ScoreDimensions: map[string]int{},
-				Children:        []*models.Task{},
-				CreatedAt:       now,
-				UpdatedAt:       now,
+			subReqs = append(subReqs, app.AddSubtaskRequest{Title: title, Type: st.taskType})
+			if wantOpen && i == m.subtaskOpenIdx {
+				openCreatedIdx = created
 			}
-			subtask.SetSection(m.draft.section)
-			subtask.Tags = append([]string{}, m.draft.tags...)
-			m.project.Tasks = append(m.project.Tasks, subtask)
-			if (m.subtaskOpenDetail || m.subtaskOpenContent) && draftIdx == m.subtaskOpenIdx {
-				openAfterSubtask = subtask
-			}
-			draftIdx++
+			created++
 		}
 	}
 
-	// Increment template use count when created from a template.
+	req := app.AddTaskRequest{
+		ProjectID:          m.project.ID,
+		Title:              m.draft.title,
+		Type:               m.draft.taskType,
+		Priority:           m.draft.priority,
+		Tags:               append([]string{}, m.draft.tags...),
+		Description:        strings.TrimSpace(m.draft.desc),
+		Section:            m.draft.section,
+		Recurrence:         m.draft.recurrence,
+		ParentID:           m.draft.parentID,
+		ChecklistItems:     append([]models.ChecklistItem(nil), m.draft.checklist...),
+		DueDate:            m.draft.dueDate,
+		HasTime:            m.draft.hasTime,
+		StartDate:          m.draft.startDate,
+		EstimatedDays:      m.draft.estimatedDays,
+		URL:                m.draft.url,
+		Source:             m.draft.source,
+		Pinned:             m.draft.pinned,
+		Dimmed:             m.draft.dimmed,
+		InsertBeforeDimmed: true,
+		Subtasks:           subReqs,
+		BugAttrs:           bugAttrs,
+		IdeaAttrs:          ideaAttrs,
+		TaskAttrs:          taskAttrs,
+		StoryAttrs:         storyAttrs,
+		EpicAttrs:          epicAttrs,
+	}
+
+	// Increment template use count when created from a template. This is a config
+	// write (not a tasks.md save), left as a separate persistence step exactly as
+	// the legacy path had it.
 	if m.fromTemplate != nil && m.config != nil && m.configManager != nil {
 		m.config.IncrementTemplateUseCount(m.fromTemplate.ID)
 		if err := m.configManager.Save(m.config); err != nil {
@@ -276,26 +240,32 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		}
 	}
 
-	m.project.BuildTaskTree()
-	m.project.ReorderRootTasksByCompletion()
-
-	if err := saveProjectSync(m.project); err != nil {
-		m.err = fmt.Errorf("failed to save project: %w", err)
-		return nil
-	}
-
-	project := m.project
-	if openAfterSubtask != nil {
-		openDetail := m.subtaskOpenDetail
-		openContent := m.subtaskOpenContent
-		m.subtaskOpenDetail = false
+	openContent, openDetail := false, false
+	if openCreatedIdx >= 0 {
+		openContent = m.subtaskOpenContent
+		openDetail = m.subtaskOpenDetail
 		m.subtaskOpenContent = false
-		return func() tea.Msg {
-			return TaskCreatedMsg{Task: openAfterSubtask, Project: project, OpenDetail: openDetail, OpenContent: openContent}
-		}
+		m.subtaskOpenDetail = false
 	}
 
-	return func() tea.Msg { return TaskCreatedMsg{Task: task, Project: project} }
+	return m.taskForm.CreateForm(req, openCreatedIdx, openContent, openDetail)
+}
+
+// readPastedClipboard reads and parses the clipboard into a util.PastedTask
+// without mutating any project. It is the parse-only seam shared by the
+// in-memory single-project paste (newInboxTaskFromClipboard) and the
+// cross-project paste, which builds an app.CaptureRequest instead of appending a
+// task directly. Returns an error when the clipboard is empty or unreadable.
+func readPastedClipboard() (util.PastedTask, error) {
+	text, err := clipboard.ReadAll()
+	if err != nil || strings.TrimSpace(text) == "" {
+		return util.PastedTask{}, fmt.Errorf("clipboard is empty")
+	}
+	pt := util.ParseClipboard(text)
+	if pt.Title == "" {
+		return util.PastedTask{}, fmt.Errorf("clipboard is empty")
+	}
+	return pt, nil
 }
 
 // newInboxTaskFromClipboard reads the clipboard, parses it, builds a Task in
@@ -303,14 +273,9 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 // for persisting the project. Returns the created task, or an error if the
 // clipboard is empty or unreadable.
 func newInboxTaskFromClipboard(project *models.Project) (*models.Task, error) {
-	text, err := clipboard.ReadAll()
-	if err != nil || strings.TrimSpace(text) == "" {
-		return nil, fmt.Errorf("clipboard is empty")
-	}
-
-	pt := util.ParseClipboard(text)
-	if pt.Title == "" {
-		return nil, fmt.Errorf("clipboard is empty")
+	pt, err := readPastedClipboard()
+	if err != nil {
+		return nil, err
 	}
 
 	if !project.HasSection(models.SectionInbox) {
@@ -325,7 +290,7 @@ func newInboxTaskFromClipboard(project *models.Project) (*models.Task, error) {
 		Type:            models.TaskTypeTask,
 		Title:           pt.Title,
 		Description:     pt.Description,
-		Status:          models.StatusTodo,
+		WorkflowState:   models.StateReady,
 		Priority:        3,
 		Tags:            []string{},
 		DependsOn:       []string{},
@@ -350,102 +315,40 @@ func newInboxTaskFromClipboard(project *models.Project) (*models.Task, error) {
 	return task, nil
 }
 
-// saveEdit applies draft changes to the existing task via MutateTask, saves
-// the project, and returns a Cmd that emits TaskUpdatedMsg.
+// saveEdit builds a full-field EditRequest from the draft and routes the edit
+// through the task-form coordinator, which commits the change as one atomic
+// ChangeSet. The returned Cmd emits a TaskUpdatedMsg carrying the committed
+// result; the shell reloads and re-resolves the live task pointer.
 func (m *TaskFormModel) saveEdit() tea.Cmd {
 	bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildDraftTaskAttrs()
 
-	// Capture draft and task reference before the closure (avoids capturing m).
-	draft := m.draft
-	task := m.task
-
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Title = draft.title
-		t.Type = draft.taskType
-		t.Priority = draft.priority
-		t.ParentID = draft.parentID
-		t.SetSection(draft.section)
-		t.DueDate = draft.dueDate
-		t.HasTime = draft.hasTime
-		t.StartDate = draft.startDate
-		t.EstimatedDays = draft.estimatedDays
-		t.Tags = append([]string{}, draft.tags...)
-		t.Active = draft.active
-		t.Dimmed = draft.dimmed
-		t.Recurrence = draft.recurrence
-		t.URL = draft.url
-		t.Source = draft.source
-		t.Description = strings.TrimSpace(draft.desc)
-		// Filter blank checklist items (consistent with saveCreate and the parser,
-		// which both skip empty-text items).
-		t.Checklist = nil
-		for _, item := range draft.checklist {
-			text := strings.TrimSpace(item.Text)
-			if text != "" {
-				t.Checklist = append(t.Checklist, models.ChecklistItem{
-					Text: text,
-					Done: item.Done,
-				})
-			}
-		}
-
-		t.BugAttrs = bugAttrs
-		t.IdeaAttrs = ideaAttrs
-		t.TaskAttrs = taskAttrs
-		t.StoryAttrs = storyAttrs
-		t.EpicAttrs = epicAttrs
-
-		// Update PinnedAt only when the pinned flag actually changes.
-		if draft.pinned != t.Pinned {
-			t.Pinned = draft.pinned
-			if draft.pinned {
-				now := time.Now()
-				t.PinnedAt = &now
-			} else {
-				t.PinnedAt = nil
-			}
-		}
-	})
-
-	m.project.BuildTaskTree()
-
-	if err := saveProjectSync(m.project); err != nil {
-		m.err = fmt.Errorf("failed to save project: %w", err)
-		return nil
+	form := &app.FormEdit{
+		Title:         m.draft.title,
+		Type:          m.draft.taskType,
+		Priority:      m.draft.priority,
+		ParentID:      m.draft.parentID,
+		Section:       m.draft.section,
+		Description:   strings.TrimSpace(m.draft.desc),
+		Tags:          append([]string{}, m.draft.tags...),
+		DueDate:       m.draft.dueDate,
+		HasTime:       m.draft.hasTime,
+		StartDate:     m.draft.startDate,
+		EstimatedDays: m.draft.estimatedDays,
+		URL:           m.draft.url,
+		Source:        m.draft.source,
+		Dimmed:        m.draft.dimmed,
+		Pinned:        m.draft.pinned,
+		Recurrence:    m.draft.recurrence,
+		Checklist:     append([]models.ChecklistItem(nil), m.draft.checklist...),
+		BugAttrs:      bugAttrs,
+		IdeaAttrs:     ideaAttrs,
+		TaskAttrs:     taskAttrs,
+		StoryAttrs:    storyAttrs,
+		EpicAttrs:     epicAttrs,
 	}
 
-	// saveProjectSync reloads project.Tasks from disk, which replaces every
-	// task pointer. Re-resolve via GetTaskByID so consumers receive the live
-	// pointer that is actually in project.Tasks.
-	fresh := m.project.GetTaskByID(task.ID)
-	if fresh == nil {
-		logging.Warn("saveEdit: task %s missing from project after reload; emitting pre-reload pointer", task.ID)
-		fresh = task
-	}
-
-	return func() tea.Msg { return TaskUpdatedMsg{Task: fresh} }
+	return m.taskForm.EditForm(app.EditRequest{TaskID: m.task.ID, Form: form})
 }
 
-// insertBeforeDimmedInSection inserts newTask before the first dimmed root
-// task that shares newTask's effective section. Falls back to append when none
-// is found. Child tasks (non-nil ParentID) are always appended — their
-// position is managed by the tree, not section order.
-func insertBeforeDimmedInSection(tasks []*models.Task, newTask *models.Task) []*models.Task {
-	if newTask.ParentID != nil {
-		return append(tasks, newTask)
-	}
-	newSection := effectiveDisplaySection(newTask)
-	for i, t := range tasks {
-		if t.ParentID != nil {
-			continue
-		}
-		if t.Dimmed && effectiveDisplaySection(t) == newSection {
-			result := make([]*models.Task, 0, len(tasks)+1)
-			result = append(result, tasks[:i]...)
-			result = append(result, newTask)
-			result = append(result, tasks[i:]...)
-			return result
-		}
-	}
-	return append(tasks, newTask)
-}
+// SetTaskFormCoordinator injects the shared task-form coordinator (taskFormWireable).
+func (m *TaskFormModel) SetTaskFormCoordinator(c TaskFormCoordinator) { m.taskForm = c }

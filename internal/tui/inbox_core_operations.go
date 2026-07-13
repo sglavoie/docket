@@ -92,7 +92,7 @@ func (c *inboxCore) setPriorityQuick(key string) tea.Cmd {
 	return c.backend.saveCmd()
 }
 
-func (c *inboxCore) changeTaskStatus(newStatus models.TaskStatus, verb string) tea.Cmd {
+func (c *inboxCore) changeTaskState(newState models.WorkflowState, verb string) tea.Cmd {
 	task, project := c.currentTaskRef()
 	if task == nil {
 		return nil
@@ -104,12 +104,12 @@ func (c *inboxCore) changeTaskStatus(newStatus models.TaskStatus, verb string) t
 		return nil
 	}
 
-	if msg := current.CanTransitionTo(newStatus); msg != "" {
+	if msg := models.CanTransitionState(current.State(), newState); msg != "" {
 		c.statusMessage = msg
 		return nil
 	}
 
-	if newStatus == models.StatusDone {
+	if newState == models.StateDone {
 		if project.HasIncompleteDependencies(current) {
 			incompleteDeps := project.GetIncompleteDependencies(current)
 			depIDs := make([]string, 0, len(incompleteDeps))
@@ -133,12 +133,12 @@ func (c *inboxCore) changeTaskStatus(newStatus models.TaskStatus, verb string) t
 	}
 
 	snapshot := captureInboxSnapshot(current)
-	current.ApplyTransition(newStatus)
+	current.ApplyStateTransition(newState)
 
 	c.recordAction(verb+" task", snapshot)
 	c.statusMessage = fmt.Sprintf("Task #%d %s", current.ShortID, verb)
 
-	if c.backend.shouldProcessOnStatusChange(newStatus) {
+	if c.backend.shouldProcessOnStateChange(newState) {
 		c.processedIDs[current.ID] = true
 		return tea.Batch(c.backend.saveCmd(), c.advanceToNext(true))
 	}
@@ -296,29 +296,6 @@ func (c *inboxCore) setSnooze(snoozeDate *time.Time) tea.Cmd {
 		c.statusMessage = "Snooze cleared"
 	} else {
 		c.statusMessage = fmt.Sprintf("Snoozed until %s", snoozeDate.Format("Mon Jan 2"))
-	}
-	return c.backend.saveCmd()
-}
-
-func (c *inboxCore) setStage(stage string) tea.Cmd {
-	task, project := c.currentTaskRef()
-	if task == nil {
-		return nil
-	}
-	current := project.GetTaskByID(task.ID)
-	if current == nil {
-		c.statusMessage = "Error: task no longer exists in project"
-		return nil
-	}
-	snapshot := captureInboxSnapshot(current)
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.Stage = stage
-	})
-	c.recordAction("stage updated", snapshot)
-	if stage == "" {
-		c.statusMessage = "Stage cleared"
-	} else {
-		c.statusMessage = fmt.Sprintf("Stage set to %s", stage)
 	}
 	return c.backend.saveCmd()
 }

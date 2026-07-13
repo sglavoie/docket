@@ -26,14 +26,14 @@ func TestParseMetadata_Snoozed(t *testing.T) {
 func TestWriteMetadata_Snoozed(t *testing.T) {
 	snoozeDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 	task := &models.Task{
-		ID:           "abc123",
-		Status:       models.StatusTodo,
-		Priority:     3,
-		SnoozedUntil: &snoozeDate,
-		CreatedAt:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "abc123",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		SnoozedUntil:  &snoozeDate,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if !strings.Contains(result, "snoozed: 2025-06-15") {
 		t.Errorf("WriteMetadata should contain snoozed field, got: %s", result)
 	}
@@ -41,13 +41,13 @@ func TestWriteMetadata_Snoozed(t *testing.T) {
 
 func TestWriteMetadata_NoSnooze(t *testing.T) {
 	task := &models.Task{
-		ID:        "abc123",
-		Status:    models.StatusTodo,
-		Priority:  3,
-		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "abc123",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if strings.Contains(result, "snoozed") {
 		t.Errorf("WriteMetadata should not contain snoozed field when nil, got: %s", result)
 	}
@@ -56,15 +56,15 @@ func TestWriteMetadata_NoSnooze(t *testing.T) {
 func TestMetadata_SnoozeRoundtrip(t *testing.T) {
 	snoozeDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 	original := &models.Task{
-		ID:           "abc123",
-		Status:       models.StatusTodo,
-		Priority:     3,
-		SnoozedUntil: &snoozeDate,
-		CreatedAt:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "abc123",
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		SnoozedUntil:  &snoozeDate,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
 	// Write metadata
-	meta := WriteMetadata(original)
+	meta := WriteMetadataV2(original)
 
 	// Strip <!-- and -->
 	metaStr := strings.TrimPrefix(meta, "<!-- ")

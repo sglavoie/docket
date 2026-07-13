@@ -87,7 +87,7 @@ func newGlobalTaskPicker(project *models.Project, purpose TaskPickerPurpose, bac
 	// Collect non-completed tasks
 	var tasks []*models.Task
 	for _, t := range project.Tasks {
-		if !t.Status.IsComplete() {
+		if !t.IsComplete() {
 			tasks = append(tasks, t)
 		}
 	}
@@ -237,7 +237,7 @@ func (p *GlobalTaskPicker) render(width int) string {
 
 		for i := start; i < end; i++ {
 			t := p.filtered[i]
-			statusIcon := t.Status.Icon()
+			statusIcon := t.State().Icon()
 			priorityStr := ""
 			if t.Priority > 0 {
 				priorityStr = fmt.Sprintf(" !%d", t.Priority)

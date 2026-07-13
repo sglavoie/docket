@@ -277,7 +277,7 @@ func TestRunScoreRank(t *testing.T) {
 
 		// Mark all tasks complete so nothing is ranked (default excludes completed)
 		for _, task := range project.Tasks {
-			task.Status = models.StatusDone
+			task.WorkflowState = models.StateDone
 		}
 		deps.Repository.Projects[project.ID] = project
 
@@ -311,7 +311,7 @@ func TestRunScoreRank(t *testing.T) {
 		// Snooze one active task (set SnoozedUntil to the future)
 		var snoozedTask *models.Task
 		for _, task := range project.Tasks {
-			if task.Status.IsActive() && !task.Status.IsComplete() {
+			if status := models.LegacyStatusForState(task.State()); status.IsActive() && !status.IsComplete() {
 				future := time.Now().Add(7 * 24 * time.Hour)
 				task.SnoozedUntil = &future
 				snoozedTask = task
@@ -326,7 +326,7 @@ func TestRunScoreRank(t *testing.T) {
 		// Count how many tasks would be included (active, non-snoozed)
 		expectedCount := 0
 		for _, task := range project.Tasks {
-			if !task.Status.IsComplete() && !task.IsSnoozed() {
+			if !models.LegacyStatusForState(task.State()).IsComplete() && !task.IsSnoozed() {
 				expectedCount++
 			}
 		}
@@ -334,7 +334,7 @@ func TestRunScoreRank(t *testing.T) {
 		// Build ranked list using the same logic as runScoreRank (with default snoozed=false)
 		var ranked []rankedTask
 		for _, task := range project.Tasks {
-			if task.Status.IsComplete() {
+			if models.LegacyStatusForState(task.State()).IsComplete() {
 				continue
 			}
 			if task.IsSnoozed() {

@@ -13,9 +13,11 @@ func TestCrossProjectSectionFilterActiveIncludesEmptySectionTasks(t *testing.T) 
 	}
 
 	activeTask := &models.Task{ID: "active"}
-	nonGTDTask := &models.Task{ID: "legacy", Section: "Sprint-1"}
-	nextTask := &models.Task{ID: "next", Section: models.SectionNext}
-	completedTask := &models.Task{ID: "done", Status: models.StatusDone}
+	// "Sprint-1" is a retired custom section; the task resolves to the default
+	// ready (Active) state.
+	nonGTDTask := &models.Task{ID: "legacy"}
+	nextTask := &models.Task{ID: "next", WorkflowState: models.StateNext}
+	completedTask := &models.Task{ID: "done", WorkflowState: models.StateDone}
 
 	if !filter(activeTask) {
 		t.Fatal("expected empty-section task to match Active perspective")

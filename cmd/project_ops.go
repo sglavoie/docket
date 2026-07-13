@@ -41,88 +41,11 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	project.CheckAndAutoUnblock()
 	project.ReconcileParentCompletion()
 
-	workflowGroupedUndoRecorded := false
-
-	// Evaluate workflow rules if requested
-	if opts != nil && opts.EvaluateRules {
-		if opts.Config == nil || opts.ConfigManager == nil {
-			return fmt.Errorf("config and ConfigManager required when EvaluateRules is true")
-		}
-
-		rules := opts.Config.GetEnabledWorkflowRules()
-		if len(rules) > 0 {
-			Debugf("evaluating %d workflow rules", len(rules))
-			var result *workflow.EvaluationResult
-
-			if opts.PrevStates != nil {
-				// Use context-aware evaluation with event triggers
-				evalCtx := workflow.BuildEvaluationContext(project.Tasks, opts.PrevStates, project.Name, project.ID)
-				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
-			} else {
-				// Use standard evaluation (no event triggers)
-				result = workflow.EvaluateRules(project.Tasks, rules)
-			}
-
-			if len(result.Conflicts) > 0 {
-				logging.Warn("workflow rule conflicts detected:\n%s", workflow.FormatConflicts(result.Conflicts))
-			}
-
-			// Process follow-up tasks created by create_followup actions
-			for _, followup := range result.NewFollowupTasks {
-				followup.ShortID = project.GetNextShortID()
-				project.Tasks = append(project.Tasks, followup)
-			}
-			if len(result.NewFollowupTasks) > 0 {
-				project.BuildTaskTree()
-				Debugf("created %d follow-up tasks", len(result.NewFollowupTasks))
-			}
-
-			// Process deferred moves (move tasks to other projects)
-			if len(result.DeferredMoves) > 0 {
-				undoOpts := deferredMoveUndoOptions{}
-				if opts.Config.UndoHistoryDepth != nil {
-					undoAction := opts.UndoAction
-					if undoAction == "" {
-						undoAction = "Workflow Move to Project"
-					}
-					undoOpts = deferredMoveUndoOptions{
-						Action:  undoAction,
-						Context: opts.UndoContext,
-						Depth:   *opts.Config.UndoHistoryDepth,
-					}
-				}
-				recorded, err := processDeferredMovesWithUndo(project, result.DeferredMoves, opts.Config, opts.ConfigManager, undoOpts)
-				if err != nil {
-					return fmt.Errorf("workflow move_to_project failed: %w", err)
-				}
-				workflowGroupedUndoRecorded = workflowGroupedUndoRecorded || recorded
-			}
-
-			// Persist trigger counts if any rules fired
-			if len(result.RuleTriggerCounts) > 0 {
-				Debugf("workflow rules triggered: %v", result.RuleTriggerCounts)
-				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-				if err := opts.ConfigManager.Save(opts.Config); err != nil {
-					logging.Warn("failed to save rule trigger counts: %v", err)
-				}
-			}
-
-			// Evaluate project-level rules against aggregate task data
-			projResult := evaluateAndApplyProjectRules(project, opts.Config, rules)
-			if projResult.ProjectStatusSet {
-				Debugf("project status set to %q by rule %q", projResult.ProjectStatusIcon, projResult.ProjectRuleName)
-				if len(projResult.TriggeredRuleIDs) > 0 {
-					counts := make(map[string]int, len(projResult.TriggeredRuleIDs))
-					for _, id := range projResult.TriggeredRuleIDs {
-						counts[id]++
-					}
-					opts.Config.IncrementRuleTriggerCounts(counts)
-					if err := opts.ConfigManager.Save(opts.Config); err != nil {
-						logging.Warn("failed to save project rule trigger counts: %v", err)
-					}
-				}
-			}
-		}
+	// Evaluate workflow rules if requested. The heavy branching lives in
+	// applyWorkflowRules so SaveProject itself stays within the cyclomatic budget.
+	workflowGroupedUndoRecorded, err := applyWorkflowRules(project, opts)
+	if err != nil {
+		return err
 	}
 
 	// Re-run post-mutation hooks after workflow rules: rules may have set
@@ -151,6 +74,20 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	if err := os.MkdirAll(project.Path, 0o755); err != nil {
 		return fmt.Errorf("failed to ensure project directory: %w", err)
 	}
+
+	// Standard filesystem projects commit their tasks.md through the durable
+	// transaction journal so the write is atomic and crash-recoverable. Only the
+	// canonical <data>/projects/<slug> layout is routed here, because the journal
+	// needs the workspace data dir to place its transactions/staging; anything
+	// else (mock repositories in tests, non-standard paths) falls back to the
+	// legacy locked backup+save, which stays as an internal repair path.
+	if svc, ok := projectCommitService(project); ok {
+		if _, err := svc.Commit(storage.ChangeSet{Project: project}); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	lockPath := filepath.Join(project.Path, storage.LockFileName)
 	return util.WithFileLock(lockPath, true, func() error {
 		if err := storage.BackupProject(project); err != nil {
@@ -158,6 +95,130 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 		}
 		return storage.SaveProject(project)
 	})
+}
+
+// applyWorkflowRules evaluates enabled workflow rules against the project when
+// opts requests it, applying follow-up creation, deferred cross-project moves,
+// trigger-count persistence, and project-level status rules. It returns whether a
+// grouped undo snapshot was already recorded by a deferred move (so SaveProject
+// does not double-record). It is a no-op when rule evaluation is not requested or
+// no rules are enabled. Extracted from SaveProject to keep that function within
+// the cyclomatic-complexity budget.
+func applyWorkflowRules(project *models.Project, opts *SaveOptions) (bool, error) {
+	if opts == nil || !opts.EvaluateRules {
+		return false, nil
+	}
+	if opts.Config == nil || opts.ConfigManager == nil {
+		return false, fmt.Errorf("config and ConfigManager required when EvaluateRules is true")
+	}
+
+	rules := opts.Config.GetEnabledWorkflowRules()
+	if len(rules) == 0 {
+		return false, nil
+	}
+
+	Debugf("evaluating %d workflow rules", len(rules))
+	var result *workflow.EvaluationResult
+	if opts.PrevStates != nil {
+		// Use context-aware evaluation with event triggers
+		evalCtx := workflow.BuildEvaluationContext(project.Tasks, opts.PrevStates, project.Name, project.ID)
+		result = workflow.EvaluateRulesWithContext(evalCtx, rules)
+	} else {
+		// Use standard evaluation (no event triggers)
+		result = workflow.EvaluateRules(project.Tasks, rules)
+	}
+
+	if len(result.Conflicts) > 0 {
+		logging.Warn("workflow rule conflicts detected:\n%s", workflow.FormatConflicts(result.Conflicts))
+	}
+
+	// Process follow-up tasks created by create_followup actions
+	for _, followup := range result.NewFollowupTasks {
+		followup.ShortID = project.GetNextShortID()
+		project.Tasks = append(project.Tasks, followup)
+	}
+	if len(result.NewFollowupTasks) > 0 {
+		project.BuildTaskTree()
+		Debugf("created %d follow-up tasks", len(result.NewFollowupTasks))
+	}
+
+	workflowGroupedUndoRecorded := false
+	// Process deferred moves (move tasks to other projects)
+	if len(result.DeferredMoves) > 0 {
+		undoOpts := deferredMoveUndoOptions{}
+		if opts.Config.UndoHistoryDepth != nil {
+			undoAction := opts.UndoAction
+			if undoAction == "" {
+				undoAction = "Workflow Move to Project"
+			}
+			undoOpts = deferredMoveUndoOptions{
+				Action:  undoAction,
+				Context: opts.UndoContext,
+				Depth:   *opts.Config.UndoHistoryDepth,
+			}
+		}
+		recorded, err := processDeferredMovesWithUndo(project, result.DeferredMoves, opts.Config, opts.ConfigManager, undoOpts)
+		if err != nil {
+			return false, fmt.Errorf("workflow move_to_project failed: %w", err)
+		}
+		workflowGroupedUndoRecorded = workflowGroupedUndoRecorded || recorded
+	}
+
+	// Apply Focus Queue membership changes requested by set_active actions.
+	// The engine records these as deferred FocusChanges (it has no config
+	// access); this config-aware boundary adds/removes membership, which is
+	// the workflow-state replacement for the retired Task.Active flag.
+	focusQueueChanged := applyWorkflowFocusChanges(opts.Config, project.ID, result.FocusChanges)
+
+	// Persist trigger counts if any rules fired (also flushes focus-queue changes).
+	if len(result.RuleTriggerCounts) > 0 {
+		Debugf("workflow rules triggered: %v", result.RuleTriggerCounts)
+		opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+		focusQueueChanged = false
+		if err := opts.ConfigManager.Save(opts.Config); err != nil {
+			logging.Warn("failed to save rule trigger counts: %v", err)
+		}
+	}
+	if focusQueueChanged {
+		if err := opts.ConfigManager.Save(opts.Config); err != nil {
+			logging.Warn("failed to save focus queue changes: %v", err)
+		}
+	}
+
+	// Evaluate project-level rules against aggregate task data
+	projResult := evaluateAndApplyProjectRules(project, rules)
+	if projResult.ProjectStatusSet {
+		Debugf("project status set to %q by rule %q", projResult.ProjectStatusIcon, projResult.ProjectRuleName)
+		if len(projResult.TriggeredRuleIDs) > 0 {
+			counts := make(map[string]int, len(projResult.TriggeredRuleIDs))
+			for _, id := range projResult.TriggeredRuleIDs {
+				counts[id]++
+			}
+			opts.Config.IncrementRuleTriggerCounts(counts)
+			if err := opts.ConfigManager.Save(opts.Config); err != nil {
+				logging.Warn("failed to save project rule trigger counts: %v", err)
+			}
+		}
+	}
+
+	return workflowGroupedUndoRecorded, nil
+}
+
+// projectCommitService returns a CommitService for a project stored on the real
+// filesystem in the canonical <data>/projects/<slug> layout. It returns
+// ok=false for non-filesystem repositories (tests use a mock) or any project
+// whose path does not match that layout, so callers fall back to the legacy save
+// path in those cases.
+func projectCommitService(project *models.Project) (*storage.CommitService, bool) {
+	if _, ok := storage.DefaultRepository.(*storage.FileSystemRepository); !ok {
+		return nil, false
+	}
+	projectsDir := filepath.Dir(project.Path)
+	if filepath.Base(projectsDir) != "projects" {
+		return nil, false
+	}
+	dataDir := filepath.Dir(projectsDir)
+	return storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir}), true
 }
 
 // GetProjectFromSelector safely extracts a Project from a selector.Item.

@@ -121,7 +121,7 @@ func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
 
 // TestAddDependencyRejectsEmptyBlocker verifies that AddDependency refuses an
 // empty blocker ID. Allowing it would silently insert "" into DependsOn and
-// cause every empty-string lookup to match (mirroring the FindActionTaskByID
+// cause every empty-string lookup to match (mirroring the FindTaskGloballyByID
 // empty-prefix family of bugs).
 func TestAddDependencyRejectsEmptyBlocker(t *testing.T) {
 	task, err := NewTask("task", 1, TaskTypeTask, "Task")

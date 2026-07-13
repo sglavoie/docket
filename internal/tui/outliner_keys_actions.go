@@ -28,28 +28,14 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 			}
 			return m.executeDelete()
 		case "s", "S":
-			// Stop recurrence but keep the task (don't delete)
+			// Stop recurrence but keep the task (don't delete). Route through the
+			// app-layer ClearRecurrence seam (one ledger transaction); the shell
+			// reloads and toasts. Same path in single-project and cross-project mode.
 			task := m.deleteTarget
 			m.deleteTarget = nil
 			m.confirm.Cancel()
 			m.clearStatus()
-			task.ClearRecurrence()
-			if m.project == nil {
-				proj := m.crossFindProjectForTask(task.ID)
-				if proj == nil {
-					return m, nil
-				}
-				m.crossUndoCtx.Set("Stop Recurrence", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-				m.rebuildRows()
-				m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
-				return m, m.crossSaveProject(proj)
-			}
-			m.setUndoContext("Stop Recurrence", task.Title)
-			m.undo.TaskIDs = []string{task.ID}
-			m.rebuildRows()
-			m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
-			return m, m.saveWithWorkflow()
+			return m, m.taskItem.ClearRecurrence(task.ID)
 		case "n", "N", "esc":
 			m.confirm.Cancel()
 			m.clearStatus()
@@ -89,18 +75,18 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// applyBulkStatusChange applies a status transition to all multi-selected tasks.
-// If some tasks are blocked by transition rules or incomplete dependencies,
-// shows a confirmation prompt before proceeding with the valid ones.
-func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
+// applyBulkStateChange applies a workflow-state transition to all multi-selected
+// tasks. If some tasks are blocked by transition rules or incomplete
+// dependencies, shows a confirmation prompt before proceeding with the valid ones.
+func (m *OutlinerModel) applyBulkStateChange(newState models.WorkflowState) (tea.Model, tea.Cmd) {
 	tasks := m.getSelectedTasks()
 	if len(tasks) == 0 {
 		return m, nil
 	}
 
-	valid, blockedCount := analyzeBulkStatusTransition(m.project, tasks, newStatus)
+	valid, blockedCount := analyzeBulkStateTransition(m.project, tasks, newState)
 	if len(valid) == 0 {
-		m.setStatus("No selected tasks can transition to " + string(newStatus))
+		m.setStatus("No selected tasks can transition to " + string(newState))
 		m.clearMultiSelect()
 		return m, nil
 	}
@@ -109,32 +95,26 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 
 	// If some tasks are blocked, show confirmation before proceeding
 	if blockedCount > 0 {
-		m.bulkOp.SetOperation(newStatus, valid, blockedCount, prevStates)
+		m.bulkOp.SetOperation(newState, valid, blockedCount, prevStates)
 		m.confirm.Show("bulk-status",
 			fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks?", blockedCount, len(valid)))
 		m.clearMultiSelect()
 		return m, nil
 	}
 
-	// No blocked tasks: mutate all, then save once
+	// No blocked tasks: mutate all in memory, then commit once through the app layer.
 	for _, task := range valid {
 		m.project.MutateTask(task.ID, func(t *models.Task) {
-			t.ApplyTransition(newStatus)
+			t.ApplyStateTransition(newState)
 		})
 	}
-	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), newStatus))
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), newState))
 	m.undo.TaskIDs = taskIDsFromSlice(valid)
-	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
-		m.err = err
-		return m, func() tea.Msg { return ErrorMsg{Err: err} }
-	}
-
-	m.setStatus(fmt.Sprintf("Changed %d tasks to %s (u to undo)", len(valid), newStatus))
 	m.clearMultiSelect()
-	return m, nil
+	return m, m.commitWorkflow(prevStates, fmt.Sprintf("Changed %d tasks to %s", len(valid), newState))
 }
 
-// executePendingBulkStatus applies the pending bulk status change after confirmation.
+// executePendingBulkStatus applies the pending bulk state change after confirmation.
 func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 	if len(m.bulkOp.GetTasks()) == 0 {
 		m.bulkOp.Clear()
@@ -142,25 +122,18 @@ func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 	}
 
 	prevStates := m.bulkOp.GetPrevStates()
-	status := m.bulkOp.GetStatus()
+	state := m.bulkOp.GetState()
 	tasks := m.bulkOp.GetTasks()
 
 	for _, task := range tasks {
 		m.project.MutateTask(task.ID, func(t *models.Task) {
-			t.ApplyTransition(status)
+			t.ApplyStateTransition(state)
 		})
 	}
-	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), state))
 	m.undo.TaskIDs = taskIDsFromSlice(tasks)
-	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
-		m.err = err
-		m.bulkOp.Clear()
-		return m, func() tea.Msg { return ErrorMsg{Err: err} }
-	}
-
-	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(tasks), status))
 	m.bulkOp.Clear()
-	return m, nil
+	return m, m.commitWorkflow(prevStates, fmt.Sprintf("Changed %d tasks to %s", len(tasks), state))
 }
 
 // showDeleteConfirm shows a confirmation dialog for deleting a single task.
@@ -219,7 +192,9 @@ func (m *OutlinerModel) showBulkDeleteConfirm() {
 		fmt.Sprintf("Delete %d selected tasks?", len(selected)), detail)
 }
 
-// executeDelete removes the current deleteTarget task using shared helpers.
+// executeDelete removes the current deleteTarget task through the
+// application-layer BulkCoordinator (see the body comment for the transaction
+// and config-artifact semantics).
 func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	if m.deleteTarget == nil {
 		return m, nil
@@ -228,19 +203,23 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	m.deleteTarget = nil
 	m.clearStatus()
 
-	m.setUndoContext("Delete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	// Route the single-task delete through the application-layer BulkCoordinator
+	// (single-element), mirroring crossExecuteDelete. The durable planning-ref
+	// cleanup (Focus Queue, Daily Plan, dismissals) of the removed subtree rides
+	// the delete transaction as a config artifact so it is atomic and undoable
+	// through the ledger; machine-local recent visits are repaired by the shell
+	// after the commit from the batch's RemovedTaskIDs.
 	deleteIDs := collectDescendantIDs(m.project.Tasks, map[string]bool{task.ID: true})
-	m.setUndoTaskIDs(slices.Collect(maps.Keys(deleteIDs)))
-	pf := m.workflowPersistFn()
-	result := applyDeleteTask(pf, m.projectService, m.project, task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	var artifacts []storage.ArtifactChange
+	if m.config != nil && m.configManager != nil && m.config.RemoveDurableTaskRefs(deleteIDs) > 0 {
+		arts, err := configDomainArtifacts(m.configManager, m.config)
+		if err != nil {
+			m.setStatus(fmt.Sprintf("Error: %v", err))
+			return m, nil
+		}
+		artifacts = arts
 	}
-	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	cleanupConfigTaskRefs(m.config, m.configManager, deleteIDs)
-	m.rebuildRows()
-	return m, result.Cmd
+	return m, m.bulk.Delete([]string{task.ID}, artifacts...)
 }
 
 // executeBulkDelete removes all multi-selected tasks using shared helpers.
@@ -302,20 +281,16 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 	}
 	m.project.Tasks = remaining
 
-	// Persist once
+	// Commit the filtered project once through the application layer.
 	m.setUndoContext("Bulk Delete", fmt.Sprintf("%d tasks", count))
 	m.setUndoTaskIDs(slices.Collect(maps.Keys(idsToDelete)))
-	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
-		m.err = err
-		return m, func() tea.Msg { return ErrorMsg{Err: err} }
-	}
+	cmd := m.commitWorkflow(prevStates, fmt.Sprintf("Deleted %d tasks", count))
 
 	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
 	cleanupConfigTaskRefs(m.config, m.configManager, idsToDelete)
 
 	m.clearMultiSelect()
-	m.setStatus(fmt.Sprintf("Deleted %d tasks", count))
-	return m, nil
+	return m, cmd
 }
 
 // archiveCompletedTasks moves all completed tasks to the archive file.

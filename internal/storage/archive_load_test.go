@@ -50,8 +50,8 @@ Some description.
 		if tasks[0].ID != "arch-1" {
 			t.Errorf("expected first task ID arch-1, got %s", tasks[0].ID)
 		}
-		if tasks[0].Status != models.StatusDone {
-			t.Errorf("expected status done, got %s", tasks[0].Status)
+		if tasks[0].State() != models.StateDone {
+			t.Errorf("expected state done, got %s", tasks[0].State())
 		}
 		if tasks[0].CompletedAt == nil || !tasks[0].CompletedAt.Equal(completedAt) {
 			t.Errorf("expected CompletedAt %v, got %v", completedAt, tasks[0].CompletedAt)
@@ -59,8 +59,8 @@ Some description.
 		if tasks[1].ID != "arch-2" {
 			t.Errorf("expected second task ID arch-2, got %s", tasks[1].ID)
 		}
-		if tasks[1].Status != models.StatusCanceled {
-			t.Errorf("expected status canceled, got %s", tasks[1].Status)
+		if tasks[1].State() != models.StateCanceled {
+			t.Errorf("expected state canceled, got %s", tasks[1].State())
 		}
 	})
 
@@ -132,13 +132,13 @@ Some description.
 		unblockedAt := time.Date(2025, 6, 8, 11, 0, 0, 0, time.Local)
 
 		task := &models.Task{
-			ID:          "act-task-1",
-			Title:       "Task with activity",
-			Type:        models.TaskTypeTask,
-			Status:      models.StatusDone,
-			Priority:    2,
-			CreatedAt:   startedAt,
-			CompletedAt: &now,
+			ID:            "act-task-1",
+			Title:         "Task with activity",
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateDone,
+			Priority:      2,
+			CreatedAt:     startedAt,
+			CompletedAt:   &now,
 			Activity: []*models.ActivityEntry{
 				{Timestamp: startedAt, Field: "status", OldValue: "todo", NewValue: "in_progress"},
 				{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
@@ -214,12 +214,12 @@ Some description.
 		commentTime := time.Date(2025, 6, 8, 9, 0, 0, 0, time.Local)
 
 		task := &models.Task{
-			ID:          "cmt-task-1",
-			Title:       "Task with comments",
-			Type:        models.TaskTypeTask,
-			Status:      models.StatusDone,
-			Priority:    2,
-			CompletedAt: &now,
+			ID:            "cmt-task-1",
+			Title:         "Task with comments",
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateDone,
+			Priority:      2,
+			CompletedAt:   &now,
 			Comments: []*models.Comment{
 				{Text: "This is a test comment", CreatedAt: commentTime},
 			},
@@ -253,22 +253,20 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	snoozed := time.Date(2025, 7, 1, 0, 0, 0, 0, time.Local)
 
 	task := &models.Task{
-		ID:           "full-task-1",
-		Title:        "Task with all fields",
-		Type:         models.TaskTypeBug,
-		Status:       models.StatusDone,
-		Priority:     1,
-		Tags:         []string{"backend", "critical"},
-		Section:      "Next",
-		CreatedAt:    now.Add(-48 * time.Hour),
-		UpdatedAt:    now.Add(-1 * time.Hour),
-		CompletedAt:  &now,
-		DependsOn:    []string{"dep-1", "dep-2"},
-		RelatedTo:    []string{"rel-1"},
-		SnoozedUntil: &snoozed,
-		Stage:        "Review",
-		Source:       "github",
-		URL:          "https://github.com/example/issue/42",
+		ID:            "full-task-1",
+		Title:         "Task with all fields",
+		Type:          models.TaskTypeBug,
+		WorkflowState: models.StateDone,
+		Priority:      1,
+		Tags:          []string{"backend", "critical"},
+		CreatedAt:     now.Add(-48 * time.Hour),
+		UpdatedAt:     now.Add(-1 * time.Hour),
+		CompletedAt:   &now,
+		DependsOn:     []string{"dep-1", "dep-2"},
+		RelatedTo:     []string{"rel-1"},
+		SnoozedUntil:  &snoozed,
+		Source:        "github",
+		URL:           "https://github.com/example/issue/42",
 		Checklist: []models.ChecklistItem{
 			{Text: "Step one", Done: true},
 			{Text: "Step two", Done: false},
@@ -316,8 +314,14 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	}
 	loaded := tasks[0]
 
-	if loaded.Section != "Next" {
-		t.Errorf("section: got %q, want %q", loaded.Section, "Next")
+	// The archived task is done (status done dominates the Next section), so the
+	// v2 archive writer serializes state=done and the section reconstitutes to
+	// the canonical Completed shim on load.
+	if loaded.State() != models.StateDone {
+		t.Errorf("state: got %q, want %q", loaded.State(), models.StateDone)
+	}
+	if section := models.SectionForState(loaded.State()); section != models.SectionCompleted {
+		t.Errorf("section: got %q, want %q (canonical done shim)", section, models.SectionCompleted)
 	}
 	if len(loaded.DependsOn) != 2 || loaded.DependsOn[0] != "dep-1" || loaded.DependsOn[1] != "dep-2" {
 		t.Errorf("depends_on: got %v, want [dep-1 dep-2]", loaded.DependsOn)
@@ -328,9 +332,7 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if loaded.SnoozedUntil == nil {
 		t.Error("snoozed_until: should not be nil")
 	}
-	if loaded.Stage != "Review" {
-		t.Errorf("stage: got %q, want %q", loaded.Stage, "Review")
-	}
+	// Custom stages are retired by the v2 writer and the Stage field is retired on Task.
 	if loaded.Source != "github" {
 		t.Errorf("source: got %q, want %q", loaded.Source, "github")
 	}
@@ -391,15 +393,15 @@ func TestArchivePreservesDecisions(t *testing.T) {
 
 	now := time.Date(2025, 6, 10, 14, 30, 0, 0, time.Local)
 	task := &models.Task{
-		ID:          "decision-task-1",
-		Title:       "Task with decisions",
-		Type:        models.TaskTypeTask,
-		Status:      models.StatusDone,
-		Priority:    2,
-		Description: "Keep this description intact.",
-		CreatedAt:   now.Add(-24 * time.Hour),
-		UpdatedAt:   now,
-		CompletedAt: &now,
+		ID:            "decision-task-1",
+		Title:         "Task with decisions",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateDone,
+		Priority:      2,
+		Description:   "Keep this description intact.",
+		CreatedAt:     now.Add(-24 * time.Hour),
+		UpdatedAt:     now,
+		CompletedAt:   &now,
 		Decisions: []*models.Decision{
 			{
 				Text:      "Use SQLite for local storage",

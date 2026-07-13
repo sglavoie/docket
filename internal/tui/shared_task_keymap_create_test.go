@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 func TestSharedTaskPrefixNewTaskDefaultMessages(t *testing.T) {
@@ -135,3 +136,11 @@ func (v *sharedTaskPrefixCreateView) clampCursor() {}
 func (v *sharedTaskPrefixCreateView) setErr(error) {}
 
 func (v *sharedTaskPrefixCreateView) setStatus(string) {}
+
+// taskItemCoordinator and workflowRules satisfy workflowOpsView so the stub is a
+// taskActionView; the prefix-create keymap actions under test never invoke them.
+func (v *sharedTaskPrefixCreateView) taskItemCoordinator() TaskItemCoordinator {
+	return TaskItemCoordinator{}
+}
+
+func (v *sharedTaskPrefixCreateView) workflowRules() []workflow.WorkflowRule { return nil }

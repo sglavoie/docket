@@ -79,8 +79,8 @@ func buildSectionList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
 	for _, task := range project.Tasks {
-		if task.Section != "" && models.IsGTDSection(task.Section) {
-			sectionCounts[task.Section]++
+		if bucket := taskSectionBucket(task); bucket != "" && models.IsGTDSection(bucket) {
+			sectionCounts[bucket]++
 		}
 	}
 

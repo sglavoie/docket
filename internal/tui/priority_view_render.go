@@ -26,13 +26,11 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
-	var currentStage string
 	var currentPriority int
 	if pt := m.getTaskAtCursor(); pt != nil {
-		currentStage = pt.Task.Stage
 		currentPriority = pt.Task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	hints := CommonTaskActionPrefixHints(currentPriority)
 	hints["g"] = PriorityViewNavigationPrefixHints
 	hints["f"] = []PrefixHint{
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
@@ -87,7 +85,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	taskLine := TaskLine{
 		Task:      task,
 		Project:   m.project,
-		Active:    task.Active,
+		Active:    m.queueIDs[task.ID],
 		Pinned:    task.Pinned,
 		MaxTitle:  titleWidth,
 		Prefix:    star,
@@ -250,7 +248,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 			IsSelected:   isSelected,
 			Queued:       m.queueIDs[pt.Task.ID],
 			DailyPlanned: m.dailyPlanIDs[pt.Task.ID],
-			Active:       pt.Task.Active,
+			Active:       m.queueIDs[pt.Task.ID],
 			Pinned:       pt.Task.Pinned,
 			MaxTitle:     maxTitleLen,
 			PreBadges:    fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
@@ -356,7 +354,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		IsSelected:   isSelected,
 		Queued:       m.queueIDs[task.ID],
 		DailyPlanned: m.dailyPlanIDs[task.ID],
-		Active:       task.Active,
+		Active:       m.queueIDs[task.ID],
 		Pinned:       task.Pinned,
 		MaxTitle:     adjustedMaxTitleLen,
 		Prefix:       starPrefix,
@@ -404,14 +402,14 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 
 // getBlockingReason returns a description of what's blocking a task.
 func (m *PriorityViewModel) getBlockingReason(task *models.Task) string {
-	if task.Status == models.StatusBlocked {
+	if task.IsInState(models.StateWaiting) {
 		return "(blocked)"
 	}
 
 	// Find incomplete dependencies
 	for _, depID := range task.DependsOn {
 		if dep := m.project.GetTaskByID(depID); dep != nil {
-			if !dep.Status.IsComplete() {
+			if !dep.IsTerminalState() {
 				return fmt.Sprintf("← %s", truncateToVisualWidth(dep.Title, 20))
 			}
 		}

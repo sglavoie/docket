@@ -48,7 +48,7 @@ func init() {
 }
 
 func runRoadmap(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,10 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	var allArchived []metrics.TaskSummary
 
 	if len(args) > 0 {
-		p := cfg.GetProject(args[0])
+		p, err := lookupProject(configManager, args[0])
+		if err != nil {
+			return err
+		}
 		if p == nil {
 			return fmt.Errorf("project not found: %s", args[0])
 		}
@@ -74,7 +77,11 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 			allArchived = append(allArchived, summaries...)
 		}
 	} else {
-		for _, p := range cfg.GetActiveProjects() {
+		active, err := activeProjects(configManager)
+		if err != nil {
+			return err
+		}
+		for _, p := range active {
 			if err := storage.LoadProject(p); err != nil {
 				if _, writeErr := fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipping project %s: %v\n", p.Name, err); writeErr != nil {
 					return fmt.Errorf("failed to write warning: %w", writeErr)
@@ -148,7 +155,7 @@ func roadmapStorageSummariesForMetrics(summaries []storage.ArchiveTaskSummary) [
 	for _, summary := range summaries {
 		metricSummaries = append(metricSummaries, metrics.TaskSummary{
 			ID:             summary.ID,
-			Status:         summary.Status,
+			WorkflowState:  summary.WorkflowState,
 			CompletedAt:    summary.CompletedAt,
 			FirstStartedAt: summary.FirstStartedAt,
 			EstimatedDays:  summary.EstimatedDays,
@@ -303,7 +310,7 @@ func printMermaidTask(t *models.Task, schedMap map[string]planner.ScheduledTask,
 	tags := ""
 	if cp != nil && cp.OnPath[t.ID] {
 		tags = "crit, "
-	} else if t.Status == models.StatusInProgress {
+	} else if t.IsInState(models.StateInProgress) {
 		tags = "active, "
 	}
 

@@ -49,7 +49,7 @@ func TestAuditProjectValidProject(t *testing.T) {
 
 	story.ParentID = &epic.ID
 	bug.ParentID = &story.ID
-	story.Section = SectionNext
+	story.SetSection(SectionNext)
 	bug.SetSection("Sprint-1")
 	bug.DependsOn = []string{epic.ID, "other-project:external-blocker"}
 	story.RelatedTo = []string{bug.ID, "other-project:external-related"}
@@ -149,11 +149,11 @@ func TestAuditProjectRejectsDanglingLocalRelatedRef(t *testing.T) {
 	requireAuditErrorContains(t, project, "related to missing local task")
 }
 
-func TestAuditProjectRejectsNonGTDSection(t *testing.T) {
+func TestAuditProjectRejectsInvalidWorkflowState(t *testing.T) {
 	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Non-GTD Section")
-	task.Section = "Sprint-1"
+	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Invalid State")
+	task.WorkflowState = WorkflowState("sprint-1")
 	project.Tasks = []*Task{task}
 
-	requireAuditErrorContains(t, project, "non-GTD section")
+	requireAuditErrorContains(t, project, "invalid workflow state")
 }

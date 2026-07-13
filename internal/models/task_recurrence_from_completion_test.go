@@ -107,14 +107,14 @@ func TestGenerateRecurringInstances_ModeCarriesForward(t *testing.T) {
 	dueDate := time.Date(2024, 3, 10, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2024, 3, 12, 10, 0, 0, 0, time.UTC) // 2 days late
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Recurring Task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
-		Recurrence:  &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Mode: RecurModeFromCompletion},
+		ID:            "task-1",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Recurring Task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Mode: RecurModeFromCompletion},
 	}
 
 	project := &Project{
@@ -142,7 +142,7 @@ func TestGenerateRecurringInstances_ModeCarriesForward(t *testing.T) {
 
 	// --- Generation 2 ---
 	gen1CompletedAt := time.Date(2024, 3, 20, 15, 0, 0, 0, time.UTC)
-	gen1.Status = StatusDone
+	gen1.WorkflowState = StateDone
 	gen1.CompletedAt = &gen1CompletedAt
 
 	count = project.GenerateRecurringInstances()

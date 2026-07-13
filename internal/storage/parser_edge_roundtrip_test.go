@@ -20,41 +20,41 @@ func TestRoundTrip_DeepHierarchyPastLevel6(t *testing.T) {
 	tasks := []*models.Task{
 		{
 			ID: "epic1", ShortID: 1, Type: models.TaskTypeEpic,
-			Title: "Root Epic", Status: models.StatusTodo, Priority: 1,
+			Title: "Root Epic", WorkflowState: models.StateReady, Priority: 1,
 			Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID: "story1", ShortID: 2, Type: models.TaskTypeStory,
-			Title: "Child Story", Status: models.StatusTodo, Priority: 2,
+			Title: "Child Story", WorkflowState: models.StateReady, Priority: 2,
 			ParentID: &epicID,
 			Tags:     []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID: "task1", ShortID: 3, Type: models.TaskTypeTask,
-			Title: "Grandchild Task", Status: models.StatusTodo, Priority: 3,
+			Title: "Grandchild Task", WorkflowState: models.StateReady, Priority: 3,
 			ParentID: &storyID,
 			Tags:     []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID: "bug1", ShortID: 4, Type: models.TaskTypeBug,
-			Title: "Great-grandchild Bug", Status: models.StatusTodo, Priority: 3,
+			Title: "Great-grandchild Bug", WorkflowState: models.StateReady, Priority: 3,
 			ParentID: &taskID,
 			Tags:     []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID: "idea1", ShortID: 5, Type: models.TaskTypeIdea,
-			Title: "Deep Idea", Status: models.StatusTodo, Priority: 3,
+			Title: "Deep Idea", WorkflowState: models.StateReady, Priority: 3,
 			ParentID: &bugID,
 			Tags:     []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID: "task2", ShortID: 6, Type: models.TaskTypeTask,
-			Title: "Very Deep Task", Status: models.StatusTodo, Priority: 3,
+			Title: "Very Deep Task", WorkflowState: models.StateReady, Priority: 3,
 			ParentID: &ideaID,
 			Tags:     []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -119,13 +119,13 @@ func TestRoundTrip_RecurrenceWeekdaysInMetadata(t *testing.T) {
 
 	tasks := []*models.Task{
 		{
-			ID:       "t1",
-			ShortID:  1,
-			Type:     models.TaskTypeTask,
-			Title:    "Weekly Task",
-			Status:   models.StatusTodo,
-			Priority: 3,
-			DueDate:  &dueDate,
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Weekly Task",
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			DueDate:       &dueDate,
 			Recurrence: &models.RecurrencePattern{
 				Interval: 1,
 				Unit:     models.RecurrenceWeekly,
@@ -178,35 +178,32 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	tasks := []*models.Task{
 		{
 			ID: "parent-epic", ShortID: 1, Type: models.TaskTypeEpic,
-			Title: "Parent", Status: models.StatusInProgress, Priority: 1,
+			Title: "Parent", WorkflowState: models.StateInProgress, Priority: 1,
 			Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local),
 		},
 		{
-			ID:           "full-task",
-			ShortID:      2,
-			Type:         models.TaskTypeBug,
-			Title:        "Fully Loaded Bug",
-			Description:  "A bug with every field set.",
-			Status:       models.StatusDone,
-			Priority:     1,
-			ParentID:     &epicID,
-			Tags:         []string{"urgent", "backend"},
-			Section:      models.SectionNext,
-			DueDate:      &due,
-			CompletedAt:  &completed,
-			DependsOn:    []string{"dep-1", "dep-2"},
-			RelatedTo:    []string{"rel-1"},
-			Pinned:       true,
-			PinnedAt:     &pinnedAt,
-			Active:       true,
-			Dimmed:       true,
-			SnoozedUntil: &snoozed,
-			Stage:        "verification",
-			Source:       "github",
-			URL:          "https://example.com/issue/123",
-			CreatedAt:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.Local),
-			UpdatedAt:    time.Date(2024, 6, 10, 14, 30, 0, 0, time.Local),
+			ID:            "full-task",
+			ShortID:       2,
+			Type:          models.TaskTypeBug,
+			Title:         "Fully Loaded Bug",
+			Description:   "A bug with every field set.",
+			WorkflowState: models.StateDone,
+			Priority:      1,
+			ParentID:      &epicID,
+			Tags:          []string{"urgent", "backend"},
+			DueDate:       &due,
+			CompletedAt:   &completed,
+			DependsOn:     []string{"dep-1", "dep-2"},
+			RelatedTo:     []string{"rel-1"},
+			Pinned:        true,
+			PinnedAt:      &pinnedAt,
+			Dimmed:        true,
+			SnoozedUntil:  &snoozed,
+			Source:        "github",
+			URL:           "https://example.com/issue/123",
+			CreatedAt:     time.Date(2024, 1, 1, 10, 0, 0, 0, time.Local),
+			UpdatedAt:     time.Date(2024, 6, 10, 14, 30, 0, 0, time.Local),
 			Recurrence: &models.RecurrencePattern{
 				Interval:    2,
 				Unit:        models.RecurrenceWeekly,
@@ -249,8 +246,8 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if p.Type != models.TaskTypeBug {
 		t.Errorf("Type = %q, want 'bug'", p.Type)
 	}
-	if p.Status != models.StatusDone {
-		t.Errorf("Status = %q, want 'done'", p.Status)
+	if models.LegacyStatusForState(p.State()) != models.StatusDone {
+		t.Errorf("legacy status = %q, want 'done'", models.LegacyStatusForState(p.State()))
 	}
 	if p.Priority != 1 {
 		t.Errorf("Priority = %d, want 1", p.Priority)
@@ -261,8 +258,14 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if len(p.Tags) != 2 {
 		t.Errorf("Tags count = %d, want 2", len(p.Tags))
 	}
-	if p.Section != models.SectionNext {
-		t.Errorf("Section = %q, want %q", p.Section, models.SectionNext)
+	// The task is done (status done dominates the Next section), so the v2
+	// writer serializes state=done and the section reconstitutes to the
+	// canonical Completed shim on load.
+	if p.State() != models.StateDone {
+		t.Errorf("State = %q, want %q", p.State(), models.StateDone)
+	}
+	if models.SectionForState(p.State()) != models.SectionCompleted {
+		t.Errorf("section = %q, want %q (canonical done shim)", models.SectionForState(p.State()), models.SectionCompleted)
 	}
 	if p.DueDate == nil {
 		t.Error("DueDate should not be nil")
@@ -282,17 +285,14 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if p.PinnedAt == nil {
 		t.Error("PinnedAt should not be nil")
 	}
-	if !p.Active {
-		t.Error("Active should be true")
-	}
+	// active and stage are retired by the v2 model: active migrates to the
+	// Focus Queue, custom stages are dropped. Both fields no longer exist on
+	// Task, so there is nothing to assert here.
 	if !p.Dimmed {
 		t.Error("Dimmed should be true")
 	}
 	if p.SnoozedUntil == nil {
 		t.Error("SnoozedUntil should not be nil")
-	}
-	if p.Stage != "verification" {
-		t.Errorf("Stage = %q, want 'verification'", p.Stage)
 	}
 	if p.Source != "github" {
 		t.Errorf("Source = %q, want 'github'", p.Source)

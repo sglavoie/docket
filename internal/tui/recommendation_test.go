@@ -317,7 +317,7 @@ func TestBuildCockpitRecommendationCharacterizesCurrentSurfaceStates(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 
 	cases := []struct {
 		name          string

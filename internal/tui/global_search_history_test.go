@@ -28,8 +28,8 @@ func newGlobalSearchHistoryTestModel(history []string, results []models.SearchRe
 
 func TestGlobalSearchHistoryNavigation(t *testing.T) {
 	results := []models.SearchResult{
-		{Task: &models.Task{ID: "1", Title: "Alpha task", Status: models.StatusTodo}},
-		{Task: &models.Task{ID: "2", Title: "Beta task", Status: models.StatusTodo}},
+		{Task: &models.Task{ID: "1", Title: "Alpha task", WorkflowState: models.StateReady}},
+		{Task: &models.Task{ID: "2", Title: "Beta task", WorkflowState: models.StateReady}},
 	}
 	m := newGlobalSearchHistoryTestModel([]string{"alpha", "beta"}, results)
 
@@ -81,7 +81,7 @@ func TestGlobalSearchHistoryNavigation(t *testing.T) {
 
 func TestGlobalSearchEnterRecordsTaskQuery(t *testing.T) {
 	m := newGlobalSearchHistoryTestModel(nil, nil)
-	task := &models.Task{ID: "1", Title: "Alpha task", Status: models.StatusTodo}
+	task := &models.Task{ID: "1", Title: "Alpha task", WorkflowState: models.StateReady}
 	m.filtered = []filteredSearchResult{{result: models.SearchResult{Task: task}}}
 	m.searchInput.SetValue("alpha")
 

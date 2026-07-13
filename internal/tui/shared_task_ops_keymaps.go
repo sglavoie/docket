@@ -24,51 +24,60 @@ func sectionForMoveKey(key string) (string, bool) {
 	return "", false
 }
 
-// StatusForPrefixKey maps a prefix second-key to a TaskStatus.
-// Returns the status and true if the key is valid, or zero value and false otherwise.
-func StatusForPrefixKey(key string) (models.TaskStatus, bool) {
+// StateForPrefixKey maps a "," status-prefix second-key to a canonical
+// WorkflowState. It is the WorkflowState-native successor to the retired
+// StatusForPrefixKey: the same physical keys now select states directly
+// (b→waiting, o→inbox/reopen, S→paused, m→someday) rather than legacy statuses
+// routed through TargetStateForStatus. Returns the state and true if the key is
+// valid, or zero value and false otherwise.
+func StateForPrefixKey(key string) (models.WorkflowState, bool) {
 	switch key {
 	case "s":
-		return models.StatusInProgress, true
+		return models.StateInProgress, true
 	case "d":
-		return models.StatusDone, true
+		return models.StateDone, true
 	case "b":
-		return models.StatusBlocked, true
+		return models.StateWaiting, true
 	case "o":
-		return models.StatusTodo, true
+		return models.StateInbox, true
 	case "x":
-		return models.StatusCanceled, true
+		return models.StateCanceled, true
 	case "r":
-		return models.StatusReview, true
+		return models.StateReview, true
 	case "S":
-		return models.StatusStandby, true
+		return models.StatePaused, true
 	case "m":
-		return models.StatusMaybe, true
+		return models.StateSomeday, true
 	}
 	return "", false
 }
 
-// StatusVerb returns the past-tense verb for a status transition.
-func StatusVerb(status models.TaskStatus) string {
-	switch status {
-	case models.StatusInProgress:
+// StateVerb returns the past-tense verb for a workflow-state transition, used to
+// label undo entries and status toasts.
+func StateVerb(state models.WorkflowState) string {
+	switch state {
+	case models.StateInProgress:
 		return "started"
-	case models.StatusDone:
+	case models.StateDone:
 		return "completed"
-	case models.StatusBlocked:
-		return "blocked"
-	case models.StatusTodo:
+	case models.StateWaiting:
+		return "set to waiting"
+	case models.StateInbox:
 		return "reopened"
-	case models.StatusCanceled:
+	case models.StateCanceled:
 		return "canceled"
-	case models.StatusReview:
+	case models.StateReview:
 		return "sent to review"
-	case models.StatusStandby:
-		return "put on standby"
-	case models.StatusMaybe:
-		return "set to maybe"
+	case models.StatePaused:
+		return "paused"
+	case models.StateSomeday:
+		return "set to someday"
+	case models.StateReady:
+		return "set to ready"
+	case models.StateNext:
+		return "queued as next"
 	}
-	return string(status)
+	return string(state)
 }
 
 // DueDateDaysForPrefixKey maps a due-date prefix second-key to a day offset.

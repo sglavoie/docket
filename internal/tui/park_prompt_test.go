@@ -82,7 +82,7 @@ func TestMaybePromptParkSkipMatrix(t *testing.T) {
 		{
 			name: "completed task",
 			mutate: func(source *models.Task, _ sessionTaskMutation) {
-				source.Status = models.StatusDone
+				source.WorkflowState = models.StateDone
 			},
 		},
 		{
@@ -184,7 +184,6 @@ func TestPromptParkEnterSavesSynchronouslyBeforeContinuation(t *testing.T) {
 	if got := reloadedSource.ParkedNote; got != "resume after review" {
 		t.Fatalf("persisted parked note = %q, want %q", got, "resume after review")
 	}
-	assertBulkPickerUndoTaskIDs(t, project, []string{source.ID})
 }
 
 func TestNavigateToTaskPromptsThenEscLandsOnTarget(t *testing.T) {
@@ -236,6 +235,10 @@ func TestNavigateHistoryBypassesParkPrompt(t *testing.T) {
 	}
 }
 
+// newParkPromptTestApp builds a disk-backed AppModel wired to the application
+// service (park now commits through the workspace ledger, not the per-project
+// .undo snapshot). The single project lives under a shared data dir so the
+// transactional commit service's root containment accepts the park write.
 func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Task, *models.Task) {
 	t.Helper()
 	resetSessionMutations()
@@ -243,10 +246,17 @@ func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 
 	source := newBulkPickerTestTask(t, 1, "source task")
 	target := newBulkPickerTestTask(t, 2, "target task")
-	project := newBulkPickerTestProject(t, "Park Prompt", source, target)
+	env := newAppBulkPickerEnv(t, []*models.Task{source, target})
+	app := env.appModel()
+	project := env.projects[0]
+	source = project.Tasks[0]
+	target = project.Tasks[1]
+	// BuildTaskTree does not set Task.Project; the skip-matrix cases reach through
+	// source.Project, so wire it explicitly here.
+	for _, tk := range project.Tasks {
+		tk.Project = project
+	}
 
-	app := newTestAppModel()
-	app.config.Projects = []*models.Project{project}
 	app.config.CurrentProject = project.ID
 	app.currentProject = project
 	app.lastProjectView = ViewProjectTree

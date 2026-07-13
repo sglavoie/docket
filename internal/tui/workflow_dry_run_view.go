@@ -190,7 +190,7 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	b.WriteString(TaskTitleStyleFor(result.Task, TaskTitleStyleOptions{}).Render(result.Task.Title))
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s  Status: %s  Priority: %d",
-		result.ProjectName, string(result.Task.Status), result.Task.Priority)))
+		result.ProjectName, string(result.Task.State()), result.Task.Priority)))
 	b.WriteString("\n\n")
 
 	// Matched rules

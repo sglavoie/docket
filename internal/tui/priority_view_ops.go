@@ -36,9 +36,9 @@ func (m *PriorityViewModel) viewID() ViewType { return ViewPriorityView }
 func (m *PriorityViewModel) viewName() string { return "Priority View" }
 
 func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.Cmd) {
-	return taskOpsChangePriority(m, strconv.Itoa(newPriority))
+	return m, wfChangePriority(m, strconv.Itoa(newPriority))
 }
 
 func (m *PriorityViewModel) deleteTask() (tea.Model, tea.Cmd) {
-	return taskOpsDeleteTask(m)
+	return m, wfDeleteTask(m, m.config, m.configManager)
 }

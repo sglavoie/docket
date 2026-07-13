@@ -39,7 +39,7 @@ func TestCommentAddedMsgClearsOverlay(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 
-	app.quickNoteOverlay = newQuickNoteOverlay(task, project)
+	app.quickNoteOverlay = newQuickNoteOverlay(task, project, newTestSecondaryCoordinators(project).Subview)
 
 	msg := CommentAddedMsg{Task: task}
 	handled, _ := app.handleTaskMessages(msg)
@@ -55,7 +55,7 @@ func TestCommentAddedMsgClearsOverlay(t *testing.T) {
 func TestQuickNoteOverlayEscDismisses(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
-	app.quickNoteOverlay = newQuickNoteOverlay(task, project)
+	app.quickNoteOverlay = newQuickNoteOverlay(task, project, newTestSecondaryCoordinators(project).Subview)
 
 	if app.quickNoteOverlay == nil {
 		t.Fatal("overlay should be set before test")

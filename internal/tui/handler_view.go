@@ -66,5 +66,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	if handled, cmd := m.handleNotificationMessages(msg); handled {
 		return handled, cmd
 	}
+
+	if handled, cmd := m.handleConflictMessages(msg); handled {
+		return handled, cmd
+	}
 	return false, nil
 }

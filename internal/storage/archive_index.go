@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,6 +16,23 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
+
+// hashArchiveContent returns the hex-encoded SHA-256 of an archive file's bytes.
+// It is the canonical content fingerprint stored in ArchiveIndexSource.SHA256 and
+// used by the deep integrity check to detect edits that size and mtime miss.
+func hashArchiveContent(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
+}
+
+// hashArchiveFile reads a file and returns the hex-encoded SHA-256 of its bytes.
+func hashArchiveFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return hashArchiveContent(data), nil
+}
 
 type archiveFileRef struct {
 	fileName string
@@ -134,15 +153,79 @@ func InspectArchiveIndex(project *models.Project) (ArchiveIndexStatus, error) {
 	status.IndexExists = true
 	status.SourceCount = len(index.Sources)
 	status.TaskCount = len(index.Tasks)
-	if archiveIndexIsFresh(project, index) {
+
+	// Deep integrity checks beyond size and mtime: how many sources the index
+	// recorded as unparseable, and whether any source's bytes drifted from the
+	// content hash the index stored (an edit the cheap freshness check misses).
+	unhealthy := unhealthyArchiveSourceNames(index)
+	status.UnhealthySources = len(unhealthy)
+	status.HashMismatch = archiveIndexHasHashMismatch(project, index)
+
+	switch {
+	case status.UnhealthySources > 0:
+		status.NeedsRebuild = true
+		status.Issue = ArchiveIndexIssueUnhealthySource
+		status.Detail = fmt.Sprintf("unparseable archive source(s): %s", strings.Join(unhealthy, ", "))
+		return status, nil
+	case status.HashMismatch:
+		status.NeedsRebuild = true
+		status.Issue = ArchiveIndexIssueStale
+		status.Detail = "archive file contents no longer match the index content hash"
+		return status, nil
+	case archiveIndexIsFresh(project, index):
 		status.Fresh = true
 		return status, nil
+	default:
+		status.NeedsRebuild = true
+		status.Issue = ArchiveIndexIssueStale
+		status.Detail = "archive files changed since the index was generated"
+		return status, nil
+	}
+}
+
+// unhealthyArchiveSourceNames returns the file names of every index source that
+// recorded a parse failure, so callers can report which canonical archive files
+// are corrupt rather than only that a rebuild is needed.
+func unhealthyArchiveSourceNames(index *ArchiveIndex) []string {
+	var names []string
+	for _, source := range index.Sources {
+		if source.Unhealthy() {
+			names = append(names, source.FileName)
+		}
+	}
+	return names
+}
+
+// archiveIndexHasHashMismatch recomputes each source's content hash and reports
+// whether any on-disk archive file diverged from the SHA-256 the index recorded.
+// It is the integrity check that catches edits preserving size and mtime; it is
+// intentionally reserved for the doctor/inspection path, not the hot load path.
+func archiveIndexHasHashMismatch(project *models.Project, index *ArchiveIndex) bool {
+	cached := make(map[string]string, len(index.Sources))
+	for _, source := range index.Sources {
+		if source.SHA256 != "" {
+			cached[source.FileName] = source.SHA256
+		}
+	}
+	if len(cached) == 0 {
+		return false
 	}
 
-	status.NeedsRebuild = true
-	status.Issue = ArchiveIndexIssueStale
-	status.Detail = "archive files changed since the index was generated"
-	return status, nil
+	archiveFiles, err := listArchiveFiles(project.Path)
+	if err != nil {
+		return false
+	}
+	for _, archiveFile := range archiveFiles {
+		want, ok := cached[archiveFile.fileName]
+		if !ok {
+			continue
+		}
+		got, hashErr := hashArchiveFile(archiveFile.path)
+		if hashErr != nil || got != want {
+			return true
+		}
+	}
+	return false
 }
 
 func readArchiveIndex(project *models.Project) (*ArchiveIndex, error) {
@@ -171,17 +254,36 @@ func rebuildArchiveIndex(project *models.Project) (*ArchiveIndex, error) {
 	}
 
 	for _, archiveFile := range archiveFiles {
-		source, sourceErr := archiveIndexSource(archiveFile)
-		if sourceErr != nil {
-			if os.IsNotExist(sourceErr) {
+		info, statErr := os.Stat(archiveFile.path)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
 				continue
 			}
-			return nil, sourceErr
+			return nil, fmt.Errorf("failed to stat archive source %s: %w", archiveFile.path, statErr)
 		}
 
-		tasks, headingLines, parseErr := parseArchiveFileWithHeadingLines(archiveFile.path)
+		content, readErr := os.ReadFile(archiveFile.path)
+		if readErr != nil {
+			if os.IsNotExist(readErr) {
+				continue
+			}
+			return nil, fmt.Errorf("failed to read archive source %s: %w", archiveFile.path, readErr)
+		}
+
+		source := ArchiveIndexSource{
+			FileName:  archiveFile.fileName,
+			SizeBytes: info.Size(),
+			ModTime:   info.ModTime(),
+			SHA256:    hashArchiveContent(content),
+		}
+
+		tasks, headingLines, parseErr := parseArchiveContentWithHeadingLines(string(content))
 		if parseErr != nil {
-			logging.Warn("skipping corrupt archive %s while rebuilding index: %v", archiveFile.path, parseErr)
+			// Persist an unhealthy-source state rather than silently skipping a
+			// corrupt archive: the good sources stay indexed, but the failure is
+			// recorded on the source so doctor and callers can surface it.
+			logging.Warn("recording unhealthy archive source %s while rebuilding index: %v", archiveFile.path, parseErr)
+			source.ParseError = parseErr.Error()
 			index.Sources = append(index.Sources, source)
 			continue
 		}
@@ -212,6 +314,58 @@ func rebuildArchiveIndex(project *models.Project) (*ArchiveIndex, error) {
 	}
 
 	return index, nil
+}
+
+// inMemoryArchiveFile pairs an archive file name with the exact bytes the
+// transactional archive path is about to write, so the derived index can be built
+// from content without a disk round-trip and its content hash matches the file
+// the transaction commits.
+type inMemoryArchiveFile struct {
+	fileName string
+	content  []byte
+}
+
+// buildArchiveIndexFromContents builds the derived archive index from the exact
+// archive file bytes a transaction is about to commit and returns both the index
+// and its JSON payload. Sources record size and SHA-256 but deliberately omit
+// mtime, which is only known after the write; the sha256-aware freshness check
+// recognizes such an index as fresh once committed. A parse failure in any source
+// is fatal so archiving into an unparseable archive is refused rather than
+// silently compounding corruption.
+func buildArchiveIndexFromContents(files []inMemoryArchiveFile) (*ArchiveIndex, []byte, error) {
+	index := &ArchiveIndex{
+		Version:     archiveIndexVersion,
+		GeneratedAt: time.Now(),
+		Sources:     make([]ArchiveIndexSource, 0, len(files)),
+	}
+
+	for _, f := range files {
+		source := ArchiveIndexSource{
+			FileName:  f.fileName,
+			SizeBytes: int64(len(f.content)),
+			SHA256:    hashArchiveContent(f.content),
+		}
+		tasks, headingLines, parseErr := parseArchiveContentWithHeadingLines(string(f.content))
+		if parseErr != nil {
+			return nil, nil, fmt.Errorf("archive source %s is unparseable: %w", f.fileName, parseErr)
+		}
+		source.TaskCount = len(tasks)
+		index.Sources = append(index.Sources, source)
+		for i, task := range tasks {
+			headingLine := 0
+			if i < len(headingLines) {
+				headingLine = headingLines[i]
+			}
+			index.Tasks = append(index.Tasks, summarizeArchivedTask(task, f.fileName, headingLine))
+		}
+	}
+
+	payload, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode archive index: %w", err)
+	}
+	payload = append(payload, '\n')
+	return index, payload, nil
 }
 
 func archiveIndexSource(archiveFile archiveFileRef) (ArchiveIndexSource, error) {
@@ -262,8 +416,23 @@ func archiveIndexIsFresh(project *models.Project, index *ArchiveIndex) bool {
 		cached := index.Sources[i]
 		if cached.FileName != current.FileName ||
 			cached.SizeBytes != current.SizeBytes ||
-			!cached.ModTime.Equal(current.ModTime) ||
 			cached.TaskCount != taskCounts[cached.FileName] {
+			return false
+		}
+		// Fast path: an unchanged size and matching mtime means the file was not
+		// rewritten, so skip the content hash entirely on the hot load path.
+		if !cached.ModTime.IsZero() && cached.ModTime.Equal(current.ModTime) {
+			continue
+		}
+		// Slow path: the mtime differs or was never recorded (e.g. an index
+		// written inside a transaction, before the file's final mtime is known).
+		// Confirm against the content hash so a same-size, same-content file still
+		// reads as fresh instead of forcing a needless rebuild.
+		if cached.SHA256 == "" {
+			return false
+		}
+		sum, hashErr := hashArchiveFile(archiveFile.path)
+		if hashErr != nil || sum != cached.SHA256 {
 			return false
 		}
 	}
@@ -273,11 +442,12 @@ func archiveIndexIsFresh(project *models.Project, index *ArchiveIndex) bool {
 
 func summarizeArchivedTask(task *models.Task, fileName string, headingLine int) ArchiveTaskSummary {
 	summary := ArchiveTaskSummary{
-		ID:             task.ID,
-		ShortID:        task.ShortID,
-		Type:           task.Type,
-		Title:          task.Title,
-		Status:         task.Status,
+		ID:      task.ID,
+		ShortID: task.ShortID,
+		Type:    task.Type,
+		Title:   task.Title,
+		// Snapshot serialization of the archived task's canonical workflow state.
+		WorkflowState:  task.State(),
 		Priority:       task.Priority,
 		CreatedAt:      task.CreatedAt,
 		CompletedAt:    completedAtForSummary(task),
@@ -297,7 +467,7 @@ func completedAtForSummary(task *models.Task) *time.Time {
 	if task.CompletedAt != nil {
 		return task.CompletedAt
 	}
-	if !task.Status.IsComplete() {
+	if !task.IsTerminalState() {
 		return nil
 	}
 	fallback := task.UpdatedAt
@@ -313,7 +483,10 @@ func completedAtForSummary(task *models.Task) *time.Time {
 func firstStartedAt(task *models.Task) *time.Time {
 	var first *time.Time
 	for _, entry := range task.Activity {
-		if entry == nil || entry.Field != "status" || entry.NewValue != string(models.StatusInProgress) {
+		// Newer entries record workflow-state moves under "state"; entries
+		// written before the state migration used "status". The in_progress
+		// value string is identical in both models.
+		if entry == nil || (entry.Field != "state" && entry.Field != "status") || entry.NewValue != string(models.StatusInProgress) {
 			continue
 		}
 		if first == nil || entry.Timestamp.Before(*first) {

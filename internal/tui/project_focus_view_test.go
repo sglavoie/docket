@@ -16,13 +16,13 @@ func newTestProjectFocusView(t *testing.T) (*ProjectFocusViewModel, *models.Proj
 	cfg := testutil.NewTestConfig()
 	project := testutil.NewTestProject("focus-test")
 
-	// Add an active task with a due date.
+	// Add a Focus Queue task with a due date.
 	task := mustNewTestTask(project, "Active task with due")
-	task.Active = true
 	due := time.Now().Add(24 * time.Hour)
 	task.DueDate = &due
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
+	cfg.SetFocusQueue([]config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}})
 
 	m := NewProjectFocusViewModel(project, cfg)
 	m.SetSize(80, 24)
@@ -65,25 +65,28 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	project := testutil.NewTestProject("filter-test")
 
 	active := mustNewTestTask(project, "Active")
-	active.Active = true
 	project.Tasks = append(project.Tasks, active)
 
 	inactive := mustNewTestTask(project, "Inactive")
-	inactive.Active = false
 	project.Tasks = append(project.Tasks, inactive)
 
 	completed := mustNewTestTask(project, "Completed")
-	completed.Active = true
-	completed.Status = models.StatusDone
+	completed.WorkflowState = models.StateDone
 	project.Tasks = append(project.Tasks, completed)
 
 	snoozed := mustNewTestTask(project, "Snoozed")
-	snoozed.Active = true
 	snoozeDate := time.Now().Add(48 * time.Hour)
 	snoozed.SnoozedUntil = &snoozeDate
 	project.Tasks = append(project.Tasks, snoozed)
 
 	project.BuildTaskTree()
+	// Queue membership replaces the deprecated Active flag: the inactive task
+	// stays out of the queue, the completed/snoozed members are filtered out.
+	cfg.SetFocusQueue([]config.FocusQueueItem{
+		{TaskID: active.ID, ProjectID: project.ID},
+		{TaskID: completed.ID, ProjectID: project.ID},
+		{TaskID: snoozed.ID, ProjectID: project.ID},
+	})
 
 	m := NewProjectFocusViewModel(project, cfg)
 
@@ -112,7 +115,6 @@ func TestProjectFocusViewModel_StagesPrefixSafe(t *testing.T) {
 	}
 	project := testutil.NewTestProject("stages-test")
 	task := mustNewTestTask(project, "Staged task")
-	task.Active = true
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
@@ -130,17 +132,14 @@ func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
 	project := testutil.NewTestProject("filter-shared")
 
 	plain := mustNewTestTask(project, "Plain task")
-	plain.Active = true
 	plain.Priority = 4
 	project.Tasks = append(project.Tasks, plain)
 
 	dimmed := mustNewTestTask(project, "Dimmed task")
-	dimmed.Active = true
 	dimmed.Dimmed = true
 	project.Tasks = append(project.Tasks, dimmed)
 
 	highPriority := mustNewTestTask(project, "High priority")
-	highPriority.Active = true
 	highPriority.Priority = 1
 	project.Tasks = append(project.Tasks, highPriority)
 
@@ -149,20 +148,21 @@ func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
 		t.Fatalf("NewTask bug: %v", err)
 	}
 	project.NextShortID++
-	bug.Active = true
 	project.Tasks = append(project.Tasks, bug)
 
 	tagged := mustNewTestTask(project, "Tagged task")
-	tagged.Active = true
 	tagged.Tags = []string{"focus"}
 	project.Tasks = append(project.Tasks, tagged)
 
 	staged := mustNewTestTask(project, "Staged task")
-	staged.Active = true
-	staged.Stage = "doing"
 	project.Tasks = append(project.Tasks, staged)
 
 	project.BuildTaskTree()
+	queue := make([]config.FocusQueueItem, 0, len(project.Tasks))
+	for _, task := range project.Tasks {
+		queue = append(queue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
+	}
+	cfg.SetFocusQueue(queue)
 	m := NewProjectFocusViewModel(project, cfg)
 
 	if got := len(m.filteredTasks()); got != 6 {
@@ -205,14 +205,6 @@ func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
 	}
 	clearCommonFilters(&m.filter)
 
-	// F.: stage filter.
-	m.filter.Stage = "doing"
-	tasks = m.filteredTasks()
-	if len(tasks) != 1 || tasks[0].Title != "Staged task" {
-		t.Errorf("Stage=doing filteredTasks() = %v, want only 'Staged task'", taskTitles(tasks))
-	}
-	clearCommonFilters(&m.filter)
-
 	// Fx (clear) returns the full set.
 	if got := len(m.filteredTasks()); got != 6 {
 		t.Errorf("after clear filteredTasks() = %d, want 6", got)
@@ -224,15 +216,17 @@ func TestProjectFocusViewModel_FilterHandlers_DispatchThroughKeymap(t *testing.T
 	project := testutil.NewTestProject("filter-dispatch")
 
 	plain := mustNewTestTask(project, "Plain")
-	plain.Active = true
 	project.Tasks = append(project.Tasks, plain)
 
 	dimmed := mustNewTestTask(project, "Dimmed")
-	dimmed.Active = true
 	dimmed.Dimmed = true
 	project.Tasks = append(project.Tasks, dimmed)
 
 	project.BuildTaskTree()
+	cfg.SetFocusQueue([]config.FocusQueueItem{
+		{TaskID: plain.ID, ProjectID: project.ID},
+		{TaskID: dimmed.ID, ProjectID: project.ID},
+	})
 	m := NewProjectFocusViewModel(project, cfg)
 
 	if got := len(m.filteredTasks()); got != 2 {

@@ -31,7 +31,7 @@ func TestArchiveTasks_RollbackRemovesEmptyArchiveWhenAbsent(t *testing.T) {
 		Slug: "rollback-project",
 		Path: projectPath,
 		Tasks: []*models.Task{
-			{ID: "done-1", ShortID: 1, Title: "Done", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
+			{ID: "done-1", ShortID: 1, Title: "Done", Type: models.TaskTypeTask, WorkflowState: models.StateDone, Priority: 3, CompletedAt: &now},
 		},
 		NextShortID: 2,
 	}

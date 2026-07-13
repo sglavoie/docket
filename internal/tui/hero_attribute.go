@@ -49,13 +49,13 @@ func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 	if t == nil {
 		return HeroNone
 	}
-	if t.IsComplete() || t.Dimmed {
+	if t.IsTerminalState() || t.Dimmed {
 		return HeroNone
 	}
 	if t.IsOverdue() {
 		return HeroOverdue
 	}
-	if t.Status == models.StatusBlocked || (p != nil && p.HasIncompleteDependencies(t)) {
+	if t.IsInState(models.StateWaiting) || (p != nil && p.HasIncompleteDependencies(t)) {
 		return HeroBlocked
 	}
 	if t.IsDueToday() {
@@ -64,7 +64,7 @@ func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 	if t.Priority == 1 {
 		return HeroP1
 	}
-	if t.Status == models.StatusReview {
+	if t.IsInState(models.StateReview) {
 		return HeroReview
 	}
 	return HeroNone

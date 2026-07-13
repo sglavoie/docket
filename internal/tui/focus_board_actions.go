@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
@@ -106,7 +104,7 @@ func (m *FocusBoardModel) canUnblockSelectedTask() bool {
 	if row == nil || row.Task == nil || row.Project == nil {
 		return false
 	}
-	return row.Task.Status == models.StatusBlocked && !row.Project.HasIncompleteDependencies(row.Task)
+	return row.Task.IsInState(models.StateWaiting) && !row.Project.HasIncompleteDependencies(row.Task)
 }
 
 func (m *FocusBoardModel) unblockSelectedTask() (tea.Model, tea.Cmd) {
@@ -116,34 +114,9 @@ func (m *FocusBoardModel) unblockSelectedTask() (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	cmd := taskOpsApply(m, "Unblock Task", applyFocusBoardUnblock)
-	m.setMutationFlash(statusMutationFlashBg(models.StatusTodo))
+	cmd := wfUnblock(m)
+	m.setMutationFlash(stateMutationFlashBg(models.StateInbox))
 	return m, tea.Batch(cmd, mutationFlashTimeout())
-}
-
-func applyFocusBoardUnblock(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-	if task.Status != models.StatusBlocked {
-		return TaskOpResult{StatusMessage: "Task is not blocked"}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.ApplyTransition(models.StatusTodo)
-		t.Section = models.SectionNext
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	result.StatusMessage = fmt.Sprintf("Task #%d unblocked (u to undo)", task.ShortID)
-	result.Cmd = func() tea.Msg { return TaskStatusChangedMsg{Task: task} }
-	return result
 }
 
 func (m *FocusBoardModel) shouldDismissSelectedTask() bool {
@@ -165,7 +138,7 @@ func (m *FocusBoardModel) selectedTaskCanComplete(row *boardRow) bool {
 		return false
 	}
 	for _, child := range row.Task.Children {
-		if !child.Status.IsComplete() {
+		if !child.IsTerminalState() {
 			return false
 		}
 	}

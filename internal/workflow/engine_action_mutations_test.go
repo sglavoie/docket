@@ -19,7 +19,7 @@ func TestApplyAction_NewActions(t *testing.T) {
 			name:   "set due relative +3d",
 			action: RuleAction{ActionType: ActionSetDueRelative, Value: "+3d"},
 			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Status: models.StatusTodo}
+				return &models.Task{ID: "1", WorkflowState: models.StateReady}
 			},
 			expectedChange: func(t *models.Task) bool {
 				if t.DueDate == nil {
@@ -53,39 +53,6 @@ func TestApplyAction_NewActions(t *testing.T) {
 				return t.DueDate == nil
 			},
 			shouldModify: false,
-		},
-		{
-			name:   "set active true",
-			action: RuleAction{ActionType: ActionSetActive, Value: "true"},
-			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Active: false}
-			},
-			expectedChange: func(t *models.Task) bool {
-				return t.Active == true
-			},
-			shouldModify: true,
-		},
-		{
-			name:   "set active true clears dimmed",
-			action: RuleAction{ActionType: ActionSetActive, Value: "true"},
-			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Active: false, Dimmed: true}
-			},
-			expectedChange: func(t *models.Task) bool {
-				return t.Active && !t.Dimmed
-			},
-			shouldModify: true,
-		},
-		{
-			name:   "set active false",
-			action: RuleAction{ActionType: ActionSetActive, Value: "false"},
-			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Active: true}
-			},
-			expectedChange: func(t *models.Task) bool {
-				return t.Active == false
-			},
-			shouldModify: true,
 		},
 		{
 			name:   "set pinned true",
@@ -193,6 +160,93 @@ func TestApplyAction_NewActions(t *testing.T) {
 	}
 }
 
+// TestApplySetActive_RecordsFocusChange verifies the redesigned set_active
+// action: it records
+// a deferred Focus Queue membership change for a config-aware caller to apply.
+func TestApplySetActive_RecordsFocusChange(t *testing.T) {
+	t.Run("set active true records add via focus queue", func(t *testing.T) {
+		task := &models.Task{ID: "t1"}
+		result := &EvaluationResult{}
+
+		modified := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "true"}, nil, result)
+
+		if !modified {
+			t.Fatal("expected modified=true")
+		}
+		if len(result.FocusChanges) != 1 || result.FocusChanges[0].TaskID != "t1" || !result.FocusChanges[0].Add {
+			t.Errorf("expected one add FocusChange for t1, got %+v", result.FocusChanges)
+		}
+	})
+
+	t.Run("set active false records remove", func(t *testing.T) {
+		task := &models.Task{ID: "t1"}
+		result := &EvaluationResult{}
+
+		modified := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "false"}, nil, result)
+
+		if !modified {
+			t.Fatal("expected modified=true")
+		}
+		if len(result.FocusChanges) != 1 || result.FocusChanges[0].Add {
+			t.Errorf("expected one remove FocusChange, got %+v", result.FocusChanges)
+		}
+	})
+
+	t.Run("invalid value is a no-op with no focus change", func(t *testing.T) {
+		task := &models.Task{ID: "t1"}
+		result := &EvaluationResult{}
+
+		modified := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "maybe"}, nil, result)
+
+		if modified {
+			t.Fatal("expected modified=false for invalid value")
+		}
+		if len(result.FocusChanges) != 0 {
+			t.Errorf("expected no FocusChange, got %+v", result.FocusChanges)
+		}
+	})
+
+	t.Run("duplicate focus change for same task is skipped", func(t *testing.T) {
+		task := &models.Task{ID: "t1"}
+		result := &EvaluationResult{}
+
+		first := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "true"}, nil, result)
+		second := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "false"}, nil, result)
+
+		if !first || second {
+			t.Errorf("expected first=true, second=false; got first=%v second=%v", first, second)
+		}
+		if len(result.FocusChanges) != 1 {
+			t.Errorf("expected exactly one FocusChange, got %+v", result.FocusChanges)
+		}
+	})
+}
+
+// TestEvaluateRules_SetActiveSurfacesFocusChange proves a set_active rule
+// evaluated end-to-end surfaces the Focus Queue change in the result rather than
+// mutating task.Active.
+func TestEvaluateRules_SetActiveSurfacesFocusChange(t *testing.T) {
+	task := &models.Task{ID: "t1", WorkflowState: models.StateInProgress}
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "Focus in-progress tasks",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+			Actions: []RuleAction{{ActionType: ActionSetActive, Value: "true"}},
+		},
+	}
+
+	result := EvaluateRules([]*models.Task{task}, rules)
+
+	if len(result.FocusChanges) != 1 || result.FocusChanges[0].TaskID != "t1" || !result.FocusChanges[0].Add {
+		t.Fatalf("expected one add FocusChange for t1, got %+v", result.FocusChanges)
+	}
+	if result.RuleTriggerCounts["r1"] != 1 {
+		t.Errorf("expected rule r1 to trigger once, got %d", result.RuleTriggerCounts["r1"])
+	}
+}
+
 func TestApplyAction_UpdatesTimestamp(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -212,7 +266,7 @@ func TestApplyAction_UpdatesTimestamp(t *testing.T) {
 			action: RuleAction{ActionType: ActionSetSection, Value: "Inbox"},
 			setup: func() *models.Task {
 				stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-				return &models.Task{ID: "1", Section: "", UpdatedAt: stale}
+				return &models.Task{ID: "1", WorkflowState: models.StateReady, UpdatedAt: stale}
 			},
 		},
 	}

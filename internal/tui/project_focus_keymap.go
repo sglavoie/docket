@@ -8,11 +8,6 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for ProjectFocusViewModel.
 func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
-	var stages []string
-	if m.cfg != nil {
-		stages = m.cfg.Stages
-	}
-
 	hasItem := func() bool { return m.getTaskAtCursor() != nil }
 
 	var entries []keymap.Entry
@@ -62,16 +57,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 	})...)
 
 	// --- Standard task action groups ---
-	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
-		View:    m,
-		HasItem: hasItem,
-		Stages:  stages,
-		ToggleHelp: func() (tea.Model, tea.Cmd) {
-			return m, helpCmd(ViewProjectFocusView, "Project Focus", m.GetHelpItems())
-		},
-		ToggleActive: func() (tea.Model, tea.Cmd) { return m.toggleActive() },
-		DeleteTask:   func() (tea.Model, tea.Cmd) { return m, nil },
-	})...)
+	entries = append(entries, buildStandardTaskActionEntries(m.projectFocusTaskKeymapDeps(hasItem))...)
 
 	// --- Filter group: "F" prefix ---
 	entries = append(entries, keymap.FilterGroup(keymap.FilterDeps{
@@ -84,7 +70,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fs", key) }
 		},
 		DueDateKey: func(key string) keymap.Action {
@@ -102,10 +88,6 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("F.", key) }
-		},
-		StageFilterNames: stages,
 	})...)
 
 	// --- View-specific direct bindings ---
@@ -193,5 +175,20 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 	return &keymap.KeyMap{
 		ViewName: "Project Focus",
 		Entries:  entries,
+	}
+}
+
+// projectFocusTaskKeymapDeps builds the standard task-action deps for Project
+// Focus. Every non-overridden default (status, priority, due-date, snooze,
+// section, mark-done, pin, dim) routes through the coordinator-backed wf*
+// helpers; DeleteTask is intentionally a no-op for this view.
+func (m *ProjectFocusViewModel) projectFocusTaskKeymapDeps(hasItem func() bool) TaskKeymapDeps {
+	return TaskKeymapDeps{
+		View:    m,
+		HasItem: hasItem,
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			return m, helpCmd(ViewProjectFocusView, "Project Focus", m.GetHelpItems())
+		},
+		DeleteTask: func() (tea.Model, tea.Cmd) { return m, nil },
 	}
 }

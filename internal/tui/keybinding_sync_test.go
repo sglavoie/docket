@@ -69,6 +69,13 @@ func session9SyncViews() []syncTestCase {
 	}
 }
 
+// conflictSyncViews returns the conflict-management resolution view.
+func conflictSyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewConflictResolution, &ConflictResolutionModel{}},
+	}
+}
+
 // captureParitySyncViews returns the capture views that adopted the shared Quick
 // Capture interaction/footer contract. The Linked Task Creator gained a
 // declarative keymap in the Quick Capture UX wave so both hosts advertise the
@@ -124,6 +131,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 	allViews = append(allViews, session8SyncViews()...)
 	allViews = append(allViews, session9SyncViews()...)
 	allViews = append(allViews, captureParitySyncViews()...)
+	allViews = append(allViews, conflictSyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
 			keys := tc.handler.HandledKeys()
@@ -198,6 +206,8 @@ func TestViewTypeString(t *testing.T) {
 		ViewRoadmap: "Roadmap",
 		// Capture parity (Quick Capture UX wave)
 		ViewLinkedTaskCreator: "LinkedTaskCreator",
+		// Conflict management
+		ViewConflictResolution: "ConflictResolution",
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {

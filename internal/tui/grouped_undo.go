@@ -1,38 +1,10 @@
 package tui
 
 import (
-	"fmt"
-	"sort"
-
-	"github.com/google/uuid"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
-
-func undoGroupMetadataForProjects(projects []*models.Project) (string, []string) {
-	ids := undoGroupProjectIDs(projects)
-	if len(ids) <= 1 {
-		return "", nil
-	}
-	return uuid.New().String(), ids
-}
-
-func undoGroupProjectIDs(projects []*models.Project) []string {
-	seen := make(map[string]bool, len(projects))
-	ids := make([]string, 0, len(projects))
-	for _, project := range projects {
-		id := tuiUndoProjectID(project)
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	return ids
-}
 
 func tuiUndoProjectID(project *models.Project) string {
 	if project == nil {
@@ -42,36 +14,6 @@ func tuiUndoProjectID(project *models.Project) string {
 		return project.ID
 	}
 	return project.Slug
-}
-
-func recordTUIUndoSnapshotWithGroup(p Persister, project *models.Project, action, context string, depth int, taskIDs []string, groupID string, groupProjectIDs []string) error {
-	if p == nil || project == nil || depth <= 0 {
-		return nil
-	}
-	if action == "" {
-		action = "Task Modified"
-	}
-	if err := p.RecordUndoSnapshotWithOptions(project, storage.UndoSnapshotOptions{
-		Action:          action,
-		Context:         context,
-		MaxDepth:        depth,
-		TaskIDs:         taskIDs,
-		GroupID:         groupID,
-		GroupProjectIDs: groupProjectIDs,
-	}); err != nil {
-		return fmt.Errorf("failed to record undo snapshot for %s: %w", project.Name, err)
-	}
-	return nil
-}
-
-func movedTaskIDs(tasks []*models.Task) []string {
-	ids := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		if task != nil && task.ID != "" {
-			ids = append(ids, task.ID)
-		}
-	}
-	return ids
 }
 
 func repairConfigTaskRefsToLoadedProjects(mgr *config.Manager, cfg *config.Config, projects []*models.Project) (int, error) {

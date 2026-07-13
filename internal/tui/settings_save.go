@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -180,8 +179,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.AutoTheme = boolPtr(m.autoTheme)
 	m.config.UseEmoji = boolPtr(m.useEmoji)
 
-	m.config.Stages = append(make([]string, 0, len(m.stages)), m.stages...)
-
 	m.config.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
 	m.config.AlertWeeklyReviewEnabled = boolPtr(m.alertWeeklyReviewEnabled)
 	m.config.AlertOverdueEnabled = boolPtr(m.alertOverdueEnabled)
@@ -243,15 +240,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		ks.EnabledModes = enabledModes
 	}
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
-		}
-
-		return SettingsSavedMsg{}
-	}
+	return m.coordinator.SaveThen(m.config, func() tea.Msg { return SettingsSavedMsg{} })
 }
 
 // priorityModeToCursor converts a config string to cursor index.
@@ -404,20 +393,11 @@ func (m *SettingsModel) HandledKeys() []string {
 		"ctrl+d",
 		// Palette preset shortcuts (palette tab)
 		"ctrl+s", "ctrl+o", "ctrl+r",
-		// Stages tab navigation and actions
-		"j", "k", "up", "down",
-		"a", "e", "d", "delete", "backspace",
-		"J", "K",
 		// Palette preset load overlay actions
 		"D",
-		// Confirmation keys (stage delete, palette reset)
+		// Confirmation keys (palette reset)
 		"y", "Y", "n", "N",
 		// Help overlay
 		"?",
 	}
-}
-
-// GetConfirmDialog implements ConfirmDialogProvider for the settings view.
-func (m *SettingsModel) GetConfirmDialog() *ConfirmDialog {
-	return &m.stageConfirmDelete
 }

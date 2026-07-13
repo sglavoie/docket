@@ -71,7 +71,6 @@ func (m *AppModel) saveCrossOutlinerState() {
 	m.config.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
 	m.config.CrossOutlinerFilterGitHubIssue = m.crossOutliner.filter.GitHubIssue
 	m.config.CrossOutlinerFilterParked = m.crossOutliner.filter.Parked
-	m.config.CrossOutlinerFilterStage = m.crossOutliner.filter.Stage
 	m.config.CrossOutlinerFilterScoreMin = m.crossOutliner.filter.ScoreMin
 	m.config.CrossOutlinerSortField = int(m.crossOutliner.sort.Field)
 	m.config.CrossOutlinerSortAscending = m.crossOutliner.sort.Ascending
@@ -136,7 +135,6 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 	state.OutlinerFilterHideDimmed = o.filter.HideDimmed
 	state.OutlinerFilterGitHubIssue = o.filter.GitHubIssue
 	state.OutlinerFilterParked = o.filter.Parked
-	state.OutlinerFilterStage = o.filter.Stage
 	state.OutlinerFilterScoreMin = o.filter.ScoreMin
 	state.OutlinerColumnToggles = o.columnConfig.Toggles()
 
@@ -206,7 +204,6 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	o.filter.HideDimmed = state.OutlinerFilterHideDimmed
 	o.filter.GitHubIssue = state.OutlinerFilterGitHubIssue
 	o.filter.Parked = state.OutlinerFilterParked
-	o.filter.Stage = state.OutlinerFilterStage
 	o.filter.ScoreMin = state.OutlinerFilterScoreMin
 
 	// Restore attribute filters
@@ -261,86 +258,31 @@ func (m *AppModel) reloadAndRefreshProjectTree() {
 	}
 }
 
-// applyTagsToTask applies selected tags to a single task and saves the project.
+// applyTagsToTask applies selected tags to a single task as one asynchronous
+// transaction through the BulkCoordinator, mirroring the multi-task
+// applyTagsToTaskRefs sibling. Setting tags is an attribute mutation (no workflow
+// rules run); the shell owns reload and toast via the batch result, and the
+// durable write records through the workspace undo ledger.
 func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, selectedTags []string) tea.Cmd {
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	if !project.MutateTask(task.ID, func(t *models.Task) {
-		t.Tags = selectedTags
-	}) {
-		return errorCmd("task no longer exists in project")
-	}
-
-	// Create backup and save
-	if err := saveProjectSync(project); err != nil {
-		return errorCmd("save failed: %w", err)
-	}
-
-	// Refresh tree/outliner and set undo context
-	if m.projectTree != nil {
-		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-		m.projectTree.undo.TaskIDs = []string{task.ID}
-		m.projectTree.buildTree()
-	}
-	if m.outliner != nil {
-		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-		m.outliner.undo.TaskIDs = []string{task.ID}
-		m.outliner.rebuildRows()
-	}
-	if m.crossOutliner != nil {
-		m.crossOutliner.crossUndoCtx.Set("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-		m.crossOutliner.crossUndoCtx.ProjectIDs = []string{project.ID}
-		m.crossOutliner.crossUndoCtx.TaskIDs = []string{task.ID}
-		m.crossOutliner.rebuildRows()
-	}
-
-	m.setUndoableInfoStatus(fmt.Sprintf("Tagged #%d", task.ShortID))
-	return nil
-}
-
-// applyTagsToTaskRefs applies selected tags to multiple task refs and saves each affected project.
-func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
-	refs = validTaskProjectRefs(refs)
-	groups := groupTaskProjectRefsByProject(refs)
-	if len(groups) == 0 {
+	if task == nil {
 		return nil
 	}
+	cmd := m.secondaryFeatures.Bulk.SetTags([]string{task.ID}, selectedTags)
+	return finalizeBatchResult(cmd, nil, fmt.Sprintf("Tagged #%d", task.ShortID))
+}
 
-	count, groups, err := m.applyBulkTaskRefsWithWorkflow(refs, "Set Tags", func(project *models.Project, taskID string) bool {
-		return project.MutateTask(taskID, func(t *models.Task) {
-			t.Tags = append([]string{}, selectedTags...)
-		})
-	})
-	if err != nil {
-		return errorCmd("save failed: %w", err)
+// applyTagsToTaskRefs applies selected tags to multiple task refs as one
+// asynchronous cross-project transaction through the BulkCoordinator. Setting
+// tags is an attribute mutation (no workflow rules run); the shell owns reload
+// and selection-clear via the batch result.
+func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
+	refs = validTaskProjectRefs(refs)
+	taskIDs := taskIDsFromTaskRefs(refs)
+	if len(taskIDs) == 0 {
+		return nil
 	}
-
-	// Refresh tree/outliner and clear stale selections. Undo snapshots were
-	// recorded by applyBulkTaskRefsWithWorkflow before saving each project.
-	if m.projectTree != nil {
-		m.projectTree.buildTree()
-	}
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
-	if m.crossOutliner != nil {
-		bulkIDs := taskIDsFromTaskRefs(refs)
-		projectIDs := make([]string, 0, len(groups))
-		for _, group := range groups {
-			projectIDs = append(projectIDs, group.Project.ID)
-		}
-		m.crossOutliner.crossUndoCtx.Set("Set Tags", fmt.Sprintf("%d tasks", count))
-		m.crossOutliner.crossUndoCtx.ProjectIDs = projectIDs
-		m.crossOutliner.crossUndoCtx.TaskIDs = bulkIDs
-		m.crossOutliner.rebuildRows()
-	}
-	m.clearBulkTaskSelectionsForRefs(refs)
-	cmds := m.refreshTaskViewsAfterSave()
-
-	m.setUndoableInfoStatus(fmt.Sprintf("Tagged %d tasks", count))
-	if len(cmds) > 0 {
-		return tea.Batch(cmds...)
-	}
-	return nil
+	cmd := m.secondaryFeatures.Bulk.SetTags(taskIDs, selectedTags)
+	return finalizeBatchResult(cmd, taskIDs, fmt.Sprintf("Tagged %d tasks", len(taskIDs)))
 }
 
 // processMessage routes a message through the app's handler chain.

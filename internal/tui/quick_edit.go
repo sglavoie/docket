@@ -329,7 +329,7 @@ func applyQuickEdit(task *models.Task, project *models.Project, result *quickEdi
 		}
 
 		if result.statusSet {
-			t.ApplyTransition(result.status)
+			t.ApplyStateTransition(models.TargetStateForStatus(result.status))
 		}
 	})
 	return ""

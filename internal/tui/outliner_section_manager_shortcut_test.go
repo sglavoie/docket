@@ -8,7 +8,7 @@ import (
 
 func TestOutlinerCtrlS_CrossProjectTaskRowTargetsOwningProject(t *testing.T) {
 	project := &models.Project{ID: "proj-cross", Name: "Cross"}
-	task := &models.Task{ID: "task-cross", Title: "Cross Task", Section: models.SectionInbox}
+	task := &models.Task{ID: "task-cross", Title: "Cross Task", WorkflowState: models.StateInbox}
 
 	m := minimalOutliner()
 	m.project = nil

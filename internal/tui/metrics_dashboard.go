@@ -42,7 +42,8 @@ type MetricsDashboardSelectMsg struct {
 // MetricsDashboardModel is the TUI model for the metrics dashboard.
 type MetricsDashboardModel struct {
 	BaseView
-	config *config.Config
+	configManager *config.Manager
+	dataDir       string
 
 	// Scope
 	project   *models.Project // nil = global scope
@@ -58,37 +59,56 @@ type MetricsDashboardModel struct {
 	blockedCursor int // cursor for scrollable blocked task list
 }
 
-// NewMetricsDashboardModel creates a global metrics dashboard.
-func NewMetricsDashboardModel(cfg *config.Config) *MetricsDashboardModel {
+// NewMetricsDashboardModel creates a global metrics dashboard. It sources its
+// active projects and week-start setting from the domain-backed runtime seam
+// rather than the config.Config facade.
+func NewMetricsDashboardModel(manager *config.Manager) *MetricsDashboardModel {
 	m := &MetricsDashboardModel{
-		config:    cfg,
-		isGlobal:  true,
-		canToggle: false,
-		timeRange: metrics.TimeRange30d,
+		configManager: manager,
+		dataDir:       metricsDataDir(manager),
+		isGlobal:      true,
+		canToggle:     false,
+		timeRange:     metrics.TimeRange30d,
 	}
 	m.computeMetrics()
 	return m
 }
 
 // NewMetricsDashboardModelForProject creates a project-scoped metrics dashboard.
-func NewMetricsDashboardModelForProject(cfg *config.Config, project *models.Project) *MetricsDashboardModel {
+func NewMetricsDashboardModelForProject(manager *config.Manager, project *models.Project) *MetricsDashboardModel {
 	m := &MetricsDashboardModel{
-		config:    cfg,
-		project:   project,
-		isGlobal:  false,
-		canToggle: true,
-		timeRange: metrics.TimeRange30d,
+		configManager: manager,
+		dataDir:       metricsDataDir(manager),
+		project:       project,
+		isGlobal:      false,
+		canToggle:     true,
+		timeRange:     metrics.TimeRange30d,
 	}
 	m.computeMetrics()
 	return m
+}
+
+// metricsDataDir derives the workspace data directory from a manager, or ""
+// when no manager is bound (isolated render tests).
+func metricsDataDir(manager *config.Manager) string {
+	if manager == nil {
+		return ""
+	}
+	return config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
 }
 
 func (m *MetricsDashboardModel) computeMetrics() {
 	var projects []*models.Project
 	var allArchived []metrics.TaskSummary
 
+	deps := m.runtimeDeps()
+
 	if m.isGlobal {
-		for _, p := range m.config.GetActiveProjects() {
+		active, err := m.activeProjects(deps)
+		if err != nil {
+			logging.Warn("failed to load active projects for metrics: %v", err)
+		}
+		for _, p := range active {
 			if err := storage.LoadProject(p); err != nil {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
 			}
@@ -113,8 +133,40 @@ func (m *MetricsDashboardModel) computeMetrics() {
 		}
 	}
 
-	weekStart := metrics.WeekStartFromWeekEnd(m.config.GetWeekEndDay())
+	weekStart := metrics.WeekStartFromWeekEnd(m.weekEndDay(deps))
 	m.metrics = metrics.ComputeAllAtWithWeekStartAndSummaries(projects, m.timeRange, time.Now(), weekStart, allArchived)
+}
+
+// runtimeDeps returns the domain-backed runtime dependencies, or nil when no
+// manager is bound (isolated render tests).
+func (m *MetricsDashboardModel) runtimeDeps() *config.RuntimeDependencies {
+	if m.configManager == nil {
+		return nil
+	}
+	return m.configManager.RuntimeDependencies()
+}
+
+// activeProjects returns the workspace's active projects via the catalog domain,
+// mirroring the config facade's GetActiveProjects for the global metrics scope.
+func (m *MetricsDashboardModel) activeProjects(deps *config.RuntimeDependencies) ([]*models.Project, error) {
+	if deps == nil {
+		return nil, nil
+	}
+	return deps.ActiveProjects(m.dataDir)
+}
+
+// weekEndDay resolves the configured week-end day via the settings domain,
+// defaulting to "sun" when settings are unavailable.
+func (m *MetricsDashboardModel) weekEndDay(deps *config.RuntimeDependencies) string {
+	if deps == nil || deps.Settings == nil {
+		return "sun"
+	}
+	settings, err := deps.Settings.LoadSettings()
+	if err != nil {
+		logging.Warn("failed to load settings for metrics week-start: %v", err)
+		return "sun"
+	}
+	return settings.GetWeekEndDay()
 }
 
 func archiveSummariesForMetrics(summaries []storage.ArchiveTaskSummary) []metrics.TaskSummary {
@@ -122,7 +174,7 @@ func archiveSummariesForMetrics(summaries []storage.ArchiveTaskSummary) []metric
 	for _, summary := range summaries {
 		metricSummaries = append(metricSummaries, metrics.TaskSummary{
 			ID:             summary.ID,
-			Status:         summary.Status,
+			WorkflowState:  summary.WorkflowState,
 			CompletedAt:    summary.CompletedAt,
 			FirstStartedAt: summary.FirstStartedAt,
 			EstimatedDays:  summary.EstimatedDays,

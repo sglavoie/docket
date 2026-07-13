@@ -34,9 +34,21 @@ func WriteTasksMarkdownWithFullProjectMetadata(projectName string, tasks []*mode
 }
 
 func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string) string {
+	return writeTasksMarkdownDocument(projectName, tasks, sections, sectionColors, tags, pinnedTags, nil, format.WriteMetadataV2)
+}
+
+// writeTasksMarkdownDocument is the shared serializer for both schema v1 and v2.
+// The header hook writes any schema-specific header content (e.g. the v2 schema
+// marker and preserved opaque blocks) immediately after the project-level
+// metadata, and writeMeta selects the per-task metadata encoder (v1 legacy
+// fields vs. v2 canonical `state`).
+func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string, header func(*strings.Builder), writeMeta func(*models.Task) string) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(&builder, "# Project: %s\n", projectName)
+	if header != nil {
+		header(&builder)
+	}
 	writeSectionsMetadata(&builder, sections, sectionColors)
 	writeTagsMetadata(&builder, tags)
 	writePinnedTagsMetadata(&builder, pinnedTags)
@@ -45,13 +57,13 @@ func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.T
 	rootTasks := collectRootTasks(tasks)
 	visited := make(map[string]bool, len(tasks))
 	for i, task := range rootTasks {
-		writeTaskPreservingOrder(&builder, task, tasks, 2, visited)
+		writeTaskPreservingOrder(&builder, task, tasks, 2, visited, writeMeta)
 		if i < len(rootTasks)-1 {
 			builder.WriteString("\n")
 		}
 	}
 
-	appendOrphanedTasks(&builder, tasks, visited)
+	appendOrphanedTasks(&builder, tasks, visited, writeMeta)
 
 	return builder.String()
 }
@@ -105,7 +117,7 @@ func collectRootTasks(tasks []*models.Task) []*models.Task {
 	return rootTasks
 }
 
-func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited map[string]bool) {
+func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited map[string]bool, writeMeta func(*models.Task) string) {
 	for _, task := range tasks {
 		if task == nil {
 			continue
@@ -116,7 +128,7 @@ func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited
 
 		logging.Warn("task #%d %q has missing parent reference, saving as root-level entry", task.ShortID, task.Title)
 		builder.WriteString("\n")
-		writeTaskPreservingOrder(builder, task, tasks, 2, visited)
+		writeTaskPreservingOrder(builder, task, tasks, 2, visited, writeMeta)
 	}
 }
 
@@ -145,7 +157,7 @@ func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 // the heading level is capped.
 const maxHeadingLevel = 6
 
-func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool) {
+func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool, writeMeta func(*models.Task) string) {
 	if visited[task.ID] {
 		return
 	}
@@ -159,7 +171,7 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTa
 	// or trailing spaces.
 	fmt.Fprintf(builder, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), strings.TrimSpace(task.Title))
 
-	builder.WriteString(format.WriteMetadata(task))
+	builder.WriteString(writeMeta(task))
 	builder.WriteString("\n")
 
 	// Description is trimmed because the parser strips surrounding whitespace
@@ -193,6 +205,6 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTa
 
 	for _, child := range getChildrenInOrder(task.ID, allTasks) {
 		builder.WriteString("\n")
-		writeTaskPreservingOrder(builder, child, allTasks, level+1, visited)
+		writeTaskPreservingOrder(builder, child, allTasks, level+1, visited, writeMeta)
 	}
 }

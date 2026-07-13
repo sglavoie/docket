@@ -328,8 +328,9 @@ func TestTUITestRunConfigModeCopiesData(t *testing.T) {
 		t.Fatalf("result.OK = false, want true: %+v", result)
 	}
 
-	// The source config and its tasks.md must be untouched by the copy path.
-	if _, statErr := os.Stat(sourceConfig); statErr != nil {
+	// The source workspace's domain files and tasks.md must be untouched by the
+	// copy path (persistence is the decomposed domain files, not a monolithic file).
+	if _, statErr := os.Stat(config.WorkspaceCatalogPath(filepath.Dir(sourceConfig))); statErr != nil {
 		t.Fatalf("source config disappeared: %v", statErr)
 	}
 }
@@ -650,8 +651,9 @@ func TestTUITestSessionConfigModeCopiesData(t *testing.T) {
 	if !responses[0].OK {
 		t.Fatalf("config-mode assert failed: %+v", responses[0])
 	}
-	// The source config must be untouched by the copy path.
-	if _, statErr := os.Stat(sourceConfig); statErr != nil {
+	// The source workspace's domain files must be untouched by the copy path
+	// (persistence is the decomposed domain files, not a monolithic file).
+	if _, statErr := os.Stat(config.WorkspaceCatalogPath(filepath.Dir(sourceConfig))); statErr != nil {
 		t.Fatalf("source config disappeared: %v", statErr)
 	}
 }
@@ -692,7 +694,12 @@ func buildSourceConfig(t *testing.T, projectName, taskTitle string) string {
 		t.Fatalf("save project: %v", err)
 	}
 
-	configPath := filepath.Join(root, "tt.json")
+	// Root the config inside the data dir so the workspace is self-consistent
+	// (DataDir == the config's directory), matching the domain persistence model
+	// where absolute project paths are derived, not stored. Save writes the
+	// decomposed domain files under <dataDir>/.tt/; the returned path is the
+	// workspace config path (its directory is the workspace root).
+	configPath := filepath.Join(dataDir, ".tt.json")
 	if err := config.NewManager(configPath).Save(cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}

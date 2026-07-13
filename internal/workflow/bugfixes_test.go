@@ -12,13 +12,13 @@ import (
 // result.ModifiedTasks. Without this, the caller would silently lose the
 // parent's status change at persist time.
 func TestApplyHierarchicalAction_RecordsParentInModifiedTasks(t *testing.T) {
-	parent := &models.Task{ID: "p", Status: models.StatusTodo}
-	child := &models.Task{ID: "c", Status: models.StatusDone, Parent: parent}
+	parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+	child := &models.Task{ID: "c", WorkflowState: models.StateDone, Parent: parent}
 	parent.Children = []*models.Task{child}
 
 	evalCtx := &EvaluationContext{
 		Changes: []TaskChangeContext{
-			{Task: child, Previous: &models.Task{ID: "c", Status: models.StatusInProgress}},
+			{Task: child, Previous: &models.Task{ID: "c", WorkflowState: models.StateInProgress}},
 		},
 		AllTasks: []*models.Task{parent, child},
 		TaskMap:  map[string]*models.Task{"p": parent, "c": child},
@@ -36,7 +36,7 @@ func TestApplyHierarchicalAction_RecordsParentInModifiedTasks(t *testing.T) {
 
 	result := EvaluateRulesWithContext(evalCtx, rules)
 	if !parent.IsComplete() {
-		t.Fatalf("expected parent to be completed, got status %q", parent.Status)
+		t.Fatalf("expected parent to be completed, got state %q", parent.State())
 	}
 	if !containsTask(result.ModifiedTasks, parent) {
 		t.Errorf("expected parent in ModifiedTasks, got %d entries", len(result.ModifiedTasks))
@@ -46,8 +46,8 @@ func TestApplyHierarchicalAction_RecordsParentInModifiedTasks(t *testing.T) {
 // TestApplyHierarchicalAction_BlockParentRecorded verifies the parent is
 // surfaced as modified when ActionBlockParent fires.
 func TestApplyHierarchicalAction_BlockParentRecorded(t *testing.T) {
-	parent := &models.Task{ID: "p", Status: models.StatusTodo}
-	child := &models.Task{ID: "c", Status: models.StatusBlocked, Parent: parent}
+	parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+	child := &models.Task{ID: "c", WorkflowState: models.StateWaiting, Parent: parent}
 	parent.Children = []*models.Task{child}
 
 	evalCtx := &EvaluationContext{
@@ -60,8 +60,8 @@ func TestApplyHierarchicalAction_BlockParentRecorded(t *testing.T) {
 	if !modified {
 		t.Fatal("expected modified")
 	}
-	if parent.Status != models.StatusBlocked {
-		t.Fatalf("expected parent blocked, got %q", parent.Status)
+	if parent.State() != models.StateWaiting {
+		t.Fatalf("expected parent blocked, got %q", parent.State())
 	}
 	if !containsTask(result.ModifiedTasks, parent) {
 		t.Error("expected blocked parent in ModifiedTasks")
@@ -112,9 +112,9 @@ func TestEvaluation_ConditionalRuleReFiresAfterRecursiveRound(t *testing.T) {
 	// condition was unmet) so it cannot fire on the recursive pass kicked
 	// off by B adding the tag — status remains todo.
 	task := &models.Task{
-		ID:     "task-1",
-		Status: models.StatusTodo,
-		Tags:   []string{},
+		ID:            "task-1",
+		WorkflowState: models.StateReady,
+		Tags:          []string{},
 	}
 
 	rules := []WorkflowRule{
@@ -153,8 +153,8 @@ func TestEvaluation_ConditionalRuleReFiresAfterRecursiveRound(t *testing.T) {
 	if !task.HasTag("ready") {
 		t.Fatalf("expected tag 'ready' to be added by rule B, got tags: %v", task.Tags)
 	}
-	if task.Status != models.StatusDone {
-		t.Errorf("expected status=done after rule A's condition became true via recursive re-eval, got %s", task.Status)
+	if task.State() != models.StateDone {
+		t.Errorf("expected status=done after rule A's condition became true via recursive re-eval, got %s", task.State())
 	}
 }
 
@@ -165,9 +165,9 @@ func TestEvaluation_ConditionalRuleReFiresAfterRecursiveRound(t *testing.T) {
 // every child as modified, churning their UpdatedAt at the caller and forcing
 // unnecessary persistence work.
 func TestApplyHierarchicalAction_CascadeTagSilentValidationFailure(t *testing.T) {
-	parent := &models.Task{ID: "p", Status: models.StatusTodo}
-	childA := &models.Task{ID: "a", Status: models.StatusTodo, Parent: parent}
-	childB := &models.Task{ID: "b", Status: models.StatusTodo, Parent: parent}
+	parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+	childA := &models.Task{ID: "a", WorkflowState: models.StateReady, Parent: parent}
+	childB := &models.Task{ID: "b", WorkflowState: models.StateReady, Parent: parent}
 	parent.Children = []*models.Task{childA, childB}
 
 	evalCtx := &EvaluationContext{
@@ -224,11 +224,11 @@ func TestApplyAction_SetRecurrenceWeekdayOrderNoOp(t *testing.T) {
 // not precompute TaskMap. The context already has enough data to resolve
 // blockers, so treating a nil TaskMap as "no blockers" misses real matches.
 func TestHierarchicalDependencyTriggersBuildTaskMapFromAllTasks(t *testing.T) {
-	blocker := &models.Task{ID: "blocker", Status: models.StatusTodo}
+	blocker := &models.Task{ID: "blocker", WorkflowState: models.StateReady}
 	blocked := &models.Task{
-		ID:        "blocked",
-		Status:    models.StatusTodo,
-		DependsOn: []string{blocker.ID},
+		ID:            "blocked",
+		WorkflowState: models.StateReady,
+		DependsOn:     []string{blocker.ID},
 	}
 
 	evalCtx := &EvaluationContext{
@@ -247,13 +247,13 @@ func TestHierarchicalDependencyTriggersBuildTaskMapFromAllTasks(t *testing.T) {
 
 	EvaluateRulesWithContext(evalCtx, rules)
 
-	if blocked.Status != models.StatusBlocked {
-		t.Fatalf("expected dependency trigger to mark task blocked, got %q", blocked.Status)
+	if blocked.State() != models.StateWaiting {
+		t.Fatalf("expected dependency trigger to mark task blocked, got %q", blocked.State())
 	}
 }
 
 func TestHierarchicalBlockerCountBuildsTaskMapFromAllTasks(t *testing.T) {
-	blocker := &models.Task{ID: "blocker", Status: models.StatusTodo}
+	blocker := &models.Task{ID: "blocker", WorkflowState: models.StateReady}
 	blocked := &models.Task{ID: "blocked", DependsOn: []string{blocker.ID}}
 	evalCtx := &EvaluationContext{AllTasks: []*models.Task{blocker, blocked}}
 
@@ -286,7 +286,7 @@ func TestApplyAction_MoveToProjectSelfMoveNoOp(t *testing.T) {
 			Actions: []RuleAction{{ActionType: ActionMoveToProject, Value: "ProjectA"}},
 		},
 	}
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 
 	evalCtx := &EvaluationContext{
 		Changes:     []TaskChangeContext{{Task: task, Previous: nil}},
@@ -305,7 +305,7 @@ func TestApplyAction_MoveToProjectSelfMoveNoOp(t *testing.T) {
 	}
 
 	// Also verify match-by-ID works the same way.
-	task2 := &models.Task{ID: "task-2", Title: "Test", Status: models.StatusTodo}
+	task2 := &models.Task{ID: "task-2", Title: "Test", WorkflowState: models.StateReady}
 	rules[0].Actions[0].Value = "proj-a"
 	evalCtx2 := &EvaluationContext{
 		Changes:     []TaskChangeContext{{Task: task2, Previous: nil}},
@@ -342,7 +342,7 @@ func TestApplyAction_SetSectionSilentValidationFailure(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-			task := &models.Task{ID: "t1", Status: models.StatusTodo, UpdatedAt: stale}
+			task := &models.Task{ID: "t1", WorkflowState: models.StateReady, UpdatedAt: stale}
 			action := RuleAction{ActionType: ActionSetSection, Value: tc.value}
 
 			modified := applyAction(task, action)
@@ -357,14 +357,14 @@ func TestApplyAction_SetSectionSilentValidationFailure(t *testing.T) {
 	}
 
 	t.Run("valid GTD section still reports modification", func(t *testing.T) {
-		task := &models.Task{ID: "t1", Status: models.StatusTodo}
+		task := &models.Task{ID: "t1", WorkflowState: models.StateReady}
 		action := RuleAction{ActionType: ActionSetSection, Value: models.SectionInbox}
 
 		if !applyAction(task, action) {
 			t.Fatal("expected modified=true for a valid GTD section")
 		}
-		if task.Section != models.SectionInbox {
-			t.Errorf("expected Section=Inbox, got %q", task.Section)
+		if got := models.SectionForState(task.State()); got != models.SectionInbox {
+			t.Errorf("expected Section=Inbox, got %q", got)
 		}
 	})
 }
@@ -376,15 +376,19 @@ func TestApplyAction_SetSectionSilentValidationFailure(t *testing.T) {
 // deactivate or unpin a task.
 func TestApplyAction_BooleanActionsRejectInvalidValues(t *testing.T) {
 	t.Run("set_active invalid value is no-op", func(t *testing.T) {
-		task := &models.Task{ID: "t1", Active: true}
+		task := &models.Task{ID: "t1"}
+		result := &EvaluationResult{}
 
-		modified := applyAction(task, RuleAction{ActionType: ActionSetActive, Value: "maybe"})
+		// set_active is routed through the context-aware path so it can record a
+		// deferred Focus Queue change; an invalid value must record nothing (no
+		// Focus Queue membership change).
+		modified := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "maybe"}, nil, result)
 
 		if modified {
 			t.Fatal("expected modified=false for invalid set_active value")
 		}
-		if !task.Active {
-			t.Error("expected task to remain active")
+		if len(result.FocusChanges) != 0 {
+			t.Errorf("expected no focus change, got %+v", result.FocusChanges)
 		}
 	})
 
@@ -413,9 +417,9 @@ func TestApplyAction_BooleanActionsRejectInvalidValues(t *testing.T) {
 func TestEvaluateProjectRules_TriggeredIDsOnlyWinner(t *testing.T) {
 	proj := &models.Project{ID: "proj-1", Name: "Test"}
 	tasks := []*models.Task{
-		{ID: "t1", Status: models.StatusTodo, Type: models.TaskTypeBug, UpdatedAt: time.Now()},
-		{ID: "t2", Status: models.StatusTodo, Type: models.TaskTypeBug, UpdatedAt: time.Now()},
-		{ID: "t3", Status: models.StatusTodo, Type: models.TaskTypeTask, UpdatedAt: time.Now()},
+		{ID: "t1", WorkflowState: models.StateReady, Type: models.TaskTypeBug, UpdatedAt: time.Now()},
+		{ID: "t2", WorkflowState: models.StateReady, Type: models.TaskTypeBug, UpdatedAt: time.Now()},
+		{ID: "t3", WorkflowState: models.StateReady, Type: models.TaskTypeTask, UpdatedAt: time.Now()},
 	}
 	ctx := &ProjectEvaluationContext{Project: proj, Tasks: tasks}
 
@@ -485,13 +489,13 @@ func TestApplyAction_AddCommentDedupScansAllComments(t *testing.T) {
 // ActionAddComment was already hardened against.
 func TestApplyHierarchicalAction_NotifyParentDedupesComments(t *testing.T) {
 	parent := &models.Task{
-		ID:     "p",
-		Status: models.StatusTodo,
+		ID:            "p",
+		WorkflowState: models.StateReady,
 		Comments: []*models.Comment{
 			{Text: "[Workflow] Child needs review", CreatedAt: time.Now()},
 		},
 	}
-	child := &models.Task{ID: "c", Status: models.StatusReview, Parent: parent}
+	child := &models.Task{ID: "c", WorkflowState: models.StateReview, Parent: parent}
 	parent.Children = []*models.Task{child}
 
 	evalCtx := &EvaluationContext{
@@ -607,8 +611,8 @@ func TestCompareBool_OpNotEqualsInversion(t *testing.T) {
 
 	t.Run("FieldAllChildrenDone OpNotEquals true matches when not all children done", func(t *testing.T) {
 		parent := &models.Task{ID: "p"}
-		c1 := &models.Task{ID: "c1", Status: models.StatusDone, Parent: parent}
-		c2 := &models.Task{ID: "c2", Status: models.StatusTodo, Parent: parent}
+		c1 := &models.Task{ID: "c1", WorkflowState: models.StateDone, Parent: parent}
+		c2 := &models.Task{ID: "c2", WorkflowState: models.StateReady, Parent: parent}
 		parent.Children = []*models.Task{c1, c2}
 		trigger := RuleTrigger{Field: FieldAllChildrenDone, Operation: OpNotEquals, Value: "true"}
 		if !matchesHierarchicalTrigger(parent, trigger, nil) {
@@ -619,8 +623,8 @@ func TestCompareBool_OpNotEqualsInversion(t *testing.T) {
 	t.Run("FieldHasInProgressTasks OpNotEquals true matches project without in_progress tasks", func(t *testing.T) {
 		proj := &models.Project{ID: "p", Name: "P"}
 		tasks := []*models.Task{
-			{ID: "t1", Status: models.StatusTodo},
-			{ID: "t2", Status: models.StatusDone},
+			{ID: "t1", WorkflowState: models.StateReady},
+			{ID: "t2", WorkflowState: models.StateDone},
 		}
 		ctx := &ProjectEvaluationContext{Project: proj, Tasks: tasks}
 		trigger := RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpNotEquals, Value: "true"}
@@ -671,8 +675,8 @@ func TestTaskStateChanged_RecurrenceChanges(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			prev := &models.Task{ID: "t", Status: models.StatusTodo, Recurrence: tc.prev}
-			cur := &models.Task{ID: "t", Status: models.StatusTodo, Recurrence: tc.current}
+			prev := &models.Task{ID: "t", WorkflowState: models.StateReady, Recurrence: tc.prev}
+			cur := &models.Task{ID: "t", WorkflowState: models.StateReady, Recurrence: tc.current}
 			got := TaskStateChanged(cur, prev)
 			if got != tc.expected {
 				t.Errorf("TaskStateChanged() = %v, want %v", got, tc.expected)
@@ -687,7 +691,7 @@ func TestTaskStateChanged_RecurrenceChanges(t *testing.T) {
 // task. Otherwise the caller would execute conflicting moves (impossible) or
 // silently apply the last one without warning.
 func TestEvaluateRules_DeferredMovesDedupedPerTask(t *testing.T) {
-	task := &models.Task{ID: "t1", Status: models.StatusDone, Type: models.TaskTypeTask}
+	task := &models.Task{ID: "t1", WorkflowState: models.StateDone, Type: models.TaskTypeTask}
 
 	rules := []WorkflowRule{
 		{
@@ -726,7 +730,7 @@ func TestEvaluateRules_DeferredMovesDedupedPerTask(t *testing.T) {
 // set_snooze, set_due_relative, clear_due, set_project_status) share the same
 // gap; this test pins down set_type, which is the highest-impact case.
 func TestEvaluateRules_ConflictDetected_SetType(t *testing.T) {
-	task := &models.Task{ID: "t1", Status: models.StatusTodo, Type: models.TaskTypeTask}
+	task := &models.Task{ID: "t1", WorkflowState: models.StateReady, Type: models.TaskTypeTask}
 
 	rules := []WorkflowRule{
 		{
@@ -799,7 +803,7 @@ func TestEvaluateRulesWithContext_NilEvalCtxIsSafe(t *testing.T) {
 // when the engine reads task.ID. Malformed change sets can arise from buggy
 // callers; the engine should be resilient.
 func TestEvaluateRulesWithContext_NilTaskInChangesIsSkipped(t *testing.T) {
-	good := &models.Task{ID: "g", Status: models.StatusTodo}
+	good := &models.Task{ID: "g", WorkflowState: models.StateReady}
 	evalCtx := &EvaluationContext{
 		Changes: []TaskChangeContext{
 			{Task: nil, Previous: nil},
@@ -894,8 +898,8 @@ func TestMatchProjectTrigger_NilTasksAreSkipped(t *testing.T) {
 		Project: proj,
 		Tasks: []*models.Task{
 			nil,
-			{ID: "active", Status: models.StatusInProgress, Type: models.TaskTypeBug, UpdatedAt: now.AddDate(0, 0, -5)},
-			{ID: "done", Status: models.StatusDone, Type: models.TaskTypeTask, UpdatedAt: now.AddDate(0, 0, -2)},
+			{ID: "active", WorkflowState: models.StateInProgress, Type: models.TaskTypeBug, UpdatedAt: now.AddDate(0, 0, -5)},
+			{ID: "done", WorkflowState: models.StateDone, Type: models.TaskTypeTask, UpdatedAt: now.AddDate(0, 0, -2)},
 			nil,
 		},
 	}
@@ -976,7 +980,7 @@ func TestMatchesTriggerGroup_DepthBound(t *testing.T) {
 		deep = &TriggerGroup{Groups: []TriggerGroup{*deep}}
 	}
 
-	task := &models.Task{ID: "t", Status: models.StatusTodo}
+	task := &models.Task{ID: "t", WorkflowState: models.StateReady}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -1001,7 +1005,7 @@ func TestMatchesProjectTriggerGroup_DepthBound(t *testing.T) {
 
 	ctx := &ProjectEvaluationContext{
 		Project: &models.Project{ID: "p", Name: "P"},
-		Tasks:   []*models.Task{{ID: "t1", Status: models.StatusInProgress}},
+		Tasks:   []*models.Task{{ID: "t1", WorkflowState: models.StateInProgress}},
 	}
 
 	defer func() {
@@ -1020,7 +1024,7 @@ func TestMatchesProjectTriggerGroup_DepthBound(t *testing.T) {
 // does not panic when the input task slice contains a nil entry — buildTaskMap
 // previously dereferenced task.ID unconditionally.
 func TestBuildTaskMap_SkipsNilEntries(t *testing.T) {
-	good := &models.Task{ID: "g", Status: models.StatusTodo}
+	good := &models.Task{ID: "g", WorkflowState: models.StateReady}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -1053,8 +1057,8 @@ func TestBuildTaskMap_SkipsNilEntries(t *testing.T) {
 // the parent's comment list indefinitely. Mirrors the dedup behavior of
 // ActionAddComment so the two actions behave consistently.
 func TestApplyHierarchicalAction_NotifyParentDedup(t *testing.T) {
-	parent := &models.Task{ID: "p", Status: models.StatusTodo}
-	child := &models.Task{ID: "c", Status: models.StatusTodo, Parent: parent}
+	parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+	child := &models.Task{ID: "c", WorkflowState: models.StateReady, Parent: parent}
 	parent.Children = []*models.Task{child}
 
 	evalCtx := &EvaluationContext{
@@ -1113,7 +1117,7 @@ func TestApplyHierarchicalAction_NotifyParentDedup(t *testing.T) {
 // children. Matches the leaf guard already in FieldAllChildrenDone.
 func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) {
 	t.Run("completed leaf does NOT match children_progress > 50", func(t *testing.T) {
-		leaf := &models.Task{ID: "leaf", Status: models.StatusDone}
+		leaf := &models.Task{ID: "leaf", WorkflowState: models.StateDone}
 		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpGreaterThan, Value: "50"}
 		if matchesHierarchicalTrigger(leaf, trigger, nil) {
 			t.Error("expected no match: leaf task has no children to aggregate")
@@ -1123,7 +1127,7 @@ func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) 
 	t.Run("incomplete leaf does NOT match children_progress = 0", func(t *testing.T) {
 		// Even though GetProgress() returns 0 for an incomplete leaf, the
 		// trigger is about *child* aggregate progress and should bail.
-		leaf := &models.Task{ID: "leaf", Status: models.StatusTodo}
+		leaf := &models.Task{ID: "leaf", WorkflowState: models.StateReady}
 		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpEquals, Value: "0"}
 		if matchesHierarchicalTrigger(leaf, trigger, nil) {
 			t.Error("expected no match: leaf task has no children to aggregate")
@@ -1131,9 +1135,9 @@ func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) 
 	})
 
 	t.Run("parent with 100% complete children still matches", func(t *testing.T) {
-		parent := &models.Task{ID: "p", Status: models.StatusTodo}
-		c1 := &models.Task{ID: "c1", Status: models.StatusDone, Parent: parent}
-		c2 := &models.Task{ID: "c2", Status: models.StatusDone, Parent: parent}
+		parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+		c1 := &models.Task{ID: "c1", WorkflowState: models.StateDone, Parent: parent}
+		c2 := &models.Task{ID: "c2", WorkflowState: models.StateDone, Parent: parent}
 		parent.Children = []*models.Task{c1, c2}
 		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpEquals, Value: "100"}
 		if !matchesHierarchicalTrigger(parent, trigger, nil) {
@@ -1142,9 +1146,9 @@ func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) 
 	})
 
 	t.Run("parent with partial completion matches > 0", func(t *testing.T) {
-		parent := &models.Task{ID: "p", Status: models.StatusTodo}
-		c1 := &models.Task{ID: "c1", Status: models.StatusDone, Parent: parent}
-		c2 := &models.Task{ID: "c2", Status: models.StatusTodo, Parent: parent}
+		parent := &models.Task{ID: "p", WorkflowState: models.StateReady}
+		c1 := &models.Task{ID: "c1", WorkflowState: models.StateDone, Parent: parent}
+		c2 := &models.Task{ID: "c2", WorkflowState: models.StateReady, Parent: parent}
 		parent.Children = []*models.Task{c1, c2}
 		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpGreaterThan, Value: "0"}
 		if !matchesHierarchicalTrigger(parent, trigger, nil) {
@@ -1158,7 +1162,7 @@ func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) 
 // these helpers are commonly used before evaluation and should not panic on
 // the same malformed task slice.
 func TestSnapshotHelpers_SkipNilTasks(t *testing.T) {
-	good := &models.Task{ID: "g", Status: models.StatusTodo}
+	good := &models.Task{ID: "g", WorkflowState: models.StateReady}
 
 	defer func() {
 		if r := recover(); r != nil {

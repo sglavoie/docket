@@ -2,21 +2,56 @@ package models
 
 import "time"
 
-// SetSection assigns a GTD section to the task.
-// Built-in GTD sections (Inbox, Next, Waiting, Someday, Review, Standby,
-// Completed) and the empty string (Active view) are stored in Section.
-// Non-GTD names are ignored; custom grouping now lives in tags.
+// SetSection moves the task to the workflow state a GTD section name maps to.
+// Sections are retired as a stored concept; the name is inverted through
+// SectionForState onto a WorkflowState. Built-in GTD section names (Inbox, Next,
+// Waiting, Someday, Review, Standby, Completed) and the empty string (the
+// default active/ready bucket) are accepted; any other name is ignored, matching
+// the retired rule that custom grouping lives in tags. The completed bucket maps
+// to done. UpdatedAt is bumped only when the state actually changes.
 func (t *Task) SetSection(name string) {
-	oldSection := t.Section
-	if IsGTDSection(name) || name == "" {
-		t.Section = name
-		if t.Section != oldSection {
-			t.UpdatedAt = time.Now()
-		}
+	if !IsGTDSection(name) && name != "" {
+		return
+	}
+	newState := stateForSectionName(name)
+	if t.State() == newState {
+		return
+	}
+	t.WorkflowState = newState
+	t.UpdatedAt = time.Now()
+}
+
+// stateForSectionName inverts SectionForState: it maps a GTD section name to the
+// canonical WorkflowState that section occupies. The empty name and any name
+// SectionForState never emits resolve to StateReady (the default active bucket).
+// The Completed section maps to StateDone (the terminal representative).
+func stateForSectionName(name string) WorkflowState {
+	switch name {
+	case SectionInbox:
+		return StateInbox
+	case SectionNext:
+		return StateNext
+	case SectionWaiting:
+		return StateWaiting
+	case SectionStandby:
+		return StatePaused
+	case SectionReview:
+		return StateReview
+	case SectionSomeday:
+		return StateSomeday
+	case SectionCompleted:
+		return StateDone
+	default:
+		return StateReady
 	}
 }
 
-// InSection reports whether the task belongs to the given section.
+// InSection reports whether the task belongs to the given section bucket.
+// Membership is derived from the task's workflow state (see SectionForState),
+// not from the raw legacy Section field: a task whose state resolves elsewhere
+// (e.g. an in-progress task still carrying the Next section) belongs to the
+// bucket its state occupies. The empty name is the default active bucket
+// (ready and in-progress work); both terminal states bucket under Completed.
 func (t *Task) InSection(name string) bool {
-	return t.Section == name
+	return SectionForState(t.State()) == name
 }

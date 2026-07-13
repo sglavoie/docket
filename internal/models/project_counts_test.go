@@ -53,7 +53,7 @@ func TestProjectTaskCounts(t *testing.T) {
 	}
 }
 
-func TestProjectGetTasksByStatus(t *testing.T) {
+func TestProjectGetTasksByState(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {
 		t.Fatal(err)
@@ -75,12 +75,12 @@ func TestProjectGetTasksByStatus(t *testing.T) {
 
 	project.Tasks = []*Task{task1, task2, task3}
 
-	todoTasks := project.GetTasksByStatus(StatusTodo)
-	if len(todoTasks) != 2 {
-		t.Errorf("expected 2 todo tasks, got %d", len(todoTasks))
+	readyTasks := project.GetTasksByState(StateReady)
+	if len(readyTasks) != 2 {
+		t.Errorf("expected 2 ready tasks, got %d", len(readyTasks))
 	}
 
-	inProgressTasks := project.GetTasksByStatus(StatusInProgress)
+	inProgressTasks := project.GetTasksByState(StateInProgress)
 	if len(inProgressTasks) != 1 {
 		t.Errorf("expected 1 in_progress task, got %d", len(inProgressTasks))
 	}
@@ -171,42 +171,39 @@ func TestCountActiveSectionTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Task in Active section (empty string), todo status
+	// Task in Active bucket (ready state), no section
 	task1, err := NewTask("1", 1, TaskTypeTask, "Active Todo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = ""
 
-	// Task in Active section, in_progress status
+	// Task in Active bucket, in_progress state
 	task2, err := NewTask("2", 2, TaskTypeTask, "Active InProgress")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = ""
 	task2.Start()
 
-	// Task in a named section but in_progress (should count)
-	task3, err := NewTask("3", 3, TaskTypeTask, "Named Section InProgress")
+	// Task started out of a holding section — in_progress state (should count)
+	task3, err := NewTask("3", 3, TaskTypeTask, "Started From Next")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3.Section = "Backlog"
+	task3.SetSection(SectionNext)
 	task3.Start()
 
-	// Task in a named section, todo status (should NOT count)
-	task4, err := NewTask("4", 4, TaskTypeTask, "Backlog Todo")
+	// Task in the Next holding section — next state (should NOT count)
+	task4, err := NewTask("4", 4, TaskTypeTask, "Next Todo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task4.Section = "Backlog"
+	task4.SetSection(SectionNext)
 
-	// Completed task in Active section (should NOT count)
+	// Completed task in Active bucket (should NOT count)
 	task5, err := NewTask("5", 5, TaskTypeTask, "Active Done")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task5.Section = ""
 	task5.Complete()
 
 	// Blocked task - Block() moves to Waiting section, so it should NOT count
@@ -219,10 +216,9 @@ func TestCountActiveSectionTasks(t *testing.T) {
 
 	project.Tasks = []*Task{task1, task2, task3, task4, task5, task6}
 
-	// Active section tasks: task1 (section="", todo), task2 (section="", in_progress),
-	// task3 (section="Backlog" but in_progress)
-	// NOT task4 (section="Backlog", todo), NOT task5 (section="", done),
-	// NOT task6 (section="Waiting", blocked)
+	// Active-bucket tasks (ready or in_progress state): task1 (ready),
+	// task2 (in_progress), task3 (in_progress).
+	// NOT task4 (next), NOT task5 (done), NOT task6 (waiting)
 	got := project.CountActiveSectionTasks()
 	if got != 3 {
 		t.Errorf("expected 3 active section tasks, got %d", got)
@@ -404,7 +400,7 @@ func TestCountActiveSectionTasksCountsIgnoredNonGTDSectionAsActive(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gtd.Section = SectionNext
+	gtd.SetSection(SectionNext)
 
 	project.Tasks = []*Task{active, custom, ipCustom, gtd}
 

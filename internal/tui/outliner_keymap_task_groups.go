@@ -28,34 +28,23 @@ func (b *outlinerKeymapBuilder) statusEntries() []keymap.Entry {
 	)
 
 	return b.gateOnTask(keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
+		ChangeState: func(state string) keymap.Action {
+			s := models.WorkflowState(state)
 			return func() (tea.Model, tea.Cmd) {
 				task := b.cursorTask()
 				if task == nil {
 					return m, nil
 				}
 				if m.project == nil {
-					if model, cmd, handled := m.crossHandleStatusMutation(s); handled {
+					if model, cmd, handled := m.crossHandleStateMutation(s); handled {
 						return model, cmd
 					}
 					return m, nil
 				}
 				if m.multiSelectMode && len(m.selectedTasks) > 0 {
-					return m.applyBulkStatusChange(s)
+					return m.applyBulkStateChange(s)
 				}
-				pf := m.workflowPersistFn()
-				result := applyStatusChange(pf, m.project, task.ID, s)
-				if result.Err != nil {
-					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-				}
-				m.setStatus(result.StatusMessage)
-				if s == models.StatusDone {
-					m.setCompletionFlash()
-					return m, tea.Batch(result.Cmd, completionFlashScheduler())
-				}
-				m.setMutationFlash(statusMutationFlashBg(s))
-				return m, tea.Batch(result.Cmd, mutationFlashTimeout())
+				return m.applySingleStateTransition(task, s)
 			}
 		},
 		HasRecurrence: func() bool {
@@ -245,22 +234,6 @@ func (b *outlinerKeymapBuilder) taskPrefixEntries() []keymap.Entry {
 	}))
 }
 
-func (b *outlinerKeymapBuilder) stageEntries() []keymap.Entry {
-	m := b.model
-
-	return b.gateOnTask(keymap.StageGroup(keymap.StageDeps{
-		Stages: b.stages,
-		ChangeStage: func(stage string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				if key := StageKeyForName(stage, b.stages); key != "" {
-					return m.handleStagePrefixOutliner(key)
-				}
-				return m, nil
-			}
-		},
-	}))
-}
-
 func (b *outlinerKeymapBuilder) blockerEntries() []keymap.Entry {
 	m := b.model
 
@@ -301,7 +274,7 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 				return m.handleOutlinerFilterSubKey("Ft", key)
 			}
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleOutlinerFilterSubKey("Fs", key)
 			}
@@ -341,12 +314,6 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 			m.scoreFilterInput.Enter(custom)
 			return m, nil
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleOutlinerFilterSubKey("F.", key)
-			}
-		},
-		StageFilterNames: b.stages,
 	})
 	if len(entries) > 0 && entries[0].PrefixNode != nil {
 		extra := []keymap.Entry{

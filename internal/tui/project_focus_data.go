@@ -28,11 +28,11 @@ func (m *ProjectFocusViewModel) loadTasks() {
 	m.tasks = nil
 
 	for _, task := range m.project.Tasks {
-		if !task.Active {
+		if !TaskInFocusQueue(m.cfg, task.ID) {
 			continue
 		}
 		// Skip completed tasks
-		if task.Status.IsComplete() {
+		if task.IsComplete() {
 			continue
 		}
 		// Skip snoozed tasks
@@ -68,13 +68,9 @@ func (m *ProjectFocusViewModel) filteredTasks() []*models.Task {
 	if !hasActiveCommonFilters(&m.filter) {
 		return m.tasks
 	}
-	projectID := ""
-	if m.project != nil {
-		projectID = m.project.ID
-	}
 	out := make([]*models.Task, 0, len(m.tasks))
 	for _, t := range m.tasks {
-		if passesCommonFilters(t, &m.filter, projectID, m.cfg) {
+		if passesCommonFilters(t, &m.filter, m.project, m.cfg) {
 			out = append(out, t)
 		}
 	}

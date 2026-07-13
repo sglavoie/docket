@@ -48,8 +48,8 @@ func TestReopenClearsSnooze(t *testing.T) {
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed after Reopen")
 	}
-	if task.Status != StatusTodo {
-		t.Errorf("expected StatusTodo after Reopen, got %s", task.Status)
+	if task.State() != StateInbox {
+		t.Errorf("expected StateInbox after Reopen, got %s", task.State())
 	}
 }
 
@@ -57,7 +57,7 @@ func TestReopenClearsSnoozeDirectly(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	future := time.Now().AddDate(0, 0, 14)
 	task.SnoozedUntil = &future
-	task.Status = StatusDone
+	task.WorkflowState = StateDone
 	now := time.Now()
 	task.CompletedAt = &now
 
@@ -84,14 +84,14 @@ func TestStartClearsSnooze(t *testing.T) {
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed after Start")
 	}
-	if task.Status != StatusInProgress {
-		t.Errorf("expected StatusInProgress after Start, got %s", task.Status)
+	if task.State() != StateInProgress {
+		t.Errorf("expected StateInProgress after Start, got %s", task.State())
 	}
 }
 
 func TestBlockClearsSnooze(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Status = StatusInProgress
+	task.WorkflowState = StateInProgress
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 
@@ -103,14 +103,14 @@ func TestBlockClearsSnooze(t *testing.T) {
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed after Block")
 	}
-	if task.Status != StatusBlocked {
-		t.Errorf("expected StatusBlocked after Block, got %s", task.Status)
+	if task.State() != StateWaiting {
+		t.Errorf("expected StateWaiting after Block, got %s", task.State())
 	}
 }
 
 func TestReviewClearsSnooze(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Status = StatusInProgress
+	task.WorkflowState = StateInProgress
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 
@@ -122,14 +122,14 @@ func TestReviewClearsSnooze(t *testing.T) {
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed after Review")
 	}
-	if task.Status != StatusReview {
-		t.Errorf("expected StatusReview after Review, got %s", task.Status)
+	if task.State() != StateReview {
+		t.Errorf("expected StateReview after Review, got %s", task.State())
 	}
 }
 
 func TestStandbyClearsSnooze(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Status = StatusInProgress
+	task.WorkflowState = StateInProgress
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 
@@ -141,7 +141,7 @@ func TestStandbyClearsSnooze(t *testing.T) {
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed after Standby")
 	}
-	if task.Status != StatusStandby {
-		t.Errorf("expected StatusStandby after Standby, got %s", task.Status)
+	if task.State() != StatePaused {
+		t.Errorf("expected StatePaused after Standby, got %s", task.State())
 	}
 }

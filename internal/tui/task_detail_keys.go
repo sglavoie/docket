@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -156,36 +158,44 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	targetStatus, ok := StatusForPrefixKey(key)
+	targetState, ok := StateForPrefixKey(key)
 	if !ok {
 		return m, nil
 	}
 
-	pf := simplePersist(NewProjectService())
-	result := applyStatusChange(pf, m.project, m.task.ID, targetStatus)
-	if result.Err != nil {
-		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	// Preflight the coordinator guards so an invalid transition surfaces a status
+	// message (not an error toast) and no flash fires, then dispatch the
+	// single-task coordinator (one ledger-backed transaction; the shell owns
+	// reload + toast and refreshes this view via refreshAfterReload).
+	if msg := models.CanTransitionState(m.task.State(), targetState); msg != "" {
+		return m, func() tea.Msg { return StatusMsg(msg) }
 	}
-	if result.Cmd == nil {
-		// No state change (validation message or no-op).
-		if result.StatusMessage != "" {
-			msg := result.StatusMessage
+	if targetState == models.StateDone && m.project.HasIncompleteDependencies(m.task) {
+		return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("cannot complete: has incomplete dependencies")} }
+	}
+	if targetState.IsTerminal() {
+		if incomplete := m.task.IncompleteChildren(); len(incomplete) > 0 {
+			verb := "complete"
+			if targetState == models.StateCanceled {
+				verb = "cancel"
+			}
+			msg := fmt.Sprintf("cannot %s #%d: has %d incomplete children", verb, m.task.ShortID, len(incomplete))
 			return m, func() tea.Msg { return StatusMsg(msg) }
 		}
-		return m, nil
 	}
 
-	// Re-fetch task after mutation
-	if fresh := m.project.GetTaskByID(m.task.ID); fresh != nil {
-		m.task = fresh
+	cmd := m.taskItem.Transition(m.task.ID, targetState)
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }
 	}
 
-	if targetStatus == models.StatusDone {
+	if targetState == models.StateDone {
 		m.setCompletionFlash()
-		return m, tea.Batch(result.Cmd, completionFlashScheduler())
+		return m, tea.Batch(func() tea.Msg { return msg }, completionFlashScheduler())
 	}
-	m.setMutationFlash(statusMutationFlashBg(targetStatus))
-	return m, tea.Batch(result.Cmd, mutationFlashTimeout())
+	m.setMutationFlash(stateMutationFlashBg(targetState))
+	return m, tea.Batch(func() tea.Msg { return msg }, mutationFlashTimeout())
 }
 
 // handlePriorityPrefix handles priority keys after the "!" prefix.
@@ -198,23 +208,18 @@ func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) 
 	if !ok {
 		return m, nil
 	}
-
-	pf := simplePersist(NewProjectService())
-	result := applyPriorityChange(pf, m.project, m.task.ID, priority)
-	if result.Err != nil {
-		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-	}
-	if result.StatusMessage != "" {
-		msg := result.StatusMessage
-		return m, func() tea.Msg { return StatusMsg(msg) }
+	if m.task.Priority == priority {
+		return m, nil
 	}
 
-	// Re-fetch task after mutation
-	if fresh := m.project.GetTaskByID(m.task.ID); fresh != nil {
-		m.task = fresh
+	// Route through the single-task coordinator (one ledger-backed transaction;
+	// the shell owns reload + toast and refreshes this view via refreshAfterReload).
+	cmd := m.taskItem.SetPriority(m.task.ID, priority)
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }
 	}
-
-	return m, nil
+	return m, func() tea.Msg { return msg }
 }
 
 // getTaskRef returns the task and project for the current detail view.
@@ -249,7 +254,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
 		{Key: "o/Esc", Description: "Close detail view", Category: "Navigation"},
 		{Key: "H", Description: "Toggle History cluster (collapse/expand)", Category: "Navigation"},
-		{Key: ",s/d/b/x/o/r", Description: "Status: start/done/block/cancel/reopen/review", Category: "Actions"},
+		{Key: ",s/d/b/x/o/r", Description: "State: start/done/waiting/cancel/reopen/review", Category: "Actions"},
 		{Key: "!1-5", Description: "Set priority", Category: "Actions"},
 		{Key: "O", Description: "Open external URL", Category: "Actions"},
 		{Key: "e", Description: "Edit task", Category: "Actions"},

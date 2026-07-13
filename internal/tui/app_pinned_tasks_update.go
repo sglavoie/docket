@@ -2,12 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"time"
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/app"
 )
 
 // handlePinnedPopupKey handles key events when the pinned tasks popup is open.
@@ -45,17 +44,27 @@ func (m *AppModel) handlePinnedPopupPrefixKey(msg tea.KeyPressMsg) (*AppModel, t
 		if !ok {
 			return m, nil
 		}
-		result := applyPriorityChange(simplePersistWithUndo(m.persister, m.config, "Set Priority"), entry.Project, entry.Task.ID, priority)
-		m.setSuccessStatus(result.StatusMessage)
+		res, err := m.appService.SetPriority(entry.Task.ID, priority)
+		if err != nil {
+			m.setInfoStatus(fmt.Sprintf("Failed to set priority: %v", err))
+			return m, nil
+		}
+		m.reloadProjectByID(res.ProjectID)
+		m.setSuccessStatus(fmt.Sprintf("Priority set to %d", priority))
 	}
 
 	if prefix == "," {
-		status, ok := StatusForPrefixKey(key)
+		state, ok := StateForPrefixKey(key)
 		if !ok {
 			return m, nil
 		}
-		result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(status)+" Task"), entry.Project, entry.Task.ID, status)
-		m.setSuccessStatus(result.StatusMessage)
+		res, err := m.appService.Transition(app.StateRequest{TaskID: entry.Task.ID, Target: state})
+		if err != nil {
+			m.setInfoStatus(fmt.Sprintf("Failed to change status: %v", err))
+			return m, nil
+		}
+		m.reloadProjectByID(res.ProjectID)
+		m.setSuccessStatus(fmt.Sprintf("Task #%d -> %s", res.ShortID, state))
 	}
 
 	m.pinnedPopupItems = m.collectPinnedTasks()
@@ -225,7 +234,9 @@ func (m *AppModel) pinnedPopupSelect(idx int) (*AppModel, tea.Cmd) {
 }
 
 // reorderPinnedTask moves the current pinned item by delta (+1 = down, -1 = up)
-// by swapping PinnedAt timestamps and persisting the affected projects.
+// by swapping the two tasks' PinnedAt ordering through the application layer (one
+// atomic, ledger-undoable transaction across the affected projects), then
+// reloads them and rebuilds the popup.
 func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 	target := m.pinnedPopupCursor + delta
 	if target < 0 || target >= m.pinnedPopupFilteredLen() {
@@ -237,28 +248,13 @@ func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 	a := m.pinnedPopupItems[realA]
 	b := m.pinnedPopupItems[realB]
 
-	aTime := a.PinnedAt
-	bTime := b.PinnedAt
-	if aTime.Equal(bTime) {
-		bTime = bTime.Add(time.Second)
-	}
-
-	a.Project.MutateTask(a.Task.ID, func(t *models.Task) {
-		t.PinnedAt = &bTime
-	})
-	b.Project.MutateTask(b.Task.ID, func(t *models.Task) {
-		t.PinnedAt = &aTime
-	})
-
-	if err := m.persister.SaveWithBackupSync(a.Project); err != nil {
-		m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", a.Project.Name, err))
+	res, err := m.appService.ReorderPinnedTasks(a.Task.ID, b.Task.ID)
+	if err != nil {
+		m.setInfoStatus(fmt.Sprintf("Failed to reorder pinned tasks: %v", err))
 		return m, nil
 	}
-	if b.Project.Name != a.Project.Name {
-		if err := m.persister.SaveWithBackupSync(b.Project); err != nil {
-			m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", b.Project.Name, err))
-			return m, nil
-		}
+	for _, projectID := range res.TouchedProjectIDs {
+		m.reloadProjectByID(projectID)
 	}
 
 	m.pinnedPopupItems = m.collectPinnedTasks()
@@ -276,15 +272,14 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 
 	realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
 	entry := m.pinnedPopupItems[realIdx]
-	saved := entry
-	m.pinnedLastUnpinned = &saved
-	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
-		t.Unpin()
-	})
-	if err := m.persister.SaveWithBackupSync(entry.Project); err != nil {
-		m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err))
+	res, err := m.appService.SetPinned(entry.Task.ID, false)
+	if err != nil {
+		m.setInfoStatus(fmt.Sprintf("Failed to unpin task: %v", err))
 		return m, nil
 	}
+	saved := entry
+	m.pinnedLastUnpinned = &saved
+	m.reloadProjectByID(res.ProjectID)
 
 	m.pinnedPopupItems = m.collectPinnedTasks()
 	if len(m.pinnedPopupItems) == 0 {
@@ -309,13 +304,12 @@ func (m *AppModel) repinFromPopup() (*AppModel, tea.Cmd) {
 	}
 
 	entry := m.pinnedLastUnpinned
-	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
-		t.Pin()
-	})
-	if err := m.persister.SaveWithBackupSync(entry.Project); err != nil {
-		m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err))
+	res, err := m.appService.SetPinned(entry.Task.ID, true)
+	if err != nil {
+		m.setInfoStatus(fmt.Sprintf("Failed to repin task: %v", err))
 		return m, nil
 	}
+	m.reloadProjectByID(res.ProjectID)
 
 	m.pinnedLastUnpinned = nil
 	m.pinnedPopupItems = m.collectPinnedTasks()

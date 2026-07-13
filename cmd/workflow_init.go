@@ -90,7 +90,13 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	cfg, configManager, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+
+	store := automationStore(configManager)
+	automation, err := store.LoadAutomation()
 	if err != nil {
 		return err
 	}
@@ -101,9 +107,9 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("--changed-defaults requires --force for safety")
 		}
 
-		updated, readded, unchanged, affectedIDs := cfg.ResetChangedDefaultRules(initEnable)
+		updated, readded, unchanged, affectedIDs := automation.ResetChangedDefaultRules(initEnable)
 
-		if err := saveConfig(configManager, cfg); err != nil {
+		if err := saveAutomation(store, automation); err != nil {
 			return err
 		}
 
@@ -116,7 +122,7 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 			fmt.Println()
 			fmt.Println("Affected rules:")
 			for _, id := range affectedIDs {
-				rule := cfg.GetWorkflowRule(id)
+				rule := automation.GetWorkflowRule(id)
 				if rule != nil {
 					fmt.Printf("  [%s] %s\n", rule.ID, rule.Name)
 				}
@@ -128,8 +134,8 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if len(cfg.WorkflowRules) > 0 && !initForce && !cfg.DefaultRulesInitialized {
-		fmt.Printf("You have %d existing workflow rule(s).\n", len(cfg.WorkflowRules))
+	if len(automation.WorkflowRules) > 0 && !initForce && !automation.DefaultRulesInitialized {
+		fmt.Printf("You have %d existing workflow rule(s).\n", len(automation.WorkflowRules))
 		fmt.Println()
 		fmt.Println("To add defaults alongside existing rules, use: tt workflow init --force")
 		return nil
@@ -137,10 +143,10 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 
 	// When already initialized, sync new defaults with their original enabled state.
 	// When not initialized or --force, use initEnable flag.
-	useOriginalEnabled := cfg.DefaultRulesInitialized && !initForce
-	added := cfg.AddDefaultRules(initEnable, useOriginalEnabled)
+	useOriginalEnabled := automation.DefaultRulesInitialized && !initForce
+	added := automation.AddDefaultRules(initEnable, useOriginalEnabled)
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := saveAutomation(store, automation); err != nil {
 		return err
 	}
 
@@ -157,7 +163,7 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Added %d default workflow rule(s) (%s):\n", added, state)
 	fmt.Println()
 	for _, rule := range defaults {
-		if cfg.HasRuleWithID(rule.ID) {
+		if automation.HasRuleWithID(rule.ID) {
 			fmt.Printf("  [%s] %s\n", rule.ID, rule.Name)
 		}
 	}

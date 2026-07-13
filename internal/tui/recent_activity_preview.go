@@ -113,11 +113,12 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 	b.WriteString("\n\n")
 
 	// Status
-	statusStyle := GetStatusStyle(string(task.Status))
+	state := task.State()
+	statusStyle := GetStateStyle(state)
 	fmt.Fprintf(&b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
-		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status)))
+		statusStyle.Render(state.Icon()),
+		statusStyle.Render(string(state)))
 
 	// Priority
 	priorityStyle := GetPriorityStyle(task.Priority)
@@ -137,10 +138,10 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 	}
 
 	// Section
-	if task.Section != "" {
+	if bucket := taskSectionBucket(task); bucket != "" {
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Section:"),
-			task.Section)
+			bucket)
 	}
 
 	// Due date
@@ -173,7 +174,7 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 	if len(task.Children) > 0 {
 		completed := 0
 		for _, child := range task.Children {
-			if child.Status.IsComplete() {
+			if child.IsComplete() {
 				completed++
 			}
 		}
@@ -191,8 +192,8 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 			var refs []string
 			for i := range maxShow {
 				blocker := blockers[i]
-				ss := GetStatusStyle(string(blocker.Status))
-				refs = append(refs, fmt.Sprintf("%s #%d", ss.Render(blocker.Status.Icon()), blocker.ShortID))
+				ss := GetStateStyle(blocker.State())
+				refs = append(refs, fmt.Sprintf("%s #%d", ss.Render(blocker.State().Icon()), blocker.ShortID))
 			}
 			b.WriteString(strings.Join(refs, ", "))
 			if len(blockers) > maxShow {
@@ -208,8 +209,8 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 			var refs []string
 			for i := range maxShow {
 				dep := blocked[i]
-				ss := GetStatusStyle(string(dep.Status))
-				refs = append(refs, fmt.Sprintf("%s #%d", ss.Render(dep.Status.Icon()), dep.ShortID))
+				ss := GetStateStyle(dep.State())
+				refs = append(refs, fmt.Sprintf("%s #%d", ss.Render(dep.State().Icon()), dep.ShortID))
 			}
 			b.WriteString(strings.Join(refs, ", "))
 			if len(blocked) > maxShow {

@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
@@ -79,7 +80,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(task)
+		return displayTaskShowJSON(cfg, task)
 	}
 
 	if out.Quiet {
@@ -109,8 +110,8 @@ func displayTaskDetail(task *models.Task) {
 	// Metadata
 	fmt.Printf("%s %s %s\n",
 		labelStyle.Render("Status:"),
-		task.Status.Icon(),
-		valueStyle.Render(string(task.Status)))
+		task.State().Icon(),
+		valueStyle.Render(string(task.State())))
 
 	fmt.Printf("%s %d\n",
 		labelStyle.Render("Priority:"),
@@ -183,6 +184,7 @@ type taskShowJSONEntry struct {
 	Title           string                    `json:"title"`
 	Description     string                    `json:"description"`
 	Status          string                    `json:"status"`
+	State           string                    `json:"state"`
 	Priority        int                       `json:"priority"`
 	ParentID        *string                   `json:"parent_id"`
 	Tags            []string                  `json:"tags"`
@@ -216,7 +218,7 @@ type taskShowJSONEntry struct {
 	EpicAttrs       *models.EpicAttrs         `json:"epic_attrs,omitempty"`
 }
 
-func displayTaskShowJSON(task *models.Task) error {
+func displayTaskShowJSON(cfg *config.Config, task *models.Task) error {
 	tags := task.Tags
 	if tags == nil {
 		tags = []string{}
@@ -264,11 +266,12 @@ func displayTaskShowJSON(task *models.Task) error {
 		Type:            task.Type.String(),
 		Title:           task.Title,
 		Description:     task.Description,
-		Status:          task.Status.String(),
+		Status:          models.LegacyStatusForState(task.State()).String(),
+		State:           task.State().String(),
 		Priority:        task.Priority,
 		ParentID:        task.ParentID,
 		Tags:            tags,
-		Section:         task.Section,
+		Section:         models.SectionForState(task.State()),
 		CreatedAt:       task.CreatedAt,
 		UpdatedAt:       task.UpdatedAt,
 		CompletedAt:     task.CompletedAt,
@@ -278,10 +281,9 @@ func displayTaskShowJSON(task *models.Task) error {
 		RelatedTo:       relatedTo,
 		Pinned:          task.Pinned,
 		PinnedAt:        task.PinnedAt,
-		Active:          task.Active,
+		Active:          taskInFocusQueue(cfg, task.ID),
 		Dimmed:          task.Dimmed,
 		SnoozedUntil:    task.SnoozedUntil,
-		Stage:           task.Stage,
 		Source:          task.Source,
 		URL:             task.URL,
 		Recurrence:      task.Recurrence,

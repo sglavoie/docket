@@ -48,17 +48,20 @@ func CopyTaskState(task *models.Task) *models.Task {
 	}
 
 	return &models.Task{
-		ID:          task.ID,
-		Status:      task.Status,
-		Priority:    task.Priority,
-		Section:     task.Section,
-		Tags:        tagsCopy,
-		Type:        task.Type,
-		DueDate:     dueCopy,
-		Description: task.Description,
-		Recurrence:  recCopy,
-		Level:       task.Level,
-		DependsOn:   append([]string(nil), task.DependsOn...),
+		ID: task.ID,
+		// The snapshot carries the canonical WorkflowState (not the retired
+		// Status/Section fields) so State() on the snapshot resolves identically
+		// to the live task; event-trigger matching derives the legacy
+		// status/section strings from it via LegacyStatusForState/SectionForState.
+		WorkflowState: task.State(),
+		Priority:      task.Priority,
+		Tags:          tagsCopy,
+		Type:          task.Type,
+		DueDate:       dueCopy,
+		Description:   task.Description,
+		Recurrence:    recCopy,
+		Level:         task.Level,
+		DependsOn:     append([]string(nil), task.DependsOn...),
 	}
 }
 
@@ -80,9 +83,10 @@ func TaskStateChanged(current, prev *models.Task) bool {
 	if prev == nil {
 		return true
 	}
-	if current.Status != prev.Status ||
+	// State() collapses the legacy status+section into one canonical value, so a
+	// single comparison covers both former Status and Section change checks.
+	if current.State() != prev.State() ||
 		current.Priority != prev.Priority ||
-		current.Section != prev.Section ||
 		current.Type != prev.Type {
 		return true
 	}

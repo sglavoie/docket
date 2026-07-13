@@ -88,6 +88,20 @@ func (m *SettingsModel) renderGeneralTab() string {
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("View shown when opening a project", indent, m.focusIndex == base+4))
 
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
+	b.WriteString("\n\n")
+	b.WriteString(SubtitleStyle.Render("Workspace"))
+	b.WriteString("\n\n")
+	b.WriteString(renderFormLabelWithWidth("Location: ", labelWidth, false))
+	b.WriteString(m.workspaceLocation)
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(" + m.workspaceStorage + ")"))
+	b.WriteString("\n")
+	b.WriteString(strings.Repeat(" ", indent))
+	b.WriteString(MutedStyle.Render("Where task data is stored. Relocate with: tt workspace move <dest>"))
+	b.WriteString("\n")
+
 	return b.String()
 }
 
@@ -261,59 +275,6 @@ func (m *SettingsModel) renderOutlinerColumnVisibilitySection() string {
 	const labelWidth = 22
 
 	m.renderOutlinerColumnToggles(&b, m.outlinerColumnDefaults, subTabFieldStart(tabOutliner, 2), labelWidth, m.outlinerPriorityMode)
-
-	return b.String()
-}
-
-func (m *SettingsModel) renderStagesTab() string {
-	var b strings.Builder
-
-	b.WriteString(SubtitleStyle.Render("Workflow Stages"))
-	b.WriteString("\n\n")
-
-	if len(m.stages) == 0 {
-		b.WriteString(MutedStyle.Render("  No stages configured. Press 'a' to add one."))
-		b.WriteString("\n")
-	} else {
-		for i, stage := range m.stages {
-			if i == m.stageCursor {
-				b.WriteString(BoldPrimaryStyle.Render("  " + IconCursorRight + " "))
-				b.WriteString(StageBadgeStyle.Render(stage))
-			} else {
-				b.WriteString(MutedStyle.Render("    "))
-				b.WriteString(StageBadgeStyle.Render(stage))
-			}
-			b.WriteString("\n")
-		}
-	}
-
-	if m.stageEditMode {
-		b.WriteString("\n")
-		if m.stageAddMode {
-			b.WriteString(BoldStyle.Render("  New stage: "))
-		} else {
-			b.WriteString(BoldStyle.Render("  Edit stage: "))
-		}
-		b.WriteString(m.stageInput.View())
-		b.WriteString("\n")
-		if m.stageValidationErr != "" {
-			b.WriteString("  ")
-			b.WriteString(ValidationErrorStyle.Render(m.stageValidationErr))
-			b.WriteString("\n")
-		}
-	}
-
-	if !m.stageEditMode && m.hasUnsavedStages() {
-		b.WriteString("\n")
-		b.WriteString(WarningMessageStyle.Render("  Unsaved changes — press Enter to save"))
-		b.WriteString("\n")
-	}
-
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("  a=add  e=edit  d=delete  J/K=reorder  Enter(save)/Esc(cancel)"))
-	b.WriteString("\n")
 
 	return b.String()
 }

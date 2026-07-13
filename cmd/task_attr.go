@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -75,8 +75,6 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	taskID := args[0]
-
 	// Check if any flags were provided
 	v := attrTypeAttrs
 	otherAttrFlagSet := v.BugReproducible != "" || v.BugSeverity != "" || v.BugWorkaround != "" ||
@@ -97,43 +95,49 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--clear cannot be combined with other attribute flags")
 	}
 
-	var changes []string
-	updatedTask, err := WithTaskUpdate(taskID, func(task *models.Task) error {
-		// Handle clear flag
-		if attrClear {
-			task.ClearTypeAttrs()
-			return nil
-		}
-
-		// Capture old values for delta output
-		changes = collectAttrDeltas(task, attrTypeAttrs, cmd)
-
-		attrTypeAttrs.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
-		attrTypeAttrs.StoryPointsSet = cmd.Flags().Changed("story.points")
-		return applyTypeAttrValues(task, attrTypeAttrs)
-	})
-
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
-		if errors.Is(err, tterrors.ErrTaskNotFound) {
-			return tterrors.NewTaskNotFoundError(taskID)
-		}
 		return err
+	}
+	task, findErr := FindTaskByIdentifier(project, args[0])
+	if findErr != nil {
+		return findErr
+	}
+
+	// Capture the type and (for the set path) old→new deltas from the loaded copy
+	// before mutating: the application service commits a freshly-snapshotted task,
+	// so its result carries no attribute fields. The type is unchanged by an attr
+	// mutation, so the loaded task's type renders the heading correctly.
+	taskType := task.Type
+	var changes []string
+	if !attrClear {
+		changes = collectAttrDeltas(task, attrTypeAttrs, cmd)
+	}
+
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		if attrClear {
+			return svc.ClearTypeAttrs(task.ID)
+		}
+		vals := attrTypeAttrs
+		vals.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
+		vals.StoryPointsSet = cmd.Flags().Changed("story.points")
+		return svc.ApplyTypeAttrs(task.ID, vals)
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(updatedTask)
+		return emitMutation(out, "", res)
 	}
 	if !out.Quiet {
 		if attrClear {
 			fmt.Printf("Cleared attributes for %s #%d: %s\n",
-				updatedTask.Type.HeadingPrefix(),
-				updatedTask.ShortID,
-				updatedTask.Title)
+				taskType.HeadingPrefix(), task.ShortID, res.Title)
 		} else {
 			fmt.Printf("Updated attributes for %s #%d: %s\n",
-				updatedTask.Type.HeadingPrefix(),
-				updatedTask.ShortID,
-				updatedTask.Title)
+				taskType.HeadingPrefix(), task.ShortID, res.Title)
 			for _, c := range changes {
 				fmt.Printf("  %s\n", c)
 			}

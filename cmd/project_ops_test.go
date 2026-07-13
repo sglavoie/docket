@@ -299,14 +299,14 @@ func TestSaveProjectReopenedChildUncompletesParent(t *testing.T) {
 		t.Fatalf("SaveProject: %v", err)
 	}
 
-	if parent.Status != models.StatusInProgress {
-		t.Errorf("parent status = %q, want %q (reopening a child must auto-uncomplete the parent)", parent.Status, models.StatusInProgress)
+	if parent.State() != models.StateInProgress {
+		t.Errorf("parent state = %q, want %q (reopening a child must auto-uncomplete the parent)", parent.State(), models.StateInProgress)
 	}
 	if parent.CompletedAt != nil {
 		t.Error("parent CompletedAt should be cleared after auto-uncomplete")
 	}
-	if parent.Section == models.SectionInbox {
-		t.Errorf("parent section = %q, want it to stay in place (not dumped to Inbox)", parent.Section)
+	if models.SectionForState(parent.State()) == models.SectionInbox {
+		t.Errorf("parent section = %q, want it to stay in place (not dumped to Inbox)", models.SectionForState(parent.State()))
 	}
 }
 
@@ -395,19 +395,19 @@ func TestSaveProject_WorkflowRuleCompletesParentPostRuleReconcile(t *testing.T) 
 	if reloadedParent == nil {
 		t.Fatal("parent missing after reload")
 	}
-	if reloadedParent.Status != models.StatusInProgress {
-		t.Errorf("parent status = %q, want %q (post-rule reconcile must not save an illegal done parent)", reloadedParent.Status, models.StatusInProgress)
+	if reloadedParent.State() != models.StateInProgress {
+		t.Errorf("parent state = %q, want %q (post-rule reconcile must not save an illegal done parent)", reloadedParent.State(), models.StateInProgress)
 	}
-	if reloadedParent.Status.IsComplete() {
-		t.Errorf("parent must never be complete with an incomplete child on disk, got %q", reloadedParent.Status)
+	if reloadedParent.State().IsTerminal() {
+		t.Errorf("parent must never be complete with an incomplete child on disk, got %q", reloadedParent.State())
 	}
 
 	reloadedChild := project.GetTaskByID(child.ID)
 	if reloadedChild == nil {
 		t.Fatal("child missing after reload")
 	}
-	if reloadedChild.Status.IsComplete() {
-		t.Errorf("child status = %q, want incomplete after reopen", reloadedChild.Status)
+	if reloadedChild.State().IsTerminal() {
+		t.Errorf("child state = %q, want incomplete after reopen", reloadedChild.State())
 	}
 }
 
@@ -431,13 +431,13 @@ func TestSaveProject_ProjectLevelRulesEvaluated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Status = models.StatusDone
+	task1.WorkflowState = models.StateDone
 
 	task2, err := models.NewTask("proj-t2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Status = models.StatusDone
+	task2.WorkflowState = models.StateDone
 	project.Tasks = []*models.Task{task1, task2}
 	project.BuildTaskTree()
 
@@ -504,7 +504,7 @@ func TestSaveProject_ProjectLevelRulesRespectUserOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Status = models.StatusDone
+	task1.WorkflowState = models.StateDone
 	project.Tasks = []*models.Task{task1}
 	project.BuildTaskTree()
 
@@ -571,7 +571,7 @@ func TestSaveProject_WorkflowRuleCompletesRecurringTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 	task.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
 	project.Tasks = []*models.Task{task}
 	project.BuildTaskTree()
@@ -580,7 +580,7 @@ func TestSaveProject_WorkflowRuleCompletesRecurringTask(t *testing.T) {
 	prevStates := workflow.CaptureTaskStates(project.Tasks)
 
 	// Simulate the user completing the task (which triggers the rule evaluation path)
-	task.Status = models.StatusDone
+	task.WorkflowState = models.StateDone
 
 	// Create a config with a ConfigManager that doesn't need to persist
 	cfg := deps.Config
@@ -603,10 +603,10 @@ func TestSaveProject_WorkflowRuleCompletesRecurringTask(t *testing.T) {
 		t.Fatalf("expected at least 2 tasks (original + recurring instance), got %d", len(project.Tasks))
 	}
 
-	// Find the new instance (should be StatusTodo with a recurrence pattern)
+	// Find the new instance (goes to Inbox for triage, carries a recurrence pattern)
 	var newInstance *models.Task
 	for _, tsk := range project.Tasks {
-		if tsk.ID != task.ID && tsk.Status == models.StatusTodo && tsk.Recurrence != nil {
+		if tsk.ID != task.ID && tsk.State() == models.StateInbox && tsk.Recurrence != nil {
 			newInstance = tsk
 			break
 		}

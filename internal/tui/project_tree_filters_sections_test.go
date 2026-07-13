@@ -94,45 +94,45 @@ func TestGetHiddenSectionsForViewMode(t *testing.T) {
 func TestCountChildrenBySection(t *testing.T) {
 	// Create test tasks
 	parentTask := &models.Task{
-		ID:       "parent",
-		Section:  "Active",
-		Type:     models.TaskTypeEpic,
-		Children: []*models.Task{},
+		ID:            "parent",
+		WorkflowState: models.StateReady,
+		Type:          models.TaskTypeEpic,
+		Children:      []*models.Task{},
 	}
 
 	child1 := &models.Task{
-		ID:       "child1",
-		Section:  models.SectionNext,
-		Type:     models.TaskTypeTask,
-		Children: []*models.Task{},
+		ID:            "child1",
+		WorkflowState: models.StateNext,
+		Type:          models.TaskTypeTask,
+		Children:      []*models.Task{},
 	}
 
 	child2 := &models.Task{
-		ID:       "child2",
-		Section:  models.SectionInbox,
-		Type:     models.TaskTypeTask,
-		Children: []*models.Task{},
+		ID:            "child2",
+		WorkflowState: models.StateInbox,
+		Type:          models.TaskTypeTask,
+		Children:      []*models.Task{},
 	}
 
 	child3 := &models.Task{
-		ID:       "child3",
-		Section:  models.SectionNext,
-		Type:     models.TaskTypeTask,
-		Children: []*models.Task{},
+		ID:            "child3",
+		WorkflowState: models.StateNext,
+		Type:          models.TaskTypeTask,
+		Children:      []*models.Task{},
 	}
 
 	grandchild := &models.Task{
-		ID:       "grandchild",
-		Section:  models.SectionWaiting,
-		Type:     models.TaskTypeTask,
-		Children: []*models.Task{},
+		ID:            "grandchild",
+		WorkflowState: models.StateWaiting,
+		Type:          models.TaskTypeTask,
+		Children:      []*models.Task{},
 	}
 
 	childEmptySection := &models.Task{
-		ID:       "empty-section",
-		Section:  "", // Empty section should be normalized to "Active"
-		Type:     models.TaskTypeTask,
-		Children: []*models.Task{},
+		ID:            "empty-section",
+		WorkflowState: models.StateReady, // Ready maps to empty section, normalized to "Active"
+		Type:          models.TaskTypeTask,
+		Children:      []*models.Task{},
 	}
 
 	parentTask.Children = []*models.Task{child1, child2, child3, childEmptySection}

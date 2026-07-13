@@ -7,10 +7,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// hasActiveTasks returns true if any loaded task has status InProgress.
+// hasActiveTasks returns true if any loaded task is in progress.
 func (m *AllTasksViewModel) hasActiveTasks() bool {
 	for _, item := range m.allTasks {
-		if item.Task != nil && item.Task.Status == models.StatusInProgress {
+		if item.Task != nil && item.Task.IsInState(models.StateInProgress) {
 			return true
 		}
 	}
@@ -48,7 +48,7 @@ func (m *AllTasksViewModel) loadAllTasks() {
 			if task == nil {
 				continue
 			}
-			if task.Status.IsComplete() && !includeCompleted {
+			if task.IsTerminalState() && !includeCompleted {
 				continue
 			}
 			m.allTasks = append(m.allTasks, CrossProjectTask{Task: task, Project: project})
@@ -87,7 +87,7 @@ func (m *AllTasksViewModel) applyFiltersAndGroup() {
 	if hasActiveCommonFilters(&m.filter) {
 		filtered = nil
 		for _, item := range m.allTasks {
-			if passesCommonFilters(item.Task, &m.filter, item.Project.ID, m.config) {
+			if passesCommonFilters(item.Task, &m.filter, item.Project, m.config) {
 				filtered = append(filtered, item)
 			}
 		}

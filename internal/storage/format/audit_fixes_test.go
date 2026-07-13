@@ -33,12 +33,12 @@ func TestParse_PinnedAtMalformedEmitsWarning(t *testing.T) {
 func TestParse_PinnedAtValidStillRoundTrips(t *testing.T) {
 	at := time.Date(2024, 6, 15, 12, 30, 45, 0, time.Local)
 	task := &models.Task{
-		ID:       "pin-ok",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
-		Pinned:   true,
-		PinnedAt: &at,
+		ID:            "pin-ok",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		Pinned:        true,
+		PinnedAt:      &at,
 	}
 
 	parsed := &models.Task{}
@@ -64,10 +64,10 @@ func TestParse_PinnedAtValidStillRoundTrips(t *testing.T) {
 func TestRoundTrip_CodeRefLineNumberPreservedWithoutOriginalPath(t *testing.T) {
 	now := time.Now()
 	task := &models.Task{
-		ID:       "code-ref-no-path",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
+		ID:            "code-ref-no-path",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 		Attachments: []models.Attachment{
 			{
 				Filename:     "main.go",
@@ -80,7 +80,7 @@ func TestRoundTrip_CodeRefLineNumberPreservedWithoutOriginalPath(t *testing.T) {
 	}
 
 	// Sanity-check the written metadata: line number must be present.
-	metaStr := WriteMetadata(task)
+	metaStr := WriteMetadataV2(task)
 	if !strings.Contains(metaStr, ":17") {
 		t.Errorf("written metadata %q does not preserve line number :17", metaStr)
 	}
@@ -119,8 +119,8 @@ func TestParse_NonGTDSectionWithLegacySectionFieldEmitsWarning(t *testing.T) {
 	task := &models.Task{ShortID: 7}
 	warnings := ParseMetadata(task, metaStr)
 
-	if task.Section != "" {
-		t.Errorf("Section = %q, want empty after correction", task.Section)
+	if task.State() != models.StateReady {
+		t.Errorf("State = %q, want %q after correction", task.State(), models.StateReady)
 	}
 
 	found := false

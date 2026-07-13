@@ -12,8 +12,11 @@ type FilterDeps struct {
 
 	// TypeKey returns an Action for a Ft sub-key (e, s, t, b, i, 0).
 	TypeKey func(key string) Action
-	// StatusKey returns an Action for a Fs sub-key (t, s, r, S, b, d, x, m, 0).
-	StatusKey func(key string) Action
+	// StateKey returns an Action for a Fs sub-key (i, r, n, s, w, p, v, m, d,
+	// x, 0) selecting one of the ten canonical workflow states. This is the sole
+	// state/status filter sub-prefix; the legacy TaskStatus Fs cycle was retired.
+	// Nil disables the workflow-state sub-prefix.
+	StateKey func(key string) Action
 	// DueDateKey returns an Action for a Fd sub-key (o, t, w, n, 0).
 	// Nil disables the due-date sub-prefix.
 	DueDateKey func(key string) Action
@@ -32,11 +35,6 @@ type FilterDeps struct {
 	// score input must leave this nil so the keymap, ? help, and popup never
 	// advertise an action the view does not handle.
 	ScoreCustomInput Action
-	// StageFilterKey returns an Action for a F. sub-key (0, 1-9, a-z).
-	// Nil disables the stage-filter sub-prefix.
-	StageFilterKey func(key string) Action
-	// StageFilterNames is the ordered stage list for F. children.
-	StageFilterNames []string
 }
 
 // FilterGroup returns entries for the "F" prefix and all its sub-prefixes.
@@ -53,17 +51,25 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("0", "Clear type filter", cat, deps.TypeKey("0")),
 	}
 
-	// --- Fs: status filter ---
-	fsChildren := []Entry{
-		Bind("t", "Filter: Todo", cat, deps.StatusKey("t")),
-		Bind("s", "Filter: In Progress", cat, deps.StatusKey("s")),
-		Bind("r", "Filter: Review", cat, deps.StatusKey("r")),
-		Bind("S", "Filter: Standby", cat, deps.StatusKey("S")),
-		Bind("b", "Filter: Blocked", cat, deps.StatusKey("b")),
-		Bind("d", "Filter: Done", cat, deps.StatusKey("d")),
-		Bind("x", "Filter: Canceled", cat, deps.StatusKey("x")),
-		Bind("m", "Filter: Maybe", cat, deps.StatusKey("m")),
-		Bind("0", "Clear status filter", cat, deps.StatusKey("0")),
+	// --- Fs: workflow-state filter (ten canonical states; replaces the retired
+	// legacy TaskStatus status cycle) ---
+	var fsEntry *Entry
+	if deps.StateKey != nil {
+		fsChildren := []Entry{
+			Bind("i", "Filter state: Inbox", cat, deps.StateKey("i")),
+			Bind("r", "Filter state: Ready", cat, deps.StateKey("r")),
+			Bind("n", "Filter state: Next", cat, deps.StateKey("n")),
+			Bind("s", "Filter state: In Progress", cat, deps.StateKey("s")),
+			Bind("w", "Filter state: Waiting", cat, deps.StateKey("w")),
+			Bind("p", "Filter state: Paused", cat, deps.StateKey("p")),
+			Bind("v", "Filter state: Review", cat, deps.StateKey("v")),
+			Bind("m", "Filter state: Someday", cat, deps.StateKey("m")),
+			Bind("d", "Filter state: Done", cat, deps.StateKey("d")),
+			Bind("x", "Filter state: Canceled", cat, deps.StateKey("x")),
+			Bind("0", "Clear state filter", cat, deps.StateKey("0")),
+		}
+		e := Prefix("s", "Filter by workflow state (sub-popup)", cat, fsChildren)
+		fsEntry = &e
 	}
 
 	// --- Fd: due date filter (optional) ---
@@ -100,30 +106,12 @@ func FilterGroup(deps FilterDeps) []Entry {
 		)
 	}
 
-	// --- F. : stage filter (optional, dynamic) ---
-	var fDotEntry *Entry
-	if deps.StageFilterKey != nil {
-		fDotChildren := []Entry{
-			Bind("0", "Clear stage filter", cat, deps.StageFilterKey("0")),
-		}
-		for i, stage := range deps.StageFilterNames {
-			key := stageKeyForIndex(i)
-			if key == "" {
-				break
-			}
-			name := stage
-			fDotChildren = append(fDotChildren,
-				Bind(key, "Filter stage: "+name, cat, deps.StageFilterKey(key)),
-			)
-		}
-		e := Prefix(".", "Filter by stage", cat, fDotChildren)
-		fDotEntry = &e
-	}
-
 	// --- Assemble F children ---
 	fChildren := []Entry{
 		Prefix("t", "Filter by type (sub-popup)", cat, ftChildren),
-		Prefix("s", "Filter by status (sub-popup)", cat, fsChildren),
+	}
+	if fsEntry != nil {
+		fChildren = append(fChildren, *fsEntry)
 	}
 	if fdEntry != nil {
 		fChildren = append(fChildren, *fdEntry)
@@ -132,9 +120,6 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("a", "Filter by attribute (picker)", cat, deps.OpenAttrPicker),
 		Prefix("S", "Score threshold filter", cat, fsScoreChildren),
 	)
-	if fDotEntry != nil {
-		fChildren = append(fChildren, *fDotEntry)
-	}
 	fChildren = append(fChildren,
 		Bind("#", "Filter by tags", cat, deps.FilterByTags),
 		Bind("p", "Toggle priority filter", cat, deps.TogglePriority),

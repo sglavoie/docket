@@ -185,7 +185,7 @@ func TestOutlinerCompletedAndCanceledDueTodayRowsAreQuiet(t *testing.T) {
 	for i, task := range []*models.Task{done, canceled} {
 		line := ansi.Strip(m.renderOutlinerTaskRow(outlinerRow{task: task}, false, width, width, i, nil))
 		if strings.Contains(line, "Today") {
-			t.Fatalf("quiet %s row should not carry due-today inline, got %q", task.Status, line)
+			t.Fatalf("quiet %s row should not carry due-today inline, got %q", models.LegacyStatusForState(task.State()), line)
 		}
 	}
 }

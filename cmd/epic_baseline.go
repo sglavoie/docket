@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/app"
 )
 
 var epicBaselineCmd = &cobra.Command{
@@ -40,33 +38,37 @@ func runEpicBaseline(cmd *cobra.Command, args []string) error {
 
 	taskID := args[0]
 
-	updatedTask, err := WithTaskUpdate(taskID, func(task *models.Task) error {
-		if task.Type != models.TaskTypeEpic {
-			return fmt.Errorf("task #%d is a %s, not an epic", task.ShortID, task.Type)
-		}
-		if len(task.Children) == 0 {
-			return tterrors.NewInvalidValueError("epic", task.ShortID, "epic must have at least one child to baseline")
-		}
-		now := time.Now()
-		task.EnsureEpicAttrs().InitialChildCount = len(task.Children)
-		task.EnsureEpicAttrs().ScopeBaselinedAt = &now
-		return nil
-	})
+	// Resolve the task in the current project, then persist through the
+	// application layer; the epic-type and has-children guards live in the use
+	// case so every adapter enforces them uniformly.
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
+	}
+	task, findErr := FindTaskByIdentifier(project, taskID)
+	if findErr != nil {
+		return findErr
+	}
+
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.EpicBaselineResult, error) {
+		return svc.BaselineEpic(task.ID)
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
 
 	if out.Quiet {
 		return nil
 	}
 	if out.JSON {
-		return outputSingleTaskJSON(updatedTask)
+		return printMutationJSON(res.Task)
 	}
 
 	fmt.Printf("Baselined Epic #%d: %s (%d children)\n",
-		updatedTask.ShortID,
-		updatedTask.Title,
-		updatedTask.EpicAttrs.InitialChildCount,
+		res.Task.ShortID,
+		res.Task.Title,
+		res.ChildCount,
 	)
 	return nil
 }

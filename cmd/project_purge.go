@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -52,30 +52,37 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 		return listTrashedProjects(cfg)
 	}
 
-	slug := args[0]
-
-	// Guard against empty slug: TrashEntryExists("") and PurgeFromTrash("")
-	// would target the trash dir itself, wiping every trashed project.
-	if slug == "" {
+	ref := args[0]
+	if ref == "" {
 		return tterrors.NewRequiredFieldError("project slug")
 	}
 
-	// Check if project exists in trash
-	if !storage.TrashEntryExists(slug, cfg.DataDir) {
-		return tterrors.NewProjectNotFoundInTrashError(slug)
+	// Resolve the trash entry, requiring an explicit entry ID when more than one
+	// deleted generation shares a slug.
+	entry, err := resolveTrashEntry(cfg.DataDir, ref)
+	if err != nil {
+		return err
 	}
 
 	// Confirmation unless --force
-	if !ConfirmStrict(fmt.Sprintf("PERMANENTLY delete '%s'? This cannot be undone.", slug), purgeForce) {
+	if !ConfirmStrict(fmt.Sprintf("PERMANENTLY delete '%s'? This cannot be undone.", entry.Slug), purgeForce) {
 		if !out.Quiet {
 			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
 	}
 
-	// Purge the project
-	if err := storage.PurgeFromTrash(slug, cfg.DataDir); err != nil {
-		return fmt.Errorf("failed to delete project: %w", err)
+	// Route the purge through the application layer: the trash entry's whole subtree
+	// is removed as ONE atomic journaled transaction (files first, then directories
+	// deepest-first, all contained within the approved roots). This is irreversible.
+	svc := newAppService(cfg)
+	if _, err := svc.PurgeProject(app.PurgeProjectRequest{
+		DataDir: cfg.DataDir,
+		EntryID: entry.EntryID,
+		Slug:    entry.Slug,
+		Confirm: true,
+	}); err != nil {
+		return translateAppError(err)
 	}
 
 	if out.Quiet {
@@ -83,10 +90,11 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 	}
 	if out.JSON {
 		return printJSON(struct {
-			Slug   string `json:"slug"`
-			Purged bool   `json:"purged"`
-		}{Slug: slug, Purged: true})
+			Slug    string `json:"slug"`
+			EntryID string `json:"entry_id"`
+			Purged  bool   `json:"purged"`
+		}{Slug: entry.Slug, EntryID: entry.EntryID, Purged: true})
 	}
-	fmt.Printf("Permanently deleted '%s'\n", slug)
+	fmt.Printf("Permanently deleted '%s'\n", entry.Slug)
 	return nil
 }

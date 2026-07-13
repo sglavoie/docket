@@ -15,17 +15,38 @@ func makeICloudDrive(t *testing.T, home string) {
 	}
 }
 
-func TestActiveDefaultDataDir_ICloudPresent(t *testing.T) {
+func TestActiveDefaultDataDir_ICloudPresentButNoWorkspaceStaysLocal(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
 
-	want := filepath.Join(home, iCloudDriveRelPath, iCloudDataDirName)
+	// iCloud Drive is available but holds no tt workspace: local-first wins and
+	// no automatic iCloud selection occurs.
+	want := filepath.Join(home, dataDirName)
 	if got := ActiveDefaultDataDir(); got != want {
-		t.Fatalf("ActiveDefaultDataDir() = %q, want iCloud root %q", got, want)
+		t.Fatalf("ActiveDefaultDataDir() = %q, want local root %q", got, want)
 	}
-	if got := DefaultConfigPath(); got != filepath.Join(want, configFileName) {
-		t.Fatalf("DefaultConfigPath() = %q, want %q", got, filepath.Join(want, configFileName))
+}
+
+func TestActiveDefaultDataDir_ExistingICloudWorkspacePreserved(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	makeICloudDrive(t, home)
+
+	icloudRoot := filepath.Join(home, iCloudDriveRelPath, iCloudDataDirName)
+	if err := os.MkdirAll(icloudRoot, 0o755); err != nil {
+		t.Fatalf("mkdir iCloud root: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(icloudRoot, configFileName), []byte(`{"version":1}`), 0o600); err != nil {
+		t.Fatalf("write iCloud config: %v", err)
+	}
+
+	// An existing iCloud workspace (its config already present) stays selected.
+	if got := ActiveDefaultDataDir(); got != icloudRoot {
+		t.Fatalf("ActiveDefaultDataDir() = %q, want existing iCloud root %q", got, icloudRoot)
+	}
+	if got := DefaultConfigPath(); got != filepath.Join(icloudRoot, configFileName) {
+		t.Fatalf("DefaultConfigPath() = %q, want %q", got, filepath.Join(icloudRoot, configFileName))
 	}
 }
 

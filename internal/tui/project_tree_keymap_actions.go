@@ -148,7 +148,7 @@ func (b *projectTreeKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
 		},
 		MarkDone: func() (tea.Model, tea.Cmd) {
-			_, cmd := m.handleStatusTransition(models.StatusDone, b.visible())
+			_, cmd := m.handleStateTransition(models.StateDone, b.visible())
 			return m, cmd
 		},
 		EditTask: func() (tea.Model, tea.Cmd) {
@@ -167,10 +167,6 @@ func (b *projectTreeKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 		},
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
 			return m, helpCmd(ViewProjectTree, "Project Tree", GetKeybindingRegistry().GetForView(ViewProjectTree))
-		},
-		ToggleActive: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleToggleActiveKey(m) //nolint:errcheck
-			return m, cmd
 		},
 		EditScore: func() (tea.Model, tea.Cmd) {
 			cmd, _ := handleResolvedTaskKey("S", m, m.getProject(), ViewProjectTree)

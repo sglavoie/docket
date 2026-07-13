@@ -270,7 +270,7 @@ func TestProjectCyclePreviewCardConsumesRowsAbovePopup(t *testing.T) {
 	app.config.SectionLimitNext = &limit
 	project := app.projectCycleItems[0].Project
 	for _, task := range project.Tasks {
-		task.Section = models.SectionNext
+		task.SetSection(models.SectionNext)
 	}
 	project.BuildTaskTree()
 

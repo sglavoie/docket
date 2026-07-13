@@ -145,8 +145,9 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, allTasks []*mod
 func buildExportBadge(task *models.Task) string {
 	var parts []string
 
-	if task.Status != models.StatusTodo {
-		parts = append(parts, string(task.Status))
+	// Show the workflow state unless it is the unremarkable default (ready).
+	if st := task.State(); st != models.StateReady {
+		parts = append(parts, string(st))
 	}
 	if task.Priority != 0 {
 		parts = append(parts, fmt.Sprintf("!%d", task.Priority))

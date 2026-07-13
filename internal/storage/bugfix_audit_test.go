@@ -20,12 +20,12 @@ import (
 func TestRoundTrip_CommentTextWithLeadingBackslashHeading(t *testing.T) {
 	original := "\\## Task: not a heading"
 	task := &models.Task{
-		ID:       "task-uuid-1",
-		ShortID:  1,
-		Type:     models.TaskTypeTask,
-		Title:    "Carrier",
-		Status:   models.StatusTodo,
-		Priority: models.PriorityDefault,
+		ID:            "task-uuid-1",
+		ShortID:       1,
+		Type:          models.TaskTypeTask,
+		Title:         "Carrier",
+		WorkflowState: models.StateReady,
+		Priority:      models.PriorityDefault,
 		Comments: []*models.Comment{
 			{
 				Text:      original,
@@ -112,63 +112,58 @@ func TestSaveNote_PreservesUnreadableExistingFile(t *testing.T) {
 	}
 }
 
-// TestPurgeFromTrash_RejectsEmptySlug guards against a catastrophic data-loss
-// bug where PurgeFromTrash("") would join with the trash root and os.RemoveAll
-// the entire trash directory, wiping every recoverable project. The cmd layer
-// added a similar guard in 81a37d10; this is the defense-in-depth at the
-// storage entry point so that non-CLI callers (TUI, future SDK consumers)
-// cannot bypass the check.
-func TestPurgeFromTrash_RejectsEmptySlug(t *testing.T) {
+// TestPurgeTrashEntry_RejectsEmptyID guards against a catastrophic data-loss
+// bug where an empty entry ID would join with the trash root and os.RemoveAll
+// the entire trash directory, wiping every recoverable project. This is the
+// defense-in-depth at the storage entry point so that non-CLI callers (TUI,
+// future SDK consumers) cannot bypass the check.
+func TestPurgeTrashEntry_RejectsEmptyID(t *testing.T) {
 	dir := t.TempDir()
 	trashDir := filepath.Join(dir, ".tt", "trash")
-	if err := os.MkdirAll(filepath.Join(trashDir, "real-project"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(trashDir, "real-entry"), 0o755); err != nil {
 		t.Fatalf("setup trash: %v", err)
 	}
-	if err := PurgeFromTrash("", dir); err == nil {
-		t.Error("expected error for empty slug, got nil")
+	if err := PurgeTrashEntry(dir, ""); err == nil {
+		t.Error("expected error for empty entry ID, got nil")
 	}
-	if _, err := os.Stat(filepath.Join(trashDir, "real-project")); err != nil {
-		t.Errorf("real-project was wiped by empty-slug PurgeFromTrash: %v", err)
+	if _, err := os.Stat(filepath.Join(trashDir, "real-entry")); err != nil {
+		t.Errorf("real-entry was wiped by empty-ID PurgeTrashEntry: %v", err)
 	}
 }
 
-// TestRestoreProjectFromTrash_RejectsEmptySlug guards against the same class
-// of catastrophic bug for the restore path: with slug="", trashPath collapses
-// to the trash root and projectPath collapses to projects/, so the rename
-// silently relocated every trashed entry into projects/, scrambling them.
-func TestRestoreProjectFromTrash_RejectsEmptySlug(t *testing.T) {
+// TestRestoreTrashEntry_RejectsEmptyID guards against the same class of
+// catastrophic bug for the restore path: an empty entry ID must not collapse to
+// the trash root and relocate every trashed entry into projects/.
+func TestRestoreTrashEntry_RejectsEmptyID(t *testing.T) {
 	dir := t.TempDir()
 	trashDir := filepath.Join(dir, ".tt", "trash")
 	projectsDir := filepath.Join(dir, "projects")
-	if err := os.MkdirAll(filepath.Join(trashDir, "real-project"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(trashDir, "real-entry"), 0o755); err != nil {
 		t.Fatalf("setup trash: %v", err)
 	}
-	if err := RestoreProjectFromTrash("", dir); err == nil {
-		t.Error("expected error for empty slug, got nil")
+	if _, _, err := RestoreTrashEntry(dir, ""); err == nil {
+		t.Error("expected error for empty entry ID, got nil")
 	}
-	if _, err := os.Stat(filepath.Join(trashDir, "real-project")); err != nil {
-		t.Errorf("real-project was relocated by empty-slug RestoreProjectFromTrash: %v", err)
+	if _, err := os.Stat(filepath.Join(trashDir, "real-entry")); err != nil {
+		t.Errorf("real-entry was relocated by empty-ID RestoreTrashEntry: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(projectsDir, "real-project")); err == nil {
-		t.Error("trash contents were moved to projects/ via empty-slug restore")
+	if _, err := os.Stat(filepath.Join(projectsDir, "real-entry")); err == nil {
+		t.Error("trash contents were moved to projects/ via empty-ID restore")
 	}
 }
 
-// TestMoveProjectToTrash_RejectsEmptySlug guards against a malformed project
-// (Slug=="") being passed in: with the empty slug, trashPath would resolve to
-// the trash root itself and os.Rename(project.Path, trashRoot) could relocate
-// arbitrary directories on top of the trash tree (or vice versa) depending on
-// pre-existing layout. The pre-fix code happened to fail in some configurations
-// because the trash root already existed, but that incidental safety must not
-// be relied on.
-func TestMoveProjectToTrash_RejectsEmptySlug(t *testing.T) {
+// TestMoveProjectToTrash_RejectsEmptyIdentity guards against a malformed project
+// (empty ID or Slug) being passed in: the entry ID is derived from the project
+// ID and the restore destination from the slug, so both must be rejected before
+// any filesystem mutation.
+func TestMoveProjectToTrash_RejectsEmptyIdentity(t *testing.T) {
 	dir := t.TempDir()
 	projectsDir := filepath.Join(dir, "projects", "real-project")
 	if err := os.MkdirAll(projectsDir, 0o755); err != nil {
 		t.Fatalf("setup projects: %v", err)
 	}
-	proj := &models.Project{Slug: "", Path: projectsDir}
-	if err := MoveProjectToTrash(proj, dir); err == nil {
+	proj := &models.Project{ID: "id", Slug: "", Path: projectsDir}
+	if _, err := MoveProjectToTrash(proj, dir, "", nil); err == nil {
 		t.Error("expected error for empty slug, got nil")
 	}
 	if _, err := os.Stat(projectsDir); err != nil {

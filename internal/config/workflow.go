@@ -39,7 +39,15 @@ func (c *Config) GetEnabledWorkflowRules() []workflow.WorkflowRule {
 // Within each group, rules are sorted by priority (non-zero ascending, then zero),
 // then alphabetically by name within the same priority.
 func (c *Config) GetWorkflowRulesSorted() (defaultRules, customRules []workflow.WorkflowRule) {
-	for _, rule := range c.WorkflowRules {
+	return partitionAndSortWorkflowRules(c.WorkflowRules)
+}
+
+// partitionAndSortWorkflowRules splits rules into default-first and custom
+// groups and sorts each group by priority (non-zero ascending, then zero), then
+// alphabetically by name within the same priority. It is shared by the
+// Config facade and the AutomationConfig domain so both produce identical order.
+func partitionAndSortWorkflowRules(all []workflow.WorkflowRule) (defaultRules, customRules []workflow.WorkflowRule) {
+	for _, rule := range all {
 		if rule.Source == "default" {
 			defaultRules = append(defaultRules, rule)
 		} else {

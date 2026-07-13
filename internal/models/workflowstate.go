@@ -1,0 +1,148 @@
+package models
+
+import (
+	"fmt"
+
+	"github.com/sglavoie/tt/internal/icons"
+)
+
+// WorkflowState is the single canonical lifecycle state of a task. It replaces
+// the legacy Status/Section/Stage/Active quadruplet as the authoritative model
+// of where a task sits in its workflow.
+//
+// Introduced in session 7. During the migration window the legacy fields remain
+// on the Task struct as storage, and WorkflowState is derived from them through
+// the isolated adapter in task_workflowstate.go (see DeriveWorkflowState and
+// Task.State). The legacy fields are removed in session 33, after which
+// WorkflowState becomes a stored field rather than a derived one.
+type WorkflowState string
+
+const (
+	// StateInbox is unprocessed, freshly captured work awaiting triage.
+	StateInbox WorkflowState = "inbox"
+	// StateReady is triaged work with no scheduling commitment yet.
+	StateReady WorkflowState = "ready"
+	// StateNext is work explicitly queued as the next thing to do.
+	StateNext WorkflowState = "next"
+	// StateInProgress is work actively being executed.
+	StateInProgress WorkflowState = "in_progress"
+	// StateWaiting is work suspended on an external dependency ("waiting for").
+	StateWaiting WorkflowState = "waiting"
+	// StatePaused is work voluntarily suspended by the user.
+	StatePaused WorkflowState = "paused"
+	// StateReview is work awaiting review, QA, or approval.
+	StateReview WorkflowState = "review"
+	// StateSomeday is uncommitted, someday/maybe work.
+	StateSomeday WorkflowState = "someday"
+	// StateDone is successfully completed, terminal work.
+	StateDone WorkflowState = "done"
+	// StateCanceled is abandoned, terminal work.
+	StateCanceled WorkflowState = "canceled"
+)
+
+// AllWorkflowStates returns every valid workflow state in canonical order
+// (nonterminal states first, then the two terminal states).
+func AllWorkflowStates() []WorkflowState {
+	return []WorkflowState{
+		StateInbox,
+		StateReady,
+		StateNext,
+		StateInProgress,
+		StateWaiting,
+		StatePaused,
+		StateReview,
+		StateSomeday,
+		StateDone,
+		StateCanceled,
+	}
+}
+
+// IsValid reports whether the state is one of the ten canonical states.
+func (s WorkflowState) IsValid() bool {
+	switch s {
+	case StateInbox, StateReady, StateNext, StateInProgress, StateWaiting,
+		StatePaused, StateReview, StateSomeday, StateDone, StateCanceled:
+		return true
+	}
+	return false
+}
+
+// IsTerminal reports whether the state is terminal (done or canceled). Terminal
+// tasks carry a CompletedAt timestamp and can only leave their state via reopen.
+func (s WorkflowState) IsTerminal() bool {
+	return s == StateDone || s == StateCanceled
+}
+
+// IsNonterminal reports whether the state is a valid, non-terminal state.
+func (s WorkflowState) IsNonterminal() bool {
+	return s.IsValid() && !s.IsTerminal()
+}
+
+// String returns the canonical string form of the state.
+func (s WorkflowState) String() string {
+	return string(s)
+}
+
+// Icon returns a one-character indicator for the state, reusing the status
+// icon set. The three todo-ish planning states (inbox, ready, next) share the
+// todo icon; waiting deliberately shows the blocked icon because the legacy
+// blocked status and Waiting section collapse into the one waiting state.
+func (s WorkflowState) Icon() string {
+	switch s {
+	case StateInbox, StateReady, StateNext:
+		return icons.Get("status.todo")
+	case StateInProgress:
+		return icons.Get("status.in_progress")
+	case StateWaiting:
+		return icons.Get("status.blocked")
+	case StatePaused:
+		return icons.Get("status.standby")
+	case StateReview:
+		return icons.Get("status.review")
+	case StateSomeday:
+		return icons.Get("status.maybe")
+	case StateDone:
+		return icons.Get("status.done")
+	case StateCanceled:
+		return icons.Get("status.canceled")
+	default:
+		return "?"
+	}
+}
+
+// ParseWorkflowState converts a string to a WorkflowState, reporting whether it
+// names a valid canonical state.
+func ParseWorkflowState(str string) (WorkflowState, bool) {
+	s := WorkflowState(str)
+	return s, s.IsValid()
+}
+
+// ReopenTargetState is the state a task always returns to when reopened from a
+// terminal state. Reopen is deliberately not configurable: a completed or
+// canceled task re-enters the workflow at the Inbox for re-triage.
+const ReopenTargetState = StateInbox
+
+// CanTransitionState reports whether a task may move directly from state `from`
+// to state `to`, returning an empty string when the transition is allowed or a
+// human-readable reason when it is not.
+//
+// Rules (see context.md "Task model"):
+//   - Any nonterminal state may transition to any other valid state, including
+//     the terminal done/canceled states (complete / cancel).
+//   - Terminal states (done, canceled) may only transition to StateInbox, which
+//     is the reopen path; every other target requires reopening first.
+func CanTransitionState(from, to WorkflowState) string {
+	if !from.IsValid() {
+		return fmt.Sprintf("invalid current state %q", from)
+	}
+	if !to.IsValid() {
+		return fmt.Sprintf("invalid target state %q", to)
+	}
+	if from == to {
+		return fmt.Sprintf("task is already in state %q", from)
+	}
+	if from.IsTerminal() && to != ReopenTargetState {
+		return fmt.Sprintf("cannot move task from terminal state %q to %q (reopen it first)", from, to)
+	}
+	return ""
+}

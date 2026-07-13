@@ -17,7 +17,10 @@ import (
 func TestRunUndo(t *testing.T) {
 	t.Run("restores from undo history", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		projectPath := filepath.Join(tmpDir, "test-project")
+		// The catalog derives project paths as <data>/projects/<slug>, so the
+		// tasks.md and .undo history must live there for a config reload to resolve
+		// the project (absolute paths are no longer persisted).
+		projectPath := filepath.Join(tmpDir, "projects", "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}
@@ -107,7 +110,7 @@ func TestRunUndo(t *testing.T) {
 
 	t.Run("returns error when no backup exists", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		projectPath := filepath.Join(tmpDir, "test-project")
+		projectPath := filepath.Join(tmpDir, "projects", "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}
@@ -161,7 +164,7 @@ func TestRunUndo(t *testing.T) {
 
 	t.Run("undo reapplies side effects and saves", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		projectPath := filepath.Join(tmpDir, "test-project")
+		projectPath := filepath.Join(tmpDir, "projects", "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}
@@ -247,7 +250,7 @@ func TestRunUndo(t *testing.T) {
 
 	t.Run("undo does not silently redo when undo stack is empty", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		projectPath := filepath.Join(tmpDir, "test-project")
+		projectPath := filepath.Join(tmpDir, "projects", "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}

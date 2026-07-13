@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -42,78 +43,85 @@ func init() {
 }
 
 func runTaskDim(_ *cobra.Command, args []string) error {
-	var taskID string
-	if len(args) > 0 {
-		taskID = args[0]
-	} else {
-		project, _, _, err := LoadCurrentProject()
-		if err != nil {
-			return err
-		}
-		task, err := SelectTask(project, args,
-			func(t *models.Task) bool { return !t.Status.IsComplete() },
-			"Select task to toggle dim:", NoItemsMsg("tasks", "tt task add <title>"))
-		if err != nil {
-			return err
-		}
-		taskID = task.ID
-	}
-
-	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
-		t.ToggleDimmed()
-		return nil
-	})
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	if task.Dimmed {
-		fmt.Printf("Dimmed task #%d: %s\n", task.ShortID, task.Title)
+	var task *models.Task
+	if len(args) > 0 {
+		found, findErr := FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
+		}
+		task = found
 	} else {
-		fmt.Printf("Undimmed task #%d: %s\n", task.ShortID, task.Title)
+		selected, selErr := SelectTask(project, args,
+			func(t *models.Task) bool { return !t.IsTerminalState() },
+			"Select task to toggle dim:", NoItemsMsg("tasks", "tt task add <title>"))
+		if selErr != nil {
+			return selErr
+		}
+		task = selected
+	}
+
+	// The toggle target is derived from the loaded copy; the application service
+	// mutates a freshly-snapshotted task, so its result carries no dimmed flag.
+	nowDimmed := !task.Dimmed
+
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.ToggleDimmed(task.ID)
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
+
+	if nowDimmed {
+		fmt.Printf("Dimmed task #%d: %s\n", task.ShortID, res.Title)
+	} else {
+		fmt.Printf("Undimmed task #%d: %s\n", task.ShortID, res.Title)
 	}
 	return nil
 }
 
 func runTaskUndim(_ *cobra.Command, args []string) error {
-	var taskID string
+	project, cfg, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+
+	var task *models.Task
 	if len(args) > 0 {
-		taskID = args[0]
-	} else {
-		project, _, _, err := LoadCurrentProject()
-		if err != nil {
-			return err
+		found, findErr := FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
 		}
-		task, err := SelectTask(project, args,
+		task = found
+	} else {
+		selected, selErr := SelectTask(project, args,
 			func(t *models.Task) bool { return t.Dimmed },
 			"Select task to undim:", "no dimmed tasks found")
-		if err != nil {
-			return err
+		if selErr != nil {
+			return selErr
 		}
-		taskID = task.ID
+		task = selected
 	}
 
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-	preTask, findErr := FindTaskByIdentifier(project, taskID)
-	if findErr != nil {
-		return findErr
-	}
-	if !preTask.Dimmed {
-		fmt.Printf("Task #%d is not dimmed\n", preTask.ShortID)
+	// Read-only adapter precheck: undimming a non-dimmed task is a friendly no-op.
+	if !task.Dimmed {
+		fmt.Printf("Task #%d is not dimmed\n", task.ShortID)
 		return nil
 	}
 
-	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
-		t.Undim()
-		return nil
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.Undim(task.ID)
 	})
 	if err != nil {
-		return err
+		return translateAppError(err)
 	}
 
-	fmt.Printf("Undimmed task #%d: %s\n", task.ShortID, task.Title)
+	fmt.Printf("Undimmed task #%d: %s\n", task.ShortID, res.Title)
 	return nil
 }

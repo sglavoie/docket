@@ -234,37 +234,6 @@ func TestTaskActionCommands_MoveToProject_NilProject(t *testing.T) {
 	}
 }
 
-func TestTaskActionCommands_ToggleActive(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
-
-	visible := app.projectTree.visibleNodes()
-	if len(visible) == 0 {
-		t.Fatal("expected visible nodes")
-	}
-
-	cmds := app.taskActionCommands()
-	cmd := findCommand(cmds, "toggle active")
-	if cmd == nil {
-		t.Fatal("expected to find 'toggle active' command")
-	}
-
-	result := cmd.Handler()
-	msg, ok := result.(TaskPropertyChangedMsg)
-	if !ok {
-		t.Errorf("expected TaskPropertyChangedMsg, got %T", result)
-	}
-	if !msg.NeedsSave {
-		t.Error("toggle active command should set NeedsSave=true")
-	}
-	if msg.UndoAction != "Toggle Active" {
-		t.Errorf("UndoAction = %q, want Toggle Active", msg.UndoAction)
-	}
-	if len(msg.UndoTaskIDs) != 1 || msg.UndoTaskIDs[0] != msg.Task.ID {
-		t.Errorf("UndoTaskIDs = %v, want [%q]", msg.UndoTaskIDs, msg.Task.ID)
-	}
-}
-
 func TestTaskActionCommands_TogglePin(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.projectTree = NewProjectTreeModel(project, app.config, nil)

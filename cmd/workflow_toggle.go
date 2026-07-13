@@ -37,26 +37,32 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 
 	ruleID := args[0]
 
-	cfg, configManager, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
 
-	rule := cfg.GetWorkflowRule(ruleID)
+	store := automationStore(configManager)
+	automation, err := store.LoadAutomation()
+	if err != nil {
+		return err
+	}
+
+	rule := automation.GetWorkflowRule(ruleID)
 	if rule == nil {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}
 
 	ruleName := rule.Name
-	enabled, found := cfg.ToggleWorkflowRule(ruleID)
+	enabled, found := automation.ToggleWorkflowRule(ruleID)
 	if !found {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}
 
 	// Invalidate workflow eval states so all projects re-evaluate with changed rule
-	cfg.InvalidateWorkflowEvalStates()
+	automation.InvalidateWorkflowEvalStates()
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := saveAutomation(store, automation); err != nil {
 		return err
 	}
 

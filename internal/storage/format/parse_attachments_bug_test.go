@@ -22,10 +22,10 @@ import (
 func TestRoundTrip_CodeRefPortLikePathNotMisparsed(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	task := &models.Task{
-		ID:       "code-port",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
+		ID:            "code-port",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 		Attachments: []models.Attachment{
 			{
 				Filename:     "localhost:8080",
@@ -94,10 +94,10 @@ func TestParseAttachments_WindowsStyleCodeRefPathNoSpuriousWarning(t *testing.T)
 func TestRoundTrip_CodeRefPathContainingDotAndLineNumber(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	task := &models.Task{
-		ID:       "code-ok",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 3,
+		ID:            "code-ok",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
 		Attachments: []models.Attachment{
 			{
 				Filename:     "main.go",
@@ -179,11 +179,11 @@ func TestRoundTrip_AttachmentSemicolonPreserved(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:          "att-" + tc.name,
-				Type:        models.TaskTypeTask,
-				Status:      models.StatusTodo,
-				Priority:    3,
-				Attachments: []models.Attachment{tc.att},
+				ID:            "att-" + tc.name,
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      3,
+				Attachments:   []models.Attachment{tc.att},
 			}
 
 			parsed := &models.Task{}

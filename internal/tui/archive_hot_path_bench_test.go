@@ -20,11 +20,12 @@ import (
 // history. They must not fully parse completed.md on each recompute.
 
 func BenchmarkMetricsDashboardArchiveHotPath(b *testing.B) {
-	cfg := newArchiveHotPathBenchConfig(b, 3, 50, 1500)
+	_, manager := newArchiveHotPathBenchConfig(b, 3, 50, 1500)
 	model := &MetricsDashboardModel{
-		config:    cfg,
-		isGlobal:  true,
-		timeRange: metrics.TimeRange30d,
+		configManager: manager,
+		dataDir:       metricsDataDir(manager),
+		isGlobal:      true,
+		timeRange:     metrics.TimeRange30d,
 	}
 
 	b.ReportMetric(3, "projects")
@@ -41,7 +42,7 @@ func BenchmarkMetricsDashboardArchiveHotPath(b *testing.B) {
 }
 
 func BenchmarkRoadmapArchiveHotPath(b *testing.B) {
-	cfg := newArchiveHotPathBenchConfig(b, 3, 50, 1500)
+	cfg, _ := newArchiveHotPathBenchConfig(b, 3, 50, 1500)
 	model := &RoadmapModel{
 		config:     cfg,
 		isGlobal:   true,
@@ -66,19 +67,27 @@ func BenchmarkRoadmapArchiveHotPath(b *testing.B) {
 	}
 }
 
-func newArchiveHotPathBenchConfig(b *testing.B, projectCount, livePerProject, archivedPerProject int) *config.Config {
+// newArchiveHotPathBenchConfig builds a real on-disk workspace: projects live at
+// the catalog-derived layout (<dataDir>/projects/<slug>) and a manager persists
+// the catalog so the domain-backed metrics dashboard resolves them via
+// RuntimeDependencies().ActiveProjects. The returned cfg keeps the same in-memory
+// project slice the roadmap benchmark still consumes directly.
+func newArchiveHotPathBenchConfig(b *testing.B, projectCount, livePerProject, archivedPerProject int) (*config.Config, *config.Manager) {
 	b.Helper()
 
+	dataDir := b.TempDir()
 	cfg := config.NewConfig()
 	cfg.Projects = nil
-	root := b.TempDir()
+	cfg.DataDir = dataDir
 	for projectIndex := range projectCount {
 		slug := fmt.Sprintf("archive-hot-path-%02d", projectIndex+1)
-		projectPath := filepath.Join(root, slug)
+		projectPath := filepath.Join(dataDir, "projects", slug)
 		project, err := models.NewProject("bench-"+slug, fmt.Sprintf("Archive Hot Path %02d", projectIndex+1), projectPath)
 		if err != nil {
 			b.Fatalf("new project: %v", err)
 		}
+		project.Slug = slug
+		project.Path = projectPath
 		project.Tasks = makeArchiveHotPathBenchTasks(b, fmt.Sprintf("live-%02d", projectIndex+1), livePerProject, false)
 		if err := storage.SaveProject(project); err != nil {
 			b.Fatalf("save project: %v", err)
@@ -86,7 +95,11 @@ func newArchiveHotPathBenchConfig(b *testing.B, projectCount, livePerProject, ar
 		writeArchiveHotPathBenchArchive(b, project, fmt.Sprintf("archived-%02d", projectIndex+1), archivedPerProject)
 		cfg.Projects = append(cfg.Projects, project)
 	}
-	return cfg
+	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
+	if err := manager.Save(cfg); err != nil {
+		b.Fatalf("save config: %v", err)
+	}
+	return cfg, manager
 }
 
 func writeArchiveHotPathBenchArchive(b *testing.B, project *models.Project, prefix string, count int) {
@@ -122,7 +135,7 @@ func makeArchiveHotPathBenchTasks(b *testing.B, prefix string, count int, comple
 		if completed {
 			startedAt := now.AddDate(0, 0, -20+(i%20))
 			completedAt := startedAt.Add(48 * time.Hour)
-			task.Status = models.StatusDone
+			task.WorkflowState = models.StateDone
 			task.CompletedAt = &completedAt
 			task.Activity = []*models.ActivityEntry{
 				{Timestamp: startedAt, Field: "status", OldValue: string(models.StatusTodo), NewValue: string(models.StatusInProgress)},

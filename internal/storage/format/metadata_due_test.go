@@ -14,8 +14,8 @@ func TestMetadataDueRoundTrip(t *testing.T) {
 	dateWithTime := time.Date(2025, 6, 15, 17, 30, 0, 0, time.Local)
 
 	t.Run("HasTime=false round-trips as YYYY-MM-DD", func(t *testing.T) {
-		task := &models.Task{Status: models.StatusTodo, DueDate: &dateOnly, HasTime: false}
-		parsed := &models.Task{Status: models.StatusTodo}
+		task := &models.Task{WorkflowState: models.StateReady, DueDate: &dateOnly, HasTime: false}
+		parsed := &models.Task{WorkflowState: models.StateReady}
 		parseWrittenMetadata(task, parsed)
 
 		if parsed.HasTime {
@@ -27,8 +27,8 @@ func TestMetadataDueRoundTrip(t *testing.T) {
 	})
 
 	t.Run("HasTime=true round-trips as YYYY-MM-DDTHH:MM", func(t *testing.T) {
-		task := &models.Task{Status: models.StatusTodo, DueDate: &dateWithTime, HasTime: true}
-		parsed := &models.Task{Status: models.StatusTodo}
+		task := &models.Task{WorkflowState: models.StateReady, DueDate: &dateWithTime, HasTime: true}
+		parsed := &models.Task{WorkflowState: models.StateReady}
 		parseWrittenMetadata(task, parsed)
 
 		if !parsed.HasTime {
@@ -40,16 +40,16 @@ func TestMetadataDueRoundTrip(t *testing.T) {
 	})
 
 	t.Run("nil DueDate writes no due field", func(t *testing.T) {
-		task := &models.Task{Status: models.StatusTodo}
-		meta := WriteMetadata(task)
+		task := &models.Task{WorkflowState: models.StateReady}
+		meta := WriteMetadataV2(task)
 		if strings.Contains(meta, "due:") {
 			t.Errorf("expected no 'due:' in metadata, got: %s", meta)
 		}
 	})
 
 	t.Run("HasTime=false writes YYYY-MM-DD format", func(t *testing.T) {
-		task := &models.Task{Status: models.StatusTodo, DueDate: &dateOnly, HasTime: false}
-		meta := WriteMetadata(task)
+		task := &models.Task{WorkflowState: models.StateReady, DueDate: &dateOnly, HasTime: false}
+		meta := WriteMetadataV2(task)
 		if !strings.Contains(meta, "due: 2025-06-15") {
 			t.Errorf("expected 'due: 2025-06-15' in metadata, got: %s", meta)
 		}
@@ -59,8 +59,8 @@ func TestMetadataDueRoundTrip(t *testing.T) {
 	})
 
 	t.Run("HasTime=true writes YYYY-MM-DDTHH:MM format", func(t *testing.T) {
-		task := &models.Task{Status: models.StatusTodo, DueDate: &dateWithTime, HasTime: true}
-		meta := WriteMetadata(task)
+		task := &models.Task{WorkflowState: models.StateReady, DueDate: &dateWithTime, HasTime: true}
+		meta := WriteMetadataV2(task)
 		if !strings.Contains(meta, "due: 2025-06-15T17:30") {
 			t.Errorf("expected 'due: 2025-06-15T17:30' in metadata, got: %s", meta)
 		}
@@ -70,8 +70,8 @@ func TestMetadataDueRoundTrip(t *testing.T) {
 		// If a task has a due with clock midnight (00:00) but HasTime=false,
 		// it should survive the round-trip with HasTime still false.
 		midnight := time.Date(2025, 3, 10, 0, 0, 0, 0, time.Local)
-		task := &models.Task{Status: models.StatusTodo, DueDate: &midnight, HasTime: false}
-		parsed := &models.Task{Status: models.StatusTodo}
+		task := &models.Task{WorkflowState: models.StateReady, DueDate: &midnight, HasTime: false}
+		parsed := &models.Task{WorkflowState: models.StateReady}
 		parseWrittenMetadata(task, parsed)
 
 		if parsed.HasTime {

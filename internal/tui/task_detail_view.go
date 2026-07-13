@@ -391,7 +391,7 @@ func wrapTaskDetailFooterHelp(helpText string, firstLineWidth, width int) []stri
 func (m *TaskDetailModel) renderHeaderSection(width int) string {
 	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
 
-	effectiveSection := m.task.Section
+	effectiveSection := taskSectionBucket(m.task)
 	sectionColor := m.project.GetSectionColor(effectiveSection)
 
 	// Append section badge to the type/status/ID line (line index 1)
@@ -501,10 +501,10 @@ func (m *TaskDetailModel) renderDependenciesSection(width int) string {
 		}
 		lines = append(lines, MutedStyle.Render("Blocking:"))
 		for _, blocked := range blockedBy {
-			depStatus := GetStatusStyle(string(blocked.Status))
+			depStatus := GetStateStyle(blocked.State())
 			title := TaskTitleStyleFor(blocked, TaskTitleStyleOptions{}).Render(blocked.Title)
 			line := fmt.Sprintf("  #%-3d %s %s",
-				blocked.ShortID, depStatus.Render(blocked.Status.Icon()), title)
+				blocked.ShortID, depStatus.Render(blocked.State().Icon()), title)
 			lines = append(lines, line)
 		}
 	}
@@ -530,10 +530,10 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
 	if !taskRef.IsCrossProject() {
 		task := m.project.GetTaskByID(taskRef.TaskID)
 		if task != nil {
-			depStatus := GetStatusStyle(string(task.Status))
+			depStatus := GetStateStyle(task.State())
 			title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 			return fmt.Sprintf("  #%-3d %s %s",
-				task.ShortID, depStatus.Render(task.Status.Icon()), title)
+				task.ShortID, depStatus.Render(task.State().Icon()), title)
 		}
 		return "  " + ValidationErrorStyle.Render("(missing)")
 	}
@@ -555,11 +555,11 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
 	if task == nil {
 		return "  " + ValidationErrorStyle.Render(fmt.Sprintf("[%s] (missing)", targetProject.Name))
 	}
-	depStatus := GetStatusStyle(string(task.Status))
+	depStatus := GetStateStyle(task.State())
 	projectLabel := MutedStyle.Render(fmt.Sprintf("[%s] ", targetProject.Name))
 	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 	return fmt.Sprintf("  %s#%-3d %s %s",
-		projectLabel, task.ShortID, depStatus.Render(task.Status.Icon()), title)
+		projectLabel, task.ShortID, depStatus.Render(task.State().Icon()), title)
 }
 
 // renderMarkdownDescription renders the task description as styled markdown.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -52,30 +53,37 @@ func runTaskPark(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	taskID, note, err := resolveTaskParkArgs(args)
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	task, err := withTaskUpdateInProjectUndoAction(taskID, "Park Task", func(_ *models.Project, task *models.Task) error {
-		if task.Status.IsComplete() {
-			return fmt.Errorf("cannot park a %s task", task.Status)
-		}
-		task.Park(note)
-		return nil
-	})
+	task, note, err := resolveTaskParkArgs(project, args)
 	if err != nil {
 		return err
+	}
+
+	// Route the mutation through the application service (atomic, revision-checked,
+	// undoable via the workspace ledger). The completed-task guard now lives in
+	// Service.Park; the CLI keeps only reference resolution and presentation.
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.Park(task.ID, note)
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return emitMutation(out, "", res)
 	}
 	if !out.Quiet {
-		if task.ParkedNote == "" {
-			fmt.Printf("Parked task #%d: %s\n", task.ShortID, task.Title)
+		// Print the note we requested (the app mutates a freshly-snapshotted task, not
+		// this loaded copy). models.Park trims the note, matching resolveTaskParkArgs.
+		if note == "" {
+			fmt.Printf("Parked task #%d: %s\n", task.ShortID, res.Title)
 		} else {
-			fmt.Printf("Parked task #%d: %s\n", task.ShortID, task.ParkedNote)
+			fmt.Printf("Parked task #%d: %s\n", task.ShortID, note)
 		}
 	}
 	return nil
@@ -87,76 +95,71 @@ func runTaskUnpark(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	taskID, err := resolveTaskUnparkArgs(args)
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	project, _, _, loadErr := LoadCurrentProject()
-	if loadErr != nil {
-		return loadErr
+	task, err := resolveTaskUnparkArgs(project, args)
+	if err != nil {
+		return err
 	}
-	preTask, findErr := FindTaskByIdentifier(project, taskID)
-	if findErr != nil {
-		return findErr
-	}
-	if !preTask.IsParked() {
+
+	// Read-only adapter precheck: unparking a non-parked task is a friendly no-op
+	// that must not record an undo entry.
+	if !task.IsParked() {
 		if out.JSON {
-			return outputSingleTaskJSON(preTask)
+			return outputSingleTaskJSON(task)
 		}
 		if !out.Quiet {
-			fmt.Printf("Task #%d is not parked.\n", preTask.ShortID)
+			fmt.Printf("Task #%d is not parked.\n", task.ShortID)
 		}
 		return nil
 	}
 
-	task, err := withTaskUpdateInProjectUndoAction(taskID, "Unpark Task", func(_ *models.Project, task *models.Task) error {
-		task.Unpark(false)
-		return nil
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.Unpark(task.ID)
 	})
 	if err != nil {
-		return err
+		return translateAppError(err)
 	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return emitMutation(out, "", res)
 	}
 	if !out.Quiet {
-		fmt.Printf("Unparked task #%d: %s\n", task.ShortID, task.Title)
+		fmt.Printf("Unparked task #%d: %s\n", task.ShortID, res.Title)
 	}
 	return nil
 }
 
-func resolveTaskParkArgs(args []string) (string, string, error) {
+func resolveTaskParkArgs(project *models.Project, args []string) (*models.Task, string, error) {
 	if len(args) > 0 {
-		return args[0], strings.TrimSpace(strings.Join(args[1:], " ")), nil
-	}
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return "", "", err
+		task, findErr := FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return nil, "", findErr
+		}
+		return task, strings.TrimSpace(strings.Join(args[1:], " ")), nil
 	}
 	task, err := SelectTask(project, nil,
-		func(t *models.Task) bool { return !t.Status.IsComplete() },
+		func(t *models.Task) bool { return !t.IsTerminalState() },
 		"Select task to park:", NoItemsMsg("active tasks", "tt task add <title>"))
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
-	return task.ID, "", nil
+	return task, "", nil
 }
 
-func resolveTaskUnparkArgs(args []string) (string, error) {
+func resolveTaskUnparkArgs(project *models.Project, args []string) (*models.Task, error) {
 	if len(args) > 0 {
-		return args[0], nil
-	}
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return "", err
+		return FindTaskByIdentifier(project, args[0])
 	}
 	task, err := SelectTask(project, nil,
 		func(t *models.Task) bool { return t.IsParked() },
 		"Select task to unpark:", "No parked tasks found.")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return task.ID, nil
+	return task, nil
 }

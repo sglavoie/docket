@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -21,6 +23,7 @@ type TagInfo struct {
 type TagManagerModel struct {
 	projectTree   *ProjectTreeModel
 	project       *models.Project // Used directly when projectTree is nil
+	coordinator   TagCoordinator
 	tags          []TagInfo
 	cursor        int
 	width         int
@@ -71,14 +74,19 @@ type TagManagerErrorMsg struct {
 	Err error
 }
 
-// NewTagManagerModel creates a new tag manager model.
-func NewTagManagerModel(pt *ProjectTreeModel) *TagManagerModel {
-	return newTagManagerModel(pt, nil)
+// NewTagManagerModel creates a new tag manager model whose catalog mutations
+// commit through the given coordinator.
+func NewTagManagerModel(pt *ProjectTreeModel, coordinator TagCoordinator) *TagManagerModel {
+	m := newTagManagerModel(pt, nil)
+	m.coordinator = coordinator
+	return m
 }
 
 // NewTagManagerModelForProject creates a tag manager backed by a standalone project.
-func NewTagManagerModelForProject(project *models.Project) *TagManagerModel {
-	return newTagManagerModel(nil, project)
+func NewTagManagerModelForProject(project *models.Project, coordinator TagCoordinator) *TagManagerModel {
+	m := newTagManagerModel(nil, project)
+	m.coordinator = coordinator
+	return m
 }
 
 func newTagManagerModel(pt *ProjectTreeModel, project *models.Project) *TagManagerModel {
@@ -141,9 +149,26 @@ func (m *TagManagerModel) selectTag(name string) {
 	}
 }
 
+// The catalog mutations commit through the tag coordinator (one application
+// ChangeSet per mutation, with ledger undo) and adapt the result back to the
+// manager's own message vocabulary so its mode resets, list rebuilds, and
+// in-view error rendering are preserved.
+
+// tagManagerError adapts an application-layer failure to the manager's in-view
+// error message, unwrapping input-validation errors to their bare reason so the
+// user still reads "tag 'x' already exists" rather than the app error envelope.
+func tagManagerError(err error) TagManagerErrorMsg {
+	var invalid *app.InvalidInputError
+	if errors.As(err, &invalid) {
+		return TagManagerErrorMsg{Err: errors.New(invalid.Reason)}
+	}
+	return TagManagerErrorMsg{Err: err}
+}
+
 // renameTag renames a tag in the project catalog and task usages.
 func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 	project := m.project
+	coordinator := m.coordinator
 	return func() tea.Msg {
 		if project == nil {
 			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
@@ -153,85 +178,63 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 			return nil
 		}
 
-		changed, err := project.RenameTag(oldName, newName)
+		res, err := coordinator.RenameCatalog(project.ID, oldName, newName)
 		if err != nil {
-			return TagManagerErrorMsg{Err: err}
+			return tagManagerError(err)
 		}
-		if !changed {
+		if !res.Changed {
 			return nil
 		}
 
-		if err := saveProjectSync(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return TagRenamedMsg{OldName: oldName, NewName: newName}
+		return TagRenamedMsg{OldName: oldName, NewName: res.Tag}
 	}
 }
 
 func (m *TagManagerModel) addProjectTag(tagName string) tea.Cmd {
 	project := m.project
+	coordinator := m.coordinator
 	return func() tea.Msg {
 		if project == nil {
 			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
 		}
-		tagName = models.NormalizeTag(tagName)
-		added, err := project.AddTag(tagName)
+		res, err := coordinator.AddCatalog(project.ID, tagName)
 		if err != nil {
-			return TagManagerErrorMsg{Err: err}
-		}
-		if !added {
-			return TagManagerErrorMsg{Err: fmt.Errorf("tag '%s' already exists", tagName)}
+			return tagManagerError(err)
 		}
 
-		if err := saveProjectSync(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return TagAddedMsg{Name: tagName}
+		return TagAddedMsg{Name: res.Tag}
 	}
 }
 
 func (m *TagManagerModel) removeProjectTag(tagName string) tea.Cmd {
 	project := m.project
+	coordinator := m.coordinator
 	return func() tea.Msg {
 		if project == nil {
 			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
 		}
-		tagName = models.NormalizeTag(tagName)
-		result, err := project.DeleteTag(tagName)
+		res, err := coordinator.RemoveCatalog(project.ID, tagName)
 		if err != nil {
-			return TagManagerErrorMsg{Err: err}
-		}
-		if !result.Changed() {
-			return TagManagerErrorMsg{Err: fmt.Errorf("tag '%s' does not exist", tagName)}
+			return tagManagerError(err)
 		}
 
-		if err := saveProjectSync(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return TagRemovedMsg{Name: result.Name}
+		return TagRemovedMsg{Name: res.Tag}
 	}
 }
 
 func (m *TagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
 	project := m.project
+	coordinator := m.coordinator
 	return func() tea.Msg {
 		if project == nil {
 			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
 		}
-		tagName = models.NormalizeTag(tagName)
-		pinned, err := project.TogglePinnedTag(tagName)
+		res, err := coordinator.TogglePinned(project.ID, tagName)
 		if err != nil {
-			return TagManagerErrorMsg{Err: err}
+			return tagManagerError(err)
 		}
 
-		if err := saveProjectSync(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return TagPinnedMsg{Name: tagName, Pinned: pinned}
+		return TagPinnedMsg{Name: res.Tag, Pinned: res.Pinned}
 	}
 }
 

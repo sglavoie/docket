@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -21,7 +21,6 @@ var (
 	taskPriority     int
 	taskTags         []string
 	taskSectionFlag  string
-	taskStageFlag    string
 	taskRecurFlag    string
 	taskAddFromFlag  string
 	taskTemplateFlag string
@@ -71,7 +70,6 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
 	taskAddCmd.Flags().StringVar(&taskSectionFlag, "section", "", "section for the task (default: project's first section)")
-	taskAddCmd.Flags().StringVar(&taskStageFlag, "stage", "", "workflow stage (e.g., Brainstorm, Design, Implement)")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskAddFromFlag, "from", "", "recurrence mode with --recur: 'due' (default) or 'completion'")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
@@ -119,7 +117,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if err != nil {
 			return err
 		}
-		project = cfg.GetProject(slug)
+		project, err = lookupProject(configManager, slug)
+		if err != nil {
+			return err
+		}
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(slug)
 		}
@@ -172,141 +173,118 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			fmt.Sprintf("must be %d-%d", models.PriorityMin, models.PriorityMax))
 	}
 
-	// Create task
-	taskID := uuid.New().String()
-	shortID := project.GetNextShortID()
-	task, err := models.NewTask(taskID, shortID, taskType, title)
-	if err != nil {
-		return err
-	}
-	task.Priority = priority
-
-	// Add tags from template first, then flags
+	// Resolve tags (template tags first, then flags), section, stage, description,
+	// recurrence, parent, checklist, and type attributes into presentation-neutral
+	// primitives. The application-layer AddTask use case owns task construction,
+	// validation, ID/short-ID minting, and the single atomic commit.
+	tags := make([]string, 0, len(taskTags))
 	if tmpl != nil {
-		for _, tag := range tmpl.Tags {
-			task.AddTag(tag)
-		}
+		tags = append(tags, tmpl.Tags...)
 	}
-	for _, tag := range taskTags {
-		task.AddTag(tag)
-	}
+	tags = append(tags, taskTags...)
 
-	// Handle section (explicit flag overrides template, using Changed() for consistency).
-	// Sections are limited to built-in GTD buckets; flexible grouping lives in tags.
+	// Handle section (explicit flag overrides template, using Changed() for
+	// consistency). Sections are limited to built-in GTD buckets; the app layer
+	// re-validates and ensures the section on the freshly snapshotted project.
+	section := ""
 	if cmd.Flags().Changed("section") {
-		if taskSectionFlag != "" && !models.IsGTDSection(taskSectionFlag) {
-			return fmt.Errorf("section %q is not a built-in GTD section; use tags for flexible grouping", taskSectionFlag)
-		}
-		if taskSectionFlag != "" {
-			project.EnsureSection(taskSectionFlag)
-		}
-		task.SetSection(taskSectionFlag)
+		section = taskSectionFlag
 	} else if tmpl != nil && tmpl.Section != "" {
-		if !models.IsGTDSection(tmpl.Section) {
-			return fmt.Errorf("template section %q is not a built-in GTD section; use tags for flexible grouping", tmpl.Section)
-		}
-		project.EnsureSection(tmpl.Section)
-		task.SetSection(tmpl.Section)
+		section = tmpl.Section
 	}
 
-	// Handle stage (trim to reject all-whitespace values that would persist
-	// as a "set" stage but render as empty in the UI)
-	if stage := strings.TrimSpace(taskStageFlag); stage != "" {
-		task.Stage = stage
-	}
-
-	// Add description from template
+	description := ""
 	if tmpl != nil && tmpl.Description != "" {
-		task.Description = tmpl.Description
+		description = tmpl.Description
 	}
 
-	// Handle recurrence (use SetRecurrence to populate OriginalDay for monthly patterns)
+	// Handle recurrence (parsed here so --from precedence and error messages match
+	// the legacy surface; SetRecurrence itself runs inside the use case).
+	var recurrence *models.RecurrencePattern
 	if taskRecurFlag != "" {
-		pattern := models.ParseRecurrence(taskRecurFlag)
-		if pattern == nil {
+		recurrence = models.ParseRecurrence(taskRecurFlag)
+		if recurrence == nil {
 			return tterrors.NewInvalidValueError("recurrence", taskRecurFlag, "use daily, weekly, weekly:mon,fri, monthly, yearly, Nd, Nw, Nm, Ny")
 		}
 		// --from overrides any mode embedded in the pattern string (e.g. trailing ~)
 		if cmd.Flags().Changed("from") {
 			switch taskAddFromFlag {
 			case "due":
-				pattern.Mode = models.RecurModeFromDue
+				recurrence.Mode = models.RecurModeFromDue
 			case "completion":
-				pattern.Mode = models.RecurModeFromCompletion
+				recurrence.Mode = models.RecurModeFromCompletion
 			default:
 				return fmt.Errorf("invalid --from value %q: must be 'due' or 'completion'", taskAddFromFlag)
 			}
-		}
-		if err := task.SetRecurrence(pattern); err != nil {
-			return fmt.Errorf("invalid recurrence pattern: %w", err)
 		}
 	} else if cmd.Flags().Changed("from") {
 		return fmt.Errorf("--from requires --recur to be set")
 	}
 
-	// Handle parent
+	// Resolve parent to its stable UUID (with the legacy hierarchy/depth checks and
+	// error messages); the use case re-validates against the fresh snapshot.
+	var parentID *string
 	if taskParentFlag != "" {
-		parent, err := ValidateParentTask(project, taskParentFlag, task.Type)
+		parent, err := ValidateParentTask(project, taskParentFlag, taskType)
 		if err != nil {
 			return err
 		}
-		task.ParentID = &parent.ID
+		pid := parent.ID
+		parentID = &pid
 	}
 
-	// Apply type-specific attributes
-	addTypeAttrs.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
-	addTypeAttrs.StoryPointsSet = cmd.Flags().Changed("story.points")
-	if err := applyTypeAttrValues(task, addTypeAttrs); err != nil {
-		return err
-	}
-
-	// Add to project
-	project.Tasks = append(project.Tasks, task)
-
-	// Create checklist from template (prefer Checklist over legacy Children)
-	checklistCreated := 0
+	// Materialize the template checklist (prefer Checklist over legacy Children).
+	var checklist []string
 	if tmpl != nil {
 		if len(tmpl.Checklist) > 0 {
-			for _, item := range tmpl.Checklist {
-				task.Checklist = append(task.Checklist, models.ChecklistItem{
-					Text: item,
-					Done: false,
-				})
-				checklistCreated++
-			}
+			checklist = append(checklist, tmpl.Checklist...)
 		} else if len(tmpl.Children) > 0 {
-			// Legacy support: convert Children to checklist items
 			fmt.Fprintf(os.Stderr, "warning: template %q uses deprecated 'children' field; use 'checklist' instead\n", tmpl.ID)
 			for _, childTmpl := range tmpl.Children {
-				task.Checklist = append(task.Checklist, models.ChecklistItem{
-					Text: childTmpl.Title,
-					Done: false,
-				})
-				checklistCreated++
+				checklist = append(checklist, childTmpl.Title)
 			}
 		}
-
 	}
+	checklistCreated := len(checklist)
 
-	// Save with workflow rules evaluation (state-based rules will fire for new tasks).
-	// Persist the project FIRST so a failed save doesn't leave the template
-	// counter bumped without a corresponding task on disk.
-	if err := SaveProject(project, &SaveOptions{
-		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
-		UndoAction: "Add Task", UndoContext: fmt.Sprintf("#%d %s", shortID, title),
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
-	}
+	addTypeAttrs.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
+	addTypeAttrs.StoryPointsSet = cmd.Flags().Changed("story.points")
 
-	// Increment template use count only after the task is durably saved.
+	// When a template is used, its use-count bump rides the SAME commit as the new
+	// task so the pair is atomic — replacing the legacy save-then-bump sequence that
+	// could persist a task without the counter (or vice-versa) on a partial failure.
+	var artifacts []storage.ArtifactChange
 	if tmpl != nil {
 		cfg.IncrementTemplateUseCount(tmpl.ID)
-		if err := saveConfig(configManager, cfg); err != nil {
+		arts, err := encodeConfigArtifacts(configManager, cfg)
+		if err != nil {
 			return err
 		}
+		artifacts = arts
 	}
 
-	if err := out.OutputTask(project.Name, "Created", task); err != nil {
+	svc := newAppService(cfg)
+	res, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.AddTask(app.AddTaskRequest{
+			ProjectID:   project.ID,
+			Title:       title,
+			Type:        taskType,
+			Priority:    priority,
+			Tags:        tags,
+			Description: description,
+			Section:     section,
+			Recurrence:  recurrence,
+			ParentID:    parentID,
+			Checklist:   checklist,
+			Attrs:       addTypeAttrs,
+			Artifacts:   artifacts,
+		})
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
+
+	if err := emitMutation(out, "Created", res); err != nil {
 		return err
 	}
 	if !out.Quiet && !out.JSON && checklistCreated > 0 {

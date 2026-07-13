@@ -116,7 +116,7 @@ func (m *OutlinerModel) rebuildRows() {
 
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return passesCommonFilters(task, &m.filter.CommonFilterState, m.project.ID, m.config)
+			return passesCommonFilters(task, &m.filter.CommonFilterState, m.project, m.config)
 		})
 	}
 
@@ -128,30 +128,19 @@ func (m *OutlinerModel) rebuildRows() {
 
 	if len(m.filter.Sections) > 0 {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return m.filter.Sections[task.Section]
+			return m.filter.Sections[taskSectionBucket(task)]
 		})
 	}
 
 	if m.filter.Actionable {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			if m.project.HasIncompleteDependencies(task) {
-				return false
-			}
-			if task.Status == models.StatusBlocked {
-				return false
-			}
-			if task.Section == models.SectionInbox || task.Section == models.SectionNext ||
-				task.Section == models.SectionWaiting || task.Section == models.SectionSomeday ||
-				task.Section == models.SectionReview || task.Section == models.SectionStandby {
-				return false
-			}
-			return true
+			return taskIsActionableState(task, m.project)
 		})
 	}
 
 	if query := m.SearchQuery(); query != "" {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return matchesSearch(task, query)
+			return matchesSearch(task, query, m.config)
 		})
 	}
 
@@ -203,7 +192,7 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 // effectiveDisplaySection returns the task's display section for non-header
 // contexts such as sidebar matching and task-form dimming.
 func effectiveDisplaySection(t *models.Task) string {
-	return t.Section
+	return taskSectionBucket(t)
 }
 
 // groupTasksBySection groups tasks by their GTD header section, preserving hierarchy.

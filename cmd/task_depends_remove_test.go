@@ -59,7 +59,11 @@ func TestTaskDependsRemoveDependency(t *testing.T) {
 		}
 	})
 
-	t.Run("removing last dep reopens a Blocked task", func(t *testing.T) {
+	t.Run("removing last dep leaves task derived-unblocked without transitioning it", func(t *testing.T) {
+		// Dependency blocking is a DERIVED predicate, not a workflow state.
+		// Removing the last dependency must make the derived blocked predicate
+		// false (HasIncompleteDependencies == false) while PRESERVING the task's
+		// workflow state — the CLI no longer force-reopens the task.
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
@@ -77,7 +81,7 @@ func TestTaskDependsRemoveDependency(t *testing.T) {
 		task1 := project.Tasks[0]
 		task2 := project.Tasks[1]
 		_ = task1.AddDependency(task2.ID)
-		task1.Status = models.StatusBlocked
+		task1.WorkflowState = models.StateWaiting
 		deps.Repository.Projects[project.ID] = project
 
 		dependsOnFlag = ""
@@ -99,8 +103,14 @@ func TestTaskDependsRemoveDependency(t *testing.T) {
 		if savedTask == nil {
 			t.Fatal("task not found")
 		}
-		if savedTask.Status == models.StatusBlocked {
-			t.Errorf("expected task reopened after removing last dep, still blocked")
+		if savedTask.HasDependency(task2.ID) {
+			t.Error("dependency was not removed")
+		}
+		if savedProject.HasIncompleteDependencies(savedTask) {
+			t.Errorf("expected task to be derived-unblocked after removing last dep")
+		}
+		if savedTask.State() != models.StateWaiting {
+			t.Errorf("expected workflow state preserved (still blocked/waiting), got %s", savedTask.State())
 		}
 	})
 

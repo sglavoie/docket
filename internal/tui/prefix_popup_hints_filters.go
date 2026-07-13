@@ -11,16 +11,20 @@ var (
 		{Key: "0", Description: "clear"},
 	}
 
-	// FilterStatusPrefixHints contains hints for the "Fs" (filter status) sub-prefix.
-	FilterStatusPrefixHints = []PrefixHint{
-		{Key: "t", Description: "todo"},
+	// FilterStatePrefixHints contains hints for the "Fs" (filter workflow-state)
+	// sub-prefix — the sole state/status filter after the legacy TaskStatus Fs
+	// cycle was retired.
+	FilterStatePrefixHints = []PrefixHint{
+		{Key: "i", Description: "inbox"},
+		{Key: "r", Description: "ready"},
+		{Key: "n", Description: "next"},
 		{Key: "s", Description: "in-progress"},
-		{Key: "r", Description: "review"},
-		{Key: "S", Description: "standby"},
-		{Key: "b", Description: "blocked"},
+		{Key: "w", Description: "waiting"},
+		{Key: "p", Description: "paused"},
+		{Key: "v", Description: "review"},
+		{Key: "m", Description: "someday"},
 		{Key: "d", Description: "done"},
 		{Key: "x", Description: "canceled"},
-		{Key: "m", Description: "maybe"},
 		{Key: "0", Description: "clear"},
 	}
 

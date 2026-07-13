@@ -36,34 +36,6 @@ func TestTogglePinned(t *testing.T) {
 	}
 }
 
-func TestActivateDeactivate(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-
-	task.Activate()
-	if !task.Active {
-		t.Error("expected Active to be true")
-	}
-
-	task.Deactivate()
-	if task.Active {
-		t.Error("expected Active to be false")
-	}
-}
-
-func TestToggleActive(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-
-	task.ToggleActive()
-	if !task.Active {
-		t.Error("expected Active to be true after first toggle")
-	}
-
-	task.ToggleActive()
-	if task.Active {
-		t.Error("expected Active to be false after second toggle")
-	}
-}
-
 func TestDimUndim(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Dim()
@@ -85,29 +57,5 @@ func TestToggleDimmed(t *testing.T) {
 	task.ToggleDimmed()
 	if task.Dimmed {
 		t.Error("expected Dimmed to be false after second ToggleDimmed")
-	}
-}
-
-func TestDimClearsActive(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.Active = true
-	task.Dim()
-	if !task.Dimmed {
-		t.Error("expected Dimmed to be true after Dim")
-	}
-	if task.Active {
-		t.Error("expected Active to be false after Dim")
-	}
-}
-
-func TestActivateClearsDimmed(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.Dimmed = true
-	task.Activate()
-	if !task.Active {
-		t.Error("expected Active to be true after Activate")
-	}
-	if task.Dimmed {
-		t.Error("expected Dimmed to be false after Activate")
 	}
 }

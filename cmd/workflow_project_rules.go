@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -16,7 +15,7 @@ type projectRuleResult struct {
 
 // evaluateAndApplyProjectRules evaluates project-level rules and applies the result
 // if the project's status was not manually set by the user.
-func evaluateAndApplyProjectRules(project *models.Project, _ *config.Config, rules []workflow.WorkflowRule) projectRuleResult {
+func evaluateAndApplyProjectRules(project *models.Project, rules []workflow.WorkflowRule) projectRuleResult {
 	var res projectRuleResult
 
 	ctx := &workflow.ProjectEvaluationContext{

@@ -3,12 +3,11 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
-	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -16,6 +15,7 @@ import (
 // Each line is parsed using the same syntax as quick capture.
 type BulkCaptureModel struct {
 	project *models.Project
+	capture CaptureCoordinator
 	input   textarea.Model
 	errors  []lineError
 	created int
@@ -23,6 +23,9 @@ type BulkCaptureModel struct {
 	height  int
 	discardConfirmState
 }
+
+// SetCaptureCoordinator injects the shared capture coordinator (captureWireable).
+func (m *BulkCaptureModel) SetCaptureCoordinator(c CaptureCoordinator) { m.capture = c }
 
 // lineError represents a parsing error for a specific line.
 type lineError struct {
@@ -150,8 +153,9 @@ func (m *BulkCaptureModel) ShouldCaptureEsc() bool {
 func (m *BulkCaptureModel) IsFullHeight() bool { return false }
 
 func (m *BulkCaptureModel) createTasks() tea.Cmd {
-	// All mutations run synchronously in the Update() goroutine to avoid
-	// data races with View() reading project.Tasks concurrently.
+	// Parsing runs synchronously so failed lines can be surfaced and retained in
+	// the input; the creation itself commits through the application layer
+	// (CaptureCoordinator.CaptureBulk) as one atomic ChangeSet.
 
 	content := strings.TrimSpace(m.input.Value())
 	if content == "" {
@@ -160,7 +164,7 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 	}
 
 	lines := strings.Split(content, "\n")
-	var validResults []*quickCaptureResult
+	var reqs []app.CaptureRequest
 	var failedLines []string
 	var errors []lineError
 
@@ -188,107 +192,50 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 				message: valErr.Error(),
 			})
 			failedLines = append(failedLines, lines[i])
-		} else {
-			validResults = append(validResults, result)
+			continue
 		}
+
+		// Determine target section. Non-GTD section input is preserved as a tag.
+		tags := result.tags
+		targetSection := result.section
+		if targetSection == "" {
+			targetSection = models.SectionInbox
+		} else if !models.IsGTDSection(targetSection) {
+			tags = append(tags, targetSection)
+			targetSection = models.SectionInbox
+		}
+
+		reqs = append(reqs, app.CaptureRequest{
+			ProjectID:  m.project.ID,
+			Title:      result.title,
+			Type:       result.taskType,
+			Priority:   result.priority,
+			Tags:       tags,
+			Section:    targetSection,
+			Due:        result.dueDate,
+			ParentID:   result.parentID,
+			Recurrence: result.recurrence,
+			State:      captureStateForStatus(result.status),
+			Prepend:    true,
+		})
 	}
 
-	// If we have valid tasks, create them
-	if len(validResults) > 0 {
-		// Ensure Inbox section exists with red color
-		if !m.project.HasSection(models.SectionInbox) {
-			m.project.EnsureSection(models.SectionInbox)
-			m.project.SetSectionColor(models.SectionInbox, "red")
-		}
-
-		// Create all valid tasks
-		var newTasks []*models.Task
-		for _, result := range validResults {
-			// Determine target section. Non-GTD section input is now preserved as a tag.
-			targetSection := result.section
-			if targetSection == "" {
-				targetSection = models.SectionInbox
-			} else if !models.IsGTDSection(targetSection) {
-				result.tags = append(result.tags, targetSection)
-				targetSection = models.SectionInbox
-			}
-
-			// Ensure target section exists
-			if targetSection != models.SectionInbox && !m.project.HasSection(targetSection) {
-				m.project.EnsureSection(targetSection)
-			}
-
-			task := &models.Task{
-				ID:              uuid.New().String(),
-				ShortID:         m.project.GetNextShortID(),
-				Type:            result.taskType,
-				Title:           result.title,
-				Status:          models.StatusTodo,
-				Priority:        result.priority,
-				Section:         targetSection,
-				ParentID:        result.parentID,
-				DueDate:         result.dueDate,
-				Recurrence:      result.recurrence,
-				DependsOn:       []string{},
-				RelatedTo:       []string{},
-				ScoreDimensions: map[string]int{},
-				Children:        []*models.Task{},
-				CreatedAt:       time.Now(),
-				UpdatedAt:       time.Now(),
-			}
-
-			for _, tag := range result.tags {
-				task.AddTag(tag)
-			}
-
-			// Apply status transition using Task methods (handles auto-triage)
-			switch result.status {
-			case models.StatusInProgress:
-				task.Start()
-				if result.activate {
-					task.Activate()
-				}
-			case models.StatusBlocked:
-				task.Block()
-			case models.StatusDone:
-				task.Complete()
-			case models.StatusCanceled:
-				task.Cancel()
-			case models.StatusReview:
-				task.Review()
-			case models.StatusStandby:
-				task.Standby()
-			case models.StatusMaybe:
-				task.Maybe()
-			default:
-			}
-
-			newTasks = append(newTasks, task)
-		}
-
-		// Prepend all new tasks at once (newest first)
-		m.project.Tasks = append(newTasks, m.project.Tasks...)
-		m.project.BuildTaskTree()
-		m.project.ReorderRootTasksByCompletion()
-
-		// Update created count
-		m.created += len(validResults)
-
-		// Save with backup and reload
-		if err := saveProjectSync(m.project); err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
-		}
-	}
-
-	// Update textarea with only failed lines and show errors if any
+	// Update textarea with only failed lines and show errors if any.
+	closeOnSuccess := len(errors) == 0
 	if len(errors) > 0 {
 		m.errors = errors
 		m.input.SetValue(strings.Join(failedLines, "\n"))
+	}
+
+	if len(reqs) == 0 {
 		return nil
 	}
 
-	// All succeeded, close the view
-	return func() tea.Msg { return TaskCreatedMsg{Task: nil} }
+	// Optimistically bump the created count for the View; a rejected commit
+	// surfaces an ErrorMsg (matching the legacy save-failure path, which also
+	// bumped the count before saving).
+	m.created += len(reqs)
+	return m.capture.CaptureBulk(reqs, closeOnSuccess)
 }
 
 func (m *BulkCaptureModel) StatusBarLabel() string { return "Bulk Capture" }

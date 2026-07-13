@@ -74,8 +74,8 @@ func (s *session4Backend) shouldProcessOnSectionChange(task *models.Task, projec
 	current := project.GetTaskByID(task.ID)
 	return current != nil && willLeaveInbox(current)
 }
-func (s *session4Backend) shouldProcessOnStatusChange(newStatus models.TaskStatus) bool {
-	return newStatus.IsComplete()
+func (s *session4Backend) shouldProcessOnStateChange(newState models.WorkflowState) bool {
+	return newState.IsTerminal()
 }
 func (s *session4Backend) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
 	if t := s.project.GetTaskByID(taskID); t != nil {
@@ -101,13 +101,12 @@ func newSession4Core(t *testing.T) (*inboxCore, *session4Backend, *models.Projec
 	project := &models.Project{ID: "p1", Name: "Project One"}
 	for i, title := range []string{"Triage A", "Triage B", "Triage C"} {
 		project.Tasks = append(project.Tasks, &models.Task{
-			ID:       title + "-id",
-			ShortID:  i + 1,
-			Title:    title,
-			Type:     models.TaskTypeTask,
-			Status:   models.StatusTodo,
-			Section:  models.SectionInbox,
-			Priority: 3,
+			ID:            title + "-id",
+			ShortID:       i + 1,
+			Title:         title,
+			Type:          models.TaskTypeTask,
+			WorkflowState: models.StateInbox,
+			Priority:      3,
 		})
 	}
 	var inboxTasks []*models.Task
@@ -250,11 +249,8 @@ func TestUndoAfterAutoAdvanceRestoresCompletedTask(t *testing.T) {
 	}
 	_ = cmd() // exercise the closure to make sure it doesn't panic
 
-	if first.Status != models.StatusTodo {
-		t.Errorf("status after undo: got %q, want %q", first.Status, models.StatusTodo)
-	}
-	if first.Section != models.SectionInbox {
-		t.Errorf("section after undo: got %q, want %q", first.Section, models.SectionInbox)
+	if first.State() != models.StateInbox {
+		t.Errorf("state after undo: got %q, want %q", first.State(), models.StateInbox)
 	}
 	if first.CompletedAt != nil {
 		t.Error("CompletedAt should be nil after undoing completion")
@@ -307,8 +303,8 @@ func TestUndoAfterAutoAdvanceRestoresSectionChange(t *testing.T) {
 
 	c.undoLastAction()
 
-	if first.Section != models.SectionInbox {
-		t.Errorf("section after undo: got %q, want Inbox", first.Section)
+	if first.State() != models.StateInbox {
+		t.Errorf("state after undo: got %q, want Inbox", first.State())
 	}
 	if c.processedIDs[first.ID] {
 		t.Error("processedIDs should not contain the undone task")

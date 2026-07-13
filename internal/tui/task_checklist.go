@@ -11,8 +11,9 @@ import (
 type TaskChecklistModel struct {
 	BaseView
 	InteractiveViewState
-	task    *models.Task
-	project *models.Project
+	task        *models.Task
+	project     *models.Project
+	coordinator SubviewCoordinator
 
 	// Add mode
 	addMode   bool
@@ -51,10 +52,12 @@ func NewTaskChecklistModel(task *models.Task, project *models.Project) *TaskChec
 	}
 }
 
-// NewTaskChecklistModelWithEditor creates a task checklist viewer with editor config.
-func NewTaskChecklistModelWithEditor(task *models.Task, project *models.Project, editor string) *TaskChecklistModel {
+// NewTaskChecklistModelWithEditor creates a task checklist viewer with editor
+// config and the coordinator its mutations commit through.
+func NewTaskChecklistModelWithEditor(task *models.Task, project *models.Project, editor string, coordinator SubviewCoordinator) *TaskChecklistModel {
 	m := NewTaskChecklistModel(task, project)
 	m.editor = editor
+	m.coordinator = coordinator
 	return m
 }
 

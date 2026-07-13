@@ -40,12 +40,12 @@ func (t *Task) GetProgress() float64 {
 	return float64(completed) / float64(total) * 100.0
 }
 
-// IncompleteChildren returns the direct children that are not complete
-// (Status != Done && != Canceled). Leaf tasks (no children) return nil.
+// IncompleteChildren returns the direct children that are not in a terminal
+// workflow state. Leaf tasks (no children) return nil.
 func (t *Task) IncompleteChildren() []*Task {
 	var incomplete []*Task
 	for _, child := range t.Children {
-		if child.Status != StatusDone && child.Status != StatusCanceled {
+		if !child.IsTerminalState() {
 			incomplete = append(incomplete, child)
 		}
 	}

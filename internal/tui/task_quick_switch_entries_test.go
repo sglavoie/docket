@@ -125,7 +125,7 @@ func TestRenderQuickSwitchPopupShowsParkedSnippet(t *testing.T) {
 	app.width = 110
 	app.showQuickSwitch = true
 	p := &models.Project{ID: "p1", Name: "Project 1"}
-	task := &models.Task{ID: "t1", Title: "Task 1", Status: models.StatusTodo, Type: models.TaskTypeTask}
+	task := &models.Task{ID: "t1", Title: "Task 1", WorkflowState: models.StateReady, Type: models.TaskTypeTask}
 	parkedAt := time.Now().Add(-time.Hour)
 	task.ParkedAt = &parkedAt
 	task.ParkedNote = "waiting for schema review"
@@ -149,7 +149,7 @@ func TestRenderQuickSwitchPopupParkedSnippetUsesRowWidthPolicy(t *testing.T) {
 		app.width = width
 		app.showQuickSwitch = true
 		p := &models.Project{ID: "p1", Name: "Project 1"}
-		task := &models.Task{ID: "t1", Title: "Task 1", Status: models.StatusTodo, Type: models.TaskTypeTask}
+		task := &models.Task{ID: "t1", Title: "Task 1", WorkflowState: models.StateReady, Type: models.TaskTypeTask}
 		parkedAt := time.Now().Add(-time.Hour)
 		task.ParkedAt = &parkedAt
 		task.ParkedNote = "waiting for schema review before rollout resumes"

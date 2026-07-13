@@ -74,15 +74,15 @@ func (m *RecentActivityModel) applyFilter() {
 	for _, dt := range m.tasks {
 		switch m.tabs.Active {
 		case recentActivityTabActive:
-			if dt.Task.Status.IsComplete() {
+			if dt.Task.IsComplete() {
 				continue
 			}
 		case recentActivityTabCompleted:
-			if !dt.Task.Status.IsComplete() {
+			if !dt.Task.IsComplete() {
 				continue
 			}
 		}
-		if hasFilters && !passesCommonFilters(dt.Task, &m.filter, dt.Project.ID, m.config) {
+		if hasFilters && !passesCommonFilters(dt.Task, &m.filter, dt.Project, m.config) {
 			continue
 		}
 		tabFiltered = append(tabFiltered, dt)

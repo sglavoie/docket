@@ -43,8 +43,8 @@ func TestTaskFormEdit_NonGTDSectionIgnoredInDraft(t *testing.T) {
 	}
 	task := project.Tasks[0]
 	task.SetSection("Sprint-1")
-	if task.Section != "" {
-		t.Fatalf("precondition: expected Section=\"\", got %q", task.Section)
+	if sec := models.SectionForState(task.State()); sec != "" {
+		t.Fatalf("precondition: expected Section=\"\", got %q", sec)
 	}
 
 	m := NewTaskFormModelEdit(project, task, cfg, nil)
@@ -109,8 +109,8 @@ func TestTaskFormEdit_NonGTDSectionIgnoredRoundTrip(t *testing.T) {
 		t.Fatal("expected non-nil cmd from handleSave")
 	}
 
-	if task.Section != "" {
-		t.Errorf("expected task.Section empty after save, got %q", task.Section)
+	if sec := models.SectionForState(task.State()); sec != "" {
+		t.Errorf("expected task.Section empty after save, got %q", sec)
 	}
 }
 

@@ -233,7 +233,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusTodo
+		task.WorkflowState = models.StateReady
 		task.Priority = 2
 		task.CreatedAt = now
 
@@ -355,7 +355,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusDone
+		task.WorkflowState = models.StateDone
 		completedAt := now
 		task.CompletedAt = &completedAt
 
@@ -379,7 +379,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		child2.Status = models.StatusDone
+		child2.WorkflowState = models.StateDone
 
 		if err := parent.AddChild(child1); err != nil {
 			t.Fatal(err)

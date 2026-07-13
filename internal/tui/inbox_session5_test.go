@@ -23,7 +23,7 @@ func TestComputeGlobalAlertLinesAdvertisesGlobalShortcut(t *testing.T) {
 	cfg.DataDir = t.TempDir()
 	project := testutil.NewTestProject("Triage Demo")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inbox}
 	cfg.Projects = []*models.Project{project}
 
@@ -53,7 +53,7 @@ func TestComputeGlobalAlertLinesAdvertisesPerProjectTriage(t *testing.T) {
 	project := testutil.NewTestProject("Alpha")
 	for i := 0; i < 3; i++ {
 		task := testutil.NewTestTask("triage me", models.TaskTypeTask)
-		task.Section = models.SectionInbox
+		task.SetSection(models.SectionInbox)
 		project.Tasks = append(project.Tasks, task)
 	}
 	cfg.Projects = []*models.Project{project}
@@ -106,10 +106,10 @@ func TestComputeGlobalAlertLinesOrdersTriageBeforeOverdue(t *testing.T) {
 	cfg.DataDir = t.TempDir()
 	project := testutil.NewTestProject("Mixed")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 
 	overdue := testutil.NewTestTask("overdue thing", models.TaskTypeTask)
-	overdue.Section = models.SectionNext
+	overdue.SetSection(models.SectionNext)
 	overdueDue := time.Now().Add(-48 * time.Hour)
 	overdue.DueDate = &overdueDue
 

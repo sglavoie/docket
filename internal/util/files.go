@@ -4,21 +4,46 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 )
 
-// File permission constants used across the codebase.
+// File permission constants used across the codebase. Personal task data is
+// private by default: directories are owner-only (0700) and files are
+// owner-read/write (0600). Existing stricter modes are preserved on rewrite
+// (see AtomicWriteFile); the defaults only tighten looser modes down to private.
 const (
-	DirPermissions  = 0755
-	FilePermissions = 0644
+	DirPermissions  = 0700
+	FilePermissions = 0600
 )
+
+// syncDir fsyncs a directory so that a create or rename within it is durably
+// recorded in the directory entry, surviving a crash immediately after the
+// operation returns. It is a package variable so tests can observe or stub the
+// rename durability hook.
+var syncDir = func(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
+}
 
 // AtomicWriteFile writes data to a file atomically using a temporary file and rename.
 // This prevents data corruption if the write is interrupted (e.g., power loss, crash).
-// The file is created with the specified permissions.
+// The file is created with the specified permissions, except that a stricter mode
+// on an existing destination is preserved rather than loosened. After the rename
+// the parent directory is fsynced so the replacement is durable.
 func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	base := filepath.Base(path)
+
+	// Preserve stricter existing modes: if the destination already exists with
+	// more restrictive permissions, keep those bits rather than loosening them.
+	// ANDing yields a mode no looser than either the requested default or the
+	// existing file, so a user-hardened file (e.g. 0400) is never widened.
+	if info, statErr := os.Stat(path); statErr == nil {
+		perm &= info.Mode().Perm()
+	}
 
 	// Create temp file in the same directory to ensure atomic rename works
 	// (rename across filesystems is not atomic)
@@ -62,6 +87,12 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 
+	// Fsync the parent directory so the rename is durably recorded and cannot be
+	// lost by a crash right after this call returns.
+	if err := syncDir(dir); err != nil {
+		return fmt.Errorf("failed to sync directory: %w", err)
+	}
+
 	success = true
 	return nil
 }
@@ -76,15 +107,15 @@ func WithFileLock(lockPath string, exclusive bool, fn func() error) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	how := syscall.LOCK_SH
+	lock := flockShared
 	if exclusive {
-		how = syscall.LOCK_EX
+		lock = flockExclusive
 	}
 
-	if err := syscall.Flock(int(f.Fd()), how); err != nil {
+	if err := lock(f); err != nil {
 		return fmt.Errorf("failed to acquire file lock: %w", err)
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN) //nolint:errcheck
+	defer func() { _ = flockUnlock(f) }()
 
 	return fn()
 }

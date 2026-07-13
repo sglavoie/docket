@@ -31,16 +31,21 @@ type ChecklistItem struct {
 
 // Task represents a single task, story, epic, bug, or idea.
 type Task struct {
-	ID            string             `json:"id"`
-	ShortID       int                `json:"short_id"`
-	Type          TaskType           `json:"type"`
-	Title         string             `json:"title"`
-	Description   string             `json:"description"`
-	Status        TaskStatus         `json:"status"`
+	ID          string   `json:"id"`
+	ShortID     int      `json:"short_id"`
+	Type        TaskType `json:"type"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	// WorkflowState is the canonical schema-v2 lifecycle state and the single
+	// source of truth for a task's position in the workflow. Schema-v2 documents
+	// persist it directly via `state:`; schema-v1 documents are upgraded to it at
+	// load time by DeriveWorkflowState (see task_workflowstate.go). The retired
+	// legacy Status/Section/Stage/Active fields no longer exist on the task; State()
+	// reads this stored field only (empty -> StateReady).
+	WorkflowState WorkflowState      `json:"workflow_state,omitempty"`
 	Priority      int                `json:"priority"`
 	ParentID      *string            `json:"parent_id,omitempty"`
 	Tags          []string           `json:"tags,omitempty"`
-	Section       string             `json:"section,omitempty"` // GTD section (e.g., "Next", "Inbox", "Waiting", "Someday")
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
 	CompletedAt   *time.Time         `json:"completed_at,omitempty"`
@@ -50,7 +55,6 @@ type Task struct {
 	RelatedTo     []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
 	Pinned        bool               `json:"pinned,omitempty"`     // Whether the task is pinned
 	PinnedAt      *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
-	Active        bool               `json:"active,omitempty"`     // Whether the task is flagged as active
 	Dimmed        bool               `json:"dimmed,omitempty"`     // Whether the task is visually dimmed
 	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
 	Decisions     []*Decision        `json:"decisions,omitempty"`  // Design/architecture decisions
@@ -61,7 +65,6 @@ type Task struct {
 	ParkedAt      *time.Time         `json:"parked_at,omitempty"`      // When the task was parked
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`       // Persistent changelog of field changes
 	Checklist     []ChecklistItem    `json:"checklist,omitempty"`      // Checklist items for subtasks
-	Stage         string             `json:"stage,omitempty"`          // Workflow stage (e.g., "Brainstorm", "Design", "Implement")
 	StartDate     *time.Time         `json:"start_date,omitempty"`     // Planned/actual start date (used for Gantt scheduling)
 	EstimatedDays float64            `json:"estimated_days,omitempty"` // Estimated duration in working days (0 = unset)
 	Source        string             `json:"source,omitempty"`         // Origin of the task (e.g., "github", "jira")
@@ -118,14 +121,15 @@ func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, er
 	}
 	now := time.Now()
 	return &Task{
-		ID:              id,
-		ShortID:         shortID,
-		Type:            taskType,
-		Title:           title,
-		Status:          StatusTodo,
+		ID:      id,
+		ShortID: shortID,
+		Type:    taskType,
+		Title:   title,
+		// StateReady is the default for freshly created tasks (an empty section
+		// and todo status derived to StateReady under the legacy model).
+		WorkflowState:   StateReady,
 		Priority:        PriorityDefault, // Medium priority
 		Tags:            []string{},
-		Section:         "", // Empty section = Active view (default for new tasks)
 		DependsOn:       []string{},
 		RelatedTo:       []string{},
 		ScoreDimensions: map[string]int{},

@@ -54,6 +54,12 @@ type ParseResult struct {
 	PinnedTags    []string
 	SectionColors map[string]string
 	Warnings      []ParseWarning // Non-fatal issues found during parsing
+	// MigrationAudit records the retired schema-v1 lifecycle values every task
+	// carried at parse time (one entry per task, in load order). The loader wraps
+	// it in a *MigrationAudit with the project ID so a config-aware caller can
+	// drive the Active -> Focus Queue migration before the v2 writer stops
+	// persisting the legacy keys. ProjectID is left empty here.
+	MigrationAudit []MigrationAuditEntry
 }
 
 // ParseTasksMarkdown parses a tasks.md file content into tasks.
@@ -198,14 +204,45 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 
 	return &ParseResult{
-		ProjectName:   projectName,
-		Tasks:         tasks,
-		Sections:      sections,
-		Tags:          tags,
-		PinnedTags:    pinnedTags,
-		SectionColors: sectionColors,
-		Warnings:      metadataWarnings,
+		ProjectName:    projectName,
+		Tasks:          tasks,
+		Sections:       sections,
+		Tags:           tags,
+		PinnedTags:     pinnedTags,
+		SectionColors:  sectionColors,
+		Warnings:       metadataWarnings,
+		MigrationAudit: buildMigrationAuditEntries(parsedTasks, tasks),
 	}, nil
+}
+
+// buildMigrationAuditEntries records the retired schema-v1 lifecycle values each
+// task carried at parse time, keyed by the task pointer (BuildHierarchy and the
+// later ID/timestamp passes mutate tasks in place but never replace the
+// pointers). One entry per non-nil task, in final load order, using the task's
+// resolved ID/ShortID so a later duplicate-ID reassignment is reflected.
+func buildMigrationAuditEntries(parsedTasks []*format.ParsedTask, tasks []*models.Task) []MigrationAuditEntry {
+	legacyByTask := make(map[*models.Task]format.LegacyLifecycle, len(parsedTasks))
+	for _, pt := range parsedTasks {
+		if pt != nil && pt.Task != nil {
+			legacyByTask[pt.Task] = pt.Legacy
+		}
+	}
+	entries := make([]MigrationAuditEntry, 0, len(tasks))
+	for _, t := range tasks {
+		if t == nil {
+			continue
+		}
+		legacy := legacyByTask[t]
+		entries = append(entries, MigrationAuditEntry{
+			TaskID:  t.ID,
+			ShortID: t.ShortID,
+			Status:  legacy.Status,
+			Section: legacy.Section,
+			Stage:   legacy.Stage,
+			Active:  legacy.Active,
+		})
+	}
+	return entries
 }
 
 func parseProjectTitleLine(line string, foundFirstTask bool, projectName *string, warnings *[]ParseWarning) bool {
@@ -462,7 +499,8 @@ func parseTaskMetadataLine(line string, currentTask *format.ParsedTask, metadata
 	}
 
 	*metadataParsed = true
-	parsedWarnings := format.ParseMetadata(currentTask.Task, matches[1])
+	parsedWarnings, legacy := format.ParseMetadataCapturingLegacy(currentTask.Task, matches[1])
+	currentTask.Legacy = legacy
 	for i := range parsedWarnings {
 		parsedWarnings[i].TaskID = currentTask.Task.ID
 	}
@@ -497,7 +535,7 @@ func newFallbackTask(shortID int, taskType models.TaskType, title string) *model
 		ShortID:         shortID,
 		Type:            taskType,
 		Title:           title,
-		Status:          models.StatusTodo,
+		WorkflowState:   models.StateReady,
 		Priority:        models.PriorityDefault,
 		Tags:            []string{},
 		DependsOn:       []string{},

@@ -257,7 +257,7 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 			titleCell = truncateAndPad(title, 38)
 		}
 
-		statusIcon := entry.Task.Status.Icon()
+		statusIcon := entry.Task.State().Icon()
 		line := fmt.Sprintf("%s%-3d %s %s %10s %8d",
 			prefix,
 			entry.Task.ShortID,

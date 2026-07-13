@@ -14,18 +14,18 @@ func (m *BulkEditModel) analyzeCurrentValues() { //nolint:gocyclo
 		return
 	}
 
-	statusCounts := make(map[models.TaskStatus]int)
+	stateCounts := make(map[models.WorkflowState]int)
 	for _, task := range m.tasks {
-		statusCounts[task.Status]++
+		stateCounts[task.State()]++
 	}
-	if len(statusCounts) == 1 {
-		for status := range statusCounts {
-			m.statusSummary = fmt.Sprintf("All: %s", status)
+	if len(stateCounts) == 1 {
+		for state := range stateCounts {
+			m.statusSummary = fmt.Sprintf("All: %s", state)
 		}
 	} else {
-		parts := make([]string, 0, len(statusCounts))
-		for status, count := range statusCounts {
-			parts = append(parts, fmt.Sprintf("%d %s", count, status))
+		parts := make([]string, 0, len(stateCounts))
+		for state, count := range stateCounts {
+			parts = append(parts, fmt.Sprintf("%d %s", count, state))
 		}
 		m.statusSummary = fmt.Sprintf("Mixed: %s", strings.Join(parts, ", "))
 	}
@@ -83,7 +83,7 @@ func (m *BulkEditModel) analyzeCurrentValues() { //nolint:gocyclo
 
 	sections := make(map[string]int)
 	for _, task := range m.tasks {
-		sections[task.Section]++
+		sections[taskSectionBucket(task)]++
 	}
 	if len(sections) == 1 {
 		for section := range sections {
@@ -179,8 +179,8 @@ func (m *BulkEditModel) buildSectionOptions() {
 	}
 
 	for _, task := range m.project.Tasks {
-		if task.Section != "" {
-			sectionSet[task.Section] = true
+		if bucket := taskSectionBucket(task); bucket != "" {
+			sectionSet[bucket] = true
 		}
 	}
 

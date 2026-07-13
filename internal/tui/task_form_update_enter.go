@@ -136,7 +136,7 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 
 	case 6:
 		// Flags: open inline flags picker
-		m.flagsPicker = newFormFlagsPicker(m.draft.pinned, m.draft.active, m.draft.dimmed)
+		m.flagsPicker = newFormFlagsPicker(m.draft.pinned, m.draft.dimmed)
 		m.activeOverlay = formOverlayFlags
 		return nil
 

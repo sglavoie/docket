@@ -72,19 +72,6 @@ func newEpicTaskForm() *TaskFormModel {
 	return m
 }
 
-func newSaveableTestForm(t *testing.T) (*TaskFormModel, func()) {
-	t.Helper()
-	tmpDir, cleanup := testutil.TempProjectDir(t)
-	project := testutil.NewTestProject("Save Test")
-	project.Path = filepath.Join(tmpDir, "save-test-project")
-	if err := os.MkdirAll(project.Path, 0o755); err != nil {
-		t.Fatalf("failed to create project dir: %v", err)
-	}
-	cfg := testutil.NewTestConfig()
-	m := NewTaskFormModelCreate(project, cfg, nil, nil)
-	return m, cleanup
-}
-
 func newSaveableEditForm(t *testing.T) (*TaskFormModel, func()) {
 	t.Helper()
 	tmpDir, cleanup := testutil.TempProjectDir(t)

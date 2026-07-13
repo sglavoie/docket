@@ -110,7 +110,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 		}
 		// Apply section filter for sub-filtering by original section
 		if len(m.filter.Sections) > 0 {
-			if !m.filter.Sections[node.Task.Section] {
+			if !m.filter.Sections[taskSectionBucket(node.Task)] {
 				return false
 			}
 		}
@@ -122,7 +122,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 		// Apply view mode section logic
 		switch m.viewMode {
 		case ViewModeActive:
-			if isNonActiveGTDSection(node.Task.Section) {
+			if isNonActiveGTDSection(taskSectionBucket(node.Task)) {
 				return false
 			}
 		case ViewModeAll:
@@ -130,7 +130,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 		default:
 			// Single-section view modes (Next, Inbox, Waiting, Someday, Review, Standby)
 			if required := viewModeToSection(m.viewMode); required != "" {
-				if node.Task.Section != required {
+				if !node.Task.InSection(required) {
 					return false
 				}
 			}
@@ -138,11 +138,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	}
 
 	// Apply common filters (type, status, priority, tags, due date, attrs, score)
-	projectID := ""
-	if m.project != nil {
-		projectID = m.project.ID
-	}
-	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, projectID, m.config) {
+	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, m.project, m.config) {
 		return false
 	}
 
@@ -164,25 +160,14 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	// In Completed view, section filter is already applied above for sub-filtering
 	// In other views, view mode already controls section visibility
 	if m.viewMode != ViewModeCompleted && len(m.filter.Sections) > 0 {
-		if !m.filter.Sections[node.Task.Section] {
+		if !m.filter.Sections[taskSectionBucket(node.Task)] {
 			return false
 		}
 	}
 
 	// Apply actionable filter (hide tasks not ready to work on)
-	if m.filter.Actionable {
-		// Hide tasks with incomplete dependencies
-		if m.project != nil && m.project.HasIncompleteDependencies(node.Task) {
-			return false
-		}
-		// Hide manually-blocked tasks
-		if node.Task.Status == models.StatusBlocked {
-			return false
-		}
-		// Hide Inbox/Next/Waiting/Someday/Review/Standby tasks (GTD-aligned - not immediately actionable)
-		if isNonActiveGTDSection(node.Task.Section) {
-			return false
-		}
+	if m.filter.Actionable && !taskIsActionableState(node.Task, m.project) {
+		return false
 	}
 
 	// Apply search filter
@@ -218,7 +203,7 @@ func (m *ProjectTreeModel) markAncestorsAsContext(node *TreeNode, intrinsicVisib
 }
 
 func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
-	return TaskMatchesStructuredSearch(task, m.SearchQuery())
+	return TaskMatchesStructuredSearch(task, m.SearchQuery(), m.config)
 }
 
 // getSearchMatchPositions returns match positions for the title if there's a search query.

@@ -19,8 +19,10 @@ func (p *Project) GenerateRecurringInstances() int {
 	// Collect tasks that need new instances (don't modify slice while iterating)
 	var toGenerate []*Task
 	for _, task := range p.Tasks {
-		if task.Recurrence != nil && task.Status == StatusDone {
-			// Only generate if not already processed (check by looking for existing todo instance)
+		if task.Recurrence != nil && task.State() == StateDone {
+			// Only generate on successful terminal completion (done, not
+			// canceled). State() routes this through the canonical workflow
+			// model instead of reading the legacy Status field directly.
 			toGenerate = append(toGenerate, task)
 		}
 	}
@@ -85,9 +87,8 @@ func (p *Project) GenerateRecurringInstances() int {
 			Type:            task.Type,
 			Title:           task.Title,
 			Description:     task.Description, // Carry forward description for context
-			Status:          StatusTodo,
+			WorkflowState:   StateInbox,       // New instances go to Inbox for triage
 			Priority:        task.Priority,
-			Section:         SectionInbox, // New instances go to Inbox for triage
 			Tags:            append([]string{}, task.Tags...),
 			DependsOn:       []string{},
 			RelatedTo:       []string{},
@@ -97,7 +98,6 @@ func (p *Project) GenerateRecurringInstances() int {
 			HasTime:         task.HasTime,
 			Recurrence:      newRecurrence,
 			Checklist:       checklist,
-			Stage:           task.Stage,
 			StartDate:       startDateCopy,
 			EstimatedDays:   task.EstimatedDays,
 			Source:          task.Source,

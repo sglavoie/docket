@@ -305,7 +305,7 @@ func (m *DashboardModel) projectRowScoreCoverageBadge(p *models.Project) string 
 	scoredCount := 0
 	totalScorable := 0
 	for _, task := range p.Tasks {
-		if task == nil || task.Status.IsComplete() {
+		if task == nil || task.IsComplete() {
 			continue
 		}
 		totalScorable++

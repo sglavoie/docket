@@ -111,12 +111,12 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 		}
 
 		for _, task := range project.Tasks {
-			if task.DueDate == nil || task.Status.IsComplete() {
+			if task.DueDate == nil || task.IsTerminalState() {
 				continue
 			}
 
 			// Apply common filters (no DueDate filter — the view IS organized by due date)
-			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project.ID, m.config) {
+			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project, m.config) {
 				continue
 			}
 
@@ -323,15 +323,11 @@ func (m *DueDateOverviewModel) setErr(err error)                  { m.SetError(e
 func (m *DueDateOverviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
 func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	return taskOpsChangePriority(m, key)
-}
-
-func (m *DueDateOverviewModel) toggleActive() (tea.Model, tea.Cmd) {
-	return taskOpsToggleActive(m)
+	return m, wfChangePriority(m, key)
 }
 
 func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
-	return taskOpsDeleteTask(m)
+	return m, wfDeleteTask(m, m.config, m.configManager)
 }
 
 // clampCursor ensures cursor is within valid range.

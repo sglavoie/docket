@@ -1,30 +1,36 @@
 package tui
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 // crossPriorityFixture builds two disk-backed projects with priority-eligible
-// tasks, enters cross-project Priority mode, rebuilds rows, and returns the
-// model along with handles to each project and the cursor index of the first
-// task row (skipping the leading section header).
+// tasks under one data dir, wires the single-task coordinator over the same
+// in-memory project pointers, enters cross-project Priority mode, rebuilds rows,
+// and returns the model along with handles to each project and the cursor index
+// of the first task row (skipping the leading section header). Migrated field
+// mutations commit through the coordinator against these same pointers, so an
+// assertion can run the returned command and read the in-memory task back.
 func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.Project, alphaTaskID, betaTaskID string, firstTaskRow int) {
 	t.Helper()
 
-	alphaDir := t.TempDir()
-	betaDir := t.TempDir()
+	dataDir := t.TempDir()
+	alphaDir := filepath.Join(dataDir, "projects", "alpha-proj")
+	betaDir := filepath.Join(dataDir, "projects", "beta-proj")
 
 	alphaTask, err := models.NewTask("alpha-task-1", 1, models.TaskTypeTask, "Alpha task")
 	if err != nil {
 		t.Fatalf("NewTask alpha: %v", err)
 	}
 	alphaTask.Priority = 3
-	alphaTask.Section = models.SectionNext
+	alphaTask.SetSection(models.SectionNext)
 	today := time.Now()
 	alphaTask.DueDate = &today
 	alpha = &models.Project{ID: "alpha-proj", Name: "Alpha", Path: alphaDir}
@@ -40,7 +46,7 @@ func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.P
 		t.Fatalf("NewTask beta: %v", err)
 	}
 	betaTask.Priority = 3
-	betaTask.Section = models.SectionNext
+	betaTask.SetSection(models.SectionNext)
 	betaTask.DueDate = &today
 	beta = &models.Project{ID: "beta-proj", Name: "Beta", Path: betaDir}
 	beta.Tasks = []*models.Task{betaTask}
@@ -70,6 +76,18 @@ func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.P
 		loadedProjects:    []*models.Project{alpha, beta},
 		filterProjects:    make(map[string]bool),
 	}
+
+	// Wire the single-task coordinator over the same in-memory project pointers,
+	// so migrated priority-mode mutations commit through the application layer and
+	// the ledger while remaining observable on alpha/beta directly.
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	repo := newScenarioRepo(commitSvc, alpha, beta)
+	svc := app.NewService(repo, nil, nil)
+	coords := newSecondaryCoordinators(svc, nil)
+	m.taskItem = coords.TaskItem
+	m.bulk = coords.Bulk
+
 	m.enterCrossPriorityMode()
 	m.crossProjectRebuildRows()
 
@@ -175,7 +193,7 @@ func TestCrossPriorityEnterOnParentTaskOpensDetailNotZoom(t *testing.T) {
 		t.Fatalf("NewTask parent: %v", err)
 	}
 	parentTask.Priority = 3
-	parentTask.Section = models.SectionNext
+	parentTask.SetSection(models.SectionNext)
 	today := time.Now()
 	parentTask.DueDate = &today
 
@@ -184,7 +202,7 @@ func TestCrossPriorityEnterOnParentTaskOpensDetailNotZoom(t *testing.T) {
 		t.Fatalf("NewTask child: %v", err)
 	}
 	childTask.Priority = 3
-	childTask.Section = models.SectionNext
+	childTask.SetSection(models.SectionNext)
 	childTask.DueDate = &today
 	parentID := parentTask.ID
 	childTask.ParentID = &parentID
@@ -289,7 +307,7 @@ func TestCrossPriorityMutationSavesToOwningProject(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ok=true for priority key '1'")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
 	task := beta.GetTaskByID(betaTaskID)
 	if task == nil {
@@ -316,9 +334,12 @@ func TestCrossPriorityDueDateMutationRecategorizes(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ok=true for due-date key 'n'")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
-	// The mutation calls rebuildRows; assert the task now lives under LATER.
+	// The migrated handler commits asynchronously and leaves the row rebuild to
+	// the shell; rebuild explicitly here, then assert the task lives under LATER.
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
 	currentGroup := groupHeaderForTask(m, betaTaskID)
 	if currentGroup == "" {
 		t.Fatal("beta task no longer present in priority rows after due-date change")
@@ -343,23 +364,28 @@ func TestCrossPriorityBlockedStatusMovesToWaitingGroup(t *testing.T) {
 		}
 	}
 
-	_, _, handled := m.crossHandleStatusMutation(models.StatusBlocked)
+	_, cmd, handled := m.crossHandleStateMutation(models.StateWaiting)
 	if !handled {
 		t.Fatal("expected status mutation to be handled in cross-project mode")
 	}
+	// The migrated handler commits the transition asynchronously through the
+	// single-task coordinator (blocked → waiting state); run the command to apply
+	// it against the shared in-memory pointers.
+	runResult(t, cmd)
 
 	task := beta.GetTaskByID(betaTaskID)
 	if task == nil {
 		t.Fatal("beta task not found after status mutation")
 	}
-	if task.Status != models.StatusBlocked {
-		t.Errorf("status: want %q, got %q", models.StatusBlocked, task.Status)
+	if models.LegacyStatusForState(task.State()) != models.StatusBlocked {
+		t.Errorf("status: want %q, got %q", models.StatusBlocked, models.LegacyStatusForState(task.State()))
 	}
 
-	// crossHandleStatusMutation persists and reloads but does not eagerly
-	// rebuild rows; the next render call would. Trigger the rebuild here to
-	// verify the priority builder re-categorizes the blocked task.
-	m.rebuildRows()
+	// The migrated handler commits and leaves the row rebuild to the shell;
+	// trigger the rebuild here to verify the priority builder re-categorizes the
+	// blocked task.
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
 
 	group := groupHeaderForTask(m, betaTaskID)
 	want := priorityGroupHeaderLabel(PriorityGroupWaitingOn)
@@ -420,7 +446,10 @@ func TestCrossPriorityActionableFilterScopesRows(t *testing.T) {
 	if alphaTask == nil {
 		t.Fatal("alpha task missing")
 	}
-	alphaTask.Section = ""
+	// Use the syncing mutators (not raw field writes): the v2 writer serializes
+	// the derived WorkflowState, so a raw Section/Status write without a resync
+	// would persist the stale prior state.
+	alphaTask.SetSection("")
 	if err := storage.SaveProject(alpha); err != nil {
 		t.Fatalf("save alpha after section change: %v", err)
 	}
@@ -432,7 +461,7 @@ func TestCrossPriorityActionableFilterScopesRows(t *testing.T) {
 	if betaTask == nil {
 		t.Fatal("beta task missing")
 	}
-	betaTask.Status = models.StatusBlocked
+	betaTask.Block()
 	if err := storage.SaveProject(beta); err != nil {
 		t.Fatalf("save beta after blocking: %v", err)
 	}
@@ -495,7 +524,7 @@ func TestCrossPriorityPinnedTagDoesNotDragNonMatchingParent(t *testing.T) {
 		t.Fatalf("NewTask parent: %v", err)
 	}
 	parentTask.Priority = 3
-	parentTask.Section = models.SectionNext
+	parentTask.SetSection(models.SectionNext)
 	today := time.Now()
 	parentTask.DueDate = &today
 
@@ -504,7 +533,7 @@ func TestCrossPriorityPinnedTagDoesNotDragNonMatchingParent(t *testing.T) {
 		t.Fatalf("NewTask child: %v", err)
 	}
 	childTask.Priority = 3
-	childTask.Section = models.SectionNext
+	childTask.SetSection(models.SectionNext)
 	childTask.DueDate = &today
 	childTask.Tags = []string{"backend"}
 	parentID := parentTask.ID

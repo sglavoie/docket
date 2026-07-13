@@ -33,18 +33,10 @@ func ensureDirPath(dir string) error {
 }
 
 func validateNoteFilename(filename string) error {
-	switch {
-	case filename == "":
-		return fmt.Errorf("invalid note filename %q: empty filename", filename)
-	case filepath.IsAbs(filename):
-		return fmt.Errorf("invalid note filename %q: absolute paths are not allowed", filename)
-	case filename == "." || filename == "..":
-		return fmt.Errorf("invalid note filename %q: path traversal is not allowed", filename)
-	case strings.Contains(filename, "/") || strings.Contains(filename, "\\"):
-		return fmt.Errorf("invalid note filename %q: path separators are not allowed", filename)
-	default:
-		return nil
+	if err := SafeChildName(filename); err != nil {
+		return fmt.Errorf("invalid note filename %q: %w", filename, err)
 	}
+	return nil
 }
 
 // LoadNote reads a single note from its file.

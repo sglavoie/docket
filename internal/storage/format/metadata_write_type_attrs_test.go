@@ -15,10 +15,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 		{
 			name: "bug attributes",
 			task: &models.Task{
-				ID:       "b1",
-				Type:     models.TaskTypeBug,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "b1",
+				Type:          models.TaskTypeBug,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				BugAttrs: &models.BugAttrs{
 					Reproducible: models.BugReproducibleYes,
 					Severity:     models.BugSeverityMajor,
@@ -34,10 +34,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 		{
 			name: "idea attributes",
 			task: &models.Task{
-				ID:       "i1",
-				Type:     models.TaskTypeIdea,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "i1",
+				Type:          models.TaskTypeIdea,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				IdeaAttrs: &models.IdeaAttrs{
 					Category:  models.IdeaCategoryFeature,
 					Effort:    models.EffortMedium,
@@ -55,10 +55,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 		{
 			name: "task attributes",
 			task: &models.Task{
-				ID:       "t1",
-				Type:     models.TaskTypeTask,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "t1",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				TaskAttrs: &models.TaskAttrs{
 					Effort:   models.EffortSmall,
 					WorkType: models.WorkTypeDevelopment,
@@ -72,10 +72,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 		{
 			name: "story attributes",
 			task: &models.Task{
-				ID:       "s1",
-				Type:     models.TaskTypeStory,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "s1",
+				Type:          models.TaskTypeStory,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				StoryAttrs: &models.StoryAttrs{
 					StoryPoints: 5,
 					Persona:     "Admin user",
@@ -89,10 +89,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 		{
 			name: "epic attributes",
 			task: &models.Task{
-				ID:       "e1",
-				Type:     models.TaskTypeEpic,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "e1",
+				Type:          models.TaskTypeEpic,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				EpicAttrs: &models.EpicAttrs{
 					Scope:          models.EpicScopeDefined,
 					Milestone:      "Q1 2025",
@@ -108,10 +108,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 		{
 			name: "bug workaround with newlines escaped",
 			task: &models.Task{
-				ID:       "b2",
-				Type:     models.TaskTypeBug,
-				Status:   models.StatusTodo,
-				Priority: 2,
+				ID:            "b2",
+				Type:          models.TaskTypeBug,
+				WorkflowState: models.StateReady,
+				Priority:      2,
 				BugAttrs: &models.BugAttrs{
 					Workaround: "Line 1\nLine 2\nLine 3",
 				},
@@ -124,10 +124,10 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := WriteMetadata(tc.task)
+			got := WriteMetadataV2(tc.task)
 			for _, want := range tc.contains {
 				if !containsString(got, want) {
-					t.Errorf("WriteMetadata() = %q, should contain %q", got, want)
+					t.Errorf("WriteMetadataV2() = %q, should contain %q", got, want)
 				}
 			}
 		})

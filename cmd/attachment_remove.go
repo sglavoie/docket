@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var keepFile bool
@@ -47,7 +47,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -84,10 +84,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	att := task.Attachments[index]
-	filename := att.Filename
-	isURL := att.IsURL
-	isCodeRef := att.IsCodeRef
+	filename := task.Attachments[index].Filename
 
 	prompt := fmt.Sprintf("Remove attachment '%s' from task #%d? [y/N] ", filename, task.ShortID)
 	if !ConfirmYN(prompt, attachmentRemoveForce) {
@@ -97,43 +94,33 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Remove from task metadata
-	removed, ok := task.RemoveAttachment(index)
-	if !ok {
-		return fmt.Errorf("failed to remove attachment '%s' from task #%d", filename, task.ShortID)
-	}
-
-	// Persist the metadata change BEFORE deleting the file. If we deleted the
-	// file first and the save failed, the on-disk task would still reference a
-	// file that no longer exists.
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Remove Attachment", UndoContext: filename,
-	}); err != nil {
-		return err
-	}
-
-	if !isURL && !isCodeRef && !keepFile {
-		if err := storage.RemoveAttachmentFile(project, task, removed.Filename); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to delete file: %v\n", err)
-		}
+	// Route the removal through the application layer: the metadata removal and,
+	// when the attachment is a copied local file and --keep-file is not set, the
+	// byte delete commit as ONE transaction. This closes the legacy window where a
+	// crash between the metadata save and the file delete left the two out of sync.
+	svc := newAppService(cfg)
+	res, removeErr := withResultRetry(func() (app.RemoveAttachmentResult, error) {
+		return svc.RemoveAttachment(task.ID, index, !keepFile)
+	})
+	if removeErr != nil {
+		return translateAppError(removeErr)
 	}
 
 	if out.Quiet {
 		return nil
 	}
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return emitMutation(out, "", res.Task)
 	}
 	switch {
-	case isURL:
-		fmt.Printf("Removed URL from #%d: %s\n", task.ShortID, filename)
-	case isCodeRef:
-		fmt.Printf("Removed code reference from #%d: %s\n", task.ShortID, filename)
+	case res.IsURL:
+		fmt.Printf("Removed URL from #%d: %s\n", task.ShortID, res.Filename)
+	case res.IsCodeRef:
+		fmt.Printf("Removed code reference from #%d: %s\n", task.ShortID, res.Filename)
 	case keepFile:
-		fmt.Printf("Removed reference from #%d: %s (file kept in .attachments/)\n", task.ShortID, filename)
+		fmt.Printf("Removed reference from #%d: %s (file kept in .attachments/)\n", task.ShortID, res.Filename)
 	default:
-		fmt.Printf("Deleted attachment copy from #%d: %s\n", task.ShortID, filename)
+		fmt.Printf("Deleted attachment copy from #%d: %s\n", task.ShortID, res.Filename)
 	}
 
 	return nil

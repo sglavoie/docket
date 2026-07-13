@@ -9,12 +9,12 @@ func TestGenerateRecurringInstancesStreakOnTime(t *testing.T) {
 	dueDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 	completedAt := time.Date(2025, 6, 15, 14, 30, 0, 0, time.Local)
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Title:       "Streak task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "Streak task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceWeekly,
@@ -43,12 +43,12 @@ func TestGenerateRecurringInstancesStreakLate(t *testing.T) {
 	dueDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 	completedAt := time.Date(2025, 6, 17, 10, 0, 0, 0, time.Local)
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Title:       "Late task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "Late task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceWeekly,
@@ -76,12 +76,12 @@ func TestGenerateRecurringInstancesStreakLate(t *testing.T) {
 func TestGenerateRecurringInstancesStreakNoDueDate(t *testing.T) {
 	completedAt := time.Date(2025, 6, 15, 14, 0, 0, 0, time.Local)
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Title:       "No due date task",
-		Status:      StatusDone,
-		DueDate:     nil,
-		CompletedAt: &completedAt,
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "No due date task",
+		WorkflowState: StateDone,
+		DueDate:       nil,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval: 1,
 			Unit:     RecurrenceDaily,
@@ -109,12 +109,12 @@ func TestGenerateRecurringInstancesStreakUpdatesMaxStreak(t *testing.T) {
 	dueDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 	completedAt := time.Date(2025, 6, 14, 10, 0, 0, 0, time.Local)
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Title:       "Max streak task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "Max streak task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceWeekly,
@@ -143,12 +143,12 @@ func TestGenerateRecurringInstancesSkippedCarriedForward(t *testing.T) {
 	dueDate := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 	completedAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.Local)
 	task := &Task{
-		ID:          "task-1",
-		ShortID:     1,
-		Title:       "Skipped counter task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "task-1",
+		ShortID:       1,
+		Title:         "Skipped counter task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval: 1,
 			Unit:     RecurrenceWeekly,
@@ -172,13 +172,13 @@ func TestGenerateRecurringInstancesSkippedCarriedForward(t *testing.T) {
 func TestGenerateRecurringInstances_NoDueDate_StreakIncrements(t *testing.T) {
 	completedAt := time.Date(2025, 3, 10, 9, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "rec-no-due",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Recurring no due date",
-		Status:      StatusDone,
-		DueDate:     nil,
-		CompletedAt: &completedAt,
+		ID:            "rec-no-due",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Recurring no due date",
+		WorkflowState: StateDone,
+		DueDate:       nil,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  2,
 			Unit:      RecurrenceDaily,
@@ -218,13 +218,13 @@ func TestGenerateRecurringInstances_LateCompletion_StreakResets(t *testing.T) {
 	dueDate := time.Date(2025, 3, 5, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 8, 14, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "late-task",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Late recurring task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "late-task",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Late recurring task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceWeekly,
@@ -254,13 +254,13 @@ func TestGenerateRecurringInstances_StreakSurpassesMaxStreak(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 10, 8, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "streak-max",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Streak record task",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "streak-max",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Streak record task",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceDaily,
@@ -290,13 +290,13 @@ func TestGenerateRecurringInstances_CompletedExactlyOnDueDay(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 9, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 10, 23, 59, 59, 0, time.UTC)
 	task := &Task{
-		ID:          "exact-day",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Exact day completion",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "exact-day",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Exact day completion",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceDaily,
@@ -323,13 +323,13 @@ func TestGenerateRecurringInstances_EarlyCompletion_OnTime(t *testing.T) {
 	dueDate := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 12, 10, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "early-task",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Early completion",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "early-task",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Early completion",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceWeekly,
@@ -358,13 +358,13 @@ func TestGenerateRecurringInstances_EarlyCompletion_OnTime(t *testing.T) {
 func TestGenerateRecurringInstances_NilCompletedAt_OnTime(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "nil-completed",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Nil CompletedAt",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: nil,
+		ID:            "nil-completed",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Nil CompletedAt",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   nil,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceDaily,
@@ -394,13 +394,13 @@ func TestGenerateRecurringInstances_OneDayLate_Resets(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 23, 59, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 11, 0, 1, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "one-day-late",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Barely late",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "one-day-late",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Barely late",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceDaily,
@@ -430,13 +430,13 @@ func TestGenerateRecurringInstances_StreakFromZero(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 9, 15, 0, 0, 0, time.UTC)
 	task := &Task{
-		ID:          "zero-streak",
-		ShortID:     1,
-		Type:        TaskTypeTask,
-		Title:       "Fresh start",
-		Status:      StatusDone,
-		DueDate:     &dueDate,
-		CompletedAt: &completedAt,
+		ID:            "zero-streak",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Fresh start",
+		WorkflowState: StateDone,
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
 		Recurrence: &RecurrencePattern{
 			Interval:  1,
 			Unit:      RecurrenceDaily,

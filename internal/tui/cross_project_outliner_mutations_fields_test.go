@@ -9,98 +9,44 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// crossFieldFixture builds two disk-backed projects and a cross-project
-// OutlinerModel with cursor on the first beta task (project B, non-first).
-func crossFieldFixture(t *testing.T) (m *OutlinerModel, beta *models.Project, betaTaskID string) {
+// crossFieldFixture seeds two projects on disk through the real transactional
+// stack and wires a cross-project OutlinerModel (with the single-task
+// coordinator) whose cursor sits on the beta task (project B, index 1). The
+// migrated field handlers commit through the coordinator, so assertions run the
+// returned command and reload the owning project from disk.
+func crossFieldFixture(t *testing.T) (m *OutlinerModel, env *kanbanBulkEnv, betaTaskID string) {
 	t.Helper()
 
-	alphaDir := t.TempDir()
-	betaDir := t.TempDir()
+	alphaTask := seedTask(t, 1, "Alpha task", models.StateReady)
+	betaTask := seedTask(t, 1, "Beta task", models.StateReady)
+	env = newKanbanBulkEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
 
-	alphaTask, err := models.NewTask("alpha-task-1", 1, models.TaskTypeTask, "Alpha task")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	alpha := &models.Project{ID: "alpha-proj", Name: "Alpha", Path: alphaDir}
-	alpha.Tasks = []*models.Task{alphaTask}
-	alpha.NextShortID = 2
-	alpha.BuildTaskTree()
-	if saveErr := storage.SaveProject(alpha); saveErr != nil {
-		t.Fatalf("save alpha: %v", saveErr)
-	}
+	m = newCrossOutlinerFromEnv(env)
+	m.rows = []outlinerRow{{task: betaTask, ProjectID: env.projects[1].ID}}
 
-	betaTask, err := models.NewTask("beta-task-1", 1, models.TaskTypeTask, "Beta task")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	beta = &models.Project{ID: "beta-proj", Name: "Beta", Path: betaDir}
-	beta.Tasks = []*models.Task{betaTask}
-	beta.NextShortID = 2
-	beta.BuildTaskTree()
-	if saveErr := storage.SaveProject(beta); saveErr != nil {
-		t.Fatalf("save beta: %v", saveErr)
-	}
-
-	if loadErr := storage.LoadProject(alpha); loadErr != nil {
-		t.Fatalf("load alpha: %v", loadErr)
-	}
-	if loadErr := storage.LoadProject(beta); loadErr != nil {
-		t.Fatalf("load beta: %v", loadErr)
-	}
-
-	loaded := beta.GetTaskByID("beta-task-1")
-	if loaded == nil {
-		t.Fatal("beta task not found after reload")
-	}
-
-	m = &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			projectService: NewProjectService(),
-			bulkOp:         NewBulkOperationComponent(),
-			quickEdit:      NewQuickEditComponent(),
-		},
-		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
-		activePerspective: 1,
-		loadedProjects:    []*models.Project{alpha, beta},
-		rows:              []outlinerRow{{task: loaded, ProjectID: beta.ID}},
-	}
-
-	return m, beta, "beta-task-1"
+	return m, env, betaTask.ID
 }
 
 // crossRecurringFixture is like crossFieldFixture but beta's task has a weekly
 // recurrence and a due date so skip/defer assertions are deterministic.
-func crossRecurringFixture(t *testing.T) (m *OutlinerModel, beta *models.Project, betaTaskID string, baseDate time.Time) {
+func crossRecurringFixture(t *testing.T) (m *OutlinerModel, env *kanbanBulkEnv, betaTaskID string, baseDate time.Time) {
 	t.Helper()
 
-	m, beta, betaTaskID = crossFieldFixture(t)
 	baseDate = time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 
-	task := beta.GetTaskByID(betaTaskID)
-	if task == nil {
-		t.Fatal("beta task not found")
-	}
-	task.DueDate = &baseDate
-	task.Recurrence = &models.RecurrencePattern{
+	alphaTask := seedTask(t, 1, "Alpha task", models.StateReady)
+	betaTask := seedTask(t, 1, "Beta task", models.StateReady)
+	betaTask.DueDate = &baseDate
+	betaTask.Recurrence = &models.RecurrencePattern{
 		Unit:     models.RecurrenceWeekly,
 		Interval: 1,
 	}
-	if saveErr := storage.SaveProject(beta); saveErr != nil {
-		t.Fatalf("save recurring beta: %v", saveErr)
-	}
-	if loadErr := storage.LoadProject(beta); loadErr != nil {
-		t.Fatalf("load recurring beta: %v", loadErr)
-	}
+	env = newKanbanBulkEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
 
-	loaded := beta.GetTaskByID(betaTaskID)
-	if loaded == nil {
-		t.Fatal("recurring beta task not found after reload")
-	}
-	m.rows = []outlinerRow{{task: loaded, ProjectID: beta.ID}}
+	m = newCrossOutlinerFromEnv(env)
+	m.rows = []outlinerRow{{task: betaTask, ProjectID: env.projects[1].ID}}
 
-	return m, beta, betaTaskID, baseDate
+	return m, env, betaTask.ID, baseDate
 }
 
 func crossMultiFieldFixture(t *testing.T) (m *OutlinerModel, alpha *models.Project, beta *models.Project, alphaTaskID string, betaTaskID string) {
@@ -192,45 +138,55 @@ func TestCrossProjectOutlinerBulkTagMessageUsesSelectedProjectRefs(t *testing.T)
 	})
 }
 
+// TestCrossProjectOutlinerBulkDueDateUpdatesMultipleProjects verifies the
+// migrated cross-project bulk due-date path commits ONE asynchronous
+// cross-project transaction through the BulkCoordinator; the shell owns reload
+// and selection-clear via the batch result.
 func TestCrossProjectOutlinerBulkDueDateUpdatesMultipleProjects(t *testing.T) {
-	m, alpha, beta, alphaTaskID, betaTaskID := crossMultiFieldFixture(t)
-
-	model, cmd := m.handleDueDatePrefixOutliner("t")
-	if cmd != nil {
-		t.Fatalf("expected inline bulk due-date mutation, got command %T", cmd())
+	alphaTask := seedTask(t, 1, "Alpha task", models.StateReady)
+	betaTask := seedTask(t, 1, "Beta task", models.StateReady)
+	env := newKanbanBulkEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
+	m := newCrossOutlinerFromEnv(env)
+	m.multiSelectMode = true
+	m.selectedTasks[alphaTask.ID] = true
+	m.selectedTasks[betaTask.ID] = true
+	m.rows = []outlinerRow{
+		{IsSectionHeader: true, SectionName: "Selected"},
+		{task: alphaTask, ProjectID: env.projects[0].ID},
+		{task: betaTask, ProjectID: env.projects[1].ID},
 	}
-	m = model.(*OutlinerModel)
 
-	today := util.StartOfDay(time.Now())
-	for name, task := range map[string]*models.Task{
-		"alpha": alpha.GetTaskByID(alphaTaskID),
-		"beta":  beta.GetTaskByID(betaTaskID),
-	} {
-		if task == nil {
-			t.Fatalf("%s task not found", name)
-		}
-		if task.DueDate == nil {
-			t.Fatalf("%s due date was not set", name)
-		}
-		if !task.DueDate.Equal(today) {
-			t.Fatalf("%s due date = %v, want %v", name, *task.DueDate, today)
-		}
+	_, cmd := m.handleDueDatePrefixOutliner("t")
+	msg := runBatchResult(t, cmd)
+	if msg.Summary != "Due date set to today on 2 tasks" {
+		t.Errorf("summary = %q, want %q", msg.Summary, "Due date set to today on 2 tasks")
 	}
-	if m.multiSelectMode || len(m.selectedTasks) != 0 {
-		t.Fatal("expected cross-project bulk due date to clear outliner selection")
+	if len(msg.ClearSelectionTaskIDs) != 2 {
+		t.Errorf("clear selection ids = %v, want 2 (shell-owned selection clear)", msg.ClearSelectionTaskIDs)
+	}
+	if len(msg.TouchedProjectIDs) != 2 {
+		t.Errorf("touched projects = %v, want 2 (cross-project)", msg.TouchedProjectIDs)
+	}
+
+	today := util.StartOfDay(time.Now()).Format("2006-01-02")
+	for i, id := range []string{alphaTask.ID, betaTask.ID} {
+		got := env.reload(t, i).GetTaskByID(id)
+		if got == nil || got.DueDate == nil || got.DueDate.Format("2006-01-02") != today {
+			t.Fatalf("project %d task due date = %v, want %s", i, got, today)
+		}
 	}
 }
 
 func TestCrossHandlePriorityMutation_UpdatesBetaTask(t *testing.T) {
-	m, beta, taskID := crossFieldFixture(t)
+	m, env, taskID := crossFieldFixture(t)
 
 	cmd, ok := m.crossHandlePriorityMutation("3")
 	if !ok {
 		t.Fatal("expected ok=true for key '3'")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
-	task := beta.GetTaskByID(taskID)
+	task := env.reload(t, 1).GetTaskByID(taskID)
 	if task == nil {
 		t.Fatal("beta task not found after mutation")
 	}
@@ -249,15 +205,15 @@ func TestCrossHandlePriorityMutation_UnknownKey(t *testing.T) {
 }
 
 func TestCrossHandleDueDateMutation_SetsToday(t *testing.T) {
-	m, beta, taskID := crossFieldFixture(t)
+	m, env, taskID := crossFieldFixture(t)
 
 	cmd, ok := m.crossHandleDueDateMutation("t")
 	if !ok {
 		t.Fatal("expected ok=true for key 't'")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
-	task := beta.GetTaskByID(taskID)
+	task := env.reload(t, 1).GetTaskByID(taskID)
 	if task == nil {
 		t.Fatal("beta task not found after mutation")
 	}
@@ -287,15 +243,15 @@ func TestCrossHandleDueDateMutation_DatePickerEmitsMsg(t *testing.T) {
 }
 
 func TestCrossHandleSnoozeMutation_SetsNextWeek(t *testing.T) {
-	m, beta, taskID := crossFieldFixture(t)
+	m, env, taskID := crossFieldFixture(t)
 
 	cmd, ok := m.crossHandleSnoozeMutation("w")
 	if !ok {
 		t.Fatal("expected ok=true for snooze key 'w'")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
-	task := beta.GetTaskByID(taskID)
+	task := env.reload(t, 1).GetTaskByID(taskID)
 	if task == nil {
 		t.Fatal("beta task not found after mutation")
 	}
@@ -325,15 +281,15 @@ func TestCrossHandleSnoozeMutation_PickerEmitsMsg(t *testing.T) {
 }
 
 func TestCrossHandleSkipRecurrence_AdvancesDueDate(t *testing.T) {
-	m, beta, taskID, baseDate := crossRecurringFixture(t)
+	m, env, taskID, baseDate := crossRecurringFixture(t)
 
 	cmd, ok := m.crossHandleSkipRecurrence()
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
-	task := beta.GetTaskByID(taskID)
+	task := env.reload(t, 1).GetTaskByID(taskID)
 	if task == nil {
 		t.Fatal("beta task not found after skip")
 	}
@@ -347,9 +303,9 @@ func TestCrossHandleSkipRecurrence_AdvancesDueDate(t *testing.T) {
 }
 
 func TestCrossHandleSkipRecurrence_NonRecurring_NoMutation(t *testing.T) {
-	m, beta, taskID := crossFieldFixture(t)
+	m, env, taskID := crossFieldFixture(t)
 
-	beforeTask := beta.GetTaskByID(taskID)
+	beforeTask := env.projects[1].GetTaskByID(taskID)
 	if beforeTask == nil {
 		t.Fatal("beta task not found before skip")
 	}
@@ -359,13 +315,15 @@ func TestCrossHandleSkipRecurrence_NonRecurring_NoMutation(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ok=true even for non-recurring task")
 	}
-	_ = cmd
+	if cmd != nil {
+		t.Fatalf("expected nil cmd for non-recurring task, got %T", cmd())
+	}
 
 	if m.statusMessage != "Task is not recurring" {
 		t.Errorf("status: want %q, got %q", "Task is not recurring", m.statusMessage)
 	}
 
-	task := beta.GetTaskByID(taskID)
+	task := env.projects[1].GetTaskByID(taskID)
 	if task == nil {
 		t.Fatal("beta task not found after skip")
 	}
@@ -375,15 +333,15 @@ func TestCrossHandleSkipRecurrence_NonRecurring_NoMutation(t *testing.T) {
 }
 
 func TestCrossHandleDeferRecurrence_DefersByWeek(t *testing.T) {
-	m, beta, taskID, baseDate := crossRecurringFixture(t)
+	m, env, taskID, baseDate := crossRecurringFixture(t)
 
 	cmd, ok := m.crossHandleDeferRecurrence("w")
 	if !ok {
 		t.Fatal("expected ok=true for defer key 'w'")
 	}
-	_ = cmd
+	runResult(t, cmd)
 
-	task := beta.GetTaskByID(taskID)
+	task := env.reload(t, 1).GetTaskByID(taskID)
 	if task == nil {
 		t.Fatal("beta task not found after defer")
 	}

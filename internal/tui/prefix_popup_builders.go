@@ -20,14 +20,13 @@ func BuildPriorityPrefixHints(currentPriority int) []PrefixHint {
 }
 
 // CommonTaskActionPrefixHints returns the prefix hints shared across most
-// task-operating views: status (,), priority (!), stage (.), due date (d),
-// snooze (s), create-linked (c), and move (m). Views extend the returned
-// map with their view-specific entries (e.g. "g" navigation, "f" folds).
-func CommonTaskActionPrefixHints(stages []string, currentStage string, currentPriority int) PrefixHints {
+// task-operating views: status (,), priority (!), due date (d), snooze (z),
+// create-linked (c), and move (m). Views extend the returned map with their
+// view-specific entries (e.g. "g" navigation, "f" folds).
+func CommonTaskActionPrefixHints(currentPriority int) PrefixHints {
 	return PrefixHints{
 		",": StatusPrefixHints,
 		"!": BuildPriorityPrefixHints(currentPriority),
-		"s": BuildStagePrefixHints(stages, currentStage),
 		"d": DueDatePrefixHints,
 		"z": SnoozePrefixHints,
 		"c": CreateLinkedPrefixHints,
@@ -75,36 +74,6 @@ func BuildFilterScorePrefixHints(cfg *config.Config, supportsCustomInput bool) [
 	}
 	if supportsCustomInput {
 		hints = append(hints, PrefixHint{Key: "C", Description: "set value", Detail: "inline input"})
-	}
-	hints = append(hints, PrefixHint{Key: "0", Description: "clear"})
-	return hints
-}
-
-// BuildStagePrefixHints builds dynamic stage hints for the "s" (stage) prefix.
-// Keys 1-9 map to the first 9 configured stages, 0 clears.
-func BuildStagePrefixHints(stages []string, currentStage string) []PrefixHint {
-	hints := make([]PrefixHint, 0, len(stages)+1)
-	for i, stage := range stages {
-		hints = append(hints, PrefixHint{
-			Key:         stageKeyForIndex(i),
-			Description: stage,
-			Active:      stage == currentStage,
-		})
-	}
-	hints = append(hints, PrefixHint{Key: "0", Description: "clear"})
-	return hints
-}
-
-// BuildFilterStagePrefixHints builds dynamic filter stage hints for the "F." prefix.
-// Keys 1-9 map to the first 9 configured stages, 0 clears.
-func BuildFilterStagePrefixHints(stages []string, currentFilter string) []PrefixHint {
-	hints := make([]PrefixHint, 0, len(stages)+1)
-	for i, stage := range stages {
-		hints = append(hints, PrefixHint{
-			Key:         stageKeyForIndex(i),
-			Description: stage,
-			Active:      stage == currentFilter,
-		})
 	}
 	hints = append(hints, PrefixHint{Key: "0", Description: "clear"})
 	return hints

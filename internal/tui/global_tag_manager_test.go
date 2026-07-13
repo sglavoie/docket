@@ -9,7 +9,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -44,7 +46,7 @@ func TestGlobalTagManagerIncludesCatalogOnlyTags(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	cfg.Projects = []*models.Project{project}
 
-	manager := NewGlobalTagManagerModel(cfg)
+	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
 
 	catalogOnly := findGlobalTagInfo(t, manager.tags, "catalog-only")
 	if catalogOnly.TaskCount != 0 {
@@ -74,7 +76,7 @@ func TestGlobalTagManagerBuildListMarksPinnedTags(t *testing.T) {
 	cfg.Projects = []*models.Project{project}
 	cfg.GlobalPinnedTags = []string{"frontend"}
 
-	manager := NewGlobalTagManagerModel(cfg)
+	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
 
 	backend := findGlobalTagInfo(t, manager.tags, "backend")
 	if backend.Pinned {
@@ -94,7 +96,7 @@ func TestGlobalTagManagerViewShowsPinnedMarker(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	cfg.Projects = []*models.Project{project}
 	cfg.GlobalPinnedTags = []string{"backend"}
-	manager := NewGlobalTagManagerModel(cfg)
+	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
 
 	plain := ansi.Strip(manager.View().Content)
 	if !strings.Contains(plain, "* backend") {
@@ -114,7 +116,7 @@ func TestGlobalTagManagerMinimumLayoutScrollsTagsNoOverflow(t *testing.T) {
 
 	cfg := testutil.NewTestConfig()
 	cfg.Projects = []*models.Project{project}
-	manager := NewGlobalTagManagerModel(cfg)
+	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
 	manager.SetSize(72, 18)
 	manager.cursor = globalTagIndex(t, manager.tags, "tag-23")
 
@@ -139,7 +141,7 @@ func TestGlobalTagManagerProjectPickerMinimumLayoutNoOverflow(t *testing.T) {
 		cfg.Projects = append(cfg.Projects, project)
 	}
 
-	manager := NewGlobalTagManagerModel(cfg)
+	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
 	manager.SetSize(72, 18)
 	manager.showProjectPicker = true
 	manager.selectedTag = "shared"
@@ -165,7 +167,7 @@ func TestGlobalTagManagerTogglePinnedTagPersists(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	cfg.Projects = []*models.Project{project}
 	manager := config.NewManager(filepath.Join(t.TempDir(), "config.json"))
-	model := NewGlobalTagManagerModel(cfg, manager)
+	model := NewGlobalTagManagerModel(cfg, TagCoordinator{}, manager)
 	model.cursor = globalTagIndex(t, model.tags, "backend")
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
@@ -207,7 +209,7 @@ func TestGlobalTagManagerNavigatesCatalogOnlyTag(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	cfg.Projects = []*models.Project{project}
 
-	manager := NewGlobalTagManagerModel(cfg)
+	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
 	manager.cursor = globalTagIndex(t, manager.tags, "catalog-only")
 
 	_, cmd := manager.handleNormalMode(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -274,24 +276,33 @@ func TestGlobalTagNavigateCanStillOpenProjectTreeWhenDefault(t *testing.T) {
 	}
 }
 
-func TestGlobalTagRenamePersistsCatalogDefinitionsAndTaskUsages(t *testing.T) {
-	catalogProject := newGlobalTagTestProject(t, "catalog", "Catalog")
-	catalogProject.Tags = []string{"legacy"}
-	saveGlobalTagTestProject(t, catalogProject)
+// TestGlobalTagRenameCommitsWorkspaceWideAndUndoes drives the migrated global
+// tag rename through the coordinator/app.Service seam over the real
+// transactional storage stack with a workspace undo ledger. It proves the rename
+// commits every affected project (catalog-only usage in one, task usage in
+// another) as ONE grouped transaction and that a single ledger undo/redo reverses
+// and re-applies the whole workspace-wide rename.
+func TestGlobalTagRenameCommitsWorkspaceWideAndUndoes(t *testing.T) {
+	dataDir := t.TempDir()
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
-	taskProject := newGlobalTagTestProject(t, "tasks", "Tasks")
+	catalog := newLedgerTagProject(t, dataDir, "catalog")
+	catalog.Tags = []string{"legacy"}
+
 	task := newGlobalTagTestTask(t, "task-1", "Uses legacy")
 	task.Tags = []string{"legacy"}
-	taskProject.Tasks = []*models.Task{task}
-	taskProject.BuildTaskTree()
-	saveGlobalTagTestProject(t, taskProject)
+	tasksProject := newLedgerTagProject(t, dataDir, "tasks", task)
+
+	repo := newScenarioRepo(commitSvc, catalog, tasksProject)
+	repo.seed(t)
+	svc := app.NewService(repo, nil, nil)
+	coords := newSecondaryCoordinators(svc, nil)
 
 	cfg := testutil.NewTestConfig()
-	depth := 10
-	cfg.UndoHistoryDepth = &depth
-	cfg.Projects = []*models.Project{catalogProject, taskProject}
+	cfg.Projects = []*models.Project{catalog, tasksProject}
+	manager := NewGlobalTagManagerModel(cfg, coords.Tag)
 
-	manager := NewGlobalTagManagerModel(cfg)
 	cmd := manager.renameGlobalTag("legacy", "modern")
 	if cmd == nil {
 		t.Fatal("expected rename command")
@@ -301,60 +312,81 @@ func TestGlobalTagRenamePersistsCatalogDefinitionsAndTaskUsages(t *testing.T) {
 	if !ok {
 		t.Fatalf("rename emitted %T, want GlobalTagRenamedMsg", msg)
 	}
+	if renamed.OldName != "legacy" || renamed.NewName != "modern" {
+		t.Fatalf("rename names = (%q -> %q), want legacy -> modern", renamed.OldName, renamed.NewName)
+	}
 	if renamed.ProjectCount != 2 || renamed.TaskCount != 1 {
 		t.Fatalf("rename counts = (%d projects, %d tasks), want (2 projects, 1 task)", renamed.ProjectCount, renamed.TaskCount)
 	}
 
-	if err := storage.LoadProject(catalogProject); err != nil {
-		t.Fatalf("LoadProject(catalog): %v", err)
+	catReload := reloadLedgerProject(t, catalog)
+	if !catReload.HasCatalogTag("modern") || catReload.HasCatalogTag("legacy") {
+		t.Fatalf("catalog tags after rename = %v, want modern only", catReload.Tags)
 	}
-	if !catalogProject.HasCatalogTag("modern") || catalogProject.HasCatalogTag("legacy") {
-		t.Fatalf("catalog tags after rename = %v, want modern only", catalogProject.Tags)
-	}
-
-	if err := storage.LoadProject(taskProject); err != nil {
-		t.Fatalf("LoadProject(tasks): %v", err)
-	}
-	if len(taskProject.Tasks) != 1 {
-		t.Fatalf("task project has %d tasks, want 1", len(taskProject.Tasks))
-	}
-	if !taskProject.Tasks[0].HasTag("modern") || taskProject.Tasks[0].HasTag("legacy") {
-		t.Fatalf("task tags after rename = %v, want modern only", taskProject.Tasks[0].Tags)
+	taskReload := reloadLedgerProject(t, tasksProject)
+	if len(taskReload.Tasks) != 1 || !taskReload.Tasks[0].HasTag("modern") || taskReload.Tasks[0].HasTag("legacy") {
+		t.Fatalf("task tags after rename = %v, want modern only", taskReload.Tasks)
 	}
 
-	assertGroupedTopUndo(t, catalogProject, taskProject)
-
-	if _, err := storage.PerformUndoForProjects(catalogProject, []*models.Project{catalogProject, taskProject}); err != nil {
-		t.Fatalf("PerformUndoForProjects: %v", err)
+	// A single grouped ledger undo reverses the whole workspace-wide rename.
+	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger undo: %v", err)
 	}
-	if err := storage.LoadProject(catalogProject); err != nil {
-		t.Fatalf("LoadProject(catalog after undo): %v", err)
+	catReload = reloadLedgerProject(t, catalog)
+	if !catReload.HasCatalogTag("legacy") || catReload.HasCatalogTag("modern") {
+		t.Fatalf("catalog tags after undo = %v, want legacy only", catReload.Tags)
 	}
-	if !catalogProject.HasCatalogTag("legacy") || catalogProject.HasCatalogTag("modern") {
-		t.Fatalf("catalog tags after undo = %v, want legacy only", catalogProject.Tags)
-	}
-	if err := storage.LoadProject(taskProject); err != nil {
-		t.Fatalf("LoadProject(tasks after undo): %v", err)
-	}
-	if !taskProject.Tasks[0].HasTag("legacy") || taskProject.Tasks[0].HasTag("modern") {
-		t.Fatalf("task tags after undo = %v, want legacy only", taskProject.Tasks[0].Tags)
+	taskReload = reloadLedgerProject(t, tasksProject)
+	if !taskReload.Tasks[0].HasTag("legacy") || taskReload.Tasks[0].HasTag("modern") {
+		t.Fatalf("task tags after undo = %v, want legacy only", taskReload.Tasks[0].Tags)
 	}
 
-	if _, err := storage.PerformRedoForProjects(catalogProject, []*models.Project{catalogProject, taskProject}); err != nil {
-		t.Fatalf("PerformRedoForProjects: %v", err)
+	// Redo re-applies the whole rename.
+	if _, err := ledger.Redo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger redo: %v", err)
 	}
-	if err := storage.LoadProject(catalogProject); err != nil {
-		t.Fatalf("LoadProject(catalog after redo): %v", err)
+	catReload = reloadLedgerProject(t, catalog)
+	if !catReload.HasCatalogTag("modern") || catReload.HasCatalogTag("legacy") {
+		t.Fatalf("catalog tags after redo = %v, want modern only", catReload.Tags)
 	}
-	if !catalogProject.HasCatalogTag("modern") || catalogProject.HasCatalogTag("legacy") {
-		t.Fatalf("catalog tags after redo = %v, want modern only", catalogProject.Tags)
+	taskReload = reloadLedgerProject(t, tasksProject)
+	if !taskReload.Tasks[0].HasTag("modern") || taskReload.Tasks[0].HasTag("legacy") {
+		t.Fatalf("task tags after redo = %v, want modern only", taskReload.Tasks[0].Tags)
 	}
-	if err := storage.LoadProject(taskProject); err != nil {
-		t.Fatalf("LoadProject(tasks after redo): %v", err)
+}
+
+// newLedgerTagProject builds a project rooted under dataDir/projects/slug so the
+// transactional commit service accepts it as an approved-root target.
+func newLedgerTagProject(t *testing.T, dataDir, slug string, tasks ...*models.Task) *models.Project {
+	t.Helper()
+	p, err := models.NewProject(uuid.New().String(), slug, "")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
 	}
-	if !taskProject.Tasks[0].HasTag("modern") || taskProject.Tasks[0].HasTag("legacy") {
-		t.Fatalf("task tags after redo = %v, want modern only", taskProject.Tasks[0].Tags)
+	p.Slug = slug
+	p.Path = filepath.Join(dataDir, "projects", slug)
+	p.Tasks = tasks
+	next := 1
+	for _, task := range tasks {
+		if task.ShortID >= next {
+			next = task.ShortID + 1
+		}
 	}
+	p.NextShortID = next
+	p.EnsureDefaultSections()
+	p.BuildTaskTree()
+	return p
+}
+
+// reloadLedgerProject reads a project fresh from disk so an assertion sees the
+// committed bytes rather than the in-memory pointer the coordinator mutated.
+func reloadLedgerProject(t *testing.T, p *models.Project) *models.Project {
+	t.Helper()
+	fresh := &models.Project{ID: p.ID, Name: p.Name, Slug: p.Slug, Path: p.Path}
+	if err := storage.LoadProject(fresh); err != nil {
+		t.Fatalf("reload project %s: %v", p.Slug, err)
+	}
+	return fresh
 }
 
 func newGlobalTagTestProject(t *testing.T, id, name string) *models.Project {

@@ -33,19 +33,69 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(dashCmd)
+	dashCmd.Flags().Bool("json", false, "output result as JSON")
 }
 
 func runDash(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	displayDashboard(cfg)
-	return nil
+	if jsonRequested(cmd) {
+		out, err := buildDashboardJSON(cfg, configManager)
+		if err != nil {
+			return err
+		}
+		return printJSON(out)
+	}
+
+	return displayDashboard(cfg, configManager)
 }
 
-func displayDashboard(cfg *config.Config) {
+// dashboardProjectJSON summarizes one project for the dashboard JSON envelope.
+type dashboardProjectJSON struct {
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	Context   string `json:"context,omitempty"`
+	Tasks     int    `json:"tasks"`
+	Active    int    `json:"active"`
+	Completed int    `json:"completed"`
+}
+
+// dashboardJSON is the machine-readable dashboard summary.
+type dashboardJSON struct {
+	Projects       []dashboardProjectJSON `json:"projects"`
+	CurrentProject string                 `json:"current_project,omitempty"`
+}
+
+func buildDashboardJSON(cfg *config.Config, mgr *config.Manager) (dashboardJSON, error) {
+	out := dashboardJSON{Projects: []dashboardProjectJSON{}}
+	active, err := activeProjects(mgr)
+	if err != nil {
+		return dashboardJSON{}, err
+	}
+	for _, p := range active {
+		if err := storage.LoadProject(p); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not load project %q: %v\n", p.Name, err)
+			continue
+		}
+		out.Projects = append(out.Projects, dashboardProjectJSON{
+			Name:      p.Name,
+			Slug:      p.Slug,
+			Context:   p.Context,
+			Tasks:     p.CountTasks(),
+			Active:    p.CountActiveTasks(),
+			Completed: p.CountCompletedTasks(),
+		})
+	}
+	if current := cfg.GetCurrentProject(); current != nil {
+		out.CurrentProject = current.Slug
+	}
+	return out, nil
+}
+
+func displayDashboard(cfg *config.Config, mgr *config.Manager) error {
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("39"))
@@ -57,14 +107,17 @@ func displayDashboard(cfg *config.Config) {
 	fmt.Println()
 
 	// Active projects summary
-	activeProjects := cfg.GetActiveProjects()
-	if len(activeProjects) == 0 {
+	active, err := activeProjects(mgr)
+	if err != nil {
+		return err
+	}
+	if len(active) == 0 {
 		fmt.Println(subtitleStyle.Render(NoItemsMsg("projects", "tt project new <name>")))
-		return
+		return nil
 	}
 
 	fmt.Println(titleStyle.Render("PROJECTS"))
-	displayProjectsSummary(activeProjects)
+	displayProjectsSummary(active)
 
 	// Current project details
 	current := cfg.GetCurrentProject()
@@ -76,10 +129,11 @@ func displayDashboard(cfg *config.Config) {
 			displayRecentTasks(current)
 			displayTaskStats(current)
 		}
-	} else if len(activeProjects) > 0 {
+	} else if len(active) > 0 {
 		fmt.Println()
 		fmt.Println(subtitleStyle.Render("No project selected. Select one with: tt select"))
 	}
+	return nil
 }
 
 func displayProjectsSummary(projects []*models.Project) {
@@ -123,7 +177,7 @@ func displayRecentTasks(project *models.Project) {
 		t.AppendRow(table.Row{
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			util.Truncate(task.Title, 40),
 			storage.FormatRelativeTime(task.UpdatedAt),
 		})
@@ -141,11 +195,11 @@ func displayTaskStats(project *models.Project) {
 
 	// Count by type
 	typeCounts := make(map[models.TaskType]int)
-	statusCounts := make(map[models.TaskStatus]int)
+	iconCounts := make(map[string]int)
 
 	for _, task := range project.Tasks {
 		typeCounts[task.Type]++
-		statusCounts[task.Status]++
+		iconCounts[task.State().Icon()]++
 	}
 
 	// Display type breakdown
@@ -156,11 +210,18 @@ func displayTaskStats(project *models.Project) {
 		}
 	}
 
-	// Display status breakdown
+	// Display state breakdown. Counts are bucketed per icon because several
+	// states share a glyph (inbox/ready/next all render the todo icon).
 	var statusStats []string
-	for _, s := range models.AllTaskStatuses() {
-		if count := statusCounts[s]; count > 0 {
-			statusStats = append(statusStats, fmt.Sprintf("%s:%d", s.Icon(), count))
+	seenIcons := make(map[string]bool)
+	for _, s := range models.AllWorkflowStates() {
+		icon := s.Icon()
+		if seenIcons[icon] {
+			continue
+		}
+		seenIcons[icon] = true
+		if count := iconCounts[icon]; count > 0 {
+			statusStats = append(statusStats, fmt.Sprintf("%s:%d", icon, count))
 		}
 	}
 

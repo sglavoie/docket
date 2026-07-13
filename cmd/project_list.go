@@ -40,12 +40,15 @@ func init() {
 }
 
 func runProjectList(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	var projects = cfg.GetActiveProjects()
+	projects, err := activeProjects(configManager)
+	if err != nil {
+		return err
+	}
 	if showArchived {
 		// Copy the slice to avoid mutating cfg.Projects order in place
 		projects = make([]*models.Project, len(cfg.Projects))

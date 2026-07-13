@@ -380,7 +380,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Aliases:     []string{"complete task", "finish task", "resolve task", "triage done"},
 			Handler: func() tea.Msg {
 				return runInboxResultCmd(func(c *inboxCore) tea.Cmd {
-					return c.changeTaskStatus(models.StatusDone, StatusVerb(models.StatusDone))
+					return c.changeTaskState(models.StateDone, StateVerb(models.StateDone))
 				})
 			},
 		},

@@ -1,11 +1,47 @@
 package tui
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
+
+// wirePriorityViewCoordinator roots the given project on a temp data dir and
+// wires the priority view's single-task coordinator over the real transactional
+// stack, so a migrated single-task mutation commits through the application layer
+// (and mutates the in-memory project/task pointers the test asserts on).
+func wirePriorityViewCoordinator(t *testing.T, m *PriorityViewModel, project *models.Project) {
+	t.Helper()
+	dataDir := t.TempDir()
+	project.Slug = "priority-test"
+	project.Path = filepath.Join(dataDir, "projects", project.Slug)
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	repo := newScenarioRepo(commitSvc, project)
+	svc := app.NewService(repo, nil, nil)
+	m.SetTaskItemCoordinator(newSecondaryCoordinators(svc, nil).TaskItem)
+}
+
+// runPriorityViewMutation executes a migrated priority-view single-task command
+// so its commit side effect runs, failing the test on rejection.
+func runPriorityViewMutation(t *testing.T, cmd tea.Cmd) {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("priority-view mutation returned nil command, want a commit command")
+	}
+	if e, ok := cmd().(TransactionErrorMsg); ok {
+		t.Fatalf("priority-view mutation rejected: %v", e.Err)
+	}
+}
 
 func TestGetParentTitle(t *testing.T) {
 	t.Run("no parent returns empty", func(t *testing.T) {
@@ -74,7 +110,7 @@ func TestGetBlockingReason(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusBlocked
+		task.WorkflowState = models.StateWaiting
 
 		project.Tasks = []*models.Task{task}
 
@@ -92,7 +128,7 @@ func TestGetBlockingReason(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocker.Status = models.StatusTodo
+		blocker.WorkflowState = models.StateReady
 
 		dependent, err := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
 		if err != nil {
@@ -123,8 +159,10 @@ func TestChangeTaskPriority(t *testing.T) {
 
 		m := NewPriorityViewModel(project, nil, nil)
 		m.cursor = 0
+		wirePriorityViewCoordinator(t, m, project)
 
-		m.changeTaskPriority(1)
+		_, cmd := m.changeTaskPriority(1)
+		runPriorityViewMutation(t, cmd)
 
 		if task.Priority != 1 {
 			t.Errorf("expected priority 1, got %d", task.Priority)
@@ -176,9 +214,11 @@ func TestChangeTaskPriority(t *testing.T) {
 
 		m := NewPriorityViewModel(project, nil, nil)
 		m.cursor = 0
+		wirePriorityViewCoordinator(t, m, project)
 
 		time.Sleep(time.Millisecond)
-		m.changeTaskPriority(1)
+		_, cmd := m.changeTaskPriority(1)
+		runPriorityViewMutation(t, cmd)
 
 		if !task.UpdatedAt.After(originalUpdatedAt) {
 			t.Error("UpdatedAt should be updated after priority change")

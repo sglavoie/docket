@@ -119,7 +119,8 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	// Metadata table
 	b.WriteString("| Property | Value |\n")
 	b.WriteString("|----------|-------|\n")
-	fmt.Fprintf(&b, "| Status | %s %s |\n", task.Status.Icon(), task.Status)
+	status := models.LegacyStatusForState(task.State())
+	fmt.Fprintf(&b, "| Status | %s %s |\n", status.Icon(), status)
 	fmt.Fprintf(&b, "| Priority | %d |\n", task.Priority)
 	fmt.Fprintf(&b, "| Type | %s |\n", task.Type.HeadingPrefix())
 

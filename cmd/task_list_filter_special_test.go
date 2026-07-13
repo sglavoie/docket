@@ -28,7 +28,7 @@ func TestFilterTasks_CompletedTasksExcludedByDefault(t *testing.T) {
 	}
 
 	for _, task := range result {
-		if task.Status.IsComplete() {
+		if task.IsComplete() {
 			t.Errorf("completed task %s should not be in results", task.Title)
 		}
 	}

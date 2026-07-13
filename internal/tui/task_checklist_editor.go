@@ -37,6 +37,7 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
@@ -75,11 +76,9 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 		// Update item (preserve done state)
 		task.Checklist[editIndex].Text = newText
 
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return ChecklistItemEditedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.EditChecklistItem(task.ID, editIndex, newText), func(fresh *models.Task) tea.Msg {
+			return ChecklistItemEditedMsg{Task: fresh}
+		})()
 	})
 }
 
@@ -108,6 +107,7 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 
 	// Reset add mode before launching editor
 	m.addMode = false
@@ -143,11 +143,9 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 			Done: false,
 		})
 
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return ChecklistItemAddedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.AddChecklistItem(task.ID, newText), func(fresh *models.Task) tea.Msg {
+			return ChecklistItemAddedMsg{Task: fresh}
+		})()
 	})
 }
 
@@ -183,6 +181,7 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 
 	task := m.task
 	project := m.project
+	coordinator := m.coordinator
 	originalText := item.Text
 
 	// Reset edit mode before launching editor
@@ -226,10 +225,8 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 		// Update item (preserve done state)
 		task.Checklist[editIndex].Text = newText
 
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return ChecklistItemEditedMsg{Task: task}
+		return commitTaskItemMutation(project, task, coordinator.EditChecklistItem(task.ID, editIndex, newText), func(fresh *models.Task) tea.Msg {
+			return ChecklistItemEditedMsg{Task: fresh}
+		})()
 	})
 }

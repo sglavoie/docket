@@ -40,6 +40,7 @@ func init() {
 
 	searchCmd.Flags().BoolVarP(&searchIncludeArchived, "all", "a", false, "include archived projects")
 	searchCmd.Flags().IntVarP(&searchLimit, "limit", "l", 0, "limit number of results (0 = no limit)")
+	searchCmd.Flags().Bool("json", false, "output result as JSON")
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
@@ -93,6 +94,14 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if jsonRequested(cmd) {
+		entries := make([]focusTaskJSON, 0, len(results))
+		for _, r := range results {
+			entries = append(entries, focusTaskToJSON(r.Task, r.Project))
+		}
+		return printJSON(entries)
+	}
+
 	if len(results) == 0 {
 		fmt.Printf("No tasks found matching \"%s\".\n", query)
 		fmt.Println(NoItemsMsg("tasks", "tt task add <title>"))
@@ -113,7 +122,7 @@ func displaySearchResults(results []models.SearchResult, query string) {
 			r.Project.Slug,
 			r.Task.ShortID,
 			r.Task.Type.Icon(),
-			r.Task.Status.Icon(),
+			r.Task.State().Icon(),
 			util.Truncate(r.Task.Title, 40),
 		})
 	}

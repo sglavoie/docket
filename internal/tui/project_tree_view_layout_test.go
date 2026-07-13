@@ -39,7 +39,6 @@ func TestProjectTreeLongStageDoesNotShiftSiblingRows(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		tasks = append(tasks, newTestProjectTreeTask(t, fmt.Sprintf("Sibling task %02d", i)))
 	}
-	tasks[3].Stage = "Implement initial version"
 
 	project := newTestProjectTreeProject(t, "Long Stage", tasks)
 	project.BuildTaskTree()
@@ -107,23 +106,23 @@ func TestProjectTreeAllViewRendersMultipleRowsWithManyTopGroups(t *testing.T) {
 
 func TestProjectTreePersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.T) {
 	root := &models.Task{
-		ID:       "root",
-		ShortID:  1,
-		Type:     models.TaskTypeEpic,
-		Title:    "Root",
-		Status:   models.StatusTodo,
-		Children: []*models.Task{},
+		ID:            "root",
+		ShortID:       1,
+		Type:          models.TaskTypeEpic,
+		Title:         "Root",
+		WorkflowState: models.StateReady,
+		Children:      []*models.Task{},
 	}
 	tasks := []*models.Task{root}
 	for i := 1; i <= 8; i++ {
 		child := &models.Task{
-			ID:       fmt.Sprintf("child-%02d", i),
-			ShortID:  i + 1,
-			Type:     models.TaskTypeTask,
-			Title:    fmt.Sprintf("Child %02d", i),
-			Status:   models.StatusTodo,
-			ParentID: &root.ID,
-			Parent:   root,
+			ID:            fmt.Sprintf("child-%02d", i),
+			ShortID:       i + 1,
+			Type:          models.TaskTypeTask,
+			Title:         fmt.Sprintf("Child %02d", i),
+			WorkflowState: models.StateReady,
+			ParentID:      &root.ID,
+			Parent:        root,
 		}
 		root.Children = append(root.Children, child)
 		tasks = append(tasks, child)
@@ -175,34 +174,34 @@ func TestBuildProjectTreePrefix(t *testing.T) {
 
 func TestProjectTreeBuildTreeUsesDepthOnlyPrefixes(t *testing.T) {
 	parent := &models.Task{
-		ID:     "parent",
-		Title:  "Parent",
-		Type:   models.TaskTypeEpic,
-		Status: models.StatusTodo,
+		ID:            "parent",
+		Title:         "Parent",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady,
 	}
 	child := &models.Task{
-		ID:       "child",
-		Title:    "Child",
-		Type:     models.TaskTypeStory,
-		Status:   models.StatusTodo,
-		ParentID: &parent.ID,
-		Parent:   parent,
+		ID:            "child",
+		Title:         "Child",
+		Type:          models.TaskTypeStory,
+		WorkflowState: models.StateReady,
+		ParentID:      &parent.ID,
+		Parent:        parent,
 	}
 	grandchild := &models.Task{
-		ID:       "grandchild",
-		Title:    "Grandchild",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		ParentID: &child.ID,
-		Parent:   child,
+		ID:            "grandchild",
+		Title:         "Grandchild",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		ParentID:      &child.ID,
+		Parent:        child,
 	}
 	sibling := &models.Task{
-		ID:       "sibling",
-		Title:    "Sibling",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		ParentID: &parent.ID,
-		Parent:   parent,
+		ID:            "sibling",
+		Title:         "Sibling",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		ParentID:      &parent.ID,
+		Parent:        parent,
 	}
 
 	child.Children = []*models.Task{grandchild}
@@ -243,18 +242,18 @@ func TestProjectTreeBuildTreeUsesDepthOnlyPrefixes(t *testing.T) {
 
 func TestProjectTreeRenderUsesChevronsWithoutOutlinerConnectors(t *testing.T) {
 	parent := &models.Task{
-		ID:     "parent",
-		Title:  "Parent",
-		Type:   models.TaskTypeEpic,
-		Status: models.StatusTodo,
+		ID:            "parent",
+		Title:         "Parent",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady,
 	}
 	child := &models.Task{
-		ID:       "child",
-		Title:    "Child",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		ParentID: &parent.ID,
-		Parent:   parent,
+		ID:            "child",
+		Title:         "Child",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		ParentID:      &parent.ID,
+		Parent:        parent,
 	}
 	parent.Children = []*models.Task{child}
 

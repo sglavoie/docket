@@ -45,6 +45,16 @@ func (m *AppModel) handleCreateLinkedTask(msg CreateLinkedTaskMsg) (bool, tea.Cm
 
 // handleLinkedTaskCreated handles the LinkedTaskCreatedMsg.
 func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.Cmd) {
+	// Coordinator path: reload the committed project and re-resolve both tasks by
+	// ID so the shared jump/open/status logic runs off the reloaded pointers.
+	if msg.Result != nil {
+		m.reloadProjectByID(msg.Result.New.ProjectID)
+		if project := m.config.GetProject(msg.Result.New.ProjectID); project != nil {
+			msg.Project = project
+			msg.NewTask = project.GetTaskByID(msg.Result.New.TaskID)
+			msg.SourceTask = project.GetTaskByID(msg.Result.Source.TaskID)
+		}
+	}
 	m.popView()
 	m.refreshAllViews()
 
@@ -93,7 +103,7 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 // handleShowLinkedTaskSelector handles the ShowLinkedTaskSelectorMsg.
 func (m *AppModel) handleShowLinkedTaskSelector(msg ShowLinkedTaskSelectorMsg) (bool, tea.Cmd) {
 	if msg.Task != nil && msg.Project != nil {
-		selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.config)
+		selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.config, m.secondaryFeatures.Link)
 		// If no linked tasks, do nothing
 		if !selector.HasLinkedTasks() {
 			m.setInfoStatus("No linked tasks")
@@ -124,7 +134,7 @@ func (m *AppModel) handleLinkedTaskSelected(msg LinkedTaskSelectedMsg) (bool, te
 // handleShowCrossProjectLinker handles the ShowCrossProjectLinkerMsg.
 func (m *AppModel) handleShowCrossProjectLinker(msg ShowCrossProjectLinkerMsg) (bool, tea.Cmd) {
 	if msg.SourceTask != nil && msg.SourceProject != nil {
-		linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.config)
+		linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.config, m.secondaryFeatures.Link)
 		m.showView(ViewCrossProjectLinker, linker)
 	}
 	return true, nil
@@ -153,6 +163,12 @@ func (m *AppModel) handleCrossProjectLinkCreated(msg CrossProjectLinkCreatedMsg)
 func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 	// Save task ID before refresh (project reload creates new task objects)
 	sourceTaskID := msg.SourceTask.ID
+	// The removal committed through the application layer against its own fresh
+	// snapshot, so reload the touched projects' in-memory copies before adjusting
+	// cursors (a cross-project related unlink touches both sides).
+	for _, projectID := range msg.TouchedProjectIDs {
+		m.reloadProjectByID(projectID)
+	}
 	m.refreshAllViews()
 	// Adjust cursors after link removal
 	if m.currentProject != nil {

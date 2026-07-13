@@ -73,7 +73,7 @@ func (m *ProjectTreeModel) selectViewForTask(task *models.Task) {
 		m.viewMode = ViewModeCompleted
 		return
 	}
-	switch task.Section {
+	switch taskSectionBucket(task) {
 	case models.SectionNext:
 		m.viewMode = ViewModeNext
 	case models.SectionInbox:

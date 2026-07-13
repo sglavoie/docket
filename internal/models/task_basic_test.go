@@ -24,8 +24,8 @@ func TestNewTask(t *testing.T) {
 	if task.Title != "Test Task" {
 		t.Errorf("expected Title 'Test Task', got '%s'", task.Title)
 	}
-	if task.Status != StatusTodo {
-		t.Errorf("expected Status StatusTodo, got %s", task.Status)
+	if task.State() != StateReady {
+		t.Errorf("expected State StateReady, got %s", task.State())
 	}
 	if task.Priority != 3 {
 		t.Errorf("expected Priority 3, got %d", task.Priority)
@@ -148,29 +148,29 @@ func TestTaskStatusTransitions(t *testing.T) {
 
 	// Start
 	task.Start()
-	if task.Status != StatusInProgress {
-		t.Errorf("after Start(), Status = %s, want in_progress", task.Status)
+	if task.State() != StateInProgress {
+		t.Errorf("after Start(), State = %s, want in_progress", task.State())
 	}
 
 	// Block
 	task.Block()
-	if task.Status != StatusBlocked {
-		t.Errorf("after Block(), Status = %s, want blocked", task.Status)
+	if task.State() != StateWaiting {
+		t.Errorf("after Block(), State = %s, want waiting", task.State())
 	}
 
 	// Complete
 	task.Complete()
-	if task.Status != StatusDone {
-		t.Errorf("after Complete(), Status = %s, want done", task.Status)
+	if task.State() != StateDone {
+		t.Errorf("after Complete(), State = %s, want done", task.State())
 	}
 	if task.CompletedAt == nil {
 		t.Error("after Complete(), CompletedAt should be set")
 	}
 
-	// Reopen
+	// Reopen returns the task to the Inbox for re-processing.
 	task.Reopen()
-	if task.Status != StatusTodo {
-		t.Errorf("after Reopen(), Status = %s, want todo", task.Status)
+	if task.State() != StateInbox {
+		t.Errorf("after Reopen(), State = %s, want inbox", task.State())
 	}
 	if task.CompletedAt != nil {
 		t.Error("after Reopen(), CompletedAt should be nil")
@@ -178,8 +178,8 @@ func TestTaskStatusTransitions(t *testing.T) {
 
 	// Cancel
 	task.Cancel()
-	if task.Status != StatusCanceled {
-		t.Errorf("after Cancel(), Status = %s, want canceled", task.Status)
+	if task.State() != StateCanceled {
+		t.Errorf("after Cancel(), State = %s, want canceled", task.State())
 	}
 	if task.CompletedAt == nil {
 		t.Error("after Cancel(), CompletedAt should be set")

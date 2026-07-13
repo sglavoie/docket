@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
@@ -49,7 +49,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("task ID and comment index")
 	}
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -95,23 +95,22 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("comment text")
 	}
 
-	// Update comment (preserve comment timestamp) and refresh task's UpdatedAt
-	comment.Text = newText
-	task.UpdatedAt = time.Now()
-
-	// Save
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Edit Comment", UndoContext: fmt.Sprintf("#%d", task.ShortID),
-	}); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
+	// Persist the new text through the application layer (the comment timestamp
+	// is preserved by the use case) so the edit commits atomically,
+	// revision-checked, and undoably via the workspace ledger.
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.CommentResult, error) {
+		return svc.EditComment(task.ID, index, newText)
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return printMutationJSON(res.Task)
 	}
 	if !out.Quiet {
-		fmt.Printf("Updated comment %d on #%d: %s\n", index, task.ShortID, task.Title)
+		fmt.Printf("Updated comment %d on #%d: %s\n", res.Index, res.Task.ShortID, res.Task.Title)
 	}
 	return nil
 }

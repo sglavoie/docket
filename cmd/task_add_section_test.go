@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -70,7 +71,7 @@ func TestRunTaskAdd_SectionValidation(t *testing.T) {
 			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
 		}
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.Section, "Next")
+		testutil.AssertEqual(t, models.SectionForState(task.State()), "Next")
 	})
 
 	t.Run("accepts explicit empty section as active view", func(t *testing.T) {
@@ -93,6 +94,6 @@ func TestRunTaskAdd_SectionValidation(t *testing.T) {
 			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
 		}
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.Section, "")
+		testutil.AssertEqual(t, models.SectionForState(task.State()), "")
 	})
 }

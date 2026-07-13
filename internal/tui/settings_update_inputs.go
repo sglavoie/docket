@@ -18,10 +18,6 @@ func (m *SettingsModel) updateFocusedInput(msg tea.Msg) tea.Cmd {
 				}
 			}
 		}
-	case 90:
-		if m.stageEditMode {
-			m.stageInput, cmd = m.stageInput.Update(msg)
-		}
 	default:
 		if input := m.focusedInput(); input != nil {
 			*input, cmd = input.Update(msg)

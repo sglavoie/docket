@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -55,7 +56,9 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Count descendants
+	// Count descendants for the confirmation prompt. Task UUIDs are stable, so this
+	// set — computed at the CLI edge from the loaded project — keys the durable
+	// planning cleanup correctly regardless of the fresh snapshot the use case loads.
 	idsToDelete := collectTaskDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
 	count := len(idsToDelete)
 
@@ -79,45 +82,36 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Record undo snapshot
-	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-		if snapshotErr := storage.RecordUndoSnapshot(project, "Delete Task",
-			fmt.Sprintf("#%d %s", task.ShortID, task.Title), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
+	// Clean the DURABLE planning refs (Focus Queue, Daily Plan, dismissals) of every
+	// deleted task and fold them into the delete transaction as a config artifact, so
+	// a partial delete can never leave planning refs pointing at a removed task. The
+	// machine-local recent visits are intentionally excluded here and repaired
+	// separately after a successful commit.
+	var artifacts []storage.ArtifactChange
+	if cfg.RemoveDurableTaskRefs(idsToDelete) > 0 {
+		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+		if artErr != nil {
+			return artErr
 		}
+		artifacts = arts
 	}
 
-	// Clean up attachments for all tasks being deleted
-	for _, t := range project.Tasks {
-		if idsToDelete[t.ID] {
-			if cleanErr := storage.CleanupTaskAttachments(project, t); cleanErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to clean up attachments for task #%d: %v\n", t.ShortID, cleanErr)
-			}
+	// Route the delete through the application layer: subtree removal, each removed
+	// task's attachment bytes, same- and cross-project reference cleanup, and the
+	// durable planning artifact all commit as ONE transaction, revision-checked and
+	// undoable through the workspace ledger.
+	svc := newAppService(cfg)
+	if _, err := svc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, artifacts...); err != nil {
+		return translateAppError(err)
+	}
+
+	// Repair the machine-local recent visits separately — non-authoritative UI state
+	// updated only after the durable commit succeeded. A failure here is a warning,
+	// not an error: the delete is already committed and recent visits are best-effort.
+	if cfg.RemoveMachineLocalTaskRefs(idsToDelete) > 0 {
+		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
-	}
-
-	// Filter out deleted tasks and clear dangling references
-	project.Tasks = filterDeletedTasks(project.Tasks, idsToDelete)
-	project.BuildTaskTree()
-
-	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	// for all deleted tasks including descendants.
-	if cfg.RemoveTaskRefs(idsToDelete) > 0 {
-		if err := configManager.Save(cfg); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", err)
-		}
-	}
-
-	// Save (undo snapshot already recorded above, don't duplicate it via SaveOptions)
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-	}); err != nil {
-		return err
-	}
-
-	// Clean cross-project references pointing to the deleted tasks from other projects.
-	if err := cleanDeletedTaskCrossProjectRefs(cfg.Projects, project.ID, project.Slug, idsToDelete); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to clean cross-project references: %v\n", err)
 	}
 
 	if out.Quiet {
@@ -132,99 +126,6 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(msg)
 	return nil
-}
-
-// cleanDeletedTaskCrossProjectRefs removes cross-project references to the deleted tasks
-// from all other projects. deletedProjectID is the UUID of the source project (used to
-// skip it), deletedProjectSlug is the slug used in cross-project ref format ("slug:taskID"),
-// and deletedTaskIDs is the set of task IDs that were deleted.
-func cleanDeletedTaskCrossProjectRefs(projects []*models.Project, deletedProjectID, deletedProjectSlug string, deletedTaskIDs map[string]bool) error {
-	for _, p := range projects {
-		if p.ID == deletedProjectID {
-			continue
-		}
-		if err := storage.LoadProject(p); err != nil {
-			return fmt.Errorf("loading project '%s': %w", p.Name, err)
-		}
-		cleaned := 0
-		for _, t := range p.Tasks {
-			orig := len(t.DependsOn)
-			t.DependsOn = filterDeletedTaskRefs(t.DependsOn, deletedProjectSlug, deletedTaskIDs)
-			depsRemoved := orig - len(t.DependsOn)
-			cleaned += depsRemoved
-			// If a Blocked task's entire DependsOn list was just removed
-			// (all blockers were deleted), reopen it to prevent it being stuck.
-			if t.Status == models.StatusBlocked && depsRemoved > 0 && len(t.DependsOn) == 0 {
-				t.Reopen()
-			}
-
-			orig = len(t.RelatedTo)
-			t.RelatedTo = filterDeletedTaskRefs(t.RelatedTo, deletedProjectSlug, deletedTaskIDs)
-			cleaned += orig - len(t.RelatedTo)
-		}
-		if cleaned > 0 {
-			if err := storage.SaveProjectLocked(p); err != nil {
-				return fmt.Errorf("saving project '%s': %w", p.Name, err)
-			}
-		}
-	}
-	return nil
-}
-
-// filterDeletedTaskRefs removes cross-project refs to deleted tasks in the given project slug.
-func filterDeletedTaskRefs(refs []string, projectSlug string, deletedTaskIDs map[string]bool) []string {
-	if len(refs) == 0 {
-		return refs
-	}
-	filtered := refs[:0]
-	for _, ref := range refs {
-		parsed := models.ParseTaskRef(ref)
-		if parsed.IsCrossProject() && parsed.ProjectID == projectSlug && deletedTaskIDs[parsed.TaskID] {
-			continue
-		}
-		filtered = append(filtered, ref)
-	}
-	return filtered
-}
-
-// filterDeletedTasks removes tasks in idsToDelete from the task list and cleans
-// up dangling ParentID, DependsOn, and RelatedTo references in surviving tasks.
-func filterDeletedTasks(tasks []*models.Task, idsToDelete map[string]bool) []*models.Task {
-	var remaining []*models.Task
-	for _, t := range tasks {
-		if idsToDelete[t.ID] {
-			continue
-		}
-		if t.ParentID != nil && idsToDelete[*t.ParentID] {
-			t.ParentID = nil
-		}
-		if len(t.DependsOn) > 0 {
-			cleaned := t.DependsOn[:0]
-			for _, depID := range t.DependsOn {
-				if !idsToDelete[depID] {
-					cleaned = append(cleaned, depID)
-				}
-			}
-			// A Blocked task whose entire DependsOn list was just deleted
-			// has no remaining reason to stay blocked. Reopen it so the
-			// user is not left with a task stuck in Blocked with no deps.
-			if t.Status == models.StatusBlocked && len(cleaned) == 0 {
-				t.Reopen()
-			}
-			t.DependsOn = cleaned
-		}
-		if len(t.RelatedTo) > 0 {
-			cleaned := t.RelatedTo[:0]
-			for _, relID := range t.RelatedTo {
-				if !idsToDelete[relID] {
-					cleaned = append(cleaned, relID)
-				}
-			}
-			t.RelatedTo = cleaned
-		}
-		remaining = append(remaining, t)
-	}
-	return remaining
 }
 
 // collectTaskDescendantIDs collects IDs of root tasks and all their descendants.

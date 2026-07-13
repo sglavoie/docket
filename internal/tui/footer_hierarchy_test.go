@@ -241,8 +241,7 @@ func TestPipelineHubFooterRendersAtPlannedTodayFixture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	planned.Status = models.StatusInProgress
-	planned.Section = models.SectionNext
+	planned.WorkflowState = models.StateInProgress
 	project.Tasks = []*models.Task{planned}
 	cfg.Projects = []*models.Project{project}
 	if err := storage.SaveProject(project); err != nil {

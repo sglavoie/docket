@@ -93,7 +93,7 @@ func (m *GlobalSearchModel) renderSearchHelp() string {
 	hasValues := []string{
 		"description", "comment", "checklist", "attachment", "issue",
 		"due", "dependency", "relation", "recurrence",
-		"url", "stage", "parent", "children", "tag",
+		"url", "parent", "children", "tag",
 	}
 	b.WriteString(muted.Render("  " + wrapValues(hasValues, m.previewWidth-4)))
 	b.WriteString("\n\n")

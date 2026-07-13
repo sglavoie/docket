@@ -7,11 +7,63 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestTaskAttachmentsDeleteMutatesSynchronously(t *testing.T) {
+// fakeAttachmentMutator records the application use cases the attachments view
+// dispatches through its coordinator (the view no longer mutates or saves the
+// project itself).
+type fakeAttachmentMutator struct {
+	urls     []string
+	codeRefs []string
+	files    []string
+	removals []fakeRemoval
+	reorders []fakeReorder
+}
+
+type fakeRemoval struct {
+	index      int
+	deleteFile bool
+}
+
+type fakeReorder struct {
+	from int
+	to   int
+}
+
+func (f *fakeAttachmentMutator) AttachURL(taskID, url string) (app.TaskResult, error) {
+	f.urls = append(f.urls, url)
+	return app.TaskResult{TaskID: taskID}, nil
+}
+
+func (f *fakeAttachmentMutator) AttachCodeReference(taskID, path string, line int) (app.TaskResult, error) {
+	f.codeRefs = append(f.codeRefs, path)
+	return app.TaskResult{TaskID: taskID}, nil
+}
+
+func (f *fakeAttachmentMutator) AttachFile(taskID, sourcePath string) (app.AttachFileResult, error) {
+	f.files = append(f.files, sourcePath)
+	return app.AttachFileResult{Task: app.TaskResult{TaskID: taskID}}, nil
+}
+
+func (f *fakeAttachmentMutator) RemoveAttachment(taskID string, index int, deleteFile bool) (app.RemoveAttachmentResult, error) {
+	f.removals = append(f.removals, fakeRemoval{index: index, deleteFile: deleteFile})
+	return app.RemoveAttachmentResult{Task: app.TaskResult{TaskID: taskID}}, nil
+}
+
+func (f *fakeAttachmentMutator) ReorderAttachment(taskID string, from, to int) (app.TaskResult, error) {
+	f.reorders = append(f.reorders, fakeReorder{from: from, to: to})
+	return app.TaskResult{TaskID: taskID}, nil
+}
+
+func newFakeAttachmentCoordinator() (AttachmentCoordinator, *fakeAttachmentMutator) {
+	fake := &fakeAttachmentMutator{}
+	return AttachmentCoordinator{name: "attachment", attach: fake}, fake
+}
+
+func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
@@ -27,23 +79,27 @@ func TestTaskAttachmentsDeleteMutatesSynchronously(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, nil)
+	coordinator, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
 	model.cursor = 1
 
 	cmd := model.executeDelete()
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeDelete")
 	}
+	if msg := cmd(); msg == nil {
+		t.Fatal("expected transaction message from executeDelete command")
+	} else if _, ok := msg.(TransactionResultMsg); !ok {
+		t.Fatalf("expected TransactionResultMsg, got %T", msg)
+	}
 
-	// Verify state was mutated synchronously before cmd() runs
-	if len(model.task.Attachments) != 1 {
-		t.Fatalf("expected 1 attachment after delete, got %d", len(model.task.Attachments))
+	// The view no longer mutates its own copy; the application layer commits
+	// and the shell reloads the project.
+	if len(model.task.Attachments) != 2 {
+		t.Fatalf("expected local attachments untouched before reload, got %d", len(model.task.Attachments))
 	}
-	if model.task.Attachments[0].Filename != "file1.txt" {
-		t.Fatalf("expected remaining attachment to be 'file1.txt', got %q", model.task.Attachments[0].Filename)
-	}
-	if model.cursor != 0 {
-		t.Fatalf("expected cursor at 0 after deleting last attachment, got %d", model.cursor)
+	if len(fake.removals) != 1 || fake.removals[0].index != 1 || !fake.removals[0].deleteFile {
+		t.Fatalf("expected RemoveAttachment(index=1, deleteFile=true), got %+v", fake.removals)
 	}
 }
 
@@ -62,7 +118,8 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, nil)
+	coordinator, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
 	model.cursor = 5 // Out of bounds
 
 	cmd := model.executeDelete()
@@ -76,13 +133,16 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 		t.Fatalf("expected ErrorMsg for out-of-bounds delete, got %T", msg)
 	}
 
-	// Attachments should be unchanged
+	// Attachments should be unchanged and nothing dispatched
 	if len(model.task.Attachments) != 1 {
 		t.Fatalf("expected attachments to be unchanged, got %d", len(model.task.Attachments))
 	}
+	if len(fake.removals) != 0 {
+		t.Fatalf("expected no coordinator dispatch, got %+v", fake.removals)
+	}
 }
 
-func TestTaskAttachmentsKeepMutatesSynchronously(t *testing.T) {
+func TestTaskAttachmentsKeepDispatchesCoordinator(t *testing.T) {
 	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
@@ -98,24 +158,23 @@ func TestTaskAttachmentsKeepMutatesSynchronously(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, nil)
+	coordinator, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
 	model.cursor = 0
 
 	cmd := model.executeKeep()
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeKeep")
 	}
-
-	// Verify state was mutated synchronously before cmd() runs
-	if len(model.task.Attachments) != 1 {
-		t.Fatalf("expected 1 attachment after unlink, got %d", len(model.task.Attachments))
+	if _, ok := cmd().(TransactionResultMsg); !ok {
+		t.Fatal("expected TransactionResultMsg from executeKeep command")
 	}
-	if model.task.Attachments[0].Filename != "file2.txt" {
-		t.Fatalf("expected remaining attachment to be 'file2.txt', got %q", model.task.Attachments[0].Filename)
+	if len(fake.removals) != 1 || fake.removals[0].index != 0 || fake.removals[0].deleteFile {
+		t.Fatalf("expected RemoveAttachment(index=0, deleteFile=false), got %+v", fake.removals)
 	}
 }
 
-func TestTaskAttachmentsAddURLMutatesSynchronously(t *testing.T) {
+func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
@@ -127,7 +186,8 @@ func TestTaskAttachmentsAddURLMutatesSynchronously(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, nil)
+	coordinator, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
 	model.addMode = true
 	model.textInput.SetValue("https://example.com/design.pdf")
 
@@ -135,16 +195,16 @@ func TestTaskAttachmentsAddURLMutatesSynchronously(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected non-nil command from addAttachment")
 	}
+	if _, ok := cmd().(TransactionResultMsg); !ok {
+		t.Fatal("expected TransactionResultMsg from addAttachment command")
+	}
 
-	// Verify state was mutated synchronously before cmd() runs
+	// Add mode exits before the transaction resolves.
 	if model.addMode {
 		t.Fatal("expected addMode to be false after addAttachment()")
 	}
-	if len(model.task.Attachments) != 1 {
-		t.Fatalf("expected 1 attachment, got %d", len(model.task.Attachments))
-	}
-	if !model.task.Attachments[0].IsURL {
-		t.Fatal("expected attachment to be a URL")
+	if len(fake.urls) != 1 || fake.urls[0] != "https://example.com/design.pdf" {
+		t.Fatalf("expected AttachURL dispatch, got %+v", fake.urls)
 	}
 	if model.cursor != 0 {
 		t.Fatalf("expected cursor at 0, got %d", model.cursor)
@@ -163,7 +223,7 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, nil)
+	model := NewTaskAttachmentsModel(task, project, nil, AttachmentCoordinator{})
 	model.addMode = true
 	model.textInput.SetValue("   ")
 
@@ -205,7 +265,8 @@ func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
 			}
 			project.Tasks = []*models.Task{task}
 
-			model := NewTaskAttachmentsModel(task, project, nil)
+			coordinator, _ := newFakeAttachmentCoordinator()
+			model := NewTaskAttachmentsModel(task, project, nil, coordinator)
 			model.addMode = true
 			model.textInput.SetValue(tc.input)
 
@@ -261,7 +322,7 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, cfg)
+	model := NewTaskAttachmentsModel(task, project, cfg, AttachmentCoordinator{})
 	model.cursor = 0
 
 	// With an empty AttachmentEditor, openAttachmentInEditor should attempt

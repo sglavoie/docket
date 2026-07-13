@@ -10,7 +10,7 @@ import (
 // Archived callers can provide these directly without constructing full tasks.
 type TaskSummary struct {
 	ID             string
-	Status         models.TaskStatus
+	WorkflowState  models.WorkflowState
 	CompletedAt    *time.Time
 	FirstStartedAt *time.Time
 	EstimatedDays  float64
@@ -26,7 +26,7 @@ func TaskSummaryFromTask(task *models.Task) (TaskSummary, bool) {
 	startedAt := firstStartedAtFromTask(task)
 	return TaskSummary{
 		ID:             task.ID,
-		Status:         task.Status,
+		WorkflowState:  task.State(),
 		CompletedAt:    task.CompletedAt,
 		FirstStartedAt: startedAt,
 		EstimatedDays:  task.EstimatedDays,

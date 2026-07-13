@@ -105,11 +105,6 @@ func rebuildBadgeStyles() {
 		MaybeBadgeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	}
 	CanceledBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted).Background(ColorBackground)
-	if activeThemeName == "light" {
-		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7c3aed"))
-	} else {
-		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9d7cd8"))
-	}
 
 	// ColorWarning on light theme is dark brown (#92400e); use white text for
 	// readable contrast (~7:1). Dark theme Warning is navy bg color where

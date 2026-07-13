@@ -677,7 +677,7 @@ func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
 		t.Fatalf("loaded %d tasks, want 1", len(reloaded.Tasks))
 	}
 	task := reloaded.Tasks[0]
-	if task.Section != "" {
-		t.Fatalf("task.Section = %q, want empty after persisted repair", task.Section)
+	if got := models.SectionForState(task.State()); got != "" {
+		t.Fatalf("task section = %q, want empty after persisted repair", got)
 	}
 }

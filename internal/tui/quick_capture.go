@@ -3,15 +3,12 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
@@ -19,10 +16,14 @@ import (
 // embedded quickCaptureInput so it is shared with the Linked Task Creator.
 type QuickCaptureModel struct {
 	quickCaptureInput
-	width  int
-	height int
+	capture CaptureCoordinator
+	width   int
+	height  int
 	discardConfirmState
 }
+
+// SetCaptureCoordinator injects the shared capture coordinator (captureWireable).
+func (m *QuickCaptureModel) SetCaptureCoordinator(c CaptureCoordinator) { m.capture = c }
 
 // NewQuickCaptureModel creates a new quick capture model.
 // initialText pre-populates the input field (e.g., "#tag /section" from active filters).
@@ -235,8 +236,9 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 func (m *QuickCaptureModel) IsFullHeight() bool { return false }
 
 func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
-	// All mutations run synchronously in the Update() goroutine to avoid
-	// data races with View() reading project.Tasks concurrently.
+	// Parsing runs synchronously so a rejected capture keeps the input; the
+	// creation itself commits through the application layer (CaptureCoordinator),
+	// which loads its own snapshot and reloads the affected project on completion.
 
 	input := m.inputValue()
 	if input == "" {
@@ -245,35 +247,23 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 	}
 
 	result, err := parseQuickCapture(input, m.project, m.allProjects, m.skipProjectSyntax)
-	if err == nil {
-		if valErr := models.ValidateTaskTitle(result.title); valErr != nil {
-			m.err = valErr
-			return nil
-		}
-	}
 	if err != nil {
 		m.err = err
 		return nil
 	}
+	if valErr := models.ValidateTaskTitle(result.title); valErr != nil {
+		m.err = valErr
+		return nil
+	}
 
-	// Determine target project (may be different for cross-project capture)
-	targetProject := m.project
+	// Determine target project (may be different for cross-project capture).
+	targetProjectID := m.project.ID
 	if result.targetProjectID != nil {
-		// Find the target project
-		for _, p := range m.allProjects {
-			if p.ID == *result.targetProjectID {
-				targetProject = p
-				// Load the target project to get its tasks
-				if err := storage.LoadProject(targetProject); err != nil {
-					return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to load target project: %w", err)} }
-				}
-				break
-			}
-		}
+		targetProjectID = *result.targetProjectID
 	}
 
 	// Determine target section. Quick capture only routes to built-in GTD
-	// sections; custom grouping is represented with tags.
+	// sections; custom grouping is represented with tags. Empty defaults to Inbox.
 	targetSection := result.section
 	if targetSection == "" {
 		targetSection = models.SectionInbox
@@ -282,82 +272,34 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		return nil
 	}
 
-	// Ensure Inbox exists (gets red color)
-	if !targetProject.HasSection(models.SectionInbox) {
-		targetProject.EnsureSection(models.SectionInbox)
-		targetProject.SetSectionColor(models.SectionInbox, "red")
+	req := app.CaptureRequest{
+		ProjectID:  targetProjectID,
+		Title:      result.title,
+		Type:       result.taskType,
+		Priority:   result.priority,
+		Tags:       result.tags,
+		Section:    targetSection,
+		Due:        result.dueDate,
+		ParentID:   result.parentID,
+		Recurrence: result.recurrence,
+		State:      captureStateForStatus(result.status),
+		Prepend:    true,
 	}
-	// Ensure target section exists (for GTD sections other than Inbox)
-	if targetSection != models.SectionInbox && !targetProject.HasSection(targetSection) {
-		targetProject.EnsureSection(targetSection)
-	}
-	// Create task
-	task := &models.Task{
-		ID:              uuid.New().String(),
-		ShortID:         targetProject.GetNextShortID(),
-		Type:            result.taskType,
-		Title:           result.title,
-		Status:          models.StatusTodo,
-		Priority:        result.priority,
-		ParentID:        result.parentID,
-		DueDate:         result.dueDate,
-		Recurrence:      result.recurrence,
-		DependsOn:       []string{},
-		RelatedTo:       []string{},
-		ScoreDimensions: map[string]int{},
-		Children:        []*models.Task{},
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-	}
-	task.SetSection(targetSection)
+	return m.capture.CaptureCreate(req, openContent, openDetail)
+}
 
-	for _, tag := range result.tags {
-		task.AddTag(tag)
+// captureStateForStatus maps a parsed capture status sigil to the workflow-state
+// transition the capture use case applies. StatusTodo (and the empty default)
+// map to no transition: a freshly created task is already todo, and applying the
+// todo transition would Reopen it into the Inbox, clobbering an explicitly
+// captured section. The legacy per-status Task.Start/Block/… calls are realized
+// by app.applyState via this state. The $start "activate" flag (the retired
+// legacy Active field) is intentionally dropped rather than reintroduced.
+func captureStateForStatus(status models.TaskStatus) models.WorkflowState {
+	if status == "" || status == models.StatusTodo {
+		return ""
 	}
-
-	// Apply status transition using Task methods (handles auto-triage)
-	switch result.status {
-	case models.StatusInProgress:
-		task.Start()
-		if result.activate {
-			task.Activate()
-		}
-	case models.StatusBlocked:
-		task.Block()
-	case models.StatusDone:
-		task.Complete()
-	case models.StatusCanceled:
-		task.Cancel()
-	case models.StatusReview:
-		task.Review()
-	case models.StatusStandby:
-		task.Standby()
-	case models.StatusMaybe:
-		task.Maybe()
-	default:
-	}
-
-	// Add to project at the beginning so it's prominently visible
-	targetProject.Tasks = append([]*models.Task{task}, targetProject.Tasks...)
-	targetProject.BuildTaskTree()
-	targetProject.ReorderRootTasksByCompletion()
-
-	// Save with backup and reload
-	if err := saveProjectSync(targetProject); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
-	}
-
-	// Also reload the current project if it's different from the target
-	// (so that the view refreshes correctly)
-	if result.targetProjectID != nil && m.project.ID != *result.targetProjectID {
-		if err := storage.LoadProject(m.project); err != nil {
-			logging.Warn("failed to reload project %s: %v", m.project.Name, err)
-		}
-	}
-
-	return func() tea.Msg {
-		return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openContent, OpenDetail: openDetail}
-	}
+	return models.TargetStateForStatus(status)
 }
 
 func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }

@@ -11,8 +11,9 @@ import (
 type TaskDecisionsModel struct {
 	BaseView
 	InteractiveViewState
-	task    *models.Task
-	project *models.Project
+	task        *models.Task
+	project     *models.Project
+	coordinator SubviewCoordinator
 
 	// Add mode
 	addMode        bool
@@ -76,10 +77,12 @@ func NewTaskDecisionsModel(task *models.Task, project *models.Project) *TaskDeci
 	}
 }
 
-// NewTaskDecisionsModelWithEditor creates a task decisions viewer with editor config.
-func NewTaskDecisionsModelWithEditor(task *models.Task, project *models.Project, editor string) *TaskDecisionsModel {
+// NewTaskDecisionsModelWithEditor creates a task decisions viewer with editor
+// config and the coordinator its mutations commit through.
+func NewTaskDecisionsModelWithEditor(task *models.Task, project *models.Project, editor string, coordinator SubviewCoordinator) *TaskDecisionsModel {
 	m := NewTaskDecisionsModel(task, project)
 	m.editor = editor
+	m.coordinator = coordinator
 	return m
 }
 

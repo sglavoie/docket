@@ -102,6 +102,7 @@ var viewTypeNames = map[ViewType]string{
 	ViewRoadmap:               "Roadmap",
 	ViewTaskDecisions:         "TaskDecisions",
 	ViewAttrFilterPicker:      "AttrFilterPicker",
+	ViewConflictResolution:    "ConflictResolution",
 }
 
 // String returns the name of the ViewType for readable test output.

@@ -6,44 +6,50 @@ func TestComplete(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Complete()
 
-	if task.Status != StatusDone {
-		t.Errorf("expected StatusDone, got %s", task.Status)
+	if task.State() != StateDone {
+		t.Errorf("expected StateDone, got %s", task.State())
 	}
 	if task.CompletedAt == nil {
 		t.Error("expected CompletedAt to be set")
 	}
-	if task.Active {
-		t.Error("expected Active to be false after Complete")
+}
+
+func TestCompleteLandsInDoneFromNext(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	task.WorkflowState = StateNext
+	task.Complete()
+
+	if task.State() != StateDone {
+		t.Errorf("expected StateDone, got %s", task.State())
+	}
+	if SectionForState(task.State()) != SectionCompleted {
+		t.Errorf("expected Completed section, got %q", SectionForState(task.State()))
 	}
 }
 
-func TestCompleteMovesToCompletedSection(t *testing.T) {
+func TestCompleteLandsInDoneFromWaiting(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionNext
+	task.WorkflowState = StateWaiting
 	task.Complete()
 
-	if task.Section != SectionCompleted {
-		t.Errorf("expected section to be Completed, got %q", task.Section)
+	if task.State() != StateDone {
+		t.Errorf("expected StateDone, got %s", task.State())
+	}
+	if SectionForState(task.State()) != SectionCompleted {
+		t.Errorf("expected Completed section, got %q", SectionForState(task.State()))
 	}
 }
 
-func TestCompleteMovesToCompletedFromWaiting(t *testing.T) {
+func TestCompleteLandsInDoneFromSomeday(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionWaiting
+	task.WorkflowState = StateSomeday
 	task.Complete()
 
-	if task.Section != SectionCompleted {
-		t.Errorf("expected section to be Completed, got %q", task.Section)
+	if task.State() != StateDone {
+		t.Errorf("expected StateDone, got %s", task.State())
 	}
-}
-
-func TestCompleteMovesToCompletedFromSomeday(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionSomeday
-	task.Complete()
-
-	if task.Section != SectionCompleted {
-		t.Errorf("expected section to be Completed, got %q", task.Section)
+	if SectionForState(task.State()) != SectionCompleted {
+		t.Errorf("expected Completed section, got %q", SectionForState(task.State()))
 	}
 }
 
@@ -51,58 +57,58 @@ func TestStart(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Start()
 
-	if task.Status != StatusInProgress {
-		t.Errorf("expected StatusInProgress, got %s", task.Status)
+	if task.State() != StateInProgress {
+		t.Errorf("expected StateInProgress, got %s", task.State())
 	}
 }
 
 func TestStartAutoTriagesFromInbox(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionInbox
+	task.WorkflowState = StateInbox
 	task.Start()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Inbox, got %q", task.Section)
+	if SectionForState(task.State()) != "" {
+		t.Errorf("expected section cleared from Inbox, got %q", SectionForState(task.State()))
 	}
 }
 
 func TestStartAutoTriagesFromNext(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionNext
+	task.WorkflowState = StateNext
 	task.Start()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Next, got %q", task.Section)
+	if SectionForState(task.State()) != "" {
+		t.Errorf("expected section cleared from Next, got %q", SectionForState(task.State()))
 	}
 }
 
 func TestStartAutoTriagesFromReview(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionReview
+	task.WorkflowState = StateReview
 	task.Start()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Review, got %q", task.Section)
+	if SectionForState(task.State()) != "" {
+		t.Errorf("expected section cleared from Review, got %q", SectionForState(task.State()))
 	}
 }
 
 func TestStartAutoTriagesFromStandby(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionStandby
+	task.WorkflowState = StatePaused
 	task.Start()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Standby, got %q", task.Section)
+	if SectionForState(task.State()) != "" {
+		t.Errorf("expected section cleared from Standby, got %q", SectionForState(task.State()))
 	}
 }
 
 func TestStartAutoTriagesFromCompleted(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionCompleted
+	task.WorkflowState = StateDone
 	task.Start()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Completed, got %q", task.Section)
+	if SectionForState(task.State()) != "" {
+		t.Errorf("expected section cleared from Completed, got %q", SectionForState(task.State()))
 	}
 }
 
@@ -110,8 +116,8 @@ func TestBlock(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Block()
 
-	if task.Status != StatusBlocked {
-		t.Errorf("expected StatusBlocked, got %s", task.Status)
+	if task.State() != StateWaiting {
+		t.Errorf("expected StateWaiting, got %s", task.State())
 	}
 }
 
@@ -119,21 +125,24 @@ func TestCancel(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Cancel()
 
-	if task.Status != StatusCanceled {
-		t.Errorf("expected StatusCanceled, got %s", task.Status)
+	if task.State() != StateCanceled {
+		t.Errorf("expected StateCanceled, got %s", task.State())
 	}
 	if task.CompletedAt == nil {
 		t.Error("expected CompletedAt to be set")
 	}
 }
 
-func TestCancelMovesToCompletedSection(t *testing.T) {
+func TestCancelLandsInCanceled(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionNext
+	task.WorkflowState = StateNext
 	task.Cancel()
 
-	if task.Section != SectionCompleted {
-		t.Errorf("expected section to be Completed, got %q", task.Section)
+	if task.State() != StateCanceled {
+		t.Errorf("expected StateCanceled, got %s", task.State())
+	}
+	if SectionForState(task.State()) != SectionCompleted {
+		t.Errorf("expected Completed section, got %q", SectionForState(task.State()))
 	}
 }
 
@@ -142,24 +151,24 @@ func TestReview(t *testing.T) {
 	task.Start()
 	task.Review()
 
-	if task.Status != StatusReview {
-		t.Errorf("expected StatusReview, got %s", task.Status)
+	if task.State() != StateReview {
+		t.Errorf("expected StateReview, got %s", task.State())
 	}
-	if task.Section != SectionReview {
-		t.Errorf("expected Section Review, got %q", task.Section)
+	if SectionForState(task.State()) != SectionReview {
+		t.Errorf("expected Section Review, got %q", SectionForState(task.State()))
 	}
 }
 
 func TestReviewFromTodo(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionInbox
+	task.WorkflowState = StateInbox
 	task.Review()
 
-	if task.Status != StatusReview {
-		t.Errorf("expected StatusReview, got %s", task.Status)
+	if task.State() != StateReview {
+		t.Errorf("expected StateReview, got %s", task.State())
 	}
-	if task.Section != SectionReview {
-		t.Errorf("expected Section Review, got %q", task.Section)
+	if SectionForState(task.State()) != SectionReview {
+		t.Errorf("expected Section Review, got %q", SectionForState(task.State()))
 	}
 }
 
@@ -169,11 +178,11 @@ func TestStandby(t *testing.T) {
 	before := task.UpdatedAt
 	task.Standby()
 
-	if task.Status != StatusStandby {
-		t.Errorf("expected StatusStandby, got %s", task.Status)
+	if task.State() != StatePaused {
+		t.Errorf("expected StatePaused, got %s", task.State())
 	}
-	if task.Section != SectionStandby {
-		t.Errorf("expected Section Standby, got %q", task.Section)
+	if SectionForState(task.State()) != SectionStandby {
+		t.Errorf("expected Section Standby, got %q", SectionForState(task.State()))
 	}
 	if !task.UpdatedAt.After(before) && task.UpdatedAt != before {
 		t.Error("expected UpdatedAt to be updated")
@@ -182,14 +191,14 @@ func TestStandby(t *testing.T) {
 
 func TestStandbyFromTodo(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionInbox
+	task.WorkflowState = StateInbox
 	task.Standby()
 
-	if task.Status != StatusStandby {
-		t.Errorf("expected StatusStandby, got %s", task.Status)
+	if task.State() != StatePaused {
+		t.Errorf("expected StatePaused, got %s", task.State())
 	}
-	if task.Section != SectionStandby {
-		t.Errorf("expected Section Standby, got %q", task.Section)
+	if SectionForState(task.State()) != SectionStandby {
+		t.Errorf("expected Section Standby, got %q", SectionForState(task.State()))
 	}
 }
 
@@ -199,11 +208,11 @@ func TestMaybe(t *testing.T) {
 	before := task.UpdatedAt
 	task.Maybe()
 
-	if task.Status != StatusMaybe {
-		t.Errorf("expected StatusMaybe, got %s", task.Status)
+	if task.State() != StateSomeday {
+		t.Errorf("expected StateSomeday, got %s", task.State())
 	}
-	if task.Section != SectionSomeday {
-		t.Errorf("expected Section Someday, got %q", task.Section)
+	if SectionForState(task.State()) != SectionSomeday {
+		t.Errorf("expected Section Someday, got %q", SectionForState(task.State()))
 	}
 	if !task.UpdatedAt.After(before) && task.UpdatedAt != before {
 		t.Error("expected UpdatedAt to be updated")
@@ -212,14 +221,14 @@ func TestMaybe(t *testing.T) {
 
 func TestMaybeFromTodo(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.Section = SectionInbox
+	task.WorkflowState = StateInbox
 	task.Maybe()
 
-	if task.Status != StatusMaybe {
-		t.Errorf("expected StatusMaybe, got %s", task.Status)
+	if task.State() != StateSomeday {
+		t.Errorf("expected StateSomeday, got %s", task.State())
 	}
-	if task.Section != SectionSomeday {
-		t.Errorf("expected Section Someday, got %q", task.Section)
+	if SectionForState(task.State()) != SectionSomeday {
+		t.Errorf("expected Section Someday, got %q", SectionForState(task.State()))
 	}
 }
 
@@ -228,35 +237,14 @@ func TestReopen(t *testing.T) {
 	task.Complete()
 	task.Reopen()
 
-	if task.Status != StatusTodo {
-		t.Errorf("expected StatusTodo, got %s", task.Status)
+	if task.State() != StateInbox {
+		t.Errorf("expected StateInbox, got %s", task.State())
 	}
 	if task.CompletedAt != nil {
 		t.Error("expected CompletedAt to be nil after Reopen")
 	}
-	if task.Section != SectionInbox {
-		t.Errorf("expected Section Inbox, got %q", task.Section)
-	}
-}
-
-func TestCancelClearsActive(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.Active = true
-	task.Cancel()
-
-	if task.Active {
-		t.Error("expected Active to be false after Cancel")
-	}
-}
-
-func TestReopenClearsActive(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.Active = true
-	task.Complete()
-	task.Reopen()
-
-	if task.Active {
-		t.Error("expected Active to be false after Reopen")
+	if SectionForState(task.State()) != SectionInbox {
+		t.Errorf("expected Section Inbox, got %q", SectionForState(task.State()))
 	}
 }
 

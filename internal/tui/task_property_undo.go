@@ -29,20 +29,6 @@ func bulkTaskPropertyChangedWithUndo(action, context string, taskIDs []string) T
 	}
 }
 
-func (m *AppModel) taskMutationSaveOptions(task *models.Task, action string) ProjectSaveOptions {
-	opts := ProjectSaveOptions{
-		UndoAction:  action,
-		UndoContext: taskUndoContext(task),
-	}
-	if task != nil {
-		opts.UndoTaskIDs = []string{task.ID}
-	}
-	if m.config != nil && m.config.UndoHistoryDepth != nil {
-		opts.UndoDepth = *m.config.UndoHistoryDepth
-	}
-	return opts
-}
-
 func taskUndoContext(task *models.Task) string {
 	if task == nil {
 		return ""

@@ -52,7 +52,7 @@ func (m *ScoreProfileManagerModel) addPreset(name string) tea.Cmd {
 		return defaultStatusTimeout()
 	}
 
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.coordinator.SaveNow(m.config); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
@@ -91,7 +91,7 @@ func (m *ScoreProfileManagerModel) executeDelete() tea.Cmd {
 	}
 
 	m.config.RemoveScoringProfile(profile.ID)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.coordinator.SaveNow(m.config); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
@@ -118,7 +118,7 @@ func (m *ScoreProfileManagerModel) assignProfile() tea.Cmd {
 
 	profile := m.profiles[m.cursor]
 	m.config.SetProjectScoringProfile(m.currentProjectID, profile.ID)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.coordinator.SaveNow(m.config); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
@@ -137,7 +137,7 @@ func (m *ScoreProfileManagerModel) unassignProfile() tea.Cmd {
 	}
 
 	m.config.UnsetProjectScoringProfile(m.currentProjectID)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.coordinator.SaveNow(m.config); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}

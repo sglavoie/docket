@@ -42,15 +42,15 @@ func TestParseMetadata_PinnedAtMinutePrecisionFallback(t *testing.T) {
 func TestWriteMetadata_PinnedAt(t *testing.T) {
 	pinnedTime := time.Date(2025, 3, 10, 14, 30, 45, 0, time.Local)
 	task := &models.Task{
-		ID:        "p1",
-		Status:    models.StatusTodo,
-		Priority:  2,
-		Pinned:    true,
-		PinnedAt:  &pinnedTime,
-		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "p1",
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		Pinned:        true,
+		PinnedAt:      &pinnedTime,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if !strings.Contains(result, "pinned: true") {
 		t.Errorf("WriteMetadata should contain pinned field, got: %s", result)
 	}
@@ -61,13 +61,13 @@ func TestWriteMetadata_PinnedAt(t *testing.T) {
 
 func TestWriteMetadata_NoPinnedAt(t *testing.T) {
 	task := &models.Task{
-		ID:        "p2",
-		Status:    models.StatusTodo,
-		Priority:  2,
-		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "p2",
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if strings.Contains(result, "pinned_at") {
 		t.Errorf("WriteMetadata should not contain pinned_at when nil, got: %s", result)
 	}
@@ -78,15 +78,15 @@ func TestWriteMetadata_PinnedAtOmittedWhenNotPinned(t *testing.T) {
 	// the writer should NOT emit pinned_at since pinned is not true.
 	pinnedTime := time.Date(2025, 3, 10, 14, 30, 45, 0, time.Local)
 	task := &models.Task{
-		ID:        "p3",
-		Status:    models.StatusTodo,
-		Priority:  2,
-		Pinned:    false,
-		PinnedAt:  &pinnedTime,
-		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "p3",
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		Pinned:        false,
+		PinnedAt:      &pinnedTime,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	result := WriteMetadata(task)
+	result := WriteMetadataV2(task)
 	if strings.Contains(result, "pinned") {
 		t.Errorf("WriteMetadata should not contain pinned or pinned_at when Pinned is false, got: %s", result)
 	}
@@ -95,15 +95,15 @@ func TestWriteMetadata_PinnedAtOmittedWhenNotPinned(t *testing.T) {
 func TestMetadata_PinnedAtRoundtrip(t *testing.T) {
 	pinnedTime := time.Date(2025, 3, 10, 14, 30, 45, 0, time.Local)
 	original := &models.Task{
-		ID:        "p1",
-		Status:    models.StatusTodo,
-		Priority:  2,
-		Pinned:    true,
-		PinnedAt:  &pinnedTime,
-		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+		ID:            "p1",
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		Pinned:        true,
+		PinnedAt:      &pinnedTime,
+		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	meta := WriteMetadata(original)
+	meta := WriteMetadataV2(original)
 
 	metaStr := strings.TrimPrefix(meta, "<!-- ")
 	metaStr = strings.TrimSuffix(metaStr, " -->")

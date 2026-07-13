@@ -26,7 +26,7 @@ func TestRunTaskAdd(t *testing.T) {
 		testutil.AssertEqual(t, task.Title, "My New Task")
 		testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 		testutil.AssertEqual(t, task.Priority, 3)
-		testutil.AssertEqual(t, task.Status, models.StatusTodo)
+		testutil.AssertEqual(t, models.LegacyStatusForState(task.State()), models.StatusTodo)
 	})
 
 	t.Run("rejects missing title", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestRunTaskAdd(t *testing.T) {
 			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
 		}
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.Section, "Inbox")
+		testutil.AssertEqual(t, models.SectionForState(task.State()), "Inbox")
 	})
 
 	t.Run("rejects invalid recurrence", func(t *testing.T) {
@@ -201,36 +201,6 @@ func TestRunTaskAdd(t *testing.T) {
 		if task.Recurrence == nil {
 			t.Fatal("task should have recurrence set")
 		}
-	})
-
-	t.Run("whitespace-only stage is not persisted", func(t *testing.T) {
-		deps, project := setupTaskAddTest(t)
-		defer deps.Cleanup()
-
-		taskStageFlag = "   "
-		defer func() { taskStageFlag = "" }()
-
-		err := runTaskAdd(taskAddCmd, []string{"Stage whitespace task"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.Stage, "")
-	})
-
-	t.Run("stage value is trimmed before persisting", func(t *testing.T) {
-		deps, project := setupTaskAddTest(t)
-		defer deps.Cleanup()
-
-		taskStageFlag = "  Design\t"
-		defer func() { taskStageFlag = "" }()
-
-		err := runTaskAdd(taskAddCmd, []string{"Padded stage task"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.Stage, "Design")
 	})
 
 	t.Run("template flag is trimmed before lookup", func(t *testing.T) {

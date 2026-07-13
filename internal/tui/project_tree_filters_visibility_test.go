@@ -166,18 +166,18 @@ func TestCollapseWithViewModeActive(t *testing.T) {
 	}
 
 	parent := &models.Task{
-		ID:      "parent-id",
-		Title:   "Parent Task",
-		Type:    models.TaskTypeEpic,
-		Section: "", // Active section
+		ID:            "parent-id",
+		Title:         "Parent Task",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady, // Active section
 	}
 	child := &models.Task{
-		ID:       "child-id",
-		Title:    "Child Task",
-		Type:     models.TaskTypeTask,
-		ParentID: &parent.ID,
-		Parent:   parent,
-		Section:  "", // Active section
+		ID:            "child-id",
+		Title:         "Child Task",
+		Type:          models.TaskTypeTask,
+		ParentID:      &parent.ID,
+		Parent:        parent,
+		WorkflowState: models.StateReady, // Active section
 	}
 	parent.Children = []*models.Task{child}
 	project.Tasks = []*models.Task{parent, child}

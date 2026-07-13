@@ -15,6 +15,10 @@ type TaskAttachmentsModel struct {
 	task    *models.Task
 	project *models.Project
 	config  *config.Config
+	// coordinator routes attachment mutations through the application layer
+	// (one atomic ChangeSet each) instead of a direct project save. See
+	// feature_coordinator_secondary.go.
+	coordinator AttachmentCoordinator
 
 	// Add mode
 	addMode   bool
@@ -22,7 +26,7 @@ type TaskAttachmentsModel struct {
 }
 
 // NewTaskAttachmentsModel creates a new task attachments viewer.
-func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *config.Config) *TaskAttachmentsModel {
+func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *config.Config, coordinator AttachmentCoordinator) *TaskAttachmentsModel {
 	ti := textinput.New()
 	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500
@@ -30,10 +34,23 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *co
 	applyThemedTextInput(&ti)
 
 	return &TaskAttachmentsModel{
-		task:      task,
-		project:   project,
-		config:    cfg,
-		textInput: ti,
+		task:        task,
+		project:     project,
+		config:      cfg,
+		coordinator: coordinator,
+		textInput:   ti,
+	}
+}
+
+// refreshAfterReload re-resolves the task pointer and clamps the cursor after
+// the shell reloaded the project from a committed transaction.
+func (m *TaskAttachmentsModel) refreshAfterReload() {
+	m.resolveTask()
+	if m.cursor >= len(m.task.Attachments) {
+		m.cursor = len(m.task.Attachments) - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
 	}
 }
 

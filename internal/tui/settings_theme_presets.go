@@ -137,12 +137,13 @@ func (m *SettingsModel) execPresetSave(name string) tea.Cmd {
 	}
 	cfg := m.config
 	mgr := m.configManager
+	coordinator := m.coordinator
 	return func() tea.Msg {
 		if err := mgr.WriteTheme(tf); err != nil {
 			return presetErrMsg{err: err.Error()}
 		}
-		if err := mgr.Save(cfg); err != nil {
-			return presetErrMsg{err: err.Error()}
+		if errMsg, ok := coordinator.Save(cfg)().(TransactionErrorMsg); ok {
+			return presetErrMsg{err: errMsg.Err.Error()}
 		}
 		return presetSavedMsg{name: name}
 	}
@@ -165,11 +166,11 @@ func (m *SettingsModel) execPresetLoad() tea.Cmd {
 		m.config.ThemeDarkName = tf.Name
 	}
 	cfg := m.config
-	mgr := m.configManager
+	coordinator := m.coordinator
 	name := tf.Name
 	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return presetErrMsg{err: err.Error()}
+		if errMsg, ok := coordinator.Save(cfg)().(TransactionErrorMsg); ok {
+			return presetErrMsg{err: errMsg.Err.Error()}
 		}
 		return presetLoadedMsg{name: name}
 	}
@@ -204,10 +205,10 @@ func (m *SettingsModel) execPresetReset() tea.Cmd {
 		m.config.ThemeDarkName = ""
 	}
 	cfg := m.config
-	mgr := m.configManager
+	coordinator := m.coordinator
 	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return presetErrMsg{err: err.Error()}
+		if errMsg, ok := coordinator.Save(cfg)().(TransactionErrorMsg); ok {
+			return presetErrMsg{err: errMsg.Err.Error()}
 		}
 		return presetResetMsg{}
 	}

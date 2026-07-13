@@ -31,13 +31,13 @@ func init() {
 }
 
 func runWorkflowTest(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	configManager := config.NewManager(resolveConfigPath())
+	automation, err := automationStore(configManager).LoadAutomation()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	rules := cfg.GetEnabledWorkflowRules()
+	rules := automation.GetEnabledWorkflowRules()
 	if len(rules) == 0 {
 		fmt.Println("No enabled workflow rules to test.")
 		return nil

@@ -55,8 +55,8 @@ var OutlinerPerspectivePrefixHints = []PrefixHint{
 
 // buildPrefixHints returns the hints map for all supported prefix keys.
 func (m *OutlinerModel) buildPrefixHints() PrefixHints {
-	currentStage, currentPriority := m.currentTaskPrefixContext()
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	currentPriority := m.currentTaskPrefixContext()
+	hints := CommonTaskActionPrefixHints(currentPriority)
 	hints["t"] = buildOutlinerTaskPrefixHints(m.project == nil)
 	hints["b"] = BlockerPrefixHints
 	hints["g"] = outlinerNavigationHints(m.project == nil)
@@ -78,12 +78,11 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	return hints
 }
 
-func (m *OutlinerModel) currentTaskPrefixContext() (string, int) {
+func (m *OutlinerModel) currentTaskPrefixContext() int {
 	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].task == nil {
-		return "", 0
+		return 0
 	}
-	task := m.rows[m.cursor].task
-	return task.Stage, task.Priority
+	return m.rows[m.cursor].task.Priority
 }
 
 func buildOutlinerTaskPrefixHints(crossProject bool) []PrefixHint {
@@ -174,7 +173,7 @@ func (m *OutlinerModel) addOutlinerStatusHints(hints PrefixHints, activePrefix s
 	}
 
 	task := m.rows[m.cursor].task
-	currentStatus := string(task.Status)
+	currentState := task.State()
 	notRecurring := task.Recurrence == nil
 	hints[","] = annotatePrefixHints(StatusPrefixHints, func(hint *PrefixHint) {
 		switch hint.Key {
@@ -183,7 +182,7 @@ func (m *OutlinerModel) addOutlinerStatusHints(hints PrefixHints, activePrefix s
 				hint.Disabled = true
 			}
 		default:
-			if statusForHint, ok := StatusForPrefixKey(hint.Key); ok && string(statusForHint) == currentStatus {
+			if stateForHint, ok := StateForPrefixKey(hint.Key); ok && currentState == stateForHint {
 				hint.Active = true
 			}
 		}

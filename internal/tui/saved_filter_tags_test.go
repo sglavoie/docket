@@ -137,7 +137,7 @@ func TestCaptureAndLoadSavedFilterRestoresSingleProjectPinnedTagTab(t *testing.T
 func TestCaptureAndLoadSavedFilterRestoresCrossProjectPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
 	app.config.GlobalPinnedTags = []string{"backend"}
-	task := &models.Task{ID: "task", Title: "Backend", Status: models.StatusTodo, Tags: []string{"backend"}}
+	task := &models.Task{ID: "task", Title: "Backend", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{
 		ID:    "alpha",
 		Name:  "Alpha",

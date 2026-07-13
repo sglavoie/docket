@@ -25,7 +25,7 @@ func TestIsEligibleForPriority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusDone
+		task.WorkflowState = models.StateDone
 		if IsEligibleForPriority(task) {
 			t.Errorf("expected done task to be excluded")
 		}
@@ -36,7 +36,7 @@ func TestIsEligibleForPriority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusCanceled
+		task.WorkflowState = models.StateCanceled
 		if IsEligibleForPriority(task) {
 			t.Errorf("expected canceled task to be excluded")
 		}
@@ -81,7 +81,7 @@ func TestIsPriorityBlocked(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Status = models.StatusBlocked
+		task.WorkflowState = models.StateWaiting
 		project.Tasks = []*models.Task{task}
 
 		if !IsPriorityBlocked(project, task) {
@@ -119,7 +119,7 @@ func TestIsPriorityBlocked(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		blocker.Status = models.StatusDone
+		blocker.WorkflowState = models.StateDone
 		dependent, err := models.NewTask("dep", 2, models.TaskTypeTask, "Dependent")
 		if err != nil {
 			t.Fatal(err)

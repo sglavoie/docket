@@ -102,7 +102,14 @@ func newUITestWorkspace() (*uitestWorkspace, error) {
 		return nil, fmt.Errorf("failed to create workspace data dir: %w", err)
 	}
 
-	configPath := filepath.Join(root, "tt.json")
+	// Persistence is the decomposed domain files, whose location derives from the
+	// workspace root (the config path's parent). Keep the config inside the data
+	// dir so the workspace root equals DataDir — the invariant a real install
+	// holds and NewCopiedWorkspaceDriver relies on when it reroots the copy onto
+	// its own root. A config path in `root` (a level above DataDir) would make the
+	// domain files and derived project paths resolve to the wrong subtree after a
+	// copy+reload.
+	configPath := filepath.Join(dataDir, ".tt.json")
 	return &uitestWorkspace{
 		Root:       root,
 		DataDir:    dataDir,
@@ -181,57 +188,48 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		return nil, nil, fmt.Errorf("source config path is required")
 	}
 
-	// Pure read of the source config file — the source is never written to.
-	// Note: config.Manager.Load re-saves the config when it applies first-load
-	// migrations (default rules, templates), so we must not Load the source in
-	// place. Instead we stage the raw bytes in the temp workspace and load
-	// there, keeping every migration write on the copy.
-	srcConfigBytes, err := os.ReadFile(sourceConfigPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read source config %q: %w", sourceConfigPath, err)
-	}
+	// Persistence is the decomposed domain files under the workspace root, so the
+	// source "config" is the whole workspace directory (the .tt/ config domain
+	// files plus the project data), not a single monolithic file. Copy that durable
+	// tree into a fresh temp workspace FIRST, then load from the copy: Manager.Load
+	// re-saves first-load migrations, and copying before loading keeps every such
+	// write on the copy so the source is never mutated. MigrateCopyTree refuses to
+	// overwrite and skips runtime-only entries.
+	srcRoot := config.WorkspaceRootFromConfigPath(sourceConfigPath)
 
 	root, err := os.MkdirTemp("", "tt-uitest-copy-*")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create copied workspace temp dir: %w", err)
 	}
-	ws := &uitestWorkspace{Root: root, ConfigPath: filepath.Join(root, "tt.json")}
+	ws := &uitestWorkspace{Root: root, ConfigPath: filepath.Join(root, filepath.Base(sourceConfigPath))}
 
-	if err = os.WriteFile(ws.ConfigPath, srcConfigBytes, config.FilePermissions); err != nil {
+	if err = config.MigrateCopyTree(srcRoot, root); err != nil {
 		_ = ws.Cleanup()
-		return nil, nil, fmt.Errorf("failed to stage source config: %w", err)
+		return nil, nil, fmt.Errorf("failed to copy source workspace: %w", err)
 	}
+
 	ws.Manager = config.NewManager(ws.ConfigPath)
 	cfg, err := ws.Manager.Load()
 	if err != nil {
 		_ = ws.Cleanup()
-		return nil, nil, fmt.Errorf("failed to load staged config: %w", err)
+		return nil, nil, fmt.Errorf("failed to load copied config: %w", err)
 	}
+
+	// The copied workspace roots at `root`. A domain-loaded config already derives
+	// DataDir and every project path there; only a legacy config with persisted
+	// absolute paths still points into the source and needs rerooting onto the copy.
 	srcDataDir := cfg.DataDir
-	if strings.TrimSpace(srcDataDir) == "" {
-		_ = ws.Cleanup()
-		return nil, nil, fmt.Errorf("source config %q has no data_dir", sourceConfigPath)
-	}
-
-	// Copy the durable contents of the source data dir into the temp copy.
-	// MigrateCopyTree refuses to overwrite and skips runtime-only entries.
-	dstDataDir := filepath.Join(root, "data")
-	if err = config.MigrateCopyTree(srcDataDir, dstDataDir); err != nil {
-		_ = ws.Cleanup()
-		return nil, nil, fmt.Errorf("failed to copy data dir: %w", err)
-	}
-
-	// Rewrite the config onto the copy. Because the staged config was loaded
-	// from (and is saved back to) the temp path, the source config file stays
-	// byte-for-byte untouched.
-	cfg.DataDir = dstDataDir
+	cfg.DataDir = root
 	cfg.FzfEnabled = false
 	cfg.GlowEnabled = false
 	for _, p := range cfg.Projects {
 		if p == nil {
 			continue
 		}
-		newPath, rerootErr := rerootProjectPath(p.Path, srcDataDir, dstDataDir, p.ID)
+		if pathUnderRoot(root, p.Path) {
+			continue
+		}
+		newPath, rerootErr := rerootProjectPath(p.Path, srcDataDir, root, p.ID)
 		if rerootErr != nil {
 			_ = ws.Cleanup()
 			return nil, nil, fmt.Errorf("failed to isolate project %q: %w", p.ID, rerootErr)
@@ -239,7 +237,7 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		p.Path = newPath
 	}
 
-	ws.DataDir = dstDataDir
+	ws.DataDir = root
 	ws.Config = cfg
 
 	driver, err := ws.launch(width, height)
@@ -248,6 +246,20 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		return nil, nil, err
 	}
 	return driver, ws, nil
+}
+
+// pathUnderRoot reports whether path is root itself or lives inside root, on
+// cleaned relative paths. It lets NewCopiedWorkspaceDriver skip rerooting project
+// paths a domain reload already derived into the copy.
+func pathUnderRoot(root, path string) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }
 
 // rerootProjectPath maps a project's data directory into the copied workspace
@@ -320,12 +332,10 @@ func buildRichFixture(w *uitestWorkspace) error {
 
 		login := newFixtureTask(p, models.TaskTypeTask, "Build login form")
 		login.ParentID = &story.ID
-		login.Status = models.StatusInProgress
-		login.SetSection(models.SectionNext)
+		login.ApplyWorkflowState(models.StateInProgress)
 
 		validate := newFixtureTask(p, models.TaskTypeTask, "Add password validation")
 		validate.ParentID = &story.ID
-		validate.Status = models.StatusTodo
 		validate.Tags = []string{"backend", "security"}
 
 		mockup := newFixtureTask(p, models.TaskTypeTask, "Design login mockup")
@@ -335,14 +345,14 @@ func buildRichFixture(w *uitestWorkspace) error {
 		bug := newFixtureTask(p, models.TaskTypeBug, "Fix redirect loop after logout")
 		bug.Priority = 1
 		bug.Tags = []string{"urgent"}
-		bug.Status = models.StatusBlocked
+		bug.ApplyWorkflowState(models.StateWaiting)
 
 		idea := newFixtureTask(p, models.TaskTypeIdea, "Explore social login")
 		idea.Description = "Google / GitHub OAuth."
-		idea.SetSection(models.SectionSomeday)
+		idea.ApplyWorkflowState(models.StateSomeday)
 
 		inbox := newFixtureTask(p, models.TaskTypeTask, "Triage support inbox")
-		inbox.SetSection(models.SectionInbox)
+		inbox.ApplyWorkflowState(models.StateInbox)
 	})
 	if err != nil {
 		return err
@@ -357,20 +367,20 @@ func buildAlertsFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Alerts Project", func(p *models.Project) {
 		overdue := newFixtureTask(p, models.TaskTypeTask, "Overdue: submit quarterly report")
 		overdue.Priority = 1
-		overdue.SetSection(models.SectionNext)
+		overdue.ApplyWorkflowState(models.StateNext)
 		setDue(overdue, -3*24*time.Hour)
 
 		dueSoon := newFixtureTask(p, models.TaskTypeTask, "Due soon: renew certificate")
 		dueSoon.Priority = 2
-		dueSoon.SetSection(models.SectionNext)
+		dueSoon.ApplyWorkflowState(models.StateNext)
 		setDue(dueSoon, 12*time.Hour)
 
 		blocked := newFixtureTask(p, models.TaskTypeBug, "Blocked: production outage")
 		blocked.Priority = 1
-		blocked.Status = models.StatusBlocked
+		blocked.ApplyWorkflowState(models.StateWaiting)
 
 		waiting := newFixtureTask(p, models.TaskTypeTask, "Waiting on vendor response")
-		waiting.SetSection(models.SectionWaiting)
+		waiting.ApplyWorkflowState(models.StateWaiting)
 	})
 	if err != nil {
 		return err
@@ -379,7 +389,7 @@ func buildAlertsFixture(w *uitestWorkspace) error {
 		stale := time.Now().Add(-21 * 24 * time.Hour)
 		for i := 0; i < 5; i++ {
 			task := newFixtureTask(p, models.TaskTypeTask, fmt.Sprintf("Untriaged alert backlog item %d", i+1))
-			task.SetSection(models.SectionInbox)
+			task.ApplyWorkflowState(models.StateInbox)
 			task.CreatedAt = stale
 			task.UpdatedAt = stale
 		}
@@ -391,25 +401,21 @@ func buildAlertsFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildWorkflowFixture creates tasks spread across workflow stages so the
-// stage-oriented views have something to render.
+// buildWorkflowFixture creates a spread of tasks across workflow states so the
+// planning/review views have something to render.
 func buildWorkflowFixture(w *uitestWorkspace) error {
-	stages := []struct {
-		title string
-		stage string
-	}{
-		{"Sketch onboarding flow", "Brainstorm"},
-		{"Design settings screen", "Design"},
-		{"Implement export pipeline", "Implement"},
-		{"Review release notes", "Review"},
+	titles := []string{
+		"Sketch onboarding flow",
+		"Design settings screen",
+		"Implement export pipeline",
+		"Review release notes",
 	}
 	project, err := w.addProject("Workflow Project", func(p *models.Project) {
-		for i, s := range stages {
-			t := newFixtureTask(p, models.TaskTypeTask, s.title)
-			t.Stage = s.stage
+		for i, title := range titles {
+			t := newFixtureTask(p, models.TaskTypeTask, title)
 			t.Priority = (i % 3) + 1
-			t.SetSection(models.SectionNext)
-			if i == len(stages)-1 {
+			t.ApplyWorkflowState(models.StateNext)
+			if i == len(titles)-1 {
 				markDone(t)
 			}
 		}
@@ -429,12 +435,11 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 			"Investigate intermittent timeout when syncing very large project archives over slow connections")
 		long.Priority = 1
 		long.Tags = []string{"infrastructure", "reliability", "sync"}
-		long.SetSection(models.SectionNext)
+		long.ApplyWorkflowState(models.StateNext)
 
 		another := newFixtureTask(p, models.TaskTypeBug,
 			"Truncated column headers overlap when the terminal is resized below the minimum comfortable width")
-		another.Status = models.StatusInProgress
-		another.SetSection(models.SectionNext)
+		another.ApplyWorkflowState(models.StateInProgress)
 	})
 	if err != nil {
 		return err
@@ -457,13 +462,12 @@ func newFixtureTask(p *models.Project, taskType models.TaskType, title string) *
 	return task
 }
 
-// markDone completes a task and stamps CompletedAt/section like the lifecycle
-// transition would.
+// markDone completes a task via the canonical done state and stamps CompletedAt
+// like the lifecycle transition would.
 func markDone(t *models.Task) {
 	now := time.Now()
-	t.Status = models.StatusDone
+	t.ApplyWorkflowState(models.StateDone)
 	t.CompletedAt = &now
-	t.SetSection(models.SectionCompleted)
 }
 
 // setDue sets a due date relative to now.

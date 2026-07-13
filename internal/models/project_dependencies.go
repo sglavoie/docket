@@ -70,8 +70,10 @@ func (p *Project) dependsOnTransitive(sourceID, targetID string, visited map[str
 	return false
 }
 
-// CheckAndAutoUnblock checks all blocked tasks and transitions them to todo
-// if all their dependencies are complete.
+// CheckAndAutoUnblock checks all waiting tasks that carry dependencies and
+// reopens them (to the Inbox) once every dependency is complete. Waiting is
+// the workflow state the legacy blocked status maps to; a waiting task with
+// no dependencies is treated as externally waiting and left alone.
 // Cross-project dependencies (format "projectID:taskID") cannot be resolved
 // locally and are conservatively treated as incomplete to prevent premature
 // unblocking.
@@ -82,7 +84,7 @@ func (p *Project) dependsOnTransitive(sourceID, targetID string, visited map[str
 // as completable — leaving the two helpers contradicting one another.
 func (p *Project) CheckAndAutoUnblock() {
 	for _, task := range p.Tasks {
-		if task.Status != StatusBlocked || len(task.DependsOn) == 0 {
+		if !task.IsInState(StateWaiting) || len(task.DependsOn) == 0 {
 			continue
 		}
 

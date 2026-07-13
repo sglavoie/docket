@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // resolveProjectForRow returns the project that owns the given row.
@@ -69,8 +68,8 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 		}
 	}
 
-	if task.Section != "" && m.project != nil {
-		delete(m.collapsedSections, task.Section)
+	if bucket := taskSectionBucket(task); bucket != "" && m.project != nil {
+		delete(m.collapsedSections, bucket)
 	}
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
@@ -143,79 +142,13 @@ func (m *OutlinerModel) moveCursorToProjectTask(taskID, projectID string) bool {
 	return false
 }
 
-// UnlinkSelectedSidebarTask removes the currently selected link from the sidebar.
+// UnlinkSelectedSidebarTask removes the currently selected link from the sidebar,
+// routing the removal through the application-layer link coordinator (one
+// ledger-undoable ChangeSet) instead of a raw save.
 func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.Cmd {
 	section := m.sidebar.GetDependencySection()
 	cursor := m.sidebar.GetDependencyCursor()
-	persister := m.projectService
-
-	m.setUndoContext("Unlink", sourceTask.Title)
-	m.undo.TaskIDs = []string{sourceTask.ID}
-	opts := m.buildWorkflowOpts(nil)
-	project := m.project
-	cfg := m.config
-	projectID := m.project.ID
-
-	var crossProjectRef string
-	switch section {
-	case 0:
-		if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
-			return nil
-		}
-		sourceTask.RemoveDependency(sourceTask.DependsOn[cursor])
-
-	case 1:
-		blockedTasks := project.GetBlockedByTasks(sourceTask)
-		if cursor < 0 || cursor >= len(blockedTasks) {
-			return nil
-		}
-		blockedTasks[cursor].RemoveDependency(sourceTask.ID)
-
-	case 2:
-		if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
-			return nil
-		}
-		ref := sourceTask.RelatedTo[cursor]
-		taskRef := models.ParseTaskRef(ref)
-
-		sourceTask.RemoveRelatedTo(ref)
-		if taskRef.IsCrossProject() {
-			crossProjectRef = ref
-		} else if targetTask := project.GetTaskByID(taskRef.TaskID); targetTask != nil {
-			targetTask.RemoveRelatedTo(sourceTask.ID)
-		}
-	}
-
-	return func() tea.Msg {
-		if crossProjectRef != "" && cfg != nil {
-			taskRef := models.ParseTaskRef(crossProjectRef)
-			targetProject := cfg.GetProject(taskRef.ProjectID)
-			if targetProject != nil {
-				if len(targetProject.Tasks) == 0 {
-					if err := storage.LoadProject(targetProject); err != nil {
-						return ErrorMsg{Err: err}
-					}
-				}
-				if targetTask := targetProject.GetTaskByID(taskRef.TaskID); targetTask != nil {
-					targetTask.RemoveRelatedTo(projectID + ":" + sourceTask.ID)
-					if err := storage.BackupProject(targetProject); err != nil {
-						return ErrorMsg{Err: err}
-					}
-					if err := storage.SaveProjectLocked(targetProject); err != nil {
-						return ErrorMsg{Err: err}
-					}
-				}
-			}
-		}
-
-		if err := persistWithWorkflow(opts); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		if err := persister.Load(project); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return LinkRemovedMsg{SourceTask: sourceTask, Section: section}
-	}
+	return sidebarUnlinkCommand(m.link, m.project, sourceTask, section, cursor)
 }
 
 func (m *OutlinerModel) StatusBarLabel() string {

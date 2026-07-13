@@ -11,6 +11,7 @@ import (
 type GlobalTagManagerModel struct {
 	config        *config.Config
 	configManager *config.Manager
+	coordinator   TagCoordinator
 	tags          []GlobalTagInfo
 	cursor        int
 	width         int
@@ -30,8 +31,10 @@ type GlobalTagManagerModel struct {
 	selectedTag       string
 }
 
-// NewGlobalTagManagerModel creates a new global tag manager model.
-func NewGlobalTagManagerModel(cfg *config.Config, managers ...*config.Manager) *GlobalTagManagerModel {
+// NewGlobalTagManagerModel creates a new global tag manager model. The
+// coordinator backs the workspace-wide tag-rename use case; task and catalog
+// mutations still route through the shell.
+func NewGlobalTagManagerModel(cfg *config.Config, coordinator TagCoordinator, managers ...*config.Manager) *GlobalTagManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
@@ -46,6 +49,7 @@ func NewGlobalTagManagerModel(cfg *config.Config, managers ...*config.Manager) *
 	m := &GlobalTagManagerModel{
 		config:        cfg,
 		configManager: manager,
+		coordinator:   coordinator,
 		cursor:        0,
 		renameInput:   renameInput,
 	}

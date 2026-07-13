@@ -20,6 +20,8 @@ import (
 var (
 	listTaskType   string
 	listTaskStatus string
+	listState      string
+	listBlocked    bool
 	listPriority   int
 	listTag        string
 	listShowAll    bool
@@ -28,6 +30,12 @@ var (
 	listParked     bool
 	listSort       string
 	listJSON       bool
+
+	// listFilterProject holds the project being listed so the derived
+	// dependency-blocked filter (--blocked) can resolve a task's unresolved
+	// dependencies. Set in runTaskList before filtering; nil disables the
+	// project-scoped blocked check.
+	listFilterProject *models.Project
 )
 
 var taskListCmd = &cobra.Command{
@@ -57,6 +65,8 @@ func init() {
 
 	taskListCmd.Flags().StringVarP(&listTaskType, "type", "t", "", "filter by type (epic, story, task, bug, idea)")
 	taskListCmd.Flags().StringVarP(&listTaskStatus, "status", "s", "", "filter by status (todo, in_progress, review, standby, maybe, done, blocked, canceled)")
+	taskListCmd.Flags().StringVar(&listState, "state", "", "filter by workflow state (inbox, ready, next, in_progress, waiting, paused, review, someday, done, canceled)")
+	taskListCmd.Flags().BoolVar(&listBlocked, "blocked", false, "show only tasks blocked by an unresolved dependency")
 	taskListCmd.Flags().IntVarP(&listPriority, "priority", "P", 0, "filter by priority (1-5)")
 	taskListCmd.Flags().StringVarP(&listTag, "tag", "T", "", "filter by tag")
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
@@ -70,6 +80,7 @@ func init() {
 
 	_ = taskListCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("status", completeEnum(statusCompletions))
+	_ = taskListCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("sort", completeEnum(sortCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
 }
@@ -87,7 +98,10 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		project = cfg.GetProject(slug)
+		project, err = lookupProject(configManager, slug)
+		if err != nil {
+			return err
+		}
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(slug)
 		}
@@ -115,11 +129,22 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("invalid status %q (valid: %s)", listTaskStatus, strings.Join(statusCompletions, ", "))
 		}
 	}
+	if listState != "" {
+		if _, ok := models.ParseWorkflowState(listState); !ok {
+			return fmt.Errorf("invalid state %q (valid: %s)", listState, strings.Join(stateCompletions, ", "))
+		}
+	}
 	if listPriority != 0 {
 		if err := ValidatePriority(listPriority, false); err != nil {
 			return err
 		}
 	}
+
+	// The derived dependency-blocked filter resolves each task's unresolved
+	// dependencies within its project, so expose the loaded project to the
+	// predicate. BuildTaskTree wires up dependency relationships.
+	project.BuildTaskTree()
+	listFilterProject = project
 
 	// Apply filters
 	tasks := filterTasks(project.Tasks)
@@ -132,7 +157,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	}
 
 	if listJSON {
-		return displayTaskJSON(tasks)
+		return displayTaskJSON(cfg, tasks)
 	}
 
 	if len(tasks) == 0 {
@@ -161,6 +186,7 @@ type taskJSONEntry struct {
 	Type         string     `json:"type"`
 	Title        string     `json:"title"`
 	Status       string     `json:"status"`
+	State        string     `json:"state"`
 	Priority     int        `json:"priority"`
 	ParentID     *string    `json:"parent_id"`
 	Tags         []string   `json:"tags"`
@@ -179,7 +205,11 @@ type taskJSONEntry struct {
 	HasTime      bool       `json:"has_time"`
 }
 
-func taskListJSONEntries(tasks []*models.Task) []taskJSONEntry {
+// taskListJSONEntries builds the --json list rows. Status/Section derive from
+// State() and Active reports Focus Queue membership (the config-aware successor
+// to the retired Task.Active flag); the retired Stage concept has no state
+// equivalent, so it is no longer emitted (session 33.7.6.3).
+func taskListJSONEntries(cfg *config.Config, tasks []*models.Task) []taskJSONEntry {
 	entries := make([]taskJSONEntry, len(tasks))
 	for i, t := range tasks {
 		tags := t.Tags
@@ -191,15 +221,15 @@ func taskListJSONEntries(tasks []*models.Task) []taskJSONEntry {
 			ShortID:      t.ShortID,
 			Type:         t.Type.String(),
 			Title:        t.Title,
-			Status:       t.Status.String(),
+			Status:       models.LegacyStatusForState(t.State()).String(),
+			State:        t.State().String(),
 			Priority:     t.Priority,
 			ParentID:     t.ParentID,
 			Tags:         tags,
-			Section:      t.Section,
+			Section:      models.SectionForState(t.State()),
 			Pinned:       t.Pinned,
-			Active:       t.Active,
+			Active:       taskInFocusQueue(cfg, t.ID),
 			Dimmed:       t.Dimmed,
-			Stage:        t.Stage,
 			SnoozedUntil: t.SnoozedUntil,
 			Parked:       t.IsParked(),
 			ParkedNote:   t.ParkedNote,
@@ -213,14 +243,14 @@ func taskListJSONEntries(tasks []*models.Task) []taskJSONEntry {
 	return entries
 }
 
-func displayTaskJSON(tasks []*models.Task) error {
-	entries := taskListJSONEntries(tasks)
+func displayTaskJSON(cfg *config.Config, tasks []*models.Task) error {
+	entries := taskListJSONEntries(cfg, tasks)
 	return printJSON(entries)
 }
 
 // taskMatchesFilters returns true if the task passes all active CLI filters.
 func taskMatchesFilters(task *models.Task) bool {
-	if !listShowAll && task.Status.IsComplete() {
+	if !listShowAll && task.IsTerminalState() {
 		return false
 	}
 	if !listSnoozed && task.IsSnoozed() {
@@ -237,9 +267,18 @@ func taskMatchesFilters(task *models.Task) bool {
 	}
 	if listTaskStatus != "" {
 		s, ok := models.ParseTaskStatus(listTaskStatus)
-		if !ok || task.Status != s {
+		if !ok || !stateMatchesLegacyStatus(task.State(), s) {
 			return false
 		}
+	}
+	if listState != "" {
+		s, ok := models.ParseWorkflowState(listState)
+		if !ok || task.State() != s {
+			return false
+		}
+	}
+	if listBlocked && !task.IsDependencyBlocked(listFilterProject) {
+		return false
 	}
 	if listPriority > 0 && task.Priority != listPriority {
 		return false
@@ -260,16 +299,33 @@ func filterTasks(tasks []*models.Task) []*models.Task {
 	return result
 }
 
-// statusOrder maps statuses to sort order (active statuses first, then complete).
-var statusOrder = map[models.TaskStatus]int{
-	models.StatusInProgress: 0,
-	models.StatusReview:     1,
-	models.StatusBlocked:    2,
-	models.StatusTodo:       3,
-	models.StatusStandby:    4,
-	models.StatusMaybe:      5,
-	models.StatusDone:       6,
-	models.StatusCanceled:   7,
+// stateMatchesLegacyStatus maps the legacy --status filter vocabulary onto the
+// canonical workflow states: each status matches the state it transitions to
+// (models.TargetStateForStatus), except todo, which covers all three todo-ish
+// planning states (inbox, ready, next). Under the state collapse a
+// Waiting-section task now matches --status blocked rather than todo.
+func stateMatchesLegacyStatus(state models.WorkflowState, status models.TaskStatus) bool {
+	if status == models.StatusTodo {
+		return state == models.StateInbox || state == models.StateReady || state == models.StateNext
+	}
+	return state == models.TargetStateForStatus(status)
+}
+
+// stateOrder maps workflow states to sort order (working states first, then
+// planning states, then terminal states). It mirrors the legacy statusOrder
+// (in_progress, review, blocked, todo, standby, maybe, done, canceled) with the
+// three todo-ish states slotted where todo sat.
+var stateOrder = map[models.WorkflowState]int{
+	models.StateInProgress: 0,
+	models.StateReview:     1,
+	models.StateWaiting:    2,
+	models.StateNext:       3,
+	models.StateInbox:      4,
+	models.StateReady:      5,
+	models.StatePaused:     6,
+	models.StateSomeday:    7,
+	models.StateDone:       8,
+	models.StateCanceled:   9,
 }
 
 func sortTasks(tasks []*models.Task, field string) error {
@@ -288,7 +344,7 @@ func sortTasks(tasks []*models.Task, field string) error {
 		})
 	case "status":
 		sort.SliceStable(tasks, func(i, j int) bool {
-			return statusOrder[tasks[i].Status] < statusOrder[tasks[j].Status]
+			return stateOrder[tasks[i].State()] < stateOrder[tasks[j].State()]
 		})
 	case "title":
 		sort.SliceStable(tasks, func(i, j int) bool {
@@ -318,7 +374,7 @@ func displayTaskTable(tasks []*models.Task) {
 		t.AppendRow(table.Row{
 			task.ShortID,
 			task.Type.Icon(),
-			task.Status.Icon(),
+			task.State().Icon(),
 			task.Priority,
 			util.Truncate(task.Title, 40),
 			tagsStr,
@@ -375,22 +431,18 @@ func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool
 		prefix = "  "
 	}
 
-	// Style based on status
+	// Style based on workflow state
 	style := lipgloss.NewStyle()
-	switch task.Status {
-	case models.StatusDone:
+	switch task.State() {
+	case models.StateDone, models.StateCanceled:
 		style = style.Foreground(lipgloss.Color("242")).Strikethrough(true)
-	case models.StatusCanceled:
-		style = style.Foreground(lipgloss.Color("242")).Strikethrough(true)
-	case models.StatusInProgress:
+	case models.StateInProgress:
 		style = style.Foreground(lipgloss.Color("82"))
-	case models.StatusReview:
+	case models.StateReview:
 		style = style.Foreground(lipgloss.Color("214"))
-	case models.StatusStandby:
+	case models.StatePaused, models.StateSomeday:
 		style = style.Foreground(lipgloss.Color("141"))
-	case models.StatusMaybe:
-		style = style.Foreground(lipgloss.Color("141"))
-	case models.StatusBlocked:
+	case models.StateWaiting:
 		style = style.Foreground(lipgloss.Color("196"))
 	default:
 	}
@@ -399,7 +451,7 @@ func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool
 		indent.String(),
 		prefix,
 		task.Type.Icon(),
-		task.Status.Icon(),
+		task.State().Icon(),
 		task.ShortID,
 		task.Title,
 	)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/app"
 )
 
 var (
@@ -39,66 +39,64 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var removedCount int
-	var removedIndex int
+	// Resolve the task in the current project; index validation runs against the
+	// loaded copy so error messages match the legacy surface, and the mutation
+	// itself persists through the application layer.
+	project, cfg, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+	task, findErr := FindTaskByIdentifier(project, args[0])
+	if findErr != nil {
+		return findErr
+	}
 
-	// Pre-check: skip save when clearing comments on a task with no comments
+	svc := newAppService(cfg)
+
 	if commentClearFlag {
-		project, _, _, loadErr := LoadCurrentProject()
-		if loadErr != nil {
-			return loadErr
-		}
-		preTask, findErr := FindTaskByIdentifier(project, args[0])
-		if findErr != nil {
-			return findErr
-		}
-		if len(preTask.Comments) == 0 {
+		// No-op fast path: skip the save entirely when there is nothing to clear.
+		if len(task.Comments) == 0 {
 			if !out.Quiet {
-				fmt.Printf("Task #%d has no comments to clear\n", preTask.ShortID)
+				fmt.Printf("Task #%d has no comments to clear\n", task.ShortID)
 			}
 			return nil
 		}
+		res, clearErr := withResultRetry(func() (app.CommentResult, error) {
+			return svc.ClearComments(task.ID)
+		})
+		if clearErr != nil {
+			return translateAppError(clearErr)
+		}
+		if out.JSON {
+			return printMutationJSON(res.Task)
+		}
+		if !out.Quiet {
+			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", res.Count, res.Task.ShortID, res.Task.Title)
+		}
+		return nil
 	}
 
-	task, err := WithTaskUpdate(args[0], func(task *models.Task) error {
-		// Handle --clear flag
-		if commentClearFlag {
-			removedCount = len(task.Comments)
-			task.ClearComments()
-			return nil
-		}
-
-		// Require index argument if not clearing all
-		if len(args) < 2 {
-			return fmt.Errorf("comment index required (use --clear to remove all)")
-		}
-
-		var index int
-		index, err = parseItemIndex(args[1], len(task.Comments), "comment")
-		if err != nil {
-			return err
-		}
-
-		if !task.RemoveComment(index) {
-			return fmt.Errorf("failed to remove comment at index %d", index)
-		}
-
-		removedIndex = index
-		return nil
-	})
+	// Require index argument if not clearing all
+	if len(args) < 2 {
+		return fmt.Errorf("comment index required (use --clear to remove all)")
+	}
+	index, err := parseItemIndex(args[1], len(task.Comments), "comment")
 	if err != nil {
 		return err
 	}
 
+	res, err := withResultRetry(func() (app.CommentResult, error) {
+		return svc.RemoveComment(task.ID, index)
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
+
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return printMutationJSON(res.Task)
 	}
 	if !out.Quiet {
-		if commentClearFlag {
-			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", removedCount, task.ShortID, task.Title)
-		} else {
-			fmt.Printf("Removed comment %d from #%d: %s\n", removedIndex, task.ShortID, task.Title)
-		}
+		fmt.Printf("Removed comment %d from #%d: %s\n", res.Index, res.Task.ShortID, res.Task.Title)
 	}
 	return nil
 }

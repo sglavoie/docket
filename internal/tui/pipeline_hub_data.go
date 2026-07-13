@@ -77,7 +77,7 @@ func countOverdue(task *models.Task) int {
 
 func countInProgress(task *models.Task) int {
 	n := 0
-	if task.Status == models.StatusInProgress {
+	if task.State() == models.StateInProgress {
 		n++
 	}
 	for _, child := range task.Children {

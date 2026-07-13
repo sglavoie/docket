@@ -16,19 +16,12 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 }
 
 type outlinerKeymapBuilder struct {
-	model  *OutlinerModel
-	stages []string
+	model *OutlinerModel
 }
 
 func newOutlinerKeymapBuilder(m *OutlinerModel) *outlinerKeymapBuilder {
-	var stages []string
-	if m.config != nil {
-		stages = m.config.Stages
-	}
-
 	return &outlinerKeymapBuilder{
-		model:  m,
-		stages: stages,
+		model: m,
 	}
 }
 
@@ -47,7 +40,6 @@ func (b *outlinerKeymapBuilder) entries() []keymap.Entry {
 	entries = append(entries, b.moveEntries()...)
 	entries = append(entries, b.linkedTaskEntries()...)
 	entries = append(entries, b.taskPrefixEntries()...)
-	entries = append(entries, b.stageEntries()...)
 	entries = append(entries, b.blockerEntries()...)
 	entries = append(entries, b.filterEntries()...)
 	entries = append(entries, b.sortEntries()...)

@@ -70,14 +70,14 @@ func TestKanbanDenseCardHeroDemotion(t *testing.T) {
 	// Use a non-cursor anchor first so the focused-row styling does not mask
 	// the demoted badge color on the overdue card under test.
 	anchor := testutil.NewTestTask("Anchor card", models.TaskTypeTask)
-	anchor.Status = models.StatusTodo
+	anchor.WorkflowState = models.StateReady
 
 	overdue := testutil.NewTestTask("Overdue card", models.TaskTypeTask)
-	overdue.Status = models.StatusTodo
+	overdue.WorkflowState = models.StateReady
 	overdue.DueDate = &yesterday
 
 	plain := testutil.NewTestTask("Plain card", models.TaskTypeTask)
-	plain.Status = models.StatusTodo
+	plain.WorkflowState = models.StateReady
 
 	col := KanbanColumn{
 		ID:    "inbox",
@@ -92,9 +92,11 @@ func TestKanbanDenseCardHeroDemotion(t *testing.T) {
 	m := newRenderKanban(80, 24, []KanbanColumn{col})
 	rendered := kanbanRender(m)
 
-	rawStatusBadge := GetStatusBadge(string(plain.Status), plain.Status.Icon())
+	plainStatus := models.LegacyStatusForState(plain.State())
+	overdueStatus := models.LegacyStatusForState(overdue.State())
+	rawStatusBadge := GetStatusBadge(string(plainStatus), plainStatus.Icon())
 	rawTypeBadge := GetTypeBadge(string(plain.Type), plain.Type.Icon())
-	demotedStatus := demoteBadge(GetStatusBadge(string(overdue.Status), overdue.Status.Icon()))
+	demotedStatus := demoteBadge(GetStatusBadge(string(overdueStatus), overdueStatus.Icon()))
 	demotedType := demoteBadge(GetTypeBadge(string(overdue.Type), overdue.Type.Icon()))
 
 	// Overdue card line: badges must appear demoted.

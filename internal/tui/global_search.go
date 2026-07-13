@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 var globalSearchTabNames = []string{"All", "Tasks", "Notes"}
@@ -71,31 +72,7 @@ func NewGlobalSearchModel(cfg *config.Config, manager *config.Manager) *GlobalSe
 	searchInput.Focus()
 	applyThemedTextInput(&searchInput)
 
-	projects := cfg.GetActiveProjects()
-
-	// Load all tasks and notes from all projects
-	var allTasks []models.SearchResult
-	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			allTasks = append(allTasks, models.SearchResult{
-				Task:    task,
-				Project: project,
-			})
-		}
-		// Load notes for search
-		notes, err := storage.ListNotes(project)
-		if err == nil {
-			for _, note := range notes {
-				allTasks = append(allTasks, models.SearchResult{
-					Note:    note,
-					Project: project,
-				})
-			}
-		}
-	}
+	projects, allTasks := loadGlobalSearchIndex(cfg)
 
 	m := &GlobalSearchModel{
 		config:             cfg,
@@ -156,18 +133,33 @@ func (m *GlobalSearchModel) buildCaches() {
 
 // Rebuild reloads notes for all projects to refresh the search index.
 func (m *GlobalSearchModel) Rebuild() {
-	projects := m.config.GetActiveProjects()
+	projects, allTasks := loadGlobalSearchIndex(m.config)
+	m.projects = projects
+	m.allTasks = allTasks
+	m.buildCaches()
+	m.filterTasks()
+}
+
+// loadGlobalSearchIndex loads every active project once through an immutable
+// workspace snapshot and flattens tasks and notes into search results. Snapshot
+// diagnostics (skipped/corrupt projects) are logged rather than silently
+// dropped so the index visibly reflects any project that could not be read.
+func loadGlobalSearchIndex(cfg *config.Config) ([]*models.Project, []models.SearchResult) {
+	snap := workspace.NewLoader().Build(cfg.GetActiveProjects())
+	for _, diag := range snap.Diagnostics() {
+		logging.Warn("global search: %s", diag.String())
+	}
+
+	projects := snap.Projects()
 	var allTasks []models.SearchResult
 	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
-			continue
-		}
 		for _, task := range project.Tasks {
 			allTasks = append(allTasks, models.SearchResult{
 				Task:    task,
 				Project: project,
 			})
 		}
+		// Load notes for search.
 		notes, err := storage.ListNotes(project)
 		if err == nil {
 			for _, note := range notes {
@@ -178,10 +170,7 @@ func (m *GlobalSearchModel) Rebuild() {
 			}
 		}
 	}
-	m.projects = projects
-	m.allTasks = allTasks
-	m.buildCaches()
-	m.filterTasks()
+	return projects, allTasks
 }
 
 // HasActiveSearch returns true (search input is always active).

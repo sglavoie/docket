@@ -5,10 +5,10 @@ import (
 	"maps"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
@@ -42,7 +42,7 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -86,27 +86,26 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		pending[dimID] = val
 	}
 
-	if task.ScoreDimensions == nil {
-		task.ScoreDimensions = make(map[string]int)
-	}
-	maps.Copy(task.ScoreDimensions, pending)
-
-	task.UpdatedAt = time.Now()
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Set Score", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, args[1]),
+	// The mutation persists through the application layer (atomic,
+	// revision-checked, undoable via the workspace ledger); the profile
+	// validation above stays here because scoring profiles live in config,
+	// which the app layer does not read.
+	svc := newAppService(cfg)
+	if _, err := withTaskRetry(func() (app.TaskResult, error) {
+		return svc.SetScoreDimensions(task.ID, pending)
 	}); err != nil {
-		return err
+		return translateAppError(err)
 	}
 
 	if out.Quiet {
 		return nil
 	}
 	if out.JSON {
-		dims := task.ScoreDimensions
-		if dims == nil {
-			dims = make(map[string]int)
-		}
+		// Merge the applied values onto the loaded copy so the JSON reflects the
+		// committed dimension set.
+		dims := make(map[string]int, len(task.ScoreDimensions)+len(pending))
+		maps.Copy(dims, task.ScoreDimensions)
+		maps.Copy(dims, pending)
 		return printJSON(struct {
 			TaskID     string         `json:"task_id"`
 			ShortID    int            `json:"short_id"`

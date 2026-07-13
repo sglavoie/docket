@@ -17,8 +17,11 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	}
 
 	// outlinerStatusHandler builds a handler that applies a status change to the
-	// cursor task. In cross-project mode it routes through crossPersistFn and
-	// records crossUndoCtx so the snapshot is scoped to the cursor row's project.
+	// cursor task through the single-task coordinator (Transition), invoking the
+	// command inline so the resulting TransactionResultMsg flows back to the shell
+	// (reload + toast) while the palette handler keeps its synchronous
+	// tea.Msg-returning shape. Single-project and cross-project modes share the
+	// one coordinator path.
 	outlinerStatusHandler := func(status models.TaskStatus) func() tea.Msg {
 		return func() tea.Msg {
 			out := m.activeOutliner()
@@ -26,21 +29,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			if out == nil || task == nil || project == nil {
 				return nil
 			}
-			var pf persistFn
-			if out.project != nil {
-				pf = out.workflowPersistFn()
-			} else {
-				out.crossUndoCtx.Set(StatusVerb(status)+" Task", task.Title)
-				out.crossUndoCtx.ProjectIDs = []string{project.ID}
-				pf = out.crossPersistFn(project)
-			}
-			result := applyStatusChange(pf, project, task.ID, status)
-			if result.Err != nil {
-				return ErrorMsg{Err: result.Err}
-			}
-			out.statusMessage = result.StatusMessage
-			out.rebuildRows()
-			return nil
+			return out.taskItem.Transition(task.ID, models.TargetStateForStatus(status))()
 		}
 	}
 
@@ -451,20 +440,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				if out == nil || task == nil || project == nil {
 					return nil
 				}
-				var pf persistFn
-				if out.project != nil {
-					pf = simplePersistWithUndo(out.projectService, m.config, "Toggle Dim")
-				} else {
-					out.crossUndoCtx.Set("Toggle Dim", task.Title)
-					out.crossUndoCtx.ProjectIDs = []string{project.ID}
-					pf = out.crossPersistFn(project)
-				}
-				result := applyToggleDimmed(pf, project, task.ID)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				out.rebuildRows()
-				return StatusMsg(result.StatusMessage)
+				return out.taskItem.ToggleDimmed(task.ID)()
 			},
 		},
 		{

@@ -180,7 +180,6 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 		m.err = nil
 	case TaskFormFlagsPickedMsg:
 		m.draft.pinned = msg.Pinned
-		m.draft.active = msg.Active
 		m.draft.dimmed = msg.Dimmed
 		m.hasChanges = true
 		m.err = nil

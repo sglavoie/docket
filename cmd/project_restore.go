@@ -1,33 +1,33 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
+	"strings"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-// Note: config import kept for listTrashedProjects function signature
-
 var projectRestoreCmd = &cobra.Command{
-	Use:   "restore [slug]",
+	Use:   "restore [slug-or-entry-id]",
 	Short: "Restore a deleted project from trash",
 	Long: `Restore a previously deleted project from the trash folder.
 
-If no slug is provided, lists all projects in trash.
+If no argument is provided, lists all trashed generations.
+When more than one deleted generation shares a slug, pass the specific
+trash entry ID shown in the list to disambiguate.
 Use 'tt project delete <slug-or-id>' to delete a project.
 
 Examples:
-  tt project restore              # List trashed projects
-  tt project restore my-project   # Restore specific project`,
+  tt project restore                       # List trashed projects
+  tt project restore my-project            # Restore by slug (must be unique)
+  tt project restore my-project__17520...  # Restore a specific generation`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runProjectRestore,
 }
@@ -53,112 +53,107 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 		return listTrashedProjects(cfg)
 	}
 
-	slug := args[0]
-
-	// Guard against empty slug: TrashEntryExists("") and RestoreProjectFromTrash("")
-	// would target the trash dir itself instead of a specific project entry.
-	if slug == "" {
+	ref := args[0]
+	if ref == "" {
 		return tterrors.NewRequiredFieldError("project slug")
 	}
 
-	// Check if project exists in trash
-	if !storage.TrashEntryExists(slug, cfg.DataDir) {
-		return tterrors.NewProjectNotFoundInTrashError(slug)
-	}
-
-	// Check if active project with same slug exists
-	if cfg.GetProject(slug) != nil {
-		return fmt.Errorf("active project '%s' already exists; rename or delete it first", slug)
-	}
-
-	// Backup config before making changes
-	if backupErr := configManager.BackupConfig(); backupErr != nil {
-		return fmt.Errorf("failed to create config backup: %w", backupErr)
-	}
-
-	// Restore project directory from trash
-	if restoreErr := storage.RestoreProjectFromTrash(slug, cfg.DataDir); restoreErr != nil {
-		return fmt.Errorf("failed to restore project from trash: %w", restoreErr)
-	}
-
-	// Reconstruct project metadata
-	projectPath := cfg.GetProjectPath(slug)
-	project, err := reconstructProjectFromDir(slug, projectPath)
+	entry, err := resolveTrashEntry(cfg.DataDir, ref)
 	if err != nil {
-		// Move back to trash on failure (best effort)
-		if trashErr := storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, cfg.DataDir); trashErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to move project back to trash after reconstruction failure: %v\n", trashErr)
-		}
-		return fmt.Errorf("failed to reconstruct project metadata: %w", err)
-	}
-
-	// Add project to config
-	cfg.AddProject(project)
-
-	// Save config
-	if err := saveConfig(configManager, cfg); err != nil {
-		// Move back to trash on failure (best effort)
-		if trashErr := storage.MoveProjectToTrash(project, cfg.DataDir); trashErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to move project back to trash after config save failure: %v\n", trashErr)
-		}
 		return err
 	}
 
-	return out.OutputProject(project, func() { fmt.Println(successMsg("Restored project '%s'", project.Name)) })
+	// Check if active project with same slug exists
+	if cfg.GetProject(entry.Slug) != nil {
+		return fmt.Errorf("active project '%s' already exists; rename or delete it first", entry.Slug)
+	}
+
+	// Route the restore through the application layer: the trash-data directory move
+	// back to projects/, the drained trash-entry removal, and the config rewrite (the
+	// project re-added and its references re-applied) all commit as ONE atomic
+	// journaled transaction. The config artifact is built from the identity the plan
+	// reconstructs from the tombstone, so it commits atomically with the move; a
+	// failure leaves the entry in trash and the config untouched (no manual rollback).
+	svc := newAppService(cfg)
+	res, err := svc.RestoreProject(app.RestoreProjectRequest{
+		DataDir: cfg.DataDir,
+		EntryID: entry.EntryID,
+		BuildConfig: func(project *models.Project, tomb *storage.TrashTombstone) ([]storage.ArtifactChange, error) {
+			cfg.AddProject(project)
+			applyRestoredConfigRefs(cfg, project.ID, tomb)
+			return encodeConfigArtifacts(configManager, cfg)
+		},
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
+
+	return out.OutputProject(res.Project, func() { fmt.Println(successMsg("Restored project '%s'", res.Project.Name)) })
+}
+
+// resolveTrashEntry finds the single trash entry matching ref, requiring an
+// explicit entry ID when more than one deleted generation shares a slug.
+func resolveTrashEntry(dataDir, ref string) (storage.TrashEntry, error) {
+	entries, err := storage.FindTrashEntries(dataDir, ref)
+	if err != nil {
+		return storage.TrashEntry{}, fmt.Errorf("failed to search trash: %w", err)
+	}
+	switch len(entries) {
+	case 0:
+		return storage.TrashEntry{}, tterrors.NewProjectNotFoundInTrashError(ref)
+	case 1:
+		return entries[0], nil
+	default:
+		var b strings.Builder
+		fmt.Fprintf(&b, "multiple trashed generations match '%s'; restore a specific one by its entry ID:\n", ref)
+		for _, e := range entries {
+			fmt.Fprintf(&b, "  %s  (%s, deleted %s)\n", e.EntryID, e.Name, storage.FormatRelativeTime(e.DeletedAt))
+		}
+		return storage.TrashEntry{}, fmt.Errorf("%s", strings.TrimRight(b.String(), "\n"))
+	}
+}
+
+// applyRestoredConfigRefs decodes and re-applies the configuration references
+// captured in the tombstone. Decode failures are non-fatal: the project data is
+// already restored, so we skip reference restoration rather than abort.
+func applyRestoredConfigRefs(cfg *config.Config, projectID string, tomb *storage.TrashTombstone) {
+	if tomb == nil || len(tomb.ConfigRefs) == 0 {
+		return
+	}
+	var refs config.ProjectReferences
+	if err := json.Unmarshal(tomb.ConfigRefs, &refs); err != nil {
+		return
+	}
+	cfg.ApplyProjectReferences(projectID, refs)
 }
 
 func listTrashedProjects(cfg *config.Config) error {
-	projects, err := storage.ListTrashedProjects(cfg.DataDir)
+	entries, err := storage.ListTrashEntries(cfg.DataDir)
 	if err != nil {
 		return fmt.Errorf("failed to list trashed projects: %w", err)
 	}
 
-	if len(projects) == 0 {
+	if len(entries) == 0 {
 		fmt.Println("No projects in trash.")
 		return nil
 	}
 
+	// Determine which slugs have more than one generation so we can hint that
+	// the entry ID is required to disambiguate them.
+	slugCounts := make(map[string]int, len(entries))
+	for _, e := range entries {
+		slugCounts[e.Slug]++
+	}
+
 	fmt.Println("Projects in trash:")
-	for _, slug := range projects {
-		fmt.Printf("  %s\n", slug)
+	for _, e := range entries {
+		line := fmt.Sprintf("  %s  (deleted %s)", e.Slug, storage.FormatRelativeTime(e.DeletedAt))
+		if slugCounts[e.Slug] > 1 {
+			line += fmt.Sprintf("  [%s]", e.EntryID)
+		}
+		fmt.Println(line)
 	}
 	fmt.Println("\nTo restore: tt project restore <slug>")
+	fmt.Println("For a slug with multiple generations, restore by the [entry-id] shown above.")
 	return nil
-}
-
-func reconstructProjectFromDir(slug, projectPath string) (*models.Project, error) {
-	// Create a temporary project to load tasks
-	tempProject := &models.Project{
-		Path: projectPath,
-	}
-
-	// Try to load and parse tasks.md to get project name
-	if err := storage.LoadProject(tempProject); err != nil {
-		return nil, fmt.Errorf("failed to load project tasks: %w", err)
-	}
-
-	// Read the raw file to get the project name from the header
-	projectName := slug // Default to slug if we can't find the name
-	tasksPath := filepath.Join(projectPath, "tasks.md")
-	content, err := storage.ParseProjectNameFromFile(tasksPath)
-	if err == nil && content != "" {
-		projectName = content
-	}
-
-	// Create the project with a new ID (since we don't store ID in tasks.md)
-	project := &models.Project{
-		ID:            uuid.New().String(),
-		Slug:          slug,
-		Name:          projectName,
-		Path:          projectPath,
-		Context:       "personal", // Default context
-		CreatedAt:     time.Now(), // We don't preserve original creation time
-		UpdatedAt:     time.Now(),
-		Tasks:         tempProject.Tasks,
-		NextShortID:   tempProject.NextShortID,
-		Sections:      tempProject.Sections,
-		SectionColors: tempProject.SectionColors,
-	}
-
-	return project, nil
 }

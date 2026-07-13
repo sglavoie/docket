@@ -66,7 +66,7 @@ func TestBuildProjectTagListIncludesCatalogTagsWithTaskCounts(t *testing.T) {
 		Tasks: []*models.Task{
 			{Tags: []string{"backend", "frontend"}},
 			{Tags: []string{"backend", "api", "api"}},
-			{Status: models.StatusDone, Tags: []string{"done-only"}},
+			{WorkflowState: models.StateDone, Tags: []string{"done-only"}},
 		},
 	}
 

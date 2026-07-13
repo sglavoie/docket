@@ -35,20 +35,6 @@ func TestHandleViewMessagesSettingsSaved(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesSettingsStages(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := SettingsStagesMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("SettingsStagesMsg should be handled")
-	}
-	if app.currentView() != ViewSettings {
-		t.Errorf("currentView should be Settings, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesShowHelp(t *testing.T) {
 	app := newTestAppModel()
 	items := []HelpItem{{Key: "esc", Description: "close"}}

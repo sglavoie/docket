@@ -39,13 +39,19 @@ func runSelect(cmd *cobra.Command, args []string) error {
 
 	if len(args) > 0 {
 		// Direct selection by slug or ID
-		project = cfg.GetProject(args[0])
+		project, err = lookupProject(configManager, args[0])
+		if err != nil {
+			return err
+		}
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(args[0])
 		}
 	} else {
 		// Interactive selection
-		projects := cfg.GetActiveProjects()
+		projects, err := activeProjects(configManager)
+		if err != nil {
+			return err
+		}
 		if len(projects) == 0 {
 			return fmt.Errorf("%s", NoItemsMsg("projects", "tt project new <name>"))
 		}

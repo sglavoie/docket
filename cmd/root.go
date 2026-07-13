@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/tui"
 )
@@ -16,6 +18,7 @@ var closeLogging = logging.Close
 
 var (
 	configPath string
+	dataDir    string
 	verbose    bool
 
 	// Build information, populated via ldflags
@@ -70,18 +73,23 @@ func init() {
 	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", fmt.Sprintf("config file path (default: %s)", defaultConfigPathDisplay))
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", config.DataDirEnvVar, defaultDataDirDisplay))
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "deprecated: isolate a workspace at this config file's directory")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().Bool("version", false, "show version information")
 
 	_ = viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	_ = viper.BindPFlag("data-dir", rootCmd.PersistentFlags().Lookup("data-dir"))
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 }
 
 func initConfig() {
 	if configPath != "" {
 		viper.Set("config", configPath)
+	}
+	if dataDir != "" {
+		viper.Set("data-dir", dataDir)
 	}
 }
 
@@ -95,6 +103,39 @@ func initNoColor() {
 
 func GetConfigPath() string {
 	return viper.GetString("config")
+}
+
+// GetDataDir returns the explicitly selected workspace data directory: the
+// --data-dir flag, or the TT_DATA_DIR environment variable when the flag is
+// unset. It is empty when neither is provided, so callers can fall back to the
+// active-workspace pointer or the legacy default.
+func GetDataDir() string {
+	if dd := viper.GetString("data-dir"); dd != "" {
+		return dd
+	}
+	return os.Getenv(config.DataDirEnvVar)
+}
+
+// resolveConfigPath derives the config path the manager should use, honoring the
+// documented workspace precedence: an explicit --config wins (its directory is
+// the isolated workspace root); otherwise an explicit --data-dir/TT_DATA_DIR or
+// the machine-local active-workspace pointer selects the data dir and its config
+// path; otherwise an empty string lets NewManager resolve the legacy default
+// (iCloud when available, else ~/.tt).
+func resolveConfigPath() string {
+	if cp := GetConfigPath(); cp != "" {
+		return cp
+	}
+	dd := GetDataDir()
+	if dd == "" {
+		if ptr, ok := config.ReadActiveWorkspacePointer(); ok {
+			dd = ptr
+		}
+	}
+	if dd != "" {
+		return config.ConfigPathForDataDir(filepath.Clean(dd))
+	}
+	return ""
 }
 
 // IsVerbose returns true if verbose mode is enabled via --verbose or -v flag.

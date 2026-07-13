@@ -18,6 +18,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -40,7 +41,7 @@ var Deps = Dependencies{
 	Repository: storage.DefaultRepository,
 }
 
-const defaultConfigPathDisplay = "~/.tt/.tt.json, or the iCloud Drive tt folder when available"
+const defaultDataDirDisplay = "~/.tt (an existing iCloud Drive tt workspace is used if present)"
 
 // TaskMsg formats a standard success message for task operations.
 // Format: "[project] Verb Type #id: title"
@@ -144,7 +145,7 @@ func applyConfigSettings(cfg *config.Config) {
 // LoadConfig loads the configuration file, creating it if it does not exist.
 // Returns the config, manager, and any error encountered.
 func LoadConfig() (*config.Config, *config.Manager, error) {
-	configManager := config.NewManager(GetConfigPath())
+	configManager := config.NewManager(resolveConfigPath())
 	cfg, err := configManager.LoadOrCreate()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
@@ -157,7 +158,7 @@ func LoadConfig() (*config.Config, *config.Manager, error) {
 // not exist. Use this instead of LoadConfig when the config must already exist
 // (e.g., workflow and template commands that operate on existing config data).
 func LoadConfigStrict() (*config.Config, *config.Manager, error) {
-	configManager := config.NewManager(GetConfigPath())
+	configManager := config.NewManager(resolveConfigPath())
 	cfg, err := configManager.Load()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
@@ -205,43 +206,100 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 	return project, cfg, configManager, nil
 }
 
-// FindActionTaskByID searches all loadable projects for a task by short ID or UUID prefix.
-// Returns the task and its project, or nil, nil if not found.
+// FindTaskGloballyByID searches loadable projects for a task by reference.
+// Returns the task and its project, or nil, nil if not found. This is the
+// shared cross-project lookup for destructive commands, so it fails closed on
+// ambiguity rather than silently acting on the first match.
+//
+// Reference forms:
+//   - "project-slug:#short-id" / "project-slug:uuid": a qualified reference
+//     resolved within the named project only. A leading '#' on the task part
+//     is tolerated.
+//   - A bare numeric short ID: short IDs are unique only within a project, so
+//     the query is collected across all projects and an AmbiguousIdentifierError
+//     is returned when more than one project owns that short ID. The caller must
+//     then qualify the reference (project-slug:#short-id).
+//   - A bare UUID prefix: all loadable projects are scanned and ambiguity is an
+//     explicit error. Matching is case-insensitive — UUIDs are stored lowercase
+//     but users may paste uppercase.
+//
 // An empty query never matches; HasPrefix("", "") would otherwise match the
 // first task in the first loadable project.
-//
-// For UUID-prefix queries, all loadable projects are scanned and an
-// AmbiguousIdentifierError is returned when the prefix matches more than one
-// task. Without this check the first match would silently win, so the user
-// could be acting on the wrong task. Short-ID queries are scoped per-project
-// (short IDs are not globally unique), so the first hit is returned.
-// Prefix matching is case-insensitive — UUIDs are stored lowercase but users
-// may paste uppercase from copy/paste.
-func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project, error) {
+func FindTaskGloballyByID(cfg *config.Config, query string) (*models.Task, *models.Project, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, nil, nil
 	}
-	shortID, err := strconv.Atoi(query)
-	isShortID := err == nil
 
-	lowerQuery := strings.ToLower(query)
+	ref := models.ParseTaskRef(query)
+
+	// Qualified reference: resolve strictly within the named project. This is
+	// the unambiguous form a caller must use to target a short ID that is not
+	// globally unique.
+	if ref.IsCrossProject() {
+		project := cfg.GetProject(ref.ProjectID)
+		if project == nil {
+			return nil, nil, tterrors.NewProjectNotFoundError(ref.ProjectID)
+		}
+		if err := storage.LoadProject(project); err != nil {
+			return nil, nil, fmt.Errorf("failed to load project %s: %w", project.Name, err)
+		}
+		task, err := FindTaskByIdentifier(project, strings.TrimPrefix(ref.TaskID, "#"))
+		if err != nil {
+			return nil, nil, err
+		}
+		return task, project, nil
+	}
+
 	type match struct {
 		task    *models.Task
 		project *models.Project
 	}
-	var prefixMatches []match
 
+	// Bare numeric short ID: unique only within a project. Collect matches
+	// across every project and reject a cross-project collision instead of
+	// silently returning the first hit and acting on the wrong task.
+	if ref.IsNumericShortID() {
+		shortID, _ := strconv.Atoi(query)
+		var shortMatches []match
+		for _, project := range cfg.GetAllLoadableProjects() {
+			if err := storage.LoadProject(project); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
+				continue
+			}
+			if task := project.GetTaskByShortID(shortID); task != nil {
+				shortMatches = append(shortMatches, match{task: task, project: project})
+			}
+		}
+		switch len(shortMatches) {
+		case 0:
+			return nil, nil, nil
+		case 1:
+			return shortMatches[0].task, shortMatches[0].project, nil
+		default:
+			limit := min(len(shortMatches), 5)
+			parts := make([]string, limit)
+			for i := range limit {
+				parts[i] = fmt.Sprintf("%s:#%d %s", shortMatches[i].project.Slug, shortMatches[i].task.ShortID, shortMatches[i].task.Title)
+			}
+			candidates := strings.Join(parts, ", ")
+			if len(shortMatches) > 5 {
+				candidates += fmt.Sprintf(", ... (%d more)", len(shortMatches)-5)
+			}
+			return nil, nil, tterrors.NewAmbiguousIdentifierError(query, candidates)
+		}
+	}
+
+	// Bare UUID or UUID prefix: scoped globally with an explicit ambiguity error.
+	lowerQuery := strings.ToLower(query)
+	var prefixMatches []match
 	for _, project := range cfg.GetAllLoadableProjects() {
 		if err := storage.LoadProject(project); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
 			continue
 		}
 		for _, task := range project.Tasks {
-			if isShortID && task.ShortID == shortID {
-				return task, project, nil
-			}
-			if !isShortID && strings.HasPrefix(strings.ToLower(task.ID), lowerQuery) {
+			if strings.HasPrefix(strings.ToLower(task.ID), lowerQuery) {
 				prefixMatches = append(prefixMatches, match{task: task, project: project})
 			}
 		}
@@ -298,6 +356,102 @@ func ReportBatchErrors(succeeded int, errs []string) error {
 // saveConfig persists the config and wraps any error in a standard SaveConfigError.
 func saveConfig(mgr *config.Manager, cfg *config.Config) error {
 	if err := mgr.Save(cfg); err != nil {
+		return tterrors.NewSaveConfigError(err)
+	}
+	return nil
+}
+
+// planningStore returns the manager's narrow planning-domain seam (focus queue,
+// daily plan). Commands that only touch planning state read and write it through
+// this store instead of the config.Config facade; load and save must reuse the
+// single returned instance so the workspace ID adopted on load is re-stamped on
+// save.
+func planningStore(mgr *config.Manager) config.PlanningStore {
+	return mgr.RuntimeDependencies().Planning
+}
+
+// automationStore returns the manager's narrow automation-domain seam (workflow
+// rules, eval state). Workflow commands read and mutate rules through this store
+// rather than the config.Config facade. As with planningStore, reuse the single
+// returned instance for both load and save.
+func automationStore(mgr *config.Manager) config.AutomationStore {
+	return mgr.RuntimeDependencies().Automation
+}
+
+// catalogWorkspaceDataDir returns the workspace data directory that owns the
+// manager's config, derived from the config path's parent. It equals the
+// DataDir a domain-loaded config carries, so catalog-domain project helpers can
+// derive project paths without dereferencing the config.Config facade.
+func catalogWorkspaceDataDir(mgr *config.Manager) string {
+	return config.WorkspaceRootFromConfigPath(mgr.GetConfigPath())
+}
+
+// activeProjects returns the workspace's active projects through the catalog
+// domain seam instead of the config.Config facade. It is the drop-in for
+// cfg.GetActiveProjects at command consumers that already hold the manager.
+func activeProjects(mgr *config.Manager) ([]*models.Project, error) {
+	return mgr.RuntimeDependencies().ActiveProjects(catalogWorkspaceDataDir(mgr))
+}
+
+// allLoadableProjects returns the workspace's non-archived projects (internal
+// included) through the catalog domain seam, mirroring
+// cfg.GetAllLoadableProjects.
+func allLoadableProjects(mgr *config.Manager) ([]*models.Project, error) {
+	return mgr.RuntimeDependencies().AllLoadableProjects(catalogWorkspaceDataDir(mgr))
+}
+
+// lookupProject resolves a project by ID or slug through the catalog domain
+// seam, returning nil when none matches (mirroring cfg.GetProject).
+func lookupProject(mgr *config.Manager, idOrSlug string) (*models.Project, error) {
+	return mgr.RuntimeDependencies().Project(catalogWorkspaceDataDir(mgr), idOrSlug)
+}
+
+// sandboxProject resolves the sandbox project through the catalog domain seam,
+// returning nil when the workspace has none (mirroring cfg.GetSandboxProject).
+func sandboxProject(mgr *config.Manager) (*models.Project, error) {
+	return mgr.RuntimeDependencies().SandboxProject(catalogWorkspaceDataDir(mgr))
+}
+
+// allProjects returns every project in the workspace (archived, sandbox, and
+// internal included) through the catalog domain seam, mirroring the raw
+// cfg.Projects slice for consumers that need the unfiltered set.
+func allProjects(mgr *config.Manager) ([]*models.Project, error) {
+	return mgr.RuntimeDependencies().AllProjects(catalogWorkspaceDataDir(mgr))
+}
+
+// loadSettings returns the workspace's portable settings through the settings
+// domain seam instead of the config.Config facade. It is the drop-in for reads
+// of cfg's settings fields (themes, undo depth, etc.) at command consumers that
+// already hold the manager.
+func loadSettings(mgr *config.Manager) (*config.Settings, error) {
+	return mgr.RuntimeDependencies().Settings.LoadSettings()
+}
+
+// customContextNames returns the sorted custom-context names through the machine
+// domain seam, mirroring cfg.GetCustomContextNames.
+func customContextNames(mgr *config.Manager) ([]string, error) {
+	return mgr.RuntimeDependencies().CustomContextNames()
+}
+
+// taskTemplates returns the workspace's task templates through the automation
+// domain seam, mirroring reads of cfg.TaskTemplates.
+func taskTemplates(mgr *config.Manager) ([]template.TaskTemplate, error) {
+	return mgr.RuntimeDependencies().TaskTemplates()
+}
+
+// savePlanning persists a single planning-domain artifact, wrapping any error in
+// a standard SaveConfigError to match saveConfig's behavior.
+func savePlanning(store config.PlanningStore, planning *config.PlanningState) error {
+	if err := store.SavePlanning(planning); err != nil {
+		return tterrors.NewSaveConfigError(err)
+	}
+	return nil
+}
+
+// saveAutomation persists a single automation-domain artifact, wrapping any
+// error in a standard SaveConfigError to match saveConfig's behavior.
+func saveAutomation(store config.AutomationStore, automation *config.AutomationConfig) error {
+	if err := store.SaveAutomation(automation); err != nil {
 		return tterrors.NewSaveConfigError(err)
 	}
 	return nil
@@ -379,6 +533,7 @@ type mutateTaskJSONEntry struct {
 	Type      string   `json:"type"`
 	Title     string   `json:"title"`
 	Status    string   `json:"status"`
+	State     string   `json:"state"`
 	Priority  int      `json:"priority"`
 	Tags      []string `json:"tags"`
 	Section   string   `json:"section,omitempty"`
@@ -398,10 +553,11 @@ func taskToMutateJSONEntry(task *models.Task) mutateTaskJSONEntry {
 		ShortID:   task.ShortID,
 		Type:      task.Type.String(),
 		Title:     task.Title,
-		Status:    task.Status.String(),
+		Status:    models.LegacyStatusForState(task.State()).String(),
+		State:     task.State().String(),
 		Priority:  task.Priority,
 		Tags:      tags,
-		Section:   task.Section,
+		Section:   models.SectionForState(task.State()),
 		CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
@@ -423,6 +579,21 @@ func outputTasksJSON(tasks []*models.Task) error {
 		entries = append(entries, taskToMutateJSONEntry(task))
 	}
 	return printJSON(entries)
+}
+
+// taskInFocusQueue reports Focus Queue membership. It is the config-aware
+// replacement for the retired Task.Active flag in CLI output: "active" is now
+// Focus Queue membership under the workflow-state model (session 33.7.6.3).
+func taskInFocusQueue(cfg *config.Config, taskID string) bool {
+	if cfg == nil {
+		return false
+	}
+	for _, item := range cfg.GetFocusQueue() {
+		if item.TaskID == taskID {
+			return true
+		}
+	}
+	return false
 }
 
 // outputBlockerJSON marshals a blocker to indented JSON and prints it.

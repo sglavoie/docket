@@ -43,8 +43,8 @@ func TestSnoozeTaskRejectsInProgress(t *testing.T) {
 	task.Start() // sets status to in_progress
 
 	// Attempting to snooze an in-progress task should be rejected
-	if task.Status != models.StatusInProgress {
-		t.Fatalf("expected StatusInProgress, got %s", task.Status)
+	if task.State() != models.StateInProgress {
+		t.Fatalf("expected StateInProgress, got %s", task.State())
 	}
 
 	// The validation happens in the command layer, but we can verify

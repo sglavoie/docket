@@ -45,6 +45,39 @@ type doctorResults struct {
 	autoRepaired       []doctorIssue
 }
 
+// projectResolver resolves a project by ID or slug for doctor's cross-project
+// reference audit. It mirrors config.Config.GetProject over the full
+// (archived-inclusive) project set but is built from the catalog-domain project
+// slice, so the audit no longer depends on the config.Config facade.
+type projectResolver map[string]*models.Project
+
+// newProjectResolver indexes projects by both ID and slug, matching the lookup
+// keys config.Config.GetProject accepts.
+func newProjectResolver(projects []*models.Project) projectResolver {
+	r := make(projectResolver, len(projects)*2)
+	for _, p := range projects {
+		if p == nil {
+			continue
+		}
+		if p.ID != "" {
+			r[p.ID] = p
+		}
+		if p.Slug != "" {
+			r[p.Slug] = p
+		}
+	}
+	return r
+}
+
+// GetProject returns the project matching idOrSlug, or nil when none matches
+// (mirroring config.Config.GetProject's nil-not-found and empty-input contract).
+func (r projectResolver) GetProject(idOrSlug string) *models.Project {
+	if idOrSlug == "" {
+		return nil
+	}
+	return r[idOrSlug]
+}
+
 func (r *doctorResults) totalIssues() int {
 	return len(r.loadFailures) + len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs) +
@@ -54,19 +87,26 @@ func (r *doctorResults) totalIssues() int {
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	fix, _ := cmd.Flags().GetBool("fix")
 
-	cfg, _, err := LoadConfig()
+	_, mgr, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	projects := cfg.GetAllLoadableProjects()
+	projects, err := allLoadableProjects(mgr)
+	if err != nil {
+		return err
+	}
 
 	// Load all projects (including archived) so cross-project ref checks
 	// don't report false positives for refs pointing to archived projects.
-	allProjects := cfg.Projects
+	everyProject, err := allProjects(mgr)
+	if err != nil {
+		return err
+	}
+	resolver := newProjectResolver(everyProject)
 	var loadedProjects []*models.Project
 	results := &doctorResults{}
-	for _, project := range allProjects {
+	for _, project := range everyProject {
 		loadResult, loadErr := storage.LoadProjectWithWarnings(project)
 		if loadErr != nil {
 			results.loadFailures = append(results.loadFailures, doctorIssue{
@@ -96,15 +136,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkDuplicateShortIDs(loadedProjects, results)
 	checkBrokenParentRefs(loadedProjects, results)
 	checkDeadDependencies(loadedProjects, results)
-	checkOrphanedCrossRefs(loadedProjects, cfg, results)
+	checkOrphanedCrossRefs(loadedProjects, resolver, results)
 	checkMissingDescriptionMarkers(loadedProjects, results)
-	checkArchiveIndexIssues(allProjects, results)
+	checkArchiveIndexIssues(everyProject, results)
 
 	if fix {
 		fixAutoRepaired(results.autoRepaired, loadedProjects)
-		fixIssues(loadedProjects, cfg)
+		fixIssues(loadedProjects, resolver)
 		fixMissingDescriptionMarkers(results.missingDescMarkers, loadedProjects)
-		fixArchiveIndexIssues(results.archiveIndexIssues, allProjects)
+		fixArchiveIndexIssues(results.archiveIndexIssues, everyProject)
 	}
 
 	printResults(results)
@@ -246,7 +286,7 @@ func checkDeadDependencies(projects []*models.Project, results *doctorResults) {
 	}
 }
 
-func checkOrphanedCrossRefs(projects []*models.Project, cfg interface{ GetProject(string) *models.Project }, results *doctorResults) {
+func checkOrphanedCrossRefs(projects []*models.Project, resolver interface{ GetProject(string) *models.Project }, results *doctorResults) {
 	// Build a map of all loaded projects for task lookup
 	projectTaskMaps := make(map[string]map[string]bool)
 	for _, project := range projects {
@@ -255,20 +295,20 @@ func checkOrphanedCrossRefs(projects []*models.Project, cfg interface{ GetProjec
 
 	for _, project := range projects {
 		for _, task := range project.Tasks {
-			checkCrossRefs(project.Name, task, task.DependsOn, "DependsOn", cfg, projectTaskMaps, results)
-			checkCrossRefs(project.Name, task, task.RelatedTo, "RelatedTo", cfg, projectTaskMaps, results)
+			checkCrossRefs(project.Name, task, task.DependsOn, "DependsOn", resolver, projectTaskMaps, results)
+			checkCrossRefs(project.Name, task, task.RelatedTo, "RelatedTo", resolver, projectTaskMaps, results)
 		}
 	}
 }
 
-func checkCrossRefs(projectName string, task *models.Task, refs []string, refType string, cfg interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, results *doctorResults) {
+func checkCrossRefs(projectName string, task *models.Task, refs []string, refType string, resolver interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, results *doctorResults) {
 	for _, ref := range refs {
 		parsed := models.ParseTaskRef(ref)
 		if !parsed.IsCrossProject() {
 			continue
 		}
 
-		targetProject := cfg.GetProject(parsed.ProjectID)
+		targetProject := resolver.GetProject(parsed.ProjectID)
 		if targetProject == nil {
 			results.orphanedCrossRefs = append(results.orphanedCrossRefs, doctorIssue{
 				project: projectName,
@@ -298,7 +338,7 @@ func checkCrossRefs(projectName string, task *models.Task, refs []string, refTyp
 	}
 }
 
-func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *models.Project }) {
+func fixIssues(projects []*models.Project, resolver interface{ GetProject(string) *models.Project }) {
 	projectTaskMaps := make(map[string]map[string]bool)
 	for _, project := range projects {
 		projectTaskMaps[project.ID] = buildTaskIDSet(project)
@@ -322,7 +362,7 @@ func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *mo
 		taskMap := buildTaskMap(project)
 		for _, task := range project.Tasks {
 			// Fix orphaned cross-project refs and dead dependencies in DependsOn
-			if cleaned := cleanRefs(task.DependsOn, cfg, projectTaskMaps, taskMap); len(cleaned) != len(task.DependsOn) {
+			if cleaned := cleanRefs(task.DependsOn, resolver, projectTaskMaps, taskMap); len(cleaned) != len(task.DependsOn) {
 				removed := len(task.DependsOn) - len(cleaned)
 				fmt.Printf("  Fixed: removed %d broken DependsOn ref(s) from task %s in %s\n", removed, task.Title, project.Name)
 				task.DependsOn = cleaned
@@ -330,7 +370,7 @@ func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *mo
 			}
 
 			// Fix orphaned cross-project refs and dead same-project refs in RelatedTo
-			if cleaned := cleanRefs(task.RelatedTo, cfg, projectTaskMaps, taskMap); len(cleaned) != len(task.RelatedTo) {
+			if cleaned := cleanRefs(task.RelatedTo, resolver, projectTaskMaps, taskMap); len(cleaned) != len(task.RelatedTo) {
 				removed := len(task.RelatedTo) - len(cleaned)
 				fmt.Printf("  Fixed: removed %d broken RelatedTo ref(s) from task %s in %s\n", removed, task.Title, project.Name)
 				task.RelatedTo = cleaned
@@ -376,12 +416,12 @@ func fixAutoRepaired(issues []doctorIssue, projects []*models.Project) {
 }
 
 // cleanRefs filters DependsOn refs, removing broken same-project and cross-project refs.
-func cleanRefs(refs []string, cfg interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, taskMap map[string]*models.Task) []string {
+func cleanRefs(refs []string, resolver interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, taskMap map[string]*models.Task) []string {
 	var valid []string
 	for _, ref := range refs {
 		parsed := models.ParseTaskRef(ref)
 		if parsed.IsCrossProject() {
-			if isValidCrossRef(parsed, cfg, projectTaskMaps) {
+			if isValidCrossRef(parsed, resolver, projectTaskMaps) {
 				valid = append(valid, ref)
 			}
 		} else {
@@ -393,8 +433,8 @@ func cleanRefs(refs []string, cfg interface{ GetProject(string) *models.Project 
 	return valid
 }
 
-func isValidCrossRef(ref models.TaskRef, cfg interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool) bool {
-	targetProject := cfg.GetProject(ref.ProjectID)
+func isValidCrossRef(ref models.TaskRef, resolver interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool) bool {
+	targetProject := resolver.GetProject(ref.ProjectID)
 	if targetProject == nil {
 		return false
 	}
@@ -484,8 +524,11 @@ func formatArchiveIndexIssue(project *models.Project, status storage.ArchiveInde
 		return fmt.Sprintf(".completed.index.json is missing for %s; run 'tt doctor --fix' or '%s'",
 			Pluralize(status.ArchiveFileCount, "archive file", "archive files"), rebuildCmd)
 	case storage.ArchiveIndexIssueStale:
-		return fmt.Sprintf(".completed.index.json is stale for %s; run 'tt doctor --fix' or '%s'",
-			Pluralize(status.ArchiveFileCount, "archive file", "archive files"), rebuildCmd)
+		return fmt.Sprintf(".completed.index.json is stale for %s (%s); run 'tt doctor --fix' or '%s'",
+			Pluralize(status.ArchiveFileCount, "archive file", "archive files"), status.Detail, rebuildCmd)
+	case storage.ArchiveIndexIssueUnhealthySource:
+		return fmt.Sprintf("archive markdown is corrupt for %s and cannot be parsed (%s); repair or remove the file, then run '%s'",
+			Pluralize(status.UnhealthySources, "source", "sources"), status.Detail, rebuildCmd)
 	case storage.ArchiveIndexIssueCorrupt:
 		return fmt.Sprintf(".completed.index.json is corrupt or unreadable (%s); run 'tt doctor --fix' or '%s'",
 			status.Detail, rebuildCmd)

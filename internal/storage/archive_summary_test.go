@@ -18,7 +18,7 @@ func TestArchiveTaskSummaryContractCoversArchiveAnalytics(t *testing.T) {
 		ShortID:        123,
 		Type:           models.TaskTypeStory,
 		Title:          "Archive summary contract",
-		Status:         models.StatusDone,
+		WorkflowState:  models.StateDone,
 		Priority:       2,
 		CreatedAt:      completedAt.AddDate(0, 0, -7),
 		CompletedAt:    &completedAt,
@@ -35,7 +35,7 @@ func TestArchiveTaskSummaryContractCoversArchiveAnalytics(t *testing.T) {
 	if summary.ID == "" {
 		t.Fatal("summary ID must be present for prefix lookup and de-duplication")
 	}
-	if !summary.Status.IsComplete() || summary.CompletedAt == nil {
+	if !summary.WorkflowState.IsTerminal() || summary.CompletedAt == nil {
 		t.Fatal("archive summaries must represent resolved work")
 	}
 	if summary.FirstStartedAt == nil {
@@ -81,10 +81,10 @@ func TestArchiveIndexContractDescribesDerivedState(t *testing.T) {
 		},
 		Tasks: []ArchiveTaskSummary{
 			{
-				ID:          "task-1",
-				Status:      models.StatusDone,
-				CompletedAt: &generatedAt,
-				Source:      ArchiveTaskSource{FileName: archiveFileName},
+				ID:            "task-1",
+				WorkflowState: models.StateDone,
+				CompletedAt:   &generatedAt,
+				Source:        ArchiveTaskSource{FileName: archiveFileName},
 			},
 		},
 	}

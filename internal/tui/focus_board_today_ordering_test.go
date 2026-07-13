@@ -10,7 +10,7 @@ import (
 func makeBoardTaskWithStatus(t *testing.T, id string, shortID int, title string, status models.TaskStatus) *models.Task {
 	t.Helper()
 	task := makeBoardTask(t, id, shortID, title)
-	task.Status = status
+	task.WorkflowState = models.TargetStateForStatus(status)
 	return task
 }
 

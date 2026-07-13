@@ -382,7 +382,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
 		// Status icon with badge style
-		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+		statusIcon := GetStateBadge(task.State())
 
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
@@ -455,11 +455,12 @@ func (m *TaskJumperModel) renderPreview() string {
 	}
 
 	// Status
-	statusStyle := GetStatusStyle(string(task.Status))
+	state := task.State()
+	statusStyle := GetStateStyle(state)
 	fmt.Fprintf(&b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
-		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status)))
+		statusStyle.Render(state.Icon()),
+		statusStyle.Render(string(state)))
 
 	// Priority
 	priorityStyle := NormalStyle
@@ -474,13 +475,6 @@ func (m *TaskJumperModel) renderPreview() string {
 	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Type:"),
 		typeStyle.Render(task.Type.HeadingPrefix()))
-
-	// Stage
-	if stageBadge := GetStageBadge(task.Stage); stageBadge != "" {
-		fmt.Fprintf(&b, "%s %s\n",
-			MutedStyle.Render("Stage:"),
-			stageBadge)
-	}
 
 	// Tags
 	if len(task.Tags) > 0 {

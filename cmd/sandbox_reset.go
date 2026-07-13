@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -49,7 +49,10 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	sandbox := cfg.GetSandboxProject()
+	sandbox, err := sandboxProject(configManager)
+	if err != nil {
+		return err
+	}
 	if sandbox == nil {
 		return fmt.Errorf("sandbox project not found")
 	}
@@ -94,27 +97,29 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Record undo snapshot before clearing
+	// Record a legacy per-project undo snapshot before clearing so `tt undo`
+	// (which still reads the per-project history) can restore the tasks; the
+	// app-layer commit below additionally records the wipe in the workspace
+	// ledger.
+	settings, err := loadSettings(configManager)
+	if err != nil {
+		return err
+	}
 	undoDepth := 0
-	if cfg.UndoHistoryDepth != nil {
-		undoDepth = *cfg.UndoHistoryDepth
+	if settings.UndoHistoryDepth != nil {
+		undoDepth = *settings.UndoHistoryDepth
 	}
 	if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth, nil); err != nil {
 		return fmt.Errorf("failed to record undo snapshot: %w", err)
 	}
 
-	// Clear tasks and reset NextShortID
-	sandbox.Tasks = []*models.Task{}
-	sandbox.NextShortID = 1
-
-	// Reset sections to default
-	sandbox.Sections = []string{models.SectionNext}
-	sandbox.SectionColors = make(map[string]string)
-	sandbox.Tags = []string{}
-	sandbox.PinnedTags = []string{}
-
-	if err := SaveProject(sandbox, &SaveOptions{Config: cfg, ConfigManager: configManager}); err != nil {
-		return fmt.Errorf("failed to save sandbox: %w", err)
+	// The wipe itself (tasks, short-ID counter, sections, tags, pinned tags)
+	// commits through the application layer as one transaction.
+	svc := newAppService(cfg)
+	if _, err := withResultRetry(func() (app.ProjectResetResult, error) {
+		return svc.ResetProjectTasks(sandbox.ID)
+	}); err != nil {
+		return translateAppError(err)
 	}
 
 	// Clear notes directory

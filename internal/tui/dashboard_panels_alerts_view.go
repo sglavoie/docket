@@ -69,7 +69,7 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 			if todayPlanKeys[planKey(task.ID, p.ID)] {
 				todayPlannedCount++
 			}
-			if task.DueDate != nil && !task.Status.IsComplete() && util.StartOfDay(*task.DueDate).Equal(today) {
+			if task.DueDate != nil && !task.IsComplete() && util.StartOfDay(*task.DueDate).Equal(today) {
 				totalDueToday++
 			}
 			if task.CompletedAt != nil {

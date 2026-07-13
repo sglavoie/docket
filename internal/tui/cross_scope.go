@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // CrossScopeOpts controls which projects are selected and loaded by
@@ -35,14 +36,17 @@ type projectLoadFailure struct {
 	Detail  string
 }
 
-func newProjectLoadFailure(project *models.Project, err error) projectLoadFailure {
-	name := "<unknown>"
-	if project != nil && project.Name != "" {
-		name = project.Name
+// diagnosticToLoadFailure adapts a workspace snapshot diagnostic into the
+// cross-scope failure shape the TUI already surfaces, preserving the historical
+// "failed to load project X: <err>" detail format.
+func diagnosticToLoadFailure(diag workspace.Diagnostic) projectLoadFailure {
+	name := diag.ProjectName
+	if name == "" {
+		name = "<unknown>"
 	}
-	detail := "unknown error"
-	if err != nil {
-		detail = err.Error()
+	detail := diag.Detail
+	if detail == "" {
+		detail = "unknown error"
 	}
 	return projectLoadFailure{
 		Project: name,
@@ -50,24 +54,29 @@ func newProjectLoadFailure(project *models.Project, err error) projectLoadFailur
 	}
 }
 
-// LoadCrossScopeTasks selects projects per opts, loads each via svc, and
-// returns the flat task union, the successfully loaded projects, and the
-// details of any projects that failed to load. Individual load failures are
-// non-fatal: the offending project is skipped and its load error is returned
-// for the caller to surface in logs or the UI.
-func LoadCrossScopeTasks(cfg *config.Config, svc *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
+// LoadCrossScopeTasks selects projects per opts, loads them once into an
+// immutable workspace snapshot, and returns the flat task union, the
+// successfully loaded projects, and the details of any projects that failed to
+// load. Individual load failures are non-fatal: the offending project is
+// skipped and surfaced as a diagnostic for the caller to log or display.
+//
+// A fresh snapshot loader is used per call so the returned projects are the
+// caller's own freshly loaded pointers, keeping mutation semantics intact for
+// callers that go on to edit and save a project.
+func LoadCrossScopeTasks(cfg *config.Config, _ *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
+	var selected []*models.Project
 	for _, p := range selectCrossScopeProjects(cfg, opts) {
 		if !opts.IncludeSandbox && p.Sandbox {
 			continue
 		}
-		if err := svc.Load(p); err != nil {
-			failed = append(failed, newProjectLoadFailure(p, err))
-			continue
-		}
-		projects = append(projects, p)
-		tasks = append(tasks, p.Tasks...)
+		selected = append(selected, p)
 	}
-	return tasks, projects, failed
+
+	snap := workspace.NewLoader().Build(selected)
+	for _, diag := range snap.Diagnostics() {
+		failed = append(failed, diagnosticToLoadFailure(diag))
+	}
+	return snap.Tasks(), snap.Projects(), failed
 }
 
 func selectCrossScopeProjects(cfg *config.Config, opts CrossScopeOpts) []*models.Project {

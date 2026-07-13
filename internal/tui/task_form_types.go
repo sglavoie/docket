@@ -40,7 +40,6 @@ type taskFormDraft struct {
 	parentID           *string
 	section            string
 	pinned             bool
-	active             bool
 	dimmed             bool
 	tags               []string
 	dueDate            *time.Time
@@ -76,6 +75,7 @@ type TaskFormModel struct {
 	config        *config.Config
 	configManager *config.Manager
 	fromTemplate  *template.TaskTemplate
+	taskForm      TaskFormCoordinator
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model

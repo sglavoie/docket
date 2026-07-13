@@ -15,17 +15,15 @@ func newStripTestTask() *models.Task {
 	now := time.Now()
 	due := now.Add(48 * time.Hour)
 	return &models.Task{
-		ID:        "t1",
-		Title:     "metadata strip task",
-		Type:      models.TaskTypeTask,
-		Status:    models.StatusTodo,
-		Priority:  2,
-		Section:   "Next",
-		Stage:     "design",
-		Tags:      []string{"backend", "infra"},
-		DueDate:   &due,
-		CreatedAt: now.Add(-3 * time.Hour),
-		UpdatedAt: now.Add(-1 * time.Hour),
+		ID:            "t1",
+		Title:         "metadata strip task",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateNext,
+		Priority:      2,
+		Tags:          []string{"backend", "infra"},
+		DueDate:       &due,
+		CreatedAt:     now.Add(-3 * time.Hour),
+		UpdatedAt:     now.Add(-1 * time.Hour),
 	}
 }
 
@@ -45,11 +43,11 @@ func TestTaskMetadataStripEmptyMetadata(t *testing.T) {
 	// timestamps — should render to "" since the only fallback (updated
 	// relative) is also missing.
 	task := &models.Task{
-		ID:       "bare",
-		Title:    "bare",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 0, // suppressed: only 1–5 render
+		ID:            "bare",
+		Title:         "bare",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      0, // suppressed: only 1–5 render
 	}
 	got := renderTaskMetadataStrip(TaskMetadataStripOpts{Task: task})
 	if got != "" {
@@ -67,7 +65,7 @@ func TestTaskMetadataStripContainsCoreFields(t *testing.T) {
 	})
 	plain := ansi.Strip(got)
 
-	for _, want := range []string{"[Acme]", "Next", "design", "backend", "infra"} {
+	for _, want := range []string{"[Acme]", "Next", "backend", "infra"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("expected strip to contain %q, got %q", want, plain)
 		}
@@ -102,16 +100,12 @@ func TestTaskMetadataStripRedundancyOmission(t *testing.T) {
 			Priority: true,
 			Project:  true,
 			Due:      true,
-			Stage:    true,
 		},
 	})
 	plain := ansi.Strip(got)
 
 	if strings.Contains(plain, "[Acme]") {
 		t.Errorf("project label must be omitted when AlreadyShown.Project=true, got %q", plain)
-	}
-	if strings.Contains(plain, "design") {
-		t.Errorf("stage must be omitted when AlreadyShown.Stage=true, got %q", plain)
 	}
 	if strings.Contains(plain, "today") || strings.Contains(plain, "tomorrow") ||
 		strings.Contains(plain, "yesterday") || strings.Contains(plain, "Mon") {
@@ -204,48 +198,6 @@ func TestTaskMetadataStripNarrowSinglePartTruncated(t *testing.T) {
 	if w := lipgloss.Width(got); w > 3 {
 		t.Errorf("strip must respect width=3 even after single-part truncation, got width=%d %q",
 			w, ansi.Strip(got))
-	}
-}
-
-func TestTaskMetadataStripLongStageRespectsWidth(t *testing.T) {
-	task := newStripTestTask()
-	task.Stage = "verylongstagenamethatdoesnotwraparoundatall"
-	proj := newStripTestProject()
-	got := renderTaskMetadataStrip(TaskMetadataStripOpts{
-		Task:    task,
-		Project: proj,
-		Width:   60,
-	})
-	if w := lipgloss.Width(got); w > 60 {
-		t.Errorf("strip exceeded width with long stage: %d > 60, %q", w, ansi.Strip(got))
-	}
-}
-
-// TestTaskMetadataStripImplementInitialVersionStage uses the plan's literal
-// long-stage label and asserts the strip surfaces it when there is room and
-// gracefully drops the stage group before dropping critical lifecycle context
-// under tight widths.
-func TestTaskMetadataStripImplementInitialVersionStage(t *testing.T) {
-	task := newStripTestTask()
-	task.Stage = "Implement initial version"
-	proj := newStripTestProject()
-
-	full := renderTaskMetadataStrip(TaskMetadataStripOpts{Task: task, Project: proj})
-	if !strings.Contains(ansi.Strip(full), "Implement initial version") {
-		t.Fatalf("expected wide strip to surface the long stage, got %q", ansi.Strip(full))
-	}
-
-	tight := renderTaskMetadataStrip(TaskMetadataStripOpts{
-		Task:    task,
-		Project: proj,
-		Width:   20,
-	})
-	if w := lipgloss.Width(tight); w > 20 {
-		t.Errorf("strip exceeded width with long stage at width=20: %d > 20, %q", w, ansi.Strip(tight))
-	}
-	plainTight := ansi.Strip(tight)
-	if strings.Contains(plainTight, "Implement initial version") {
-		t.Errorf("expected long stage (dropHigh) to be dropped before critical lifecycle context at width=20, got %q", plainTight)
 	}
 }
 
@@ -374,8 +326,8 @@ func TestMetadataStripJoinMixedGroups(t *testing.T) {
 	parts := []metadataPart{
 		{group: metadataGroupProjectSection, text: "[a]"},
 		{group: metadataGroupProjectSection, text: "Next"},
-		{group: metadataGroupStage, text: "design"},
-		{group: metadataGroupStage, text: "v2"},
+		{group: metadataGroupLifecycle, text: "design"},
+		{group: metadataGroupLifecycle, text: "v2"},
 	}
 	got := ansi.Strip(joinMetadataParts(parts))
 	sep := ansi.Strip(IndicatorGroupSep)

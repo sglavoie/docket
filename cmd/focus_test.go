@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -130,15 +131,12 @@ func TestFocusSorting_ByPriorityAscending(t *testing.T) {
 
 	low := testutil.NewTestTask("Low priority", models.TaskTypeTask)
 	low.Priority = 5
-	low.Active = true
 
 	high := testutil.NewTestTask("High priority", models.TaskTypeTask)
 	high.Priority = 1
-	high.Active = true
 
 	medium := testutil.NewTestTask("Medium priority", models.TaskTypeTask)
 	medium.Priority = 3
-	medium.Active = true
 
 	tasks := []focus.FocusTask{
 		{Task: low, Project: project},
@@ -170,12 +168,10 @@ func TestFocusSorting_ByUpdatedAtWithinSamePriority(t *testing.T) {
 
 	older := testutil.NewTestTask("Older task", models.TaskTypeTask)
 	older.Priority = 3
-	older.Active = true
 	older.UpdatedAt = time.Now().Add(-2 * time.Hour)
 
 	newer := testutil.NewTestTask("Newer task", models.TaskTypeTask)
 	newer.Priority = 3
-	newer.Active = true
 	newer.UpdatedAt = time.Now()
 
 	tasks := []focus.FocusTask{
@@ -204,19 +200,16 @@ func TestFocusSorting_CombinedPriorityAndUpdatedAt(t *testing.T) {
 	// High priority, older
 	highOlder := testutil.NewTestTask("High priority older", models.TaskTypeTask)
 	highOlder.Priority = 1
-	highOlder.Active = true
 	highOlder.UpdatedAt = time.Now().Add(-1 * time.Hour)
 
 	// High priority, newer
 	highNewer := testutil.NewTestTask("High priority newer", models.TaskTypeTask)
 	highNewer.Priority = 1
-	highNewer.Active = true
 	highNewer.UpdatedAt = time.Now()
 
 	// Low priority, very recent
 	lowRecent := testutil.NewTestTask("Low priority recent", models.TaskTypeTask)
 	lowRecent.Priority = 5
-	lowRecent.Active = true
 	lowRecent.UpdatedAt = time.Now().Add(1 * time.Minute)
 
 	tasks := []focus.FocusTask{
@@ -251,63 +244,37 @@ func TestFocusSorting_CombinedPriorityAndUpdatedAt(t *testing.T) {
 
 // Filtering tests
 
-func TestFocusFiltering_OnlyActiveTasks(t *testing.T) {
-	project := testutil.NewTestProject("Test")
-
-	active := testutil.NewTestTask("Active task", models.TaskTypeTask)
-	active.Active = true
-
-	inactive := testutil.NewTestTask("Inactive task", models.TaskTypeTask)
-	inactive.Active = false
-
-	project.Tasks = []*models.Task{active, inactive}
-
+// collectFilteredFocusTasks replicates the focus filter the CLI applies to a
+// queue's tasks: skip tasks in a terminal (done/canceled) state. The retired
+// per-task Active flag is now modeled as queue membership and covered directly
+// by the collectFocusQueueTasks tests below, so callers pass only the tasks
+// already known to be queued.
+func collectFilteredFocusTasks(project *models.Project) []focus.FocusTask {
 	var tasks []focus.FocusTask
 	for _, task := range project.Tasks {
-		if !task.Active {
-			continue
-		}
-		if task.Status.IsComplete() {
+		if task.State().IsTerminal() {
 			continue
 		}
 		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 	}
-
-	if len(tasks) != 1 {
-		t.Errorf("expected 1 active task, got %d", len(tasks))
-	}
-	if tasks[0].Task.Title != "Active task" {
-		t.Errorf("expected 'Active task', got %q", tasks[0].Task.Title)
-	}
+	return tasks
 }
 
 func TestFocusFiltering_SkipsCompletedTasks(t *testing.T) {
 	project := testutil.NewTestProject("Test")
 
 	done := testutil.NewTestTask("Done task", models.TaskTypeTask)
-	done.Active = true
-	done.Status = models.StatusDone
+	done.WorkflowState = models.StateDone
 
 	canceled := testutil.NewTestTask("Canceled task", models.TaskTypeTask)
-	canceled.Active = true
-	canceled.Status = models.StatusCanceled
+	canceled.WorkflowState = models.StateCanceled
 
 	active := testutil.NewTestTask("Active task", models.TaskTypeTask)
-	active.Active = true
-	active.Status = models.StatusTodo
+	active.WorkflowState = models.StateReady
 
 	project.Tasks = []*models.Task{done, canceled, active}
 
-	var tasks []focus.FocusTask
-	for _, task := range project.Tasks {
-		if !task.Active {
-			continue
-		}
-		if task.Status.IsComplete() {
-			continue
-		}
-		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
-	}
+	tasks := collectFilteredFocusTasks(project)
 
 	if len(tasks) != 1 {
 		t.Errorf("expected 1 non-completed task, got %d", len(tasks))
@@ -321,21 +288,11 @@ func TestFocusFiltering_IncludesBlockedTasks(t *testing.T) {
 	project := testutil.NewTestProject("Test")
 
 	blocked := testutil.NewTestTask("Blocked task", models.TaskTypeTask)
-	blocked.Active = true
-	blocked.Status = models.StatusBlocked
+	blocked.WorkflowState = models.StateWaiting
 
 	project.Tasks = []*models.Task{blocked}
 
-	var tasks []focus.FocusTask
-	for _, task := range project.Tasks {
-		if !task.Active {
-			continue
-		}
-		if task.Status.IsComplete() {
-			continue
-		}
-		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
-	}
+	tasks := collectFilteredFocusTasks(project)
 
 	if len(tasks) != 1 {
 		t.Errorf("expected 1 blocked task, got %d", len(tasks))
@@ -345,27 +302,17 @@ func TestFocusFiltering_IncludesBlockedTasks(t *testing.T) {
 func TestFocusFiltering_MultipleProjects(t *testing.T) {
 	project1 := testutil.NewTestProject("Project 1")
 	task1 := testutil.NewTestTask("Task from P1", models.TaskTypeTask)
-	task1.Active = true
 	task1.Priority = 1
 	project1.Tasks = []*models.Task{task1}
 
 	project2 := testutil.NewTestProject("Project 2")
 	task2 := testutil.NewTestTask("Task from P2", models.TaskTypeTask)
-	task2.Active = true
 	task2.Priority = 2
 	project2.Tasks = []*models.Task{task2}
 
 	var tasks []focus.FocusTask
 	for _, project := range []*models.Project{project1, project2} {
-		for _, task := range project.Tasks {
-			if !task.Active {
-				continue
-			}
-			if task.Status.IsComplete() {
-				continue
-			}
-			tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
-		}
+		tasks = append(tasks, collectFilteredFocusTasks(project)...)
 	}
 
 	sort.Slice(tasks, func(i, j int) bool {
@@ -391,21 +338,12 @@ func TestFocusFiltering_MultipleProjects(t *testing.T) {
 func TestFocusFiltering_EmptyResult(t *testing.T) {
 	project := testutil.NewTestProject("Test")
 
-	inactive := testutil.NewTestTask("Inactive task", models.TaskTypeTask)
-	inactive.Active = false
+	done := testutil.NewTestTask("Done task", models.TaskTypeTask)
+	done.WorkflowState = models.StateDone
 
-	project.Tasks = []*models.Task{inactive}
+	project.Tasks = []*models.Task{done}
 
-	var tasks []focus.FocusTask
-	for _, task := range project.Tasks {
-		if !task.Active {
-			continue
-		}
-		if task.Status.IsComplete() {
-			continue
-		}
-		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
-	}
+	tasks := collectFilteredFocusTasks(project)
 
 	if len(tasks) != 0 {
 		t.Errorf("expected 0 tasks, got %d", len(tasks))
@@ -422,24 +360,51 @@ func containsSubstringFocus(s, substr string) bool {
 	return false
 }
 
-// TestCollectActiveFlaggedTasks_SkipsNilTasks guards the legacy --active path:
-// when a project's Tasks slice contains a stray nil entry, the loop must skip
-// it instead of panicking on field access (task.Status / task.Active).
-func TestCollectActiveFlaggedTasks_SkipsNilTasks(t *testing.T) {
+// TestCollectFocusQueueTasks_SkipsNilTasks guards the legacy --active path
+// (now backed by Focus Queue membership): when a project's Tasks slice contains
+// a stray nil entry, the loop must skip it instead of panicking on field access.
+func TestCollectFocusQueueTasks_SkipsNilTasks(t *testing.T) {
 	project := testutil.NewTestProject("Test")
 
-	active := testutil.NewTestTask("Active task", models.TaskTypeTask)
-	active.Active = true
+	queued := testutil.NewTestTask("Queued task", models.TaskTypeTask)
 
 	// Inject a nil between real tasks to simulate corrupted in-memory state.
-	project.Tasks = []*models.Task{active, nil}
+	project.Tasks = []*models.Task{queued, nil}
 
-	tasks := collectActiveFlaggedTasks([]*models.Project{project, nil})
+	queue := []config.FocusQueueItem{{TaskID: queued.ID, ProjectID: project.ID}}
+
+	tasks := collectFocusQueueTasks(queue, []*models.Project{project, nil})
 
 	if len(tasks) != 1 {
 		t.Fatalf("expected 1 task (nil and nil project skipped), got %d", len(tasks))
 	}
-	if tasks[0].Task.Title != "Active task" {
+	if tasks[0].Task.Title != "Queued task" {
+		t.Errorf("unexpected task: %q", tasks[0].Task.Title)
+	}
+}
+
+// TestCollectFocusQueueTasks_ExcludesTerminalAndUnqueued asserts the queue
+// membership + nonterminal-state filter that replaced the Active-flag read.
+func TestCollectFocusQueueTasks_ExcludesTerminalAndUnqueued(t *testing.T) {
+	project := testutil.NewTestProject("Test")
+
+	queued := testutil.NewTestTask("Queued task", models.TaskTypeTask)
+	unqueued := testutil.NewTestTask("Unqueued task", models.TaskTypeTask)
+	done := testutil.NewTestTask("Done task", models.TaskTypeTask)
+	done.Complete()
+	project.Tasks = []*models.Task{queued, unqueued, done}
+
+	queue := []config.FocusQueueItem{
+		{TaskID: queued.ID, ProjectID: project.ID},
+		{TaskID: done.ID, ProjectID: project.ID},
+	}
+
+	tasks := collectFocusQueueTasks(queue, []*models.Project{project})
+
+	if len(tasks) != 1 {
+		t.Fatalf("expected only the queued nonterminal task, got %d", len(tasks))
+	}
+	if tasks[0].Task.Title != "Queued task" {
 		t.Errorf("unexpected task: %q", tasks[0].Task.Title)
 	}
 }

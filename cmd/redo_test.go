@@ -16,7 +16,7 @@ import (
 func TestRunRedo(t *testing.T) {
 	t.Run("redo reapplies side effects and saves", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		projectPath := filepath.Join(tmpDir, "test-project")
+		projectPath := filepath.Join(tmpDir, "projects", "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}
@@ -117,7 +117,7 @@ func TestRunRedo(t *testing.T) {
 
 	t.Run("returns error when no redo history", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		projectPath := filepath.Join(tmpDir, "test-project")
+		projectPath := filepath.Join(tmpDir, "projects", "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}

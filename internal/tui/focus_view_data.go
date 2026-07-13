@@ -194,7 +194,7 @@ func (m *FocusViewModel) applyQueueFilter() {
 	q := *m.queue
 	i := 0
 	for i < len(q) {
-		if q[i].Task.Status.IsComplete() {
+		if q[i].Task.IsTerminalState() {
 			delete(m.queueIDs, q[i].Task.ID)
 			q = append(q[:i], q[i+1:]...)
 			pruned = true
@@ -216,7 +216,7 @@ func (m *FocusViewModel) applySuggestedFilter() {
 	m.filtered = nil
 	var queued []FocusTask
 	for _, sft := range m.ranked {
-		if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(sft.Task, &m.filter, sft.Project.ID, m.config) {
+		if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(sft.Task, &m.filter, sft.Project, m.config) {
 			continue
 		}
 		if m.isInQueue(sft.Task.ID) {
@@ -237,7 +237,7 @@ func (m *FocusViewModel) baseFilteredTasks() []FocusTask {
 
 	var baseTasks []FocusTask
 	for _, ft := range m.tasks {
-		if passesCommonFilters(ft.Task, &m.filter, ft.Project.ID, m.config) {
+		if passesCommonFilters(ft.Task, &m.filter, ft.Project, m.config) {
 			baseTasks = append(baseTasks, ft)
 		}
 	}

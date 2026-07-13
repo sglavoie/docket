@@ -3,13 +3,12 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -19,12 +18,16 @@ import (
 // adopted here in a later session.
 type LinkedTaskCreatorModel struct {
 	quickCaptureInput
+	capture    CaptureCoordinator
 	sourceTask *models.Task
 	linkType   LinkType
 	width      int
 	height     int
 	discardConfirmState
 }
+
+// SetCaptureCoordinator injects the shared capture coordinator (captureWireable).
+func (m *LinkedTaskCreatorModel) SetCaptureCoordinator(c CaptureCoordinator) { m.capture = c }
 
 // NewLinkedTaskCreatorModel creates a new linked task creator.
 func NewLinkedTaskCreatorModel(sourceTask *models.Task, project *models.Project, linkType LinkType) *LinkedTaskCreatorModel {
@@ -247,8 +250,10 @@ func (m *LinkedTaskCreatorModel) linkTypeName() string {
 }
 
 func (m *LinkedTaskCreatorModel) createTask(openContent, openDetail bool) tea.Cmd {
-	// All mutations run synchronously in the Update() goroutine to avoid
-	// data races with View() reading project.Tasks concurrently.
+	// Parsing runs synchronously so a rejected capture keeps the input; the
+	// creation itself commits through the application layer (CaptureCoordinator's
+	// linked-task use case), which loads its own snapshot and reloads the affected
+	// project on completion.
 
 	input := m.inputValue()
 	if input == "" {
@@ -269,132 +274,52 @@ func (m *LinkedTaskCreatorModel) createTask(openContent, openDetail bool) tea.Cm
 		return nil
 	}
 
-	// Create the new task with parsed metadata
-	newTask := &models.Task{
-		ID:              uuid.New().String(),
-		ShortID:         m.project.GetNextShortID(),
-		Type:            result.taskType,
-		Title:           result.title,
-		Status:          models.StatusTodo,
-		Priority:        result.priority,
-		Section:         m.sourceTask.Section, // Inherit section from source by default
-		DueDate:         result.dueDate,
-		Recurrence:      result.recurrence,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-		DependsOn:       []string{},
-		RelatedTo:       []string{},
-		Tags:            []string{},
-		ScoreDimensions: map[string]int{},
-		Children:        []*models.Task{},
-	}
-
-	// Apply parsed section if explicitly set, otherwise keep inherited
+	// Default section inherits the source's bucket; an explicit parsed section
+	// overrides it (both must be built-in GTD sections).
+	section := taskSectionBucket(m.sourceTask)
 	if result.section != "" {
-		assignSection(newTask, result.section)
+		section = result.section
 	}
 
-	// Apply parsed parent if set (for non-subtask link types)
+	// A parsed >parent applies only for non-subtask link types (a subtask's
+	// parent is the source itself).
+	var parentID *string
 	if result.parentID != nil && m.linkType != LinkTypeSubtask {
-		newTask.ParentID = result.parentID
+		parentID = result.parentID
 	}
 
-	// Apply tags from parsing
-	for _, tag := range result.tags {
-		newTask.AddTag(tag)
+	req := app.LinkedTaskRequest{
+		Task: app.CaptureRequest{
+			ProjectID:  m.project.ID,
+			Title:      result.title,
+			Type:       result.taskType,
+			Priority:   result.priority,
+			Tags:       result.tags,
+			Section:    section,
+			Due:        result.dueDate,
+			ParentID:   parentID,
+			Recurrence: result.recurrence,
+			State:      captureStateForStatus(result.status),
+		},
+		SourceTaskID: m.sourceTask.ID,
+		Link:         appLinkKind(m.linkType),
 	}
+	return m.capture.CreateLinked(req, m.linkType, openContent, openDetail)
+}
 
-	// Apply status transition
-	switch result.status {
-	case models.StatusInProgress:
-		newTask.Start()
-		if result.activate {
-			newTask.Activate()
-		}
-	case models.StatusBlocked:
-		newTask.Block()
-	case models.StatusDone:
-		newTask.Complete()
-	case models.StatusCanceled:
-		newTask.Cancel()
-	case models.StatusReview:
-		newTask.Review()
-	case models.StatusStandby:
-		newTask.Standby()
-	case models.StatusMaybe:
-		newTask.Maybe()
-	default:
-	}
-
-	// Establish the relationship based on link type
-	switch m.linkType {
+// appLinkKind maps the TUI LinkType to the application-layer LinkKind.
+func appLinkKind(lt LinkType) app.LinkKind {
+	switch lt {
 	case LinkTypeBlocker:
-		// New task blocks source: source depends on new task
-		if err := m.sourceTask.AddDependency(newTask.ID); err != nil {
-			m.err = err
-			return nil
-		}
-
+		return app.LinkBlocker
 	case LinkTypeDependent:
-		// New task depends on source
-		if err := newTask.AddDependency(m.sourceTask.ID); err != nil {
-			m.err = err
-			return nil
-		}
-
+		return app.LinkDependent
 	case LinkTypeSubtask:
-		// Promote leaf types to Story so they can have subtasks
-		if m.sourceTask.Type.IsLeafType() {
-			m.project.MutateTask(m.sourceTask.ID, func(t *models.Task) {
-				t.Type = models.TaskTypeStory
-			})
-		}
-		// New task is a child of source
-		newTask.ParentID = &m.sourceTask.ID
-
+		return app.LinkSubtask
 	case LinkTypeFollowUp:
-		// Bidirectional relationship + inherit tags
-		if err := m.sourceTask.AddRelatedTo(newTask.ID); err != nil {
-			m.err = err
-			return nil
-		}
-		if err := newTask.AddRelatedTo(m.sourceTask.ID); err != nil {
-			m.err = err
-			return nil
-		}
-		// Copy tags from source task (in addition to any parsed tags)
-		for _, tag := range m.sourceTask.Tags {
-			newTask.AddTag(tag)
-		}
+		return app.LinkFollowUp
 	default:
-	}
-
-	// Preserve root-task prominence, but child tasks must stay at the end of
-	// their siblings so new subtasks become the last child rather than the first.
-	if newTask.ParentID != nil {
-		m.project.Tasks = append(m.project.Tasks, newTask)
-	} else {
-		m.project.Tasks = append([]*models.Task{newTask}, m.project.Tasks...)
-	}
-	m.project.BuildTaskTree()
-
-	// Save with backup and reload
-	if err := saveProjectSync(m.project); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
-	}
-
-	sourceTask := m.sourceTask
-	project := m.project
-	linkType := m.linkType
-	return func() tea.Msg {
-		return LinkedTaskCreatedMsg{
-			SourceTask:  sourceTask,
-			NewTask:     newTask,
-			Project:     project,
-			LinkType:    linkType,
-			OpenContent: openContent,
-			OpenDetail:  openDetail,
-		}
+		return app.LinkFollowUp
 	}
 }
 

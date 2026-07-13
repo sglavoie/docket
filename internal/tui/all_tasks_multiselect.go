@@ -6,7 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -62,199 +64,178 @@ func (m *AllTasksViewModel) getSelectedBulkItems() []bulkTaskItem {
 	return items
 }
 
-// finishBulk clears multiselect state, sets the status message, and refreshes.
-func (m *AllTasksViewModel) finishBulk(statusMsg string) {
-	m.FinishBulk(&m.statusMessage, statusMsg)
-	m.loadAllTasks()
-	m.clampCursor()
+// bulkTaskIDs returns the selected task IDs for a bulk mutation, or nil (with no
+// change) when nothing is selected. All Tasks routes every multiselect mutation
+// through the application-layer BulkCoordinator: the batch commits asynchronously
+// as one transaction, the shell reloads the touched projects and clears the
+// selection on success, and per-view success wording is supplied via
+// finalizeBatchResult so the toast reads exactly as it did on the synchronous
+// path.
+func (m *AllTasksViewModel) bulkTaskIDs() []string {
+	return taskIDsFromTaskRefs(m.getSelectedBulkItems())
 }
 
-// handleBulkStatusChange applies a status change to all selected tasks across projects.
-func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	items := m.getSelectedBulkItems()
-	count, err := taskOpsApplyBulk(m, items, StatusVerb(newStatus)+" Task",
-		func(project *models.Project, taskID string) bool {
-			task := project.GetTaskByID(taskID)
-			if task == nil || task.CanTransitionTo(newStatus) != "" {
-				return false
-			}
-			if newStatus.IsComplete() && task.HasIncompleteChildren() {
-				return false
-			}
-			project.MutateTask(taskID, func(t *models.Task) {
-				t.ApplyTransition(newStatus)
-			})
-			return true
-		})
-	if err != nil {
-		m.setStatus(fmt.Sprintf("Error: %v", err))
+// handleBulkStateChange transitions all selected tasks to the given canonical
+// WorkflowState, running the workflow-rule cascade and dropping tasks that
+// cannot transition (best-effort SkipInvalid), matching the legacy per-task
+// guard.
+func (m *AllTasksViewModel) handleBulkStateChange(newState models.WorkflowState) (tea.Model, tea.Cmd) {
+	taskIDs := m.bulkTaskIDs()
+	if len(taskIDs) == 0 {
 		return m, nil
 	}
-	if count == 0 {
-		m.finishBulk("No tasks were changed")
-	} else {
-		m.finishBulk(fmt.Sprintf("Changed %d tasks to %s", count, newStatus))
-	}
-	return m, nil
+	cmd := m.bulk.TransitionWithWorkflow(
+		app.BulkTransitionRequest{
+			TaskIDs:     taskIDs,
+			Target:      newState,
+			Rules:       m.enabledWorkflowRules(),
+			UndoAction:  StateVerb(newState) + " Task",
+			UndoContext: fmt.Sprintf("%d tasks", len(taskIDs)),
+			SkipInvalid: true,
+		},
+		func(changed int) string {
+			if changed == 0 {
+				return "No tasks were changed"
+			}
+			return fmt.Sprintf("Changed %d tasks to %s", changed, newState)
+		},
+	)
+	return m, finalizeBatchResult(cmd, taskIDs, "")
 }
 
 // handleBulkPriorityChange sets the priority on all selected tasks across projects.
 func (m *AllTasksViewModel) handleBulkPriorityChange(priority int) (tea.Model, tea.Cmd) {
-	items := m.getSelectedBulkItems()
-	count, err := taskOpsApplyBulk(m, items, "Set Priority",
-		func(project *models.Project, taskID string) bool {
-			task := project.GetTaskByID(taskID)
-			if task == nil || task.Priority == priority {
-				return false
-			}
-			project.MutateTask(taskID, func(t *models.Task) {
-				t.Priority = priority
-			})
-			return true
-		})
-	if err != nil {
-		m.setStatus(fmt.Sprintf("Error: %v", err))
+	taskIDs := m.bulkTaskIDs()
+	if len(taskIDs) == 0 {
 		return m, nil
 	}
-	if count == 0 {
-		m.finishBulk("No tasks were changed")
-	} else {
-		m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, count))
-	}
-	return m, nil
+	cmd := m.bulk.SetPriority(taskIDs, priority)
+	summary := fmt.Sprintf("Set priority %d on %d tasks", priority, len(taskIDs))
+	return m, finalizeBatchResult(cmd, taskIDs, summary)
 }
 
 // handleBulkDueDateChange sets a due date on all selected tasks.
 func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model, tea.Cmd) {
-	items := m.getSelectedBulkItems()
-	dueDate := util.StartOfDay(time.Now().AddDate(0, 0, daysFromNow))
-	count, err := taskOpsApplyBulk(m, items, "Set Due Date",
-		func(project *models.Project, taskID string) bool {
-			project.MutateTask(taskID, func(t *models.Task) {
-				d := dueDate
-				t.DueDate = &d
-				t.HasTime = false
-			})
-			return true
-		})
-	if err != nil {
-		m.setStatus(fmt.Sprintf("Error: %v", err))
+	taskIDs := m.bulkTaskIDs()
+	if len(taskIDs) == 0 {
 		return m, nil
 	}
-	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", dueDateLabel(daysFromNow), count))
-	return m, nil
+	dueDate := util.StartOfDay(time.Now().AddDate(0, 0, daysFromNow))
+	cmd := m.bulk.SetDueDate(taskIDs, dueDate, false)
+	summary := fmt.Sprintf("Due date %s on %d tasks", dueDateLabel(daysFromNow), len(taskIDs))
+	return m, finalizeBatchResult(cmd, taskIDs, summary)
 }
 
 // handleBulkClearDueDate clears due dates on all selected tasks.
 func (m *AllTasksViewModel) handleBulkClearDueDate() (tea.Model, tea.Cmd) {
-	items := m.getSelectedBulkItems()
-	count, err := taskOpsApplyBulk(m, items, "Clear Due Date",
-		func(project *models.Project, taskID string) bool {
-			project.MutateTask(taskID, func(t *models.Task) {
-				t.DueDate = nil
-				t.HasTime = false
-			})
-			return true
-		})
-	if err != nil {
-		m.setStatus(fmt.Sprintf("Error: %v", err))
+	taskIDs := m.bulkTaskIDs()
+	if len(taskIDs) == 0 {
 		return m, nil
 	}
-	m.finishBulk(fmt.Sprintf("Cleared due date on %d tasks", count))
-	return m, nil
+	cmd := m.bulk.ClearDueDate(taskIDs)
+	summary := fmt.Sprintf("Cleared due date on %d tasks", len(taskIDs))
+	return m, finalizeBatchResult(cmd, taskIDs, summary)
 }
 
-// handleBulkSectionMove moves all selected tasks to a target section.
+// handleBulkSectionMove moves all selected tasks to the workflow state their
+// target GTD section maps onto. The locked design retires standalone sections, so
+// a "send to section X" bulk action is a state transition (see the mapping in
+// stateForSectionName), routed through the same workflow-aware batch path.
 func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Model, tea.Cmd) {
-	items := m.getSelectedBulkItems()
-	count, err := taskOpsApplyBulk(m, items, "Move to Section",
-		func(project *models.Project, taskID string) bool {
-			task := project.GetTaskByID(taskID)
-			if task == nil || task.InSection(targetSection) {
-				return false
-			}
-			project.MutateTask(taskID, func(t *models.Task) {
-				t.SetSection(targetSection)
-			})
-			return true
-		})
-	if err != nil {
-		m.setStatus(fmt.Sprintf("Error: %v", err))
+	target, ok := stateForSectionName(targetSection)
+	if !ok {
+		m.setStatus(fmt.Sprintf("Unknown section %q", targetSection))
 		return m, nil
 	}
-	if count == 0 {
-		m.finishBulk("No tasks were moved")
-	} else {
-		m.finishBulk(fmt.Sprintf("Moved %d tasks to %s", count, targetSection))
+	taskIDs := m.bulkTaskIDs()
+	if len(taskIDs) == 0 {
+		return m, nil
 	}
-	return m, nil
+	cmd := m.bulk.TransitionWithWorkflow(
+		app.BulkTransitionRequest{
+			TaskIDs:     taskIDs,
+			Target:      target,
+			Rules:       m.enabledWorkflowRules(),
+			UndoAction:  "Move to Section",
+			UndoContext: fmt.Sprintf("%d tasks", len(taskIDs)),
+			SkipInvalid: true,
+		},
+		func(changed int) string {
+			if changed == 0 {
+				return "No tasks were moved"
+			}
+			return fmt.Sprintf("Moved %d tasks to %s", changed, targetSection)
+		},
+	)
+	return m, finalizeBatchResult(cmd, taskIDs, "")
 }
 
-// handleBulkDelete deletes all selected tasks.
+// handleBulkDelete deletes all selected subtrees through the application layer.
+// The durable planning refs (Focus Queue, Daily Plan, dismissals) of every
+// removed task ride the delete transaction as a config artifact, mirroring the
+// CLI delete; machine-local recent visits are repaired separately by the shell
+// after the commit.
 func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
-	groups := groupTaskProjectRefsByProject(m.getSelectedBulkItems())
-	if len(groups) == 0 {
+	taskIDs := m.bulkTaskIDs()
+	if len(taskIDs) == 0 {
 		return m, nil
 	}
 
-	totalDeleted := 0
-	allDeletedIDs := make(map[string]bool)
-	var changedGroups []changedTaskProjectGroup
-
-	for _, group := range groups {
-		project := group.Project
-		if project == nil {
+	// Expand the selected roots to their whole subtrees so the durable planning
+	// cleanup keys on every task the delete will remove, not just the roots.
+	idsToDelete := make(map[string]bool)
+	for _, group := range groupTaskProjectRefsByProject(m.getSelectedBulkItems()) {
+		if group.Project == nil {
 			continue
 		}
-
-		// Collect root IDs and expand to include all descendants
 		rootIDs := make(map[string]bool, len(group.Items))
 		for _, item := range group.Items {
 			rootIDs[item.Task.ID] = true
 		}
-		idsToDelete := collectDescendantIDs(project.Tasks, rootIDs)
-		for id := range idsToDelete {
-			allDeletedIDs[id] = true
+		for id := range collectDescendantIDs(group.Project.Tasks, rootIDs) {
+			idsToDelete[id] = true
 		}
-
-		prevStates := captureTaskStates(project.Tasks)
-		beforeCount := len(project.Tasks)
-		deleteTasksFromProject(project, idsToDelete)
-		deletedCount := beforeCount - len(project.Tasks)
-		if deletedCount == 0 {
-			continue
-		}
-		totalDeleted += deletedCount
-		changedGroups = append(changedGroups, changedTaskProjectGroup{
-			group:      group,
-			taskIDs:    sortedTaskIDsFromSet(idsToDelete),
-			prevStates: prevStates,
-		})
 	}
 
-	groupID, groupProjectIDs := workflowGroupMetadata(taskProjectGroupsFromChanged(changedGroups))
-	for _, changed := range changedGroups {
-		opts := BuildWorkflowOpts(
-			m.projectService,
-			changed.group.Project,
-			m.config,
-			m.configManager,
-			changed.prevStates,
-			"Delete Tasks",
-			fmt.Sprintf("%d tasks", len(changed.taskIDs)),
-			changed.taskIDs,
-		)
-		opts.UndoGroupID = groupID
-		opts.UndoGroupProjectIDs = groupProjectIDs
-		if err := persistWithWorkflow(opts); err != nil {
-			m.setStatus(fmt.Sprintf("Failed to save project %s: %v", changed.group.Project.Name, err))
+	// Fold the durable planning-ref cleanup into the delete transaction as a config
+	// artifact (this mutates the in-memory config in place, so the on-disk and
+	// in-memory views agree once committed).
+	var artifacts []storage.ArtifactChange
+	if m.config != nil && m.configManager != nil && m.config.RemoveDurableTaskRefs(idsToDelete) > 0 {
+		arts, err := configDomainArtifacts(m.configManager, m.config)
+		if err != nil {
+			m.setStatus(fmt.Sprintf("Error: %v", err))
 			return m, nil
 		}
+		artifacts = arts
 	}
 
-	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	cleanupConfigTaskRefs(m.config, m.configManager, allDeletedIDs)
+	cmd := m.bulk.Delete(taskIDs, artifacts...)
+	return m, finalizeBatchResult(cmd, taskIDs, "")
+}
 
-	m.finishBulk(fmt.Sprintf("Deleted %d tasks", totalDeleted))
-	return m, nil
+// stateForSectionName maps a legacy GTD section name (as offered by the "send to
+// section" bulk action) to the workflow state that realizes it. It is the inverse
+// of models.SectionForState; the empty section is the active bucket, which maps to
+// the ready state.
+func stateForSectionName(section string) (models.WorkflowState, bool) {
+	switch section {
+	case "":
+		return models.StateReady, true
+	case models.SectionNext:
+		return models.StateNext, true
+	case models.SectionInbox:
+		return models.StateInbox, true
+	case models.SectionWaiting:
+		return models.StateWaiting, true
+	case models.SectionReview:
+		return models.StateReview, true
+	case models.SectionSomeday:
+		return models.StateSomeday, true
+	case models.SectionStandby:
+		return models.StatePaused, true
+	case models.SectionCompleted:
+		return models.StateDone, true
+	}
+	return "", false
 }

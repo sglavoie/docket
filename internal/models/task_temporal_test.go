@@ -12,7 +12,7 @@ import (
 // returning the repopulated task.
 func parseRoundTrip(t *testing.T, original *models.Task) *models.Task {
 	t.Helper()
-	meta := format.WriteMetadata(original)
+	meta := format.WriteMetadataV2(original)
 	// Extract inner content from <!-- ... -->
 	inner := ""
 	if m := format.MetadataRegex().FindStringSubmatch(meta); len(m) == 2 {
@@ -32,12 +32,12 @@ func parseRoundTrip(t *testing.T, original *models.Task) *models.Task {
 func TestTaskTemporal_StartDate_RoundTrip(t *testing.T) {
 	start := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
 	task := &models.Task{
-		ID:        "t1",
-		Type:      models.TaskTypeTask,
-		Status:    models.StatusTodo,
-		Priority:  3,
-		CreatedAt: time.Now(),
-		StartDate: &start,
+		ID:            "t1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		CreatedAt:     time.Now(),
+		StartDate:     &start,
 	}
 
 	result := parseRoundTrip(t, task)
@@ -54,7 +54,7 @@ func TestTaskTemporal_EstimatedDays_RoundTrip(t *testing.T) {
 	task := &models.Task{
 		ID:            "t2",
 		Type:          models.TaskTypeTask,
-		Status:        models.StatusTodo,
+		WorkflowState: models.StateReady,
 		Priority:      3,
 		CreatedAt:     time.Now(),
 		EstimatedDays: 2.5,
@@ -72,7 +72,7 @@ func TestTaskTemporal_StartAndEstimated_RoundTrip(t *testing.T) {
 	task := &models.Task{
 		ID:            "t3",
 		Type:          models.TaskTypeTask,
-		Status:        models.StatusTodo,
+		WorkflowState: models.StateReady,
 		Priority:      3,
 		CreatedAt:     time.Now(),
 		StartDate:     &start,
@@ -91,11 +91,11 @@ func TestTaskTemporal_StartAndEstimated_RoundTrip(t *testing.T) {
 
 func TestTaskTemporal_StartDate_Unset_NoWrite(t *testing.T) {
 	task := &models.Task{
-		ID:        "t4",
-		Type:      models.TaskTypeTask,
-		Status:    models.StatusTodo,
-		Priority:  3,
-		CreatedAt: time.Now(),
+		ID:            "t4",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		CreatedAt:     time.Now(),
 	}
 
 	result := parseRoundTrip(t, task)
@@ -111,11 +111,11 @@ func TestTaskTemporal_StartDate_Unset_NoWrite(t *testing.T) {
 func TestTaskTemporal_EpicScopeBaseline_RoundTrip(t *testing.T) {
 	baselined := time.Date(2026, 4, 1, 0, 0, 0, 0, time.Local)
 	task := &models.Task{
-		ID:        "e1",
-		Type:      models.TaskTypeEpic,
-		Status:    models.StatusTodo,
-		Priority:  3,
-		CreatedAt: time.Now(),
+		ID:            "e1",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		CreatedAt:     time.Now(),
 		EpicAttrs: &models.EpicAttrs{
 			InitialChildCount: 5,
 			ScopeBaselinedAt:  &baselined,
@@ -140,11 +140,11 @@ func TestTaskTemporal_EpicScopeBaseline_RoundTrip(t *testing.T) {
 
 func TestTaskTemporal_EpicScopeBaseline_Zero_NoWrite(t *testing.T) {
 	task := &models.Task{
-		ID:        "e2",
-		Type:      models.TaskTypeEpic,
-		Status:    models.StatusTodo,
-		Priority:  3,
-		CreatedAt: time.Now(),
+		ID:            "e2",
+		Type:          models.TaskTypeEpic,
+		WorkflowState: models.StateReady,
+		Priority:      3,
+		CreatedAt:     time.Now(),
 		EpicAttrs: &models.EpicAttrs{
 			Scope: models.EpicScopeDefined,
 		},

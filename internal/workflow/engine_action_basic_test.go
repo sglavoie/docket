@@ -18,10 +18,10 @@ func TestApplyAction(t *testing.T) {
 			name:   "set status",
 			action: RuleAction{ActionType: ActionSetStatus, Value: "in_progress"},
 			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Status: models.StatusTodo}
+				return &models.Task{ID: "1", WorkflowState: models.StateReady}
 			},
 			expectedChange: func(t *models.Task) bool {
-				return t.Status == models.StatusInProgress
+				return t.State() == models.StateInProgress
 			},
 			shouldModify: true,
 		},
@@ -29,10 +29,14 @@ func TestApplyAction(t *testing.T) {
 			name:   "set status no change",
 			action: RuleAction{ActionType: ActionSetStatus, Value: "todo"},
 			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Status: models.StatusTodo}
+				// 33.7.6.4: idempotency is now checked against the state the target
+				// status realizes. A "todo" target reopens to Inbox
+				// (TargetStateForStatus(todo)=StateInbox), so a no-op requires the
+				// task to already be in Inbox — not merely carry a todo status.
+				return &models.Task{ID: "1", WorkflowState: models.StateInbox}
 			},
 			expectedChange: func(t *models.Task) bool {
-				return t.Status == models.StatusTodo
+				return t.State() == models.StateInbox
 			},
 			shouldModify: false,
 		},
@@ -51,10 +55,10 @@ func TestApplyAction(t *testing.T) {
 			name:   "set section",
 			action: RuleAction{ActionType: ActionSetSection, Value: ""},
 			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Section: models.SectionNext}
+				return &models.Task{ID: "1", WorkflowState: models.StateNext}
 			},
 			expectedChange: func(t *models.Task) bool {
-				return t.Section == ""
+				return models.SectionForState(t.State()) == ""
 			},
 			shouldModify: true,
 		},

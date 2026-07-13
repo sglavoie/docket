@@ -41,7 +41,7 @@ func sectionTaskCount(tasks []*models.Task, sectionName string) int {
 		if t.IsComplete() || t.IsSnoozed() {
 			continue
 		}
-		if t.Section == sectionName {
+		if t.InSection(sectionName) {
 			count++
 		}
 	}
@@ -121,7 +121,7 @@ func (m *ProjectTreeModel) viewModeCounts() projectTreeViewModeCounts {
 }
 
 func (m *ProjectTreeModel) incrementSectionCount(counts *projectTreeViewModeCounts, task *models.Task) {
-	switch task.Section {
+	switch taskSectionBucket(task) {
 	case models.SectionNext:
 		counts.next++
 	case models.SectionInbox:
@@ -247,13 +247,11 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	prefix := m.Dispatcher.PendingPrefix()
-	var currentStage string
 	var currentPriority int
 	if task := m.getCursorTask(); task != nil {
-		currentStage = task.Stage
 		currentPriority = task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	hints := CommonTaskActionPrefixHints(currentPriority)
 	hints["f"] = FoldPrefixHints
 	hints["g"] = ProjectTreeNavigationPrefixHints
 	hints["m"] = ProjectTreeMovePrefixHints // override: tree uses tree moves
@@ -261,7 +259,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints["b"] = BlockerPrefixHints
 	hints["F"] = m.buildFilterPrefixHints()
 	hints["Ft"] = FilterTypePrefixHints
-	hints["Fs"] = FilterStatusPrefixHints
+	hints["Fs"] = FilterStatePrefixHints
 	hints["Fd"] = FilterDuePrefixHints
 	hints["Fa"] = FilterAttrPrefixHints
 	hints["Fas"] = FilterAttrSeverityPrefixHints
@@ -273,7 +271,6 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints["Fao"] = FilterAttrScopePrefixHints
 	hints["Fap"] = FilterAttrPointsPrefixHints
 	hints["FS"] = BuildFilterScorePrefixHints(m.config, true)
-	hints["F."] = BuildFilterStagePrefixHints(m.config.Stages, m.filter.Stage)
 	hints["Fv"] = SavedFilterPrefixHints
 	return &PrefixPopupInfo{
 		Prefix: prefix,
@@ -299,9 +296,9 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		typeDetail = string(m.filter.Type)
 	}
 
-	statusDetail := "(all)"
-	if m.filter.Status != "" {
-		statusDetail = string(m.filter.Status)
+	stateDetail := "(all)"
+	if m.filter.State != "" {
+		stateDetail = string(m.filter.State)
 	}
 
 	tagDetail := "(none)"
@@ -357,21 +354,15 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		scoreDetail = fmt.Sprintf(">=%.0f", m.filter.ScoreMin)
 	}
 
-	stageDetail := "(all)"
-	if m.filter.Stage != "" {
-		stageDetail = m.filter.Stage
-	}
-
 	hints := []PrefixHint{
 		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.viewMode == ViewModeCompleted},
 		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
 		{Key: "t", Description: "type", Detail: typeDetail, Active: m.filter.Type != ""},
-		{Key: "s", Description: "status", Detail: statusDetail, Active: m.filter.Status != ""},
+		{Key: "s", Description: "state", Detail: stateDetail, Active: m.filter.State != ""},
 		{Key: "#", Description: "tags", Detail: tagDetail, Active: len(m.filter.Tags) > 0},
 		{Key: "@", Description: "section", Detail: sectionDetail, Active: len(m.filter.Sections) > 0},
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
-		{Key: ".", Description: "stage", Detail: stageDetail, Active: m.filter.Stage != ""},
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
 		{Key: "h", Description: "dimmed", Detail: dimDetail, Active: m.filter.HideDimmed},

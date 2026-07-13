@@ -218,21 +218,58 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 	if task == nil {
 		return nil, true
 	}
-	v.setUndoContext(undoAction, task.Title)
-	result := applyTypeChange(v.workflowPersistFn(), project, task.ID, op)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	// Preserve the pre-flight can-do guard so an invalid type change is a no-op
+	// (matching applyTypeChange, which returned an empty result without persisting).
+	if !typeChangeCanApply(task, op) {
+		return nil, true
 	}
-	cmds := []tea.Cmd{result.Cmd}
-	if result.StatusMessage != "" {
-		v.setStatusMessage(result.StatusMessage)
-		v.refreshView()
+	// The flash color reflects the resulting type. The coordinator commits against
+	// its own snapshot and does not mutate this in-memory task, so project the new
+	// type deterministically for the flash before dispatching the mutation.
+	projectedType := projectedTypeForOp(task.Type, op)
+	cmd := v.singleTaskCoordinator().ChangeType(task.ID, appTaskTypeChangeForOp(op))
+	msg := cmd()
+	if em, ok := msg.(TransactionErrorMsg); ok {
+		return func() tea.Msg { return ErrorMsg{Err: em.Err} }, true
 	}
-	if updated := project.GetTaskByID(task.ID); updated != nil {
-		v.setMutationFlash(typeMutationFlashBg(updated.Type))
-		cmds = append(cmds, mutationFlashTimeout())
+	v.setMutationFlash(typeMutationFlashBg(projectedType))
+	return tea.Batch(func() tea.Msg { return msg }, mutationFlashTimeout()), true
+}
+
+// typeChangeCanApply reports whether the type-change op is valid for the task,
+// mirroring the can-do guard applyTypeChange performed before persisting.
+func typeChangeCanApply(task *models.Task, op TypeChangeOp) bool {
+	switch op {
+	case TypePromote:
+		ok, _ := task.CanPromote()
+		return ok
+	case TypeDemote:
+		ok, _ := task.CanDemote()
+		return ok
+	case TypeCycleLeft:
+		ok, _ := task.CanCycleLeafType(true)
+		return ok
+	case TypeCycleRight:
+		ok, _ := task.CanCycleLeafType(false)
+		return ok
 	}
-	return tea.Batch(cmds...), true
+	return false
+}
+
+// projectedTypeForOp returns the task type that op would produce from the given
+// current type, purely (no mutation), for computing the mutation-flash color.
+func projectedTypeForOp(current models.TaskType, op TypeChangeOp) models.TaskType {
+	switch op {
+	case TypePromote:
+		return current.Promote()
+	case TypeDemote:
+		return current.Demote()
+	case TypeCycleLeft:
+		return current.CycleLeafLeft()
+	case TypeCycleRight:
+		return current.CycleLeafRight()
+	}
+	return current
 }
 
 // primaryViewShouldCaptureEsc checks conditions common to all primary views:

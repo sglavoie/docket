@@ -38,7 +38,7 @@ func TestParse_MetadataCommentInsideCodeBlock(t *testing.T) {
 	if afterTask == nil {
 		t.Error("expected to find task with id 'after-id'")
 	}
-	if afterTask != nil && afterTask.Status != models.StatusInProgress {
-		t.Errorf("after-task status = %q, want 'in_progress'", afterTask.Status)
+	if afterTask != nil && afterTask.State() != models.StateInProgress {
+		t.Errorf("after-task state = %q, want 'in_progress'", afterTask.State())
 	}
 }

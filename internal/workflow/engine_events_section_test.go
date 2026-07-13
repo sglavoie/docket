@@ -7,15 +7,17 @@ import (
 )
 
 func TestEventTrigger_SectionChanged(t *testing.T) {
+	// A section is only meaningful for a planning-state task: under the workflow
+	// state model an in_progress task collapses to StateInProgress with no
+	// section, so the section-changed event is seeded with todo-status tasks
+	// whose Next/Inbox sections map to distinct states.
 	prevTask := &models.Task{
-		ID:      "task-1",
-		Status:  models.StatusInProgress,
-		Section: models.SectionNext,
+		ID:            "task-1",
+		WorkflowState: models.StateNext,
 	}
 	currTask := &models.Task{
-		ID:      "task-1",
-		Status:  models.StatusInProgress,
-		Section: models.SectionInbox,
+		ID:            "task-1",
+		WorkflowState: models.StateInbox,
 	}
 
 	evalCtx := &EvaluationContext{
@@ -46,7 +48,7 @@ func TestEventTrigger_SectionChanged(t *testing.T) {
 
 func TestMatchesTrigger_SectionUsesSectionField(t *testing.T) {
 	t.Run("contains matches GTD section", func(t *testing.T) {
-		task := &models.Task{ID: "t1", Section: models.SectionNext}
+		task := &models.Task{ID: "t1", WorkflowState: models.StateNext}
 		trigger := RuleTrigger{Field: FieldSection, Operation: OpContains, Value: "ext"}
 		if !matchesTrigger(task, trigger) {
 			t.Error("'Next' contains 'ext', should match")
@@ -54,7 +56,7 @@ func TestMatchesTrigger_SectionUsesSectionField(t *testing.T) {
 	})
 
 	t.Run("equals empty matches Active view task", func(t *testing.T) {
-		task := &models.Task{ID: "t1", Section: ""}
+		task := &models.Task{ID: "t1", WorkflowState: models.StateReady}
 		trigger := RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: ""}
 		if !matchesTrigger(task, trigger) {
 			t.Error("task in Active view should match section equals ''")

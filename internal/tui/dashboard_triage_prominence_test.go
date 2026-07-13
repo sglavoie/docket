@@ -24,9 +24,9 @@ func TestComputeGlobalAlertLinesSurfacesTriageCount(t *testing.T) {
 	cfg.DataDir = t.TempDir()
 	project := testutil.NewTestProject("Triage Demo")
 	inboxA := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inboxA.Section = models.SectionInbox
+	inboxA.SetSection(models.SectionInbox)
 	inboxB := testutil.NewTestTask("triage me too", models.TaskTypeTask)
-	inboxB.Section = models.SectionInbox
+	inboxB.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inboxA, inboxB}
 	cfg.Projects = []*models.Project{project}
 
@@ -69,7 +69,7 @@ func TestProjectRowStatusIndicatorIncludesInbox(t *testing.T) {
 
 	project := testutil.NewTestProject("Inboxy")
 	inbox := testutil.NewTestTask("pending triage", models.TaskTypeTask)
-	inbox.Section = models.SectionInbox
+	inbox.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inbox}
 
 	m := &DashboardModel{}

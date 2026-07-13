@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
@@ -40,7 +41,7 @@ var attachCmd = &cobra.Command{
 	Short: "Attach a file, URL, or code reference to a task",
 	Long: `Attach a file, URL reference, or code reference to a task.
 
-Files are copied to .attachments/<short-id>/ alongside tasks.md.
+Files are copied into the project's .attachments/ tree alongside tasks.md.
 URLs are stored as references only (not downloaded).
 Code references use the file:line format and open in your code editor.
 
@@ -78,7 +79,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return err
 	}
 
-	project, cfg, configManager, errLoad := LoadCurrentProject()
+	project, cfg, _, errLoad := LoadCurrentProject()
 	if errLoad != nil {
 		return errLoad
 	}
@@ -87,6 +88,8 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	if findErr != nil {
 		return findErr
 	}
+
+	svc := newAppService(cfg)
 
 	// Handle URL attachment
 	if attachURL != "" {
@@ -101,17 +104,11 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return validationErr
 		}
 
-		err = task.AddAttachment(url, true, url)
-		if err != nil {
-			return err
-		}
-
-		err = SaveProject(project, &SaveOptions{
-			Config: cfg, ConfigManager: configManager,
-			UndoAction: "Attach URL", UndoContext: url,
+		res, attachErr := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.AttachURL(task.ID, url)
 		})
-		if err != nil {
-			return err
+		if attachErr != nil {
+			return translateAppError(attachErr)
 		}
 
 		if out.Quiet {
@@ -122,9 +119,9 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
-			}{TaskShortID: task.ShortID, Attachment: url, Type: "url"})
+			}{TaskShortID: res.ShortID, Attachment: url, Type: "url"})
 		}
-		fmt.Printf("Attached URL to #%d: %s\n", task.ShortID, url)
+		fmt.Printf("Attached URL to #%d: %s\n", res.ShortID, url)
 		return nil
 	}
 
@@ -136,18 +133,12 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Check if it's a code reference (file:line format)
 	codePath, lineNum, isCodeRef := storage.ParseCodeReference(filePath)
 	if isCodeRef {
-		// Store code reference without copying
-		err = task.AddCodeReference(codePath, lineNum)
-		if err != nil {
-			return err
-		}
-
-		err = SaveProject(project, &SaveOptions{
-			Config: cfg, ConfigManager: configManager,
-			UndoAction: "Attach Code Ref", UndoContext: fmt.Sprintf("%s:%d", codePath, lineNum),
+		// Store code reference without copying.
+		res, attachErr := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.AttachCodeReference(task.ID, codePath, lineNum)
 		})
-		if err != nil {
-			return err
+		if attachErr != nil {
+			return translateAppError(attachErr)
 		}
 
 		if out.Quiet {
@@ -158,14 +149,14 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
-			}{TaskShortID: task.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"})
+			}{TaskShortID: res.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"})
 		}
 		// Check if file exists and show info message if not
 		if !storage.CodeReferenceFileExists(codePath) {
-			fmt.Printf("Attached code reference to #%d: %s:%d\n", task.ShortID, codePath, lineNum)
+			fmt.Printf("Attached code reference to #%d: %s:%d\n", res.ShortID, codePath, lineNum)
 			fmt.Println("Note: referenced file does not currently exist")
 		} else {
-			fmt.Printf("Attached code reference to #%d: %s:%d\n", task.ShortID, codePath, lineNum)
+			fmt.Printf("Attached code reference to #%d: %s:%d\n", res.ShortID, codePath, lineNum)
 		}
 		return nil
 	}
@@ -194,37 +185,22 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 		return fmt.Errorf("failed to access %s: %w", absPath, statErr)
 	}
-	// Directories cannot be attached; without this guard CopyAttachment fails
-	// with an opaque "is a directory" io error later in the pipeline.
+	// Directories cannot be attached; without this guard the copy fails with an
+	// opaque "is a directory" io error later in the pipeline.
 	if info.IsDir() {
 		return fmt.Errorf("cannot attach a directory: %s", absPath)
 	}
 
-	// Copy file to attachments directory
-	filename, err := storage.CopyAttachment(project, task, absPath)
-	if err != nil {
-		return fmt.Errorf("failed to copy attachment: %w", err)
-	}
-
-	// Add attachment to task metadata. Remove the just-copied file on failure
-	// (validation or save) so we don't leave orphaned bytes in .attachments/.
-	cleanupCopiedFile := func() {
-		if rmErr := storage.RemoveAttachmentFile(project, task, filename); rmErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to clean up copied attachment: %v\n", rmErr)
-		}
-	}
-
-	if err = task.AddAttachment(filename, false, absPath); err != nil {
-		cleanupCopiedFile()
-		return err
-	}
-
-	if err = SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Attach File", UndoContext: filename,
-	}); err != nil {
-		cleanupCopiedFile()
-		return err
+	// Route the file attachment through the application layer: the metadata write
+	// is validated first, then the source bytes ride the SAME transaction as an
+	// AttachmentCopy side effect. A validation failure aborts before any byte is
+	// written and a commit failure leaves no orphan, so the legacy copy-then-clean-up
+	// compensation is gone.
+	result, attachErr := withResultRetry(func() (app.AttachFileResult, error) {
+		return svc.AttachFile(task.ID, absPath)
+	})
+	if attachErr != nil {
+		return translateAppError(attachErr)
 	}
 
 	if out.Quiet {
@@ -235,8 +211,8 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			TaskShortID int    `json:"task_short_id"`
 			Attachment  string `json:"attachment"`
 			Type        string `json:"type"`
-		}{TaskShortID: task.ShortID, Attachment: filename, Type: "file"})
+		}{TaskShortID: result.Task.ShortID, Attachment: result.Filename, Type: "file"})
 	}
-	fmt.Printf("Attached file to #%d: %s\n", task.ShortID, filename)
+	fmt.Printf("Attached file to #%d: %s\n", result.Task.ShortID, result.Filename)
 	return nil
 }

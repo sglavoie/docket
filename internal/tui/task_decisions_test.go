@@ -20,6 +20,7 @@ func TestTaskDecisionsSaveDecisionMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.addMode = true
 	model.categoryIndex = decisionCategoryIndex(models.DecisionCategoryArchitecture)
 	model.textInput.SetValue("Use PostgreSQL")
@@ -66,6 +67,7 @@ func TestTaskDecisionsSaveDecisionEmptyText(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.addMode = true
 	model.textInput.SetValue("   ")
 	model.rationaleInput.SetValue("ignored")
@@ -96,6 +98,7 @@ func TestTaskDecisionsDeleteMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 1
 
 	cmd := model.executeDelete()
@@ -136,6 +139,7 @@ func TestTaskDecisionsSaveEditMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 	model.editCategoryIdx = decisionCategoryIndex(models.DecisionCategoryUX)
@@ -183,6 +187,7 @@ func TestTaskDecisionsRenderEditModeOOB(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 
@@ -210,6 +215,7 @@ func TestTaskDecisionsEditExternalEditorFromEditModeOOB(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 
@@ -240,6 +246,7 @@ func TestTaskDecisionsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
 	model.editTextInput.SetValue("edited text")
@@ -271,6 +278,7 @@ func TestTaskDecisionsToggleResolvedMutatesSynchronously(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.cursor = 0
 
 	cmd := model.toggleResolved()

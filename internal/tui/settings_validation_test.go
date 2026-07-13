@@ -159,96 +159,6 @@ func TestValidateFocusedField_UsesCurrentSettingsFieldLayout(t *testing.T) {
 	}
 }
 
-func TestHasDuplicateStage(t *testing.T) {
-	m := &SettingsModel{
-		stages: []string{"Brainstorm", "Design", "Implement", "Test"},
-	}
-
-	// Exact match
-	if !m.hasDuplicateStage("Test", -1) {
-		t.Error("expected duplicate for exact match 'Test'")
-	}
-
-	// Case-insensitive match
-	if !m.hasDuplicateStage("test", -1) {
-		t.Error("expected duplicate for case-insensitive 'test'")
-	}
-
-	// No match
-	if m.hasDuplicateStage("Deploy", -1) {
-		t.Error("expected no duplicate for 'Deploy'")
-	}
-
-	// Exclude self during rename (index 3 = "Test")
-	if m.hasDuplicateStage("Test", 3) {
-		t.Error("expected no duplicate when excluding self")
-	}
-
-	// Rename collides with different index
-	if !m.hasDuplicateStage("Design", 3) {
-		t.Error("expected duplicate when renaming to existing 'Design'")
-	}
-}
-
-func TestCommitStageEdit_AddDuplicate(t *testing.T) {
-	m := &SettingsModel{
-		stages:        []string{"Brainstorm", "Design"},
-		stageEditMode: true,
-		stageAddMode:  true,
-		stageInput:    textinput.New(),
-	}
-	m.stageInput.SetValue("Design")
-
-	err := m.commitStageEdit()
-	if err == nil {
-		t.Fatal("expected error for duplicate stage add")
-	}
-	if len(m.stages) != 2 {
-		t.Errorf("stages should not have changed, got %v", m.stages)
-	}
-	// Should stay in edit mode on error
-	if !m.stageEditMode {
-		t.Error("should remain in edit mode after duplicate error")
-	}
-}
-
-func TestCommitStageEdit_AddNew(t *testing.T) {
-	m := &SettingsModel{
-		stages:        []string{"Brainstorm", "Design"},
-		stageEditMode: true,
-		stageAddMode:  true,
-		stageInput:    textinput.New(),
-	}
-	m.stageInput.SetValue("Deploy")
-
-	err := m.commitStageEdit()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(m.stages) != 3 || m.stages[2] != "Deploy" {
-		t.Errorf("expected stages [Brainstorm Design Deploy], got %v", m.stages)
-	}
-}
-
-func TestCommitStageEdit_RenameDuplicate(t *testing.T) {
-	m := &SettingsModel{
-		stages:        []string{"Brainstorm", "Design", "Test"},
-		stageCursor:   2,
-		stageEditMode: true,
-		stageAddMode:  false,
-		stageInput:    textinput.New(),
-	}
-	m.stageInput.SetValue("design") // case-insensitive dup
-
-	err := m.commitStageEdit()
-	if err == nil {
-		t.Fatal("expected error for duplicate rename")
-	}
-	if m.stages[2] != "Test" {
-		t.Errorf("stage should not have changed, got %q", m.stages[2])
-	}
-}
-
 func TestValidatePriorityTitleColors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -361,21 +271,5 @@ func TestValidateEditorCommand_AbsolutePathWithFlags(t *testing.T) {
 	// Absolute path alone is also valid.
 	if err := m.validateEditorCommand(fakeEditor); err != nil {
 		t.Errorf("validateEditorCommand(%q) unexpected error: %v", fakeEditor, err)
-	}
-}
-
-func TestCommitStageEdit_RenameSelf(t *testing.T) {
-	m := &SettingsModel{
-		stages:        []string{"Brainstorm", "Design"},
-		stageCursor:   1,
-		stageEditMode: true,
-		stageAddMode:  false,
-		stageInput:    textinput.New(),
-	}
-	m.stageInput.SetValue("Design") // same name is fine
-
-	err := m.commitStageEdit()
-	if err != nil {
-		t.Fatalf("renaming to same value should succeed, got: %v", err)
 	}
 }

@@ -79,11 +79,9 @@ func weeklyReviewPriorityEntries(m *WeeklyReviewModel) []keymap.Entry {
 	for _, k := range keys {
 		key := k
 		entries = append(entries, keymap.Bind(key, "Set priority "+key, "Actions", func() (tea.Model, tea.Cmd) {
-			model, cmd := taskOpsChangePriority(m, key)
-			if m.err == nil {
-				m.trackMutation("priority")
-			}
-			return model, cmd
+			cmd := wfChangePriority(m, key)
+			m.trackMutation("priority")
+			return m, cmd
 		}, keymap.AsHidden()))
 	}
 	return entries

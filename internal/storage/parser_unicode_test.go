@@ -62,14 +62,14 @@ func TestParseTasksMarkdown_SpecialCharsInTitle(t *testing.T) {
 func TestRoundTrip_UnicodeTitle(t *testing.T) {
 	original := []*models.Task{
 		{
-			ID:          "t1",
-			ShortID:     1,
-			Type:        models.TaskTypeTask,
-			Title:       "\u4efb\u52d9\u7ba1\u7406 - Task Manager",
-			Description: "\u00c9crire du code avec des caract\u00e8res sp\u00e9ciaux: \u00e0\u00e7\u00fc\u00f1",
-			Status:      models.StatusTodo,
-			Priority:    2,
-			CreatedAt:   time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "\u4efb\u52d9\u7ba1\u7406 - Task Manager",
+			Description:   "\u00c9crire du code avec des caract\u00e8res sp\u00e9ciaux: \u00e0\u00e7\u00fc\u00f1",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			CreatedAt:     time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -93,14 +93,14 @@ func TestRoundTrip_UnicodeTitle(t *testing.T) {
 func TestRoundTrip_EmptyDescription(t *testing.T) {
 	original := []*models.Task{
 		{
-			ID:          "t1",
-			ShortID:     1,
-			Type:        models.TaskTypeTask,
-			Title:       "No Description",
-			Description: "",
-			Status:      models.StatusTodo,
-			Priority:    3,
-			CreatedAt:   time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "No Description",
+			Description:   "",
+			WorkflowState: models.StateReady,
+			Priority:      3,
+			CreatedAt:     time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -121,14 +121,14 @@ func TestRoundTrip_EmptyDescription(t *testing.T) {
 func TestRoundTrip_SpecialCharsInTags(t *testing.T) {
 	original := []*models.Task{
 		{
-			ID:        "t1",
-			ShortID:   1,
-			Type:      models.TaskTypeTask,
-			Title:     "Tagged Task",
-			Status:    models.StatusTodo,
-			Priority:  2,
-			Tags:      []string{"c++", "c#", "front-end", "v2.0"},
-			CreatedAt: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Tagged Task",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			Tags:          []string{"c++", "c#", "front-end", "v2.0"},
+			CreatedAt:     time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -155,13 +155,13 @@ func TestRoundTrip_ColonInTitle(t *testing.T) {
 	// Title with extra colons should be preserved correctly
 	original := []*models.Task{
 		{
-			ID:        "t1",
-			ShortID:   1,
-			Type:      models.TaskTypeTask,
-			Title:     "Fix: Handle edge case: empty input",
-			Status:    models.StatusTodo,
-			Priority:  2,
-			CreatedAt: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Fix: Handle edge case: empty input",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			CreatedAt:     time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -184,14 +184,14 @@ func TestRoundTrip_DescriptionWithHTMLComment(t *testing.T) {
 	// confuse the parser on re-read
 	original := []*models.Task{
 		{
-			ID:          "t1",
-			ShortID:     1,
-			Type:        models.TaskTypeTask,
-			Title:       "Tricky Description",
-			Description: "Use <!-- comment --> syntax in markdown.",
-			Status:      models.StatusTodo,
-			Priority:    2,
-			CreatedAt:   time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			ID:            "t1",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Tricky Description",
+			Description:   "Use <!-- comment --> syntax in markdown.",
+			WorkflowState: models.StateReady,
+			Priority:      2,
+			CreatedAt:     time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 

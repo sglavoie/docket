@@ -19,13 +19,17 @@ type GlobalBlockersModel struct {
 	config  *config.Config
 	entries []GlobalBlockerEntry
 	state   blockerViewState
+	// coordinator commits blocker-list replacements through the application
+	// layer as one transaction. See feature_coordinator_secondary.go.
+	coordinator BlockerCoordinator
 }
 
 // NewGlobalBlockersModel loads blockers from all active projects.
-func NewGlobalBlockersModel(cfg *config.Config) *GlobalBlockersModel {
+func NewGlobalBlockersModel(cfg *config.Config, coordinator BlockerCoordinator) *GlobalBlockersModel {
 	m := &GlobalBlockersModel{
-		config: cfg,
-		state:  newBlockerViewState(cfg.Editor),
+		config:      cfg,
+		state:       newBlockerViewState(cfg.Editor),
+		coordinator: coordinator,
 	}
 	m.loadAllBlockers()
 	return m
@@ -144,18 +148,18 @@ func (m *GlobalBlockersModel) getProjectBlockers(project *models.Project) []*mod
 }
 
 func (m *GlobalBlockersModel) saveBlockerData(_ *models.Blocker, project *models.Project) error {
-	return storage.SaveBlockers(project, m.getProjectBlockers(project))
+	return commitBlockersThroughCoordinator(m.coordinator, project, m.getProjectBlockers(project))
 }
 
 func (m *GlobalBlockersModel) deleteBlockerData(idx int) (*models.Project, error) {
 	project := m.entries[idx].Project
 	m.entries = append(m.entries[:idx], m.entries[idx+1:]...)
-	return project, storage.SaveBlockers(project, m.getProjectBlockers(project))
+	return project, commitBlockersThroughCoordinator(m.coordinator, project, m.getProjectBlockers(project))
 }
 
 func (m *GlobalBlockersModel) updateBlockerData(idx int) (*models.Project, error) {
 	project := m.entries[idx].Project
-	return project, storage.SaveBlockers(project, m.getProjectBlockers(project))
+	return project, commitBlockersThroughCoordinator(m.coordinator, project, m.getProjectBlockers(project))
 }
 
 func (m *GlobalBlockersModel) getAddProject() *models.Project {

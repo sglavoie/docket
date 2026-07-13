@@ -35,7 +35,7 @@ func init() {
 }
 
 func runProjectOpen(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
 	}
@@ -43,13 +43,19 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 	var project *models.Project
 
 	if len(args) > 0 {
-		project = cfg.GetProject(args[0])
+		project, err = lookupProject(configManager, args[0])
+		if err != nil {
+			return err
+		}
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(args[0])
 		}
 	} else {
 		// Interactive selection
-		projects := cfg.GetActiveProjects()
+		projects, err := activeProjects(configManager)
+		if err != nil {
+			return err
+		}
 		if len(projects) == 0 {
 			return fmt.Errorf("no projects available. Create one with: tt project new <name>")
 		}

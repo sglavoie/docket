@@ -264,26 +264,26 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	wants := map[string][]string{
 		// Focus Board: full shared wiring including F. stage and Fd due date.
-		"FocusBoard": {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"FocusBoard": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Full shared wiring including F. stage and Fd due date.
-		"FocusView":    {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"ProjectFocus": {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"FocusView":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"ProjectFocus": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// All Tasks: Fd is a direct cycle-binding (not a sub-prefix), and P is
 		// a view-specific direct project filter toggle.
-		"AllTasks": {"#", ".", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"AllTasks": {"#", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Project Tree and Outliner append view-specific filters for
 		// completed/actionable/section/columns plus Fv saved filters.
-		"ProjectTree":          {"#", ".", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
-		"Outliner":             {"#", ".", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
-		"CrossProjectOutliner": {"#", ".", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
-		"Kanban":               {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"ProjectTree":          {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"Outliner":             {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"CrossProjectOutliner": {"#", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"Kanban":               {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Priority view appends a view-specific direct binding `r` (toggle
 		// actionable filter) under the F prefix.
-		"PriorityView":    {"#", ".", "S", "a", "d", "h", "i", "k", "p", "r", "s", "t", "x"},
-		"DailyReview":     {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"WeeklyReview":    {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"DueDateOverview": {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"RecentActivity":  {"#", ".", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"PriorityView":    {"#", "S", "a", "d", "h", "i", "k", "p", "r", "s", "t", "x"},
+		"DailyReview":     {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"WeeklyReview":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"DueDateOverview": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"RecentActivity":  {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 	}
 
 	for _, tc := range sharedFilterViewCases() {
@@ -311,7 +311,7 @@ func TestFilterParity_FocusBoard_AdvertisesSharedFilterGroup(t *testing.T) {
 	if !fChildIsBinding(km, "h") {
 		t.Error("Focus Board must advertise Fh (hide-dimmed)")
 	}
-	for _, sub := range []string{"t", "s", "d", "S", "."} {
+	for _, sub := range []string{"t", "s", "d", "S"} {
 		if !fChildIsPrefix(km, sub) {
 			t.Errorf("Focus Board must expose F%s sub-prefix", sub)
 		}
@@ -330,7 +330,7 @@ func TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup(t *testing.T) {
 	if !fChildIsBinding(km, "h") {
 		t.Error("Project Focus must advertise Fh (hide-dimmed)")
 	}
-	for _, sub := range []string{"t", "s", "d", "S", "."} {
+	for _, sub := range []string{"t", "s", "d", "S"} {
 		if !fChildIsPrefix(km, sub) {
 			t.Errorf("Project Focus must expose F%s sub-prefix", sub)
 		}
@@ -349,7 +349,7 @@ func TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup(t *testing.T) {
 	if !fChildIsBinding(km, "h") {
 		t.Error("Recent Activity must advertise Fh (hide-dimmed)")
 	}
-	for _, sub := range []string{"t", "s", "d", "S", "."} {
+	for _, sub := range []string{"t", "s", "d", "S"} {
 		if !fChildIsPrefix(km, sub) {
 			t.Errorf("Recent Activity must expose F%s sub-prefix", sub)
 		}
@@ -530,8 +530,11 @@ func TestFilterParity_RuntimePrefixPopup_MatchesDeclarativeFChildren(t *testing.
 	}
 }
 
-func TestFilterParity_StatusSubPrefix_IncludesMaybeAndMatchesPopup(t *testing.T) {
-	want := []string{"0", "S", "b", "d", "m", "r", "s", "t", "x"}
+// TestFilterParity_StateSubPrefix_MatchesPopup verifies the Fs sub-prefix now
+// exposes the ten canonical WorkflowState children (the legacy TaskStatus status
+// cycle was retired) and that keymap and runtime popup agree on them.
+func TestFilterParity_StateSubPrefix_MatchesPopup(t *testing.T) {
+	want := []string{"0", "d", "i", "m", "n", "p", "r", "s", "v", "w", "x"}
 	for _, tc := range sharedFilterViewCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			gotKeymap := fSubChildKeys(tc.km, "s")

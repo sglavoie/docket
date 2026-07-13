@@ -9,8 +9,8 @@ import (
 
 func TestEvaluateRules_Basic(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "1", Title: "High priority task", Priority: 1, Section: models.SectionNext, Status: models.StatusTodo},
-		{ID: "2", Title: "Normal task", Priority: 3, Section: models.SectionNext, Status: models.StatusTodo},
+		{ID: "1", Title: "High priority task", Priority: 1, WorkflowState: models.StateNext},
+		{ID: "2", Title: "Normal task", Priority: 3, WorkflowState: models.StateNext},
 	}
 
 	rules := []WorkflowRule{
@@ -28,17 +28,17 @@ func TestEvaluateRules_Basic(t *testing.T) {
 	if len(result.ModifiedTasks) != 1 {
 		t.Errorf("expected 1 modified task, got %d", len(result.ModifiedTasks))
 	}
-	if tasks[0].Section != "" {
-		t.Errorf("expected task section to be empty (Active), got %q", tasks[0].Section)
+	if models.SectionForState(tasks[0].State()) != "" {
+		t.Errorf("expected task section to be empty (Active), got %q", models.SectionForState(tasks[0].State()))
 	}
-	if tasks[1].Section != models.SectionNext {
-		t.Errorf("expected second task section unchanged, got %q", tasks[1].Section)
+	if models.SectionForState(tasks[1].State()) != models.SectionNext {
+		t.Errorf("expected second task section unchanged, got %q", models.SectionForState(tasks[1].State()))
 	}
 }
 
 func TestEvaluateRules_DisabledRule(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "1", Priority: 1, Section: models.SectionNext},
+		{ID: "1", Priority: 1, WorkflowState: models.StateNext},
 	}
 
 	rules := []WorkflowRule{
@@ -56,14 +56,14 @@ func TestEvaluateRules_DisabledRule(t *testing.T) {
 	if len(result.ModifiedTasks) != 0 {
 		t.Errorf("expected no modified tasks for disabled rule, got %d", len(result.ModifiedTasks))
 	}
-	if tasks[0].Section != models.SectionNext {
+	if models.SectionForState(tasks[0].State()) != models.SectionNext {
 		t.Errorf("expected section unchanged for disabled rule")
 	}
 }
 
 func TestEvaluateRules_Conflict(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test Task", Priority: 1, Section: models.SectionNext},
+		{ID: "1", Title: "Test Task", Priority: 1, WorkflowState: models.StateNext},
 	}
 
 	rules := []WorkflowRule{
@@ -91,14 +91,14 @@ func TestEvaluateRules_Conflict(t *testing.T) {
 	if len(result.ModifiedTasks) != 0 {
 		t.Errorf("expected no modified tasks when conflict exists, got %d", len(result.ModifiedTasks))
 	}
-	if tasks[0].Section != models.SectionNext {
+	if models.SectionForState(tasks[0].State()) != models.SectionNext {
 		t.Errorf("expected section unchanged when conflict exists")
 	}
 }
 
 func TestEvaluateRules_LoopPrevention(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "1", Priority: 1, Status: models.StatusTodo, Section: models.SectionNext},
+		{ID: "1", Priority: 1, WorkflowState: models.StateNext},
 	}
 
 	// These rules would loop if not prevented:
@@ -125,8 +125,8 @@ func TestEvaluateRules_LoopPrevention(t *testing.T) {
 	result := EvaluateRules(tasks, rules)
 
 	// Rule 1 should apply (priority=1 matched)
-	if tasks[0].Status != models.StatusInProgress {
-		t.Errorf("expected status to be in_progress, got %s", tasks[0].Status)
+	if tasks[0].State() != models.StateInProgress {
+		t.Errorf("expected status to be in_progress, got %s", tasks[0].State())
 	}
 	// Rule 2 would match but priority is already 1, so no change
 	if tasks[0].Priority != 1 {
@@ -140,7 +140,7 @@ func TestEvaluateRules_LoopPrevention(t *testing.T) {
 
 func TestEvaluateRules_ChainedRules(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "1", Priority: 1, Status: models.StatusTodo, Section: models.SectionNext, Tags: []string{}},
+		{ID: "1", Priority: 1, WorkflowState: models.StateNext, Tags: []string{}},
 	}
 
 	// Chained rules:
@@ -165,8 +165,8 @@ func TestEvaluateRules_ChainedRules(t *testing.T) {
 
 	result := EvaluateRules(tasks, rules)
 
-	if tasks[0].Section != "" {
-		t.Errorf("expected section to be empty, got %q", tasks[0].Section)
+	if models.SectionForState(tasks[0].State()) != "" {
+		t.Errorf("expected section to be empty, got %q", models.SectionForState(tasks[0].State()))
 	}
 	if !tasks[0].HasTag("active") {
 		t.Errorf("expected task to have 'active' tag")
@@ -178,9 +178,9 @@ func TestEvaluateRules_ChainedRules(t *testing.T) {
 
 func TestEvaluateRules_CompoundTriggers(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "1", Title: "Urgent blocked", Priority: 1, Status: models.StatusBlocked, Tags: []string{}},
-		{ID: "2", Title: "Normal blocked", Priority: 3, Status: models.StatusBlocked, Tags: []string{}},
-		{ID: "3", Title: "Urgent todo", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
+		{ID: "1", Title: "Urgent blocked", Priority: 1, WorkflowState: models.StateWaiting, Tags: []string{}},
+		{ID: "2", Title: "Normal blocked", Priority: 3, WorkflowState: models.StateWaiting, Tags: []string{}},
+		{ID: "3", Title: "Urgent todo", Priority: 1, WorkflowState: models.StateReady, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -252,9 +252,9 @@ func TestEvaluateRules_TimeBased(t *testing.T) {
 
 func TestTestRule(t *testing.T) {
 	task := &models.Task{
-		ID:       "1",
-		Priority: 1,
-		Section:  models.SectionNext,
+		ID:            "1",
+		Priority:      1,
+		WorkflowState: models.StateNext,
 	}
 
 	rule := WorkflowRule{
@@ -277,19 +277,18 @@ func TestTestRule(t *testing.T) {
 	}
 
 	// Task should not be modified by TestRule
-	if task.Section != models.SectionNext {
+	if models.SectionForState(task.State()) != models.SectionNext {
 		t.Error("TestRule should not modify task")
 	}
 }
 
 func TestTestRule_TriggerGroup(t *testing.T) {
 	task := &models.Task{
-		ID:       "1",
-		Priority: 1,
-		Status:   models.StatusInProgress,
-		Section:  models.SectionNext,
-		Tags:     []string{},
-		Type:     models.TaskTypeTask,
+		ID:            "1",
+		Priority:      1,
+		WorkflowState: models.StateInProgress,
+		Tags:          []string{},
+		Type:          models.TaskTypeTask,
 	}
 
 	rule := WorkflowRule{
@@ -317,7 +316,7 @@ func TestTestRule_TriggerGroup(t *testing.T) {
 	}
 
 	// Task should not be modified
-	if task.Section != models.SectionNext {
+	if task.State() != models.StateInProgress {
 		t.Error("TestRule should not modify task")
 	}
 }
@@ -438,10 +437,10 @@ func TestEvaluation_RecursiveChainedEventTriggers(t *testing.T) {
 	// Both rules should fire: rule 1 mutates the task, and the recursive
 	// re-evaluation should detect the status_changed event via the snapshot.
 	task := &models.Task{
-		ID:       "1",
-		Priority: 1,
-		Status:   models.StatusTodo,
-		Tags:     []string{},
+		ID:            "1",
+		Priority:      1,
+		WorkflowState: models.StateReady,
+		Tags:          []string{},
 	}
 
 	rules := []WorkflowRule{
@@ -469,8 +468,8 @@ func TestEvaluation_RecursiveChainedEventTriggers(t *testing.T) {
 
 	result := EvaluateRulesWithContext(evalCtx, rules)
 
-	if task.Status != models.StatusInProgress {
-		t.Errorf("expected status in_progress, got %s", task.Status)
+	if task.State() != models.StateInProgress {
+		t.Errorf("expected status in_progress, got %s", task.State())
 	}
 	if !task.HasTag("started") {
 		t.Errorf("expected tag 'started' from chained event trigger, got tags: %v", task.Tags)

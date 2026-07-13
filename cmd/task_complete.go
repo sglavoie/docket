@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui"
 )
@@ -121,85 +121,14 @@ func init() {
 	}
 }
 
-func runTaskComplete(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "complete", out, func(t *models.Task) {
-		t.Complete()
-	})
-}
-
-func runTaskStart(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "start", out, func(t *models.Task) {
-		t.Start()
-	})
-}
-
-func runTaskBlock(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "block", out, func(t *models.Task) {
-		t.Block()
-	})
-}
-
-func runTaskCancel(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "cancel", out, func(t *models.Task) {
-		t.Cancel()
-	})
-}
-
-func runTaskReopen(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "reopen", out, func(t *models.Task) {
-		t.Reopen()
-	})
-}
-
-func runTaskReview(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "review", out, func(t *models.Task) {
-		t.Review()
-	})
-}
-
-func runTaskStandby(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "standby", out, func(t *models.Task) {
-		t.Standby()
-	})
-}
-
-func runTaskMaybe(cmd *cobra.Command, args []string) error {
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-	return updateTaskStatus(args, "maybe", out, func(t *models.Task) {
-		t.Maybe()
-	})
-}
+func runTaskComplete(cmd *cobra.Command, args []string) error { return runStateCommand(cmd, args, "complete") }
+func runTaskStart(cmd *cobra.Command, args []string) error    { return runStateCommand(cmd, args, "start") }
+func runTaskBlock(cmd *cobra.Command, args []string) error    { return runStateCommand(cmd, args, "block") }
+func runTaskCancel(cmd *cobra.Command, args []string) error   { return runStateCommand(cmd, args, "cancel") }
+func runTaskReopen(cmd *cobra.Command, args []string) error   { return runStateCommand(cmd, args, "reopen") }
+func runTaskReview(cmd *cobra.Command, args []string) error   { return runStateCommand(cmd, args, "review") }
+func runTaskStandby(cmd *cobra.Command, args []string) error  { return runStateCommand(cmd, args, "standby") }
+func runTaskMaybe(cmd *cobra.Command, args []string) error    { return runStateCommand(cmd, args, "maybe") }
 
 // actionToTargetStatus maps CLI action names to the target TaskStatus.
 var actionToTargetStatus = map[string]models.TaskStatus{
@@ -213,122 +142,135 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 	"maybe":    models.StatusMaybe,
 }
 
-func updateTaskStatus(args []string, action string, out MutateOutput, update func(*models.Task)) error { //nolint:gocyclo
-	// Handle interactive selection if no ID provided
-	var taskIDs []string
-	var projectName string
-	if len(args) > 0 {
-		taskIDs = args
-		// Get project name for output (config-only, no task load needed)
-		if cfg, _, err := LoadConfig(); err == nil {
-			if p := cfg.GetCurrentProject(); p != nil {
-				projectName = p.Name
-			}
-		}
-	} else {
-		// Load project for interactive selection
-		project, _, _, err := LoadCurrentProject()
-		if err != nil {
-			return err
-		}
-		projectName = project.Name
+// actionToState maps a legacy CLI action name to the workflow state the
+// application-layer Transition use case moves the task to. block maps to waiting
+// and standby to paused/someday under the unified WorkflowState vocabulary;
+// reopen returns the task to inbox.
+var actionToState = map[string]models.WorkflowState{
+	"complete": models.StateDone,
+	"start":    models.StateInProgress,
+	"block":    models.StateWaiting,
+	"cancel":   models.StateCanceled,
+	"reopen":   models.StateInbox,
+	"review":   models.StateReview,
+	"standby":  models.StatePaused,
+	"maybe":    models.StateSomeday,
+}
 
-		targetStatus := actionToTargetStatus[action]
+// actionVerbs maps a CLI action to the past-tense verb shown in human output.
+var actionVerbs = map[string]string{
+	"complete": "Completed",
+	"start":    "Started",
+	"block":    "Blocked",
+	"cancel":   "Canceled",
+	"reopen":   "Reopened",
+	"review":   "Set to review",
+	"standby":  "Set to standby",
+	"maybe":    "Set to maybe",
+}
 
-		// Filter candidates based on whether the transition is valid
-		var candidates []*models.Task
-		for _, t := range project.Tasks {
-			if t.CanTransitionTo(targetStatus) == "" {
-				candidates = append(candidates, t)
-			}
-		}
-
-		if len(candidates) == 0 {
-			if action == "reopen" {
-				return fmt.Errorf("no completed tasks available to %s", action)
-			}
-			return fmt.Errorf("no active tasks available to %s", action)
-		}
-
-		items := TasksToSelectorItems(candidates)
-		prompt := fmt.Sprintf("Select task to %s:", action)
-		selected, err := tui.RunSelector(prompt, items)
-		if err != nil {
-			return err
-		}
-
-		task, err := GetTaskFromSelector(selected)
-		if err != nil {
-			return err
-		}
-		taskIDs = []string{task.ID}
+// runStateCommand routes a legacy status command through the application layer's
+// Transition use case. It preserves the legacy UX — explicit references or an
+// interactive selector, per-task error aggregation, and the recurring-instance
+// notice on completion — while the mutation itself commits atomically,
+// revision-checked, and undoably through app.Service. The workflow guards
+// (unresolved dependencies on completion, incomplete children on any terminal
+// transition) are enforced inside the use case, so no CLI-side pre-check remains.
+func runStateCommand(cmd *cobra.Command, args []string, action string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	cfg, _, err := LoadConfig()
+	if err != nil {
+		return err
 	}
 
-	// Map action to past-tense verb for output
-	actionVerbs := map[string]string{
-		"complete": "Completed",
-		"start":    "Started",
-		"block":    "Blocked",
-		"cancel":   "Canceled",
-		"reopen":   "Reopened",
-		"review":   "Set to review",
-		"standby":  "Set to standby",
-		"maybe":    "Set to maybe",
-	}
+	state := actionToState[action]
 	verb := actionVerbs[action]
-	if verb == "" {
-		verb = strings.ToUpper(action[:1]) + action[1:] + "d"
-	}
+	svc := newAppService(cfg)
 
 	var errs []string
 	succeeded := 0
-	for _, taskID := range taskIDs {
-		var generated int
-		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-			// Validate that the status transition is allowed
-			targetStatus := actionToTargetStatus[action]
-			if msg := task.CanTransitionTo(targetStatus); msg != "" {
-				return fmt.Errorf("%s", msg)
-			}
 
-			// Completion is blocked by incomplete dependencies or children;
-			// cancellation is blocked by incomplete children only (a parent
-			// must never be done/canceled while a child is still open).
-			if err := checkStatusChangeBlockers(project, task, targetStatus); err != nil {
-				return err
-			}
-
-			// Update status
-			update(task)
-
-			// Check for auto-unblocking
-			if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
-				project.CheckAndAutoUnblock()
-			}
-
-			// Generate recurring task instances for completed recurring tasks
-			if action == "complete" {
-				generated = project.GenerateRecurringInstances()
-			}
-
-			return nil
+	transition := func(display, taskID string) error {
+		res, err := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.Transition(app.StateRequest{TaskID: taskID, Target: state})
 		})
-
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))
-			continue
+			errs = append(errs, fmt.Sprintf("task %s: %s", display, translateAppError(err)))
+			return nil
 		}
-
 		succeeded++
-		if err := out.OutputTask(projectName, verb, task); err != nil {
+		if err := emitMutation(out, verb, res); err != nil {
 			return err
 		}
-		if !out.Quiet && !out.JSON && generated > 0 {
-			fmt.Printf("Created %s in Inbox\n", Pluralize(generated, "recurring task instance", "recurring task instances"))
+		if action == "complete" && !out.Quiet && !out.JSON && res.RecurringGenerated > 0 {
+			fmt.Printf("Created %s in Inbox\n", Pluralize(res.RecurringGenerated, "recurring task instance", "recurring task instances"))
 		}
+		return nil
 	}
 
+	// No references: open the interactive selector for a single target.
+	if len(args) == 0 {
+		taskID, err := selectStateTarget(action)
+		if err != nil {
+			return err
+		}
+		if err := transition(taskID, taskID); err != nil {
+			return err
+		}
+		return ReportBatchErrors(succeeded, errs)
+	}
+
+	for _, ref := range args {
+		taskID, err := resolveAppTaskID(cfg, ref)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", ref, err))
+			continue
+		}
+		if err := transition(ref, taskID); err != nil {
+			return err
+		}
+	}
 	return ReportBatchErrors(succeeded, errs)
+}
+
+// selectStateTarget opens the interactive selector for a state command invoked
+// with no explicit reference. It lists only tasks in the current project whose
+// legacy status can validly transition to the action's target and returns the
+// chosen task's UUID.
+func selectStateTarget(action string) (string, error) {
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return "", err
+	}
+
+	targetStatus := actionToTargetStatus[action]
+	var candidates []*models.Task
+	for _, t := range project.Tasks {
+		if t.CanTransitionTo(targetStatus) == "" {
+			candidates = append(candidates, t)
+		}
+	}
+	if len(candidates) == 0 {
+		if action == "reopen" {
+			return "", fmt.Errorf("no completed tasks available to %s", action)
+		}
+		return "", fmt.Errorf("no active tasks available to %s", action)
+	}
+
+	items := TasksToSelectorItems(candidates)
+	prompt := fmt.Sprintf("Select task to %s:", action)
+	selected, err := tui.RunSelector(prompt, items)
+	if err != nil {
+		return "", err
+	}
+	task, err := GetTaskFromSelector(selected)
+	if err != nil {
+		return "", err
+	}
+	return task.ID, nil
 }
 
 // countCrossProjectDeps counts the number of cross-project dependencies on a task.

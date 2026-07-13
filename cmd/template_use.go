@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var templateUseCmd = &cobra.Command{
@@ -120,108 +118,75 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 		t.Section = section
 	}
 
-	// Load current project
-	project, _, projectConfigManager, err := LoadCurrentProject()
+	// Load current project (only its identity and parent-resolution context are
+	// needed; the mutation itself commits through the application layer).
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	// Create main task
-	taskID := uuid.New().String()
-	shortID := project.GetNextShortID()
-	task, err := models.NewTask(taskID, shortID, t.Type, title)
-	if err != nil {
-		return err
-	}
-
-	// Apply template settings
-	task.Priority = t.GetEffectivePriority()
-	if t.Section != "" {
-		project.EnsureSection(t.Section)
-		task.SetSection(t.Section)
-	}
-	for _, tag := range t.Tags {
-		task.AddTag(tag)
-	}
-	if t.Description != "" {
-		task.Description = t.Description
-	}
-
-	// Handle parent
+	// Resolve the parent reference to its stable UUID with the legacy
+	// hierarchy checks and error messages; the use case re-validates placement
+	// against a fresh snapshot.
+	var parentID *string
 	if templateUseParent != "" {
-		parent, err := ValidateParentTask(project, templateUseParent, task.Type)
-		if err != nil {
-			return err
+		parent, parentErr := ValidateParentTask(project, templateUseParent, t.Type)
+		if parentErr != nil {
+			return parentErr
 		}
-		task.ParentID = &parent.ID
+		pid := parent.ID
+		parentID = &pid
 	}
 
-	// Add task to project
-	project.Tasks = append(project.Tasks, task)
-
-	// Create checklist from template
-	checklistCreated := 0
-	for _, item := range t.Checklist {
-		task.Checklist = append(task.Checklist, models.ChecklistItem{
-			Text: item,
-			Done: false,
-		})
-		checklistCreated++
-	}
-
-	// Create subtasks from Children (for Epic/Story templates)
-	subtasksCreated := 0
-	if t.Type.CanHaveChildren() && len(t.Children) > 0 {
+	// Materialize the child specs (Epic/Story templates), honoring --skip-optional.
+	var children []app.TemplateChildSpec
+	if t.Type.CanHaveChildren() {
 		for _, child := range t.Children {
 			if child.Optional && templateUseSkipOptional {
 				continue
 			}
-			childID := uuid.New().String()
-			childShortID := project.GetNextShortID()
-			childType := child.GetChildType()
-			childTask, childErr := models.NewTask(childID, childShortID, childType, child.Title)
-			if childErr != nil {
-				return fmt.Errorf("invalid child task %q: %w", child.Title, childErr)
-			}
-			childTask.ParentID = &task.ID
-			childTask.Priority = task.Priority
-			childTask.Section = task.Section
-			for _, tag := range task.Tags {
-				childTask.AddTag(tag)
-			}
-			project.Tasks = append(project.Tasks, childTask)
-			subtasksCreated++
+			children = append(children, app.TemplateChildSpec{Title: child.Title, Type: child.GetChildType()})
 		}
 	}
 
-	// Rebuild tree and save
-	project.BuildTaskTree()
-	project.ReorderRootTasksByCompletion()
-
-	// Update project timestamp
-	project.UpdatedAt = time.Now()
-
-	// Save project first so a template counter bump isn't persisted when
-	// the task creation itself fails.
-	if err := SaveProject(project, &SaveOptions{
-		EvaluateRules: true, Config: cfg, ConfigManager: projectConfigManager,
-		UndoAction: "Use Template", UndoContext: fmt.Sprintf("%s -> #%d %s", t.Name, shortID, title),
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
-	}
-
-	// Increment use count
+	// The template use-count bump rides the SAME commit as the created tasks so
+	// the pair is atomic — replacing the legacy save-then-bump sequence that
+	// could persist the tasks without the counter on a partial failure.
 	cfg.IncrementTemplateUseCount(t.ID)
-	if err := saveConfig(configManager, cfg); err != nil {
+	arts, err := encodeConfigArtifacts(configManager, cfg)
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Created %s #%d: %s (from template %q)\n", task.Type.HeadingPrefix(), shortID, title, t.Name)
-	if checklistCreated > 0 {
-		fmt.Printf("  Added %s\n", Pluralize(checklistCreated, "checklist item", "checklist items"))
+	svc := newAppService(cfg)
+	res, err := withResultRetry(func() (app.ApplyTemplateResult, error) {
+		return svc.ApplyTemplate(app.ApplyTemplateRequest{
+			AddTaskRequest: app.AddTaskRequest{
+				ProjectID:   project.ID,
+				Title:       title,
+				Type:        t.Type,
+				Priority:    t.GetEffectivePriority(),
+				Tags:        t.Tags,
+				Description: t.Description,
+				Section:     t.Section,
+				ParentID:    parentID,
+				Checklist:   t.Checklist,
+				Artifacts:   arts,
+			},
+			TemplateName: t.Name,
+			Children:     children,
+		})
+	})
+	if err != nil {
+		return translateAppError(err)
 	}
-	if subtasksCreated > 0 {
-		fmt.Printf("  Created %s\n", Pluralize(subtasksCreated, "subtask", "subtasks"))
+
+	fmt.Printf("Created %s #%d: %s (from template %q)\n", t.Type.HeadingPrefix(), res.Task.ShortID, res.Task.Title, t.Name)
+	if len(t.Checklist) > 0 {
+		fmt.Printf("  Added %s\n", Pluralize(len(t.Checklist), "checklist item", "checklist items"))
+	}
+	if res.SubtasksCreated > 0 {
+		fmt.Printf("  Created %s\n", Pluralize(res.SubtasksCreated, "subtask", "subtasks"))
 	}
 
 	return nil

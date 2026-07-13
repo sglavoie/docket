@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"errors"
 	"path/filepath"
 	"testing"
 
@@ -119,50 +118,39 @@ func TestHandleTaskPropertyChangedMsg(t *testing.T) {
 	}
 }
 
-func TestHandleInlineTaskCreateUsesPersister(t *testing.T) {
-	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
+// The inline-create handler now routes through the application-layer capture use
+// case (migrated in session 33.7.3.5.3) rather than the persister, so these tests
+// drive the real transactional storage stack and assert committed on-disk state.
+// The former persister.Load and manual-field-init assertions no longer apply:
+// capture builds the task via models.NewTask and commits one ledger ChangeSet.
 
-	msg := InlineTaskCreateMsg{
+func TestHandleInlineTaskCreateCommitsToInbox(t *testing.T) {
+	env := newAppBulkPickerEnv(t, []*models.Task{})
+	app := env.appModel()
+	project := env.projects[0]
+
+	handled, cmd := app.handleTaskMessages(InlineTaskCreateMsg{
 		Project: project,
 		Title:   "New Inline Task",
-	}
-	handled, _ := app.handleTaskMessages(msg)
-
+	})
 	if !handled {
 		t.Error("InlineTaskCreateMsg should be handled")
 	}
-
-	// Verify persister.Load was called to ensure project is loaded
-	if len(mockPersister.LoadCalls) != 1 {
-		t.Errorf("Expected 1 Load call, got %d", len(mockPersister.LoadCalls))
+	if app.err != nil {
+		t.Fatalf("unexpected error: %v", app.err)
 	}
-}
+	_ = cmd
 
-func TestHandleInlineTaskCreateWithLoadError(t *testing.T) {
-	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
-	mockPersister.LoadError = errors.New("load failed")
-
-	msg := InlineTaskCreateMsg{
-		Project: project,
-		Title:   "New Inline Task",
+	reloaded := env.reload(t, 0)
+	if len(reloaded.Tasks) != 1 {
+		t.Fatalf("committed task count = %d, want 1", len(reloaded.Tasks))
 	}
-	handled, cmd := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("InlineTaskCreateMsg should be handled")
+	got := reloaded.Tasks[0]
+	if got.Title != "New Inline Task" {
+		t.Errorf("committed title = %q, want %q", got.Title, "New Inline Task")
 	}
-
-	// Should return an error command
-	if cmd == nil {
-		t.Error("Expected error command when load fails")
-	}
-
-	// Execute the command and check for error message
-	result := cmd()
-	if errMsg, ok := result.(ErrorMsg); !ok {
-		t.Error("Expected ErrorMsg when load fails")
-	} else if errMsg.Err == nil {
-		t.Error("ErrorMsg should contain the error")
+	if models.SectionForState(got.State()) != models.SectionInbox {
+		t.Errorf("committed section = %q, want %q", models.SectionForState(got.State()), models.SectionInbox)
 	}
 }
 
@@ -177,28 +165,26 @@ func TestHandleInlineTaskCreateRejectsInvalidTitle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			app, _, project := newTestAppModelWithMockPersisterAndProject(t)
-			initialTaskCount := len(project.Tasks)
+			env := newAppBulkPickerEnv(t, []*models.Task{})
+			app := env.appModel()
+			project := env.projects[0]
 
-			msg := InlineTaskCreateMsg{
+			handled, cmd := app.handleTaskMessages(InlineTaskCreateMsg{
 				Project: project,
 				Title:   tt.title,
-			}
-			handled, cmd := app.handleTaskMessages(msg)
-
+			})
 			if !handled {
 				t.Error("InlineTaskCreateMsg should be handled")
 			}
 			if cmd == nil {
 				t.Fatal("Expected error command for invalid title")
 			}
-			result := cmd()
-			if _, ok := result.(ErrorMsg); !ok {
+			if _, ok := cmd().(ErrorMsg); !ok {
 				t.Error("Expected ErrorMsg for invalid title")
 			}
-			// Task should not have been added
-			if len(project.Tasks) != initialTaskCount {
-				t.Errorf("Expected %d tasks (unchanged), got %d", initialTaskCount, len(project.Tasks))
+			// No task should have been committed.
+			if reloaded := env.reload(t, 0); len(reloaded.Tasks) != 0 {
+				t.Errorf("committed task count = %d, want 0", len(reloaded.Tasks))
 			}
 		})
 	}
@@ -218,55 +204,24 @@ func TestHandleInlineTaskCreateDefaultsPriority(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			app, _, project := newTestAppModelWithMockPersisterAndProject(t)
+			env := newAppBulkPickerEnv(t, []*models.Task{})
+			app := env.appModel()
+			project := env.projects[0]
 
-			msg := InlineTaskCreateMsg{
+			app.handleTaskMessages(InlineTaskCreateMsg{
 				Project:  project,
 				Title:    "Priority test task",
 				Priority: tt.priority,
-			}
-			app.handleTaskMessages(msg)
+			})
 
-			// The task is prepended, so it should be first
-			if len(project.Tasks) == 0 {
-				t.Fatal("Expected at least one task")
+			reloaded := env.reload(t, 0)
+			if len(reloaded.Tasks) == 0 {
+				t.Fatal("Expected at least one committed task")
 			}
-			task := project.Tasks[0]
-			if task.Priority != tt.wantPriority {
-				t.Errorf("Priority = %d, want %d", task.Priority, tt.wantPriority)
+			if got := reloaded.Tasks[0].Priority; got != tt.wantPriority {
+				t.Errorf("Priority = %d, want %d", got, tt.wantPriority)
 			}
 		})
-	}
-}
-
-func TestHandleInlineTaskCreateInitializesFields(t *testing.T) {
-	app, _, project := newTestAppModelWithMockPersisterAndProject(t)
-
-	msg := InlineTaskCreateMsg{
-		Project: project,
-		Title:   "Field init test",
-	}
-	app.handleTaskMessages(msg)
-
-	if len(project.Tasks) == 0 {
-		t.Fatal("Expected at least one task")
-	}
-	task := project.Tasks[0]
-
-	if task.Tags == nil {
-		t.Error("Tags should be initialized to empty slice, got nil")
-	}
-	if task.DependsOn == nil {
-		t.Error("DependsOn should be initialized to empty slice, got nil")
-	}
-	if task.RelatedTo == nil {
-		t.Error("RelatedTo should be initialized to empty slice, got nil")
-	}
-	if task.ScoreDimensions == nil {
-		t.Error("ScoreDimensions should be initialized to empty map, got nil")
-	}
-	if task.Children == nil {
-		t.Error("Children should be initialized to empty slice, got nil")
 	}
 }
 
@@ -286,52 +241,10 @@ func TestSwitchToProjectUsesPersister(t *testing.T) {
 	}
 }
 
-func TestHandleMoveTaskToProjectUsesPersister(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
-
-	// Create source project with a task manually
-	sourceProject := &models.Project{
-		ID:   "source-project-id",
-		Name: "Source Project",
-	}
-	task := &models.Task{
-		ID:    "task-to-move",
-		Title: "Task to Move",
-		Type:  models.TaskTypeTask,
-	}
-	sourceProject.Tasks = []*models.Task{task}
-	mockPersister.Projects[sourceProject.ID] = sourceProject
-	app.config.Projects = append(app.config.Projects, sourceProject)
-	app.currentProject = sourceProject
-
-	// Create destination project
-	destProject := &models.Project{
-		ID:   "dest-project-id",
-		Name: "Dest Project",
-	}
-	mockPersister.Projects[destProject.ID] = destProject
-	app.config.Projects = append(app.config.Projects, destProject)
-
-	msg := MoveTaskToProjectMsg{
-		Task:          task,
-		SourceProject: sourceProject,
-		DestProjectID: destProject.ID,
-	}
-	handled, cmd := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("MoveTaskToProjectMsg should be handled")
-	}
-
-	// Verify persister.Load was called for destination project
-	if len(mockPersister.LoadCalls) != 1 {
-		t.Errorf("Expected 1 Load call, got %d", len(mockPersister.LoadCalls))
-	}
-
-	// Execute the returned batch command to trigger the async save
-	_ = cmd // The batch contains startLoading and saveBothProjectsAsync
-	// We can't easily test the async part without running the program
-}
+// The cross-project move no longer routes through persister.Load /
+// saveBothProjectsAsync: it commits one atomic app-layer transaction (session
+// 33.7.3.5.4). Its behavior is covered by the disk-backed transactional tests in
+// grouped_undo_transactions_test.go (TestTUITaskMove*).
 
 func TestCloseInboxProcessorMsgUsesPersister(t *testing.T) {
 	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -15,53 +13,6 @@ const (
 	TypeCycleLeft                      // Cycle leaf type left
 	TypeCycleRight                     // Cycle leaf type right
 )
-
-// applyTypeChange validates and applies a type change (promote, demote, cycle)
-// on the given task. It handles the can-do guard, persist, and status message.
-func applyTypeChange(pf persistFn, project *models.Project, taskID string, op TypeChangeOp) TaskOpResult {
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	var canDo bool
-	switch op {
-	case TypePromote:
-		canDo, _ = task.CanPromote()
-	case TypeDemote:
-		canDo, _ = task.CanDemote()
-	case TypeCycleLeft:
-		canDo, _ = task.CanCycleLeafType(true)
-	case TypeCycleRight:
-		canDo, _ = task.CanCycleLeafType(false)
-	}
-	if !canDo {
-		return TaskOpResult{}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		switch op {
-		case TypePromote:
-			_ = t.Promote()
-		case TypeDemote:
-			_ = t.Demote()
-		case TypeCycleLeft:
-			_ = t.CycleLeafType(true)
-		case TypeCycleRight:
-			_ = t.CycleLeafType(false)
-		}
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	// Re-read the task after persist to get the updated type
-	updated := project.GetTaskByID(taskID)
-	if updated != nil {
-		result.StatusMessage = fmt.Sprintf("Changed to %s", updated.Type.HeadingPrefix())
-	}
-	return result
-}
 
 // applyTypeChangeOp applies a type change operation to a task in-place without
 // persisting. Returns true if the change was applied, false if the task was

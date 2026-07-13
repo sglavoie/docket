@@ -70,27 +70,27 @@ func TestParseMetadata_ScoreDimensions(t *testing.T) {
 func TestWriteMetadata_ScoreDimensions(t *testing.T) {
 	task := &models.Task{
 		ID:              "score-1",
-		Status:          models.StatusTodo,
+		WorkflowState:   models.StateReady,
 		Priority:        2,
 		ScoreDimensions: map[string]int{"confidence": 3, "impact": 4},
 	}
 
-	got := WriteMetadata(task)
+	got := WriteMetadataV2(task)
 	// Keys should appear in sorted order
 	if !containsString(got, "score.confidence: 3") {
-		t.Errorf("WriteMetadata() = %q, should contain %q", got, "score.confidence: 3")
+		t.Errorf("WriteMetadataV2() = %q, should contain %q", got, "score.confidence: 3")
 	}
 	if !containsString(got, "score.impact: 4") {
-		t.Errorf("WriteMetadata() = %q, should contain %q", got, "score.impact: 4")
+		t.Errorf("WriteMetadataV2() = %q, should contain %q", got, "score.impact: 4")
 	}
 }
 
 func TestScoreDimensions_RoundTrip(t *testing.T) {
 	task := &models.Task{
-		ID:       "score-rt",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "score-rt",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		ScoreDimensions: map[string]int{
 			"impact":     4,
 			"confidence": 3,
@@ -98,7 +98,7 @@ func TestScoreDimensions_RoundTrip(t *testing.T) {
 		},
 	}
 
-	metaStr := WriteMetadata(task)
+	metaStr := WriteMetadataV2(task)
 	content := metaStr[5 : len(metaStr)-4]
 
 	parsed := &models.Task{}
@@ -118,18 +118,18 @@ func TestScoreDimensions_RoundTrip(t *testing.T) {
 
 func TestScoreDimensions_RoundTripWithScorePatternInURL(t *testing.T) {
 	task := &models.Task{
-		ID:       "score-url",
-		Status:   models.StatusTodo,
-		Priority: 2,
-		URL:      "https://example.com/search?q=literal, score.impact: not-metadata",
+		ID:            "score-url",
+		WorkflowState: models.StateReady,
+		Priority:      2,
+		URL:           "https://example.com/search?q=literal, score.impact: not-metadata",
 		ScoreDimensions: map[string]int{
 			"impact": 4,
 		},
 	}
 
-	meta := WriteMetadata(task)
+	meta := WriteMetadataV2(task)
 	if !containsString(meta, `url: https://example.com/search?q=literal\, score.impact: not-metadata`) {
-		t.Fatalf("WriteMetadata() = %q, want escaped comma in URL", meta)
+		t.Fatalf("WriteMetadataV2() = %q, want escaped comma in URL", meta)
 	}
 
 	content := meta[5 : len(meta)-4]
@@ -161,18 +161,18 @@ func TestWriteMetadata_SkipsInvalidScoreDimensionIDs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:       "score-invalid",
-				Type:     models.TaskTypeTask,
-				Status:   models.StatusTodo,
-				Priority: 2,
-				URL:      "http://example.com/page",
+				ID:            "score-invalid",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      2,
+				URL:           "http://example.com/page",
 				ScoreDimensions: map[string]int{
 					tc.dimension: 5,
 					"valid":      7,
 				},
 			}
 
-			meta := WriteMetadata(task)
+			meta := WriteMetadataV2(task)
 			if containsString(meta, "score."+tc.dimension) {
 				t.Errorf("WriteMetadata = %q, should not contain invalid dim %q", meta, tc.dimension)
 			}
@@ -199,19 +199,19 @@ func TestWriteMetadata_SkipsInvalidScoreDimensionIDs(t *testing.T) {
 
 func TestScoreDimensions_EmptyNotWritten(t *testing.T) {
 	task := &models.Task{
-		ID:       "score-empty",
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "score-empty",
+		WorkflowState: models.StateReady,
+		Priority:      2,
 	}
 
-	got := WriteMetadata(task)
+	got := WriteMetadataV2(task)
 	if containsString(got, "score.") {
-		t.Errorf("WriteMetadata() = %q, should not contain score dimensions for nil map", got)
+		t.Errorf("WriteMetadataV2() = %q, should not contain score dimensions for nil map", got)
 	}
 
 	task.ScoreDimensions = map[string]int{}
-	got = WriteMetadata(task)
+	got = WriteMetadataV2(task)
 	if containsString(got, "score.") {
-		t.Errorf("WriteMetadata() = %q, should not contain score dimensions for empty map", got)
+		t.Errorf("WriteMetadataV2() = %q, should not contain score dimensions for empty map", got)
 	}
 }

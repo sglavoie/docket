@@ -129,7 +129,10 @@ func TestBuildTaskContext_IncludesTaskMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = "next"
+	// The section is now derived from the task's canonical state, which is
+	// case-sensitive (SectionForState always returns the canonical spelling), so
+	// the fixture uses the canonical Next section rather than lowercase "next".
+	task.SetSection(models.SectionNext)
 	task.Tags = []string{"urgent", "ui"}
 	project := &models.Project{Name: "p", Tasks: []*models.Task{task}}
 	out := BuildTaskContext(project)
@@ -139,7 +142,7 @@ func TestBuildTaskContext_IncludesTaskMetadata(t *testing.T) {
 	if !strings.Contains(out, "broken") {
 		t.Errorf("expected task title in context, got %q", out)
 	}
-	if !strings.Contains(out, "section: next") {
+	if !strings.Contains(out, "section: Next") {
 		t.Errorf("expected section in context, got %q", out)
 	}
 	if !strings.Contains(out, "tags: urgent,ui") {

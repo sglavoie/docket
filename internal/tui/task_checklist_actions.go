@@ -28,14 +28,9 @@ func (m *TaskChecklistModel) saveItem() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Checklist) - 1
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return ChecklistItemAddedMsg{Task: task}
-	}
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.AddChecklistItem(m.task.ID, text), func(fresh *models.Task) tea.Msg {
+		return ChecklistItemAddedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskChecklistModel) executeDelete() tea.Cmd {
@@ -44,19 +39,15 @@ func (m *TaskChecklistModel) executeDelete() tea.Cmd {
 	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("invalid index")} }
 	}
-	m.task.Checklist = append(m.task.Checklist[:m.cursor], m.task.Checklist[m.cursor+1:]...)
+	index := m.cursor
+	m.task.Checklist = append(m.task.Checklist[:index], m.task.Checklist[index+1:]...)
 	if m.cursor >= len(m.task.Checklist) && m.cursor > 0 {
 		m.cursor--
 	}
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return ChecklistItemDeletedMsg{Task: task}
-	}
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.RemoveChecklistItem(m.task.ID, index), func(fresh *models.Task) tea.Msg {
+		return ChecklistItemDeletedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskChecklistModel) startEditItem() tea.Cmd {
@@ -82,19 +73,15 @@ func (m *TaskChecklistModel) saveEditedItem() tea.Cmd {
 		m.editTextInput.Reset()
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")} }
 	}
-	m.task.Checklist[m.editIndex].Text = text
+	index := m.editIndex
+	m.task.Checklist[index].Text = text
 	m.editMode = false
 	m.editTextInput.Reset()
 	m.err = nil
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return ChecklistItemEditedMsg{Task: task}
-	}
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditChecklistItem(m.task.ID, index, text), func(fresh *models.Task) tea.Msg {
+		return ChecklistItemEditedMsg{Task: fresh}
+	})
 }
 
 func (m *TaskChecklistModel) toggleItem() tea.Cmd {
@@ -103,16 +90,12 @@ func (m *TaskChecklistModel) toggleItem() tea.Cmd {
 	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
 		return nil
 	}
-	m.task.Checklist[m.cursor].Done = !m.task.Checklist[m.cursor].Done
+	index := m.cursor
+	m.task.Checklist[index].Done = !m.task.Checklist[index].Done
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return ChecklistItemToggledMsg{Task: task}
-	}
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.ToggleChecklistItem(m.task.ID, index), func(fresh *models.Task) tea.Msg {
+		return ChecklistItemToggledMsg{Task: fresh}
+	})
 }
 
 func (m *TaskChecklistModel) reorderItem(from, to int) tea.Cmd {
@@ -124,12 +107,7 @@ func (m *TaskChecklistModel) reorderItem(from, to int) tea.Cmd {
 	m.task.Checklist[from], m.task.Checklist[to] = m.task.Checklist[to], m.task.Checklist[from]
 	m.cursor = to
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return ChecklistItemEditedMsg{Task: task}
-	}
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.ReorderChecklistItem(m.task.ID, from, to), func(fresh *models.Task) tea.Msg {
+		return ChecklistItemEditedMsg{Task: fresh}
+	})
 }

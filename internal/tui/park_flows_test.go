@@ -1,9 +1,6 @@
 package tui
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,17 +8,17 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 func TestParkInputExplicitParkPersistsNote(t *testing.T) {
-	app := newTestAppModel()
-	undoDepth := 10
-	app.config.UndoHistoryDepth = &undoDepth
 	task := newBulkPickerTestTask(t, 1, "resume later")
-	project := newBulkPickerTestProject(t, "Park Flow", task)
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	app := env.appModel()
+	project := env.projects[0]
 
-	handled, _ := app.handleTaskMessages(ShowParkInputMsg{Task: task, Project: project})
+	handled, _ := app.handleTaskMessages(ShowParkInputMsg{Task: project.Tasks[0], Project: project})
 	if !handled {
 		t.Fatal("ShowParkInputMsg should be handled")
 	}
@@ -43,8 +40,7 @@ func TestParkInputExplicitParkPersistsNote(t *testing.T) {
 	}
 	assertParkFlowSaved(t, app, saveCmd, "Parked")
 
-	reloaded := loadBulkPickerTestProject(t, project)
-	reloadedTask := reloaded.GetTaskByID(task.ID)
+	reloadedTask := env.reload(t, 0).GetTaskByID(task.ID)
 	if reloadedTask == nil {
 		t.Fatal("parked task was not reloaded")
 	}
@@ -54,19 +50,28 @@ func TestParkInputExplicitParkPersistsNote(t *testing.T) {
 	if reloadedTask.ParkedNote != "blocked on API review" {
 		t.Fatalf("ParkedNote = %q, want %q", reloadedTask.ParkedNote, "blocked on API review")
 	}
-	assertBulkPickerUndoTaskIDs(t, project, []string{task.ID})
-	assertLastParkFlowUndoAction(t, project, "Park Task")
+
+	// Undo through the workspace ledger reverts the park.
+	action, err := env.ledger.Undo(storage.GlobalScope())
+	if err != nil {
+		t.Fatalf("ledger undo: %v", err)
+	}
+	if action != "Park Task" {
+		t.Fatalf("undo action = %q, want %q", action, "Park Task")
+	}
+	if env.reload(t, 0).GetTaskByID(task.ID).IsParked() {
+		t.Fatal("undo should have unparked the task")
+	}
 }
 
 func TestParkInputEmptyEnterOnParkedTaskUnparks(t *testing.T) {
-	app := newTestAppModel()
-	undoDepth := 10
-	app.config.UndoHistoryDepth = &undoDepth
 	task := newBulkPickerTestTask(t, 1, "resume now")
 	task.Park("next step")
-	project := newBulkPickerTestProject(t, "Unpark Flow", task)
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	app := env.appModel()
+	project := env.projects[0]
 
-	handled, _ := app.handleTaskMessages(ShowParkInputMsg{Task: task, Project: project})
+	handled, _ := app.handleTaskMessages(ShowParkInputMsg{Task: project.Tasks[0], Project: project})
 	if !handled {
 		t.Fatal("ShowParkInputMsg should be handled")
 	}
@@ -91,8 +96,7 @@ func TestParkInputEmptyEnterOnParkedTaskUnparks(t *testing.T) {
 	}
 	assertParkFlowSaved(t, app, saveCmd, "Unparked")
 
-	reloaded := loadBulkPickerTestProject(t, project)
-	reloadedTask := reloaded.GetTaskByID(task.ID)
+	reloadedTask := env.reload(t, 0).GetTaskByID(task.ID)
 	if reloadedTask == nil {
 		t.Fatal("unparked task was not reloaded")
 	}
@@ -102,13 +106,22 @@ func TestParkInputEmptyEnterOnParkedTaskUnparks(t *testing.T) {
 	if reloadedTask.ParkedNote != "" || reloadedTask.ParkedAt != nil {
 		t.Fatalf("parked fields should be cleared, got note=%q at=%v", reloadedTask.ParkedNote, reloadedTask.ParkedAt)
 	}
-	assertBulkPickerUndoTaskIDs(t, project, []string{task.ID})
-	assertLastParkFlowUndoAction(t, project, "Unpark Task")
+
+	action, err := env.ledger.Undo(storage.GlobalScope())
+	if err != nil {
+		t.Fatalf("ledger undo: %v", err)
+	}
+	if action != "Unpark Task" {
+		t.Fatalf("undo action = %q, want %q", action, "Unpark Task")
+	}
+	if !env.reload(t, 0).GetTaskByID(task.ID).IsParked() {
+		t.Fatal("undo should have restored the parked state")
+	}
 }
 
 func TestParkInputRejectsCompletedTaskNewPark(t *testing.T) {
 	task := newBulkPickerTestTask(t, 1, "done should stay done")
-	task.Status = models.StatusDone
+	task.WorkflowState = models.StateDone
 	project := newBulkPickerTestProject(t, "Completed Park Guard", task)
 	parkInput := NewParkInputModel(task, project)
 
@@ -131,15 +144,14 @@ func TestParkInputRejectsCompletedTaskNewPark(t *testing.T) {
 }
 
 func TestParkInputEmptyEnterClearsLegacyParkedCompletedTask(t *testing.T) {
-	app := newTestAppModel()
-	undoDepth := 10
-	app.config.UndoHistoryDepth = &undoDepth
 	task := newBulkPickerTestTask(t, 1, "completed legacy parked")
 	task.Park("legacy metadata")
-	task.Status = models.StatusDone
-	project := newBulkPickerTestProject(t, "Completed Legacy Unpark", task)
+	task.WorkflowState = models.StateDone
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	app := env.appModel()
+	project := env.projects[0]
 
-	handled, _ := app.handleTaskMessages(ShowParkInputMsg{Task: task, Project: project})
+	handled, _ := app.handleTaskMessages(ShowParkInputMsg{Task: project.Tasks[0], Project: project})
 	if !handled {
 		t.Fatal("ShowParkInputMsg should be handled")
 	}
@@ -161,19 +173,24 @@ func TestParkInputEmptyEnterClearsLegacyParkedCompletedTask(t *testing.T) {
 	}
 	assertParkFlowSaved(t, app, saveCmd, "Unparked")
 
-	reloaded := loadBulkPickerTestProject(t, project)
-	reloadedTask := reloaded.GetTaskByID(task.ID)
+	reloadedTask := env.reload(t, 0).GetTaskByID(task.ID)
 	if reloadedTask == nil {
 		t.Fatal("unparked completed task was not reloaded")
 	}
 	if reloadedTask.IsParked() {
 		t.Fatal("legacy parked metadata should be cleared from completed task")
 	}
-	if reloadedTask.Status != models.StatusDone {
-		t.Fatalf("Status = %s, want done", reloadedTask.Status)
+	if reloadedTask.State() != models.StateDone {
+		t.Fatalf("State = %s, want done", reloadedTask.State())
 	}
-	assertBulkPickerUndoTaskIDs(t, project, []string{task.ID})
-	assertLastParkFlowUndoAction(t, project, "Unpark Task")
+
+	action, err := env.ledger.Undo(storage.GlobalScope())
+	if err != nil {
+		t.Fatalf("ledger undo: %v", err)
+	}
+	if action != "Unpark Task" {
+		t.Fatalf("undo action = %q, want %q", action, "Unpark Task")
+	}
 }
 
 func TestParkInputEscDiscardLeavesTaskUnchanged(t *testing.T) {
@@ -251,15 +268,17 @@ type crossProjectParkFlowFixture struct {
 func newCrossProjectParkFlowFixture(t *testing.T, mutateTaskB func(*models.Task)) crossProjectParkFlowFixture {
 	t.Helper()
 
-	app := newTestAppModel()
 	taskA := newBulkPickerTestTask(t, 1, "alpha task")
 	taskB := newBulkPickerTestTask(t, 1, "beta task")
 	if mutateTaskB != nil {
 		mutateTaskB(taskB)
 	}
-	projectA := newBulkPickerTestProject(t, "Cross Park Alpha", taskA)
-	projectB := newBulkPickerTestProject(t, "Cross Park Beta", taskB)
-	app.config.Projects = []*models.Project{projectA, projectB}
+	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
+	app := env.appModel()
+	projectA := env.projects[0]
+	projectB := env.projects[1]
+	taskA = projectA.Tasks[0]
+	taskB = projectB.Tasks[0]
 	app.config.CurrentProject = projectA.ID
 	app.currentProject = projectA
 
@@ -498,12 +517,14 @@ func TestCrossProjectOutlinerTUnparkThroughAppUpdateClearsParkedState(t *testing
 }
 
 func TestCrossProjectOutlinerTPParkFlowUsesCursorTaskProjectAndReloads(t *testing.T) {
-	app := newTestAppModel()
 	taskA := newBulkPickerTestTask(t, 1, "alpha task")
 	taskB := newBulkPickerTestTask(t, 1, "beta task")
-	projectA := newBulkPickerTestProject(t, "Cross Park Alpha", taskA)
-	projectB := newBulkPickerTestProject(t, "Cross Park Beta", taskB)
-	app.config.Projects = []*models.Project{projectA, projectB}
+	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
+	app := env.appModel()
+	projectA := env.projects[0]
+	projectB := env.projects[1]
+	taskA = projectA.Tasks[0]
+	taskB = projectB.Tasks[0]
 	app.config.CurrentProject = projectA.ID
 	app.currentProject = projectA
 
@@ -598,30 +619,5 @@ func assertParkFlowSaved(t *testing.T, app *AppModel, saveCmd tea.Cmd, wantVerb 
 	}
 	if saveCmd != nil {
 		runBulkPickerBatchCmd(t, saveCmd)
-	}
-}
-
-func assertLastParkFlowUndoAction(t *testing.T, project *models.Project, want string) {
-	t.Helper()
-
-	metaPath := filepath.Join(project.Path, ".undo", "meta.json")
-	content, err := os.ReadFile(metaPath)
-	if err != nil {
-		t.Fatalf("ReadFile(%q): %v", metaPath, err)
-	}
-
-	var meta struct {
-		Entries []struct {
-			Action string `json:"action"`
-		} `json:"entries"`
-	}
-	if err := json.Unmarshal(content, &meta); err != nil {
-		t.Fatalf("Unmarshal undo meta: %v", err)
-	}
-	if len(meta.Entries) == 0 {
-		t.Fatal("expected at least one undo entry")
-	}
-	if got := meta.Entries[len(meta.Entries)-1].Action; got != want {
-		t.Fatalf("undo action = %q, want %q", got, want)
 	}
 }

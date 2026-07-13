@@ -191,11 +191,10 @@ func newTriageLocalProcessor(t *testing.T) (*AppModel, *models.Task, *InboxProce
 	t.Helper()
 	app, project := newTestAppModelWithProject()
 	task := &models.Task{
-		ID:      "task-1",
-		ShortID: 42,
-		Title:   "Test task",
-		Section: models.SectionInbox,
-		Status:  models.StatusTodo,
+		ID:            "task-1",
+		ShortID:       42,
+		Title:         "Test task",
+		WorkflowState: models.StateInbox,
 	}
 	project.Tasks = []*models.Task{task}
 	processor := NewInboxProcessorModel(project, app.config, app.configManager)
@@ -309,11 +308,10 @@ func TestPaletteTriage_PrimaryKeysDispatchDirectActions(t *testing.T) {
 func TestPaletteTriage_GlobalInboxMarkDoneExecution(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := &models.Task{
-		ID:      "task-1",
-		ShortID: 42,
-		Title:   "Global test",
-		Section: models.SectionInbox,
-		Status:  models.StatusTodo,
+		ID:            "task-1",
+		ShortID:       42,
+		Title:         "Global test",
+		WorkflowState: models.StateInbox,
 	}
 	project.Tasks = []*models.Task{task}
 
@@ -342,8 +340,8 @@ func TestPaletteTriage_GlobalInboxMarkDoneExecution(t *testing.T) {
 		t.Fatal("expected non-nil tea.Cmd from mark task done")
 	}
 
-	if task.Status != models.StatusDone {
-		t.Errorf("task.Status = %v, want StatusDone", task.Status)
+	if task.State() != models.StateDone {
+		t.Errorf("task.State() = %v, want StateDone", task.State())
 	}
 	if !processor.processedIDs[task.ID] {
 		t.Error("global processor should have task in processedIDs after mark done")

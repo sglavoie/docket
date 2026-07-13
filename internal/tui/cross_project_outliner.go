@@ -237,13 +237,13 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 		if q := m.SearchQuery(); q != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return matchesSearch(t, q)
+				return matchesSearch(t, q, m.config)
 			})
 		}
 
 		if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return passesCommonFilters(t, &m.filter.CommonFilterState, proj.ID, m.config)
+				return passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.config)
 			})
 		}
 
@@ -255,24 +255,13 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 		if len(m.filter.Sections) > 0 {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return m.filter.Sections[t.Section]
+				return m.filter.Sections[taskSectionBucket(t)]
 			})
 		}
 
 		if m.filter.Actionable {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				if proj.HasIncompleteDependencies(t) {
-					return false
-				}
-				if t.Status == models.StatusBlocked {
-					return false
-				}
-				if t.Section == models.SectionInbox || t.Section == models.SectionNext ||
-					t.Section == models.SectionWaiting || t.Section == models.SectionSomeday ||
-					t.Section == models.SectionReview || t.Section == models.SectionStandby {
-					return false
-				}
-				return true
+				return taskIsActionableState(t, proj)
 			})
 		}
 
@@ -577,12 +566,12 @@ func crossProjectSectionFilter(p Perspective) func(t *models.Task) bool {
 		return nil
 	case "Active":
 		return func(t *models.Task) bool {
-			return (t.InSection("") || !models.IsGTDSection(t.Section)) && !t.Status.IsComplete() && !t.IsSnoozed()
+			return t.InSection("") && !t.IsTerminalState() && !t.IsSnoozed()
 		}
 	default:
 		section := p.Name
 		return func(t *models.Task) bool {
-			return t.InSection(section) && !t.Status.IsComplete() && !t.IsSnoozed()
+			return t.InSection(section) && !t.IsTerminalState() && !t.IsSnoozed()
 		}
 	}
 }

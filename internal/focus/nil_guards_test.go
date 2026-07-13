@@ -268,7 +268,7 @@ func TestGetSuggestionReasonRecentActivityWithFutureUpdate(t *testing.T) {
 	task.Priority = 3
 	task.UpdatedAt = now.Add(48 * time.Hour) // future
 	task.CreatedAt = now
-	task.Status = models.StatusTodo
+	task.WorkflowState = models.StateReady
 
 	reason := getSuggestionReason(task, project, nil, now)
 	if !containsSubstring(reason, "ecent activity") {

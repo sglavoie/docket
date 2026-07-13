@@ -22,20 +22,20 @@ func TestCollectActionableTasks_BlockedExcluded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	blockedNoDeps.Status = models.StatusBlocked
+	blockedNoDeps.WorkflowState = models.StateWaiting
 
 	// Blocked task that also has a completed dependency — should still be excluded.
 	dep, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Completed dep")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dep.Status = models.StatusDone
+	dep.WorkflowState = models.StateDone
 
 	blockedWithDoneDep, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocked with done dep")
 	if err != nil {
 		t.Fatal(err)
 	}
-	blockedWithDoneDep.Status = models.StatusBlocked
+	blockedWithDoneDep.WorkflowState = models.StateWaiting
 	blockedWithDoneDep.DependsOn = []string{dep.ID}
 
 	// Normal todo task — should be included.
@@ -43,7 +43,7 @@ func TestCollectActionableTasks_BlockedExcluded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	actionable.Status = models.StatusTodo
+	actionable.WorkflowState = models.StateReady
 
 	proj.Tasks = []*models.Task{dep, blockedNoDeps, blockedWithDoneDep, actionable}
 
@@ -70,7 +70,7 @@ func TestCollectActionableTasks_CrossProjectDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	doneDep.Status = models.StatusDone
+	doneDep.WorkflowState = models.StateDone
 
 	openDep, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Open dependency")
 	if err != nil {

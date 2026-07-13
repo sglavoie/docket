@@ -66,14 +66,14 @@ func TestRoundTrip_ChecklistAdversarial(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:        "cl-test",
-				Type:      models.TaskTypeTask,
-				Status:    models.StatusTodo,
-				Priority:  1,
-				Checklist: tc.items,
+				ID:            "cl-test",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      1,
+				Checklist:     tc.items,
 			}
 
-			metaStr := WriteMetadata(task)
+			metaStr := WriteMetadataV2(task)
 			content := metaStr[5 : len(metaStr)-4]
 			parsed := &models.Task{}
 			warnings := ParseMetadata(parsed, content)
@@ -99,9 +99,9 @@ func TestRoundTrip_ChecklistAdversarial(t *testing.T) {
 
 func TestChecklistRoundtripWithSemicolon(t *testing.T) {
 	task := &models.Task{
-		ID:       "abc",
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "abc",
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Checklist: []models.ChecklistItem{
 			{Text: "Buy eggs; milk; bread", Done: false},
 			{Text: "Normal item", Done: true},
@@ -111,7 +111,7 @@ func TestChecklistRoundtripWithSemicolon(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
 	}
 
-	meta := WriteMetadata(task)
+	meta := WriteMetadataV2(task)
 	metaStr := meta[5 : len(meta)-4]
 
 	parsed := &models.Task{}

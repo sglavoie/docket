@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -62,17 +61,13 @@ func TestFocusBoardSharedDoneKeysUseFlowAwareCompletion(t *testing.T) {
 			if model != m {
 				t.Fatalf("%v returned model %T, want original FocusBoardModel", tt.keys, model)
 			}
-			if cmd == nil {
-				t.Fatalf("%v returned nil command, want completion side-effect command", tt.keys)
-			}
+			finishFocusBoardMutation(t, m, cmd)
+
 			if got := m.filtered[m.cursor].Task.ID; got != tasks[1].ID {
 				t.Fatalf("%v selected %q, want next actionable task %q", tt.keys, got, tasks[1].ID)
 			}
 			if got := focusBoardRowStatus(t, m.todayRows, tasks[0].ID); got != models.StatusDone {
 				t.Fatalf("%v completed task status = %s, want %s", tt.keys, got, models.StatusDone)
-			}
-			if !strings.Contains(m.statusMessage, "done") {
-				t.Fatalf("%v statusMessage = %q, want completion status", tt.keys, m.statusMessage)
 			}
 		})
 	}
@@ -90,32 +85,29 @@ func TestFocusBoardStatusChangeActionIgnoresUnknownStatus(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("invalid status returned a command, want nil command")
 	}
-	if task.Status != models.StatusTodo {
-		t.Fatalf("invalid status changed task status to %s, want %s", task.Status, models.StatusTodo)
+	if models.LegacyStatusForState(task.State()) != models.StatusTodo {
+		t.Fatalf("invalid status changed task status to %s, want %s", models.LegacyStatusForState(task.State()), models.StatusTodo)
 	}
 }
 
-func TestFocusBoardStatusChangeActionUsesTaskOpsForValidNonDoneStatus(t *testing.T) {
+func TestFocusBoardStatusChangeActionCommitsValidNonDoneStatus(t *testing.T) {
 	m, _, tasks := newFlowLoopFocusBoard(t, models.StatusTodo)
 	m.cursor = 0
 
-	action := m.focusBoardStatusChangeAction(string(models.StatusBlocked))
+	action := m.focusBoardStatusChangeAction(string(models.StateWaiting))
 	model, cmd := action()
 
 	if model != m {
 		t.Fatalf("valid status returned model %T, want original FocusBoardModel", model)
 	}
-	if cmd == nil {
-		t.Fatal("valid status returned nil command, want status-change command")
+	if _, ok := cmd().(BatchTransactionResultMsg); !ok {
+		t.Fatalf("valid status command emitted unexpected message type")
 	}
-	if _, ok := cmd().(TaskStatusChangedMsg); !ok {
-		t.Fatalf("valid status command emitted unexpected message")
-	}
-	if got := focusBoardRowStatus(t, m.todayRows, tasks[0].ID); got != models.StatusBlocked {
-		t.Fatalf("valid status changed task status to %s, want %s", got, models.StatusBlocked)
-	}
-	if !strings.Contains(m.statusMessage, string(models.StatusBlocked)) {
-		t.Fatalf("statusMessage = %q, want blocked status", m.statusMessage)
+	m.refreshData()
+	// The status change targets the waiting state; v2 persists the derived
+	// state, so the reloaded row is waiting (the retired blocked status is gone).
+	if got := focusBoardRowState(t, m.todayRows, tasks[0].ID); got != models.StateWaiting {
+		t.Fatalf("valid status change produced state %s, want %s", got, models.StateWaiting)
 	}
 }
 
@@ -209,7 +201,18 @@ func focusBoardRowStatus(t *testing.T, rows []boardRow, taskID string) models.Ta
 	t.Helper()
 	for _, row := range rows {
 		if row.Task != nil && row.Task.ID == taskID {
-			return row.Task.Status
+			return models.LegacyStatusForState(row.Task.State())
+		}
+	}
+	t.Fatalf("task %q not found in focus board rows", taskID)
+	return ""
+}
+
+func focusBoardRowState(t *testing.T, rows []boardRow, taskID string) models.WorkflowState {
+	t.Helper()
+	for _, row := range rows {
+		if row.Task != nil && row.Task.ID == taskID {
+			return row.Task.State()
 		}
 	}
 	t.Fatalf("task %q not found in focus board rows", taskID)

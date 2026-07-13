@@ -50,7 +50,7 @@ func TestUtilityKey_ArchiveCompleted_CrossUsesCursorProject(t *testing.T) {
 	m.activePerspective = PerspectiveCompleted
 	// Give projA at least one completed task so the prompt shows.
 	completed := makeTask("done-a", "DoneA", models.SectionCompleted)
-	completed.Status = models.StatusDone
+	completed.WorkflowState = models.StateDone
 	projA.Tasks = append(projA.Tasks, completed)
 	m.cursor = 1 // task in projA
 
@@ -103,7 +103,7 @@ func TestUtilityKey_ArchiveCompleted_CrossWithNoCompletedTasksDoesNotPrompt(t *t
 func TestUtilityKey_ArchiveCompleted_SingleProjectUnchanged(t *testing.T) {
 	proj := &models.Project{ID: "p", Name: "P"}
 	completed := makeTask("done", "Done", models.SectionCompleted)
-	completed.Status = models.StatusDone
+	completed.WorkflowState = models.StateDone
 	proj.Tasks = []*models.Task{completed}
 	m := minimalOutliner()
 	m.project = proj
@@ -315,7 +315,7 @@ func TestArchiveCompleted_ConfirmCancelClearsArchiveTarget(t *testing.T) {
 	m.PrimaryViewBundle = NewPrimaryViewBundle(nil, nil)
 	m.activePerspective = PerspectiveCompleted
 	completed := makeTask("done-a", "DoneA", models.SectionCompleted)
-	completed.Status = models.StatusDone
+	completed.WorkflowState = models.StateDone
 	projA.Tasks = append(projA.Tasks, completed)
 	m.cursor = 1
 

@@ -38,6 +38,65 @@ func TestFocusQueueHelpers(t *testing.T) {
 	})
 }
 
+func TestAddToFocusQueue(t *testing.T) {
+	t.Run("adds a new entry and reports change", func(t *testing.T) {
+		cfg := NewConfig()
+		if !cfg.AddToFocusQueue("t1", "p1") {
+			t.Fatal("expected AddToFocusQueue to report a change")
+		}
+		q := cfg.GetFocusQueue()
+		if len(q) != 1 || q[0].TaskID != "t1" || q[0].ProjectID != "p1" {
+			t.Errorf("unexpected queue: %v", q)
+		}
+	})
+
+	t.Run("duplicate task is a no-op", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.AddToFocusQueue("t1", "p1")
+		if cfg.AddToFocusQueue("t1", "p2") {
+			t.Fatal("expected duplicate add to report no change")
+		}
+		if len(cfg.GetFocusQueue()) != 1 {
+			t.Errorf("expected queue to stay at 1 item, got %d", len(cfg.GetFocusQueue()))
+		}
+	})
+
+	t.Run("empty task id is a no-op", func(t *testing.T) {
+		cfg := NewConfig()
+		if cfg.AddToFocusQueue("", "p1") {
+			t.Fatal("expected empty task id to report no change")
+		}
+		if len(cfg.GetFocusQueue()) != 0 {
+			t.Error("expected empty queue")
+		}
+	})
+}
+
+func TestRemoveFromFocusQueue(t *testing.T) {
+	t.Run("removes an entry and reports change", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.SetFocusQueue([]FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}, {TaskID: "t2", ProjectID: "p1"}})
+		if !cfg.RemoveFromFocusQueue("t1") {
+			t.Fatal("expected RemoveFromFocusQueue to report a change")
+		}
+		q := cfg.GetFocusQueue()
+		if len(q) != 1 || q[0].TaskID != "t2" {
+			t.Errorf("unexpected queue after remove: %v", q)
+		}
+	})
+
+	t.Run("absent task is a no-op", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.SetFocusQueue([]FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}})
+		if cfg.RemoveFromFocusQueue("nope") {
+			t.Fatal("expected removing absent task to report no change")
+		}
+		if len(cfg.GetFocusQueue()) != 1 {
+			t.Error("expected queue unchanged")
+		}
+	})
+}
+
 func TestReassignTaskProject(t *testing.T) {
 	t.Run("updates FocusQueue, DailyPlan, and RecentTaskVisits", func(t *testing.T) {
 		cfg := NewConfig()
@@ -207,6 +266,89 @@ func TestRemoveTaskRefs(t *testing.T) {
 		}
 		if cfg.FocusDismissedIDs[0] != "t1" || cfg.FocusDismissedIDs[1] != "t3" {
 			t.Errorf("expected [t1 t3], got %v", cfg.FocusDismissedIDs)
+		}
+	})
+}
+
+func TestRemoveDurableTaskRefs(t *testing.T) {
+	t.Run("removes durable planning refs but leaves recent visits", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t2", ProjectID: "p1"},
+		}
+		cfg.DailyPlan = []DailyPlanItem{
+			{TaskID: "t1", ProjectID: "p1", PlannedDate: "2026-04-13"},
+		}
+		cfg.FocusDismissedIDs = []string{"t1", "t3"}
+		cfg.RecentTaskVisits = []RecentTaskVisit{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t5", ProjectID: "p2"},
+		}
+
+		// t1 in FocusQueue(1) + DailyPlan(1) + FocusDismissedIDs(1) = 3 durable removals.
+		removed := cfg.RemoveDurableTaskRefs(map[string]bool{"t1": true})
+		if removed != 3 {
+			t.Fatalf("expected 3 durable removals, got %d", removed)
+		}
+		if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != "t2" {
+			t.Errorf("expected FocusQueue=[t2], got %v", cfg.FocusQueue)
+		}
+		if len(cfg.DailyPlan) != 0 {
+			t.Errorf("expected empty DailyPlan, got %v", cfg.DailyPlan)
+		}
+		if len(cfg.FocusDismissedIDs) != 1 || cfg.FocusDismissedIDs[0] != "t3" {
+			t.Errorf("expected FocusDismissedIDs=[t3], got %v", cfg.FocusDismissedIDs)
+		}
+		// Recent visits are machine-local and must be left untouched here.
+		if len(cfg.RecentTaskVisits) != 2 {
+			t.Errorf("durable cleanup must not touch RecentTaskVisits, got %v", cfg.RecentTaskVisits)
+		}
+	})
+}
+
+func TestRemoveMachineLocalTaskRefs(t *testing.T) {
+	t.Run("removes recent visits but leaves durable planning refs", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}}
+		cfg.DailyPlan = []DailyPlanItem{{TaskID: "t1", ProjectID: "p1", PlannedDate: "2026-04-13"}}
+		cfg.RecentTaskVisits = []RecentTaskVisit{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t5", ProjectID: "p2"},
+		}
+
+		removed := cfg.RemoveMachineLocalTaskRefs(map[string]bool{"t1": true})
+		if removed != 1 {
+			t.Fatalf("expected 1 machine-local removal, got %d", removed)
+		}
+		if len(cfg.RecentTaskVisits) != 1 || cfg.RecentTaskVisits[0].TaskID != "t5" {
+			t.Errorf("expected RecentTaskVisits=[t5], got %v", cfg.RecentTaskVisits)
+		}
+		// Durable planning refs are untouched by the machine-local cleanup.
+		if len(cfg.FocusQueue) != 1 || len(cfg.DailyPlan) != 1 {
+			t.Errorf("machine-local cleanup must not touch durable refs: fq=%v dp=%v", cfg.FocusQueue, cfg.DailyPlan)
+		}
+	})
+
+	t.Run("union equals durable plus machine-local", func(t *testing.T) {
+		build := func() *Config {
+			cfg := NewConfig()
+			cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}}
+			cfg.DailyPlan = []DailyPlanItem{{TaskID: "t1", ProjectID: "p1", PlannedDate: "2026-04-13"}}
+			cfg.FocusDismissedIDs = []string{"t1"}
+			cfg.RecentTaskVisits = []RecentTaskVisit{{TaskID: "t1", ProjectID: "p1"}}
+			return cfg
+		}
+		ids := map[string]bool{"t1": true}
+
+		unionCfg := build()
+		union := unionCfg.RemoveTaskRefs(ids)
+
+		splitCfg := build()
+		split := splitCfg.RemoveDurableTaskRefs(ids) + splitCfg.RemoveMachineLocalTaskRefs(ids)
+
+		if union != split {
+			t.Errorf("RemoveTaskRefs (%d) must equal durable+machine-local (%d)", union, split)
 		}
 	})
 }

@@ -27,19 +27,19 @@ func (m *AppModel) handleTaskDecisionMessages(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleDecisionAdded(msg DecisionAddedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Decision added")
 	viewCmd := m.delegateToCurrentView(msg)
-	return true, tea.Batch(defaultStatusTimeout(), viewCmd)
+	return true, tea.Batch(defaultStatusTimeout(), viewCmd, m.refreshAfterSubviewCommit())
 }
 
 // handleDecisionDeleted handles the DecisionDeletedMsg.
 func (m *AppModel) handleDecisionDeleted(msg DecisionDeletedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Decision deleted")
-	return true, defaultStatusTimeout()
+	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }
 
 // handleDecisionEdited handles the DecisionEditedMsg.
 func (m *AppModel) handleDecisionEdited(msg DecisionEditedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Decision updated")
-	return true, defaultStatusTimeout()
+	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }
 
 // handleDecisionResolved handles the DecisionResolvedMsg.
@@ -54,11 +54,11 @@ func (m *AppModel) handleDecisionResolved(msg DecisionResolvedMsg) (bool, tea.Cm
 					} else {
 						m.setSuccessStatus("Decision unresolved")
 					}
-					return true, defaultStatusTimeout()
+					return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 				}
 			}
 		}
 	}
 	m.setSuccessStatus("Decision resolved")
-	return true, defaultStatusTimeout()
+	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }

@@ -107,87 +107,21 @@ func (h *NavHistory) IsLocked() bool {
 }
 
 // isTrackedView returns true if the given ViewType should be recorded in history.
-// Pickers, editors, creators, modals, and overlays are excluded.
+// Pickers, editors, creators, modals, and overlays are excluded. The behavior is
+// now defined declaratively by the route table (see route.go).
 func isTrackedView(vt ViewType) bool {
-	switch vt {
-	case ViewDashboard,
-		ViewProjectTree,
-		ViewDailyReview,
-		ViewWeeklyReview,
-		ViewFocusView,
-		ViewProjectFocusView,
-		ViewDueDateOverview,
-		ViewPriorityView,
-		ViewRecentActivity,
-		ViewGlobalSearch,
-		ViewGlobalBlockers,
-		ViewGlobalNotes,
-		ViewGlobalInboxProcessor,
-		ViewGlobalTagManager,
-		ViewNotes,
-		ViewBlockers,
-		ViewInboxProcessor,
-		ViewSettings,
-		ViewWorkflowRules,
-		ViewTaskTemplates,
-		ViewTutor,
-		ViewScoreProfileManager,
-		ViewTaskComments,
-		ViewTaskDecisions,
-		ViewTaskChecklist,
-		ViewTaskDetail,
-		ViewTaskAttachments,
-		ViewTaskActivity,
-		ViewMetricsDashboard,
-		ViewAllTasks,
-		ViewOutliner,
-		ViewCrossProjectOutliner,
-		ViewTemporaryOutliner,
-		ViewFocusBoard,
-		ViewProjectRecentActivity,
-		ViewRoadmap:
-		return true
-	default:
-		return false
-	}
+	return routeFor(vt).Tracked()
 }
 
 // isGlobalNavView returns true for ViewTypes that are handled by reconstructGlobalView.
-// These views should never carry a ProjectID in their nav entry.
+// These views should never carry a ProjectID in their nav entry. Defined by the
+// route table's GlobalNav flag.
 func isGlobalNavView(vt ViewType) bool {
-	switch vt {
-	case ViewDailyReview,
-		ViewWeeklyReview,
-		ViewFocusView,
-		ViewDueDateOverview,
-		ViewRecentActivity,
-		ViewGlobalSearch,
-		ViewGlobalBlockers,
-		ViewGlobalNotes,
-		ViewGlobalInboxProcessor,
-		ViewGlobalTagManager,
-		ViewSettings,
-		ViewWorkflowRules,
-		ViewTaskTemplates,
-		ViewTutor,
-		ViewScoreProfileManager,
-		ViewMetricsDashboard,
-		ViewCrossProjectOutliner,
-		ViewFocusBoard,
-		ViewAllTasks,
-		ViewRoadmap:
-		return true
-	default:
-		return false
-	}
+	return routeFor(vt).GlobalNav
 }
 
-// isTaskScopedView returns true if the view is scoped to a specific task.
+// isTaskScopedView returns true if the view is scoped to a specific task, as
+// declared by the route table's ScopeTask scope.
 func isTaskScopedView(vt ViewType) bool {
-	switch vt {
-	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail, ViewTaskAttachments, ViewTaskActivity:
-		return true
-	default:
-		return false
-	}
+	return routeFor(vt).Scope == ScopeTask
 }

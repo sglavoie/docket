@@ -16,7 +16,7 @@ func TestCaptureTaskStates(t *testing.T) {
 		task1.Tags = []string{"urgent", "backend"}
 
 		task2 := testutil.NewTestTaskWithStatus("Task 2", models.StatusInProgress)
-		task2.Section = "In Progress"
+		task2.WorkflowState = models.StateInProgress
 
 		tasks := []*models.Task{task1, task2}
 		states := workflow.CaptureTaskStates(tasks)
@@ -29,8 +29,11 @@ func TestCaptureTaskStates(t *testing.T) {
 		if state1 == nil {
 			t.Fatal("task1 state not captured")
 		}
-		if state1.Status != task1.Status {
-			t.Errorf("state1.Status = %s, want %s", state1.Status, task1.Status)
+		// CopyTaskState now snapshots the canonical WorkflowState rather than the
+		// retired Status/Section fields (33.7.6.4), so lifecycle preservation is
+		// asserted through State().
+		if state1.State() != task1.State() {
+			t.Errorf("state1.State() = %s, want %s", state1.State(), task1.State())
 		}
 		if state1.Priority != task1.Priority {
 			t.Errorf("state1.Priority = %d, want %d", state1.Priority, task1.Priority)
@@ -46,8 +49,8 @@ func TestCaptureTaskStates(t *testing.T) {
 		if state2 == nil {
 			t.Fatal("task2 state not captured")
 		}
-		if state2.Section != task2.Section {
-			t.Errorf("state2.Section = %s, want %s", state2.Section, task2.Section)
+		if state2.State() != task2.State() {
+			t.Errorf("state2.State() = %s, want %s", state2.State(), task2.State())
 		}
 	})
 
@@ -176,8 +179,8 @@ func TestBuildEvaluationContext(t *testing.T) {
 		}
 		if change1.Previous == nil {
 			t.Error("change1.Previous should not be nil (has previous state)")
-		} else if change1.Previous.Status != models.StatusInProgress {
-			t.Errorf("change1.Previous.Status = %s, want %s", change1.Previous.Status, models.StatusInProgress)
+		} else if change1.Previous.State() != models.StateInProgress {
+			t.Errorf("change1.Previous.State() = %s, want %s", change1.Previous.State(), models.StateInProgress)
 		}
 
 		change2 := ctx.Changes[1]
@@ -325,10 +328,10 @@ func TestTaskStateChanged(t *testing.T) {
 
 	t.Run("section change detected", func(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
-		task.Section = models.SectionNext
+		task.WorkflowState = models.StateNext
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
-		prev.Section = models.SectionInbox
+		prev.WorkflowState = models.StateInbox
 		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when section differs")
 		}

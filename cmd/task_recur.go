@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -114,7 +114,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("cannot combine --from with %s", actionFlags[0])
 	}
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -124,23 +124,27 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return err
 	}
 
+	// Every recurrence mutation is routed through the application service so it
+	// commits atomically, revision-checked, and undoably via the workspace ledger.
+	// The adapter keeps flag parsing, read-only prechecks, and presentation.
+	svc := newAppService(cfg)
+
 	// Handle --skip flag
 	if taskRecurSkip {
 		if task.Recurrence == nil {
 			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
-		task.SkipRecurrence()
-		if err := SaveProject(project, &SaveOptions{
-			Config: cfg, ConfigManager: configManager,
-			UndoAction: "Skip Recurrence", UndoContext: fmt.Sprintf("#%d", task.ShortID),
-		}); err != nil {
-			return tterrors.NewSaveProjectError(project.Name, err)
+		res, skipErr := withResultRetry(func() (app.RecurrenceResult, error) {
+			return svc.SkipRecurrence(task.ID)
+		})
+		if skipErr != nil {
+			return translateAppError(skipErr)
 		}
 		if out.JSON {
-			return outputSingleTaskJSON(task)
+			return emitMutation(out, "", res.Task)
 		}
 		if !out.Quiet {
-			fmt.Printf("Skipped: next due %s\n", formatTaskDueDate(task))
+			fmt.Printf("Skipped: next due %s\n", recurDueString(res))
 		}
 		return nil
 	}
@@ -153,18 +157,17 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if task.Recurrence == nil {
 			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
-		task.DeferRecurrence(taskRecurDefer)
-		if err := SaveProject(project, &SaveOptions{
-			Config: cfg, ConfigManager: configManager,
-			UndoAction: "Defer Recurrence", UndoContext: fmt.Sprintf("%d days #%d", taskRecurDefer, task.ShortID),
-		}); err != nil {
-			return tterrors.NewSaveProjectError(project.Name, err)
+		res, deferErr := withResultRetry(func() (app.RecurrenceResult, error) {
+			return svc.DeferRecurrence(task.ID, taskRecurDefer)
+		})
+		if deferErr != nil {
+			return translateAppError(deferErr)
 		}
 		if out.JSON {
-			return outputSingleTaskJSON(task)
+			return emitMutation(out, "", res.Task)
 		}
 		if !out.Quiet {
-			fmt.Printf("Deferred: now due %s\n", formatTaskDueDate(task))
+			fmt.Printf("Deferred: now due %s\n", recurDueString(res))
 		}
 		return nil
 	}
@@ -172,6 +175,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Handle --clear flag
 	if taskRecurClear {
 		if task.Recurrence == nil {
+			// Read-only no-op: no mutation and no undo entry recorded.
 			if out.JSON {
 				return outputSingleTaskJSON(task)
 			}
@@ -180,18 +184,17 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			}
 			return nil
 		}
-		task.ClearRecurrence()
-		if err := SaveProject(project, &SaveOptions{
-			Config: cfg, ConfigManager: configManager,
-			UndoAction: "Clear Recurrence", UndoContext: fmt.Sprintf("#%d", task.ShortID),
-		}); err != nil {
-			return tterrors.NewSaveProjectError(project.Name, err)
+		res, clearErr := withResultRetry(func() (app.RecurrenceResult, error) {
+			return svc.ClearRecurrence(task.ID)
+		})
+		if clearErr != nil {
+			return translateAppError(clearErr)
 		}
 		if out.JSON {
-			return outputSingleTaskJSON(task)
+			return emitMutation(out, "", res.Task)
 		}
 		if !out.Quiet {
-			fmt.Printf("Removed recurrence from task #%d (%s)\n", task.ShortID, task.Title)
+			fmt.Printf("Removed recurrence from task #%d (%s)\n", task.ShortID, res.Task.Title)
 		}
 		return nil
 	}
@@ -202,25 +205,24 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if cmd.Flags().Changed("from") && task.Recurrence != nil {
 			// --from alone: update mode on existing recurrence
 			oldPattern := task.Recurrence.String()
-			task.Recurrence.Mode = recurMode
-			task.UpdatedAt = time.Now()
-			if err := SaveProject(project, &SaveOptions{
-				Config: cfg, ConfigManager: configManager,
-				UndoAction: "Set Recurrence Mode", UndoContext: fmt.Sprintf("%s #%d", recurMode, task.ShortID),
-			}); err != nil {
-				return tterrors.NewSaveProjectError(project.Name, err)
+			res, modeErr := withResultRetry(func() (app.RecurrenceResult, error) {
+				return svc.SetRecurrenceMode(task.ID, recurMode)
+			})
+			if modeErr != nil {
+				return translateAppError(modeErr)
 			}
 			if out.JSON {
-				return outputSingleTaskJSON(task)
+				return emitMutation(out, "", res.Task)
 			}
 			if !out.Quiet {
-				fmt.Printf("Updated recurrence mode for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, task.Recurrence.String(), task.Title)
+				fmt.Printf("Updated recurrence mode for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, res.Pattern, res.Task.Title)
 			}
 			return nil
 		}
 		if cmd.Flags().Changed("from") && task.Recurrence == nil {
 			return fmt.Errorf("task #%d has no recurrence pattern; set one first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
+		// Read-only recurrence display path.
 		if out.JSON {
 			return outputSingleTaskJSON(task)
 		}
@@ -262,14 +264,11 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		oldPattern = task.Recurrence.String()
 	}
 
-	if err := task.SetRecurrence(pattern); err != nil {
-		return fmt.Errorf("invalid recurrence pattern: %w", err)
-	}
-
 	// Warn when setting monthly recurrence on a task whose due date falls on
 	// day 29–31: those days don't exist in all months, so the recurrence will
 	// silently clamp to the last day of shorter months. Yearly recurrence on
-	// Feb 29 clamps to Feb 28 in non-leap years for the same reason.
+	// Feb 29 clamps to Feb 28 in non-leap years for the same reason. The warning
+	// is derived from the loaded task's due date, which the mutation does not change.
 	if pattern.Unit == models.RecurrenceMonthly && task.DueDate != nil && task.DueDate.Day() > 28 {
 		fmt.Fprintf(os.Stderr, "warning: due date is on day %d; months with fewer days will use the last day instead\n", task.DueDate.Day())
 	}
@@ -278,22 +277,28 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		fmt.Fprintf(os.Stderr, "warning: due date is Feb 29; non-leap years will use Feb 28 instead\n")
 	}
 
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Set Recurrence", UndoContext: fmt.Sprintf("%s #%d", pattern.String(), task.ShortID),
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
+	res, setErr := withResultRetry(func() (app.RecurrenceResult, error) {
+		return svc.SetRecurrence(task.ID, pattern)
+	})
+	if setErr != nil {
+		return translateAppError(setErr)
 	}
 
 	if out.JSON {
-		return outputSingleTaskJSON(task)
+		return emitMutation(out, "", res.Task)
 	}
 	if !out.Quiet {
 		if oldPattern != "" {
-			fmt.Printf("Updated recurrence for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, pattern.String(), task.Title)
+			fmt.Printf("Updated recurrence for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, res.Pattern, res.Task.Title)
 		} else {
-			fmt.Printf("Set recurrence for task #%d: %s (%s)\n", task.ShortID, pattern.String(), task.Title)
+			fmt.Printf("Set recurrence for task #%d: %s (%s)\n", task.ShortID, res.Pattern, res.Task.Title)
 		}
 	}
 	return nil
+}
+
+// recurDueString formats the post-mutation due date carried on a RecurrenceResult
+// for CLI output, reusing the shared task due-date formatter.
+func recurDueString(res app.RecurrenceResult) string {
+	return formatTaskDueDate(&models.Task{DueDate: res.DueDate, HasTime: res.HasTime})
 }

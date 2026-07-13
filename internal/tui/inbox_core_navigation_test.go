@@ -30,7 +30,7 @@ func (s *stubInboxBackend) markDeletedProcessed() bool                   { retur
 func (s *stubInboxBackend) shouldProcessOnSectionChange(*models.Task, *models.Project) bool {
 	return false
 }
-func (s *stubInboxBackend) shouldProcessOnStatusChange(models.TaskStatus) bool { return false }
+func (s *stubInboxBackend) shouldProcessOnStateChange(models.WorkflowState) bool { return false }
 func (s *stubInboxBackend) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
 	for _, t := range s.tasks {
 		if t != nil && t.ID == taskID {

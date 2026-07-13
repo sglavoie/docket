@@ -28,12 +28,17 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, _, err := LoadConfigStrict()
+	_, configManager, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
 
-	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
+	automation, err := automationStore(configManager).LoadAutomation()
+	if err != nil {
+		return err
+	}
+
+	defaultRules, customRules := automation.GetWorkflowRulesSorted()
 	total := len(defaultRules) + len(customRules)
 
 	if out.JSON {

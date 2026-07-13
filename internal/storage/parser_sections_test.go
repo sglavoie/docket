@@ -91,8 +91,8 @@ Description here.
 		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
 	}
 
-	if result.Tasks[0].Section != models.SectionNext {
-		t.Errorf("expected task section Next, got '%s'", result.Tasks[0].Section)
+	if models.SectionForState(result.Tasks[0].State()) != models.SectionNext {
+		t.Errorf("expected task section Next, got '%s'", models.SectionForState(result.Tasks[0].State()))
 	}
 }
 
@@ -101,7 +101,7 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = models.SectionNext
+	task.SetSection(models.SectionNext)
 	tasks := []*models.Task{task}
 	sections := []string{models.SectionNext, models.SectionInbox, models.SectionWaiting}
 
@@ -117,8 +117,14 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 		t.Error("content should contain sections metadata")
 	}
 
-	if !strings.Contains(content, "section: Next") {
-		t.Error("content should contain task section")
+	// v2 collapses the per-task section into the derived `state`; the Next
+	// section derives to state=next. The project-level sections metadata above
+	// is still written.
+	if !strings.Contains(content, "state: next") {
+		t.Error("content should contain task state derived from Next section")
+	}
+	if strings.Contains(content, "section: Next") {
+		t.Error("v2 output should not contain the per-task section field")
 	}
 }
 
@@ -149,17 +155,17 @@ func TestSectionsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = models.SectionNext
+	task1.SetSection(models.SectionNext)
 	task2, err := models.NewTask("task2", 2, models.TaskTypeTask, "Task in Inbox")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = models.SectionInbox
+	task2.SetSection(models.SectionInbox)
 	task3, err := models.NewTask("task3", 3, models.TaskTypeTask, "Task in Waiting")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3.Section = models.SectionWaiting
+	task3.SetSection(models.SectionWaiting)
 
 	tasks := []*models.Task{task1, task2, task3}
 	sections := []string{models.SectionNext, models.SectionInbox, models.SectionReview, models.SectionWaiting}
@@ -193,14 +199,14 @@ func TestSectionsRoundTrip(t *testing.T) {
 		t.Fatalf("expected 3 tasks, got %d", len(result.Tasks))
 	}
 
-	if result.Tasks[0].Section != models.SectionNext {
-		t.Errorf("task1 section should be Next, got %s", result.Tasks[0].Section)
+	if models.SectionForState(result.Tasks[0].State()) != models.SectionNext {
+		t.Errorf("task1 section should be Next, got %s", models.SectionForState(result.Tasks[0].State()))
 	}
-	if result.Tasks[1].Section != models.SectionInbox {
-		t.Errorf("task2 section should be Inbox, got %s", result.Tasks[1].Section)
+	if models.SectionForState(result.Tasks[1].State()) != models.SectionInbox {
+		t.Errorf("task2 section should be Inbox, got %s", models.SectionForState(result.Tasks[1].State()))
 	}
-	if result.Tasks[2].Section != models.SectionWaiting {
-		t.Errorf("task3 section should be Waiting, got %s", result.Tasks[2].Section)
+	if models.SectionForState(result.Tasks[2].State()) != models.SectionWaiting {
+		t.Errorf("task3 section should be Waiting, got %s", models.SectionForState(result.Tasks[2].State()))
 	}
 }
 
@@ -209,7 +215,7 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = models.SectionInbox
+	task.SetSection(models.SectionInbox)
 	tasks := []*models.Task{task}
 	sections := []string{models.SectionNext, models.SectionInbox, models.SectionReview, "Legacy"}
 	colors := map[string]string{

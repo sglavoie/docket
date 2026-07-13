@@ -79,7 +79,7 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 	q.input.Focus()
 	q.input.CursorEnd()
 
-	effectiveSection := task.Section
+	effectiveSection := taskSectionBucket(task)
 
 	// Store original state
 	q.original = &quickEditResult{
@@ -91,7 +91,7 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 		dueDateSet:  task.DueDate != nil,
 		section:     effectiveSection,
 		sectionSet:  true,
-		status:      task.Status,
+		status:      models.LegacyStatusForState(task.State()),
 		statusSet:   true,
 	}
 
@@ -105,7 +105,7 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 		dueDateSet:  task.DueDate != nil,
 		section:     effectiveSection,
 		sectionSet:  true,
-		status:      task.Status,
+		status:      models.LegacyStatusForState(task.State()),
 		statusSet:   true,
 	}
 

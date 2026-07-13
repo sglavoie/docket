@@ -8,10 +8,10 @@ import (
 
 func TestRoundTrip_RecurrenceSubFields(t *testing.T) {
 	task := &models.Task{
-		ID:       "recur-sub-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 1,
+		ID:            "recur-sub-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      1,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  1,
 			Unit:      models.RecurrenceDaily,
@@ -79,11 +79,11 @@ func TestRoundTrip_RecurrenceFromCompletion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:         "rc-mode-1",
-				Type:       models.TaskTypeTask,
-				Status:     models.StatusTodo,
-				Priority:   1,
-				Recurrence: tc.r,
+				ID:            "rc-mode-1",
+				Type:          models.TaskTypeTask,
+				WorkflowState: models.StateReady,
+				Priority:      1,
+				Recurrence:    tc.r,
 			}
 
 			parsed := &models.Task{}
@@ -116,10 +116,10 @@ func TestRoundTrip_RecurrenceFromCompletion(t *testing.T) {
 
 func TestRoundTrip_RecurrenceMonthly(t *testing.T) {
 	task := &models.Task{
-		ID:       "monthly-task-1",
-		Type:     models.TaskTypeTask,
-		Status:   models.StatusTodo,
-		Priority: 2,
+		ID:            "monthly-task-1",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+		Priority:      2,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  2,
 			Unit:      models.RecurrenceMonthly,

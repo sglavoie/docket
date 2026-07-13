@@ -61,7 +61,7 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 
 	t.Run("non-All perspective routes to buildProjectGroupedRows", func(t *testing.T) {
 		p1task := makeTask("np1", "P1 active task", "")
-		p1task.Status = models.StatusInProgress
+		p1task.WorkflowState = models.StateInProgress
 		p1 := &models.Project{
 			ID:    "nonall-p1",
 			Name:  "P1",
@@ -70,7 +70,7 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 		p1.BuildTaskTree()
 
 		p2task := makeTask("np2", "P2 active task", "")
-		p2task.Status = models.StatusInProgress
+		p2task.WorkflowState = models.StateInProgress
 		p2 := &models.Project{
 			ID:    "nonall-p2",
 			Name:  "P2",
@@ -121,12 +121,12 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 
 func TestCrossProjectGroupingByPerspective(t *testing.T) {
 	task1 := makeTask("g1", "Task 1", "")
-	task1.Status = models.StatusInProgress
+	task1.WorkflowState = models.StateInProgress
 	proj1 := &models.Project{ID: "grp-p1", Name: "P1", Tasks: []*models.Task{task1}}
 	proj1.BuildTaskTree()
 
 	task2 := makeTask("g2", "Task 2", "")
-	task2.Status = models.StatusInProgress
+	task2.WorkflowState = models.StateInProgress
 	proj2 := &models.Project{ID: "grp-p2", Name: "P2", Tasks: []*models.Task{task2}}
 	proj2.BuildTaskTree()
 

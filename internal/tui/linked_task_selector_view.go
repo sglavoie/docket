@@ -164,7 +164,7 @@ func (m *LinkedTaskSelectorModel) renderRelationLineAtWidth(rel LinkedTaskRelati
 		return line
 	}
 
-	statusIcon := GetStatusBadge(string(rel.Task.Status), rel.Task.Status.Icon())
+	statusIcon := GetStateBadge(rel.Task.State())
 	typeIcon := GetTypeBadge(string(rel.Task.Type), rel.Task.Type.Icon())
 
 	availableWidth := max(width-4, 20)

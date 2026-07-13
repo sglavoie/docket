@@ -28,7 +28,7 @@ type prefixableView interface {
 	getMultiSelectedTasks() []*models.Task // nil = not in multi-select
 	clearMultiSelect()
 	refreshView()                                                  // buildTree / loadTasks / rebuildRows
-	workflowPersistFn() persistFn                                  // for single-task operations
+	singleTaskCoordinator() TaskItemCoordinator                    // application-layer single-task mutations
 	setUndoContext(action, detail string)                          // sets undo label before persist
 	setUndoTaskIDs(ids []string)                                   // sets targeted task IDs for undo
 	saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd // bulk: persist + refresh

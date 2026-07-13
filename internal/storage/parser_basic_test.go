@@ -56,8 +56,8 @@ This is the description.
 	if task.Type != models.TaskTypeTask {
 		t.Errorf("expected Type 'task', got '%s'", task.Type)
 	}
-	if task.Status != models.StatusTodo {
-		t.Errorf("expected Status 'todo', got '%s'", task.Status)
+	if task.State() != models.StateReady {
+		t.Errorf("expected State 'ready', got '%s'", task.State())
 	}
 	if task.Priority != 2 {
 		t.Errorf("expected Priority 2, got %d", task.Priority)

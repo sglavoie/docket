@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -72,13 +73,19 @@ func (m *ProjectFocusViewModel) reloadData()                       { m.loadTasks
 func (m *ProjectFocusViewModel) setErr(err error)                  { m.SetError(err) }
 func (m *ProjectFocusViewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
-func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
-	if task := m.getTaskAtCursor(); task != nil {
-		return taskOpsRemoveFromFocus(m, task.ShortID)
+// SetTaskItemCoordinator injects the application-layer single-task coordinator so
+// the shell wires it from the shared showView/replaceView site (taskItemWireable).
+func (m *ProjectFocusViewModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem = c }
+
+// workflowOpsView accessors: ProjectFocus does not embed ViewBundle.
+func (m *ProjectFocusViewModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }
+func (m *ProjectFocusViewModel) workflowRules() []workflow.WorkflowRule {
+	if m.cfg == nil {
+		return nil
 	}
-	return m, nil
+	return m.cfg.GetEnabledWorkflowRules()
 }
 
 func (m *ProjectFocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	return taskOpsChangePriority(m, key)
+	return m, wfChangePriority(m, key)
 }

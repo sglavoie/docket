@@ -128,19 +128,19 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 	}
 
 	sectionCounts := make(map[string]int)
-	statusCounts := make(map[models.TaskStatus]int)
+	stateCounts := make(map[models.WorkflowState]int)
 	var latestUpdate time.Time
 
 	for _, task := range project.Tasks {
-		if task == nil || task.Status.IsComplete() {
+		if task == nil || task.IsComplete() {
 			continue
 		}
-		section := task.Section
+		section := taskSectionBucket(task)
 		if section == "" {
 			section = "Active"
 		}
 		sectionCounts[section]++
-		statusCounts[task.Status]++
+		stateCounts[task.State()]++
 		if task.UpdatedAt.After(latestUpdate) {
 			latestUpdate = task.UpdatedAt
 		}
@@ -170,20 +170,22 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 	}
 
 	statusOrder := []struct {
-		status models.TaskStatus
-		label  string
+		state models.WorkflowState
+		label string
 	}{
-		{models.StatusTodo, "Todo"},
-		{models.StatusInProgress, "In Progress"},
-		{models.StatusReview, "Review"},
-		{models.StatusStandby, "Standby"},
-		{models.StatusMaybe, "Maybe"},
-		{models.StatusBlocked, "Blocked"},
+		{models.StateInbox, "Inbox"},
+		{models.StateReady, "Ready"},
+		{models.StateNext, "Next"},
+		{models.StateInProgress, "In Progress"},
+		{models.StateWaiting, "Waiting"},
+		{models.StatePaused, "Paused"},
+		{models.StateReview, "Review"},
+		{models.StateSomeday, "Someday"},
 	}
 
 	for _, s := range statusOrder {
-		if count := statusCounts[s.status]; count > 0 {
-			icon := s.status.Icon()
+		if count := stateCounts[s.state]; count > 0 {
+			icon := s.state.Icon()
 			iconW := lipgloss.Width(icon)
 			labelCol := max(14-iconW, 1)
 			lines = append(lines, NormalStyle.Render(fmt.Sprintf("  %s %-*s%d", icon, labelCol, s.label, count)))

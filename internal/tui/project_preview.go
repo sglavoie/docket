@@ -188,14 +188,14 @@ func (m *ProjectPreviewModel) renderContent() string {
 	// Task type breakdown
 	if total > 0 {
 		typeCounts := make(map[models.TaskType]int)
-		statusCounts := make(map[models.TaskStatus]int)
+		stateCounts := make(map[models.WorkflowState]int)
 
 		for _, task := range p.Tasks {
 			if task == nil {
 				continue
 			}
 			typeCounts[task.Type]++
-			statusCounts[task.Status]++
+			stateCounts[task.State()]++
 		}
 
 		b.WriteString(BoldStyle.Render("By Type"))
@@ -213,9 +213,9 @@ func (m *ProjectPreviewModel) renderContent() string {
 		b.WriteString(BoldStyle.Render("By Status"))
 		b.WriteString("\n")
 		var statusStats []string
-		for _, s := range models.AllTaskStatuses() {
-			if count := statusCounts[s]; count > 0 {
-				style := GetStatusStyle(string(s))
+		for _, s := range models.AllWorkflowStates() {
+			if count := stateCounts[s]; count > 0 {
+				style := GetStateStyle(s)
 				statusStats = append(statusStats, style.Render(fmt.Sprintf("  %s %s: %d", s.Icon(), s, count)))
 			}
 		}
@@ -229,7 +229,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 			if task == nil {
 				continue
 			}
-			if task.DueDate != nil && !task.Status.IsComplete() && task.DueDate.Before(today) {
+			if task.DueDate != nil && !task.IsComplete() && task.DueDate.Before(today) {
 				overdueCount++
 			}
 		}
@@ -249,7 +249,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 				prefix := fmt.Sprintf("  %s %s %s ",
 					MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 					GetTypeBadge(string(task.Type), task.Type.Icon()),
-					GetStatusBadge(string(task.Status), task.Status.Icon()))
+					GetStateBadge(task.State()))
 				availableTitleWidth := max(m.width-lipgloss.Width(prefix)-lipgloss.Width(suffix)-2, 1)
 				title := truncateToVisualWidth(task.Title, availableTitleWidth)
 				titleRendered := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)

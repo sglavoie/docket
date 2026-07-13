@@ -16,17 +16,17 @@ func TestRelocateTaskToEndOfSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = SectionNext // just moved to Next
+	task1.ApplyWorkflowState(StateNext) // just moved to Next
 	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = SectionNext
+	task2.ApplyWorkflowState(StateNext)
 	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3.Section = SectionInbox
+	task3.ApplyWorkflowState(StateInbox)
 
 	project.Tasks = []*Task{task1, task2, task3}
 
@@ -56,7 +56,7 @@ func TestRelocateTaskToEndOfSectionTouchesMovedTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = SectionNext
+	task1.ApplyWorkflowState(StateNext)
 	oldUpdatedAt := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	task1.UpdatedAt = oldUpdatedAt
 
@@ -64,7 +64,7 @@ func TestRelocateTaskToEndOfSectionTouchesMovedTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = SectionNext
+	task2.ApplyWorkflowState(StateNext)
 
 	project.Tasks = []*Task{task1, task2}
 
@@ -88,12 +88,12 @@ func TestRelocateTaskToEndOfSectionAlreadyAtEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = SectionNext
+	task1.ApplyWorkflowState(StateNext)
 	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = SectionNext
+	task2.ApplyWorkflowState(StateNext)
 
 	project.Tasks = []*Task{task1, task2}
 
@@ -115,12 +115,12 @@ func TestRelocateTaskToEndOfSectionNoOtherTasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = SectionNext
+	task1.ApplyWorkflowState(StateNext)
 	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = SectionInbox
+	task2.ApplyWorkflowState(StateInbox)
 
 	project.Tasks = []*Task{task1, task2}
 
@@ -143,27 +143,27 @@ func TestRelocateTaskToEndOfSectionInterleaved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = SectionNext // just moved here
+	task1.ApplyWorkflowState(StateNext) // just moved here
 	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = SectionInbox
+	task2.ApplyWorkflowState(StateInbox)
 	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3.Section = SectionNext
+	task3.ApplyWorkflowState(StateNext)
 	task4, err := NewTask("4", 4, TaskTypeTask, "Task 4")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task4.Section = SectionInbox
+	task4.ApplyWorkflowState(StateInbox)
 	task5, err := NewTask("5", 5, TaskTypeTask, "Task 5")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task5.Section = SectionNext
+	task5.ApplyWorkflowState(StateNext)
 
 	project.Tasks = []*Task{task1, task2, task3, task4, task5}
 
@@ -198,13 +198,13 @@ func TestRelocateTaskToEndOfSectionEmptyID(t *testing.T) {
 		t.Fatal(err)
 	}
 	corrupt.ID = ""
-	corrupt.Section = SectionNext
+	corrupt.ApplyWorkflowState(StateNext)
 
 	good, err := NewTask("good", 2, TaskTypeTask, "Good")
 	if err != nil {
 		t.Fatal(err)
 	}
-	good.Section = SectionNext
+	good.ApplyWorkflowState(StateNext)
 
 	project.Tasks = []*Task{corrupt, good}
 

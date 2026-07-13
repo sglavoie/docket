@@ -87,7 +87,7 @@ func TestFormatNoteReferenceMarkdownIncludesLinkedTaskSummaryAndWarning(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Status = models.StatusInProgress
+	task.WorkflowState = models.StateInProgress
 
 	got := FormatNoteReferenceMarkdownWithTasks(note, []*models.Task{task})
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -83,108 +84,121 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 
+	// The dependency mutations resolve the acting task and blocker within the
+	// current project (matching the legacy single-project reference rules) and
+	// then persist through the application layer (app.Service) so the change
+	// commits atomically, revision-checked, and undoably with stale-revision
+	// retry. Dependency blocking is a DERIVED predicate, not a workflow state, so
+	// removing/clearing the last dependency simply makes the task no longer
+	// blocked (HasIncompleteDependencies becomes false) — the CLI no longer forces
+	// a reopen/transition; the app layer preserves the task's workflow state.
+
 	// Handle --clear
 	if dependsClearFlag {
-		// Pre-check: skip the save if there are no dependencies to clear
-		project, _, _, err := LoadCurrentProject()
+		project, cfg, _, err := LoadCurrentProject()
 		if err != nil {
 			return err
 		}
-		preTask, findErr := FindTaskByIdentifier(project, taskID)
+		task, findErr := FindTaskByIdentifier(project, taskID)
 		if findErr != nil {
 			return findErr
 		}
-		if len(preTask.DependsOn) == 0 {
-			fmt.Printf("Task #%d has no dependencies to clear.\n", preTask.ShortID)
+		// Pre-check: skip the commit if there are no dependencies to clear.
+		if len(task.DependsOn) == 0 {
+			if !out.Quiet {
+				fmt.Printf("Task #%d has no dependencies to clear.\n", task.ShortID)
+			}
 			return nil
 		}
 
-		task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
-			t.ClearDependencies()
-			if t.Status == models.StatusBlocked {
-				t.Reopen()
-			}
-			return nil
+		svc := newAppService(cfg)
+		res, err := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.ClearDependencies(task.ID)
 		})
 		if err != nil {
-			return err
+			return translateAppError(err)
 		}
 		if out.JSON {
-			return outputSingleTaskJSON(task)
+			return emitMutation(out, "Cleared dependencies", res)
 		}
 		if !out.Quiet {
-			fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
+			fmt.Printf("Cleared all dependencies for #%d: %s\n", res.ShortID, res.Title)
 		}
 		return nil
 	}
 
 	// Handle --remove
 	if dependsRemoveFlag != "" {
-		var blockerShortID int
-		var blockerTitle string
-		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
-			blocker, blockerErr := FindTaskByIdentifier(project, dependsRemoveFlag)
-			if blockerErr != nil {
-				return blockerErr
-			}
-			if !t.HasDependency(blocker.ID) {
-				return fmt.Errorf("task #%d does not depend on #%d", t.ShortID, blocker.ShortID)
-			}
-			blockerShortID = blocker.ShortID
-			blockerTitle = blocker.Title
-			t.RemoveDependency(blocker.ID)
-			if t.Status == models.StatusBlocked && len(t.DependsOn) == 0 {
-				t.Reopen()
-			}
-			return nil
-		})
+		project, cfg, _, err := LoadCurrentProject()
 		if err != nil {
 			return err
 		}
+		task, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			return findErr
+		}
+		blocker, blockerErr := FindTaskByIdentifier(project, dependsRemoveFlag)
+		if blockerErr != nil {
+			return blockerErr
+		}
+		if !task.HasDependency(blocker.ID) {
+			return fmt.Errorf("task #%d does not depend on #%d", task.ShortID, blocker.ShortID)
+		}
+
+		svc := newAppService(cfg)
+		res, err := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.RemoveDependency(task.ID, blocker.ID)
+		})
+		if err != nil {
+			return translateAppError(err)
+		}
 		if out.JSON {
-			return outputSingleTaskJSON(task)
+			return emitMutation(out, "Removed dependency", res)
 		}
 		if !out.Quiet {
 			fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
-				task.ShortID, blockerShortID, blockerTitle)
+				res.ShortID, blocker.ShortID, blocker.Title)
 		}
 		return nil
 	}
 
 	// Handle --on
 	if dependsOnFlag != "" {
-		var blockerShortID int
-		var blockerTitle string
-		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
-			blocker, blockerErr := FindTaskByIdentifier(project, dependsOnFlag)
-			if blockerErr != nil {
-				return blockerErr
-			}
-			if blocker.ID == t.ID {
-				return tterrors.ErrSelfDependency
-			}
-			if t.HasDependency(blocker.ID) {
-				return fmt.Errorf("%w: #%d already depends on #%d", tterrors.ErrDuplicateDep, t.ShortID, blocker.ShortID)
-			}
-			if project.HasCircularDependency(t.ID, blocker.ID) {
-				return fmt.Errorf("cannot add dependency: %w", tterrors.ErrCircularDep)
-			}
-			if err := t.AddDependency(blocker.ID); err != nil {
-				return err
-			}
-			blockerShortID = blocker.ShortID
-			blockerTitle = blocker.Title
-			return nil
-		})
+		project, cfg, _, err := LoadCurrentProject()
 		if err != nil {
 			return err
 		}
+		task, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			return findErr
+		}
+		blocker, blockerErr := FindTaskByIdentifier(project, dependsOnFlag)
+		if blockerErr != nil {
+			return blockerErr
+		}
+		if blocker.ID == task.ID {
+			return tterrors.ErrSelfDependency
+		}
+		if task.HasDependency(blocker.ID) {
+			return fmt.Errorf("%w: #%d already depends on #%d", tterrors.ErrDuplicateDep, task.ShortID, blocker.ShortID)
+		}
+		if project.HasCircularDependency(task.ID, blocker.ID) {
+			return fmt.Errorf("cannot add dependency: %w", tterrors.ErrCircularDep)
+		}
+
+		svc := newAppService(cfg)
+		res, err := withTaskRetry(func() (app.TaskResult, error) {
+			return svc.AddDependency(task.ID, blocker.ID)
+		})
+		if err != nil {
+			return translateAppError(err)
+		}
 		if out.JSON {
-			return outputSingleTaskJSON(task)
+			return emitMutation(out, "Added dependency", res)
 		}
 		if !out.Quiet {
 			fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
-				task.ShortID, blockerShortID, blockerTitle)
+				res.ShortID, blocker.ShortID, blocker.Title)
 		}
 		return nil
 	}
@@ -210,7 +224,7 @@ func showTaskDependencies(project *models.Project, task *models.Task) {
 	} else {
 		fmt.Println("Depends on:")
 		for _, b := range blockers {
-			status := b.Status.Icon()
+			status := b.State().Icon()
 			fmt.Printf("  %s #%d: %s\n", status, b.ShortID, b.Title)
 		}
 		for _, ref := range crossProjectDeps {
@@ -225,7 +239,7 @@ func showTaskDependencies(project *models.Project, task *models.Task) {
 	} else {
 		fmt.Println("Blocks:")
 		for _, t := range blocked {
-			status := t.Status.Icon()
+			status := t.State().Icon()
 			fmt.Printf("  %s #%d: %s\n", status, t.ShortID, t.Title)
 		}
 	}

@@ -44,7 +44,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		},
 	}
 
-	if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
+	if !task.IsTerminalState() {
 		actions = append(actions, PaletteAction{
 			Name:    "Complete",
 			Icon:    icons.Get("status.done"),
@@ -55,7 +55,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
-	if task.Status == models.StatusTodo {
+	if taskInPlanningState(task) {
 		actions = append(actions, PaletteAction{
 			Name:    "Start",
 			Icon:    IconScrollRight,
@@ -66,7 +66,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
-	if task.Status.IsActive() && task.Status != models.StatusBlocked {
+	if !task.IsTerminalState() && !task.IsInState(models.StateWaiting) {
 		actions = append(actions, PaletteAction{
 			Name:    "Block",
 			Icon:    icons.Get("blocked_dot"),
@@ -77,7 +77,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
-	if task.Status == models.StatusInProgress {
+	if task.IsInState(models.StateInProgress) {
 		actions = append(actions, PaletteAction{
 			Name:    "Review",
 			Icon:    icons.Get("status.review"),
@@ -88,7 +88,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
-	if task.Status.IsActive() {
+	if !task.IsTerminalState() {
 		actions = append(actions, PaletteAction{
 			Name:    "Cancel",
 			Icon:    icons.Get("status.canceled"),
@@ -99,7 +99,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
-	if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
+	if task.IsTerminalState() {
 		actions = append(actions, PaletteAction{
 			Name:    "Reopen",
 			Icon:    icons.Get("recur"),
@@ -180,10 +180,10 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 	canComplete := true
 	canStart := true
 	for _, item := range selectedItems {
-		if item.Task.Status == models.StatusDone || item.Task.Status == models.StatusCanceled {
+		if item.Task.IsTerminalState() {
 			canComplete = false
 		}
-		if item.Task.Status != models.StatusTodo {
+		if !taskInPlanningState(item.Task) {
 			canStart = false
 		}
 	}

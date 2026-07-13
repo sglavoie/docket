@@ -1,37 +1,25 @@
 package tui
 
 import (
-	"fmt"
-	"time"
-
 	tea "charm.land/bubbletea/v2"
+	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // buildKeyMap constructs the declarative KeyMap for DueDateOverviewModel.
 func (m *DueDateOverviewModel) buildKeyMap() *keymap.KeyMap {
-	stages := m.dueDateStages()
-
 	var entries []keymap.Entry
 	entries = append(entries, m.dueDateNavigationEntries()...)
-	entries = append(entries, m.dueDateTaskActionEntries(stages)...)
-	entries = append(entries, m.dueDateFilterEntries(stages)...)
+	entries = append(entries, m.dueDateTaskActionEntries()...)
+	entries = append(entries, m.dueDateFilterEntries()...)
 	entries = append(entries, m.dueDateDirectEntries()...)
 
 	return &keymap.KeyMap{
 		ViewName: "Due Dates",
 		Entries:  entries,
 	}
-}
-
-func (m *DueDateOverviewModel) dueDateStages() []string {
-	if m.config == nil {
-		return nil
-	}
-	return m.config.Stages
 }
 
 func (m *DueDateOverviewModel) dueDateNavigationEntries() []keymap.Entry {
@@ -89,28 +77,26 @@ func (m *DueDateOverviewModel) dueDateNavigationEntries() []keymap.Entry {
 	return entries
 }
 
-func (m *DueDateOverviewModel) dueDateTaskActionEntries(stages []string) []keymap.Entry {
-	return buildStandardTaskActionEntries(m.dueDateTaskActionDeps(stages))
+func (m *DueDateOverviewModel) dueDateTaskActionEntries() []keymap.Entry {
+	return buildStandardTaskActionEntries(m.dueDateTaskActionDeps())
 }
 
-func (m *DueDateOverviewModel) dueDateTaskActionDeps(stages []string) TaskKeymapDeps {
+func (m *DueDateOverviewModel) dueDateTaskActionDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.dueDateHasItem,
-		Stages:           stages,
 		ToggleHelp:       m.dueDateToggleHelp,
 		SelectedTaskRefs: m.dueDateSelectedTaskRefs,
 		DeleteTask:       m.dueDateDeleteTask,
 		OpenURL:          m.dueDateOpenURL,
 		MoveToProject:    m.dueDateMoveToProject,
 		QuickNote:        m.dueDateQuickNote,
-		StatusChange:     m.dueDateStatusChangeAction,
+		StateChange:      m.dueDateStatusChangeAction,
 		PriorityChange:   m.dueDatePriorityChangeAction,
 		DueDateSet:       m.dueDateSetAction,
 		DueDateClear:     m.dueDateClearDueDate,
 		SnoozeDate:       m.dueDateSnoozeDateAction,
 		SectionMove:      m.dueDateSectionMoveAction,
-		StageChange:      m.dueDateStageChangeAction,
 	}
 }
 
@@ -159,31 +145,16 @@ func (m *DueDateOverviewModel) dueDateQuickNote() (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 }
 
-func (m *DueDateOverviewModel) dueDateStatusChangeAction(status string) keymap.Action {
-	s := models.TaskStatus(status)
+func (m *DueDateOverviewModel) dueDateStatusChangeAction(state string) keymap.Action {
+	s := models.WorkflowState(state)
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, StatusVerb(s)+" Task",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.CanTransitionTo(s) != "" {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.ApplyTransition(s) })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Changed %d tasks to %s", count, s))
+			if cmd := bulkListStateCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), s); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsChangeStatus(m, s)
+		return m, wfChangeState(m, s)
 	}
 }
 
@@ -191,76 +162,35 @@ func (m *DueDateOverviewModel) dueDatePriorityChangeAction(key string) keymap.Ac
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
 			p, _ := PriorityForPrefixKey(key)
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Priority",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.Priority == p {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.Priority = p })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Set priority %d on %d tasks", p, count))
+			if cmd := bulkListPriorityCmd(m.bulk, m.getSelectedBulkItems(), p); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsChangePriority(m, key)
+		return m, wfChangePriority(m, key)
 	}
 }
 
 func (m *DueDateOverviewModel) dueDateSetAction(days int) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Due Date",
-				func(proj *models.Project, taskID string) bool {
-					proj.MutateTask(taskID, func(t *models.Task) {
-						d := dueDate
-						t.DueDate = &d
-						t.HasTime = false
-					})
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else {
-				m.setStatus(fmt.Sprintf("Due date set on %d tasks", count))
+			if cmd := bulkListDueDateCmd(m.bulk, m.getSelectedBulkItems(), days); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsSetQuickDueDate(m, days)
+		return m, wfSetQuickDueDate(m, days)
 	}
 }
 
 func (m *DueDateOverviewModel) dueDateClearDueDate() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && m.SelectedCount() > 0 {
-		items := m.getSelectedBulkItems()
-		count, err := taskOpsApplyBulk(m, items, "Clear Due Date",
-			func(proj *models.Project, taskID string) bool {
-				proj.MutateTask(taskID, func(t *models.Task) {
-					t.DueDate = nil
-					t.HasTime = false
-				})
-				return true
-			})
-		m.ExitMultiSelect()
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Error: %v", err))
-		} else {
-			m.setStatus(fmt.Sprintf("Cleared due date on %d tasks", count))
+		if cmd := bulkListClearDueDateCmd(m.bulk, m.getSelectedBulkItems()); cmd != nil {
+			return m, cmd
 		}
 		return m, nil
 	}
-	return taskOpsClearDueDate(m)
+	return m, wfClearDueDate(m)
 }
 
 func (m *DueDateOverviewModel) dueDateSnoozeDateAction(key string) keymap.Action {
@@ -270,79 +200,29 @@ func (m *DueDateOverviewModel) dueDateSnoozeDateAction(key string) keymap.Action
 			return m, nil
 		}
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Snooze",
-				func(proj *models.Project, taskID string) bool {
-					proj.MutateTask(taskID, func(t *models.Task) { t.SnoozedUntil = snoozeDate })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else {
-				m.setStatus(fmt.Sprintf("Snoozed %d tasks", count))
+			if cmd := bulkListSnoozeCmd(m.bulk, m.getSelectedBulkItems(), snoozeDate); cmd != nil {
+				return m, cmd
 			}
 			return m, nil
 		}
-		return taskOpsQuickSnooze(m, snoozeDate)
+		return m, wfQuickSnooze(m, snoozeDate)
 	}
 }
 
 func (m *DueDateOverviewModel) dueDateSectionMoveAction(section string) keymap.Action {
 	return func() (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Move to Section",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.InSection(section) {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.SetSection(section) })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were moved")
-			} else {
-				m.setStatus(fmt.Sprintf("Moved %d tasks to %s", count, section))
+			cmd, ok := bulkListSectionMoveCmd(m.bulk, m.enabledWorkflowRules(), m.getSelectedBulkItems(), section)
+			if !ok {
+				m.setStatus(fmt.Sprintf("Unknown section %q", section))
 			}
-			return m, nil
+			return m, cmd
 		}
-		return taskOpsSectionMove(m, section)
+		return m, wfSectionMove(m, section)
 	}
 }
 
-func (m *DueDateOverviewModel) dueDateStageChangeAction(stage string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			items := m.getSelectedBulkItems()
-			count, err := taskOpsApplyBulk(m, items, "Set Stage",
-				func(proj *models.Project, taskID string) bool {
-					t := proj.GetTaskByID(taskID)
-					if t == nil || t.Stage == stage {
-						return false
-					}
-					proj.MutateTask(taskID, func(t *models.Task) { t.Stage = stage })
-					return true
-				})
-			m.ExitMultiSelect()
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-			} else if count == 0 {
-				m.setStatus("No tasks were changed")
-			} else {
-				m.setStatus(fmt.Sprintf("Set stage on %d tasks", count))
-			}
-			return m, nil
-		}
-		return taskOpsChangeStage(m, stage)
-	}
-}
-
-func (m *DueDateOverviewModel) dueDateFilterEntries(stages []string) []keymap.Entry {
+func (m *DueDateOverviewModel) dueDateFilterEntries() []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("#") },
 		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("p") },
@@ -355,7 +235,7 @@ func (m *DueDateOverviewModel) dueDateFilterEntries(stages []string) []keymap.En
 				return m.handleDueDateFilterSubPrefix("Ft", key)
 			}
 		},
-		StatusKey: func(key string) keymap.Action {
+		StateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleDueDateFilterSubPrefix("Fs", key)
 			}
@@ -383,12 +263,6 @@ func (m *DueDateOverviewModel) dueDateFilterEntries(stages []string) []keymap.En
 				return m.handleDueDateFilterSubPrefix("FS", key)
 			}
 		},
-		StageFilterKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleDueDateFilterSubPrefix("F.", key)
-			}
-		},
-		StageFilterNames: stages,
 	})
 }
 
@@ -400,9 +274,6 @@ func (m *DueDateOverviewModel) dueDateDirectEntries() []keymap.Entry {
 				return m, nil
 			}
 			return m, func() tea.Msg { return DueDateOverviewSelectMsg{Task: dt.Task, Project: dt.Project} }
-		}),
-		keymap.Bind("*", "Toggle active flag", "Actions", func() (tea.Model, tea.Cmd) {
-			return m.toggleActive()
 		}),
 	}
 

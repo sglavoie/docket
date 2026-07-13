@@ -147,15 +147,13 @@ func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
 // clears the project pointer so the task is ready to live under dest. The
 // destSectionSet map is updated in place when sections are added to dest.
 func reassignTaskToDest(t *Task, dest *Project, destSectionSet map[string]bool, now time.Time) {
-	switch {
-	case t.Section != "" && !IsGTDSection(t.Section):
-		t.SetSection(SectionNext)
-	case t.Section != "" && !destSectionSet[t.Section]:
-		// GTD section preserved on the task, but dest.Sections may not
-		// enumerate it (e.g. dest was created without EnsureDefaultSections).
-		// Append so the bucket renders in UI listings derived from dest.Sections.
-		dest.EnsureSection(t.Section)
-		destSectionSet[t.Section] = true
+	// The task carries its workflow state across the move; make sure dest
+	// enumerates the section bucket that state resolves to, since dest may
+	// have been created without EnsureDefaultSections and UI listings derive
+	// their buckets from dest.Sections.
+	if bucket := SectionForState(t.State()); bucket != "" && !destSectionSet[bucket] {
+		dest.EnsureSection(bucket)
+		destSectionSet[bucket] = true
 	}
 
 	t.UpdatedAt = now

@@ -111,11 +111,6 @@ func TestLinkedTaskCreatorTogglesSyntaxGuideOnQuestionMark(t *testing.T) {
 }
 
 func TestLinkedTaskCreatorSubtaskAppendsAsLastChild(t *testing.T) {
-	project, err := models.NewProject("proj-1", "creator", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-
 	parent, err := models.NewTask("parent-1", 1, models.TaskTypeStory, "parent")
 	if err != nil {
 		t.Fatalf("NewTask parent: %v", err)
@@ -126,10 +121,11 @@ func TestLinkedTaskCreatorSubtaskAppendsAsLastChild(t *testing.T) {
 	}
 	childOne.ParentID = &parent.ID
 
-	project.Tasks = append(project.Tasks, parent, childOne)
-	project.BuildTaskTree()
-
-	m := NewLinkedTaskCreatorModel(parent, project, LinkTypeSubtask)
+	// Wire the creator over the real transactional stack so createTask commits
+	// through the CaptureCoordinator's linked-task use case.
+	env := newScenarioEnv(t, "creator", parent, childOne)
+	m := NewLinkedTaskCreatorModel(env.project.GetTaskByID(parent.ID), env.project, LinkTypeSubtask)
+	m.SetCaptureCoordinator(env.features.Capture)
 	m.input.SetValue("child two")
 
 	cmd := m.createTask(false, false)
@@ -140,11 +136,13 @@ func TestLinkedTaskCreatorSubtaskAppendsAsLastChild(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected LinkedTaskCreatedMsg, got %T", cmd())
 	}
-	if msg.NewTask == nil {
-		t.Fatal("expected created subtask in message")
+	if msg.Result == nil {
+		t.Fatal("expected linked-task result in message")
 	}
 
-	refreshedParent := project.GetTaskByID(parent.ID)
+	// The committed project nests the new subtask as the last child of the parent.
+	fresh := env.reload(t)
+	refreshedParent := fresh.GetTaskByID(parent.ID)
 	if refreshedParent == nil {
 		t.Fatal("expected parent task after save")
 	}
