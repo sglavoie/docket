@@ -9,7 +9,7 @@ import (
 )
 
 func TestResetChangedDefaultTemplates_EnableTemplatesTrue(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Add a default template that has been "changed" (different name from shipped)
 	cfg.TaskTemplates = []template.TaskTemplate{
@@ -52,7 +52,7 @@ func TestResetChangedDefaultTemplates_EnableTemplatesTrue(t *testing.T) {
 }
 
 func TestResetChangedDefaultTemplates_EnableTemplatesFalse(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Add a default template that was enabled and has been changed
 	cfg.TaskTemplates = []template.TaskTemplate{
@@ -83,7 +83,7 @@ func TestResetChangedDefaultTemplates_EnableTemplatesFalse(t *testing.T) {
 }
 
 func TestResetChangedDefaultTemplates_ReaddedEnabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Start with no templates — all defaults were "deleted"
 	cfg.TaskTemplates = []template.TaskTemplate{}
@@ -106,7 +106,7 @@ func TestResetChangedDefaultTemplates_ReaddedEnabled(t *testing.T) {
 // must now be treated as a content change so ResetChangedDefaultTemplates
 // rewrites the user-edited template back to the shipped order.
 func TestResetChangedDefaultTemplates_TagOrderDetected(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Find a shipped default with >1 tags so a reorder is meaningful.
 	defaults := template.GetDefaultTemplates()
@@ -160,7 +160,7 @@ func TestResetChangedDefaultTemplates_TagOrderDetected(t *testing.T) {
 // instance-level fields (Enabled, UseCount) are not treated as content
 // differences by the ContentEqual switch.
 func TestResetChangedDefaultTemplates_IgnoresMetadata(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	defaults := template.GetDefaultTemplates()
 	if len(defaults) == 0 {
@@ -191,7 +191,7 @@ func TestResetChangedDefaultTemplates_IgnoresMetadata(t *testing.T) {
 }
 
 func TestResetChangedDefaultTemplates_ReaddedDisabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Start with no templates — all defaults were "deleted"
 	cfg.TaskTemplates = []template.TaskTemplate{}

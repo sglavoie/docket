@@ -26,7 +26,7 @@ func findCommand(cmds []Command, name string) *Command {
 
 func TestViewModeCommands_SwitchToActive(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.projectTree.viewMode = ViewModeNext // start at something else
 
 	cmds := app.viewModeCommands()
@@ -44,7 +44,7 @@ func TestViewModeCommands_SwitchToActive(t *testing.T) {
 
 func TestViewModeCommands_CycleViewMode(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.projectTree.viewMode = ViewModeActive
 
 	cmds := app.viewModeCommands()

@@ -71,8 +71,8 @@ func TestSetupTestDepsRegistersCleanup(t *testing.T) {
 
 	var tempDir string
 	t.Run("caller does not manually clean up", func(t *testing.T) {
-		deps := SetupTestDeps(t)
-		tempDir = deps.Config.DataDir
+		deps := SetupTestDeps(t, func(dataDir string) string { return dataDir })
+		tempDir = deps.DataDir
 
 		if external.DefaultSelector != deps.Selector {
 			t.Fatal("SetupTestDeps() did not install mock selector")

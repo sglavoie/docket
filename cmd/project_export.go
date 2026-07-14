@@ -35,15 +35,15 @@ func init() {
 }
 
 func runProjectExport(cmd *cobra.Command, args []string) error {
-	project, _, manager, err := LoadConfigAndProjectOrCurrent(args)
+	project, workspace, err := LoadRuntimeProjectOrCurrent(args)
 	if err != nil {
 		return err
 	}
 
 	dest := projectExportFile
 	if dest == "" {
-		dest = manager.ExportPath(project.Slug)
-		if err = os.MkdirAll(manager.ExportsDir(), 0700); err != nil {
+		dest = workspace.Manager.ExportPath(project.Slug)
+		if err = os.MkdirAll(workspace.Manager.ExportsDir(), 0700); err != nil {
 			return fmt.Errorf("create exports dir: %w", err)
 		}
 	}

@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGetRecentPaletteItems_Empty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	items := cfg.GetRecentPaletteItems()
 
@@ -16,7 +16,7 @@ func TestGetRecentPaletteItems_Empty(t *testing.T) {
 }
 
 func TestSetRecentPaletteItems(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	items := []RecentPaletteItem{
 		{Category: "Commands", ID: "task-add"},
@@ -34,7 +34,7 @@ func TestSetRecentPaletteItems(t *testing.T) {
 }
 
 func TestGetLastPaletteCategory(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	if category := cfg.GetLastPaletteCategory(); category != "" {
 		t.Errorf("expected empty string, got '%s'", category)
@@ -47,7 +47,7 @@ func TestGetLastPaletteCategory(t *testing.T) {
 }
 
 func TestSetLastPaletteCategory(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.SetLastPaletteCategory(":project ")
 	if cfg.LastPaletteCategory != ":project " {
@@ -56,7 +56,7 @@ func TestSetLastPaletteCategory(t *testing.T) {
 }
 
 func TestGetPaletteSearchHistory_Empty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	history := cfg.GetPaletteSearchHistory()
 
@@ -69,7 +69,7 @@ func TestGetPaletteSearchHistory_Empty(t *testing.T) {
 }
 
 func TestSetPaletteSearchHistory(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	history := []string{"task add", "project list", "help"}
 	cfg.SetPaletteSearchHistory(history)
@@ -84,7 +84,7 @@ func TestSetPaletteSearchHistory(t *testing.T) {
 }
 
 func TestGetGlobalSearchHistory_Empty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	history := cfg.GetGlobalSearchHistory()
 
@@ -97,7 +97,7 @@ func TestGetGlobalSearchHistory_Empty(t *testing.T) {
 }
 
 func TestSetGlobalSearchHistory(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	history := []string{"status:todo", "#feature", "p:work"}
 	cfg.SetGlobalSearchHistory(history)

@@ -7,7 +7,7 @@ import (
 )
 
 func TestAddDefaultRules_AddsNewRules(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	added := cfg.AddDefaultRules(false, false)
 
@@ -20,7 +20,7 @@ func TestAddDefaultRules_AddsNewRules(t *testing.T) {
 }
 
 func TestAddDefaultRules_SkipsExisting(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	defaultRules := workflow.GetDefaultRules()
 	if len(defaultRules) == 0 {
@@ -38,7 +38,7 @@ func TestAddDefaultRules_SkipsExisting(t *testing.T) {
 }
 
 func TestAddDefaultRules_EnableRulesFlag(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	cfg.AddDefaultRules(true, false)
 
@@ -50,7 +50,7 @@ func TestAddDefaultRules_EnableRulesFlag(t *testing.T) {
 }
 
 func TestAddDefaultRules_DisableRulesFlag(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	cfg.AddDefaultRules(false, false)
 
@@ -62,7 +62,7 @@ func TestAddDefaultRules_DisableRulesFlag(t *testing.T) {
 }
 
 func TestAddDefaultRules_UseOriginalEnabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	cfg.AddDefaultRules(false, true)
 

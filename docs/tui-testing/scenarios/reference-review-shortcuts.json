@@ -1,0 +1,21 @@
+{
+  "name": "reference-review-shortcuts",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open the reference encyclopedia", "command": "reference" },
+    { "type": "assert", "assert": "view", "value": "Reference" },
+    { "type": "assert", "assert": "contains", "value": "Getting Started" },
+    { "type": "key", "label": "return to Dashboard", "key": "esc" },
+    { "type": "key", "label": "start Daily Review shortcut", "key": ";" },
+    { "type": "key", "label": "complete Daily Review shortcut", "key": "d" },
+    { "type": "assert", "assert": "view", "value": "DailyReview" },
+    { "type": "assert", "assert": "contains", "value": "Review  (" },
+    { "type": "key", "label": "return to Dashboard", "key": "esc" },
+    { "type": "key", "label": "start Weekly Review shortcut", "key": ";" },
+    { "type": "key", "label": "complete Weekly Review shortcut", "key": "r" },
+    { "type": "assert", "assert": "view", "value": "WeeklyReview" },
+    { "type": "assert", "assert": "contains", "value": "Weekly Review" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

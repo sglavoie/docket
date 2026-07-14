@@ -22,11 +22,11 @@ type GlobalInboxProcessorModel struct {
 }
 
 // NewGlobalInboxProcessorModel creates a new global inbox processor model.
-func NewGlobalInboxProcessorModel(cfg *config.Config, manager *config.Manager) *GlobalInboxProcessorModel {
+func NewGlobalInboxProcessorModel(manager *config.Manager, runtime *config.RuntimeState) *GlobalInboxProcessorModel {
 	m := &GlobalInboxProcessorModel{
 		projectCache: make(map[string]*models.Project),
 	}
-	m.initCore(m, m, cfg, manager)
+	m.initCore(m, m, manager, runtime)
 	m.loadAllInboxTasks()
 	return m
 }
@@ -36,7 +36,7 @@ func (m *GlobalInboxProcessorModel) loadAllInboxTasks() {
 	m.inboxTasks = nil
 	m.projectCache = make(map[string]*models.Project)
 
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
 			continue
@@ -102,7 +102,7 @@ func (m *GlobalInboxProcessorModel) saveProjectCmd(project *models.Project) tea.
 	if project == nil {
 		return nil
 	}
-	dataDir := m.config.DataDir
+	dataDir := m.runtime.DataDir()
 	deps := m.configManager.RuntimeDependencies()
 	return func() tea.Msg {
 		if err := commitInboxProject(dataDir, deps, project); err != nil {

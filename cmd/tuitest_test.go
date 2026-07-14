@@ -665,11 +665,9 @@ func buildSourceConfig(t *testing.T, projectName, taskTitle string) string {
 	root := t.TempDir()
 	dataDir := filepath.Join(root, "data")
 
-	cfg := config.NewConfig()
-	cfg.DataDir = dataDir
-	cfg.FzfEnabled = false
-	cfg.GlowEnabled = false
-	cfg.Projects = []*models.Project{}
+	cfg := newFileBackedTestRuntime(dataDir, "")
+	cfg.Settings().FzfEnabled = false
+	cfg.Settings().GlowEnabled = false
 	if err := cfg.EnsureDataDir(); err != nil {
 		t.Fatalf("ensure data dir: %v", err)
 	}
@@ -678,7 +676,7 @@ func buildSourceConfig(t *testing.T, projectName, taskTitle string) string {
 	if err != nil {
 		t.Fatalf("new project: %v", err)
 	}
-	project.Path = cfg.GetProjectPath(project.Slug)
+	project.Path = cfg.ProjectPath(project.Slug)
 	project.EnsureDefaultSections()
 	task, err := models.NewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, taskTitle)
 	if err != nil {
@@ -688,8 +686,8 @@ func buildSourceConfig(t *testing.T, projectName, taskTitle string) string {
 	project.NextShortID++
 	project.BuildTaskTree()
 
-	cfg.Projects = append(cfg.Projects, project)
-	cfg.CurrentProject = project.ID
+	addTestProject(cfg, project)
+	cfg.Machine().CurrentProject = project.ID
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("save project: %v", err)
 	}
@@ -700,7 +698,7 @@ func buildSourceConfig(t *testing.T, projectName, taskTitle string) string {
 	// decomposed domain files under <dataDir>/.tt/; the returned path is the
 	// workspace config path (its directory is the workspace root).
 	configPath := filepath.Join(dataDir, ".tt.json")
-	if err := config.NewManager(configPath).Save(cfg); err != nil {
+	if err := saveTestRuntime(config.NewManager(configPath), cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 	return configPath

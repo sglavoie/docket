@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // TestFinalizeBatchResultPreservesSelectionOnError verifies that a rejected batch
@@ -56,17 +55,18 @@ func TestFinalizeBatchResultSetsSelectionAndSummary(t *testing.T) {
 func TestHandleBatchTransactionResultClearsSelectionAndRepairsRecentVisits(t *testing.T) {
 	dir := t.TempDir()
 	mgr := config.NewManager(filepath.Join(dir, ".tt.json"))
-	cfg := testutil.NewTestConfig()
-	cfg.RecentTaskVisits = []config.RecentTaskVisit{
+	cfg := newTestConfig()
+	cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{
 		{ProjectID: "p", TaskID: "gone"},
 		{ProjectID: "p", TaskID: "keep"},
 	}
-	if err := mgr.Save(cfg); err != nil {
+	if err := saveTestRuntime(mgr, cfg); err != nil {
 		t.Fatalf("seed config: %v", err)
 	}
 
-	m := &AppModel{config: cfg, configManager: mgr, views: NewViewRegistry()}
-	atv := NewAllTasksViewModel(cfg, mgr)
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
+	m := &AppModel{configManager: mgr, runtime: runtime, views: NewViewRegistry()}
+	atv := NewAllTasksViewModel(runtime, mgr)
 	atv.multiSelectMode = true
 	atv.selectedTasks["gone"] = true
 	m.allTasksView = atv
@@ -81,8 +81,9 @@ func TestHandleBatchTransactionResultClearsSelectionAndRepairsRecentVisits(t *te
 	if atv.multiSelectMode || atv.SelectedCount() != 0 {
 		t.Error("committed batch should clear the multiselect")
 	}
-	if len(cfg.RecentTaskVisits) != 1 || cfg.RecentTaskVisits[0].TaskID != "keep" {
-		t.Errorf("recent visits = %v, want only keep", cfg.RecentTaskVisits)
+	visits := m.runtime.Machine().RecentTaskVisits
+	if len(visits) != 1 || visits[0].TaskID != "keep" {
+		t.Errorf("recent visits = %v, want only keep", visits)
 	}
 }
 
@@ -98,16 +99,17 @@ func TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) 
 
 	configPath := filepath.Join(env.dataDir, ".tt.json")
 	mgr := config.NewManager(configPath)
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{env.project}
-	cfg.FocusQueue = []config.FocusQueueItem{{ProjectID: env.project.ID, TaskID: a.ID}}
-	cfg.RecentTaskVisits = []config.RecentTaskVisit{{ProjectID: env.project.ID, TaskID: b.ID}}
-	if err := mgr.Save(cfg); err != nil {
+	cfg := newTestConfigAt(env.dataDir)
+	setTestProjects(cfg, []*models.Project{env.project})
+	cfg.Planning().FocusQueue = []config.FocusQueueItem{{ProjectID: env.project.ID, TaskID: a.ID}}
+	cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{{ProjectID: env.project.ID, TaskID: b.ID}}
+	if err := saveTestRuntime(mgr, cfg); err != nil {
 		t.Fatalf("seed config: %v", err)
 	}
 
-	m := &AppModel{config: cfg, configManager: mgr, secondaryFeatures: features, views: NewViewRegistry()}
-	atv := NewAllTasksViewModel(cfg, mgr)
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
+	m := &AppModel{configManager: mgr, runtime: runtime, secondaryFeatures: features, views: NewViewRegistry()}
+	atv := NewAllTasksViewModel(runtime, mgr)
 	atv.bulk = features.Bulk
 	atv.multiSelectMode = true
 	atv.selectedTasks[a.ID] = true
@@ -121,9 +123,10 @@ func TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) 
 
 	_, cmd := atv.handleBulkDelete()
 
-	// The durable planning ref was cleaned in-memory while building the artifact.
-	if len(cfg.FocusQueue) != 0 {
-		t.Errorf("focus queue durable ref should be cleaned before commit, got %v", cfg.FocusQueue)
+	// Building the checked artifact must not mutate the cached runtime snapshot
+	// before the task transaction actually commits.
+	if len(runtime.Planning().GetFocusQueue()) != 1 {
+		t.Errorf("cached focus queue changed before commit: %v", runtime.Planning().GetFocusQueue())
 	}
 
 	msg := runBatchResult(t, cmd)
@@ -133,8 +136,11 @@ func TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) 
 
 	m.handleBatchTransactionResult(msg)
 
-	if len(cfg.RecentTaskVisits) != 0 {
-		t.Errorf("recent visits should be repaired after delete, got %v", cfg.RecentTaskVisits)
+	if len(runtime.Planning().GetFocusQueue()) != 0 {
+		t.Errorf("runtime focus queue should refresh after delete, got %v", runtime.Planning().GetFocusQueue())
+	}
+	if len(runtime.Machine().RecentTaskVisits) != 0 {
+		t.Errorf("recent visits should be repaired after delete, got %v", runtime.Machine().RecentTaskVisits)
 	}
 	if atv.multiSelectMode || atv.SelectedCount() != 0 {
 		t.Error("committed delete should clear the multiselect")
@@ -146,11 +152,11 @@ func TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) 
 	}
 
 	// The durable focus-queue cleanup committed to disk with the delete.
-	reloadedCfg, err := config.NewManager(configPath).Load()
+	reloadedCfg, err := config.NewManager(configPath).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	if len(reloadedCfg.FocusQueue) != 0 {
-		t.Errorf("durable focus queue should be cleaned on disk, got %v", reloadedCfg.FocusQueue)
+	if len(reloadedCfg.Planning().FocusQueue) != 0 {
+		t.Errorf("durable focus queue should be cleaned on disk, got %v", reloadedCfg.Planning().FocusQueue)
 	}
 }

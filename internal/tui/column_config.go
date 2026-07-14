@@ -118,14 +118,14 @@ func (c *ColumnConfig) PriorityMode() string {
 }
 
 // resolvePriorityMode resolves the priority mode for a view, checking per-project
-// state first, then falling back to the global config default.
+// machine-local state first, then falling back to the machine-local default.
 // viewName must be "tree" or "outliner".
-func resolvePriorityMode(projectID string, cfg *config.Config, viewName string) string {
-	if cfg == nil {
+func resolvePriorityMode(projectID string, machine *config.MachineState, viewName string) string {
+	if machine == nil {
 		return ""
 	}
 	if projectID != "" {
-		if vs, ok := cfg.ProjectViewStates[projectID]; ok {
+		if vs, ok := machine.ProjectViewStates[projectID]; ok {
 			var mode string
 			switch viewName {
 			case "tree":
@@ -140,9 +140,9 @@ func resolvePriorityMode(projectID string, cfg *config.Config, viewName string) 
 	}
 	switch viewName {
 	case "tree":
-		return cfg.TreePriorityMode
+		return machine.TreePriorityMode
 	case "outliner":
-		return cfg.OutlinerPriorityMode
+		return machine.OutlinerPriorityMode
 	}
 	return ""
 }

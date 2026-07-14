@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -17,8 +16,6 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/storage/format"
-	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -91,14 +88,6 @@ func shortDisplayID(id string) string {
 	return id
 }
 
-// CommandContext bundles the commonly-needed config and project data for commands.
-// This reduces duplicate loading code and makes it easier to pass context around.
-type CommandContext struct {
-	Project       *models.Project
-	Config        *config.Config
-	ConfigManager *config.Manager
-}
-
 // ConfirmYN prompts the user with a [y/N] question. Returns true if the user
 // answers y or yes (case-insensitive). When force is true, skips the prompt and
 // returns true immediately.
@@ -133,79 +122,6 @@ func ConfirmStrict(prompt string, force bool) bool {
 	return strings.TrimSpace(strings.ToLower(response)) == "yes"
 }
 
-// applyConfigSettings applies config-driven settings to storage and external packages.
-func applyConfigSettings(cfg *config.Config) {
-	if cfg.MaxActivityEntries != nil {
-		storage.MaxActivityEntries = *cfg.MaxActivityEntries
-	}
-	external.SetFzfTimeout(cfg.GetFzfTimeout())
-	icons.SetUseEmoji(cfg.GetUseEmoji())
-}
-
-// LoadConfig loads the configuration file, creating it if it does not exist.
-// Returns the config, manager, and any error encountered.
-func LoadConfig() (*config.Config, *config.Manager, error) {
-	configManager := config.NewManager(resolveConfigPath())
-	cfg, err := configManager.LoadOrCreate()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load config: %w", err)
-	}
-	applyConfigSettings(cfg)
-	return cfg, configManager, nil
-}
-
-// LoadConfigStrict loads the configuration file, returning an error if it does
-// not exist. Use this instead of LoadConfig when the config must already exist
-// (e.g., workflow and template commands that operate on existing config data).
-func LoadConfigStrict() (*config.Config, *config.Manager, error) {
-	configManager := config.NewManager(resolveConfigPath())
-	cfg, err := configManager.Load()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load config: %w", err)
-	}
-	applyConfigSettings(cfg)
-	return cfg, configManager, nil
-}
-
-// LoadCurrentProject loads the config and current project with its tasks.
-// Returns an error if no project is selected or if loading fails.
-// Parser warnings are printed to stderr (always for data corrections, verbose mode for others).
-func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, error) {
-	cfg, configManager, err := LoadConfig()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	project := cfg.GetCurrentProject()
-	if project == nil {
-		return nil, nil, nil, NoCurrentProjectError()
-	}
-
-	Debugf("loading project: %s (%s)", project.Name, project.Path)
-
-	result, err := storage.LoadProjectWithWarnings(project)
-	if err != nil {
-		if errors.Is(err, tterrors.ErrParseError) {
-			return nil, nil, nil, fmt.Errorf("corrupted tasks file in %s: %w", project.Name, err)
-		}
-		return nil, nil, nil, fmt.Errorf("failed to load project: %w", err)
-	}
-
-	Debugf("loaded %d tasks", len(project.Tasks))
-
-	// Print warnings to stderr (data corrections always, deprecations always, validation in verbose mode)
-	for _, w := range result.Warnings {
-		switch w.Type {
-		case format.WarningDataCorrection, format.WarningDeprecation:
-			fmt.Fprintf(os.Stderr, "warning: %s\n", w.Message)
-		default:
-			Debugf("parser warning: %s", w.Message)
-		}
-	}
-
-	return project, cfg, configManager, nil
-}
-
 // FindTaskGloballyByID searches loadable projects for a task by reference.
 // Returns the task and its project, or nil, nil if not found. This is the
 // shared cross-project lookup for destructive commands, so it fails closed on
@@ -225,7 +141,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 //
 // An empty query never matches; HasPrefix("", "") would otherwise match the
 // first task in the first loadable project.
-func FindTaskGloballyByID(cfg *config.Config, query string) (*models.Task, *models.Project, error) {
+func FindTaskGloballyByID(projects []*models.Project, query string) (*models.Task, *models.Project, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, nil, nil
@@ -237,7 +153,13 @@ func FindTaskGloballyByID(cfg *config.Config, query string) (*models.Task, *mode
 	// the unambiguous form a caller must use to target a short ID that is not
 	// globally unique.
 	if ref.IsCrossProject() {
-		project := cfg.GetProject(ref.ProjectID)
+		var project *models.Project
+		for _, candidate := range projects {
+			if candidate != nil && (candidate.ID == ref.ProjectID || candidate.Slug == ref.ProjectID) {
+				project = candidate
+				break
+			}
+		}
 		if project == nil {
 			return nil, nil, tterrors.NewProjectNotFoundError(ref.ProjectID)
 		}
@@ -262,7 +184,10 @@ func FindTaskGloballyByID(cfg *config.Config, query string) (*models.Task, *mode
 	if ref.IsNumericShortID() {
 		shortID, _ := strconv.Atoi(query)
 		var shortMatches []match
-		for _, project := range cfg.GetAllLoadableProjects() {
+		for _, project := range projects {
+			if project == nil {
+				continue
+			}
 			if err := storage.LoadProject(project); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
 				continue
@@ -293,7 +218,10 @@ func FindTaskGloballyByID(cfg *config.Config, query string) (*models.Task, *mode
 	// Bare UUID or UUID prefix: scoped globally with an explicit ambiguity error.
 	lowerQuery := strings.ToLower(query)
 	var prefixMatches []match
-	for _, project := range cfg.GetAllLoadableProjects() {
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
 		if err := storage.LoadProject(project); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
 			continue
@@ -324,20 +252,6 @@ func FindTaskGloballyByID(cfg *config.Config, query string) (*models.Task, *mode
 	}
 }
 
-// LoadConfigAndProject loads the config and looks up a project by slug or ID.
-// Returns an error if the project is not found.
-func LoadConfigAndProject(projectRef string) (*models.Project, *config.Config, *config.Manager, error) {
-	cfg, mgr, err := LoadConfig()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	project := cfg.GetProject(projectRef)
-	if project == nil {
-		return nil, nil, nil, tterrors.NewProjectNotFoundError(projectRef)
-	}
-	return project, cfg, mgr, nil
-}
-
 // ReportBatchErrors prints a summary and returns nil on partial success, error on total failure.
 func ReportBatchErrors(succeeded int, errs []string) error {
 	if len(errs) == 0 {
@@ -353,108 +267,12 @@ func ReportBatchErrors(succeeded int, errs []string) error {
 	return fmt.Errorf("%s", strings.Join(errs, "\n"))
 }
 
-// saveConfig persists the config and wraps any error in a standard SaveConfigError.
-func saveConfig(mgr *config.Manager, cfg *config.Config) error {
-	if err := mgr.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
-	}
-	return nil
-}
-
-// planningStore returns the manager's narrow planning-domain seam (focus queue,
-// daily plan). Commands that only touch planning state read and write it through
-// this store instead of the config.Config facade; load and save must reuse the
-// single returned instance so the workspace ID adopted on load is re-stamped on
-// save.
-func planningStore(mgr *config.Manager) config.PlanningStore {
-	return mgr.RuntimeDependencies().Planning
-}
-
-// automationStore returns the manager's narrow automation-domain seam (workflow
-// rules, eval state). Workflow commands read and mutate rules through this store
-// rather than the config.Config facade. As with planningStore, reuse the single
-// returned instance for both load and save.
-func automationStore(mgr *config.Manager) config.AutomationStore {
-	return mgr.RuntimeDependencies().Automation
-}
-
 // catalogWorkspaceDataDir returns the workspace data directory that owns the
 // manager's config, derived from the config path's parent. It equals the
 // DataDir a domain-loaded config carries, so catalog-domain project helpers can
 // derive project paths without dereferencing the config.Config facade.
 func catalogWorkspaceDataDir(mgr *config.Manager) string {
 	return config.WorkspaceRootFromConfigPath(mgr.GetConfigPath())
-}
-
-// activeProjects returns the workspace's active projects through the catalog
-// domain seam instead of the config.Config facade. It is the drop-in for
-// cfg.GetActiveProjects at command consumers that already hold the manager.
-func activeProjects(mgr *config.Manager) ([]*models.Project, error) {
-	return mgr.RuntimeDependencies().ActiveProjects(catalogWorkspaceDataDir(mgr))
-}
-
-// allLoadableProjects returns the workspace's non-archived projects (internal
-// included) through the catalog domain seam, mirroring
-// cfg.GetAllLoadableProjects.
-func allLoadableProjects(mgr *config.Manager) ([]*models.Project, error) {
-	return mgr.RuntimeDependencies().AllLoadableProjects(catalogWorkspaceDataDir(mgr))
-}
-
-// lookupProject resolves a project by ID or slug through the catalog domain
-// seam, returning nil when none matches (mirroring cfg.GetProject).
-func lookupProject(mgr *config.Manager, idOrSlug string) (*models.Project, error) {
-	return mgr.RuntimeDependencies().Project(catalogWorkspaceDataDir(mgr), idOrSlug)
-}
-
-// sandboxProject resolves the sandbox project through the catalog domain seam,
-// returning nil when the workspace has none (mirroring cfg.GetSandboxProject).
-func sandboxProject(mgr *config.Manager) (*models.Project, error) {
-	return mgr.RuntimeDependencies().SandboxProject(catalogWorkspaceDataDir(mgr))
-}
-
-// allProjects returns every project in the workspace (archived, sandbox, and
-// internal included) through the catalog domain seam, mirroring the raw
-// cfg.Projects slice for consumers that need the unfiltered set.
-func allProjects(mgr *config.Manager) ([]*models.Project, error) {
-	return mgr.RuntimeDependencies().AllProjects(catalogWorkspaceDataDir(mgr))
-}
-
-// loadSettings returns the workspace's portable settings through the settings
-// domain seam instead of the config.Config facade. It is the drop-in for reads
-// of cfg's settings fields (themes, undo depth, etc.) at command consumers that
-// already hold the manager.
-func loadSettings(mgr *config.Manager) (*config.Settings, error) {
-	return mgr.RuntimeDependencies().Settings.LoadSettings()
-}
-
-// customContextNames returns the sorted custom-context names through the machine
-// domain seam, mirroring cfg.GetCustomContextNames.
-func customContextNames(mgr *config.Manager) ([]string, error) {
-	return mgr.RuntimeDependencies().CustomContextNames()
-}
-
-// taskTemplates returns the workspace's task templates through the automation
-// domain seam, mirroring reads of cfg.TaskTemplates.
-func taskTemplates(mgr *config.Manager) ([]template.TaskTemplate, error) {
-	return mgr.RuntimeDependencies().TaskTemplates()
-}
-
-// savePlanning persists a single planning-domain artifact, wrapping any error in
-// a standard SaveConfigError to match saveConfig's behavior.
-func savePlanning(store config.PlanningStore, planning *config.PlanningState) error {
-	if err := store.SavePlanning(planning); err != nil {
-		return tterrors.NewSaveConfigError(err)
-	}
-	return nil
-}
-
-// saveAutomation persists a single automation-domain artifact, wrapping any
-// error in a standard SaveConfigError to match saveConfig's behavior.
-func saveAutomation(store config.AutomationStore, automation *config.AutomationConfig) error {
-	if err := store.SaveAutomation(automation); err != nil {
-		return tterrors.NewSaveConfigError(err)
-	}
-	return nil
 }
 
 // printJSON marshals v as indented JSON and prints it to stdout.
@@ -498,19 +316,6 @@ func (o MutateOutput) CheckMutualExclusion() error {
 	if o.JSON && o.Quiet {
 		return fmt.Errorf("--json and --quiet are mutually exclusive")
 	}
-	return nil
-}
-
-// OutputTask prints a single task as JSON (--json), suppresses output (--quiet),
-// or prints the standard success message.
-func (o MutateOutput) OutputTask(projectName, verb string, task *models.Task) error {
-	if o.Quiet {
-		return nil
-	}
-	if o.JSON {
-		return outputSingleTaskJSON(task)
-	}
-	fmt.Println(TaskMsg(projectName, verb, task))
 	return nil
 }
 
@@ -573,22 +378,11 @@ func outputSingleTaskJSON(task *models.Task) error {
 	return printJSON(taskToMutateJSONEntry(task))
 }
 
-func outputTasksJSON(tasks []*models.Task) error {
-	entries := make([]mutateTaskJSONEntry, 0, len(tasks))
-	for _, task := range tasks {
-		entries = append(entries, taskToMutateJSONEntry(task))
-	}
-	return printJSON(entries)
-}
-
 // taskInFocusQueue reports Focus Queue membership. It is the config-aware
 // replacement for the retired Task.Active flag in CLI output: "active" is now
 // Focus Queue membership under the workflow-state model (session 33.7.6.3).
-func taskInFocusQueue(cfg *config.Config, taskID string) bool {
-	if cfg == nil {
-		return false
-	}
-	for _, item := range cfg.GetFocusQueue() {
+func taskInFocusQueue(items []config.FocusQueueItem, taskID string) bool {
+	for _, item := range items {
 		if item.TaskID == taskID {
 			return true
 		}
@@ -655,28 +449,6 @@ func outputSingleProjectJSON(project *models.Project) error {
 		Description: project.Description,
 		StatusIcon:  project.StatusIcon,
 	})
-}
-
-// LoadConfigAndProjectOrCurrent loads the config and looks up a project by slug
-// if args is non-empty, otherwise falls back to the current project.
-func LoadConfigAndProjectOrCurrent(args []string) (*models.Project, *config.Config, *config.Manager, error) {
-	cfg, mgr, err := LoadConfig()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	var project *models.Project
-	if len(args) > 0 {
-		project = cfg.GetProject(args[0])
-		if project == nil {
-			return nil, nil, nil, tterrors.NewProjectNotFoundError(args[0])
-		}
-	} else {
-		project = cfg.GetCurrentProject()
-		if project == nil {
-			return nil, nil, nil, NoCurrentProjectError()
-		}
-	}
-	return project, cfg, mgr, nil
 }
 
 // formatTaskDueDate returns a human-readable due date string for CLI output.

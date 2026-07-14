@@ -30,7 +30,7 @@ func (c *inboxCore) renderTaskDisplay() string {
 	if c.backend.showProjectInHeader() {
 		projectName = project.Name
 	}
-	return renderInboxTaskDisplay(task, c.width, willLeaveInbox(task), projectName, c.config)
+	return renderInboxTaskDisplay(task, c.width, willLeaveInbox(task), projectName, c.runtime.Settings())
 }
 
 func (c *inboxCore) renderEmptyState() string {

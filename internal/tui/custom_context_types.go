@@ -10,7 +10,7 @@ import (
 // CustomContextEditorModel handles creating/editing custom contexts.
 type CustomContextEditorModel struct {
 	BaseSearchableView
-	config *config.Config
+	runtime *config.RuntimeState
 
 	// Editing state
 	editMode     bool   // true if editing existing, false if creating new

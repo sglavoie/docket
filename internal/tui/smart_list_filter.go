@@ -13,14 +13,14 @@ import (
 
 // passesSavedFilterCriteria returns true if the task matches the criteria of a
 // SavedFilter in criteria mode. For snapshot-mode filters this always returns true.
-func passesSavedFilterCriteria(task *models.Task, project *models.Project, sf *config.SavedFilter, cfg *config.Config) bool {
+func passesSavedFilterCriteria(task *models.Task, project *models.Project, sf *config.SavedFilter, auto *config.AutomationConfig) bool {
 	if sf.Mode != "criteria" || len(sf.Criteria) == 0 {
 		return true
 	}
 
 	isAnd := sf.EffectiveLogic() == "and"
 	for _, c := range sf.Criteria {
-		passes := evaluateCriterion(task, project, c, cfg)
+		passes := evaluateCriterion(task, project, c, auto)
 		if isAnd && !passes {
 			return false
 		}
@@ -32,7 +32,7 @@ func passesSavedFilterCriteria(task *models.Task, project *models.Project, sf *c
 }
 
 // evaluateCriterion checks a single criterion against a task.
-func evaluateCriterion(task *models.Task, project *models.Project, c config.SmartListCriterion, cfg *config.Config) bool {
+func evaluateCriterion(task *models.Task, project *models.Project, c config.SmartListCriterion, auto *config.AutomationConfig) bool {
 	switch c.Field {
 	case "type":
 		return evalStringOp(string(task.Type), c.Operation, c.Value)
@@ -65,10 +65,10 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 		if err != nil {
 			return false
 		}
-		if cfg == nil {
+		if auto == nil {
 			return false
 		}
-		profile := cfg.GetProjectScoringProfile(project.ID)
+		profile := auto.GetProjectScoringProfile(project.ID)
 		if profile == nil {
 			return false
 		}

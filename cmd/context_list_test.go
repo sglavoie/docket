@@ -11,14 +11,14 @@ import (
 )
 
 func TestRunContextList(t *testing.T) {
-	setup := func(t *testing.T) (*testutil.TestDeps, func()) {
+	setup := func(t *testing.T) (*testDeps, func()) {
 		t.Helper()
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 		viper.Set("config", deps.ConfigPath)
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -46,10 +46,10 @@ func TestRunContextList(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		deps.Config.SetCustomContext("Work", []string{"id1", "id2"})
-		deps.Config.SetCustomContext("Personal", []string{})
+		deps.Config.Machine().SetCustomContext("Work", []string{"id1", "id2"})
+		deps.Config.Machine().SetCustomContext("Personal", []string{})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextList(contextListCmd, []string{})
 		testutil.AssertNoError(t, err)
@@ -59,9 +59,9 @@ func TestRunContextList(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		deps.Config.SetCustomContext("Work", []string{"id1"})
+		deps.Config.Machine().SetCustomContext("Work", []string{"id1"})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		_ = contextListCmd.Flags().Set("json", "true")
 		err := runContextList(contextListCmd, []string{})

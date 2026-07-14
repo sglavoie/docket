@@ -32,20 +32,14 @@ func (m *AppModel) handleSetDueDate(msg SetDueDateMsg) (bool, tea.Cmd) {
 	if refs := validTaskProjectRefs(msg.TaskRefs); len(refs) > 0 {
 		m.pendingBulkTasks = refs
 		first := refs[0]
-		weekEndDay := ""
-		if m.config != nil {
-			weekEndDay = m.config.GetWeekEndDay()
-		}
+		weekEndDay := m.runtime.Settings().GetWeekEndDay()
 		m.showView(ViewDateInput, NewDateInputModel(first.Task, first.Project, weekEndDay))
 		return true, nil
 	}
 	m.pendingBulkTasks = nil
 
 	if msg.Task != nil && msg.Project != nil {
-		weekEndDay := ""
-		if m.config != nil {
-			weekEndDay = m.config.GetWeekEndDay()
-		}
+		weekEndDay := m.runtime.Settings().GetWeekEndDay()
 		m.showView(ViewDateInput, NewDateInputModel(msg.Task, msg.Project, weekEndDay))
 	}
 	return true, nil

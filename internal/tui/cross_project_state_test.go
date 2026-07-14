@@ -107,44 +107,44 @@ func TestValidateCrossZoomStackProjectIDScoping(t *testing.T) {
 
 func TestSaveCrossOutlinerStatePersistsFoldState(t *testing.T) {
 	app := newTestAppModel()
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.expandedNodes["collapsed-task"] = false
 	app.crossOutliner.expandedNodes["expanded-task"] = true
 
 	app.saveCrossOutlinerState()
 
-	if !app.config.CrossOutlinerFoldState["collapsed-task"] {
-		t.Errorf("CrossOutlinerFoldState should contain collapsed-task=true, got %v", app.config.CrossOutlinerFoldState)
+	if !app.runtime.Machine().CrossOutlinerFoldState["collapsed-task"] {
+		t.Errorf("CrossOutlinerFoldState should contain collapsed-task=true, got %v", app.runtime.Machine().CrossOutlinerFoldState)
 	}
-	if _, ok := app.config.CrossOutlinerFoldState["expanded-task"]; ok {
-		t.Errorf("CrossOutlinerFoldState should not contain expanded-task (sparse), got %v", app.config.CrossOutlinerFoldState)
+	if _, ok := app.runtime.Machine().CrossOutlinerFoldState["expanded-task"]; ok {
+		t.Errorf("CrossOutlinerFoldState should not contain expanded-task (sparse), got %v", app.runtime.Machine().CrossOutlinerFoldState)
 	}
-	if len(app.config.CrossOutlinerFoldState) != 1 {
-		t.Errorf("CrossOutlinerFoldState should have exactly 1 entry, got %d", len(app.config.CrossOutlinerFoldState))
+	if len(app.runtime.Machine().CrossOutlinerFoldState) != 1 {
+		t.Errorf("CrossOutlinerFoldState should have exactly 1 entry, got %d", len(app.runtime.Machine().CrossOutlinerFoldState))
 	}
 }
 
 func TestSaveCrossOutlinerStateClearsFoldStateWhenAllExpanded(t *testing.T) {
 	app := newTestAppModel()
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
-	app.config.CrossOutlinerFoldState = map[string]bool{"stale": true}
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.runtime.Machine().CrossOutlinerFoldState = map[string]bool{"stale": true}
 	app.crossOutliner.expandedNodes["task1"] = true
 
 	app.saveCrossOutlinerState()
 
-	if app.config.CrossOutlinerFoldState != nil {
-		t.Errorf("CrossOutlinerFoldState should be nil when no nodes are collapsed, got %v", app.config.CrossOutlinerFoldState)
+	if app.runtime.Machine().CrossOutlinerFoldState != nil {
+		t.Errorf("CrossOutlinerFoldState should be nil when no nodes are collapsed, got %v", app.runtime.Machine().CrossOutlinerFoldState)
 	}
 }
 
 func TestNewOutlinerModelRestoresCrossFoldState(t *testing.T) {
 	app := newTestAppModel()
-	app.config.CrossOutlinerFoldState = map[string]bool{
+	app.runtime.Machine().CrossOutlinerFoldState = map[string]bool{
 		"task-a": true,
 		"task-b": true,
 	}
 
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 
 	if expanded, ok := m.expandedNodes["task-a"]; !ok || expanded {
 		t.Errorf("expandedNodes[task-a] should be false (collapsed), got ok=%v expanded=%v", ok, expanded)
@@ -159,8 +159,8 @@ func TestNewOutlinerModelRestoresCrossFoldState(t *testing.T) {
 
 func TestHandleCrossProjectsLoadedResetsMissingPersistedPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
-	app.config.GlobalPinnedTags = []string{"missing"}
-	app.config.CrossOutlinerPinnedTagTab = "missing"
+	app.runtime.Settings().GlobalPinnedTags = []string{"missing"}
+	app.runtime.Machine().CrossOutlinerPinnedTagTab = "missing"
 	project := &models.Project{
 		ID:   "alpha",
 		Name: "Alpha",
@@ -169,7 +169,7 @@ func TestHandleCrossProjectsLoadedResetsMissingPersistedPinnedTagTab(t *testing.
 		},
 	}
 	project.BuildTaskTree()
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 
 	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   []*models.Project{project},
@@ -188,7 +188,7 @@ func TestHandleCrossProjectsLoadedClearsInMemoryPinnedTagTab(t *testing.T) {
 		Name:     "Alpha",
 		Sections: []string{models.SectionNext, "Sprint-1"},
 	}
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 	m.loadedProjects = []*models.Project{project}
 	m.setPinnedTagTabIndex(1)
 
@@ -209,7 +209,7 @@ func TestReloadCrossProjectsClearsInMemoryPinnedTagTab(t *testing.T) {
 		Name:     "Alpha",
 		Sections: []string{models.SectionNext, "Sprint-1"},
 	}
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 	m.loadedProjects = []*models.Project{project}
 	m.setPinnedTagTabIndex(1)
 
@@ -235,7 +235,7 @@ func TestReloadCrossProjectsClearsInMemoryPinnedTagTab(t *testing.T) {
 
 func TestReloadCrossProjectsResetsMissingInMemoryPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
-	app.config.GlobalPinnedTags = []string{"backend"}
+	app.runtime.Settings().GlobalPinnedTags = []string{"backend"}
 	backendTask := &models.Task{ID: "backend", Title: "Backend", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{
 		ID:    "alpha",
@@ -243,7 +243,7 @@ func TestReloadCrossProjectsResetsMissingInMemoryPinnedTagTab(t *testing.T) {
 		Tasks: []*models.Task{backendTask},
 	}
 	project.BuildTaskTree()
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 	m.loadedProjects = []*models.Project{project}
 	m.setPinnedTagTabIndex(1)
 

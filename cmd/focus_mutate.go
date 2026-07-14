@@ -108,8 +108,8 @@ type focusMutationResult struct {
 // resolveFocusTarget resolves a task reference across projects and returns the
 // task together with its owning project, erroring when the reference matches no
 // task so planning mutations never silently store a dangling reference.
-func resolveFocusTarget(cfg *config.Config, ref string) (*models.Task, *models.Project, error) {
-	task, project, err := FindTaskGloballyByID(cfg, ref)
+func resolveFocusTarget(runtime *config.RuntimeState, ref string) (*models.Task, *models.Project, error) {
+	task, project, err := FindTaskGloballyByID(runtime.AllLoadableProjects(), ref)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,27 +145,27 @@ func runFocusQueueAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	task, project, err := resolveFocusTarget(cfg, args[0])
+	task, project, err := resolveFocusTarget(workspace.Runtime, args[0])
 	if err != nil {
 		return err
 	}
 
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	planning := domains.Planning
 	for _, item := range planning.FocusQueue {
 		if item.TaskID == task.ID {
 			return emitFocusMutation(out, "already queued", task, project, len(planning.FocusQueue))
 		}
 	}
 	planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
-	if err := savePlanning(store, planning); err != nil {
+	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, "queued", task, project, len(planning.FocusQueue))
@@ -176,20 +176,20 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	task, project, err := resolveFocusTarget(cfg, args[0])
+	task, project, err := resolveFocusTarget(workspace.Runtime, args[0])
 	if err != nil {
 		return err
 	}
 
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	planning := domains.Planning
 	filtered := make([]config.FocusQueueItem, 0, len(planning.FocusQueue))
 	removed := false
 	for _, item := range planning.FocusQueue {
@@ -203,7 +203,7 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 		return emitFocusMutation(out, "not in queue", task, project, len(planning.FocusQueue))
 	}
 	planning.FocusQueue = filtered
-	if err := savePlanning(store, planning); err != nil {
+	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, "dequeued", task, project, len(filtered))
@@ -218,20 +218,20 @@ func runFocusQueueMove(cmd *cobra.Command, args []string) error {
 	if err != nil || position < 1 {
 		return fmt.Errorf("position must be a positive integer, got %q", args[1])
 	}
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	task, project, err := resolveFocusTarget(cfg, args[0])
+	task, project, err := resolveFocusTarget(workspace.Runtime, args[0])
 	if err != nil {
 		return err
 	}
 
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	planning := domains.Planning
 	queue := planning.FocusQueue
 	idx := -1
 	for i, item := range queue {
@@ -257,7 +257,7 @@ func runFocusQueueMove(cmd *cobra.Command, args []string) error {
 	queue = append(queue[:idx], queue[idx+1:]...)
 	queue = append(queue[:target], append([]config.FocusQueueItem{moved}, queue[target:]...)...)
 	planning.FocusQueue = queue
-	if err := savePlanning(store, planning); err != nil {
+	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, fmt.Sprintf("moved to position %d", target+1), task, project, len(queue))
@@ -268,20 +268,20 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	task, project, err := resolveFocusTarget(cfg, args[0])
+	task, project, err := resolveFocusTarget(workspace.Runtime, args[0])
 	if err != nil {
 		return err
 	}
 
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	planning := domains.Planning
 	for _, item := range planning.DailyPlan {
 		if item.TaskID == task.ID {
 			return emitFocusMutation(out, "already planned", task, project, len(planning.DailyPlan))
@@ -292,7 +292,7 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 		ProjectID:   project.ID,
 		PlannedDate: time.Now().Format("2006-01-02"),
 	})
-	if err := savePlanning(store, planning); err != nil {
+	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, "planned", task, project, len(planning.DailyPlan))
@@ -303,20 +303,20 @@ func runFocusTodayRemove(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	task, project, err := resolveFocusTarget(cfg, args[0])
+	task, project, err := resolveFocusTarget(workspace.Runtime, args[0])
 	if err != nil {
 		return err
 	}
 
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	planning := domains.Planning
 	filtered := make([]config.DailyPlanItem, 0, len(planning.DailyPlan))
 	removed := false
 	for _, item := range planning.DailyPlan {
@@ -330,7 +330,7 @@ func runFocusTodayRemove(cmd *cobra.Command, args []string) error {
 		return emitFocusMutation(out, "not planned", task, project, len(planning.DailyPlan))
 	}
 	planning.DailyPlan = filtered
-	if err := savePlanning(store, planning); err != nil {
+	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, "unplanned", task, project, len(filtered))
@@ -341,17 +341,17 @@ func runFocusTodayClear(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	planning := domains.Planning
 	planning.DailyPlan = nil
-	if err := savePlanning(store, planning); err != nil {
+	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, "cleared today's plan", nil, nil, 0)

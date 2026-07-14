@@ -21,13 +21,14 @@ type ContextInfo struct {
 // ContextPickerModel allows selecting a single context to filter by.
 type ContextPickerModel struct {
 	*BasePicker[ContextInfo]
-	config              *config.Config // Config reference for custom context operations
-	currentFilter       string         // Current filter context for highlighting
-	currentCustomFilter string         // Current custom context filter for highlighting
-	fromCycle           bool           // True if opened from Project Cycle Manager
-	confirm             ConfirmDialog  // confirmation dialog
-	statusMessage       string         // Status message to display
-	renameMode          bool           // True when renaming a context
+	projects            []*models.Project    // Catalog snapshots used to build and rename contexts
+	runtime             *config.RuntimeState // Machine-local navigation/context state
+	currentFilter       string               // Current filter context for highlighting
+	currentCustomFilter string               // Current custom context filter for highlighting
+	fromCycle           bool                 // True if opened from Project Cycle Manager
+	confirm             ConfirmDialog        // confirmation dialog
+	statusMessage       string               // Status message to display
+	renameMode          bool                 // True when renaming a context
 	renameInput         textinput.Model
 	renameOldName       string // The context name being renamed
 	confirmDiscard      bool
@@ -66,8 +67,9 @@ type ContextRenamedMsg struct {
 }
 
 // NewContextPickerModel creates a new context picker from dashboard.
-func NewContextPickerModel(dashboard *DashboardModel, cfg *config.Config) *ContextPickerModel {
-	contexts := buildContextListWithCustom(dashboard.projects, cfg)
+func NewContextPickerModel(dashboard *DashboardModel, runtime *config.RuntimeState) *ContextPickerModel {
+	contexts := buildContextListWithCustom(dashboard.projects, runtime)
+	machine := runtime.Machine()
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
@@ -78,25 +80,28 @@ func NewContextPickerModel(dashboard *DashboardModel, cfg *config.Config) *Conte
 	})
 
 	// Position cursor on currently filtered context (custom or regular)
-	if cfg.FilterCustomContext != "" {
-		picker.SetCursorToID(customContextID(cfg.FilterCustomContext))
+	if machine.FilterCustomContext != "" {
+		picker.SetCursorToID(customContextID(machine.FilterCustomContext))
 	} else if dashboard.filterContext != "" {
 		picker.SetCursorToID(dashboard.filterContext)
 	}
 
 	return &ContextPickerModel{
 		BasePicker:          picker,
-		config:              cfg,
+		projects:            dashboard.projects,
+		runtime:             runtime,
 		currentFilter:       dashboard.filterContext,
-		currentCustomFilter: cfg.FilterCustomContext,
+		currentCustomFilter: machine.FilterCustomContext,
 		fromCycle:           false,
 	}
 }
 
-// NewContextPickerModelFromConfig creates a context picker using config.
-func NewContextPickerModelFromConfig(cfg *config.Config) *ContextPickerModel {
-	projects := cfg.GetActiveProjects()
-	contexts := buildContextListWithCustom(projects, cfg)
+// NewContextPickerModelFromRuntime creates a context picker from the cached
+// catalog and machine domains.
+func NewContextPickerModelFromRuntime(runtime *config.RuntimeState) *ContextPickerModel {
+	projects := runtime.ActiveProjects()
+	contexts := buildContextListWithCustom(projects, runtime)
+	machine := runtime.Machine()
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
@@ -107,17 +112,18 @@ func NewContextPickerModelFromConfig(cfg *config.Config) *ContextPickerModel {
 	})
 
 	// Position cursor on currently filtered context (custom or regular)
-	if cfg.FilterCustomContext != "" {
-		picker.SetCursorToID(customContextID(cfg.FilterCustomContext))
-	} else if cfg.FilterContext != "" {
-		picker.SetCursorToID(cfg.FilterContext)
+	if machine.FilterCustomContext != "" {
+		picker.SetCursorToID(customContextID(machine.FilterCustomContext))
+	} else if machine.FilterContext != "" {
+		picker.SetCursorToID(machine.FilterContext)
 	}
 
 	return &ContextPickerModel{
 		BasePicker:          picker,
-		config:              cfg,
-		currentFilter:       cfg.FilterContext,
-		currentCustomFilter: cfg.FilterCustomContext,
+		projects:            projects,
+		runtime:             runtime,
+		currentFilter:       machine.FilterContext,
+		currentCustomFilter: machine.FilterCustomContext,
 		fromCycle:           true,
 	}
 }
@@ -127,8 +133,10 @@ func customContextID(name string) string {
 	return "+" + name
 }
 
-// buildContextListWithCustom gathers contexts including custom contexts from config.
-func buildContextListWithCustom(projects []*models.Project, cfg *config.Config) []ContextInfo {
+// buildContextListWithCustom gathers contexts including custom contexts. Project
+// contexts derive from the passed catalog projects; custom contexts and their
+// project counts are machine-local state read from the runtime.
+func buildContextListWithCustom(projects []*models.Project, runtime *config.RuntimeState) []ContextInfo {
 	// Count projects per context
 	contextCounts := make(map[string]int)
 	for _, p := range projects {
@@ -148,12 +156,12 @@ func buildContextListWithCustom(projects []*models.Project, cfg *config.Config) 
 	})
 
 	// Add custom contexts with "+" prefix, sorted alphabetically
-	customNames := cfg.GetCustomContextNames()
+	customNames := runtime.Machine().GetCustomContextNames()
 	for _, name := range customNames {
 		contexts = append(contexts, ContextInfo{
 			Name:                 name,
-			ProjectCount:         cfg.GetCustomContextProjectCount(name),
-			ArchivedProjectCount: cfg.GetCustomContextArchivedProjectCount(name),
+			ProjectCount:         runtime.CustomContextProjectCount(name),
+			ArchivedProjectCount: runtime.CustomContextArchivedProjectCount(name),
 			IsCustom:             true,
 		})
 	}

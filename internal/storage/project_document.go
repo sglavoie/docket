@@ -196,9 +196,9 @@ func (d *ProjectDocument) render() string {
 }
 
 // ToProjectDocument builds a v2 ProjectDocument from an already-loaded project,
-// preserving any opaque blocks captured on load. This is how a project is
-// upgraded to schema v2 and how the transactional repository obtains the unit it
-// persists.
+// preserving the supplied opaque blocks. New transactional callers should use
+// ProjectDocumentFromBase so the source of those blocks is the exact document
+// retained by the repository snapshot rather than a separately threaded slice.
 func ToProjectDocument(project *models.Project, opaque []OpaqueBlock) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   project.Name,
@@ -212,6 +212,34 @@ func ToProjectDocument(project *models.Project, opaque []OpaqueBlock) *ProjectDo
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
+}
+
+// ProjectDocumentFromBase overlays a project's current structured state onto the
+// exact document it was loaded from. The base remains immutable: only its opaque
+// header blocks are copied into the new local document. Keeping the whole base on
+// ChangeSet (rather than only []OpaqueBlock) also gives the commit boundary the
+// field-level merge base it needs when an expected revision becomes stale.
+func ProjectDocumentFromBase(project *models.Project, base *ProjectDocument) *ProjectDocument {
+	var opaque []OpaqueBlock
+	if base != nil {
+		opaque = append([]OpaqueBlock(nil), base.OpaqueBlocks...)
+	}
+	return ToProjectDocument(project, opaque)
+}
+
+// CanonicalProjectDocument returns the fixed-point schema-v2 document that will
+// be observed after a write and immediate reload. Rendering and parsing once
+// intentionally applies every persisted normalization (timestamp precision,
+// set de-duplication, hierarchy ordering) before the commit result is computed,
+// so the reported revision can never describe a richer in-memory value than the
+// bytes actually staged by the journal.
+func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*ProjectDocument, error) {
+	doc := ProjectDocumentFromBase(project, base)
+	canonical, err := ParseProjectDocument(doc.WriteV2())
+	if err != nil {
+		return nil, fmt.Errorf("canonicalizing project document: %w", err)
+	}
+	return canonical, nil
 }
 
 // LoadProjectDocument reads a project's tasks.md into a ProjectDocument, the

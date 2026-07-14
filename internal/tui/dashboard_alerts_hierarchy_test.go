@@ -21,10 +21,12 @@ import (
 // filesystem.
 func urgencyDashboard(t *testing.T, projects ...*models.Project) *DashboardModel {
 	t.Helper()
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
-	cfg.Projects = projects
-	return &DashboardModel{config: cfg, projects: projects}
+	cfg := newTestConfigAt(t.TempDir())
+	setTestProjects(cfg, projects)
+	return &DashboardModel{
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
+		projects: projects,
+	}
 }
 
 // addDueToday attaches a due-today date to a task. Section is left as the
@@ -50,14 +52,15 @@ func completedToday(task *models.Task) {
 
 func planToday(t *testing.T, m *DashboardModel, project *models.Project, task *models.Task) {
 	t.Helper()
-	if m == nil || m.config == nil {
-		t.Fatal("dashboard model must have config")
+	if m == nil || m.runtime == nil {
+		t.Fatal("dashboard model must have runtime")
 	}
-	m.config.DailyPlan = append(m.config.DailyPlan, config.DailyPlanItem{
+	planning := m.runtime.Planning()
+	planning.SetDailyPlan(append(planning.GetDailyPlan(), config.DailyPlanItem{
 		TaskID:      task.ID,
 		ProjectID:   project.ID,
 		PlannedDate: time.Now().Format(util.DateFormat),
-	})
+	}))
 }
 
 // TestAlertHierarchyTriageWinsFirstLine verifies the tier-1 contract: any

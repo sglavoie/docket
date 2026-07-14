@@ -6,7 +6,7 @@ import (
 
 func TestSortCommands_SortByPriority(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	cmds := app.sortCommands()
 	cmd := findCommand(cmds, "sort by priority")
@@ -20,7 +20,7 @@ func TestSortCommands_SortByPriority(t *testing.T) {
 
 func TestSortCommands_ResetSort(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	cmds := app.sortCommands()
 	cmd := findCommand(cmds, "reset sort")

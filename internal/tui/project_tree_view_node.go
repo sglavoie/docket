@@ -117,7 +117,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// metadata strip below the row.
 	indicators := ""
 	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
-		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
+		if dueStr := formatDueDate(task, m.runtime.Settings().GetTimeFormat()); dueStr != "" {
 			indicators = " " + dueStr
 		}
 	}
@@ -204,8 +204,8 @@ func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 			parts = append(parts, s)
 		}
 	}
-	if m.columnConfig.IsVisible(ColScore) && m.config != nil && m.project != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+	if m.columnConfig.IsVisible(ColScore) && m.runtime != nil && m.project != nil {
+		if profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID); profile != nil {
 			if score := RenderScoreBadge(task, profile); score != "" {
 				parts = append(parts, score)
 			}

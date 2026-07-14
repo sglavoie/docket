@@ -60,18 +60,19 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 // matching the AllTasks continue-on-error pattern.
 func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	gen := m.crossLoadGen
-	cfg := m.config
+	runtime := m.runtime
+	machine := m.runtime.Machine()
 	svc := m.projectService
 	return func() tea.Msg {
-		cycleOnly := cfg.CrossOutlinerCycleOnly != nil && *cfg.CrossOutlinerCycleOnly
+		cycleOnly := machine.CrossOutlinerCycleOnly != nil && *machine.CrossOutlinerCycleOnly
 		var ctxKey string
 		if cycleOnly {
-			ctxKey = cfg.FilterContext
-			if cfg.FilterCustomContext != "" {
-				ctxKey = "+" + cfg.FilterCustomContext
+			ctxKey = machine.FilterContext
+			if machine.FilterCustomContext != "" {
+				ctxKey = "+" + machine.FilterCustomContext
 			}
 		}
-		_, loaded, failed := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{
+		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
 			ActiveOnly:        true,
 			CycleProjectsOnly: cycleOnly,
 			ContextKey:        ctxKey,
@@ -114,8 +115,8 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
-	if !hasPinnedTagTab && m.config != nil {
-		pinnedTagTabName = m.config.CrossOutlinerPinnedTagTab
+	if !hasPinnedTagTab {
+		pinnedTagTabName = m.runtime.Machine().CrossOutlinerPinnedTagTab
 	}
 	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
@@ -237,19 +238,19 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 		if q := m.SearchQuery(); q != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return matchesSearch(t, q, m.config)
+				return matchesSearch(t, q, m.runtime.Planning())
 			})
 		}
 
 		if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.config)
+				return passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.runtime.Automation())
 			})
 		}
 
 		if m.activeCriteriaFilter != nil {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return passesSavedFilterCriteria(t, proj, m.activeCriteriaFilter, m.config)
+				return passesSavedFilterCriteria(t, proj, m.activeCriteriaFilter, m.runtime.Automation())
 			})
 		}
 
@@ -432,7 +433,7 @@ func (m *OutlinerModel) sortTaskTreeForProject(tasks []*models.Task, projectID s
 	sorted := make([]*models.Task, len(tasks))
 	copy(sorted, tasks)
 	sort.SliceStable(sorted, func(i, j int) bool {
-		cmp := CompareTasksCrossProject(sorted[i], sorted[j], m.sort.Field, projectID, projectID, m.config)
+		cmp := CompareTasksCrossProject(sorted[i], sorted[j], m.sort.Field, projectID, projectID, m.runtime.Automation())
 		return ApplySortDirection(cmp, m.sort.Ascending)
 	})
 	for idx, task := range sorted {
@@ -509,11 +510,12 @@ func (m *OutlinerModel) crossMergedTaskSlice() []*models.Task {
 // and separators.
 func (m *OutlinerModel) crossStatusBarLabel() string {
 	ctxName := "All"
-	if m.config != nil {
-		if m.config.FilterCustomContext != "" {
-			ctxName = "+" + m.config.FilterCustomContext
-		} else if m.config.FilterContext != "" {
-			ctxName = m.config.FilterContext
+	if m.runtime != nil {
+		machine := m.runtime.Machine()
+		if machine.FilterCustomContext != "" {
+			ctxName = "+" + machine.FilterCustomContext
+		} else if machine.FilterContext != "" {
+			ctxName = machine.FilterContext
 		}
 	}
 	taskCount := 0

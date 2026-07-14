@@ -67,7 +67,6 @@ type OutlinerModel struct {
 
 	deleteTarget         *models.Task    // Task to delete when confirmation is accepted
 	archiveTargetProject *models.Project // Project to archive completed tasks for when "archive-tasks" confirms
-	err                  error           // Last error from an operation
 
 	undo UndoContext // Action label and context for next undo snapshot
 
@@ -134,7 +133,7 @@ func (m *OutlinerModel) SetSize(width, height int) {
 
 // primaryProjectView interface implementation for shared key dispatch.
 func (m *OutlinerModel) getProject() *models.Project       { return m.project }
-func (m *OutlinerModel) getConfig() *config.Config         { return m.config }
+func (m *OutlinerModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *OutlinerModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *OutlinerModel) getCursorTask() *models.Task {
 	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
@@ -160,24 +159,25 @@ func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
 }
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
-func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
-	// Load column toggles from config
+func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
+	// Load column toggles from machine-local layout state.
+	machine := runtime.Machine()
 	var outlinerToggles map[string]bool
 	var outlinerPriorityMode string
-	if cfg != nil && project != nil {
-		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
+	if project != nil {
+		if vs, ok := machine.ProjectViewStates[project.ID]; ok {
 			outlinerToggles = vs.OutlinerColumnToggles
 			outlinerPriorityMode = vs.OutlinerPriorityMode
 		}
-	} else if cfg != nil && project == nil {
-		outlinerToggles = cfg.CrossOutlinerColumnToggles
+	} else {
+		outlinerToggles = machine.CrossOutlinerColumnToggles
 	}
-	if outlinerPriorityMode == "" && cfg != nil {
-		outlinerPriorityMode = cfg.OutlinerPriorityMode
+	if outlinerPriorityMode == "" {
+		outlinerPriorityMode = machine.OutlinerPriorityMode
 	}
 
 	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, cfgManager),
+		PrimaryViewBundle: NewPrimaryViewBundle(cfgManager, runtime),
 		project:           project,
 		activePerspective: 1,
 		sidebar:           NewSidebarComponent(),
@@ -189,58 +189,58 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
-		columnConfig:      NewColumnConfig(outlinerToggles, cfg.OutlinerDefaultColumns, DefaultOutlinerColumns, outlinerPriorityMode),
+		columnConfig:      NewColumnConfig(outlinerToggles, machine.OutlinerDefaultColumns, DefaultOutlinerColumns, outlinerPriorityMode),
 	}
-	// Seed default collapsed sections from config
-	maps.Copy(m.collapsedSections, cfg.GetOutlinerCollapsedSections())
+	// Seed default collapsed sections from machine-local layout state.
+	maps.Copy(m.collapsedSections, machine.GetOutlinerCollapsedSections())
 	m.InitSearchInput("Search tasks...", 100, 30)
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	// Restore sidebar and filter bar state from config
+	// Restore sidebar and filter bar state from machine-local layout state.
 	if project != nil {
-		if state, exists := cfg.GetProjectViewState(project.ID); exists {
+		if state, exists := machine.GetProjectViewState(project.ID); exists {
 			m.sidebar.SetEnabled(state.SidebarEnabled)
 			m.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
 		}
 	} else {
 		// Cross-project outliner: use global setting (nil = true)
-		if cfg.CrossOutlinerSidebarEnabled != nil {
-			m.sidebar.SetEnabled(*cfg.CrossOutlinerSidebarEnabled)
+		if machine.CrossOutlinerSidebarEnabled != nil {
+			m.sidebar.SetEnabled(*machine.CrossOutlinerSidebarEnabled)
 		}
 		// Restore persisted collapsed sections for cross-project outliner
-		if len(cfg.CrossOutlinerCollapsedSections) > 0 {
-			maps.Copy(m.collapsedSections, cfg.CrossOutlinerCollapsedSections)
+		if len(machine.CrossOutlinerCollapsedSections) > 0 {
+			maps.Copy(m.collapsedSections, machine.CrossOutlinerCollapsedSections)
 		}
 		// Restore persisted per-task fold state for cross-project outliner
-		for id := range cfg.CrossOutlinerFoldState {
+		for id := range machine.CrossOutlinerFoldState {
 			m.expandedNodes[id] = false
 		}
-		m.filter.Type = models.TaskType(cfg.CrossOutlinerFilterType)
-		m.filter.Status = models.TaskStatus(cfg.CrossOutlinerFilterStatus)
-		m.filter.Priority = cfg.CrossOutlinerFilterPriority
-		m.filter.DueDate = DueDateFilter(cfg.CrossOutlinerFilterDueDate)
-		m.filter.Actionable = cfg.CrossOutlinerFilterActionable
-		m.filter.HideDimmed = cfg.CrossOutlinerFilterHideDimmed
-		m.filter.GitHubIssue = cfg.CrossOutlinerFilterGitHubIssue
-		m.filter.Parked = cfg.CrossOutlinerFilterParked
-		m.filter.ScoreMin = cfg.CrossOutlinerFilterScoreMin
-		m.sort.Field = SortField(cfg.CrossOutlinerSortField)
-		m.sort.Ascending = cfg.CrossOutlinerSortAscending
-		m.filterBar.SetEnabled(cfg.CrossOutlinerFilterBarEnabled)
-		if len(cfg.CrossOutlinerFilterTags) > 0 {
-			m.filter.Tags = make(map[string]bool, len(cfg.CrossOutlinerFilterTags))
-			for _, tag := range cfg.CrossOutlinerFilterTags {
+		m.filter.Type = models.TaskType(machine.CrossOutlinerFilterType)
+		m.filter.Status = models.TaskStatus(machine.CrossOutlinerFilterStatus)
+		m.filter.Priority = machine.CrossOutlinerFilterPriority
+		m.filter.DueDate = DueDateFilter(machine.CrossOutlinerFilterDueDate)
+		m.filter.Actionable = machine.CrossOutlinerFilterActionable
+		m.filter.HideDimmed = machine.CrossOutlinerFilterHideDimmed
+		m.filter.GitHubIssue = machine.CrossOutlinerFilterGitHubIssue
+		m.filter.Parked = machine.CrossOutlinerFilterParked
+		m.filter.ScoreMin = machine.CrossOutlinerFilterScoreMin
+		m.sort.Field = SortField(machine.CrossOutlinerSortField)
+		m.sort.Ascending = machine.CrossOutlinerSortAscending
+		m.filterBar.SetEnabled(machine.CrossOutlinerFilterBarEnabled)
+		if len(machine.CrossOutlinerFilterTags) > 0 {
+			m.filter.Tags = make(map[string]bool, len(machine.CrossOutlinerFilterTags))
+			for _, tag := range machine.CrossOutlinerFilterTags {
 				m.filter.Tags[tag] = true
 			}
 		}
-		if len(cfg.CrossOutlinerFilterSections) > 0 {
-			m.filter.Sections = make(map[string]bool, len(cfg.CrossOutlinerFilterSections))
-			for _, section := range cfg.CrossOutlinerFilterSections {
+		if len(machine.CrossOutlinerFilterSections) > 0 {
+			m.filter.Sections = make(map[string]bool, len(machine.CrossOutlinerFilterSections))
+			for _, section := range machine.CrossOutlinerFilterSections {
 				m.filter.Sections[section] = true
 			}
 		}
-		if len(cfg.CrossOutlinerFilterAttrs) > 0 {
-			m.filter.Attrs = maps.Clone(cfg.CrossOutlinerFilterAttrs)
+		if len(machine.CrossOutlinerFilterAttrs) > 0 {
+			m.filter.Attrs = maps.Clone(machine.CrossOutlinerFilterAttrs)
 		}
 	}
 	return m

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -52,7 +53,7 @@ func TestGetParentTitle(t *testing.T) {
 		}
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		got := m.getParentTitle(task)
 
 		if got != "" {
@@ -75,7 +76,7 @@ func TestGetParentTitle(t *testing.T) {
 		project.Tasks = []*models.Task{parent, child}
 		project.BuildTaskTree()
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		got := m.getParentTitle(child)
 
 		if got != "Parent Epic" {
@@ -94,7 +95,7 @@ func TestGetParentTitle(t *testing.T) {
 
 		project.Tasks = []*models.Task{child}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		got := m.getParentTitle(child)
 
 		if got != "" {
@@ -114,7 +115,7 @@ func TestGetBlockingReason(t *testing.T) {
 
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		got := m.getBlockingReason(task)
 
 		if got != "(blocked)" {
@@ -138,7 +139,7 @@ func TestGetBlockingReason(t *testing.T) {
 
 		project.Tasks = []*models.Task{blocker, dependent}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		got := m.getBlockingReason(dependent)
 
 		if got != "← Blocker Task" {
@@ -157,7 +158,7 @@ func TestChangeTaskPriority(t *testing.T) {
 		task.Priority = 3
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		m.cursor = 0
 		wirePriorityViewCoordinator(t, m, project)
 
@@ -179,7 +180,7 @@ func TestChangeTaskPriority(t *testing.T) {
 		originalUpdatedAt := task.UpdatedAt
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		m.cursor = 0
 
 		m.changeTaskPriority(2)
@@ -194,7 +195,7 @@ func TestChangeTaskPriority(t *testing.T) {
 
 	t.Run("does nothing when no task at cursor", func(t *testing.T) {
 		project := newTestPriorityProject(t)
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		result, _ := m.changeTaskPriority(1)
 		if result == nil {
@@ -212,7 +213,7 @@ func TestChangeTaskPriority(t *testing.T) {
 		originalUpdatedAt := task.UpdatedAt
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		m.cursor = 0
 		wirePriorityViewCoordinator(t, m, project)
 

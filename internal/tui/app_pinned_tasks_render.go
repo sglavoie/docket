@@ -16,7 +16,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 	separatorStr := MutedStyle.Render(" · ")
 	separatorWidth := lipgloss.Width(separatorStr)
 
-	maxDisplay := m.config.GetMaxPinnedBarItems()
+	maxDisplay := m.runtime.Settings().GetMaxPinnedBarItems()
 	if maxDisplay == 0 {
 		return ""
 	}

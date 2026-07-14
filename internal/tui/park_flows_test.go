@@ -228,7 +228,7 @@ func TestParkKeybindingsEmitShowParkInput(t *testing.T) {
 	task := newBulkPickerTestTask(t, 1, "park from key")
 	project := newBulkPickerTestProject(t, "Park Keybindings", task)
 
-	detail := NewTaskDetailModel(task, project, nil, nil)
+	detail := NewTaskDetailModel(task, project, nil)
 	_, cmd := detail.handleKeyMsg(syntheticKey('P'))
 	assertShowParkInputCmd(t, cmd, task, project)
 
@@ -279,10 +279,10 @@ func newCrossProjectParkFlowFixture(t *testing.T, mutateTaskB func(*models.Task)
 	projectB := env.projects[1]
 	taskA = projectA.Tasks[0]
 	taskB = projectB.Tasks[0]
-	app.config.CurrentProject = projectA.ID
+	setTestCurrentProject(app, projectA.ID)
 	app.currentProject = projectA
 
-	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	crossOutliner.sidebar.SetEnabled(false)
 	crossOutliner.SetSize(120, 20)
 	crossOutliner.loadedProjects = []*models.Project{projectA, projectB}
@@ -525,10 +525,10 @@ func TestCrossProjectOutlinerTPParkFlowUsesCursorTaskProjectAndReloads(t *testin
 	projectB := env.projects[1]
 	taskA = projectA.Tasks[0]
 	taskB = projectB.Tasks[0]
-	app.config.CurrentProject = projectA.ID
+	setTestCurrentProject(app, projectA.ID)
 	app.currentProject = projectA
 
-	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	crossOutliner.sidebar.SetEnabled(false)
 	crossOutliner.SetSize(120, 20)
 	crossOutliner.loadedProjects = []*models.Project{projectA, projectB}

@@ -66,11 +66,8 @@ func (m *ProjectFocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 	return task, m.project
 }
 
-func (m *ProjectFocusViewModel) getPersister() Persister           { return defaultPersister }
-func (m *ProjectFocusViewModel) getConfig() *config.Config         { return m.cfg }
+func (m *ProjectFocusViewModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *ProjectFocusViewModel) getConfigManager() *config.Manager { return nil }
-func (m *ProjectFocusViewModel) reloadData()                       { m.loadTasks() }
-func (m *ProjectFocusViewModel) setErr(err error)                  { m.SetError(err) }
 func (m *ProjectFocusViewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
 // SetTaskItemCoordinator injects the application-layer single-task coordinator so
@@ -80,10 +77,10 @@ func (m *ProjectFocusViewModel) SetTaskItemCoordinator(c TaskItemCoordinator) { 
 // workflowOpsView accessors: ProjectFocus does not embed ViewBundle.
 func (m *ProjectFocusViewModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }
 func (m *ProjectFocusViewModel) workflowRules() []workflow.WorkflowRule {
-	if m.cfg == nil {
+	if m.runtime == nil {
 		return nil
 	}
-	return m.cfg.GetEnabledWorkflowRules()
+	return m.runtime.Automation().GetEnabledWorkflowRules()
 }
 
 func (m *ProjectFocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {

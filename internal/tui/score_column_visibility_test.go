@@ -17,7 +17,7 @@ func TestOutlinerScoreColumnVisibility(t *testing.T) {
 	t.Run("shows score when visible and profile exists", func(t *testing.T) {
 		cfg := scoreTestConfig("proj-a")
 		m := &OutlinerModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			columnConfig:      NewColumnConfig(map[string]bool{ColScore: true}, nil, DefaultOutlinerColumns, ""),
 		}
 
@@ -30,7 +30,7 @@ func TestOutlinerScoreColumnVisibility(t *testing.T) {
 	t.Run("hides score when column hidden", func(t *testing.T) {
 		cfg := scoreTestConfig("proj-a")
 		m := &OutlinerModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			columnConfig:      NewColumnConfig(map[string]bool{ColScore: false}, nil, DefaultOutlinerColumns, ""),
 		}
 
@@ -43,7 +43,7 @@ func TestOutlinerScoreColumnVisibility(t *testing.T) {
 	t.Run("cross-project uses owning project profile", func(t *testing.T) {
 		cfg := scoreTestConfig("proj-a")
 		m := &OutlinerModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			columnConfig:      NewColumnConfig(map[string]bool{ColScore: true}, nil, DefaultOutlinerColumns, ""),
 		}
 
@@ -65,7 +65,7 @@ func TestProjectTreeScoreColumnVisibility(t *testing.T) {
 	t.Run("shows score when visible and profile exists", func(t *testing.T) {
 		cfg := scoreTestConfig("proj-a")
 		m := &ProjectTreeModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			project:           &models.Project{ID: "proj-a"},
 			sidebar:           NewSidebarComponent(),
 			columnConfig:      NewColumnConfig(map[string]bool{ColScore: true}, nil, DefaultTreeColumns, ""),
@@ -80,7 +80,7 @@ func TestProjectTreeScoreColumnVisibility(t *testing.T) {
 	t.Run("hides score when no profile assigned", func(t *testing.T) {
 		cfg := scoreTestConfig()
 		m := &ProjectTreeModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			project:           &models.Project{ID: "proj-a"},
 			sidebar:           NewSidebarComponent(),
 			columnConfig:      NewColumnConfig(map[string]bool{ColScore: true}, nil, DefaultTreeColumns, ""),
@@ -126,12 +126,12 @@ func TestProjectTreeDescriptionColumnVisibility(t *testing.T) {
 	})
 }
 
-func scoreTestConfig(projectIDs ...string) *config.Config {
-	cfg := config.NewConfig()
+func scoreTestConfig(projectIDs ...string) *config.RuntimeState {
+	cfg := newTestConfig()
 	profile := scoring.NewICEProfile()
-	cfg.ScoringProfiles = []scoring.ScoringProfile{profile}
+	cfg.Automation().ScoringProfiles = []scoring.ScoringProfile{profile}
 	for _, projectID := range projectIDs {
-		cfg.SetProjectScoringProfile(projectID, profile.ID)
+		cfg.Automation().SetProjectScoringProfile(projectID, profile.ID)
 	}
 	return cfg
 }

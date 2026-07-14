@@ -1,3 +1,3 @@
 package tui
 
-func (m *TutorModel) StatusBarLabel() string { return "Tutorial" }
+func (m *TutorModel) StatusBarLabel() string { return "Reference" }

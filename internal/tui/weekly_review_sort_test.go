@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -41,7 +40,7 @@ func TestWeeklyReviewSort_Determinism(t *testing.T) {
 	// Build two parallel models with identical input. Each section has
 	// multiple items that tie on the primary sort key.
 	build := func() *WeeklyReviewModel {
-		cfg := &config.Config{Projects: []*models.Project{}}
+		cfg := newTestConfig()
 		m := newTestWeeklyReviewModel(cfg)
 		m.staleProjects = []WeeklyReviewProject{
 			mkProject("pa", 10, 0, 0, 0),

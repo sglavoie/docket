@@ -1,0 +1,12 @@
+{
+  "name": "fresh-install-alerts-quiet",
+  "fixture": "fresh",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open notifications on first use", "command": "notifications" },
+    { "type": "assert", "assert": "view", "value": "NotificationCenter" },
+    { "type": "assert", "assert": "not_contains", "value": "Daily review never completed" },
+    { "type": "assert", "assert": "not_contains", "value": "Weekly review never completed" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

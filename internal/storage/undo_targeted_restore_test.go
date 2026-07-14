@@ -151,14 +151,14 @@ func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
 	now := time.Date(2026, 2, 3, 10, 0, 0, 0, time.UTC)
 	initialTasks := []*models.Task{
 		{
-			ID:        "child",
-			ShortID:   1,
-			Type:      models.TaskTypeTask,
-			Title:     "Existing child",
+			ID:            "child",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Existing child",
 			WorkflowState: models.StateReady,
-			Priority:  3,
-			CreatedAt: now,
-			UpdatedAt: now,
+			Priority:      3,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		},
 	}
 	writeUndoTasks(t, tasksPath, WriteTasksMarkdown("Test Project", initialTasks))
@@ -170,27 +170,27 @@ func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
 	parentID := "parent-new"
 	mutatedTasks := []*models.Task{
 		{
-			ID:        parentID,
-			ShortID:   2,
-			Type:      models.TaskTypeTask,
-			Title:     "New parent",
+			ID:            parentID,
+			ShortID:       2,
+			Type:          models.TaskTypeTask,
+			Title:         "New parent",
 			WorkflowState: models.StateReady,
-			Priority:  3,
-			CreatedAt: now,
-			UpdatedAt: now,
+			Priority:      3,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		},
 		{
-			ID:        "child",
-			ShortID:   1,
-			Type:      models.TaskTypeTask,
-			Title:     "Existing child",
+			ID:            "child",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Existing child",
 			WorkflowState: models.StateReady,
-			Priority:  3,
-			ParentID:  &parentID,
-			DependsOn: []string{parentID, "keep-dep"},
-			RelatedTo: []string{parentID, "keep-related"},
-			CreatedAt: now,
-			UpdatedAt: now,
+			Priority:      3,
+			ParentID:      &parentID,
+			DependsOn:     []string{parentID, "keep-dep"},
+			RelatedTo:     []string{parentID, "keep-related"},
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		},
 	}
 	writeUndoTasks(t, tasksPath, WriteTasksMarkdown("Test Project", mutatedTasks))
@@ -320,14 +320,14 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 	now := time.Date(2025, 3, 20, 9, 0, 0, 0, time.UTC)
 	initialTasks := []*models.Task{
 		{
-			ID:        "task-a",
-			ShortID:   1,
-			Type:      models.TaskTypeTask,
-			Title:     "Task A",
+			ID:            "task-a",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Task A",
 			WorkflowState: models.StateReady,
-			Priority:  3,
-			CreatedAt: now,
-			UpdatedAt: now,
+			Priority:      3,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 			Decisions: []*models.Decision{
 				{
 					Text:      "Use SQLite",
@@ -338,14 +338,14 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 			},
 		},
 		{
-			ID:        "task-b",
-			ShortID:   2,
-			Type:      models.TaskTypeTask,
-			Title:     "Task B",
+			ID:            "task-b",
+			ShortID:       2,
+			Type:          models.TaskTypeTask,
+			Title:         "Task B",
 			WorkflowState: models.StateReady,
-			Priority:  2,
-			CreatedAt: now,
-			UpdatedAt: now,
+			Priority:      2,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 			Decisions: []*models.Decision{
 				{
 					Text:      "Stay CLI-only",
@@ -364,14 +364,14 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 
 	mutatedTasks := []*models.Task{
 		{
-			ID:        "task-a",
-			ShortID:   1,
-			Type:      models.TaskTypeTask,
-			Title:     "Task A",
+			ID:            "task-a",
+			ShortID:       1,
+			Type:          models.TaskTypeTask,
+			Title:         "Task A",
 			WorkflowState: models.StateReady,
-			Priority:  3,
-			CreatedAt: now,
-			UpdatedAt: now.Add(2 * time.Hour),
+			Priority:      3,
+			CreatedAt:     now,
+			UpdatedAt:     now.Add(2 * time.Hour),
 			Decisions: []*models.Decision{
 				{
 					Text:      "Use Postgres",
@@ -383,14 +383,14 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 			},
 		},
 		{
-			ID:        "task-b",
-			ShortID:   2,
-			Type:      models.TaskTypeTask,
-			Title:     "Task B",
+			ID:            "task-b",
+			ShortID:       2,
+			Type:          models.TaskTypeTask,
+			Title:         "Task B",
 			WorkflowState: models.StateDone,
-			Priority:  2,
-			CreatedAt: now,
-			UpdatedAt: now.Add(2 * time.Hour),
+			Priority:      2,
+			CreatedAt:     now,
+			UpdatedAt:     now.Add(2 * time.Hour),
 			Decisions: []*models.Decision{
 				{
 					Text:      "Build a web UI",
@@ -480,10 +480,10 @@ func TestRestoreTaskFieldsPreservesStartDateAndEstimatedDays(t *testing.T) {
 func TestRestoreTaskFieldsPreservesHasTime(t *testing.T) {
 	dst := &models.Task{ID: "test-id"}
 	src := &models.Task{
-		ID:      "test-id",
-		HasTime: true,
+		ID:            "test-id",
+		HasTime:       true,
 		WorkflowState: models.StateReady,
-		Title:   "Task with time",
+		Title:         "Task with time",
 	}
 	restoreTaskFields(dst, src)
 	if !dst.HasTime {

@@ -168,8 +168,8 @@ func prefixHintKeys(hints []PrefixHint) []string {
 	return keys
 }
 
-func newFilterParityConfig() *config.Config {
-	return &config.Config{Stages: []string{"Backlog", "Doing"}}
+func newFilterParityConfig() *config.RuntimeState {
+	return newTestConfig()
 }
 
 func dispatcherPendingF(km *keymap.KeyMap) *keymap.Dispatcher {
@@ -181,27 +181,31 @@ func dispatcherPendingF(km *keymap.KeyMap) *keymap.Dispatcher {
 func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 	t.Helper()
 	cfg := newFilterParityConfig()
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
+	filterMixin := func() FilterMixin {
+		return FilterMixin{filter: newFilterState(), filterMachine: runtime.Machine()}
+	}
 
 	switch name {
 	case "FocusBoard":
-		m := &FocusBoardModel{config: cfg, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &FocusBoardModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "FocusView":
-		m := &FocusViewModel{ViewBundle: ViewBundle{config: cfg}, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &FocusViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "ProjectFocus":
-		m := &ProjectFocusViewModel{cfg: cfg, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &ProjectFocusViewModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "AllTasks":
-		m := &AllTasksViewModel{ViewBundle: ViewBundle{config: cfg}, FilterMixin: FilterMixin{filter: newFilterState()}, projectFilter: make(map[string]bool)}
+		m := &AllTasksViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin(), projectFilter: make(map[string]bool)}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "ProjectTree":
 		m := &ProjectTreeModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			project:           &models.Project{ID: "p1", Name: "Project"},
 			filter:            NewFilterState(),
 			sort:              NewSortState(),
@@ -210,7 +214,7 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		return m.GetPrefixPopupInfo()
 	case "Outliner":
 		m := &OutlinerModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			project:           &models.Project{ID: "p1", Name: "Project"},
 			filter:            NewFilterState(),
 			sort:              NewSortState(),
@@ -220,7 +224,7 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		return m.GetPrefixPopupInfo()
 	case "CrossProjectOutliner":
 		m := &OutlinerModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 			filter:            NewFilterState(),
 			sort:              NewSortState(),
 			activePerspective: 1,
@@ -229,27 +233,27 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "Kanban":
-		m := &KanbanModel{config: cfg, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &KanbanModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "PriorityView":
-		m := &PriorityViewModel{ViewBundle: ViewBundle{config: cfg}, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &PriorityViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.pendingPrefix = "F"
 		return m.GetPrefixPopupInfo()
 	case "DailyReview":
-		m := &DailyReviewModel{ViewBundle: ViewBundle{config: cfg}, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &DailyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.pendingPrefix = "F"
 		return m.GetPrefixPopupInfo()
 	case "WeeklyReview":
-		m := &WeeklyReviewModel{ViewBundle: ViewBundle{config: cfg}, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &WeeklyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.pendingPrefix = "F"
 		return m.GetPrefixPopupInfo()
 	case "DueDateOverview":
-		m := &DueDateOverviewModel{ViewBundle: ViewBundle{config: cfg}, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &DueDateOverviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "RecentActivity":
-		m := &RecentActivityModel{config: cfg, FilterMixin: FilterMixin{filter: newFilterState()}}
+		m := &RecentActivityModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	default:

@@ -147,14 +147,14 @@ func TestTaskForm_HelpPaneHiddenDuringOverlay(t *testing.T) {
 
 func TestTaskForm_EditTitle_ContainsShortID(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.ShortID = 42
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	view := m.View().Content
 	if !strings.Contains(view, "#42") {
 		t.Errorf("Edit view should contain '#42'; got:\n%s", view)
@@ -166,14 +166,14 @@ func TestTaskForm_EditTitle_ContainsShortID(t *testing.T) {
 
 func TestTaskForm_EditTitle_DirtyMarker(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.ShortID = 7
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	m.hasChanges = true
 	view := m.View().Content
 	expected := fmt.Sprintf("#%d*", task.ShortID)
@@ -229,12 +229,12 @@ func TestTaskForm_ConfirmDiscard_NCancels(t *testing.T) {
 
 func TestTaskForm_EditModeEscNoChanges_EmitsBackMsg(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if m.activeTab != formTabBasics || m.focusIndex != 0 {
 		t.Fatalf("expected focus on Basics/0, got tab=%d focus=%d", m.activeTab, m.focusIndex)

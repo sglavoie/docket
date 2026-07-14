@@ -197,17 +197,19 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Fold the durable planning-ref cleanup into the delete transaction as a config
-	// artifact (this mutates the in-memory config in place, so the on-disk and
-	// in-memory views agree once committed).
+	// Fold the durable planning-ref cleanup into the delete transaction as the
+	// revision-checked planning-domain artifact.
 	var artifacts []storage.ArtifactChange
-	if m.config != nil && m.configManager != nil && m.config.RemoveDurableTaskRefs(idsToDelete) > 0 {
-		arts, err := configDomainArtifacts(m.configManager, m.config)
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Error: %v", err))
-			return m, nil
+	if m.runtime != nil && m.configManager != nil {
+		planning := clonePlanningState(m.runtime.Planning())
+		if planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
+			arts, err := planningDomainArtifact(m.configManager, planning)
+			if err != nil {
+				m.setStatus(fmt.Sprintf("Error: %v", err))
+				return m, nil
+			}
+			artifacts = arts
 		}
-		artifacts = arts
 	}
 
 	cmd := m.bulk.Delete(taskIDs, artifacts...)

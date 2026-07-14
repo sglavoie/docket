@@ -32,10 +32,15 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 	contextName := args[0]
 	projectSlug := args[1]
 
-	cfg, mgr, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	machine := domains.Machine
 
 	out, err := getOutputOpts(cmd)
 	if err != nil {
@@ -43,13 +48,13 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if custom context exists
-	projectIDs := cfg.GetCustomContext(contextName)
+	projectIDs := machine.GetCustomContext(contextName)
 	if projectIDs == nil {
 		return fmt.Errorf("custom context '%s' not found", contextName)
 	}
 
 	// Find project by slug
-	project := cfg.GetProject(projectSlug)
+	project := workspace.Runtime.GetProject(projectSlug)
 	if project == nil {
 		return tterrors.NewProjectNotFoundError(projectSlug)
 	}
@@ -69,9 +74,9 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("project '%s' is not in custom context '%s'", project.Name, contextName)
 	}
 
-	cfg.SetCustomContext(contextName, newIDs)
+	machine.SetCustomContext(contextName, newIDs)
 
-	if err := saveConfig(mgr, cfg); err != nil {
+	if err := workspace.Runtime.CommitMachine(machine); err != nil {
 		return err
 	}
 

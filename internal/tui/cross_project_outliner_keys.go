@@ -239,7 +239,7 @@ func (m *OutlinerModel) crossHandleRedo(key string) (tea.Model, tea.Cmd, bool) {
 // crossRestore drives the ledger-only restore for both undo (redo=false) and
 // redo (redo=true). It rebuilds the rows once the restore settles.
 func (m *OutlinerModel) crossRestore(redo bool) {
-	ledger := workspaceLedgerFromConfig(m.config)
+	ledger := workspaceLedgerFromConfig(m.runtime)
 	scope := storage.GlobalScope()
 
 	selectNewest := ledger.SelectNewestUndo
@@ -297,8 +297,7 @@ func (m *OutlinerModel) crossReloadLedgerRestoredProjects(projectIDs []string) e
 		}
 		restored = append(restored, proj)
 	}
-	_, err := repairConfigTaskRefsToLoadedProjects(m.configManager, m.config, restored)
-	return err
+	return repairRuntimeTaskRefsAfterRestore(m.runtime)(restored)
 }
 
 // crossRestoreLabel and crossRestoreVerb produce the short label used by the
@@ -328,14 +327,14 @@ func crossNothingMessage(redo bool) string {
 // commit boundary records to, sized from the configured history depth — the same
 // construction newTUIAppRepository uses, so cross-project undo/redo reads exactly
 // what the coordinator wrote.
-func workspaceLedgerFromConfig(cfg *config.Config) *storage.WorkspaceLedger {
+func workspaceLedgerFromConfig(runtime *config.RuntimeState) *storage.WorkspaceLedger {
 	depth := config.DefaultUndoHistoryDepth
-	if cfg != nil && cfg.UndoHistoryDepth != nil {
-		depth = *cfg.UndoHistoryDepth
-	}
 	dataDir := ""
-	if cfg != nil {
-		dataDir = cfg.DataDir
+	if runtime != nil {
+		if d := runtime.Settings().UndoHistoryDepth; d != nil {
+			depth = *d
+		}
+		dataDir = runtime.DataDir()
 	}
 	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
 }

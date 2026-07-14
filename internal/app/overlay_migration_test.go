@@ -97,6 +97,35 @@ func TestRemoveRelatedBidirectional_CrossProjectAtomic(t *testing.T) {
 	}
 }
 
+func TestRelatedBidirectionalMatchesLegacySlugAndStableIDIdentity(t *testing.T) {
+	t1 := newTask("t1", 1, "Source")
+	t2 := newTask("t2", 2, "Peer")
+	// Both persisted spellings pre-exist on both sides. Adding through the
+	// stable-ID TUI producer must collapse them by identity, and removal through
+	// that same spelling must clear the retained legacy slug aliases too.
+	t1.RelatedTo = []string{"beta:t2", "p2:t2"}
+	t2.RelatedTo = []string{"alpha:t1", "p1:t1"}
+	repo := newFakeRepo(newProject("p1", "Alpha", t1), newProject("p2", "Beta", t2))
+	svc := newTestService(repo)
+
+	if _, err := svc.AddRelatedBidirectional("t1", "p2:t2"); err != nil {
+		t.Fatalf("AddRelatedBidirectional: %v", err)
+	}
+	if len(t1.RelatedTo) != 1 || t1.RelatedTo[0] != "beta:t2" {
+		t.Fatalf("source identity dedup = %v, want [beta:t2]", t1.RelatedTo)
+	}
+	if len(t2.RelatedTo) != 1 || t2.RelatedTo[0] != "alpha:t1" {
+		t.Fatalf("target identity dedup = %v, want [alpha:t1]", t2.RelatedTo)
+	}
+
+	if _, err := svc.RemoveRelatedBidirectional("t1", "p2:t2"); err != nil {
+		t.Fatalf("RemoveRelatedBidirectional: %v", err)
+	}
+	if len(t1.RelatedTo) != 0 || len(t2.RelatedTo) != 0 {
+		t.Fatalf("identity removal left refs: source=%v target=%v", t1.RelatedTo, t2.RelatedTo)
+	}
+}
+
 func TestRemoveRelatedBidirectional_MissingPeerDegradesToSourceOnly(t *testing.T) {
 	t1 := newTask("t1", 1, "Source")
 	t1.RelatedTo = []string{"p2:gone"}

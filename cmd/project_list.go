@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/icons"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -40,19 +39,14 @@ func init() {
 }
 
 func runProjectList(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	projects, err := activeProjects(configManager)
-	if err != nil {
-		return err
-	}
+	projects := workspace.Runtime.ActiveProjects()
 	if showArchived {
-		// Copy the slice to avoid mutating cfg.Projects order in place
-		projects = make([]*models.Project, len(cfg.Projects))
-		copy(projects, cfg.Projects)
+		projects = workspace.Runtime.AllProjects()
 		sort.Slice(projects, func(i, j int) bool {
 			return strings.ToLower(projects[i].Name) < strings.ToLower(projects[j].Name)
 		})
@@ -134,7 +128,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 		if p.Pinned {
 			name = icons.Get("pinned") + " " + name
 		}
-		if p.ID == cfg.CurrentProject {
+		if p.ID == workspace.Runtime.Machine().CurrentProject {
 			indicator = "*"
 			name = currentStyle.Render(name)
 		} else if p.Pinned {
@@ -143,7 +137,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 
 		var row table.Row
 		if loadErr != nil {
-			if p.ID == cfg.CurrentProject {
+			if p.ID == workspace.Runtime.Machine().CurrentProject {
 				indicator = "*"
 			}
 			row = table.Row{

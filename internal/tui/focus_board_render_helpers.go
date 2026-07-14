@@ -150,7 +150,7 @@ func (m *FocusBoardModel) renderSelectedTaskMetadataStrip() string {
 	return renderTaskMetadataStrip(TaskMetadataStripOpts{
 		Task:    row.Task,
 		Project: row.Project,
-		Config:  m.config,
+		Runtime: m.runtime,
 		Width:   m.width,
 		AlreadyShown: TaskMetadataAlreadyShown{
 			Project:  true,
@@ -199,7 +199,9 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 			rightParts = append(rightParts, formatEstimateDays(est)+" est")
 		}
 	default:
-		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
+		total := max(len(m.rows), len(m.filtered))
+		visible := min(len(m.filtered), total)
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", visible, total))
 		if est := sumEstimatesForRows(m.filtered); est > 0 {
 			rightParts = append(rightParts, formatEstimateDays(est)+" est")
 		}
@@ -388,7 +390,7 @@ func (m *FocusBoardModel) renderBoardEscalationHint(task *models.Task) string {
 	if m.tabs.Active != boardTabToday || task.Priority < 3 || task.DueDate == nil {
 		return ""
 	}
-	escalationDays := m.config.GetPriorityEscalationDays()
+	escalationDays := m.runtime.Settings().GetPriorityEscalationDays()
 	if escalationDays <= 0 || !task.DueDate.Before(time.Now().AddDate(0, 0, escalationDays+1)) {
 		return ""
 	}

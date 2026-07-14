@@ -78,8 +78,8 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 	if len(blockers) != 1 || blockers[0].Title != "API access" {
 		t.Fatalf("Blockers = %+v, want one titled 'API access'", blockers)
 	}
-	if got, err := svc.ActiveBlockerCount(projectID); err != nil || got != 1 {
-		t.Fatalf("ActiveBlockerCount = %d, %v, want 1, nil", got, err)
+	if got, countErr := svc.ActiveBlockerCount(projectID); countErr != nil || got != 1 {
+		t.Fatalf("ActiveBlockerCount = %d, %v, want 1, nil", got, countErr)
 	}
 
 	// Resolve the blocker and rewrite the list: the active count drops to zero.
@@ -93,8 +93,8 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 	}
 
 	// Delete the note; the query then reports none.
-	if _, err := svc.DeleteNote(projectID, "design.md"); err != nil {
-		t.Fatalf("DeleteNote: %v", err)
+	if _, deleteErr := svc.DeleteNote(projectID, "design.md"); deleteErr != nil {
+		t.Fatalf("DeleteNote: %v", deleteErr)
 	}
 	notes, err = svc.Notes(projectID)
 	if err != nil {

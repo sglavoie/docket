@@ -410,10 +410,7 @@ func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
 		ScoreCustomInput: func() (tea.Model, tea.Cmd) {
-			var custom *float64
-			if m.config != nil {
-				custom = m.config.ScoreFilterCustom
-			}
+			custom := m.runtime.Machine().ScoreFilterCustom
 			m.scoreFilterInput.Enter(custom)
 			return m, nil
 		},

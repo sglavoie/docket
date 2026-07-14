@@ -7,7 +7,7 @@ import (
 
 func TestAlertDismissalHelpers(t *testing.T) {
 	t.Run("DismissAlert adds new entry", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 
 		if !cfg.IsAlertDismissed("overdue:t1") {
@@ -19,7 +19,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("DismissAlert deduplicates on re-dismiss", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 		cfg.DismissAlert("overdue:t1", "overdue")
 
@@ -29,14 +29,14 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("IsAlertDismissed returns false for unknown key", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		if cfg.IsAlertDismissed("nonexistent") {
 			t.Error("expected false for unknown key")
 		}
 	})
 
 	t.Run("ClearAlertDismissals removes all", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 		cfg.DismissAlert("stale:t2", "stale")
 		cfg.ClearAlertDismissals()
@@ -50,7 +50,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("SetAlertDismissals replaces entire list", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 		cfg.SetAlertDismissals(nil)
 
@@ -60,7 +60,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("UndismissAlert removes existing entry", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 		cfg.DismissAlert("stale:t2", "stale")
 
@@ -80,7 +80,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("UndismissAlert returns false for unknown key", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 		if cfg.UndismissAlert("nonexistent") {
 			t.Error("expected UndismissAlert to return false for unknown key")
@@ -91,7 +91,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("Multiple dismissals tracked independently", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("overdue:t1", "overdue")
 		cfg.DismissAlert("stale:t2", "stale")
 		cfg.DismissAlert("daily_review", "daily_review")
@@ -105,7 +105,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("PruneExpiredAlertDismissals removes old entries", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		// Add a recent dismissal
 		cfg.DismissAlert("recent:t1", "overdue")
 		// Add an old dismissal (31 days ago)
@@ -131,7 +131,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("PruneExpiredAlertDismissals noop when nothing expired", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		cfg.DismissAlert("recent:t1", "overdue")
 
 		pruned := cfg.PruneExpiredAlertDismissals()
@@ -144,7 +144,7 @@ func TestAlertDismissalHelpers(t *testing.T) {
 	})
 
 	t.Run("PruneExpiredAlertDismissals noop on empty list", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewPlanningState()
 		pruned := cfg.PruneExpiredAlertDismissals()
 		if pruned {
 			t.Error("expected pruning to return false on empty list")

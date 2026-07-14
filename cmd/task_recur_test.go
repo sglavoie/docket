@@ -530,14 +530,14 @@ func TestParseRecurrenceIntervalWithDays(t *testing.T) {
 // on a task with no recurrence pattern suppresses the informational message,
 // rather than printing "Task #N has no recurrence pattern" regardless of --quiet.
 func TestRecurClearNoOpHonorsQuiet(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 	defer deps.Cleanup()
 
 	viper.Set("config", deps.ConfigPath)
 	defer viper.Set("config", "")
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -596,14 +596,14 @@ func TestRecurClearNoOpHonorsQuiet(t *testing.T) {
 }
 
 func TestRecurShowHonorsQuiet(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 	defer deps.Cleanup()
 
 	viper.Set("config", deps.ConfigPath)
 	defer viper.Set("config", "")
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -652,14 +652,14 @@ func TestRecurShowHonorsQuiet(t *testing.T) {
 }
 
 func TestRecurShowHonorsJSON(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 	defer deps.Cleanup()
 
 	viper.Set("config", deps.ConfigPath)
 	defer viper.Set("config", "")
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatal(err)
 	}
 

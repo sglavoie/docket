@@ -26,7 +26,7 @@ func TestRoadmapWeekStartPropagation(t *testing.T) {
 		{"sat", time.Sunday},
 	}
 	for _, c := range cases {
-		cfg := config.NewConfig()
+		cfg := config.NewSettings()
 		cfg.WeekEndDay = c.weekEnd
 		got := metrics.WeekStartFromWeekEnd(cfg.GetWeekEndDay())
 		if got != c.want {
@@ -39,7 +39,7 @@ func TestRoadmapWeekStartPropagation(t *testing.T) {
 // zero value) flows through GetWeekEndDay() (which returns "sun") and lands
 // on Monday as the week-start — matching metrics.DefaultWeekStart.
 func TestRoadmapWeekStartUnsetDefaults(t *testing.T) {
-	cfg := config.NewConfig()
+	cfg := config.NewSettings()
 	// WeekEndDay deliberately left empty.
 	got := metrics.WeekStartFromWeekEnd(cfg.GetWeekEndDay())
 	if got != time.Monday {

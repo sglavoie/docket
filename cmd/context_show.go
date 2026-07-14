@@ -34,12 +34,12 @@ func runContextShow(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	projectIDs := cfg.GetCustomContext(name)
+	projectIDs := workspace.Runtime.Machine().GetCustomContext(name)
 	if projectIDs == nil {
 		return fmt.Errorf("custom context '%s' not found", name)
 	}
@@ -56,7 +56,7 @@ func runContextShow(cmd *cobra.Command, args []string) error {
 	t.AppendHeader(table.Row{"Project", "Context", "Tasks", "Status"})
 
 	for _, id := range projectIDs {
-		p := cfg.GetProject(id)
+		p := workspace.Runtime.GetProject(id)
 		if p == nil {
 			t.AppendRow(table.Row{"(deleted)", "-", "-", "removed"})
 			continue

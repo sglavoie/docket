@@ -183,7 +183,7 @@ func (m *FocusBoardModel) initBoardCaches() {
 	sort.Strings(m.acTagCache)
 
 	// Cache non-archived, non-sandbox projects (including internal for %project targeting)
-	m.acProjectCache = m.config.GetAllLoadableProjects()
+	m.acProjectCache = m.runtime.AllLoadableProjects()
 }
 
 // parseBoardPriority parses a priority value from s, accepting both numeric ("1"-"5")

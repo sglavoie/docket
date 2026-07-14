@@ -10,7 +10,7 @@ import (
 // build against instead of reaching into AppModel's fields directly:
 //
 //   - ShellState        — the view stack / current route / terminal geometry.
-//   - WorkspaceSession   — the config, manager, and the currently selected
+//   - WorkspaceSession   — the runtime domains, manager, and currently selected
 //                          project the shell is operating within.
 //   - OverlayManager     — the transient global overlays (pickers, quick-note)
 //                          layered above the routed view stack.
@@ -86,15 +86,15 @@ func (m *AppModel) CurrentView() ViewType { return m.currentView() }
 // Size satisfies ShellContext.
 func (m *AppModel) Size() (int, int) { return m.width, m.height }
 
-// WorkspaceSession is a facade over the workspace the shell operates within:
-// its configuration, manager, and the currently selected project.
+// WorkspaceSession is a facade over the runtime domains, manager, and currently
+// selected project the shell operates within.
 type WorkspaceSession struct{ app *AppModel }
 
 // Workspace returns the workspace-session facade for this model.
 func (m *AppModel) Workspace() WorkspaceSession { return WorkspaceSession{app: m} }
 
-// Config returns the active configuration.
-func (w WorkspaceSession) Config() *config.Config { return w.app.config }
+// Runtime returns the startup-loaded configuration domains.
+func (w WorkspaceSession) Runtime() *config.RuntimeState { return w.app.runtime }
 
 // Manager returns the configuration manager.
 func (w WorkspaceSession) Manager() *config.Manager { return w.app.configManager }
@@ -115,8 +115,8 @@ func (w WorkspaceSession) ViewContext() ViewContext {
 	return ViewContext{
 		Width:         w.app.width,
 		Height:        w.app.height,
-		Config:        w.app.config,
 		ConfigManager: w.app.configManager,
+		Runtime:       w.app.runtime,
 		Persister:     w.app.persister,
 	}
 }

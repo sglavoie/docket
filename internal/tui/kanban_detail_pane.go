@@ -7,8 +7,8 @@ import (
 
 // detailPaneHeight returns the configured detail pane height (default 3).
 func (m *KanbanModel) detailPaneHeight() int {
-	if m.config.KanbanSettings.DetailPaneHeight != nil {
-		h := *m.config.KanbanSettings.DetailPaneHeight
+	if m.runtime.Settings().KanbanSettings.DetailPaneHeight != nil {
+		h := *m.runtime.Settings().KanbanSettings.DetailPaneHeight
 		if h >= 1 && h <= 10 {
 			return h
 		}
@@ -66,7 +66,7 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 		metadataParts = append(metadataParts, "Due: "+dueStr)
 	}
 	if project != nil {
-		if profile := m.config.GetProjectScoringProfile(project.ID); profile != nil {
+		if profile := m.runtime.Automation().GetProjectScoringProfile(project.ID); profile != nil {
 			if scoreBadge := RenderScoreBadge(task, profile); scoreBadge != "" {
 				scoreStr := scoreBadge
 				if profile.Name != "" {

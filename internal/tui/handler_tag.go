@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -122,13 +123,13 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.secondaryFeatures.Tag, m.configManager))
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.runtime.ActiveProjects(), m.runtime, m.secondaryFeatures.Tag))
 		return true, nil
 
 	case GlobalTagRenamedMsg:
 		m.popView()
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		return true, nil
 
@@ -284,14 +285,14 @@ func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string)
 	m.switchToProject(project, false) // Don't restore state - apply specific tag filter.
 	tags := map[string]bool{tag: true}
 
-	switch defaultProjectViewType(m.config) {
+	switch defaultProjectViewType(m.runtime.Settings()) {
 	case ViewProjectTree:
 		m.projectTree.filter.Tags = tags
 		m.projectTree.updateVisibility()
 		m.showView(ViewProjectTree, m.projectTree)
 	default:
 		m.saveOutlinerToggleState()
-		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
 		m.outliner.queueIDs = m.focusQueueIDs
 		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()
@@ -401,17 +402,25 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 	if m.currentProject != nil {
 		projectID = m.currentProject.ID
 	}
+	machine := m.runtime.Machine()
+
+	// mutate captures the machine-local persistence for the affected view; the
+	// view-model updates happen regardless so the change is visible even when the
+	// runtime is not writable (isolated tests).
+	var mutate func(*config.MachineState)
 
 	switch source {
 	case ViewProjectTree:
-		priorityMode := resolvePriorityMode(projectID, m.config, "tree")
+		priorityMode := resolvePriorityMode(projectID, machine, "tree")
 		if m.projectTree != nil {
-			m.projectTree.columnConfig = NewColumnConfig(toggles, m.config.TreeDefaultColumns, DefaultTreeColumns, priorityMode)
+			m.projectTree.columnConfig = NewColumnConfig(toggles, machine.TreeDefaultColumns, DefaultTreeColumns, priorityMode)
 		}
 		if projectID != "" {
-			state, _ := m.config.GetProjectViewState(projectID)
-			state.TreeColumnToggles = toggles
-			m.config.SetProjectViewState(projectID, state)
+			mutate = func(mach *config.MachineState) {
+				state, _ := mach.GetProjectViewState(projectID)
+				state.TreeColumnToggles = toggles
+				mach.SetProjectViewState(projectID, state)
+			}
 		}
 	case ViewOutliner:
 		target := m.outliner
@@ -429,28 +438,32 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 		if target.project != nil {
 			targetProjectID = target.project.ID
 		}
-		priorityMode := resolvePriorityMode(targetProjectID, m.config, "outliner")
-		target.columnConfig = NewColumnConfig(toggles, m.config.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
+		priorityMode := resolvePriorityMode(targetProjectID, machine, "outliner")
+		target.columnConfig = NewColumnConfig(toggles, machine.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
 		target.rebuildRows()
 		if targetProjectID != "" {
-			state, _ := m.config.GetProjectViewState(targetProjectID)
-			state.OutlinerColumnToggles = toggles
-			m.config.SetProjectViewState(targetProjectID, state)
+			mutate = func(mach *config.MachineState) {
+				state, _ := mach.GetProjectViewState(targetProjectID)
+				state.OutlinerColumnToggles = toggles
+				mach.SetProjectViewState(targetProjectID, state)
+			}
 		}
 	case ViewCrossProjectOutliner:
-		priorityMode := ""
-		if m.config != nil {
-			priorityMode = m.config.OutlinerPriorityMode
-		}
+		priorityMode := machine.OutlinerPriorityMode
 		if m.crossOutliner != nil {
-			m.crossOutliner.columnConfig = NewColumnConfig(toggles, m.config.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
+			m.crossOutliner.columnConfig = NewColumnConfig(toggles, machine.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
 			m.crossOutliner.rebuildRows()
 		}
-		m.config.CrossOutlinerColumnToggles = toggles
+		mutate = func(mach *config.MachineState) {
+			mach.CrossOutlinerColumnToggles = toggles
+		}
 	default:
 	}
 
-	if err := m.configManager.Save(m.config); err != nil {
+	if mutate == nil {
+		return
+	}
+	if err := m.commitMachineMutation(mutate); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}
 }

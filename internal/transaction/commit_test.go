@@ -176,3 +176,122 @@ func TestCommit_RefusesInvalidState(t *testing.T) {
 		t.Fatalf("Commit(committed) err = %v, want ErrInvalidManifest", err)
 	}
 }
+
+// TestRenameRecoveryConvergesAtEveryCommitBoundary exercises the durable
+// directory-move + destination-write choreography at each boundary where a
+// process can stop. A fresh journal must always roll forward without quarantine,
+// preserving the moved directory and landing the rewritten tasks.md exactly once.
+func TestRenameRecoveryConvergesAtEveryCommitBoundary(t *testing.T) {
+	tests := []struct {
+		name   string
+		inject func(*Journal, *Manifest, string, string)
+	}{
+		{
+			name: "mark-committing",
+			inject: func(j *Journal, _ *Manifest, _, _ string) {
+				realWrite := j.writeFile
+				j.writeFile = func(path string, data []byte, perm os.FileMode) error {
+					if strings.HasSuffix(path, manifestSuffix) && strings.Contains(string(data), `"state": "committing"`) {
+						return fmt.Errorf("injected crash marking committing")
+					}
+					return realWrite(path, data, perm)
+				}
+			},
+		},
+		{
+			name: "directory-move",
+			inject: func(j *Journal, _ *Manifest, oldPath, newPath string) {
+				realRename := j.rename
+				j.rename = func(oldName, newName string) error {
+					if oldName == oldPath && newName == newPath {
+						return fmt.Errorf("injected crash moving project")
+					}
+					return realRename(oldName, newName)
+				}
+			},
+		},
+		{
+			name: "tasks-rewrite",
+			inject: func(j *Journal, _ *Manifest, _, newPath string) {
+				realRename := j.rename
+				j.rename = func(oldName, newName string) error {
+					if newName == filepath.Join(newPath, "tasks.md") {
+						return fmt.Errorf("injected crash rewriting tasks")
+					}
+					return realRename(oldName, newName)
+				}
+			},
+		},
+		{
+			name: "mark-committed",
+			inject: func(j *Journal, _ *Manifest, _, _ string) {
+				realWrite := j.writeFile
+				j.writeFile = func(path string, data []byte, perm os.FileMode) error {
+					if strings.HasSuffix(path, manifestSuffix) && strings.Contains(string(data), `"state": "committed"`) {
+						return fmt.Errorf("injected crash marking committed")
+					}
+					return realWrite(path, data, perm)
+				}
+			},
+		},
+		{
+			name: "manifest-reclaim",
+			inject: func(j *Journal, m *Manifest, _, _ string) {
+				realRemove := j.remove
+				j.remove = func(path string) error {
+					if path == j.ManifestPath(m.ID) {
+						return fmt.Errorf("injected crash reclaiming manifest")
+					}
+					return realRemove(path)
+				}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			oldPath := filepath.Join(root, "projects", "alpha")
+			newPath := filepath.Join(root, "projects", "beta")
+			if err := os.MkdirAll(filepath.Join(oldPath, ".attachments", "task"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(oldPath, "tasks.md"), []byte("# Alpha\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(oldPath, ".attachments", "task", "note.txt"), []byte("keep"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			j := newTestJournal(t, root)
+			m, err := j.Prepare([]Op{
+				{Kind: OpMove, Source: oldPath, Target: newPath},
+				{Kind: OpWrite, Target: filepath.Join(newPath, "tasks.md"), Data: []byte("# Beta\n")},
+			})
+			if err != nil {
+				t.Fatalf("Prepare: %v", err)
+			}
+			tc.inject(j, m, oldPath, newPath)
+			if err := j.Commit(m); err == nil {
+				t.Fatal("Commit unexpectedly crossed injected crash boundary")
+			}
+
+			restarted := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root})
+			report, err := restarted.Recover()
+			if err != nil {
+				t.Fatalf("Recover: %v", err)
+			}
+			if report.Blocked() {
+				t.Fatalf("rename recovery quarantined: %+v", report.Quarantined)
+			}
+			assertMissing(t, oldPath)
+			if got := mustReadFile(t, filepath.Join(newPath, "tasks.md")); got != "# Beta\n" {
+				t.Fatalf("renamed tasks = %q, want rewritten content", got)
+			}
+			if got := mustReadFile(t, filepath.Join(newPath, ".attachments", "task", "note.txt")); got != "keep" {
+				t.Fatalf("moved attachment = %q, want preserved content", got)
+			}
+			assertMissing(t, restarted.ManifestPath(m.ID))
+		})
+	}
+}

@@ -29,13 +29,19 @@ type WorkflowMove struct {
 // transaction: which tasks the rules modified, which follow-up tasks they
 // created, which cross-project moves they triggered, any field conflicts, and the
 // new revision of every project the transaction touched.
+//
+// FocusChanges reports the Focus Queue membership effects already committed via
+// a revision-checked planning artifact in the same transaction. RuleTriggerCounts
+// remain surfaced for the adapter's best-effort automation counter update.
 type WorkflowResult struct {
-	ProjectID       string
-	ModifiedTaskIDs []string
-	FollowupTaskIDs []string
-	Moves           []WorkflowMove
-	Conflicts       []WorkflowConflict
-	Revisions       map[string]string
+	ProjectID         string
+	ModifiedTaskIDs   []string
+	FollowupTaskIDs   []string
+	Moves             []WorkflowMove
+	Conflicts         []WorkflowConflict
+	Revisions         map[string]string
+	FocusChanges      []WorkflowFocusChange
+	RuleTriggerCounts map[string]int
 }
 
 // ApplyWorkflows evaluates the given task-level workflow rules against a project
@@ -48,7 +54,12 @@ type WorkflowResult struct {
 // prevStates (taskID -> pre-change snapshot) enables event-based triggers; pass
 // nil for a stateless evaluation. When no rule fires, nothing is committed and the
 // result reports the project's unchanged revision.
-func (s *Service) ApplyWorkflows(projectID string, rules []workflow.WorkflowRule, prevStates map[string]*models.Task) (WorkflowResult, error) {
+func (s *Service) ApplyWorkflows(
+	projectID string,
+	rules []workflow.WorkflowRule,
+	prevStates map[string]*models.Task,
+	focusBuilders ...WorkflowFocusArtifactBuilder,
+) (WorkflowResult, error) {
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return WorkflowResult{}, err
@@ -78,6 +89,10 @@ func (s *Service) ApplyWorkflows(projectID string, rules []workflow.WorkflowRule
 	for _, t := range result.ModifiedTasks {
 		out.ModifiedTaskIDs = append(out.ModifiedTaskIDs, t.ID)
 	}
+	// Rule counters remain a best-effort automation-domain side effect. Focus
+	// changes are accumulated below and attached to the project transaction.
+	out.RuleTriggerCounts = result.RuleTriggerCounts
+	focusChanges := appendWorkflowFocusChanges(nil, project.ID, result.FocusChanges)
 
 	// Append created follow-up tasks to the project, assigning fresh short IDs.
 	for _, followup := range result.NewFollowupTasks {
@@ -88,12 +103,12 @@ func (s *Service) ApplyWorkflows(projectID string, rules []workflow.WorkflowRule
 
 	// A cascade that changed nothing (or only detected conflicts) must not commit
 	// a no-op revision bump.
-	if len(result.ModifiedTasks) == 0 && len(result.NewFollowupTasks) == 0 && len(result.DeferredMoves) == 0 {
+	if len(result.ModifiedTasks) == 0 && len(result.NewFollowupTasks) == 0 && len(result.DeferredMoves) == 0 && len(focusChanges) == 0 {
 		out.Revisions[project.ID] = snap.Revision(project.ID)
 		return out, nil
 	}
 
-	commits := []projectCommit{{project: project, expectedRevision: snap.Revision(project.ID)}}
+	commits := []projectCommit{{project: project, expectedRevision: snap.Revision(project.ID), base: snap.Document(project.ID)}}
 	destSeen := map[string]bool{}
 
 	// Execute deferred cross-project moves inside the same transaction.
@@ -106,15 +121,24 @@ func (s *Service) ApplyWorkflows(projectID string, rules []workflow.WorkflowRule
 		if dest == nil || dest.ID == project.ID {
 			continue
 		}
-		if _, err := project.MoveTaskToProject(task, dest); err != nil {
-			return WorkflowResult{}, fmt.Errorf("workflow move_to_project failed: %w", err)
+		if _, moveErr := project.MoveTaskToProject(task, dest); moveErr != nil {
+			return WorkflowResult{}, fmt.Errorf("workflow move_to_project failed: %w", moveErr)
 		}
 		if !destSeen[dest.ID] {
 			destSeen[dest.ID] = true
-			commits = append(commits, projectCommit{project: dest, expectedRevision: snap.Revision(dest.ID)})
+			commits = append(commits, projectCommit{project: dest, expectedRevision: snap.Revision(dest.ID), base: snap.Document(dest.ID)})
 		}
 		out.Moves = append(out.Moves, WorkflowMove{TaskID: move.TaskID, DestProjectID: dest.ID})
 	}
+	var focusBuilder WorkflowFocusArtifactBuilder
+	if len(focusBuilders) > 0 {
+		focusBuilder = focusBuilders[0]
+	}
+	resolvedFocus, err := attachWorkflowFocusArtifacts(commits, focusChanges, focusBuilder)
+	if err != nil {
+		return WorkflowResult{}, err
+	}
+	out.FocusChanges = resolvedFocus
 
 	results, err := s.commitProjects(commits, "Apply Workflow Rules", project.Name)
 	if err != nil {

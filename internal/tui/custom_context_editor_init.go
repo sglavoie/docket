@@ -11,21 +11,21 @@ import (
 
 // NewCustomContextEditorModel creates a new custom context editor.
 // If editName is empty, creates a new context. Otherwise edits existing.
-func NewCustomContextEditorModel(cfg *config.Config, editName string) *CustomContextEditorModel {
+func NewCustomContextEditorModel(runtime *config.RuntimeState, editName string) *CustomContextEditorModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInput("Custom context name")
 	nameInput.Focus()
 	nameInput.CharLimit = 50
 
-	projects := cfg.GetActiveProjects()
+	projects := runtime.ActiveProjects()
 	selectedIDs := make(map[string]bool)
 
 	editMode := editName != ""
 	if editMode {
 		nameInput.SetValue(editName)
-		// Pre-select projects that are in the custom context
-		existingIDs := cfg.GetCustomContext(editName)
+		// Pre-select projects that are in the custom context (machine-local state)
+		existingIDs := runtime.Machine().GetCustomContext(editName)
 		for _, id := range existingIDs {
 			selectedIDs[id] = true
 		}
@@ -35,7 +35,7 @@ func NewCustomContextEditorModel(cfg *config.Config, editName string) *CustomCon
 	maps.Copy(initialSelectedIDs, selectedIDs)
 
 	m := &CustomContextEditorModel{
-		config:             cfg,
+		runtime:            runtime,
 		editMode:           editMode,
 		originalName:       editName,
 		nameInput:          nameInput,

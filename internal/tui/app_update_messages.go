@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -115,6 +116,10 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case BatchTransactionResultMsg:
 		return true, m.handleBatchTransactionResult(msg)
 	case ConfigTransactionResultMsg:
+		// A config-domain coordinator committed the settings/machine or automation
+		// domain through a checked save; advance the shared runtime snapshot so views
+		// reading it observe the committed preferences without a render-time disk load.
+		m.refreshRuntime()
 		return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 	case TransactionErrorMsg:
 		m.isLoading = false
@@ -133,8 +138,9 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // runs, keeping every open view consistent with the committed transaction.
 func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 	m.reloadProjectByID(msg.Result.ProjectID)
+	m.observeLoadedProjectMilestones(msg.Result.ProjectID)
 	if m.dashboard != nil {
-		m.dashboard.Refresh(m.config)
+		m.dashboard.Refresh()
 	}
 	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 }
@@ -154,11 +160,12 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	// non-authoritative UI state cleaned separately after the commit, mirroring the
 	// CLI delete. A save failure here is a warning, not an error: the delete is
 	// already committed.
-	if len(msg.RemovedTaskIDs) > 0 && m.config != nil && m.configManager != nil {
-		if m.config.RemoveMachineLocalTaskRefs(taskIDSliceToSet(msg.RemovedTaskIDs)) > 0 {
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to update recent visits after bulk delete: %v", err)
-			}
+	if len(msg.RemovedTaskIDs) > 0 {
+		removed := taskIDSliceToSet(msg.RemovedTaskIDs)
+		if err := m.commitMachineMutation(func(machine *config.MachineState) {
+			machine.RemoveMachineLocalTaskRefs(removed)
+		}); err != nil {
+			logging.Warn("failed to update recent visits after bulk delete: %v", err)
 		}
 	}
 	// Clear multiselect state only now that the batch has committed, so a rejected
@@ -171,12 +178,19 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	// They live in workspace config (not project Markdown), so they ride outside
 	// the ChangeSet; doing it here in Update() keeps the shared config write off
 	// the async command goroutine.
-	if len(msg.RuleTriggerCounts) > 0 && m.config != nil && m.configManager != nil {
-		m.config.IncrementRuleTriggerCounts(msg.RuleTriggerCounts)
-		_ = m.configManager.Save(m.config)
+	if len(msg.RuleTriggerCounts) > 0 {
+		if err := m.commitAutomationMutation(func(automation *config.AutomationConfig) {
+			automation.IncrementRuleTriggerCounts(msg.RuleTriggerCounts)
+		}); err != nil {
+			logging.Warn("failed to update workflow rule trigger counts: %v", err)
+		}
 	}
+	// The checked planning artifact folded into this batch is now committed.
+	// Refresh the shared snapshot before rebuilding a domain-backed dashboard.
+	m.refreshRuntime()
+	m.observeLoadedProjectMilestones(msg.TouchedProjectIDs...)
 	if m.dashboard != nil {
-		m.dashboard.Refresh(m.config)
+		m.dashboard.Refresh()
 	}
 	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 }
@@ -189,7 +203,7 @@ func (m *AppModel) reloadProjectByID(projectID string) {
 	if projectID == "" {
 		return
 	}
-	project := m.config.GetProject(projectID)
+	project := m.projectByID(projectID)
 	if project == nil {
 		return
 	}
@@ -201,7 +215,7 @@ func (m *AppModel) reloadProjectByID(projectID string) {
 func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case RefreshOpenLoopsMsg:
-		m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
+		m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
 		return true, nil
 	case TodayClearedBannerClearMsg:
 		m.todayClearedBanner = ""
@@ -214,7 +228,7 @@ func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 	case systemAppearanceCheckMsg:
-		if !m.config.GetAutoTheme() {
+		if !m.runtime.Settings().GetAutoTheme() {
 			return true, nil
 		}
 		detector := m.appearanceDetector
@@ -223,7 +237,7 @@ func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
 		}
 	case systemAppearanceResultMsg:
 		cmd := m.handleAppearanceResult(msg)
-		if m.config.GetAutoTheme() {
+		if m.runtime.Settings().GetAutoTheme() {
 			return true, tea.Batch(cmd, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
 				return systemAppearanceCheckMsg{}
 			}))
@@ -279,7 +293,7 @@ func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 
 func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
 	m.invalidateFilterCaches()
-	m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
+	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
 	m.refreshNotesSearchState()
 	m.refreshProjectTree()
 	if m.allTasksView != nil {

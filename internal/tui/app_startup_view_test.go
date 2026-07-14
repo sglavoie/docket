@@ -12,8 +12,8 @@ import (
 // different start view on top. Unset/invalid StartView resolves to Focus
 // Board so a fresh install lands on the explainable next-action surface.
 func TestResolveStartupNavigation_DefaultsToFocusBoard(t *testing.T) {
-	cfg := &config.Config{}
-	vt, ok := resolveStartupNavigation(cfg.GetStartView())
+	cfg := newTestConfig()
+	vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
 	if !ok {
 		t.Fatalf("expected navigation away from dashboard for unset StartView")
 	}
@@ -23,8 +23,9 @@ func TestResolveStartupNavigation_DefaultsToFocusBoard(t *testing.T) {
 }
 
 func TestResolveStartupNavigation_InvalidValueLandsOnFocusBoard(t *testing.T) {
-	cfg := &config.Config{StartView: "not-a-view"}
-	vt, ok := resolveStartupNavigation(cfg.GetStartView())
+	cfg := newTestConfig()
+	cfg.Machine().StartView = "not-a-view"
+	vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
 	if !ok {
 		t.Fatalf("expected navigation away from dashboard for invalid StartView")
 	}
@@ -36,8 +37,9 @@ func TestResolveStartupNavigation_InvalidValueLandsOnFocusBoard(t *testing.T) {
 // TestResolveStartupNavigation_ExplicitDashboardStaysPut keeps the legacy
 // dashboard-on-boot contract for users who deliberately pinned it.
 func TestResolveStartupNavigation_ExplicitDashboardStaysPut(t *testing.T) {
-	cfg := &config.Config{StartView: "dashboard"}
-	vt, ok := resolveStartupNavigation(cfg.GetStartView())
+	cfg := newTestConfig()
+	cfg.Machine().StartView = "dashboard"
+	vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
 	if ok {
 		t.Fatalf("expected no navigation push for explicit dashboard, got %v", vt)
 	}
@@ -57,8 +59,9 @@ func TestResolveStartupNavigation_HonoursExplicitViews(t *testing.T) {
 		{"due-dates", ViewDueDateOverview},
 	}
 	for _, tc := range cases {
-		cfg := &config.Config{StartView: tc.startView}
-		vt, ok := resolveStartupNavigation(cfg.GetStartView())
+		cfg := newTestConfig()
+		cfg.Machine().StartView = tc.startView
+		vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
 		if !ok {
 			t.Fatalf("StartView=%q: expected navigation push", tc.startView)
 		}

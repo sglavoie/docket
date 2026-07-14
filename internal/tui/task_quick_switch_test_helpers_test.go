@@ -5,11 +5,11 @@ import (
 )
 
 func newTestAppForQuickSwitch() *AppModel {
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	manager := &config.Manager{}
 	return &AppModel{
-		config:        cfg,
 		configManager: manager,
+		runtime:       testRuntimeAt("", cfg),
 	}
 }
 
@@ -20,12 +20,12 @@ func initQuickSwitchFilter(app *AppModel) {
 }
 
 func newTestAppWithPersisterForQuickSwitch() (*AppModel, *MockPersister) {
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	manager := &config.Manager{}
 	mp := NewMockPersister()
 	return &AppModel{
-		config:        cfg,
 		configManager: manager,
 		persister:     mp,
+		runtime:       testRuntimeAt("", cfg),
 	}, mp
 }

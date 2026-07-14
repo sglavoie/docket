@@ -82,7 +82,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		Prefix:      "@ ",
 	})
 
-	if limit := m.config.GetSectionLimit(row.SectionName); limit > 0 && row.SectionCount > limit {
+	if limit := m.runtime.Settings().GetSectionLimit(row.SectionName); limit > 0 && row.SectionCount > limit {
 		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
 	}
 	if row.ProjectID != "" {
@@ -167,7 +167,28 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	cursorPrefix := RenderCursorPrefix(selected, m.queueIDs[task.ID], task.Pinned, task.Dimmed)
 	queueIndicator := m.renderTaskQueueIndicator(task)
 	checkbox := m.renderTaskCheckbox(task)
-	prefixStr, foldIndicator := renderTaskPrefix(row.prefix, foldIndicator)
+	prefixBudget := max(min(rowWidth/3, 12), 4)
+	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator)
+
+	// Preserve a readable title before secondary metadata on narrow/deep rows.
+	// Queue membership, multi-select state, tree position, and workflow state
+	// remain; lower-priority badges are progressively removed as space tightens.
+	titleTarget := min(10, max(rowWidth/4, 4))
+	availableTitleWidth := func() int {
+		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
+	}
+	if availableTitleWidth() < titleTarget {
+		indicators = ""
+	}
+	if availableTitleWidth() < titleTarget {
+		prioritySegment = ""
+	}
+	if availableTitleWidth() < titleTarget {
+		projBadge = ""
+	}
+	if availableTitleWidth() < titleTarget {
+		typeIcon = ""
+	}
 	title := m.renderTaskTitle(task, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
 
 	line := fmt.Sprintf("%s%s%s%s%s%s%s %s %s%s%s",
@@ -268,7 +289,7 @@ func (m *OutlinerModel) renderTaskIndicators(task *models.Task, rowWidth int) st
 		parts = append(parts, parked)
 	}
 	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
-		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
+		if dueStr := formatDueDate(task, m.runtime.Settings().GetTimeFormat()); dueStr != "" {
 			parts = append(parts, dueStr)
 		}
 	}
@@ -295,8 +316,8 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 
 func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.Project) string {
 	var contentParts []string
-	if m.columnConfig.IsVisible(ColScore) && m.config != nil && proj != nil {
-		if profile := m.config.GetProjectScoringProfile(proj.ID); profile != nil {
+	if m.columnConfig.IsVisible(ColScore) && m.runtime != nil && proj != nil {
+		if profile := m.runtime.Automation().GetProjectScoringProfile(proj.ID); profile != nil {
 			if score := RenderScoreBadge(task, profile); score != "" {
 				contentParts = append(contentParts, score)
 			}
@@ -358,6 +379,21 @@ func (m *OutlinerModel) renderTaskCheckbox(task *models.Task) string {
 	return MutedStyle.Render("[ ]") + " "
 }
 
+func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
+	if maxWidth <= 0 || lipgloss.Width(prefix) <= maxWidth {
+		return prefix
+	}
+	runes := []rune(prefix)
+	tailWidth := max(maxWidth-1, 0)
+	if tailWidth == 0 {
+		return "…"
+	}
+	if tailWidth > len(runes) {
+		tailWidth = len(runes)
+	}
+	return "…" + string(runes[len(runes)-tailWidth:])
+}
+
 func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	if foldIndicator == "" && prefix != "" {
 		runes := []rune(prefix)
@@ -370,12 +406,8 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 }
 
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) string {
-	nonTitleWidth := lipgloss.Width(cursorPrefix) + 2 + lipgloss.Width(checkbox) +
-		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
-		lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
-		lipgloss.Width(statusIcon) + 1 +
-		lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
-	availableWidth := max(rowWidth-nonTitleWidth, 10)
+	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
+	availableWidth := max(rowWidth-nonTitleWidth, 1)
 	truncatedTitle := truncateToVisualWidth(task.Title, availableWidth)
 	query := strings.TrimSpace(ExtractSearchTextQuery(m.SearchQuery()))
 	if query == "" {
@@ -386,6 +418,14 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 		return titleStyle.Render(truncatedTitle)
 	}
 	return HighlightText(truncatedTitle, positions, titleStyle)
+}
+
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) int {
+	return lipgloss.Width(cursorPrefix) + 2 + lipgloss.Width(checkbox) +
+		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
+		lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
+		lipgloss.Width(statusIcon) + 1 +
+		lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
 }
 
 func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, proj *models.Project, selected bool, rowWidth, rowIndex int) string {

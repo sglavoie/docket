@@ -212,7 +212,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 // TestSpaceActivatesPeek verifies that space sets peekTask when a cursor task exists.
 func TestSpaceActivatesPeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.viewStack = []ViewType{ViewProjectTree}
 
 	// Simulate space press

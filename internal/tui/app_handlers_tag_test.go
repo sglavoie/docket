@@ -19,7 +19,7 @@ func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
+	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
 	app.allTasksView.multiSelectMode = true
 	app.allTasksView.selectedTasks[taskA.ID] = true
 	app.allTasksView.selectedTasks[taskB.ID] = true

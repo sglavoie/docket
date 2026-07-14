@@ -1,12 +1,14 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // ProjectWorkflowOptions carries the workflow-rule cascade configuration for a
-// project-scoped mutation. It is the project-scoped analogue of
+// project-scoped mutation. It is the project-scoped analog of
 // SingleTaskWorkflowOptions: the ProjectTree and Outliner views perform
 // structural and multi-field mutations (reorder, indent/outdent, reparent, bulk
 // field edits, section moves, paste) on the whole in-memory project rather than
@@ -25,6 +27,9 @@ type ProjectWorkflowOptions struct {
 	// "Task Modified" when empty, mirroring persistWithWorkflow's safety net.
 	UndoAction  string
 	UndoContext string
+	// FocusArtifacts applies set_active side effects to a revision-checked
+	// planning artifact committed with this project mutation.
+	FocusArtifacts WorkflowFocusArtifactBuilder
 }
 
 // CommitProjectWithWorkflow commits an already-mutated project through the
@@ -52,24 +57,38 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 		undoAction = "Task Modified"
 	}
 
+	// The caller supplies an already-mutated project, but its persistence base is
+	// still the exact on-disk document. Load one repository snapshot for every
+	// path (including a bare mutation) so the commit is revision-checked and can
+	// preserve opaque content instead of falling back to last-write-wins.
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return BulkResult{}, err
+	}
+	if snap.ProjectByID(project.ID) == nil {
+		return BulkResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, project.ID)
+	}
+
 	triggerCounts := make(map[string]int)
-	// The legacy TUI save committed with an empty expected revision
-	// (last-write-wins); a bare mutation with no cascade keeps that behavior and
-	// avoids loading a second snapshot on the hot reorder/bulk path.
-	commits := []projectCommit{{project: project, expectedRevision: ""}}
+	var focusChanges []WorkflowFocusChange
+	commits := []projectCommit{{
+		project:          project,
+		expectedRevision: snap.Revision(project.ID),
+		base:             snap.Document(project.ID),
+	}}
 
 	if len(opts.Rules) > 0 {
-		snap, err := s.repo.Snapshot()
-		if err != nil {
-			return BulkResult{}, err
-		}
-		commits[0].expectedRevision = snap.Revision(project.ID)
 		committed := map[string]bool{project.ID: true}
-		added, cerr := s.applyBulkWorkflowCascade(snap, project, opts.Rules, opts.PrevStates, committed, triggerCounts)
+		added, focus, cerr := s.applyBulkWorkflowCascade(snap, project, opts.Rules, opts.PrevStates, committed, triggerCounts)
 		if cerr != nil {
 			return BulkResult{}, cerr
 		}
 		commits = append(commits, added...)
+		focusChanges = append(focusChanges, focus...)
+	}
+	resolvedFocus, err := attachWorkflowFocusArtifacts(commits, focusChanges, opts.FocusArtifacts)
+	if err != nil {
+		return BulkResult{}, err
 	}
 
 	if _, err := s.commitProjects(commits, undoAction, opts.UndoContext); err != nil {
@@ -80,6 +99,7 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 	if len(triggerCounts) > 0 {
 		out.RuleTriggerCounts = triggerCounts
 	}
+	out.FocusChanges = resolvedFocus
 	for _, c := range commits {
 		out.TouchedProjectIDs = append(out.TouchedProjectIDs, c.project.ID)
 	}

@@ -348,7 +348,7 @@ func TestGetCurrentCursorTask_TemporaryOutliner(t *testing.T) {
 	// Create a temporary outliner and register it (simulating the drill-down
 	// from the cross-project outliner). The temporary outliner is NOT stored
 	// in m.outliner — it only lives in the view registry.
-	tempOutliner := NewOutlinerModel(project, app.config, app.configManager)
+	tempOutliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	tempOutliner.SetSize(80, 22)
 	app.views.Register(ViewTemporaryOutliner, tempOutliner)
 	app.pushView(ViewTemporaryOutliner)
@@ -374,7 +374,7 @@ func TestGetCurrentCursorTask_TemporaryOutliner(t *testing.T) {
 func TestHasActiveMultiSelect_TemporaryOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	tempOutliner := NewOutlinerModel(project, app.config, app.configManager)
+	tempOutliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	tempOutliner.SetSize(80, 22)
 	tempOutliner.multiSelectMode = true
 	app.views.Register(ViewTemporaryOutliner, tempOutliner)

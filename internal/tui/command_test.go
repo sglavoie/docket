@@ -368,10 +368,13 @@ func TestGetByCategoryReturnedLengthMatchesExpectedCount(t *testing.T) {
 }
 
 func TestNewAppModelRegistersGlobalCommands(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	manager := &config.Manager{}
 
-	app := NewAppModel(cfg, manager)
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager)
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
 	registry := app.GetCommandRegistry()
 
 	// Verify help command with shortcut "?"
@@ -418,10 +421,13 @@ func TestNewAppModelRegistersGlobalCommands(t *testing.T) {
 }
 
 func TestGlobalCommandHandlersReturnCorrectMessages(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	manager := &config.Manager{}
 
-	app := NewAppModel(cfg, manager)
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager)
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
 	registry := app.GetCommandRegistry()
 
 	// Test help command handler returns ShowHelpMsg

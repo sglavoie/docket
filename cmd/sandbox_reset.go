@@ -44,15 +44,12 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	sandbox, err := sandboxProject(configManager)
-	if err != nil {
-		return err
-	}
+	sandbox := workspace.Runtime.GetSandboxProject()
 	if sandbox == nil {
 		return fmt.Errorf("sandbox project not found")
 	}
@@ -101,10 +98,7 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	// (which still reads the per-project history) can restore the tasks; the
 	// app-layer commit below additionally records the wipe in the workspace
 	// ledger.
-	settings, err := loadSettings(configManager)
-	if err != nil {
-		return err
-	}
+	settings := workspace.Runtime.Settings()
 	undoDepth := 0
 	if settings.UndoHistoryDepth != nil {
 		undoDepth = *settings.UndoHistoryDepth
@@ -115,7 +109,7 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 
 	// The wipe itself (tasks, short-ID counter, sections, tags, pinned tags)
 	// commits through the application layer as one transaction.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	if _, err := withResultRetry(func() (app.ProjectResetResult, error) {
 		return svc.ResetProjectTasks(sandbox.ID)
 	}); err != nil {
@@ -128,11 +122,6 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 		if err := os.RemoveAll(notesDir); err != nil {
 			return fmt.Errorf("failed to clear notes: %w", err)
 		}
-	}
-
-	// Update project in config (for NextShortID persistence)
-	if err := saveConfig(configManager, cfg); err != nil {
-		return err
 	}
 
 	// Build output message

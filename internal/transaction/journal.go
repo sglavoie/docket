@@ -99,8 +99,11 @@ func (j *Journal) ManifestPath(id string) string {
 }
 
 // Prepare validates every operation against the approved workspace roots, stages
-// the replacement bytes for each write beside its target and fsyncs them, then
-// writes the manifest in StatePrepared to the durable transactions directory.
+// and fsyncs the replacement bytes for each write, then writes the manifest in
+// StatePrepared to the durable transactions directory. A write nested below an
+// earlier directory-move target is staged at the corresponding source location,
+// so preparation never occupies the move destination; that move carries the
+// stage to the destination-side path recorded in the manifest.
 // Writing the manifest is the preparation barrier: once it returns successfully
 // every staged artifact it names is durably on disk. If validation, staging, or
 // the manifest write fails, any staging files created by this call are removed
@@ -144,11 +147,12 @@ func (j *Journal) Prepare(ops []Op) (*Manifest, error) {
 				mode = util.FilePermissions
 			}
 			stagePath := j.stagePath(op.Target, id, i)
-			if err := j.stageBytes(stagePath, op.Data, mode); err != nil {
+			preparePath := j.prepareStagePath(stagePath, ops[:i])
+			if err := j.stageBytes(preparePath, op.Data, mode); err != nil {
 				cleanup()
 				return nil, fmt.Errorf("op %d: staging write target %q: %w", i, op.Target, err)
 			}
-			staged = append(staged, stagePath)
+			staged = append(staged, preparePath)
 			fop.Staged = stagePath
 			fop.Hash = hashBytes(op.Data)
 			fop.Mode = mode
@@ -232,13 +236,64 @@ func (j *Journal) withinRoots(path string) bool {
 	return false
 }
 
-// stagePath returns the staging file path beside target for a given transaction
-// id and operation index. Staging beside the target keeps the eventual commit an
-// atomic same-directory rename.
+// stagePath returns the eventual staging file path beside target for a given
+// transaction id and operation index. prepareStagePath may place the bytes below
+// an earlier directory-move source until that move carries them here. Keeping the
+// recorded stage beside the target makes the final write an atomic rename.
 func (j *Journal) stagePath(target, id string, index int) string {
 	dir := filepath.Dir(target)
 	name := fmt.Sprintf("%s%s-%03d%s", stagePrefix, id, index, stageSuffix)
 	return filepath.Join(dir, name)
+}
+
+// prepareStagePath returns where staged bytes must be written before the
+// manifest is durable. Normally that is the final destination-side stage path.
+// When an earlier operation moves a directory that contains the write target,
+// creating that path would occupy the move destination and make the rename fail.
+// Stage at the corresponding location below the existing source instead. The
+// manifest still records finalPath: applying the earlier move carries the stage
+// file to that exact path before applyWrite consumes it. Recovery can therefore
+// restart before or after either rename without special-case replay state.
+func (j *Journal) prepareStagePath(finalPath string, priorOps []Op) string {
+	preparePath := filepath.Clean(finalPath)
+	for i := len(priorOps) - 1; i >= 0; i-- {
+		move := priorOps[i]
+		if move.Kind != OpMove || !directoryMoveSourceExists(move.Source, priorOps[:i]) {
+			continue
+		}
+		if rebased, ok := rebaseDescendant(preparePath, move.Target, move.Source); ok {
+			preparePath = rebased
+		}
+	}
+	return preparePath
+}
+
+// directoryMoveSourceExists reports whether source is a directory before its
+// move runs. Earlier moves are reversed lexically so chained directory moves can
+// still carry later staged writes without creating an as-yet absent source.
+func directoryMoveSourceExists(source string, priorOps []Op) bool {
+	path := filepath.Clean(source)
+	for i := len(priorOps) - 1; i >= 0; i-- {
+		move := priorOps[i]
+		if move.Kind != OpMove {
+			continue
+		}
+		if rebased, ok := rebaseDescendant(path, move.Target, move.Source); ok {
+			path = rebased
+		}
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+// rebaseDescendant maps path from one directory tree to another. It is lexical
+// because the destination commonly does not exist until the transaction applies.
+func rebaseDescendant(path, from, to string) (string, bool) {
+	rel, err := filepath.Rel(filepath.Clean(from), filepath.Clean(path))
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return filepath.Join(filepath.Clean(to), rel), true
 }
 
 // stageBytes durably writes replacement bytes to a staging path, creating its

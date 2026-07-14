@@ -66,6 +66,39 @@ func TestProjectDocumentV2FixedPoint(t *testing.T) {
 	}
 }
 
+// TestProjectDocumentV2SameMinuteUpdatedAtFixedPoint covers timestamps whose
+// in-memory seconds differ but whose persisted minute is identical. The writer
+// must decide whether to emit updated using persisted precision; otherwise the
+// first write contains a redundant updated field that disappears after parse and
+// changes the canonical revision.
+func TestProjectDocumentV2SameMinuteUpdatedAtFixedPoint(t *testing.T) {
+	task := newDocTask(t, "same-minute", 1, models.TaskTypeTask, "Same minute")
+	task.CreatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
+	task.UpdatedAt = time.Date(2026, 7, 13, 10, 15, 55, 0, time.Local)
+	doc := &ProjectDocument{
+		ProjectName:   "Stable timestamps",
+		Sections:      []string{models.SectionNext},
+		SectionColors: map[string]string{},
+		Tasks:         []*models.Task{task},
+		SchemaVersion: SchemaVersionV2,
+	}
+
+	first := doc.WriteV2()
+	if strings.Contains(first, "updated:") {
+		t.Fatalf("same-minute timestamp emitted a non-canonical updated field:\n%s", first)
+	}
+	parsed, err := ParseProjectDocument(first)
+	if err != nil {
+		t.Fatalf("ParseProjectDocument: %v", err)
+	}
+	if second := parsed.WriteV2(); second != first {
+		t.Fatalf("same-minute write not a fixed point:\n--- first ---\n%s\n--- second ---\n%s", first, second)
+	}
+	if parsed.Revision != doc.ComputeRevision() {
+		t.Fatalf("same-minute revision drift: parsed=%s initial=%s", parsed.Revision, doc.ComputeRevision())
+	}
+}
+
 // TestProjectDocumentV1Upgrade verifies a legacy v1 document parses, upgrades to
 // v2, and preserves the derived state and hierarchy.
 func TestProjectDocumentV1Upgrade(t *testing.T) {

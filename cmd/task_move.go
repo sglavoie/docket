@@ -110,7 +110,7 @@ func runTaskHierarchyMove(cmd *cobra.Command, args []string, action, verb string
 	if err != nil {
 		return err
 	}
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func runTaskHierarchyMove(cmd *cobra.Command, args []string, action, verb string
 		return nil
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		switch action {
 		case "up":

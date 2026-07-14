@@ -120,10 +120,11 @@ func newQuickCaptureInterruptFixture(t *testing.T) (*UITestDriver, *uitestWorksp
 		t.Fatalf("NewFixtureDriver: %v", err)
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
-	if len(ws.Config.Projects) == 0 {
+	projects := driver.App().activeProjects()
+	if len(projects) == 0 {
 		t.Fatal("rich fixture should include a project")
 	}
-	return driver, ws, ws.Config.Projects[0]
+	return driver, ws, projects[0]
 }
 
 func openFixtureOutliner(t *testing.T, driver *UITestDriver, project *models.Project) {

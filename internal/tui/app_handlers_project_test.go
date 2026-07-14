@@ -73,7 +73,7 @@ func TestHandleProjectMessagesProjectArchived(t *testing.T) {
 
 func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmWithoutMutation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.dashboard = NewDashboardModel(app.config, app.configManager)
+	app.dashboard = NewDashboardModel(app.runtime)
 	app.views.Register(ViewDashboard, app.dashboard)
 
 	handled, cmd := app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
@@ -154,8 +154,8 @@ func TestHandleProjectMessagesProjectArchiveConfirmedArchivesAndSetsStatus(t *te
 	if !handled {
 		t.Fatal("ProjectArchivedMsg should be handled")
 	}
-	if app.config.CurrentProject != "" {
-		t.Fatalf("CurrentProject = %q, want cleared after archiving current project", app.config.CurrentProject)
+	if app.runtime.Machine().CurrentProject != "" {
+		t.Fatalf("CurrentProject = %q, want cleared after archiving current project", app.runtime.Machine().CurrentProject)
 	}
 	if app.currentProject != nil {
 		t.Fatal("currentProject should be nil after archiving current project")
@@ -297,7 +297,7 @@ func TestHandleProjectMessagesProjectArchiveConfirmedUnarchivesAndSetsStatus(t *
 
 func TestProjectArchiveCommandsReturnRequestsWithoutMutation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	tree := NewProjectTreeModel(project, app.config, app.configManager)
+	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
 
 	result := tree.archiveProject()()
 	msg, ok := result.(ProjectArchiveRequestMsg)
@@ -324,7 +324,7 @@ func TestProjectArchiveCommandsReturnRequestsWithoutMutation(t *testing.T) {
 		t.Fatal("unarchiveProject should not mutate before confirmation")
 	}
 
-	outliner := NewOutlinerModel(project, app.config, app.configManager)
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	result = outliner.archiveProject()()
 	msg, ok = result.(ProjectArchiveRequestMsg)
 	if !ok {
@@ -340,7 +340,7 @@ func TestProjectArchiveCommandsReturnRequestsWithoutMutation(t *testing.T) {
 
 func TestOutlinerCtrlARequestsProjectArchiveConfirmation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	outliner := NewOutlinerModel(project, app.config, app.configManager)
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 
 	_, cmd, handled := outliner.Dispatcher.Dispatch(syntheticCtrlKey('a'))
 	if !handled {
@@ -478,7 +478,7 @@ func TestHandleProjectMessagesProjectDeleted(t *testing.T) {
 		t.Errorf("currentView should be Dashboard after project deleted, got %v", app.currentView())
 	}
 	// Verify project was removed from config
-	for _, p := range app.config.Projects {
+	for _, p := range app.allProjects() {
 		if p.ID == project.ID {
 			t.Error("project should be removed from config.Projects")
 		}
@@ -554,8 +554,8 @@ func TestHandleProjectMessagesTutorDismissed(t *testing.T) {
 	if !handled {
 		t.Error("TutorDismissedMsg should be handled")
 	}
-	if app.statusMessage != "Tutor prompt dismissed" {
-		t.Errorf("statusMessage should be 'Tutor prompt dismissed', got %q", app.statusMessage)
+	if app.statusMessage != "Reference prompt dismissed" {
+		t.Errorf("statusMessage should be 'Reference prompt dismissed', got %q", app.statusMessage)
 	}
 	if cmd == nil {
 		t.Error("TutorDismissedMsg should return a status timeout command")
@@ -619,7 +619,7 @@ func TestHandleProjectMessagesSandboxResetDone(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	app.pendingSandboxReset = true
 	app.pendingSandboxTaskCount = 5
-	app.dashboard = NewDashboardModel(app.config, nil)
+	app.dashboard = NewDashboardModel(app.runtime)
 
 	msg := SandboxResetDoneMsg{TaskCount: 3}
 	handled, cmd := app.handleProjectMessages(msg)

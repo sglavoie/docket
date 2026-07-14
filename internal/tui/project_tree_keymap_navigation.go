@@ -51,7 +51,6 @@ func (b *projectTreeKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowInboxProcessorMsg{Project: project} }
 		},
 		QuickCapture: func() (tea.Model, tea.Cmd) {
-			cfg := m.getConfig()
 			project := m.getProject()
 			suggestedTag := m.singleActiveTag()
 			suggestedSection := m.singleActiveSection()
@@ -59,7 +58,7 @@ func (b *projectTreeKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg {
 				return ShowQuickCaptureMsg{
 					Project:          project,
-					AllProjects:      cfg.Projects,
+					AllProjects:      m.runtime.ActiveProjects(),
 					SuggestedTag:     suggestedTag,
 					SuggestedSection: suggestedSection,
 				}

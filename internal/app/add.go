@@ -122,22 +122,24 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	return s.commitProjectWithArtifacts(ref, revision, req.Artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 }
 
-// buildAddTask validates an AddTaskRequest against a fresh snapshot and appends
-// the fully-constructed task to its project WITHOUT committing, returning the
-// task reference and the revision the project was loaded at. AddTask commits it
-// directly; ApplyTemplate appends the template's child tasks first so the whole
-// template materializes in one transaction.
-func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
+type normalizedAddTaskRequest struct {
+	title    string
+	taskType models.TaskType
+	priority int
+	tags     []string
+}
+
+func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, error) {
 	title := strings.TrimSpace(req.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
-		return TaskRef{}, "", invalidInput("title", err.Error())
+		return normalizedAddTaskRequest{}, invalidInput("title", err.Error())
 	}
 
 	taskType := req.Type
 	if taskType == "" {
 		taskType = models.TaskTypeTask
 	} else if !taskType.IsValid() {
-		return TaskRef{}, "", invalidInput("type", fmt.Sprintf("%q is not a valid task type", taskType))
+		return normalizedAddTaskRequest{}, invalidInput("type", fmt.Sprintf("%q is not a valid task type", taskType))
 	}
 
 	priority := req.Priority
@@ -145,14 +147,27 @@ func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
 		priority = models.PriorityDefault
 	}
 	if err := models.ValidatePriority(priority, false); err != nil {
-		return TaskRef{}, "", invalidInput("priority", err.Error())
+		return normalizedAddTaskRequest{}, invalidInput("priority", err.Error())
 	}
 
 	if req.Section != "" && !models.IsGTDSection(req.Section) {
-		return TaskRef{}, "", invalidInput("section", fmt.Sprintf("%q is not a built-in GTD section; use tags for flexible grouping", req.Section))
+		return normalizedAddTaskRequest{}, invalidInput("section", fmt.Sprintf("%q is not a built-in GTD section; use tags for flexible grouping", req.Section))
 	}
 
-	normalizedTags, err := normalizeTags(req.Tags)
+	tags, err := normalizeTags(req.Tags)
+	if err != nil {
+		return normalizedAddTaskRequest{}, err
+	}
+	return normalizedAddTaskRequest{title: title, taskType: taskType, priority: priority, tags: tags}, nil
+}
+
+// buildAddTask validates an AddTaskRequest against a fresh snapshot and appends
+// the fully-constructed task to its project WITHOUT committing, returning the
+// task reference and the revision the project was loaded at. AddTask commits it
+// directly; ApplyTemplate appends the template's child tasks first so the whole
+// template materializes in one transaction.
+func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
+	normalized, err := normalizeAddTaskRequest(req)
 	if err != nil {
 		return TaskRef{}, "", err
 	}
@@ -176,21 +191,21 @@ func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
 		if parent == nil {
 			return TaskRef{}, "", fmt.Errorf("%w: parent %s", ErrTaskNotFound, *req.ParentID)
 		}
-		if !taskType.CanBeChildOf(parent.Type) {
-			return TaskRef{}, "", invalidInput("parent", fmt.Sprintf("%s cannot be a child of %s", taskType.HeadingPrefix(), parent.Type.HeadingPrefix()))
+		if !normalized.taskType.CanBeChildOf(parent.Type) {
+			return TaskRef{}, "", invalidInput("parent", fmt.Sprintf("%s cannot be a child of %s", normalized.taskType.HeadingPrefix(), parent.Type.HeadingPrefix()))
 		}
 		if parent.Level+1 > models.MaxNestingDepth {
 			return TaskRef{}, "", invalidInput("parent", fmt.Sprintf("nesting under #%d would exceed maximum depth of %d levels", parent.ShortID, models.MaxNestingDepth))
 		}
 	}
 
-	task, err := models.NewTask(s.ids.NewID(), project.GetNextShortID(), taskType, title)
+	task, err := models.NewTask(s.ids.NewID(), project.GetNextShortID(), normalized.taskType, normalized.title)
 	if err != nil {
 		return TaskRef{}, "", invalidInput("title", err.Error())
 	}
-	task.Priority = priority
+	task.Priority = normalized.priority
 	task.Description = req.Description
-	for _, tag := range normalizedTags {
+	for _, tag := range normalized.tags {
 		task.AddTag(tag)
 	}
 	if req.Section != "" {
@@ -261,7 +276,7 @@ func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
 		project.Tasks = append(project.Tasks, task)
 	}
 
-	return TaskRef{Task: task, Project: project}, revision, nil
+	return TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}, revision, nil
 }
 
 // AddTaskWithChildren creates a fully-specified parent task and its subtasks and

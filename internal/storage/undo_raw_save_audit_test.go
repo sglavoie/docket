@@ -15,42 +15,59 @@ import (
 )
 
 const (
-	rawSaveCLIHelper     = "CLI save helper implementation; undo-aware callers use SaveOptions metadata"
-	rawSaveCLIMigration  = "legacy CLI mutation path explicitly allowed while undo coverage is audited; new callsites must use undo metadata"
-	rawSaveRepair        = "repair/side-effect save path outside direct user mutation; excluded from user undo history"
-	rawSaveTUIHelper     = "Persister.Save implementation backing the undo/redo restore reapply path (reapplySideEffects); user mutations commit through the application-layer transaction boundary"
-	rawSaveTUIRecorded   = "sandbox-reset maintenance path: records an undo snapshot before a whole-project clear/reset, not a per-task user-mutation persistence tier"
-	rawSaveRestoreResult = "undo/redo restore result save; not a new user mutation"
-	rawSaveReviewFixture = "tui-test review-harness fixture save into an isolated throwaway temp workspace; never user-visible data, so undo tracking is out of scope"
-	rawSaveAppTestRepo   = "app.Repository Commit fallback used only for non-filesystem test doubles; the production filesystem path commits through the undo-aware transaction journal + workspace ledger, so this raw save never runs against real user data"
+	rawSaveDoctorRepair  = "explicit tt doctor repair rewrites an already-loaded damaged project; it is not an ordinary user mutation"
+	rawSaveRestoreResult = "legacy undo/redo restore reapply writes the restored result; the locked call graph below restricts access to restore commands"
+	rawSaveTUIHelper     = "ProjectService Persister.Save implementation is injected only into the locked TUI undo/redo restore reapply chain"
+	rawSaveStartupRepair = "TUI startup persists parser auto-repairs only when the loaded project reports repair warnings"
+	rawSaveReviewFixture = "TUI scenario fixture seeds an isolated throwaway workspace before the app runs; it cannot target user data"
+	rawSaveAppTestRepo   = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
 )
 
 var rawProjectSaveAllowlist = map[string]string{
-	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":                         rawSaveAppTestRepo,
-	"cmd/app_service.go:(*cliRepository).RawSaveProject:storage.SaveProject(project)":                    rawSaveRepair,
-	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":                                   rawSaveRepair,
-	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                         rawSaveRepair,
-	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":                      rawSaveRepair,
-	"cmd/project_delete.go:cleanCrossProjectRefs:storage.SaveProjectLocked(p)":                           rawSaveRepair,
-	"cmd/project_edit.go:runProjectEdit:storage.SaveProjectLocked(project)":                              rawSaveCLIMigration,
-	"cmd/project_edit.go:updateCrossProjectRefs:storage.SaveProjectLocked(p)":                            rawSaveRepair,
-	"cmd/project_ops.go:SaveProject:storage.SaveProject(project)":                                        rawSaveCLIHelper,
-	"cmd/project_ops.go:processDeferredMovesWithUndo:storage.SaveProject(destProject)":                   rawSaveCLIMigration,
-	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":                                 rawSaveRestoreResult,
-	"internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)":                                  rawSaveRepair,
-	"internal/tui/app_run.go:evaluateWorkflowAtStartup:storage.SaveProjectLocked(project)":               rawSaveRepair,
-	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)":         rawSaveAppTestRepo,
-	"internal/tui/handler_project.go:(*AppModel).executeSandboxReset:storage.SaveProjectLocked(sandbox)": rawSaveTUIRecorded,
-	"internal/tui/project_service.go:(*ProjectService).Save:storage.SaveProjectLocked(project)":          rawSaveTUIHelper,
-	"internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)":                 rawSaveRestoreResult,
-	"internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)":         rawSaveReviewFixture,
+	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":                 rawSaveAppTestRepo,
+	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":                           rawSaveDoctorRepair,
+	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                 rawSaveDoctorRepair,
+	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":              rawSaveDoctorRepair,
+	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":                         rawSaveRestoreResult,
+	"internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)":                          rawSaveStartupRepair,
+	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
+	"internal/tui/project_service.go:(*ProjectService).Save:storage.SaveProjectLocked(project)":  rawSaveTUIHelper,
+	"internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)":         rawSaveRestoreResult,
+	"internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)": rawSaveReviewFixture,
+}
+
+// rawRestoreCallGraph is the complete production caller graph between the
+// legacy restore entry points and the two raw-save reapply helpers. Locking the
+// direct raw callsite alone is insufficient: an ordinary mutation could call a
+// privileged wrapper and inherit its bypass. These edges make that reachability
+// change fail closed.
+var rawRestoreCallGraph = map[string]map[string]bool{
+	"reapplySideEffectsAndSave": {
+		"cmd/undo.go:reapplyRestoreSideEffectsAndSave": true,
+	},
+	"reapplyRestoreSideEffectsAndSave": {
+		"cmd/redo.go:runLegacyRedo": true,
+		"cmd/undo.go:runLegacyUndo": true,
+	},
+	"reapplySideEffects": {
+		"internal/tui/shared_task_ops_persist.go:reloadAndReapplyRestoredProjects": true,
+	},
+	"reloadAndReapplyRestoredProjects": {
+		"internal/tui/shared_task_ops_persist.go:performRedoForProjectsCmd": true,
+		"internal/tui/shared_task_ops_persist.go:performUndoForProjectsCmd": true,
+	},
 }
 
 func TestRawProjectSaveCallsitesAreAllowlisted(t *testing.T) {
 	root := findRepoRootForUndoAudit(t)
+	// Scan the same production boundary as the config-facade census: cmd/ and
+	// every internal/ package (not just internal/tui/). This catches any raw
+	// project save that appears anywhere in production. The final allowlist is
+	// intentionally narrow: stale entries fail and restore wrappers have their
+	// caller graph locked below.
 	calls := collectRawProjectSaveCalls(t, root, []string{
 		filepath.Join(root, "cmd"),
-		filepath.Join(root, "internal", "tui"),
+		filepath.Join(root, "internal"),
 	})
 
 	actual := make(map[string]rawProjectSaveCall, len(calls))
@@ -99,6 +116,74 @@ func TestRawProjectSaveAllowlistReasonsAreExplicit(t *testing.T) {
 		if strings.Contains(lower, "todo") || strings.Contains(lower, "tbd") || strings.Contains(lower, "not yet") {
 			t.Fatalf("%s has a placeholder raw-save allowlist reason: %q", key, reason)
 		}
+	}
+}
+
+func TestRawRestoreHelpersAreReachableOnlyFromRestoreCallGraph(t *testing.T) {
+	root := findRepoRootForUndoAudit(t)
+	actual := make(map[string]map[string]bool, len(rawRestoreCallGraph))
+	for target := range rawRestoreCallGraph {
+		actual[target] = make(map[string]bool)
+	}
+	for _, dir := range []string{filepath.Join(root, "cmd"), filepath.Join(root, "internal", "tui")} {
+		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			fset := token.NewFileSet()
+			file, parseErr := parser.ParseFile(fset, path, nil, 0)
+			if parseErr != nil {
+				return parseErr
+			}
+			rel := slashPath(t, root, path)
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil {
+					continue
+				}
+				caller := rel + ":" + auditFuncName(fset, fn)
+				ast.Inspect(fn.Body, func(node ast.Node) bool {
+					call, ok := node.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					id, ok := call.Fun.(*ast.Ident)
+					if !ok {
+						return true
+					}
+					if _, tracked := rawRestoreCallGraph[id.Name]; tracked {
+						actual[id.Name][caller] = true
+					}
+					return true
+				})
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk restore call graph %s: %v", dir, err)
+		}
+	}
+
+	var unexpected, stale []string
+	for target, callers := range actual {
+		for caller := range callers {
+			if !rawRestoreCallGraph[target][caller] {
+				unexpected = append(unexpected, target+" <- "+caller)
+			}
+		}
+		for caller := range rawRestoreCallGraph[target] {
+			if !callers[caller] {
+				stale = append(stale, target+" <- "+caller)
+			}
+		}
+	}
+	if len(unexpected) != 0 || len(stale) != 0 {
+		sort.Strings(unexpected)
+		sort.Strings(stale)
+		t.Fatalf("raw restore helper call graph drifted; unexpected=%v stale=%v", unexpected, stale)
 	}
 }
 

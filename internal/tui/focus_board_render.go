@@ -22,7 +22,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 
 	if m.focusMode == focusModeTunnel {
 		// Tunnel mode: show current task as header, hide tab bar
-		titleContent := fullscreenTitleStyle(m.AccentColor()).Render("Focus Mode")
+		titleContent := fullscreenTitleStyle(m.AccentColor()).Render("Tunnel Mode")
 		if row := m.getRowAtCursor(); row != nil && row.Task != nil {
 			titleContent = fullscreenTitleStyle(m.AccentColor()).Render("Currently: ") +
 				TaskTitleStyleFor(row.Task, TaskTitleStyleOptions{}).Render(row.Task.Title)
@@ -163,8 +163,8 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			emptyContent = MutedStyle.Render("  " + EmptyStateClosed)
 		} else if len(m.rows) == 0 {
 			if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
-				emptyContent = renderContextualEmptyState("  "+EmptyStateNoTasks,
-					[]string{";i capture", ";q backlog", ": commands", "? help"})
+				emptyContent = m.withOnboardingGuide(renderContextualEmptyState("  "+EmptyStateNoTasks,
+					[]string{";i capture", ";q backlog", ": commands", "? help"}))
 			} else {
 				emptyContent = renderEmptyState("  "+EmptyStateNoTasks, "  Press a to add a task, or mark tasks as active in a project.")
 			}

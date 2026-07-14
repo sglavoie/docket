@@ -258,10 +258,23 @@ func subTabForField(focusIndex int) int {
 
 // SettingsModel handles the settings view in the TUI.
 type SettingsModel struct {
-	config        *config.Config
-	configManager *config.Manager
-	// coordinator routes the durable config write through the secondary
-	// feature-coordinator seam (feature_coordinator_secondary.go).
+	// runtime is the domain-native snapshot the editor reads its initial values
+	// from and commits back through. manager is retained only for theme-preset
+	// file I/O (ListThemes/WriteTheme/DeleteTheme) and the workspace-location
+	// label; the editor never reads or saves config.Config through it.
+	runtime *config.RuntimeState
+	manager *config.Manager
+	// baseSettings/baseMachine are value copies of the settings and machine-local
+	// domains captured when the editor opens. The editor mutates only the fields
+	// its widgets own onto copies of these at save time, so untouched domain
+	// fields (fzf/glow toggles, histories, navigation, cross-outliner state) are
+	// preserved through a domain-scoped commit.
+	baseSettings config.Settings
+	baseMachine  config.MachineState
+	// coordinator routes the durable settings/machine write through the secondary
+	// feature-coordinator seam (feature_coordinator_secondary.go), which commits
+	// only those two domains under a revision check and refreshes the runtime
+	// snapshot on success.
 	coordinator SettingsCoordinator
 
 	// workspaceLocation/workspaceStorage are read-only, captured when the
@@ -395,15 +408,14 @@ type SettingsModel struct {
 	// save/toggle operations so settings save does not silently strip them.
 	activeHiddenDimmed [3]string
 
-	tabs               TabState
-	subTab             int  // active sub-tab index within current old tab (field routing)
-	subTabRowFocused   bool // true when shift+left/right navigates sub-tabs instead of main tabs
-	visualTab          int  // active visual tab (0-4), for tab bar display
-	visualSubTab       int  // active sub-tab within the visual tab, for sub-tab bar display
-	focusIndex         int  // 0=editor .. 74=outlinerColumnDefaults, 75-89=alert settings, 90=stages, 91=appearance
-	scrollOffset       int  // vertical scroll offset within current tab content
-	validationErr      string
-	stageValidationErr string // timed error shown in stages tab (auto-clears)
+	tabs             TabState
+	subTab           int  // active sub-tab index within current old tab (field routing)
+	subTabRowFocused bool // true when shift+left/right navigates sub-tabs instead of main tabs
+	visualTab        int  // active visual tab (0-4), for tab bar display
+	visualSubTab     int  // active sub-tab within the visual tab, for sub-tab bar display
+	focusIndex       int  // 0=editor .. 74=outlinerColumnDefaults, 75-89=alert settings, 90=stages, 91=appearance
+	scrollOffset     int  // vertical scroll offset within current tab content
+	validationErr    string
 
 	width  int
 	height int

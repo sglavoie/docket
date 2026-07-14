@@ -19,20 +19,20 @@ import (
 // preserved across the move, so destination metadata references the same
 // filenames; the on-disk files must follow the task to the new project.
 func TestRunTaskMoveTo_MovesAttachmentFiles(t *testing.T) {
-	deps, sourceProject := testutil.SetupTestDepsWithProject(t, "Source Project")
+	deps, sourceProject := setupTestDepsWithProject(t, "Source Project")
 	defer deps.Cleanup()
 
 	// Build a destination project rooted at a real path under the test data dir.
 	destProject := testutil.NewTestProject("Dest Project")
-	destProject.Path = deps.Config.GetProjectPath(destProject.Slug)
-	deps.Config.Projects = append(deps.Config.Projects, destProject)
+	destProject.Path = deps.Config.ProjectPath(destProject.Slug)
+	addTestProject(deps.Config, destProject)
 	deps.Repository.Projects[destProject.ID] = destProject
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 
@@ -377,14 +377,14 @@ func TestMoveTaskToProject_UpdatesConfigReferences(t *testing.T) {
 	sourceProject.NextShortID++
 
 	// Set up config with the task in FocusQueue, DailyPlan, and RecentTaskVisits
-	cfg := config.NewConfig()
-	cfg.FocusQueue = []config.FocusQueueItem{
+	domains := config.NewDomains()
+	domains.Planning.FocusQueue = []config.FocusQueueItem{
 		{TaskID: task.ID, ProjectID: sourceProject.ID},
 	}
-	cfg.DailyPlan = []config.DailyPlanItem{
+	domains.Planning.DailyPlan = []config.DailyPlanItem{
 		{TaskID: task.ID, ProjectID: sourceProject.ID, PlannedDate: "2026-04-13"},
 	}
-	cfg.RecentTaskVisits = []config.RecentTaskVisit{
+	domains.Machine.RecentTaskVisits = []config.RecentTaskVisit{
 		{TaskID: task.ID, ProjectID: sourceProject.ID},
 	}
 
@@ -399,19 +399,20 @@ func TestMoveTaskToProject_UpdatesConfigReferences(t *testing.T) {
 	for _, mt := range result.MovedTasks {
 		movedTaskIDs[mt.ID] = true
 	}
-	updated := cfg.ReassignTaskProject(movedTaskIDs, destProject.ID)
+	updated := domains.Planning.ReassignDurablePlanningProject(movedTaskIDs, destProject.ID)
+	updated += domains.Machine.ReassignRecentVisitsProject(movedTaskIDs, destProject.ID)
 
 	if updated != 3 {
 		t.Fatalf("expected 3 config entries updated, got %d", updated)
 	}
-	if cfg.FocusQueue[0].ProjectID != destProject.ID {
-		t.Errorf("FocusQueue not updated: got %s, want %s", cfg.FocusQueue[0].ProjectID, destProject.ID)
+	if domains.Planning.FocusQueue[0].ProjectID != destProject.ID {
+		t.Errorf("FocusQueue not updated: got %s, want %s", domains.Planning.FocusQueue[0].ProjectID, destProject.ID)
 	}
-	if cfg.DailyPlan[0].ProjectID != destProject.ID {
-		t.Errorf("DailyPlan not updated: got %s, want %s", cfg.DailyPlan[0].ProjectID, destProject.ID)
+	if domains.Planning.DailyPlan[0].ProjectID != destProject.ID {
+		t.Errorf("DailyPlan not updated: got %s, want %s", domains.Planning.DailyPlan[0].ProjectID, destProject.ID)
 	}
-	if cfg.RecentTaskVisits[0].ProjectID != destProject.ID {
-		t.Errorf("RecentTaskVisits not updated: got %s, want %s", cfg.RecentTaskVisits[0].ProjectID, destProject.ID)
+	if domains.Machine.RecentTaskVisits[0].ProjectID != destProject.ID {
+		t.Errorf("RecentTaskVisits not updated: got %s, want %s", domains.Machine.RecentTaskVisits[0].ProjectID, destProject.ID)
 	}
 }
 

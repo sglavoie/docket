@@ -37,7 +37,7 @@ func init() {
 }
 
 func runProjectPurge(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 
 	// If no args, list trashed projects
 	if len(args) == 0 {
-		return listTrashedProjects(cfg)
+		return listTrashedProjects(workspace.Runtime.DataDir())
 	}
 
 	ref := args[0]
@@ -59,7 +59,7 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 
 	// Resolve the trash entry, requiring an explicit entry ID when more than one
 	// deleted generation shares a slug.
-	entry, err := resolveTrashEntry(cfg.DataDir, ref)
+	entry, err := resolveTrashEntry(workspace.Runtime.DataDir(), ref)
 	if err != nil {
 		return err
 	}
@@ -75,9 +75,9 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 	// Route the purge through the application layer: the trash entry's whole subtree
 	// is removed as ONE atomic journaled transaction (files first, then directories
 	// deepest-first, all contained within the approved roots). This is irreversible.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	if _, err := svc.PurgeProject(app.PurgeProjectRequest{
-		DataDir: cfg.DataDir,
+		DataDir: workspace.Runtime.DataDir(),
 		EntryID: entry.EntryID,
 		Slug:    entry.Slug,
 		Confirm: true,

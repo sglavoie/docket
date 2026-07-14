@@ -91,7 +91,7 @@ func TestEstimateDuration_StoryZeroPoints_DefaultFallback(t *testing.T) {
 func TestTotalRemainingDays_SumsIncompleteChildren(t *testing.T) {
 	parent := &models.Task{
 		Children: []*models.Task{
-			{WorkflowState: models.StateReady, TaskAttrs: &models.TaskAttrs{Effort: models.EffortSmall}},       // 0.5
+			{WorkflowState: models.StateReady, TaskAttrs: &models.TaskAttrs{Effort: models.EffortSmall}},      // 0.5
 			{WorkflowState: models.StateInProgress, TaskAttrs: &models.TaskAttrs{Effort: models.EffortLarge}}, // 3.0
 			{WorkflowState: models.StateDone}, // skip
 		},

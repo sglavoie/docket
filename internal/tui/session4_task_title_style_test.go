@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -21,7 +20,7 @@ func TestGlobalSearchTaskRowHighlightUsesPriorityTitleStyle(t *testing.T) {
 	task.Priority = 1
 	project := &models.Project{Slug: "proj", Name: "Project"}
 	m := &GlobalSearchModel{
-		config:    config.NewConfig(),
+		runtime:   newTestConfig(),
 		listWidth: 100,
 		cursor:    1,
 	}

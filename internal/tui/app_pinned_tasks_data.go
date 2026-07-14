@@ -18,7 +18,7 @@ type pinnedTaskInfo struct {
 }
 
 func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
-	projects := m.config.GetActiveProjects()
+	projects := m.activeProjects()
 	var pinned []pinnedTaskInfo
 
 	for _, project := range projects {

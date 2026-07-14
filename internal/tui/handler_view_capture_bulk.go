@@ -10,7 +10,17 @@ import (
 func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowQuickCaptureMsg:
-		if msg.Project != nil {
+		// All quick-capture entry points share the visible system Inbox as their
+		// default. Selecting another destination is optional via %project inside
+		// the capture input, so no project-picker pre-step is required.
+		project := m.projectByID(m.runtime.Catalog().SystemInboxProjectID)
+		// Isolated view tests intentionally use an in-memory runtime without a
+		// bootstrapped workspace; retain their supplied project as a non-durable
+		// fallback while real workspaces always resolve the system identity above.
+		if project == nil {
+			project = msg.Project
+		}
+		if project != nil {
 			var parts []string
 			if msg.SuggestedTag != "" {
 				parts = append(parts, "#"+msg.SuggestedTag)
@@ -19,7 +29,11 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 				parts = append(parts, "/"+msg.SuggestedSection)
 			}
 			initialText := strings.Join(parts, " ")
-			model := NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture, initialText)
+			allProjects := m.activeProjects()
+			if len(allProjects) == 0 {
+				allProjects = msg.AllProjects
+			}
+			model := NewQuickCaptureModel(project, allProjects, false, initialText)
 			m.showView(ViewQuickCapture, model)
 		}
 		return true, nil

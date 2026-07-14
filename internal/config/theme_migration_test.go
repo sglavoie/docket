@@ -1,14 +1,9 @@
 package config
 
-import (
-	"encoding/json"
-	"os"
-	"path/filepath"
-	"testing"
-)
+import "testing"
 
 func TestMigratePaletteToThemes_FromLegacy(t *testing.T) {
-	cfg := &Config{
+	cfg := &Settings{
 		TUIBackgroundColor: "#111111",
 		TUICursorColor:     "#222222",
 		TUICursorTextColor: "#333333",
@@ -67,7 +62,7 @@ func TestMigratePaletteToThemes_FromLegacy(t *testing.T) {
 }
 
 func TestMigratePaletteToThemes_Idempotent(t *testing.T) {
-	cfg := &Config{
+	cfg := &Settings{
 		TUIBackgroundColor: "#111111",
 		Palette:            PaletteColors{Primary: "#0000ff"},
 	}
@@ -99,7 +94,7 @@ func TestActiveThemeConfig(t *testing.T) {
 	dark := Theme{BackgroundColor: "#000000", Palette: PaletteColors{Primary: "#aaaaaa"}}
 	light := DefaultLightTheme()
 
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeDark:  dark,
 		ThemeLight: light,
 	}
@@ -126,7 +121,7 @@ func TestActiveThemeConfig(t *testing.T) {
 }
 
 func TestMigratePaletteToThemes_FreshConfig_SetsRev(t *testing.T) {
-	cfg := &Config{}
+	cfg := &Settings{}
 
 	changed := cfg.MigratePaletteToThemes()
 	if !changed {
@@ -144,7 +139,7 @@ func TestMigratePaletteToThemes_FreshConfig_SetsRev(t *testing.T) {
 
 func TestMigratePaletteToThemes_StaleRev_ForceRefresh(t *testing.T) {
 	customTheme := Theme{BackgroundColor: "#aabbcc", Palette: PaletteColors{Primary: "#001122"}}
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeLight:    customTheme,
 		ThemeLightRev: 0, // stale
 		ActiveTheme:   "light",
@@ -166,7 +161,7 @@ func TestMigratePaletteToThemes_StaleRev_ForceRefresh(t *testing.T) {
 }
 
 func TestMigratePaletteToThemes_StaleRev1DarkDefaults_Refreshes(t *testing.T) {
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeDark:     defaultDarkThemeRev1(),
 		ThemeDarkName: "tokyo-night",
 		ThemeDarkRev:  1,
@@ -195,7 +190,7 @@ func TestMigratePaletteToThemes_StaleRev1DarkDefaults_Refreshes(t *testing.T) {
 func TestMigratePaletteToThemes_StaleCustomDarkTheme_PreservesAndMarksCurrent(t *testing.T) {
 	customTheme := defaultDarkThemeRev1()
 	customTheme.Palette.Muted = "#99aabb"
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeDark:     customTheme,
 		ThemeDarkName: "custom-dark",
 		ThemeDarkRev:  1,
@@ -225,7 +220,7 @@ func TestMigratePaletteToThemes_StaleCustomDarkTheme_PreservesAndMarksCurrent(t 
 
 func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
 	light := DefaultLightTheme()
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeLight:    light,
 		ThemeLightRev: LightThemeDefaultsRev,
 		ThemeDark:     Theme{BackgroundColor: "#000000"},
@@ -247,7 +242,7 @@ func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
 }
 
 func TestMigratePaletteToThemes_InvalidActiveThemeDefaultsDark(t *testing.T) {
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeDark:     DefaultDarkTheme(),
 		ThemeDarkRev:  DarkThemeDefaultsRev,
 		ThemeLight:    DefaultLightTheme(),
@@ -269,7 +264,7 @@ func TestMigratePaletteToThemes_ClearsStaleLegacyFields(t *testing.T) {
 	// a hand edit or partial migration). The migration must drop the stale
 	// legacy data so it stops round-tripping through Save.
 	existingDark := Theme{BackgroundColor: "#222222", Palette: PaletteColors{Primary: "#abcdef"}}
-	cfg := &Config{
+	cfg := &Settings{
 		ThemeDark:          existingDark,
 		ThemeDarkRev:       DarkThemeDefaultsRev,
 		ThemeLight:         DefaultLightTheme(),
@@ -307,122 +302,5 @@ func TestMigratePaletteToThemes_ClearsStaleLegacyFields(t *testing.T) {
 	// Second call must be a no-op (idempotent).
 	if cfg.MigratePaletteToThemes() {
 		t.Error("expected second call to be a no-op")
-	}
-}
-
-func TestConfigVersionBump_V1toV2(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "v1-config.json")
-
-	// Write a v1 config with legacy palette fields.
-	v1 := map[string]any{
-		"version":              1,
-		"data_dir":             tmpDir,
-		"editor":               "vim",
-		"default_context":      "work",
-		"tui_background_color": "#abcdef",
-		"palette": map[string]any{
-			"primary": "#123456",
-		},
-		"projects": []any{},
-	}
-	data, err := json.MarshalIndent(v1, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal v1 config: %v", err)
-	}
-	if wErr := os.WriteFile(configPath, data, 0o600); wErr != nil {
-		t.Fatalf("write v1 config: %v", wErr)
-	}
-
-	manager := NewManager(configPath)
-	cfg, err := manager.Load()
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
-	}
-
-	// Version must be bumped to the current schema.
-	if cfg.Version != CurrentConfigVersion {
-		t.Errorf("Version = %d, want %d", cfg.Version, CurrentConfigVersion)
-	}
-
-	// Legacy fields must be gone.
-	if cfg.TUIBackgroundColor != "" {
-		t.Errorf("TUIBackgroundColor should be empty after migration, got %q", cfg.TUIBackgroundColor)
-	}
-	if cfg.Palette != (PaletteColors{}) {
-		t.Errorf("Palette should be empty after migration, got %+v", cfg.Palette)
-	}
-
-	// ThemeDark must have the legacy values.
-	if cfg.ThemeDark.BackgroundColor != "#abcdef" {
-		t.Errorf("ThemeDark.BackgroundColor = %q, want #abcdef", cfg.ThemeDark.BackgroundColor)
-	}
-	if cfg.ThemeDark.Palette.Primary != "#123456" {
-		t.Errorf("ThemeDark.Palette.Primary = %q, want #123456", cfg.ThemeDark.Palette.Primary)
-	}
-
-	// ThemeLight must be curated.
-	light := DefaultLightTheme()
-	if cfg.ThemeLight.BackgroundColor != light.BackgroundColor {
-		t.Errorf("ThemeLight.BackgroundColor = %q, want %q", cfg.ThemeLight.BackgroundColor, light.BackgroundColor)
-	}
-
-	// active_theme must be "dark".
-	if cfg.ActiveTheme != "dark" {
-		t.Errorf("ActiveTheme = %q, want dark", cfg.ActiveTheme)
-	}
-
-	// Reload — must be stable (no re-migration).
-	cfg2, err := manager.Load()
-	if err != nil {
-		t.Fatalf("second Load failed: %v", err)
-	}
-	if cfg2.Version != CurrentConfigVersion {
-		t.Errorf("second load Version = %d, want %d", cfg2.Version, CurrentConfigVersion)
-	}
-	if cfg2.ThemeDark.BackgroundColor != "#abcdef" {
-		t.Errorf("second load ThemeDark.BackgroundColor = %q, want #abcdef", cfg2.ThemeDark.BackgroundColor)
-	}
-}
-
-func TestConfigLoad_NormalizesInvalidActiveTheme(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "invalid-active-theme.json")
-
-	raw := map[string]any{
-		"version":         CurrentConfigVersion,
-		"data_dir":        tmpDir,
-		"editor":          "vim",
-		"default_context": "personal",
-		"projects":        []any{},
-		"theme_dark":      DefaultDarkTheme(),
-		"theme_dark_rev":  DarkThemeDefaultsRev,
-		"theme_light":     DefaultLightTheme(),
-		"theme_light_rev": LightThemeDefaultsRev,
-		"active_theme":    "sepia",
-	}
-	data, err := json.MarshalIndent(raw, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal config: %v", err)
-	}
-	if err = os.WriteFile(configPath, data, 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
-
-	manager := NewManager(configPath)
-	cfg, err := manager.Load()
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
-	}
-	if cfg.ActiveTheme != "dark" {
-		t.Errorf("ActiveTheme = %q, want dark", cfg.ActiveTheme)
-	}
-
-	reloaded, err := manager.Load()
-	if err != nil {
-		t.Fatalf("second Load failed: %v", err)
-	}
-	if reloaded.ActiveTheme != "dark" {
-		t.Errorf("second load ActiveTheme = %q, want dark", reloaded.ActiveTheme)
 	}
 }

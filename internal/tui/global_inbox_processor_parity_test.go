@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -50,17 +49,18 @@ func TestRenderInboxTaskDisplay_ProjectNameVisibility(t *testing.T) {
 		Tags:          []string{},
 		DependsOn:     []string{},
 	}
-	cfg := &config.Config{SectionColors: map[string]string{}}
+	cfg := newTestConfig()
+	cfg.Settings().SectionColors = map[string]string{}
 
 	t.Run("global mode shows project line", func(t *testing.T) {
-		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, "Backend API", cfg))
+		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, "Backend API", cfg.Settings()))
 		if !strings.Contains(out, "Project: Backend API") {
 			t.Fatalf("expected 'Project: Backend API' line in global render, got:\n%s", out)
 		}
 	})
 
 	t.Run("local mode omits project line", func(t *testing.T) {
-		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, "", cfg))
+		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, "", cfg.Settings()))
 		if strings.Contains(out, "Project:") {
 			t.Fatalf("expected no 'Project:' line in local render, got:\n%s", out)
 		}

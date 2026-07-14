@@ -199,7 +199,8 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 	}
 
 	rule := &m.filteredRules[m.cursor]
-	enabled, found := m.config.ToggleWorkflowRule(rule.ID)
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	enabled, found := automation.ToggleWorkflowRule(rule.ID)
 	if !found {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("rule not found")} }
 	}
@@ -212,7 +213,7 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 		}
 	}
 
-	return m.coordinator.SaveThen(m.config, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
+	return m.coordinator.SaveThen(automation, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
 }
 
 func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
@@ -224,7 +225,8 @@ func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
 	newPriority := min(max(rule.Priority+delta, 0), 99)
 	rule.Priority = newPriority
 
-	configRule := m.config.GetWorkflowRule(rule.ID)
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	configRule := automation.GetWorkflowRule(rule.ID)
 	if configRule == nil {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("rule not found")} }
 	}
@@ -237,7 +239,7 @@ func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
 		}
 	}
 
-	return m.coordinator.SaveThen(m.config, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
+	return m.coordinator.SaveThen(automation, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
 }
 
 func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
@@ -246,14 +248,15 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 	}
 
 	rule := m.filteredRules[m.cursor]
-	if !m.config.DeleteWorkflowRule(rule.ID) {
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	if !automation.DeleteWorkflowRule(rule.ID) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("rule not found")} }
 	}
 
-	defaultRules, customRules := m.config.GetWorkflowRulesSorted()
+	defaultRules, customRules := automation.GetWorkflowRulesSorted()
 	m.allRules = append(defaultRules, customRules...)
 	m.defaultCount = len(defaultRules)
 	m.filterRules()
 
-	return m.coordinator.SaveThen(m.config, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
+	return m.coordinator.SaveThen(automation, func() tea.Msg { return WorkflowRulesUpdatedMsg{} })
 }

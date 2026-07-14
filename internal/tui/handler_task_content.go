@@ -23,7 +23,7 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 		return true, errorCmd("%s", err)
 	}
 
-	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
 	if editorErr != nil {
 		_ = os.Remove(tmpPath)
 		return true, errorCmd("%s", editorErr)
@@ -85,12 +85,12 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 				// Refresh task editor view first if it's open, sourcing the fresh
 				// task from the reloaded project so it reflects the committed edit.
 				if m.currentView() == ViewTaskForm {
-					reloaded := m.config.GetProject(res.ProjectID)
+					reloaded := m.projectByID(res.ProjectID)
 					if reloaded == nil {
 						reloaded = msg.Project
 					}
 					current := reloaded.GetTaskByID(msg.Task.ID)
-					taskEditor := NewTaskFormModelEdit(reloaded, current, m.config, m.configManager)
+					taskEditor := NewTaskFormModelEdit(reloaded, current, m.runtime)
 					taskEditor.SetSize(m.width, m.height-2)
 					m.views.Register(ViewTaskForm, taskEditor)
 				}
@@ -102,7 +102,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	if m.currentView() == ViewTaskForm && msg.Task != nil {
 		current := msg.Project.GetTaskByID(msg.Task.ID)
 		if current != nil {
-			taskEditor := NewTaskFormModelEdit(msg.Project, current, m.config, m.configManager)
+			taskEditor := NewTaskFormModelEdit(msg.Project, current, m.runtime)
 			taskEditor.SetSize(m.width, m.height-2)
 			m.views.Register(ViewTaskForm, taskEditor)
 		}

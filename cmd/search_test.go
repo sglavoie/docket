@@ -13,14 +13,14 @@ import (
 
 func TestSearchFindsTasks(t *testing.T) {
 	t.Run("finds matching tasks in title", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -43,14 +43,14 @@ func TestSearchFindsTasks(t *testing.T) {
 	})
 
 	t.Run("finds matching tasks in description", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -70,14 +70,14 @@ func TestSearchFindsTasks(t *testing.T) {
 	})
 
 	t.Run("search is case-insensitive", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -98,30 +98,30 @@ func TestSearchFindsTasks(t *testing.T) {
 
 func TestSearchAcrossProjects(t *testing.T) {
 	t.Run("searches multiple projects with --all flag", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		project1 := testutil.NewTestProject("Project One")
-		project1.Path = deps.Config.DataDir + "/project-one"
+		project1.Path = deps.Config.DataDir() + "/project-one"
 		task1 := testutil.NewTestTask("Searchterm in project one", models.TaskTypeTask)
 		project1.Tasks = append(project1.Tasks, task1)
 
 		project2 := testutil.NewTestProject("Project Two")
-		project2.Path = deps.Config.DataDir + "/project-two"
+		project2.Path = deps.Config.DataDir() + "/project-two"
 		project2.Archived = true
 		task2 := testutil.NewTestTask("Searchterm in archived project", models.TaskTypeTask)
 		project2.Tasks = append(project2.Tasks, task2)
 
-		deps.Config.Projects = []*models.Project{project1, project2}
-		deps.Config.CurrentProject = project1.ID
+		setTestProjects(deps.Config, []*models.Project{project1, project2})
+		deps.Config.Machine().CurrentProject = project1.ID
 		deps.Repository.Projects[project1.ID] = project1
 		deps.Repository.Projects[project2.ID] = project2
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -140,30 +140,30 @@ func TestSearchAcrossProjects(t *testing.T) {
 	})
 
 	t.Run("excludes archived projects without --all flag", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		project1 := testutil.NewTestProject("Active Project")
-		project1.Path = deps.Config.DataDir + "/active-project"
+		project1.Path = deps.Config.DataDir() + "/active-project"
 		task1 := testutil.NewTestTask("Activeonlyterm in active", models.TaskTypeTask)
 		project1.Tasks = append(project1.Tasks, task1)
 
 		project2 := testutil.NewTestProject("Archived Project")
-		project2.Path = deps.Config.DataDir + "/archived-project"
+		project2.Path = deps.Config.DataDir() + "/archived-project"
 		project2.Archived = true
 		task2 := testutil.NewTestTask("Activeonlyterm in archived", models.TaskTypeTask)
 		project2.Tasks = append(project2.Tasks, task2)
 
-		deps.Config.Projects = []*models.Project{project1, project2}
-		deps.Config.CurrentProject = project1.ID
+		setTestProjects(deps.Config, []*models.Project{project1, project2})
+		deps.Config.Machine().CurrentProject = project1.ID
 		deps.Repository.Projects[project1.ID] = project1
 		deps.Repository.Projects[project2.ID] = project2
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -180,14 +180,14 @@ func TestSearchAcrossProjects(t *testing.T) {
 
 func TestSearchLimit(t *testing.T) {
 	t.Run("respects --limit flag", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -214,14 +214,14 @@ func TestSearchLimit(t *testing.T) {
 
 func TestSearchMultiWordQuery(t *testing.T) {
 	t.Run("joins multiple args into a single query", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -269,14 +269,14 @@ func TestSearchMultiWordQuery(t *testing.T) {
 
 func TestSearchEdgeCases(t *testing.T) {
 	t.Run("empty query returns early", func(t *testing.T) {
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -296,14 +296,14 @@ func TestSearchEdgeCases(t *testing.T) {
 	})
 
 	t.Run("no matches returns appropriate message", func(t *testing.T) {
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -318,16 +318,16 @@ func TestSearchEdgeCases(t *testing.T) {
 	})
 
 	t.Run("no projects returns appropriate message", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
-		deps.Config.Projects = nil
+		setTestProjects(deps.Config, nil)
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository

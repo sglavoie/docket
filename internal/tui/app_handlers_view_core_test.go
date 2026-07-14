@@ -74,7 +74,7 @@ func TestHandleViewMessagesMoveBlocked(t *testing.T) {
 
 func TestHandleViewMessagesRefresh(t *testing.T) {
 	app := newTestAppModel()
-	app.dashboard = NewDashboardModel(app.config, nil)
+	app.dashboard = NewDashboardModel(app.runtime)
 
 	msg := RefreshMsg{}
 	handled, _ := app.handleViewMessages(msg)
@@ -248,6 +248,21 @@ func TestStatusClearMsgPreservesActiveUndoToast(t *testing.T) {
 	app.statusUndoCb()
 	if !called {
 		t.Error("undo callback should still be invokable after stale StatusClearMsg")
+	}
+}
+
+func TestStatusClearMsgDoesNotReplaceNewerStatusWithFooter(t *testing.T) {
+	app := newTestAppModel()
+	app.setSuccessStatus("first")
+	scheduledAt := time.Now()
+	app.setInfoStatus("newer guidance")
+
+	handled, _ := app.handleViewMessages(StatusClearMsg{ScheduledAt: scheduledAt})
+	if !handled {
+		t.Fatal("StatusClearMsg should be handled")
+	}
+	if app.statusMessage != "newer guidance" {
+		t.Fatalf("stale clear replaced newer status with the contextual footer: %q", app.statusMessage)
 	}
 }
 

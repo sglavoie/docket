@@ -100,7 +100,7 @@ func TestTUIStateMachine_ViewStackAnchorsAndNoUnderflow(t *testing.T) {
 
 func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	outliner := NewOutlinerModel(project, app.config, app.configManager)
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	outliner.rebuildRows()
 	outliner.multiSelectMode = true
 	outliner.selectedTasks[project.Tasks[0].ID] = true
@@ -250,7 +250,7 @@ func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T
 
 	t.Run("single project", func(t *testing.T) {
 		app := newTestAppModel()
-		outliner := NewOutlinerModel(project, app.config, app.configManager)
+		outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 		outliner.rebuildRows()
 		outliner.multiSelectMode = true
 		outliner.selectAllVisible()
@@ -267,7 +267,7 @@ func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T
 
 	t.Run("cross project", func(t *testing.T) {
 		app := newTestAppModel()
-		outliner := NewOutlinerModel(nil, app.config, app.configManager)
+		outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 		outliner.multiSelectMode = true
 		outliner.loadedProjects = []*models.Project{project}
 		outliner.crossForceRebuild = true

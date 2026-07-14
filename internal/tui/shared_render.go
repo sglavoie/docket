@@ -81,7 +81,7 @@ type CrossProjectTaskLineOpts struct {
 func RenderCrossProjectTaskLine(
 	task *models.Task,
 	proj *models.Project,
-	cfg *config.Config,
+	runtime *config.RuntimeState,
 	isCursor bool,
 	width, maxTitleLen int,
 	opts CrossProjectTaskLineOpts,
@@ -119,12 +119,12 @@ func RenderCrossProjectTaskLine(
 		tagsStr = renderTruncatedTags(task.Tags, 2, 8)
 	}
 	scoreBadge := ""
-	if opts.ShowScore && cfg != nil {
-		if profile := cfg.GetProjectScoringProfile(proj.ID); profile != nil {
+	if opts.ShowScore && runtime != nil {
+		if profile := runtime.Automation().GetProjectScoringProfile(proj.ID); profile != nil {
 			scoreBadge = RenderScoreBadge(task, profile)
 		}
 	}
-	staleBadge := renderStaleIndicator(cfg, task)
+	staleBadge := renderStaleIndicator(runtime.Settings(), task)
 	descStr := ""
 	if opts.ShowDescription {
 		descStr = renderDescriptionIndicator(task)
@@ -144,7 +144,7 @@ func RenderCrossProjectTaskLine(
 		MaxTitle:        maxTitleLen,
 		Queued:          opts.Queued,
 		DailyPlanned:    opts.DailyPlanned,
-		Active:          TaskInFocusQueue(cfg, task.ID),
+		Active:          TaskInFocusQueue(runtime.Planning(), task.ID),
 		Pinned:          task.Pinned,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,

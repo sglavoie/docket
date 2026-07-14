@@ -14,8 +14,8 @@ import (
 // KanbanModel is the top-level BubbleTea model for both per-project and
 // cross-project kanban views.
 type KanbanModel struct {
-	config        *config.Config
 	configManager *config.Manager
+	runtime       *config.RuntimeState
 	svc           *ProjectService
 
 	// bulk routes coordinator-supported multiselect mutations (status, priority,
@@ -85,11 +85,11 @@ func (m *KanbanModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 // NewKanbanModel creates a per-project kanban view.
 func NewKanbanModel(
 	project *models.Project,
-	cfg *config.Config,
 	cfgMgr *config.Manager,
+	runtime *config.RuntimeState,
 	svc *ProjectService,
 ) *KanbanModel {
-	m := newKanbanBase(cfg, cfgMgr, svc)
+	m := newKanbanBase(cfgMgr, runtime, svc)
 	m.project = project
 	m.loadedProjects = []*models.Project{project}
 	m.load()
@@ -98,29 +98,29 @@ func NewKanbanModel(
 
 // NewCrossProjectKanbanModel creates a cross-project kanban view.
 func NewCrossProjectKanbanModel(
-	cfg *config.Config,
 	cfgMgr *config.Manager,
+	runtime *config.RuntimeState,
 	svc *ProjectService,
 ) *KanbanModel {
-	m := newKanbanBase(cfg, cfgMgr, svc)
+	m := newKanbanBase(cfgMgr, runtime, svc)
 	m.crossProject = true
-	_, projects, _ := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{ActiveOnly: true})
+	_, projects, _ := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{ActiveOnly: true})
 	m.loadedProjects = projects
 	m.load()
 	return m
 }
 
 // newKanbanBase initializes fields common to both constructors.
-func newKanbanBase(cfg *config.Config, cfgMgr *config.Manager, svc *ProjectService) *KanbanModel {
-	ks := cfg.KanbanSettings
+func newKanbanBase(cfgMgr *config.Manager, runtime *config.RuntimeState, svc *ProjectService) *KanbanModel {
+	ks := runtime.Settings().KanbanSettings
 	mode := KanbanModeFromID(ks.DefaultMode)
 	if ks.DefaultMode == "" {
 		mode = KanbanModeSection
 	}
 
 	m := &KanbanModel{
-		config:            cfg,
 		configManager:     cfgMgr,
+		runtime:           runtime,
 		svc:               svc,
 		mode:              mode,
 		FilterMixin:       FilterMixin{filter: newFilterState()},
@@ -128,7 +128,7 @@ func newKanbanBase(cfg *config.Config, cfgMgr *config.Manager, svc *ProjectServi
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 
 	// Resolve enabled modes from config.
 	if len(ks.EnabledModes) > 0 {
@@ -158,7 +158,7 @@ func (m *KanbanModel) initStartColumn() {
 	if len(m.columns) == 0 {
 		return
 	}
-	target := m.config.KanbanSettings.DefaultStartColumn
+	target := m.runtime.Settings().KanbanSettings.DefaultStartColumn
 	if target == "" {
 		target = "inbox"
 	}
@@ -214,7 +214,7 @@ func (m *KanbanModel) filteredCards() []KanbanCard {
 			continue
 		}
 		if hasFilters {
-			if !passesCommonFilters(card.Task, &m.filter, card.Project, m.config) {
+			if !passesCommonFilters(card.Task, &m.filter, card.Project, m.runtime.Automation()) {
 				continue
 			}
 		}
@@ -228,7 +228,7 @@ func (m *KanbanModel) filteredCards() []KanbanCard {
 
 // rebuildCols distributes m.allCards into columns for the current mode.
 func (m *KanbanModel) rebuildCols() {
-	ks := m.config.KanbanSettings
+	ks := m.runtime.Settings().KanbanSettings
 
 	m.columns = rebuildColumns(
 		m.filteredCards(),
@@ -236,7 +236,7 @@ func (m *KanbanModel) rebuildCols() {
 		m.columns,
 		ks.SectionColumnOrder,
 		ks.StatusColumnOrder,
-		m.config,
+		m.runtime.Automation(),
 	)
 
 	// Clamp active column index.
@@ -297,7 +297,7 @@ func (m *KanbanModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	// In Kanban, starting a task also moves its card to the In Progress column
 	hints[","] = overrideHintDetail(hints[","], "s", "move to In Progress column")
 	hints["g"] = KanbanNavigationPrefixHints
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	return &PrefixPopupInfo{
 		Prefix: prefix,
 		Hints:  hints,

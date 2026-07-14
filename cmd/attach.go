@@ -79,7 +79,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return err
 	}
 
-	project, cfg, _, errLoad := LoadCurrentProject()
+	project, workspace, errLoad := LoadRuntimeCurrentProject()
 	if errLoad != nil {
 		return errLoad
 	}
@@ -89,7 +89,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return findErr
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 
 	// Handle URL attachment
 	if attachURL != "" {

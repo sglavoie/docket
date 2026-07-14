@@ -14,7 +14,7 @@ import (
 // sidebar state, selected task, and navigation/unlink operations.
 type SidebarHost interface {
 	SidebarProject() *models.Project
-	SidebarConfig() *config.Config
+	SidebarRuntime() *config.RuntimeState
 	SidebarGetSidebar() *SidebarComponent
 	SidebarSelectedTask() *models.Task
 	SidebarHeight() int
@@ -151,8 +151,8 @@ func sidebarAdjustAfterLinkRemoval(project *models.Project, sidebar *SidebarComp
 
 // sidebarResolveTaskRefWithProject resolves a task reference and returns the task with its project.
 // It delegates to sidebarResolveSidebarTaskRef for the actual resolution logic.
-func sidebarResolveTaskRefWithProject(project *models.Project, cfg *config.Config, ref string) sidebarLinkedTaskResult {
-	linked := sidebarResolveSidebarTaskRef(project, cfg, ref)
+func sidebarResolveTaskRefWithProject(project *models.Project, runtime *config.RuntimeState, ref string) sidebarLinkedTaskResult {
+	linked := sidebarResolveSidebarTaskRef(project, runtime, ref)
 	result := sidebarLinkedTaskResult{
 		Task:      linked.Task,
 		Project:   linked.Project,
@@ -165,14 +165,14 @@ func sidebarResolveTaskRefWithProject(project *models.Project, cfg *config.Confi
 }
 
 // sidebarGetSelectedLinkedTaskWithProject returns the currently selected linked task with its project.
-func sidebarGetSelectedLinkedTaskWithProject(project *models.Project, cfg *config.Config, sidebar *SidebarComponent, task *models.Task) sidebarLinkedTaskResult {
+func sidebarGetSelectedLinkedTaskWithProject(project *models.Project, runtime *config.RuntimeState, sidebar *SidebarComponent, task *models.Task) sidebarLinkedTaskResult {
 	cursor := sidebar.GetDependencyCursor()
 
 	switch sidebar.GetDependencySection() {
 	case 0: // Blocked by (DependsOn refs)
 		if cursor >= 0 && cursor < len(task.DependsOn) {
 			ref := task.DependsOn[cursor]
-			return sidebarResolveTaskRefWithProject(project, cfg, ref)
+			return sidebarResolveTaskRefWithProject(project, runtime, ref)
 		}
 	case 1: // Blocking (tasks that depend on this - same project only)
 		blockedBy := project.GetBlockedByTasks(task)
@@ -182,7 +182,7 @@ func sidebarGetSelectedLinkedTaskWithProject(project *models.Project, cfg *confi
 	case 2: // Related
 		if cursor >= 0 && cursor < len(task.RelatedTo) {
 			ref := task.RelatedTo[cursor]
-			return sidebarResolveTaskRefWithProject(project, cfg, ref)
+			return sidebarResolveTaskRefWithProject(project, runtime, ref)
 		}
 	}
 	return sidebarLinkedTaskResult{IsMissing: true}

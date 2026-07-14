@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 func (m *CustomContextEditorModel) filterProjects() {
@@ -26,19 +28,22 @@ func (m *CustomContextEditorModel) filterProjects() {
 
 func (m *CustomContextEditorModel) save() tea.Cmd {
 	// All mutations run synchronously to avoid data races with View().
-	// Config is persisted by the CustomContextSavedMsg handler.
+	// Custom contexts and their cycle lists are machine-local navigation state,
+	// committed here through a checked machine commit (not a whole-config save).
 	name := strings.TrimSpace(m.nameInput.Value())
 	if name == "" {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("custom context name cannot be empty")} }
 	}
 
+	machine := m.runtime.Machine()
+
 	// Check for duplicate name (case-insensitive) when creating new
-	if !m.editMode && m.config.CustomContextExists(name) {
+	if !m.editMode && machine.CustomContextExists(name) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("custom context '%s' already exists", name)} }
 	}
 
 	// When editing, check if name changed and new name already exists
-	if m.editMode && !strings.EqualFold(name, m.originalName) && m.config.CustomContextExists(name) {
+	if m.editMode && !strings.EqualFold(name, m.originalName) && machine.CustomContextExists(name) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("custom context '%s' already exists", name)} }
 	}
 
@@ -54,26 +59,13 @@ func (m *CustomContextEditorModel) save() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("select at least one project")} }
 	}
 
-	// Delete old name if we renamed
-	if m.editMode && !strings.EqualFold(name, m.originalName) {
-		m.config.DeleteCustomContext(m.originalName)
-		// Also migrate cycle projects to new key
-		oldKey := "+" + m.originalName
-		newKey := "+" + name
-		if oldCycleIDs := m.config.GetCycleProjectIDsForContext(oldKey); len(oldCycleIDs) > 0 {
-			m.config.SetCycleProjectsForContext(newKey, oldCycleIDs)
-			m.config.SetCycleProjectsForContext(oldKey, nil)
-		}
-	}
-
-	// Save custom context
-	m.config.SetCustomContext(name, projectIDs)
-
-	// Update cycle projects for this context
+	// Compute the cycle IDs for this context up front so the commit closure is a
+	// pure application of the already-decided mutations.
 	contextKey := "+" + name
+	var newCycleIDs []string
 	if m.editMode {
 		// Preserve existing cycle selections, adjusting for added/removed projects
-		existingCycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+		existingCycleIDs := machine.GetCycleProjectIDsForContext(contextKey)
 		newProjectSet := make(map[string]bool, len(projectIDs))
 		for _, id := range projectIDs {
 			newProjectSet[id] = true
@@ -85,22 +77,36 @@ func (m *CustomContextEditorModel) save() tea.Cmd {
 			}
 		}
 		// Keep existing cycle IDs that are still in the context
-		var updatedCycleIDs []string
 		for _, id := range existingCycleIDs {
 			if newProjectSet[id] {
-				updatedCycleIDs = append(updatedCycleIDs, id)
+				newCycleIDs = append(newCycleIDs, id)
 			}
 		}
 		// Add newly added projects (not in old context) to cycle
 		for _, id := range projectIDs {
 			if !oldProjectSet[id] {
-				updatedCycleIDs = append(updatedCycleIDs, id)
+				newCycleIDs = append(newCycleIDs, id)
 			}
 		}
-		m.config.SetCycleProjectsForContext(contextKey, updatedCycleIDs)
 	} else {
 		// New context: select all projects by default
-		m.config.SetCycleProjectsForContext(contextKey, projectIDs)
+		newCycleIDs = projectIDs
+	}
+
+	renamed := m.editMode && !strings.EqualFold(name, m.originalName)
+	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+		// Delete old name if we renamed, migrating cycle projects to the new key.
+		if renamed {
+			machine.DeleteCustomContext(m.originalName)
+			oldKey := "+" + m.originalName
+			if oldCycleIDs := machine.GetCycleProjectIDsForContext(oldKey); len(oldCycleIDs) > 0 {
+				machine.SetCycleProjectsForContext(oldKey, nil)
+			}
+		}
+		machine.SetCustomContext(name, projectIDs)
+		machine.SetCycleProjectsForContext(contextKey, newCycleIDs)
+	}); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
 	isNew := !m.editMode

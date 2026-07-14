@@ -36,7 +36,7 @@ func TestProjectPurge(t *testing.T) {
 		// TrashEntryExists("") sees the trash directory itself (which now
 		// exists) and PurgeFromTrash("") would os.RemoveAll the entire trash
 		// dir, taking the sibling entry with it.
-		trashDir := filepath.Join(deps.Config.DataDir, ".tt", "trash")
+		trashDir := filepath.Join(deps.Config.DataDir(), ".tt", "trash")
 		siblingDir := filepath.Join(trashDir, "sibling-project")
 		if err := os.MkdirAll(siblingDir, 0755); err != nil {
 			t.Fatalf("failed to seed trash dir: %v", err)

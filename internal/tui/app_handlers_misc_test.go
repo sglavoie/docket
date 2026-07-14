@@ -10,7 +10,7 @@ import (
 
 func TestHandleTagMessagesShowTagManager(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	msg := ShowTagManagerMsg{ProjectTree: app.projectTree}
 	handled, _ := app.handleTagMessages(msg)
@@ -38,7 +38,7 @@ func TestHandleTagMessagesTagRenameKeepsActiveManagerOpen(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}
 	project.Tasks = nil
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
 	if !handled {
@@ -76,7 +76,7 @@ func TestHandleTagMessagesTagRemovedKeepsActiveManagerOpenAndClearsFilter(t *tes
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}
 	project.Tasks = nil
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
 	if !handled {
@@ -112,7 +112,7 @@ func TestHandleTagMessagesTagPinnedKeepsManagerOpenAndRefreshesTree(t *testing.T
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}
 	project.Tasks = nil
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
 	if !handled {
@@ -185,7 +185,7 @@ func TestHandleSectionMessagesCloseSectionManagerRefreshesProjectContexts(t *tes
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
-			app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+			app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 			app.views.Register(ViewProjectTree, app.projectTree)
 			app.pushView(tt.baseView)
 			app.pushView(ViewSectionManager)

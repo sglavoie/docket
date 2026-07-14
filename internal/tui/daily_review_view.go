@@ -100,7 +100,7 @@ func (m *DailyReviewModel) View() tea.View {
 			stripText = renderTaskMetadataStrip(TaskMetadataStripOpts{
 				Task:    stripTask.Task,
 				Project: stripTask.Project,
-				Config:  m.config,
+				Runtime: m.runtime,
 				Width:   m.width,
 				AlreadyShown: TaskMetadataAlreadyShown{
 					Project:  true,
@@ -169,7 +169,7 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints for all filter controls exposed by the keymap.
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,
@@ -311,14 +311,14 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		statusBadge = GetStateStyle(task.State()).Render(task.State().Icon())
 	}
 
-	line := RenderCrossProjectTaskLine(task, dt.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+	line := RenderCrossProjectTaskLine(task, dt.Project, m.runtime, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[task.ID],
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		StatusBadge:     statusBadge,
 		HideLowPriority: true,
 		DueStr:          m.sectionContextStr(dt, section),
 		ShowRecurrence:  true,
-		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		ShowDescription: m.runtime.Machine().IsDescriptionColumnVisible(),
 		Prefix:          m.Checkbox(task.ID),
 		Flash:           m.cursorFlash,
 		Layout:          layout,
@@ -379,9 +379,9 @@ func (m *DailyReviewModel) formatDueDateContext(task *models.Task, section Daily
 	// Future section uses MutedStyle with full date (always includes year).
 	if section == SectionFuture {
 		dateStr := task.DueDate.Format("Jan 2, 2006")
-		dateStr = AppendTimeIfHasTime(task, dateStr, m.config.GetTimeFormat())
+		dateStr = AppendTimeIfHasTime(task, dateStr, m.runtime.Settings().GetTimeFormat())
 		return MutedStyle.Render(dateStr)
 	}
 
-	return FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
+	return FormatRelativeDueTask(task, true, m.runtime.Settings().GetTimeFormat())
 }

@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -66,8 +65,8 @@ func TestCrossProjectOutlinerViewMultiSelectTitleFitsNarrowWidth(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 72
 	m.SetSize(width, 20)
 	m.sidebar.SetEnabled(false)
@@ -175,8 +174,8 @@ func TestCrossProjectOutlinerRenderEmojiPreviewScrollbarStaysWithinWidth(t *test
 
 func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabs(t *testing.T) {
 	const width = 80
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, 12)
 
 	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
@@ -196,8 +195,8 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabColors(t *testing.T)
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	const width = 80
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, 12)
 
 	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
@@ -215,8 +214,8 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabColors(t *testing.T)
 
 func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabsInEmptyState(t *testing.T) {
 	const width = 80
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, 12)
 
 	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", nil)
@@ -233,8 +232,8 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabsInEmptyState(t *tes
 // retired from models.Task entirely), so all task rows of the same width
 // category must render to the same width.
 func TestOutlinerLongStageDoesNotShiftSiblingRows(t *testing.T) {
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 100
 	m.SetSize(width, 18)
 
@@ -274,8 +273,8 @@ func TestOutlinerLongStageDoesNotShiftSiblingRows(t *testing.T) {
 func crossProjectRenderFixture(t *testing.T, width, height int) (*OutlinerModel, *models.Task) {
 	t.Helper()
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, height)
 	m.columnConfig = NewColumnConfig(map[string]bool{
 		ColDependencies: false,
@@ -394,8 +393,8 @@ func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	const width = 100
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, 18)
 
 	alphaTask := renderFixtureTask(t, "alpha-active", 1, models.TaskTypeTask, "Alpha active item", models.StatusInProgress, 2, "")
@@ -447,8 +446,8 @@ func TestCrossProjectPriorityModeOmitsProjectSubHeaders(t *testing.T) {
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	const width = 100
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, 18)
 
 	alphaTask := makePriorityTask("alpha-prio", "Alpha priority item", intPtr(0))
@@ -483,8 +482,8 @@ func TestCrossProjectPriorityModeOmitsProjectSubHeaders(t *testing.T) {
 // emitted for the collapsed section.
 func TestCrossProjectAllPerspectiveCollapsedSectionHidesProjectSubHeaders(t *testing.T) {
 	const width = 100
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(width, 18)
 
 	alphaTask := renderFixtureTask(t, "alpha-next", 1, models.TaskTypeTask, "Alpha next item", models.StatusTodo, 2, models.SectionNext)

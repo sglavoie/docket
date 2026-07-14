@@ -27,15 +27,15 @@ func (m *ProjectFocusViewModel) View() tea.View {
 
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("%d active tasks", len(m.tasks))
+	subtitle := fmt.Sprintf("%d queued tasks", len(m.tasks))
 	if len(m.tasks) == 0 {
-		subtitle = "no active tasks"
+		subtitle = "no queued tasks"
 	}
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Focus: %s", m.project.Name), subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Focus Queue: %s", m.project.Name), subtitle, m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if len(m.tasks) == 0 {
-		b.WriteString(renderEmptyState("No tasks in focus.", "Mark tasks as active with * in the project tree."))
+		b.WriteString(renderEmptyState("No tasks from this project are in the Focus Queue.", "Press q on a task in the project tree to add it."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("q return")
 		b.WriteString(renderStatusBarFooter(left, "", m.Width(), m.AccentColor()))
@@ -86,7 +86,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 			strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 				Task:    stripTask,
 				Project: m.project,
-				Config:  m.getConfig(),
+				Runtime: m.runtime,
 				Width:   m.Width(),
 				AlreadyShown: TaskMetadataAlreadyShown{
 					Project:  true,
@@ -103,7 +103,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
-	footerParts := "j/k nav · * unfocus · ,s/d/b/x status · 1-5 priority · dt/dm due"
+	footerParts := "j/k nav · * remove from queue · ,s/d/b/x status · 1-5 priority · dt/dm due"
 	if len(m.subTabNames) > 1 {
 		footerParts += " · Tab sections"
 	}
@@ -142,7 +142,7 @@ func (m *ProjectFocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	prefix := m.Dispatcher.PendingPrefix()
 	hints := PrefixHints{}
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.cfg, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	if _, ok := hints[prefix]; !ok {
 		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
 		for _, h := range m.Dispatcher.PrefixHints() {
@@ -162,7 +162,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = FormatRelativeDueTask(task, true, m.getConfig().GetTimeFormat())
+		dueStr = FormatRelativeDueTask(task, true, m.runtime.Settings().GetTimeFormat())
 	}
 
 	// Build indicator groups
@@ -178,7 +178,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		Task:       task,
 		Project:    m.project,
 		IsSelected: isSelected,
-		Active:     TaskInFocusQueue(m.cfg, task.ID),
+		Active:     TaskInFocusQueue(m.runtime.Planning(), task.ID),
 		Pinned:     task.Pinned,
 		MaxTitle:   maxTitleLen,
 		PostTitle:  postTitle,
@@ -190,4 +190,4 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	}.Render()
 }
 
-func (m *ProjectFocusViewModel) StatusBarLabel() string { return "Active Tasks" }
+func (m *ProjectFocusViewModel) StatusBarLabel() string { return "Focus Queue" }

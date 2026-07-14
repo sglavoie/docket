@@ -54,12 +54,16 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return err
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
+	if err != nil {
+		return err
+	}
+	domains, err := workspace.Runtime.CloneDomains()
 	if err != nil {
 		return err
 	}
 
-	sourceProject := cfg.GetCurrentProject()
+	sourceProject := workspace.Runtime.CurrentProject()
 	if sourceProject == nil {
 		return NoCurrentProjectError()
 	}
@@ -107,10 +111,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			Context string
 			Tasks   int
 		}
-		active, activeErr := activeProjects(configManager)
-		if activeErr != nil {
-			return activeErr
-		}
+		active := workspace.Runtime.ActiveProjects()
 		for _, p := range active {
 			if p.ID != sourceProject.ID {
 				taskCount := 0
@@ -154,10 +155,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		destProjectID = selected.ID
 	}
 
-	destProject, err := lookupProject(configManager, destProjectID)
-	if err != nil {
-		return err
-	}
+	destProject := workspace.Runtime.GetProject(destProjectID)
 	if destProject == nil {
 		return fmt.Errorf("destination %w", tterrors.NewProjectNotFoundError(destProjectID))
 	}
@@ -225,8 +223,8 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// machine-local recent visits are intentionally excluded here and reassigned
 	// separately after a successful commit.
 	var artifacts []storage.ArtifactChange
-	if cfg.ReassignDurablePlanningProject(movedSet, destProject.ID) > 0 {
-		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+	if domains.Planning.ReassignDurablePlanningProject(movedSet, destProject.ID) > 0 {
+		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
 		}
@@ -236,7 +234,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Route the move through the application layer: source removal, destination
 	// insertion, each moved task's attachment directory, and the durable planning
 	// artifact all commit as ONE transaction, revision-checked and undoable.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := svc.MoveToProject(task.ID, destProject.ID, artifacts...)
 	if err != nil {
 		return translateAppError(err)
@@ -245,8 +243,8 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the move is already committed and recent visits are best-effort.
-	if cfg.ReassignRecentVisitsProject(movedSet, destProject.ID) > 0 {
-		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+	if domains.Machine.ReassignRecentVisitsProject(movedSet, destProject.ID) > 0 {
+		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
 	}

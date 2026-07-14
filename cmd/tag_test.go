@@ -30,7 +30,7 @@ func resetTagCommandVars(t *testing.T) {
 	_ = tagListCmd.Flags().Set("quiet", "false")
 }
 
-func setupTagCommandTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupTagCommandTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
 	resetTagCommandVars(t)
 	return setupSectionCommandTest(t)
@@ -64,9 +64,9 @@ func TestTagPinAndUnpinGlobalTag(t *testing.T) {
 	err := runTagPin(nil, []string{"#urgent"})
 	testutil.AssertNoError(t, err)
 
-	loaded, err := manager.Load()
+	loaded, err := manager.LoadRuntimeState()
 	testutil.AssertNoError(t, err)
-	if got, want := loaded.GlobalPinnedTagList(), []string{"urgent"}; !slices.Equal(got, want) {
+	if got, want := loaded.Settings().GlobalPinnedTagList(), []string{"urgent"}; !slices.Equal(got, want) {
 		t.Fatalf("GlobalPinnedTagList after pin = %v, want %v", got, want)
 	}
 
@@ -75,9 +75,9 @@ func TestTagPinAndUnpinGlobalTag(t *testing.T) {
 	err = runTagUnpin(nil, []string{"urgent"})
 	testutil.AssertNoError(t, err)
 
-	loaded, err = manager.Load()
+	loaded, err = manager.LoadRuntimeState()
 	testutil.AssertNoError(t, err)
-	if got := loaded.GlobalPinnedTagList(); len(got) != 0 {
+	if got := loaded.Settings().GlobalPinnedTagList(); len(got) != 0 {
 		t.Fatalf("GlobalPinnedTagList after unpin = %v, want empty", got)
 	}
 }
@@ -104,13 +104,13 @@ func TestBuildProjectTagListEntriesPinnedOnly(t *testing.T) {
 
 func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	resetTagCommandVars(t)
-	deps := testutil.SetupTestDeps(t)
+	deps := setupTestDeps(t)
 
 	sandbox := testutil.NewTestProject("Sandbox")
 	sandbox.ID = "sandbox"
 	sandbox.Slug = "_sandbox"
 	sandbox.Name = "Sandbox"
-	sandbox.Path = deps.Config.GetInternalDir() + "/sandbox"
+	sandbox.Path = config.InternalDir(deps.Config.DataDir()) + "/sandbox"
 	sandbox.Sandbox = true
 	sandbox.Tags = []string{"catalog"}
 	sandbox.PinnedTags = []string{"catalog", "task-tag"}
@@ -118,14 +118,14 @@ func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	task.Tags = []string{"task-tag"}
 	sandbox.Tasks = []*models.Task{task}
 
-	deps.Config.Projects = []*models.Project{sandbox}
+	setTestProjects(deps.Config, []*models.Project{sandbox})
 	deps.Repository.Projects[sandbox.ID] = sandbox
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository

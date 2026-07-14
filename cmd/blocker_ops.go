@@ -20,7 +20,7 @@ func WithBlockerUpdate(idPrefix string, updateFn func([]*models.Blocker, *models
 		return fmt.Errorf("blocker not found: %s", idPrefix)
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func WithBlockerUpdate(idPrefix string, updateFn func([]*models.Blocker, *models
 		return err
 	}
 
-	if err := storage.SaveBlockers(project, blockers); err != nil {
+	if _, err := newWorkspaceAppService(workspace).SetBlockers(project.ID, blockers); err != nil {
 		return fmt.Errorf("failed to save blockers: %w", err)
 	}
 
@@ -51,7 +51,7 @@ func WithBlockerUpdate(idPrefix string, updateFn func([]*models.Blocker, *models
 // It loads the current project's blockers, applies the create function to produce a new blocker,
 // appends it to the list, and saves.
 func WithBlockerCreate(createFn func() (*models.Blocker, error)) (*models.Blocker, error) {
-	project, _, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func WithBlockerCreate(createFn func() (*models.Blocker, error)) (*models.Blocke
 	}
 
 	blockers = append(blockers, blocker)
-	if err := storage.SaveBlockers(project, blockers); err != nil {
+	if _, err := newWorkspaceAppService(workspace).SetBlockers(project.ID, blockers); err != nil {
 		return nil, fmt.Errorf("failed to save blockers: %w", err)
 	}
 

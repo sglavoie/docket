@@ -96,7 +96,7 @@ func (b *outlinerKeymapBuilder) gateOnTask(entries []keymap.Entry) []keymap.Entr
 
 // handleOutlinerFilterSubKey handles filter sub-prefix keys for the outliner.
 func (m *OutlinerModel) handleOutlinerFilterSubKey(prefix, key string) (tea.Model, tea.Cmd) {
-	if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config, func(p string) {
+	if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.runtime.Machine(), func(p string) {
 		if m.Dispatcher != nil {
 			m.Dispatcher.SetPendingPrefix(p)
 		} else {

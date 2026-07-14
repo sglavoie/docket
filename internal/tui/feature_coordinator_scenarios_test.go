@@ -56,14 +56,16 @@ func (r *scenarioRepo) seed(t *testing.T) {
 // parses back as updated==created, which the canonical renderer omits).
 func (r *scenarioRepo) Snapshot() (app.Snapshot, error) {
 	revs := make(map[string]string, len(r.projects))
+	docs := make(map[string]*storage.ProjectDocument, len(r.projects))
 	for _, p := range r.projects {
 		doc, err := storage.LoadProjectDocument(p)
 		if err != nil {
 			return nil, err
 		}
 		revs[p.ID] = doc.Revision
+		docs[p.ID] = doc
 	}
-	return app.NewSnapshot(r.projects, revs), nil
+	return app.NewSnapshot(r.projects, revs, docs), nil
 }
 
 func (r *scenarioRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {

@@ -37,16 +37,15 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 
 	ruleID := args[0]
 
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-
-	store := automationStore(configManager)
-	automation, err := store.LoadAutomation()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	automation := domains.Automation
 
 	rule := automation.GetWorkflowRule(ruleID)
 	if rule == nil {
@@ -62,7 +61,7 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 	// Invalidate workflow eval states so all projects re-evaluate with changed rule
 	automation.InvalidateWorkflowEvalStates()
 
-	if err := saveAutomation(store, automation); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 

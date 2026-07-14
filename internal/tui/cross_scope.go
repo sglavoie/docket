@@ -27,7 +27,7 @@ type CrossScopeOpts struct {
 	CycleProjectsOnly bool
 
 	// ContextKey is the filter-context key passed to
-	// cfg.GetCycleProjectsForContext when CycleProjectsOnly is true.
+	// runtime.CycleProjectsForContext when CycleProjectsOnly is true.
 	ContextKey string
 }
 
@@ -60,31 +60,47 @@ func diagnosticToLoadFailure(diag workspace.Diagnostic) projectLoadFailure {
 // load. Individual load failures are non-fatal: the offending project is
 // skipped and surfaced as a diagnostic for the caller to log or display.
 //
-// A fresh snapshot loader is used per call so the returned projects are the
-// caller's own freshly loaded pointers, keeping mutation semantics intact for
-// callers that go on to edit and save a project.
-func LoadCrossScopeTasks(cfg *config.Config, _ *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
-	var selected []*models.Project
-	for _, p := range selectCrossScopeProjects(cfg, opts) {
-		if !opts.IncludeSandbox && p.Sandbox {
+// The view-owned ProjectService retains the snapshot loader across rebuilds.
+// Changed projects are parsed once into the new snapshot while unchanged
+// projects reuse their indexed parse.
+func LoadCrossScopeTasks(runtime *config.RuntimeState, service *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
+	if service == nil {
+		service = NewProjectService()
+	}
+	return loadCrossScopeSelection(selectCrossScopeProjects(runtime, opts), opts.IncludeSandbox, service.workspaceLoader)
+}
+
+// loadCrossScopeSelection loads an already-selected project set into an immutable
+// workspace snapshot and returns the flat task union, the successfully loaded
+// projects, and any load-failure details. It is the source-agnostic core shared
+// by the config-facade LoadCrossScopeTasks and the domain-snapshot open-loops
+// counter, so both select projects from their own domain source and load them
+// identically.
+func loadCrossScopeSelection(selected []*models.Project, includeSandbox bool, loader *workspace.Loader) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
+	var kept []*models.Project
+	for _, p := range selected {
+		if !includeSandbox && p.Sandbox {
 			continue
 		}
-		selected = append(selected, p)
+		kept = append(kept, p)
 	}
 
-	snap := workspace.NewLoader().Build(selected)
+	if loader == nil {
+		loader = workspace.NewLoader()
+	}
+	snap := loader.Build(kept)
 	for _, diag := range snap.Diagnostics() {
 		failed = append(failed, diagnosticToLoadFailure(diag))
 	}
 	return snap.Tasks(), snap.Projects(), failed
 }
 
-func selectCrossScopeProjects(cfg *config.Config, opts CrossScopeOpts) []*models.Project {
+func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts) []*models.Project {
 	if opts.CycleProjectsOnly {
-		return cfg.GetCycleProjectsForContext(opts.ContextKey)
+		return runtime.CycleProjectsForContext(opts.ContextKey)
 	}
 	if opts.ActiveOnly {
-		return cfg.GetActiveProjects()
+		return runtime.ActiveProjects()
 	}
-	return cfg.GetAllLoadableProjects()
+	return runtime.AllLoadableProjects()
 }

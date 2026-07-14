@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -91,27 +90,6 @@ func NewTestProjectWithTasks(name string) *models.Project {
 	project.BuildTaskTree()
 
 	return project
-}
-
-// NewTestConfig creates a config with test defaults.
-func NewTestConfig() *config.Config {
-	return &config.Config{
-		DataDir:        "",
-		CurrentProject: "",
-		DefaultContext: "personal",
-		FzfEnabled:     false,
-		GlowEnabled:    false,
-		Editor:         "code",
-	}
-}
-
-// NewTestConfigWithProject creates a config with a single test project.
-func NewTestConfigWithProject(projectName string) (*config.Config, *models.Project) {
-	cfg := NewTestConfig()
-	project := NewTestProject(projectName)
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
-	return cfg, project
 }
 
 // TempProjectDir creates a temporary directory for test project files.
@@ -198,25 +176,32 @@ func AssertEqual[T comparable](t *testing.T, got, want T) {
 	}
 }
 
-// TestDeps holds mock dependencies for testing cmd package.
-// Use SetupTestDeps to create this struct with all mocks initialized.
-type TestDeps struct {
+// TestDeps holds mock external dependencies plus caller-owned test state. The
+// state is generic so this support package does not depend on the application
+// configuration facade; callers may supply domain fixtures, RuntimeState, or a
+// compatibility value local to their _test.go package.
+type TestDeps[T any] struct {
 	Selector   *MockSelector
 	Renderer   *MockRenderer
 	Editor     *MockEditor
 	Repository *MockRepository
-	Config     *config.Config
+	Config     T
+	DataDir    string
 	ConfigPath string
 	Cleanup    func()
 }
 
-// SetupTestDeps creates a complete test environment with mock dependencies.
+// SetupTestDeps creates a complete test environment with mock dependencies and
+// caller-owned state rooted at the temporary data directory.
 // It creates a temporary directory for config and project files.
 // Cleanup is registered with t.Cleanup automatically; call Cleanup only when
 // early cleanup is needed.
 // Note: Tests must set storage.DefaultRepository themselves to avoid import cycles.
-func SetupTestDeps(t *testing.T) *TestDeps {
+func SetupTestDeps[T any](t *testing.T, newState func(dataDir string) T) *TestDeps[T] {
 	t.Helper()
+	if newState == nil {
+		t.Fatal("SetupTestDeps requires a state factory")
+	}
 
 	// Isolate machine-local runtime state (machine.json under
 	// LocalRuntimeDirForDataDir, keyed off $HOME) into a throwaway directory so
@@ -248,9 +233,7 @@ func SetupTestDeps(t *testing.T) *TestDeps {
 	external.DefaultRenderer = renderer
 	external.DefaultEditor = editor
 
-	// Create test config
-	cfg := NewTestConfig()
-	cfg.DataDir = tempDir
+	state := newState(tempDir)
 
 	var cleanupOnce sync.Once
 	cleanup := func() {
@@ -265,28 +248,36 @@ func SetupTestDeps(t *testing.T) *TestDeps {
 	}
 	t.Cleanup(cleanup)
 
-	return &TestDeps{
+	return &TestDeps[T]{
 		Selector:   selector,
 		Renderer:   renderer,
 		Editor:     editor,
 		Repository: repository,
-		Config:     cfg,
+		Config:     state,
+		DataDir:    tempDir,
 		ConfigPath: configPath,
 		Cleanup:    cleanup,
 	}
 }
 
-// SetupTestDepsWithProject creates test deps and adds a project with tasks.
+// SetupTestDepsWithProject creates test deps and supplies a rooted project to
+// the caller-owned state factory before registering it with the mock repository.
 // Returns the TestDeps and the created project.
-func SetupTestDepsWithProject(t *testing.T, projectName string) (*TestDeps, *models.Project) {
+func SetupTestDepsWithProject[T any](
+	t *testing.T,
+	projectName string,
+	newState func(dataDir string, project *models.Project) T,
+) (*TestDeps[T], *models.Project) {
 	t.Helper()
-
-	deps := SetupTestDeps(t)
+	if newState == nil {
+		t.Fatal("SetupTestDepsWithProject requires a state factory")
+	}
 
 	project := NewTestProjectWithTasks(projectName)
-	project.Path = deps.Config.GetProjectPath(project.Slug)
-	deps.Config.Projects = []*models.Project{project}
-	deps.Config.CurrentProject = project.ID
+	deps := SetupTestDeps(t, func(dataDir string) T {
+		project.Path = filepath.Join(dataDir, "projects", project.Slug)
+		return newState(dataDir, project)
+	})
 	deps.Repository.Projects[project.ID] = project
 
 	return deps, project

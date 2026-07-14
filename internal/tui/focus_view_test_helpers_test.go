@@ -10,11 +10,8 @@ import (
 )
 
 // newTestFocusConfig creates a test config with the given projects.
-func newTestFocusConfig(projects []*models.Project) *config.Config {
-	cfg := &config.Config{
-		Projects: projects,
-	}
-	return cfg
+func newTestFocusConfig(projects []*models.Project) *config.RuntimeState {
+	return testConfigWithProjects(projects...)
 }
 
 // newTestFocusProject creates a test project for focus view tests.
@@ -41,15 +38,15 @@ func newTestFocusTask(t *testing.T, title string, priority int, _ bool) *models.
 }
 
 // newTestFocusViewModel creates a FocusViewModel with session state for testing.
-func newTestFocusViewModel(cfg *config.Config) *FocusViewModel {
+func newTestFocusViewModel(cfg *config.RuntimeState) *FocusViewModel {
 	queue := []FocusTask{}
 	queueIDs := make(map[string]bool)
 	dismissedIDs := make(map[string]bool)
 	return &FocusViewModel{
-		ViewBundle:   ViewBundle{config: cfg},
-		queue:        &queue,
-		queueIDs:     queueIDs,
-		dismissedIDs: dismissedIDs,
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
+		queue:             &queue,
+		queueIDs:          queueIDs,
+		dismissedIDs:      dismissedIDs,
 	}
 }
 

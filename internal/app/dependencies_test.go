@@ -111,6 +111,48 @@ func TestAddDependencyCrossProject(t *testing.T) {
 	}
 }
 
+func TestDependencyIdentityDeduplicatesSlugAndIDAndRemovesBoth(t *testing.T) {
+	a1 := newTask("a1", 1, "alpha task")
+	b1 := newTask("b1", 1, "beta task")
+	projA := newProject("proj-a", "Alpha", a1)
+	projB := newProject("proj-b", "Beta", b1)
+	// Simulate Markdown accumulated across producer generations: the legacy slug
+	// and current stable ID both name the same task.
+	a1.DependsOn = []string{"beta:b1", "proj-b:b1"}
+	repo := newFakeRepo(projA, projB)
+	svc := newTestService(repo)
+
+	if _, err := svc.AddDependency("a1", "proj-b:b1"); err != nil {
+		t.Fatalf("AddDependency: %v", err)
+	}
+	if len(a1.DependsOn) != 1 || a1.DependsOn[0] != "beta:b1" {
+		t.Fatalf("DependsOn after identity dedup = %v, want first spelling [beta:b1]", a1.DependsOn)
+	}
+
+	if _, err := svc.RemoveDependency("a1", "proj-b:b1"); err != nil {
+		t.Fatalf("RemoveDependency: %v", err)
+	}
+	if len(a1.DependsOn) != 0 {
+		t.Fatalf("DependsOn after stable-ID removal = %v, want empty", a1.DependsOn)
+	}
+}
+
+func TestSetDependenciesDeduplicatesProjectQualifierAliases(t *testing.T) {
+	a1 := newTask("a1", 1, "alpha task")
+	b1 := newTask("b1", 1, "beta task")
+	projA := newProject("proj-a", "Alpha", a1)
+	projB := newProject("proj-b", "Beta", b1)
+	repo := newFakeRepo(projA, projB)
+	svc := newTestService(repo)
+
+	if _, err := svc.SetDependencies("a1", []string{"beta:b1", "proj-b:b1"}); err != nil {
+		t.Fatalf("SetDependencies: %v", err)
+	}
+	if len(a1.DependsOn) != 1 || a1.DependsOn[0] != "beta:b1" {
+		t.Fatalf("DependsOn = %v, want one identity-preserving ref", a1.DependsOn)
+	}
+}
+
 func TestAddDependencyRejectsSelf(t *testing.T) {
 	a1 := newTask("a1", 1, "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", a1))
@@ -253,5 +295,28 @@ func TestAddAndRemoveRelated(t *testing.T) {
 	}
 	if a1.HasRelatedTo("a2") {
 		t.Errorf("RelatedTo = %v, want a2 removed", a1.RelatedTo)
+	}
+}
+
+func TestRelatedIdentityDeduplicatesSlugAndIDAndRemovesBoth(t *testing.T) {
+	a1 := newTask("a1", 1, "alpha task")
+	b1 := newTask("b1", 1, "beta task")
+	projA := newProject("proj-a", "Alpha", a1)
+	projB := newProject("proj-b", "Beta", b1)
+	a1.RelatedTo = []string{"beta:b1", "proj-b:b1"}
+	repo := newFakeRepo(projA, projB)
+	svc := newTestService(repo)
+
+	if _, err := svc.AddRelated("a1", "proj-b:b1"); err != nil {
+		t.Fatalf("AddRelated: %v", err)
+	}
+	if len(a1.RelatedTo) != 1 || a1.RelatedTo[0] != "beta:b1" {
+		t.Fatalf("RelatedTo after identity dedup = %v, want [beta:b1]", a1.RelatedTo)
+	}
+	if _, err := svc.RemoveRelated("a1", "proj-b:b1"); err != nil {
+		t.Fatalf("RemoveRelated: %v", err)
+	}
+	if len(a1.RelatedTo) != 0 {
+		t.Fatalf("RelatedTo after stable-ID removal = %v, want empty", a1.RelatedTo)
 	}
 }

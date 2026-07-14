@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
@@ -46,7 +45,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -80,7 +79,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(cfg, task)
+		return displayTaskShowJSON(task, taskInFocusQueue(workspace.Runtime.Planning().GetFocusQueue(), task.ID))
 	}
 
 	if out.Quiet {
@@ -88,7 +87,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use glow if available and enabled
-	useGlow := cfg.GlowEnabled && Deps.Renderer.Available() && !noGlow
+	useGlow := workspace.Runtime.Settings().GlowEnabled && Deps.Renderer.Available() && !noGlow
 	if useGlow {
 		return Deps.Renderer.RenderTaskMarkdown(task)
 	}
@@ -218,7 +217,7 @@ type taskShowJSONEntry struct {
 	EpicAttrs       *models.EpicAttrs         `json:"epic_attrs,omitempty"`
 }
 
-func displayTaskShowJSON(cfg *config.Config, task *models.Task) error {
+func displayTaskShowJSON(task *models.Task, active bool) error {
 	tags := task.Tags
 	if tags == nil {
 		tags = []string{}
@@ -281,7 +280,7 @@ func displayTaskShowJSON(cfg *config.Config, task *models.Task) error {
 		RelatedTo:       relatedTo,
 		Pinned:          task.Pinned,
 		PinnedAt:        task.PinnedAt,
-		Active:          taskInFocusQueue(cfg, task.ID),
+		Active:          active,
 		Dimmed:          task.Dimmed,
 		SnoozedUntil:    task.SnoozedUntil,
 		Source:          task.Source,

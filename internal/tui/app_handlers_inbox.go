@@ -4,13 +4,15 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // handleInboxMessages handles inbox processor related messages.
 func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowInboxProcessorMsg:
-		processor := NewInboxProcessorModel(msg.Project, m.config, m.configManager)
+		processor := NewInboxProcessorModel(msg.Project, m.configManager, m.runtime)
 		if len(processor.inboxTasks) == 0 {
 			m.setInfoStatus("No inbox items to process")
 			return true, defaultStatusTimeout()
@@ -28,6 +30,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.refreshProjectTree()
 		if msg.ProcessedCount > 0 {
+			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
 			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Backlog",
 				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
@@ -39,7 +42,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, popCmd
 
 	case ShowGlobalInboxProcessorMsg:
-		processor := NewGlobalInboxProcessorModel(m.config, m.configManager)
+		processor := NewGlobalInboxProcessorModel(m.configManager, m.runtime)
 		if len(processor.inboxTasks) == 0 {
 			m.setInfoStatus("No inbox items across all projects")
 			return true, defaultStatusTimeout()
@@ -52,9 +55,10 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		popCmd := m.popToAnchorView()
 		// Refresh dashboard to reflect any changes
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		if msg.ProcessedCount > 0 {
+			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
 			m.setSuccessStatus(fmt.Sprintf("Global inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Backlog",
 				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())

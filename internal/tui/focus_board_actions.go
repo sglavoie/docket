@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -11,7 +10,7 @@ import (
 // grammar so render hints and key handlers do not infer behavior separately.
 func (m *FocusBoardModel) resolveCockpitActionForKey(key string) CockpitAction {
 	switch key {
-	case "a":
+	case "a", "i":
 		return actionQuickCapture()
 	case "/":
 		return actionSearchFilter()
@@ -54,10 +53,7 @@ func (m *FocusBoardModel) resolveCockpitRecommendation() CockpitRecommendation {
 func (m *FocusBoardModel) executeCockpitAction(action CockpitAction) (tea.Model, tea.Cmd) {
 	switch action.Command {
 	case CockpitCommandQuickCapture:
-		m.addMode = true
-		m.addInput.SetValue("")
-		m.addInput.Focus()
-		return m, textinput.Blink
+		return m, func() tea.Msg { return ShowQuickCaptureMsg{} }
 	case CockpitCommandSearchFilter:
 		m.searchInput.SetValue(m.searchQuery)
 		return m, m.ActivateSearch()

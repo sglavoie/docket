@@ -41,7 +41,7 @@ func runEpicBaseline(cmd *cobra.Command, args []string) error {
 	// Resolve the task in the current project, then persist through the
 	// application layer; the epic-type and has-children guards live in the use
 	// case so every adapter enforces them uniformly.
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func runEpicBaseline(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.EpicBaselineResult, error) {
 		return svc.BaselineEpic(task.ID)
 	})

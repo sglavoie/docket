@@ -35,9 +35,9 @@ func newProjectTreeBulkActionTestApp(t *testing.T) (*AppModel, *models.Project) 
 	app.secondaryFeatures = newSecondaryCoordinators(appsvc.NewService(repo, nil, nil), app.configManager)
 
 	app.currentProject = project
-	app.config.Projects = []*models.Project{project}
-	app.config.CurrentProject = project.ID
-	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+	setTestAppProjects(app, project)
+	setTestCurrentProject(app, project.ID)
+	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 	app.wireSecondaryCoordinators(app.projectTree)
 	app.viewStack = []ViewType{ViewProjectTree}
 	app.views.Register(ViewProjectTree, app.projectTree)

@@ -74,11 +74,11 @@ func setupAllTasksSharedBulkKeymap(t *testing.T) (*keymap.KeyMap, []TaskProjectR
 
 	projectA, tasksA := newSharedBulkProject("Alpha", "cursor", "selected-alpha")
 	projectB, tasksB := newSharedBulkProject("Beta", "other", "selected-beta")
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{projectA, projectB}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{projectA, projectB})
 
 	model := newMinimalAllTasksVM()
-	model.ViewBundle = ViewBundle{config: cfg}
+	model.PrimaryViewBundle = NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))
 	model.MultiSelectState = MultiSelectState{
 		multiSelectMode: true,
 		selectedTasks: map[string]bool{
@@ -105,8 +105,8 @@ func setupFocusSharedBulkKeymap(t *testing.T) (*keymap.KeyMap, []TaskProjectRef)
 
 	projectA, tasksA := newSharedBulkProject("Alpha", "cursor", "selected-alpha")
 	projectB, tasksB := newSharedBulkProject("Beta", "selected-beta")
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{projectA, projectB}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{projectA, projectB})
 
 	model := newTestFocusViewModel(cfg)
 	model.MultiSelectState = MultiSelectState{
@@ -135,15 +135,15 @@ func setupPrioritySharedBulkKeymap(t *testing.T) (*keymap.KeyMap, []TaskProjectR
 	t.Helper()
 
 	project, tasks := newSharedBulkProject("Priority", "cursor", "selected-one", "selected-two")
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
 
 	model := &PriorityViewModel{
-		ViewBundle:       ViewBundle{config: cfg},
-		project:          project,
-		FilterMixin:      FilterMixin{filter: newFilterState()},
-		MultiSelectState: MultiSelectState{multiSelectMode: true, selectedTasks: map[string]bool{}},
-		tabs:             TabState{Names: priorityTabNames},
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
+		project:           project,
+		FilterMixin:       FilterMixin{filter: newFilterState()},
+		MultiSelectState:  MultiSelectState{multiSelectMode: true, selectedTasks: map[string]bool{}},
+		tabs:              TabState{Names: priorityTabNames},
 	}
 	model.selectedTasks[tasks[1].ID] = true
 	model.selectedTasks[tasks[2].ID] = true

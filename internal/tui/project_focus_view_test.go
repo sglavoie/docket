@@ -13,7 +13,7 @@ import (
 
 func newTestProjectFocusView(t *testing.T) (*ProjectFocusViewModel, *models.Project) {
 	t.Helper()
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("focus-test")
 
 	// Add a Focus Queue task with a due date.
@@ -22,9 +22,9 @@ func newTestProjectFocusView(t *testing.T) (*ProjectFocusViewModel, *models.Proj
 	task.DueDate = &due
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
-	cfg.SetFocusQueue([]config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}})
+	cfg.Planning().SetFocusQueue([]config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}})
 
-	m := NewProjectFocusViewModel(project, cfg)
+	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(80, 24)
 	return m, project
 }
@@ -38,20 +38,18 @@ func mustNewTestTask(project *models.Project, title string) *models.Task {
 	return task
 }
 
-func TestProjectFocusViewModel_GetConfigNotNil(t *testing.T) {
+func TestProjectFocusViewModel_GetRuntimeNotNil(t *testing.T) {
 	m, _ := newTestProjectFocusView(t)
 
-	cfg := m.getConfig()
-	if cfg == nil {
-		t.Fatal("getConfig() returned nil; expected non-nil *config.Config")
+	if m.getRuntime() == nil {
+		t.Fatal("getRuntime() returned nil; expected non-nil *config.RuntimeState")
 	}
 }
 
 func TestProjectFocusViewModel_RenderWithDueDate_NoPanic(t *testing.T) {
 	m, _ := newTestProjectFocusView(t)
 
-	// This would panic before the fix because getConfig() returned nil
-	// and renderTaskLine called m.getConfig().GetTimeFormat().
+	// Rendering with a domain-backed runtime must remain safe for due dates.
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("View() panicked: %v", r)
@@ -61,7 +59,7 @@ func TestProjectFocusViewModel_RenderWithDueDate_NoPanic(t *testing.T) {
 }
 
 func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("filter-test")
 
 	active := mustNewTestTask(project, "Active")
@@ -82,13 +80,13 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	project.BuildTaskTree()
 	// Queue membership replaces the deprecated Active flag: the inactive task
 	// stays out of the queue, the completed/snoozed members are filtered out.
-	cfg.SetFocusQueue([]config.FocusQueueItem{
+	cfg.Planning().SetFocusQueue([]config.FocusQueueItem{
 		{TaskID: active.ID, ProjectID: project.ID},
 		{TaskID: completed.ID, ProjectID: project.ID},
 		{TaskID: snoozed.ID, ProjectID: project.ID},
 	})
 
-	m := NewProjectFocusViewModel(project, cfg)
+	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if len(m.tasks) != 1 {
 		t.Errorf("expected 1 active non-complete non-snoozed task, got %d", len(m.tasks))
@@ -98,37 +96,32 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	}
 }
 
-func TestProjectFocusViewModel_NilConfigConstructor(t *testing.T) {
-	// Passing nil config should not panic during construction.
+func TestProjectFocusViewModel_EmptyRuntimeConstructor(t *testing.T) {
+	// An empty runtime should not panic during construction.
 	project := testutil.NewTestProject("nil-cfg")
-	m := NewProjectFocusViewModel(project, nil)
+	m := NewProjectFocusViewModel(project, config.EmptyRuntimeState(""))
 
-	if m.getConfig() != nil {
-		t.Error("expected getConfig() to return nil when constructed with nil config")
+	if m.getRuntime() == nil {
+		t.Error("expected getRuntime() to return the supplied empty runtime")
 	}
 }
 
-func TestProjectFocusViewModel_StagesPrefixSafe(t *testing.T) {
-	// When config has Stages defined, getConfig().Stages should not panic.
-	cfg := &config.Config{
-		Stages: []string{"todo", "doing", "done"},
-	}
+func TestProjectFocusViewModel_FilterMachineAvailable(t *testing.T) {
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("stages-test")
 	task := mustNewTestTask(project, "Staged task")
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
-	m := NewProjectFocusViewModel(project, cfg)
+	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 
-	stages := m.getConfig().Stages
-	if len(stages) != 3 {
-		t.Errorf("expected 3 stages, got %d", len(stages))
+	if m.getFilterMachine() == nil {
+		t.Fatal("expected domain-backed filter machine")
 	}
 }
 
 func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.Stages = []string{"todo", "doing", "done"}
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("filter-shared")
 
 	plain := mustNewTestTask(project, "Plain task")
@@ -162,8 +155,8 @@ func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
 	for _, task := range project.Tasks {
 		queue = append(queue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
 	}
-	cfg.SetFocusQueue(queue)
-	m := NewProjectFocusViewModel(project, cfg)
+	cfg.Planning().SetFocusQueue(queue)
+	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if got := len(m.filteredTasks()); got != 6 {
 		t.Fatalf("baseline filteredTasks() = %d, want 6", got)
@@ -212,7 +205,7 @@ func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
 }
 
 func TestProjectFocusViewModel_FilterHandlers_DispatchThroughKeymap(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("filter-dispatch")
 
 	plain := mustNewTestTask(project, "Plain")
@@ -223,11 +216,11 @@ func TestProjectFocusViewModel_FilterHandlers_DispatchThroughKeymap(t *testing.T
 	project.Tasks = append(project.Tasks, dimmed)
 
 	project.BuildTaskTree()
-	cfg.SetFocusQueue([]config.FocusQueueItem{
+	cfg.Planning().SetFocusQueue([]config.FocusQueueItem{
 		{TaskID: plain.ID, ProjectID: project.ID},
 		{TaskID: dimmed.ID, ProjectID: project.ID},
 	})
-	m := NewProjectFocusViewModel(project, cfg)
+	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if got := len(m.filteredTasks()); got != 2 {
 		t.Fatalf("baseline filteredTasks() = %d, want 2", got)

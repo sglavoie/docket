@@ -17,7 +17,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 			return m, func() tea.Msg { return ErrorMsg{Err: msg.Error} }
 		}
 
-		defaultTemplates, customTemplates := m.config.GetTaskTemplatesSorted()
+		defaultTemplates, customTemplates := m.runtime.Automation().GetTaskTemplatesSorted()
 		m.allTemplates = append(defaultTemplates, customTemplates...)
 		m.defaultCount = len(defaultTemplates)
 		m.filterTemplates()
@@ -218,7 +218,8 @@ func (m *TaskTemplatesModel) toggleCurrentTemplate() tea.Cmd {
 	}
 
 	t := &m.filteredTemplates[m.cursor]
-	enabled, found := m.config.ToggleTaskTemplate(t.ID)
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	enabled, found := automation.ToggleTaskTemplate(t.ID)
 	if !found {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("template not found")} }
 	}
@@ -231,15 +232,7 @@ func (m *TaskTemplatesModel) toggleCurrentTemplate() tea.Cmd {
 		}
 	}
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
-		return TaskTemplatesUpdatedMsg{}
-	}
+	return m.coordinator.SaveThen(automation, func() tea.Msg { return TaskTemplatesUpdatedMsg{} })
 }
 
 func (m *TaskTemplatesModel) deleteCurrentTemplate() tea.Cmd {
@@ -248,19 +241,14 @@ func (m *TaskTemplatesModel) deleteCurrentTemplate() tea.Cmd {
 	}
 
 	templateID := m.filteredTemplates[m.cursor].ID
-	if !m.config.DeleteTaskTemplate(templateID) {
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	if !automation.DeleteTaskTemplate(templateID) {
 		return func() tea.Msg {
 			return TemplateDeletedMsg{DeletedID: templateID, Error: fmt.Errorf("template not found")}
 		}
 	}
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return TemplateDeletedMsg{DeletedID: templateID, Error: fmt.Errorf("failed to save: %w", err)}
-		}
-
+	return m.coordinator.SaveThen(automation, func() tea.Msg {
 		return TemplateDeletedMsg{DeletedID: templateID}
-	}
+	})
 }

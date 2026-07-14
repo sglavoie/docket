@@ -10,6 +10,8 @@ import (
 // buildKeyMap constructs the declarative KeyMap for inboxCore.
 // Both InboxProcessorModel and GlobalInboxProcessorModel embed inboxCore and
 // call this via initCore to wire the Dispatcher.
+//
+//nolint:gocyclo // This is a declarative inventory of the complete inbox key vocabulary.
 func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 	var entries []keymap.Entry
 
@@ -97,6 +99,36 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 	// vocabulary; kept as direct keys because the local picker affordances are
 	// useful when the user does not remember the section name). ---
 	entries = append(entries,
+		keymap.Bind("m", "Move from Inbox to project", "Operations", func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil || project == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg {
+				return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
+			}
+		}, keymap.WithGate(func() bool {
+			if c.backend == nil {
+				return true
+			}
+			_, project := c.currentTaskRef()
+			return project != nil && c.runtime.IsSystemInboxProject(project.ID)
+		})),
+		keymap.Bind("p", "Create project for Inbox item", "Operations", func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil || project == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg {
+				return CreateProjectMsg{MoveTask: task, SourceProject: project}
+			}
+		}, keymap.WithGate(func() bool {
+			if c.backend == nil {
+				return true
+			}
+			_, project := c.currentTaskRef()
+			return project != nil && c.runtime.IsSystemInboxProject(project.ID)
+		})),
 		keymap.Bind("ctrl+w", "Send to Waiting section", "Operations", func() (tea.Model, tea.Cmd) {
 			return c.model, c.sendToWaiting()
 		}),

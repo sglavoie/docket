@@ -13,6 +13,20 @@ func newConflictStore(t *testing.T) *ConflictStore {
 	return NewConflictStore(filepath.Join(t.TempDir(), ".tt", "conflicts"))
 }
 
+// TestConflictRecord_MissingRetryPolicyFailsClosed verifies bundles written by
+// versions that predate the retry marker cannot silently apply one project from
+// what may have been an aborted multi-artifact transaction. New project-only
+// records can still opt in explicitly to legacy apply-in-place resolution.
+func TestConflictRecord_MissingRetryPolicyFailsClosed(t *testing.T) {
+	if !(ConflictRecord{}).OperationRetryRequired() {
+		t.Fatal("missing retry policy must fail closed")
+	}
+	projectOnly := false
+	if (ConflictRecord{RequiresOperationRetry: &projectOnly}).OperationRetryRequired() {
+		t.Fatal("explicit project-only policy should allow apply-in-place resolution")
+	}
+}
+
 // TestConflictStore_SaveLoadRoundTrip verifies a saved bundle round-trips its
 // metadata and all three documents back through Load.
 func TestConflictStore_SaveLoadRoundTrip(t *testing.T) {

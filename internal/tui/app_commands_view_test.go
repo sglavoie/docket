@@ -259,7 +259,7 @@ func TestViewCommands_PriorityView_Aliases(t *testing.T) {
 // flips m.crossOutliner.crossPriorityMode rather than emitting ShowPriorityViewMsg.
 func TestViewCommands_PriorityView_TogglesCrossMode(t *testing.T) {
 	app := newTestAppModel()
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
 
 	cmds := app.viewCommands()
@@ -388,7 +388,7 @@ func TestViewCommands_UndoHistoryRemoved(t *testing.T) {
 
 func TestViewCommands_FilterPopup(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	cmds := app.viewCommands()

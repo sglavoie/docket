@@ -19,15 +19,14 @@ func TestComputeGlobalAlertLinesAdvertisesGlobalShortcut(t *testing.T) {
 	icons.SetUseEmoji(false)
 	t.Cleanup(func() { icons.SetUseEmoji(false) })
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Triage Demo")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
 	inbox.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inbox}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
-	m := &DashboardModel{config: cfg, projects: cfg.Projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
 	lines := m.computeGlobalAlertLines(nil)
 	if len(lines) == 0 {
 		t.Fatal("expected at least one alert line")
@@ -48,17 +47,16 @@ func TestComputeGlobalAlertLinesAdvertisesPerProjectTriage(t *testing.T) {
 	icons.SetUseEmoji(false)
 	t.Cleanup(func() { icons.SetUseEmoji(false) })
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Alpha")
 	for i := 0; i < 3; i++ {
 		task := testutil.NewTestTask("triage me", models.TaskTypeTask)
 		task.SetSection(models.SectionInbox)
 		project.Tasks = append(project.Tasks, task)
 	}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
-	m := &DashboardModel{config: cfg, projects: cfg.Projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
 	lines := m.computeGlobalAlertLines(project)
 	if len(lines) == 0 {
 		t.Fatalf("expected at least one alert line, got %v", lines)
@@ -80,12 +78,11 @@ func TestComputeGlobalAlertLinesAdvertisesPerProjectTriage(t *testing.T) {
 // folded selected-project hint is omitted when the selected project has no
 // inbox backlog, so the triage row doesn't carry a stale call to action.
 func TestComputeGlobalAlertLinesSkipsPerProjectTriageWhenEmpty(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Clean")
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
-	m := &DashboardModel{config: cfg, projects: cfg.Projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
 	lines := m.computeGlobalAlertLines(project)
 	for _, line := range lines {
 		plain := ansi.Strip(line)
@@ -102,8 +99,7 @@ func TestComputeGlobalAlertLinesOrdersTriageBeforeOverdue(t *testing.T) {
 	icons.SetUseEmoji(false)
 	t.Cleanup(func() { icons.SetUseEmoji(false) })
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Mixed")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
 	inbox.SetSection(models.SectionInbox)
@@ -114,9 +110,9 @@ func TestComputeGlobalAlertLinesOrdersTriageBeforeOverdue(t *testing.T) {
 	overdue.DueDate = &overdueDue
 
 	project.Tasks = []*models.Task{inbox, overdue}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
-	m := &DashboardModel{config: cfg, projects: cfg.Projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
 	lines := m.computeGlobalAlertLines(nil)
 
 	triageIdx, overdueIdx := -1, -1

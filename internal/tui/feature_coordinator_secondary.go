@@ -192,25 +192,48 @@ type BlockerMutator interface {
 	SetBlockers(projectID string, blockers []*models.Blocker) (app.BlockersResult, error)
 }
 
-// ConfigGateway is the narrow port the config-domain coordinators (settings,
-// workflow rules, scoring) depend on. It persists the whole workspace config as a
-// single write. *config.Manager satisfies it.
-type ConfigGateway interface {
-	Save(cfg *config.Config) error
+// SettingsCommitter and AutomationCommitter are the narrow, domain-scoped ports
+// the config-domain coordinators depend on, replacing the whole-config gateway.
+// A settings-editor change commits only the settings + machine-local domains and
+// a workflow/scoring change commits only the automation domain, each under an
+// optimistic-concurrency check rather than rewriting every synced file.
+// *config.Manager satisfies both.
+type SettingsCommitter interface {
+	CommitSettings(settings *config.Settings, machine *config.MachineState) error
+}
+
+type AutomationCommitter interface {
+	CommitAutomation(automation *config.AutomationConfig) error
+}
+
+// ConfigCommitter is the combined capability newSecondaryCoordinators is built
+// from; the one config manager satisfies both domain-scoped committers.
+type ConfigCommitter interface {
+	SettingsCommitter
+	AutomationCommitter
 }
 
 // Compile-time assurance that the production services satisfy every secondary
 // port, so the coordinators can be built from one *app.Service plus the config
 // manager.
 var (
-	_ BulkMutator       = (*app.Service)(nil)
-	_ TaskItemMutator   = (*app.Service)(nil)
-	_ AttachmentMutator = (*app.Service)(nil)
-	_ TagMutator        = (*app.Service)(nil)
-	_ SubviewMutator    = (*app.Service)(nil)
-	_ LinkMutator       = (*app.Service)(nil)
-	_ BlockerMutator    = (*app.Service)(nil)
-	_ ConfigGateway     = (*config.Manager)(nil)
+	_ BulkMutator         = (*app.Service)(nil)
+	_ TaskItemMutator     = (*app.Service)(nil)
+	_ AttachmentMutator   = (*app.Service)(nil)
+	_ TagMutator          = (*app.Service)(nil)
+	_ SubviewMutator      = (*app.Service)(nil)
+	_ LinkMutator         = (*app.Service)(nil)
+	_ BlockerMutator      = (*app.Service)(nil)
+	_ SettingsCommitter   = (*config.Manager)(nil)
+	_ AutomationCommitter = (*config.Manager)(nil)
+	// The domain-native runtime snapshot is also a settings committer: the TUI
+	// settings editor commits through it so the in-memory snapshot refreshes on
+	// success (RuntimeState.CommitSettings), rather than through the manager.
+	_ SettingsCommitter = (*config.RuntimeState)(nil)
+	// The runtime snapshot is likewise an automation committer: the workflow-rule
+	// and task-template editors commit through it (RuntimeState.CommitAutomation)
+	// so the in-memory automation snapshot refreshes on success.
+	_ AutomationCommitter = (*config.RuntimeState)(nil)
 )
 
 // BatchTransactionResultMsg is emitted when a project-scoped or multi-task
@@ -315,8 +338,9 @@ func runBatch(feature, action string, mutate func() ([]string, string, error)) t
 
 // BulkCoordinator backs the bulk-edit / bulk-capture selection overlays.
 type BulkCoordinator struct {
-	name string
-	bulk BulkMutator
+	name           string
+	bulk           BulkMutator
+	focusArtifacts app.WorkflowFocusArtifactBuilder
 }
 
 // Transition moves every selected task to the target state as one transaction.
@@ -332,13 +356,14 @@ func (c BulkCoordinator) Transition(taskIDs []string, target models.WorkflowStat
 
 // TransitionWithWorkflow moves every task to the target state, runs the workflow
 // cascade, and commits every touched project as one transaction. It is the
-// workflow-aware, best-effort analogue of Transition used by the multiselect
+// workflow-aware, best-effort analog of Transition used by the multiselect
 // pipeline: the request should carry SkipInvalid so tasks that cannot transition
 // are dropped rather than aborting the batch. summary builds the status line from
 // the number of tasks actually changed; fired rule trigger counts are carried on
 // the result message for the shell to persist. On rejection it emits a
 // TransactionErrorMsg, matching the other coordinator commands.
 func (c BulkCoordinator) TransitionWithWorkflow(req app.BulkTransitionRequest, summary func(changed int) string) tea.Cmd {
+	req.FocusArtifacts = c.focusArtifacts
 	return func() tea.Msg {
 		res, err := c.bulk.BulkTransitionWithWorkflow(req)
 		if err != nil {
@@ -450,8 +475,9 @@ func (c BulkCoordinator) SetTags(taskIDs []string, tags []string) tea.Cmd {
 // crossOutliner.reloadCrossProjects(). Nothing routes through it yet — it is the
 // seam a later child migrates the cross-project single-task raw-save family onto.
 type TaskItemCoordinator struct {
-	name string
-	task TaskItemMutator
+	name           string
+	task           TaskItemMutator
+	focusArtifacts app.WorkflowFocusArtifactBuilder
 }
 
 // SetSection commits one task's legacy GTD section field as one transaction.
@@ -668,6 +694,7 @@ func runTaskWorkflow(feature, action string, summary func(app.TaskResult) string
 // TransitionWorkflow moves one task to a target state and runs the workflow
 // cascade as one atomic transaction.
 func (c TaskItemCoordinator) TransitionWorkflow(taskID string, target models.WorkflowState, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Change State", summary, func() (app.BulkResult, error) {
 		return c.task.StateWithWorkflow(taskID, target, opts)
 	})
@@ -675,6 +702,7 @@ func (c TaskItemCoordinator) TransitionWorkflow(taskID string, target models.Wor
 
 // SetPriorityWorkflow sets one task's priority and runs the workflow cascade.
 func (c TaskItemCoordinator) SetPriorityWorkflow(taskID string, priority int, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Set Priority", summary, func() (app.BulkResult, error) {
 		return c.task.SetPriorityWithWorkflow(taskID, priority, opts)
 	})
@@ -682,6 +710,7 @@ func (c TaskItemCoordinator) SetPriorityWorkflow(taskID string, priority int, op
 
 // SetDueDateWorkflow sets or clears one task's due date and runs the workflow cascade.
 func (c TaskItemCoordinator) SetDueDateWorkflow(taskID string, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Set Due Date", summary, func() (app.BulkResult, error) {
 		return c.task.SetDueDateWithWorkflow(taskID, due, hasTime, opts)
 	})
@@ -689,6 +718,7 @@ func (c TaskItemCoordinator) SetDueDateWorkflow(taskID string, due *time.Time, h
 
 // SnoozeWorkflow sets or clears one task's snooze date and runs the workflow cascade.
 func (c TaskItemCoordinator) SnoozeWorkflow(taskID string, until *time.Time, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Snooze", summary, func() (app.BulkResult, error) {
 		return c.task.SnoozeWithWorkflow(taskID, until, opts)
 	})
@@ -696,6 +726,7 @@ func (c TaskItemCoordinator) SnoozeWorkflow(taskID string, until *time.Time, opt
 
 // SetSectionWorkflow sets one task's GTD section and runs the workflow cascade.
 func (c TaskItemCoordinator) SetSectionWorkflow(taskID, section string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Move to Section", summary, func() (app.BulkResult, error) {
 		return c.task.SetSectionWithWorkflow(taskID, section, opts)
 	})
@@ -704,6 +735,7 @@ func (c TaskItemCoordinator) SetSectionWorkflow(taskID, section string, opts app
 // TogglePinnedWorkflow toggles (nil) or forces one task's Pinned flag and runs
 // the workflow cascade.
 func (c TaskItemCoordinator) TogglePinnedWorkflow(taskID string, pinned *bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Toggle Pin", summary, func() (app.BulkResult, error) {
 		return c.task.SetPinnedWithWorkflow(taskID, pinned, opts)
 	})
@@ -711,6 +743,7 @@ func (c TaskItemCoordinator) TogglePinnedWorkflow(taskID string, pinned *bool, o
 
 // ToggleDimmedWorkflow flips one task's Dimmed flag and runs the workflow cascade.
 func (c TaskItemCoordinator) ToggleDimmedWorkflow(taskID string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return runTaskWorkflow(c.name, "Toggle Dim", summary, func() (app.BulkResult, error) {
 		return c.task.ToggleDimmedWithWorkflow(taskID, opts)
 	})
@@ -743,7 +776,7 @@ func (c TaskItemCoordinator) DeleteTask(taskID string, artifacts []storage.Artif
 // CommitProjectWorkflow commits an already-mutated project through the
 // application layer with the workflow cascade, resolving to a
 // BatchTransactionResultMsg (or TransactionErrorMsg on rejection). It is the
-// project-scoped analogue of the *Workflow single-task methods, backing the
+// project-scoped analog of the *Workflow single-task methods, backing the
 // ProjectTree and Outliner structural / multi-field mutations (reorder,
 // indent/outdent, reparent, bulk edits, section moves, paste) whose in-memory
 // change spans the whole project rather than one field of one task. The view
@@ -752,6 +785,7 @@ func (c TaskItemCoordinator) DeleteTask(taskID string, artifacts []storage.Artif
 // touched project. summary sets the status-line text; an empty summary leaves the
 // view's synchronously-set status intact (the shell skips an empty success line).
 func (c TaskItemCoordinator) CommitProjectWorkflow(project *models.Project, opts app.ProjectWorkflowOptions, summary string) tea.Cmd {
+	opts.FocusArtifacts = c.focusArtifacts
 	return func() tea.Msg {
 		res, err := c.task.CommitProjectWithWorkflow(project, opts)
 		if err != nil {
@@ -1037,7 +1071,7 @@ func (c LinkCoordinator) RemoveRelatedBidirectional(taskID, otherRef string) tea
 // back to a view-specific message contract: a TransactionErrorMsg surfaces as
 // the shared ErrorMsg, and a committed transaction resolves to success(), which
 // runs after the commit so it can re-resolve fresh task pointers. This is the
-// single-task analogue of commitBlockersThroughCoordinator — the migrated
+// single-task analog of commitBlockersThroughCoordinator — the migrated
 // panels keep their existing message vocabulary (and therefore their toasts and
 // refresh behavior) while the durable write flows through the application layer.
 func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
@@ -1066,59 +1100,70 @@ func (c BlockerCoordinator) Set(projectID string, blockers []*models.Blocker) te
 	})
 }
 
-// SettingsCoordinator backs the settings editor. It persists the whole workspace
-// config through the config gateway as one write.
+// SettingsCoordinator backs the settings editor. It commits the settings +
+// machine-local domains through the domain-scoped committer, keeping the
+// machine-local file outside the synced set and never rewriting the domains the
+// editor did not touch.
 type SettingsCoordinator struct {
-	name    string
-	gateway ConfigGateway
+	name      string
+	committer SettingsCommitter
 }
 
-// Save persists the settings config and resolves to a ConfigTransactionResultMsg.
-func (c SettingsCoordinator) Save(cfg *config.Config) tea.Cmd {
-	return runConfig(c.name, "Save Settings", func() error { return gatewaySave(c.gateway, cfg) })
-}
-
-// SaveThen persists the settings config and resolves to next() on success,
-// so a view keeps its own post-save message (pop, refresh) while the durable
-// write still flows through the coordinator. Failures resolve to the
-// coordinator's TransactionErrorMsg.
-func (c SettingsCoordinator) SaveThen(cfg *config.Config, next func() tea.Msg) tea.Cmd {
-	return configThen(c.Save(cfg), next)
-}
-
-// WorkflowCoordinator backs the workflow-rule and scoring editors, which persist
-// their config through the same gateway as settings.
-type WorkflowCoordinator struct {
-	name    string
-	gateway ConfigGateway
-}
-
-// Save persists the workflow/scoring config and resolves to a
+// Save persists the settings and machine-local domains and resolves to a
 // ConfigTransactionResultMsg.
-func (c WorkflowCoordinator) Save(cfg *config.Config) tea.Cmd {
-	return runConfig(c.name, "Save Workflow", func() error { return gatewaySave(c.gateway, cfg) })
+func (c SettingsCoordinator) Save(settings *config.Settings, machine *config.MachineState) tea.Cmd {
+	return runConfig(c.name, "Save Settings", func() error { return commitSettings(c.committer, settings, machine) })
 }
 
-// SaveThen persists the workflow/scoring config and resolves to next() on
-// success (see SettingsCoordinator.SaveThen).
-func (c WorkflowCoordinator) SaveThen(cfg *config.Config, next func() tea.Msg) tea.Cmd {
-	return configThen(c.Save(cfg), next)
+// SaveThen persists the settings/machine domains and resolves to next() on
+// success, so a view keeps its own post-save message (pop, refresh) while the
+// durable write still flows through the coordinator. Failures resolve to the
+// coordinator's TransactionErrorMsg.
+func (c SettingsCoordinator) SaveThen(settings *config.Settings, machine *config.MachineState, next func() tea.Msg) tea.Cmd {
+	return configThen(c.Save(settings, machine), next)
+}
+
+// WorkflowCoordinator backs the workflow-rule and scoring editors, which commit
+// only the automation domain.
+type WorkflowCoordinator struct {
+	name      string
+	committer AutomationCommitter
+}
+
+// Save persists the automation domain and resolves to a
+// ConfigTransactionResultMsg.
+func (c WorkflowCoordinator) Save(automation *config.AutomationConfig) tea.Cmd {
+	return runConfig(c.name, "Save Workflow", func() error { return commitAutomation(c.committer, automation) })
+}
+
+// SaveThen persists the automation domain and resolves to next() on success
+// (see SettingsCoordinator.SaveThen).
+func (c WorkflowCoordinator) SaveThen(automation *config.AutomationConfig, next func() tea.Msg) tea.Cmd {
+	return configThen(c.Save(automation), next)
 }
 
 // SaveNow persists synchronously for views that set their own status line in
-// the same Update pass (the score profile manager). It reuses the same gateway
+// the same Update pass (the score profile manager). It reuses the same committer
 // seam as Save.
-func (c WorkflowCoordinator) SaveNow(cfg *config.Config) error {
-	return gatewaySave(c.gateway, cfg)
+func (c WorkflowCoordinator) SaveNow(automation *config.AutomationConfig) error {
+	return commitAutomation(c.committer, automation)
 }
 
-// gatewaySave guards the config write against a missing gateway (isolated
-// render tests construct config-domain views without a manager).
-func gatewaySave(gateway ConfigGateway, cfg *config.Config) error {
-	if gateway == nil {
+// commitSettings and commitAutomation guard the domain write against a missing
+// committer (isolated render tests construct config-domain views without a
+// manager).
+func commitSettings(committer SettingsCommitter, settings *config.Settings, machine *config.MachineState) error {
+	if committer == nil {
 		return fmt.Errorf("config manager unavailable")
 	}
-	return gateway.Save(cfg)
+	return committer.CommitSettings(settings, machine)
+}
+
+func commitAutomation(committer AutomationCommitter, automation *config.AutomationConfig) error {
+	if committer == nil {
+		return fmt.Errorf("config manager unavailable")
+	}
+	return committer.CommitAutomation(automation)
 }
 
 // configThen chains a view-specific follow-up message onto a successful config
@@ -1163,17 +1208,27 @@ type SecondaryCoordinators struct {
 // host port even though every task/artifact port is satisfied by the one service.
 // In production svc is the TUI app service and gateway is the config manager; a
 // scenario test injects an in-memory service and a temp-dir config manager.
-func newSecondaryCoordinators(svc *app.Service, gateway ConfigGateway) SecondaryCoordinators {
+func newSecondaryCoordinators(
+	svc *app.Service,
+	committer ConfigCommitter,
+	focusBuilders ...app.WorkflowFocusArtifactBuilder,
+) SecondaryCoordinators {
+	var focusArtifacts app.WorkflowFocusArtifactBuilder
+	if len(focusBuilders) > 0 {
+		focusArtifacts = focusBuilders[0]
+	} else if manager, ok := committer.(*config.Manager); ok {
+		focusArtifacts = workflowFocusArtifactBuilder(manager)
+	}
 	return SecondaryCoordinators{
-		Bulk:       BulkCoordinator{name: "bulk", bulk: svc},
-		TaskItem:   TaskItemCoordinator{name: "task-item", task: svc},
+		Bulk:       BulkCoordinator{name: "bulk", bulk: svc, focusArtifacts: focusArtifacts},
+		TaskItem:   TaskItemCoordinator{name: "task-item", task: svc, focusArtifacts: focusArtifacts},
 		Attachment: AttachmentCoordinator{name: "attachment", attach: svc},
 		Tag:        TagCoordinator{name: "tag", tag: svc},
 		Subview:    SubviewCoordinator{name: "subview", sub: svc},
 		Link:       LinkCoordinator{name: "link", link: svc},
 		Blocker:    BlockerCoordinator{name: "blocker", blocker: svc},
-		Settings:   newSettingsCoordinator(gateway),
-		Workflow:   newWorkflowCoordinator(gateway),
+		Settings:   newSettingsCoordinator(committer),
+		Workflow:   newWorkflowCoordinator(committer),
 	}
 }
 
@@ -1181,11 +1236,11 @@ func newSecondaryCoordinators(svc *app.Service, gateway ConfigGateway) Secondary
 // views build their coordinator over the same manager they already hold,
 // keeping one seam without threading SecondaryCoordinators through every
 // constructor. Callers must pass nil (not a typed nil manager) when no
-// gateway exists so gatewaySave's guard fires.
-func newSettingsCoordinator(gateway ConfigGateway) SettingsCoordinator {
-	return SettingsCoordinator{name: "settings", gateway: gateway}
+// committer exists so the commit guards fire.
+func newSettingsCoordinator(committer SettingsCommitter) SettingsCoordinator {
+	return SettingsCoordinator{name: "settings", committer: committer}
 }
 
-func newWorkflowCoordinator(gateway ConfigGateway) WorkflowCoordinator {
-	return WorkflowCoordinator{name: "workflow", gateway: gateway}
+func newWorkflowCoordinator(committer AutomationCommitter) WorkflowCoordinator {
+	return WorkflowCoordinator{name: "workflow", committer: committer}
 }

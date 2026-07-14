@@ -42,8 +42,11 @@ const (
 
 // TaskTemplateCreatorModel handles creating a new task template via TUI.
 type TaskTemplateCreatorModel struct {
-	config        *config.Config
-	configManager *config.Manager
+	// runtime backs the automation-domain commit (templates) and the
+	// catalog-domain project read for autocomplete caches; the saved template is
+	// written through the coordinator over it (RuntimeState.CommitAutomation).
+	runtime     *config.RuntimeState
+	coordinator WorkflowCoordinator
 
 	// Form fields
 	nameInput      textinput.Model
@@ -91,7 +94,7 @@ type TaskTemplateCreatorModel struct {
 }
 
 // NewTaskTemplateCreatorModel creates a new task template creator.
-func NewTaskTemplateCreatorModel(cfg *config.Config, manager *config.Manager) *TaskTemplateCreatorModel {
+func NewTaskTemplateCreatorModel(runtime *config.RuntimeState) *TaskTemplateCreatorModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInput("Template name")
@@ -117,9 +120,13 @@ func NewTaskTemplateCreatorModel(cfg *config.Config, manager *config.Manager) *T
 
 	categories := []string{"", "bug", "feature", "process"}
 
+	var coordinator WorkflowCoordinator
+	if runtime != nil {
+		coordinator = newWorkflowCoordinator(runtime)
+	}
 	m := &TaskTemplateCreatorModel{
-		config:         cfg,
-		configManager:  manager,
+		runtime:        runtime,
+		coordinator:    coordinator,
 		nameInput:      nameInput,
 		descInput:      descInput,
 		tagsInput:      tagsInput,
@@ -140,8 +147,8 @@ func NewTaskTemplateCreatorModel(cfg *config.Config, manager *config.Manager) *T
 }
 
 // NewTaskTemplateEditorModel creates a model for editing an existing template.
-func NewTaskTemplateEditorModel(cfg *config.Config, manager *config.Manager, t template.TaskTemplate) *TaskTemplateCreatorModel {
-	m := NewTaskTemplateCreatorModel(cfg, manager)
+func NewTaskTemplateEditorModel(runtime *config.RuntimeState, t template.TaskTemplate) *TaskTemplateCreatorModel {
+	m := NewTaskTemplateCreatorModel(runtime)
 	m.editingTemplate = &t
 
 	m.nameInput.SetValue(t.Name)

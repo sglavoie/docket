@@ -146,6 +146,44 @@ func TestMerge_IndependentFieldEditsAutoMerge(t *testing.T) {
 	}
 }
 
+func TestMerge_IndependentEditsWithDerivedMetadataAutoMerge(t *testing.T) {
+	baseTime := time.Date(2026, 7, 14, 9, 0, 0, 0, time.Local)
+	currentTime := baseTime.Add(time.Hour)
+	localTime := baseTime.Add(2 * time.Hour)
+
+	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
+	base.Tasks[0].CreatedAt = baseTime
+	base.Tasks[0].UpdatedAt = baseTime
+	base.Tasks[0].Activity = []*models.ActivityEntry{{Timestamp: baseTime, Field: "created"}}
+
+	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
+	local.Tasks[0].Title = "Alpha edited"
+	local.Tasks[0].UpdatedAt = localTime
+	local.Tasks[0].Activity = append([]*models.ActivityEntry(nil), base.Tasks[0].Activity...)
+	local.Tasks[0].Activity = append(local.Tasks[0].Activity, &models.ActivityEntry{Timestamp: localTime, Field: "title"})
+
+	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
+	current.Tasks[0].Priority = models.PriorityMin
+	current.Tasks[0].UpdatedAt = currentTime
+	current.Tasks[0].Activity = append([]*models.ActivityEntry(nil), base.Tasks[0].Activity...)
+	current.Tasks[0].Activity = append(current.Tasks[0].Activity, &models.ActivityEntry{Timestamp: currentTime, Field: "priority"})
+
+	res := mustMerge(t, base, local, current)
+	if res.HasConflicts() {
+		t.Fatalf("derived metadata must not conflict with independent edits: %+v", res.Conflicts)
+	}
+	merged := mergedTaskByID(t, res, "a")
+	if merged.Title != "Alpha edited" || merged.Priority != models.PriorityMin {
+		t.Fatalf("merged business fields = title %q priority %d", merged.Title, merged.Priority)
+	}
+	if !merged.UpdatedAt.Equal(localTime) {
+		t.Fatalf("merged UpdatedAt = %v, want latest %v", merged.UpdatedAt, localTime)
+	}
+	if len(merged.Activity) != 2 || merged.Activity[0].Field != "created" || merged.Activity[1].Field != "priority" {
+		t.Fatalf("merged activity = %+v, want current durable history", merged.Activity)
+	}
+}
+
 func TestMerge_IdenticalConcurrentEditsCoalesce(t *testing.T) {
 	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
 	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
@@ -163,11 +201,15 @@ func TestMerge_IdenticalConcurrentEditsCoalesce(t *testing.T) {
 }
 
 func TestMerge_DivergentFieldEditConflicts(t *testing.T) {
+	baseTime := time.Date(2026, 7, 14, 9, 0, 0, 0, time.Local)
 	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
+	base.Tasks[0].UpdatedAt = baseTime
 	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
 	local.Tasks[0].Title = "Local"
+	local.Tasks[0].UpdatedAt = baseTime.Add(time.Hour)
 	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
 	current.Tasks[0].Title = "Current"
+	current.Tasks[0].UpdatedAt = baseTime.Add(2 * time.Hour)
 
 	res := mustMerge(t, base, local, current)
 	if res.Merged != nil {
@@ -175,6 +217,9 @@ func TestMerge_DivergentFieldEditConflicts(t *testing.T) {
 	}
 	if !hasConflictKind(res, MergeConflictFieldEdit) {
 		t.Fatalf("expected field_edit conflict, got %v", conflictKinds(res))
+	}
+	if len(res.Conflicts) != 1 {
+		t.Fatalf("expected only the user-authored title conflict, got %+v", res.Conflicts)
 	}
 	c := res.Conflicts[0]
 	if c.Field != "title" || c.Local != "Local" || c.Current != "Current" || c.Base != "Alpha" {

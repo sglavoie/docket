@@ -34,7 +34,7 @@ func (s *Service) PinProjectTag(projectID, tag string) (ProjectTagResult, error)
 	if err := models.ValidateTag(normalized); err != nil {
 		return ProjectTagResult{}, invalidInput("tag", err.Error())
 	}
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return ProjectTagResult{}, err
 	}
@@ -42,7 +42,7 @@ func (s *Service) PinProjectTag(projectID, tag string) (ProjectTagResult, error)
 	if err != nil {
 		return ProjectTagResult{}, invalidInput("tag", err.Error())
 	}
-	rev, err := s.commitProjectMetadata(project, revision, "Pin Tag", normalized)
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Pin Tag", normalized)
 	if err != nil {
 		return ProjectTagResult{}, err
 	}
@@ -64,12 +64,12 @@ func (s *Service) UnpinProjectTag(projectID, tag string) (ProjectTagResult, erro
 	if err := models.ValidateTag(normalized); err != nil {
 		return ProjectTagResult{}, invalidInput("tag", err.Error())
 	}
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return ProjectTagResult{}, err
 	}
 	changed := project.UnpinTag(normalized)
-	rev, err := s.commitProjectMetadata(project, revision, "Unpin Tag", normalized)
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Unpin Tag", normalized)
 	if err != nil {
 		return ProjectTagResult{}, err
 	}
@@ -109,7 +109,7 @@ type TagCatalogResult struct {
 // mutation so the adapter can surface the duplicate.
 func (s *Service) AddProjectTag(projectID, tag string) (TagCatalogResult, error) {
 	normalized := models.NormalizeTag(tag)
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -120,7 +120,7 @@ func (s *Service) AddProjectTag(projectID, tag string) (TagCatalogResult, error)
 	if !added {
 		return TagCatalogResult{}, invalidInput("tag", fmt.Sprintf("tag '%s' already exists", normalized))
 	}
-	rev, err := s.commitProjectMetadata(project, revision, "Add Project Tag", normalized)
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Add Project Tag", normalized)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -132,7 +132,7 @@ func (s *Service) AddProjectTag(projectID, tag string) (TagCatalogResult, error)
 // tag that does not exist anywhere is rejected before any mutation.
 func (s *Service) RemoveProjectTag(projectID, tag string) (TagCatalogResult, error) {
 	normalized := models.NormalizeTag(tag)
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -143,7 +143,7 @@ func (s *Service) RemoveProjectTag(projectID, tag string) (TagCatalogResult, err
 	if !result.Changed() {
 		return TagCatalogResult{}, invalidInput("tag", fmt.Sprintf("tag '%s' does not exist", normalized))
 	}
-	rev, err := s.commitProjectMetadata(project, revision, "Remove Project Tag", result.Name)
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Remove Project Tag", result.Name)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -159,7 +159,7 @@ func (s *Service) RenameProjectTag(projectID, oldName, newName string) (TagCatal
 	if normalizedNew == "" {
 		return TagCatalogResult{}, invalidInput("tag", "new tag name is required")
 	}
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -170,7 +170,7 @@ func (s *Service) RenameProjectTag(projectID, oldName, newName string) (TagCatal
 	if !changed {
 		return TagCatalogResult{ProjectID: project.ID, Tag: normalizedNew, OldTag: oldName}, nil
 	}
-	rev, err := s.commitProjectMetadata(project, revision, "Rename Tag", fmt.Sprintf("%s -> %s", oldName, normalizedNew))
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Rename Tag", fmt.Sprintf("%s -> %s", oldName, normalizedNew))
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -237,7 +237,7 @@ func (s *Service) RenameWorkspaceTag(oldName, newName string) (WorkspaceTagRenam
 		if !modified {
 			continue
 		}
-		commits = append(commits, projectCommit{project: project, expectedRevision: snap.Revision(project.ID)})
+		commits = append(commits, projectCommit{project: project, expectedRevision: snap.Revision(project.ID), base: snap.Document(project.ID)})
 		result.ProjectCount++
 		result.TaskCount += usages
 		result.TouchedProjectIDs = append(result.TouchedProjectIDs, project.ID)
@@ -269,7 +269,7 @@ func countTaskTagUsage(project *models.Project, tag string) int {
 // commits the project as one ChangeSet, reporting the post-toggle state.
 func (s *Service) TogglePinnedProjectTag(projectID, tag string) (TagCatalogResult, error) {
 	normalized := models.NormalizeTag(tag)
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -281,7 +281,7 @@ func (s *Service) TogglePinnedProjectTag(projectID, tag string) (TagCatalogResul
 	if pinned {
 		action = "Pin Tag"
 	}
-	rev, err := s.commitProjectMetadata(project, revision, action, normalized)
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), action, normalized)
 	if err != nil {
 		return TagCatalogResult{}, err
 	}
@@ -305,7 +305,7 @@ type ProjectResetResult struct {
 // destructive confirmation lives at the adapter edge, which prompts before
 // calling.
 func (s *Service) ResetProjectTasks(projectID string) (ProjectResetResult, error) {
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return ProjectResetResult{}, err
 	}
@@ -316,7 +316,7 @@ func (s *Service) ResetProjectTasks(projectID string) (ProjectResetResult, error
 	project.SectionColors = make(map[string]string)
 	project.Tags = []string{}
 	project.PinnedTags = []string{}
-	rev, err := s.commitProjectMetadata(project, revision, "Reset Project", project.Name)
+	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Reset Project", project.Name)
 	if err != nil {
 		return ProjectResetResult{}, err
 	}
@@ -327,11 +327,12 @@ func (s *Service) ResetProjectTasks(projectID string) (ProjectResetResult, error
 // tags, a whole-project reset — as one ChangeSet, returning the project's new
 // revision. It is the project-metadata counterpart of commitProject, which
 // serves single-task mutations.
-func (s *Service) commitProjectMetadata(project *models.Project, expectedRevision, undoAction, undoContext string) (string, error) {
+func (s *Service) commitProjectMetadata(project *models.Project, expectedRevision string, base *storage.ProjectDocument, undoAction, undoContext string) (string, error) {
 	applyPostMutationHooks(project)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          project,
 		ExpectedRevision: expectedRevision,
+		Base:             base,
 		UndoAction:       undoAction,
 		UndoContext:      undoContext,
 	})

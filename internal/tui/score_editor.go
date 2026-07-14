@@ -9,7 +9,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 )
@@ -25,7 +24,6 @@ type ScoreEditorDoneMsg struct {
 type ScoreEditorModel struct {
 	task        *models.Task
 	project     *models.Project
-	config      *config.Config
 	profile     *scoring.ScoringProfile
 	coordinator TaskItemCoordinator
 
@@ -47,8 +45,7 @@ type ScoreEditorModel struct {
 // NewScoreEditorModel creates a score editor for a task. The coordinator commits
 // the edited dimensions through the application layer (atomic, ledger-undoable)
 // on save.
-func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config.Config, coordinator TaskItemCoordinator) *ScoreEditorModel {
-	profile := cfg.GetProjectScoringProfile(project.ID)
+func NewScoreEditorModel(task *models.Task, project *models.Project, profile *scoring.ScoringProfile, coordinator TaskItemCoordinator) *ScoreEditorModel {
 	if profile == nil {
 		return nil
 	}
@@ -69,7 +66,6 @@ func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config
 	return &ScoreEditorModel{
 		task:        task,
 		project:     project,
-		config:      cfg,
 		profile:     profile,
 		coordinator: coordinator,
 		values:      values,

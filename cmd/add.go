@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -118,17 +117,17 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 
 func runQuickAdd(cmd *cobra.Command, args []string) error {
 	var (
-		project *models.Project
-		cfg     *config.Config
-		err     error
+		project   *models.Project
+		workspace *CLIWorkspace
+		err       error
 	)
 
 	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
-		cfg, _, err = LoadConfig()
+		workspace, err = LoadCLIWorkspace()
 		if err != nil {
 			return err
 		}
-		project = cfg.GetProject(slug)
+		project = workspace.Runtime.GetProject(slug)
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(slug)
 		}
@@ -136,7 +135,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load project %s: %w", slug, err)
 		}
 	} else {
-		project, cfg, _, err = LoadCurrentProject()
+		project, workspace, err = LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -186,9 +185,9 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	// checks); the use case re-validates against the fresh snapshot.
 	var parentID *string
 	if addParentFlag != "" {
-		parent, err := ValidateParentTask(project, addParentFlag, taskType)
-		if err != nil {
-			return err
+		parent, parentErr := ValidateParentTask(project, addParentFlag, taskType)
+		if parentErr != nil {
+			return parentErr
 		}
 		pid := parent.ID
 		parentID = &pid
@@ -198,7 +197,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	// service owns ID/short-ID minting, validation, the workspace-ledger undo
 	// record, and the single atomic ChangeSet commit. Quick-add and `tt task add`
 	// are the same task-capture family, so both share this path.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.AddTask(app.AddTaskRequest{
 			ProjectID: project.ID,

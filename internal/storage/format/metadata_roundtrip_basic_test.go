@@ -22,9 +22,9 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 				Tags:          []string{"work", "urgent"},
 				Pinned:        true,
 				DependsOn:     []string{"dep1", "dep2"},
-				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
-				UpdatedAt: time.Date(2025, 1, 16, 14, 20, 0, 0, time.Local),
-				DueDate:   timePtr(time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local)),
+				CreatedAt:     time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
+				UpdatedAt:     time.Date(2025, 1, 16, 14, 20, 0, 0, time.Local),
+				DueDate:       timePtr(time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local)),
 				Recurrence: &models.RecurrencePattern{
 					Interval: 1,
 					Unit:     models.RecurrenceWeekly,

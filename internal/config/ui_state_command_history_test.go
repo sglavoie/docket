@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGetCommandHistory_Empty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	history := cfg.GetCommandHistory()
 
@@ -16,7 +16,7 @@ func TestGetCommandHistory_Empty(t *testing.T) {
 }
 
 func TestAddCommandToHistory(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.AddCommandToHistory("task-add")
 
@@ -30,7 +30,7 @@ func TestAddCommandToHistory(t *testing.T) {
 }
 
 func TestAddCommandToHistory_MoveToFront(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.AddCommandToHistory("first")
 	cfg.AddCommandToHistory("second")
@@ -53,7 +53,7 @@ func TestAddCommandToHistory_MoveToFront(t *testing.T) {
 }
 
 func TestAddCommandToHistory_MaxLimit(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	for i := range 12 {
 		cfg.AddCommandToHistory("cmd" + string(rune('a'+i)))
@@ -73,7 +73,7 @@ func TestAddCommandToHistory_MaxLimit(t *testing.T) {
 }
 
 func TestAddCommandToHistory_Deduplication(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.AddCommandToHistory("cmd")
 	cfg.AddCommandToHistory("cmd")
@@ -86,7 +86,7 @@ func TestAddCommandToHistory_Deduplication(t *testing.T) {
 }
 
 func TestAddCommandToHistory_IgnoresEmpty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.AddCommandToHistory("task-add")
 	cfg.AddCommandToHistory("")
@@ -104,7 +104,7 @@ func TestAddCommandToHistory_IgnoresEmpty(t *testing.T) {
 }
 
 func TestAddCommandToHistory_MaxWithDuplicates(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	for i := range 10 {
 		cfg.AddCommandToHistory("cmd" + string(rune('a'+i)))

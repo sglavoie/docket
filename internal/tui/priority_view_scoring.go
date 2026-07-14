@@ -176,8 +176,8 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 	}
 
 	// Composite score from scoring profile
-	if m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+	if m.runtime != nil {
+		if profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID); profile != nil {
 			pct := scoring.NormalizedScore(task, profile)
 			if int(pct) > 0 {
 				reasons = append(reasons, fmt.Sprintf("composite score %d/%d", int(pct), scoring.MaxNormalizedScore(profile)))

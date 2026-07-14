@@ -59,8 +59,16 @@ func Evaluate(cfg AlertConfig, projects []ProjectData) *AlertSnapshot {
 	}
 }
 
-func checkDailyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) []Alert {
+const (
+	dailyReviewFirstUseGrace  = 24 * time.Hour
+	weeklyReviewFirstUseGrace = 7 * 24 * time.Hour
+)
+
+func checkDailyReviewReminder(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
 	if cfg.LastDailyReviewAt == nil {
+		if !reviewReminderReady(projects, now, dailyReviewFirstUseGrace) {
+			return nil
+		}
 		return []Alert{{
 			Category: CategoryDailyReview,
 			Title:    "Daily review never completed",
@@ -114,12 +122,15 @@ func checkDailyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) [
 	return nil
 }
 
-func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) []Alert {
+func checkWeeklyReviewReminder(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
 	if cfg.LastWeeklyReviewAt == nil {
+		if !reviewReminderReady(projects, now, weeklyReviewFirstUseGrace) {
+			return nil
+		}
 		return []Alert{{
 			Category: CategoryWeeklyReview,
 			Title:    "Weekly review never completed",
-			Details:  "Open the weekly review with ;w",
+			Details:  "Open the weekly review with ;r",
 			Severity: SeverityWarning,
 		}}
 	}
@@ -152,6 +163,46 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 	}
 
 	return nil
+}
+
+// reviewReminderReady keeps review prompts quiet until there is something to
+// review and the user's first meaningful task activity has had time to settle.
+// A task with no usable timestamp still counts as meaningful legacy activity;
+// in that case we fail open after the activity check rather than suppressing
+// reminders forever.
+func reviewReminderReady(projects []ProjectData, now time.Time, grace time.Duration) bool {
+	firstActivity, meaningful := firstMeaningfulActivityAt(projects)
+	if !meaningful {
+		return false
+	}
+	if firstActivity.IsZero() {
+		return true
+	}
+	return !now.Before(firstActivity.Add(grace))
+}
+
+func firstMeaningfulActivityAt(projects []ProjectData) (time.Time, bool) {
+	var first time.Time
+	meaningful := false
+	for _, projectData := range projects {
+		for _, task := range projectData.Tasks {
+			if task == nil {
+				continue
+			}
+			meaningful = true
+			activityAt := task.CreatedAt
+			if activityAt.IsZero() && projectData.Project != nil {
+				activityAt = projectData.Project.CreatedAt
+			}
+			if activityAt.IsZero() {
+				continue
+			}
+			if first.IsZero() || activityAt.Before(first) {
+				first = activityAt
+			}
+		}
+	}
+	return first, meaningful
 }
 
 func normalizedWeeklyReviewDay(reviewDay int) int {

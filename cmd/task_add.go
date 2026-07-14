@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/template"
@@ -107,20 +106,16 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	var (
-		project       *models.Project
-		cfg           *config.Config
-		configManager *config.Manager
+		project   *models.Project
+		workspace *CLIWorkspace
 	)
 
 	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
-		cfg, configManager, err = LoadConfig()
+		workspace, err = LoadCLIWorkspace()
 		if err != nil {
 			return err
 		}
-		project, err = lookupProject(configManager, slug)
-		if err != nil {
-			return err
-		}
+		project = workspace.Runtime.GetProject(slug)
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(slug)
 		}
@@ -128,7 +123,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("failed to load project %s: %w", slug, err)
 		}
 	} else {
-		project, cfg, configManager, err = LoadCurrentProject()
+		project, workspace, err = LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -138,10 +133,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	var tmpl *template.TaskTemplate
 	templateLookup := strings.TrimSpace(taskTemplateFlag)
 	if templateLookup != "" {
-		tmpl = cfg.GetTaskTemplate(templateLookup)
+		tmpl = workspace.Runtime.Automation().GetTaskTemplate(templateLookup)
 		if tmpl == nil {
 			// Try by name
-			tmpl = cfg.GetTaskTemplateByName(templateLookup)
+			tmpl = workspace.Runtime.Automation().GetTaskTemplateByName(templateLookup)
 		}
 		if tmpl == nil {
 			return fmt.Errorf("template not found: %s", templateLookup)
@@ -225,9 +220,9 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// error messages); the use case re-validates against the fresh snapshot.
 	var parentID *string
 	if taskParentFlag != "" {
-		parent, err := ValidateParentTask(project, taskParentFlag, taskType)
-		if err != nil {
-			return err
+		parent, parentErr := ValidateParentTask(project, taskParentFlag, taskType)
+		if parentErr != nil {
+			return parentErr
 		}
 		pid := parent.ID
 		parentID = &pid
@@ -255,15 +250,19 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// could persist a task without the counter (or vice-versa) on a partial failure.
 	var artifacts []storage.ArtifactChange
 	if tmpl != nil {
-		cfg.IncrementTemplateUseCount(tmpl.ID)
-		arts, err := encodeConfigArtifacts(configManager, cfg)
-		if err != nil {
-			return err
+		domains, cloneErr := workspace.Runtime.CloneDomains()
+		if cloneErr != nil {
+			return cloneErr
+		}
+		domains.Automation.IncrementTemplateUseCount(tmpl.ID)
+		arts, artifactErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
+		if artifactErr != nil {
+			return artifactErr
 		}
 		artifacts = arts
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.AddTask(app.AddTaskRequest{
 			ProjectID:   project.ID,

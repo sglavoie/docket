@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 )
 
@@ -19,13 +20,13 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		switch msg.Category {
 		case alerts.CategoryDailyReview:
-			dr := NewDailyReviewModel(m.config, m.configManager)
+			dr := NewDailyReviewModel(m.runtime, m.configManager)
 			dr.queueIDs = m.focusQueueIDs
 			dr.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewDailyReview, dr)
 			return true, nil
 		case alerts.CategoryWeeklyReview:
-			wr := NewWeeklyReviewModel(m.config, m.configManager)
+			wr := NewWeeklyReviewModel(m.runtime, m.configManager)
 			wr.queueIDs = m.focusQueueIDs
 			wr.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewWeeklyReview, wr)
@@ -37,7 +38,7 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, nil
 		}
 
-		project := m.config.GetProject(msg.ProjectID)
+		project := m.projectByID(msg.ProjectID)
 		if project == nil {
 			return true, nil
 		}
@@ -59,7 +60,7 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.ProjectID == "" || msg.TaskID == "" {
 			return true, nil
 		}
-		project := m.config.GetProject(msg.ProjectID)
+		project := m.projectByID(msg.ProjectID)
 		if project == nil {
 			return true, nil
 		}
@@ -76,9 +77,10 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case DismissAlertMsg:
-		m.config.DismissAlert(msg.Key, msg.Category)
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
+		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+			p.DismissAlert(msg.Key, msg.Category)
+		}); err != nil {
+			logging.Warn("failed to save alert dismissal: %v", err)
 		}
 		m.reevaluateAlerts()
 		m.refreshNotificationCenter()
@@ -86,9 +88,10 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, defaultStatusTimeout()
 
 	case UndismissAlertMsg:
-		m.config.UndismissAlert(msg.Key)
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
+		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+			p.UndismissAlert(msg.Key)
+		}); err != nil {
+			logging.Warn("failed to save alert restore: %v", err)
 		}
 		m.reevaluateAlerts()
 		m.refreshNotificationCenter()

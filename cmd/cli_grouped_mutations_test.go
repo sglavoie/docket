@@ -10,7 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig proves the migrated
@@ -32,21 +31,21 @@ func TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig(t *testing.T) {
 	saveProjectForGroupedCLITest(t, source)
 	saveProjectForGroupedCLITest(t, dest)
 
-	cfg := &config.Config{
-		DataDir:          tmpDir,
-		CurrentProject:   source.ID,
-		Projects:         []*models.Project{source, dest},
-		UndoHistoryDepth: &depth,
-		FocusQueue: []config.FocusQueueItem{
-			{TaskID: taskID, ProjectID: source.ID},
-		},
-		DailyPlan: []config.DailyPlanItem{
-			{TaskID: taskID, ProjectID: source.ID, PlannedDate: "2026-06-18"},
-		},
-		RecentTaskVisits: []config.RecentTaskVisit{
-			{TaskID: taskID, ProjectID: source.ID},
-		},
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(source)
+	domains.Catalog.UpsertProject(dest)
+	domains.Settings.UndoHistoryDepth = &depth
+	domains.Machine.CurrentProject = source.ID
+	domains.Planning.FocusQueue = []config.FocusQueueItem{
+		{TaskID: taskID, ProjectID: source.ID},
 	}
+	domains.Planning.DailyPlan = []config.DailyPlanItem{
+		{TaskID: taskID, ProjectID: source.ID, PlannedDate: "2026-06-18"},
+	}
+	domains.Machine.RecentTaskVisits = []config.RecentTaskVisit{
+		{TaskID: taskID, ProjectID: source.ID},
+	}
+	cfg := config.NewRuntimeState(tmpDir, domains)
 	configureFileBackedGroupedCLI(t, cfg)
 
 	taskMoveToForce = true
@@ -58,7 +57,7 @@ func TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig(t *testing.T) {
 
 	// After the move, every config ref points at the destination and the task lives
 	// in the destination project.
-	movedCfg, err := config.NewManager(filepath.Join(tmpDir, "config.json")).Load()
+	movedCfg, err := config.NewManager(filepath.Join(tmpDir, "config.json")).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config after move: %v", err)
 	}
@@ -83,7 +82,7 @@ func TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig(t *testing.T) {
 	if dest.GetTaskByID(taskID) != nil {
 		t.Fatal("expected undo to remove moved task from destination project")
 	}
-	undoneCfg, err := config.NewManager(filepath.Join(tmpDir, "config.json")).Load()
+	undoneCfg, err := config.NewManager(filepath.Join(tmpDir, "config.json")).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config after undo: %v", err)
 	}
@@ -92,11 +91,11 @@ func TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig(t *testing.T) {
 	// machine-local (machine.json), excluded from the workspace transaction, so it
 	// stays where the post-commit best-effort repair left it (destination) and is
 	// not restored by ledger undo.
-	if len(undoneCfg.FocusQueue) != 1 || undoneCfg.FocusQueue[0].ProjectID != source.ID {
-		t.Fatalf("FocusQueue after undo = %+v, want project %s", undoneCfg.FocusQueue, source.ID)
+	if got := undoneCfg.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != source.ID {
+		t.Fatalf("FocusQueue after undo = %+v, want project %s", got, source.ID)
 	}
-	if len(undoneCfg.DailyPlan) != 1 || undoneCfg.DailyPlan[0].ProjectID != source.ID {
-		t.Fatalf("DailyPlan after undo = %+v, want project %s", undoneCfg.DailyPlan, source.ID)
+	if got := undoneCfg.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != source.ID {
+		t.Fatalf("DailyPlan after undo = %+v, want project %s", got, source.ID)
 	}
 
 	// Ledger redo re-applies the move: the task returns to the destination and the
@@ -118,15 +117,15 @@ func TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig(t *testing.T) {
 	if dest.GetTaskByID(taskID) == nil {
 		t.Fatal("expected redo to restore moved task to destination project")
 	}
-	redoneCfg, err := config.NewManager(filepath.Join(tmpDir, "config.json")).Load()
+	redoneCfg, err := config.NewManager(filepath.Join(tmpDir, "config.json")).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config after redo: %v", err)
 	}
-	if len(redoneCfg.FocusQueue) != 1 || redoneCfg.FocusQueue[0].ProjectID != dest.ID {
-		t.Fatalf("FocusQueue after redo = %+v, want project %s", redoneCfg.FocusQueue, dest.ID)
+	if got := redoneCfg.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != dest.ID {
+		t.Fatalf("FocusQueue after redo = %+v, want project %s", got, dest.ID)
 	}
-	if len(redoneCfg.DailyPlan) != 1 || redoneCfg.DailyPlan[0].ProjectID != dest.ID {
-		t.Fatalf("DailyPlan after redo = %+v, want project %s", redoneCfg.DailyPlan, dest.ID)
+	if got := redoneCfg.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != dest.ID {
+		t.Fatalf("DailyPlan after redo = %+v, want project %s", got, dest.ID)
 	}
 }
 
@@ -147,12 +146,12 @@ func TestRunTaskArchiveAllCommitsThroughLedgerAsOneTransaction(t *testing.T) {
 	saveProjectForGroupedCLITest(t, alpha)
 	saveProjectForGroupedCLITest(t, beta)
 
-	cfg := &config.Config{
-		DataDir:          tmpDir,
-		CurrentProject:   alpha.ID,
-		Projects:         []*models.Project{alpha, beta},
-		UndoHistoryDepth: &depth,
-	}
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(alpha)
+	domains.Catalog.UpsertProject(beta)
+	domains.Settings.UndoHistoryDepth = &depth
+	domains.Machine.CurrentProject = alpha.ID
+	cfg := config.NewRuntimeState(tmpDir, domains)
 	configureFileBackedGroupedCLI(t, cfg)
 
 	archiveForce = true
@@ -215,57 +214,6 @@ func TestRunTaskArchiveAllCommitsThroughLedgerAsOneTransaction(t *testing.T) {
 	}
 }
 
-func TestProcessDeferredMovesWithUndoRecordsGroupedSnapshots(t *testing.T) {
-	tmpDir := t.TempDir()
-	depth := 10
-	source := newFileBackedProject(t, tmpDir, "proj-source", "Source")
-	dest := newFileBackedProject(t, tmpDir, "proj-dest", "Dest")
-	task := addTestTask(t, source, "workflow-move", "Workflow move", models.StatusTodo)
-	saveProjectForGroupedCLITest(t, source)
-	saveProjectForGroupedCLITest(t, dest)
-
-	cfg := &config.Config{
-		DataDir:          tmpDir,
-		CurrentProject:   source.ID,
-		Projects:         []*models.Project{source, dest},
-		UndoHistoryDepth: &depth,
-	}
-	configureFileBackedGroupedCLI(t, cfg)
-
-	recorded, err := processDeferredMovesWithUndo(source, []workflow.DeferredMove{
-		{TaskID: task.ID, Destination: dest.Slug},
-	}, cfg, nil, deferredMoveUndoOptions{
-		Action:  "Workflow Move",
-		Context: "#1 Workflow move",
-		Depth:   depth,
-	})
-	if err != nil {
-		t.Fatalf("processDeferredMovesWithUndo failed: %v", err)
-	}
-	if !recorded {
-		t.Fatal("expected deferred move to record grouped undo")
-	}
-	saveProjectForGroupedCLITest(t, source)
-
-	assertMatchingTopGroupHistory(t, source, dest)
-
-	if _, err := storage.PerformUndoForProjects(source, []*models.Project{source, dest}); err != nil {
-		t.Fatalf("PerformUndoForProjects failed: %v", err)
-	}
-	if err := storage.LoadProject(source); err != nil {
-		t.Fatalf("LoadProject(source): %v", err)
-	}
-	if err := storage.LoadProject(dest); err != nil {
-		t.Fatalf("LoadProject(dest): %v", err)
-	}
-	if source.GetTaskByID(task.ID) == nil {
-		t.Fatal("expected grouped undo to restore workflow-moved task to source")
-	}
-	if dest.GetTaskByID(task.ID) != nil {
-		t.Fatal("expected grouped undo to remove workflow-moved task from destination")
-	}
-}
-
 func newFileBackedProject(t *testing.T, root, id, name string) *models.Project {
 	t.Helper()
 	project, err := models.NewProject(id, name, filepath.Join(root, "projects", models.Slugify(name)))
@@ -294,10 +242,10 @@ func saveProjectForGroupedCLITest(t *testing.T, project *models.Project) {
 	}
 }
 
-func configureFileBackedGroupedCLI(t *testing.T, cfg *config.Config) {
+func configureFileBackedGroupedCLI(t *testing.T, cfg *config.RuntimeState) {
 	t.Helper()
-	configPath := filepath.Join(cfg.DataDir, "config.json")
-	if err := config.NewManager(configPath).Save(cfg); err != nil {
+	configPath := filepath.Join(cfg.DataDir(), "config.json")
+	if err := saveTestRuntime(config.NewManager(configPath), cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 
@@ -310,62 +258,17 @@ func configureFileBackedGroupedCLI(t *testing.T, cfg *config.Config) {
 	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
 }
 
-func assertMatchingTopGroupHistory(t *testing.T, first, second *models.Project) {
+func assertConfigRefsProject(t *testing.T, cfg *config.RuntimeState, taskID, projectID string) {
 	t.Helper()
-	firstEntries, err := storage.LoadUndoHistory(first)
-	if err != nil {
-		t.Fatalf("LoadUndoHistory(%s): %v", first.Name, err)
+	if got := cfg.Planning().FocusQueue; len(got) != 1 || got[0].TaskID != taskID || got[0].ProjectID != projectID {
+		t.Fatalf("FocusQueue = %+v, want task %s in project %s", got, taskID, projectID)
 	}
-	secondEntries, err := storage.LoadUndoHistory(second)
-	if err != nil {
-		t.Fatalf("LoadUndoHistory(%s): %v", second.Name, err)
+	if got := cfg.Planning().DailyPlan; len(got) != 1 || got[0].TaskID != taskID || got[0].ProjectID != projectID {
+		t.Fatalf("DailyPlan = %+v, want task %s in project %s", got, taskID, projectID)
 	}
-	if len(firstEntries) == 0 || len(secondEntries) == 0 {
-		t.Fatalf("expected undo history for both projects, got %d and %d entries", len(firstEntries), len(secondEntries))
+	if got := cfg.Machine().RecentTaskVisits; len(got) != 1 || got[0].TaskID != taskID || got[0].ProjectID != projectID {
+		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", got, taskID, projectID)
 	}
-	if firstEntries[0].GroupID == "" {
-		t.Fatal("expected first project top undo entry to have a group id")
-	}
-	if firstEntries[0].GroupID != secondEntries[0].GroupID {
-		t.Fatalf("group ids differ: %q vs %q", firstEntries[0].GroupID, secondEntries[0].GroupID)
-	}
-	wantIDs := []string{first.ID, second.ID}
-	if got := firstEntries[0].GroupProjectIDs; !sameStringSet(got, wantIDs) {
-		t.Fatalf("first group project ids = %v, want %v", got, wantIDs)
-	}
-	if got := secondEntries[0].GroupProjectIDs; !sameStringSet(got, wantIDs) {
-		t.Fatalf("second group project ids = %v, want %v", got, wantIDs)
-	}
-}
-
-func assertConfigRefsProject(t *testing.T, cfg *config.Config, taskID, projectID string) {
-	t.Helper()
-	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != taskID || cfg.FocusQueue[0].ProjectID != projectID {
-		t.Fatalf("FocusQueue = %+v, want task %s in project %s", cfg.FocusQueue, taskID, projectID)
-	}
-	if len(cfg.DailyPlan) != 1 || cfg.DailyPlan[0].TaskID != taskID || cfg.DailyPlan[0].ProjectID != projectID {
-		t.Fatalf("DailyPlan = %+v, want task %s in project %s", cfg.DailyPlan, taskID, projectID)
-	}
-	if len(cfg.RecentTaskVisits) != 1 || cfg.RecentTaskVisits[0].TaskID != taskID || cfg.RecentTaskVisits[0].ProjectID != projectID {
-		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.RecentTaskVisits, taskID, projectID)
-	}
-}
-
-func sameStringSet(got, want []string) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	seen := make(map[string]int, len(got))
-	for _, value := range got {
-		seen[value]++
-	}
-	for _, value := range want {
-		if seen[value] == 0 {
-			return false
-		}
-		seen[value]--
-	}
-	return true
 }
 
 // TestProjectDeleteRestorePurgeThroughJournal proves the migrated project
@@ -379,11 +282,10 @@ func TestProjectDeleteRestorePurgeThroughJournal(t *testing.T) {
 	addTestTask(t, project, "doomed-task", "A task", models.StatusTodo)
 	saveProjectForGroupedCLITest(t, project)
 
-	cfg := &config.Config{
-		DataDir:        tmpDir,
-		CurrentProject: project.ID,
-		Projects:       []*models.Project{project},
-	}
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(project)
+	domains.Machine.CurrentProject = project.ID
+	cfg := config.NewRuntimeState(tmpDir, domains)
 	configureFileBackedGroupedCLI(t, cfg)
 	configPath := filepath.Join(tmpDir, "config.json")
 
@@ -402,7 +304,7 @@ func TestProjectDeleteRestorePurgeThroughJournal(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("ListTrashEntries after delete = %d entries, err %v", len(entries), err)
 	}
-	afterDelete, err := config.NewManager(configPath).Load()
+	afterDelete, err := config.NewManager(configPath).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config after delete: %v", err)
 	}
@@ -411,8 +313,8 @@ func TestProjectDeleteRestorePurgeThroughJournal(t *testing.T) {
 	}
 
 	// Restore → project directory returns and the catalog lists it again.
-	if err := runProjectRestore(projectRestoreCmd, []string{"doomed"}); err != nil {
-		t.Fatalf("runProjectRestore: %v", err)
+	if restoreErr := runProjectRestore(projectRestoreCmd, []string{"doomed"}); restoreErr != nil {
+		t.Fatalf("runProjectRestore: %v", restoreErr)
 	}
 	if _, statErr := os.Stat(filepath.Join(tmpDir, "projects", "doomed", "tasks.md")); statErr != nil {
 		t.Fatalf("expected project restored: %v", statErr)
@@ -420,7 +322,7 @@ func TestProjectDeleteRestorePurgeThroughJournal(t *testing.T) {
 	if entries, _ := storage.ListTrashEntries(tmpDir); len(entries) != 0 {
 		t.Fatalf("expected trash empty after restore, got %d entries", len(entries))
 	}
-	afterRestore, err := config.NewManager(configPath).Load()
+	afterRestore, err := config.NewManager(configPath).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config after restore: %v", err)
 	}

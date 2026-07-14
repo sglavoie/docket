@@ -2,9 +2,13 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // Update handles messages.
@@ -80,10 +84,21 @@ func (m *ContextPickerModel) submitRename() (tea.Model, tea.Cmd, bool) {
 
 	oldName := m.renameOldName
 	count := 0
-	for _, project := range m.config.Projects {
+	if err := commitCatalogToRuntime(m.runtime, func(catalog *config.WorkspaceCatalog) {
+		for i := range catalog.Projects {
+			if catalog.Projects[i].Context == oldName {
+				catalog.Projects[i].Context = newName
+				catalog.Projects[i].UpdatedAt = time.Now()
+				count++
+			}
+		}
+	}); err != nil {
+		m.setStatus("failed to rename context: " + err.Error())
+		return m, nil, true
+	}
+	for _, project := range m.projects {
 		if project.Context == oldName {
 			project.Context = newName
-			count++
 		}
 	}
 
@@ -110,18 +125,24 @@ func (m *ContextPickerModel) handleDeleteConfirm(msg tea.KeyPressMsg) (tea.Model
 	}
 
 	selected := m.Filtered[m.Cursor]
-	if !selected.IsCustom || m.config == nil {
+	if !selected.IsCustom {
 		return m, nil, true
 	}
 
 	name := selected.Name
 	wasActive := m.currentCustomFilter == name
 	if wasActive {
-		m.config.FilterCustomContext = ""
 		m.currentCustomFilter = ""
 	}
-	m.config.DeleteCustomContext(name)
-	m.config.SetCycleProjectsForContext(customContextID(name), nil)
+	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+		if wasActive {
+			machine.FilterCustomContext = ""
+		}
+		machine.DeleteCustomContext(name)
+		machine.SetCycleProjectsForContext(customContextID(name), nil)
+	}); err != nil {
+		logging.Warn("failed to save machine state: %v", err)
+	}
 	m.refreshContexts()
 	m.clampCursor()
 
@@ -181,7 +202,7 @@ func (m *ContextPickerModel) handleDeleteShortcut() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if selected.IsCustom && m.config != nil {
+	if selected.IsCustom {
 		m.confirm.Show("delete", "Delete this custom context?")
 		m.clearStatus()
 		return m, nil
@@ -226,8 +247,7 @@ func (m *ContextPickerModel) selectedContext() (ContextInfo, bool) {
 }
 
 func (m *ContextPickerModel) refreshContexts() {
-	projects := m.config.GetActiveProjects()
-	m.Items = buildContextListWithCustom(projects, m.config)
+	m.Items = buildContextListWithCustom(m.projects, m.runtime)
 	m.Filter(m.SearchQuery())
 }
 

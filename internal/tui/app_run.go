@@ -30,14 +30,23 @@ type StartupEvalResult struct {
 }
 
 // RunApp starts the TUI application.
-func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) error {
+func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOption) error {
+	if runtime == nil {
+		return fmt.Errorf("runtime state is required")
+	}
+	var err error
+	runtime, err = recoverTUIWorkspace(runtime)
+	if err != nil {
+		return err
+	}
+	dataDir := runtime.DataDir()
 	// Keep the TUI PID lock machine-local: when the durable data dir lives on
 	// iCloud Drive it must never sync, so route it through the local runtime dir.
-	runtimeDir := config.LocalRuntimeDirForDataDir(cfg.DataDir)
+	runtimeDir := config.LocalRuntimeDirForDataDir(dataDir)
 	if err := os.MkdirAll(runtimeDir, 0700); err != nil {
 		return fmt.Errorf("create runtime dir: %w", err)
 	}
-	lockPath := pidLockPath(cfg.DataDir)
+	lockPath := pidLockPath(dataDir)
 	lock, err := util.AcquirePIDLock(lockPath)
 	if err != nil {
 		return err
@@ -46,16 +55,19 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 
 	// Evaluate workflow rules at startup if needed
 	var startupResult *StartupEvalResult
-	if current := cfg.GetCurrentProject(); current != nil {
-		startupResult = evaluateWorkflowAtStartup(cfg, manager, current)
+	if current := runtime.CurrentProject(); current != nil {
+		startupResult = evaluateWorkflowAtStartup(runtime, manager, current)
 	}
 
 	// Apply config-driven storage settings
-	if cfg.MaxActivityEntries != nil {
-		storage.MaxActivityEntries = *cfg.MaxActivityEntries
+	if runtime.Settings().MaxActivityEntries != nil {
+		storage.MaxActivityEntries = *runtime.Settings().MaxActivityEntries
 	}
 
-	model := NewAppModel(cfg, manager, opts...)
+	model, err := NewAppModel(runtime, manager, opts...)
+	if err != nil {
+		return err
+	}
 
 	// Evaluate proactive alerts at startup
 	model.reevaluateAlerts()
@@ -68,7 +80,7 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 
 	// Show data repair notification for current project
 	if model.statusMessage == "" {
-		if current := cfg.GetCurrentProject(); current != nil {
+		if current := model.currentProject; current != nil {
 			// Ensure project is loaded (may have been loaded by workflow eval already)
 			if len(current.Tasks) == 0 && current.Path != "" {
 				_ = storage.LoadProject(current)
@@ -176,90 +188,77 @@ func sessionDurationStr(start time.Time) string {
 	return ""
 }
 
-// evaluateWorkflowAtStartup evaluates workflow rules for the current project if needed.
-func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, project *models.Project) *StartupEvalResult {
+// evaluateWorkflowAtStartup evaluates workflow rules for the current project.
+// Task mutations use the application transaction boundary; configuration side
+// effects are committed only to their owning planning, automation, and catalog
+// domains.
+func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Manager, project *models.Project) *StartupEvalResult {
 	result := &StartupEvalResult{}
-
-	// Check if evaluation is needed
-	if !cfg.ShouldEvaluateWorkflow(project.ID) {
+	if runtime == nil || manager == nil || project == nil {
 		return result
 	}
 
-	rules := cfg.GetEnabledWorkflowRules()
+	automation := cloneAutomationConfig(runtime.Automation())
+	if !automation.ShouldEvaluateWorkflow(project.ID) {
+		return result
+	}
+	rules := automation.GetEnabledWorkflowRules()
 	if len(rules) == 0 {
 		return result
 	}
 
-	// Load project tasks
-	if err := storage.LoadProject(project); err != nil {
+	svc := newTUIAppService(runtime.DataDir(), manager.RuntimeDependencies())
+	wr, err := svc.ApplyWorkflows(project.ID, rules, nil, workflowFocusArtifactBuilder(manager))
+	if err != nil {
+		logging.Warn("startup workflow evaluation failed: %v", err)
 		return result
 	}
 
-	// Run auto-unblock
-	project.CheckAndAutoUnblock()
-
-	// Evaluate rules
-	evalResult := workflow.EvaluateRules(project.Tasks, rules)
-
 	result.Evaluated = true
-	result.ModifiedTasks = len(evalResult.ModifiedTasks)
-	result.RulesApplied = len(evalResult.RuleTriggerCounts)
+	result.ModifiedTasks = len(wr.ModifiedTaskIDs)
+	result.RulesApplied = len(wr.RuleTriggerCounts)
 
-	// Apply Focus Queue membership changes requested by set_active actions.
-	// The engine records these as deferred FocusChanges; this config-aware
-	// layer adds/removes membership (the workflow-state replacement for the
-	// retired Task.Active flag). The cfg is persisted below via saveConfigWarn.
-	for _, fc := range evalResult.FocusChanges {
-		if fc.Add {
-			cfg.AddToFocusQueue(fc.TaskID, project.ID)
-		} else {
-			cfg.RemoveFromFocusQueue(fc.TaskID)
+	if len(wr.FocusChanges) > 0 {
+		// ApplyWorkflows committed the planning artifact with the task cascade;
+		// reload only the runtime snapshot so startup consumers observe it.
+		if err := runtime.RefreshAfterCommit(); err != nil {
+			logging.Warn("failed to refresh startup workflow planning changes: %v", err)
 		}
 	}
 
-	// Only save if there were actual modifications
-	if result.ModifiedTasks > 0 {
-		project.ReorderRootTasksByCompletion()
-
-		// Create backup and save (log errors instead of ignoring)
-		if err := storage.BackupProject(project); err != nil {
-			logging.Warn("failed to backup project: %v", err)
-		}
-		if err := storage.SaveProjectLocked(project); err != nil {
-			logging.Warn("failed to save project: %v", err)
-		}
-
-		// Update trigger counts
-		if len(evalResult.RuleTriggerCounts) > 0 {
-			cfg.IncrementRuleTriggerCounts(evalResult.RuleTriggerCounts)
-		}
-	}
-
-	// Evaluate project-level rules against aggregate task data
+	automation.IncrementRuleTriggerCounts(wr.RuleTriggerCounts)
+	projectChanged := false
 	if project.StatusIconSource != "user" {
-		projCtx := &workflow.ProjectEvaluationContext{
-			Project: project,
-			Tasks:   project.Tasks,
-		}
-		projResult := workflow.EvaluateProjectRules(projCtx, rules)
-		if projResult.NewStatusIcon != "" {
-			project.StatusIcon = projResult.NewStatusIcon
-			project.StatusIconSource = "auto"
-			// Count triggered project rules
-			for _, id := range projResult.TriggeredRuleIDs {
-				cfg.IncrementRuleTriggerCounts(map[string]int{id: 1})
+		if err := storage.LoadProject(project); err == nil {
+			projResult := workflow.EvaluateProjectRules(&workflow.ProjectEvaluationContext{
+				Project: project,
+				Tasks:   project.Tasks,
+			}, rules)
+			if projResult.NewStatusIcon != "" {
+				project.StatusIcon = projResult.NewStatusIcon
+				project.StatusIconSource = "auto"
+				projectChanged = true
+				for _, id := range projResult.TriggeredRuleIDs {
+					automation.IncrementRuleTriggerCounts(map[string]int{id: 1})
+				}
 			}
 		}
 	}
 
-	// Update eval state regardless of changes
-	cfg.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
+	automation.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
 		LastEvalTime: time.Now(),
-		RulesHash:    cfg.ComputeWorkflowRulesHash(),
+		RulesHash:    automation.ComputeWorkflowRulesHash(),
 	})
-
-	// Persist config changes
-	saveConfigWarn(manager, cfg, "TUI shutdown")
+	if err := runtime.CommitAutomation(automation); err != nil {
+		logging.Warn("failed to persist startup workflow automation state: %v", err)
+	}
+	if projectChanged {
+		catalog := cloneWorkspaceCatalog(runtime.Catalog())
+		catalog.UpsertProject(project)
+		if err := runtime.CommitCatalog(catalog); err != nil {
+			logging.Warn("failed to persist startup workflow project status: %v", err)
+		}
+	}
 
 	return result
 }

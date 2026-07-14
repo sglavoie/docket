@@ -121,14 +121,30 @@ func init() {
 	}
 }
 
-func runTaskComplete(cmd *cobra.Command, args []string) error { return runStateCommand(cmd, args, "complete") }
-func runTaskStart(cmd *cobra.Command, args []string) error    { return runStateCommand(cmd, args, "start") }
-func runTaskBlock(cmd *cobra.Command, args []string) error    { return runStateCommand(cmd, args, "block") }
-func runTaskCancel(cmd *cobra.Command, args []string) error   { return runStateCommand(cmd, args, "cancel") }
-func runTaskReopen(cmd *cobra.Command, args []string) error   { return runStateCommand(cmd, args, "reopen") }
-func runTaskReview(cmd *cobra.Command, args []string) error   { return runStateCommand(cmd, args, "review") }
-func runTaskStandby(cmd *cobra.Command, args []string) error  { return runStateCommand(cmd, args, "standby") }
-func runTaskMaybe(cmd *cobra.Command, args []string) error    { return runStateCommand(cmd, args, "maybe") }
+func runTaskComplete(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "complete")
+}
+func runTaskStart(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "start")
+}
+func runTaskBlock(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "block")
+}
+func runTaskCancel(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "cancel")
+}
+func runTaskReopen(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "reopen")
+}
+func runTaskReview(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "review")
+}
+func runTaskStandby(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "standby")
+}
+func runTaskMaybe(cmd *cobra.Command, args []string) error {
+	return runStateCommand(cmd, args, "maybe")
+}
 
 // actionToTargetStatus maps CLI action names to the target TaskStatus.
 var actionToTargetStatus = map[string]models.TaskStatus{
@@ -181,14 +197,14 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 	if err != nil {
 		return err
 	}
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
 	state := actionToState[action]
 	verb := actionVerbs[action]
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 
 	var errs []string
 	succeeded := 0
@@ -224,7 +240,7 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 	}
 
 	for _, ref := range args {
-		taskID, err := resolveAppTaskID(cfg, ref)
+		taskID, err := resolveAppTaskID(workspace.Manager, ref)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", ref, err))
 			continue
@@ -241,7 +257,7 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 // legacy status can validly transition to the action's target and returns the
 // chosen task's UUID.
 func selectStateTarget(action string) (string, error) {
-	project, _, _, err := LoadCurrentProject()
+	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return "", err
 	}

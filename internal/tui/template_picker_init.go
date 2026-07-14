@@ -3,13 +3,13 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/template"
 )
 
-// NewTemplatePickerModel creates a new template picker model.
-func NewTemplatePickerModel(cfg *config.Config, project *models.Project) *TemplatePickerModel {
-	templates := cfg.GetEnabledTaskTemplates()
+// NewTemplatePickerModel creates a new template picker model from the enabled
+// task templates supplied by the caller (read from the automation domain).
+func NewTemplatePickerModel(templates []template.TaskTemplate, project *models.Project) *TemplatePickerModel {
 
 	// Build category order (bug, feature, process, other)
 	categoryOrder := []string{}
@@ -40,7 +40,6 @@ func NewTemplatePickerModel(cfg *config.Config, project *models.Project) *Templa
 	}
 
 	m := &TemplatePickerModel{
-		config:            cfg,
 		project:           project,
 		templates:         templates,
 		filteredTemplates: templates,

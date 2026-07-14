@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGetSavedSearches_Empty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	searches := cfg.GetSavedSearches()
 
@@ -16,7 +16,7 @@ func TestGetSavedSearches_Empty(t *testing.T) {
 }
 
 func TestSaveSearch(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.SaveSearch("urgent", "priority:1 status:in_progress")
 
@@ -27,7 +27,7 @@ func TestSaveSearch(t *testing.T) {
 }
 
 func TestSaveSearch_Overwrite(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.SaveSearch("my-search", "old query")
 	cfg.SaveSearch("my-search", "new query")
@@ -39,7 +39,7 @@ func TestSaveSearch_Overwrite(t *testing.T) {
 }
 
 func TestSaveSearch_NilMap(t *testing.T) {
-	cfg := &Config{}
+	cfg := &MachineState{}
 	cfg.SavedSearches = nil
 
 	cfg.SaveSearch("test", "query")
@@ -53,7 +53,7 @@ func TestSaveSearch_NilMap(t *testing.T) {
 }
 
 func TestDeleteSavedSearch(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SaveSearch("to-delete", "query")
 	cfg.SaveSearch("to-keep", "other query")
 
@@ -71,7 +71,7 @@ func TestDeleteSavedSearch(t *testing.T) {
 }
 
 func TestDeleteSavedSearch_NonExistent(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	deleted := cfg.DeleteSavedSearch("nonexistent")
 
@@ -81,7 +81,7 @@ func TestDeleteSavedSearch_NonExistent(t *testing.T) {
 }
 
 func TestDeleteSavedSearch_NilMap(t *testing.T) {
-	cfg := &Config{}
+	cfg := &MachineState{}
 	cfg.SavedSearches = nil
 
 	deleted := cfg.DeleteSavedSearch("test")
@@ -92,7 +92,7 @@ func TestDeleteSavedSearch_NilMap(t *testing.T) {
 }
 
 func TestGetSavedSearch_NotFound(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SaveSearch("exists", "query")
 
 	query := cfg.GetSavedSearch("nonexistent")
@@ -103,7 +103,7 @@ func TestGetSavedSearch_NotFound(t *testing.T) {
 }
 
 func TestGetSavedSearch_NilMap(t *testing.T) {
-	cfg := &Config{}
+	cfg := &MachineState{}
 	cfg.SavedSearches = nil
 
 	query := cfg.GetSavedSearch("test")

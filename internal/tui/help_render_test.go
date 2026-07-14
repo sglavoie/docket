@@ -4,8 +4,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // TestIntentForItem_PrimaryTriageKeysPromoted verifies that the six canonical
@@ -332,9 +330,9 @@ func TestIntentForItem_DashboardDoesNotPromoteTriageKeys(t *testing.T) {
 // source-aware classifier: a user opening help from the Dashboard must see
 // triage advertised exactly once — as the action that takes them into triage.
 func TestDashboardFirstLevelHelpTriageBucket(t *testing.T) {
-	cfg, _ := testutil.NewTestConfigWithProject("Alpha")
-	cfg.DataDir = t.TempDir()
-	dashboard := NewDashboardModel(cfg, nil)
+	cfg, _ := newTestConfigWithProject("Alpha")
+	cfg = testRuntimeAt(t.TempDir(), cfg)
+	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
 	items := dashboard.GetHelpItems()
 
 	for _, item := range items {

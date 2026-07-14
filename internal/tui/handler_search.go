@@ -1,13 +1,17 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
+)
 
 // handleSearchMessages handles search-related messages (global search, command palette, saved searches).
 // Returns true if the message was handled.
 func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowGlobalSearchMsg:
-		m.globalSearch = NewGlobalSearchModel(m.config, m.configManager)
+		m.globalSearch = NewGlobalSearchModel(m.runtime)
 		m.showView(ViewGlobalSearch, m.globalSearch)
 		return true, m.globalSearch.Init()
 
@@ -28,7 +32,7 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if currentView == ViewDashboard || isGlobalNavView(currentView) {
 			paletteProject = nil
 		}
-		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView, paletteProject)
+		palette := NewCommandPaletteModel(m.runtime, m.commandRegistry, currentView, paletteProject)
 		if currentView == ViewFocusBoard {
 			palette.suggestedCommandOrder = m.focusBoardSuggestedCommandOrder()
 			palette.filterItems()
@@ -75,9 +79,10 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case SaveSearchMsg:
-		// Save the search to config
-		m.config.SaveSearch(msg.Name, msg.Query)
-		if err := m.configManager.Save(m.config); err != nil {
+		// Saved searches are machine-local navigation state.
+		if err := m.commitMachineMutation(func(machine *config.MachineState) {
+			machine.SaveSearch(msg.Name, msg.Query)
+		}); err != nil {
 			return true, errorCmd("failed to save search: %w", err)
 		}
 		// Pop the input dialog
@@ -92,9 +97,10 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case DeleteSavedSearchMsg:
-		// Delete the saved search from config
-		m.config.DeleteSavedSearch(msg.Name)
-		if err := m.configManager.Save(m.config); err != nil {
+		// Saved searches are machine-local navigation state.
+		if err := m.commitMachineMutation(func(machine *config.MachineState) {
+			machine.DeleteSavedSearch(msg.Name)
+		}); err != nil {
 			return true, errorCmd("failed to delete saved search: %w", err)
 		}
 		// Refresh the command palette if it's showing

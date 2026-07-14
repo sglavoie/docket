@@ -168,12 +168,12 @@ func setupTaskParkCLI(t *testing.T, status models.TaskStatus) (*models.Project, 
 		t.Fatalf("initial SaveProject: %v", err)
 	}
 
-	cfg := config.NewConfig()
-	cfg.DataDir = tmpDir
-	cfg.CurrentProject = project.ID
-	cfg.Projects = []*models.Project{project}
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(project)
+	domains.Machine.CurrentProject = project.ID
+	cfg := config.NewRuntimeState(tmpDir, domains)
 	configPath := filepath.Join(tmpDir, "config.json")
-	if err := config.NewManager(configPath).Save(cfg); err != nil {
+	if err := saveTestRuntime(config.NewManager(configPath), cfg); err != nil {
 		storage.DefaultRepository = oldRepo
 		t.Fatalf("save config: %v", err)
 	}

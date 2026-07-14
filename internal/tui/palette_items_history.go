@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -18,10 +19,6 @@ import (
 // Queries are deduplicated, with the most recent occurrence moved to the front.
 // Category prefixes alone (e.g., ":task ") are not recorded.
 func (m *CommandPaletteModel) recordSearchHistory() {
-	if m.configManager == nil {
-		return
-	}
-
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
 		return
@@ -53,9 +50,10 @@ func (m *CommandPaletteModel) recordSearchHistory() {
 	}
 
 	m.searchHistory = newHistory
-	m.config.SetPaletteSearchHistory(newHistory)
-	if err := m.configManager.Save(m.config); err != nil {
-		logging.Warn("failed to save config: %v", err)
+	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+		machine.SetPaletteSearchHistory(newHistory)
+	}); err != nil {
+		logging.Warn("failed to save machine state: %v", err)
 	}
 }
 
@@ -114,9 +112,9 @@ func (m *CommandPaletteModel) createInlineTask() (tea.Model, tea.Cmd) {
 	}
 
 	var targetProject *models.Project
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	if len(projects) > 0 {
-		if current := m.config.GetCurrentProject(); current != nil {
+		if current := m.runtime.CurrentProject(); current != nil {
 			targetProject = current
 		} else {
 			targetProject = projects[0]

@@ -19,8 +19,11 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 
 	case SaveFilterMsg:
 		sf := m.captureCurrentFilter(msg.Name)
-		m.config.SaveFilter(sf)
-		if err := m.configManager.Save(m.config); err != nil {
+		// Saved filters are planning-domain state; commit only the planning
+		// domain under a checked commit rather than saving the whole config.
+		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+			p.SaveFilter(sf)
+		}); err != nil {
 			return true, errorCmd("failed to save filter: %w", err)
 		}
 		// Pop the input dialog
@@ -34,12 +37,7 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 			m.projectTree.activeSavedFilter = msg.Name
 		}
 		// Refresh the command palette if it's still showing
-		if m.currentView() == ViewCommandPalette {
-			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-				palette.allItems = palette.loadAllItems()
-				palette.filterItems()
-			}
-		}
+		m.refreshCommandPaletteItems()
 		return true, nil
 
 	case LoadSavedFilterMsg:
@@ -53,30 +51,26 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 		return true, nil
 
 	case toggleSavedFilterTabMsg:
-		sf := m.config.GetSavedFilter(msg.ID)
-		if sf != nil {
-			sf.ShowAsTab = msg.ShowAsTab
-			if err := m.configManager.Save(m.config); err != nil {
+		if sf := m.runtime.Planning().GetSavedFilter(msg.ID); sf != nil {
+			showAsTab := msg.ShowAsTab
+			if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+				if f := p.GetSavedFilter(msg.ID); f != nil {
+					f.ShowAsTab = showAsTab
+				}
+			}); err != nil {
 				return true, errorCmd("failed to save filter: %w", err)
 			}
 			// Rebuild AllTasks tab entries
-			if m.allTasksView != nil {
-				m.allTasksView.buildTabEntries()
-				m.allTasksView.loadAllTasks()
-			}
+			m.refreshAllTasksTabs()
 			// Refresh the command palette if it's showing
-			if m.currentView() == ViewCommandPalette {
-				if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-					palette.allItems = palette.loadAllItems()
-					palette.filterItems()
-				}
-			}
+			m.refreshCommandPaletteItems()
 		}
 		return true, nil
 
 	case DeleteSavedFilterMsg:
-		m.config.DeleteSavedFilter(msg.ID)
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+			p.DeleteSavedFilter(msg.ID)
+		}); err != nil {
 			return true, errorCmd("failed to delete saved filter: %w", err)
 		}
 		// Clear active indicator (filter already deleted, so just clear any indicator)
@@ -91,27 +85,43 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 			m.projectTree.activeCriteriaFilter = nil
 		}
 		// Rebuild AllTasks tab entries if on the stack
-		if m.allTasksView != nil {
-			m.allTasksView.buildTabEntries()
-			m.allTasksView.loadAllTasks()
-		}
+		m.refreshAllTasksTabs()
 		// Refresh the command palette if it's showing
-		if m.currentView() == ViewCommandPalette {
-			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-				palette.allItems = palette.loadAllItems()
-				palette.filterItems()
-			}
-		}
+		m.refreshCommandPaletteItems()
 		return true, nil
 	}
 	return false, nil
 }
 
+// refreshAllTasksTabs rebuilds the domain-native AllTasks tab entries after a
+// saved-filter mutation.
+func (m *AppModel) refreshAllTasksTabs() {
+	if m.allTasksView == nil {
+		return
+	}
+	m.allTasksView.buildTabEntries()
+	m.allTasksView.loadAllTasks()
+}
+
+// refreshCommandPaletteItems reloads the command palette's domain-native items
+// when it is the current view.
+func (m *AppModel) refreshCommandPaletteItems() {
+	if m.currentView() != ViewCommandPalette {
+		return
+	}
+	if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
+		palette.allItems = palette.loadAllItems()
+		palette.filterItems()
+	}
+}
+
 // captureCurrentFilter creates a SavedFilter from the current view's state.
 // Captures from outliner when it's the active base view, otherwise from project tree.
 func (m *AppModel) captureCurrentFilter(name string) config.SavedFilter {
-	// Check if a filter with this name already exists (for overwrite/upsert)
-	existing := m.config.GetSavedFilterByName(name)
+	// Check if a filter with this name already exists (for overwrite/upsert).
+	// Saved filters are planning-domain state, read from the cached planning
+	// snapshot rather than the config.Config facade.
+	existing := m.runtime.Planning().GetSavedFilterByName(name)
 	id := uuid.New().String()
 	if existing != nil {
 		id = existing.ID

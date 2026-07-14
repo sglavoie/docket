@@ -10,19 +10,18 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func setupEpicBaselineTest(t *testing.T) (*testutil.TestDeps, *models.Task) {
+func setupEpicBaselineTest(t *testing.T) (*testDeps, *models.Task) {
 	t.Helper()
 
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
@@ -73,7 +72,7 @@ func TestEpicBaseline_ErrorOnNonEpic(t *testing.T) {
 
 	// Find a non-epic task.
 	var taskID string
-	for _, p := range deps.Config.Projects {
+	for _, p := range deps.Config.AllProjects() {
 		for _, task := range p.Tasks {
 			if task.Type == models.TaskTypeTask {
 				taskID = fmt.Sprint(task.ShortID)
@@ -95,13 +94,13 @@ func TestEpicBaseline_ErrorOnNonEpic(t *testing.T) {
 }
 
 func TestEpicBaseline_ErrorOnEmptyEpic(t *testing.T) {
-	deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
@@ -116,7 +115,7 @@ func TestEpicBaseline_ErrorOnEmptyEpic(t *testing.T) {
 	}
 	// No children set — Children is nil.
 
-	project := deps.Config.Projects[0]
+	project := deps.Config.AllProjects()[0]
 	project.Tasks = append(project.Tasks, emptyEpic)
 	deps.Repository.Projects[project.ID] = project
 

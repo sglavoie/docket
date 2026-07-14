@@ -32,7 +32,7 @@ func TestProjectTreeDenseRowKeepsUrgencyHeroInline(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Urgency", []*models.Task{overdue, dueToday, dueTomorrow})
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeAll
 	m.updateVisibility()
 	m.SetSize(120, 24)
@@ -74,7 +74,7 @@ func TestProjectTreeDenseRowOmitsSecondaryMetadata(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Rich", []*models.Task{task})
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeSnoozed
 	m.updateVisibility()
 	m.SetSize(140, 24)
@@ -125,7 +125,7 @@ func TestProjectTreeSelectedStripCarriesMovedFields(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Strip Project", []*models.Task{task})
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeSnoozed
 	m.updateVisibility()
 	const width = 140
@@ -174,7 +174,7 @@ func TestProjectTreeDenseRowWidthStableAcrossSecondaryMetadata(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Stable", tasks)
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeAll
 	m.updateVisibility()
 	m.SetSize(120, 24)
@@ -224,7 +224,7 @@ func TestProjectTreeCompletedAndCanceledRowsAreQuiet(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Quiet", []*models.Task{done, canceled, doneToday, canceledToday})
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeAll
 	m.updateVisibility()
 	const width = 120

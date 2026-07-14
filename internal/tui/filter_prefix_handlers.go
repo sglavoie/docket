@@ -184,7 +184,7 @@ func handleFilterAttrSubKey(prefix, key string, f *CommonFilterState) bool {
 
 // handleFilterScoreKey applies a score threshold filter based on the key pressed.
 // Returns true if the key was handled.
-func handleFilterScoreKey(key string, f *CommonFilterState, cfg *config.Config) bool {
+func handleFilterScoreKey(key string, f *CommonFilterState, machine *config.MachineState) bool {
 	switch key {
 	case "1":
 		f.ScoreMin = 30
@@ -205,8 +205,8 @@ func handleFilterScoreKey(key string, f *CommonFilterState, cfg *config.Config) 
 	case "9":
 		f.ScoreMin = 270
 	case "c":
-		if cfg != nil && cfg.ScoreFilterCustom != nil {
-			f.ScoreMin = *cfg.ScoreFilterCustom
+		if machine != nil && machine.ScoreFilterCustom != nil {
+			f.ScoreMin = *machine.ScoreFilterCustom
 		}
 	case "0":
 		f.ScoreMin = 0
@@ -221,7 +221,7 @@ func handleFilterScoreKey(key string, f *CommonFilterState, cfg *config.Config) 
 // true if the filter state changed (caller should refresh). When a new
 // sub-prefix popup is needed (e.g., Fa → Fas), setPendingPrefix is called and
 // false is returned (no refresh needed, just show the next popup).
-func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.Config, setPendingPrefix func(string)) bool {
+func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, machine *config.MachineState, setPendingPrefix func(string)) bool {
 	switch prefix {
 	case "Ft":
 		return handleFilterTypeKey(key, f)
@@ -242,7 +242,7 @@ func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *conf
 	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
 		return handleFilterAttrSubKey(prefix, key, f)
 	case "FS":
-		return handleFilterScoreKey(key, f, cfg)
+		return handleFilterScoreKey(key, f, machine)
 	}
 	return false
 }
@@ -400,8 +400,8 @@ func applyCommonFilterResult(result FilterPrefixResult, setPendingPrefix func(st
 // applyFilterSubPrefix handles a filter sub-prefix key press for views whose
 // custom-score input is wired through keymap actions. Returns true when the
 // sub-prefix was handled (caller already refreshed via refreshView).
-func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.Config, setPendingPrefix func(string), refreshView func()) bool {
-	if dispatchFilterSubPrefix(prefix, key, f, cfg, setPendingPrefix) {
+func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, machine *config.MachineState, setPendingPrefix func(string), refreshView func()) bool {
+	if dispatchFilterSubPrefix(prefix, key, f, machine, setPendingPrefix) {
 		refreshView()
 		return true
 	}
@@ -412,7 +412,7 @@ func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.
 // and its sub-prefixes. Set includeDueDate and includeStatus to control which
 // categories are available; set supportsCustomScoreInput true only for views
 // that wire FS -> C to a score-input component (project tree and outliner today).
-func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config, includeDueDate, includeStatus, supportsCustomScoreInput bool) PrefixHints {
+func buildCommonFilterPrefixPopupHints(f *CommonFilterState, machine *config.MachineState, includeDueDate, includeStatus, supportsCustomScoreInput bool) PrefixHints {
 	hints := PrefixHints{
 		"F":   buildCommonFilterPrefixHints(f, includeDueDate, includeStatus),
 		"Ft":  FilterTypePrefixHints,
@@ -425,7 +425,7 @@ func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config,
 		"Faw": FilterAttrWorktypePrefixHints,
 		"Fao": FilterAttrScopePrefixHints,
 		"Fap": FilterAttrPointsPrefixHints,
-		"FS":  BuildFilterScorePrefixHints(cfg, supportsCustomScoreInput),
+		"FS":  BuildFilterScorePrefixHints(machine, supportsCustomScoreInput),
 	}
 	if includeStatus {
 		hints["Fs"] = FilterStatePrefixHints

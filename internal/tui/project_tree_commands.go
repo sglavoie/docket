@@ -32,12 +32,12 @@ func projectArchiveRequestCmd(project *models.Project, archive bool) tea.Cmd {
 
 // performUndo restores the project from the most recent undo snapshot.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
-	return performUndoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
+	return performUndoForProjectsCmd(m.projectService, m.project, activeUndoProjectsFromRuntime(m.runtime), repairRuntimeTaskRefsAfterRestore(m.runtime))
 }
 
 // performRedo restores the project from the most recent redo snapshot.
 func (m *ProjectTreeModel) performRedo() tea.Cmd {
-	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
+	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjectsFromRuntime(m.runtime), repairRuntimeTaskRefsAfterRestore(m.runtime))
 }
 
 // commitWorkflowOpts constructs the project-scoped workflow options for the
@@ -47,8 +47,8 @@ func (m *ProjectTreeModel) performRedo() tea.Cmd {
 // selects stateless evaluation, a captured snapshot selects contextual evaluation.
 func (m *ProjectTreeModel) commitWorkflowOpts(prevStates map[string]*models.Task) app.ProjectWorkflowOptions {
 	var rules []workflow.WorkflowRule
-	if m.config != nil {
-		rules = m.config.GetEnabledWorkflowRules()
+	if m.runtime != nil {
+		rules = m.runtime.Automation().GetEnabledWorkflowRules()
 	}
 	action, context := m.undo.Action, m.undo.Context
 	m.undo.Clear()
@@ -227,13 +227,14 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 // a config artifact, mirroring the cross-project outliner delete. Machine-local
 // recent visits are repaired by the shell after the commit from RemovedTaskIDs.
 func (m *ProjectTreeModel) deleteConfigArtifacts(deleteIDs map[string]bool) ([]storage.ArtifactChange, error) {
-	if m.config == nil || m.configManager == nil {
+	if m.runtime == nil || m.configManager == nil {
 		return nil, nil
 	}
-	if m.config.RemoveDurableTaskRefs(deleteIDs) == 0 {
+	planning := clonePlanningState(m.runtime.Planning())
+	if planning.RemoveDurableTaskRefs(deleteIDs) == 0 {
 		return nil, nil
 	}
-	return configDomainArtifacts(m.configManager, m.config)
+	return planningDomainArtifact(m.configManager, planning)
 }
 
 // bulkDeleteTasks removes all selected tasks and their children from the project.
@@ -430,8 +431,8 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 func (m *ProjectTreeModel) archiveCompletedTasks() tea.Cmd {
 	// Capture config value before returning command
 	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
+	if m.runtime.Settings().UndoHistoryDepth != nil {
+		undoDepth = *m.runtime.Settings().UndoHistoryDepth
 	}
 	completedCount := m.project.CountCompletedTasks()
 

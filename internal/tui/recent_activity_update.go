@@ -64,7 +64,7 @@ func (m *RecentActivityModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	prefix := m.Dispatcher.PendingPrefix()
 	hints := PrefixHints{}
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	if _, ok := hints[prefix]; !ok {
 		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
 		for _, h := range m.Dispatcher.PrefixHints() {

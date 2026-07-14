@@ -14,9 +14,9 @@ import (
 func crossOutlinerWithConfig(t *testing.T) (*OutlinerModel, *models.Project, *models.Project, *models.Task, *models.Task) {
 	t.Helper()
 	m, projA, projB, taskA, taskB := crossOutlinerWithTwoProjects(t)
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{projA, projB}
-	m.config = cfg
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{projA, projB})
+	m.runtime = testRuntimeAt(cfg.DataDir(), cfg)
 	return m, projA, projB, taskA, taskB
 }
 
@@ -69,8 +69,9 @@ func TestPrimaryViewKey_QuickCapture_SingleProjectUnchanged(t *testing.T) {
 	proj := &models.Project{ID: "p", Name: "P"}
 	m := minimalOutliner()
 	m.project = proj
-	m.config = testutil.NewTestConfig()
-	m.config.Projects = []*models.Project{proj}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{proj})
+	m.runtime = testRuntimeAt(cfg.DataDir(), cfg)
 	m.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox}}
 	m.cursor = 0 // header, but single-project mode keeps m.project routing
 
@@ -219,7 +220,7 @@ func TestHandleTaskPrefix_CrossNewTaskOnSeparatorSetsStatus(t *testing.T) {
 func TestHandleCreateTask_PrefersMsgProject(t *testing.T) {
 	app, currentProject := newTestAppModelWithProject()
 	target := testutil.NewTestProjectWithTasks("Other Project")
-	app.config.Projects = append(app.config.Projects, target)
+	addTestAppProject(app, target)
 
 	msg := CreateTaskMsg{Project: target, SkipTemplatePicker: true}
 	handled, _ := app.handleTaskMessages(msg)
@@ -242,10 +243,13 @@ func TestHandleCreateTask_PrefersMsgProject(t *testing.T) {
 func TestHandleCreateTask_TemplatePickerRoutesMsgProject(t *testing.T) {
 	app, currentProject := newTestAppModelWithProject()
 	target := testutil.NewTestProjectWithTasks("Other Project")
-	app.config.Projects = append(app.config.Projects, target)
-	app.config.TaskTemplates = []template.TaskTemplate{
+	addTestAppProject(app, target)
+	app.runtime.Automation().TaskTemplates = []template.TaskTemplate{
 		{ID: "t1", Name: "Bug", Enabled: true, Type: models.TaskTypeBug},
 	}
+	// The template picker now sources enabled templates from the runtime's
+	// automation snapshot.
+	syncTestRuntime(app)
 
 	msg := CreateTaskMsg{Project: target, SkipTemplatePicker: false}
 	handled, _ := app.handleTaskMessages(msg)

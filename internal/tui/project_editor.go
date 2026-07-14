@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -16,8 +17,9 @@ import (
 // ProjectEditorModel handles editing an existing project via TUI.
 type ProjectEditorModel struct {
 	project       *models.Project
-	config        *config.Config
 	configManager *config.Manager
+	runtime       *config.RuntimeState
+	appService    *app.Service
 
 	// Original values for change detection
 	originalName        string
@@ -43,8 +45,10 @@ type ProjectEditorModel struct {
 	discardConfirmState
 }
 
-// NewProjectEditorModel creates a new project editor.
-func NewProjectEditorModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectEditorModel {
+// NewProjectEditorModel creates a domain-native project editor. Catalog metadata
+// is encoded from RuntimeState and committed atomically with directory/reference
+// changes through the application service.
+func NewProjectEditorModel(project *models.Project, manager *config.Manager, runtime *config.RuntimeState, svc *app.Service) *ProjectEditorModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInputWithValue(project.Name, "")
@@ -58,7 +62,7 @@ func NewProjectEditorModel(project *models.Project, cfg *config.Config, manager 
 	contextInput.CharLimit = 50
 
 	// Get all existing contexts
-	contexts := cfg.GetAllContexts()
+	contexts := runtime.AllContexts()
 
 	// Find current context in list (or -1 for custom)
 	contextCursor := -1
@@ -71,8 +75,9 @@ func NewProjectEditorModel(project *models.Project, cfg *config.Config, manager 
 
 	return &ProjectEditorModel{
 		project:             project,
-		config:              cfg,
 		configManager:       manager,
+		runtime:             runtime,
+		appService:          svc,
 		originalName:        project.Name,
 		originalContext:     project.Context,
 		originalDescription: project.Description,
@@ -261,8 +266,9 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 	description := strings.TrimSpace(m.descriptionInput.Value())
 	originalName := m.originalName
 	project := m.project
-	cfg := m.config
 	configManager := m.configManager
+	runtime := m.runtime
+	svc := m.appService
 	return func() tea.Msg {
 		if name == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
@@ -273,43 +279,125 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		if newSlug == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
 		}
+		oldSlug := models.Slugify(originalName)
 		if name != originalName {
 			// Check for duplicate slug (excluding self)
-			for _, p := range cfg.Projects {
-				if p.ID != project.ID && p.Slug == newSlug {
-					return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", newSlug)}
-				}
-			}
-		}
-
-		// Rename directory if slug changed
-		oldSlug := models.Slugify(originalName)
-		if oldSlug != newSlug {
-			if err := storage.RenameProjectDir(project, oldSlug, newSlug, cfg.DataDir); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to rename project directory: %w", err)}
+			if p := runtime.GetProject(newSlug); p != nil && p.ID != project.ID {
+				return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", newSlug)}
 			}
 		}
 
 		// Get context value
 		ctx := contextValue
 		if ctx == "" {
-			ctx = cfg.DefaultContext
+			ctx = runtime.DefaultContext()
 		}
 
-		// Update project fields
+		// Update project fields on the in-memory facade project (the catalog
+		// artifacts encode from it), then commit the rename — the directory move,
+		// tasks.md heading rewrite, catalog rewrite, and cross-reference repair —
+		// as ONE atomic journaled transaction through the application layer,
+		// replacing the eager storage rename plus whole-config Manager.Save.
 		project.Name = name
 		project.Slug = newSlug
 		project.Context = ctx
 		project.Description = description
 		project.UpdatedAt = time.Now()
 
-		// Save config
-		if err := configManager.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+		var tasksMarkdown []byte
+		var tasksExpectedRevision *string
+		if expected, err := storage.LoadProjectForRewrite(project); err == nil {
+			tasksMarkdown = []byte(storage.WriteTasksMarkdownWithFullProjectMetadata(
+				project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags))
+			tasksExpectedRevision = expected
+		}
+
+		var crossRefWrites []storage.ArtifactChange
+		if oldSlug != newSlug {
+			crossRefWrites, _ = planTUICrossProjectRefRewrites(runtime.AllProjects(), oldSlug, newSlug, project.ID)
+		}
+
+		catalog := cloneWorkspaceCatalog(runtime.Catalog())
+		catalog.UpsertProject(project)
+		configArts, err := catalogDomainArtifact(configManager, catalog)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
+		}
+
+		if _, err := svc.RenameProject(app.RenameProjectRequest{
+			Project:               project,
+			DataDir:               runtime.DataDir(),
+			OldSlug:               oldSlug,
+			NewSlug:               newSlug,
+			TasksMarkdown:         tasksMarkdown,
+			TasksExpectedRevision: tasksExpectedRevision,
+			Config:                configArts,
+			CrossRefWrites:        crossRefWrites,
+		}); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		if err := runtime.RefreshAfterCommit(); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 		}
 
 		return ProjectUpdatedMsg{Project: project}
 	}
+}
+
+// planTUICrossProjectRefRewrites rewrites cross-project references in other
+// projects when a project's slug changes, returning the tasks.md artifact writes
+// (folded into the atomic rename transaction) and the count updated. Projects
+// that cannot be loaded are skipped, matching the best-effort CLI behavior.
+func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) ([]storage.ArtifactChange, int) {
+	var writes []storage.ArtifactChange
+	totalUpdated := 0
+	for _, p := range projects {
+		if p.ID == renamedProjectID {
+			continue
+		}
+		expectedRevision, err := storage.LoadProjectForRewrite(p)
+		if err != nil {
+			continue
+		}
+		projectUpdated := 0
+		for _, task := range p.Tasks {
+			var n int
+			task.DependsOn, n = rewriteCrossRefs(task.DependsOn, originalSlug, newSlug)
+			projectUpdated += n
+			task.RelatedTo, n = rewriteCrossRefs(task.RelatedTo, originalSlug, newSlug)
+			projectUpdated += n
+		}
+		if projectUpdated > 0 {
+			content := storage.WriteTasksMarkdownWithFullProjectMetadata(
+				p.Name, p.Tasks, p.GetSections(), p.SectionColors, p.Tags, p.PinnedTags)
+			writes = append(writes, storage.ArtifactChange{
+				Path:             storage.TasksFilePath(p.Path),
+				Data:             []byte(content),
+				ExpectedRevision: expectedRevision,
+			})
+			totalUpdated += projectUpdated
+		}
+	}
+	return writes, totalUpdated
+}
+
+// rewriteCrossRefs replaces cross-project references from originalSlug to newSlug.
+func rewriteCrossRefs(refs []string, originalSlug, newSlug string) ([]string, int) {
+	if len(refs) == 0 {
+		return refs, 0
+	}
+	updated := 0
+	result := make([]string, len(refs))
+	for i, ref := range refs {
+		parsed := models.ParseTaskRef(ref)
+		if parsed.IsCrossProject() && parsed.ProjectID == originalSlug {
+			result[i] = newSlug + ":" + parsed.TaskID
+			updated++
+		} else {
+			result[i] = ref
+		}
+	}
+	return result, updated
 }
 
 func (m *ProjectEditorModel) View() tea.View {

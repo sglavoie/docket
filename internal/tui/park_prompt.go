@@ -48,10 +48,10 @@ func (m *AppModel) projectForSessionMutation(mutation sessionTaskMutation) *mode
 	if m.currentProject != nil && m.currentProject.ID == mutation.ProjectID {
 		return m.currentProject
 	}
-	if m.config == nil {
+	if m.runtime == nil {
 		return nil
 	}
-	return m.config.GetProject(mutation.ProjectID)
+	return m.projectByID(mutation.ProjectID)
 }
 
 func taskParkedSinceMutation(task *models.Task, mutation sessionTaskMutation) bool {

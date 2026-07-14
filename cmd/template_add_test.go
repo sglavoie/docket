@@ -24,17 +24,17 @@ func resetTemplateAddVars() {
 	templateAddDisabled = false
 }
 
-func setupTemplateAddTest(t *testing.T) *testutil.TestDeps {
+func setupTemplateAddTest(t *testing.T) *testDeps {
 	t.Helper()
 	resetTemplateAddVars()
 
-	deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository
@@ -70,10 +70,10 @@ func TestTemplateAddSectionValidation(t *testing.T) {
 		err := runTemplateAdd(templateAddCmd, nil)
 		testutil.AssertNoError(t, err)
 
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
 
-		tmpl := reloaded.GetTaskTemplateByName("Inbox Template")
+		tmpl := reloaded.Automation().GetTaskTemplateByName("Inbox Template")
 		if tmpl == nil {
 			t.Fatal("template not found after add")
 		}

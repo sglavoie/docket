@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // Persister defines the interface for project persistence operations.
@@ -46,11 +47,13 @@ type Persister interface {
 // ProjectService provides consolidated project persistence operations for TUI handlers.
 // It encapsulates the load/backup/save/undo primitives used by the undo/redo
 // restore path and the archive flow. ProjectService implements the Persister interface.
-type ProjectService struct{}
+type ProjectService struct {
+	workspaceLoader *workspace.Loader
+}
 
 // NewProjectService creates a new ProjectService instance.
 func NewProjectService() *ProjectService {
-	return &ProjectService{}
+	return &ProjectService{workspaceLoader: workspace.NewLoader()}
 }
 
 // Load reloads a project from disk.

@@ -77,12 +77,12 @@ func (s *Service) CreateLinkedTask(req LinkedTaskRequest) (LinkedTaskResult, err
 
 	switch req.Link {
 	case LinkBlocker:
-		if err := source.AddDependency(task.ID); err != nil {
-			return LinkedTaskResult{}, invalidInput("blocker", err.Error())
+		if linkErr := source.AddDependency(task.ID); linkErr != nil {
+			return LinkedTaskResult{}, invalidInput("blocker", linkErr.Error())
 		}
 	case LinkDependent:
-		if err := task.AddDependency(source.ID); err != nil {
-			return LinkedTaskResult{}, invalidInput("dependent", err.Error())
+		if linkErr := task.AddDependency(source.ID); linkErr != nil {
+			return LinkedTaskResult{}, invalidInput("dependent", linkErr.Error())
 		}
 	case LinkSubtask:
 		if source.Type.IsLeafType() {
@@ -91,11 +91,11 @@ func (s *Service) CreateLinkedTask(req LinkedTaskRequest) (LinkedTaskResult, err
 		parentID := source.ID
 		task.ParentID = &parentID
 	case LinkFollowUp:
-		if err := source.AddRelatedTo(task.ID); err != nil {
-			return LinkedTaskResult{}, invalidInput("follow-up", err.Error())
+		if linkErr := source.AddRelatedTo(task.ID); linkErr != nil {
+			return LinkedTaskResult{}, invalidInput("follow-up", linkErr.Error())
 		}
-		if err := task.AddRelatedTo(source.ID); err != nil {
-			return LinkedTaskResult{}, invalidInput("follow-up", err.Error())
+		if linkErr := task.AddRelatedTo(source.ID); linkErr != nil {
+			return LinkedTaskResult{}, invalidInput("follow-up", linkErr.Error())
 		}
 		for _, tag := range source.Tags {
 			task.AddTag(tag)
@@ -108,7 +108,7 @@ func (s *Service) CreateLinkedTask(req LinkedTaskRequest) (LinkedTaskResult, err
 	// prominence.
 	insertCapturedTask(project, task, task.ParentID == nil)
 
-	ref := TaskRef{Task: task, Project: project}
+	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
 	result, err := s.commitProject(ref, revision, "Add Linked Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	if err != nil {
 		return LinkedTaskResult{}, err

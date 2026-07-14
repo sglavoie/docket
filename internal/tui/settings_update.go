@@ -14,7 +14,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.listEmpty {
 			m.cancelPresetMode()
 		} else {
-			themes, _ := m.configManager.ListThemes()
+			themes, _ := m.manager.ListThemes()
 			m.themePresetList = themes
 			if m.themePresetCursor >= len(themes) && m.themePresetCursor > 0 {
 				m.themePresetCursor = len(themes) - 1

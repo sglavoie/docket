@@ -116,13 +116,13 @@ func (m *OutlinerModel) rebuildRows() {
 
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return passesCommonFilters(task, &m.filter.CommonFilterState, m.project, m.config)
+			return passesCommonFilters(task, &m.filter.CommonFilterState, m.project, m.runtime.Automation())
 		})
 	}
 
 	if m.activeCriteriaFilter != nil {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return passesSavedFilterCriteria(task, m.project, m.activeCriteriaFilter, m.config)
+			return passesSavedFilterCriteria(task, m.project, m.activeCriteriaFilter, m.runtime.Automation())
 		})
 	}
 
@@ -140,7 +140,7 @@ func (m *OutlinerModel) rebuildRows() {
 
 	if query := m.SearchQuery(); query != "" {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return matchesSearch(task, query, m.config)
+			return matchesSearch(task, query, m.runtime.Planning())
 		})
 	}
 
@@ -261,7 +261,7 @@ func (m *OutlinerModel) sortTaskTree(tasks []*models.Task) []*models.Task {
 	sorted := make([]*models.Task, len(tasks))
 	copy(sorted, tasks)
 	sort.SliceStable(sorted, func(i, j int) bool {
-		cmp := CompareTasks(sorted[i], sorted[j], m.sort.Field, m.project.ID, m.config)
+		cmp := CompareTasks(sorted[i], sorted[j], m.sort.Field, m.project.ID, m.runtime.Automation())
 		return ApplySortDirection(cmp, m.sort.Ascending)
 	})
 	for idx, task := range sorted {
@@ -313,7 +313,7 @@ const crossProjectPinnedTagTabKey = "_cross_project_pinned_tag_tab"
 // pinnedTagTabs returns ["All"] + pinned tag labels, or nil if no tags are pinned.
 func (m *OutlinerModel) pinnedTagTabs() []string {
 	if m.project == nil {
-		return GlobalPinnedTagTabsForProjects(m.config, m.loadedProjects)
+		return GlobalPinnedTagTabsForProjects(m.runtime.Settings(), m.loadedProjects)
 	}
 	return PinnedTagTabs(m.project)
 }

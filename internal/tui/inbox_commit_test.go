@@ -14,7 +14,7 @@ import (
 // newInboxCommitEnv seeds a single project with one processable inbox task on
 // disk under a shared data-dir root, wiring the config the inbox processor uses
 // to commit triage mutations through the app-layer transactional repository.
-func newInboxCommitEnv(t *testing.T, dataDir string) (*config.Config, *config.Manager, *models.Project) {
+func newInboxCommitEnv(t *testing.T, dataDir string) (*config.RuntimeState, *config.Manager, *models.Project) {
 	t.Helper()
 	project, err := models.NewProject(uuid.New().String(), "inbox", "")
 	if err != nil {
@@ -38,10 +38,9 @@ func newInboxCommitEnv(t *testing.T, dataDir string) (*config.Config, *config.Ma
 		t.Fatalf("seed project: %v", err)
 	}
 
-	cfg := config.NewConfig()
-	cfg.DataDir = dataDir
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	return cfg, mgr, project
 }
@@ -63,7 +62,7 @@ func TestInboxProcessorCommitsTriageThroughTransaction(t *testing.T) {
 	dataDir := t.TempDir()
 	cfg, mgr, project := newInboxCommitEnv(t, dataDir)
 
-	m := NewInboxProcessorModel(project, cfg, mgr)
+	m := NewInboxProcessorModel(project, mgr, testRuntimeAt(cfg.DataDir(), cfg))
 	cmd := m.changePriority(5)
 	if cmd == nil {
 		t.Fatal("changePriority should return a save command")
@@ -102,9 +101,9 @@ func TestInboxProcessorCommitFailureLeavesDiskUnchanged(t *testing.T) {
 	cfg, mgr, project := newInboxCommitEnv(t, outsideDir)
 	// Approved root is dataDir, but the project's tasks.md lives under outsideDir,
 	// so the transactional commit is rejected for escaping the root.
-	cfg.DataDir = dataDir
+	cfg = testRuntimeAt(dataDir, cfg)
 
-	m := NewInboxProcessorModel(project, cfg, mgr)
+	m := NewInboxProcessorModel(project, mgr, testRuntimeAt(cfg.DataDir(), cfg))
 	cmd := m.changePriority(5)
 	if cmd == nil {
 		t.Fatal("changePriority should return a save command")

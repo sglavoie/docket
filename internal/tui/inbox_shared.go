@@ -134,7 +134,7 @@ func willLeaveInbox(task *models.Task) bool {
 
 // renderInboxTaskDisplay renders the current task details for both local and global inbox.
 // Pass projectName="" to omit the project line (local inbox).
-func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projectName string, cfg *config.Config) string {
+func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projectName string, settings *config.Settings) string {
 	var b strings.Builder
 	inner := inboxInnerWidth(width)
 
@@ -199,7 +199,7 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 	b.WriteString("\n")
 
 	// Current settings as mini table
-	b.WriteString(renderInboxCurrentSettings(task, cfg))
+	b.WriteString(renderInboxCurrentSettings(task, settings))
 
 	// Wrap in compact box style; use selected (blue border) if triaged
 	content := b.String()
@@ -210,14 +210,14 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 }
 
 // renderInboxCurrentSettings renders the current task settings as a vertical label-value layout.
-func renderInboxCurrentSettings(task *models.Task, cfg *config.Config) string {
+func renderInboxCurrentSettings(task *models.Task, settings *config.Settings) string {
 	var lines []string
 
 	section := taskSectionBucket(task)
 	if section == "" {
 		section = "(no section)"
 	}
-	sectionColorName := cfg.GetGlobalSectionColor(section)
+	sectionColorName := settings.GetGlobalSectionColor(section)
 	sectionStyle := GetSectionColorStyle(sectionColorName)
 	lines = append(lines, renderSettingLine("Section", sectionStyle.Render(section)))
 	lines = append(lines, renderSettingLine("Priority", GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority))))

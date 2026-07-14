@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
@@ -76,10 +77,10 @@ func (m *DashboardModel) HandledKeys() []string {
 }
 
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
-	dataDir := m.config.DataDir
+	dataDir := m.runtime.DataDir()
 	// Snapshot config references now, before the ProjectDeletedMsg handler
 	// removes the project from config, so a later restore can re-establish them.
-	configRefs := marshalProjectReferences(m.config, project.ID, project.Slug)
+	configRefs, _ := json.Marshal(m.runtime.ExtractProjectReferences(project.ID, project.Slug))
 	return func() tea.Msg {
 		// Move project directory to a new versioned trash entry. Existing
 		// entries that share this slug are preserved (no silent purge).

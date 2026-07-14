@@ -96,7 +96,7 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 	shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 	prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, typeIcon, statusIcon, shortID, projectName)
 	descSuffix := ""
-	if m.config.IsDescriptionColumnVisible() && len(task.Description) > 0 {
+	if m.runtime.Machine().IsDescriptionColumnVisible() && len(task.Description) > 0 {
 		descSuffix = " " + MutedStyle.Render(IconDescription())
 	}
 	prefixWidth := lipgloss.Width(prefix) + lipgloss.Width(descSuffix)

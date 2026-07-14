@@ -27,13 +27,12 @@ func makePresetTestModel(t *testing.T) (*SettingsModel, string) {
 			Accent:     "#dd6600",
 		},
 	}
-	cfg := &config.Config{
-		ActiveTheme: "dark",
-		ThemeDark:   dark,
-		ThemeLight:  config.DefaultLightTheme(),
-	}
+	cfg := newTestConfig()
+	cfg.Settings().ActiveTheme = "dark"
+	cfg.Settings().ThemeDark = dark
+	cfg.Settings().ThemeLight = config.DefaultLightTheme()
 	mgr := config.NewManager(cfgPath)
-	return NewSettingsModel(cfg, mgr), dir
+	return NewSettingsModel(newSettingsDeps(cfg, mgr)), dir
 }
 
 // TestPresetSave_WritesFile verifies that openPresetSave + execPresetSave creates
@@ -100,7 +99,7 @@ func TestPresetLoad_UpdatesInputs(t *testing.T) {
 		},
 	}
 	tf := config.NewThemeFile("test-preset", "dark", "dev", presetTheme)
-	if err := m.configManager.WriteTheme(tf); err != nil {
+	if err := m.manager.WriteTheme(tf); err != nil {
 		t.Fatalf("WriteTheme: %v", err)
 	}
 
@@ -269,10 +268,10 @@ func TestExecPresetDelete_RefreshesList(t *testing.T) {
 
 	tf1 := config.NewThemeFile("alpha", "dark", "dev", config.Theme{})
 	tf2 := config.NewThemeFile("beta", "dark", "dev", config.Theme{})
-	if err := m.configManager.WriteTheme(tf1); err != nil {
+	if err := m.manager.WriteTheme(tf1); err != nil {
 		t.Fatalf("WriteTheme alpha: %v", err)
 	}
-	if err := m.configManager.WriteTheme(tf2); err != nil {
+	if err := m.manager.WriteTheme(tf2); err != nil {
 		t.Fatalf("WriteTheme beta: %v", err)
 	}
 
@@ -313,7 +312,7 @@ func TestExecPresetDelete_AutoClosesOnEmpty(t *testing.T) {
 	m.tabs.Active = tabPalette
 
 	tf := config.NewThemeFile("only-one", "dark", "dev", config.Theme{})
-	if err := m.configManager.WriteTheme(tf); err != nil {
+	if err := m.manager.WriteTheme(tf); err != nil {
 		t.Fatalf("WriteTheme: %v", err)
 	}
 
@@ -342,7 +341,7 @@ func TestHandlePresetLoadKey_DShowsConfirm(t *testing.T) {
 	m.tabs.Active = tabPalette
 
 	tf := config.NewThemeFile("my-preset", "dark", "dev", config.Theme{})
-	if err := m.configManager.WriteTheme(tf); err != nil {
+	if err := m.manager.WriteTheme(tf); err != nil {
 		t.Fatalf("WriteTheme: %v", err)
 	}
 	m.openPresetLoad()
@@ -366,7 +365,7 @@ func TestHandlePresetLoadKey_ConfirmCancel(t *testing.T) {
 	m.tabs.Active = tabPalette
 
 	tf := config.NewThemeFile("cancel-me", "dark", "dev", config.Theme{})
-	if err := m.configManager.WriteTheme(tf); err != nil {
+	if err := m.manager.WriteTheme(tf); err != nil {
 		t.Fatalf("WriteTheme: %v", err)
 	}
 	m.openPresetLoad()

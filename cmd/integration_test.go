@@ -8,7 +8,7 @@ import (
 )
 
 func TestIntegration_CreateTaskAndComplete(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Integration Test")
+	deps, project := setupTestDepsWithProject(t, "Integration Test")
 	defer deps.Cleanup()
 
 	// Replace cmd.Deps with our mocks
@@ -66,7 +66,7 @@ func TestIntegration_CreateTaskAndComplete(t *testing.T) {
 }
 
 func TestIntegration_TaskHierarchy(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Hierarchy Test")
+	deps, project := setupTestDepsWithProject(t, "Hierarchy Test")
 	defer deps.Cleanup()
 
 	// Replace cmd.Deps with our mocks
@@ -139,7 +139,7 @@ func TestIntegration_TaskHierarchy(t *testing.T) {
 }
 
 func TestIntegration_FindTaskByIdentifier(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Find Test")
+	deps, project := setupTestDepsWithProject(t, "Find Test")
 	defer deps.Cleanup()
 
 	// Add a task with known values
@@ -182,7 +182,7 @@ func TestIntegration_FindTaskByIdentifier(t *testing.T) {
 }
 
 func TestIntegration_MockSelectorBehavior(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Selector Test")
+	deps, project := setupTestDepsWithProject(t, "Selector Test")
 	defer deps.Cleanup()
 
 	// Configure mock to return a specific task
@@ -196,7 +196,7 @@ func TestIntegration_MockSelectorBehavior(t *testing.T) {
 }
 
 func TestIntegration_MockRepositorySaveAndLoad(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Repository Test")
+	deps, project := setupTestDepsWithProject(t, "Repository Test")
 	defer deps.Cleanup()
 
 	// Add a new task
@@ -220,7 +220,7 @@ func TestIntegration_MockRepositorySaveAndLoad(t *testing.T) {
 }
 
 func TestIntegration_DependencyLifecycle(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Dependency Test")
+	deps, project := setupTestDepsWithProject(t, "Dependency Test")
 	defer deps.Cleanup()
 
 	origDeps := Deps

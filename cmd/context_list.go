@@ -32,12 +32,12 @@ func runContextList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	names := cfg.GetCustomContextNames()
+	names := workspace.Runtime.Machine().GetCustomContextNames()
 
 	if out.JSON {
 		type contextEntry struct {
@@ -46,7 +46,7 @@ func runContextList(cmd *cobra.Command, args []string) error {
 		}
 		entries := make([]contextEntry, len(names))
 		for i, name := range names {
-			entries[i] = contextEntry{Name: name, ProjectCount: cfg.GetCustomContextProjectCount(name)}
+			entries[i] = contextEntry{Name: name, ProjectCount: workspace.Runtime.CustomContextProjectCount(name)}
 		}
 		return printJSON(entries)
 	}
@@ -65,7 +65,7 @@ func runContextList(cmd *cobra.Command, args []string) error {
 	t.AppendHeader(table.Row{"Custom Context", "Projects"})
 
 	for _, name := range names {
-		count := cfg.GetCustomContextProjectCount(name)
+		count := workspace.Runtime.CustomContextProjectCount(name)
 		t.AppendRow(table.Row{name, count})
 	}
 

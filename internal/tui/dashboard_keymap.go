@@ -165,9 +165,13 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 			visible := m.visibleProjects()
 			if CursorInBounds(m.cursor, len(visible)) {
 				project := visible[m.cursor]
-				if project.Sandbox {
+				if project.Sandbox || m.runtime.IsSystemInboxProject(project.ID) {
+					name := "sandbox"
+					if m.runtime.IsSystemInboxProject(project.ID) {
+						name = "system Inbox"
+					}
 					return m, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("cannot delete the sandbox project")}
+						return ErrorMsg{Err: fmt.Errorf("cannot delete the %s project", name)}
 					}
 				}
 				m.deleteTarget = project
@@ -222,7 +226,7 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 			if CursorInBounds(m.cursor, len(visible)) {
 				project := visible[m.cursor]
 				return m, func() tea.Msg {
-					return ShowQuickCaptureMsg{Project: project, AllProjects: m.config.GetActiveProjects()}
+					return ShowQuickCaptureMsg{Project: project, AllProjects: m.runtime.ActiveProjects()}
 				}
 			}
 			return m, nil

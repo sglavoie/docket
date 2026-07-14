@@ -31,8 +31,7 @@ func (m *KanbanModel) getTaskRef() (*models.Task, *models.Project) {
 	return card.Task, card.Project
 }
 
-func (m *KanbanModel) getPersister() Persister           { return m.svc }
-func (m *KanbanModel) getConfig() *config.Config         { return m.config }
+func (m *KanbanModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *KanbanModel) getConfigManager() *config.Manager { return m.configManager }
 
 // SetBulkCoordinator injects the application-layer bulk coordinator. The shell
@@ -49,10 +48,10 @@ func (m *KanbanModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem
 // enabledWorkflowRules returns the workspace's enabled workflow rules, or nil
 // when no config is bound (isolated render tests).
 func (m *KanbanModel) enabledWorkflowRules() []workflow.WorkflowRule {
-	if m.config == nil {
+	if m.runtime == nil {
 		return nil
 	}
-	return m.config.GetEnabledWorkflowRules()
+	return m.runtime.Automation().GetEnabledWorkflowRules()
 }
 
 // workflowOpsView accessors: Kanban does not embed ViewBundle, so it exposes its
@@ -294,7 +293,7 @@ func (m *KanbanModel) applySelectedBulkDelete() (tea.Model, tea.Cmd) {
 		// workflow path (folding durable planning-ref cleanup into the same
 		// transaction); the shell reloads the board from the async
 		// BatchTransactionResultMsg.
-		return m, wfDeleteTask(m, m.getConfig(), m.getConfigManager())
+		return m, wfDeleteTask(m, m.getRuntime(), m.getConfigManager())
 	}
 	m.setStatus("bulk delete not supported in Kanban")
 	return m, nil

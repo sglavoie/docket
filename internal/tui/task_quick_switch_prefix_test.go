@@ -7,7 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -37,9 +36,8 @@ func quickSwitchServiceFixture(t *testing.T) (*AppModel, *models.Project, string
 		t.Fatalf("load proj: %v", loadErr)
 	}
 
-	cfg := config.NewConfig()
-	cfg.DataDir = dataDir
-	cfg.Projects = []*models.Project{proj}
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, []*models.Project{proj})
 
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
@@ -47,7 +45,8 @@ func quickSwitchServiceFixture(t *testing.T) (*AppModel, *models.Project, string
 	svc := app.NewService(repo, nil, nil)
 
 	m := &AppModel{
-		config:     cfg,
+		runtime:    testRuntimeAt(cfg.DataDir(), cfg),
+		projects:   map[string]*models.Project{proj.ID: proj},
 		persister:  NewProjectService(),
 		appService: svc,
 	}

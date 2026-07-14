@@ -22,7 +22,7 @@ import (
 // the tag lands on disk in the same committed transaction.
 func TestFocusBoardCompletionRunsWorkflowCascade(t *testing.T) {
 	m, project, tasks := newFlowLoopFocusBoard(t, models.StatusTodo)
-	m.config.WorkflowRules = []workflow.WorkflowRule{{
+	m.runtime.Automation().WorkflowRules = []workflow.WorkflowRule{{
 		ID:      "r-done-tag",
 		Name:    "Tag done",
 		Enabled: true,
@@ -53,12 +53,11 @@ func TestFocusBoardCompletionRunsWorkflowCascade(t *testing.T) {
 func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusBoardModel, *models.Project, []*models.Task) {
 	t.Helper()
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Flow Loop")
-	project.Path = cfg.GetProjectPath(project.Slug)
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
+	project.Path = cfg.ProjectPath(project.Slug)
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
 
 	tasks := make([]*models.Task, 0, len(statuses))
 	for i, status := range statuses {
@@ -79,13 +78,13 @@ func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusB
 			PlannedDate: today,
 		})
 	}
-	cfg.SetDailyPlan(planItems)
+	cfg.Planning().SetDailyPlan(planItems)
 
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject: %v", err)
 	}
 
-	m := NewFocusBoardModel(cfg, nil, &dailyPlan, map[string]bool{}, dailyPlanIDs, map[string]bool{})
+	m := NewFocusBoardModel(testRuntimeAt(cfg.DataDir(), cfg), nil, &dailyPlan, map[string]bool{}, dailyPlanIDs, map[string]bool{})
 	m.tabs.Active = boardTabToday
 
 	// Wire the single-task coordinator over the real transactional stack rooted at
@@ -93,8 +92,8 @@ func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusB
 	// the application layer / workspace ledger. Mutations write to disk; the board
 	// reloads from disk via refreshData(), simulating the shell's post-commit
 	// refresh (finishFocusBoardMutation drives that round-trip in the tests).
-	ledger := storage.NewWorkspaceLedger(filepath.Join(cfg.DataDir, ".tt", "undo"), 0, []string{cfg.DataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(cfg.DataDir, ".tt", "transactions"), []string{cfg.DataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(cfg.DataDir(), ".tt", "undo"), 0, []string{cfg.DataDir()})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(cfg.DataDir(), ".tt", "transactions"), []string{cfg.DataDir()}, ledger)
 	repo := newScenarioRepo(commitSvc, project)
 	svc := app.NewService(repo, nil, nil)
 	m.SetTaskItemCoordinator(newSecondaryCoordinators(svc, nil).TaskItem)

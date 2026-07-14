@@ -6,19 +6,20 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestCustomContextEditorProjectRowsDistinguishCursorFromSelection(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	alpha := testutil.NewTestProject("Alpha")
 	alpha.Context = "work"
 	beta := testutil.NewTestProject("Beta")
 	beta.Context = "home"
-	cfg.Projects = append(cfg.Projects, alpha, beta)
-	cfg.SetCustomContext("Work", []string{alpha.ID})
+	setTestProjects(cfg, []*models.Project{alpha, beta})
+	cfg.Machine().SetCustomContext("Work", []string{alpha.ID})
 
-	m := NewCustomContextEditorModel(cfg, "Work")
+	m := NewCustomContextEditorModel(testRuntimeAt(cfg.DataDir(), cfg), "Work")
 	m.projectListMode = true
 	m.cursor = 1
 	m.SetSize(100, 30)

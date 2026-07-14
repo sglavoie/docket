@@ -66,15 +66,11 @@ func TestRunUndo(t *testing.T) {
 			t.Fatalf("failed to load project: %v", err)
 		}
 
-		cfg := &config.Config{
-			DataDir:        tmpDir,
-			CurrentProject: project.ID,
-			Projects:       []*models.Project{project},
-		}
+		cfg := newFileBackedTestRuntime(tmpDir, project.ID, project)
 
 		configPath := filepath.Join(tmpDir, "config.json")
 		manager := config.NewManager(configPath)
-		if err := manager.Save(cfg); err != nil {
+		if err := saveTestRuntime(manager, cfg); err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
 
@@ -133,15 +129,11 @@ func TestRunUndo(t *testing.T) {
 			Path: projectPath,
 		}
 
-		cfg := &config.Config{
-			DataDir:        tmpDir,
-			CurrentProject: project.ID,
-			Projects:       []*models.Project{project},
-		}
+		cfg := newFileBackedTestRuntime(tmpDir, project.ID, project)
 
 		configPath := filepath.Join(tmpDir, "config.json")
 		manager := config.NewManager(configPath)
-		if err := manager.Save(cfg); err != nil {
+		if err := saveTestRuntime(manager, cfg); err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
 
@@ -209,14 +201,10 @@ func TestRunUndo(t *testing.T) {
 			t.Fatalf("failed to load project: %v", err)
 		}
 
-		cfg := &config.Config{
-			DataDir:        tmpDir,
-			CurrentProject: project.ID,
-			Projects:       []*models.Project{project},
-		}
+		cfg := newFileBackedTestRuntime(tmpDir, project.ID, project)
 		configPath := filepath.Join(tmpDir, "config.json")
 		manager := config.NewManager(configPath)
-		if err := manager.Save(cfg); err != nil {
+		if err := saveTestRuntime(manager, cfg); err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
 
@@ -281,15 +269,11 @@ func TestRunUndo(t *testing.T) {
 			t.Fatalf("failed to write tasks file: %v", err)
 		}
 
-		cfg := &config.Config{
-			DataDir:        tmpDir,
-			CurrentProject: project.ID,
-			Projects:       []*models.Project{project},
-		}
+		cfg := newFileBackedTestRuntime(tmpDir, project.ID, project)
 
 		configPath := filepath.Join(tmpDir, "config.json")
 		manager := config.NewManager(configPath)
-		if err := manager.Save(cfg); err != nil {
+		if err := saveTestRuntime(manager, cfg); err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
 

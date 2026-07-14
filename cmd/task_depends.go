@@ -72,7 +72,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// If no flags provided, just show dependencies (read-only)
 	if !dependsClearFlag && dependsRemoveFlag == "" && dependsOnFlag == "" {
-		project, _, _, err := LoadCurrentProject()
+		project, _, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// Handle --clear
 	if dependsClearFlag {
-		project, cfg, _, err := LoadCurrentProject()
+		project, workspace, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return nil
 		}
 
-		svc := newAppService(cfg)
+		svc := newWorkspaceAppService(workspace)
 		res, err := withTaskRetry(func() (app.TaskResult, error) {
 			return svc.ClearDependencies(task.ID)
 		})
@@ -129,7 +129,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// Handle --remove
 	if dependsRemoveFlag != "" {
-		project, cfg, _, err := LoadCurrentProject()
+		project, workspace, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("task #%d does not depend on #%d", task.ShortID, blocker.ShortID)
 		}
 
-		svc := newAppService(cfg)
+		svc := newWorkspaceAppService(workspace)
 		res, err := withTaskRetry(func() (app.TaskResult, error) {
 			return svc.RemoveDependency(task.ID, blocker.ID)
 		})
@@ -164,7 +164,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// Handle --on
 	if dependsOnFlag != "" {
-		project, cfg, _, err := LoadCurrentProject()
+		project, workspace, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -186,7 +186,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("cannot add dependency: %w", tterrors.ErrCircularDep)
 		}
 
-		svc := newAppService(cfg)
+		svc := newWorkspaceAppService(workspace)
 		res, err := withTaskRetry(func() (app.TaskResult, error) {
 			return svc.AddDependency(task.ID, blocker.ID)
 		})

@@ -9,6 +9,7 @@
     { "type": "key", "label": "enter multi-select (v)", "key": "v" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "narrower band where rows wrap", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Multi-select:" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "taller-but-narrow band", "width": 70, "height": 22 },
     { "type": "assert", "assert": "no_layout_issues" }

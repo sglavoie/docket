@@ -14,42 +14,21 @@ import (
 
 // This audit enforces the session-28 boundary: Cobra command implementations
 // must route user-visible task/project mutations through the application layer
-// (internal/app via newAppService), not through the legacy cmd.SaveProject
-// helper or raw storage mutators. Unlike TestRawProjectSaveCallsitesAreAllowlisted
-// (which only flags cmd.SaveProject calls that omit UndoAction), this audit flags
-// EVERY invocation of the legacy save helper and every direct storage save inside
-// cmd/, so newly-added commands cannot silently adopt the legacy persistence path.
+// (internal/app via newAppService), not through raw storage mutators. The legacy
+// cmd.SaveProject helper is gone; this audit still treats any future bare
+// SaveProject call as a forbidden reintroduction and flags every direct storage
+// save inside cmd/.
 //
-// The allowlist has two tiers:
-//   - infra: the helper's own definition and privileged repair/restore/adapter
-//     paths that legitimately touch storage below the app layer.
-//   - legacy: command families catalogued for app-layer migration. These are the
-//     known stragglers the migration will retire (legacy persistence is removed
-//     in session 33); the entry documents each one so no new caller hides among
-//     them and the list shrinks as commands migrate.
-const (
-	cmdSaveInfra  = "infra: helper definition or privileged repair/restore/adapter path below the app layer"
-	cmdSaveLegacy = "legacy command straggler pending app-layer migration; do NOT add new callers here"
-)
+// Every surviving entry is an explicit privileged repair/restore path or a
+// production implementation branch reachable only with a test repository.
+const cmdSaveInfra = "infra: privileged repair/restore or test-repository adapter path below the app layer"
 
 var cmdLegacySaveAllowlist = map[string]string{
-	// Infrastructure: the legacy helper itself and privileged non-command paths.
-	"cmd/project_ops.go:SaveProject:storage.SaveProject(project)":                      cmdSaveInfra,
-	"cmd/project_ops.go:processDeferredMovesWithUndo:storage.SaveProject(destProject)": cmdSaveInfra,
-	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":       cmdSaveInfra,
-	"cmd/app_service.go:(*cliRepository).RawSaveProject:storage.SaveProject(project)":  cmdSaveInfra,
-	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":                 cmdSaveInfra,
-	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                       cmdSaveInfra,
-	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":    cmdSaveInfra,
-	"cmd/project_delete.go:cleanCrossProjectRefs:storage.SaveProjectLocked(p)":         cmdSaveInfra,
-	"cmd/project_edit.go:runProjectEdit:storage.SaveProjectLocked(project)":            cmdSaveInfra,
-	"cmd/project_edit.go:updateCrossProjectRefs:storage.SaveProjectLocked(p)":          cmdSaveInfra,
-	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":               cmdSaveInfra,
-
-	// The cmdSaveLegacy tier is empty: session 33.3 migrated the last legacy
-	// stragglers (tag pin/unpin, score set, template use, comment edit, the
-	// WithTaskUpdate helper family, sandbox reset) onto internal/app. Do not add
-	// new cmdSaveLegacy entries — new commands must persist through newAppService.
+	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":    cmdSaveInfra,
+	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":              cmdSaveInfra,
+	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                    cmdSaveInfra,
+	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)": cmdSaveInfra,
+	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":            cmdSaveInfra,
 }
 
 func TestCmdCommandsDoNotUseLegacyProjectSave(t *testing.T) {
@@ -79,7 +58,7 @@ func TestCmdCommandsDoNotUseLegacyProjectSave(t *testing.T) {
 		var b strings.Builder
 		if len(unexpected) > 0 {
 			b.WriteString("Cobra commands must persist user mutations through the application layer " +
-				"(newAppService), not the legacy cmd.SaveProject helper or raw storage saves. " +
+				"(newAppService), not a reintroduced cmd.SaveProject helper or raw storage saves. " +
 				"Migrate these callsites, or add a justified allowlist entry if they are infra/repair paths:\n")
 			for _, key := range unexpected {
 				fmt.Fprintf(&b, "\t%q: cmdSaveLegacy, // or cmdSaveInfra\n", key)
@@ -104,7 +83,7 @@ func TestCmdLegacySaveAllowlistReasonsAreExplicit(t *testing.T) {
 }
 
 // collectCmdLegacySaveCalls returns keys for every call in cmd/ (non-test) that
-// invokes the legacy cmd.SaveProject helper (bare Ident) or a raw storage save
+// invokes a forbidden cmd.SaveProject helper (bare Ident) or a raw storage save
 // (storage.SaveProject / storage.SaveProjectLocked).
 func collectCmdLegacySaveCalls(t *testing.T, root, dir string) []string {
 	t.Helper()
@@ -162,7 +141,7 @@ func cmdLegacySaveCallsFromFile(t *testing.T, root, path string) []string {
 func isCmdLegacySaveCall(fset *token.FileSet, call *ast.CallExpr) bool {
 	switch fun := call.Fun.(type) {
 	case *ast.Ident:
-		// Legacy cmd.SaveProject helper invoked with (project, opts...).
+		// A bare cmd.SaveProject helper would reintroduce the retired save tier.
 		return fun.Name == "SaveProject" && len(call.Args) >= 1
 	case *ast.SelectorExpr:
 		if compactNode(fset, fun.X) != "storage" {

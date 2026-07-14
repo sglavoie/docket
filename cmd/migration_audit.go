@@ -4,7 +4,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // LoadProjectWithMigrationAudit loads a project's tasks and captures the
@@ -28,34 +27,15 @@ func LoadProjectWithMigrationAudit(project *models.Project) (*storage.MigrationA
 // added to the queue. The retired Status/Section/Stage/Active values remain only
 // in the audit report, never as operational fields. Callers must persist the
 // config after a non-zero return.
-func MigrateLegacyActiveToFocusQueue(cfg *config.Config, audit *storage.MigrationAudit) int {
-	if cfg == nil || audit == nil {
+func MigrateLegacyActiveToFocusQueue(planning *config.PlanningState, audit *storage.MigrationAudit) int {
+	if planning == nil || audit == nil {
 		return 0
 	}
 	added := 0
 	for _, id := range audit.ActiveTaskIDs() {
-		if cfg.AddToFocusQueue(id, audit.ProjectID) {
+		if planning.AddToFocusQueue(id, audit.ProjectID) {
 			added++
 		}
 	}
 	return added
-}
-
-// applyWorkflowFocusChanges applies the Focus Queue membership changes a
-// set_active workflow action produced (surfaced as result.FocusChanges) against
-// the config-backed Focus Queue. The task's project ID is used for new entries.
-// Returns true if the queue changed so the caller knows to persist config.
-func applyWorkflowFocusChanges(cfg *config.Config, projectID string, changes []workflow.FocusChange) bool {
-	if cfg == nil || len(changes) == 0 {
-		return false
-	}
-	changed := false
-	for _, fc := range changes {
-		if fc.Add {
-			changed = cfg.AddToFocusQueue(fc.TaskID, projectID) || changed
-		} else {
-			changed = cfg.RemoveFromFocusQueue(fc.TaskID) || changed
-		}
-	}
-	return changed
 }

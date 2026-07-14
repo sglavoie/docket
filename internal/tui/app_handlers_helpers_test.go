@@ -13,14 +13,17 @@ import (
 func newTestAppModel() *AppModel {
 	resetSessionMutations()
 
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
 	configPath := filepath.Join(tmpDir, "tt.json")
 	manager := config.NewManager(configPath)
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	return &AppModel{
-		config:                   cfg,
 		configManager:            manager,
+		runtime:                  runtime,
+		deps:                     newShellDeps(runtime, nil, manager),
+		projects:                 make(map[string]*models.Project),
 		persister:                NewProjectService(),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
 		projectLastView:          make(map[string]ViewType),
@@ -37,18 +40,21 @@ func newTestAppModel() *AppModel {
 func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	resetSessionMutations()
 
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
 
 	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
 	configPath := filepath.Join(tmpDir, "tt.json")
 	manager := config.NewManager(configPath)
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	app := &AppModel{
-		config:                   cfg,
 		configManager:            manager,
+		runtime:                  runtime,
+		deps:                     newShellDeps(runtime, nil, manager),
+		projects:                 map[string]*models.Project{project.ID: project},
 		persister:                NewProjectService(),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
 		projectLastView:          make(map[string]ViewType),
@@ -62,4 +68,29 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	}
 
 	return app, project
+}
+
+func setTestAppProjects(app *AppModel, projects ...*models.Project) {
+	catalog := config.NewWorkspaceCatalog()
+	app.projects = make(map[string]*models.Project, len(projects))
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		catalog.UpsertProject(project)
+		app.projects[project.ID] = project
+	}
+	app.runtime.SetCatalogInMemory(catalog)
+}
+
+func addTestAppProject(app *AppModel, project *models.Project) {
+	projects := append(app.allProjects(), project)
+	setTestAppProjects(app, projects...)
+}
+
+func setTestCurrentProject(app *AppModel, projectID string) {
+	machine := cloneMachineState(app.runtime.Machine())
+	machine.CurrentProject = projectID
+	app.runtime.SetMachineInMemory(machine)
+	app.currentProject = app.projectByID(projectID)
 }

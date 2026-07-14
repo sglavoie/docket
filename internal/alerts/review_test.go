@@ -9,8 +9,9 @@ func TestCheckDailyReviewReminder_NeverCompleted(t *testing.T) {
 	cfg := DefaultAlertConfig()
 	cfg.LastDailyReviewAt = nil
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	projects := []ProjectData{testProject("review-ready", testTask("old-task", "", now.Add(-48*time.Hour)))}
 
-	alerts := checkDailyReviewReminder(cfg, nil, now)
+	alerts := checkDailyReviewReminder(cfg, projects, now)
 	if len(alerts) != 1 {
 		t.Fatalf("expected 1 alert, got %d", len(alerts))
 	}
@@ -19,6 +20,26 @@ func TestCheckDailyReviewReminder_NeverCompleted(t *testing.T) {
 	}
 	if alerts[0].Title != "Daily review never completed" {
 		t.Errorf("unexpected title: %s", alerts[0].Title)
+	}
+}
+
+func TestCheckDailyReviewReminder_SuppressesEmptyAndFirstUseWorkspaces(t *testing.T) {
+	cfg := DefaultAlertConfig()
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+
+	if got := checkDailyReviewReminder(cfg, nil, now); len(got) != 0 {
+		t.Fatalf("empty workspace produced %d daily review alerts", len(got))
+	}
+
+	recent := testTask("recent-task", "", now.Add(-dailyReviewFirstUseGrace+time.Minute))
+	recent.CreatedAt = recent.UpdatedAt
+	if got := checkDailyReviewReminder(cfg, []ProjectData{testProject("first-use", recent)}, now); len(got) != 0 {
+		t.Fatalf("first-use grace period produced %d daily review alerts", len(got))
+	}
+
+	recent.CreatedAt = now.Add(-dailyReviewFirstUseGrace)
+	if got := checkDailyReviewReminder(cfg, []ProjectData{testProject("ready", recent)}, now); len(got) != 1 {
+		t.Fatalf("daily reminder after grace = %d alerts, want 1", len(got))
 	}
 }
 
@@ -102,13 +123,34 @@ func TestCheckDailyReviewReminder_Over26hFallback(t *testing.T) {
 func TestCheckWeeklyReviewReminder_NeverCompleted(t *testing.T) {
 	cfg := DefaultAlertConfig()
 	cfg.LastWeeklyReviewAt = nil
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	projects := []ProjectData{testProject("review-ready", testTask("old-task", "", now.Add(-8*24*time.Hour)))}
 
-	alerts := checkWeeklyReviewReminder(cfg, nil, time.Now())
+	alerts := checkWeeklyReviewReminder(cfg, projects, now)
 	if len(alerts) != 1 {
 		t.Fatalf("expected 1 alert, got %d", len(alerts))
 	}
 	if alerts[0].Title != "Weekly review never completed" {
 		t.Errorf("unexpected title: %s", alerts[0].Title)
+	}
+	if alerts[0].Details != "Open the weekly review with ;r" {
+		t.Errorf("unexpected weekly review shortcut copy: %s", alerts[0].Details)
+	}
+}
+
+func TestCheckWeeklyReviewReminder_SuppressesFirstUseGracePeriod(t *testing.T) {
+	cfg := DefaultAlertConfig()
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	recent := testTask("recent-task", "", now.Add(-weeklyReviewFirstUseGrace+time.Minute))
+	recent.CreatedAt = recent.UpdatedAt
+	projects := []ProjectData{testProject("first-use", recent)}
+
+	if got := checkWeeklyReviewReminder(cfg, projects, now); len(got) != 0 {
+		t.Fatalf("first-use grace period produced %d weekly review alerts", len(got))
+	}
+	recent.CreatedAt = now.Add(-weeklyReviewFirstUseGrace)
+	if got := checkWeeklyReviewReminder(cfg, projects, now); len(got) != 1 {
+		t.Fatalf("weekly reminder after grace = %d alerts, want 1", len(got))
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -27,7 +28,7 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	if sourceTask == nil {
 		return true, errorCmd("failed to move task: task %q is not in source project", msg.Task.ID)
 	}
-	destProject := m.config.GetProject(msg.DestProjectID)
+	destProject := m.projectByID(msg.DestProjectID)
 	if destProject == nil {
 		return true, errorCmd("destination project not found")
 	}
@@ -67,10 +68,10 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the move is already committed.
-	if m.config.ReassignRecentVisitsProject(movedSet, destProject.ID) > 0 && m.configManager != nil {
-		if saveErr := m.configManager.Save(m.config); saveErr != nil {
-			logging.Warn("failed to update recent visits after move: %v", saveErr)
-		}
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		machine.ReassignRecentVisitsProject(movedSet, destProject.ID)
+	}); err != nil {
+		logging.Warn("failed to update recent visits after move: %v", err)
 	}
 
 	// Update in-memory TUI focus queue, daily plan, and recent-visit references so
@@ -110,13 +111,14 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 // config as a single ArtifactChange folded into the move transaction, mirroring
 // the CLI cross-project move. Returns nil when nothing changed.
 func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, destProjectID string) ([]storage.ArtifactChange, error) {
-	if m.config == nil || m.configManager == nil {
+	if m.runtime == nil || m.configManager == nil {
 		return nil, nil
 	}
-	if m.config.ReassignDurablePlanningProject(movedSet, destProjectID) == 0 {
+	planning := clonePlanningState(m.runtime.Planning())
+	if planning.ReassignDurablePlanningProject(movedSet, destProjectID) == 0 {
 		return nil, nil
 	}
-	return configDomainArtifacts(m.configManager, m.config)
+	return planningDomainArtifact(m.configManager, planning)
 }
 
 // handleTaskMovedToProject handles the result of a cross-project task move.
@@ -127,6 +129,13 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 		m.popView() // Close project selector (not needed for global flow)
 	}
 	m.refreshAllViews()
+	// The cross-project move folded a checked config artifact (durable planning-ref
+	// reassignment) into its transaction; advance the shared domain snapshot now
+	// that it is committed so views reading it stay consistent.
+	m.refreshRuntime()
+	if msg.SourceProject != nil && m.runtime.IsSystemInboxProject(msg.SourceProject.ID) {
+		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
+	}
 	// Also refresh the focus board so the moved task disappears from its old position
 	if v := m.views.Get(ViewFocusBoard); v != nil {
 		v.Update(FocusBoardRefreshMsg{})

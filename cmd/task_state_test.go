@@ -33,15 +33,15 @@ func findTodoLeaf(t *testing.T, project *models.Project) *models.Task {
 	return nil
 }
 
-func setupStateTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupStateTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
-	deps, project := testutil.SetupTestDepsWithProject(t, "State Project")
+	deps, project := setupTestDepsWithProject(t, "State Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 	oldRepo := storage.DefaultRepository
 	storage.DefaultRepository = deps.Repository

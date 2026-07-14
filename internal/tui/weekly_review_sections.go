@@ -29,11 +29,11 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 	now := time.Now()
 	today := util.StartOfDay(now)
 
-	staleProjectDays := m.config.GetWeeklyStaleProjectDays()
-	staleTaskDays := m.config.GetWeeklyStaleTaskDays()
-	inboxThreshold := m.config.GetWeeklyInboxThreshold()
-	blockedThreshold := m.config.GetWeeklyBlockedThreshold()
-	inProgressThreshold := m.config.GetWeeklyInProgressThreshold()
+	staleProjectDays := m.runtime.Settings().GetWeeklyStaleProjectDays()
+	staleTaskDays := m.runtime.Settings().GetWeeklyStaleTaskDays()
+	inboxThreshold := m.runtime.Settings().GetWeeklyInboxThreshold()
+	blockedThreshold := m.runtime.Settings().GetWeeklyBlockedThreshold()
+	inProgressThreshold := m.runtime.Settings().GetWeeklyInProgressThreshold()
 
 	staleProjectThreshold := now.AddDate(0, 0, -staleProjectDays)
 	staleTaskThreshold := now.AddDate(0, 0, -staleTaskDays)
@@ -41,7 +41,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 
 	var totalActive, highPriCount int
 
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
 			continue
@@ -190,7 +190,7 @@ func (m *WeeklyReviewModel) shouldSkipWeeklyReviewTask(task *models.Task, projec
 	if !hasActiveCommonFilters(&m.filter) {
 		return false
 	}
-	return !passesCommonFilters(task, &m.filter, project, m.config)
+	return !passesCommonFilters(task, &m.filter, project, m.runtime.Automation())
 }
 
 // sortSections sorts each section by appropriate criteria.

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -189,15 +190,15 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 			item := m.filteredItems[m.cursor].Item
 			if item.Category == ItemCategoryCommands && item.Command != nil {
 				name := item.Command.Name
-				isPinned := m.config.TogglePinnedCommand(name)
+				var isPinned bool
+				if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+					isPinned = machine.TogglePinnedCommand(name)
+				}); err != nil {
+					logging.Warn("failed to save machine state: %v", err)
+				}
 				m.pinnedCommands[name] = isPinned
 				if !isPinned {
 					delete(m.pinnedCommands, name)
-				}
-				if m.configManager != nil {
-					if err := m.configManager.Save(m.config); err != nil {
-						logging.Warn("failed to save config: %v", err)
-					}
 				}
 				// Re-filter to update sort order
 				m.filterItems()
@@ -220,11 +221,10 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 	case "ctrl+r":
 		// Reset category filter and clear persisted category
 		m.searchInput.SetValue("")
-		m.config.SetLastPaletteCategory("")
-		if m.configManager != nil {
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
-			}
+		if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+			machine.SetLastPaletteCategory("")
+		}); err != nil {
+			logging.Warn("failed to save machine state: %v", err)
 		}
 		m.filterItems()
 		return m, nil

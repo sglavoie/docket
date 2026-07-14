@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // This file proves the migrated standard-task-keymap list views (All Tasks,
@@ -18,7 +17,8 @@ import (
 // task with its single-task coordinator wired over the given features, so a
 // standard keymap action commits through the real transactional stack.
 func newRecentActivityForCoordinator(features SecondaryCoordinators, task *models.Task, project *models.Project) *RecentActivityModel {
-	m := &RecentActivityModel{config: testutil.NewTestConfig()}
+	cfg := newTestConfig()
+	m := &RecentActivityModel{runtime: testRuntimeAt(cfg.DataDir(), cfg)}
 	m.taskItem = features.TaskItem
 	m.filtered = []CrossProjectTask{{Task: task, Project: project}}
 	m.cursor = 0

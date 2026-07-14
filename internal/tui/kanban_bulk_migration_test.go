@@ -340,10 +340,11 @@ func TestKanbanBulkShellClearsSelectionOnCommit(t *testing.T) {
 	_, cmd := km.applySelectedBulkState(models.StateDone)
 	msg := runBatchResult(t, cmd)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = env.projects
 	mgr := config.NewManager(filepath.Join(env.dataDir, ".tt.json"))
-	appModel := &AppModel{config: cfg, configManager: mgr, views: NewViewRegistry()}
+	appModel := newTestAppModel()
+	appModel.configManager = mgr
+	appModel.views = NewViewRegistry()
+	setTestAppProjects(appModel, env.projects...)
 	appModel.views.Register(ViewKanban, km)
 
 	appModel.handleBatchTransactionResult(msg)

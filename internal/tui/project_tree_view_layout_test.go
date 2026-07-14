@@ -43,7 +43,7 @@ func TestProjectTreeLongStageDoesNotShiftSiblingRows(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Long Stage", tasks)
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeAll
 	m.updateVisibility()
 	m.SetSize(120, 24)
@@ -87,7 +87,7 @@ func TestProjectTreeAllViewRendersMultipleRowsWithManyTopGroups(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Layout Test", tasks)
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeAll
 	m.updateVisibility()
 	m.SetSize(120, 24)
@@ -129,7 +129,7 @@ func TestProjectTreePersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testi
 	}
 
 	project := newTestProjectTreeProject(t, "Persistent Scroll", tasks)
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeAll
 	m.updateVisibility()
 	m.SetSize(120, 13) // TreeHeaderOffset + card border leaves four task rows.
@@ -262,7 +262,7 @@ func TestProjectTreeRenderUsesChevronsWithoutOutlinerConnectors(t *testing.T) {
 		Tasks: []*models.Task{parent, child},
 	}
 
-	model := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	model := NewProjectTreeModel(project, nil, nil)
 	model.SetSize(100, 20)
 
 	out := model.View().Content

@@ -16,10 +16,10 @@ import (
 type TaskDetailModel struct {
 	BaseView
 	InteractiveViewState
-	task          *models.Task
-	project       *models.Project
-	config        *config.Config
-	configManager *config.Manager
+	task    *models.Task
+	project *models.Project
+	// runtime backs the domain-native scoring read (project scoring profile).
+	runtime *config.RuntimeState
 
 	// taskItem routes the detail view's own status/priority mutations through the
 	// application-layer single-task coordinator. The shell wires it via
@@ -71,7 +71,7 @@ func (m *TaskDetailModel) refreshAfterReload() {
 }
 
 // NewTaskDetailModel creates a new task detail view.
-func NewTaskDetailModel(task *models.Task, project *models.Project, cfg *config.Config, mgr *config.Manager) *TaskDetailModel {
+func NewTaskDetailModel(task *models.Task, project *models.Project, runtime *config.RuntimeState) *TaskDetailModel {
 	renderer, err := glamour.NewTermRenderer(
 		glamour.WithStylePath("dark"),
 		glamour.WithWordWrap(0),
@@ -80,11 +80,10 @@ func NewTaskDetailModel(task *models.Task, project *models.Project, cfg *config.
 		logging.Warn("glamour renderer init failed: %v", err)
 	}
 	return &TaskDetailModel{
-		task:          task,
-		project:       project,
-		config:        cfg,
-		configManager: mgr,
-		mdRenderer:    renderer,
+		task:       task,
+		project:    project,
+		runtime:    runtime,
+		mdRenderer: renderer,
 	}
 }
 

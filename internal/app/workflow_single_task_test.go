@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -229,5 +230,88 @@ func TestWithWorkflowNoRulesCommitsBareMutation(t *testing.T) {
 	}
 	if got := repo.commits[0][0].UndoAction; got != "Move to Section" {
 		t.Errorf("UndoAction = %q, want Move to Section", got)
+	}
+}
+
+func TestSingleTaskWorkflowAttributeWrappers(t *testing.T) {
+	task := newTask("t1", 1, "attributes")
+	project := newProject("proj-a", "Alpha", task)
+	repo := newFakeRepo(project)
+	service := newTestService(repo)
+	opts := app.SingleTaskWorkflowOptions{UndoContext: "attribute update"}
+
+	due := time.Date(2026, 7, 20, 9, 30, 0, 0, time.UTC)
+	if _, err := service.SetDueDateWithWorkflow(task.ID, &due, true, opts); err != nil {
+		t.Fatalf("SetDueDateWithWorkflow: %v", err)
+	}
+	if task.DueDate == nil || !task.DueDate.Equal(due) || !task.HasTime {
+		t.Fatalf("due date = %v hasTime=%v", task.DueDate, task.HasTime)
+	}
+	if _, err := service.SetDueDateWithWorkflow(task.ID, nil, true, opts); err != nil {
+		t.Fatalf("clear due date: %v", err)
+	}
+	if task.DueDate != nil || task.HasTime {
+		t.Fatalf("cleared due date = %v hasTime=%v", task.DueDate, task.HasTime)
+	}
+
+	until := due.Add(24 * time.Hour)
+	if _, err := service.SnoozeWithWorkflow(task.ID, &until, opts); err != nil {
+		t.Fatalf("SnoozeWithWorkflow: %v", err)
+	}
+	if task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(until) {
+		t.Fatalf("snoozed until = %v", task.SnoozedUntil)
+	}
+	if _, err := service.SnoozeWithWorkflow(task.ID, nil, opts); err != nil {
+		t.Fatalf("clear snooze: %v", err)
+	}
+	if task.SnoozedUntil != nil {
+		t.Fatalf("cleared snooze = %v", task.SnoozedUntil)
+	}
+
+	if _, err := service.SetPinnedWithWorkflow(task.ID, nil, opts); err != nil {
+		t.Fatalf("toggle pinned: %v", err)
+	}
+	if !task.Pinned {
+		t.Fatal("nil pinned should toggle the task on")
+	}
+	forceOff := false
+	if _, err := service.SetPinnedWithWorkflow(task.ID, &forceOff, opts); err != nil {
+		t.Fatalf("force unpinned: %v", err)
+	}
+	if task.Pinned {
+		t.Fatal("forced unpin did not clear Pinned")
+	}
+	forceOn := true
+	if _, err := service.SetPinnedWithWorkflow(task.ID, &forceOn, opts); err != nil {
+		t.Fatalf("force pinned: %v", err)
+	}
+	if !task.Pinned {
+		t.Fatal("forced pin did not set Pinned")
+	}
+
+	if _, err := service.ToggleDimmedWithWorkflow(task.ID, opts); err != nil {
+		t.Fatalf("ToggleDimmedWithWorkflow: %v", err)
+	}
+	if !task.Dimmed {
+		t.Fatal("toggle dimmed did not set Dimmed")
+	}
+	if got := len(repo.commits); got != 8 {
+		t.Fatalf("commits = %d, want 8 one-mutation transactions", got)
+	}
+}
+
+func TestSingleTaskWorkflowWrappersRejectInvalidInput(t *testing.T) {
+	task := newTask("t1", 1, "invalid")
+	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
+	service := newTestService(repo)
+
+	if _, err := service.SetPriorityWithWorkflow(task.ID, 99, app.SingleTaskWorkflowOptions{}); err == nil {
+		t.Fatal("expected invalid priority error")
+	}
+	if _, err := service.StateWithWorkflow(task.ID, models.WorkflowState("invalid"), app.SingleTaskWorkflowOptions{}); err == nil {
+		t.Fatal("expected invalid state error")
+	}
+	if len(repo.commits) != 0 {
+		t.Fatalf("invalid mutations committed %d times", len(repo.commits))
 	}
 }

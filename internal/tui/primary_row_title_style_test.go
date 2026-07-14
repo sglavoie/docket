@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -18,7 +17,7 @@ func TestProjectTreeActivePriorityTitlesUsePriorityStyle(t *testing.T) {
 		newPrimaryRowStyleTask(t, "tree-p1", 1, "Project tree active P1", 1),
 		newPrimaryRowStyleTask(t, "tree-p2", 2, "Project tree active P2", 2),
 	}
-	m := NewProjectTreeModel(newPrimaryRowStyleProject(t, "tree-project", tasks), config.NewConfig(), nil)
+	m := NewProjectTreeModel(newPrimaryRowStyleProject(t, "tree-project", tasks), nil, nil)
 	// Queue membership replaces the deprecated Active flag for the row marker.
 	m.queueIDs = map[string]bool{}
 	for _, task := range tasks {
@@ -40,7 +39,7 @@ func TestOutlinerActivePriorityTitlesUsePriorityStyle(t *testing.T) {
 		newPrimaryRowStyleTask(t, "outliner-p2", 2, "Outliner active P2", 2),
 	}
 
-	m := NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), config.NewConfig(), nil)
+	m := NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), nil, nil)
 	// The active marker now reflects Focus Queue membership, not the legacy
 	// Active flag.
 	m.queueIDs = map[string]bool{}

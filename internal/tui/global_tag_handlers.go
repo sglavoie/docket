@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -76,22 +77,21 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model
 }
 
 func (m *GlobalTagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
-	cfg := m.config
-	manager := m.configManager
+	runtime := m.runtime
 	return func() tea.Msg {
-		if cfg == nil {
+		if runtime == nil {
 			return GlobalTagManagerErrorMsg{Err: fmt.Errorf("config is unavailable")}
 		}
 		tagName = models.NormalizeTag(tagName)
-		pinned, err := cfg.ToggleGlobalPinnedTag(tagName)
-		if err != nil {
-			return GlobalTagManagerErrorMsg{Err: err}
+		var pinned bool
+		var toggleErr error
+		if err := commitSettingsToRuntime(runtime, func(s *config.Settings) {
+			pinned, toggleErr = s.ToggleGlobalPinnedTag(tagName)
+		}); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
-
-		if manager != nil {
-			if err := manager.Save(cfg); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
-			}
+		if toggleErr != nil {
+			return GlobalTagManagerErrorMsg{Err: toggleErr}
 		}
 
 		return GlobalTagPinnedMsg{Name: tagName, Pinned: pinned}

@@ -50,12 +50,12 @@ func (m *FocusBoardModel) collectFocusBoardProjects() []*models.Project {
 }
 
 // resolveDailyPlanForRecommendation chooses the daily-plan slice the engine
-// should consume. cfg.GetDailyPlan() wins when populated (production path);
-// otherwise the helper falls back to *m.dailyPlan with today's PlannedDate so
-// in-memory test fixtures can drive the engine without writing to config.
+// should consume. The persisted planning snapshot wins when populated (production
+// path); otherwise the helper falls back to *m.dailyPlan with today's PlannedDate
+// so in-memory test fixtures can drive the engine without a committed plan.
 func (m *FocusBoardModel) resolveDailyPlanForRecommendation() []config.DailyPlanItem {
-	if m.config != nil {
-		if items := m.config.GetDailyPlan(); len(items) > 0 {
+	if m.runtime != nil {
+		if items := m.runtime.Planning().GetDailyPlan(); len(items) > 0 {
 			return items
 		}
 	}

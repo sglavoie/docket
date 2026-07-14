@@ -8,55 +8,60 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// NewSettingsModel creates a new settings model.
-func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsModel {
+// NewSettingsModel creates a new settings model reading its initial values from
+// the domain-native runtime snapshot in the dependency bundle. It reads the
+// portable settings and machine-local domains directly (no config.Config) and
+// commits changes back through those two domains under a revision check.
+func NewSettingsModel(deps *shellDeps) *SettingsModel {
+	rs := deps.Runtime
+	mgr := deps.Manager
+	settings := rs.Settings()
+	machine := rs.Machine()
+
 	undoDepthValue := config.DefaultUndoHistoryDepth
-	if cfg.UndoHistoryDepth != nil {
-		undoDepthValue = *cfg.UndoHistoryDepth
+	if settings.UndoHistoryDepth != nil {
+		undoDepthValue = *settings.UndoHistoryDepth
 	}
 
-	contexts := cfg.GetAllContexts()
+	contexts := rs.AllContexts()
 
-	activeName := cfg.ActiveTheme
+	activeName := settings.ActiveTheme
 	if activeName == "" {
 		activeName = "dark"
 	}
 
-	activeTheme := cfg.ActiveThemeConfig()
+	activeTheme := settings.ActiveThemeConfig()
 
-	// The manager can be nil in isolated render tests; fall back to the config's
+	// The manager can be nil in isolated render tests; fall back to the runtime's
 	// own data dir so the workspace panel still shows a sensible location.
-	workspaceDataDir := cfg.DataDir
-	if manager != nil {
-		workspaceDataDir = config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
+	workspaceDataDir := rs.DataDir()
+	if mgr != nil {
+		workspaceDataDir = config.WorkspaceRootFromConfigPath(mgr.GetConfigPath())
 	}
 
 	var inactiveCfg config.Theme
 	var activePresetName, inactivePresetName string
 	if activeName == "light" {
-		inactiveCfg = cfg.ThemeDark
-		activePresetName = cfg.ThemeLightName
-		inactivePresetName = cfg.ThemeDarkName
+		inactiveCfg = settings.ThemeDark
+		activePresetName = settings.ThemeLightName
+		inactivePresetName = settings.ThemeDarkName
 	} else {
-		inactiveCfg = cfg.ThemeLight
-		activePresetName = cfg.ThemeDarkName
-		inactivePresetName = cfg.ThemeLightName
-	}
-
-	var coordinator SettingsCoordinator
-	if manager != nil {
-		coordinator = newSettingsCoordinator(manager)
+		inactiveCfg = settings.ThemeLight
+		activePresetName = settings.ThemeDarkName
+		inactivePresetName = settings.ThemeLightName
 	}
 
 	return &SettingsModel{
-		config:                   cfg,
-		configManager:            manager,
-		coordinator:              coordinator,
+		runtime:                  rs,
+		manager:                  mgr,
+		baseSettings:             *settings,
+		baseMachine:              *machine,
+		coordinator:              newSettingsCoordinator(rs),
 		workspaceLocation:        config.DisplayPath(workspaceDataDir),
 		workspaceStorage:         config.StorageLocationLabel(workspaceDataDir),
-		editorInput:              newSettingsInput("code", 256, 40, cfg.Editor, true),
-		externalEditorInput:      newSettingsInput("code", 256, 40, cfg.ExternalEditor, false),
-		contextInput:             newSettingsInput("personal", 50, 30, cfg.DefaultContext, false),
+		editorInput:              newSettingsInput("code", 256, 40, machine.Editor, true),
+		externalEditorInput:      newSettingsInput("code", 256, 40, machine.ExternalEditor, false),
+		contextInput:             newSettingsInput("personal", 50, 30, settings.DefaultContext, false),
 		undoDepthInput:           newSettingsInput(strconv.Itoa(config.DefaultUndoHistoryDepth), 4, 10, strconv.Itoa(undoDepthValue), false),
 		bgColorInput:             newSettingsInput("(none)", 7, 10, activeTheme.BackgroundColor, false),
 		cursorColorInput:         newSettingsInput("(none)", 7, 10, activeTheme.CursorColor, false),
@@ -75,112 +80,112 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		priority3TitleInput:      newSettingsInput("(none)", 7, 10, activeTheme.Palette.Priority3Title, false),
 		priority4TitleInput:      newSettingsInput("(none)", 7, 10, activeTheme.Palette.Priority4Title, false),
 		priority5TitleInput:      newSettingsInput("(none)", 7, 10, activeTheme.Palette.Priority5Title, false),
-		dueSoonInput:             newSettingsInput("7", 3, 6, strconv.Itoa(cfg.GetReviewDueSoonDays()), false),
-		futureInput:              newSettingsInput("30", 3, 6, strconv.Itoa(cfg.GetReviewFutureDays()), false),
-		oldDaysInput:             newSettingsInput("14", 3, 6, strconv.Itoa(cfg.GetReviewOldDays()), false),
-		completedHoursInput:      newSettingsInput("24", 3, 6, strconv.Itoa(cfg.GetReviewCompletedHours()), false),
-		staleTaskDaysInput:       newSettingsInput("14", 3, 6, strconv.Itoa(cfg.GetStaleTaskDays()), false),
-		recentActivityInput:      newSettingsInput("20", 3, 6, strconv.Itoa(cfg.GetRecentActivityLimit()), false),
-		recentActivityShowAll:    cfg.GetRecentActivityShowAll(),
-		linkedTaskJump:           cfg.GetLinkedTaskJumpToNew(),
-		maxPinnedInput:           newSettingsInput(strconv.Itoa(config.DefaultMaxPinnedBarItems), 2, 6, strconv.Itoa(cfg.GetMaxPinnedBarItems()), false),
-		maxRecentTaskVisitsInput: newSettingsInput(strconv.Itoa(config.DefaultMaxRecentTaskVisits), 2, 6, strconv.Itoa(cfg.GetMaxRecentTaskVisits()), false),
-		popupTimeoutInput:        newSettingsInput("0", 2, 6, strconv.Itoa(cfg.GetPopupTimeoutSeconds()), false),
-		attachmentEditorInput:    newSettingsInput("(OS default)", 256, 40, cfg.GetAttachmentEditor(), false),
-		codeEditorInput:          newSettingsInput("code", 256, 40, cfg.CodeEditor, false),
-		defaultViewCursor:        settingsOptionCursor(defaultProjectViewValues, cfg.GetDefaultProjectView(), 0),
-		outlinerCollapsed:        initOutlinerCollapsed(cfg),
-		treeColumnDefaults:       initTreeColumnDefaults(cfg.TreeDefaultColumns),
-		outlinerColumnDefaults:   initOutlinerColumnDefaults(cfg.OutlinerDefaultColumns),
-		treePriorityMode:         priorityModeToCursor(cfg.TreePriorityMode),
-		outlinerPriorityMode:     priorityModeToCursor(cfg.OutlinerPriorityMode),
-		crossOutlinerSidebar:     cfg.CrossOutlinerSidebarEnabled == nil || *cfg.CrossOutlinerSidebarEnabled,
-		crossOutlinerCycleOnly:   cfg.CrossOutlinerCycleOnly != nil && *cfg.CrossOutlinerCycleOnly,
-		zebraStriping:            cfg.ZebraStriping(),
-		weekEndDayCursor:         settingsOptionCursor(weekEndDayValues, cfg.GetWeekEndDay(), 2),
-		timeFormatCursor:         settingsOptionCursor(timeFormatValues, cfg.TimeFormat, 1),
-		autoTheme:                cfg.GetAutoTheme(),
-		useEmoji:                 cfg.GetUseEmoji(),
+		dueSoonInput:             newSettingsInput("7", 3, 6, strconv.Itoa(settings.GetReviewDueSoonDays()), false),
+		futureInput:              newSettingsInput("30", 3, 6, strconv.Itoa(settings.GetReviewFutureDays()), false),
+		oldDaysInput:             newSettingsInput("14", 3, 6, strconv.Itoa(settings.GetReviewOldDays()), false),
+		completedHoursInput:      newSettingsInput("24", 3, 6, strconv.Itoa(settings.GetReviewCompletedHours()), false),
+		staleTaskDaysInput:       newSettingsInput("14", 3, 6, strconv.Itoa(settings.GetStaleTaskDays()), false),
+		recentActivityInput:      newSettingsInput("20", 3, 6, strconv.Itoa(settings.GetRecentActivityLimit()), false),
+		recentActivityShowAll:    settings.GetRecentActivityShowAll(),
+		linkedTaskJump:           settings.GetLinkedTaskJumpToNew(),
+		maxPinnedInput:           newSettingsInput(strconv.Itoa(config.DefaultMaxPinnedBarItems), 2, 6, strconv.Itoa(settings.GetMaxPinnedBarItems()), false),
+		maxRecentTaskVisitsInput: newSettingsInput(strconv.Itoa(config.DefaultMaxRecentTaskVisits), 2, 6, strconv.Itoa(settings.GetMaxRecentTaskVisits()), false),
+		popupTimeoutInput:        newSettingsInput("0", 2, 6, strconv.Itoa(settings.GetPopupTimeoutSeconds()), false),
+		attachmentEditorInput:    newSettingsInput("(OS default)", 256, 40, machine.AttachmentEditor, false),
+		codeEditorInput:          newSettingsInput("code", 256, 40, machine.CodeEditor, false),
+		defaultViewCursor:        settingsOptionCursor(defaultProjectViewValues, settings.GetDefaultProjectView(), 0),
+		outlinerCollapsed:        initOutlinerCollapsed(machine),
+		treeColumnDefaults:       initTreeColumnDefaults(machine.TreeDefaultColumns),
+		outlinerColumnDefaults:   initOutlinerColumnDefaults(machine.OutlinerDefaultColumns),
+		treePriorityMode:         priorityModeToCursor(machine.TreePriorityMode),
+		outlinerPriorityMode:     priorityModeToCursor(machine.OutlinerPriorityMode),
+		crossOutlinerSidebar:     machine.CrossOutlinerSidebarEnabled == nil || *machine.CrossOutlinerSidebarEnabled,
+		crossOutlinerCycleOnly:   machine.CrossOutlinerCycleOnly != nil && *machine.CrossOutlinerCycleOnly,
+		zebraStriping:            settings.ZebraStriping(),
+		weekEndDayCursor:         settingsOptionCursor(weekEndDayValues, settings.GetWeekEndDay(), 2),
+		timeFormatCursor:         settingsOptionCursor(timeFormatValues, settings.TimeFormat, 1),
+		autoTheme:                settings.GetAutoTheme(),
+		useEmoji:                 settings.GetUseEmoji(),
 		contexts:                 contexts,
-		contextCursor:            settingsOptionCursor(contexts, cfg.DefaultContext, -1),
-		alertDailyReviewEnabled:  cfg.GetAlertDailyReviewEnabled(),
+		contextCursor:            settingsOptionCursor(contexts, settings.DefaultContext, -1),
+		alertDailyReviewEnabled:  settings.GetAlertDailyReviewEnabled(),
 		alertDailyReviewHourInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertDailyReviewHour),
 			2,
 			6,
-			strconv.Itoa(cfg.GetAlertDailyReviewHour()),
+			strconv.Itoa(settings.GetAlertDailyReviewHour()),
 			false,
 		),
-		alertWeeklyReviewEnabled: cfg.GetAlertWeeklyReviewEnabled(),
-		alertWeeklyReviewDay:     cfg.GetAlertWeeklyReviewDay(),
-		alertOverdueEnabled:      cfg.GetAlertOverdueEnabled(),
-		alertDueSoonEnabled:      cfg.GetAlertDueSoonEnabled(),
+		alertWeeklyReviewEnabled: settings.GetAlertWeeklyReviewEnabled(),
+		alertWeeklyReviewDay:     settings.GetAlertWeeklyReviewDay(),
+		alertOverdueEnabled:      settings.GetAlertOverdueEnabled(),
+		alertDueSoonEnabled:      settings.GetAlertDueSoonEnabled(),
 		alertDueSoonDaysInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertDueSoonDays),
 			3,
 			6,
-			strconv.Itoa(cfg.GetAlertDueSoonDays()),
+			strconv.Itoa(settings.GetAlertDueSoonDays()),
 			false,
 		),
-		alertStaleEnabled: cfg.GetAlertStaleEnabled(),
+		alertStaleEnabled: settings.GetAlertStaleEnabled(),
 		alertStaleDaysInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertStaleDays),
 			3,
 			6,
-			strconv.Itoa(cfg.GetAlertStaleDays()),
+			strconv.Itoa(settings.GetAlertStaleDays()),
 			false,
 		),
-		alertInboxEnabled: cfg.GetAlertInboxEnabled(),
+		alertInboxEnabled: settings.GetAlertInboxEnabled(),
 		alertInboxThresholdInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertInboxThreshold),
 			3,
 			6,
-			strconv.Itoa(cfg.GetAlertInboxThreshold()),
+			strconv.Itoa(settings.GetAlertInboxThreshold()),
 			false,
 		),
-		alertBlockedEnabled: cfg.GetAlertBlockedEnabled(),
+		alertBlockedEnabled: settings.GetAlertBlockedEnabled(),
 		alertBlockedDaysInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertBlockedDays),
 			3,
 			6,
-			strconv.Itoa(cfg.GetAlertBlockedDays()),
+			strconv.Itoa(settings.GetAlertBlockedDays()),
 			false,
 		),
-		alertProjectHealthEnabled: cfg.GetAlertProjectHealthEnabled(),
+		alertProjectHealthEnabled: settings.GetAlertProjectHealthEnabled(),
 		alertProjectStaleDaysInput: newSettingsInput(
 			strconv.Itoa(config.DefaultAlertProjectStaleDays),
 			3,
 			6,
-			strconv.Itoa(cfg.GetAlertProjectStaleDays()),
+			strconv.Itoa(settings.GetAlertProjectStaleDays()),
 			false,
 		),
-		sectionLimitActiveInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitActive), 3, 6, strconv.Itoa(cfg.GetSectionLimit("")), false),
-		sectionLimitNextInput:    newSettingsInput(strconv.Itoa(config.DefaultSectionLimitNext), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Next")), false),
-		sectionLimitInboxInput:   newSettingsInput(strconv.Itoa(config.DefaultSectionLimitInbox), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Inbox")), false),
-		sectionLimitStandbyInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitStandby), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Standby")), false),
-		sectionLimitWaitingInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitWaiting), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Waiting")), false),
-		sectionLimitSomedayInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitSomeday), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Someday")), false),
-		sectionLimitReviewInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitReview), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Review")), false),
+		sectionLimitActiveInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitActive), 3, 6, strconv.Itoa(settings.GetSectionLimit("")), false),
+		sectionLimitNextInput:    newSettingsInput(strconv.Itoa(config.DefaultSectionLimitNext), 3, 6, strconv.Itoa(settings.GetSectionLimit("Next")), false),
+		sectionLimitInboxInput:   newSettingsInput(strconv.Itoa(config.DefaultSectionLimitInbox), 3, 6, strconv.Itoa(settings.GetSectionLimit("Inbox")), false),
+		sectionLimitStandbyInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitStandby), 3, 6, strconv.Itoa(settings.GetSectionLimit("Standby")), false),
+		sectionLimitWaitingInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitWaiting), 3, 6, strconv.Itoa(settings.GetSectionLimit("Waiting")), false),
+		sectionLimitSomedayInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitSomeday), 3, 6, strconv.Itoa(settings.GetSectionLimit("Someday")), false),
+		sectionLimitReviewInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitReview), 3, 6, strconv.Itoa(settings.GetSectionLimit("Review")), false),
 		themePresetInput:         newSettingsInput("preset name", 50, 30, "", false),
-		originalTheme:            NewThemeConfig(cfg),
+		originalTheme:            NewThemeConfig(settings),
 		activeTheme:              activeName,
 		activePresetName:         activePresetName,
 		inactivePresetName:       inactivePresetName,
 		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
 		activeHiddenDimmed:       themeHiddenDimmed(activeTheme),
-		startViewCursor:          settingsOptionCursor(startViewValues, cfg.GetStartView(), defaultStartViewCursor),
-		taskFormCollapsed:        cfg.GetTaskFormCollapsed(),
-		focusBoardModeCursor:     settingsOptionCursor(focusBoardModeValues, cfg.GetFocusBoardDefaultMode(), 0),
-		dashboardLayoutCursor:    initDashboardLayoutCursor(cfg.GetDashboardBottomLayout()),
-		dashboardHorizSplitInput: newSettingsInput(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct), 2, 6, strconv.Itoa(cfg.GetDashboardHorizontalSplitPct()), false),
-		dashboardVertSplitInput:  newSettingsInput(strconv.Itoa(config.DefaultDashboardVerticalSplitPct), 2, 6, strconv.Itoa(cfg.GetDashboardVerticalSplitPct()), false),
-		resumeCardLimitInput:     newSettingsInput(strconv.Itoa(config.DefaultResumeCardLimit), 2, 6, strconv.Itoa(cfg.GetResumeCardLimit()), false),
-		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, cfg.KanbanSettings.DefaultMode, 0),
-		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, cfg.KanbanSettings.DefaultStartColumn, false),
-		kanbanShowEmptyColumns:   cfg.KanbanSettings.ShowEmptyColumns == nil || *cfg.KanbanSettings.ShowEmptyColumns,
-		kanbanDetailPaneVisible:  cfg.KanbanSettings.DetailPaneVisible != nil && *cfg.KanbanSettings.DetailPaneVisible,
-		kanbanDetailHeightCursor: initKanbanDetailHeight(cfg.KanbanSettings.DetailPaneHeight),
-		kanbanEnabledModes:       initKanbanEnabledModes(cfg.KanbanSettings.EnabledModes),
+		startViewCursor:          settingsOptionCursor(startViewValues, machine.GetStartView(), defaultStartViewCursor),
+		taskFormCollapsed:        machine.GetTaskFormCollapsed(),
+		focusBoardModeCursor:     settingsOptionCursor(focusBoardModeValues, settings.GetFocusBoardDefaultMode(), 0),
+		dashboardLayoutCursor:    initDashboardLayoutCursor(machine.GetDashboardBottomLayout()),
+		dashboardHorizSplitInput: newSettingsInput(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct), 2, 6, strconv.Itoa(machine.GetDashboardHorizontalSplitPct()), false),
+		dashboardVertSplitInput:  newSettingsInput(strconv.Itoa(config.DefaultDashboardVerticalSplitPct), 2, 6, strconv.Itoa(machine.GetDashboardVerticalSplitPct()), false),
+		resumeCardLimitInput:     newSettingsInput(strconv.Itoa(config.DefaultResumeCardLimit), 2, 6, strconv.Itoa(settings.GetResumeCardLimit()), false),
+		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, settings.KanbanSettings.DefaultMode, 0),
+		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, settings.KanbanSettings.DefaultStartColumn, false),
+		kanbanShowEmptyColumns:   settings.KanbanSettings.ShowEmptyColumns == nil || *settings.KanbanSettings.ShowEmptyColumns,
+		kanbanDetailPaneVisible:  settings.KanbanSettings.DetailPaneVisible != nil && *settings.KanbanSettings.DetailPaneVisible,
+		kanbanDetailHeightCursor: initKanbanDetailHeight(settings.KanbanSettings.DetailPaneHeight),
+		kanbanEnabledModes:       initKanbanEnabledModes(settings.KanbanSettings.EnabledModes),
 		focusIndex:               0,
 		tabs:                     TabState{Names: settingsTabNames},
 		width:                    80,
@@ -294,9 +299,9 @@ func initDashboardLayoutCursor(v config.DashboardBottomLayout) int {
 	return i
 }
 
-func initOutlinerCollapsed(cfg *config.Config) [7]bool {
+func initOutlinerCollapsed(machine *config.MachineState) [7]bool {
 	var outlinerCollapsed [7]bool
-	collapsedMap := cfg.GetOutlinerCollapsedSections()
+	collapsedMap := machine.GetOutlinerCollapsedSections()
 	for i, sectionName := range outlinerSectionNames {
 		outlinerCollapsed[i] = collapsedMap[sectionName]
 	}

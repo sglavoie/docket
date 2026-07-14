@@ -337,14 +337,14 @@ func TestTaskForm_Children_TaskTypeHidesSubtasksSection(t *testing.T) {
 
 func TestTaskForm_EditMode_LoadsChecklist(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.Checklist = []models.ChecklistItem{{Text: "do this", Done: false}, {Text: "done that", Done: true}}
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	if len(m.draft.checklist) != 2 {
 		t.Fatalf("expected 2 checklist items loaded from task, got %d", len(m.draft.checklist))
 	}
@@ -358,13 +358,13 @@ func TestTaskForm_EditMode_LoadsChecklist(t *testing.T) {
 
 func TestTaskForm_EditMode_SubtasksHiddenWithHint(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.Type = models.TaskTypeEpic
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	m.activeTab = formTabChildren
 	view := m.View().Content
 	if !strings.Contains(view, "Parent") {
@@ -374,9 +374,9 @@ func TestTaskForm_EditMode_SubtasksHiddenWithHint(t *testing.T) {
 
 func TestSubtaskEditEmptyTitleRemovesSubtask(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
-	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
 	m.draft.taskType = models.TaskTypeEpic
 	m.draft.subtasks = []formSubtaskDraft{
 		{title: "Sub 1", taskType: models.TaskTypeTask},
@@ -396,9 +396,9 @@ func TestSubtaskEditEmptyTitleRemovesSubtask(t *testing.T) {
 
 func TestSubtaskEditNonEmptyTitlePreserved(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
-	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
 	m.draft.taskType = models.TaskTypeEpic
 	m.draft.subtasks = []formSubtaskDraft{
 		{title: "Old Title", taskType: models.TaskTypeTask},

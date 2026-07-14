@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -29,11 +28,9 @@ func TestRenderPinnedTasksBar_CJKTitleVisualWidth(t *testing.T) {
 	task.PinnedAt = &pinnedAt
 	project.Tasks = []*models.Task{task}
 
-	cfg := &config.Config{
-		Projects: []*models.Project{project},
-	}
-
-	m := &AppModel{config: cfg, width: 80}
+	m := newTestAppModel()
+	setTestAppProjects(m, project)
+	m.width = 80
 
 	const barWidth = 40
 	bar := m.renderPinnedTasksBar(barWidth)

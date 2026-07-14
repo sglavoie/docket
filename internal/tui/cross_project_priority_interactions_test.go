@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -550,10 +549,10 @@ func TestCrossPriorityPinnedTagDoesNotDragNonMatchingParent(t *testing.T) {
 		t.Fatalf("load proj: %v", loadErr)
 	}
 
-	cfg := config.NewConfig()
-	cfg.GlobalPinnedTags = []string{"backend"}
+	cfg := newTestConfig()
+	cfg.Settings().GlobalPinnedTags = []string{"backend"}
 	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[string]bool),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},

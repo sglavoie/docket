@@ -10,7 +10,7 @@ import (
 
 // SingleTaskWorkflowOptions carries the workflow-rule cascade configuration
 // shared by every workflow-aware single-task mutation. It is the single-task
-// analogue of BulkTransitionRequest's rule fields.
+// analog of BulkTransitionRequest's rule fields.
 //
 // The secondary TUI views (all-tasks, weekly/daily review, priority, due-date,
 // focus, focus-board, project-focus) historically ran the full workflow pipeline
@@ -32,6 +32,10 @@ type SingleTaskWorkflowOptions struct {
 	// "Task Modified" when empty.
 	UndoAction  string
 	UndoContext string
+	// FocusArtifacts applies set_active side effects to a revision-checked
+	// planning artifact that is committed with the task changes. It is required
+	// only when the evaluated rules request Focus Queue changes.
+	FocusArtifacts WorkflowFocusArtifactBuilder
 }
 
 // mutateWithWorkflow is the shared runner for a workflow-aware single-task
@@ -59,20 +63,26 @@ func (s *Service) mutateWithWorkflow(taskID string, opts SingleTaskWorkflowOptio
 		prev = workflow.CaptureTaskStates(ref.Project.Tasks)
 	}
 
-	if err := mutate(ref, resolver); err != nil {
-		return BulkResult{}, err
+	if mutateErr := mutate(ref, resolver); mutateErr != nil {
+		return BulkResult{}, mutateErr
 	}
 	ref.Task.UpdatedAt = s.clock.Now()
 
-	commits := []projectCommit{{project: ref.Project, expectedRevision: revision}}
+	commits := []projectCommit{{project: ref.Project, expectedRevision: revision, base: ref.Base}}
 	triggerCounts := make(map[string]int)
+	var focusChanges []WorkflowFocusChange
 	if len(opts.Rules) > 0 {
 		committed := map[string]bool{ref.Project.ID: true}
-		added, cerr := s.applyBulkWorkflowCascade(snap, ref.Project, opts.Rules, prev, committed, triggerCounts)
+		added, focus, cerr := s.applyBulkWorkflowCascade(snap, ref.Project, opts.Rules, prev, committed, triggerCounts)
 		if cerr != nil {
 			return BulkResult{}, cerr
 		}
 		commits = append(commits, added...)
+		focusChanges = append(focusChanges, focus...)
+	}
+	resolvedFocus, err := attachWorkflowFocusArtifacts(commits, focusChanges, opts.FocusArtifacts)
+	if err != nil {
+		return BulkResult{}, err
 	}
 
 	undoAction := opts.UndoAction
@@ -88,6 +98,7 @@ func (s *Service) mutateWithWorkflow(taskID string, opts SingleTaskWorkflowOptio
 	if len(triggerCounts) > 0 {
 		out.RuleTriggerCounts = triggerCounts
 	}
+	out.FocusChanges = resolvedFocus
 	for _, c := range commits {
 		out.TouchedProjectIDs = append(out.TouchedProjectIDs, c.project.ID)
 	}

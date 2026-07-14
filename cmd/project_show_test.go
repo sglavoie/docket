@@ -21,7 +21,7 @@ func TestProjectShow(t *testing.T) {
 		// Simulate legacy archived project with nil ArchivedAt
 		project.Archived = true
 		project.ArchivedAt = nil
-		deps.Config.CurrentProject = project.ID
+		deps.Config.Machine().CurrentProject = project.ID
 
 		// This should not panic
 		err := runProjectShow(projectShowCmd, []string{})

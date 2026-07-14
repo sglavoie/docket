@@ -39,7 +39,7 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, _, _, err := LoadConfigAndProjectOrCurrent(args)
+	project, _, err := LoadRuntimeProjectOrCurrent(args)
 	if err != nil {
 		return err
 	}

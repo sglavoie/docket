@@ -14,7 +14,8 @@ type ProjectFocusViewModel struct {
 	FilterMixin
 
 	project *models.Project
-	cfg     *config.Config
+	// runtime backs the domain-native scoring read used by common filters.
+	runtime *config.RuntimeState
 
 	// taskItem routes the view's single-task mutations (remove-from-focus,
 	// priority) through the application layer. The shell wires it via

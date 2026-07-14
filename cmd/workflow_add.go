@@ -213,23 +213,22 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid rule: %w", err)
 	}
 
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-
-	store := automationStore(configManager)
-	automation, err := store.LoadAutomation()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	automation := domains.Automation
 
 	automation.AddWorkflowRule(*rule)
 
 	// Invalidate workflow eval states so all projects re-evaluate with new rule
 	automation.InvalidateWorkflowEvalStates()
 
-	if err := saveAutomation(store, automation); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 

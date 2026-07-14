@@ -16,8 +16,8 @@ import (
 // vocabulary on the model's column slice so future drift away from the
 // Capture/Triage/Plan/Work/Review/Support map fails fast.
 func TestPipelineHubColumnVocabularyMatchesCockpitModel(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 
 	want := []string{"Capture", "Triage", "Plan", "Work", "Review", "Support"}
 	if len(m.columns) != len(want) {
@@ -34,8 +34,8 @@ func TestPipelineHubColumnVocabularyMatchesCockpitModel(t *testing.T) {
 // Support column wires Blockers, Notes, Workflow Rules, and Notifications —
 // the four cross-cutting tools that were previously absent from the hub.
 func TestPipelineHubSupportColumnExposesCrossCuttingViews(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 
 	var support pipelineColumn
 	for _, col := range m.columns {
@@ -70,9 +70,9 @@ func TestPipelineHubSupportColumnExposesCrossCuttingViews(t *testing.T) {
 // project, the Work column carries both Today and the project-specific
 // entries that used to live in the dropped Execute column.
 func TestPipelineHubWorkColumnAbsorbsExecuteEntries(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Alpha")
-	m := NewPipelineHubModel(cfg, nil, nil, nil, project)
+	m := NewPipelineHubModel(testRuntimeAt(cfg.DataDir(), cfg), nil, nil, project)
 
 	var work pipelineColumn
 	for _, col := range m.columns {
@@ -108,8 +108,8 @@ func TestPipelineHubWorkColumnAbsorbsExecuteEntries(t *testing.T) {
 // no projects + no tasks surfaces the first-run "Create your first project"
 // strip above the column grid, matching the Today cockpit and Dashboard.
 func TestPipelineHubRecommendationStripFirstRun(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(120, 30)
 
 	plain := stripANSI(m.View().Content)
@@ -127,28 +127,27 @@ func TestPipelineHubRecommendationStripFirstRun(t *testing.T) {
 // planned-today task fed through the same engine the cockpit uses. Confirms
 // the hub speaks the same Next Action language as Today.
 func TestPipelineHubRecommendationStripWorkOnTask(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Hub Plan")
-	project.Path = cfg.GetProjectPath(project.Slug)
+	project.Path = cfg.ProjectPath(project.Slug)
 	planned, err := models.NewTask("planned-1", 1, models.TaskTypeTask, "Ship pipeline polish")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	planned.WorkflowState = models.StateInProgress
 	project.Tasks = []*models.Task{planned}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject: %v", err)
 	}
 	todayKey := util.StartOfDay(time.Now()).Format(util.DateFormat)
-	cfg.DailyPlan = []config.DailyPlanItem{{
+	cfg.Planning().DailyPlan = []config.DailyPlanItem{{
 		TaskID:      planned.ID,
 		ProjectID:   project.ID,
 		PlannedDate: todayKey,
 	}}
 
-	m := NewPipelineHubModel(cfg, nil, nil, nil, project)
+	m := NewPipelineHubModel(testRuntimeAt(cfg.DataDir(), cfg), nil, nil, project)
 	m.SetSize(140, 30)
 	m.setOpenLoops(OpenLoops{TodayTotal: 1, HasTasks: true})
 
@@ -165,10 +164,10 @@ func TestPipelineHubRecommendationStripWorkOnTask(t *testing.T) {
 // inbox-only fallback: when no tasks are loaded but OpenLoops carries an
 // inbox count, the strip surfaces a direct "Triage inbox (N items)" CTA.
 func TestPipelineHubRecommendationStripTriageInboxFromOpenLoops(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Inboxy")
-	cfg.Projects = []*models.Project{project}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	setTestProjects(cfg, []*models.Project{project})
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(140, 30)
 	m.setOpenLoops(OpenLoops{Inbox: 3, HasTasks: true})
 
@@ -185,8 +184,8 @@ func TestPipelineHubRecommendationStripTriageInboxFromOpenLoops(t *testing.T) {
 // inherits the renderer's NextActionStripMinWidth gate so narrow terminals do
 // not see truncated CTAs. The column grid still renders.
 func TestPipelineHubRecommendationStripSuppressedWhenNarrow(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(NextActionStripMinWidth-1, 24)
 
 	plain := stripANSI(m.View().Content)
@@ -213,8 +212,8 @@ func TestPipelineHubOpenLoopsAwareInterface(t *testing.T) {
 // Blockers entry dispatches the correct global message so the new column is
 // fully navigable, not just decorative.
 func TestPipelineHubSupportEntryDispatchesShowMsg(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(140, 30)
 
 	// Move to Support column (index 5)

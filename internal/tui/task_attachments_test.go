@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -313,16 +312,15 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	// the "empty editor" branch) vs. a "no editor found" error.
 	// We do this by creating a model with an empty AttachmentEditor config.
 
-	cfg := &config.Config{
-		AttachmentEditor: "", // empty = use OS default
-	}
+	cfg := newTestConfig()
+	cfg.Machine().AttachmentEditor = "" // empty = use OS default
 
 	task.Attachments = []models.Attachment{
 		{Filename: "note.txt", OriginalPath: "/nonexistent/note.txt", AddedAt: time.Now()},
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, cfg, AttachmentCoordinator{})
+	model := NewTaskAttachmentsModel(task, project, testRuntimeAt(cfg.DataDir(), cfg), AttachmentCoordinator{})
 	model.cursor = 0
 
 	// With an empty AttachmentEditor, openAttachmentInEditor should attempt

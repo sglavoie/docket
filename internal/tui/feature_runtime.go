@@ -3,12 +3,14 @@ package tui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workspace"
+	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // This file provides the production application-service wiring for the TUI. The
@@ -50,7 +52,8 @@ func newTUIAppRepository(dataDir string, deps *config.RuntimeDependencies) *tuiA
 		depth = *settings.UndoHistoryDepth
 	}
 	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
-	svc := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger)
+	svc := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger).
+		WithConflictStore(storage.NewConflictStore(config.ConflictsDir(dataDir)))
 	return &tuiAppRepository{deps: deps, dataDir: dataDir, svc: svc}
 }
 
@@ -72,6 +75,7 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 	}
 	loaded := make([]*models.Project, 0, len(projects))
 	revisions := make(map[string]string, len(projects))
+	documents := make(map[string]*storage.ProjectDocument, len(projects))
 	for _, p := range projects {
 		if p == nil {
 			continue
@@ -80,29 +84,35 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", p.Name, err)
 			continue
 		}
+		doc, err := tuiProjectDiskDocument(p)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping project %s document: %v\n", p.Name, err)
+			continue
+		}
 		loaded = append(loaded, p)
-		revisions[p.ID] = tuiProjectDiskRevision(p)
+		revisions[p.ID] = doc.Revision
+		documents[p.ID] = doc
 	}
-	return app.NewSnapshot(loaded, revisions), nil
+	return app.NewSnapshot(loaded, revisions, documents), nil
 }
 
-// tuiProjectDiskRevision returns the canonical revision of a project's on-disk
-// tasks.md — the exact value the commit service compares ExpectedRevision
-// against. It reads the disk document (not the load-normalized in-memory
-// project) for the same reason cliRepository.projectDiskRevision does: a fresh
+// tuiProjectDiskDocument returns the exact lossless on-disk document whose
+// revision the commit service compares against ExpectedRevision. It reads the
+// disk document (not the load-normalized in-memory
+// project) for the same reason cliRepository.projectDiskDocument does: a fresh
 // project's raw bytes can diverge from ToProjectDocument(loaded) after load-time
 // normalization, which would otherwise fail the first optimistic commit with a
 // phantom stale-revision conflict. Test doubles keep projects in memory with no
 // tasks.md, so the in-memory canonical revision is both correct and sufficient.
-func tuiProjectDiskRevision(p *models.Project) string {
+func tuiProjectDiskDocument(p *models.Project) (*storage.ProjectDocument, error) {
 	if _, ok := storage.DefaultRepository.(*storage.FileSystemRepository); !ok {
-		return storage.ToProjectDocument(p, nil).Revision
+		return storage.CanonicalProjectDocument(p, nil)
 	}
 	doc, err := storage.LoadProjectDocument(p)
 	if err != nil {
-		return storage.ToProjectDocument(p, nil).Revision
+		return nil, err
 	}
-	return doc.Revision
+	return doc, nil
 }
 
 // Commit applies the changesets atomically. On the real filesystem it drives the
@@ -128,11 +138,70 @@ func (r *tuiAppRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.C
 		}
 		revision := ""
 		if cs.Project != nil {
-			revision = workspace.NewLoader().Build([]*models.Project{cs.Project}).Revision(cs.Project.ID)
+			doc, docErr := storage.CanonicalProjectDocument(cs.Project, cs.Base)
+			if docErr != nil {
+				return nil, docErr
+			}
+			revision = doc.Revision
 		}
 		results[i] = &storage.CommitResult{Revision: revision}
 	}
 	return results, nil
+}
+
+// CommitOps implements app.OpsCommitter so TUI-owned project lifecycle and
+// bootstrap transactions can atomically combine catalog and project artifacts.
+func (r *tuiAppRepository) CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error {
+	if r.useCommitService() {
+		return r.svc.CommitOpsWithArtifacts(ops, artifacts)
+	}
+	for _, op := range ops {
+		switch op.Kind {
+		case transaction.OpWrite:
+			if err := os.MkdirAll(filepath.Dir(op.Target), config.DirPermissions); err != nil {
+				return err
+			}
+			mode := op.Mode
+			if mode == 0 {
+				mode = config.FilePermissions
+			}
+			if err := util.AtomicWriteFile(op.Target, op.Data, mode); err != nil {
+				return err
+			}
+		case transaction.OpMove:
+			if err := os.MkdirAll(filepath.Dir(op.Target), config.DirPermissions); err != nil {
+				return err
+			}
+			if err := os.Rename(op.Source, op.Target); err != nil {
+				return err
+			}
+		case transaction.OpDelete:
+			if err := os.RemoveAll(op.Target); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported transaction operation %q", op.Kind)
+		}
+	}
+	for _, artifact := range artifacts {
+		if artifact.Delete {
+			if err := os.Remove(artifact.Path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(artifact.Path), config.DirPermissions); err != nil {
+			return err
+		}
+		mode := artifact.Mode
+		if mode == 0 {
+			mode = config.FilePermissions
+		}
+		if err := util.AtomicWriteFile(artifact.Path, artifact.Data, mode); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // newTUIAppService constructs the application service the TUI feature

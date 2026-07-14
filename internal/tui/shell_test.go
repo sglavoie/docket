@@ -8,7 +8,12 @@ import (
 )
 
 func newShellTestApp() *AppModel {
-	return NewAppModel(&config.Config{}, &config.Manager{}, WithPersister(NewMockPersister()))
+	cfg := newTestConfig()
+	app, err := NewAppModel(testRuntimeAt("", cfg), &config.Manager{}, WithPersister(NewMockPersister()))
+	if err != nil {
+		panic(err)
+	}
+	return app
 }
 
 // TestNavEntryRouteRoundTrip proves that route instances preserve navigation
@@ -155,7 +160,7 @@ func TestWorkspaceSessionFacade(t *testing.T) {
 		t.Error("expected current project p1")
 	}
 	ctx := w.ViewContext()
-	if ctx.Config != app.config || ctx.ConfigManager != app.configManager || ctx.Persister != app.persister {
+	if ctx.ConfigManager != app.configManager || ctx.Persister != app.persister {
 		t.Error("ViewContext did not carry workspace dependencies")
 	}
 }

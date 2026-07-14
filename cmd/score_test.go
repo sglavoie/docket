@@ -16,19 +16,19 @@ import (
 
 // setupScoreTest sets up the full environment (config + storage) for score commands
 // that call LoadCurrentProject.
-func setupScoreTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupScoreTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 
 	iceProfile := scoring.NewICEProfile()
-	deps.Config.ScoringProfiles = []scoring.ScoringProfile{iceProfile}
-	deps.Config.SetProjectScoringProfile(project.ID, "ice")
+	deps.Config.Automation().ScoringProfiles = []scoring.ScoringProfile{iceProfile}
+	deps.Config.Automation().SetProjectScoringProfile(project.ID, "ice")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 	oldStorageRepo := storage.DefaultRepository
 	storage.DefaultRepository = deps.Repository
@@ -39,18 +39,18 @@ func setupScoreTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
 
 // setupScoreConfigOnlyTest sets up the environment for score commands that only call
 // LoadConfig (e.g., assign/unassign) and do not need storage.DefaultRepository.
-func setupScoreConfigOnlyTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupScoreConfigOnlyTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 
 	iceProfile := scoring.NewICEProfile()
-	deps.Config.ScoringProfiles = []scoring.ScoringProfile{iceProfile}
+	deps.Config.Automation().ScoringProfiles = []scoring.ScoringProfile{iceProfile}
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 	return deps, project
 }
@@ -65,7 +65,7 @@ func TestRunScoreAssign(t *testing.T) {
 
 		// Reload config to verify it was saved
 		manager := config.NewManager(deps.ConfigPath)
-		savedCfg, loadErr := manager.Load()
+		savedCfg, loadErr := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
 
 		profile := savedCfg.GetProjectScoringProfile(project.ID)
@@ -102,15 +102,15 @@ func TestRunScoreUnassign(t *testing.T) {
 		defer deps.Cleanup()
 
 		// First assign a profile so there's something to unassign
-		deps.Config.SetProjectScoringProfile(project.ID, "ice")
+		deps.Config.Automation().SetProjectScoringProfile(project.ID, "ice")
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runScoreUnassign(scoreUnassignCmd, []string{})
 		testutil.AssertNoError(t, err)
 
 		// Reload config to verify profile was removed
-		savedCfg, loadErr := manager.Load()
+		savedCfg, loadErr := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
 
 		profile := savedCfg.GetProjectScoringProfile(project.ID)
@@ -211,9 +211,9 @@ func TestRunScoreSet(t *testing.T) {
 		defer deps.Cleanup()
 
 		// Remove the profile assignment
-		deps.Config.UnsetProjectScoringProfile(project.ID)
+		deps.Config.Automation().UnsetProjectScoringProfile(project.ID)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		firstTask := project.Tasks[0]
 
@@ -239,9 +239,9 @@ func TestRunScoreShow(t *testing.T) {
 		deps, project := setupScoreTest(t)
 		defer deps.Cleanup()
 
-		deps.Config.UnsetProjectScoringProfile(project.ID)
+		deps.Config.Automation().UnsetProjectScoringProfile(project.ID)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		firstTask := project.Tasks[0]
 
@@ -289,9 +289,9 @@ func TestRunScoreRank(t *testing.T) {
 		deps, project := setupScoreTest(t)
 		defer deps.Cleanup()
 
-		deps.Config.UnsetProjectScoringProfile(project.ID)
+		deps.Config.Automation().UnsetProjectScoringProfile(project.ID)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runScoreRank(scoreRankCmd, []string{})
 		if err == nil {
@@ -438,9 +438,9 @@ func TestRunScoreProfileDelete_RejectsBuiltin(t *testing.T) {
 
 	// Reload config and verify the profile is still present.
 	manager := config.NewManager(deps.ConfigPath)
-	loaded, err := manager.Load()
+	loaded, err := manager.LoadRuntimeState()
 	testutil.AssertNoError(t, err)
-	if loaded.GetScoringProfile("ice") == nil {
+	if loaded.Automation().GetScoringProfile("ice") == nil {
 		t.Error("built-in profile 'ice' was removed despite the rejection")
 	}
 }

@@ -8,7 +8,7 @@ import (
 
 // passesFilters checks if a task passes all current priority view filters.
 func (m *PriorityViewModel) passesFilters(task *models.Task) bool {
-	if !passesCommonFilters(task, &m.filter, m.project, m.config) {
+	if !passesCommonFilters(task, &m.filter, m.project, m.runtime.Automation()) {
 		return false
 	}
 	if m.filter.Actionable && !taskIsActionableState(task, m.project) {

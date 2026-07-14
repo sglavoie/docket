@@ -120,10 +120,10 @@ func (s *Service) ReorderPinnedTasks(taskAID, taskBID string) (PinnedReorderResu
 	refA.Task.PinnedAt = &newA
 	refB.Task.PinnedAt = &newB
 
-	commits := []projectCommit{{project: refA.Project, expectedRevision: revA}}
+	commits := []projectCommit{{project: refA.Project, expectedRevision: revA, base: refA.Base}}
 	touched := []string{refA.Project.ID}
 	if refB.Project.ID != refA.Project.ID {
-		commits = append(commits, projectCommit{project: refB.Project, expectedRevision: snap.Revision(refB.Project.ID)})
+		commits = append(commits, projectCommit{project: refB.Project, expectedRevision: snap.Revision(refB.Project.ID), base: snap.Document(refB.Project.ID)})
 		touched = append(touched, refB.Project.ID)
 	}
 	undoContext := fmt.Sprintf("#%d <-> #%d", refA.Task.ShortID, refB.Task.ShortID)

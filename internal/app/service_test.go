@@ -495,6 +495,7 @@ func TestCommitCarriesCapturedExpectedRevision(t *testing.T) {
 	project := newProject("proj-1", "Alpha", task)
 	repo := newFakeRepo(project)
 	captured := repo.revisions[project.ID]
+	capturedBase := repo.documents[project.ID]
 	svc := newTestService(repo)
 
 	if _, err := svc.AddTag("t1", "focus"); err != nil {
@@ -506,6 +507,15 @@ func TestCommitCarriesCapturedExpectedRevision(t *testing.T) {
 	}
 	if cs.ExpectedRevision != captured {
 		t.Errorf("ExpectedRevision = %q, want %q", cs.ExpectedRevision, captured)
+	}
+	if cs.Base == nil {
+		t.Fatal("ChangeSet.Base is nil; want exact loaded ProjectDocument")
+	}
+	if cs.Base != capturedBase {
+		t.Fatal("ChangeSet.Base is not the document retained by the snapshot")
+	}
+	if len(cs.Base.Tasks[0].Tags) != 0 {
+		t.Fatalf("snapshot base was mutated with local project: tags=%v", cs.Base.Tasks[0].Tags)
 	}
 	if cs.UndoAction != "Add Tag" {
 		t.Errorf("UndoAction = %q, want Add Tag", cs.UndoAction)

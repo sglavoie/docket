@@ -11,7 +11,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestDashboardRecentTasksContentRespectsVisualWidth(t *testing.T) {
@@ -27,7 +26,7 @@ func TestDashboardRecentTasksContentRespectsVisualWidth(t *testing.T) {
 	task.UpdatedAt = time.Now().Add(-2 * time.Hour)
 	project.Tasks = []*models.Task{task}
 
-	m := NewDashboardModel(testutil.NewTestConfig(), nil)
+	m := NewDashboardModel(nil)
 	contentWidth := 28
 	rendered := m.renderRecentTasksContentWithWidth(project, contentWidth)
 
@@ -236,7 +235,7 @@ func TestAllTasksViewBudgetsWrappedFooterHeight(t *testing.T) {
 		t.Fatalf("addProject: %v", err)
 	}
 
-	m := NewAllTasksViewModel(ws.Config, ws.Manager)
+	m := NewAllTasksViewModel(ws.Runtime, ws.Manager)
 
 	const width, height = 40, 18
 	m.SetSize(width, height)
@@ -265,9 +264,10 @@ func TestAllTasksViewBudgetsWrappedFooterHeight(t *testing.T) {
 // scroll-position row would push the joined view one line past the budget.
 func TestRoadmapViewBudgetsWrappedFooterHeight(t *testing.T) {
 	const width, height = 40, 18
+	cfg := newTestConfig()
 
 	m := &RoadmapModel{
-		config:     testutil.NewTestConfig(),
+		runtime:    testRuntimeAt(cfg.DataDir(), cfg),
 		isGlobal:   true,
 		zoom:       ZoomWeek,
 		collapsed:  make(map[string]bool),

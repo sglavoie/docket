@@ -43,7 +43,7 @@ func init() {
 }
 
 func runTaskDim(_ *cobra.Command, args []string) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func runTaskDim(_ *cobra.Command, args []string) error {
 	// mutates a freshly-snapshotted task, so its result carries no dimmed flag.
 	nowDimmed := !task.Dimmed
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.ToggleDimmed(task.ID)
 	})
@@ -86,7 +86,7 @@ func runTaskDim(_ *cobra.Command, args []string) error {
 }
 
 func runTaskUndim(_ *cobra.Command, args []string) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func runTaskUndim(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.Undim(task.ID)
 	})

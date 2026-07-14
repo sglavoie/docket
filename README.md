@@ -1,6 +1,9 @@
 # tt - Terminal Tasks
 
-tt is a CLI-first project and task manager with a full-screen TUI built on Bubble Tea. It is aimed at terminal-heavy workflows and stores data in readable markdown under its data directory — your iCloud Drive when available, otherwise `~/.tt/`.
+tt is a CLI-first project and task manager with a full-screen TUI built on
+Bubble Tea. It is aimed at terminal-heavy workflows and stores readable
+Markdown in a local `~/.tt/` workspace by default. You can choose another data
+directory, including iCloud only after explicit selection through iCloud Drive.
 
 ## Installation
 
@@ -37,7 +40,7 @@ The product surface is intentionally documented in the app instead of in a long 
 
 - Press `?` in most TUI views for contextual help.
 - `tt` opens on the Today cockpit by default; press `;w` to return to it.
-- Open the command palette with `:` and run `:tutor` for guided onboarding.
+- Open the command palette with `:` and run `:reference` for the full reference encyclopedia.
 - Use the `Ask AI` command from the TUI when you want precise answers while working.
 - Use `tt --help` and `tt <command> --help` for authoritative CLI usage.
 
@@ -46,13 +49,28 @@ If you prefer asking from the shell:
 ```bash
 tt ask "what should I work on next?"
 tt ask "create a bug for the login issue" --apply
+tt ask --redact-context "which task is most urgent?"
+tt ask --no-context "how do workflow states work?"
 ```
+
+Task context is opt-in: the first contextual request shows a disclosure and can
+remember consent in portable settings. `--redact-context` sends only opaque
+stable project/task IDs and non-text metadata, omitting project names and slugs,
+qualified task references, titles, descriptions, and tags. `--no-context` sends
+none; the TUI cycles the same modes with `Ctrl+T`.
+Claude returns a versioned structured action plan, which tt validates and previews
+locally. Safe actions receive one batch confirmation, destructive actions require
+a separate approval, and every accepted plan commits as one undoable transaction.
 
 ## Core Concepts
 
 - Work is organized by project.
 - Tasks are hierarchical and support epics, stories, tasks, bugs, and ideas.
-- Sections are built-in GTD buckets: Active, Next, Inbox, Waiting, Review, Standby, Someday, and Completed.
+- Workflow state records a task's lifecycle: Inbox, Ready, Next, In Progress,
+  Waiting, Paused, Review, Someday, Done, or Canceled.
+- Dependency blocking is a derived badge and filter, not another workflow
+  state. Focus Queue and Daily Plan are planning collections rather than task
+  states.
 - Tags are flexible labels for grouping work across sections.
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
 - Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the dashboard Resume card.
@@ -92,9 +110,10 @@ For deeper discovery, use the tutor, view help, the command palette, and command
 
 ## Undo And Redo
 
-Task and project mutations record a pre-change `tasks.md` snapshot. `tt undo`
-steps backward through that linear history, and `tt redo` reapplies the latest
-undo until a new mutation clears redo history.
+Task and project mutations record a workspace transaction in the retained undo
+ledger. `tt undo` steps backward through project history, and `tt redo` reapplies
+the latest undo until a new overlapping mutation clears redo history. Use
+`--global` to select the newest workspace-wide transaction.
 
 Cross-project changes, such as moving tasks between projects, workflow-driven
 project moves, archive-all, global tag rename, and cross-project TUI edits, are
@@ -124,23 +143,38 @@ tt project unarchive <slug-or-id>
 
 ## Data Directory
 
-tt keeps its durable data under a single data directory. When iCloud Drive is
-available it defaults to the `tt` folder in iCloud Drive, so your tasks sync
-across machines; otherwise it uses the local `~/.tt/`. Passing `--config <path>`
-overrides this and disables the default-path migration. Existing local installs
-are migrated automatically (copy-then-switch), leaving the old `~/.tt/` as a
-backup. Logs and TUI lock files always stay machine-local under `~/.tt/` and are
-never synced.
+tt keeps its durable data under a single data directory. New workspaces use the
+local `~/.tt/` workspace by default and move to iCloud only after explicit
+selection. `--data-dir` and `TT_DATA_DIR` select another workspace explicitly.
+Logs, machine settings, and process locks always stay machine-local under
+`~/.tt/` and are never synced.
 
 ```text
-<data dir>/            # ~/.tt/, or the tt folder in iCloud Drive when available
-├── projects/
-├── notes/
-├── contexts/
-└── trash/
+<data dir>/            # ~/.tt/ by default; an explicitly selected location otherwise
+├── .tt/
+│   ├── workspace.json  # workspace identity and project catalog
+│   ├── planning.json   # Focus Queue, daily plan, reviews, and saved filters
+│   ├── settings.json   # portable behavior, appearance, privacy, and AI consent
+│   ├── automation.json # workflows, templates, and scoring profiles
+│   ├── transactions/   # staged and recovering transaction manifests
+│   ├── undo/           # workspace transaction ledger and retained artifacts
+│   ├── conflicts/      # concurrent-edit conflict bundles
+│   └── trash/          # versioned project tombstones
+└── projects/               # task Markdown, notes, and attachments
 ```
 
 Projects use markdown files for tasks plus project-local notes and attachments.
+Machine-specific navigation, editors, history, and layout are kept separately
+and are not synced with the portable workspace domains. The default local
+workspace uses `~/.tt/machine.json`; any other data directory uses
+`~/.tt/runtime/<data-dir-hash>/machine.json`, where `<data-dir-hash>` is the
+first 12 hexadecimal characters of the SHA-256 hash of the cleaned data-directory
+path. Moving a workspace changes that key, so the machine state at the old path
+is not reused automatically. Configuration changes are committed to these owning
+domains directly rather than through a monolithic configuration file. See
+[Architecture, data, privacy, and recovery](docs/architecture.md) for the complete
+state model, transaction and conflict semantics, cloud and AI consent, migration
+expectations, backup guidance, and platform support.
 
 ## Completed Task Archive
 
@@ -177,11 +211,10 @@ tt can integrate with external tools when they are available:
 
 ```bash
 just ci
-go test ./...
-go build ./...
+just tui-scenarios
 ```
 
-Start with `?`, then `:tutor`, and use `Ask AI` when you need targeted guidance.
+Start with `?`, then `:reference`, and use `Ask AI` when you need targeted guidance.
 
 ### TUI review harness
 

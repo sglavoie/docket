@@ -179,7 +179,7 @@ func TestTaskForm_Edit_PreservesHasTime(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	m := NewTaskFormModelEdit(project, task, nil, nil)
+	m := NewTaskFormModelEdit(project, task, nil)
 	if !m.draft.hasTime {
 		t.Error("expected draft.hasTime=true when editing task with HasTime=true")
 	}

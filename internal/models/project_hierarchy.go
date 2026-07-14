@@ -44,8 +44,11 @@ func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string)
 // Sets Parent, Children, and Level for each task.
 // Cross-project refs are validated in storage/markdown.go LoadProject()
 func (p *Project) BuildTaskTree() {
-	taskMap := make(map[string]*Task)
+	taskMap := make(map[string]*Task, len(p.Tasks))
 	for _, task := range p.Tasks {
+		if task == nil {
+			continue
+		}
 		task.Children = []*Task{}
 		task.Parent = nil
 		task.Level = 0
@@ -57,14 +60,29 @@ func (p *Project) BuildTaskTree() {
 	pruneAllOrphanedRefs(p.Tasks, taskMap)
 	breakDependencyCycles(p.Tasks, taskMap)
 
-	// Set levels via DFS (with visited set to guard against any remaining cycles)
+	// Set levels via DFS (with a visited set to guard against any remaining
+	// cycles). Detach the first node that exceeds the supported depth while it is
+	// visited, then continue from that node as a new root. Filtering every
+	// parent's adjacency list once afterward avoids the former repeated child
+	// slice scans when many nodes overflowed at the same depth.
 	visited := make(map[string]bool, len(p.Tasks))
+	detached := make(map[string]bool)
 	setLevels := func(task *Task, level int) {}
 	setLevels = func(task *Task, level int) {
+		if task == nil {
+			return
+		}
 		if visited[task.ID] {
 			return
 		}
 		visited[task.ID] = true
+		if level > MaxNestingDepth && task.Parent != nil {
+			logging.Warn("task %q (#%d) exceeds max nesting depth %d, treating as root", task.Title, task.ShortID, MaxNestingDepth)
+			detached[task.ID] = true
+			task.Parent = nil
+			task.ParentID = nil
+			level = 0
+		}
 		task.Level = level
 		for _, child := range task.Children {
 			setLevels(child, level+1)
@@ -72,70 +90,61 @@ func (p *Project) BuildTaskTree() {
 	}
 
 	for _, task := range p.Tasks {
-		if task.IsRoot() {
+		if task != nil && task.IsRoot() {
 			setLevels(task, 0)
 		}
 	}
 
-	// Cap nesting depth: detach tasks that exceed MaxNestingDepth
-	for _, task := range p.Tasks {
-		if task.Level > MaxNestingDepth && task.Parent != nil {
-			logging.Warn("task %q (#%d) exceeds max nesting depth %d, treating as root", task.Title, task.ShortID, MaxNestingDepth)
-			parent := task.Parent
-			for i, child := range parent.Children {
-				if child.ID == task.ID {
-					parent.Children = append(parent.Children[:i], parent.Children[i+1:]...)
-					break
+	if len(detached) > 0 {
+		for _, parent := range p.Tasks {
+			if parent == nil || len(parent.Children) == 0 {
+				continue
+			}
+			kept := parent.Children[:0]
+			for _, child := range parent.Children {
+				if !detached[child.ID] {
+					kept = append(kept, child)
 				}
 			}
-			task.Parent = nil
-			task.ParentID = nil
-			task.Level = 0
-			clearVisited(task, visited)
-			setLevels(task, 0)
+			parent.Children = kept
 		}
 	}
 }
 
-// breakParentCycles detects and breaks circular parent references.
-// A cycle exists when following ParentID pointers leads back to the starting task.
-// Re-runs until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
+// breakParentCycles detects and breaks circular parent references in O(n). A
+// parent graph has at most one outgoing edge per task, so a three-color DFS can
+// remove the edge that closes each cycle without walking the same parent chain
+// once from every task.
 func breakParentCycles(tasks []*Task, taskMap map[string]*Task) {
-	for {
-		foundCycle := false
-		for _, task := range tasks {
-			if task.ParentID == nil {
-				continue
-			}
-			visited := make(map[string]bool)
-			visited[task.ID] = true
-			current := *task.ParentID
-			for current != "" {
-				if visited[current] {
-					// Only clear this task's ParentID when the cycle includes
-					// the task itself (current walked back to task.ID). When a
-					// cycle exists downstream of the task (e.g. task A points
-					// to a B<->C cycle), task A is not part of the cycle and
-					// clearing its parent would needlessly detach a valid
-					// link. The downstream cycle will be broken when the
-					// iteration reaches one of its participants.
-					if current == task.ID {
-						logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
-						task.ParentID = nil
-						foundCycle = true
-					}
-					break
-				}
-				visited[current] = true
-				if parent, ok := taskMap[current]; ok && parent.ParentID != nil {
-					current = *parent.ParentID
-				} else {
-					break
+	const (
+		unvisited uint8 = iota
+		visiting
+		visited
+	)
+	state := make(map[string]uint8, len(taskMap))
+	var visit func(*Task)
+	visit = func(task *Task) {
+		if task == nil || state[task.ID] == visited {
+			return
+		}
+		state[task.ID] = visiting
+		if task.ParentID != nil {
+			if parent := taskMap[*task.ParentID]; parent != nil {
+				switch state[parent.ID] {
+				case unvisited:
+					visit(parent)
+				case visiting:
+					logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
+					task.ParentID = nil
+				case visited:
 				}
 			}
 		}
-		if !foundCycle {
-			break
+		state[task.ID] = visited
+	}
+	for _, task := range tasks {
+		if task != nil && state[task.ID] == unvisited {
+			visit(task)
 		}
 	}
 }
@@ -144,6 +153,9 @@ func breakParentCycles(tasks []*Task, taskMap map[string]*Task) {
 // Tasks referencing non-existent parents are treated as roots.
 func linkParentChild(tasks []*Task, taskMap map[string]*Task) {
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		if task.ParentID == nil {
 			continue
 		}
@@ -162,6 +174,9 @@ func linkParentChild(tasks []*Task, taskMap map[string]*Task) {
 // (format "projectID:taskID") are preserved.
 func pruneAllOrphanedRefs(tasks []*Task, taskMap map[string]*Task) {
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		task.DependsOn = pruneOrphanedRefs(task, taskMap, task.DependsOn, "depends on")
 		task.RelatedTo = pruneOrphanedRefs(task, taskMap, task.RelatedTo, "has related ref to")
 	}
@@ -186,60 +201,50 @@ func pruneOrphanedRefs(task *Task, taskMap map[string]*Task, refs []string, labe
 	return valid
 }
 
-// breakDependencyCycles detects and breaks circular dependency chains.
-// Re-runs until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
+// breakDependencyCycles removes DFS back edges in O(V+E). The previous
+// implementation launched a fresh reachability walk for every dependency edge
+// and repeated whole passes after each removal, which became quadratic on large
+// dependency graphs.
 func breakDependencyCycles(tasks []*Task, taskMap map[string]*Task) {
-	var canReach func(startID, targetID string, visited map[string]bool) bool
-	canReach = func(startID, targetID string, visited map[string]bool) bool {
-		if startID == targetID {
-			return true
+	const (
+		unvisited uint8 = iota
+		visiting
+		visited
+	)
+	state := make(map[string]uint8, len(taskMap))
+	var visit func(*Task)
+	visit = func(task *Task) {
+		if task == nil || state[task.ID] == visited {
+			return
 		}
-		if visited[startID] {
-			return false
-		}
-		visited[startID] = true
-		t, ok := taskMap[startID]
-		if !ok {
-			return false
-		}
-		for _, depID := range t.DependsOn {
-			if !ParseTaskRef(depID).IsCrossProject() && canReach(depID, targetID, visited) {
-				return true
+		state[task.ID] = visiting
+		kept := task.DependsOn[:0]
+		for _, depID := range task.DependsOn {
+			ref := ParseTaskRef(depID)
+			if ref.IsCrossProject() {
+				kept = append(kept, depID)
+				continue
 			}
+			dependency := taskMap[depID]
+			if dependency == nil {
+				continue
+			}
+			if state[dependency.ID] == visiting {
+				logging.Warn("task %q (#%d) has circular dependency on %s, removing edge", task.Title, task.ShortID, depID)
+				continue
+			}
+			if state[dependency.ID] == unvisited {
+				visit(dependency)
+			}
+			kept = append(kept, depID)
 		}
-		return false
+		task.DependsOn = kept
+		state[task.ID] = visited
 	}
-
-	for {
-		foundCycle := false
-		for _, task := range tasks {
-			for i, depID := range task.DependsOn {
-				if ParseTaskRef(depID).IsCrossProject() {
-					continue
-				}
-				if canReach(depID, task.ID, make(map[string]bool)) {
-					logging.Warn("task %q (#%d) has circular dependency on %s, removing edge", task.Title, task.ShortID, depID)
-					task.DependsOn = append(task.DependsOn[:i], task.DependsOn[i+1:]...)
-					foundCycle = true
-					break
-				}
-			}
-			if foundCycle {
-				break
-			}
+	for _, task := range tasks {
+		if task != nil && state[task.ID] == unvisited {
+			visit(task)
 		}
-		if !foundCycle {
-			break
-		}
-	}
-}
-
-// clearVisited removes a task and all its descendants from the visited map
-// so setLevels can re-traverse them after detachment.
-func clearVisited(task *Task, visited map[string]bool) {
-	delete(visited, task.ID)
-	for _, child := range task.Children {
-		clearVisited(child, visited)
 	}
 }
 
@@ -396,49 +401,52 @@ func (p *Project) ReorderRootTasksByCompletion() {
 	// Build the tree to ensure parent-child relationships are set
 	p.BuildTaskTree()
 
-	// Collect root tasks with their subtrees (all descendants)
+	// Collect root tasks with their subtrees (all descendants).
 	type rootSubtree struct {
 		root  *Task
 		tasks []*Task // root + all descendants in original slice order
 	}
 
-	// Collect all descendants of a root task (visited check prevents cycles)
-	var collectDescendants func(task *Task, collected map[string]bool)
-	collectDescendants = func(task *Task, collected map[string]bool) {
-		if collected[task.ID] {
+	// Index every task by its root once. The previous implementation built a
+	// descendant set for each root and then rescanned the full task slice per
+	// root, which was O(n²) for a project containing many root tasks.
+	rootByTask := make(map[string]string, len(p.Tasks))
+	var indexSubtree func(rootID string, task *Task)
+	indexSubtree = func(rootID string, task *Task) {
+		if task == nil || rootByTask[task.ID] != "" {
 			return
 		}
-		collected[task.ID] = true
+		rootByTask[task.ID] = rootID
 		for _, child := range task.Children {
-			collectDescendants(child, collected)
+			indexSubtree(rootID, child)
 		}
 	}
 
-	// Process each root task
-	var uncompletedSubtrees []rootSubtree
-	var completedSubtrees []rootSubtree
-	processedTasks := make(map[string]bool)
-
+	var roots []*Task
 	for _, task := range p.Tasks {
-		if !task.IsRoot() || processedTasks[task.ID] {
+		if task != nil && task.IsRoot() {
+			roots = append(roots, task)
+			indexSubtree(task.ID, task)
+		}
+	}
+
+	subtrees := make(map[string][]*Task, len(roots))
+	for _, task := range p.Tasks {
+		if task == nil {
 			continue
 		}
-
-		// Collect all task IDs in this subtree
-		subtreeIDs := make(map[string]bool)
-		collectDescendants(task, subtreeIDs)
-
-		// Gather tasks in original slice order
-		var subtreeTasks []*Task
-		for _, t := range p.Tasks {
-			if subtreeIDs[t.ID] {
-				subtreeTasks = append(subtreeTasks, t)
-				processedTasks[t.ID] = true
-			}
+		rootID := rootByTask[task.ID]
+		if rootID == "" {
+			rootID = task.ID
 		}
+		subtrees[rootID] = append(subtrees[rootID], task)
+	}
 
-		subtree := rootSubtree{root: task, tasks: subtreeTasks}
-		if task.IsComplete() {
+	var uncompletedSubtrees []rootSubtree
+	var completedSubtrees []rootSubtree
+	for _, root := range roots {
+		subtree := rootSubtree{root: root, tasks: subtrees[root.ID]}
+		if root.IsComplete() {
 			completedSubtrees = append(completedSubtrees, subtree)
 		} else {
 			uncompletedSubtrees = append(uncompletedSubtrees, subtree)

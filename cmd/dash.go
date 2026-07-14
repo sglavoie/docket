@@ -37,20 +37,20 @@ func init() {
 }
 
 func runDash(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
 	if jsonRequested(cmd) {
-		out, err := buildDashboardJSON(cfg, configManager)
+		out, err := buildDashboardJSON(workspace.Runtime)
 		if err != nil {
 			return err
 		}
 		return printJSON(out)
 	}
 
-	return displayDashboard(cfg, configManager)
+	return displayDashboard(workspace.Runtime)
 }
 
 // dashboardProjectJSON summarizes one project for the dashboard JSON envelope.
@@ -69,12 +69,9 @@ type dashboardJSON struct {
 	CurrentProject string                 `json:"current_project,omitempty"`
 }
 
-func buildDashboardJSON(cfg *config.Config, mgr *config.Manager) (dashboardJSON, error) {
+func buildDashboardJSON(runtime *config.RuntimeState) (dashboardJSON, error) {
 	out := dashboardJSON{Projects: []dashboardProjectJSON{}}
-	active, err := activeProjects(mgr)
-	if err != nil {
-		return dashboardJSON{}, err
-	}
+	active := runtime.ActiveProjects()
 	for _, p := range active {
 		if err := storage.LoadProject(p); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not load project %q: %v\n", p.Name, err)
@@ -89,13 +86,13 @@ func buildDashboardJSON(cfg *config.Config, mgr *config.Manager) (dashboardJSON,
 			Completed: p.CountCompletedTasks(),
 		})
 	}
-	if current := cfg.GetCurrentProject(); current != nil {
+	if current := runtime.CurrentProject(); current != nil {
 		out.CurrentProject = current.Slug
 	}
 	return out, nil
 }
 
-func displayDashboard(cfg *config.Config, mgr *config.Manager) error {
+func displayDashboard(runtime *config.RuntimeState) error {
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("39"))
@@ -107,10 +104,7 @@ func displayDashboard(cfg *config.Config, mgr *config.Manager) error {
 	fmt.Println()
 
 	// Active projects summary
-	active, err := activeProjects(mgr)
-	if err != nil {
-		return err
-	}
+	active := runtime.ActiveProjects()
 	if len(active) == 0 {
 		fmt.Println(subtitleStyle.Render(NoItemsMsg("projects", "tt project new <name>")))
 		return nil
@@ -120,7 +114,7 @@ func displayDashboard(cfg *config.Config, mgr *config.Manager) error {
 	displayProjectsSummary(active)
 
 	// Current project details
-	current := cfg.GetCurrentProject()
+	current := runtime.CurrentProject()
 	if current != nil {
 		fmt.Println()
 		fmt.Println(titleStyle.Render(fmt.Sprintf("CURRENT: %s", current.Name)))

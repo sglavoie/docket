@@ -59,7 +59,7 @@ type TabEntry struct {
 type AllTasksViewModel struct {
 	BaseView
 	InteractiveViewState
-	ViewBundle
+	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -109,16 +109,16 @@ type AllTasksViewModel struct {
 }
 
 // NewAllTasksViewModel creates a new all tasks view model.
-func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksViewModel {
+func NewAllTasksViewModel(runtime *config.RuntimeState, mgr *config.Manager) *AllTasksViewModel {
 	m := &AllTasksViewModel{
-		ViewBundle:       ViewBundle{config: cfg, configManager: mgr},
-		projectService:   NewProjectService(),
-		projectCache:     make(map[string]*models.Project),
-		collapsedGroups:  make(map[string]bool),
-		projectFilter:    make(map[string]bool),
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		sort:             NewSortState(),
-		FilterMixin:      FilterMixin{filter: newFilterState()},
+		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
+		projectService:    NewProjectService(),
+		projectCache:      make(map[string]*models.Project),
+		collapsedGroups:   make(map[string]bool),
+		projectFilter:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		sort:              NewSortState(),
+		FilterMixin:       FilterMixin{filter: newFilterState()},
 	}
 	m.buildTabEntries()
 	km := m.buildKeyMap()
@@ -138,7 +138,7 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 							model, cmd := m.handleBulkDelete()
 							return model, cmd, true
 						}
-						return m, wfDeleteTask(m, m.config, m.configManager), true
+						return m, wfDeleteTask(m, m.runtime, m.configManager), true
 					}
 					return m, nil, true
 				}
@@ -146,7 +146,7 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadAllTasks()
 	return m
 }

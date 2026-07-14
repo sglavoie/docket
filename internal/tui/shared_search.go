@@ -37,9 +37,9 @@ func TaskMatchesSearch(task *models.Task, query string) bool {
 // TaskMatchesStructuredSearch parses structured filters from the query, applies
 // them, and then fuzzy-matches the remaining text portion. The config resolves
 // Focus Queue membership for active-flag filters.
-func TaskMatchesStructuredSearch(task *models.Task, query string, cfg *config.Config) bool {
+func TaskMatchesStructuredSearch(task *models.Task, query string, planning *config.PlanningState) bool {
 	parsed := ParseSearchQuery(query)
-	if !TaskMatchesFilters(task, parsed, cfg) {
+	if !TaskMatchesFilters(task, parsed, planning) {
 		return false
 	}
 	return TaskMatchesSearch(task, parsed.TextQuery)

@@ -48,13 +48,13 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 	default:
 	}
 
-	return RenderCrossProjectTaskLine(task, dt.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(task, dt.Project, m.runtime, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[task.ID],
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		HideLowPriority: true,
 		DueStr:          contextStr,
 		ShowRecurrence:  section == WeeklySectionRecurringOverview,
-		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		ShowDescription: m.runtime.Machine().IsDescriptionColumnVisible(),
 		Prefix:          m.Checkbox(task.ID),
 		Flash:           m.cursorFlash,
 		Layout:          layout,

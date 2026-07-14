@@ -11,13 +11,13 @@ import (
 
 const archivedProjectMarker = "ARCHIVED"
 
-func projectDiscoveryProjects(cfg *config.Config) []*models.Project {
-	if cfg == nil {
+func projectDiscoveryProjects(runtime *config.RuntimeState) []*models.Project {
+	if runtime == nil {
 		return nil
 	}
 
-	active := cfg.GetActiveProjects()
-	archived := cfg.GetArchivedProjects()
+	active := runtime.ActiveProjects()
+	archived := runtime.ArchivedProjects()
 	projects := make([]*models.Project, 0, len(active)+len(archived))
 	projects = append(projects, active...)
 	projects = append(projects, archived...)

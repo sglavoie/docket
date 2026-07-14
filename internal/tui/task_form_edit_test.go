@@ -11,7 +11,7 @@ import (
 
 func TestTaskForm_EditMode_LoadsBugAttrs(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
@@ -23,7 +23,7 @@ func TestTaskForm_EditMode_LoadsBugAttrs(t *testing.T) {
 		Workaround:   "some workaround",
 	}
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	if m.draft.bugAttrs.Severity != models.BugSeverityMajor {
 		t.Errorf("expected Severity=major, got %v", m.draft.bugAttrs.Severity)
 	}
@@ -37,7 +37,7 @@ func TestTaskForm_EditMode_LoadsBugAttrs(t *testing.T) {
 
 func TestTaskFormEdit_NonGTDSectionIgnoredInDraft(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
@@ -47,7 +47,7 @@ func TestTaskFormEdit_NonGTDSectionIgnoredInDraft(t *testing.T) {
 		t.Fatalf("precondition: expected Section=\"\", got %q", sec)
 	}
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	if m.draft.section != "" {
 		t.Errorf("expected draft.section empty, got %q", m.draft.section)
 	}
@@ -55,14 +55,14 @@ func TestTaskFormEdit_NonGTDSectionIgnoredInDraft(t *testing.T) {
 
 func TestTaskFormEdit_GTDSection_PreservedInDraft(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.SetSection("Waiting")
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	if m.draft.section != "Waiting" {
 		t.Errorf("expected draft.section=%q, got %q", "Waiting", m.draft.section)
 	}
@@ -70,14 +70,14 @@ func TestTaskFormEdit_GTDSection_PreservedInDraft(t *testing.T) {
 
 func TestTaskFormEdit_ActiveSection_PreservedInDraft(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.SetSection("")
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	if m.draft.section != "" {
 		t.Errorf("expected draft.section=\"\" (Active), got %q", m.draft.section)
 	}
@@ -86,14 +86,14 @@ func TestTaskFormEdit_ActiveSection_PreservedInDraft(t *testing.T) {
 func TestTaskFormEdit_NonGTDSectionIgnoredRoundTrip(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	project.EnsureSection("Sprint-1")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
 	task.SetSection("Sprint-1")
 
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 
 	tmpDir := t.TempDir()
 	project.Path = tmpDir
@@ -116,7 +116,7 @@ func TestTaskFormEdit_NonGTDSectionIgnoredRoundTrip(t *testing.T) {
 
 func TestBuildValidParentsExcludesSelfInEditMode(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	epic := testutil.NewTestTask("Epic", models.TaskTypeEpic)
 	story := testutil.NewTestTask("Story", models.TaskTypeStory)
@@ -127,7 +127,7 @@ func TestBuildValidParentsExcludesSelfInEditMode(t *testing.T) {
 	project.Tasks = []*models.Task{epic, story, task}
 	project.BuildTaskTree()
 
-	m := NewTaskFormModelEdit(project, story, cfg, nil)
+	m := NewTaskFormModelEdit(project, story, testRuntimeAt(cfg.DataDir(), cfg))
 	parents := m.buildValidParents()
 
 	for _, p := range parents {
@@ -152,13 +152,13 @@ func TestBuildValidParentsExcludesSelfInEditMode(t *testing.T) {
 
 func TestBuildValidParentsIncludesAllInCreateMode(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	epic := testutil.NewTestTask("Epic", models.TaskTypeEpic)
 	project.Tasks = []*models.Task{epic}
 	project.BuildTaskTree()
 
-	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
 	parents := m.buildValidParents()
 
 	found := false

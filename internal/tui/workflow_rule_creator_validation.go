@@ -154,14 +154,17 @@ func (m *WorkflowRuleCreatorModel) buildRuleFromForm() (*workflow.WorkflowRule, 
 	return rule, nil
 }
 
-// saveRule validates the form and saves the workflow rule.
+// saveRule validates the form and saves the workflow rule. The rule is applied
+// to a cloned automation snapshot and persisted through the coordinator over the
+// runtime, which commits only the automation domain (no whole-config save) and
+// refreshes the in-memory snapshot on success.
 func (m *WorkflowRuleCreatorModel) saveRule() tea.Cmd {
-	// All state reads and config mutations run synchronously to avoid
-	// data races with View(). Only I/O (config save) goes in the goroutine.
 	rule, err := m.buildRuleFromForm()
 	if err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
+
+	automation := cloneAutomationConfig(m.runtime.Automation())
 
 	// If editing, preserve the original ID and update
 	isEdit := m.editingRule != nil
@@ -170,22 +173,16 @@ func (m *WorkflowRuleCreatorModel) saveRule() tea.Cmd {
 		rule.Enabled = m.editingRule.Enabled
 		rule.TriggerCount = m.editingRule.TriggerCount
 		rule.Source = m.editingRule.Source
-		m.config.UpdateWorkflowRule(*rule)
+		automation.UpdateWorkflowRule(*rule)
 	} else {
-		m.config.AddWorkflowRule(*rule)
+		automation.AddWorkflowRule(*rule)
 	}
 
-	mgr := m.configManager
-	cfg := m.config
 	savedRule := *rule
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
+	return m.coordinator.SaveThen(automation, func() tea.Msg {
 		if isEdit {
 			return WorkflowRuleEditedMsg{Rule: savedRule}
 		}
 		return WorkflowRuleCreatedMsg{Rule: savedRule}
-	}
+	})
 }

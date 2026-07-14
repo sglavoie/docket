@@ -13,14 +13,14 @@ import (
 
 func TestTaskCommentAdd(t *testing.T) {
 	t.Run("adds comment to task", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -52,14 +52,14 @@ func TestTaskCommentAdd(t *testing.T) {
 	})
 
 	t.Run("rejects empty comment", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -77,7 +77,7 @@ func TestTaskCommentAdd(t *testing.T) {
 	})
 
 	t.Run("rejects nonexistent task", func(t *testing.T) {
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		oldStorageRepo := storage.DefaultRepository
@@ -93,14 +93,14 @@ func TestTaskCommentAdd(t *testing.T) {
 
 func TestTaskCommentRemove(t *testing.T) {
 	t.Run("removes comment by index", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -130,14 +130,14 @@ func TestTaskCommentRemove(t *testing.T) {
 	})
 
 	t.Run("clears all comments with flag", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -168,14 +168,14 @@ func TestTaskCommentRemove(t *testing.T) {
 	})
 
 	t.Run("rejects invalid index", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -196,14 +196,14 @@ func TestTaskCommentRemove(t *testing.T) {
 
 func TestTaskCommentRemoveClearNoComments(t *testing.T) {
 	t.Run("clear on task with no comments does not save", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -233,14 +233,14 @@ func TestTaskCommentRemoveClearNoComments(t *testing.T) {
 
 func TestTaskCommentEdit(t *testing.T) {
 	t.Run("validates comment index", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -266,7 +266,7 @@ func TestTaskCommentEdit(t *testing.T) {
 	})
 
 	t.Run("rejects nonexistent task", func(t *testing.T) {
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		oldStorageRepo := storage.DefaultRepository
@@ -280,14 +280,14 @@ func TestTaskCommentEdit(t *testing.T) {
 	})
 
 	t.Run("rejects invalid index format", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -307,14 +307,14 @@ func TestTaskCommentEdit(t *testing.T) {
 
 func TestTaskCommentResolve(t *testing.T) {
 	t.Run("toggles resolved state", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -353,14 +353,14 @@ func TestTaskCommentResolve(t *testing.T) {
 	})
 
 	t.Run("rejects invalid index", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -379,7 +379,7 @@ func TestTaskCommentResolve(t *testing.T) {
 	})
 
 	t.Run("rejects nonexistent task", func(t *testing.T) {
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		oldStorageRepo := storage.DefaultRepository
@@ -395,14 +395,14 @@ func TestTaskCommentResolve(t *testing.T) {
 
 func TestTaskCommentList_Filtering(t *testing.T) {
 	t.Run("list uses real indices for resolved comments", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository

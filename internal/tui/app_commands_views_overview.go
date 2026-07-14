@@ -466,11 +466,11 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 		},
 		{
 			Name:        "plan today",
-			Description: "Toggle the current task in today's focus plan",
+			Description: "Toggle the current task in today's daily plan",
 			Shortcut:    "w",
 			Category:    CategoryActions,
 			Views:       bothViews,
-			Aliases:     []string{"toggle daily plan", "add to today", "today plan", "focus today"},
+			Aliases:     []string{"toggle daily plan", "add to today", "today plan"},
 			Handler: func() tea.Msg {
 				return TogglePlanTodayFromPaletteMsg{}
 			},

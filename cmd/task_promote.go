@@ -101,7 +101,7 @@ func changeTaskType(cmd *cobra.Command, args []string, action string, change app
 	if err != nil {
 		return err
 	}
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func changeTaskType(cmd *cobra.Command, args []string, action string, change app
 
 	oldType := task.Type
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.ChangeTaskType(task.ID, change)
 	})

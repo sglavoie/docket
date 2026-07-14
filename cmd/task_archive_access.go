@@ -8,7 +8,6 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -149,7 +148,7 @@ func runTaskArchiveShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, err := loadArchiveAccessProject(cmd)
+	project, workspace, err := loadArchiveAccessProject(cmd)
 	if err != nil {
 		return err
 	}
@@ -160,13 +159,13 @@ func runTaskArchiveShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(cfg, task)
+		return displayTaskShowJSON(task, taskInFocusQueue(workspace.Runtime.Planning().GetFocusQueue(), task.ID))
 	}
 	if out.Quiet {
 		return nil
 	}
 
-	if cfg != nil && cfg.GlowEnabled && Deps.Renderer.Available() && !archiveShowNoGlow {
+	if workspace.Runtime.Settings().GlowEnabled && Deps.Renderer.Available() && !archiveShowNoGlow {
 		return Deps.Renderer.RenderTaskMarkdown(task)
 	}
 
@@ -174,7 +173,7 @@ func runTaskArchiveShow(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func loadArchiveAccessProject(cmd *cobra.Command) (*models.Project, *config.Config, error) {
+func loadArchiveAccessProject(cmd *cobra.Command) (*models.Project, *CLIWorkspace, error) {
 	var projectRef string
 	if cmd != nil {
 		projectRef, _ = cmd.Flags().GetString("project")
@@ -185,11 +184,11 @@ func loadArchiveAccessProject(cmd *cobra.Command) (*models.Project, *config.Conf
 		args = []string{projectRef}
 	}
 
-	project, cfg, _, err := LoadConfigAndProjectOrCurrent(args)
+	project, workspace, err := LoadRuntimeProjectOrCurrent(args)
 	if err != nil {
 		return nil, nil, err
 	}
-	return project, cfg, nil
+	return project, workspace, nil
 }
 
 type archiveListFilters struct {

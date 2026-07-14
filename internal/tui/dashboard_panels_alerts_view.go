@@ -46,7 +46,7 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 
 	activeProjects := m.projects
 	if m.showArchived {
-		activeProjects = m.config.GetActiveProjects()
+		activeProjects = m.runtime.ActiveProjects()
 		for _, p := range activeProjects {
 			if err := storage.LoadProject(p); err != nil {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
@@ -135,13 +135,13 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("%s %d completed this week", IconChecklist(), totalCompletedThisWeek)))
 	}
 
-	globalNotes, _ := storage.ListNotesFrom(storage.GlobalNotesDir(m.config.DataDir))
+	globalNotes, _ := storage.ListNotesFrom(storage.GlobalNotesDir(m.runtime.DataDir()))
 	if len(globalNotes) > 0 {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("%s %d global notes", icons.Get("notes"), len(globalNotes))))
 	}
 
 	if todayPlannedCount == 0 && selectedProject != nil {
-		profile := m.config.GetProjectScoringProfile(selectedProject.ID)
+		profile := m.runtime.Automation().GetProjectScoringProfile(selectedProject.ID)
 		if suggested := bestScoredTask(selectedProject, profile); suggested != nil {
 			lines = append(lines, renderSuggestedTask(suggested))
 		}
@@ -151,12 +151,12 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 }
 
 func (m *DashboardModel) todayPlannedTaskKeys(today time.Time) map[string]bool {
-	if m == nil || m.config == nil {
+	if m == nil || m.runtime == nil {
 		return nil
 	}
 	todayKey := today.Format(util.DateFormat)
 	keys := make(map[string]bool)
-	for _, item := range m.config.GetDailyPlan() {
+	for _, item := range m.runtime.Planning().GetDailyPlan() {
 		if item.TaskID == "" || item.ProjectID == "" || item.PlannedDate != todayKey {
 			continue
 		}

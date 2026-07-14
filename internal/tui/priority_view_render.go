@@ -36,7 +36,7 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints (due date + status both included)
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	// Insert "r" (ready) hint into F hints before the last entry (clear-all)
 	if fHints, ok := hints["F"]; ok {
 		readyDetail := "off"
@@ -75,7 +75,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	star := SuggestionStarStyle.Render(icons.Get("star"))
 
 	postTitle := ""
-	if m.config != nil && m.config.IsDescriptionColumnVisible() {
+	if m.runtime.Machine().IsDescriptionColumnVisible() {
 		if descBadge := renderDescriptionIndicator(task); descBadge != "" {
 			postTitle = " " + descBadge
 		}
@@ -207,11 +207,11 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 
 // renderScoreRanking renders a flat ranked list of tasks by composite score.
 func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx *int, rowIndex *int, layout *ColumnLayout) []string {
-	if m.config == nil {
+	if m.runtime == nil {
 		return []string{MutedStyle.Render("No scoring profile assigned. Use : scoring profiles to set one up.")}
 	}
 
-	profile := m.config.GetProjectScoringProfile(m.project.ID)
+	profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID)
 	if profile == nil {
 		return []string{MutedStyle.Render("No scoring profile assigned. Use : scoring profiles to set one up.")}
 	}
@@ -233,7 +233,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 
 		// Progress fraction for parent tasks
 		postTitle := renderProgressFraction(pt.Task)
-		if m.config != nil && m.config.IsDescriptionColumnVisible() {
+		if m.runtime.Machine().IsDescriptionColumnVisible() {
 			if descBadge := renderDescriptionIndicator(pt.Task); descBadge != "" {
 				postTitle = JoinGroupParts(descBadge, postTitle)
 			}
@@ -329,8 +329,8 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 
 	// Composite score badge
 	scoreBadge := ""
-	if m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+	if m.runtime != nil {
+		if profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID); profile != nil {
 			scoreBadge = RenderScoreBadge(task, profile)
 		}
 	}
@@ -339,7 +339,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	structureGroup := JoinGroupParts(scoreBadge, renderProgressFraction(task))
 	orgGroup := strings.TrimSpace(csStr)
 	descBadge := ""
-	if m.config != nil && m.config.IsDescriptionColumnVisible() {
+	if m.runtime.Machine().IsDescriptionColumnVisible() {
 		descBadge = renderDescriptionIndicator(task)
 	}
 	contentGroup := JoinGroupParts(descBadge, renderTruncatedTags(task.Tags, 2, 8))

@@ -46,8 +46,8 @@ func (s *Service) bulkAttribute(taskIDs []string, undoAction, undoContext string
 	}
 	if validate != nil {
 		for _, r := range refs {
-			if err := validate(r); err != nil {
-				return BulkResult{}, err
+			if validationErr := validate(r); validationErr != nil {
+				return BulkResult{}, validationErr
 			}
 		}
 	}

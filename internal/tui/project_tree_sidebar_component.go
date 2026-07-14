@@ -211,7 +211,7 @@ func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyPressMsg) (bo
 
 	case "enter":
 		{
-			result := sidebarGetSelectedLinkedTaskWithProject(project, host.SidebarConfig(), s, selectedTask)
+			result := sidebarGetSelectedLinkedTaskWithProject(project, host.SidebarRuntime(), s, selectedTask)
 			if result.Task != nil && !result.IsMissing {
 				s.focused = false
 				// For cross-project links, emit message so app can switch projects

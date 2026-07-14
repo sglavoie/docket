@@ -29,8 +29,8 @@ func TestTaskCommands_QuickCapture(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
-		t.Errorf("expected ShowGlobalProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowQuickCaptureMsg); !ok {
+		t.Errorf("expected ShowQuickCaptureMsg, got %T", result)
 	}
 }
 
@@ -45,8 +45,8 @@ func TestTaskCommands_QuickCapture_NilProject(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
-		t.Errorf("expected ShowGlobalProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowQuickCaptureMsg); !ok {
+		t.Errorf("expected ShowQuickCaptureMsg, got %T", result)
 	}
 }
 
@@ -55,7 +55,7 @@ func TestTaskCommands_QuickCapture_DashboardNoProject(t *testing.T) {
 	app.currentProject = nil // No active project
 	app.viewStack = []ViewType{ViewDashboard}
 
-	dash := NewDashboardModel(app.config, app.configManager)
+	dash := NewDashboardModel(app.runtime)
 	app.views.Register(ViewDashboard, dash)
 
 	cmds := app.taskCommands()
@@ -65,8 +65,8 @@ func TestTaskCommands_QuickCapture_DashboardNoProject(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
-		t.Fatalf("expected ShowGlobalProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowQuickCaptureMsg); !ok {
+		t.Fatalf("expected ShowQuickCaptureMsg, got %T", result)
 	}
 }
 

@@ -7,7 +7,7 @@ func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {
-			pv := NewPriorityViewModel(msg.Project, m.config, m.configManager)
+			pv := NewPriorityViewModel(msg.Project, m.runtime, m.configManager)
 			pv.queueIDs = m.focusQueueIDs
 			pv.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewPriorityView, pv)
@@ -22,8 +22,8 @@ func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowGlobalProjectPickerMsg:
-		activeProjects := m.config.GetActiveProjects()
-		m.globalProjectPicker = newGlobalProjectPicker(activeProjects, m.config.Projects, msg.Purpose, msg.ExcludeIDs, msg.BackMsg)
+		activeProjects := m.activeProjects()
+		m.globalProjectPicker = newGlobalProjectPicker(activeProjects, m.allProjects(), msg.Purpose, msg.ExcludeIDs, msg.BackMsg)
 		return true, m.globalProjectPicker.initCmd()
 
 	case GlobalProjectPickerResultMsg:

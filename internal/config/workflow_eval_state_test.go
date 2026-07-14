@@ -6,7 +6,7 @@ import (
 )
 
 func TestGetWorkflowEvalState_NilMap(t *testing.T) {
-	cfg := &Config{}
+	cfg := &AutomationConfig{}
 	cfg.WorkflowEvalStates = nil
 
 	state := cfg.GetWorkflowEvalState("project-1")
@@ -19,7 +19,7 @@ func TestGetWorkflowEvalState_NilMap(t *testing.T) {
 }
 
 func TestGetWorkflowEvalState_ReturnsCorrectState(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	evalTime := time.Now()
 	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{
 		"project-1": {LastEvalTime: evalTime, RulesHash: "abc123"},
@@ -35,7 +35,7 @@ func TestGetWorkflowEvalState_ReturnsCorrectState(t *testing.T) {
 }
 
 func TestSetWorkflowEvalState_CreatesMapIfNil(t *testing.T) {
-	cfg := &Config{}
+	cfg := &AutomationConfig{}
 	cfg.WorkflowEvalStates = nil
 
 	evalTime := time.Now()
@@ -54,7 +54,7 @@ func TestSetWorkflowEvalState_CreatesMapIfNil(t *testing.T) {
 }
 
 func TestSetWorkflowEvalState_OverwritesExisting(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{
 		"project-1": {RulesHash: "old"},
 	}
@@ -67,7 +67,7 @@ func TestSetWorkflowEvalState_OverwritesExisting(t *testing.T) {
 }
 
 func TestGetWorkflowEvalInterval_DefaultValue(t *testing.T) {
-	cfg := &Config{}
+	cfg := &AutomationConfig{}
 	cfg.WorkflowEvalInterval = nil
 
 	interval := cfg.GetWorkflowEvalInterval()
@@ -77,7 +77,7 @@ func TestGetWorkflowEvalInterval_DefaultValue(t *testing.T) {
 }
 
 func TestGetWorkflowEvalInterval_CustomValue(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	val := 30
 	cfg.WorkflowEvalInterval = &val
 
@@ -88,7 +88,7 @@ func TestGetWorkflowEvalInterval_CustomValue(t *testing.T) {
 }
 
 func TestGetWorkflowEvalInterval_ZeroDisabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	val := 0
 	cfg.WorkflowEvalInterval = &val
 
@@ -99,7 +99,7 @@ func TestGetWorkflowEvalInterval_ZeroDisabled(t *testing.T) {
 }
 
 func TestGetWorkflowEvalInterval_NegativeDisabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	val := -5
 	cfg.WorkflowEvalInterval = &val
 
@@ -110,7 +110,7 @@ func TestGetWorkflowEvalInterval_NegativeDisabled(t *testing.T) {
 }
 
 func TestSetWorkflowEvalInterval(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	cfg.SetWorkflowEvalInterval(120)
 
@@ -123,7 +123,7 @@ func TestSetWorkflowEvalInterval(t *testing.T) {
 }
 
 func TestSetWorkflowEvalInterval_NegativeClampsToDisabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	cfg.SetWorkflowEvalInterval(-10)
 

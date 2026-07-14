@@ -74,10 +74,13 @@ func (r *ProjectMergeResult) HasConflicts() bool {
 }
 
 // mergeableTaskFields lists the struct-field indexes of models.Task that carry
-// persisted state and therefore participate in the field-level merge. Computed
-// fields (Children, Parent, Project, Level — tagged json:"-") are excluded: they
-// are rebuilt from the merged content, never merged. Computed once from the type
-// so the field set can never drift from the struct definition.
+// user-authored persisted state and therefore participate in the field-level
+// merge. Computed fields (Children, Parent, Project, Level — tagged json:"-")
+// and derived persistence metadata (UpdatedAt and Activity) are excluded: the
+// former are rebuilt from merged content, while the latter are reconciled by
+// mergeTaskFields and the commit boundary without producing user conflicts.
+// Computed once from the type so the field set can never drift from the struct
+// definition.
 var mergeableTaskFields = buildMergeableTaskFields()
 
 func buildMergeableTaskFields() []taskFieldDescriptor {
@@ -89,6 +92,13 @@ func buildMergeableTaskFields() []taskFieldDescriptor {
 		name := strings.Split(tag, ",")[0]
 		// json:"-" marks the computed, non-persisted fields; skip them.
 		if name == "-" {
+			continue
+		}
+		// UpdatedAt is stamped by every business mutation, so concurrent edits to
+		// different fields naturally carry different values. Activity is likewise
+		// derived from accepted business deltas. Neither is user-authored conflict
+		// material; mergeTaskFields reconciles them explicitly below.
+		if field.Name == "UpdatedAt" || field.Name == "Activity" {
 			continue
 		}
 		if name == "" {
@@ -268,6 +278,24 @@ func mergeTaskFields(id string, base, local, current *models.Task) (*models.Task
 			mv.Field(f.index).Set(cv.Field(f.index))
 		}
 	}
+
+	// UpdatedAt describes the newest accepted mutation rather than an
+	// independently editable value. Taking the latest value is deterministic,
+	// commutative, and prevents two independent business edits from conflicting
+	// merely because their writers stamped different times.
+	merged.UpdatedAt = base.UpdatedAt
+	if local.UpdatedAt.After(merged.UpdatedAt) {
+		merged.UpdatedAt = local.UpdatedAt
+	}
+	if current.UpdatedAt.After(merged.UpdatedAt) {
+		merged.UpdatedAt = current.UpdatedAt
+	}
+
+	// The current document is the durable activity-history authority. Local
+	// activity is derived metadata from the caller's older base and must neither
+	// conflict with nor replace current history. After a clean stale merge, the
+	// commit boundary appends the accepted local business delta exactly once.
+	merged.Activity = append([]*models.ActivityEntry(nil), current.Activity...)
 
 	return merged, conflicts
 }

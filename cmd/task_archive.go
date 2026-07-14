@@ -49,7 +49,11 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		return runTaskArchiveAll(out)
 	}
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
+	if err != nil {
+		return err
+	}
+	domains, err := workspace.Runtime.CloneDomains()
 	if err != nil {
 		return err
 	}
@@ -90,8 +94,8 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	// so a partial archive can never leave planning refs pointing at an archived
 	// task. Machine-local recent visits are repaired separately after the commit.
 	var artifacts []storage.ArtifactChange
-	if cfg.RemoveDurableTaskRefs(archivedIDs) > 0 {
-		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+	if domains.Planning.RemoveDurableTaskRefs(archivedIDs) > 0 {
+		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
 		}
@@ -102,7 +106,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	// file rewrites/rotation, refreshed index, archived-task attachment retention,
 	// and the durable planning artifact all commit as ONE transaction, revision-
 	// checked and undoable through the workspace ledger.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := svc.ArchiveTasks(project.ID, artifacts...)
 	if err != nil {
 		return translateAppError(err)
@@ -111,8 +115,8 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the archive is already committed and recent visits are best-effort.
-	if cfg.RemoveMachineLocalTaskRefs(archivedIDs) > 0 {
-		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+	if domains.Machine.RemoveMachineLocalTaskRefs(archivedIDs) > 0 {
+		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
 	}
@@ -131,7 +135,11 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskArchiveAll(out MutateOutput) error {
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
+	if err != nil {
+		return err
+	}
+	domains, err := workspace.Runtime.CloneDomains()
 	if err != nil {
 		return err
 	}
@@ -142,15 +150,15 @@ func runTaskArchiveAll(out MutateOutput) error {
 		ArchivedIDs    map[string]bool
 	}
 
-	projects := cfg.GetActiveProjects()
+	projects := workspace.Runtime.ActiveProjects()
 	totalArchived := 0
 	var failures []string
 	var results []projectArchiveResult
 	var candidates []archiveCandidate
 
 	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
-			failures = append(failures, fmt.Sprintf("[%s] load failed: %v", project.Name, err))
+		if loadErr := storage.LoadProject(project); loadErr != nil {
+			failures = append(failures, fmt.Sprintf("[%s] load failed: %v", project.Name, loadErr))
 			continue
 		}
 
@@ -196,8 +204,8 @@ func runTaskArchiveAll(out MutateOutput) error {
 	}
 
 	var artifacts []storage.ArtifactChange
-	if cfg.RemoveDurableTaskRefs(allArchivedIDs) > 0 {
-		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+	if domains.Planning.RemoveDurableTaskRefs(allArchivedIDs) > 0 {
+		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
 		}
@@ -206,7 +214,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 
 	// Archive every candidate as ONE atomic, ledger-backed transaction: a single undo
 	// reverses the whole batch and a failure leaves every project un-archived.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := svc.ArchiveAllTasks(projectIDs, artifacts...)
 	if err != nil {
 		return translateAppError(err)
@@ -222,8 +230,8 @@ func runTaskArchiveAll(out MutateOutput) error {
 
 	// Repair machine-local recent visits once after the archive commit — best-effort,
 	// warning-only, non-authoritative UI state.
-	if cfg.RemoveMachineLocalTaskRefs(allArchivedIDs) > 0 {
-		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+	if domains.Machine.RemoveMachineLocalTaskRefs(allArchivedIDs) > 0 {
+		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
 	}

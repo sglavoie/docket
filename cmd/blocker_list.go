@@ -55,7 +55,7 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--active and --resolved are mutually exclusive")
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}

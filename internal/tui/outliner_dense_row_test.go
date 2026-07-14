@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -37,8 +36,8 @@ func TestOutlinerDenseRowKeepsUrgencyHeroInline(t *testing.T) {
 	project := renderFixtureProject(t, "proj-urgency", "urg", "Urgency Project",
 		[]*models.Task{overdue, dueToday, dueTomorrow})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(120, 18)
 	m.project = project
 	m.rebuildRows()
@@ -80,8 +79,8 @@ func TestOutlinerDenseRowOmitsSecondaryMetadata(t *testing.T) {
 
 	project := renderFixtureProject(t, "proj-rich", "rch", "Rich Project", []*models.Task{task})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(140, 18)
 	m.project = project
 	m.activePerspective = PerspectiveSnoozed
@@ -133,8 +132,8 @@ func TestOutlinerSelectedStripCarriesMovedFields(t *testing.T) {
 
 	project := renderFixtureProject(t, "proj-strip", "stp", "Strip Project", []*models.Task{task})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 140
 	m.SetSize(width, 18)
 	m.project = project
@@ -176,8 +175,8 @@ func TestOutlinerCompletedAndCanceledDueTodayRowsAreQuiet(t *testing.T) {
 
 	project := renderFixtureProject(t, "proj-quiet", "qit", "Quiet Project", []*models.Task{done, canceled})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 140
 	m.SetSize(width, 18)
 	m.project = project
@@ -197,8 +196,8 @@ func TestOutlinerDenseRowShowsParkedSnippet(t *testing.T) {
 
 	project := renderFixtureProject(t, "proj-parked-dense", "prd", "Parked Dense Project", []*models.Task{task})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.sidebar.SetEnabled(false)
 	m.SetSize(120, 18)
 	m.project = project
@@ -221,8 +220,8 @@ func TestOutlinerDenseRowSuppressesParkedSnippetWhenSidebarEnabled(t *testing.T)
 
 	project := renderFixtureProject(t, "proj-parked-dense-sidebar", "prs", "Parked Sidebar Project", []*models.Task{task})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(120, 18)
 	m.project = project
 	m.rebuildRows()
@@ -252,8 +251,8 @@ func TestOutlinerDenseRowShowsParkedFallbackForBlankNote(t *testing.T) {
 
 	project := renderFixtureProject(t, "proj-parked-dense-blank", "pdb", "Blank Parked Dense Project", []*models.Task{task})
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.sidebar.SetEnabled(false)
 	m.SetSize(120, 18)
 	m.project = project
@@ -270,8 +269,8 @@ func TestOutlinerDenseRowParkedSnippetStaysWithinWidth(t *testing.T) {
 		"Parked dense row task with a long title", models.StatusTodo, 3, models.SectionNext)
 	task.ParkedNote = "long resume note that must fit into the dense row width budget"
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.sidebar.SetEnabled(false)
 	const width = 48
 	m.SetSize(width, 18)
@@ -287,8 +286,8 @@ func TestOutlinerDenseRowParkedSnippetExpandsWithRowWidth(t *testing.T) {
 		"Parked dense row task", models.StatusTodo, 3, models.SectionNext)
 	task.ParkedNote = "resume alpha beta gamma delta marker epsilon zeta"
 
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.sidebar.SetEnabled(false)
 
 	narrow := ansi.Strip(m.renderOutlinerTaskRow(outlinerRow{task: task}, false, 54, 54, 0, nil))
@@ -307,8 +306,8 @@ func TestOutlinerDenseRowParkedSnippetExpandsWithRowWidth(t *testing.T) {
 // recurrence, description) on individual tasks must not shift sibling row
 // widths because none of those fields participate in the inline format.
 func TestOutlinerDenseRowWidthStableAcrossSecondaryMetadata(t *testing.T) {
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 120
 	m.SetSize(width, 18)
 

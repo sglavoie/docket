@@ -251,15 +251,13 @@ func (p *GlobalProjectPicker) render(width int) string {
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Select Project")
 	footerText := HelpStyle.Render("Enter: select · ↑↓/Ctrl+j/k: navigate · Esc: cancel")
 
-	// Box sizing: 60% of screen, min 40
-	maxWidth := min(max(width*3/5, 40), width-4)
-
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
-	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+	// Box sizing: 60% of screen with a comfortable minimum when space allows.
+	// Title/footer chrome is clipped by renderTitledBox; it must never expand a
+	// picker beyond the terminal width after this clamp.
+	innerWidth := max(min(max(width*3/5, 40), width-4), 1)
 
 	// Size the text input
-	p.input.SetWidth(max(innerWidth-2, 10))
+	p.input.SetWidth(max(innerWidth-2, 1))
 
 	var content strings.Builder
 	if bc := renderStepBreadcrumb(p.breadcrumb, p.breadcrumbIdx); bc != "" {
@@ -293,11 +291,13 @@ func (p *GlobalProjectPicker) render(width int) string {
 			}
 
 			line := fmt.Sprintf(" %s %s%s", icon, name, ctx)
+			lineBudget := max(innerWidth-2, 1)
+			line = truncateIntentional(line, lineBudget, "")
 
 			// Pad to fill width for highlight background
 			lineWidth := lipgloss.Width(line)
-			if lineWidth < innerWidth-2 {
-				line += strings.Repeat(" ", innerWidth-2-lineWidth)
+			if lineWidth < lineBudget {
+				line += strings.Repeat(" ", lineBudget-lineWidth)
 			}
 
 			if i == p.cursor {

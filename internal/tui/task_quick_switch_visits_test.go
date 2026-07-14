@@ -73,7 +73,7 @@ func TestRecordTaskVisit(t *testing.T) {
 		app.recordTaskVisit(t1, p)
 		app.recordTaskVisit(t2, p)
 
-		visits := app.config.GetRecentTaskVisits()
+		visits := app.runtime.Machine().GetRecentTaskVisits()
 		if len(visits) != 2 {
 			t.Fatalf("expected 2 persisted visits, got %d", len(visits))
 		}
@@ -133,7 +133,7 @@ func TestRecordTaskVisit(t *testing.T) {
 		app.recentTaskVisits[0].Pinned = true
 		app.persistRecentTaskVisits()
 
-		visits := app.config.GetRecentTaskVisits()
+		visits := app.runtime.Machine().GetRecentTaskVisits()
 		if len(visits) != 1 {
 			t.Fatalf("expected 1 visit, got %d", len(visits))
 		}

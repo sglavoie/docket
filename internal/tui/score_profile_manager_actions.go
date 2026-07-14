@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -47,18 +48,18 @@ func (m *ScoreProfileManagerModel) addPreset(name string) tea.Cmd {
 	}
 
 	profile := factory()
-	if err := m.config.AddScoringProfile(profile); err != nil {
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	if err := automation.AddScoringProfile(profile); err != nil {
 		m.setStatus(err.Error())
 		return defaultStatusTimeout()
 	}
 
-	if err := m.coordinator.SaveNow(m.config); err != nil {
+	if err := m.coordinator.SaveNow(automation); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
 
-	m.profiles = make([]scoring.ScoringProfile, len(m.config.ScoringProfiles))
-	copy(m.profiles, m.config.ScoringProfiles)
+	m.profiles = slices.Clone(m.runtime.Automation().ScoringProfiles)
 
 	for i, p := range m.profiles {
 		if p.ID == profile.ID {
@@ -82,22 +83,16 @@ func (m *ScoreProfileManagerModel) executeDelete() tea.Cmd {
 
 	profile := m.profiles[m.cursor]
 
-	if m.config.ProjectScoringProfile != nil {
-		for pid, profID := range m.config.ProjectScoringProfile {
-			if profID == profile.ID {
-				delete(m.config.ProjectScoringProfile, pid)
-			}
-		}
-	}
-
-	m.config.RemoveScoringProfile(profile.ID)
-	if err := m.coordinator.SaveNow(m.config); err != nil {
+	// RemoveScoringProfile also clears any project assignments that referenced
+	// the deleted profile, so no separate assignment sweep is needed.
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	automation.RemoveScoringProfile(profile.ID)
+	if err := m.coordinator.SaveNow(automation); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
 
-	m.profiles = make([]scoring.ScoringProfile, len(m.config.ScoringProfiles))
-	copy(m.profiles, m.config.ScoringProfiles)
+	m.profiles = slices.Clone(m.runtime.Automation().ScoringProfiles)
 
 	if m.cursor >= len(m.profiles) && m.cursor > 0 {
 		m.cursor--
@@ -117,8 +112,9 @@ func (m *ScoreProfileManagerModel) assignProfile() tea.Cmd {
 	}
 
 	profile := m.profiles[m.cursor]
-	m.config.SetProjectScoringProfile(m.currentProjectID, profile.ID)
-	if err := m.coordinator.SaveNow(m.config); err != nil {
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	automation.SetProjectScoringProfile(m.currentProjectID, profile.ID)
+	if err := m.coordinator.SaveNow(automation); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
@@ -136,8 +132,9 @@ func (m *ScoreProfileManagerModel) unassignProfile() tea.Cmd {
 		return nil
 	}
 
-	m.config.UnsetProjectScoringProfile(m.currentProjectID)
-	if err := m.coordinator.SaveNow(m.config); err != nil {
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	automation.UnsetProjectScoringProfile(m.currentProjectID)
+	if err := m.coordinator.SaveNow(automation); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}

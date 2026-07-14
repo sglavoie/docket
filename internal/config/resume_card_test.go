@@ -16,7 +16,7 @@ func TestGetResumeCardLimit(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := NewConfig()
+			cfg := NewSettings()
 			cfg.ResumeCardLimit = tc.val
 			if got := cfg.GetResumeCardLimit(); got != tc.want {
 				t.Fatalf("GetResumeCardLimit() = %d, want %d", got, tc.want)

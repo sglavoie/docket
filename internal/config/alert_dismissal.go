@@ -1,99 +1,11 @@
 package config
 
-import (
-	"time"
-)
+import "time"
 
-// AlertDismissal records a user-dismissed alert so it can be suppressed until
-// it expires or the underlying condition resolves.
 type AlertDismissal struct {
 	Key         string    `json:"key"`
 	Category    string    `json:"category"`
 	DismissedAt time.Time `json:"dismissed_at"`
 }
 
-// alertDismissalMaxAge is the maximum age for an alert dismissal before it is pruned.
 const alertDismissalMaxAge = 30 * 24 * time.Hour
-
-// PruneExpiredAlertDismissals removes alert dismissals older than alertDismissalMaxAge.
-// Returns true if any dismissals were removed.
-func (c *Config) PruneExpiredAlertDismissals() bool {
-	if len(c.AlertDismissals) == 0 {
-		return false
-	}
-	cutoff := time.Now().Add(-alertDismissalMaxAge)
-	kept := make([]AlertDismissal, 0, len(c.AlertDismissals))
-	for _, d := range c.AlertDismissals {
-		if d.DismissedAt.After(cutoff) {
-			kept = append(kept, d)
-		}
-	}
-	if len(kept) == len(c.AlertDismissals) {
-		return false
-	}
-	c.AlertDismissals = kept
-	return true
-}
-
-// GetAlertDismissals returns the persisted alert dismissals.
-func (c *Config) GetAlertDismissals() []AlertDismissal {
-	return c.AlertDismissals
-}
-
-// SetAlertDismissals replaces the entire alert dismissals list.
-func (c *Config) SetAlertDismissals(d []AlertDismissal) {
-	c.AlertDismissals = d
-}
-
-// DismissAlert records a dismissal for the given key. If an expired entry
-// exists with the same key it is refreshed; otherwise a new entry is appended.
-// Expired entries (older than alertDismissalMaxAge) are treated as absent so
-// the user can re-dismiss alerts that previously timed out but haven't yet
-// been pruned by Load().
-func (c *Config) DismissAlert(key, category string) {
-	cutoff := time.Now().Add(-alertDismissalMaxAge)
-	for i, d := range c.AlertDismissals {
-		if d.Key == key {
-			if d.DismissedAt.After(cutoff) {
-				return
-			}
-			c.AlertDismissals[i].Category = category
-			c.AlertDismissals[i].DismissedAt = time.Now()
-			return
-		}
-	}
-	c.AlertDismissals = append(c.AlertDismissals, AlertDismissal{
-		Key:         key,
-		Category:    category,
-		DismissedAt: time.Now(),
-	})
-}
-
-// IsAlertDismissed returns true if an alert with the given key is currently
-// dismissed and not yet expired.
-func (c *Config) IsAlertDismissed(key string) bool {
-	cutoff := time.Now().Add(-alertDismissalMaxAge)
-	for _, d := range c.AlertDismissals {
-		if d.Key == key && d.DismissedAt.After(cutoff) {
-			return true
-		}
-	}
-	return false
-}
-
-// UndismissAlert removes the dismissal record for the given key.
-// Returns true if the key was found and removed.
-func (c *Config) UndismissAlert(key string) bool {
-	for i, d := range c.AlertDismissals {
-		if d.Key == key {
-			c.AlertDismissals = append(c.AlertDismissals[:i], c.AlertDismissals[i+1:]...)
-			return true
-		}
-	}
-	return false
-}
-
-// ClearAlertDismissals removes all alert dismissals.
-func (c *Config) ClearAlertDismissals() {
-	c.AlertDismissals = nil
-}

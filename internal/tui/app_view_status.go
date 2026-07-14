@@ -109,15 +109,9 @@ func (m *AppModel) renderStatusBar() string {
 		Background(ColorBackground).
 		Padding(0, 1)
 
-	var left string
-	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
-		if !m.openLoops.HasTasks {
-			left = accentBarStyle.Render("Dashboard") + ": " + InfoStatusStyle.Render("Capture your first task (;i or :)")
-		} else {
-			left = accentBarStyle.Render("Dashboard") + ": Run " + InfoStatusStyle.Render("tutor") + " command to start. Dismiss with " + InfoStatusStyle.Render("|")
-		}
-	} else {
-		left = accentBarStyle.Render(status)
+	left := accentBarStyle.Render(status)
+	if onboarding := onboardingStatus(m.runtime.Settings().GetOnboardingProgress()); onboarding != "" {
+		left += ": " + InfoStatusStyle.Render(onboarding)
 	}
 
 	// Add filter pill if current view has active filters.

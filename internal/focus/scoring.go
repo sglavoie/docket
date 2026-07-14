@@ -12,6 +12,11 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+type scoringConfig interface {
+	GetFocusQueue() []config.FocusQueueItem
+	GetProjectScoringProfile(projectID string) *scoring.ScoringProfile
+}
+
 // ScoredFocusTask wraps a FocusTask with its computed score and reason.
 type ScoredFocusTask struct {
 	FocusTask
@@ -23,7 +28,7 @@ type ScoredFocusTask struct {
 // Higher scores = more recommended as the next task to work on.
 // Returns 0 when task is nil; nil project is tolerated and skips
 // project-scoped scoring contributions.
-func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) int {
+func computeCrossProjectScore(task *models.Task, project *models.Project, cfg scoringConfig, now time.Time) int {
 	if task == nil {
 		return 0
 	}
@@ -124,6 +129,9 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 		score -= 200
 	case models.StateSomeday:
 		score -= 300
+	case models.StateInbox, models.StateReady, models.StateInProgress,
+		models.StateReview, models.StateDone, models.StateCanceled:
+		// These states have no additional state-specific score adjustment.
 	}
 
 	// Composite scoring profile integration
@@ -140,7 +148,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 // getSuggestionReason generates a human-readable explanation for why a task is suggested.
 // Returns an empty string when task is nil. Nil project is tolerated and disables
 // dependency- and profile-based reasons.
-func getSuggestionReason(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) string {
+func getSuggestionReason(task *models.Task, project *models.Project, cfg scoringConfig, now time.Time) string {
 	if task == nil {
 		return ""
 	}
@@ -222,7 +230,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 // RankCrossProjectTasks scores all tasks, applies cross-project balance penalty,
 // sorts descending, and excludes dismissed tasks. FocusTasks with a nil Task
 // or nil Project are skipped so callers can pass loosely-built slices.
-func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg *config.Config) []ScoredFocusTask {
+func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg scoringConfig) []ScoredFocusTask {
 	now := time.Now()
 	var scored []ScoredFocusTask
 	for _, ft := range tasks {
@@ -277,7 +285,7 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 // Queue — the config-aware successor to the retired Task.Active flag under the
 // workflow-state model. A nil task or nil cfg (callers scoring without config,
 // e.g. previews) yields false.
-func taskInFocusQueue(task *models.Task, cfg *config.Config) bool {
+func taskInFocusQueue(task *models.Task, cfg scoringConfig) bool {
 	if task == nil || cfg == nil {
 		return false
 	}

@@ -33,13 +33,12 @@ func makeToggleTestModel(t *testing.T) *SettingsModel {
 		},
 	}
 	light := config.DefaultLightTheme()
-	cfg := &config.Config{
-		ActiveTheme: "dark",
-		ThemeDark:   dark,
-		ThemeLight:  light,
-	}
+	cfg := newTestConfig()
+	cfg.Settings().ActiveTheme = "dark"
+	cfg.Settings().ThemeDark = dark
+	cfg.Settings().ThemeLight = light
 	mgr := config.NewManager("/tmp/tt_toggle_test.json")
-	return NewSettingsModel(cfg, mgr)
+	return NewSettingsModel(newSettingsDeps(cfg, mgr))
 }
 
 func TestPaletteToggle_RoundTrip(t *testing.T) {
@@ -89,20 +88,20 @@ func TestPaletteToggle_SavePersistsBoth(t *testing.T) {
 	m.togglePaletteTheme()
 	m.normalTextInput.SetValue("#123456")
 
-	// saveSettings mutates m.config synchronously before returning the cmd.
+	// saveSettings mutates m.baseSettings synchronously before returning the cmd.
 	m.saveSettings()
 
-	if m.config.ActiveTheme != "light" {
-		t.Errorf("ActiveTheme = %q, want light", m.config.ActiveTheme)
+	if m.baseSettings.ActiveTheme != "light" {
+		t.Errorf("ActiveTheme = %q, want light", m.baseSettings.ActiveTheme)
 	}
 	// Active (light) theme should carry the edited value.
 	wantLightNormal := normalizeHexColor("#123456")
-	if got := m.config.ThemeLight.Palette.NormalText; got != wantLightNormal {
+	if got := m.baseSettings.ThemeLight.Palette.NormalText; got != wantLightNormal {
 		t.Errorf("ThemeLight.NormalText = %q, want %q", got, wantLightNormal)
 	}
 	// Inactive (dark) theme should carry original dark value.
 	wantDarkNormal := normalizeHexColor("#eeeeee")
-	if got := m.config.ThemeDark.Palette.NormalText; got != wantDarkNormal {
+	if got := m.baseSettings.ThemeDark.Palette.NormalText; got != wantDarkNormal {
 		t.Errorf("ThemeDark.NormalText = %q, want %q", got, wantDarkNormal)
 	}
 }
@@ -149,13 +148,12 @@ func TestPaletteToggle_DimmedFieldsPreserved(t *testing.T) {
 			DimmedFg:   "#fff666",
 		},
 	}
-	cfg := &config.Config{
-		ActiveTheme: "dark",
-		ThemeDark:   dark,
-		ThemeLight:  light,
-	}
+	cfg := newTestConfig()
+	cfg.Settings().ActiveTheme = "dark"
+	cfg.Settings().ThemeDark = dark
+	cfg.Settings().ThemeLight = light
 	mgr := config.NewManager("/tmp/tt_dimmed_test.json")
-	m := NewSettingsModel(cfg, mgr)
+	m := NewSettingsModel(newSettingsDeps(cfg, mgr))
 
 	// Active hidden dimmed should be populated from dark theme.
 	if m.activeHiddenDimmed[0] != "#aaa111" {
@@ -179,16 +177,16 @@ func TestPaletteToggle_DimmedFieldsPreserved(t *testing.T) {
 
 	// Save should persist dimmed in both themes.
 	m.saveSettings()
-	if got := m.config.ThemeDark.Palette.Dimmed; got != "#aaa111" {
+	if got := m.baseSettings.ThemeDark.Palette.Dimmed; got != "#aaa111" {
 		t.Errorf("ThemeDark.Palette.Dimmed = %q, want #aaa111", got)
 	}
-	if got := m.config.ThemeLight.Palette.Dimmed; got != "#ddd444" {
+	if got := m.baseSettings.ThemeLight.Palette.Dimmed; got != "#ddd444" {
 		t.Errorf("ThemeLight.Palette.Dimmed = %q, want #ddd444", got)
 	}
-	if got := m.config.ThemeLight.Palette.DimmedBg; got != "#eee555" {
+	if got := m.baseSettings.ThemeLight.Palette.DimmedBg; got != "#eee555" {
 		t.Errorf("ThemeLight.Palette.DimmedBg = %q, want #eee555", got)
 	}
-	if got := m.config.ThemeLight.Palette.DimmedFg; got != "#fff666" {
+	if got := m.baseSettings.ThemeLight.Palette.DimmedFg; got != "#fff666" {
 		t.Errorf("ThemeLight.Palette.DimmedFg = %q, want #fff666", got)
 	}
 }

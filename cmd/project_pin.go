@@ -31,7 +31,7 @@ func runProjectPin(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("project slug")
 	}
 
-	project, cfg, configManager, err := LoadConfigAndProject(args[0])
+	project, workspace, err := LoadRuntimeProject(args[0])
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func runProjectPin(cmd *cobra.Command, args []string) error {
 
 	project.TogglePinned()
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitProjectCatalog(workspace, project); err != nil {
 		return err
 	}
 

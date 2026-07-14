@@ -10,15 +10,18 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func newConflictTUIEnv(t *testing.T) (*AppModel, *storage.ConflictStore, string) {
 	t.Helper()
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	configPath := filepath.Join(t.TempDir(), "tt.json")
+	cfg = testRuntimeAt(config.WorkspaceRootFromConfigPath(configPath), cfg)
 	manager := config.NewManager(configPath)
-	app := NewAppModel(cfg, manager, WithPersister(NewMockPersister()))
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager, WithPersister(NewMockPersister()))
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
 	dataDir := config.WorkspaceRootFromConfigPath(configPath)
 	store := storage.NewConflictStore(config.ConflictsDir(dataDir))
 	return app, store, dataDir
@@ -98,7 +101,7 @@ func TestConflictResolutionAdoptRemote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load bundle: %v", err)
 	}
-	m := NewConflictResolutionModel(app.config, app.configManager, bundle)
+	m := NewConflictResolutionModel(app.runtime, bundle)
 
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'r'})
 	if cmd == nil {

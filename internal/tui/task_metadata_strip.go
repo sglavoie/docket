@@ -30,7 +30,7 @@ type TaskMetadataAlreadyShown struct {
 type TaskMetadataStripOpts struct {
 	Task         *models.Task
 	Project      *models.Project
-	Config       *config.Config
+	Runtime      *config.RuntimeState
 	Width        int // max visual width; <= 0 means unbounded
 	AlreadyShown TaskMetadataAlreadyShown
 
@@ -174,8 +174,8 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 	}
 	if !opts.AlreadyShown.Due && task.DueDate != nil && columnVisible(opts.ColumnConfig, ColDueDate) {
 		var dueStr string
-		if opts.Config != nil {
-			dueStr = FormatRelativeDueTask(task, true, opts.Config.GetTimeFormat())
+		if opts.Runtime != nil {
+			dueStr = FormatRelativeDueTask(task, true, opts.Runtime.Settings().GetTimeFormat())
 		} else {
 			dueStr = FormatRelativeDue(task.DueDate, true)
 		}
@@ -209,11 +209,11 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 }
 
 func appendScorePart(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if opts.AlreadyShown.Score || opts.Config == nil || opts.Project == nil ||
+	if opts.AlreadyShown.Score || opts.Runtime == nil || opts.Project == nil ||
 		!columnVisible(opts.ColumnConfig, ColScore) {
 		return parts
 	}
-	profile := opts.Config.GetProjectScoringProfile(opts.Project.ID)
+	profile := opts.Runtime.Automation().GetProjectScoringProfile(opts.Project.ID)
 	if profile == nil {
 		return parts
 	}
@@ -318,7 +318,7 @@ func appendFooterParts(parts []metadataPart, opts TaskMetadataStripOpts) []metad
 		})
 	}
 	if !opts.AlreadyShown.Stale {
-		if stale := renderStaleIndicator(opts.Config, opts.Task); stale != "" {
+		if stale := renderStaleIndicator(opts.Runtime.Settings(), opts.Task); stale != "" {
 			parts = append(parts, metadataPart{
 				group:        metadataGroupFooter,
 				text:         stale,

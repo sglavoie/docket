@@ -68,14 +68,13 @@ type taskFormDraft struct {
 
 // TaskFormModel drives both Create and Edit flows (D1, D11).
 type TaskFormModel struct {
-	mode          FormMode
-	project       *models.Project
-	task          *models.Task // non-nil in FormModeEdit
-	draft         taskFormDraft
-	config        *config.Config
-	configManager *config.Manager
-	fromTemplate  *template.TaskTemplate
-	taskForm      TaskFormCoordinator
+	mode         FormMode
+	project      *models.Project
+	task         *models.Task // non-nil in FormModeEdit
+	draft        taskFormDraft
+	runtime      *config.RuntimeState
+	fromTemplate *template.TaskTemplate
+	taskForm     TaskFormCoordinator
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model

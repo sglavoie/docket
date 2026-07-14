@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -17,7 +18,7 @@ func TestEditRoutesThroughApp(t *testing.T) {
 
 	newTitle := "Edited Title"
 	newDesc := "Edited body."
-	svc := newAppService(deps.Config)
+	svc := newAppService(config.NewManager(deps.ConfigPath))
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.Edit(app.EditRequest{TaskID: task.ID, Title: &newTitle, Description: &newDesc})
 	})

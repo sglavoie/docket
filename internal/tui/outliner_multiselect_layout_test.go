@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -23,11 +22,11 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	cfg := config.NewConfig()
+	cfg := newTestConfig()
 	// Disable the Next section limit so a full viewport of rows does not emit a
 	// wrapping "over section limit" warning (orthogonal to the status/badge
 	// height accounting under test).
-	cfg.SectionLimitNext = intPtr(0)
+	cfg.Settings().SectionLimitNext = intPtr(0)
 
 	// Enough task rows to fill the viewport so footer/header accounting matters.
 	tasks := make([]*models.Task, 0, 12)
@@ -43,7 +42,7 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "proj-ms", "ms", "Multi Select", tasks)
 
-	m := NewOutlinerModel(project, cfg, nil)
+	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	// Terminal 72x20 leaves the sub-view 18 rows (2 rows go to the app status
 	// bar). Exercise the narrow split-pane tree width where the wrap bites.
 	const paneHeight = 18

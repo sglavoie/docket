@@ -22,7 +22,7 @@ type LinkedTaskSelectorModel struct {
 	BaseSearchableView
 	sourceTask    *models.Task
 	project       *models.Project
-	config        *config.Config
+	runtime       *config.RuntimeState
 	coordinator   LinkCoordinator
 	relations     []LinkedTaskRelation
 	filtered      []LinkedTaskRelation // filtered relations based on search
@@ -32,14 +32,14 @@ type LinkedTaskSelectorModel struct {
 	pendingPrefix string
 }
 
-// NewLinkedTaskSelectorModelWithConfig creates a new linked task selector with
-// config for cross-project support; unlink mutations commit through the link
-// coordinator.
-func NewLinkedTaskSelectorModelWithConfig(task *models.Task, project *models.Project, cfg *config.Config, coordinator LinkCoordinator) *LinkedTaskSelectorModel {
+// NewLinkedTaskSelectorModelWithConfig creates a new linked task selector,
+// resolving cross-project task refs against the domain-native catalog snapshot;
+// unlink mutations commit through the link coordinator.
+func NewLinkedTaskSelectorModelWithConfig(task *models.Task, project *models.Project, runtime *config.RuntimeState, coordinator LinkCoordinator) *LinkedTaskSelectorModel {
 	m := &LinkedTaskSelectorModel{
 		sourceTask:  task,
 		project:     project,
-		config:      cfg,
+		runtime:     runtime,
 		coordinator: coordinator,
 	}
 	m.InitSearchInput("Search linked tasks...", 50, 30)

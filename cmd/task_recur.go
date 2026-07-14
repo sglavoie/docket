@@ -114,7 +114,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("cannot combine --from with %s", actionFlags[0])
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Every recurrence mutation is routed through the application service so it
 	// commits atomically, revision-checked, and undoably via the workspace ledger.
 	// The adapter keeps flag parsing, read-only prechecks, and presentation.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 
 	// Handle --skip flag
 	if taskRecurSkip {

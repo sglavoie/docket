@@ -138,17 +138,15 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	ruleID := args[0]
 
-	// Load config
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-
-	store := automationStore(configManager)
-	automation, err := store.LoadAutomation()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	automation := domains.Automation
 
 	// Get the rule to edit
 	rule := automation.GetWorkflowRule(ruleID)
@@ -348,8 +346,7 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Invalidate eval states to force re-evaluation
 	automation.InvalidateWorkflowEvalStates()
 
-	// Save config
-	if err := saveAutomation(store, automation); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 

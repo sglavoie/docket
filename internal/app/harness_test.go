@@ -21,6 +21,7 @@ import (
 type fakeRepo struct {
 	projects  []*models.Project
 	revisions map[string]string
+	documents map[string]*storage.ProjectDocument
 	commits   [][]storage.ChangeSet
 	snapErr   error
 	commitErr error
@@ -34,16 +35,22 @@ type fakeRepo struct {
 }
 
 func newFakeRepo(projects ...*models.Project) *fakeRepo {
-	r := &fakeRepo{revisions: make(map[string]string), files: make(map[string][]byte)}
+	r := &fakeRepo{revisions: make(map[string]string), documents: make(map[string]*storage.ProjectDocument), files: make(map[string][]byte)}
 	for _, p := range projects {
 		r.projects = append(r.projects, p)
-		r.revisions[p.ID] = revisionOf(p)
+		doc := documentOf(p, nil)
+		r.documents[p.ID] = doc
+		r.revisions[p.ID] = doc.Revision
 	}
 	return r
 }
 
-func revisionOf(p *models.Project) string {
-	return storage.ToProjectDocument(p, nil).Revision
+func documentOf(p *models.Project, base *storage.ProjectDocument) *storage.ProjectDocument {
+	doc, err := storage.CanonicalProjectDocument(p, base)
+	if err != nil {
+		panic(err)
+	}
+	return doc
 }
 
 func (r *fakeRepo) Snapshot() (app.Snapshot, error) {
@@ -54,7 +61,11 @@ func (r *fakeRepo) Snapshot() (app.Snapshot, error) {
 	for k, v := range r.revisions {
 		revs[k] = v
 	}
-	return app.NewSnapshot(r.projects, revs), nil
+	docs := make(map[string]*storage.ProjectDocument, len(r.documents))
+	for k, v := range r.documents {
+		docs[k] = v
+	}
+	return app.NewSnapshot(r.projects, revs, docs), nil
 }
 
 func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
@@ -76,9 +87,10 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 				Actual:      stored,
 			}
 		}
-		newRev := revisionOf(cs.Project)
-		r.revisions[cs.Project.ID] = newRev
-		results[i] = &storage.CommitResult{Revision: newRev, TransactionID: "txn-test"}
+		newDoc := documentOf(cs.Project, cs.Base)
+		r.documents[cs.Project.ID] = newDoc
+		r.revisions[cs.Project.ID] = newDoc.Revision
+		results[i] = &storage.CommitResult{Revision: newDoc.Revision, TransactionID: "txn-test"}
 		// Apply artifact writes/deletes to the in-memory file store so an in-memory
 		// reader observes exactly what the real commit service would persist.
 		for _, art := range cs.Artifacts {

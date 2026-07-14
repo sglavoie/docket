@@ -9,11 +9,11 @@ import (
 
 func TestRoundTrip_RelatedTo(t *testing.T) {
 	task := &models.Task{
-		ID:        "rel-1",
-		Type:      models.TaskTypeTask,
+		ID:            "rel-1",
+		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      2,
-		RelatedTo: []string{"id1", "id2"},
+		RelatedTo:     []string{"id1", "id2"},
 	}
 
 	parsed := &models.Task{}
@@ -116,7 +116,7 @@ func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
 		ParentID:      &parentID,
 		Tags:          []string{"alpha", "beta"},
 		DependsOn:     []string{"dep-local", "proj2:dep-cross"},
-		RelatedTo: []string{"rel-1"},
+		RelatedTo:     []string{"rel-1"},
 		Recurrence: &models.RecurrencePattern{
 			Interval: 3,
 			Unit:     models.RecurrenceMonthly,

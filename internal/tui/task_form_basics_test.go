@@ -313,7 +313,7 @@ func TestTypeCycleHL(t *testing.T) {
 
 func TestTypeCycleSideEffects(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	var epicTask *models.Task
 	for _, tsk := range project.Tasks {
@@ -326,7 +326,7 @@ func TestTypeCycleSideEffects(t *testing.T) {
 		t.Skip("test project has no Epic tasks")
 	}
 
-	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
 	m.draft.taskType = models.TaskTypeTask
 	epicID := epicTask.ID
 	m.draft.parentID = &epicID

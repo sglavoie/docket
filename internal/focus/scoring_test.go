@@ -460,8 +460,9 @@ func TestScoringFactors(t *testing.T) {
 		// Focus Queue membership. Score the same task with and without membership
 		// to isolate the bonus.
 		queued := baseTask()
-		cfg := config.NewConfig()
-		cfg.AddToFocusQueue(queued.ID, project.ID)
+		domains := config.NewDomains()
+		domains.Planning.AddToFocusQueue(queued.ID, project.ID)
+		cfg := config.NewRuntimeState("", domains)
 		queuedScore := computeCrossProjectScore(queued, project, cfg, now)
 		unqueuedScore := computeCrossProjectScore(queued, project, nil, now)
 		if queuedScore <= unqueuedScore {
@@ -557,7 +558,7 @@ func TestScoringFactors(t *testing.T) {
 	})
 
 	t.Run("composite scoring profile integration", func(t *testing.T) {
-		cfg := config.NewConfig()
+		domains := config.NewDomains()
 		profile := scoring.ScoringProfile{
 			ID:      "test-profile",
 			Name:    "Test",
@@ -574,8 +575,9 @@ func TestScoringFactors(t *testing.T) {
 				},
 			},
 		}
-		cfg.ScoringProfiles = []scoring.ScoringProfile{profile}
-		cfg.ProjectScoringProfile = map[string]string{project.ID: "test-profile"}
+		domains.Automation.ScoringProfiles = []scoring.ScoringProfile{profile}
+		domains.Automation.ProjectScoringProfile = map[string]string{project.ID: "test-profile"}
+		cfg := config.NewRuntimeState("", domains)
 
 		scored := baseTask()
 		scored.ScoreDimensions = map[string]int{"value": 8}

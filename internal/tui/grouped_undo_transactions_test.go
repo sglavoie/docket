@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo verifies the migrated
@@ -23,10 +24,10 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 	source, dest := env.source, env.dest
 	moved := source.GetTaskByID("move-task-1")
 
-	env.cfg.FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
-	env.cfg.DailyPlan = []config.DailyPlanItem{{TaskID: moved.ID, ProjectID: source.ID, PlannedDate: "2026-06-18"}}
-	env.cfg.RecentTaskVisits = []config.RecentTaskVisit{{TaskID: moved.ID, ProjectID: source.ID}}
-	if err := env.mgr.Save(env.cfg); err != nil {
+	env.cfg.Planning().FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().DailyPlan = []config.DailyPlanItem{{TaskID: moved.ID, ProjectID: source.ID, PlannedDate: "2026-06-18"}}
+	env.cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{{TaskID: moved.ID, ProjectID: source.ID}}
+	if err := saveTestRuntime(env.mgr, env.cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 
@@ -84,6 +85,68 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 		t.Fatal("dest should contain task after redo")
 	}
 	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, false)
+}
+
+// TestTUIWorkflowFocusChangeSharesTaskTransactionAndLedgerUndo proves an
+// interactive set_active rule updates planning.json inside the same workspace
+// transaction as its task mutation. One global undo/redo therefore restores
+// both the workflow state and Focus Queue membership together.
+func TestTUIWorkflowFocusChangeSharesTaskTransactionAndLedgerUndo(t *testing.T) {
+	env := newMoveHandlerEnv(t, "workflow-focus-task", "Focus me")
+	task := env.source.GetTaskByID("workflow-focus-task")
+	if err := saveTestRuntime(env.mgr, env.cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+
+	rule := workflow.WorkflowRule{
+		ID:      "focus-started",
+		Name:    "Focus started tasks",
+		Enabled: true,
+		Trigger: workflow.RuleTrigger{
+			Field:     workflow.FieldStatus,
+			Operation: workflow.OpEquals,
+			Value:     string(models.StatusInProgress),
+		},
+		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetActive, Value: "true"}},
+	}
+	coords := newSecondaryCoordinators(env.svc, env.mgr, workflowFocusArtifactBuilder(env.mgr))
+	cmd := coords.TaskItem.TransitionWorkflow(task.ID, models.StateInProgress, app.SingleTaskWorkflowOptions{
+		Rules:       []workflow.WorkflowRule{rule},
+		UndoAction:  "Start Task",
+		UndoContext: task.Title,
+	}, nil)
+	if msg, ok := cmd().(BatchTransactionResultMsg); !ok {
+		t.Fatalf("workflow command result = %T, want BatchTransactionResultMsg", msg)
+	}
+
+	assertWorkflowFocusState := func(wantState models.WorkflowState, wantFocused bool) {
+		t.Helper()
+		if got := env.reloadProject(t, env.source).GetTaskByID(task.ID).State(); got != wantState {
+			t.Fatalf("task state = %s, want %s", got, wantState)
+		}
+		runtime, err := env.mgr.LoadRuntimeState()
+		if err != nil {
+			t.Fatalf("load runtime state: %v", err)
+		}
+		queue := runtime.Planning().GetFocusQueue()
+		if wantFocused {
+			if len(queue) != 1 || queue[0].TaskID != task.ID || queue[0].ProjectID != env.source.ID {
+				t.Fatalf("FocusQueue = %+v, want task in source project", queue)
+			}
+		} else if len(queue) != 0 {
+			t.Fatalf("FocusQueue = %+v, want empty", queue)
+		}
+	}
+
+	assertWorkflowFocusState(models.StateInProgress, true)
+	if _, err := env.ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger undo: %v", err)
+	}
+	assertWorkflowFocusState(models.StateReady, false)
+	if _, err := env.ledger.Redo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger redo: %v", err)
+	}
+	assertWorkflowFocusState(models.StateInProgress, true)
 }
 
 // TestTUITaskMoveAppliesDestSectionAndCanonicalTask verifies the migrated move
@@ -149,7 +212,7 @@ func TestTUITaskMoveRollsBackOnCommitFailure(t *testing.T) {
 	// target the journal rejects, aborting the whole transaction.
 	outsideDir := t.TempDir()
 	env.mgr = config.NewManager(filepath.Join(outsideDir, ".tt.json"))
-	env.cfg.FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
 
 	app := env.appModel()
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
@@ -180,7 +243,7 @@ type moveHandlerEnv struct {
 	ledger  *storage.WorkspaceLedger
 	svc     *app.Service
 	mgr     *config.Manager
-	cfg     *config.Config
+	cfg     *config.RuntimeState
 	source  *models.Project
 	dest    *models.Project
 }
@@ -224,19 +287,20 @@ func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *move
 	svc := app.NewService(repo, nil, nil)
 
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
-	cfg := config.NewConfig()
+	cfg := newTestConfigAt(dataDir)
 	depth := 50
-	cfg.UndoHistoryDepth = &depth
-	cfg.Projects = []*models.Project{source, dest}
-	cfg.CurrentProject = source.ID
+	cfg.Settings().UndoHistoryDepth = &depth
+	setTestProjects(cfg, []*models.Project{source, dest})
+	cfg.Machine().CurrentProject = source.ID
 
 	return &moveHandlerEnv{dataDir: dataDir, ledger: ledger, svc: svc, mgr: mgr, cfg: cfg, source: source, dest: dest}
 }
 
 func (e *moveHandlerEnv) appModel() *AppModel {
 	return &AppModel{
-		config:                   e.cfg,
 		configManager:            e.mgr,
+		runtime:                  testRuntimeAt(e.cfg.DataDir(), e.cfg),
+		projects:                 map[string]*models.Project{e.source.ID: e.source, e.dest.ID: e.dest},
 		persister:                NewProjectService(),
 		appService:               e.svc,
 		views:                    NewViewRegistry(),
@@ -290,18 +354,18 @@ func drainSingleMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 // planning refs (and optionally recent visits) for taskID point at projectID.
 func assertDiskConfigRef(t *testing.T, mgr *config.Manager, taskID, projectID string, checkRecent bool) {
 	t.Helper()
-	cfg, err := config.NewManager(mgr.GetConfigPath()).Load()
+	cfg, err := config.NewManager(mgr.GetConfigPath()).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("load config from disk: %v", err)
 	}
-	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != taskID || cfg.FocusQueue[0].ProjectID != projectID {
-		t.Fatalf("FocusQueue = %+v, want task %s in project %s", cfg.FocusQueue, taskID, projectID)
+	if len(cfg.Planning().FocusQueue) != 1 || cfg.Planning().FocusQueue[0].TaskID != taskID || cfg.Planning().FocusQueue[0].ProjectID != projectID {
+		t.Fatalf("FocusQueue = %+v, want task %s in project %s", cfg.Planning().FocusQueue, taskID, projectID)
 	}
-	if len(cfg.DailyPlan) > 0 && (cfg.DailyPlan[0].TaskID != taskID || cfg.DailyPlan[0].ProjectID != projectID) {
-		t.Fatalf("DailyPlan = %+v, want task %s in project %s", cfg.DailyPlan, taskID, projectID)
+	if len(cfg.Planning().DailyPlan) > 0 && (cfg.Planning().DailyPlan[0].TaskID != taskID || cfg.Planning().DailyPlan[0].ProjectID != projectID) {
+		t.Fatalf("DailyPlan = %+v, want task %s in project %s", cfg.Planning().DailyPlan, taskID, projectID)
 	}
-	if checkRecent && len(cfg.RecentTaskVisits) > 0 && (cfg.RecentTaskVisits[0].TaskID != taskID || cfg.RecentTaskVisits[0].ProjectID != projectID) {
-		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.RecentTaskVisits, taskID, projectID)
+	if checkRecent && len(cfg.Machine().RecentTaskVisits) > 0 && (cfg.Machine().RecentTaskVisits[0].TaskID != taskID || cfg.Machine().RecentTaskVisits[0].ProjectID != projectID) {
+		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.Machine().RecentTaskVisits, taskID, projectID)
 	}
 }
 

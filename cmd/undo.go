@@ -42,12 +42,12 @@ func init() {
 }
 
 func runUndo(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	ledger := workspaceLedgerForRestore(cfg)
+	ledger := workspaceLedgerForRestore(workspace.Runtime)
 	scope := storage.ProjectScope(project.ID)
 	if undoGlobal {
 		scope = storage.GlobalScope()
@@ -65,7 +65,7 @@ func runUndo(cmd *cobra.Command, args []string) error {
 	// fallback dies with the legacy pipeline. Global scope is ledger-only —
 	// the legacy system has no workspace-wide notion.
 	if !undoGlobal && legacyHistoryIsNewer(project, entry, ledgerHas, storage.LoadUndoHistory) {
-		return runLegacyUndo(project, cfg, configManager)
+		return runLegacyUndo(project, workspace.Runtime.AllProjects(), workspace.Runtime)
 	}
 	if !ledgerHas {
 		if undoGlobal {
@@ -78,7 +78,7 @@ func runUndo(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("undo failed: %w", err)
 	}
-	if err := repairConfigRefsAfterLedgerRestore(configManager, entry.ProjectIDs); err != nil {
+	if err := repairConfigRefsAfterLedgerRestore(workspace.Runtime, entry.ProjectIDs); err != nil {
 		return err
 	}
 
@@ -92,9 +92,9 @@ func runUndo(cmd *cobra.Command, args []string) error {
 // runLegacyUndo restores through the per-project undo history. It is reachable
 // only from the migration-window fallback in runUndo and is removed with the
 // legacy persist pipeline.
-func runLegacyUndo(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
-	projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, cfg.Projects, loadUndoHistoryEntries)
-	actionDesc, err := storage.PerformUndoForProjects(project, cfg.Projects)
+func runLegacyUndo(project *models.Project, projects []*models.Project, runtime *config.RuntimeState) error {
+	projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, projects, loadUndoHistoryEntries)
+	actionDesc, err := storage.PerformUndoForProjects(project, projects)
 	if err != nil {
 		return restoreCommandError("undo", grouped, err)
 	}
@@ -105,7 +105,7 @@ func runLegacyUndo(project *models.Project, cfg *config.Config, configManager *c
 	if err := reapplyRestoreSideEffectsAndSave(projectsToReload, "undo"); err != nil {
 		return err
 	}
-	if err := repairConfigTaskRefsToLoadedProjects(configManager, cfg, projectsToReload); err != nil {
+	if err := repairConfigTaskRefsToLoadedProjects(runtime, projectsToReload); err != nil {
 		return err
 	}
 
@@ -122,12 +122,14 @@ func runLegacyUndo(project *models.Project, cfg *config.Config, configManager *c
 // workspaceLedgerForRestore opens the workspace undo ledger the transactional
 // commit boundary records to, sized from the configured history depth — the same
 // construction newCLIRepository uses, so undo reads exactly what mutations wrote.
-func workspaceLedgerForRestore(cfg *config.Config) *storage.WorkspaceLedger {
+func workspaceLedgerForRestore(runtime *config.RuntimeState) *storage.WorkspaceLedger {
 	depth := config.DefaultUndoHistoryDepth
-	if cfg.UndoHistoryDepth != nil {
-		depth = *cfg.UndoHistoryDepth
+	settings := runtime.Settings()
+	if settings.UndoHistoryDepth != nil {
+		depth = *settings.UndoHistoryDepth
 	}
-	return storage.NewWorkspaceLedger(config.UndoLedgerDir(cfg.DataDir), depth, []string{cfg.DataDir})
+	dataDir := runtime.DataDir()
+	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
 }
 
 // legacyHistoryIsNewer reports whether the legacy per-project history holds an
@@ -149,17 +151,16 @@ func legacyHistoryIsNewer(project *models.Project, ledgerEntry storage.LedgerEnt
 // restore. The restore may have rewritten the config file itself (artifacts that
 // rode the undone transaction), so the config is reloaded from disk first —
 // repairing against the stale in-memory copy would clobber restored bytes.
-func repairConfigRefsAfterLedgerRestore(mgr *config.Manager, projectIDs []string) error {
-	if mgr == nil || len(projectIDs) == 0 {
+func repairConfigRefsAfterLedgerRestore(runtime *config.RuntimeState, projectIDs []string) error {
+	if runtime == nil || len(projectIDs) == 0 {
 		return nil
 	}
-	freshCfg, err := mgr.Load()
-	if err != nil {
+	if err := runtime.Reload(); err != nil {
 		return fmt.Errorf("failed to reload config after restore: %w", err)
 	}
 	restored := make([]*models.Project, 0, len(projectIDs))
 	for _, id := range projectIDs {
-		p := freshCfg.GetProject(id)
+		p := runtime.GetProject(id)
 		if p == nil {
 			continue
 		}
@@ -168,7 +169,7 @@ func repairConfigRefsAfterLedgerRestore(mgr *config.Manager, projectIDs []string
 		}
 		restored = append(restored, p)
 	}
-	return repairConfigTaskRefsToLoadedProjects(mgr, freshCfg, restored)
+	return repairConfigTaskRefsToLoadedProjects(runtime, restored)
 }
 
 type historyLoader func(*models.Project) ([]storage.UndoEntry, error)

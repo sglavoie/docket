@@ -69,14 +69,13 @@ func TestRunRedo(t *testing.T) {
 		}
 
 		// Step 4: Set up config for CLI command
-		cfg := &config.Config{
-			DataDir:        tmpDir,
-			CurrentProject: project.ID,
-			Projects:       []*models.Project{project},
-		}
+		domains := config.NewDomains()
+		domains.Catalog.UpsertProject(project)
+		domains.Machine.CurrentProject = project.ID
+		cfg := config.NewRuntimeState(tmpDir, domains)
 		configPath := filepath.Join(tmpDir, "config.json")
 		manager := config.NewManager(configPath)
-		if err := manager.Save(cfg); err != nil {
+		if err := saveTestRuntime(manager, cfg); err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
 
@@ -139,14 +138,13 @@ func TestRunRedo(t *testing.T) {
 			Path: projectPath,
 		}
 
-		cfg := &config.Config{
-			DataDir:        tmpDir,
-			CurrentProject: project.ID,
-			Projects:       []*models.Project{project},
-		}
+		domains := config.NewDomains()
+		domains.Catalog.UpsertProject(project)
+		domains.Machine.CurrentProject = project.ID
+		cfg := config.NewRuntimeState(tmpDir, domains)
 		configPath := filepath.Join(tmpDir, "config.json")
 		manager := config.NewManager(configPath)
-		if err := manager.Save(cfg); err != nil {
+		if err := saveTestRuntime(manager, cfg); err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
 

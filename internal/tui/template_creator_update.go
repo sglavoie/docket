@@ -394,26 +394,22 @@ func (m *TaskTemplateCreatorModel) saveTemplate() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
-	// Save to config synchronously
+	// Apply the template to a cloned automation snapshot and commit through the
+	// coordinator over the runtime (automation-domain only, no whole-config save).
 	isEdit := m.editingTemplate != nil
+	automation := cloneAutomationConfig(m.runtime.Automation())
 	if isEdit {
-		if !m.config.UpdateTaskTemplate(t) {
+		if !automation.UpdateTaskTemplate(t) {
 			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to update template")} }
 		}
 	} else {
-		m.config.AddTaskTemplate(t)
+		automation.AddTaskTemplate(t)
 	}
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
+	return m.coordinator.SaveThen(automation, func() tea.Msg {
 		if isEdit {
 			return TaskTemplateEditedMsg{Template: t}
 		}
 		return TaskTemplateCreatedMsg{Template: t}
-	}
+	})
 }

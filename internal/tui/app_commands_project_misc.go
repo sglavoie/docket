@@ -148,12 +148,12 @@ func (m *AppModel) selectedTaskProjectFromOrigin() *models.Project {
 func (m *AppModel) otherCommands() []Command {
 	return []Command{
 		{
-			Name:        "project focus",
-			Description: "Project-scoped focus view",
+			Name:        "project focus queue",
+			Description: "Show this project's tasks in the Focus Queue",
 			Shortcut:    "alt+f",
 			Category:    CategoryViews,
 			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"focus mode", "project active tasks"},
+			Aliases:     []string{"project focus", "project queue", "project active tasks"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowProjectFocusViewMsg{Project: m.currentProject}

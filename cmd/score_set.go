@@ -42,7 +42,7 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate profile assignment
-	profile := cfg.GetProjectScoringProfile(project.ID)
+	profile := workspace.Runtime.Automation().GetProjectScoringProfile(project.ID)
 	if profile == nil {
 		return fmt.Errorf("no scoring profile assigned to project %q. Assign one with: tt score assign <profile-id>", project.Name)
 	}
@@ -90,7 +90,7 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 	// revision-checked, undoable via the workspace ledger); the profile
 	// validation above stays here because scoring profiles live in config,
 	// which the app layer does not read.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	if _, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.SetScoreDimensions(task.ID, pending)
 	}); err != nil {

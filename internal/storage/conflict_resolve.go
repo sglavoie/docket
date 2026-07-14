@@ -12,24 +12,35 @@ import (
 type ConflictResolution string
 
 const (
-	// ResolveUseLocal commits the caller's local edits, discarding the remote
-	// divergence (subject to a re-merge if remote advanced during resolution).
+	// ResolveUseLocal commits the caller's local edits for an explicitly
+	// project-only bundle, discarding the remote divergence (subject to a re-merge
+	// if remote advanced during resolution). Retry-only bundles reject it.
 	ResolveUseLocal ConflictResolution = "local"
 	// ResolveUseRemote adopts the current on-disk remote state, discarding local
 	// edits. It writes nothing — the workspace already holds the remote content —
 	// and simply clears the recorded conflict.
 	ResolveUseRemote ConflictResolution = "remote"
-	// ResolveUseFile commits a human-supplied merged file after validating it and
-	// (if remote advanced) folding in the newer remote via a re-merge.
+	// ResolveUseFile commits a human-supplied merged file for an explicitly
+	// project-only bundle after validating it and (if remote advanced) folding in
+	// the newer remote via a re-merge. Retry-only bundles reject it.
 	ResolveUseFile ConflictResolution = "file"
 )
 
-// ErrRemoteReconflict indicates that the remote advanced since the conflict was
-// recorded and a re-merge of the chosen resolution against the newer remote
-// produced fresh conflicts. The chosen resolution is not committed; a new
-// conflict bundle capturing the newer remote is recorded instead. Callers match
-// this with errors.Is and read the new id / conflicts from the returned result.
-var ErrRemoteReconflict = errors.New("storage: remote changed during resolution and re-merge conflicts")
+var (
+	// ErrRemoteReconflict indicates that the remote advanced since the conflict was
+	// recorded and a re-merge of the chosen resolution against the newer remote
+	// produced fresh conflicts. The chosen resolution is not committed; a new
+	// conflict bundle capturing the newer remote is recorded instead. Callers match
+	// this with errors.Is and read the new id / conflicts from the returned result.
+	ErrRemoteReconflict = errors.New("storage: remote changed during resolution and re-merge conflicts")
+	// ErrConflictRetryRequired indicates that a conflict came from an aborted
+	// commit whose complete transaction intent was not persisted. Applying only the
+	// conflicting project would silently drop companion projects, artifacts, or
+	// attachment operations, so local/file resolution fails closed. The operator
+	// must adopt the current remote state to clear the bundle and retry the original
+	// operation so the application can rebuild one complete ChangeSet.
+	ErrConflictRetryRequired = errors.New("storage: conflict belongs to an aborted transaction; adopt remote and retry the original operation")
+)
 
 // ConflictResolveResult reports the outcome of resolving a persisted conflict.
 type ConflictResolveResult struct {
@@ -52,24 +63,40 @@ type ConflictResolveResult struct {
 	NewConflictID string
 	// Conflicts holds the fresh conflicts when NewConflictID is set.
 	Conflicts []MergeConflict
+	// RetryRequired is true when the original commit was aborted without retaining
+	// enough transaction intent to replay it safely. In that case no local or file
+	// resolution is applied; adopting remote only clears the conflict record and
+	// the caller must retry the original operation.
+	RetryRequired bool
 }
 
-// RecordMergeConflict persists a conflict bundle for a project whose commit hit a
-// three-way merge it could not resolve automatically. base/local/current are the
-// three merge inputs and conflicts are the structured conflicts the merge
-// produced. It returns the generated conflict id.
+// RecordMergeConflict persists an explicitly project-only conflict bundle whose
+// complete intent is represented by base/local/current. Commit-boundary callers
+// must use MergeOrRecordConflict instead so an aborted transaction is marked as
+// retry-only and cannot drop non-project side effects during resolution.
 func RecordMergeConflict(store *ConflictStore, project *models.Project, base, local, current *ProjectDocument, conflicts []MergeConflict, action, context string) (string, error) {
+	return recordMergeConflict(store, project, base, local, current, conflicts, action, context, false)
+}
+
+// recordMergeConflict persists a conflict and records whether resolving it must
+// require a fresh operation retry. Commit-boundary conflicts set requiresRetry:
+// the aborted ChangeSet may include companion projects, artifacts, attachment
+// bytes, and ledger intent that the three project documents cannot reconstruct.
+// Direct/legacy callers use RecordMergeConflict and retain project-only
+// resolution behavior for bundles that never represented a larger transaction.
+func recordMergeConflict(store *ConflictStore, project *models.Project, base, local, current *ProjectDocument, conflicts []MergeConflict, action, context string, requiresRetry bool) (string, error) {
 	record := ConflictRecord{
-		ProjectID:      project.ID,
-		ProjectName:    project.Name,
-		ProjectSlug:    project.Slug,
-		ProjectPath:    project.Path,
-		Action:         action,
-		Context:        context,
-		BaseRevision:   documentRevision(base),
-		LocalRevision:  documentRevision(local),
-		RemoteRevision: documentRevision(current),
-		Conflicts:      conflicts,
+		ProjectID:              project.ID,
+		ProjectName:            project.Name,
+		ProjectSlug:            project.Slug,
+		ProjectPath:            project.Path,
+		Action:                 action,
+		Context:                context,
+		BaseRevision:           documentRevision(base),
+		LocalRevision:          documentRevision(local),
+		RemoteRevision:         documentRevision(current),
+		RequiresOperationRetry: &requiresRetry,
+		Conflicts:              conflicts,
 	}
 	return store.Save(record, base, local, current)
 }
@@ -88,7 +115,11 @@ func MergeOrRecordConflict(store *ConflictStore, project *models.Project, base, 
 	if !result.HasConflicts() {
 		return result, "", nil
 	}
-	id, err := RecordMergeConflict(store, project, base, local, current, result.Conflicts, action, context)
+	// This bundle represents a ChangeSet that the commit boundary aborted. The
+	// three documents are not the complete transaction: artifacts, attachment
+	// bytes, clean companion changesets, and undo intent may also have been present.
+	// Mark it retry-only so resolution can never apply a misleading partial commit.
+	id, err := recordMergeConflict(store, project, base, local, current, result.Conflicts, action, context, true)
 	if err != nil {
 		return result, "", err
 	}
@@ -107,9 +138,18 @@ func MergeOrRecordConflict(store *ConflictStore, project *models.Project, base, 
 //     re-merge records a fresh conflict and returns ErrRemoteReconflict without
 //     writing.
 //
-// The commit itself re-verifies the revision under the project lock, so a second
-// remote edit that races between this read and the commit is caught there and
-// surfaces as a RevisionConflictError with the original conflict left intact.
+// Conflicts recorded from an aborted commit carry RequiresOperationRetry because
+// their bundle does not retain companion projects, artifacts, attachment bytes,
+// or ledger intent. For those bundles local/file resolution is deliberately
+// non-applying and returns ErrConflictRetryRequired; adopting remote clears the
+// bundle without writing and tells the caller to retry the original operation.
+// This prevents task metadata from being committed without its side effects.
+//
+// For explicitly project-only bundles, the commit itself re-verifies the revision
+// under the project lock, so a second remote edit that races between this read and
+// the commit is caught there and surfaces as a RevisionConflictError with the
+// original conflict left intact. Pre-policy bundles with no marker fail closed as
+// retry-only because their original transaction shape is unknown.
 func ResolveConflict(store *ConflictStore, commit *CommitService, id string, resolution ConflictResolution, mergedFilePath string) (*ConflictResolveResult, error) {
 	bundle, err := store.Load(id)
 	if err != nil {
@@ -133,6 +173,16 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 		ConflictID:     id,
 		Resolution:     resolution,
 		RemoteAdvanced: remoteAdvanced,
+		RetryRequired:  record.OperationRetryRequired(),
+	}
+
+	// The persisted documents cannot reconstruct the complete aborted ChangeSet.
+	// Refuse to commit a local/manual project document because doing so would drop
+	// every non-project side effect. Adopting remote below remains safe: it writes
+	// nothing, clears the stale record, and leaves the caller to retry the original
+	// operation through the application layer.
+	if record.OperationRetryRequired() && resolution != ResolveUseRemote {
+		return result, ErrConflictRetryRequired
 	}
 
 	// Adopting remote keeps the on-disk state as-is: nothing to write, just clear
@@ -179,9 +229,12 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 	commitResult, err := commit.Commit(ChangeSet{
 		Project:          commitProject,
 		ExpectedRevision: currentDoc.Revision,
-		Opaque:           resolved.OpaqueBlocks,
-		UndoAction:       resolveUndoAction(resolution),
-		UndoContext:      fmt.Sprintf("resolve conflict %s for %s", id, record.ProjectName),
+		// The chosen resolution is already a complete lossless document. Use it
+		// as the preservation source so a locally selected opaque block is not
+		// replaced by the current remote document during the write.
+		Base:        resolved,
+		UndoAction:  resolveUndoAction(resolution),
+		UndoContext: fmt.Sprintf("resolve conflict %s for %s", id, record.ProjectName),
 	})
 	if err != nil {
 		// A RevisionConflictError here means a second remote edit raced between the

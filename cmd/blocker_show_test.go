@@ -9,7 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestRunBlockerShow(t *testing.T) {
@@ -26,14 +25,14 @@ func TestRunBlockerShow(t *testing.T) {
 // storage.FindBlockerByPrefix uses HasPrefix(id, "") which is always true, so
 // without an explicit guard an empty arg would return the first blocker.
 func TestRunBlockerShowRejectsEmptyPrefix(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Show Test")
+	deps, project := setupTestDepsWithProject(t, "Show Test")
 	defer deps.Cleanup()
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 

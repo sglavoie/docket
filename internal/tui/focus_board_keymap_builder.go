@@ -100,6 +100,9 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		keymap.Bind("a", "Quick-add board item", "Actions", func() (tea.Model, tea.Cmd) {
 			return m.executeCockpitAction(m.resolveCockpitActionForKey("a"))
 		}),
+		keymap.Bind("i", "Quick capture", "Actions", func() (tea.Model, tea.Cmd) {
+			return m.executeCockpitAction(m.resolveCockpitActionForKey("i"))
+		}),
 	)
 
 	// Actions

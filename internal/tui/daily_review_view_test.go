@@ -11,9 +11,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func newTestDailyReviewModel(cfg *config.Config) *DailyReviewModel {
+func newTestDailyReviewModel(cfg *config.RuntimeState) *DailyReviewModel {
 	return &DailyReviewModel{
-		ViewBundle:        ViewBundle{config: cfg},
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[int]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
 		tabs:              TabState{Names: dailyReviewTabNames},
@@ -30,7 +30,7 @@ func newTestDailyReviewTask(t *testing.T, title string) *models.Task {
 }
 
 func TestDailyReview_EmptyState(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(80, 24)
 	m.calculateNavigation()
@@ -45,7 +45,7 @@ func TestDailyReview_EmptyState(t *testing.T) {
 }
 
 func TestDailyReview_SectionNavigation(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(80, 24)
 
@@ -79,7 +79,7 @@ func TestDailyReview_SectionNavigation(t *testing.T) {
 }
 
 func TestDailyReview_ReviewCompletion(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(80, 24)
 
@@ -94,7 +94,7 @@ func TestDailyReview_ReviewCompletion(t *testing.T) {
 }
 
 func TestDailyReview_BuildTagCmdIncludesStandbyTasks(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 
 	project, err := models.NewProject("p1", "Test", "")
@@ -133,7 +133,7 @@ func TestDailyReview_BuildTagCmdIncludesStandbyTasks(t *testing.T) {
 }
 
 func TestDailyReview_WithTasks_Render(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(120, 40)
 
@@ -157,7 +157,7 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 }
 
 func TestDailyReviewPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(80, 12)
 
@@ -212,7 +212,7 @@ func TestIsToday_CrossTimezone(t *testing.T) {
 }
 
 func TestDailyReview_SortStability(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(80, 24)
 
@@ -438,7 +438,7 @@ func TestDailyReview_SortSectionsProjectDisplayOrderPrimary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := newTestDailyReviewModel(&config.Config{Projects: []*models.Project{}})
+			m := newTestDailyReviewModel(newTestConfig())
 			tt.arrange(m)
 
 			m.sortSections()

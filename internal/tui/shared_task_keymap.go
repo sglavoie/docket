@@ -344,7 +344,7 @@ func buildDeleteTaskAction(deps TaskKeymapDeps) keymap.Action {
 		return deps.DeleteTask
 	}
 	return func() (tea.Model, tea.Cmd) {
-		return deps.View, wfDeleteTask(deps.View, deps.View.getConfig(), deps.View.getConfigManager())
+		return deps.View, wfDeleteTask(deps.View, deps.View.getRuntime(), deps.View.getConfigManager())
 	}
 }
 

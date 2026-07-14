@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -13,13 +14,13 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func setupProjectTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupProjectTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 	oldStorageRepo := storage.DefaultRepository
 	storage.DefaultRepository = deps.Repository
@@ -106,7 +107,7 @@ func TestProjectEdit(t *testing.T) {
 		}
 	})
 
-	t.Run("rename updates tasks.md heading via SaveProject", func(t *testing.T) {
+	t.Run("rename rewrites tasks.md heading atomically", func(t *testing.T) {
 		deps, _ := setupProjectTest(t)
 		defer resetProjectEditVars()
 
@@ -117,13 +118,15 @@ func TestProjectEdit(t *testing.T) {
 		err := runProjectEdit(cmd, []string{})
 		testutil.AssertNoError(t, err)
 
-		// Verify SaveProject was called with the new name (mock stores the saved project).
-		// This ensures the tasks.md heading gets the updated project name.
-		saved := deps.Repository.LastSaved
-		if saved == nil {
-			t.Fatal("expected SaveProject to be called after rename, but it was not")
+		// The rename commits the tasks.md heading rewrite through the app-layer
+		// transaction, which writes to the new slug-derived project directory on
+		// disk. Verify the renamed heading landed there.
+		newPath := deps.Config.ProjectPath("renamed-project")
+		content, readErr := os.ReadFile(storage.TasksFilePath(newPath))
+		testutil.AssertNoError(t, readErr)
+		if !strings.Contains(string(content), "Renamed Project") {
+			t.Errorf("expected renamed heading in tasks.md, got:\n%s", content)
 		}
-		testutil.AssertEqual(t, saved.Name, "Renamed Project")
 	})
 }
 

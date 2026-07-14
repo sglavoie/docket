@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 )
 
@@ -91,7 +92,7 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 
 	// If :recent prefix, further filter to only recently executed commands
 	if isRecentFilter {
-		recentCommands := m.config.GetCommandHistory()
+		recentCommands := m.runtime.Machine().GetCommandHistory()
 		recentSet := make(map[string]bool)
 		for _, cmd := range recentCommands {
 			recentSet[cmd] = true
@@ -262,7 +263,7 @@ func (m *CommandPaletteModel) filterByTaskID(taskID int) {
 // persistCategoryFilter saves the category filter to config when a category prefix is used.
 // Only persists complete prefixes (e.g., ":task " not ":ta").
 func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter ItemCategory) {
-	if m.configManager == nil || m.suppressCategoryPersistence {
+	if m.suppressCategoryPersistence {
 		return
 	}
 
@@ -273,10 +274,11 @@ func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter
 			if cat == categoryFilter {
 				newValue := ":" + prefix + " "
 				// Only update if changed
-				if m.config.GetLastPaletteCategory() != newValue {
-					m.config.SetLastPaletteCategory(newValue)
-					if err := m.configManager.Save(m.config); err != nil {
-						logging.Warn("failed to save config: %v", err)
+				if m.runtime.Machine().GetLastPaletteCategory() != newValue {
+					if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+						machine.SetLastPaletteCategory(newValue)
+					}); err != nil {
+						logging.Warn("failed to save machine state: %v", err)
 					}
 				}
 				return
@@ -284,10 +286,11 @@ func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter
 		}
 	} else if query == "" {
 		// Clear the filter when query is empty
-		if m.config.GetLastPaletteCategory() != "" {
-			m.config.SetLastPaletteCategory("")
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
+		if m.runtime.Machine().GetLastPaletteCategory() != "" {
+			if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+				machine.SetLastPaletteCategory("")
+			}); err != nil {
+				logging.Warn("failed to save machine state: %v", err)
 			}
 		}
 	}

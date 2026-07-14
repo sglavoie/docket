@@ -12,9 +12,9 @@ func (m *ProjectTreeModel) SidebarProject() *models.Project {
 	return m.project
 }
 
-// SidebarConfig returns the config for sidebar display.
-func (m *ProjectTreeModel) SidebarConfig() *config.Config {
-	return m.config
+// SidebarRuntime returns the domain runtime for sidebar resolution.
+func (m *ProjectTreeModel) SidebarRuntime() *config.RuntimeState {
+	return m.runtime
 }
 
 // SidebarGetSidebar returns the sidebar component.

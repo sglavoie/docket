@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -83,7 +84,7 @@ func TestRenderInboxTaskDisplayRespectsVisualWidth(t *testing.T) {
 	}
 	task.Description = "这是一段需要在窄宽度下正确截断的描述内容，用于验证收件箱卡片布局。"
 
-	rendered := renderInboxTaskDisplay(task, 32, true, "界面修复项目", testutil.NewTestConfig())
+	rendered := renderInboxTaskDisplay(task, 32, true, "界面修复项目", newTestConfig().Settings())
 	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("inbox task display line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
@@ -157,7 +158,7 @@ func TestPriorityWaitingOnTaskRespectsVisualWidth(t *testing.T) {
 	blocked.DependsOn = []string{dep.ID}
 	project.Tasks = []*models.Task{dep, blocked}
 
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 	m.SetSize(32, 14)
 	line := m.renderWaitingOnTask(&PriorityTask{Task: blocked})
 	if lipgloss.Width(ansi.Strip(line)) > 32 {
@@ -255,7 +256,8 @@ func TestDashboardProjectListScrollbarRespectsVisualWidthWithEmoji(t *testing.T)
 		projects = append(projects, project)
 	}
 
-	m := &DashboardModel{config: testutil.NewTestConfig(), projects: projects}
+	cfg := newTestConfig()
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
 	m.SetSize(28, 10)
 	rendered := m.renderProjectList(projects, 0, 28, 0)
 	assertRenderedLinesWithinVisualWidth(t, "dashboard project list scrollbar", rendered, 24)
@@ -303,8 +305,8 @@ func TestRenderInboxFooterRespectsVisualWidthAcrossLayouts(t *testing.T) {
 // behavior of the pipeline summary line so the "Triage → Plan → Today →
 // Execute → Review" chain truncates instead of wrapping at narrow widths.
 func TestRenderPipelineCardContentRespectsVisualWidth(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	m := &DashboardModel{config: cfg}
+	cfg := newTestConfig()
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg)}
 	m.SetPipelineCounts(pipelineCounts{
 		inboxCount:          7,
 		queueLen:            5,
@@ -323,7 +325,7 @@ func TestRenderPipelineCardContentRespectsVisualWidth(t *testing.T) {
 // narrow-mode rendering path: wide rows split into name + stats lines and
 // must respect cardWidth even with active inbox indicators and long names.
 func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	projects := make([]*models.Project, 0, 6)
 	for i := range 6 {
 		p := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
@@ -340,7 +342,7 @@ func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
 		projects = append(projects, p)
 	}
 
-	m := &DashboardModel{config: cfg, projects: projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
 	cardWidth := DashboardNarrowModeWidth - 4
 	m.SetSize(cardWidth+6, 30)
 	rendered := m.renderProjectList(projects, 0, cardWidth, 0)
@@ -352,8 +354,7 @@ func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
 // the alerts card is narrow. Long project names in the "Inbox hotspots" line
 // are the main risk surface for overflow.
 func TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	projects := make([]*models.Project, 0, 2)
 	for i := range 2 {
 		p := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
@@ -368,7 +369,7 @@ func TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined(t *testing.T) {
 		projects = append(projects, p)
 	}
 
-	m := &DashboardModel{config: cfg, projects: projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
 	lines := m.computeGlobalAlertLines(nil)
 	if len(lines) == 0 {
 		t.Fatalf("expected non-empty alert lines from 6-inbox-task projects")

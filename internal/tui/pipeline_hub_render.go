@@ -131,10 +131,10 @@ func (m *PipelineHubModel) renderRecommendationStrip() string {
 }
 
 func (m *PipelineHubModel) hasActiveProjects() bool {
-	if m.config == nil {
+	if m.runtime == nil {
 		return false
 	}
-	return len(m.config.GetActiveProjects()) > 0
+	return len(m.runtime.ActiveProjects()) > 0
 }
 
 // renderSeparatorRow builds a separator line matching the column layout.

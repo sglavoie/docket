@@ -35,9 +35,9 @@ func (m *OutlinerModel) SidebarProject() *models.Project {
 	return nil
 }
 
-// SidebarConfig returns the config for sidebar display.
-func (m *OutlinerModel) SidebarConfig() *config.Config {
-	return m.config
+// SidebarRuntime returns the domain runtime for sidebar resolution.
+func (m *OutlinerModel) SidebarRuntime() *config.RuntimeState {
+	return m.runtime
 }
 
 // SidebarGetSidebar returns the sidebar component.
@@ -153,7 +153,7 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 
 func (m *OutlinerModel) StatusBarLabel() string {
 	if m.project != nil {
-		status := fmt.Sprintf("Outliner: %s", m.project.Name) + FormatCyclePosition(m.config, m.project.ID)
+		status := fmt.Sprintf("Outliner: %s", m.project.Name) + FormatCyclePosition(m.runtime, m.project.ID)
 		if m.sidebar.IsFocused() {
 			status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
 		}

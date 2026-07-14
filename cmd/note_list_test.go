@@ -22,17 +22,17 @@ func resetNoteListVars() {
 	noteGlobal = false
 }
 
-func setupNoteListTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupNoteListTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
 	resetNoteListVars()
 
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository

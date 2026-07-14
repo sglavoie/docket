@@ -24,61 +24,6 @@ func (m *AskViewModel) renderResponse() string {
 	}
 	b.WriteString(rendered)
 
-	if m.state == askStateResult && len(m.commands) > 0 {
-		b.WriteString("\n\n")
-		cmdStyle := InfoStatusStyle
-		b.WriteString(cmdStyle.Render(fmt.Sprintf("── %d command(s) extracted ──", len(m.commands))))
-		b.WriteString("\n")
-		for i, c := range m.commands {
-			prefix := fmt.Sprintf("  %d. ", i+1)
-			wrapWidth := max(m.viewport.Width()-2, 40)
-			indent := strings.Repeat(" ", len(prefix))
-			line := prefix + c
-			if len(line) > wrapWidth {
-				b.WriteString(prefix)
-				remaining := c
-				first := true
-				for len(remaining) > 0 {
-					avail := wrapWidth - len(prefix)
-					if !first {
-						avail = wrapWidth - len(indent)
-					}
-					if avail <= 0 {
-						avail = 20
-					}
-					chunk := remaining
-					if len(chunk) > avail {
-						// Break at last space within avail
-						bp := avail
-						for j := avail; j > 0; j-- {
-							if chunk[j-1] == ' ' {
-								bp = j - 1
-								break
-							}
-						}
-						chunk = remaining[:bp]
-						remaining = strings.TrimLeft(remaining[bp:], " ")
-					} else {
-						remaining = ""
-					}
-					if first {
-						b.WriteString(chunk)
-						first = false
-					} else {
-						b.WriteString(indent)
-						b.WriteString(chunk)
-					}
-					b.WriteString("\n")
-				}
-			} else {
-				b.WriteString(line)
-				b.WriteString("\n")
-			}
-		}
-		b.WriteString("\n")
-		b.WriteString(HelpStyle.Render("Press 'a' to apply commands"))
-	}
-
 	return b.String()
 }
 
@@ -90,6 +35,8 @@ func (m *AskViewModel) View() tea.View {
 	subtitle := ""
 	if !external.ClaudeAvailable() {
 		subtitle = ErrorStatusStyle.Render("claude CLI not found")
+	} else {
+		subtitle = InfoStatusStyle.Render("context: " + string(m.contextMode))
 	}
 	b.WriteString(renderFullscreenTitle("AI Assistant", subtitle))
 	b.WriteString("\n\n")
@@ -102,8 +49,17 @@ func (m *AskViewModel) View() tea.View {
 		applyThemedTextarea(&m.textarea)
 		b.WriteString(m.textarea.View())
 		b.WriteString("\n")
-		footerLeft = HelpStyle.Render("Ctrl+S: submit")
+		footerLeft = HelpStyle.Render("Ctrl+S: submit · Ctrl+T: context")
 		footerRight = HelpStyle.Render("Esc: back")
+
+	case askStateConsent:
+		b.WriteString(pad)
+		b.WriteString("tt can send the current project name and task content to the configured Claude CLI provider.\n\n")
+		b.WriteString(pad)
+		b.WriteString("Remember consent and include task context? [y/N]")
+		b.WriteString("\n")
+		footerLeft = HelpStyle.Render("y: remember consent · n: continue without context")
+		footerRight = HelpStyle.Render("Esc: cancel")
 
 	case askStateLoading:
 		b.WriteString(pad)
@@ -125,13 +81,31 @@ func (m *AskViewModel) View() tea.View {
 		}
 		b.WriteString("\n")
 		footer := "n: new query · Esc: close"
-		if len(m.commands) > 0 {
-			footer = "a: apply commands · " + footer
+		if len(m.plan.Actions) > 0 {
+			footer = "a: review/apply plan · " + footer
 		}
 		footerLeft = HelpStyle.Render(footer)
 		if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 			footerRight = HelpStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))
 		}
+
+	case askStateConfirmSafe:
+		b.WriteString(pad)
+		_, _ = fmt.Fprintf(&b, "Apply %d safe action(s) as one transaction? [y/N]", m.preview.SafeCount)
+		b.WriteString("\n")
+		footerLeft = HelpStyle.Render("y: accept safe batch · n: decline")
+
+	case askStateConfirmDestructive:
+		b.WriteString(pad)
+		b.WriteString(ErrorStatusStyle.Render(fmt.Sprintf("Destructive escalation: include %d destructive action(s)? [y/N]", m.preview.DestructiveCount)))
+		b.WriteString("\n")
+		footerLeft = HelpStyle.Render("y: explicitly include · n: exclude")
+
+	case askStateApplying:
+		b.WriteString(pad)
+		b.WriteString(m.spinner.View())
+		b.WriteString(" Applying accepted actions as one transaction...")
+		b.WriteString("\n")
 	}
 
 	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))

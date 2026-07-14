@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -19,8 +18,8 @@ func stripANSI(s string) string {
 }
 
 func TestPipelineHubModel_NoProjects(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(120, 30)
 
 	plain := stripANSI(m.View().Content)
@@ -45,16 +44,16 @@ func TestPipelineHubModel_NoProjects(t *testing.T) {
 }
 
 func TestPipelineHubModel_StatusBarLabel(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	if got := m.StatusBarLabel(); got != "Pipeline" {
 		t.Errorf("StatusBarLabel() = %q, want %q", got, "Pipeline")
 	}
 }
 
 func TestPipelineHubModel_HandledKeysIncludesArrowNavigation(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	keys := m.HandledKeys()
 
 	for _, key := range []string{"j", "down", "k", "up"} {
@@ -65,8 +64,8 @@ func TestPipelineHubModel_HandledKeysIncludesArrowNavigation(t *testing.T) {
 }
 
 func TestPipelineHubModel_Navigation(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(120, 30)
 
 	// Initial state: col 0, row 0
@@ -113,21 +112,21 @@ func TestPipelineHubModel_Navigation(t *testing.T) {
 }
 
 func TestPipelineHubModel_ViewDoesNotPanic(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 
 	// Test at various sizes including edge cases
 	for _, size := range [][2]int{{0, 0}, {10, 5}, {80, 24}, {200, 50}} {
-		m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+		m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 		m.SetSize(size[0], size[1])
 		_ = m.View()
 	}
 }
 
 func TestPipelineHubModel_CountsAppearInView(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	queueIDs := map[string]bool{"id1": true, "id2": true, "id3": true}
 	dailyPlanIDs := map[string]bool{"id4": true}
-	m := NewPipelineHubModel(cfg, nil, queueIDs, dailyPlanIDs, nil)
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), queueIDs, dailyPlanIDs, nil)
 	m.SetSize(160, 40)
 
 	plain := stripANSI(m.View().Content)

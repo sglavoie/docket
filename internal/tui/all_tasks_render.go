@@ -73,7 +73,7 @@ func (m *AllTasksViewModel) View() tea.View {
 			strip = renderTaskMetadataStrip(TaskMetadataStripOpts{
 				Task:    stripTask,
 				Project: stripProject,
-				Config:  m.config,
+				Runtime: m.runtime,
 				Width:   m.Width(),
 				AlreadyShown: TaskMetadataAlreadyShown{
 					Project:  true,
@@ -261,7 +261,7 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints := PrefixHints{}
 	// includeDueDate=false because All Tasks renders `Fd` as a direct cycle
 	// binding (with its own hint inserted below) instead of a sub-prefix.
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), false, true, false))
 	if fHints, ok := hints["F"]; ok {
 		dueDetail := "(all)"
 		switch m.filter.DueDate {
@@ -324,15 +324,15 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
+		dueStr = FormatRelativeDueTask(task, true, m.runtime.Settings().GetTimeFormat())
 	}
 
-	line := RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
+	line := RenderCrossProjectTaskLine(task, item.Project, m.runtime, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[task.ID],
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		ShowTags:        true,
 		ShowScore:       true,
-		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		ShowDescription: m.runtime.Machine().IsDescriptionColumnVisible(),
 		MaxProjectLen:   15,
 		Prefix:          checkbox,
 		DueStr:          dueStr,

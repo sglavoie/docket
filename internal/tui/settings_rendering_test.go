@@ -3,15 +3,13 @@ package tui
 import (
 	"strings"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 func TestSettingsMinimumLayoutCustomEditorNoOverflow(t *testing.T) {
-	cfg := config.NewConfig()
-	cfg.Editor = "nvim"
+	cfg := newTestConfig()
+	cfg.Machine().Editor = "nvim"
 
-	m := NewSettingsModel(cfg, nil)
+	m := NewSettingsModel(newSettingsDeps(cfg, nil))
 	m.SetSize(72, 20)
 
 	plain, issues := normalizeScreen(m.View().Content, 72, 20)

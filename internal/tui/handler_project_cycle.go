@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -37,7 +38,7 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 // handleShowProjectCyclePicker opens the numbered project picker popup.
 func (m *AppModel) handleShowProjectCyclePicker() (bool, tea.Cmd) {
 	contextKey := m.cycleContextKey()
-	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+	cycleProjects := m.runtime.CycleProjectsForContext(contextKey)
 
 	if len(cycleProjects) == 0 {
 		m.setInfoStatus(m.noCycleProjectsStatus(contextKey))
@@ -67,11 +68,12 @@ func (m *AppModel) handleProjectCyclePickerKey(msg tea.KeyPressMsg) (*AppModel, 
 		return m, nil
 
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		contextKey := m.config.FilterContext
-		if m.config.FilterCustomContext != "" {
-			contextKey = "+" + m.config.FilterCustomContext
+		machine := m.runtime.Machine()
+		contextKey := machine.FilterContext
+		if machine.FilterCustomContext != "" {
+			contextKey = "+" + machine.FilterCustomContext
 		}
-		cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+		cycleProjects := m.runtime.CycleProjectsForContext(contextKey)
 		idx := int(msg.String()[0]-'0') - 1
 		if idx < len(cycleProjects) {
 			m.showProjectCyclePicker = false
@@ -86,7 +88,7 @@ func (m *AppModel) handleProjectCyclePickerKey(msg tea.KeyPressMsg) (*AppModel, 
 // buildProjectCyclePickerHints builds the hints for the project cycle picker popup.
 func (m *AppModel) buildProjectCyclePickerHints() PrefixHints {
 	contextKey := m.cycleContextKey()
-	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+	cycleProjects := m.runtime.CycleProjectsForContext(contextKey)
 
 	var hints []PrefixHint
 	for i, p := range cycleProjects {
@@ -108,7 +110,7 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 	// Use context-specific cycle list when a context filter is active
 	// Custom context takes precedence over regular context
 	contextKey := m.cycleContextKey()
-	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+	cycleProjects := m.runtime.CycleProjectsForContext(contextKey)
 
 	if len(cycleProjects) == 0 {
 		m.setInfoStatus(m.noCycleProjectsStatus(contextKey))
@@ -150,12 +152,14 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) cycleContextKey() string {
-	return getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+	machine := m.runtime.Machine()
+	return getContextKey(machine.FilterContext, machine.FilterCustomContext)
 }
 
 func (m *AppModel) noCycleProjectsStatus(contextKey string) string {
-	hiddenCount := m.config.GetArchivedCycleProjectCountForContext(contextKey)
-	return cycleNoProjectsStatus(m.config.FilterContext, m.config.FilterCustomContext, hiddenCount)
+	machine := m.runtime.Machine()
+	hiddenCount := m.runtime.ArchivedCycleProjectCountForContext(contextKey)
+	return cycleNoProjectsStatus(machine.FilterContext, machine.FilterCustomContext, hiddenCount)
 }
 
 func cycleNoProjectsStatus(filterContext, filterCustomContext string, hiddenCount int) string {
@@ -195,14 +199,15 @@ func (m *AppModel) switchToCycleProjectNow(project *models.Project) (bool, tea.C
 	m.saveOutlinerToggleState()
 	m.saveOutlinerFilterState()
 	m.currentProject = project
-	m.config.CurrentProject = project.ID
-	if err := m.configManager.Save(m.config); err != nil {
-		return true, errorCmd("failed to save config: %w", err)
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		machine.CurrentProject = project.ID
+	}); err != nil {
+		return true, errorCmd("failed to save machine state: %w", err)
 	}
 
 	_ = m.persister.Load(project)
-	m.config.ApplyGlobalColorsToProject(project)
-	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
+	m.runtime.Settings().ApplyGlobalColorsToProject(project)
+	m.projectTree = NewProjectTreeModel(project, m.configManager, m.runtime)
 	m.projectTree.queueIDs = m.focusQueueIDs
 	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
 	m.projectTree.SetSize(m.width, m.height-2)
@@ -220,7 +225,7 @@ func (m *AppModel) switchToCycleProjectNow(project *models.Project) (bool, tea.C
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
 		m.outliner.queueIDs = m.focusQueueIDs
 		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()

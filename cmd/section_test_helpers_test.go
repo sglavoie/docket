@@ -11,10 +11,10 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func setupSectionCommandTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupSectionCommandTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
 
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 	t.Cleanup(deps.Cleanup)
 
 	viper.Set("config", deps.ConfigPath)
@@ -23,7 +23,7 @@ func setupSectionCommandTest(t *testing.T) (*testutil.TestDeps, *models.Project)
 	})
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository

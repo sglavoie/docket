@@ -5,11 +5,13 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 func TestPriorityViewTopLevelPClosesView(t *testing.T) {
 	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	model, cmd := m.handleKeypress(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	if model != m {
@@ -27,7 +29,7 @@ func TestPriorityViewTopLevelPClosesView(t *testing.T) {
 
 func TestPriorityViewFpStillTogglesPreview(t *testing.T) {
 	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	if m.previewMode {
 		t.Fatal("previewMode should default to false")

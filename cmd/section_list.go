@@ -36,7 +36,7 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}

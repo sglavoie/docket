@@ -7,7 +7,7 @@ import (
 
 func TestTaskActionCommands_EditTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -44,7 +44,7 @@ func TestTaskActionCommands_EditTask_NilProjectTree(t *testing.T) {
 
 func TestTaskActionCommands_EditTask_MultiSelect(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	// Enable multi-select and select tasks
 	app.projectTree.multiSelectMode = true
@@ -69,7 +69,7 @@ func TestTaskActionCommands_EditTask_MultiSelect(t *testing.T) {
 
 func TestTaskActionCommands_DeleteTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -107,7 +107,7 @@ func TestTaskActionCommands_DeleteTask_NilProjectTree(t *testing.T) {
 
 func TestTaskActionCommands_ParkTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
 		t.Fatal("expected project tree to have visible nodes")
@@ -161,7 +161,7 @@ func TestTaskActionCommands_ParkTask_NoTaskSelected(t *testing.T) {
 
 func TestTaskActionCommands_CopyTitle(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -198,7 +198,7 @@ func TestTaskActionCommands_CopyTitle_NilProjectTree(t *testing.T) {
 
 func TestTaskActionCommands_MoveToProject(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -236,7 +236,7 @@ func TestTaskActionCommands_MoveToProject_NilProject(t *testing.T) {
 
 func TestTaskActionCommands_TogglePin(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -267,7 +267,7 @@ func TestTaskActionCommands_TogglePin(t *testing.T) {
 
 func TestTaskActionCommands_SetDueDate(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -288,7 +288,7 @@ func TestTaskActionCommands_SetDueDate(t *testing.T) {
 
 func TestTaskActionCommands_MoveToSectionShortcutAndHandler(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
@@ -319,7 +319,7 @@ func TestTaskActionCommands_MoveToSectionShortcutAndHandler(t *testing.T) {
 
 func TestTaskActionCommands_FilterOverlay(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	cmds := app.taskActionCommands()
 	cmd := findCommand(cmds, "filter overlay")

@@ -1,11 +1,14 @@
 package storage
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -25,7 +28,80 @@ var (
 	// quarantined one or more irrecoverable transactions. The workspace stays
 	// blocked until a human resolves the quarantine.
 	ErrCommitBlocked = errors.New("storage: commit blocked by quarantined transactions")
+	// ErrStaleArtifact indicates a configuration artifact changed on disk since the
+	// caller loaded it: its ExpectedRevision no longer matches the current raw hash
+	// (or an expected-absent artifact now exists), so the commit is aborted rather
+	// than clobbering the concurrent write. It is the artifact-level counterpart to
+	// ErrStaleRevision and the caller should reload the config domain and retry.
+	ErrStaleArtifact = errors.New("storage: artifact revision is stale; reload and retry")
+	// ErrMergeConflict indicates a stale-revision commit was three-way merged against
+	// the current on-disk state and produced conflicts that cannot be resolved
+	// automatically. The conflict bundle(s) have been durably recorded and marked
+	// as requiring a fresh operation retry because they intentionally do not retain
+	// the aborted transaction's companion projects, artifacts, attachment bytes, or
+	// ledger intent. The whole commit was aborted with no project or artifact write.
+	// Callers match this class with errors.Is and read the recorded ids from a
+	// *CommitConflictError.
+	ErrMergeConflict = errors.New("storage: commit produced unresolved merge conflicts recorded for resolution")
 )
+
+// RecordedConflict names one project whose stale-revision merge could not be
+// resolved automatically and the durable conflict bundle recorded for it.
+type RecordedConflict struct {
+	ProjectID   string
+	ProjectName string
+	// ConflictID is the id of the durably recorded conflict bundle; resolve it
+	// through the shared resolution service (tt conflict resolve / the TUI).
+	ConflictID string
+	// Conflicts carries the structured conflicts the merge produced, for callers
+	// that want to summarize what diverged without reloading the bundle.
+	Conflicts []MergeConflict
+}
+
+// CommitConflictError is the concrete unresolved-merge conflict returned when one
+// or more stale-revision changesets three-way merged into true conflicts. Every
+// listed conflict has already been durably recorded (so a later resolution can
+// reconcile it) and the whole commit was aborted with no writes. It unwraps to
+// ErrMergeConflict so callers can match the class while inspecting the recorded
+// ids and structured conflicts.
+type CommitConflictError struct {
+	Conflicts []RecordedConflict
+}
+
+func (e *CommitConflictError) Error() string {
+	if len(e.Conflicts) == 1 {
+		c := e.Conflicts[0]
+		name := c.ProjectName
+		if name == "" {
+			name = c.ProjectID
+		}
+		return fmt.Sprintf("storage: project %s has unresolved merge conflicts (recorded as %s); adopt remote, then retry the original operation", name, c.ConflictID)
+	}
+	ids := make([]string, 0, len(e.Conflicts))
+	for _, c := range e.Conflicts {
+		ids = append(ids, c.ConflictID)
+	}
+	return fmt.Sprintf("storage: %d projects have unresolved merge conflicts (recorded as %s); adopt remote, then retry the original operation", len(e.Conflicts), strings.Join(ids, ", "))
+}
+
+func (e *CommitConflictError) Unwrap() error { return ErrMergeConflict }
+
+// ArtifactConflictError is the concrete stale-artifact conflict returned when an
+// ArtifactChange's ExpectedRevision does not match the current on-disk raw hash
+// (or an expected-absent artifact already exists). It unwraps to ErrStaleArtifact
+// so callers can match the class while inspecting the specific path and the
+// diverging revisions.
+type ArtifactConflictError struct {
+	Path     string
+	Expected string
+	Actual   string
+}
+
+func (e *ArtifactConflictError) Error() string {
+	return fmt.Sprintf("storage: artifact %s changed on disk (expected revision %s, found %s): reload and retry", filepath.Base(e.Path), shortRevision(e.Expected), shortRevision(e.Actual))
+}
+
+func (e *ArtifactConflictError) Unwrap() error { return ErrStaleArtifact }
 
 // RevisionConflictError is the concrete stale-revision conflict returned when a
 // changeset's expected revision does not match the current on-disk revision. It
@@ -63,21 +139,39 @@ func shortRevision(rev string) string {
 	return rev
 }
 
-// ArtifactChange describes a single configuration artifact written or deleted in
-// the same transaction as a project's tasks.md. Path is the absolute target; a
-// write carries Data (and an optional Mode, defaulting to the standard private
+// ArtifactChange describes a single full-file artifact written or deleted in the
+// same transaction as project or lifecycle effects. Path is the absolute target;
+// a write carries Data (and an optional Mode, defaulting to the standard private
 // file permission), while Delete removes the target instead.
 type ArtifactChange struct {
 	Path   string
 	Data   []byte
 	Mode   os.FileMode
 	Delete bool
+	// ExpectedRevision applies optimistic concurrency to this artifact, validated
+	// under the commit's deterministic artifact locks before any bytes are staged.
+	// Its three states are distinct on purpose:
+	//   - nil: unchecked. The write or delete is last-writer-wins.
+	//   - non-nil pointing to "": the artifact must be ABSENT. A create that must
+	//     not clobber an existing file; an existing target aborts the commit.
+	//   - non-nil pointing to a non-empty value: the current raw file bytes must
+	//     hash (hex SHA-256, matching RawArtifactRevision) to exactly that value.
+	// Any divergence aborts the whole commit with an *ArtifactConflictError before
+	// a single byte is written, so a concurrent config writer's change is never
+	// silently overwritten.
+	ExpectedRevision *string
+	// ExpectedRevisionPath optionally names the source whose raw bytes must match
+	// ExpectedRevision when it differs from Path. Project rename uses this to
+	// validate the old slug's tasks.md under its canonical project lock while the
+	// transaction writes the replacement below the new slug after moving the
+	// directory. Empty means validate Path itself.
+	ExpectedRevisionPath string
 }
 
 // ChangeSet is the unit of a single project's mutation committed atomically: the
-// project whose tasks.md is rewritten, the revision the caller loaded it at (for
-// the optimistic concurrency check), any opaque header blocks to preserve, and
-// any additional artifacts to write or delete alongside it in one transaction. A
+// project whose tasks.md is rewritten, the exact document and revision the caller
+// loaded (for lossless preservation and optimistic concurrency), and any
+// additional artifacts to write or delete alongside it in one transaction. A
 // leaf commit with no artifacts still commits the project write through the
 // journal.
 //
@@ -95,9 +189,12 @@ type ChangeSet struct {
 	// value opts out of the check (e.g. legacy callers that do not track a load
 	// revision, or a brand-new project with no prior content).
 	ExpectedRevision string
-	// Opaque carries header blocks preserved from load so the committed revision
-	// reflects lossless content.
-	Opaque []OpaqueBlock
+	// Base is the exact lossless document retained when Project was loaded. Normal
+	// mutations overlay Project's structured fields onto Base while preserving its
+	// schema-v2 envelope and opaque header blocks. It is also the future three-way
+	// merge base when ExpectedRevision is stale. Nil is accepted only for legacy,
+	// repair, and initial-create callers that have no loaded document.
+	Base *ProjectDocument
 	// Artifacts are additional files committed atomically with the project write.
 	Artifacts []ArtifactChange
 	// AttachmentOps are attachment file side effects (copy, move, delete) resolved
@@ -177,6 +274,13 @@ type CommitService struct {
 	// undo ledger as the final finalization step, so callers cannot forget to
 	// capture history. A nil ledger disables history recording entirely.
 	ledger *WorkspaceLedger
+	// conflicts, when non-nil, turns a stale-revision commit into a three-way
+	// merge: the loaded base, the caller's local intent, and the current on-disk
+	// document are merged under the held locks. A clean non-overlapping merge is
+	// committed against the current revision; a true conflict is recorded in this
+	// store and aborts the whole commit. A nil store disables merging, so a stale
+	// revision aborts with a RevisionConflictError exactly as before.
+	conflicts *ConflictStore
 }
 
 // NewCommitService returns a CommitService that journals transactions under
@@ -197,6 +301,35 @@ func NewCommitService(transactionsDir string, roots []string) *CommitService {
 // reverse or replay the whole transaction.
 func NewCommitServiceWithLedger(transactionsDir string, roots []string, ledger *WorkspaceLedger) *CommitService {
 	return &CommitService{transactionsDir: transactionsDir, roots: roots, ledger: ledger}
+}
+
+// WithConflictStore attaches the durable conflict store that the commit boundary
+// uses to three-way merge stale-revision commits and record irreconcilable
+// conflicts. It returns the same service for fluent construction. Production
+// mutation services (CLI and TUI) attach a store so a stale project revision is
+// merged automatically or recorded as a conflict instead of aborting with a bare
+// stale-revision error; the standalone conflict-resolution commit service is left
+// storeless on purpose so its own re-commit races surface as RevisionConflictError
+// rather than being re-merged against the wrong base.
+func (s *CommitService) WithConflictStore(store *ConflictStore) *CommitService {
+	s.conflicts = store
+	return s
+}
+
+// RecoverWorkspace completes interrupted transactions under the same workspace
+// commit lock used by every mutation. Frontend composition roots call this
+// before loading configuration domains or projects so a crashed multi-artifact
+// commit can never be exposed as a partial workspace snapshot. A quarantined
+// transaction returns ErrCommitBlocked and keeps startup fail-closed until the
+// quarantine is resolved.
+func (s *CommitService) RecoverWorkspace() (*transaction.RecoveryReport, error) {
+	var report *transaction.RecoveryReport
+	err := s.withWorkspaceCommitLock(func() error {
+		var recoverErr error
+		report, recoverErr = s.recoverLocked(transaction.NewJournal(s.transactionsDir, s.roots))
+		return recoverErr
+	})
+	return report, err
 }
 
 // Commit applies a single-project changeset atomically. It is a thin convenience
@@ -228,6 +361,7 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	}
 
 	seenPaths := make(map[string]bool, len(changesets))
+	var artifactLocks []string
 	for i := range changesets {
 		project := changesets[i].Project
 		if project == nil {
@@ -241,6 +375,11 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 			return nil, fmt.Errorf("storage: changeset %d duplicates project path %q; a project may appear at most once per commit", i, project.Path)
 		}
 		seenPaths[cleanPath] = true
+		locks, err := artifactLockPaths(changesets[i].Artifacts, s.roots)
+		if err != nil {
+			return nil, fmt.Errorf("storage: changeset %d: %w", i, err)
+		}
+		artifactLocks = append(artifactLocks, locks...)
 	}
 
 	// The whole commit pipeline — crash recovery plus the project-scoped apply —
@@ -250,12 +389,8 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	var results []*CommitResult
 	if err := s.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(s.transactionsDir, s.roots)
-		report, recoverErr := journal.Recover()
-		if recoverErr != nil {
-			return fmt.Errorf("transaction recovery failed: %w", recoverErr)
-		}
-		if report.Blocked() {
-			return fmt.Errorf("%w: %w", ErrCommitBlocked, report.Err())
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
 		}
 
 		lockPaths := make([]string, 0, len(changesets))
@@ -266,6 +401,13 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 			}
 			lockPaths = append(lockPaths, filepath.Join(project.Path, LockFileName))
 		}
+		// Artifact and adjacent lock paths were containment-checked before the
+		// workspace lock created anything. Only now may their parent directories be
+		// created so the lock files can be opened safely.
+		if err := createArtifactLockDirectories(artifactLocks); err != nil {
+			return err
+		}
+		lockPaths = append(lockPaths, artifactLocks...)
 
 		return withOrderedFileLocks(lockPaths, func() error {
 			r, commitErr := s.commitMultiLocked(journal, changesets)
@@ -281,9 +423,10 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	return results, nil
 }
 
-// CommitOps commits a set of raw file operations — a directory move, a tombstone
-// write, a config rewrite, cross-reference repairs — as ONE atomic transaction
-// through the journal, under the workspace commit lock and after crash recovery.
+// CommitOps commits raw file operations — directory moves, tombstone writes, and
+// recursive deletes — as ONE atomic transaction through the journal, under the
+// workspace commit lock and after crash recovery. Call CommitOpsWithArtifacts
+// when a lifecycle operation also carries revision-checked writes.
 // It is the project-lifecycle counterpart to CommitMulti: where CommitMulti's unit
 // is a project's tasks.md plus its artifacts, CommitOps carries arbitrary in-root
 // file ops, so archive-location, trash, restore, and purge choreography commits
@@ -293,39 +436,261 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 // trash/restore is reversible through the trash lifecycle itself and purge is
 // irreversible, so neither participates in the task-oriented workspace ledger.
 func (s *CommitService) CommitOps(ops []transaction.Op) error {
-	if len(ops) == 0 {
+	return s.CommitOpsWithArtifacts(ops, nil)
+}
+
+// CommitOpsWithArtifacts commits lifecycle file operations and typed artifacts
+// as one transaction. Unlike flattening artifacts into raw writes, this path
+// acquires their domain locks and validates every ExpectedRevision before any
+// move, delete, or write is staged. A stale catalog/config artifact therefore
+// aborts the accompanying project rename, trash, or restore without changing the
+// workspace.
+func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts []ArtifactChange) error {
+	if len(ops) == 0 && len(artifacts) == 0 {
 		return nil
+	}
+	lockPaths, err := artifactLockPaths(artifacts, s.roots)
+	if err != nil {
+		return err
 	}
 	return s.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(s.transactionsDir, s.roots)
-		report, recoverErr := journal.Recover()
-		if recoverErr != nil {
-			return fmt.Errorf("transaction recovery failed: %w", recoverErr)
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
 		}
-		if report.Blocked() {
-			return fmt.Errorf("%w: %w", ErrCommitBlocked, report.Err())
+		if err := createArtifactLockDirectories(lockPaths); err != nil {
+			return err
 		}
-		manifest, err := journal.Prepare(ops)
-		if err != nil {
-			return fmt.Errorf("preparing transaction: %w", err)
-		}
-		// Create every write/move target's parent directory now that Prepare
-		// validated every target and before Commit renames staged bytes (or a moved
-		// directory) into place, so a rejected target never leaves an empty directory
-		// and the rename never fails on a missing parent.
-		for _, op := range ops {
-			switch op.Kind {
-			case transaction.OpWrite, transaction.OpMove:
-				if mkErr := os.MkdirAll(filepath.Dir(filepath.Clean(op.Target)), DirPermissions); mkErr != nil {
-					return fmt.Errorf("creating commit target directory: %w", mkErr)
+		return withOrderedFileLocks(lockPaths, func() error {
+			if err := validateArtifactRevisions(artifacts); err != nil {
+				return err
+			}
+
+			allOps := make([]transaction.Op, 0, len(ops)+len(artifacts))
+			allOps = append(allOps, ops...)
+			for _, artifact := range artifacts {
+				if artifact.Delete {
+					allOps = append(allOps, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
+					continue
+				}
+				mode := artifact.Mode
+				if mode == 0 {
+					mode = FilePermissions
+				}
+				allOps = append(allOps, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
+			}
+
+			manifest, err := journal.Prepare(allOps)
+			if err != nil {
+				return fmt.Errorf("preparing transaction: %w", err)
+			}
+			// Prepare creates ordinary write parents while staging. A write nested
+			// below an earlier directory move is staged below that move's source and
+			// the move itself creates the destination parent. Creating write parents
+			// here would occupy a rename destination and make the move fail. Only a
+			// move's containing directory must be created explicitly.
+			for _, op := range allOps {
+				switch op.Kind {
+				case transaction.OpMove:
+					if mkErr := os.MkdirAll(filepath.Dir(filepath.Clean(op.Target)), DirPermissions); mkErr != nil {
+						return fmt.Errorf("creating commit target directory: %w", mkErr)
+					}
+				case transaction.OpWrite, transaction.OpDelete:
+					// Prepare or an earlier move provides write parents. Deletes need none.
 				}
 			}
-		}
-		if err := journal.Commit(manifest); err != nil {
-			return fmt.Errorf("committing transaction: %w", err)
-		}
-		return nil
+			if err := journal.Commit(manifest); err != nil {
+				return fmt.Errorf("committing transaction: %w", err)
+			}
+			return nil
+		})
 	})
+}
+
+// CommitArtifacts commits a set of configuration-domain artifacts — with no
+// accompanying project tasks.md — as ONE atomic journaled transaction. It is the
+// config-only counterpart of CommitMulti: production domain coordinators encode
+// the four synced domain files (workspace/planning/settings/automation.json) into
+// revision-checked ArtifactChange values and drive them through here, so a config
+// mutation that rides no task write still commits all-or-nothing with journal-
+// backed crash recovery.
+//
+// Like every commit path it runs under the workspace commit lock after crash
+// recovery (refusing while a transaction is quarantined), then acquires each
+// artifact's deterministic lock, validates every ExpectedRevision under those
+// locks, and only then stages and commits. A single stale artifact aborts the
+// whole set with an *ArtifactConflictError before any byte is written, so two
+// coordinators updating the same shared domain can never silently overwrite each
+// other. It records no undo-ledger entry: the config-only path is reversed through
+// the config domain's own revision history, not the task-oriented workspace ledger.
+func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, error) {
+	if len(artifacts) == 0 {
+		return "", fmt.Errorf("storage: commit requires at least one artifact")
+	}
+	lockPaths, err := artifactLockPaths(artifacts, s.roots)
+	if err != nil {
+		return "", err
+	}
+	var txnID string
+	err = s.withWorkspaceCommitLock(func() error {
+		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
+		}
+
+		if err := createArtifactLockDirectories(lockPaths); err != nil {
+			return err
+		}
+		return withOrderedFileLocks(lockPaths, func() error {
+			// Preflight every artifact revision under the held locks before staging.
+			if err := validateArtifactRevisions(artifacts); err != nil {
+				return err
+			}
+			ops := make([]transaction.Op, 0, len(artifacts))
+			var dirsToCreate []string
+			for _, artifact := range artifacts {
+				if artifact.Delete {
+					ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
+					continue
+				}
+				mode := artifact.Mode
+				if mode == 0 {
+					mode = FilePermissions
+				}
+				ops = append(ops, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
+				dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
+			}
+			manifest, err := journal.Prepare(ops)
+			if err != nil {
+				return fmt.Errorf("preparing transaction: %w", err)
+			}
+			for _, dir := range dirsToCreate {
+				if err := os.MkdirAll(dir, DirPermissions); err != nil {
+					return fmt.Errorf("creating commit target directory: %w", err)
+				}
+			}
+			if err := journal.Commit(manifest); err != nil {
+				return fmt.Errorf("committing transaction: %w", err)
+			}
+			txnID = manifest.ID
+			return nil
+		})
+	})
+	if err != nil {
+		return "", err
+	}
+	return txnID, nil
+}
+
+// RawArtifactRevision returns the optimistic-concurrency revision of an artifact's
+// raw on-disk bytes: the hex-encoded SHA-256 of data. It is the storage-side
+// definition of ArtifactChange.ExpectedRevision, and it matches the hash the
+// config domain store computes for the same bytes, so a revision observed at load
+// time by a config coordinator validates against the same file here.
+func RawArtifactRevision(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// validateArtifactRevisions enforces every artifact's ExpectedRevision contract
+// against the current on-disk bytes. It must be called under the artifact locks so
+// the observed state cannot change between the check and the staged write. A nil
+// ExpectedRevision skips the artifact; an empty expected revision requires the
+// file to be absent; a non-empty expected revision requires the current raw hash
+// to match exactly. Any violation returns an *ArtifactConflictError.
+func validateArtifactRevisions(artifacts []ArtifactChange) error {
+	for i := range artifacts {
+		a := artifacts[i]
+		if a.ExpectedRevision == nil {
+			continue
+		}
+		checkPath := artifactRevisionPath(a)
+		data, err := os.ReadFile(checkPath)
+		switch {
+		case os.IsNotExist(err):
+			if *a.ExpectedRevision != "" {
+				return &ArtifactConflictError{Path: checkPath, Expected: *a.ExpectedRevision, Actual: ""}
+			}
+		case err != nil:
+			return fmt.Errorf("reading artifact %s for concurrency check: %w", filepath.Base(checkPath), err)
+		default:
+			actual := RawArtifactRevision(data)
+			if *a.ExpectedRevision == "" {
+				return &ArtifactConflictError{Path: checkPath, Expected: "", Actual: actual}
+			}
+			if actual != *a.ExpectedRevision {
+				return &ArtifactConflictError{Path: checkPath, Expected: *a.ExpectedRevision, Actual: actual}
+			}
+		}
+	}
+	return nil
+}
+
+func artifactRevisionPath(artifact ArtifactChange) string {
+	if artifact.ExpectedRevisionPath != "" {
+		return artifact.ExpectedRevisionPath
+	}
+	return artifact.Path
+}
+
+func artifactAdvisoryLockPath(path string) string {
+	if filepath.Base(path) == tasksFileName {
+		return filepath.Join(filepath.Dir(path), LockFileName)
+	}
+	return path + ".lock"
+}
+
+// artifactLockPaths returns the deterministic lock-file path for every artifact
+// target after validating both the write target and revision source against the
+// approved roots. It is deliberately read-only: all artifact and lock paths,
+// including existing symlink prefixes, must pass containment before the commit
+// creates its workspace lock, target directories, staging files, or manifest.
+// Domain artifacts use the adjacent ".lock" suffix; tasks.md uses the canonical
+// project .tasks.md.lock so lifecycle rewrites serialize with ordinary commits.
+func artifactLockPaths(artifacts []ArtifactChange, roots []string) ([]string, error) {
+	paths := make([]string, 0, len(artifacts))
+	for i := range artifacts {
+		path := artifacts[i].Path
+		if path == "" {
+			return nil, fmt.Errorf("storage: artifact change requires a path")
+		}
+		if !pathWithinApprovedRoots(path, roots) {
+			return nil, fmt.Errorf("storage: artifact target %q: %w", path, transaction.ErrTargetOutsideRoot)
+		}
+		checkPath := artifactRevisionPath(artifacts[i])
+		if !pathWithinApprovedRoots(checkPath, roots) {
+			return nil, fmt.Errorf("storage: artifact revision source %q: %w", checkPath, transaction.ErrTargetOutsideRoot)
+		}
+		lockPath := artifactAdvisoryLockPath(checkPath)
+		if !pathWithinApprovedRoots(lockPath, roots) {
+			return nil, fmt.Errorf("storage: artifact lock %q: %w", lockPath, transaction.ErrTargetOutsideRoot)
+		}
+		paths = append(paths, lockPath)
+	}
+	return paths, nil
+}
+
+// pathWithinApprovedRoots applies the journal's lexical and existing-symlink
+// containment rule to a path without mutating the filesystem.
+func pathWithinApprovedRoots(path string, roots []string) bool {
+	for _, root := range roots {
+		if util.PathWithinRoot(root, path) {
+			return true
+		}
+	}
+	return false
+}
+
+// createArtifactLockDirectories creates the already-validated parent directories
+// needed by WithFileLock. Callers must invoke artifactLockPaths before entering any
+// mutation-capable commit boundary and pass only its returned paths here.
+func createArtifactLockDirectories(lockPaths []string) error {
+	for _, lockPath := range lockPaths {
+		if err := os.MkdirAll(filepath.Dir(lockPath), DirPermissions); err != nil {
+			return fmt.Errorf("creating artifact lock directory: %w", err)
+		}
+	}
+	return nil
 }
 
 // workspaceCommitLockName is the single workspace-level lock file that serializes
@@ -352,28 +717,127 @@ func (s *CommitService) withWorkspaceCommitLock(fn func() error) error {
 	return util.WithFileLock(filepath.Join(s.transactionsDir, workspaceCommitLockName), true, fn)
 }
 
-// commitMultiLocked performs the full preflight, staging, and commit for every
-// changeset while the caller holds every affected project's exclusive lock. It
-// verifies all expected revisions before touching any file, so a stale revision
-// anywhere aborts the whole set before any backup or staging is written.
-func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changesets []ChangeSet) ([]*CommitResult, error) {
+// recoverLocked runs one journal recovery pass while the caller holds the
+// workspace commit lock. Keeping the quarantine classification here gives
+// startup recovery and every mutation entry point the same fail-closed policy.
+func (s *CommitService) recoverLocked(journal *transaction.Journal) (*transaction.RecoveryReport, error) {
+	report, err := journal.Recover()
+	if err != nil {
+		return report, fmt.Errorf("transaction recovery failed: %w", err)
+	}
+	if report.Blocked() {
+		return report, fmt.Errorf("%w: %w", ErrCommitBlocked, report.Err())
+	}
+	return report, nil
+}
+
+func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectDocument, []RecordedConflict, error) {
+	// mergedDocs[i], when non-nil, is the three-way-merged document that replaces
+	// changeset i's local intent because its expected revision was stale but the
+	// concurrent edits merged cleanly. Phase 3 writes it verbatim instead of
+	// re-rendering the caller's local document.
+	mergedDocs := make([]*ProjectDocument, len(changesets))
+	// recorded accumulates every project whose stale-revision merge produced true
+	// conflicts. A non-empty set aborts the whole commit after every conflict is
+	// durably recorded, so no project or artifact is written.
+	var recorded []RecordedConflict
+
 	// Phase 1: preflight every project's expected revision under the held locks.
 	// No bytes are written yet, so a conflict here leaves every project untouched.
 	for i := range changesets {
 		cs := changesets[i]
 		project := cs.Project
-		currentRevision, err := s.currentRevisionAndActivity(tasksFilePath(project.Path), project)
+		currentDoc, currentRevision, err := s.currentDocAndRevision(tasksFilePath(project.Path), project)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if cs.ExpectedRevision != "" && cs.ExpectedRevision != currentRevision {
-			return nil, &RevisionConflictError{
+		switch {
+		case cs.ExpectedRevision == "" || cs.ExpectedRevision == currentRevision:
+			// In sync (or the caller opted out of the check): nothing to merge. Record
+			// the activity diff against the current (== the loaded base) document, as
+			// the legacy save path did, before Phase 3 renders the local intent. This
+			// runs ONLY here: diffing the local intent against a divergent on-disk
+			// document would append activity entries that then read as a spurious
+			// same-field merge conflict, so the merge path below is left untouched.
+			if currentDoc != nil {
+				diffAndRecordActivity(currentDoc.Tasks, project.Tasks, MaxActivityEntries)
+			}
+		case s.conflicts != nil && cs.Base != nil && currentDoc != nil:
+			// Stale revision with a real merge base and a durable conflict store:
+			// three-way merge the loaded base, the caller's local intent, and the
+			// current on-disk document under the held locks. A clean non-overlapping
+			// merge replaces the local intent and commits against the current
+			// revision; a true conflict is durably recorded as retry-only and aborts
+			// the whole set. Retry-only is required because this project bundle cannot
+			// represent the complete ChangeSet (including artifacts, attachment bytes,
+			// clean companion projects, and undo intent).
+			local, mergeErr := CanonicalProjectDocument(project, cs.Base)
+			if mergeErr != nil {
+				return nil, nil, fmt.Errorf("rendering local document for merge of %s: %w", project.Name, mergeErr)
+			}
+			merge, conflictID, mergeErr := MergeOrRecordConflict(s.conflicts, project, cs.Base, local, currentDoc, cs.UndoAction, cs.UndoContext)
+			if mergeErr != nil {
+				return nil, nil, fmt.Errorf("merging stale project %s: %w", project.Name, mergeErr)
+			}
+			if conflictID != "" {
+				recorded = append(recorded, RecordedConflict{
+					ProjectID:   project.ID,
+					ProjectName: project.Name,
+					ConflictID:  conflictID,
+					Conflicts:   merge.Conflicts,
+				})
+				continue
+			}
+			// The merge retained current's durable activity history while excluding
+			// Activity from user-authored field conflicts. Record the accepted local
+			// business delta against current exactly once before canonicalization, so
+			// a clean stale commit has the same audit semantics as an in-sync commit.
+			diffAndRecordActivity(currentDoc.Tasks, merge.Merged.Tasks, MaxActivityEntries)
+			// Re-parse the merged rendering so the committed revision is a fixed point
+			// (reload-stable): it equals exactly what the next LoadProjectDocument sees.
+			canonical, canonErr := ParseProjectDocument(merge.Merged.WriteV2())
+			if canonErr != nil {
+				return nil, nil, fmt.Errorf("canonicalizing merged document for %s: %w", project.Name, canonErr)
+			}
+			// The merge folded in the current on-disk state, so mergedDocs[i] is what
+			// Phase 3 writes; the write is safe under the still-held project lock (no
+			// further revision check is needed, the merge already reconciled current).
+			mergedDocs[i] = canonical
+		default:
+			// Stale with no merge capability (nil base, corrupt or absent current doc,
+			// or no conflict store): abort as before so the caller reloads and retries.
+			return nil, nil, &RevisionConflictError{
 				ProjectID:   project.ID,
 				ProjectName: project.Name,
 				Expected:    cs.ExpectedRevision,
 				Actual:      currentRevision,
 			}
 		}
+		// Validate every artifact's optimistic revision under the same held locks,
+		// before any bytes are staged, so a stale config artifact aborts the whole
+		// set without touching disk.
+		if err := validateArtifactRevisions(cs.Artifacts); err != nil {
+			return nil, nil, err
+		}
+	}
+	return mergedDocs, recorded, nil
+}
+
+// commitMultiLocked performs the full preflight, staging, and commit for every
+// changeset while the caller holds every affected project's exclusive lock. It
+// verifies all expected revisions before touching any file, so a stale revision
+// anywhere aborts the whole set before any backup or staging is written.
+func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changesets []ChangeSet) ([]*CommitResult, error) {
+	mergedDocs, recorded, preflightErr := s.preflightChangesets(changesets)
+	if preflightErr != nil {
+		return nil, preflightErr
+	}
+
+	// A single unresolved merge aborts the whole set: nothing is written, but every
+	// conflict has been durably recorded for later resolution through the shared
+	// resolution service.
+	if len(recorded) > 0 {
+		return nil, &CommitConflictError{Conflicts: recorded}
 	}
 
 	// Phase 2: back up every project's current tasks.md as an internal repair hook
@@ -404,10 +868,22 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 	var ledgerArtifacts []LedgerArtifact
 	var ledgerProjectIDs []string
 	var recordAction, recordContext string
+	committedDocs := make([]*ProjectDocument, len(changesets))
 	for i := range changesets {
 		cs := changesets[i]
 		project := cs.Project
-		content := WriteTasksMarkdownWithFullProjectMetadata(project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags)
+		// A stale changeset that merged cleanly writes the merged document; every
+		// other changeset renders the caller's local intent over its base.
+		committedDoc := mergedDocs[i]
+		if committedDoc == nil {
+			var err error
+			committedDoc, err = CanonicalProjectDocument(project, cs.Base)
+			if err != nil {
+				return nil, fmt.Errorf("rendering project %s: %w", project.Name, err)
+			}
+		}
+		content := committedDoc.WriteV2()
+		committedDocs[i] = committedDoc
 		if s.ledger != nil {
 			arts, err := captureLedgerArtifacts(cs, content)
 			if err != nil {
@@ -492,9 +968,8 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 
 	results := make([]*CommitResult, len(changesets))
 	for i := range changesets {
-		cs := changesets[i]
 		results[i] = &CommitResult{
-			Revision:      ToProjectDocument(cs.Project, cs.Opaque).Revision,
+			Revision:      committedDocs[i].Revision,
 			TransactionID: manifest.ID,
 		}
 	}
@@ -533,26 +1008,28 @@ func acquireLocksInOrder(paths []string, fn func() error) error {
 	})
 }
 
-// currentRevisionAndActivity reads the project's current tasks.md, returning its
-// canonical revision (empty when the file does not yet exist) and recording the
-// activity diff against the project's new task set. A parse failure is
-// non-fatal: activity diffing and the revision check are skipped rather than
-// blocking the save, matching the legacy save path's tolerance.
-func (s *CommitService) currentRevisionAndActivity(tasksPath string, project *models.Project) (string, error) {
+// currentDocAndRevision reads and parses the project's current tasks.md,
+// returning the parsed document (the three-way merge's "current" input) and its
+// canonical revision, or (nil, "") when the file is absent or unparseable. Unlike
+// the legacy read it performs NO activity diff — that mutates the caller's task
+// set and must not run before a merge, so Phase 1 records activity only on the
+// in-sync path. A nil document routes a stale commit to a plain
+// RevisionConflictError since it has no mergeable current, matching the legacy
+// save path's tolerance of an unparseable on-disk file.
+func (s *CommitService) currentDocAndRevision(tasksPath string, project *models.Project) (*ProjectDocument, string, error) {
 	oldContent, err := os.ReadFile(tasksPath)
 	if os.IsNotExist(err) {
-		return "", nil
+		return nil, "", nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("failed to read tasks file: %w", err)
+		return nil, "", fmt.Errorf("failed to read tasks file: %w", err)
 	}
 	oldDoc, parseErr := ParseProjectDocument(string(oldContent))
 	if parseErr != nil {
-		logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
-		return "", nil
+		logging.Warn("could not read current document for %s: %v", project.Name, parseErr)
+		return nil, "", nil
 	}
-	diffAndRecordActivity(oldDoc.Tasks, project.Tasks, MaxActivityEntries)
-	return oldDoc.Revision, nil
+	return oldDoc, oldDoc.Revision, nil
 }
 
 // resolveAttachmentOps translates a changeset's attachment side effects into

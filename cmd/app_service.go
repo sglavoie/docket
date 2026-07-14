@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -15,7 +16,6 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 	tterrors "github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
-	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // cliRepository is the production app.Repository backing CLI mutations. Each
@@ -24,27 +24,30 @@ import (
 // changesets through the transactional commit service (with the workspace undo
 // ledger attached) when the workspace lives on the real filesystem, and falls
 // back to the legacy raw-save path when the storage repository is a test double.
-// This mirrors the dual path SaveProject/projectCommitService already use, so a
-// mutation routed through the application layer stays atomic, revision-checked,
-// and undoable in production while remaining observable to the in-memory
-// repository the CLI command tests inject.
+// A mutation routed through the application layer therefore stays atomic,
+// revision-checked, and undoable in production while remaining observable to
+// the in-memory repository the CLI command tests inject.
 type cliRepository struct {
-	cfg     *config.Config
+	deps    *config.RuntimeDependencies
 	dataDir string
 	svc     *storage.CommitService
 }
 
 // newCLIRepository builds the storage-backed application repository for the
 // active workspace, sizing the undo ledger from the configured history depth.
-func newCLIRepository(cfg *config.Config) *cliRepository {
-	dataDir := cfg.DataDir
+func newCLIRepository(mgr *config.Manager, deps *config.RuntimeDependencies) *cliRepository {
+	if deps == nil {
+		deps = mgr.RuntimeDependencies()
+	}
+	dataDir := catalogWorkspaceDataDir(mgr)
 	depth := config.DefaultUndoHistoryDepth
-	if cfg.UndoHistoryDepth != nil {
-		depth = *cfg.UndoHistoryDepth
+	if settings, err := deps.Settings.LoadSettings(); err == nil && settings.UndoHistoryDepth != nil {
+		depth = *settings.UndoHistoryDepth
 	}
 	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
-	svc := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger)
-	return &cliRepository{cfg: cfg, dataDir: dataDir, svc: svc}
+	svc := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger).
+		WithConflictStore(storage.NewConflictStore(config.ConflictsDir(dataDir)))
+	return &cliRepository{deps: deps, dataDir: dataDir, svc: svc}
 }
 
 // useCommitService reports whether the workspace is backed by the real
@@ -60,9 +63,13 @@ func (r *cliRepository) useCommitService() bool {
 // in the workspace. Projects that fail to load are skipped with a warning rather
 // than failing the whole mutation, matching FindTaskGloballyByID's tolerance.
 func (r *cliRepository) Snapshot() (app.Snapshot, error) {
-	projects := r.cfg.GetAllLoadableProjects()
+	projects, err := r.deps.AllLoadableProjects(r.dataDir)
+	if err != nil {
+		return nil, err
+	}
 	loaded := make([]*models.Project, 0, len(projects))
 	revisions := make(map[string]string, len(projects))
+	documents := make(map[string]*storage.ProjectDocument, len(projects))
 	for _, p := range projects {
 		if p == nil {
 			continue
@@ -71,14 +78,21 @@ func (r *cliRepository) Snapshot() (app.Snapshot, error) {
 			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", p.Name, err)
 			continue
 		}
+		doc, err := projectDiskDocument(p)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping project %s document: %v\n", p.Name, err)
+			continue
+		}
 		loaded = append(loaded, p)
-		revisions[p.ID] = projectDiskRevision(p)
+		revisions[p.ID] = doc.Revision
+		documents[p.ID] = doc
 	}
-	return app.NewSnapshot(loaded, revisions), nil
+	return app.NewSnapshot(loaded, revisions, documents), nil
 }
 
-// projectDiskRevision returns the canonical revision of a project's on-disk
-// tasks.md — the exact value the commit service compares ExpectedRevision against.
+// projectDiskDocument returns the exact lossless on-disk document whose revision
+// the commit service compares against ExpectedRevision and whose opaque blocks
+// must survive the next user mutation.
 // It deliberately does NOT recompute the revision from the loaded in-memory
 // project: storage.LoadProject applies EnsureDefaultSections (and other load-time
 // normalization), so ToProjectDocument(loaded) can diverge from the raw bytes a
@@ -90,15 +104,15 @@ func (r *cliRepository) Snapshot() (app.Snapshot, error) {
 // in memory with no tasks.md on disk, and their commit fallback ignores
 // ExpectedRevision, so there the in-memory canonical revision is both correct and
 // sufficient.
-func projectDiskRevision(p *models.Project) string {
+func projectDiskDocument(p *models.Project) (*storage.ProjectDocument, error) {
 	if _, ok := storage.DefaultRepository.(*storage.FileSystemRepository); !ok {
-		return storage.ToProjectDocument(p, nil).Revision
+		return storage.CanonicalProjectDocument(p, nil)
 	}
 	doc, err := storage.LoadProjectDocument(p)
 	if err != nil {
-		return storage.ToProjectDocument(p, nil).Revision
+		return nil, err
 	}
-	return doc.Revision
+	return doc, nil
 }
 
 // Commit applies the changesets atomically. On the real filesystem it drives the
@@ -138,7 +152,11 @@ func (r *cliRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.Comm
 		}
 		revision := ""
 		if cs.Project != nil {
-			revision = workspace.NewLoader().Build([]*models.Project{cs.Project}).Revision(cs.Project.ID)
+			doc, docErr := storage.CanonicalProjectDocument(cs.Project, cs.Base)
+			if docErr != nil {
+				return nil, docErr
+			}
+			revision = doc.Revision
 		}
 		results[i] = &storage.CommitResult{Revision: revision}
 	}
@@ -201,7 +219,7 @@ func applyAttachmentOp(op storage.AttachmentOp) error {
 	}
 }
 
-// encodeConfigArtifacts renders the four synced configuration domains
+// encodeSyncedDomainArtifacts renders the four synced configuration domains
 // (workspace/planning/settings/automation.json) into ChangeSet artifacts so a
 // config mutation (e.g. an incremented template use-count, a focus-queue/daily-
 // plan cleanup, or a project-catalog change) rides the same transaction as the
@@ -210,43 +228,103 @@ func applyAttachmentOp(op storage.AttachmentOp) error {
 // the workspace data directory (the commit service's approved root), so a
 // domain-file reload observes the mutation.
 //
+// It routes through RuntimeState's startup-loaded DomainCoordinator so every
+// artifact carries an optimistic-concurrency revision check — the on-disk
+// revision observed when the command loaded, or a require-absent contract when
+// the domain did not yet exist. Retaining that original baseline catches a
+// concurrent writer at any point after command load; the transaction validates
+// it again under the artifact locks before staging.
+//
 // machine.json is deliberately excluded: it is machine-local, lives outside the
-// approved root, and its refs are repaired separately post-commit. This replaces
-// the pre-cutover single-blob .tt.json artifact, which a domain-file reload would
-// no longer read.
-func encodeConfigArtifacts(mgr *config.Manager, cfg *config.Config) ([]storage.ArtifactChange, error) {
-	domainArts, err := mgr.SyncedDomainArtifacts(cfg)
+// approved root, and its refs are repaired separately post-commit.
+func encodeSyncedDomainArtifacts(runtime *config.RuntimeState, domains *config.Domains) ([]storage.ArtifactChange, error) {
+	if domains == nil {
+		return nil, fmt.Errorf("configuration domains are required")
+	}
+	domainArts, err := runtime.CheckedSyncedArtifacts(domains)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode config artifacts: %w", err)
 	}
+	return storageArtifacts(domainArts), nil
+}
+
+// encodeCatalogArtifact renders only workspace.json for a project lifecycle
+// transaction whose synced configuration effect is catalog-only.
+func encodeCatalogArtifact(runtime *config.RuntimeState, catalog *config.WorkspaceCatalog) ([]storage.ArtifactChange, error) {
+	artifact, err := runtime.CheckedCatalogArtifact(catalog)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode workspace catalog: %w", err)
+	}
+	return storageArtifacts([]config.DomainArtifact{artifact}), nil
+}
+
+func storageArtifacts(domainArts []config.DomainArtifact) []storage.ArtifactChange {
 	arts := make([]storage.ArtifactChange, 0, len(domainArts))
 	for _, da := range domainArts {
-		arts = append(arts, storage.ArtifactChange{Path: da.Path, Data: da.Data})
+		arts = append(arts, storage.ArtifactChange{Path: da.Path, Data: da.Data, ExpectedRevision: da.ExpectedRevision})
 	}
-	return arts, nil
+	return arts
 }
 
-// RawSaveProject implements app.MaintenanceRepository: it rewrites a project's
-// tasks.md outside the transactional commit boundary. It is the deliberate
-// repair-only escape hatch tt doctor uses, kept distinct from the mutation path.
-func (r *cliRepository) RawSaveProject(project *models.Project) error {
-	return storage.SaveProject(project)
+func commitSyncedDomains(workspace *CLIWorkspace, domains *config.Domains) error {
+	artifacts, err := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
+	if err != nil {
+		return err
+	}
+	return translateAppError(newWorkspaceAppService(workspace).CommitConfig(artifacts...))
 }
 
-// CommitOps implements app.OpsCommitter: it commits a set of raw file operations —
-// a project directory move, a tombstone write, a config rewrite, a recursive delete
-// — as ONE atomic journaled transaction on the real filesystem, driving the project
-// archive-location, trash, restore, and purge use cases. Against a test-double
-// repository (no filesystem transaction journal) it applies the same operations
-// directly on disk, mirroring the observable effect the transactional path would
-// produce, so command tests exercise the same routing without a live journal.
-func (r *cliRepository) CommitOps(ops []transaction.Op) error {
+// CommitOps implements app.OpsCommitter: it commits raw lifecycle operations and
+// revision-checked domain/project artifacts as ONE atomic journaled transaction
+// on the real filesystem. Against a test-double repository (no filesystem
+// transaction journal) it applies the same effects directly on disk so command
+// tests exercise the same routing without a live journal.
+func (r *cliRepository) CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error {
 	if r.useCommitService() {
-		return r.svc.CommitOps(ops)
+		return r.svc.CommitOpsWithArtifacts(ops, artifacts)
+	}
+	// The test-double path has no production CommitService, but it must preserve
+	// the same fail-before-effects revision contract. In particular a rename's
+	// revision source can be the old tasks.md path that the raw move consumes.
+	if err := validateFallbackArtifactRevisions(artifacts); err != nil {
+		return err
 	}
 	for _, op := range ops {
 		if err := applyRawOp(op); err != nil {
 			return err
+		}
+	}
+	for _, artifact := range artifacts {
+		if err := applyArtifactChange(artifact); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateFallbackArtifactRevisions(artifacts []storage.ArtifactChange) error {
+	for i := range artifacts {
+		artifact := artifacts[i]
+		if artifact.ExpectedRevision == nil {
+			continue
+		}
+		checkPath := artifact.Path
+		if artifact.ExpectedRevisionPath != "" {
+			checkPath = artifact.ExpectedRevisionPath
+		}
+		data, err := os.ReadFile(checkPath)
+		switch {
+		case os.IsNotExist(err):
+			if *artifact.ExpectedRevision != "" {
+				return &storage.ArtifactConflictError{Path: checkPath, Expected: *artifact.ExpectedRevision}
+			}
+		case err != nil:
+			return fmt.Errorf("reading artifact %s for concurrency check: %w", filepath.Base(checkPath), err)
+		default:
+			actual := storage.RawArtifactRevision(data)
+			if *artifact.ExpectedRevision == "" || actual != *artifact.ExpectedRevision {
+				return &storage.ArtifactConflictError{Path: checkPath, Expected: *artifact.ExpectedRevision, Actual: actual}
+			}
 		}
 	}
 	return nil
@@ -286,8 +364,15 @@ func applyRawOp(op transaction.Op) error {
 // service owns the storage-backed repository, the system clock, and the UUID
 // generator; every task/project mutation command routes through one of its use
 // cases instead of orchestrating load/mutate/save itself.
-func newAppService(cfg *config.Config) *app.Service {
-	return app.NewService(newCLIRepository(cfg), nil, nil)
+func newAppService(mgr *config.Manager) *app.Service {
+	return app.NewService(newCLIRepository(mgr, nil), nil, nil)
+}
+
+// newWorkspaceAppService reuses the command's single RuntimeDependencies
+// composition object for lifecycle snapshots and settings instead of rebuilding
+// the domain service graph at each mutation boundary.
+func newWorkspaceAppService(workspace *CLIWorkspace) *app.Service {
+	return app.NewService(newCLIRepository(workspace.Manager, workspace.Dependencies), nil, nil)
 }
 
 // resolveAppTaskID applies the strict qualified-reference rules at the adapter
@@ -296,8 +381,8 @@ func newAppService(cfg *config.Config) *app.Service {
 // accepted only when it is unique across the workspace, a cross-project target
 // must be qualified (slug:#short-id / slug:uuid), and ambiguity is reported as an
 // error listing candidates rather than silently acting on the wrong task.
-func resolveAppTaskID(cfg *config.Config, ref string) (string, error) {
-	task, _, err := FindTaskGloballyByID(cfg, ref)
+func resolveAppTaskID(mgr *config.Manager, ref string) (string, error) {
+	task, _, err := findAppTaskGlobally(mgr, ref)
 	if err != nil {
 		return "", err
 	}
@@ -305,6 +390,94 @@ func resolveAppTaskID(cfg *config.Config, ref string) (string, error) {
 		return "", tterrors.NewTaskNotFoundError(ref)
 	}
 	return task.ID, nil
+}
+
+// findAppTaskGlobally is the domain-backed task resolver used by application
+// adapters. It preserves qualified-reference and ambiguity behavior while
+// loading catalog projects through RuntimeDependencies instead of Config.
+func findAppTaskGlobally(mgr *config.Manager, query string) (*models.Task, *models.Project, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil, nil
+	}
+	deps := mgr.RuntimeDependencies()
+	dataDir := catalogWorkspaceDataDir(mgr)
+	ref := models.ParseTaskRef(query)
+	if ref.IsCrossProject() {
+		project, err := deps.Project(dataDir, ref.ProjectID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if project == nil {
+			return nil, nil, tterrors.NewProjectNotFoundError(ref.ProjectID)
+		}
+		if loadErr := storage.LoadProject(project); loadErr != nil {
+			return nil, nil, fmt.Errorf("failed to load project %s: %w", project.Name, loadErr)
+		}
+		task, err := FindTaskByIdentifier(project, strings.TrimPrefix(ref.TaskID, "#"))
+		return task, project, err
+	}
+
+	projects, err := deps.AllLoadableProjects(dataDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	type match struct {
+		task    *models.Task
+		project *models.Project
+	}
+	var matches []match
+	if ref.IsNumericShortID() {
+		shortID, _ := strconv.Atoi(query)
+		for _, project := range projects {
+			if err := storage.LoadProject(project); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
+				continue
+			}
+			if task := project.GetTaskByShortID(shortID); task != nil {
+				matches = append(matches, match{task: task, project: project})
+			}
+		}
+		if len(matches) > 1 {
+			parts := make([]string, min(len(matches), 5))
+			for i := range parts {
+				parts[i] = fmt.Sprintf("%s:#%d %s", matches[i].project.Slug, matches[i].task.ShortID, matches[i].task.Title)
+			}
+			candidates := strings.Join(parts, ", ")
+			if len(matches) > 5 {
+				candidates += fmt.Sprintf(", ... (%d more)", len(matches)-5)
+			}
+			return nil, nil, tterrors.NewAmbiguousIdentifierError(query, candidates)
+		}
+	} else {
+		lowerQuery := strings.ToLower(query)
+		for _, project := range projects {
+			if err := storage.LoadProject(project); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
+				continue
+			}
+			for _, task := range project.Tasks {
+				if strings.HasPrefix(strings.ToLower(task.ID), lowerQuery) {
+					matches = append(matches, match{task: task, project: project})
+				}
+			}
+		}
+		if len(matches) > 1 {
+			parts := make([]string, min(len(matches), 5))
+			for i := range parts {
+				parts[i] = fmt.Sprintf("#%d %s (%s)", matches[i].task.ShortID, matches[i].task.Title, shortDisplayID(matches[i].task.ID))
+			}
+			candidates := strings.Join(parts, ", ")
+			if len(matches) > 5 {
+				candidates += fmt.Sprintf(", ... (%d more)", len(matches)-5)
+			}
+			return nil, nil, tterrors.NewAmbiguousIdentifierError(query, candidates)
+		}
+	}
+	if len(matches) == 0 {
+		return nil, nil, nil
+	}
+	return matches[0].task, matches[0].project, nil
 }
 
 // translateAppError maps the application layer's presentation-neutral typed
@@ -321,6 +494,12 @@ func translateAppError(err error) error {
 	case errors.Is(err, app.ErrTaskNotFound):
 		return err
 	case errors.Is(err, app.ErrProjectNotFound):
+		return err
+	case errors.Is(err, storage.ErrMergeConflict):
+		// The commit boundary already three-way merged and recorded the conflict;
+		// its message names the recorded id and the resolution command. Surface it
+		// verbatim so the user is pointed at `tt conflict resolve` rather than a
+		// generic retry, and so the app-layer retry never loops on it.
 		return err
 	case errors.Is(err, storage.ErrStaleRevision):
 		return fmt.Errorf("the workspace changed since this command loaded it; please retry: %w", err)

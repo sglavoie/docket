@@ -139,7 +139,7 @@ type AccentColorSetter interface {
 type ViewContext struct {
 	Width         int
 	Height        int
-	Config        *config.Config
 	ConfigManager *config.Manager
+	Runtime       *config.RuntimeState
 	Persister     Persister
 }

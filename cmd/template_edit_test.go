@@ -32,17 +32,17 @@ func resetTemplateEditVars() {
 }
 
 // setupTemplateEditTest creates common test dependencies and returns them.
-func setupTemplateEditTest(t *testing.T) *testutil.TestDeps {
+func setupTemplateEditTest(t *testing.T) *testDeps {
 	t.Helper()
 	resetTemplateEditVars()
 
-	deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository
@@ -70,9 +70,9 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 				{Title: "Third"},
 			},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		// Set the flag to remove item 1 (1-based = first item)
 		templateEditRemoveChild = []int{1}
@@ -86,10 +86,10 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 		testutil.AssertNoError(t, err)
 
 		// Reload config
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
 
-		updated := reloaded.GetTaskTemplate("edit-tmpl")
+		updated := reloaded.Automation().GetTaskTemplate("edit-tmpl")
 		if updated == nil {
 			t.Fatal("template not found after edit")
 		}
@@ -114,9 +114,9 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 				{Title: "Only"},
 			},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		templateEditRemoveChild = []int{0}
 		cmd := templateEditCmd
@@ -139,9 +139,9 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 			Type:      models.TaskTypeTask,
 			Checklist: []string{"Step A", "Step B", "Step C"},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		templateEditRemoveChecklist = []int{1}
 		cmd := templateEditCmd
@@ -150,10 +150,10 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 		err := runTemplateEdit(cmd, []string{"edit-cl-tmpl"})
 		testutil.AssertNoError(t, err)
 
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
 
-		updated := reloaded.GetTaskTemplate("edit-cl-tmpl")
+		updated := reloaded.Automation().GetTaskTemplate("edit-cl-tmpl")
 		if updated == nil {
 			t.Fatal("template not found after edit")
 		}
@@ -176,9 +176,9 @@ func TestTemplateEditSectionValidation(t *testing.T) {
 			Enabled: true,
 			Type:    models.TaskTypeTask,
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		templateEditSection = "Backlog"
 		cmd := templateEditCmd

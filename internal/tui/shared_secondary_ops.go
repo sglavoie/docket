@@ -18,11 +18,8 @@ import (
 type taskOpsView interface {
 	tea.Model
 	getTaskRef() (task *models.Task, project *models.Project)
-	getPersister() Persister
-	getConfig() *config.Config
+	getRuntime() *config.RuntimeState
 	getConfigManager() *config.Manager
-	reloadData()
 	clampCursor()
-	setErr(error)
 	setStatus(string)
 }

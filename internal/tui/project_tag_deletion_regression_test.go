@@ -33,11 +33,11 @@ func TestDeletedProjectTagAfterReloadIsAbsentFromTagSurfaces(t *testing.T) {
 	}
 
 	app := newTestAppModel()
-	app.config.Projects = []*models.Project{project}
-	app.config.CurrentProject = project.ID
+	setTestAppProjects(app, project)
+	setTestCurrentProject(app, project.ID)
 	app.currentProject = project
-	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 
 	app.projectTree.filter.Tags = map[string]bool{"backend": true, "frontend": true}
 	app.outliner.filter.Tags = map[string]bool{"backend": true, "frontend": true}

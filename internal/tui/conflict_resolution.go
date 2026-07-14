@@ -15,10 +15,11 @@ import (
 )
 
 // ConflictResolutionModel presents one persisted three-way merge conflict and
-// its resolution choices: keep local, adopt remote, or hand-merge in an external
-// editor. It renders the base/local/remote values for each structured conflict
-// and drives resolution through the same storage.ResolveConflict boundary the CLI
-// uses, so the recheck-before-commit semantics are identical.
+// its resolution choices. Explicit project-only bundles can keep local, adopt
+// remote, or hand-merge in an external editor; retry-only transaction bundles can
+// only adopt remote and then retry the original operation. It renders the
+// base/local/remote values for each structured conflict and drives resolution
+// through the same storage.ResolveConflict boundary the CLI uses.
 type ConflictResolutionModel struct {
 	BaseView
 	ViewBundle
@@ -42,6 +43,7 @@ type ConflictResolvedMsg struct {
 	NewConflictID string
 	Committed     bool
 	Adopted       bool // adopted remote (nothing written)
+	RetryRequired bool // aborted transaction was not applied; rerun the operation
 }
 
 // conflictEditReturnMsg carries the result of an external hand-merge back into
@@ -52,9 +54,9 @@ type conflictEditReturnMsg struct {
 }
 
 // NewConflictResolutionModel builds the resolution view for a conflict bundle.
-func NewConflictResolutionModel(cfg *config.Config, manager *config.Manager, bundle *storage.ConflictBundle) *ConflictResolutionModel {
+func NewConflictResolutionModel(runtime *config.RuntimeState, bundle *storage.ConflictBundle) *ConflictResolutionModel {
 	m := &ConflictResolutionModel{
-		ViewBundle: ViewBundle{config: cfg, configManager: manager},
+		ViewBundle: ViewBundle{runtime: runtime},
 		bundle:     bundle,
 	}
 	m.SetSize(80, 24)
@@ -70,11 +72,15 @@ func (m *ConflictResolutionModel) conflicts() []storage.MergeConflict {
 	return m.bundle.Record.Conflicts
 }
 
+func (m *ConflictResolutionModel) requiresOperationRetry() bool {
+	return m.bundle != nil && m.bundle.Record.OperationRetryRequired()
+}
+
 // stores builds the conflict store and commit service for the active workspace,
 // mirroring the CLI's conflictWorkspace so resolution commits through the same
 // transactional boundary.
 func (m *ConflictResolutionModel) stores() (*storage.ConflictStore, *storage.CommitService) {
-	dataDir := config.WorkspaceRootFromConfigPath(m.configManager.GetConfigPath())
+	dataDir := m.runtime.DataDir()
 	return storage.NewConflictStore(config.ConflictsDir(dataDir)),
 		storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir})
 }
@@ -131,14 +137,19 @@ func (m *ConflictResolutionModel) resolve(resolution storage.ConflictResolution,
 	}
 	committed := res.Committed
 	adopted := resolution == storage.ResolveUseRemote
+	retryRequired := res.RetryRequired
 	return func() tea.Msg {
-		return ConflictResolvedMsg{ConflictID: id, Committed: committed, Adopted: adopted}
+		return ConflictResolvedMsg{ConflictID: id, Committed: committed, Adopted: adopted, RetryRequired: retryRequired}
 	}
 }
 
 // editExternally writes the local document to a temp file, opens it in the
 // configured editor, and resolves --use file with the edited result.
 func (m *ConflictResolutionModel) editExternally() tea.Cmd {
+	if m.requiresOperationRetry() {
+		m.setError(storage.ErrConflictRetryRequired.Error())
+		return nil
+	}
 	if m.bundle == nil || m.bundle.Local == nil {
 		m.setError("no local document to edit")
 		return nil
@@ -157,7 +168,7 @@ func (m *ConflictResolutionModel) editExternally() tea.Cmd {
 	}
 	_ = tmp.Close()
 
-	resolved, err := external.ResolveEditor(m.config.GetEditor())
+	resolved, err := external.ResolveEditor(m.runtime.Machine().GetEditor())
 	if err != nil {
 		_ = os.Remove(tmpPath)
 		m.setError(err.Error())
@@ -222,6 +233,10 @@ func (m *ConflictResolutionModel) View() tea.View {
 	subtitle := fmt.Sprintf("%s · %d conflict(s)", rec.ProjectName, len(rec.Conflicts))
 	b.WriteString(renderFullscreenTitle("Resolve Conflict", subtitle, m.AccentColor()))
 	b.WriteString("\n\n")
+	if rec.OperationRetryRequired() {
+		b.WriteString(PreviewWarningStyle.Render("This transaction was aborted. Adopt remote to clear it, then retry the original operation; local or hand-merged project-only resolution is disabled."))
+		b.WriteString("\n\n")
+	}
 
 	if m.statusMsg != "" {
 		style := DoneStyle
@@ -271,7 +286,11 @@ func (m *ConflictResolutionModel) View() tea.View {
 	}
 
 	b.WriteString("\n")
-	help := HelpStyle.Render("l: keep local · r: adopt remote · e: hand-merge · j/k: nav · Esc: close")
+	helpText := "l: keep local · r: adopt remote · e: hand-merge · j/k: nav · Esc: close"
+	if rec.OperationRetryRequired() {
+		helpText = "r: clear and retry operation · j/k: nav · Esc: close"
+	}
+	help := HelpStyle.Render(helpText)
 	b.WriteString(renderStatusBarFooter(help, "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }

@@ -1,10 +1,27 @@
 package config
 
-import (
-	"strings"
+import "github.com/google/uuid"
 
-	"github.com/google/uuid"
-)
+// savedView is retained only as an input shape for migrating early planning
+// domain files into SavedFilter entries.
+type savedView struct {
+	Name              string            `json:"name"`
+	ViewMode          int               `json:"view_mode,omitempty"`
+	FilterType        string            `json:"filter_type,omitempty"`
+	FilterStatus      string            `json:"filter_status,omitempty"`
+	FilterPriority    int               `json:"filter_priority,omitempty"`
+	FilterTags        []string          `json:"filter_tags,omitempty"`
+	FilterSections    []string          `json:"filter_sections,omitempty"`
+	FilterDueDate     int               `json:"filter_due_date,omitempty"`
+	FilterActionable  bool              `json:"filter_actionable,omitempty"`
+	FilterGitHubIssue bool              `json:"filter_github_issue,omitempty"`
+	FilterParked      bool              `json:"filter_parked,omitempty"`
+	FilterAttrs       map[string]string `json:"filter_attrs,omitempty"`
+	FilterScoreMin    float64           `json:"filter_score_min,omitempty"`
+	SortField         int               `json:"sort_field,omitempty"`
+	SortAscending     bool              `json:"sort_ascending"`
+	PinnedTagTab      string            `json:"pinned_tag_tab,omitempty"`
+}
 
 // SavedFilter is a unified filter preset that replaces both savedView (flat
 // filter snapshots) and smartList (compound criteria).  Mode selects which
@@ -55,85 +72,6 @@ func (f *SavedFilter) EffectiveLogic() string {
 		return "or"
 	}
 	return "and"
-}
-
-// --- CRUD operations on Config ---
-
-// GetSavedFilters returns all saved filters.
-func (c *Config) GetSavedFilters() []SavedFilter {
-	if c.SavedFilters == nil {
-		return []SavedFilter{}
-	}
-	return c.SavedFilters
-}
-
-// GetSavedFilter returns a saved filter by ID, or nil if not found.
-func (c *Config) GetSavedFilter(id string) *SavedFilter {
-	for i := range c.SavedFilters {
-		if c.SavedFilters[i].ID == id {
-			return &c.SavedFilters[i]
-		}
-	}
-	return nil
-}
-
-// GetSavedFilterByName returns the first saved filter matching name (case-insensitive).
-func (c *Config) GetSavedFilterByName(name string) *SavedFilter {
-	nameLower := strings.ToLower(name)
-	for i := range c.SavedFilters {
-		if strings.ToLower(c.SavedFilters[i].Name) == nameLower {
-			return &c.SavedFilters[i]
-		}
-	}
-	return nil
-}
-
-// SaveFilter upserts a saved filter by ID.  If a filter with the same ID
-// exists it is replaced; otherwise the filter is appended.
-func (c *Config) SaveFilter(f SavedFilter) {
-	for i := range c.SavedFilters {
-		if c.SavedFilters[i].ID == f.ID {
-			c.SavedFilters[i] = f
-			return
-		}
-	}
-	c.SavedFilters = append(c.SavedFilters, f)
-}
-
-// DeleteSavedFilter removes a saved filter by ID and cleans up AllTasksTabOrder.
-// Returns true if the filter existed and was deleted.
-func (c *Config) DeleteSavedFilter(id string) bool {
-	found := false
-	for i := range c.SavedFilters {
-		if c.SavedFilters[i].ID == id {
-			c.SavedFilters = append(c.SavedFilters[:i], c.SavedFilters[i+1:]...)
-			found = true
-			break
-		}
-	}
-	if !found {
-		return false
-	}
-	// Remove from tab order if present.
-	var newOrder []string
-	for _, entry := range c.AllTasksTabOrder {
-		if entry != id {
-			newOrder = append(newOrder, entry)
-		}
-	}
-	c.AllTasksTabOrder = newOrder
-	return true
-}
-
-// GetTabFilters returns saved filters where ShowAsTab is true.
-func (c *Config) GetTabFilters() []SavedFilter {
-	var tabs []SavedFilter
-	for _, f := range c.SavedFilters {
-		if f.ShowAsTab {
-			tabs = append(tabs, f)
-		}
-	}
-	return tabs
 }
 
 // --- Migration helpers ---
@@ -190,19 +128,19 @@ func smartListToFilter(sl smartList) SavedFilter {
 // SavedFilter (or another smartList) receives a fresh UUID so ID-based
 // lookups remain unambiguous.
 // Returns true if a migration was performed.
-func (c *Config) MigrateLegacyFilters() bool {
-	if len(c.SavedViews) == 0 && len(c.SmartLists) == 0 {
+func (p *PlanningState) MigrateLegacyFilters() bool {
+	if len(p.SavedViews) == 0 && len(p.SmartLists) == 0 {
 		return false
 	}
 
-	seenIDs := make(map[string]bool, len(c.SavedFilters)+len(c.SavedViews)+len(c.SmartLists))
-	for _, f := range c.SavedFilters {
+	seenIDs := make(map[string]bool, len(p.SavedFilters)+len(p.SavedViews)+len(p.SmartLists))
+	for _, f := range p.SavedFilters {
 		if f.ID != "" {
 			seenIDs[f.ID] = true
 		}
 	}
 
-	for _, sv := range c.SavedViews {
+	for _, sv := range p.SavedViews {
 		f := savedViewToFilter(sv)
 		// savedViewToFilter always mints a fresh UUID, but be defensive in
 		// case of an astronomical UUID collision.
@@ -210,18 +148,18 @@ func (c *Config) MigrateLegacyFilters() bool {
 			f.ID = uuid.New().String()
 		}
 		seenIDs[f.ID] = true
-		c.SavedFilters = append(c.SavedFilters, f)
+		p.SavedFilters = append(p.SavedFilters, f)
 	}
-	for _, sl := range c.SmartLists {
+	for _, sl := range p.SmartLists {
 		f := smartListToFilter(sl)
 		for seenIDs[f.ID] {
 			f.ID = uuid.New().String()
 		}
 		seenIDs[f.ID] = true
-		c.SavedFilters = append(c.SavedFilters, f)
+		p.SavedFilters = append(p.SavedFilters, f)
 	}
 
-	c.SavedViews = nil
-	c.SmartLists = nil
+	p.SavedViews = nil
+	p.SmartLists = nil
 	return true
 }

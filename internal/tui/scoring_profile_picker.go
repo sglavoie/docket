@@ -61,14 +61,14 @@ type ScoringProfilePickerDoneMsg struct {
 type ScoringProfilePickerModel struct {
 	*BasePicker[ScoringProfileOption]
 	projectID     string
-	config        *config.Config
 	configManager *config.Manager
 	currentName   string
 }
 
-// NewScoringProfilePickerModel creates a new scoring profile picker.
-func NewScoringProfilePickerModel(cfg *config.Config, mgr *config.Manager, projectID string) *ScoringProfilePickerModel {
-	current := cfg.GetProjectScoringProfile(projectID)
+// NewScoringProfilePickerModel creates a new scoring profile picker from the
+// project's current scoring profile and the full profile list, both read from
+// the automation domain by the caller.
+func NewScoringProfilePickerModel(current *scoring.ScoringProfile, profiles []scoring.ScoringProfile, mgr *config.Manager, projectID string) *ScoringProfilePickerModel {
 	currentID := ""
 	currentName := "None"
 	if current != nil {
@@ -80,7 +80,7 @@ func NewScoringProfilePickerModel(cfg *config.Config, mgr *config.Manager, proje
 	options := []ScoringProfileOption{
 		{ProfileID: "", Name: "None", IsCurrent: currentID == ""},
 	}
-	for _, p := range cfg.ScoringProfiles {
+	for _, p := range profiles {
 		options = append(options, ScoringProfileOption{
 			ProfileID: p.ID,
 			Name:      p.Name,
@@ -103,7 +103,6 @@ func NewScoringProfilePickerModel(cfg *config.Config, mgr *config.Manager, proje
 	return &ScoringProfilePickerModel{
 		BasePicker:    picker,
 		projectID:     projectID,
-		config:        cfg,
 		configManager: mgr,
 		currentName:   currentName,
 	}

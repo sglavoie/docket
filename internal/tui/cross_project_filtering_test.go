@@ -4,7 +4,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -198,10 +197,10 @@ func TestCrossProjectRebuildRowsPinnedTagTabFiltersByGlobalPinnedTag(t *testing.
 	}
 	proj.BuildTaskTree()
 
-	cfg := config.NewConfig()
-	cfg.GlobalPinnedTags = []string{"backend"}
+	cfg := newTestConfig()
+	cfg.Settings().GlobalPinnedTags = []string{"backend"}
 	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[string]bool),
 		activePerspective: PerspectiveAll,
@@ -231,10 +230,10 @@ func TestCrossProjectPinnedTagTabsHideStaleGlobalPins(t *testing.T) {
 	}
 	project.BuildTaskTree()
 
-	cfg := config.NewConfig()
-	cfg.GlobalPinnedTags = []string{"backend", "stale"}
+	cfg := newTestConfig()
+	cfg.Settings().GlobalPinnedTags = []string{"backend", "stale"}
 	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		loadedProjects:    []*models.Project{project},
 		pinnedTagTab:      make(map[string]int),
 	}
@@ -244,8 +243,8 @@ func TestCrossProjectPinnedTagTabsHideStaleGlobalPins(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("pinnedTagTabs() = %v, want %v", got, want)
 	}
-	if !slices.Equal(cfg.GlobalPinnedTagList(), []string{"backend", "stale"}) {
-		t.Fatalf("GlobalPinnedTagList() = %v, want stale pin retained", cfg.GlobalPinnedTagList())
+	if !slices.Equal(cfg.Settings().GlobalPinnedTagList(), []string{"backend", "stale"}) {
+		t.Fatalf("GlobalPinnedTagList() = %v, want stale pin retained", cfg.Settings().GlobalPinnedTagList())
 	}
 }
 

@@ -168,12 +168,12 @@ func normalizeCLIProjectTag(input string) (string, error) {
 }
 
 func pinProjectTag(out MutateOutput, tag string) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.ProjectTagResult, error) {
 		return svc.PinProjectTag(project.ID, tag)
 	})
@@ -190,12 +190,12 @@ func pinProjectTag(out MutateOutput, tag string) error {
 }
 
 func unpinProjectTag(out MutateOutput, tag string) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.ProjectTagResult, error) {
 		return svc.UnpinProjectTag(project.ID, tag)
 	})
@@ -212,17 +212,21 @@ func unpinProjectTag(out MutateOutput, tag string) error {
 }
 
 func pinGlobalTag(out MutateOutput, tag string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
+	if err != nil {
+		return err
+	}
+	domains, err := workspace.Runtime.CloneDomains()
 	if err != nil {
 		return err
 	}
 
-	changed, err := cfg.PinGlobalTag(tag)
+	changed, err := domains.Settings.PinGlobalTag(tag)
 	if err != nil {
 		return err
 	}
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := workspace.Runtime.CommitPortableSettings(domains.Settings); err != nil {
 		return err
 	}
 
@@ -235,14 +239,18 @@ func pinGlobalTag(out MutateOutput, tag string) error {
 }
 
 func unpinGlobalTag(out MutateOutput, tag string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
+	if err != nil {
+		return err
+	}
+	domains, err := workspace.Runtime.CloneDomains()
 	if err != nil {
 		return err
 	}
 
-	changed := cfg.UnpinGlobalTag(tag)
+	changed := domains.Settings.UnpinGlobalTag(tag)
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := workspace.Runtime.CommitPortableSettings(domains.Settings); err != nil {
 		return err
 	}
 
@@ -298,7 +306,7 @@ type tagListEntry struct {
 }
 
 func listProjectTags(out MutateOutput, pinnedOnly bool) error {
-	project, _, _, err := LoadCurrentProject()
+	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -334,12 +342,12 @@ func listProjectTags(out MutateOutput, pinnedOnly bool) error {
 }
 
 func listGlobalPinnedTags(out MutateOutput) error {
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	entries := buildGlobalPinnedTagListEntries(cfg.GlobalPinnedTagList())
+	entries := buildGlobalPinnedTagListEntries(workspace.Runtime.Settings().GlobalPinnedTagList())
 	if out.JSON {
 		return printJSON(entries)
 	}

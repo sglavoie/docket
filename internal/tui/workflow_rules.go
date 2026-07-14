@@ -17,10 +17,12 @@ import (
 // - workflow_rules_preview.go: preview rendering helpers
 type WorkflowRulesModel struct {
 	BaseSearchableView
-	config        *config.Config
-	configManager *config.Manager
-	// coordinator routes the durable config write through the secondary
-	// feature-coordinator seam (feature_coordinator_secondary.go).
+	// runtime is the domain-native snapshot: workflow rules read from
+	// runtime.Automation() and mutations commit through the coordinator built
+	// over it (RuntimeState.CommitAutomation), which refreshes the snapshot.
+	runtime *config.RuntimeState
+	// coordinator routes the durable automation-domain write through the
+	// secondary feature-coordinator seam (feature_coordinator_secondary.go).
 	coordinator WorkflowCoordinator
 
 	InteractiveViewState
@@ -32,16 +34,15 @@ type WorkflowRulesModel struct {
 }
 
 // NewWorkflowRulesModel creates a new workflow rules model.
-func NewWorkflowRulesModel(cfg *config.Config, manager *config.Manager) *WorkflowRulesModel {
-	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
+func NewWorkflowRulesModel(runtime *config.RuntimeState) *WorkflowRulesModel {
+	defaultRules, customRules := runtime.Automation().GetWorkflowRulesSorted()
 	allRules := append(defaultRules, customRules...)
 	var coordinator WorkflowCoordinator
-	if manager != nil {
-		coordinator = newWorkflowCoordinator(manager)
+	if runtime != nil {
+		coordinator = newWorkflowCoordinator(runtime)
 	}
 	m := &WorkflowRulesModel{
-		config:        cfg,
-		configManager: manager,
+		runtime:       runtime,
 		coordinator:   coordinator,
 		allRules:      allRules,
 		filteredRules: allRules,

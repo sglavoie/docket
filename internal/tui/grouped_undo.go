@@ -16,52 +16,6 @@ func tuiUndoProjectID(project *models.Project) string {
 	return project.Slug
 }
 
-func repairConfigTaskRefsToLoadedProjects(mgr *config.Manager, cfg *config.Config, projects []*models.Project) (int, error) {
-	if cfg == nil || len(projects) == 0 {
-		return 0, nil
-	}
-
-	taskProjects := make(map[string]string)
-	for _, project := range projects {
-		projectID := tuiUndoProjectID(project)
-		if projectID == "" {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task != nil && task.ID != "" {
-				taskProjects[task.ID] = projectID
-			}
-		}
-	}
-	if len(taskProjects) == 0 {
-		return 0, nil
-	}
-
-	updated := 0
-	for i := range cfg.FocusQueue {
-		if projectID, ok := taskProjects[cfg.FocusQueue[i].TaskID]; ok && cfg.FocusQueue[i].ProjectID != projectID {
-			cfg.FocusQueue[i].ProjectID = projectID
-			updated++
-		}
-	}
-	for i := range cfg.DailyPlan {
-		if projectID, ok := taskProjects[cfg.DailyPlan[i].TaskID]; ok && cfg.DailyPlan[i].ProjectID != projectID {
-			cfg.DailyPlan[i].ProjectID = projectID
-			updated++
-		}
-	}
-	for i := range cfg.RecentTaskVisits {
-		if projectID, ok := taskProjects[cfg.RecentTaskVisits[i].TaskID]; ok && cfg.RecentTaskVisits[i].ProjectID != projectID {
-			cfg.RecentTaskVisits[i].ProjectID = projectID
-			updated++
-		}
-	}
-	if updated > 0 && mgr != nil {
-		return updated, mgr.Save(cfg)
-	}
-	return updated, nil
-}
-
 type tuiUndoHistoryLoader func(*models.Project) ([]storage.UndoEntry, error)
 
 func restoreProjectsForTopTUIHistoryEntry(project *models.Project, candidates []*models.Project, load tuiUndoHistoryLoader) []*models.Project {
@@ -116,16 +70,94 @@ func uniqueTUIUndoProjects(projects []*models.Project) []*models.Project {
 	return unique
 }
 
-func activeUndoProjects(cfg *config.Config) []*models.Project {
-	if cfg == nil {
+func activeUndoProjectsFromRuntime(runtime *config.RuntimeState) []*models.Project {
+	if runtime == nil {
 		return nil
 	}
-	return cfg.GetActiveProjects()
+	return runtime.ActiveProjects()
 }
 
-func repairConfigTaskRefsAfterRestore(mgr *config.Manager, cfg *config.Config) postRestoreHook {
+func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) postRestoreHook {
 	return func(projects []*models.Project) error {
-		_, err := repairConfigTaskRefsToLoadedProjects(mgr, cfg, projects)
-		return err
+		if runtime == nil || len(projects) == 0 {
+			return nil
+		}
+		taskProjects := make(map[string]string)
+		for _, project := range projects {
+			projectID := tuiUndoProjectID(project)
+			for _, task := range project.Tasks {
+				if task != nil && task.ID != "" {
+					taskProjects[task.ID] = projectID
+				}
+			}
+		}
+		planning := clonePlanningState(runtime.Planning())
+		machine := cloneMachineState(runtime.Machine())
+		planningChanged := false
+		machineChanged := false
+		for i := range planning.FocusQueue {
+			if id, ok := taskProjects[planning.FocusQueue[i].TaskID]; ok && planning.FocusQueue[i].ProjectID != id {
+				planning.FocusQueue[i].ProjectID = id
+				planningChanged = true
+			}
+		}
+		for i := range planning.DailyPlan {
+			if id, ok := taskProjects[planning.DailyPlan[i].TaskID]; ok && planning.DailyPlan[i].ProjectID != id {
+				planning.DailyPlan[i].ProjectID = id
+				planningChanged = true
+			}
+		}
+		for i := range machine.RecentTaskVisits {
+			if id, ok := taskProjects[machine.RecentTaskVisits[i].TaskID]; ok && machine.RecentTaskVisits[i].ProjectID != id {
+				machine.RecentTaskVisits[i].ProjectID = id
+				machineChanged = true
+			}
+		}
+		if runtime.DataDir() == "" {
+			if planningChanged {
+				*runtime.Planning() = *planning
+			}
+			if machineChanged {
+				runtime.SetMachineInMemory(machine)
+			}
+			return nil
+		}
+		if planningChanged {
+			if err := runtime.CommitPlanning(planning); err != nil {
+				return err
+			}
+		}
+		if machineChanged {
+			return runtime.CommitMachine(machine)
+		}
+		return nil
 	}
+}
+
+func cleanupRuntimeTaskRefs(runtime *config.RuntimeState, taskIDs map[string]bool) error {
+	if runtime == nil {
+		return nil
+	}
+	planning := clonePlanningState(runtime.Planning())
+	machine := cloneMachineState(runtime.Machine())
+	planningChanged := planning.RemoveDurableTaskRefs(taskIDs) > 0
+	machineChanged := machine.RemoveMachineLocalTaskRefs(taskIDs) > 0
+	if runtime.DataDir() == "" {
+		if planningChanged {
+			*runtime.Planning() = *planning
+		}
+		if machineChanged {
+			runtime.SetMachineInMemory(machine)
+		}
+		return nil
+	}
+	if planningChanged {
+		if err := runtime.CommitPlanning(planning); err != nil {
+			return err
+		}
+	}
+	if machineChanged {
+		return runtime.CommitMachine(machine)
+	}
+	return nil
 }

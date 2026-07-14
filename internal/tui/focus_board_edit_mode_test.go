@@ -12,8 +12,9 @@ import (
 // newTestFocusBoard creates a minimal FocusBoardModel for unit tests.
 func newTestFocusBoard() *FocusBoardModel {
 	dp := []FocusTask(nil)
+	runtime := config.EmptyRuntimeState("")
 	return &FocusBoardModel{
-		config:            &config.Config{},
+		runtime:           runtime,
 		projectService:    NewProjectService(),
 		dailyPlan:         &dp,
 		dailyPlanIDs:      map[string]bool{},
@@ -21,7 +22,7 @@ func newTestFocusBoard() *FocusBoardModel {
 		carriedOverIDs:    map[string]bool{},
 		addInput:          textinput.New(),
 		editInput:         textinput.New(),
-		FilterMixin:       FilterMixin{filter: newFilterState()},
+		FilterMixin:       FilterMixin{filter: newFilterState(), filterMachine: runtime.Machine()},
 		sort:              NewSortState(),
 		tabs:              TabState{Names: focusBoardTabNames},
 		activePerspective: PerspectiveInactive,

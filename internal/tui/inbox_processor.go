@@ -22,12 +22,12 @@ type InboxProcessorModel struct {
 }
 
 // NewInboxProcessorModel creates a new inbox processor model.
-func NewInboxProcessorModel(project *models.Project, cfg *config.Config, manager *config.Manager) *InboxProcessorModel {
+func NewInboxProcessorModel(project *models.Project, manager *config.Manager, runtime *config.RuntimeState) *InboxProcessorModel {
 	m := &InboxProcessorModel{
 		project:    project,
 		inboxTasks: getInboxTasksForModel(project),
 	}
-	m.initCore(m, m, cfg, manager)
+	m.initCore(m, m, manager, runtime)
 	return m
 }
 
@@ -80,7 +80,7 @@ func (m *InboxProcessorModel) saveProjectCmd(project *models.Project) tea.Cmd {
 	if project == nil {
 		project = m.project
 	}
-	dataDir := m.config.DataDir
+	dataDir := m.runtime.DataDir()
 	deps := m.configManager.RuntimeDependencies()
 	return func() tea.Msg {
 		if err := commitInboxProject(dataDir, deps, project); err != nil {

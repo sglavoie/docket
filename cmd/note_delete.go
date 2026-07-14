@@ -76,7 +76,7 @@ func runNoteDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if err := storage.DeleteNoteFrom(ctx.Dir, note.Filename); err != nil {
+	if err := deleteNoteContext(ctx, note.Filename); err != nil {
 		return fmt.Errorf("failed to delete note: %w", err)
 	}
 

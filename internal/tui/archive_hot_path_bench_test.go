@@ -44,7 +44,7 @@ func BenchmarkMetricsDashboardArchiveHotPath(b *testing.B) {
 func BenchmarkRoadmapArchiveHotPath(b *testing.B) {
 	cfg, _ := newArchiveHotPathBenchConfig(b, 3, 50, 1500)
 	model := &RoadmapModel{
-		config:     cfg,
+		runtime:    testRuntimeAt(cfg.DataDir(), cfg),
 		isGlobal:   true,
 		zoom:       ZoomMonth,
 		collapsed:  make(map[string]bool),
@@ -72,13 +72,13 @@ func BenchmarkRoadmapArchiveHotPath(b *testing.B) {
 // the catalog so the domain-backed metrics dashboard resolves them via
 // RuntimeDependencies().ActiveProjects. The returned cfg keeps the same in-memory
 // project slice the roadmap benchmark still consumes directly.
-func newArchiveHotPathBenchConfig(b *testing.B, projectCount, livePerProject, archivedPerProject int) (*config.Config, *config.Manager) {
+func newArchiveHotPathBenchConfig(b *testing.B, projectCount, livePerProject, archivedPerProject int) (*config.RuntimeState, *config.Manager) {
 	b.Helper()
 
 	dataDir := b.TempDir()
-	cfg := config.NewConfig()
-	cfg.Projects = nil
-	cfg.DataDir = dataDir
+	cfg := newTestConfig()
+	setTestProjects(cfg, nil)
+	cfg = testRuntimeAt(dataDir, cfg)
 	for projectIndex := range projectCount {
 		slug := fmt.Sprintf("archive-hot-path-%02d", projectIndex+1)
 		projectPath := filepath.Join(dataDir, "projects", slug)
@@ -93,10 +93,10 @@ func newArchiveHotPathBenchConfig(b *testing.B, projectCount, livePerProject, ar
 			b.Fatalf("save project: %v", err)
 		}
 		writeArchiveHotPathBenchArchive(b, project, fmt.Sprintf("archived-%02d", projectIndex+1), archivedPerProject)
-		cfg.Projects = append(cfg.Projects, project)
+		addTestProject(cfg, project)
 	}
 	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
-	if err := manager.Save(cfg); err != nil {
+	if err := saveTestRuntime(manager, cfg); err != nil {
 		b.Fatalf("save config: %v", err)
 	}
 	return cfg, manager

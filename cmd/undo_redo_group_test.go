@@ -136,14 +136,10 @@ func recordGroupedSnapshot(t *testing.T, project *models.Project, action, contex
 
 func configureGroupedRestoreCLI(t *testing.T, dataDir, currentProjectID string, projects []*models.Project) {
 	t.Helper()
-	cfg := &config.Config{
-		DataDir:        dataDir,
-		CurrentProject: currentProjectID,
-		Projects:       projects,
-	}
+	cfg := newFileBackedTestRuntime(dataDir, currentProjectID, projects...)
 	configPath := filepath.Join(dataDir, "config.json")
 	manager := config.NewManager(configPath)
-	if err := manager.Save(cfg); err != nil {
+	if err := saveTestRuntime(manager, cfg); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 

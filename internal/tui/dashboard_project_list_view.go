@@ -35,7 +35,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	narrowMode := cardWidth < DashboardNarrowModeWidth
-	dueSoonDays := m.config.GetReviewDueSoonDays()
+	dueSoonDays := m.runtime.Settings().GetReviewDueSoonDays()
 	showContext := m.filterContext == ""
 
 	maxNameWidth, maxContextWidth, maxStatusWidth, iconColWidth := m.projectListColumnWidths(visible, showContext, dueSoonDays)
@@ -297,7 +297,7 @@ func countProjectInboxTasks(p *models.Project) int {
 }
 
 func (m *DashboardModel) projectRowScoreCoverageBadge(p *models.Project) string {
-	profile := m.config.GetProjectScoringProfile(p.ID)
+	profile := m.runtime.Automation().GetProjectScoringProfile(p.ID)
 	if profile == nil {
 		return ""
 	}

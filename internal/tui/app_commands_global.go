@@ -79,10 +79,10 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
-			Name:        "tutor",
-			Description: "Open the interactive tutor",
+			Name:        "reference",
+			Description: "Browse the command and workflow reference",
 			Category:    CategoryNavigation,
-			Aliases:     []string{"tutorial", "learn", "guide"},
+			Aliases:     []string{"tutor", "tutorial", "encyclopedia", "guide"},
 			Handler: func() tea.Msg {
 				return ShowTutorMsg{}
 			},

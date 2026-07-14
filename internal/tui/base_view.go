@@ -4,14 +4,18 @@ import (
 	"image/color"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// ViewBundle groups the config and config manager fields shared by all views.
-// Embed this anonymously so that m.config and m.configManager work unchanged.
+// ViewBundle groups the domain runtime and application-layer coordinators shared
+// by secondary views. It deliberately carries no Config facade.
 type ViewBundle struct {
-	config        *config.Config
-	configManager *config.Manager
+	// runtime is the startup-loaded snapshot of the owned configuration domains.
+	// Machine-local layout consumers (project-view state, outliner/tree columns,
+	// dashboard split/info-panel, cross-outliner state, tab order) read it via
+	// runtime.Machine() and persist through the machine-local committer instead of
+	// the config.Config facade. A nil runtime (isolated render tests) is tolerated
+	// by the config accessors, which default to an empty machine snapshot.
+	runtime *config.RuntimeState
 
 	// bulk routes multiselect mutations through the application layer. The shell
 	// wires it via SetBulkCoordinator when the view is shown; a zero value (nil
@@ -48,23 +52,6 @@ func (b *ViewBundle) SetTaskItemCoordinator(c TaskItemCoordinator) { b.taskItem 
 // every view that embeds ViewBundle so the shell wires it from the same
 // showView/replaceView site as the other coordinators (via linkWireable).
 func (b *ViewBundle) SetLinkCoordinator(c LinkCoordinator) { b.link = c }
-
-// enabledWorkflowRules returns the workspace's enabled workflow rules, or nil
-// when no config is bound (isolated render tests).
-func (b *ViewBundle) enabledWorkflowRules() []workflow.WorkflowRule {
-	if b.config == nil {
-		return nil
-	}
-	return b.config.GetEnabledWorkflowRules()
-}
-
-// taskItemCoordinator exposes the single-task coordinator to the shared
-// workflow-aware secondary-view helpers (workflowOpsView). It is promoted to
-// every view that embeds ViewBundle.
-func (b *ViewBundle) taskItemCoordinator() TaskItemCoordinator { return b.taskItem }
-
-// workflowRules is the workflowOpsView accessor for the enabled workflow rules.
-func (b *ViewBundle) workflowRules() []workflow.WorkflowRule { return b.enabledWorkflowRules() }
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.

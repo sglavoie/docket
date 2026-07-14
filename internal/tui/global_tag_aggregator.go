@@ -11,8 +11,7 @@ import (
 func (m *GlobalTagManagerModel) buildGlobalTagList() {
 	tagMap := make(map[string]*GlobalTagInfo)
 
-	projects := m.config.GetActiveProjects()
-	for _, project := range projects {
+	for _, project := range m.projects {
 		if err := storage.LoadProject(project); err != nil {
 			continue
 		}
@@ -43,8 +42,8 @@ func (m *GlobalTagManagerModel) buildGlobalTagList() {
 	// Convert map to sorted slice
 	m.tags = make([]GlobalTagInfo, 0, len(tagMap))
 	for _, info := range tagMap {
-		if m.config != nil {
-			info.Pinned = m.config.IsGlobalTagPinned(info.Name)
+		if m.runtime != nil {
+			info.Pinned = m.runtime.Settings().IsGlobalTagPinned(info.Name)
 		}
 		m.tags = append(m.tags, *info)
 	}

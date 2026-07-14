@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
 )
@@ -12,7 +11,6 @@ const minWidthForSplitView = 100 // Below this, use single-pane + TAB toggle
 type TemplatePickerModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	config  *config.Config
 	project *models.Project
 
 	templates         []template.TaskTemplate

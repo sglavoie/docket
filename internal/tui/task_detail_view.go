@@ -111,10 +111,7 @@ func (m *TaskDetailModel) planningSections(contentWidth int) ([]string, bool) {
 }
 
 func (m *TaskDetailModel) taskDetailScoreProfile() *scoring.ScoringProfile {
-	if m.config == nil {
-		return nil
-	}
-	return m.config.GetProjectScoringProfile(m.project.ID)
+	return m.runtime.Automation().GetProjectScoringProfile(m.project.ID)
 }
 
 func (m *TaskDetailModel) renderPlanningCluster(scoreProfile *scoring.ScoringProfile, contentWidth int) string {
@@ -415,7 +412,7 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 // renderDueSection renders the due date card.
 // Omits the recurrence line since the task detail view has a dedicated Recurrence card.
 func (m *TaskDetailModel) renderDueSection(width int) string {
-	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring(), m.config.GetTimeFormat()), width, DefaultCardConfig())
+	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring(), m.runtime.Settings().GetTimeFormat()), width, DefaultCardConfig())
 }
 
 // renderRecurrenceSection renders the recurrence card with pattern and upcoming dates.
@@ -539,10 +536,7 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
 	}
 
 	// Cross-project reference
-	if m.config == nil {
-		return "  " + ValidationErrorStyle.Render("(missing)")
-	}
-	targetProject := m.config.GetProject(taskRef.ProjectID)
+	targetProject := m.runtime.GetProject(taskRef.ProjectID)
 	if targetProject == nil {
 		return "  " + ValidationErrorStyle.Render(fmt.Sprintf("[%s] (missing)", taskRef.ProjectID))
 	}

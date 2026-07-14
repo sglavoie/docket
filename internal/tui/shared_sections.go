@@ -14,18 +14,18 @@ func PinnedTagTabs(project *models.Project) []string {
 }
 
 // GlobalPinnedTagTabs returns ["All"] + global pinned tag labels, or nil if no tags are pinned.
-func GlobalPinnedTagTabs(cfg *config.Config) []string {
-	if cfg == nil {
+func GlobalPinnedTagTabs(settings *config.Settings) []string {
+	if settings == nil {
 		return nil
 	}
-	return pinnedTagTabs(cfg.GlobalPinnedTagList())
+	return pinnedTagTabs(settings.GlobalPinnedTagList())
 }
 
 // GlobalPinnedTagTabsForProjects returns ["All"] + global pinned tag labels
-// that are currently present in the loaded project set. Stale config pins stay
+// that are currently present in the loaded project set. Stale pins stay
 // persisted but are hidden until a loaded project exposes the tag again.
-func GlobalPinnedTagTabsForProjects(cfg *config.Config, projects []*models.Project) []string {
-	if cfg == nil {
+func GlobalPinnedTagTabsForProjects(settings *config.Settings, projects []*models.Project) []string {
+	if settings == nil {
 		return nil
 	}
 	visibleTags := make(map[string]bool)
@@ -40,8 +40,8 @@ func GlobalPinnedTagTabsForProjects(cfg *config.Config, projects []*models.Proje
 	if len(visibleTags) == 0 {
 		return nil
 	}
-	tags := make([]string, 0, len(cfg.GlobalPinnedTags))
-	for _, tag := range cfg.GlobalPinnedTagList() {
+	tags := make([]string, 0, len(settings.GlobalPinnedTags))
+	for _, tag := range settings.GlobalPinnedTagList() {
 		if visibleTags[tag] {
 			tags = append(tags, tag)
 		}

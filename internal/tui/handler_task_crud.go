@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -43,17 +44,17 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 
 	// Check if there are enabled templates (unless explicitly skipped)
 	if !msg.SkipTemplatePicker {
-		enabledTemplates := m.config.GetEnabledTaskTemplates()
+		enabledTemplates := m.runtime.Automation().GetEnabledTaskTemplates()
 		if len(enabledTemplates) > 0 {
 			// Store the parent task and show template picker
 			m.pendingCreateTaskParent = msg.ParentTask
 			m.pendingCreateTaskProject = project
-			_, cmd := m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, project))
+			_, cmd := m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(enabledTemplates, project))
 			return true, cmd
 		}
 	}
 	// No templates or skipped, go directly to task form
-	m.showView(ViewTaskForm, NewTaskFormModelCreate(project, m.config, m.configManager, msg.ParentTask))
+	m.showView(ViewTaskForm, NewTaskFormModelCreate(project, m.runtime, msg.ParentTask))
 	return true, nil
 }
 
@@ -64,7 +65,7 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 		project = m.currentProject
 	}
 	if project != nil && msg.Task != nil {
-		m.showView(ViewTaskForm, NewTaskFormModelEdit(project, msg.Task, m.config, m.configManager))
+		m.showView(ViewTaskForm, NewTaskFormModelEdit(project, msg.Task, m.runtime))
 	}
 	return true, nil
 }
@@ -85,7 +86,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	// off the reloaded pointers exactly as it did for the legacy in-place save.
 	if msg.Result != nil {
 		m.reloadProjectByID(msg.Result.ProjectID)
-		if project := m.config.GetProject(msg.Result.ProjectID); project != nil {
+		if project := m.projectByID(msg.Result.ProjectID); project != nil {
 			msg.Project = project
 			// OpenTaskID overrides the navigation/open target (task-form
 			// open-after-subtask targets a created child, not the parent).
@@ -99,6 +100,9 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 
 	if msg.Task != nil {
 		m.sessionStats.tasksCreated++
+	}
+	if msg.Task != nil {
+		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.TaskCaptured = true })
 	}
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
@@ -174,7 +178,7 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 	if msg.Result != nil {
 		project := m.currentProject
 		if project == nil || project.ID != msg.Result.ProjectID {
-			project = m.config.GetProject(msg.Result.ProjectID)
+			project = m.projectByID(msg.Result.ProjectID)
 		}
 		if project != nil {
 			msg.Task = project.GetTaskByID(msg.Result.TaskID)
@@ -211,7 +215,7 @@ func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
 
 	toast := formatUndoToast(latest.Action, latest.Context)
 	undoCb := func() tea.Cmd {
-		return performUndoForProjectsCmd(m.persister, project, activeUndoProjects(m.config), m.repairTaskProjectRefsAfterRestore)
+		return performUndoForProjectsCmd(m.persister, project, activeUndoProjectsFromRuntime(m.runtime), m.repairTaskProjectRefsAfterRestore)
 	}
 	return true, tea.Batch(refreshCmd, m.setUndoableStatus(toast, undoCb))
 }

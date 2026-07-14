@@ -9,15 +9,15 @@ import (
 )
 
 // NewProjectFocusViewModel creates a new project focus view model.
-func NewProjectFocusViewModel(project *models.Project, cfg *config.Config) *ProjectFocusViewModel {
+func NewProjectFocusViewModel(project *models.Project, runtime *config.RuntimeState) *ProjectFocusViewModel {
 	m := &ProjectFocusViewModel{
 		project:     project,
-		cfg:         cfg,
+		runtime:     runtime,
 		FilterMixin: FilterMixin{filter: newFilterState()},
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadTasks()
 	return m
 }
@@ -28,7 +28,7 @@ func (m *ProjectFocusViewModel) loadTasks() {
 	m.tasks = nil
 
 	for _, task := range m.project.Tasks {
-		if !TaskInFocusQueue(m.cfg, task.ID) {
+		if !TaskInFocusQueue(m.runtime.Planning(), task.ID) {
 			continue
 		}
 		// Skip completed tasks
@@ -70,7 +70,7 @@ func (m *ProjectFocusViewModel) filteredTasks() []*models.Task {
 	}
 	out := make([]*models.Task, 0, len(m.tasks))
 	for _, t := range m.tasks {
-		if passesCommonFilters(t, &m.filter, m.project, m.cfg) {
+		if passesCommonFilters(t, &m.filter, m.project, m.runtime.Automation()) {
 			out = append(out, t)
 		}
 	}

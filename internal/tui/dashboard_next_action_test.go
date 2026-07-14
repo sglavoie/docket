@@ -17,10 +17,10 @@ import (
 // projects. It bypasses loadProjects() so tests control the project slice
 // directly without touching the filesystem.
 func dashboardWithProjects(width, height int, projects []*models.Project) *DashboardModel {
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = projects
+	cfg := newTestConfig()
+	setTestProjects(cfg, projects)
 	m := &DashboardModel{
-		config:                cfg,
+		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
 		projects:              projects,
 		dashboardCompactCards: true,
 	}
@@ -49,7 +49,7 @@ func TestDashboardNoLongerRendersFirstRunNextActionStrip(t *testing.T) {
 // Today and Pipeline Hub own the Next Action strip; Dashboard remains a
 // project administration and overview surface.
 func TestDashboardNoLongerRendersPlannedTodayRecommendation(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Cockpit Plan")
 	planned, err := models.NewTask("task-planned", 1, models.TaskTypeTask, "Write design doc draft")
 	if err != nil {
@@ -58,17 +58,17 @@ func TestDashboardNoLongerRendersPlannedTodayRecommendation(t *testing.T) {
 	planned.WorkflowState = models.StateInProgress
 	planned.SetSection(models.SectionNext)
 	project.Tasks = []*models.Task{planned}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 	todayKey := util.StartOfDay(time.Now()).Format(util.DateFormat)
-	cfg.DailyPlan = []config.DailyPlanItem{{
+	cfg.Planning().DailyPlan = []config.DailyPlanItem{{
 		TaskID:      planned.ID,
 		ProjectID:   project.ID,
 		PlannedDate: todayKey,
 	}}
 
 	m := &DashboardModel{
-		config:                cfg,
-		projects:              cfg.Projects,
+		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
+		projects:              []*models.Project{project},
 		dashboardCompactCards: true,
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
@@ -111,13 +111,13 @@ func TestDashboardNoLongerRendersInboxOnlyRecommendation(t *testing.T) {
 // stays stripped of daily-execution CTAs while still rendering archived
 // project administration.
 func TestDashboardArchivedModeRemainsFocusedOnRecovery(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	archived := testutil.NewTestProject("Archived Project")
 	archived.Archive()
-	cfg.Projects = []*models.Project{archived}
+	setTestProjects(cfg, []*models.Project{archived})
 
 	m := &DashboardModel{
-		config:                cfg,
+		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
 		projects:              []*models.Project{archived},
 		dashboardCompactCards: true,
 		showArchived:          true,
@@ -148,7 +148,7 @@ func TestDashboardNoLongerOpenLoopsAwareInterface(t *testing.T) {
 // is dismissed.
 func TestDashboardStatusBarNoLongerShowsTodayProgress(t *testing.T) {
 	app := newTestAppModel()
-	app.config.SetTutorDismissed(true)
+	app.runtime.Settings().SetTutorDismissed(true)
 	app.openLoops = OpenLoops{TodayDone: 1, TodayTotal: 3, HasTasks: true}
 
 	plain := ansi.Strip(app.renderStatusBar())

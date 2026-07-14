@@ -12,7 +12,7 @@ func (m *AppModel) renderPinnedPreviewBackground() string {
 	taskID := entry.Task.ID
 
 	if m.pinnedPreviewID != proj.ID {
-		m.pinnedPreview = NewProjectTreeModel(proj, m.config, m.configManager)
+		m.pinnedPreview = NewProjectTreeModel(proj, m.configManager, m.runtime)
 		m.pinnedPreview.SetSize(m.width, m.height-2)
 		m.pinnedPreviewID = proj.ID
 		m.pinnedPreviewTaskID = ""

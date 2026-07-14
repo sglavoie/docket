@@ -6,7 +6,7 @@ import (
 
 func TestOutlinerCommands_ViewTaskDetails(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -28,7 +28,7 @@ func TestOutlinerCommands_ViewTaskDetails(t *testing.T) {
 
 func TestOutlinerCommands_NilCursorTask(t *testing.T) {
 	app := newTestAppModel()
-	app.outliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 
 	cmds := app.outlinerCommands()
 	cmd := findCommand(cmds, "view task details")
@@ -44,7 +44,7 @@ func TestOutlinerCommands_NilCursorTask(t *testing.T) {
 
 func TestOutlinerCommands_EditTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -66,7 +66,7 @@ func TestOutlinerCommands_EditTask(t *testing.T) {
 
 func TestOutlinerCommands_CopyTitle(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -88,7 +88,7 @@ func TestOutlinerCommands_CopyTitle(t *testing.T) {
 
 func TestOutlinerCommands_CopyDetails(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -110,7 +110,7 @@ func TestOutlinerCommands_CopyDetails(t *testing.T) {
 
 func TestOutlinerCommands_NewTaskNoTemplate(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -145,7 +145,7 @@ func TestOutlinerCommands_NewTaskNoTemplate(t *testing.T) {
 
 func TestOutlinerCommands_NewTaskWithTemplate(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -180,7 +180,7 @@ func TestOutlinerCommands_NewTaskWithTemplate(t *testing.T) {
 
 func TestOutlinerCommands_CreateLinkedSubtask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -221,7 +221,7 @@ func TestOutlinerCommands_NewTaskUsesZoomedParent(t *testing.T) {
 	if len(project.Tasks) < 2 {
 		t.Fatal("expected test project with at least two tasks")
 	}
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.zoomStack = []ZoomEntry{{TaskID: project.Tasks[0].ID}}
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
@@ -241,7 +241,7 @@ func TestOutlinerCommands_NewTaskUsesZoomedParent(t *testing.T) {
 
 func TestOutlinerCommands_DeleteTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -264,7 +264,7 @@ func TestOutlinerCommands_DeleteTask(t *testing.T) {
 
 func TestOutlinerCommands_ScoreEditor(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 
@@ -286,7 +286,7 @@ func TestOutlinerCommands_ScoreEditor(t *testing.T) {
 
 func TestOutlinerCommands_ProjectTree(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 
 	cmds := app.outlinerCommands()
 	cmd := findCommand(cmds, "project tree")
@@ -302,7 +302,7 @@ func TestOutlinerCommands_ProjectTree(t *testing.T) {
 
 func TestOutlinerCommands_MultiSelectMode(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 
 	cmds := app.outlinerCommands()
 	cmd := findCommand(cmds, "multi-select mode")

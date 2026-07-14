@@ -29,13 +29,19 @@ func newTestAppRepo(projects ...*models.Project) *testAppRepo {
 
 func (r *testAppRepo) Snapshot() (app.Snapshot, error) {
 	revisions := make(map[string]string, len(r.projects))
+	documents := make(map[string]*storage.ProjectDocument, len(r.projects))
 	for _, p := range r.projects {
 		if err := storage.LoadProject(p); err != nil {
 			return nil, err
 		}
-		revisions[p.ID] = ""
+		doc, err := storage.LoadProjectDocument(p)
+		if err != nil {
+			return nil, err
+		}
+		revisions[p.ID] = doc.Revision
+		documents[p.ID] = doc
 	}
-	return app.NewSnapshot(r.projects, revisions), nil
+	return app.NewSnapshot(r.projects, revisions, documents), nil
 }
 
 func (r *testAppRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {

@@ -49,7 +49,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 
 	// Load project and config once (the config manager is no longer needed here:
 	// the mutation is persisted through the application layer, not a direct save).
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	editor := resolveEditor(editEditor, cfg.Editor)
+	editor := resolveEditor(editEditor, workspace.Runtime.Machine().GetEditor())
 
 	// Build content for editing
 	content := buildEditContent(task)
@@ -87,8 +87,8 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	newTitle, newDesc := parseEditedContent(modified, task)
 
 	// Validate edited title
-	if err := models.ValidateTaskTitle(newTitle); err != nil {
-		return fmt.Errorf("invalid title: %w", err)
+	if validationErr := models.ValidateTaskTitle(newTitle); validationErr != nil {
+		return fmt.Errorf("invalid title: %w", validationErr)
 	}
 
 	// Check if changed
@@ -110,7 +110,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// local because they need the loaded task; only the mutation moves. The task
 	// was resolved from the current project, so its UUID targets the use case
 	// directly.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.Edit(app.EditRequest{
 			TaskID:      task.ID,

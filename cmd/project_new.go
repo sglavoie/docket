@@ -63,7 +63,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return tterrors.NewInvalidValueError("name", name, "cannot be empty")
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, slug)
 	}
 
-	for _, p := range cfg.Projects {
+	for _, p := range workspace.Runtime.AllProjects() {
 		if p.Slug == slug {
 			return fmt.Errorf("%w: '%s'", tterrors.ErrProjectExists, slug)
 		}
@@ -100,7 +100,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	if trimmedContext == "" {
 		return tterrors.NewInvalidValueError("context", projectContext, "cannot be empty")
 	}
-	customNames, err := customContextNames(configManager)
+	customNames, err := workspace.Dependencies.CustomContextNames()
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 
 	// Create project
 	projectID := uuid.New().String()
-	projectPath := cfg.GetProjectPath(slug)
+	projectPath := workspace.Runtime.ProjectPath(slug)
 
 	project, err := models.NewProject(projectID, name, projectPath)
 	if err != nil {
@@ -129,23 +129,38 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	}
 
 	// Ensure data directory exists
-	if err := cfg.EnsureDataDir(); err != nil {
-		return fmt.Errorf("%w: data directory: %w", tterrors.ErrWriteFailed, err)
+	if ensureErr := workspace.Runtime.EnsureDataDir(); ensureErr != nil {
+		return fmt.Errorf("%w: data directory: %w", tterrors.ErrWriteFailed, ensureErr)
 	}
 
-	// Create project directory and initial tasks.md
-	// (A same-slug project may still exist as one or more trashed generations;
-	// versioned trash keeps them, so there is no need to purge here.)
-	if err := storage.CreateProjectDir(project); err != nil {
+	// The initial v2 tasks document and catalog entry commit together. A same-slug
+	// project may still exist in versioned trash; it does not conflict with this
+	// active catalog/project path.
+	doc, err := storage.CanonicalProjectDocument(project, nil)
+	if err != nil {
 		return tterrors.NewSaveProjectError(name, err)
 	}
-
-	// Add to config and set as current
-	cfg.AddProject(project)
-	cfg.CurrentProject = project.ID
-
-	if err := saveConfig(configManager, cfg); err != nil {
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
 		return err
+	}
+	domains.Catalog.UpsertProject(project)
+	artifacts, err := encodeCatalogArtifact(workspace.Runtime, domains.Catalog)
+	if err != nil {
+		return err
+	}
+	artifacts = append(artifacts, storage.ArtifactChange{
+		Path: storage.TasksFilePath(project.Path),
+		Data: []byte(doc.WriteV2()),
+		Mode: storage.FilePermissions,
+	})
+	if err := translateAppError(newWorkspaceAppService(workspace).CommitConfig(artifacts...)); err != nil {
+		return err
+	}
+	machine := *domains.Machine
+	machine.CurrentProject = project.ID
+	if err := workspace.Runtime.CommitMachine(&machine); err != nil {
+		return fmt.Errorf("project created but current selection could not be saved: %w", err)
 	}
 
 	return out.OutputProject(project, func() {

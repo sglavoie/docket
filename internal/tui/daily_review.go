@@ -30,7 +30,7 @@ const (
 type DailyReviewModel struct {
 	BaseView
 	InteractiveViewState
-	ViewBundle
+	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -72,15 +72,15 @@ type DailyReviewModel struct {
 }
 
 // NewDailyReviewModel creates a new daily review model.
-func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewModel {
+func NewDailyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *DailyReviewModel {
 	m := &DailyReviewModel{
-		ViewBundle:        ViewBundle{config: cfg, configManager: mgr},
+		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
 		collapsedSections: make(map[int]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:              TabState{Names: dailyReviewTabNames},
 	}
-	if t := cfg.GetLastDailyReviewAt(); t != nil && isToday(*t) {
+	if t := runtime.Planning().GetLastDailyReviewAt(); t != nil && isToday(*t) {
 		m.reviewCompleted = true
 		m.completedAt = *t
 	}
@@ -95,7 +95,7 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 						// Delete through the coordinator-backed workflow path (folds the
 						// durable planning-ref cleanup into the same transaction); the shell
 						// reloads Daily Review from the async BatchTransactionResultMsg.
-						return m, wfDeleteTask(m, m.getConfig(), m.getConfigManager()), true
+						return m, wfDeleteTask(m, m.getRuntime(), m.getConfigManager()), true
 					}
 					return m, nil, true
 				}
@@ -103,7 +103,7 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadTasks()
 	return m
 }

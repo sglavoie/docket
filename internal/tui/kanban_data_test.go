@@ -3,7 +3,6 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -98,8 +97,8 @@ func TestColumnForTask_Priority(t *testing.T) {
 
 func TestColumnForTask_ScoreBuckets_NilProfile(t *testing.T) {
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	cfg := &config.Config{}
-	got := columnForTask(task, KanbanModeScoreBuckets, cfg, "no-such-project")
+	cfg := newTestConfig()
+	got := columnForTask(task, KanbanModeScoreBuckets, cfg.Automation(), "no-such-project")
 	if got != "0-25" {
 		t.Errorf("nil profile: want 0-25, got %q", got)
 	}
@@ -107,10 +106,9 @@ func TestColumnForTask_ScoreBuckets_NilProfile(t *testing.T) {
 
 func TestColumnForTask_ScoreBuckets_WithProfile(t *testing.T) {
 	profile := scoring.NewWSJFProfile()
-	cfg := &config.Config{
-		ProjectScoringProfile: map[string]string{"proj1": profile.ID},
-		ScoringProfiles:       []scoring.ScoringProfile{profile},
-	}
+	cfg := newTestConfig()
+	cfg.Automation().ProjectScoringProfile = map[string]string{"proj1": profile.ID}
+	cfg.Automation().ScoringProfiles = []scoring.ScoringProfile{profile}
 
 	// Task with high business value and low job size → high normalized score.
 	highTask := testutil.NewTestTask("high", models.TaskTypeTask)
@@ -130,8 +128,8 @@ func TestColumnForTask_ScoreBuckets_WithProfile(t *testing.T) {
 		"job_size":         5,
 	}
 
-	highCol := columnForTask(highTask, KanbanModeScoreBuckets, cfg, "proj1")
-	lowCol := columnForTask(lowTask, KanbanModeScoreBuckets, cfg, "proj1")
+	highCol := columnForTask(highTask, KanbanModeScoreBuckets, cfg.Automation(), "proj1")
+	lowCol := columnForTask(lowTask, KanbanModeScoreBuckets, cfg.Automation(), "proj1")
 
 	if highCol == "0-25" {
 		t.Errorf("high-score task should not be in 0-25, got %q", highCol)
@@ -399,9 +397,9 @@ func TestKanbanFilteredCards_TagFilter(t *testing.T) {
 	untagged := testutil.NewTestTask("untagged", models.TaskTypeTask)
 	proj.Tasks = []*models.Task{tagged, untagged}
 
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	m := &KanbanModel{
-		config:   cfg,
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 		allCards: []KanbanCard{{Task: tagged, Project: proj}, {Task: untagged, Project: proj}},
 		FilterMixin: FilterMixin{
 			filter: newFilterState(),
@@ -433,9 +431,9 @@ func TestKanbanRefreshAndClamp_AppliesTagFilter(t *testing.T) {
 	untagged.SetSection(models.SectionInbox)
 	proj.Tasks = []*models.Task{tagged, untagged}
 
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	m := &KanbanModel{
-		config:   cfg,
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 		mode:     KanbanModeSection,
 		allCards: []KanbanCard{{Task: tagged, Project: proj}, {Task: untagged, Project: proj}},
 		FilterMixin: FilterMixin{
@@ -474,11 +472,11 @@ func TestKanbanRefreshAndClamp_AppliesTagFilter(t *testing.T) {
 }
 
 func TestKanbanBuildTagCmd_CrossProjectSource(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 
 	// Single-project kanban should emit ViewKanban source.
 	m := &KanbanModel{
-		config:       cfg,
+		runtime:      testRuntimeAt(cfg.DataDir(), cfg),
 		mode:         KanbanModeSection,
 		crossProject: false,
 		FilterMixin:  FilterMixin{filter: newFilterState()},
@@ -498,7 +496,7 @@ func TestKanbanBuildTagCmd_CrossProjectSource(t *testing.T) {
 
 	// Cross-project kanban should emit ViewCrossProjectKanban source.
 	m2 := &KanbanModel{
-		config:       cfg,
+		runtime:      testRuntimeAt(cfg.DataDir(), cfg),
 		mode:         KanbanModeSection,
 		crossProject: true,
 		FilterMixin:  FilterMixin{filter: newFilterState()},

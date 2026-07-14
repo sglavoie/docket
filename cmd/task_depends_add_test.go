@@ -14,14 +14,14 @@ import (
 
 func TestTaskDependsAddDependency(t *testing.T) {
 	t.Run("adds dependency successfully", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -57,14 +57,14 @@ func TestTaskDependsAddDependency(t *testing.T) {
 	})
 
 	t.Run("rejects self-dependency", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -85,14 +85,14 @@ func TestTaskDependsAddDependency(t *testing.T) {
 	})
 
 	t.Run("rejects dependency on non-existent task", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -113,14 +113,14 @@ func TestTaskDependsAddDependency(t *testing.T) {
 	})
 
 	t.Run("rejects circular dependency (A depends B, B depends A)", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository

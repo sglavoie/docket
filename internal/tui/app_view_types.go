@@ -66,7 +66,7 @@ var viewTypeNames = map[ViewType]string{
 	ViewGlobalBlockers:        "GlobalBlockers",
 	ViewSnoozeInput:           "SnoozeInput",
 	ViewParkInput:             "ParkInput",
-	ViewTutor:                 "Tutor",
+	ViewTutor:                 "Reference",
 	ViewAsk:                   "Ask",
 	ViewProjectPicker:         "ProjectPicker",
 	ViewTaskTemplates:         "TaskTemplates",

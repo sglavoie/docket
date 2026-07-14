@@ -25,8 +25,8 @@ func newProjectCyclePreviewTestApp(t *testing.T, width, height, taskCount int) (
 
 	project := newTestProjectTreeProject(t, "Preview Project", tasks)
 	project.BuildTaskTree()
-	app.config.Projects = []*models.Project{project}
-	app.config.CurrentProject = project.ID
+	setTestAppProjects(app, project)
+	setTestCurrentProject(app, project.ID)
 	app.showProjectCycle = true
 	app.projectCycleAllItems = []ProjectInfo{{Project: project, TaskCount: len(tasks)}}
 	app.projectCycleItems = app.projectCycleAllItems

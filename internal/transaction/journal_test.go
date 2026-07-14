@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -73,6 +74,44 @@ func TestPrepare_StagesBytesAndWritesManifest(t *testing.T) {
 	}
 }
 
+// TestPrepare_RenameStagesDestinationWriteInsideSource proves preparation does
+// not create a directory-move destination merely to stage a later write within
+// it. The stage begins below the source and the move will carry it to the exact
+// destination-side path recorded in the durable manifest.
+func TestPrepare_RenameStagesDestinationWriteInsideSource(t *testing.T) {
+	root := t.TempDir()
+	j := newTestJournal(t, root)
+
+	oldPath := filepath.Join(root, "projects", "alpha")
+	newPath := filepath.Join(root, "projects", "beta")
+	if err := os.MkdirAll(oldPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := j.Prepare([]Op{
+		{Kind: OpMove, Source: oldPath, Target: newPath},
+		{Kind: OpWrite, Target: filepath.Join(newPath, "tasks.md"), Data: []byte("# Beta\n")},
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+
+	if _, statErr := os.Stat(newPath); !os.IsNotExist(statErr) {
+		t.Fatalf("rename destination created during prepare, stat err = %v", statErr)
+	}
+	if got, want := filepath.Dir(m.Ops[1].Staged), newPath; got != want {
+		t.Fatalf("manifest stage dir = %q, want eventual destination %q", got, want)
+	}
+	preparedAt := filepath.Join(oldPath, filepath.Base(m.Ops[1].Staged))
+	data, readErr := os.ReadFile(preparedAt)
+	if readErr != nil {
+		t.Fatalf("read source-side stage: %v", readErr)
+	}
+	if string(data) != "# Beta\n" {
+		t.Fatalf("source-side stage = %q, want renamed tasks", data)
+	}
+}
+
 func TestPrepare_DefaultsWriteMode(t *testing.T) {
 	root := t.TempDir()
 	j := newTestJournal(t, root)
@@ -122,6 +161,33 @@ func TestPrepare_RejectsTraversalTarget(t *testing.T) {
 	})
 	if !errors.Is(err, ErrTargetOutsideRoot) {
 		t.Fatalf("Prepare traversal = %v, want ErrTargetOutsideRoot", err)
+	}
+}
+
+// TestPrepare_ContainmentRejectsSymlinkEscapeWithoutSideEffects pins the
+// journal's read-only symlink resolution: an escaping existing prefix is rejected
+// before staging creates the target parent or the transactions directory.
+func TestPrepare_ContainmentRejectsSymlinkEscapeWithoutSideEffects(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is unreliable on Windows CI")
+	}
+	root := t.TempDir()
+	outside := t.TempDir()
+	link := filepath.Join(root, "escape")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	j := newTestJournal(t, root)
+	target := filepath.Join(link, "must-not-exist", "artifact.json")
+
+	_, err := j.Prepare([]Op{{Kind: OpWrite, Target: target, Data: []byte("nope")}})
+	if !errors.Is(err, ErrTargetOutsideRoot) {
+		t.Fatalf("Prepare symlink escape = %v, want ErrTargetOutsideRoot", err)
+	}
+	for _, path := range []string{j.dir, filepath.Join(outside, "must-not-exist")} {
+		if _, statErr := os.Lstat(path); !os.IsNotExist(statErr) {
+			t.Fatalf("rejected symlink target created %q: stat err = %v", path, statErr)
+		}
 	}
 }
 

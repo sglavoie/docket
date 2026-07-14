@@ -16,7 +16,7 @@ func TestFilterBuilderSupportsParkedCriterion(t *testing.T) {
 		t.Fatalf("parked field = %+v, want boolean true/false enum", field)
 	}
 
-	builder := NewFilterBuilderModel(config.NewConfig(), nil)
+	builder := NewFilterBuilderModel(nil)
 	builder.nameInput.SetValue("Parked")
 	builder.criteria[0].fieldCursor = fieldIdx
 	builder.criteria[0].opCursor = 0
@@ -42,7 +42,7 @@ func TestFilterEditorLoadsParkedCriterion(t *testing.T) {
 		},
 	}
 
-	builder := NewFilterEditorModel(config.NewConfig(), nil, filter)
+	builder := NewFilterEditorModel(nil, filter)
 	if got := builder.currentField(0).Name; got != "parked" {
 		t.Fatalf("currentField = %q, want parked", got)
 	}

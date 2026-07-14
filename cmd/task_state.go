@@ -76,17 +76,17 @@ func runAppTransition(cmd *cobra.Command, refs []string, target models.WorkflowS
 	if err != nil {
 		return err
 	}
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 
 	verb := capitalizeState(string(target))
 	var errs []string
 	succeeded := 0
 	for _, ref := range refs {
-		taskID, err := resolveAppTaskID(cfg, ref)
+		taskID, err := resolveAppTaskID(workspace.Manager, ref)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", ref, err))
 			continue

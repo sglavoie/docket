@@ -54,10 +54,10 @@ func overrideHintDetail(hints []PrefixHint, key, detail string) []PrefixHint {
 // current custom value from config. The supportsCustomInput flag gates the
 // `C` (inline input) entry — views without a score-input component must pass
 // false so the popup never advertises a key their Update() will not handle.
-func BuildFilterScorePrefixHints(cfg *config.Config, supportsCustomInput bool) []PrefixHint {
+func BuildFilterScorePrefixHints(machine *config.MachineState, supportsCustomInput bool) []PrefixHint {
 	customDetail := "(not set)"
-	if cfg != nil && cfg.ScoreFilterCustom != nil {
-		customDetail = fmt.Sprintf(">=%.0f", *cfg.ScoreFilterCustom)
+	if machine != nil && machine.ScoreFilterCustom != nil {
+		customDetail = fmt.Sprintf(">=%.0f", *machine.ScoreFilterCustom)
 	}
 
 	hints := []PrefixHint{

@@ -14,12 +14,12 @@ import (
 // newTestKanban returns a KanbanModel pre-loaded with the given columns for
 // unit testing. No disk I/O is performed.
 func newTestKanban(cols []KanbanColumn) *KanbanModel {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	m := &KanbanModel{
 		columns:     cols,
 		activeCol:   0,
 		mode:        KanbanModeSection,
-		config:      cfg,
+		runtime:     testRuntimeAt(cfg.DataDir(), cfg),
 		FilterMixin: FilterMixin{filter: newFilterState()},
 	}
 	return m
@@ -695,7 +695,6 @@ func newKanbanBulkActionFixture(t *testing.T) *kanbanBulkActionFixture {
 	})
 	m.svc = NewProjectService()
 	m.loadedProjects = []*models.Project{projectA, projectB}
-	m.config.Stages = []string{"Design", "Build"}
 	m.MultiSelectState = MultiSelectState{
 		multiSelectMode: true,
 		selectedTasks: map[string]bool{

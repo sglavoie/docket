@@ -224,7 +224,6 @@ func (m *ProjectTreeModel) SetSize(width, height int) {
 
 // primaryProjectView interface implementation for shared key dispatch.
 func (m *ProjectTreeModel) getProject() *models.Project { return m.project }
-func (m *ProjectTreeModel) getConfig() *config.Config   { return m.config }
 func (m *ProjectTreeModel) getCursorTask() *models.Task {
 	visible := m.visibleNodes()
 	if CursorInBounds(m.cursor, len(visible)) {
@@ -252,22 +251,21 @@ func (m *ProjectTreeModel) clearActiveSavedFilter() {
 }
 
 // NewProjectTreeModel creates a new project tree model.
-func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
+func NewProjectTreeModel(project *models.Project, manager *config.Manager, runtime *config.RuntimeState) *ProjectTreeModel {
+	machine := runtime.Machine()
 	var treeToggles map[string]bool
 	var treePriorityMode string
 	var treeDefaultColumns map[string]bool
-	if cfg != nil {
-		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
-			treeToggles = vs.TreeColumnToggles
-			treePriorityMode = vs.TreePriorityMode
-		}
-		if treePriorityMode == "" {
-			treePriorityMode = cfg.TreePriorityMode
-		}
-		treeDefaultColumns = cfg.TreeDefaultColumns
+	if vs, ok := machine.ProjectViewStates[project.ID]; ok {
+		treeToggles = vs.TreeColumnToggles
+		treePriorityMode = vs.TreePriorityMode
 	}
+	if treePriorityMode == "" {
+		treePriorityMode = machine.TreePriorityMode
+	}
+	treeDefaultColumns = machine.TreeDefaultColumns
 	m := &ProjectTreeModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, manager),
+		PrimaryViewBundle: NewPrimaryViewBundle(manager, runtime),
 		project:           project,
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
@@ -364,7 +362,7 @@ func (m *ProjectTreeModel) Init() tea.Cmd {
 
 func (m *ProjectTreeModel) StatusBarLabel() string {
 	if m.project != nil {
-		status := fmt.Sprintf("Project: %s", m.project.Name) + FormatCyclePosition(m.config, m.project.ID)
+		status := fmt.Sprintf("Project: %s", m.project.Name) + FormatCyclePosition(m.runtime, m.project.ID)
 		if m.sidebar.IsFocused() {
 			status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
 		}

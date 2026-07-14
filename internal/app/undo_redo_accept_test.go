@@ -47,10 +47,16 @@ func (r *storageRepo) seed(t *testing.T) {
 
 func (r *storageRepo) Snapshot() (app.Snapshot, error) {
 	revs := make(map[string]string, len(r.revisions))
-	for k, v := range r.revisions {
-		revs[k] = v
+	docs := make(map[string]*storage.ProjectDocument, len(r.projects))
+	for _, project := range r.projects {
+		doc, err := storage.LoadProjectDocument(project)
+		if err != nil {
+			return nil, err
+		}
+		docs[project.ID] = doc
+		revs[project.ID] = doc.Revision
 	}
-	return app.NewSnapshot(r.projects, revs), nil
+	return app.NewSnapshot(r.projects, revs, docs), nil
 }
 
 func (r *storageRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
@@ -116,7 +122,7 @@ func TestDeleteUndoRedoAcceptance(t *testing.T) {
 
 // TestDeleteConfigArtifactUndoRedoAcceptance proves a durable config artifact folded
 // into a delete transaction commits with the removal, is restored byte-for-byte by
-// the workspace ledger undo, and is re-applied by redo. This is the deletion analogue
+// the workspace ledger undo, and is re-applied by redo. This is the deletion analog
 // of the move command's durable planning-ref cleanup riding the same transaction.
 func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()

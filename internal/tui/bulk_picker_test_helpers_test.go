@@ -1,10 +1,8 @@
 package tui
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -77,35 +75,4 @@ func runBulkPickerBatchCmd(t *testing.T, cmd tea.Cmd) []tea.Msg {
 		msgs = append(msgs, batchCmd())
 	}
 	return msgs
-}
-
-// assertBulkPickerUndoTaskIDs reads a project's per-project .undo/meta.json and
-// asserts the most recent entry's task IDs. Used by flows that still persist
-// through the legacy per-project undo (e.g. park), NOT by the migrated shared
-// picker/palette paths (which record through the workspace ledger).
-func assertBulkPickerUndoTaskIDs(t *testing.T, project *models.Project, want []string) {
-	t.Helper()
-
-	metaPath := filepath.Join(project.Path, ".undo", "meta.json")
-	content, err := os.ReadFile(metaPath)
-	if err != nil {
-		t.Fatalf("ReadFile(%q): %v", metaPath, err)
-	}
-
-	var meta struct {
-		Entries []struct {
-			Action  string   `json:"action"`
-			TaskIDs []string `json:"task_ids"`
-		} `json:"entries"`
-	}
-	if err := json.Unmarshal(content, &meta); err != nil {
-		t.Fatalf("Unmarshal undo meta: %v", err)
-	}
-	if len(meta.Entries) == 0 {
-		t.Fatal("expected at least one undo entry")
-	}
-	got := meta.Entries[len(meta.Entries)-1].TaskIDs
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("undo task IDs = %v, want %v", got, want)
-	}
 }

@@ -65,7 +65,7 @@ type WeeklyReviewSelectTaskMsg struct {
 type WeeklyReviewModel struct {
 	BaseView
 	InteractiveViewState
-	ViewBundle
+	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -114,9 +114,9 @@ type WeeklyReviewModel struct {
 }
 
 // NewWeeklyReviewModel creates a new weekly review model.
-func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReviewModel {
+func NewWeeklyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *WeeklyReviewModel {
 	m := &WeeklyReviewModel{
-		ViewBundle:        ViewBundle{config: cfg, configManager: mgr},
+		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
@@ -124,7 +124,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 		tabs:              TabState{Names: weeklyReviewTabNames},
 		FilterMixin:       FilterMixin{filter: newFilterState()},
 	}
-	if t := cfg.GetLastWeeklyReviewAt(); t != nil {
+	if t := runtime.Planning().GetLastWeeklyReviewAt(); t != nil {
 		tYear, tWeek := t.ISOWeek()
 		nowYear, nowWeek := time.Now().ISOWeek()
 		if tYear == nowYear && tWeek == nowWeek {
@@ -160,7 +160,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
 				if confirmed, handled := m.HandleConfirmKey(key); handled {
 					if confirmed {
-						cmd := wfDeleteTask(m, m.config, m.configManager)
+						cmd := wfDeleteTask(m, m.runtime, m.configManager)
 						m.trackMutation("delete")
 						return m, cmd, true
 					}
@@ -170,7 +170,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadData()
 	return m
 }

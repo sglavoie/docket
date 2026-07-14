@@ -39,14 +39,11 @@ func init() {
 func runThemeExport(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-	settings, err := loadSettings(configManager)
-	if err != nil {
-		return err
-	}
+	settings := workspace.Runtime.Settings()
 
 	slot := themeExportSlot
 	if slot == "" {
@@ -76,11 +73,11 @@ func runThemeExport(cmd *cobra.Command, args []string) error {
 	if themeExportFile != "" {
 		destPath = themeExportFile
 	} else {
-		destPath, err = configManager.ThemePath(name)
+		destPath, err = workspace.Manager.ThemePath(name)
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(configManager.ThemesDir(), 0700); err != nil {
+		if err := os.MkdirAll(workspace.Manager.ThemesDir(), 0700); err != nil {
 			return fmt.Errorf("create themes dir: %w", err)
 		}
 	}

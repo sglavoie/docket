@@ -42,7 +42,7 @@ func (m *AppModel) handleUndoRedoPerformed(statusMsg string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project) error {
-	if _, err := repairConfigTaskRefsToLoadedProjects(m.configManager, m.config, projects); err != nil {
+	if err := repairRuntimeTaskRefsAfterRestore(m.runtime)(projects); err != nil {
 		return err
 	}
 

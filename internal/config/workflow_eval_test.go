@@ -8,7 +8,7 @@ import (
 )
 
 func TestComputeWorkflowRulesHash_OnlyEnabledRules(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 		{ID: "r2", Name: "Rule 2", Enabled: false},
@@ -25,7 +25,7 @@ func TestComputeWorkflowRulesHash_OnlyEnabledRules(t *testing.T) {
 }
 
 func TestComputeWorkflowRulesHash_Deterministic(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 		{ID: "r2", Name: "Rule 2", Enabled: true},
@@ -40,13 +40,13 @@ func TestComputeWorkflowRulesHash_Deterministic(t *testing.T) {
 }
 
 func TestComputeWorkflowRulesHash_OrderIndependent(t *testing.T) {
-	cfg1 := NewConfig()
+	cfg1 := NewAutomationConfig()
 	cfg1.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 		{ID: "r2", Name: "Rule 2", Enabled: true},
 	}
 
-	cfg2 := NewConfig()
+	cfg2 := NewAutomationConfig()
 	cfg2.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r2", Name: "Rule 2", Enabled: true},
 		{ID: "r1", Name: "Rule 1", Enabled: true},
@@ -61,7 +61,7 @@ func TestComputeWorkflowRulesHash_OrderIndependent(t *testing.T) {
 }
 
 func TestComputeWorkflowRulesHash_EmptyWhenNoEnabledRules(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: false},
 	}
@@ -73,7 +73,7 @@ func TestComputeWorkflowRulesHash_EmptyWhenNoEnabledRules(t *testing.T) {
 }
 
 func TestComputeWorkflowRulesHash_DetectsContentChanges(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -89,7 +89,7 @@ func TestComputeWorkflowRulesHash_DetectsContentChanges(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_FalseWhenNoEnabledRules(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: false},
 	}
@@ -100,7 +100,7 @@ func TestShouldEvaluateWorkflow_FalseWhenNoEnabledRules(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_FalseWhenDisabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -113,7 +113,7 @@ func TestShouldEvaluateWorkflow_FalseWhenDisabled(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_FalseWhenNegativeInterval(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -126,7 +126,7 @@ func TestShouldEvaluateWorkflow_FalseWhenNegativeInterval(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_TrueWhenRulesChanged(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -143,7 +143,7 @@ func TestShouldEvaluateWorkflow_TrueWhenRulesChanged(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_TrueWhenNeverEvaluated(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -161,7 +161,7 @@ func TestShouldEvaluateWorkflow_TrueWhenNeverEvaluated(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_TrueWhenIntervalElapsed(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -181,7 +181,7 @@ func TestShouldEvaluateWorkflow_TrueWhenIntervalElapsed(t *testing.T) {
 }
 
 func TestShouldEvaluateWorkflow_FalseWhenRecentlyEvaluated(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -201,7 +201,7 @@ func TestShouldEvaluateWorkflow_FalseWhenRecentlyEvaluated(t *testing.T) {
 }
 
 func TestInvalidateWorkflowEvalStates(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{
 		"project-1": {LastEvalTime: time.Now(), RulesHash: "hash1"},
 		"project-2": {LastEvalTime: time.Now(), RulesHash: "hash2"},
@@ -220,7 +220,7 @@ func TestInvalidateWorkflowEvalStates(t *testing.T) {
 }
 
 func TestInvalidateWorkflowEvalStates_NilMap(t *testing.T) {
-	cfg := &Config{}
+	cfg := &AutomationConfig{}
 	cfg.WorkflowEvalStates = nil
 
 	cfg.InvalidateWorkflowEvalStates()

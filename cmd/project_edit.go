@@ -2,13 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -62,7 +61,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, configManager, err := LoadConfigAndProjectOrCurrent(args)
+	project, workspace, err := LoadRuntimeProjectOrCurrent(args)
 	if err != nil {
 		return err
 	}
@@ -74,6 +73,9 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	contextChanged := cmd.Flags().Changed("context")
 	descriptionChanged := cmd.Flags().Changed("description")
 	statusIconChanged := cmd.Flags().Changed("status-icon")
+	if nameChanged && workspace.Runtime.IsSystemInboxProject(project.ID) {
+		return fmt.Errorf("cannot rename the system Inbox project")
+	}
 
 	if !nameChanged && !contextChanged && !descriptionChanged && !statusIconChanged {
 		return tterrors.NewNoChangesError("--name, --context, --description, or --status-icon")
@@ -81,7 +83,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 
 	// Validate and apply name change
 	if nameChanged {
-		if err := applyProjectNameChange(project, editName, cfg); err != nil {
+		if err := applyProjectNameChange(project, editName, workspace.Runtime.AllProjects()); err != nil {
 			return err
 		}
 	}
@@ -90,7 +92,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	if contextChanged {
 		newContext := strings.TrimSpace(editContext)
 		if newContext == "" {
-			newContext = cfg.DefaultContext
+			newContext = workspace.Runtime.DefaultContext()
 		}
 		project.Context = newContext
 	}
@@ -119,32 +121,18 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	// Update timestamp
 	project.UpdatedAt = time.Now()
 
-	// Save config
-	if err := saveConfig(configManager, cfg); err != nil {
-		return err
-	}
-
-	// When the name changes, update the tasks.md heading so the project name
-	// in the file stays in sync with the config. This matters for project
-	// restore (which reads the name from tasks.md) and human readability.
+	// A rename touches the project directory, the tasks.md heading, the catalog,
+	// and every other project's cross-project references. Commit all of those as
+	// one atomic transaction so a partial rename can never leave data and catalog
+	// out of sync. A pure metadata edit (context/description/status-icon, or a name
+	// change that leaves the slug unchanged still counts as a rename here) that does
+	// not touch tasks.md only rewrites the config.
 	if nameChanged {
-		if err := storage.LoadProject(project); err == nil {
-			if err := storage.SaveProjectLocked(project); err != nil {
-				return fmt.Errorf("failed to update tasks file after rename: %w", err)
-			}
+		if err := commitProjectRename(workspace, project, originalSlug, out); err != nil {
+			return err
 		}
-		// If LoadProject fails (e.g., no tasks.md yet), skip silently —
-		// the heading will be written correctly on the next task save.
-
-		// Update cross-project references in other projects when the slug changed
-		if originalSlug != project.Slug {
-			updated, updateErr := updateCrossProjectRefs(cfg.Projects, originalSlug, project.Slug, project.ID)
-			if updateErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to update some cross-project references: %v\n", updateErr)
-			} else if updated > 0 && !out.Quiet {
-				fmt.Printf("Updated %d cross-project reference(s) from '%s' to '%s'\n", updated, originalSlug, project.Slug)
-			}
-		}
+	} else if err := commitProjectCatalog(workspace, project); err != nil {
+		return err
 	}
 
 	return out.OutputProject(project, func() {
@@ -172,8 +160,13 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	})
 }
 
-// applyProjectNameChange validates the new name and renames the project.
-func applyProjectNameChange(project *models.Project, rawName string, cfg *config.Config) error {
+// applyProjectNameChange validates the new name and applies it to the in-memory
+// project. It deliberately performs NO filesystem effect: the directory move,
+// tasks.md heading rewrite, catalog rewrite, and cross-reference repair all commit
+// together in commitProjectRename so the rename is atomic. Validating here — before
+// any commit — keeps a rejected name (empty, too long, reserved, or colliding) from
+// touching disk at all.
+func applyProjectNameChange(project *models.Project, rawName string, projects []*models.Project) error {
 	newName := strings.TrimSpace(rawName)
 	if newName == "" {
 		return tterrors.NewRequiredFieldError("project name")
@@ -196,16 +189,9 @@ func applyProjectNameChange(project *models.Project, rawName string, cfg *config
 		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, newSlug)
 	}
 
-	for _, p := range cfg.Projects {
+	for _, p := range projects {
 		if p.ID != project.ID && p.Slug == newSlug {
 			return fmt.Errorf("project with slug '%s' already exists", newSlug)
-		}
-	}
-
-	originalProjectSlug := project.Slug
-	if originalProjectSlug != newSlug {
-		if err := storage.RenameProjectDir(project, originalProjectSlug, newSlug, cfg.DataDir); err != nil {
-			return fmt.Errorf("failed to rename project directory: %w", err)
 		}
 	}
 
@@ -214,16 +200,91 @@ func applyProjectNameChange(project *models.Project, rawName string, cfg *config
 	return nil
 }
 
-// updateCrossProjectRefs rewrites cross-project references in other projects
-// when a project's slug changes. Returns the total number of refs updated.
-func updateCrossProjectRefs(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) (int, error) {
+// commitProjectRename renders the renamed project's tasks.md heading and every
+// referencing project's repaired tasks.md, encodes the updated catalog, and drives
+// all of them plus the directory move through one atomic app-layer transaction.
+func commitProjectRename(workspace *CLIWorkspace, project *models.Project, originalSlug string, out MutateOutput) error {
+	slugChanged := originalSlug != project.Slug
+
+	// Render the renamed project's tasks.md from its current on-disk tasks, loaded
+	// at the OLD path before the transaction moves the directory. If the project has
+	// no persisted tasks.md, leave the write out — the heading is written correctly
+	// on the next task save, matching the pre-migration behavior.
+	var tasksMarkdown []byte
+	var tasksExpectedRevision *string
+	if expected, err := storage.LoadProjectForRewrite(project); err == nil {
+		tasksMarkdown = []byte(storage.WriteTasksMarkdownWithFullProjectMetadata(
+			project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags))
+		tasksExpectedRevision = expected
+	}
+
+	// Cross-project reference repair rides the same transaction when the slug
+	// changes, so no other project can observe a dangling reference to the old slug.
+	var crossRefWrites []storage.ArtifactChange
+	var crossRefCount int
+	if slugChanged {
+		crossRefWrites, crossRefCount = planCrossProjectRefRewrites(workspace.Runtime.AllProjects(), originalSlug, project.Slug, project.ID)
+	}
+
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	domains.Catalog.UpsertProject(project)
+	configArts, err := encodeCatalogArtifact(workspace.Runtime, domains.Catalog)
+	if err != nil {
+		return err
+	}
+
+	if _, err := newWorkspaceAppService(workspace).RenameProject(app.RenameProjectRequest{
+		Project:               project,
+		DataDir:               workspace.Runtime.DataDir(),
+		OldSlug:               originalSlug,
+		NewSlug:               project.Slug,
+		TasksMarkdown:         tasksMarkdown,
+		TasksExpectedRevision: tasksExpectedRevision,
+		Config:                configArts,
+		CrossRefWrites:        crossRefWrites,
+	}); err != nil {
+		return translateAppError(err)
+	}
+
+	if crossRefCount > 0 && !out.Quiet {
+		fmt.Printf("Updated %d cross-project reference(s) from '%s' to '%s'\n", crossRefCount, originalSlug, project.Slug)
+	}
+	return nil
+}
+
+// commitProjectCatalog persists a catalog-owned project metadata change through
+// the application transaction boundary using a revision-checked workspace.json
+// artifact. No planning, settings, automation, or machine domain is rewritten.
+func commitProjectCatalog(workspace *CLIWorkspace, project *models.Project) error {
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	domains.Catalog.UpsertProject(project)
+	artifacts, err := encodeCatalogArtifact(workspace.Runtime, domains.Catalog)
+	if err != nil {
+		return err
+	}
+	return translateAppError(newWorkspaceAppService(workspace).CommitConfig(artifacts...))
+}
+
+// planCrossProjectRefRewrites rewrites cross-project references in other projects
+// when a project's slug changes, returning the tasks.md artifact writes (for the
+// atomic rename transaction) and the total number of refs updated. Projects that
+// cannot be loaded are skipped, matching the pre-migration best-effort behavior.
+func planCrossProjectRefRewrites(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) ([]storage.ArtifactChange, int) {
+	var writes []storage.ArtifactChange
 	totalUpdated := 0
 
 	for _, p := range projects {
 		if p.ID == renamedProjectID {
 			continue // skip the renamed project itself
 		}
-		if err := storage.LoadProject(p); err != nil {
+		expectedRevision, err := storage.LoadProjectForRewrite(p)
+		if err != nil {
 			continue // skip projects that can't be loaded
 		}
 
@@ -237,14 +298,18 @@ func updateCrossProjectRefs(projects []*models.Project, originalSlug, newSlug, r
 		}
 
 		if projectUpdated > 0 {
-			if err := storage.SaveProjectLocked(p); err != nil {
-				return totalUpdated, fmt.Errorf("saving project '%s': %w", p.Name, err)
-			}
+			content := storage.WriteTasksMarkdownWithFullProjectMetadata(
+				p.Name, p.Tasks, p.GetSections(), p.SectionColors, p.Tags, p.PinnedTags)
+			writes = append(writes, storage.ArtifactChange{
+				Path:             storage.TasksFilePath(p.Path),
+				Data:             []byte(content),
+				ExpectedRevision: expectedRevision,
+			})
 			totalUpdated += projectUpdated
 		}
 	}
 
-	return totalUpdated, nil
+	return writes, totalUpdated
 }
 
 // rewriteRefs replaces cross-project references from originalSlug to newSlug.

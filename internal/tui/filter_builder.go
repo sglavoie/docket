@@ -52,8 +52,7 @@ var slSortFieldNames = []string{"Default", "Priority", "Due Date", "Created", "S
 
 // FilterBuilderModel handles creating or editing a smart list via TUI.
 type FilterBuilderModel struct {
-	config        *config.Config
-	configManager *config.Manager
+	runtime *config.RuntimeState
 
 	// Form fields
 	nameInput textinput.Model
@@ -87,8 +86,10 @@ type FilterBuilderModel struct {
 	err    error
 }
 
-// NewFilterBuilderModel creates a new filter builder (create mode).
-func NewFilterBuilderModel(cfg *config.Config, manager *config.Manager) *FilterBuilderModel {
+// NewFilterBuilderModel creates a new filter builder (create mode). The runtime
+// is the shared planning-domain snapshot the builder commits saved filters
+// through; it may be nil in isolated render/build tests that never persist.
+func NewFilterBuilderModel(runtime *config.RuntimeState) *FilterBuilderModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInput("Smart list name")
@@ -100,21 +101,20 @@ func NewFilterBuilderModel(cfg *config.Config, manager *config.Manager) *FilterB
 	}
 
 	return &FilterBuilderModel{
-		config:        cfg,
-		configManager: manager,
-		nameInput:     nameInput,
-		criteria:      criteria,
-		logic:         "and",
-		activeTab:     slTabCriteria,
-		focusIndex:    0,
-		width:         80,
-		height:        24,
+		runtime:    runtime,
+		nameInput:  nameInput,
+		criteria:   criteria,
+		logic:      "and",
+		activeTab:  slTabCriteria,
+		focusIndex: 0,
+		width:      80,
+		height:     24,
 	}
 }
 
 // NewFilterEditorModel creates a builder for editing an existing saved filter.
-func NewFilterEditorModel(cfg *config.Config, manager *config.Manager, sf *config.SavedFilter) *FilterBuilderModel {
-	m := NewFilterBuilderModel(cfg, manager)
+func NewFilterEditorModel(runtime *config.RuntimeState, sf *config.SavedFilter) *FilterBuilderModel {
+	m := NewFilterBuilderModel(runtime)
 	m.editingID = sf.ID
 
 	m.nameInput.SetValue(sf.Name)

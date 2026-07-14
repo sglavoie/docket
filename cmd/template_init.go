@@ -128,10 +128,15 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
 	// Handle --changed-defaults flag (requires --force for safety)
 	if templateInitChangedDefaults {
@@ -139,9 +144,9 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("--changed-defaults requires --force for safety")
 		}
 
-		updated, readded, unchanged, affectedIDs := cfg.ResetChangedDefaultTemplates(templateInitEnable)
+		updated, readded, unchanged, affectedIDs := automation.ResetChangedDefaultTemplates(templateInitEnable)
 
-		if err := saveConfig(configManager, cfg); err != nil {
+		if err := commitCLIAutomation(workspace, automation); err != nil {
 			return err
 		}
 
@@ -165,7 +170,7 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			fmt.Println()
 			fmt.Println("Affected templates:")
 			for _, id := range affectedIDs {
-				t := cfg.GetTaskTemplate(id)
+				t := automation.GetTaskTemplate(id)
 				if t != nil {
 					fmt.Printf("  [%s] %s\n", t.ID, t.Name)
 				}
@@ -177,16 +182,16 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 
-	if len(cfg.TaskTemplates) > 0 && !templateInitForce && !cfg.DefaultTemplatesInit {
-		fmt.Printf("You have %d existing task template(s).\n", len(cfg.TaskTemplates))
+	if len(automation.TaskTemplates) > 0 && !templateInitForce && !automation.DefaultTemplatesInit {
+		fmt.Printf("You have %d existing task template(s).\n", len(automation.TaskTemplates))
 		fmt.Println()
 		fmt.Println("To add defaults alongside existing templates, use: tt template init --force")
 		return nil
 	}
 
-	added := cfg.AddDefaultTemplates(templateInitEnable)
+	added := automation.AddDefaultTemplates(templateInitEnable)
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 
@@ -220,7 +225,7 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	fmt.Printf("Added %d default task template(s) (%s):\n", added, state)
 	fmt.Println()
 	for _, t := range defaults {
-		if cfg.HasTemplateWithID(t.ID) {
+		if automation.HasTemplateWithID(t.ID) {
 			fmt.Printf("  [%s] %s\n", t.ID, t.Name)
 		}
 	}

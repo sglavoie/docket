@@ -11,14 +11,14 @@ import (
 )
 
 func TestRunContextShow(t *testing.T) {
-	setup := func(t *testing.T) (*testutil.TestDeps, func()) {
+	setup := func(t *testing.T) (*testDeps, func()) {
 		t.Helper()
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 		viper.Set("config", deps.ConfigPath)
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -64,10 +64,10 @@ func TestRunContextShow(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		project := deps.Config.Projects[0]
-		deps.Config.SetCustomContext("Work", []string{project.ID})
+		project := deps.Config.AllProjects()[0]
+		deps.Config.Machine().SetCustomContext("Work", []string{project.ID})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextShow(contextShowCmd, []string{"Work"})
 		testutil.AssertNoError(t, err)
@@ -77,9 +77,9 @@ func TestRunContextShow(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		deps.Config.SetCustomContext("Empty", []string{})
+		deps.Config.Machine().SetCustomContext("Empty", []string{})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextShow(contextShowCmd, []string{"Empty"})
 		testutil.AssertNoError(t, err)

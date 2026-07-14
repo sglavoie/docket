@@ -64,12 +64,12 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 		t.Errorf("active pointer = %q, want %q", got, filepath.Clean(dst))
 	}
 	// Destination config data_dir rewritten to the new root.
-	cfg, err := NewManager(ConfigPathForDataDir(dst)).Load()
+	runtime, err := NewManager(ConfigPathForDataDir(dst)).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("load moved config: %v", err)
 	}
-	if cfg.DataDir != filepath.Clean(dst) {
-		t.Errorf("moved config data_dir = %q, want %q", cfg.DataDir, filepath.Clean(dst))
+	if runtime.DataDir() != filepath.Clean(dst) {
+		t.Errorf("moved runtime data dir = %q, want %q", runtime.DataDir(), filepath.Clean(dst))
 	}
 }
 

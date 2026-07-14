@@ -12,7 +12,7 @@ func (m *TaskTemplateCreatorModel) buildCaches() {
 	sectionSet := make(map[string]struct{})
 	tagSet := make(map[string]struct{})
 
-	for _, proj := range m.config.Projects {
+	for _, proj := range m.runtime.AllLoadableProjects() {
 		if err := storage.LoadProject(proj); err == nil {
 			for _, section := range proj.Sections {
 				sectionSet[section] = struct{}{}

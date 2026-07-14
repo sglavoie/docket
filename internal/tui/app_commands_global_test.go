@@ -67,12 +67,12 @@ func TestGlobalCommands_Notifications(t *testing.T) {
 	}
 }
 
-func TestGlobalCommands_Tutor(t *testing.T) {
+func TestGlobalCommands_Reference(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.globalCommands()
-	cmd := findCommand(cmds, "tutor")
+	cmd := findCommand(cmds, "reference")
 	if cmd == nil {
-		t.Fatal("expected 'tutor' command")
+		t.Fatal("expected 'reference' command")
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowTutorMsg); !ok {

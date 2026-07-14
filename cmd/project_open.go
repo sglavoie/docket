@@ -35,7 +35,7 @@ func init() {
 }
 
 func runProjectOpen(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
@@ -43,25 +43,19 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 	var project *models.Project
 
 	if len(args) > 0 {
-		project, err = lookupProject(configManager, args[0])
-		if err != nil {
-			return err
-		}
+		project = workspace.Runtime.GetProject(args[0])
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(args[0])
 		}
 	} else {
 		// Interactive selection
-		projects, err := activeProjects(configManager)
-		if err != nil {
-			return err
-		}
+		projects := workspace.Runtime.ActiveProjects()
 		if len(projects) == 0 {
 			return fmt.Errorf("no projects available. Create one with: tt project new <name>")
 		}
 
 		// Use fzf if available
-		if cfg.FzfEnabled && Deps.Selector.Available() {
+		if workspace.Runtime.Settings().FzfEnabled && Deps.Selector.Available() {
 			for _, p := range projects {
 				if err := storage.LoadProject(p); err != nil {
 					logging.Warn("failed to load project %s: %v", p.Name, err)

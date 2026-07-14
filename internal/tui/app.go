@@ -152,8 +152,28 @@ type sessionStats struct {
 
 // AppModel is the main TUI model with a view stack.
 type AppModel struct {
-	config        *config.Config
 	configManager *config.Manager
+
+	// runtime is the startup-loaded snapshot of the five configuration domains
+	// (catalog, planning, settings, automation, machine), their load-time raw
+	// revisions, and the workspace data dir. It is the composition-root state the
+	// shell holds as the sole configuration state:
+	// views read domain data through its narrow accessors without render-time disk
+	// loads, config-bearing mutations commit only the changed domain(s) through its
+	// revision-checked CommitCatalog/CommitPlanning/CommitSettings/CommitAutomation/
+	// CommitMachine seams, and each commit refreshes the snapshot so the views
+	// observe the committed state without a further disk load.
+	runtime *config.RuntimeState
+
+	// deps is the domain-native dependency bundle (RuntimeState + application
+	// service + config manager) shared by the shell and feature groups.
+	deps *shellDeps
+
+	// projects preserves the loaded models.Project pointers used by open views.
+	// RuntimeState deliberately rehydrates fresh catalog models on every read;
+	// this shell-local cache keeps task trees stable while RuntimeState remains
+	// the only owner of persisted catalog metadata.
+	projects map[string]*models.Project
 
 	// OS appearance detector for auto-theme sync
 	appearanceDetector appearance.Detector
@@ -275,6 +295,7 @@ type AppModel struct {
 	quitting        bool
 	statusMessage   string         // Temporary status message (auto-clears after timeout)
 	statusIsInfo    bool           // When true, render status with InfoStatusStyle instead of SuccessStyle
+	statusUpdatedAt time.Time      // Guards newer status text from stale clear timers
 	statusUndoCb    func() tea.Cmd // When non-nil and not expired, pressing `u` invokes this callback
 	statusExpiresAt time.Time      // Deadline after which statusUndoCb is no longer valid
 
@@ -308,6 +329,10 @@ type AppModel struct {
 	// caller targets a specific project, e.g. cross-project outliner).
 	pendingCreateTaskProject *models.Project
 
+	// Pending create-project continuation from system Inbox triage.
+	pendingProjectMoveTask   *models.Task
+	pendingProjectMoveSource *models.Project
+
 	// Pending template for variable filler (between picker and task creator)
 	pendingVarFillerTemplate *template.TaskTemplate
 
@@ -328,6 +353,12 @@ type AppModel struct {
 	pendingProjectArchive        *models.Project
 	pendingProjectArchiveArchive bool
 	projectArchiveConfirm        ConfirmDialog
+
+	// A trash restore commits the synced project/catalog data first, then repairs
+	// machine-local references from the captured tombstone on the update loop.
+	// Keep that payload until machine.json succeeds so a partial restore remains
+	// retryable even though the durable trash entry has already been consumed.
+	pendingTrashRestoreRecovery map[string]trashRestoreMachineRecovery
 
 	// CLI reference for AI assistant context
 	cliReference string

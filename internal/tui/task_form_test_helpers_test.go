@@ -13,8 +13,8 @@ import (
 
 func newTestTaskForm() *TaskFormModel {
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := testutil.NewTestConfig()
-	return NewTaskFormModelCreate(project, cfg, nil, nil)
+	cfg := newTestConfig()
+	return NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
 }
 
 func sendFormKey(m *TaskFormModel, key tea.KeyPressMsg) *TaskFormModel {
@@ -80,11 +80,11 @@ func newSaveableEditForm(t *testing.T) (*TaskFormModel, func()) {
 	if err := os.MkdirAll(project.Path, 0o755); err != nil {
 		t.Fatalf("failed to create project dir: %v", err)
 	}
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Fatal("test project has no tasks")
 	}
 	task := project.Tasks[0]
-	m := NewTaskFormModelEdit(project, task, cfg, nil)
+	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	return m, cleanup
 }

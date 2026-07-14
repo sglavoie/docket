@@ -103,27 +103,6 @@ func TestNewManager_DefaultPathFlagged(t *testing.T) {
 	}
 }
 
-func TestLoad_MissingDataDirNormalizesToActiveDefault(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	makeICloudDrive(t, home)
-
-	configPath := filepath.Join(home, "explicit-config.json")
-	if err := os.WriteFile(configPath, []byte(`{"editor": "vim"}`), 0o600); err != nil {
-		t.Fatalf("failed to write config: %v", err)
-	}
-
-	cfg, err := NewManager(configPath).Load()
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
-	}
-
-	want := ActiveDefaultDataDir()
-	if cfg.DataDir != want {
-		t.Fatalf("missing data_dir normalized to %q, want active default %q", cfg.DataDir, want)
-	}
-}
-
 func TestLocalRuntimeDirForDataDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -151,6 +130,23 @@ func TestLocalRuntimeDirForDataDir(t *testing.T) {
 	}
 	if rt == LocalRuntimeDirForDataDir(icloud+"-other") {
 		t.Fatal("distinct data dirs must produce distinct runtime dirs")
+	}
+}
+
+func TestMachineStatePathLocalAndExternal(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	local := filepath.Join(home, dataDirName)
+	localWant := filepath.Join(local, machineStateFileName)
+	if got := MachineStatePath(local); got != localWant {
+		t.Fatalf("MachineStatePath(local) = %q, want %q", got, localWant)
+	}
+
+	external := filepath.Join(string(os.PathSeparator), "external", "tt")
+	externalWant := filepath.Join(local, runtimeDirName, "c216d857b581", machineStateFileName)
+	if got := MachineStatePath(external); got != externalWant {
+		t.Fatalf("MachineStatePath(external) = %q, want %q", got, externalWant)
 	}
 }
 

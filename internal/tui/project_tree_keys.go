@@ -68,7 +68,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 // handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, Fas-Fap, FS).
 func (m *ProjectTreeModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	applyFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config,
+	applyFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.runtime.Machine(),
 		func(p string) { m.pendingPrefix = p }, m.applyFilterChange)
 	return m, nil
 }

@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // handleViewSelectionMessages handles transient pickers, previews, and status editors.
@@ -54,13 +54,13 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowProjectPreviewMsg:
 		if msg.Project != nil {
-			m.showView(ViewProjectPreview, NewProjectPreviewModel(msg.Project, m.config, m.configManager))
+			m.showView(ViewProjectPreview, NewProjectPreviewModel(msg.Project, m.runtime))
 		}
 		return true, nil
 
 	case ShowStatusInputMsg:
 		if msg.Project != nil {
-			m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.config, m.configManager))
+			m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.runtime))
 		}
 		return true, nil
 
@@ -84,16 +84,19 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				msg.Project.StatusIconSource = ""
 			}
 			msg.Project.UpdatedAt = time.Now()
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
+			if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
+				catalog.UpsertProject(msg.Project)
+			}); err != nil {
+				m.err = err
 			}
 		}
 
-		m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.config, m.configManager))
+		m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.runtime))
 		return true, nil
 
 	case StatusUpdatedMsg:
 		m.popView()
+		m.syncProjectCache()
 		if m.dashboard != nil {
 			m.dashboard.loadProjects()
 		}

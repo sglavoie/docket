@@ -1,16 +1,5 @@
 package tui
 
-func (m *AppModel) appPersister() Persister {
-	if m.persister != nil {
-		return m.persister
-	}
-	return NewProjectService()
-}
-
-func (m *AppModel) clearBulkTaskSelectionsForRefs(refs []TaskProjectRef) {
-	m.clearBulkTaskSelectionsForTaskIDSet(taskIDSetFromRefs(refs))
-}
-
 // clearBulkTaskSelectionsForTaskIDs is the ID-list entry point the async batch
 // result path uses: the shell knows only the committed task IDs, not the live
 // refs, so it clears every view's multiselect keyed by ID after a successful
@@ -90,17 +79,6 @@ func taskIDSliceToSet(ids []string) map[string]bool {
 		}
 	}
 	return set
-}
-
-func taskIDSetFromRefs(refs []TaskProjectRef) map[string]bool {
-	ids := make(map[string]bool, len(refs))
-	for _, ref := range refs {
-		if ref.Task == nil || ref.Task.ID == "" {
-			continue
-		}
-		ids[ref.Task.ID] = true
-	}
-	return ids
 }
 
 func multiSelectStateHasTaskID(state *MultiSelectState, selectedIDs map[string]bool) bool {

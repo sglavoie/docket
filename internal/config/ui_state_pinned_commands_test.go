@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGetPinnedCommands_Empty(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	commands := cfg.GetPinnedCommands()
 
@@ -16,7 +16,7 @@ func TestGetPinnedCommands_Empty(t *testing.T) {
 }
 
 func TestSetPinnedCommands(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	commands := []string{"task-add", "project-switch"}
 	cfg.SetPinnedCommands(commands)
@@ -28,7 +28,7 @@ func TestSetPinnedCommands(t *testing.T) {
 }
 
 func TestIsCommandPinned(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.PinnedCommands = []string{"task-add", "project-list"}
 
 	if !cfg.IsCommandPinned("task-add") {
@@ -43,7 +43,7 @@ func TestIsCommandPinned(t *testing.T) {
 }
 
 func TestIsCommandPinned_EmptyList(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	if cfg.IsCommandPinned("anything") {
 		t.Error("nothing should be pinned on empty list")
@@ -51,7 +51,7 @@ func TestIsCommandPinned_EmptyList(t *testing.T) {
 }
 
 func TestTogglePinnedCommand_Pin(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	pinned := cfg.TogglePinnedCommand("task-add")
 
@@ -64,7 +64,7 @@ func TestTogglePinnedCommand_Pin(t *testing.T) {
 }
 
 func TestTogglePinnedCommand_Unpin(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.PinnedCommands = []string{"task-add", "project-list"}
 
 	pinned := cfg.TogglePinnedCommand("task-add")
@@ -81,7 +81,7 @@ func TestTogglePinnedCommand_Unpin(t *testing.T) {
 }
 
 func TestTogglePinnedCommand_MultipleToggles(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	if !cfg.TogglePinnedCommand("cmd") {
 		t.Error("first toggle should pin")

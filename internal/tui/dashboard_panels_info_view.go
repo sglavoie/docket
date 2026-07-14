@@ -35,7 +35,7 @@ func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *
 	var scoringProfile *scoring.ScoringProfile
 	hasTopScored := false
 	if selected != nil {
-		scoringProfile = m.config.GetProjectScoringProfile(selected.ID)
+		scoringProfile = m.runtime.Automation().GetProjectScoringProfile(selected.ID)
 		if scoringProfile != nil {
 			for _, task := range selected.Tasks {
 				if task == nil {
@@ -153,7 +153,7 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 	var bestTask *models.Task
 	var bestScore float64
 	if selected != nil {
-		scoringProfile = m.config.GetProjectScoringProfile(selected.ID)
+		scoringProfile = m.runtime.Automation().GetProjectScoringProfile(selected.ID)
 		if scoringProfile != nil {
 			for _, task := range selected.Tasks {
 				if task == nil || task.IsComplete() {
@@ -351,10 +351,10 @@ type parkedResumeEntry struct {
 }
 
 func (m *DashboardModel) resumeCardLimit() int {
-	if m.config == nil {
+	if m.runtime == nil {
 		return config.DefaultResumeCardLimit
 	}
-	return m.config.GetResumeCardLimit()
+	return m.runtime.Settings().GetResumeCardLimit()
 }
 
 func (m *DashboardModel) collectParkedResumeTasks(limit int) []parkedResumeEntry {

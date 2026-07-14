@@ -178,7 +178,7 @@ func (m *AppModel) buildSemicolonHints() []PrefixHint {
 	copy(hints, SemicolonPrefixHints)
 
 	hasAlerts := m.alertCount() > 0
-	hasWorkflowRules := m.config != nil && len(m.config.WorkflowRules) > 0
+	hasWorkflowRules := len(m.runtime.Automation().WorkflowRules) > 0
 
 	for i := range hints {
 		switch hints[i].Key {

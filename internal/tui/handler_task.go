@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -128,6 +129,7 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 		if msg.Task != nil && msg.Task.State() == models.StateDone {
 			m.sessionStats.tasksCompleted++
 			m.updateStreak()
+			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.TaskCompleted = true })
 			m.handleWithRefresh(false, false, "")
 			m.setSuccessStatus(fmt.Sprintf("Done! (%d today)", m.sessionStats.tasksCompleted))
 			cmd := defaultStatusTimeout()
@@ -207,7 +209,7 @@ func (m *AppModel) handleTaskMoveMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowProjectSelectorForMoveMsg:
 		if msg.Task != nil && msg.SourceProject != nil {
-			projects := m.config.GetActiveProjects()
+			projects := m.activeProjects()
 			m.showView(ViewProjectSelector, NewProjectSelectorModel(projects, msg.Task, msg.SourceProject))
 		}
 		return true, nil
@@ -221,20 +223,27 @@ func (m *AppModel) handleTaskMoveMessages(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// updateStreak bumps or resets the consecutive-day completion streak on task done.
+// updateStreak bumps or resets the consecutive-day completion streak on task
+// done. The streak is planning-domain state, read from the cached runtime
+// snapshot and committed to planning.json alone rather than through a whole-config
+// save.
 func (m *AppModel) updateStreak() {
 	today := time.Now().Format("2006-01-02")
 	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
-	if m.config.StreakLastDate == today {
+	planning := m.runtime.Planning()
+	if planning.GetStreakLastDate() == today {
 		return
 	}
-	if m.config.StreakLastDate == yesterday {
-		m.config.StreakCount++
-	} else {
-		m.config.StreakCount = 1
+	newCount := 1
+	if planning.GetStreakLastDate() == yesterday {
+		newCount = planning.GetStreakCount() + 1
 	}
-	m.config.StreakLastDate = today
-	saveConfigWarn(m.configManager, m.config, "streak update")
+	if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+		p.SetStreakCount(newCount)
+		p.SetStreakLastDate(today)
+	}); err != nil {
+		m.err = err
+	}
 }
 
 // maybeFireTodayCleared evaluates whether this status mutation cleared the
@@ -243,7 +252,7 @@ func (m *AppModel) updateStreak() {
 // Returns nil when the banner should not fire (Today empty, not yet complete,
 // or already fired today).
 func (m *AppModel) maybeFireTodayCleared() tea.Cmd {
-	if m.config == nil {
+	if m.runtime == nil {
 		return nil
 	}
 	loops := m.openLoops
@@ -251,13 +260,16 @@ func (m *AppModel) maybeFireTodayCleared() tea.Cmd {
 		return nil
 	}
 	today := time.Now().Format("2006-01-02")
-	if m.config.TodayClearedAt == today {
+	if m.runtime.Planning().GetTodayClearedAt() == today {
 		return nil
 	}
-	m.config.TodayClearedAt = today
-	saveConfigWarn(m.configManager, m.config, "today-cleared timestamp")
+	if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+		p.SetTodayClearedAt(today)
+	}); err != nil {
+		m.err = err
+	}
 
-	streak := m.config.StreakCount
+	streak := m.runtime.Planning().GetStreakCount()
 	unit := "day"
 	if streak != 1 {
 		unit = "days"

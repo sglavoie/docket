@@ -12,7 +12,7 @@ import (
 
 func TestProjectArchive(t *testing.T) {
 	t.Run("archives project successfully", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		// Configure viper to use test config path
@@ -21,11 +21,11 @@ func TestProjectArchive(t *testing.T) {
 
 		// Create and add project to config
 		project := testutil.NewTestProject("Test Project")
-		deps.Config.Projects = []*models.Project{project}
-		deps.Config.CurrentProject = project.ID
+		setTestProjects(deps.Config, []*models.Project{project})
+		deps.Config.Machine().CurrentProject = project.ID
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		// Archive the project
@@ -33,7 +33,7 @@ func TestProjectArchive(t *testing.T) {
 		testutil.AssertNoError(t, err)
 
 		// Reload config to verify
-		reloaded, err := manager.Load()
+		reloaded, err := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
 
 		reloadedProject := reloaded.GetProject(project.ID)
@@ -43,41 +43,41 @@ func TestProjectArchive(t *testing.T) {
 		if !reloadedProject.Archived {
 			t.Error("project should be archived")
 		}
-		if reloaded.CurrentProject == project.ID {
+		if reloaded.Machine().CurrentProject == project.ID {
 			t.Error("current project should be cleared when archiving")
 		}
 	})
 
 	t.Run("clears current project stored as slug (legacy config)", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		project := testutil.NewTestProject("Legacy Project")
-		deps.Config.Projects = []*models.Project{project}
+		setTestProjects(deps.Config, []*models.Project{project})
 		// Simulate legacy config where CurrentProject stored the slug
 		// instead of the ID.
-		deps.Config.CurrentProject = project.Slug
+		deps.Config.Machine().CurrentProject = project.Slug
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		err = runProjectArchive(nil, []string{project.ID})
 		testutil.AssertNoError(t, err)
 
-		reloaded, err := manager.Load()
+		reloaded, err := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
 
-		if reloaded.CurrentProject != "" {
-			t.Errorf("current project should be cleared when archiving legacy-slug-referenced project, got %q", reloaded.CurrentProject)
+		if reloaded.Machine().CurrentProject != "" {
+			t.Errorf("current project should be cleared when archiving legacy-slug-referenced project, got %q", reloaded.Machine().CurrentProject)
 		}
 	})
 
 	t.Run("rejects archiving already archived project", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
@@ -85,10 +85,10 @@ func TestProjectArchive(t *testing.T) {
 
 		project := testutil.NewTestProject("Archived Project")
 		project.Archived = true
-		deps.Config.Projects = []*models.Project{project}
+		setTestProjects(deps.Config, []*models.Project{project})
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		err = runProjectArchive(nil, []string{project.ID})
@@ -98,14 +98,14 @@ func TestProjectArchive(t *testing.T) {
 	})
 
 	t.Run("rejects nonexistent project", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		err = runProjectArchive(nil, []string{"nonexistent"})
@@ -117,7 +117,7 @@ func TestProjectArchive(t *testing.T) {
 
 func TestProjectUnarchive(t *testing.T) {
 	t.Run("unarchives project successfully", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
@@ -126,17 +126,17 @@ func TestProjectUnarchive(t *testing.T) {
 		// Create archived project
 		project := testutil.NewTestProject("Archived Project")
 		project.Archived = true
-		deps.Config.Projects = []*models.Project{project}
+		setTestProjects(deps.Config, []*models.Project{project})
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		err = runProjectUnarchive(nil, []string{project.ID})
 		testutil.AssertNoError(t, err)
 
 		// Reload config to verify
-		reloaded, err := manager.Load()
+		reloaded, err := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
 
 		reloadedProject := reloaded.GetProject(project.ID)
@@ -149,15 +149,15 @@ func TestProjectUnarchive(t *testing.T) {
 	})
 
 	t.Run("rejects unarchiving non-archived project", func(t *testing.T) {
-		deps := testutil.SetupTestDeps(t)
+		deps := setupTestDeps(t)
 		defer deps.Cleanup()
 
 		project := testutil.NewTestProject("Active Project")
 		project.Archived = false
-		deps.Config.Projects = []*models.Project{project}
+		setTestProjects(deps.Config, []*models.Project{project})
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		err = runProjectUnarchive(nil, []string{project.ID})

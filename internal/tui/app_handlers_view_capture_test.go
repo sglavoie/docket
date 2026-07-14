@@ -119,7 +119,7 @@ func TestHandleViewMessagesShowBulkEdit(t *testing.T) {
 
 func TestHandleViewMessagesBlockerAdded(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.dashboard = NewDashboardModel(app.config, nil)
+	app.dashboard = NewDashboardModel(app.runtime)
 
 	msg := BlockerAddedMsg{Project: project}
 	handled, _ := app.handleViewMessages(msg)
@@ -131,7 +131,7 @@ func TestHandleViewMessagesBlockerAdded(t *testing.T) {
 
 func TestHandleViewMessagesAttachmentAdded(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
-	app.dashboard = NewDashboardModel(app.config, nil)
+	app.dashboard = NewDashboardModel(app.runtime)
 
 	msg := AttachmentAddedMsg{}
 	handled, _ := app.handleViewMessages(msg)

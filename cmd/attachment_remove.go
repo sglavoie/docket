@@ -47,7 +47,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	// when the attachment is a copied local file and --keep-file is not set, the
 	// byte delete commit as ONE transaction. This closes the legacy window where a
 	// crash between the metadata save and the file delete left the two out of sync.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, removeErr := withResultRetry(func() (app.RemoveAttachmentResult, error) {
 		return svc.RemoveAttachment(task.ID, index, !keepFile)
 	})

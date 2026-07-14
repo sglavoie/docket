@@ -5,12 +5,12 @@ import "testing"
 func TestCloseCrossOutlinerMsgPreservesOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	projectOutliner := NewOutlinerModel(project, app.config, app.configManager)
+	projectOutliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner = projectOutliner
 	app.views.Register(ViewOutliner, projectOutliner)
 	app.viewStack = append(app.viewStack, ViewOutliner)
 
-	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = crossOutliner
 	app.views.Register(ViewCrossProjectOutliner, crossOutliner)
 	app.viewStack = append(app.viewStack, ViewCrossProjectOutliner)

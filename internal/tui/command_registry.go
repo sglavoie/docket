@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 )
 
@@ -82,6 +83,7 @@ func (r *CommandRegistry) GetAll() []Command {
 	for _, entries := range r.commands {
 		result = append(result, pickPreferred(entries))
 	}
+	sortCommands(result)
 	return result
 }
 
@@ -95,6 +97,7 @@ func (r *CommandRegistry) GetByCategory(category CommandCategory) []Command {
 			result = append(result, cmd)
 		}
 	}
+	sortCommands(result)
 	return result
 }
 
@@ -137,7 +140,22 @@ func (r *CommandRegistry) GetForView(view ViewType) []Command {
 			result = append(result, *globalCmd)
 		}
 	}
+	sortCommands(result)
 	return result
+}
+
+func sortCommands(commands []Command) {
+	sort.SliceStable(commands, func(i, j int) bool {
+		left := strings.ToLower(commands[i].Name)
+		right := strings.ToLower(commands[j].Name)
+		if left != right {
+			return left < right
+		}
+		if commands[i].Shortcut != commands[j].Shortcut {
+			return commands[i].Shortcut < commands[j].Shortcut
+		}
+		return commands[i].Description < commands[j].Description
+	})
 }
 
 // pickPreferred returns the preferred command from a list of same-named entries.

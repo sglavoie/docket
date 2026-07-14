@@ -78,7 +78,8 @@ func NewWorkspaceID() string {
 //   - <data>/.tt/planning.json    (synced)  — PlanningState
 //   - <data>/.tt/settings.json    (synced)  — Settings
 //   - <data>/.tt/automation.json  (synced)  — AutomationConfig
-//   - ~/.tt/runtime/<key>/machine.json (machine-local) — MachineState
+//   - ~/.tt/machine.json for the default local workspace, otherwise
+//     ~/.tt/runtime/<data-dir-hash>/machine.json (machine-local) — MachineState
 //
 // Every file is wrapped in a versioned envelope carrying a schema version and
 // the workspace ID, written atomically under a per-file lock with a .bak backup

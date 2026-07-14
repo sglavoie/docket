@@ -2,71 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"sort"
-
-	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
-func recordGroupedUndoSnapshots(projects []*models.Project, action, context string, depth int) (string, error) {
-	if depth <= 0 {
-		return "", nil
-	}
-
-	projects = uniqueUndoProjects(projects)
-	if len(projects) == 0 {
-		return "", nil
-	}
-
-	groupID := uuid.New().String()
-	groupProjectIDs := undoGroupProjectIDs(projects)
-	for _, project := range projects {
-		if err := storage.RecordUndoSnapshotWithOptions(project, storage.UndoSnapshotOptions{
-			Action:          action,
-			Context:         context,
-			MaxDepth:        depth,
-			GroupID:         groupID,
-			GroupProjectIDs: groupProjectIDs,
-		}); err != nil {
-			return "", fmt.Errorf("failed to record grouped undo snapshot for %s: %w", project.Name, err)
-		}
-	}
-	return groupID, nil
-}
-
-func uniqueUndoProjects(projects []*models.Project) []*models.Project {
-	seen := make(map[string]bool, len(projects))
-	unique := make([]*models.Project, 0, len(projects))
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		id := restoreProjectID(project)
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		unique = append(unique, project)
-	}
-	return unique
-}
-
-func undoGroupProjectIDs(projects []*models.Project) []string {
-	ids := make([]string, 0, len(projects))
-	for _, project := range projects {
-		if id := restoreProjectID(project); id != "" {
-			ids = append(ids, id)
-		}
-	}
-	sort.Strings(ids)
-	return ids
-}
-
-func repairConfigTaskRefsToLoadedProjects(mgr *config.Manager, cfg *config.Config, projects []*models.Project) error {
-	if mgr == nil || cfg == nil || len(projects) == 0 {
+func repairConfigTaskRefsToLoadedProjects(runtime *config.RuntimeState, projects []*models.Project) error {
+	if runtime == nil || len(projects) == 0 {
 		return nil
 	}
 
@@ -86,27 +28,39 @@ func repairConfigTaskRefsToLoadedProjects(mgr *config.Manager, cfg *config.Confi
 		return nil
 	}
 
-	updated := 0
-	for i := range cfg.FocusQueue {
-		if projectID, ok := taskProjects[cfg.FocusQueue[i].TaskID]; ok && cfg.FocusQueue[i].ProjectID != projectID {
-			cfg.FocusQueue[i].ProjectID = projectID
-			updated++
+	domains, err := runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	planningUpdated := 0
+	for i := range domains.Planning.FocusQueue {
+		if projectID, ok := taskProjects[domains.Planning.FocusQueue[i].TaskID]; ok && domains.Planning.FocusQueue[i].ProjectID != projectID {
+			domains.Planning.FocusQueue[i].ProjectID = projectID
+			planningUpdated++
 		}
 	}
-	for i := range cfg.DailyPlan {
-		if projectID, ok := taskProjects[cfg.DailyPlan[i].TaskID]; ok && cfg.DailyPlan[i].ProjectID != projectID {
-			cfg.DailyPlan[i].ProjectID = projectID
-			updated++
+	for i := range domains.Planning.DailyPlan {
+		if projectID, ok := taskProjects[domains.Planning.DailyPlan[i].TaskID]; ok && domains.Planning.DailyPlan[i].ProjectID != projectID {
+			domains.Planning.DailyPlan[i].ProjectID = projectID
+			planningUpdated++
 		}
 	}
-	for i := range cfg.RecentTaskVisits {
-		if projectID, ok := taskProjects[cfg.RecentTaskVisits[i].TaskID]; ok && cfg.RecentTaskVisits[i].ProjectID != projectID {
-			cfg.RecentTaskVisits[i].ProjectID = projectID
-			updated++
+	machineUpdated := 0
+	for i := range domains.Machine.RecentTaskVisits {
+		if projectID, ok := taskProjects[domains.Machine.RecentTaskVisits[i].TaskID]; ok && domains.Machine.RecentTaskVisits[i].ProjectID != projectID {
+			domains.Machine.RecentTaskVisits[i].ProjectID = projectID
+			machineUpdated++
 		}
 	}
-	if updated == 0 {
-		return nil
+	if planningUpdated > 0 {
+		if err := runtime.CommitPlanning(domains.Planning); err != nil {
+			return fmt.Errorf("failed to repair planning references after restore: %w", err)
+		}
 	}
-	return saveConfig(mgr, cfg)
+	if machineUpdated > 0 {
+		if err := runtime.CommitMachine(domains.Machine); err != nil {
+			return fmt.Errorf("failed to repair recent visits after restore: %w", err)
+		}
+	}
+	return nil
 }

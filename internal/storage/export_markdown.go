@@ -45,14 +45,14 @@ func WriteProjectMarkdownClean(p *models.Project) string {
 
 	fmt.Fprintf(&builder, "# Project: %s\n", p.Name)
 
-	rootTasks := collectRootTasks(p.Tasks)
+	hierarchy := indexTaskHierarchy(p.Tasks)
 	visited := make(map[string]bool, len(p.Tasks))
-	for _, task := range rootTasks {
+	for _, task := range hierarchy.roots {
 		builder.WriteString("\n")
-		writeTaskClean(&builder, task, p.Tasks, 2, visited)
+		writeTaskClean(&builder, task, hierarchy.children, 2, visited)
 	}
 
-	appendOrphanedTasksClean(&builder, p.Tasks, visited)
+	appendOrphanedTasksClean(&builder, p.Tasks, hierarchy.children, visited)
 
 	return builder.String()
 }
@@ -94,7 +94,7 @@ func writeNotesSectionClean(notes []*models.Note) string {
 	return b.String()
 }
 
-func writeTaskClean(builder *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool) {
+func writeTaskClean(builder *strings.Builder, task *models.Task, children map[string][]*models.Task, level int, visited map[string]bool) {
 	if visited[task.ID] {
 		return
 	}
@@ -134,9 +134,9 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, allTasks []*mod
 		}
 	}
 
-	for _, child := range getChildrenInOrder(task.ID, allTasks) {
+	for _, child := range children[task.ID] {
 		builder.WriteString("\n")
-		writeTaskClean(builder, child, allTasks, level+1, visited)
+		writeTaskClean(builder, child, children, level+1, visited)
 	}
 }
 
@@ -172,12 +172,15 @@ func buildExportBadge(task *models.Task) string {
 // appendOrphanedTasksClean appends tasks whose parent was not visited (orphans).
 // Unlike appendOrphanedTasks, this does not log warnings since the output is
 // user-facing markdown.
-func appendOrphanedTasksClean(builder *strings.Builder, tasks []*models.Task, visited map[string]bool) {
+func appendOrphanedTasksClean(builder *strings.Builder, tasks []*models.Task, children map[string][]*models.Task, visited map[string]bool) {
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		if visited[task.ID] {
 			continue
 		}
 		builder.WriteString("\n")
-		writeTaskClean(builder, task, tasks, 2, visited)
+		writeTaskClean(builder, task, children, 2, visited)
 	}
 }

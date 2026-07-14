@@ -6,8 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // TestWorkflowWizardMinimumLayout is the regression guard for Bug 1: the
@@ -16,8 +14,8 @@ import (
 // baseline height. The window is now height-derived (visibleListRows), so the
 // wizard must fit within 72x20 in both line count and visual width.
 func TestWorkflowWizardMinimumLayout(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	m := NewWorkflowWizardModel(cfg, nil)
+	cfg := newTestConfig()
+	m := NewWorkflowWizardModel(testRuntimeAt("", cfg))
 	m.SetSize(72, 20)
 
 	rendered := m.render()
@@ -40,8 +38,8 @@ func TestWorkflowWizardMinimumLayout(t *testing.T) {
 // scrolling the cursor down past the visible window surfaces both the
 // "↑ more above" and "↓ more below" scroll hints.
 func TestWorkflowWizardListStillScrolls(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	m := NewWorkflowWizardModel(cfg, nil)
+	cfg := newTestConfig()
+	m := NewWorkflowWizardModel(testRuntimeAt("", cfg))
 	m.SetSize(72, 20)
 
 	rows := m.visibleListRows()

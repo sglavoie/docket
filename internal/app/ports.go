@@ -18,19 +18,20 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
-	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // OpsCommitter is the optional capability a Repository exposes to commit a set of
-// raw file operations — a directory move, a tombstone write, a config rewrite, a
-// recursive delete — as ONE atomic journaled transaction. It is the persistence
+// raw file operations plus revision-checked artifacts — a directory move, a
+// tombstone write, a config rewrite, a recursive delete — as ONE atomic journaled
+// transaction. It is the persistence
 // boundary the project archive-location, trash, restore, and purge use cases drive:
 // where task mutations flow through Commit(ChangeSet), the config- and directory-
-// centric project lifecycle flows through CommitOps. The storage-backed CLI
-// repository implements it over CommitService.CommitOps; a repository that does not
+// centric project lifecycle flows through CommitOps. Keeping artifacts typed at
+// this boundary preserves their optimistic-concurrency contracts instead of
+// flattening them into unchecked write operations. A repository that does not
 // support it makes the project-lifecycle use cases fail closed.
 type OpsCommitter interface {
-	CommitOps(ops []transaction.Op) error
+	CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error
 }
 
 // Clock supplies wall-clock time to the use cases. Injecting it keeps
@@ -64,6 +65,10 @@ func UUIDGenerator() IDGenerator { return uuidGenerator{} }
 type TaskRef struct {
 	Task    *models.Task
 	Project *models.Project
+	// Base is the exact lossless project document retained when the snapshot was
+	// loaded. Mutations carry it into storage.ChangeSet so opaque header content
+	// survives and stale commits have a real three-way merge base.
+	Base *storage.ProjectDocument
 }
 
 // Snapshot is the revision-consistent read model the application layer consumes
@@ -78,6 +83,10 @@ type Snapshot interface {
 	// Revision returns the canonical content revision a project was loaded at,
 	// or "" when the project is not part of the snapshot.
 	Revision(projectID string) string
+	// Document returns the exact lossless project document retained at load time,
+	// or nil when the snapshot has no document for the project (legacy/test-only
+	// snapshots may omit it).
+	Document(projectID string) *storage.ProjectDocument
 	// Projects returns every loaded project.
 	Projects() []*models.Project
 }
@@ -104,20 +113,25 @@ type snapshotView struct {
 	byProject map[string]*models.Project
 	byTask    map[string]TaskRef
 	revisions map[string]string
+	documents map[string]*storage.ProjectDocument
 }
 
-// NewSnapshot builds a Snapshot over the given projects and their loaded
-// revisions. It is the seam both the in-memory repository (tests) and the
-// storage-backed repository (later sessions) use to hand the use cases a read
-// model without exposing their internal loading.
-func NewSnapshot(projects []*models.Project, revisions map[string]string) Snapshot {
+// NewSnapshot builds a Snapshot over the given projects, loaded revisions, and
+// exact lossless documents. The document map must contain the parse retained at
+// the same load as each project/revision; application mutations treat those
+// documents as immutable merge bases.
+func NewSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument) Snapshot {
 	view := &snapshotView{
 		byProject: make(map[string]*models.Project, len(projects)),
 		byTask:    make(map[string]TaskRef),
 		revisions: make(map[string]string, len(revisions)),
+		documents: make(map[string]*storage.ProjectDocument, len(documents)),
 	}
 	for id, rev := range revisions {
 		view.revisions[id] = rev
+	}
+	for id, doc := range documents {
+		view.documents[id] = doc
 	}
 	for _, project := range projects {
 		if project == nil {
@@ -130,27 +144,11 @@ func NewSnapshot(projects []*models.Project, revisions map[string]string) Snapsh
 				continue
 			}
 			if _, seen := view.byTask[task.ID]; !seen {
-				view.byTask[task.ID] = TaskRef{Task: task, Project: project}
+				view.byTask[task.ID] = TaskRef{Task: task, Project: project, Base: view.documents[project.ID]}
 			}
 		}
 	}
 	return view
-}
-
-// SnapshotFromWorkspace adapts an already-built workspace read model into the
-// application layer's Snapshot, reusing its per-project revisions instead of
-// recomputing them. It is how a storage-backed repository turns a
-// workspace.Snapshot into the read model the use cases consume.
-func SnapshotFromWorkspace(ws *workspace.Snapshot) Snapshot {
-	if ws == nil {
-		return NewSnapshot(nil, nil)
-	}
-	projects := ws.Projects()
-	revisions := make(map[string]string, len(projects))
-	for _, project := range projects {
-		revisions[project.ID] = ws.Revision(project.ID)
-	}
-	return NewSnapshot(projects, revisions)
 }
 
 func (v *snapshotView) ProjectByID(projectID string) *models.Project {
@@ -170,6 +168,10 @@ func (v *snapshotView) Lookup(taskID string) (TaskRef, bool) {
 
 func (v *snapshotView) Revision(projectID string) string {
 	return v.revisions[projectID]
+}
+
+func (v *snapshotView) Document(projectID string) *storage.ProjectDocument {
+	return v.documents[projectID]
 }
 
 func (v *snapshotView) Projects() []*models.Project { return v.projects }

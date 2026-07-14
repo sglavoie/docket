@@ -43,7 +43,11 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
+	if err != nil {
+		return err
+	}
+	domains, err := workspace.Runtime.CloneDomains()
 	if err != nil {
 		return err
 	}
@@ -88,8 +92,8 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	// machine-local recent visits are intentionally excluded here and repaired
 	// separately after a successful commit.
 	var artifacts []storage.ArtifactChange
-	if cfg.RemoveDurableTaskRefs(idsToDelete) > 0 {
-		arts, artErr := encodeConfigArtifacts(configManager, cfg)
+	if domains.Planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
+		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
 		}
@@ -100,7 +104,7 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	// task's attachment bytes, same- and cross-project reference cleanup, and the
 	// durable planning artifact all commit as ONE transaction, revision-checked and
 	// undoable through the workspace ledger.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	if _, err := svc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, artifacts...); err != nil {
 		return translateAppError(err)
 	}
@@ -108,8 +112,8 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the delete is already committed and recent visits are best-effort.
-	if cfg.RemoveMachineLocalTaskRefs(idsToDelete) > 0 {
-		if saveErr := saveConfig(configManager, cfg); saveErr != nil {
+	if domains.Machine.RemoveMachineLocalTaskRefs(idsToDelete) > 0 {
+		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
 	}

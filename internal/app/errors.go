@@ -39,6 +39,11 @@ var (
 	// the illegal completed-parent-with-incomplete-child state is rejected before
 	// any mutation rather than silently reconciled after the fact.
 	ErrParentHasIncompleteChildren = errors.New("app: task has incomplete children")
+	// ErrWorkflowFocusPersistenceUnavailable marks a workflow cascade that
+	// requested a Focus Queue change without supplying a revision-checked
+	// planning-artifact builder. Failing closed prevents set_active rules from
+	// appearing to succeed while silently discarding their durable side effect.
+	ErrWorkflowFocusPersistenceUnavailable = errors.New("app: workflow focus persistence unavailable")
 )
 
 // IncompleteChild describes one direct child that blocks a parent's terminal

@@ -38,12 +38,12 @@ func init() {
 }
 
 func runRedo(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	ledger := workspaceLedgerForRestore(cfg)
+	ledger := workspaceLedgerForRestore(workspace.Runtime)
 	scope := storage.ProjectScope(project.ID)
 	if redoGlobal {
 		scope = storage.GlobalScope()
@@ -61,7 +61,7 @@ func runRedo(cmd *cobra.Command, args []string) error {
 	// fallback dies with the legacy pipeline. Global scope is ledger-only —
 	// the legacy system has no workspace-wide notion.
 	if !redoGlobal && legacyHistoryIsNewer(project, entry, ledgerHas, storage.LoadRedoHistory) {
-		return runLegacyRedo(project, cfg, configManager)
+		return runLegacyRedo(project, workspace.Runtime.AllProjects(), workspace.Runtime)
 	}
 	if !ledgerHas {
 		if redoGlobal {
@@ -74,7 +74,7 @@ func runRedo(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("redo failed: %w", err)
 	}
-	if err := repairConfigRefsAfterLedgerRestore(configManager, entry.ProjectIDs); err != nil {
+	if err := repairConfigRefsAfterLedgerRestore(workspace.Runtime, entry.ProjectIDs); err != nil {
 		return err
 	}
 
@@ -88,13 +88,13 @@ func runRedo(cmd *cobra.Command, args []string) error {
 // runLegacyRedo restores through the per-project redo history. It is reachable
 // only from the migration-window fallback in runRedo and is removed with the
 // legacy persist pipeline.
-func runLegacyRedo(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
+func runLegacyRedo(project *models.Project, projects []*models.Project, runtime *config.RuntimeState) error {
 	if !storage.RedoHistoryExists(project) {
 		return fmt.Errorf("no redo history available for project '%s'", project.Name)
 	}
 
-	projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, cfg.Projects, loadRedoHistoryEntries)
-	actionDesc, err := storage.PerformRedoForProjects(project, cfg.Projects)
+	projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, projects, loadRedoHistoryEntries)
+	actionDesc, err := storage.PerformRedoForProjects(project, projects)
 	if err != nil {
 		return restoreCommandError("redo", grouped, err)
 	}
@@ -105,7 +105,7 @@ func runLegacyRedo(project *models.Project, cfg *config.Config, configManager *c
 	if err := reapplyRestoreSideEffectsAndSave(projectsToReload, "redo"); err != nil {
 		return err
 	}
-	if err := repairConfigTaskRefsToLoadedProjects(configManager, cfg, projectsToReload); err != nil {
+	if err := repairConfigTaskRefsToLoadedProjects(runtime, projectsToReload); err != nil {
 		return err
 	}
 

@@ -93,7 +93,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			strip = renderTaskMetadataStrip(TaskMetadataStripOpts{
 				Task:         stripTask,
 				Project:      m.resolveProjectForRow(m.rows[m.cursor]),
-				Config:       m.config,
+				Runtime:      m.runtime,
 				Width:        width,
 				AlreadyShown: alreadyShown,
 				ColumnConfig: m.columnConfig,
@@ -203,7 +203,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 		SortAscending: m.sort.Ascending,
 		Width:         width,
 	}
-	return renderProjectTitle(m.project, m.config, titleParams)
+	return renderProjectTitle(m.project, m.runtime, titleParams)
 }
 
 // appendOpenLoopsCounter right-aligns the open-loops counter at the end of an

@@ -11,8 +11,7 @@ import (
 // NewTaskFormModelCreate creates a TaskFormModel for creating a new task.
 func NewTaskFormModelCreate(
 	project *models.Project,
-	cfg *config.Config,
-	mgr *config.Manager,
+	runtime *config.RuntimeState,
 	suggestedParent *models.Task,
 ) *TaskFormModel {
 	draft := taskFormDraft{
@@ -33,16 +32,12 @@ func NewTaskFormModelCreate(
 		}
 	}
 
-	var collapsed bool
-	if cfg != nil {
-		collapsed = cfg.GetTaskFormCollapsed()
-	}
+	collapsed := runtime.Machine().GetTaskFormCollapsed()
 	m := &TaskFormModel{
 		mode:              FormModeCreate,
 		project:           project,
 		draft:             draft,
-		config:            cfg,
-		configManager:     mgr,
+		runtime:           runtime,
 		activeTab:         formTabBasics,
 		focusIndex:        0,
 		collapsedBasics:   collapsed,
@@ -64,12 +59,11 @@ func NewTaskFormModelCreate(
 // NewTaskFormModelCreateFromTemplate creates a TaskFormModel pre-filled from a template.
 func NewTaskFormModelCreateFromTemplate(
 	project *models.Project,
-	cfg *config.Config,
-	mgr *config.Manager,
+	runtime *config.RuntimeState,
 	suggestedParent *models.Task,
 	tmpl *template.TaskTemplate,
 ) *TaskFormModel {
-	m := NewTaskFormModelCreate(project, cfg, mgr, suggestedParent)
+	m := NewTaskFormModelCreate(project, runtime, suggestedParent)
 	m.fromTemplate = tmpl
 
 	if tmpl == nil {
@@ -114,8 +108,7 @@ func NewTaskFormModelCreateFromTemplate(
 func NewTaskFormModelEdit(
 	project *models.Project,
 	task *models.Task,
-	cfg *config.Config,
-	mgr *config.Manager,
+	runtime *config.RuntimeState,
 ) *TaskFormModel {
 	effectiveSection := taskSectionBucket(task)
 
@@ -159,17 +152,13 @@ func NewTaskFormModelEdit(
 		draft.epicAttrs = *task.EpicAttrs
 	}
 
-	var collapsed bool
-	if cfg != nil {
-		collapsed = cfg.GetTaskFormCollapsed()
-	}
+	collapsed := runtime.Machine().GetTaskFormCollapsed()
 	m := &TaskFormModel{
 		mode:              FormModeEdit,
 		project:           project,
 		task:              task,
 		draft:             draft,
-		config:            cfg,
-		configManager:     mgr,
+		runtime:           runtime,
 		activeTab:         formTabBasics,
 		focusIndex:        0,
 		collapsedBasics:   collapsed,

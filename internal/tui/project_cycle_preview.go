@@ -22,7 +22,7 @@ func (m *AppModel) renderCyclePreviewBackground(visibleRows ...int) string {
 	previewRows = max(previewRows, 1)
 
 	if m.projectCyclePreviewID != proj.ID || m.projectCyclePreview == nil {
-		m.projectCyclePreview = NewProjectTreeModel(proj, m.config, m.configManager)
+		m.projectCyclePreview = NewProjectTreeModel(proj, m.configManager, m.runtime)
 		m.projectCyclePreviewID = proj.ID
 	}
 	m.projectCyclePreview.SetSize(m.width, previewRows)

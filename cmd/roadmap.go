@@ -48,7 +48,7 @@ func init() {
 }
 
 func runRoadmap(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
@@ -57,10 +57,7 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	var allArchived []metrics.TaskSummary
 
 	if len(args) > 0 {
-		p, err := lookupProject(configManager, args[0])
-		if err != nil {
-			return err
-		}
+		p := workspace.Runtime.GetProject(args[0])
 		if p == nil {
 			return fmt.Errorf("project not found: %s", args[0])
 		}
@@ -77,10 +74,7 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 			allArchived = append(allArchived, summaries...)
 		}
 	} else {
-		active, err := activeProjects(configManager)
-		if err != nil {
-			return err
-		}
+		active := workspace.Runtime.ActiveProjects()
 		for _, p := range active {
 			if err := storage.LoadProject(p); err != nil {
 				if _, writeErr := fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipping project %s: %v\n", p.Name, err); writeErr != nil {
@@ -106,7 +100,7 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 
 	// Compute effort-weighted velocity. Use the user's configured week-start
 	// so weekly throughput buckets align with their dashboard preferences.
-	weekStart := metrics.WeekStartFromWeekEnd(cfg.GetWeekEndDay())
+	weekStart := metrics.WeekStartFromWeekEnd(workspace.Runtime.Settings().GetWeekEndDay())
 	agg := metrics.ComputeAllAtWithWeekStartAndSummaries(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
 	var allTasks []*models.Task
 	for _, p := range projects {

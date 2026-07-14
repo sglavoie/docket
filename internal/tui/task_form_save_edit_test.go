@@ -12,8 +12,8 @@ import (
 // transactional stack instead of a raw project save.
 func scenarioEditForm(t *testing.T, env *scenarioEnv, task *models.Task) *TaskFormModel {
 	t.Helper()
-	cfg := testutil.NewTestConfig()
-	m := NewTaskFormModelEdit(env.project, task, cfg, nil)
+	cfg := newTestConfig()
+	m := NewTaskFormModelEdit(env.project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetTaskFormCoordinator(env.features.TaskForm)
 	return m
 }
@@ -129,11 +129,11 @@ func TestTaskForm_Save_EditFiltersBlankChecklistItems(t *testing.T) {
 // it needs the coordinator.
 func TestTaskForm_Save_EditWithoutCoordinatorBuildsCmd(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Edit")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Fatal("test project has no tasks")
 	}
-	m := NewTaskFormModelEdit(project, project.Tasks[0], cfg, nil)
+	m := NewTaskFormModelEdit(project, project.Tasks[0], testRuntimeAt(cfg.DataDir(), cfg))
 	m.draft.title = "changed"
 	m.titleInput.SetValue("changed")
 	if cmd := m.saveEdit(); cmd == nil {

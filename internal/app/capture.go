@@ -73,7 +73,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	}
 	insertCapturedTask(project, task, req.Prepend)
 
-	ref := TaskRef{Task: task, Project: project}
+	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
 	return s.commitProject(ref, revision, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 }
 
@@ -129,7 +129,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	if len(tasks) == 1 {
 		ctxTitle = fmt.Sprintf("#%d %s", tasks[0].ShortID, tasks[0].Title)
 	}
-	ref := TaskRef{Task: tasks[0], Project: project}
+	ref := TaskRef{Task: tasks[0], Project: project, Base: snap.Document(project.ID)}
 	if _, err := s.commitProject(ref, revision, "Add Tasks", ctxTitle); err != nil {
 		return nil, err
 	}

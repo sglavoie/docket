@@ -292,7 +292,14 @@ func metadataUpdatedFieldCodec() metadataFieldCodec {
 		func(task *models.Task, value time.Time) { task.UpdatedAt = value },
 		func(task *models.Task) time.Time { return task.UpdatedAt },
 		func(task *models.Task) bool {
-			return !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt)
+			// created/updated are persisted at minute precision. Comparing the
+			// richer in-memory time values made two timestamps in the same minute
+			// serialize as distinct, then parse back as equal; the next canonical
+			// render omitted updated and changed the revision. Decide presence in
+			// the persisted representation instead so write -> parse -> write is a
+			// fixed point.
+			return !task.UpdatedAt.IsZero() &&
+				task.UpdatedAt.Format(util.DateTimeFormat) != task.CreatedAt.Format(util.DateTimeFormat)
 		},
 		util.DateTimeFormat,
 	)

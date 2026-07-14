@@ -64,14 +64,14 @@ func (m *AppModel) validateCurrentProject() bool {
 	if m.currentProject == nil {
 		return false
 	}
-	if m.config.GetProject(m.currentProject.ID) != nil {
+	if m.projectByID(m.currentProject.ID) != nil {
 		return false
 	}
 	m.currentProject = nil
 	m.viewStack = m.viewStack[:1]
 	m.setInfoStatus("Project was removed — returning to dashboard")
 	if m.dashboard != nil {
-		m.dashboard.Refresh(m.config)
+		m.dashboard.Refresh()
 	}
 	return true
 }
@@ -208,7 +208,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {
 			prevID := m.projectStack[len(m.projectStack)-1]
 			m.projectStack = m.projectStack[:len(m.projectStack)-1]
-			if prev := m.config.GetProject(prevID); prev != nil {
+			if prev := m.projectByID(prevID); prev != nil {
 				m.switchToProject(prev, true)
 			} else {
 				m.setInfoStatus("Previous project no longer exists")
@@ -244,9 +244,7 @@ func (m *AppModel) jumpToDashboard() tea.Cmd {
 	m.clearTransientNavigationState()
 	m.viewStack = []ViewType{ViewDashboard}
 	m.projectStack = nil
-	if m.config != nil {
-		m.reevaluateAlerts()
-	}
+	m.reevaluateAlerts()
 	if view := m.views.Get(ViewDashboard); view != nil {
 		m.setAccentOnView(view)
 	}
@@ -490,9 +488,9 @@ func (m *AppModel) isOnProjectView() bool {
 	return cur == ViewProjectTree || cur == ViewOutliner
 }
 
-// defaultProjectViewType maps the config's default_project_view string to a ViewType.
-func defaultProjectViewType(cfg *config.Config) ViewType {
-	switch cfg.GetDefaultProjectView() {
+// defaultProjectViewType maps the settings' default_project_view string to a ViewType.
+func defaultProjectViewType(settings *config.Settings) ViewType {
+	switch settings.GetDefaultProjectView() {
 	case "project_tree":
 		return ViewProjectTree
 	default:
@@ -528,7 +526,7 @@ func (m *AppModel) getProjectLastView(projectID string) ViewType {
 	if v, ok := m.projectLastView[projectID]; ok {
 		return v
 	}
-	return defaultProjectViewType(m.config)
+	return defaultProjectViewType(m.runtime.Settings())
 }
 
 // popAndNavigateToTask pops the current view and navigates to a task in its project.
@@ -580,7 +578,7 @@ func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models
 	default:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
 		m.outliner.queueIDs = m.focusQueueIDs
 		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()

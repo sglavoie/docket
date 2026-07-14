@@ -31,10 +31,15 @@ func init() {
 func runContextDelete(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	cfg, mgr, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	machine := domains.Machine
 
 	out, err := getOutputOpts(cmd)
 	if err != nil {
@@ -42,7 +47,7 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check existence before prompting for confirmation
-	if cfg.GetCustomContext(name) == nil {
+	if machine.GetCustomContext(name) == nil {
 		return fmt.Errorf("custom context '%s' not found", name)
 	}
 
@@ -53,11 +58,11 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if !cfg.DeleteCustomContext(name) {
+	if !machine.DeleteCustomContext(name) {
 		return fmt.Errorf("custom context '%s' not found", name)
 	}
 
-	if err := saveConfig(mgr, cfg); err != nil {
+	if err := workspace.Runtime.CommitMachine(machine); err != nil {
 		return err
 	}
 

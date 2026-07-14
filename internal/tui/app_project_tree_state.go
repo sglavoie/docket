@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -22,7 +23,7 @@ func (m *AppModel) refreshProjectTree() {
 	// Rebuild task tree to ensure parent-child relationships are current
 	m.currentProject.BuildTaskTree()
 
-	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
+	m.projectTree = NewProjectTreeModel(m.currentProject, m.configManager, m.runtime)
 	m.projectTree.queueIDs = m.focusQueueIDs
 	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
 	m.projectTree.SetSize(m.width, m.height-2)
@@ -81,29 +82,30 @@ func (m *AppModel) saveProjectTreeState() {
 		}
 	}
 
-	// Read existing state to preserve outliner fields (read-modify-write).
-	state := m.config.ProjectViewStates[m.currentProject.ID]
-	state.FilterType = string(m.projectTree.filter.Type)
-	state.FilterStatus = string(m.projectTree.filter.Status)
-	state.FilterPriority = m.projectTree.filter.Priority
-	state.FilterTags = filterTags
-	state.FilterSections = filterSections
-	state.FilterDueDate = int(m.projectTree.filter.DueDate)
-	state.FilterActionable = m.projectTree.filter.Actionable
-	state.FilterHideDimmed = m.projectTree.filter.HideDimmed
-	state.FilterGitHubIssue = m.projectTree.filter.GitHubIssue
-	state.FilterParked = m.projectTree.filter.Parked
-	state.SortField = int(m.projectTree.sort.Field)
-	state.SortAscending = m.projectTree.sort.Ascending
-	state.SidebarEnabled = m.projectTree.sidebar.IsEnabled()
-	state.FilterBarEnabled = m.projectTree.filterBar.IsEnabled()
-	state.ViewMode = int(m.projectTree.viewMode)
-	state.PinnedTagTab = m.projectTree.activePinnedTagFilter()
-	state.TreeColumnToggles = m.projectTree.columnConfig.Toggles()
-	state.TreeFoldState = foldState
-
-	m.config.SetProjectViewState(m.currentProject.ID, state)
-	if err := m.configManager.Save(m.config); err != nil {
+	projectID := m.currentProject.ID
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		// Read existing state to preserve outliner fields (read-modify-write).
+		state, _ := machine.GetProjectViewState(projectID)
+		state.FilterType = string(m.projectTree.filter.Type)
+		state.FilterStatus = string(m.projectTree.filter.Status)
+		state.FilterPriority = m.projectTree.filter.Priority
+		state.FilterTags = filterTags
+		state.FilterSections = filterSections
+		state.FilterDueDate = int(m.projectTree.filter.DueDate)
+		state.FilterActionable = m.projectTree.filter.Actionable
+		state.FilterHideDimmed = m.projectTree.filter.HideDimmed
+		state.FilterGitHubIssue = m.projectTree.filter.GitHubIssue
+		state.FilterParked = m.projectTree.filter.Parked
+		state.SortField = int(m.projectTree.sort.Field)
+		state.SortAscending = m.projectTree.sort.Ascending
+		state.SidebarEnabled = m.projectTree.sidebar.IsEnabled()
+		state.FilterBarEnabled = m.projectTree.filterBar.IsEnabled()
+		state.ViewMode = int(m.projectTree.viewMode)
+		state.PinnedTagTab = m.projectTree.activePinnedTagFilter()
+		state.TreeColumnToggles = m.projectTree.columnConfig.Toggles()
+		state.TreeFoldState = foldState
+		machine.SetProjectViewState(projectID, state)
+	}); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}
 }
@@ -118,8 +120,8 @@ func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.saveProjectTreeState()
 	m.currentProject = project
 	_ = m.persister.Load(project)
-	m.config.ApplyGlobalColorsToProject(project)
-	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
+	m.runtime.Settings().ApplyGlobalColorsToProject(project)
+	m.projectTree = NewProjectTreeModel(project, m.configManager, m.runtime)
 	m.projectTree.queueIDs = m.focusQueueIDs
 	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
 	m.projectTree.SetSize(m.width, m.height-2)
@@ -134,7 +136,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	if m.projectTree == nil || m.currentProject == nil {
 		return
 	}
-	state, exists := m.config.GetProjectViewState(m.currentProject.ID)
+	state, exists := m.runtime.Machine().GetProjectViewState(m.currentProject.ID)
 	if !exists {
 		return
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 func TestConfigGlobalPinnedTagHelpersNormalizeValidateAndToggle(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	cfg.GlobalPinnedTags = []string{" backend ", "bad,tag", "backend"}
 
 	if !cfg.IsGlobalTagPinned("#backend") {

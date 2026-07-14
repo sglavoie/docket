@@ -139,11 +139,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 			if msg.Section != "" {
 				project.EnsureSection(msg.Section)
-				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
+				if globalColor := m.runtime.Settings().GetGlobalSectionColor(msg.Section); globalColor != "gray" {
 					project.SetSectionColor(msg.Section, globalColor)
 				}
 			}
-			m.config.ApplyGlobalColorsToProject(project)
+			m.runtime.Settings().ApplyGlobalColorsToProject(project)
 
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkSectionProject = nil
@@ -161,7 +161,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			// reload, selection-clear, and the status line via the async batch
 			// result, mirroring the migrated ProjectTree/Outliner section moves.
 			opts := app.ProjectWorkflowOptions{
-				Rules:       m.config.GetEnabledWorkflowRules(),
+				Rules:       m.runtime.Automation().GetEnabledWorkflowRules(),
 				UndoAction:  "Move to Section",
 				UndoContext: fmt.Sprintf("%d tasks", count),
 			}
@@ -200,9 +200,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case ShowSectionManagerMsg:
 		if msg.ProjectTree != nil {
-			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, nil, m.config, m.configManager, msg.StartAddMode))
+			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, nil, m.runtime, msg.StartAddMode))
 		} else if msg.Project != nil {
-			m.showView(ViewSectionManager, NewSectionManagerModel(nil, msg.Project, m.config, m.configManager, msg.StartAddMode))
+			m.showView(ViewSectionManager, NewSectionManagerModel(nil, msg.Project, m.runtime, msg.StartAddMode))
 		}
 		return true, nil
 
@@ -218,6 +218,22 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.projectTree.filter.Sections = map[string]bool{msg.SectionName: true}
 			m.projectTree.updateVisibility()
 			m.projectTree.clampCursor()
+		}
+		return true, nil
+
+	case SectionColorChangedMsg:
+		// The Settings commit completed before this message was emitted. Apply the
+		// committed value on the single-threaded update path so every loaded
+		// project observes the global color together and a failed commit cannot
+		// mutate any project cache.
+		colorName := msg.ColorName
+		if m.runtime != nil {
+			colorName = m.runtime.Settings().GetGlobalSectionColor(msg.SectionName)
+		}
+		m.applySectionColorToLoadedProjects(msg.SectionName, colorName)
+		if m.currentView() == ViewSectionManager {
+			// Let the section manager rebuild its rows after the cache update.
+			return false, nil
 		}
 		return true, nil
 
@@ -241,6 +257,40 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 	}
 	return false, nil
+}
+
+// applySectionColorToLoadedProjects updates every live project pointer owned by
+// the shell. Cross-project outliners intentionally maintain disk-loaded copies
+// outside the central project cache, so update those copies too. Deduplicate by
+// pointer rather than project ID because two caches can hold distinct models for
+// the same durable project and both must observe the committed global color.
+func (m *AppModel) applySectionColorToLoadedProjects(sectionName, colorName string) {
+	seen := make(map[*models.Project]struct{})
+	apply := func(project *models.Project) {
+		if project == nil {
+			return
+		}
+		if _, ok := seen[project]; ok {
+			return
+		}
+		seen[project] = struct{}{}
+		project.SetSectionColor(sectionName, colorName)
+	}
+	for _, project := range m.projects {
+		apply(project)
+	}
+	if m.outliner != nil {
+		apply(m.outliner.project)
+		for _, project := range m.outliner.loadedProjects {
+			apply(project)
+		}
+	}
+	if m.crossOutliner != nil {
+		apply(m.crossOutliner.project)
+		for _, project := range m.crossOutliner.loadedProjects {
+			apply(project)
+		}
+	}
 }
 
 // assignSection routes section mutations through the task's invariant-safe helper.

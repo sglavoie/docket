@@ -139,7 +139,7 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 			return m, func() tea.Msg {
 				return ShowQuickCaptureMsg{
 					Project:     m.project,
-					AllProjects: m.config.GetActiveProjects(),
+					AllProjects: m.runtime.ActiveProjects(),
 				}
 			}
 		}),

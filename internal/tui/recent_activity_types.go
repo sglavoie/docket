@@ -18,8 +18,9 @@ const (
 type RecentActivityModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	config        *config.Config
 	configManager *config.Manager
+	// runtime backs the domain-native scoring read used by common filters.
+	runtime *config.RuntimeState
 
 	// taskItem routes the standard single-task keymap mutations through the
 	// application-layer coordinator, running the workflow cascade. The shell wires
@@ -44,39 +45,39 @@ type RecentActivityModel struct {
 }
 
 // NewRecentActivityModel creates a new recent activity model.
-func NewRecentActivityModel(cfg *config.Config, mgr *config.Manager) *RecentActivityModel {
+func NewRecentActivityModel(runtime *config.RuntimeState, mgr *config.Manager) *RecentActivityModel {
 	m := &RecentActivityModel{
-		config:        cfg,
 		configManager: mgr,
+		runtime:       runtime,
 		FilterMixin:   FilterMixin{filter: newFilterState()},
 		tabs:          TabState{Names: recentActivityTabNames},
 	}
-	if !cfg.GetRecentActivityShowAll() {
+	if !runtime.Settings().GetRecentActivityShowAll() {
 		m.tabs.Active = recentActivityTabActive
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m
 }
 
 // NewProjectRecentActivityModel creates a project-scoped recent activity model.
-func NewProjectRecentActivityModel(cfg *config.Config, mgr *config.Manager, project *models.Project) *RecentActivityModel {
+func NewProjectRecentActivityModel(runtime *config.RuntimeState, mgr *config.Manager, project *models.Project) *RecentActivityModel {
 	m := &RecentActivityModel{
-		config:        cfg,
 		configManager: mgr,
+		runtime:       runtime,
 		projectScope:  project,
 		FilterMixin:   FilterMixin{filter: newFilterState()},
 		tabs:          TabState{Names: recentActivityTabNames},
 	}
-	if !cfg.GetRecentActivityShowAll() {
+	if !runtime.Settings().GetRecentActivityShowAll() {
 		m.tabs.Active = recentActivityTabActive
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m
@@ -93,10 +94,10 @@ func (m *RecentActivityModel) taskItemCoordinator() TaskItemCoordinator { return
 // workflowRules is the workflowOpsView accessor for the enabled workflow rules;
 // it returns nil when no config is bound (isolated render tests).
 func (m *RecentActivityModel) workflowRules() []workflow.WorkflowRule {
-	if m.config == nil {
+	if m.runtime == nil {
 		return nil
 	}
-	return m.config.GetEnabledWorkflowRules()
+	return m.runtime.Automation().GetEnabledWorkflowRules()
 }
 
 func (m *RecentActivityModel) resetViewScrollOffset() {

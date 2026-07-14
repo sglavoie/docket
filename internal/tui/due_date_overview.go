@@ -35,7 +35,7 @@ const (
 type DueDateOverviewModel struct {
 	BaseView
 	InteractiveViewState
-	ViewBundle
+	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -67,13 +67,13 @@ type DueDateOverviewModel struct {
 }
 
 // NewDueDateOverviewModel creates a new due date overview model.
-func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOverviewModel {
+func NewDueDateOverviewModel(runtime *config.RuntimeState, mgr *config.Manager) *DueDateOverviewModel {
 	m := &DueDateOverviewModel{
-		ViewBundle:       ViewBundle{config: cfg, configManager: mgr},
-		projectService:   NewProjectService(),
-		FilterMixin:      FilterMixin{filter: newFilterState()},
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		tabs:             TabState{Names: dueDateTabNames},
+		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
+		projectService:    NewProjectService(),
+		FilterMixin:       FilterMixin{filter: newFilterState()},
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		tabs:              TabState{Names: dueDateTabNames},
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
@@ -92,7 +92,7 @@ func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOv
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadTasksWithDueDates()
 	return m
 }
@@ -104,7 +104,7 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 	m.thisWeek = nil
 	m.later = nil
 
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	for _, project := range projects {
 		if err := m.projectService.Load(project); err != nil {
 			continue
@@ -116,7 +116,7 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 			}
 
 			// Apply common filters (no DueDate filter — the view IS organized by due date)
-			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project, m.config) {
+			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project, m.runtime.Automation()) {
 				continue
 			}
 
@@ -316,10 +316,9 @@ func (m *DueDateOverviewModel) getTaskRef() (*models.Task, *models.Project) {
 	return dt.Task, dt.Project
 }
 
-func (m *DueDateOverviewModel) getPersister() Persister           { return m.projectService }
 func (m *DueDateOverviewModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *DueDateOverviewModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *DueDateOverviewModel) reloadData()                       { m.loadTasksWithDueDates() }
-func (m *DueDateOverviewModel) setErr(err error)                  { m.SetError(err) }
 func (m *DueDateOverviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
 func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
@@ -327,7 +326,7 @@ func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cm
 }
 
 func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
-	return m, wfDeleteTask(m, m.config, m.configManager)
+	return m, wfDeleteTask(m, m.runtime, m.configManager)
 }
 
 // clampCursor ensures cursor is within valid range.

@@ -212,7 +212,7 @@ func TestRenderInboxCurrentSettingsIgnoresNonGTDSection(t *testing.T) {
 	}
 	task.SetSection("Sprint-1")
 
-	rendered := renderInboxCurrentSettings(task, &config.Config{SectionColors: map[string]string{}})
+	rendered := renderInboxCurrentSettings(task, &config.Settings{SectionColors: map[string]string{}})
 
 	if strings.Contains(rendered, "Sprint-1") {
 		t.Fatalf("did not expect non-GTD section name in current settings, got %q", rendered)

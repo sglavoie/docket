@@ -147,7 +147,7 @@ func (m *GlobalSearchModel) filterTasks() {
 		}
 
 		// First apply structured filters
-		if !TaskMatchesFilters(result.Task, m.parsedFilters, m.config) {
+		if !TaskMatchesFilters(result.Task, m.parsedFilters, m.runtime.Planning()) {
 			continue
 		}
 

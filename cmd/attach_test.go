@@ -9,13 +9,12 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // findSavedTask returns the persisted copy of a task after runAttach reloads,
 // mutates, and saves its own project instance. Inspecting the in-memory task
 // returned by setupAttachmentTest would miss those side effects.
-func findSavedTask(t *testing.T, deps *testutil.TestDeps, projectID, taskID string) *models.Task {
+func findSavedTask(t *testing.T, deps *testDeps, projectID, taskID string) *models.Task {
 	t.Helper()
 	saved := deps.Repository.Projects[projectID]
 	if saved == nil {

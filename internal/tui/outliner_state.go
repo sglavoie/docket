@@ -11,11 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// refreshView rebuilds the outliner rows.
-func (m *OutlinerModel) refreshView() {
-	m.rebuildRows()
-}
-
 // saveAndRefreshBulk saves the project with workflow rules and rebuilds rows.
 func (m *OutlinerModel) saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd {
 	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(prevStates), "")
@@ -32,8 +27,8 @@ func (m *OutlinerModel) setStatusMessage(msg string) {
 // evaluation, a captured snapshot selects contextual evaluation.
 func (m *OutlinerModel) commitWorkflowOpts(prevStates map[string]*models.Task) app.ProjectWorkflowOptions {
 	var rules []workflow.WorkflowRule
-	if m.config != nil {
-		rules = m.config.GetEnabledWorkflowRules()
+	if m.runtime != nil {
+		rules = m.runtime.Automation().GetEnabledWorkflowRules()
 	}
 	action, context := m.undo.Action, m.undo.Context
 	m.undo.Clear()
@@ -55,7 +50,7 @@ func (m *OutlinerModel) singleTaskCoordinator() TaskItemCoordinator {
 // commitWorkflow commits the project's current in-memory state (already mutated by
 // the caller) through the application layer with the workflow cascade, labeling
 // the ledger entry from the pending undo context and setting summary as the
-// status-line text. It is the single-project bulk-status/delete analogue of
+// status-line text. It is the single-project bulk-status/delete analog of
 // saveAndRefreshBulk that carries an explicit success message.
 func (m *OutlinerModel) commitWorkflow(prevStates map[string]*models.Task, summary string) tea.Cmd {
 	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(prevStates), summary)
@@ -73,12 +68,12 @@ func (m *OutlinerModel) setUndoTaskIDs(ids []string) {
 
 // performUndo restores the project from the most recent undo snapshot.
 func (m *OutlinerModel) performUndo() tea.Cmd {
-	return performUndoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
+	return performUndoForProjectsCmd(m.projectService, m.project, activeUndoProjectsFromRuntime(m.runtime), repairRuntimeTaskRefsAfterRestore(m.runtime))
 }
 
 // performRedo restores the project from the most recent redo snapshot.
 func (m *OutlinerModel) performRedo() tea.Cmd {
-	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
+	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjectsFromRuntime(m.runtime), repairRuntimeTaskRefsAfterRestore(m.runtime))
 }
 
 // OutlinerToggleState captures section/fold state so it can survive outliner

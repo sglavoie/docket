@@ -11,14 +11,14 @@ import (
 )
 
 func TestRunContextEdit(t *testing.T) {
-	setup := func(t *testing.T) (*testutil.TestDeps, func()) {
+	setup := func(t *testing.T) (*testDeps, func()) {
 		t.Helper()
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 		viper.Set("config", deps.ConfigPath)
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository

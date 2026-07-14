@@ -64,7 +64,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle score filter custom value input
 		if m.scoreFilterInput.IsActive() {
-			cmd := m.scoreFilterInput.ProcessKey(msg, m.config, m.configManager, &m.filter.ScoreMin, m.applyFilterChange)
+			cmd := m.scoreFilterInput.ProcessKey(msg, m.runtime, &m.filter.ScoreMin, m.applyFilterChange)
 			return m, cmd
 		}
 

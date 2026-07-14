@@ -75,18 +75,19 @@ func init() {
 }
 
 func runScoreProfileList(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	if len(cfg.ScoringProfiles) == 0 {
+	automation := workspace.Runtime.Automation()
+	if len(automation.ScoringProfiles) == 0 {
 		fmt.Println("No scoring profiles configured.")
 		fmt.Println("Add a preset with: tt score profile add --preset rice")
 		return nil
 	}
 
-	for _, p := range cfg.ScoringProfiles {
+	for _, p := range automation.ScoringProfiles {
 		builtinTag := ""
 		if p.Builtin {
 			builtinTag = " (built-in)"
@@ -97,10 +98,15 @@ func runScoreProfileList(cmd *cobra.Command, args []string) error {
 }
 
 func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
 	preset, _ := cmd.Flags().GetString("preset")
 	if preset != "" {
@@ -110,10 +116,10 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown preset %q (available: %s)", preset, strings.Join(scoring.PresetNames(), ", "))
 		}
 		profile := factory()
-		if addErr := cfg.AddScoringProfile(profile); addErr != nil {
+		if addErr := automation.AddScoringProfile(profile); addErr != nil {
 			return addErr
 		}
-		err = saveConfig(configManager, cfg)
+		err = commitCLIAutomation(workspace, automation)
 		if err != nil {
 			return err
 		}
@@ -150,10 +156,10 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 	if err := profile.Validate(); err != nil {
 		return err
 	}
-	if err := cfg.AddScoringProfile(profile); err != nil {
+	if err := automation.AddScoringProfile(profile); err != nil {
 		return err
 	}
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 	fmt.Printf("Added scoring profile: %s\n", scoring.FormatProfileSummary(&profile))
@@ -165,12 +171,12 @@ func runScoreProfileShow(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("profile name")
 	}
 
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	profile := cfg.GetScoringProfile(args[0])
+	profile := workspace.Runtime.Automation().GetScoringProfile(args[0])
 	if profile == nil {
 		return fmt.Errorf("scoring profile %q not found", args[0])
 	}
@@ -207,12 +213,17 @@ func runScoreProfileEdit(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("profile name")
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
-	profile := cfg.GetScoringProfile(args[0])
+	profile := automation.GetScoringProfile(args[0])
 	if profile == nil {
 		return fmt.Errorf("scoring profile %q not found", args[0])
 	}
@@ -249,7 +260,7 @@ func runScoreProfileEdit(cmd *cobra.Command, args []string) error {
 	if err := profile.Validate(); err != nil {
 		return err
 	}
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 	fmt.Printf("Updated profile: %s\n", scoring.FormatProfileSummary(profile))
@@ -261,29 +272,25 @@ func runScoreProfileDelete(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("profile name")
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
-	if existing := cfg.GetScoringProfile(args[0]); existing != nil && existing.Builtin {
+	if existing := automation.GetScoringProfile(args[0]); existing != nil && existing.Builtin {
 		return fmt.Errorf("scoring profile %q is a built-in preset and cannot be deleted", args[0])
 	}
 
-	if !cfg.RemoveScoringProfile(args[0]) {
+	if !automation.RemoveScoringProfile(args[0]) {
 		return fmt.Errorf("scoring profile %q not found", args[0])
 	}
 
-	// Clean up any project assignments pointing to this profile
-	if cfg.ProjectScoringProfile != nil {
-		for projID, profID := range cfg.ProjectScoringProfile {
-			if profID == args[0] {
-				delete(cfg.ProjectScoringProfile, projID)
-			}
-		}
-	}
-
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 	fmt.Printf("Deleted scoring profile %q\n", args[0])

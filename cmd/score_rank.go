@@ -33,12 +33,12 @@ type rankedTask struct {
 }
 
 func runScoreRank(cmd *cobra.Command, args []string) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	profile := cfg.GetProjectScoringProfile(project.ID)
+	profile := workspace.Runtime.Automation().GetProjectScoringProfile(project.ID)
 	if profile == nil {
 		return fmt.Errorf("no scoring profile assigned to project %q", project.Name)
 	}

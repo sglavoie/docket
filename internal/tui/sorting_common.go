@@ -119,19 +119,19 @@ func TodayStateOrder(state models.WorkflowState) int {
 
 // CompareTasks compares two tasks based on the given sort field.
 // Returns -1 if a < b, 0 if equal, 1 if a > b.
-// The projectID and cfg are needed for score-based comparison.
+// The projectID and automation snapshot are needed for score-based comparison.
 // Ties on the primary key are broken by task.ID (lexicographic) to keep
 // the ordering deterministic and to satisfy strict weak ordering when
 // the result is fed through sort.Slice.
-func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *config.Config) int {
-	primary := compareTasksPrimary(a, b, field, projectID, cfg)
+func CompareTasks(a, b *models.Task, field SortField, projectID string, auto *config.AutomationConfig) int {
+	primary := compareTasksPrimary(a, b, field, projectID, auto)
 	if primary != 0 {
 		return primary
 	}
 	return cmp.Compare(a.ID, b.ID)
 }
 
-func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, cfg *config.Config) int {
+func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, auto *config.AutomationConfig) int {
 	switch field {
 	case SortByPriority:
 		return cmp.Compare(a.Priority, b.Priority)
@@ -155,7 +155,7 @@ func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, c
 		return cmp.Compare(StateOrder(a.State()), StateOrder(b.State()))
 
 	case SortByScore:
-		profile := cfg.GetProjectScoringProfile(projectID)
+		profile := auto.GetProjectScoringProfile(projectID)
 		if profile != nil {
 			scoreA := scoring.ComputeScore(a, profile)
 			scoreB := scoring.ComputeScore(b, profile)
@@ -172,10 +172,10 @@ func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, c
 // CompareTasksCrossProject compares two tasks that may belong to different projects.
 // Each task has its own projectID for score resolution. Ties are broken by
 // task.ID for deterministic ordering under sort.Slice.
-func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, projectIDB string, cfg *config.Config) int {
+func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, projectIDB string, auto *config.AutomationConfig) int {
 	if field == SortByScore {
-		pa := cfg.GetProjectScoringProfile(projectIDA)
-		pb := cfg.GetProjectScoringProfile(projectIDB)
+		pa := auto.GetProjectScoringProfile(projectIDA)
+		pb := auto.GetProjectScoringProfile(projectIDB)
 		var sa, sb float64
 		if pa != nil {
 			sa = scoring.ComputeScore(a, pa)
@@ -189,7 +189,7 @@ func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, pr
 		}
 		return cmp.Compare(a.ID, b.ID)
 	}
-	return CompareTasks(a, b, field, "", cfg)
+	return CompareTasks(a, b, field, "", auto)
 }
 
 // sortHierarchical sorts a flat slice of nodes while preserving parent-child

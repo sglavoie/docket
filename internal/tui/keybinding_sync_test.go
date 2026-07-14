@@ -168,7 +168,7 @@ func TestViewTypeString(t *testing.T) {
 		ViewTaskTemplates:       "TaskTemplates",
 		ViewFilterBuilder:       "FilterBuilder",
 		ViewCrossProjectLinker:  "CrossProjectLinker",
-		ViewTutor:               "Tutor",
+		ViewTutor:               "Reference",
 		ViewScoreProfileManager: "ScoreProfileManager",
 		ViewProjectPreview:      "ProjectPreview",
 		ViewCustomContextEditor: "CustomContextEditor",

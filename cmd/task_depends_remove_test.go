@@ -14,14 +14,14 @@ import (
 
 func TestTaskDependsRemoveDependency(t *testing.T) {
 	t.Run("removes dependency successfully", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -64,14 +64,14 @@ func TestTaskDependsRemoveDependency(t *testing.T) {
 		// Removing the last dependency must make the derived blocked predicate
 		// false (HasIncompleteDependencies == false) while PRESERVING the task's
 		// workflow state — the CLI no longer force-reopens the task.
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -115,14 +115,14 @@ func TestTaskDependsRemoveDependency(t *testing.T) {
 	})
 
 	t.Run("errors when removing non-existent dependency", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository

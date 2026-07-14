@@ -31,8 +31,8 @@ func (m *DashboardModel) View() tea.View {
 // Vertical layout falls back to horizontal on narrow terminals; an active
 // search state or InfoPanelOff forces the list-only path regardless of layout.
 func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight int) string {
-	layout := m.config.GetDashboardBottomLayout()
-	panelMode := m.config.GetInfoPanelMode()
+	layout := m.runtime.Machine().GetDashboardBottomLayout()
+	panelMode := m.runtime.Machine().GetInfoPanelMode()
 
 	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.HasActiveSearch() {
 		return m.renderDashboardListOnly(visible, chromeHeight)
@@ -56,24 +56,24 @@ func (m *DashboardModel) projectListPageSize() int {
 
 func (m *DashboardModel) projectListViewportInputs(chromeHeight int) (cardWidth, bottomHeight int) {
 	cardWidth = max(m.width-2, MinCardWidth)
-	if m.config == nil {
+	if m.runtime == nil {
 		return cardWidth, 0
 	}
 
-	layout := m.config.GetDashboardBottomLayout()
-	panelMode := m.config.GetInfoPanelMode()
+	layout := m.runtime.Machine().GetDashboardBottomLayout()
+	panelMode := m.runtime.Machine().GetInfoPanelMode()
 	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.HasActiveSearch() {
 		return cardWidth, 0
 	}
 
 	if layout == config.DashboardLayoutVertical && m.width >= DashboardInfoSectionWideMinWidth {
 		totalWidth := max(m.width-2, MinCardWidth)
-		pct := m.config.GetDashboardVerticalSplitPct()
+		pct := m.runtime.Machine().GetDashboardVerticalSplitPct()
 		listWidth := max(min(max(totalWidth*pct/100, TreeMinWidth), totalWidth-MinCardWidth), TreeMinWidth)
 		return listWidth, 0
 	}
 
-	pct := m.config.GetDashboardHorizontalSplitPct()
+	pct := m.runtime.Machine().GetDashboardHorizontalSplitPct()
 	totalHeight := max(m.height-chromeHeight, 0)
 	paneHeight := max(totalHeight*(100-pct)/100, DashboardBottomPaneHeight)
 
@@ -110,7 +110,7 @@ func (m *DashboardModel) renderDashboardHorizontal(visible []*models.Project, ch
 
 	cardWidth := max(m.width-2, MinCardWidth)
 
-	pct := m.config.GetDashboardHorizontalSplitPct()
+	pct := m.runtime.Machine().GetDashboardHorizontalSplitPct()
 	totalHeight := max(m.height-chromeHeight, 0)
 	paneHeight := max(totalHeight*(100-pct)/100, DashboardBottomPaneHeight)
 
@@ -153,7 +153,7 @@ func (m *DashboardModel) renderDashboardHorizontal(visible []*models.Project, ch
 // because its width sits below DashboardInfoSectionWideMinWidth in practice.
 func (m *DashboardModel) renderDashboardVertical(visible []*models.Project, chromeHeight int, panelMode config.InfoPanelMode) string {
 	totalWidth := max(m.width-2, MinCardWidth)
-	pct := m.config.GetDashboardVerticalSplitPct()
+	pct := m.runtime.Machine().GetDashboardVerticalSplitPct()
 
 	listWidth := max(min(max(totalWidth*pct/100, TreeMinWidth), totalWidth-MinCardWidth), TreeMinWidth)
 	infoWidth := max(totalWidth-listWidth, MinCardWidth)
@@ -191,8 +191,8 @@ func (m *DashboardModel) projectCardTitle(visible []*models.Project) string {
 		return fmt.Sprintf("Archived (%d)", len(visible))
 	}
 	title := fmt.Sprintf("Projects (%d)", len(visible))
-	if m.config.StreakCount > 0 && isStreakActive(m.config.StreakLastDate) {
-		title += fmt.Sprintf("  %s %dd", icons.Get("streak"), m.config.StreakCount)
+	if streak := m.runtime.Planning().GetStreakCount(); streak > 0 && isStreakActive(m.runtime.Planning().GetStreakLastDate()) {
+		title += fmt.Sprintf("  %s %dd", icons.Get("streak"), streak)
 	}
 	return title
 }

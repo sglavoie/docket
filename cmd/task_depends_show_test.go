@@ -16,7 +16,7 @@ import (
 
 func TestShowTaskDependenciesCrossProject(t *testing.T) {
 	t.Run("displays cross-project dependencies", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		task := project.Tasks[0]
@@ -49,7 +49,7 @@ func TestShowTaskDependenciesCrossProject(t *testing.T) {
 	})
 
 	t.Run("displays both local and cross-project dependencies", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		task1 := project.Tasks[0]
@@ -84,14 +84,14 @@ func TestShowTaskDependenciesCrossProject(t *testing.T) {
 
 func TestTaskDependsShow(t *testing.T) {
 	t.Run("shows dependencies without flags", func(t *testing.T) {
-		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -109,14 +109,14 @@ func TestTaskDependsShow(t *testing.T) {
 	})
 
 	t.Run("errors for non-existent task", func(t *testing.T) {
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
 		viper.Set("config", deps.ConfigPath)
 		defer viper.Set("config", "")
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository

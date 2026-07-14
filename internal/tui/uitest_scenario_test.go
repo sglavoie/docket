@@ -216,7 +216,7 @@ func TestUITestScenarioCommandPaletteSearchStartsBlankWithPersistedCategory(t *t
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	driver.App().config.SetLastPaletteCategory(":sv ")
+	driver.App().runtime.Machine().SetLastPaletteCategory(":sv ")
 
 	sc := UITestScenario{
 		Name: "command palette search ignores persisted category",
@@ -611,7 +611,7 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 				{Type: UITestActionCommand, Command: "today"},
 				{Type: UITestActionKey, Key: "a"},
 				{Type: UITestActionText, Text: longValue},
-				{Type: UITestActionAssert, Assert: "view", Value: "Today"},
+				{Type: UITestActionAssert, Assert: "view", Value: "QuickCapture"},
 				{Type: UITestActionAssert, Assert: "no_layout_issues"},
 			},
 		},
@@ -735,7 +735,7 @@ func TestUITestScenarioTodayQuickAddMinimumLayoutNoOverflow(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actions := append([]UITestAction{}, tt.actions...)
 			actions = append(actions,
-				UITestAction{Type: UITestActionAssert, Assert: "view", Value: "Today"},
+				UITestAction{Type: UITestActionAssert, Assert: "view", Value: "QuickCapture"},
 				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
 			)
 			sc := UITestScenario{

@@ -107,10 +107,10 @@ func TestDeleteRoutesThroughAppAndCleansPlanningRefs(t *testing.T) {
 
 	// Seed durable planning refs and a machine-local recent visit for the task, then
 	// persist the config so LoadCurrentProject inside the command sees them.
-	deps.Config.FocusQueue = []config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}}
-	deps.Config.RecentTaskVisits = []config.RecentTaskVisit{{TaskID: task.ID, ProjectID: project.ID}}
+	deps.Config.Planning().FocusQueue = []config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}}
+	deps.Config.Machine().RecentTaskVisits = []config.RecentTaskVisit{{TaskID: task.ID, ProjectID: project.ID}}
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 	prevForce := taskDeleteForce
 	taskDeleteForce = true
@@ -127,12 +127,12 @@ func TestDeleteRoutesThroughAppAndCleansPlanningRefs(t *testing.T) {
 	}
 
 	// Both the durable and machine-local refs are gone from the on-disk config.
-	reloaded, loadErr := manager.Load()
+	reloaded, loadErr := manager.LoadRuntimeState()
 	testutil.AssertNoError(t, loadErr)
-	if len(reloaded.FocusQueue) != 0 {
-		t.Errorf("durable focus-queue ref survived delete: %v", reloaded.FocusQueue)
+	if got := reloaded.Planning().FocusQueue; len(got) != 0 {
+		t.Errorf("durable focus-queue ref survived delete: %v", got)
 	}
-	if len(reloaded.RecentTaskVisits) != 0 {
-		t.Errorf("machine-local recent-visit ref survived delete: %v", reloaded.RecentTaskVisits)
+	if got := reloaded.Machine().RecentTaskVisits; len(got) != 0 {
+		t.Errorf("machine-local recent-visit ref survived delete: %v", got)
 	}
 }

@@ -30,24 +30,38 @@ const (
 // themselves are stored alongside it as separate markdown files (see
 // ConflictStore) so the metadata stays small and the documents stay canonical.
 type ConflictRecord struct {
-	ID             string          `json:"id"`
-	ProjectID      string          `json:"project_id"`
-	ProjectName    string          `json:"project_name"`
-	ProjectSlug    string          `json:"project_slug"`
-	ProjectPath    string          `json:"project_path"`
-	Action         string          `json:"action,omitempty"`
-	Context        string          `json:"context,omitempty"`
-	BaseRevision   string          `json:"base_revision"`
-	LocalRevision  string          `json:"local_revision"`
-	RemoteRevision string          `json:"remote_revision"`
-	CreatedAt      time.Time       `json:"created_at"`
-	Conflicts      []MergeConflict `json:"conflicts"`
+	ID             string `json:"id"`
+	ProjectID      string `json:"project_id"`
+	ProjectName    string `json:"project_name"`
+	ProjectSlug    string `json:"project_slug"`
+	ProjectPath    string `json:"project_path"`
+	Action         string `json:"action,omitempty"`
+	Context        string `json:"context,omitempty"`
+	BaseRevision   string `json:"base_revision"`
+	LocalRevision  string `json:"local_revision"`
+	RemoteRevision string `json:"remote_revision"`
+	// RequiresOperationRetry is a pointer so old conflict records that predate
+	// this safety marker remain distinguishable from an explicit project-only
+	// false. A missing value fails closed through OperationRetryRequired: an old
+	// bundle may have come from an aborted multi-artifact transaction.
+	RequiresOperationRetry *bool           `json:"requires_operation_retry,omitempty"`
+	CreatedAt              time.Time       `json:"created_at"`
+	Conflicts              []MergeConflict `json:"conflicts"`
+}
+
+// OperationRetryRequired reports whether resolving this bundle must be
+// non-applying and require the original operation to be retried. Missing policy
+// metadata defaults to true so pre-policy bundles cannot silently apply only one
+// project from what may have been a larger aborted transaction.
+func (r ConflictRecord) OperationRetryRequired() bool {
+	return r.RequiresOperationRetry == nil || *r.RequiresOperationRetry
 }
 
 // ConflictBundle is a fully-loaded conflict: its metadata plus the three parsed
 // documents (the common base, the caller's local edits, and the remote/on-disk
 // state at the time the conflict was recorded). It is the unit `tt conflict show`
-// and the TUI resolution view render, and the input the resolver replays.
+// and the TUI resolution view render. Explicit project-only bundles may be
+// applied by the resolver; commit-origin and pre-policy bundles are retry-only.
 type ConflictBundle struct {
 	Record ConflictRecord
 	Base   *ProjectDocument

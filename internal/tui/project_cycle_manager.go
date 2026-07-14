@@ -33,14 +33,16 @@ func getContextKey(filterContext, filterCustomContext string) string {
 // If filterCustomContext is set, filters by custom context membership.
 // Otherwise, if filterContext is set, filters by project context.
 // If both are empty, returns all active projects.
-func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCustomContext string) []ProjectInfo {
-	activeProjects := cfg.GetActiveProjects()
+func buildProjectInfoListFiltered(runtime *config.RuntimeState, machine *config.MachineState, filterContext, filterCustomContext string) []ProjectInfo {
+	// ActiveProjects rehydrates the catalog-domain projects (paths derived from
+	// DataDir); custom-context membership is machine-local state.
+	activeProjects := runtime.ActiveProjects()
 	projects := make([]ProjectInfo, 0, len(activeProjects))
 
 	for _, p := range activeProjects {
 		// Custom context filter takes precedence
 		if filterCustomContext != "" {
-			if !cfg.IsProjectInCustomContext(filterCustomContext, p.ID) {
+			if !machine.IsProjectInCustomContext(filterCustomContext, p.ID) {
 				continue
 			}
 		} else if filterContext != "" && p.Context != filterContext {
@@ -63,7 +65,8 @@ func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCusto
 
 // refreshProjectCycleItems rebuilds the projectCycleItems list from current config.
 func (m *AppModel) refreshProjectCycleItems() {
-	m.projectCycleAllItems = buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext)
+	machine := m.runtime.Machine()
+	m.projectCycleAllItems = buildProjectInfoListFiltered(m.runtime, machine, machine.FilterContext, machine.FilterCustomContext)
 	m.sortCycleItemsSelectedFirst()
 }
 
@@ -73,8 +76,9 @@ func (m *AppModel) sortCycleItemsSelectedFirst() {
 	if len(m.projectCycleAllItems) == 0 && len(m.projectCycleItems) > 0 {
 		m.projectCycleAllItems = m.projectCycleItems
 	}
-	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
-	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+	machine := m.runtime.Machine()
+	contextKey := getContextKey(machine.FilterContext, machine.FilterCustomContext)
+	cycleIDs := machine.GetCycleProjectIDsForContext(contextKey)
 	cycleIDSet := make(map[string]bool, len(cycleIDs))
 	for _, id := range cycleIDs {
 		cycleIDSet[id] = true
@@ -178,7 +182,7 @@ func (m *AppModel) closeProjectCyclePopup() tea.Cmd {
 		dash = m.dashboard
 	}
 	if dash != nil {
-		dash.Refresh(m.config)
+		dash.Refresh()
 	}
 	if m.crossOutliner == nil {
 		return nil
@@ -225,8 +229,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 		// Toggle cycle membership for highlighted project
 		if m.projectCycleCursor < len(m.projectCycleItems) && m.projectCycleItems[m.projectCycleCursor].Project != nil {
 			item := m.projectCycleItems[m.projectCycleCursor]
-			contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
-			cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+			machine := m.runtime.Machine()
+			contextKey := getContextKey(machine.FilterContext, machine.FilterCustomContext)
+			cycleIDs := machine.GetCycleProjectIDsForContext(contextKey)
 			// Check if already in cycle
 			found := false
 			var newIDs []string
@@ -240,9 +245,10 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 			if !found {
 				newIDs = append(newIDs, item.Project.ID)
 			}
-			m.config.SetCycleProjectsForContext(contextKey, newIDs)
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
+			if err := m.commitMachineMutation(func(machine *config.MachineState) {
+				machine.SetCycleProjectsForContext(contextKey, newIDs)
+			}); err != nil {
+				logging.Warn("failed to save machine state: %v", err)
 			}
 		}
 		return m, nil
@@ -263,8 +269,10 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 		if m.projectCycleCursor < len(m.projectCycleItems) && m.projectCycleItems[m.projectCycleCursor].Project != nil {
 			item := m.projectCycleItems[m.projectCycleCursor]
 			item.Project.TogglePinned()
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
+			if err := m.commitCatalogMutation(func(c *config.WorkspaceCatalog) {
+				c.UpsertProject(item.Project)
+			}); err != nil {
+				logging.Warn("failed to commit catalog: %v", err)
 			}
 			currentID := item.Project.ID
 			m.refreshProjectCycleItems()
@@ -281,11 +289,13 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 
 	case "C":
 		// Clear context filter
-		if m.config.FilterContext != "" || m.config.FilterCustomContext != "" {
-			m.config.FilterContext = ""
-			m.config.FilterCustomContext = ""
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
+		machine := m.runtime.Machine()
+		if machine.FilterContext != "" || machine.FilterCustomContext != "" {
+			if err := m.commitMachineMutation(func(machine *config.MachineState) {
+				machine.FilterContext = ""
+				machine.FilterCustomContext = ""
+			}); err != nil {
+				logging.Warn("failed to save machine state: %v", err)
 			}
 			m.resetProjectCycleSearch()
 			m.refreshProjectCycleItems()
@@ -296,10 +306,12 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 
 	case "u":
 		// Clear all cycle selections for current context
-		contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
-		m.config.SetCycleProjectsForContext(contextKey, nil)
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
+		machine := m.runtime.Machine()
+		contextKey := getContextKey(machine.FilterContext, machine.FilterCustomContext)
+		if err := m.commitMachineMutation(func(machine *config.MachineState) {
+			machine.SetCycleProjectsForContext(contextKey, nil)
+		}); err != nil {
+			logging.Warn("failed to save machine state: %v", err)
 		}
 		return m, nil
 
@@ -382,8 +394,9 @@ func (m *AppModel) renderProjectCyclePopup() string { //nolint:gocyclo // render
 	if !m.showProjectCycle {
 		return ""
 	}
-	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
-	hiddenCount := m.config.GetArchivedCycleProjectCountForContext(contextKey)
+	machine := m.runtime.Machine()
+	contextKey := getContextKey(machine.FilterContext, machine.FilterCustomContext)
+	hiddenCount := m.runtime.ArchivedCycleProjectCountForContext(contextKey)
 	if len(m.projectCycleItems) == 0 && len(m.projectCycleAllItems) == 0 && hiddenCount == 0 {
 		return ""
 	}
@@ -397,7 +410,7 @@ func (m *AppModel) renderProjectCyclePopup() string { //nolint:gocyclo // render
 	dimBadgeStyle := MutedStyle
 
 	// Build subtitle: context indicator + selection count
-	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+	cycleIDs := machine.GetCycleProjectIDsForContext(contextKey)
 	cycleIDSet := make(map[string]bool, len(cycleIDs))
 	for _, id := range cycleIDs {
 		cycleIDSet[id] = true
@@ -405,10 +418,10 @@ func (m *AppModel) renderProjectCyclePopup() string { //nolint:gocyclo // render
 
 	var subtitleParts []string
 	contextStyle := InfoStatusStyle
-	if m.config.FilterCustomContext != "" {
-		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render("+ "+m.config.FilterCustomContext)))
-	} else if m.config.FilterContext != "" {
-		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render(m.config.FilterContext)))
+	if machine.FilterCustomContext != "" {
+		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render("+ "+machine.FilterCustomContext)))
+	} else if machine.FilterContext != "" {
+		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render(machine.FilterContext)))
 	} else {
 		subtitleParts = append(subtitleParts, "Context: All")
 	}

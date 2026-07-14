@@ -12,7 +12,7 @@ import (
 // task mutations persist through the application layer (newAppService) rather
 // than the legacy cmd.SaveProject path.
 func WithTaskRead(taskIdentifier string, readFn func(*models.Project, *models.Task) error) error {
-	project, _, _, err := LoadCurrentProject()
+	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}

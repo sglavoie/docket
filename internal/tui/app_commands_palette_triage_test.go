@@ -135,7 +135,7 @@ func TestPaletteTriage_ChordHandlersDispatchToActiveProcessor(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := &models.Task{ID: "task-1", ShortID: 42, Title: "Test task"}
 	project.Tasks = []*models.Task{task}
-	processor := NewInboxProcessorModel(project, app.config, app.configManager)
+	processor := NewInboxProcessorModel(project, app.configManager, app.runtime)
 	processor.inboxTasks = []*models.Task{task}
 	processor.currentIndex = 0
 	app.inboxProcessor = processor
@@ -197,7 +197,7 @@ func newTriageLocalProcessor(t *testing.T) (*AppModel, *models.Task, *InboxProce
 		WorkflowState: models.StateInbox,
 	}
 	project.Tasks = []*models.Task{task}
-	processor := NewInboxProcessorModel(project, app.config, app.configManager)
+	processor := NewInboxProcessorModel(project, app.configManager, app.runtime)
 	processor.inboxTasks = []*models.Task{task}
 	processor.currentIndex = 0
 	app.inboxProcessor = processor
@@ -318,7 +318,7 @@ func TestPaletteTriage_GlobalInboxMarkDoneExecution(t *testing.T) {
 	processor := &GlobalInboxProcessorModel{
 		projectCache: map[string]*models.Project{project.ID: project},
 	}
-	processor.initCore(processor, processor, app.config, app.configManager)
+	processor.initCore(processor, processor, app.configManager, app.runtime)
 	processor.inboxTasks = []GlobalInboxTask{{Task: task, Project: project}}
 	processor.currentIndex = 0
 	app.globalInboxProcessor = processor
@@ -364,7 +364,7 @@ func TestPaletteTriage_GlobalInboxMarkDoneExecution(t *testing.T) {
 // prominent triage entry point).
 func TestPaletteTriage_DashboardTriageInboxCommand(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.dashboard = NewDashboardModel(app.config, app.configManager)
+	app.dashboard = NewDashboardModel(app.runtime)
 
 	cmds := triageInboxCommands(t, app, ViewDashboard)
 	cmd := findCommand(cmds, "triage inbox")
@@ -420,7 +420,7 @@ func TestPaletteTriage_InboxProcessorCommandsRetainTriageAliases(t *testing.T) {
 // escape-hatch vocabulary across help and palette (session 8 contract).
 func TestPaletteTriage_FooterAdvertisesFullReference(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
-	palette := NewCommandPaletteModel(app.config, app.configManager, NewCommandRegistry(), ViewInboxProcessor, nil)
+	palette := NewCommandPaletteModel(app.runtime, NewCommandRegistry(), ViewInboxProcessor, nil)
 	footer := palette.buildFooter()
 	if !strings.Contains(footer, `ctrl+\: full reference`) {
 		t.Errorf("palette empty-query footer should advertise 'ctrl+\\: full reference', got %q", footer)

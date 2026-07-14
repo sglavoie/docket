@@ -31,6 +31,9 @@ func taskInPlanningState(t *models.Task) bool {
 	switch t.State() {
 	case models.StateInbox, models.StateReady, models.StateNext:
 		return true
+	case models.StateInProgress, models.StateWaiting, models.StatePaused,
+		models.StateReview, models.StateSomeday, models.StateDone, models.StateCanceled:
+		return false
 	}
 	return false
 }
@@ -63,11 +66,11 @@ func taskSectionBucket(t *models.Task) string {
 // state model (the Active field is deleted with the other legacy fields in
 // session 33.7). The queue is small, so a linear scan avoids allocating a
 // membership set at per-row render sites.
-func TaskInFocusQueue(cfg *config.Config, taskID string) bool {
-	if cfg == nil {
+func TaskInFocusQueue(planning *config.PlanningState, taskID string) bool {
+	if planning == nil {
 		return false
 	}
-	for _, item := range cfg.GetFocusQueue() {
+	for _, item := range planning.GetFocusQueue() {
 		if item.TaskID == taskID {
 			return true
 		}

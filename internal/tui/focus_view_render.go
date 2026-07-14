@@ -146,7 +146,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 			Task:    stripTask,
 			Project: stripProject,
-			Config:  m.config,
+			Runtime: m.runtime,
 			Width:   m.width,
 			AlreadyShown: TaskMetadataAlreadyShown{
 				Project:  true,
@@ -310,7 +310,7 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	prefix := m.Dispatcher.PendingPrefix()
 	hints := PrefixHints{}
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	if _, ok := hints[prefix]; !ok {
 		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
 		for _, h := range m.Dispatcher.PrefixHints() {
@@ -353,14 +353,14 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
+		dueStr = FormatRelativeDueTask(task, true, m.runtime.Settings().GetTimeFormat())
 	}
 
-	return RenderCrossProjectTaskLine(task, ft.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(task, ft.Project, m.runtime, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          queued,
 		DailyPlanned:    dailyPlanned,
 		ShowTags:        true,
-		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		ShowDescription: m.runtime.Machine().IsDescriptionColumnVisible(),
 		Prefix:          prefix,
 		DueStr:          dueStr,
 		Flash:           m.cursorFlash,

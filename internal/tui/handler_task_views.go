@@ -31,7 +31,7 @@ func (m *AppModel) handleShowTaskDetail(msg ShowTaskDetailMsg) (bool, tea.Cmd) {
 	if msg.Task != nil && msg.Project != nil {
 		m.lastNavigatedTaskID = msg.Task.ID
 		m.recordTaskVisit(msg.Task, msg.Project)
-		m.showView(ViewTaskDetail, NewTaskDetailModel(msg.Task, msg.Project, m.config, m.configManager))
+		m.showView(ViewTaskDetail, NewTaskDetailModel(msg.Task, msg.Project, m.runtime))
 	}
 	return true, nil
 }
@@ -41,7 +41,7 @@ func (m *AppModel) handleShowTaskComments(msg ShowTaskCommentsMsg) (bool, tea.Cm
 	if msg.Task != nil && msg.Project != nil {
 		m.lastNavigatedTaskID = msg.Task.ID
 		m.recordTaskVisit(msg.Task, msg.Project)
-		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(msg.Task, msg.Project, m.config.Editor, m.secondaryFeatures.Subview))
+		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(msg.Task, msg.Project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Subview))
 	}
 	return true, nil
 }
@@ -51,7 +51,7 @@ func (m *AppModel) handleShowTaskChecklist(msg ShowTaskChecklistMsg) (bool, tea.
 	if msg.Task != nil && msg.Project != nil {
 		m.lastNavigatedTaskID = msg.Task.ID
 		m.recordTaskVisit(msg.Task, msg.Project)
-		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.config.Editor, m.secondaryFeatures.Subview))
+		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Subview))
 	}
 	return true, nil
 }
@@ -61,7 +61,7 @@ func (m *AppModel) handleShowTaskDecisions(msg ShowTaskDecisionsMsg) (bool, tea.
 	if msg.Task != nil && msg.Project != nil {
 		m.lastNavigatedTaskID = msg.Task.ID
 		m.recordTaskVisit(msg.Task, msg.Project)
-		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(msg.Task, msg.Project, m.config.Editor, m.secondaryFeatures.Subview))
+		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(msg.Task, msg.Project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Subview))
 	}
 	return true, nil
 }

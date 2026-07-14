@@ -57,11 +57,11 @@ func (m *LinkedTaskSelectorModel) resolveTaskRef(ref, relationType, direction st
 		}
 	}
 
-	if m.config == nil {
+	if m.runtime == nil {
 		return missing(nil)
 	}
 
-	targetProject := m.config.GetProject(taskRef.ProjectID)
+	targetProject := m.runtime.GetProject(taskRef.ProjectID)
 	if targetProject == nil {
 		return missing(nil)
 	}

@@ -10,7 +10,7 @@ import (
 // NewAppModel.
 func newUITestApp() *AppModel {
 	app := newTestAppModel()
-	app.dashboard = NewDashboardModel(app.config, app.configManager)
+	app.dashboard = NewDashboardModel(app.runtime)
 	app.views.Register(ViewDashboard, app.dashboard)
 	return app
 }

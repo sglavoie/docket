@@ -39,8 +39,8 @@ func JoinGroupParts(parts ...string) string {
 
 // FormatCyclePosition returns a " [i/n]" suffix if projectID appears in the
 // configured cycle list, or "" otherwise.
-func FormatCyclePosition(cfg *config.Config, projectID string) string {
-	cycleProjects := cfg.GetCycleProjects()
+func FormatCyclePosition(runtime *config.RuntimeState, projectID string) string {
+	cycleProjects := runtime.CycleProjects()
 	for i, project := range cycleProjects {
 		if project.ID == projectID {
 			return fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
@@ -296,11 +296,11 @@ func renderDependencyIndicators(task *models.Task, project *models.Project) stri
 }
 
 // renderStaleIndicator renders the shared stale badge when a task exceeds the configured threshold.
-func renderStaleIndicator(cfg *config.Config, task *models.Task) string {
-	if cfg == nil {
+func renderStaleIndicator(settings *config.Settings, task *models.Task) string {
+	if settings == nil {
 		return ""
 	}
-	threshold := cfg.GetStaleTaskDays()
+	threshold := settings.GetStaleTaskDays()
 	if threshold <= 0 {
 		return ""
 	}

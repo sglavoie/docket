@@ -69,10 +69,21 @@ func SaveNoteTo(dir string, note *models.Note) error {
 	if err := ensureDirPath(dir); err != nil {
 		return err
 	}
-
-	path, err := NoteFilePathIn(dir, note.Filename)
+	path, data, err := PrepareNoteSaveTo(dir, note)
 	if err != nil {
 		return err
+	}
+	return util.AtomicWriteFile(path, data, FilePermissions)
+}
+
+// PrepareNoteSaveTo resolves collision-safe note filename semantics and renders
+// the bytes without writing them. Transactional adapters use it to stage a note
+// artifact through the journal while SaveNoteTo reuses the same preparation for
+// its maintenance/compatibility write path.
+func PrepareNoteSaveTo(dir string, note *models.Note) (string, []byte, error) {
+	path, err := NoteFilePathIn(dir, note.Filename)
+	if err != nil {
+		return "", nil, err
 	}
 
 	// Check for collision: if file exists but this is a new note (no prior content on disk)
@@ -97,16 +108,16 @@ func SaveNoteTo(dir string, note *models.Note) error {
 				}
 			}
 			if !found {
-				return fmt.Errorf("too many notes with base name %q (tried %d variants)", base, maxDedup)
+				return "", nil, fmt.Errorf("too many notes with base name %q (tried %d variants)", base, maxDedup)
 			}
 		}
 	}
 
 	content, err := renderNote(note)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
-	return util.AtomicWriteFile(path, []byte(content), FilePermissions)
+	return path, []byte(content), nil
 }
 
 // ListNotes returns all notes in a project sorted by modified date (newest first),

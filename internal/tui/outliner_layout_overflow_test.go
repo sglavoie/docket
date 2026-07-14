@@ -10,7 +10,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -26,8 +25,8 @@ func TestOutlinerMultiSelectNestedRowsFitHeight(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	cfg := config.NewConfig()
-	cfg.SectionLimitNext = intPtr(0)
+	cfg := newTestConfig()
+	cfg.Settings().SectionLimitNext = intPtr(0)
 
 	// A deep hierarchy: epic → story → several leaf tasks. The leaves carry the
 	// longest tree prefix, which is exactly where the checkbox tips the row into a
@@ -47,7 +46,7 @@ func TestOutlinerMultiSelectNestedRowsFitHeight(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "proj-ms", "ms", "Multi Select", tasks)
 
-	m := NewOutlinerModel(project, cfg, nil)
+	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const paneHeight = 18
 	m.SetSize(72, paneHeight)
 	m.rebuildRows()
@@ -77,6 +76,26 @@ func TestOutlinerMultiSelectNestedRowsFitHeight(t *testing.T) {
 	}
 }
 
+func TestOutlinerNarrowDeepRowKeepsTitleVisible(t *testing.T) {
+	cfg := newTestConfig()
+	task := renderFixtureTask(t, "deep", 9, models.TaskTypeTask,
+		"Build authentication flow", models.StatusTodo, 3, models.SectionNext)
+	project := renderFixtureProject(t, "proj-narrow", "narrow", "Narrow", []*models.Task{task})
+	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
+	m.multiSelectMode = true
+
+	row := outlinerRow{task: task, prefix: "│   │   │   │   └── "}
+	const width = 28
+	rendered := m.renderOutlinerTaskRow(row, true, width, width, 0, nil)
+	plain := ansi.Strip(rendered)
+	if got := lipgloss.Width(rendered); got > width {
+		t.Fatalf("narrow outliner row width = %d, want <= %d: %q", got, width, plain)
+	}
+	if !strings.Contains(plain, "Buil") {
+		t.Fatalf("narrow outliner row spent its width before the task title: %q", plain)
+	}
+}
+
 // TestOutlinerFullWidthHeaderFitsWidth guards the full-width header overflow:
 // renderWithSidebar clamps content via Width(treeWidth), but renderFullWidth
 // passed the tree through with no enclosing width style, so a long project name
@@ -86,7 +105,7 @@ func TestOutlinerFullWidthHeaderFitsWidth(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	cfg := config.NewConfig()
+	cfg := newTestConfig()
 
 	task := renderFixtureTask(t, "t1", 1, models.TaskTypeTask,
 		"A task", models.StatusTodo, 3, models.SectionNext)
@@ -94,7 +113,7 @@ func TestOutlinerFullWidthHeaderFitsWidth(t *testing.T) {
 		"A deliberately very long project name that will not fit a narrow terminal",
 		[]*models.Task{task})
 
-	m := NewOutlinerModel(project, cfg, nil)
+	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 60
 	const paneHeight = 20
 	m.SetSize(width, paneHeight)
@@ -127,7 +146,7 @@ func TestOutlinerFullWidthContextNotesHeaderFitsWidth(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	cfg := config.NewConfig()
+	cfg := newTestConfig()
 
 	parent := renderFixtureTask(t, "story", 1, models.TaskTypeStory,
 		"focus on shipping new pipeline with same set of permissions", models.StatusInProgress, 1, "")
@@ -144,7 +163,7 @@ func TestOutlinerFullWidthContextNotesHeaderFitsWidth(t *testing.T) {
 		t.Fatalf("write note: %v", err)
 	}
 
-	m := NewOutlinerModel(project, cfg, nil)
+	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 60
 	m.SetSize(width, 20)
 	m.rebuildRows()

@@ -29,7 +29,7 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 	}
 
 	project := host.SidebarProject()
-	cfg := host.SidebarConfig()
+	runtime := host.SidebarRuntime()
 	sidebar := host.SidebarGetSidebar()
 
 	// Get section color for accent on Task and Info cards
@@ -45,7 +45,7 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 
 	// Due card (only if due date set)
 	if task.DueDate != nil {
-		cards = append(cards, renderSidebarDueCard(task, width, cfg.GetTimeFormat()))
+		cards = append(cards, renderSidebarDueCard(task, width, runtime.Settings().GetTimeFormat()))
 	}
 
 	// Dependencies card (blockers are actionable — show early)
@@ -65,8 +65,8 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 	}
 
 	// Score card (only if scoring profile assigned)
-	if cfg != nil {
-		if profile := cfg.GetProjectScoringProfile(project.ID); profile != nil {
+	if runtime != nil {
+		if profile := runtime.Automation().GetProjectScoringProfile(project.ID); profile != nil {
 			cards = append(cards, renderSidebarScoreCard(task, width, profile))
 		}
 	}

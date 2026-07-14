@@ -477,7 +477,7 @@ func (m *AllTasksViewModel) allTasksEditSmartList() (tea.Model, tea.Cmd) {
 	if entry == nil || entry.IsBuiltIn || entry.IsOverflow {
 		return m, nil
 	}
-	sf := m.config.GetSavedFilter(entry.SavedFilterID)
+	sf := m.runtime.Planning().GetSavedFilter(entry.SavedFilterID)
 	if sf == nil || sf.Mode != "criteria" {
 		return m, nil
 	}

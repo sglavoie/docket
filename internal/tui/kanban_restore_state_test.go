@@ -3,7 +3,6 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -14,14 +13,14 @@ func newKanbanRestoreStateFixture() (*AppModel, *KanbanModel, *models.Project) {
 	task.SetSection(models.SectionInbox)
 	proj.Tasks = []*models.Task{task}
 
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	app := &AppModel{
-		config:          cfg,
+		runtime:         testRuntimeAt(cfg.DataDir(), cfg),
 		kanbanViewCache: make(map[string]*KanbanViewCache),
 	}
 
 	kb := &KanbanModel{
-		config:      cfg,
+		runtime:     testRuntimeAt(cfg.DataDir(), cfg),
 		project:     proj,
 		mode:        KanbanModeSection,
 		allCards:    []KanbanCard{{Task: task, Project: proj}},

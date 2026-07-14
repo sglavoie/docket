@@ -41,12 +41,12 @@ func runTemplateShow(cmd *cobra.Command, args []string) error {
 
 	templateID := args[0]
 
-	cfg, _, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	t := cfg.GetTaskTemplate(templateID)
+	t := workspace.Runtime.Automation().GetTaskTemplate(templateID)
 	if t == nil {
 		return fmt.Errorf("task template not found: %s", templateID)
 	}

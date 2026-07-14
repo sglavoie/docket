@@ -77,17 +77,21 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 		title = strings.Join(args[1:], " ")
 	}
 
-	// Load config
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
 	// Find template by ID or name
-	t := cfg.GetTaskTemplate(templateID)
+	t := automation.GetTaskTemplate(templateID)
 	if t == nil {
 		// Try by name
-		t = cfg.GetTaskTemplateByName(templateID)
+		t = automation.GetTaskTemplateByName(templateID)
 	}
 	if t == nil {
 		return fmt.Errorf("task template not found: %s", templateID)
@@ -120,7 +124,7 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 
 	// Load current project (only its identity and parent-resolution context are
 	// needed; the mutation itself commits through the application layer).
-	project, _, _, err := LoadCurrentProject()
+	project, err := loadRuntimeCurrentProject(workspace)
 	if err != nil {
 		return err
 	}
@@ -152,13 +156,13 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	// The template use-count bump rides the SAME commit as the created tasks so
 	// the pair is atomic — replacing the legacy save-then-bump sequence that
 	// could persist the tasks without the counter on a partial failure.
-	cfg.IncrementTemplateUseCount(t.ID)
-	arts, err := encodeConfigArtifacts(configManager, cfg)
+	automation.IncrementTemplateUseCount(t.ID)
+	arts, err := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 	if err != nil {
 		return err
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.ApplyTemplateResult, error) {
 		return svc.ApplyTemplate(app.ApplyTemplateRequest{
 			AddTaskRequest: app.AddTaskRequest{

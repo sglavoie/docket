@@ -6,7 +6,6 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -22,7 +21,6 @@ func TestFocusBoardEditTitle_UndoContextUsesOldTitle(t *testing.T) {
 	row := boardRow{Task: task, Project: project, Source: project.Name}
 
 	m := newTestFocusBoard()
-	m.config = &config.Config{}
 	m.filtered = []boardRow{row}
 	m.editMode = true
 	m.editIdx = 0

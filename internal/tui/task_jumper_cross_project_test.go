@@ -48,7 +48,7 @@ func TestCrossProjectTaskJumperMatchesProjectAndSelectsProject(t *testing.T) {
 
 func TestCrossProjectOutlinerJumpKeyOpensCrossProjectJumper(t *testing.T) {
 	app := newTestAppModel()
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 	project := &models.Project{ID: "project", Name: "Project", Path: t.TempDir()}
 	task, _ := models.NewTask("task", 1, models.TaskTypeTask, "Task")
 	project.Tasks = []*models.Task{task}
@@ -77,7 +77,7 @@ func TestJumpToTaskCommandAvailableForCrossProjectOutliner(t *testing.T) {
 	task, _ := models.NewTask("cross-task", 1, models.TaskTypeTask, "Cross task")
 	project.Tasks = []*models.Task{task}
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 	app.viewStack = append(app.viewStack, ViewCrossProjectOutliner, ViewCommandPalette)

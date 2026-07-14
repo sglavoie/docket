@@ -3,8 +3,8 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // TestCommandPaletteBulkActionSkipsInvalidTransitions verifies that the bulk
@@ -20,7 +20,7 @@ func TestCommandPaletteBulkActionSkipsInvalidTransitions(t *testing.T) {
 	env, features := newSecondaryEnv(t, "cmdbulk", todo, done)
 
 	m := &AppModel{
-		config:            testutil.NewTestConfig(),
+		runtime:           config.EmptyRuntimeState(""),
 		secondaryFeatures: features,
 		views:             NewViewRegistry(),
 	}

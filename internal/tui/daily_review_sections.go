@@ -16,8 +16,8 @@ import (
 func (m *DailyReviewModel) loadTasks() {
 	m.resetDailyReviewSections()
 
-	thresholds := newDailyReviewThresholds(m.config, time.Now())
-	for _, project := range m.config.GetActiveProjects() {
+	thresholds := newDailyReviewThresholds(m.runtime.Settings(), time.Now())
+	for _, project := range m.runtime.ActiveProjects() {
 		if err := storage.LoadProject(project); err != nil {
 			continue
 		}
@@ -56,13 +56,13 @@ func (m *DailyReviewModel) resetDailyReviewSections() {
 	m.completed = nil
 }
 
-func newDailyReviewThresholds(cfg *config.Config, now time.Time) dailyReviewThresholds {
+func newDailyReviewThresholds(settings *config.Settings, now time.Time) dailyReviewThresholds {
 	today := util.StartOfDay(now)
-	dueSoonDays := cfg.GetReviewDueSoonDays()
-	futureDays := cfg.GetReviewFutureDays()
-	oldDays := cfg.GetReviewOldDays()
-	completedHours := cfg.GetReviewCompletedHours()
-	escalationDays := cfg.GetPriorityEscalationDays()
+	dueSoonDays := settings.GetReviewDueSoonDays()
+	futureDays := settings.GetReviewFutureDays()
+	oldDays := settings.GetReviewOldDays()
+	completedHours := settings.GetReviewCompletedHours()
+	escalationDays := settings.GetPriorityEscalationDays()
 
 	return dailyReviewThresholds{
 		today:              today,
@@ -95,7 +95,7 @@ func (m *DailyReviewModel) shouldSkipDailyReviewTask(task *models.Task, project 
 	if !hasActiveCommonFilters(&m.filter) {
 		return false
 	}
-	return !passesCommonFilters(task, &m.filter, project, m.config)
+	return !passesCommonFilters(task, &m.filter, project, m.runtime.Automation())
 }
 
 func (m *DailyReviewModel) appendDailyReviewTask(dt CrossProjectTask, project *models.Project, thresholds dailyReviewThresholds) {

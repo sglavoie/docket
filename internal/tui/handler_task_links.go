@@ -16,7 +16,7 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 	}
 
 	// Get target project
-	targetProject := m.config.GetProject(ref.ProjectID)
+	targetProject := m.projectByID(ref.ProjectID)
 	if targetProject == nil {
 		m.setInfoStatus("Project not found (link may be broken)")
 		return true, defaultStatusTimeout()

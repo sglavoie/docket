@@ -229,8 +229,8 @@ func TestCheckOrphanedCrossRefs(t *testing.T) {
 	p1.Tasks = []*models.Task{task1}
 	p2.Tasks = []*models.Task{task2}
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = append(cfg.Projects, p1, p2)
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{p1, p2})
 
 	results := &doctorResults{}
 	checkOrphanedCrossRefs([]*models.Project{p1, p2}, cfg, results)
@@ -257,8 +257,8 @@ func TestCheckOrphanedCrossRefs_ArchivedProjectNotOrphaned(t *testing.T) {
 	activeProject.Tasks = []*models.Task{activeTask}
 	archivedProject.Tasks = []*models.Task{archivedTask}
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = append(cfg.Projects, activeProject, archivedProject)
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{activeProject, archivedProject})
 
 	results := &doctorResults{}
 	// Pass BOTH projects (including archived) to simulate the fix
@@ -284,7 +284,7 @@ func TestTotalIssues(t *testing.T) {
 }
 
 func TestFixIssues(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "FixTest")
+	deps, project := setupTestDepsWithProject(t, "FixTest")
 	defer deps.Cleanup()
 
 	task1 := testutil.NewTestTask("Good Task", models.TaskTypeTask)
@@ -298,7 +298,7 @@ func TestFixIssues(t *testing.T) {
 	// Save initial state so fixIssues can persist
 	deps.Repository.Projects[project.ID] = project
 
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	fixIssues([]*models.Project{project}, cfg)
 
@@ -314,7 +314,7 @@ func TestFixIssues(t *testing.T) {
 }
 
 func TestFixIssues_CleansDeadRelatedTo(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "FixRelated")
+	deps, project := setupTestDepsWithProject(t, "FixRelated")
 	defer deps.Cleanup()
 
 	task1 := testutil.NewTestTask("Good Task", models.TaskTypeTask)
@@ -324,7 +324,7 @@ func TestFixIssues_CleansDeadRelatedTo(t *testing.T) {
 	project.Tasks = []*models.Task{task1, task2}
 	deps.Repository.Projects[project.ID] = project
 
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	fixIssues([]*models.Project{project}, cfg)
 
 	if len(task2.RelatedTo) != 1 {
@@ -586,11 +586,11 @@ func TestRunDoctor_ReportsProjectLoadFailures(t *testing.T) {
 		t.Fatalf("WriteFile(tasks.md): %v", writeErr)
 	}
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = dir
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
-	if saveErr := config.NewManager(configPath).Save(cfg); saveErr != nil {
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(project)
+	domains.Machine.CurrentProject = project.ID
+	cfg := config.NewRuntimeState(dir, domains)
+	if saveErr := saveTestRuntime(config.NewManager(configPath), cfg); saveErr != nil {
 		t.Fatalf("Save(config): %v", saveErr)
 	}
 
@@ -641,11 +641,11 @@ func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
 		t.Fatalf("WriteFile(tasks.md): %v", err)
 	}
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = dir
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
-	if err := config.NewManager(configPath).Save(cfg); err != nil {
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(project)
+	domains.Machine.CurrentProject = project.ID
+	cfg := config.NewRuntimeState(dir, domains)
+	if err := saveTestRuntime(config.NewManager(configPath), cfg); err != nil {
 		t.Fatalf("Save(config): %v", err)
 	}
 

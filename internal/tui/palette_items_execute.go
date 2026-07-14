@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -51,11 +52,10 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 	switch item.Category {
 	case ItemCategoryCommands:
 		if item.Command != nil && item.Command.Handler != nil {
-			m.config.AddCommandToHistory(item.Command.Name)
-			if m.configManager != nil {
-				if err := m.configManager.Save(m.config); err != nil {
-					logging.Warn("failed to save config: %v", err)
-				}
+			if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+				machine.AddCommandToHistory(item.Command.Name)
+			}); err != nil {
+				logging.Warn("failed to save machine state: %v", err)
 			}
 
 			result := item.Command.Handler()

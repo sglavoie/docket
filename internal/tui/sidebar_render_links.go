@@ -60,7 +60,7 @@ func sidebarDepSectionHeader(sidebar *SidebarComponent, label string, sectionInd
 // renderSidebarDependenciesCard renders the dependencies card with navigation support.
 func renderSidebarDependenciesCard(host SidebarHost, task *models.Task, width, innerWidth int) string {
 	project := host.SidebarProject()
-	cfg := host.SidebarConfig()
+	runtime := host.SidebarRuntime()
 	sidebar := host.SidebarGetSidebar()
 	var lines []string
 
@@ -69,7 +69,7 @@ func renderSidebarDependenciesCard(host SidebarHost, task *models.Task, width, i
 
 		var blockingTasks []sidebarLinkedTask
 		for _, depRef := range task.DependsOn {
-			blockingTasks = append(blockingTasks, sidebarResolveSidebarTaskRef(project, cfg, depRef))
+			blockingTasks = append(blockingTasks, sidebarResolveSidebarTaskRef(project, runtime, depRef))
 		}
 		lines = append(lines, renderSidebarDepSectionItems(sidebar, blockingTasks, 0, innerWidth)...)
 	}
@@ -95,12 +95,12 @@ func renderSidebarDependenciesCard(host SidebarHost, task *models.Task, width, i
 // renderSidebarRelatedCard renders the related tasks card with navigation support.
 func renderSidebarRelatedCard(host SidebarHost, task *models.Task, width, innerWidth int) string {
 	project := host.SidebarProject()
-	cfg := host.SidebarConfig()
+	runtime := host.SidebarRuntime()
 	sidebar := host.SidebarGetSidebar()
 
 	var relatedTasks []sidebarLinkedTask
 	for _, relRef := range task.RelatedTo {
-		relatedTasks = append(relatedTasks, sidebarResolveSidebarTaskRef(project, cfg, relRef))
+		relatedTasks = append(relatedTasks, sidebarResolveSidebarTaskRef(project, runtime, relRef))
 	}
 	if len(relatedTasks) == 0 {
 		return ""
@@ -114,7 +114,7 @@ func renderSidebarRelatedCard(host SidebarHost, task *models.Task, width, innerW
 }
 
 // sidebarResolveSidebarTaskRef resolves a task reference (local or cross-project) for sidebar display.
-func sidebarResolveSidebarTaskRef(project *models.Project, cfg *config.Config, ref string) sidebarLinkedTask {
+func sidebarResolveSidebarTaskRef(project *models.Project, runtime *config.RuntimeState, ref string) sidebarLinkedTask {
 	taskRef := models.ParseTaskRef(ref)
 
 	if !taskRef.IsCrossProject() {
@@ -125,11 +125,11 @@ func sidebarResolveSidebarTaskRef(project *models.Project, cfg *config.Config, r
 		return sidebarLinkedTask{Ref: ref, IsMissing: true}
 	}
 
-	if cfg == nil {
+	if runtime == nil {
 		return sidebarLinkedTask{Ref: ref, IsMissing: true}
 	}
 
-	targetProject := cfg.GetProject(taskRef.ProjectID)
+	targetProject := runtime.GetProject(taskRef.ProjectID)
 	if targetProject == nil {
 		return sidebarLinkedTask{Ref: ref, IsMissing: true}
 	}

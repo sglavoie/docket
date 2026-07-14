@@ -31,24 +31,6 @@ type PaletteColors struct {
 	Priority5Title string `json:"priority5_title,omitempty"`
 }
 
-// ActiveThemeConfig returns the Theme for the currently active theme.
-// Returns ThemeLight when ActiveTheme == "light", otherwise ThemeDark.
-func (c *Config) ActiveThemeConfig() Theme {
-	if c.ActiveTheme == "light" {
-		return c.ThemeLight
-	}
-	return c.ThemeDark
-}
-
-// SetActiveTheme writes a Theme to the named slot ("dark" or "light").
-func (c *Config) SetActiveTheme(name string, t Theme) {
-	if name == "light" {
-		c.ThemeLight = t
-	} else {
-		c.ThemeDark = t
-	}
-}
-
 // isThemeZero reports whether a Theme has no non-empty values.
 func isThemeZero(t Theme) bool {
 	return t.BackgroundColor == "" && t.CursorColor == "" && t.CursorTextColor == "" &&
@@ -58,58 +40,58 @@ func isThemeZero(t Theme) bool {
 // MigratePaletteToThemes migrates legacy flat palette/bg/cursor fields into the
 // new ThemeDark/ThemeLight slots. It follows the same pattern as MigrateLegacyFilters.
 // Returns true if any change was made (caller should save the config).
-func (c *Config) MigratePaletteToThemes() bool {
+func (s *Settings) MigratePaletteToThemes() bool {
 	changed := false
 
-	legacyHasData := c.TUIBackgroundColor != "" || c.TUICursorColor != "" ||
-		c.TUICursorTextColor != "" || c.Palette != (PaletteColors{})
-	if isThemeZero(c.ThemeDark) && legacyHasData {
-		c.ThemeDark = Theme{
-			Palette:         c.Palette,
-			BackgroundColor: c.TUIBackgroundColor,
-			CursorColor:     c.TUICursorColor,
-			CursorTextColor: c.TUICursorTextColor,
+	legacyHasData := s.TUIBackgroundColor != "" || s.TUICursorColor != "" ||
+		s.TUICursorTextColor != "" || s.Palette != (PaletteColors{})
+	if isThemeZero(s.ThemeDark) && legacyHasData {
+		s.ThemeDark = Theme{
+			Palette:         s.Palette,
+			BackgroundColor: s.TUIBackgroundColor,
+			CursorColor:     s.TUICursorColor,
+			CursorTextColor: s.TUICursorTextColor,
 		}
-		c.Palette = PaletteColors{}
-		c.TUIBackgroundColor = ""
-		c.TUICursorColor = ""
-		c.TUICursorTextColor = ""
-		c.ThemeDarkRev = DarkThemeDefaultsRev
+		s.Palette = PaletteColors{}
+		s.TUIBackgroundColor = ""
+		s.TUICursorColor = ""
+		s.TUICursorTextColor = ""
+		s.ThemeDarkRev = DarkThemeDefaultsRev
 		changed = true
 	} else if legacyHasData {
-		c.Palette = PaletteColors{}
-		c.TUIBackgroundColor = ""
-		c.TUICursorColor = ""
-		c.TUICursorTextColor = ""
+		s.Palette = PaletteColors{}
+		s.TUIBackgroundColor = ""
+		s.TUICursorColor = ""
+		s.TUICursorTextColor = ""
 		changed = true
 	}
 
-	if isThemeZero(c.ThemeDark) {
-		c.ThemeDark = DefaultDarkTheme()
-		c.ThemeDarkRev = DarkThemeDefaultsRev
+	if isThemeZero(s.ThemeDark) {
+		s.ThemeDark = DefaultDarkTheme()
+		s.ThemeDarkRev = DarkThemeDefaultsRev
 		changed = true
-	} else if c.ThemeDarkRev < DarkThemeDefaultsRev {
-		if c.ThemeDark == defaultDarkThemeRev1() {
-			c.ThemeDark = DefaultDarkTheme()
-			c.ThemeDarkName = ""
+	} else if s.ThemeDarkRev < DarkThemeDefaultsRev {
+		if s.ThemeDark == defaultDarkThemeRev1() {
+			s.ThemeDark = DefaultDarkTheme()
+			s.ThemeDarkName = ""
 		}
-		c.ThemeDarkRev = DarkThemeDefaultsRev
+		s.ThemeDarkRev = DarkThemeDefaultsRev
 		changed = true
 	}
 
-	if isThemeZero(c.ThemeLight) {
-		c.ThemeLight = DefaultLightTheme()
-		c.ThemeLightRev = LightThemeDefaultsRev
+	if isThemeZero(s.ThemeLight) {
+		s.ThemeLight = DefaultLightTheme()
+		s.ThemeLightRev = LightThemeDefaultsRev
 		changed = true
-	} else if c.ThemeLightRev < LightThemeDefaultsRev {
-		c.ThemeLight = DefaultLightTheme()
-		c.ThemeLightName = ""
-		c.ThemeLightRev = LightThemeDefaultsRev
+	} else if s.ThemeLightRev < LightThemeDefaultsRev {
+		s.ThemeLight = DefaultLightTheme()
+		s.ThemeLightName = ""
+		s.ThemeLightRev = LightThemeDefaultsRev
 		changed = true
 	}
 
-	if c.ActiveTheme == "" || (c.ActiveTheme != "dark" && c.ActiveTheme != "light") {
-		c.ActiveTheme = "dark"
+	if s.ActiveTheme == "" || (s.ActiveTheme != "dark" && s.ActiveTheme != "light") {
+		s.ActiveTheme = "dark"
 		changed = true
 	}
 

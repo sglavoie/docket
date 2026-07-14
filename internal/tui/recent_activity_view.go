@@ -100,7 +100,7 @@ func (m *RecentActivityModel) View() tea.View {
 		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 			Task:    stripTask.Task,
 			Project: stripTask.Project,
-			Config:  m.config,
+			Runtime: m.runtime,
 			Width:   m.Width(),
 			AlreadyShown: TaskMetadataAlreadyShown{
 				Project:  m.projectScope != nil,

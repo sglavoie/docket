@@ -15,8 +15,7 @@ import (
 
 // ProjectCreatorModel handles creating a new project via TUI.
 type ProjectCreatorModel struct {
-	config        *config.Config
-	configManager *config.Manager
+	runtime *config.RuntimeState
 
 	nameInput     textinput.Model
 	contextInput  textinput.Model
@@ -32,27 +31,29 @@ type ProjectCreatorModel struct {
 	discardConfirmState
 }
 
-// NewProjectCreatorModel creates a new project creator.
-func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *ProjectCreatorModel {
+// NewProjectCreatorModel creates a new project creator reading the default and
+// available contexts from the domain-native catalog/settings snapshot.
+func NewProjectCreatorModel(runtime *config.RuntimeState) *ProjectCreatorModel {
 	factory := DefaultFormFieldFactory()
 	nameInput := factory.NewTextInputFocused("Project name")
 	nameInput.CharLimit = 100
 
+	defaultContext := runtime.DefaultContext()
+
 	// Context input with default value
-	contextInput := factory.NewTextInputWithValue(cfg.DefaultContext, "e.g., personal, work")
+	contextInput := factory.NewTextInputWithValue(defaultContext, "e.g., personal, work")
 	contextInput.CharLimit = 50
 
 	// Build contexts list: start with default context, then add others
-	contexts := []string{cfg.DefaultContext}
-	for _, ctx := range cfg.GetAllContexts() {
-		if ctx != cfg.DefaultContext {
+	contexts := []string{defaultContext}
+	for _, ctx := range runtime.AllContexts() {
+		if ctx != defaultContext {
 			contexts = append(contexts, ctx)
 		}
 	}
 
 	return &ProjectCreatorModel{
-		config:        cfg,
-		configManager: manager,
+		runtime:       runtime,
 		nameInput:     nameInput,
 		contextInput:  contextInput,
 		contextCursor: 0, // Default context is at index 0
@@ -183,8 +184,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ProjectCreatorModel) createProject() tea.Cmd {
 	name := strings.TrimSpace(m.nameInput.Value())
 	contextValue := strings.TrimSpace(m.contextInput.Value())
-	cfg := m.config
-	configManager := m.configManager
+	runtime := m.runtime
 	return func() tea.Msg {
 		if name == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
@@ -195,15 +195,13 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		if slug == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
 		}
-		for _, p := range cfg.Projects {
-			if p.Slug == slug {
-				return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}
-			}
+		if runtime.GetProject(slug) != nil {
+			return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}
 		}
 
 		// Create project
 		projectID := uuid.New().String()
-		projectPath := cfg.GetProjectPath(slug)
+		projectPath := runtime.ProjectPath(slug)
 		project, err := models.NewProject(projectID, name, projectPath)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
@@ -211,12 +209,12 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 
 		// Get context value
 		if contextValue == "" {
-			contextValue = cfg.DefaultContext
+			contextValue = runtime.DefaultContext()
 		}
 		project.Context = contextValue
 
 		// Ensure data directory exists
-		if err := cfg.EnsureDataDir(); err != nil {
+		if err := runtime.EnsureDataDir(); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", err)}
 		}
 
@@ -225,12 +223,18 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
 
-		// Add to config and set as current
-		cfg.AddProject(project)
-		cfg.CurrentProject = project.ID
-
-		if err := configManager.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+		// Add the project to the catalog domain through a checked commit
+		// (replacing the whole-config Manager.Save), then record it as the
+		// machine-local current-project selection.
+		if err := commitCatalogToRuntime(runtime, func(c *config.WorkspaceCatalog) {
+			c.UpsertProject(project)
+		}); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project catalog: %w", err)}
+		}
+		if err := commitMachineToRuntime(runtime, func(machine *config.MachineState) {
+			machine.CurrentProject = project.ID
+		}); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to set current project: %w", err)}
 		}
 
 		return ProjectCreatedMsg{Project: project}

@@ -8,7 +8,9 @@ import (
 
 	"github.com/sglavoie/tt/internal/appearance"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // WithPersister sets a custom Persister for the AppModel.
@@ -26,13 +28,22 @@ func WithCLIReference(ref string) AppOption {
 	}
 }
 
-// NewAppModel creates a new TUI application model.
-func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption) *AppModel {
+// NewAppModel creates a new TUI application model from the startup-loaded
+// configuration domains and the services rooted at the same workspace.
+func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOption) (*AppModel, error) {
+	var err error
+	runtime, err = recoverTUIWorkspace(runtime)
+	if err != nil {
+		return nil, err
+	}
+	dataDir := runtime.DataDir()
+
 	resetSessionMutations()
 
 	app := &AppModel{
-		config:                   cfg,
 		configManager:            manager,
+		runtime:                  runtime,
+		projects:                 make(map[string]*models.Project),
 		appearanceDetector:       appearance.NewDetector(),
 		persister:                NewProjectService(),
 		viewStack:                []ViewType{ViewDashboard},
@@ -43,7 +54,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		commandRegistry:          NewCommandRegistry(),
 		spinner:                  NewSpinner(),
 		navHistory:               NewNavHistory(),
-		lastProjectView:          defaultProjectViewType(cfg),
+		lastProjectView:          defaultProjectViewType(runtime.Settings()),
 		projectLastView:          make(map[string]ViewType),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
 		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
@@ -66,28 +77,51 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	// service is built once per session over the storage-backed repository so a
 	// mutation dispatched from a primary view commits through the same
 	// transactional, undoable path as the equivalent CLI command.
-	appService := newTUIAppService(cfg.DataDir, manager.RuntimeDependencies())
+	var runtimeDeps *config.RuntimeDependencies
+	if manager != nil {
+		runtimeDeps = manager.RuntimeDependencies()
+	}
+	appService := newTUIAppService(dataDir, runtimeDeps)
 	app.appService = appService
 	app.features = newFeatureCoordinators(appService, appService)
-	app.secondaryFeatures = newSecondaryCoordinators(appService, manager)
+	app.secondaryFeatures = newSecondaryCoordinators(appService, manager, workflowFocusArtifactBuilder(manager))
 
-	activeProjects := cfg.GetActiveProjects()
-	app.hydrateFocusQueue(cfg, manager, activeProjects)
-	app.hydrateDailyPlan(cfg, manager, activeProjects)
-	app.hydrateRecentVisits(cfg, manager, activeProjects)
+	// Assemble the domain-native dependency bundle shared by the shell and views.
+	app.deps = newShellDeps(runtime, appService, manager)
 
-	// Hydrate dismissed IDs
-	for _, id := range cfg.GetFocusDismissedIDs() {
+	if err := app.ensureSystemInboxProject(); err != nil {
+		logging.Warn("failed to ensure system inbox project: %v", err)
+	}
+	app.syncProjectCache()
+	if err := app.ensureSandboxProject(); err != nil {
+		logging.Warn("failed to ensure sandbox project: %v", err)
+	}
+	app.syncProjectCache()
+	activeProjects := app.activeProjects()
+	startupLoads := make(map[string]error, len(activeProjects))
+	// The catalog owns project metadata only. Rehydrate the selected project's
+	// storage-owned task tree into the session cache before constructing views;
+	// RuntimeState.CurrentProject returns a fresh metadata snapshot and must not
+	// become the long-lived shell pointer.
+	if currentID := runtime.Machine().CurrentProject; currentID != "" {
+		if current := app.projectByID(currentID); current != nil {
+			if err := app.loadStartupProject(current, startupLoads); err != nil {
+				logging.Warn("failed to load current project %s: %v", current.Name, err)
+			}
+			app.currentProject = current
+		}
+	}
+	app.hydrateFocusQueue(activeProjects, startupLoads)
+	app.hydrateDailyPlan(activeProjects, startupLoads)
+	app.hydrateRecentVisits(activeProjects, startupLoads)
+
+	// Hydrate dismissed IDs from the planning-domain snapshot.
+	for _, id := range app.runtime.Planning().GetFocusDismissedIDs() {
 		app.focusDismissedIDs[id] = true
 	}
 
-	// Ensure sandbox project exists
-	if cfg.EnsureSandboxProject() {
-		saveConfigWarn(manager, cfg, "sandbox project creation")
-	}
-
 	// Initialize dashboard and register it
-	app.dashboard = NewDashboardModel(cfg, manager)
+	app.dashboard = NewDashboardModel(runtime)
 	app.views.Register(ViewDashboard, app.dashboard)
 
 	// Record initial dashboard view in navigation history
@@ -96,30 +130,69 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	// Register global commands
 	app.registerGlobalCommands()
 
-	// Load current project if set
-	if current := cfg.GetCurrentProject(); current != nil {
-		app.currentProject = current
-	}
-
-	ApplyTheme(NewThemeConfig(cfg))
+	ApplyTheme(NewThemeConfig(runtime.Settings()))
 	app.dashboard.SetAccentColor(AccentDashboard)
 
-	app.openLoops = ComputeOpenLoops(cfg, app.dailyPlanIDs)
+	app.openLoops = ComputeOpenLoops(app.runtime, app.dailyPlanIDs)
+	app.refreshOnboardingProgress(startupLoads)
 
-	return app
+	return app, nil
 }
 
-// hydrateFocusQueue restores the focus queue from persisted config, pruning stale entries.
-func (app *AppModel) hydrateFocusQueue(cfg *config.Config, manager *config.Manager, activeProjects []*models.Project) {
+// recoverTUIWorkspace runs before any startup workflow evaluation, domain
+// consumption, or project load. NewAppModel also calls it so direct/headless
+// model construction has the same crash-recovery guarantee as RunApp.
+func recoverTUIWorkspace(runtime *config.RuntimeState) (*config.RuntimeState, error) {
+	if runtime == nil {
+		return config.EmptyRuntimeState(""), nil
+	}
+	dataDir := runtime.DataDir()
+	if dataDir == "" {
+		return runtime, nil
+	}
+	report, err := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir}).RecoverWorkspace()
+	if err != nil {
+		return nil, fmt.Errorf("recover workspace before TUI startup: %w", err)
+	}
+	if len(report.RolledForward) == 0 && len(report.CleanedUp) == 0 {
+		return runtime, nil
+	}
+	recovered, err := config.LoadRuntimeState(dataDir)
+	if err != nil {
+		return nil, fmt.Errorf("reload recovered workspace domains: %w", err)
+	}
+	return recovered, nil
+}
+
+// hydrateFocusQueue restores the focus queue from the planning-domain snapshot,
+// pruning stale entries and committing the pruned queue through a checked
+// planning commit.
+func (app *AppModel) loadStartupProject(project *models.Project, loaded map[string]error) error {
+	if project == nil {
+		return fmt.Errorf("project is required")
+	}
+	key := project.ID
+	if key == "" {
+		key = project.Path
+	}
+	if err, ok := loaded[key]; ok {
+		return err
+	}
+	err := app.persister.Load(project)
+	loaded[key] = err
+	return err
+}
+
+func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startupLoads map[string]error) {
 	queueChanged := false
 	var updatedQueue []config.FocusQueueItem
-	for _, item := range cfg.GetFocusQueue() {
+	for _, item := range app.runtime.Planning().GetFocusQueue() {
 		found := false
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
-			if err := app.persister.Load(p); err != nil {
+			if err := app.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil && !task.IsComplete() {
@@ -138,24 +211,29 @@ func (app *AppModel) hydrateFocusQueue(cfg *config.Config, manager *config.Manag
 		if updatedQueue == nil {
 			updatedQueue = []config.FocusQueueItem{}
 		}
-		cfg.SetFocusQueue(updatedQueue)
-		saveConfigWarn(manager, cfg, "focus queue pruning")
+		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
+			p.SetFocusQueue(updatedQueue)
+		}); err != nil {
+			logging.Warn("failed to persist focus queue pruning: %v", err)
+		}
 	}
 }
 
-// hydrateDailyPlan restores the daily plan from persisted config with carry-over logic.
-func (app *AppModel) hydrateDailyPlan(cfg *config.Config, manager *config.Manager, activeProjects []*models.Project) {
+// hydrateDailyPlan restores the daily plan from the planning-domain snapshot with
+// carry-over logic, committing the carried/pruned plan through a checked planning
+// commit.
+func (app *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupLoads map[string]error) {
 	today := time.Now().Format("2006-01-02")
 	var updatedPlan []config.DailyPlanItem
 	planChanged := false
-	for _, item := range cfg.GetDailyPlan() {
+	for _, item := range app.runtime.Planning().GetDailyPlan() {
 		var foundTask *models.Task
 		var foundProject *models.Project
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
-			if err := app.persister.Load(p); err != nil {
+			if err := app.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil {
@@ -186,22 +264,26 @@ func (app *AppModel) hydrateDailyPlan(cfg *config.Config, manager *config.Manage
 		if updatedPlan == nil {
 			updatedPlan = []config.DailyPlanItem{}
 		}
-		cfg.SetDailyPlan(updatedPlan)
-		saveConfigWarn(manager, cfg, "daily plan carry-over")
+		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
+			p.SetDailyPlan(updatedPlan)
+		}); err != nil {
+			logging.Warn("failed to persist daily plan carry-over: %v", err)
+		}
 	}
 }
 
-// hydrateRecentVisits restores recent task visits from persisted config, pruning stale entries.
-func (app *AppModel) hydrateRecentVisits(cfg *config.Config, manager *config.Manager, activeProjects []*models.Project) {
+// hydrateRecentVisits restores recent task visits from machine-local state,
+// pruning stale entries through a checked machine commit.
+func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, startupLoads map[string]error) {
 	visitsChanged := false
 	var updatedVisits []config.RecentTaskVisit
-	for _, item := range cfg.GetRecentTaskVisits() {
+	for _, item := range app.runtime.Machine().GetRecentTaskVisits() {
 		found := false
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
-			if err := app.persister.Load(p); err != nil {
+			if err := app.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil {
@@ -219,8 +301,11 @@ func (app *AppModel) hydrateRecentVisits(cfg *config.Config, manager *config.Man
 		if updatedVisits == nil {
 			updatedVisits = []config.RecentTaskVisit{}
 		}
-		cfg.SetRecentTaskVisits(updatedVisits)
-		saveConfigWarn(manager, cfg, "recent task visits pruning")
+		if err := commitMachineToRuntime(app.runtime, func(machine *config.MachineState) {
+			machine.SetRecentTaskVisits(updatedVisits)
+		}); err != nil {
+			logging.Warn("failed to persist recent task visits pruning: %v", err)
+		}
 	}
 }
 
@@ -337,12 +422,12 @@ func (m *AppModel) Init() tea.Cmd {
 			return periodicSaveMsg{}
 		}),
 	}
-	if m.config.GetAutoTheme() {
+	if m.runtime.Settings().GetAutoTheme() {
 		cmds = append(cmds, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
 			return systemAppearanceCheckMsg{}
 		}))
 	}
-	if vt, ok := resolveStartupNavigation(m.config.GetStartView()); ok {
+	if vt, ok := resolveStartupNavigation(m.runtime.Machine().GetStartView()); ok {
 		cmds = append(cmds, func() tea.Msg {
 			return NavigateToViewMsg{ViewType: vt}
 		})

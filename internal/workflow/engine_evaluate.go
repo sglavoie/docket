@@ -1,10 +1,8 @@
 package workflow
 
 import (
-	"fmt"
 	"slices"
 	"sort"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -305,24 +303,6 @@ func getFieldFromAction(actionType ActionType) string {
 	default:
 		return ""
 	}
-}
-
-// FormatConflicts returns a human-readable description of conflicts.
-func FormatConflicts(conflicts []RuleConflict) string {
-	if len(conflicts) == 0 {
-		return ""
-	}
-
-	var lines []string
-	for _, c := range conflicts {
-		lines = append(lines, fmt.Sprintf(
-			"Conflict on task %q: multiple rules (%s) try to set %s",
-			c.TaskTitle,
-			strings.Join(c.Rules, ", "),
-			c.Field,
-		))
-	}
-	return strings.Join(lines, "\n")
 }
 
 // TestRule evaluates a single rule against a task without applying changes.

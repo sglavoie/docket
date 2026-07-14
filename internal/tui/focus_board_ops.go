@@ -65,7 +65,7 @@ func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 
 // deleteItem deletes the task at cursor via the shared workflow pipeline.
 func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
-	return m, wfDeleteTask(m, m.config, m.configManager)
+	return m, wfDeleteTask(m, m.runtime, m.configManager)
 }
 
 // taskOpsView implementation for FocusBoardModel.
@@ -78,18 +78,17 @@ func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
 	return row.Task, row.Project
 }
 
-func (m *FocusBoardModel) getPersister() Persister           { return m.projectService }
-func (m *FocusBoardModel) getConfig() *config.Config         { return m.config }
+func (m *FocusBoardModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
 
 // workflowOpsView accessors: FocusBoard does not embed ViewBundle, so it exposes
 // its own single-task coordinator and enabled rules for the shared wf* helpers.
 func (m *FocusBoardModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }
 func (m *FocusBoardModel) workflowRules() []workflow.WorkflowRule {
-	if m.config == nil {
+	if m.runtime == nil {
 		return nil
 	}
-	return m.config.GetEnabledWorkflowRules()
+	return m.runtime.Automation().GetEnabledWorkflowRules()
 }
 func (m *FocusBoardModel) reloadData() {
 	intent := m.consumeReloadIntent(focusBoardReloadPreserveSelection)
@@ -184,7 +183,6 @@ func (m *FocusBoardModel) isActionableFlowRow(row boardRow) bool {
 	return row.Task != nil && !row.Task.IsComplete()
 }
 
-func (m *FocusBoardModel) setErr(err error)     { m.statusMessage = err.Error() }
 func (m *FocusBoardModel) setStatus(msg string) { m.statusMessage = msg }
 func (m *FocusBoardModel) viewID() ViewType     { return ViewFocusBoard }
 func (m *FocusBoardModel) viewName() string     { return "Today" }
@@ -261,11 +259,10 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-// persistDailyPlan saves the current daily plan order to config.
+// persistDailyPlan saves the current daily plan order through a checked planning
+// commit. The Daily Plan is planning-domain state, committed to planning.json
+// alone rather than through a whole-config save.
 func (m *FocusBoardModel) persistDailyPlan() {
-	if m.configManager == nil {
-		return
-	}
 	today := time.Now().Format("2006-01-02")
 	dp := *m.dailyPlan
 	items := make([]config.DailyPlanItem, len(dp))
@@ -276,8 +273,9 @@ func (m *FocusBoardModel) persistDailyPlan() {
 			PlannedDate: today,
 		}
 	}
-	m.config.SetDailyPlan(items)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+		p.SetDailyPlan(items)
+	}); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 	}
 }

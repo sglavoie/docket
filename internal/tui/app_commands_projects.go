@@ -46,7 +46,7 @@ func (m *AppModel) projectCommands() []Command {
 			Category:    CategoryProjects,
 			Aliases:     []string{"sandbox", "scratch", "scratchpad"},
 			Handler: func() tea.Msg {
-				sandbox := m.config.GetSandboxProject()
+				sandbox := m.projectByID("_sandbox")
 				if sandbox != nil {
 					return SelectProjectMsg{Project: sandbox}
 				}

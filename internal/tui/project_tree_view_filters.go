@@ -270,7 +270,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints["Faw"] = FilterAttrWorktypePrefixHints
 	hints["Fao"] = FilterAttrScopePrefixHints
 	hints["Fap"] = FilterAttrPointsPrefixHints
-	hints["FS"] = BuildFilterScorePrefixHints(m.config, true)
+	hints["FS"] = BuildFilterScorePrefixHints(m.runtime.Machine(), true)
 	hints["Fv"] = SavedFilterPrefixHints
 	return &PrefixPopupInfo{
 		Prefix: prefix,

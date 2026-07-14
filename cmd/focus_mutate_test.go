@@ -44,12 +44,12 @@ func setupFocusMutateCLI(t *testing.T) (*models.Project, string, func()) {
 		t.Fatalf("initial SaveProject: %v", err)
 	}
 
-	cfg := config.NewConfig()
-	cfg.DataDir = tmpDir
-	cfg.CurrentProject = project.ID
-	cfg.Projects = []*models.Project{project}
+	domains := config.NewDomains()
+	domains.Catalog.UpsertProject(project)
+	domains.Machine.CurrentProject = project.ID
+	cfg := config.NewRuntimeState(tmpDir, domains)
 	configPath := filepath.Join(tmpDir, "config.json")
-	if err := config.NewManager(configPath).Save(cfg); err != nil {
+	if err := saveTestRuntime(config.NewManager(configPath), cfg); err != nil {
 		storage.DefaultRepository = oldRepo
 		t.Fatalf("save config: %v", err)
 	}
@@ -63,9 +63,9 @@ func setupFocusMutateCLI(t *testing.T) (*models.Project, string, func()) {
 	}
 }
 
-func reloadFocusConfig(t *testing.T, configPath string) *config.Config {
+func reloadFocusConfig(t *testing.T, configPath string) *config.RuntimeState {
 	t.Helper()
-	cfg, err := config.NewManager(configPath).Load()
+	cfg, err := config.NewManager(configPath).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestFocusTodayAddRemoveClear(t *testing.T) {
 	if err := runFocusTodayAdd(focusTodayAddCmd, []string{"1"}); err != nil {
 		t.Fatalf("today add: %v", err)
 	}
-	plan := reloadFocusConfig(t, configPath).GetDailyPlan()
+	plan := reloadFocusConfig(t, configPath).Planning().GetDailyPlan()
 	if len(plan) != 1 || plan[0].TaskID != taskID || plan[0].PlannedDate == "" {
 		t.Fatalf("plan after add = %+v, want one dated item for %s", plan, taskID)
 	}
@@ -150,7 +150,7 @@ func TestFocusTodayAddRemoveClear(t *testing.T) {
 	if err := runFocusTodayRemove(focusTodayRemoveCmd, []string{"1"}); err != nil {
 		t.Fatalf("today remove: %v", err)
 	}
-	if got := reloadFocusConfig(t, configPath).GetDailyPlan(); len(got) != 0 {
+	if got := reloadFocusConfig(t, configPath).Planning().GetDailyPlan(); len(got) != 0 {
 		t.Fatalf("plan should be empty after remove, got %d", len(got))
 	}
 
@@ -161,7 +161,7 @@ func TestFocusTodayAddRemoveClear(t *testing.T) {
 	if err := runFocusTodayClear(focusTodayClearCmd, nil); err != nil {
 		t.Fatalf("today clear: %v", err)
 	}
-	if got := reloadFocusConfig(t, configPath).GetDailyPlan(); len(got) != 0 {
+	if got := reloadFocusConfig(t, configPath).Planning().GetDailyPlan(); len(got) != 0 {
 		t.Fatalf("plan should be empty after clear, got %d", len(got))
 	}
 }

@@ -19,7 +19,9 @@ var conflictCmd = &cobra.Command{
 When a concurrent change to the same project cannot be merged automatically, tt
 records the base, local, and remote documents plus structured conflict metadata.
 Use these commands to review what diverged and to resolve each conflict by
-keeping your local edits, adopting the remote state, or supplying a merged file.`,
+keeping your local edits, adopting the remote state, or supplying a merged file.
+Conflicts from aborted transactions are retry-only: adopt remote to clear the
+record, then retry the original operation so all side effects stay atomic.`,
 }
 
 func init() {
@@ -30,11 +32,11 @@ func init() {
 // service that shares its data directory, so resolutions commit through the same
 // transactional boundary as every other mutation.
 func conflictWorkspace() (*storage.ConflictStore, *storage.CommitService, error) {
-	_, manager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return nil, nil, err
 	}
-	dataDir := config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
+	dataDir := workspace.Runtime.DataDir()
 	store := storage.NewConflictStore(config.ConflictsDir(dataDir))
 	commit := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir})
 	return store, commit, nil

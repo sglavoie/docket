@@ -6,7 +6,7 @@ import (
 
 func TestTaskCommands_ExpandAll(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	cmds := app.taskCommands()
 	cmd := findCommand(cmds, "expand all")
@@ -20,7 +20,7 @@ func TestTaskCommands_ExpandAll(t *testing.T) {
 
 func TestTaskCommands_CollapseAll(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	cmds := app.taskCommands()
 	cmd := findCommand(cmds, "collapse all")

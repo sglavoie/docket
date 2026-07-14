@@ -8,13 +8,13 @@ import (
 )
 
 func TestDashboardUnarchiveBindingOnlyWorksInArchivedMode(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	active := testutil.NewTestProject("Active Project")
 	archived := testutil.NewTestProject("SIS Shield")
 	archived.Archive()
-	cfg.Projects = []*models.Project{active, archived}
+	setTestProjects(cfg, []*models.Project{active, archived})
 
-	dashboard := NewDashboardModel(cfg, nil)
+	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
 
 	if _, _, consumed := dashboard.Dispatcher.Dispatch(syntheticKey('u')); consumed {
 		t.Fatal("dashboard u binding should not be active outside archived mode")
@@ -41,7 +41,7 @@ func TestDashboardUnarchiveBindingOnlyWorksInArchivedMode(t *testing.T) {
 	if !ok {
 		t.Fatalf("dashboard u returned %T, want ProjectArchiveRequestMsg", result)
 	}
-	if msg.Project != archived {
+	if msg.Project == nil || msg.Project.ID != archived.ID {
 		t.Fatal("dashboard u should request unarchive for the selected archived project")
 	}
 	if msg.Archive {
@@ -53,12 +53,12 @@ func TestDashboardUnarchiveBindingOnlyWorksInArchivedMode(t *testing.T) {
 }
 
 func TestDashboardHelpShowsUnarchiveOnlyInArchivedMode(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	archived := testutil.NewTestProject("SIS Shield")
 	archived.Archive()
-	cfg.Projects = []*models.Project{archived}
+	setTestProjects(cfg, []*models.Project{archived})
 
-	dashboard := NewDashboardModel(cfg, nil)
+	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
 
 	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "a"); desc != "Show archived" {
 		t.Fatalf("active dashboard a help = %q, want Show archived", desc)
@@ -82,8 +82,8 @@ func TestDashboardUnarchiveConfirmRestoresAndRefreshesArchivedList(t *testing.T)
 	app := newTestAppModel()
 	archived := testutil.NewTestProject("SIS Shield")
 	archived.Archive()
-	app.config.Projects = []*models.Project{archived}
-	app.dashboard = NewDashboardModel(app.config, app.configManager)
+	setTestAppProjects(app, archived)
+	app.dashboard = NewDashboardModel(app.runtime)
 	app.dashboard.showArchived = true
 	app.dashboard.loadProjects()
 	app.views.Register(ViewDashboard, app.dashboard)

@@ -11,14 +11,14 @@ import (
 )
 
 func TestRunContextRemove(t *testing.T) {
-	setup := func(t *testing.T) (*testutil.TestDeps, func()) {
+	setup := func(t *testing.T) (*testDeps, func()) {
 		t.Helper()
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 		viper.Set("config", deps.ConfigPath)
 
 		manager := config.NewManager(deps.ConfigPath)
-		err := manager.Save(deps.Config)
+		err := saveTestRuntime(manager, deps.Config)
 		testutil.AssertNoError(t, err)
 
 		oldStorageRepo := storage.DefaultRepository
@@ -67,9 +67,9 @@ func TestRunContextRemove(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		deps.Config.SetCustomContext("Work", []string{})
+		deps.Config.Machine().SetCustomContext("Work", []string{})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextRemove(contextRemoveCmd, []string{"Work", "nonexistent-slug"})
 		if err == nil {
@@ -81,18 +81,18 @@ func TestRunContextRemove(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		project := deps.Config.Projects[0]
-		deps.Config.SetCustomContext("Work", []string{project.ID})
+		project := deps.Config.AllProjects()[0]
+		deps.Config.Machine().SetCustomContext("Work", []string{project.ID})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextRemove(contextRemoveCmd, []string{"Work", project.Slug})
 		testutil.AssertNoError(t, err)
 
 		// Reload config and verify removal
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
-		ids := reloaded.GetCustomContext("Work")
+		ids := reloaded.Machine().GetCustomContext("Work")
 		if len(ids) != 0 {
 			t.Errorf("expected 0 projects in context after removal, got %d", len(ids))
 		}
@@ -102,10 +102,10 @@ func TestRunContextRemove(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		project := deps.Config.Projects[0]
-		deps.Config.SetCustomContext("Work", []string{})
+		project := deps.Config.AllProjects()[0]
+		deps.Config.Machine().SetCustomContext("Work", []string{})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextRemove(contextRemoveCmd, []string{"Work", project.Slug})
 		if err == nil {
@@ -117,10 +117,10 @@ func TestRunContextRemove(t *testing.T) {
 		deps, cleanup := setup(t)
 		defer cleanup()
 
-		project := deps.Config.Projects[0]
-		deps.Config.SetCustomContext("Work", []string{project.ID})
+		project := deps.Config.AllProjects()[0]
+		deps.Config.Machine().SetCustomContext("Work", []string{project.ID})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextRemove(contextRemoveCmd, []string{"Work", project.Slug})
 		testutil.AssertNoError(t, err)
@@ -128,9 +128,9 @@ func TestRunContextRemove(t *testing.T) {
 		// Reload config and verify the context still exists (non-nil) with 0 projects.
 		// Before the fix, removing the last project set nil which made the context
 		// appear "not found" to other commands (add, show, edit, remove).
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
-		ids := reloaded.GetCustomContext("Work")
+		ids := reloaded.Machine().GetCustomContext("Work")
 		if ids == nil {
 			t.Fatal("expected context to still exist (non-nil slice), got nil")
 		}
@@ -142,9 +142,9 @@ func TestRunContextRemove(t *testing.T) {
 		err = runContextAdd(contextAddCmd, []string{"Work", project.Slug})
 		testutil.AssertNoError(t, err)
 
-		reloaded2, loadErr2 := config.NewManager(deps.ConfigPath).Load()
+		reloaded2, loadErr2 := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr2)
-		ids2 := reloaded2.GetCustomContext("Work")
+		ids2 := reloaded2.Machine().GetCustomContext("Work")
 		if len(ids2) != 1 {
 			t.Errorf("expected 1 project after re-adding, got %d", len(ids2))
 		}

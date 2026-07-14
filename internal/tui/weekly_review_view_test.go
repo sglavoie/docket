@@ -14,9 +14,9 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func newTestWeeklyReviewModel(cfg *config.Config) *WeeklyReviewModel {
+func newTestWeeklyReviewModel(cfg *config.RuntimeState) *WeeklyReviewModel {
 	return &WeeklyReviewModel{
-		ViewBundle:        ViewBundle{config: cfg},
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
@@ -26,7 +26,7 @@ func newTestWeeklyReviewModel(cfg *config.Config) *WeeklyReviewModel {
 }
 
 func TestWeeklyReview_EmptyState(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(80, 24)
 	m.calculateNavigation()
@@ -44,7 +44,7 @@ func TestWeeklyReview_EmptyState(t *testing.T) {
 }
 
 func TestWeeklyReview_WithStaleProjects(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(120, 40)
 
@@ -66,7 +66,7 @@ func TestWeeklyReview_WithStaleProjects(t *testing.T) {
 }
 
 func TestWeeklyReviewPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(80, 12)
 
@@ -102,7 +102,7 @@ func TestWeeklyReviewPersistentScrollPreservesWindowUntilCursorLeaves(t *testing
 }
 
 func TestWeeklyReview_ReviewCompletion(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(80, 24)
 
@@ -124,7 +124,7 @@ func TestWeeklyReview_ReviewCompletion(t *testing.T) {
 }
 
 func TestWeeklyReviewProgressBarRespectsNarrowWidth(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(44, 18)
 
@@ -145,7 +145,7 @@ func TestWeeklyReviewProgressBarRespectsNarrowWidth(t *testing.T) {
 }
 
 func TestWeeklyReview_TabCounts(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 
 	project, err := models.NewProject("p1", "Test", "")
@@ -202,7 +202,7 @@ func TestWeeklyReview_UpcomingWeekWindowIsSevenDays(t *testing.T) {
 	// Use a separate project pointer in config so MockRepository.Load can
 	// deep-copy without aliasing the source.
 	configProject := &models.Project{ID: storedProject.ID, Name: storedProject.Name}
-	cfg := &config.Config{Projects: []*models.Project{configProject}}
+	cfg := testConfigWithProjects(configProject)
 	m := newTestWeeklyReviewModel(cfg)
 	m.loadData()
 
@@ -272,7 +272,7 @@ func TestWeeklyReview_LoadDataAppliesCommonFiltersToTaskSections(t *testing.T) {
 	mockRepo.Projects[storedProject.ID] = storedProject
 
 	configProject := &models.Project{ID: storedProject.ID, Name: storedProject.Name}
-	cfg := &config.Config{Projects: []*models.Project{configProject}}
+	cfg := testConfigWithProjects(configProject)
 	m := newTestWeeklyReviewModel(cfg)
 	m.filter.Type = models.TaskTypeBug
 	m.loadData()
@@ -301,7 +301,7 @@ func TestWeeklyReview_LoadDataAppliesCommonFiltersToTaskSections(t *testing.T) {
 }
 
 func TestWeeklyReview_CompletionSummary(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
+	cfg := newTestConfig()
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(80, 24)
 

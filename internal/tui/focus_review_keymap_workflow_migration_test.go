@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // This file proves the focus/review standard-task-keymap views (Focus View,
@@ -21,7 +20,8 @@ func TestFocusViewStandardKeymapCommitsWorkflowAndUndoes(t *testing.T) {
 	task := seedTask(t, 1, "Focus view task", models.StateReady)
 	env, features := newSecondaryEnv(t, "focusviewwf", task)
 
-	m := &FocusViewModel{ViewBundle: ViewBundle{config: testutil.NewTestConfig()}}
+	cfg := newTestConfig()
+	m := &FocusViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))}
 	m.taskItem = features.TaskItem
 	m.filtered = []FocusTask{{Task: task, Project: env.project}}
 	m.cursor = 0
@@ -51,7 +51,8 @@ func TestFocusBoardStandardKeymapCommitsWorkflowAndUndoes(t *testing.T) {
 	task := seedTask(t, 1, "Focus board task", models.StateReady)
 	env, features := newSecondaryEnv(t, "focusboardwf", task)
 
-	m := &FocusBoardModel{config: testutil.NewTestConfig()}
+	cfg := newTestConfig()
+	m := &FocusBoardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg)}
 	m.taskItem = features.TaskItem
 	m.filtered = []boardRow{{Task: task, Project: env.project}}
 	m.cursor = 0
@@ -80,7 +81,8 @@ func TestProjectFocusStandardKeymapCommitsWorkflowAndUndoes(t *testing.T) {
 	task := seedTask(t, 1, "Project focus task", models.StateReady)
 	env, features := newSecondaryEnv(t, "projectfocuswf", task)
 
-	m := &ProjectFocusViewModel{cfg: testutil.NewTestConfig(), project: env.project}
+	cfg := newTestConfig()
+	m := &ProjectFocusViewModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), project: env.project}
 	m.taskItem = features.TaskItem
 	m.tasks = []*models.Task{task}
 	m.cursor = 0
@@ -109,7 +111,8 @@ func TestWeeklyReviewStandardKeymapCommitsWorkflowAndUndoes(t *testing.T) {
 	task := seedTask(t, 1, "Weekly review task", models.StateReady)
 	env, features := newSecondaryEnv(t, "weeklyreviewwf", task)
 
-	m := &WeeklyReviewModel{ViewBundle: ViewBundle{config: testutil.NewTestConfig()}}
+	cfg := newTestConfig()
+	m := &WeeklyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))}
 	m.taskItem = features.TaskItem
 	m.staleTasks = []WeeklyReviewTask{{Task: task, Project: env.project}}
 	m.sectionOrder = []WeeklyReviewSection{WeeklySectionStaleTasks}

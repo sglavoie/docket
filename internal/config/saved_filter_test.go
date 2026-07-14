@@ -2,13 +2,11 @@ package config
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
 func TestGetSavedFilters_Empty(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	filters := c.GetSavedFilters()
 	if len(filters) != 0 {
 		t.Fatalf("expected 0 filters, got %d", len(filters))
@@ -16,7 +14,7 @@ func TestGetSavedFilters_Empty(t *testing.T) {
 }
 
 func TestSaveFilter_Add(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SaveFilter(SavedFilter{ID: "id1", Name: "Bug Triage", Mode: "snapshot", FilterType: "bug"})
 
 	filters := c.GetSavedFilters()
@@ -32,7 +30,7 @@ func TestSaveFilter_Add(t *testing.T) {
 }
 
 func TestSaveFilter_Upsert(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SaveFilter(SavedFilter{ID: "id1", Name: "Bug Triage", Mode: "snapshot", FilterType: "bug"})
 	c.SaveFilter(SavedFilter{ID: "id1", Name: "Bug Triage v2", Mode: "snapshot", FilterType: "task"})
 
@@ -49,7 +47,7 @@ func TestSaveFilter_Upsert(t *testing.T) {
 }
 
 func TestGetSavedFilter_ByID(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SaveFilter(SavedFilter{ID: "abc", Name: "My Filter", Mode: "criteria"})
 
 	f := c.GetSavedFilter("abc")
@@ -62,14 +60,14 @@ func TestGetSavedFilter_ByID(t *testing.T) {
 }
 
 func TestGetSavedFilter_NotFound(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	if f := c.GetSavedFilter("missing"); f != nil {
 		t.Error("expected nil for missing filter")
 	}
 }
 
 func TestGetSavedFilterByName(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SaveFilter(SavedFilter{ID: "1", Name: "Bug Triage", Mode: "snapshot"})
 
 	f := c.GetSavedFilterByName("bug triage")
@@ -82,14 +80,14 @@ func TestGetSavedFilterByName(t *testing.T) {
 }
 
 func TestGetSavedFilterByName_NotFound(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	if f := c.GetSavedFilterByName("nope"); f != nil {
 		t.Error("expected nil")
 	}
 }
 
 func TestDeleteSavedFilter(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SaveFilter(SavedFilter{ID: "a", Name: "A"})
 	c.SaveFilter(SavedFilter{ID: "b", Name: "B"})
 
@@ -105,30 +103,14 @@ func TestDeleteSavedFilter(t *testing.T) {
 }
 
 func TestDeleteSavedFilter_NotFound(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	if c.DeleteSavedFilter("missing") {
 		t.Error("expected false for missing filter")
 	}
 }
 
-func TestDeleteSavedFilter_CleansTabOrder(t *testing.T) {
-	c := NewConfig()
-	c.SaveFilter(SavedFilter{ID: "sl1", Name: "SL", ShowAsTab: true})
-	c.AllTasksTabOrder = []string{"All", "sl1", "Due"}
-
-	c.DeleteSavedFilter("sl1")
-	if len(c.AllTasksTabOrder) != 2 {
-		t.Fatalf("expected 2 tab entries, got %d", len(c.AllTasksTabOrder))
-	}
-	for _, e := range c.AllTasksTabOrder {
-		if e == "sl1" {
-			t.Error("sl1 should have been removed from tab order")
-		}
-	}
-}
-
 func TestGetTabFilters(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SaveFilter(SavedFilter{ID: "1", Name: "Tab", ShowAsTab: true})
 	c.SaveFilter(SavedFilter{ID: "2", Name: "NoTab", ShowAsTab: false})
 	c.SaveFilter(SavedFilter{ID: "3", Name: "Tab2", ShowAsTab: true})
@@ -157,7 +139,7 @@ func TestEffectiveLogic(t *testing.T) {
 // --- Migration tests ---
 
 func TestMigrateLegacyFilters_savedViews(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SavedViews = []savedView{
 		{Name: "Bugs", FilterType: "bug", FilterGitHubIssue: true, FilterParked: true, SortField: 1, PinnedTagTab: "backend"},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
@@ -196,7 +178,7 @@ func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 }
 
 func TestMigrateLegacyFilters_smartLists(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SmartLists = []smartList{
 		{
 			ID:   "sl-1",
@@ -209,7 +191,6 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 			IncludeCompleted: false,
 		},
 	}
-	c.AllTasksTabOrder = []string{"All", "sl-1"}
 
 	if !c.MigrateLegacyFilters() {
 		t.Fatal("expected migration to return true")
@@ -236,14 +217,10 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 	if f.Criteria[1].Field != "parked" || f.Criteria[1].Value != "true" {
 		t.Fatalf("parked criterion = %+v, want parked equals true", f.Criteria[1])
 	}
-	// AllTasksTabOrder should be unchanged (IDs match).
-	if len(c.AllTasksTabOrder) != 2 || c.AllTasksTabOrder[1] != "sl-1" {
-		t.Error("AllTasksTabOrder should be preserved")
-	}
 }
 
 func TestMigrateLegacyFilters_Both(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SavedViews = []savedView{{Name: "V"}}
 	c.SmartLists = []smartList{{ID: "s1", Name: "S"}}
 
@@ -260,14 +237,14 @@ func TestMigrateLegacyFilters_Both(t *testing.T) {
 }
 
 func TestMigrateLegacyFilters_Empty(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	if c.MigrateLegacyFilters() {
 		t.Error("expected no migration when both empty")
 	}
 }
 
 func TestMigrateLegacyFilters_Idempotent(t *testing.T) {
-	c := NewConfig()
+	c := NewPlanningState()
 	c.SavedViews = []savedView{{Name: "V"}}
 	c.MigrateLegacyFilters()
 
@@ -343,114 +320,3 @@ func TestSavedFilter_JSONMissingGitHubIssueDefaultsFalse(t *testing.T) {
 }
 
 // --- Manager migration integration test ---
-
-func TestManager_MigrationOnLoad(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".tt.json")
-
-	// Write a config with legacy fields.
-	legacy := map[string]any{
-		"data_dir": dir,
-		"editor":   "vim",
-		"saved_views": []map[string]any{
-			{"name": "My Bugs", "filter_type": "bug", "filter_parked": true},
-		},
-		"smart_lists": []map[string]any{
-			{
-				"id":   "sl-abc",
-				"name": "Overdue",
-				"criteria": []map[string]string{
-					{"field": "due_date", "operation": "less_than", "value": "today"},
-					{"field": "parked", "operation": "equals", "value": "false"},
-				},
-			},
-		},
-	}
-	data, _ := json.Marshal(legacy)
-	if err := os.WriteFile(configPath, data, 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-
-	m := NewManager(configPath)
-	cfg, err := m.Load()
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-
-	// Legacy fields should be cleared.
-	if len(cfg.SavedViews) != 0 {
-		t.Error("savedViews should be empty after migration")
-	}
-	if len(cfg.SmartLists) != 0 {
-		t.Error("smartLists should be empty after migration")
-	}
-
-	// SavedFilters should have 2 entries.
-	if len(cfg.SavedFilters) != 2 {
-		t.Fatalf("expected 2 saved filters, got %d", len(cfg.SavedFilters))
-	}
-
-	// Verify snapshot conversion.
-	var snapshot *SavedFilter
-	for i := range cfg.SavedFilters {
-		if cfg.SavedFilters[i].Mode == "snapshot" {
-			snapshot = &cfg.SavedFilters[i]
-		}
-	}
-	if snapshot == nil {
-		t.Fatal("no snapshot filter found")
-	}
-	if snapshot.FilterType != "bug" {
-		t.Errorf("snapshot filter_type: got %q, want 'bug'", snapshot.FilterType)
-	}
-	if !snapshot.FilterParked {
-		t.Error("snapshot filter_parked should migrate")
-	}
-
-	// Verify criteria conversion.
-	criteria := cfg.GetSavedFilter("sl-abc")
-	if criteria == nil {
-		t.Fatal("criteria filter sl-abc not found")
-	}
-	if criteria.Mode != "criteria" {
-		t.Errorf("criteria mode: got %q", criteria.Mode)
-	}
-	if !criteria.ShowAsTab {
-		t.Error("criteria filter should have ShowAsTab=true")
-	}
-	if len(criteria.Criteria) != 2 || criteria.Criteria[1].Field != "parked" || criteria.Criteria[1].Value != "false" {
-		t.Fatalf("criteria parked criterion = %+v, want parked equals false", criteria.Criteria)
-	}
-
-	// The planning domain file on disk should now carry saved_filters (a
-	// planning-domain field) and no legacy saved_views/smart_lists.
-	planningRaw, err := os.ReadFile(PlanningStatePath(dir))
-	if err != nil {
-		t.Fatalf("re-read planning domain: %v", err)
-	}
-	var env struct {
-		Data json.RawMessage `json:"data"`
-	}
-	if err = json.Unmarshal(planningRaw, &env); err != nil {
-		t.Fatalf("unmarshal planning envelope: %v", err)
-	}
-	var raw map[string]json.RawMessage
-	if err = json.Unmarshal(env.Data, &raw); err != nil {
-		t.Fatalf("unmarshal planning data: %v", err)
-	}
-	if _, ok := raw["saved_filters"]; !ok {
-		t.Error("expected saved_filters key in persisted planning domain")
-	}
-	if _, ok := raw["saved_views"]; ok {
-		t.Error("planning domain should not carry legacy saved_views")
-	}
-
-	// Second load should not re-migrate.
-	cfg2, err := m.Load()
-	if err != nil {
-		t.Fatalf("second load: %v", err)
-	}
-	if len(cfg2.SavedFilters) != 2 {
-		t.Errorf("expected 2 filters on second load, got %d", len(cfg2.SavedFilters))
-	}
-}

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -121,6 +123,87 @@ func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
 		if filepath.Ext(e.Name()) == ".json" {
 			t.Fatalf("unexpected leftover manifest: %s", e.Name())
 		}
+	}
+}
+
+// TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision proves the
+// transactional user-mutation path writes the schema-v2 envelope from the exact
+// loaded base and reports the revision an immediate reload observes. It repeats
+// the mutation within one persisted timestamp minute to guard the historical
+// in-memory/reload revision divergence.
+func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.T) {
+	svc, dataDir := newCommitTestService(t)
+	project := newCommitTestProject(t, dataDir, "lossless", "before")
+	project.Sections = []string{models.SectionNext}
+	project.SectionColors = map[string]string{models.SectionNext: "orange"}
+	project.Tags = []string{"alpha", "beta"}
+	project.PinnedTags = []string{"beta"}
+	project.Tasks[0].CreatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
+	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
+
+	seed := ProjectDocumentFromBase(project, &ProjectDocument{
+		OpaqueBlocks: []OpaqueBlock{{Content: "<!-- future-feature: keep-exactly -->"}},
+	})
+	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
+		t.Fatalf("mkdir project: %v", err)
+	}
+	if err := os.WriteFile(tasksFilePath(project.Path), []byte(seed.WriteV2()), FilePermissions); err != nil {
+		t.Fatalf("seed tasks: %v", err)
+	}
+	base, err := LoadProjectDocument(project)
+	if err != nil {
+		t.Fatalf("load base: %v", err)
+	}
+
+	project.Tasks[0].Title = "first mutation"
+	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 40, 0, time.Local)
+	first, err := svc.Commit(ChangeSet{Project: project, ExpectedRevision: base.Revision, Base: base})
+	if err != nil {
+		t.Fatalf("first Commit: %v", err)
+	}
+	firstBytes, err := os.ReadFile(tasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read first commit: %v", err)
+	}
+	firstContent := string(firstBytes)
+	if !strings.Contains(firstContent, "<!-- tt-schema: 2 -->") {
+		t.Fatalf("committed content missing schema marker:\n%s", firstContent)
+	}
+	if !strings.Contains(firstContent, "<!-- future-feature: keep-exactly -->") {
+		t.Fatalf("committed content dropped opaque block:\n%s", firstContent)
+	}
+	if strings.Contains(firstContent, "updated:") {
+		t.Fatalf("same-minute commit wrote unstable updated field:\n%s", firstContent)
+	}
+	firstReload, err := LoadProjectDocument(project)
+	if err != nil {
+		t.Fatalf("reload first commit: %v", err)
+	}
+	if first.Revision != firstReload.Revision {
+		t.Fatalf("first result revision %s != reload %s", first.Revision, firstReload.Revision)
+	}
+	if got := firstReload.SectionColors[models.SectionNext]; got != "orange" {
+		t.Fatalf("section color = %q, want orange", got)
+	}
+	if len(firstReload.Tags) != 2 || len(firstReload.PinnedTags) != 1 || firstReload.PinnedTags[0] != "beta" {
+		t.Fatalf("full metadata not preserved: tags=%v pinned=%v", firstReload.Tags, firstReload.PinnedTags)
+	}
+
+	project.Tasks[0].Title = "second mutation"
+	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 55, 0, time.Local)
+	second, err := svc.Commit(ChangeSet{Project: project, ExpectedRevision: firstReload.Revision, Base: firstReload})
+	if err != nil {
+		t.Fatalf("second Commit: %v", err)
+	}
+	secondReload, err := LoadProjectDocument(project)
+	if err != nil {
+		t.Fatalf("reload second commit: %v", err)
+	}
+	if second.Revision != secondReload.Revision {
+		t.Fatalf("second result revision %s != reload %s", second.Revision, secondReload.Revision)
+	}
+	if len(secondReload.OpaqueBlocks) != 1 || secondReload.OpaqueBlocks[0].Content != "<!-- future-feature: keep-exactly -->" {
+		t.Fatalf("second commit changed opaque blocks: %+v", secondReload.OpaqueBlocks)
 	}
 }
 

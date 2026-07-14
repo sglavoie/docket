@@ -51,7 +51,7 @@ func tagPartFromCommonFilterParts(parts []string) string {
 // in ProjectTreeModel.activeFilterParts().
 func TestProjectTreeActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	pt := NewProjectTreeModel(project, app.config, nil)
+	pt := NewProjectTreeModel(project, nil, app.runtime)
 	pt.filter.Sections = map[string]bool{
 		"Zeta":   true,
 		"Alpha":  true,
@@ -80,7 +80,7 @@ func TestProjectTreeActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
 // counterpart of the project-tree section ordering test.
 func TestOutlinerActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	ol := NewOutlinerModel(project, app.config, app.configManager)
+	ol := NewOutlinerModel(project, app.configManager, app.runtime)
 	ol.filter.Sections = map[string]bool{
 		"Zeta":   true,
 		"Alpha":  true,

@@ -131,7 +131,7 @@ func TestCrossPalette_QuickCapture_NoProjectUnderCursor(t *testing.T) {
 	}
 }
 
-func TestCrossPalette_QuickCaptureFromProjectTreeFallsBackToGlobalPicker(t *testing.T) {
+func TestCrossPalette_QuickCaptureFromProjectTreeUsesSharedCapture(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
 
@@ -140,8 +140,8 @@ func TestCrossPalette_QuickCaptureFromProjectTreeFallsBackToGlobalPicker(t *test
 		t.Fatal("expected to find 'quick capture' command")
 	}
 	result := cmd.Handler()
-	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
-		t.Fatalf("expected ShowGlobalProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowQuickCaptureMsg); !ok {
+		t.Fatalf("expected ShowQuickCaptureMsg, got %T", result)
 	}
 }
 
@@ -386,7 +386,7 @@ func TestCrossPalette_BlockersView_FallsBackToCurrentProject(t *testing.T) {
 // `selectedTreeTask()` + currentProject behavior intact.
 func TestCrossPalette_TaskActivity_FromProjectTreeUsesSelectedTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	visible := app.projectTree.visibleNodes()
 	if len(visible) == 0 {
 		t.Fatal("expected project tree to have visible nodes")

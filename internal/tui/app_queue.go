@@ -169,11 +169,10 @@ func (m *AppModel) redoQueueToggle() tea.Cmd {
 	return defaultStatusTimeout()
 }
 
-// persistFocusQueue saves the current queue state to config.
+// persistFocusQueue saves the current queue state through a checked planning
+// commit. The Focus Queue is planning-domain state, so it is committed to
+// planning.json alone rather than routed through a whole-config save.
 func (m *AppModel) persistFocusQueue() {
-	if m.configManager == nil {
-		return
-	}
 	items := make([]config.FocusQueueItem, len(m.focusQueue))
 	for i, ft := range m.focusQueue {
 		items[i] = config.FocusQueueItem{
@@ -181,8 +180,9 @@ func (m *AppModel) persistFocusQueue() {
 			ProjectID: ft.Project.ID,
 		}
 	}
-	m.config.SetFocusQueue(items)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+		p.SetFocusQueue(items)
+	}); err != nil {
 		m.err = err
 	}
 }

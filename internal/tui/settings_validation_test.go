@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/textinput"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 func TestValidateIntInRange(t *testing.T) {
@@ -87,7 +85,7 @@ func TestValidateIntOptionalInRange(t *testing.T) {
 }
 
 func TestValidateFocusedField_SectionLimitReview(t *testing.T) {
-	m := NewSettingsModel(config.NewConfig(), nil)
+	m := NewSettingsModel(newSettingsDeps(newTestConfig(), nil))
 	m.focusIndex = subTabFieldStart(tabBehavior, 5) + 6
 	m.sectionLimitReviewInput.SetValue("6a")
 
@@ -146,7 +144,7 @@ func TestValidateFocusedField_UsesCurrentSettingsFieldLayout(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewSettingsModel(config.NewConfig(), nil)
+			m := NewSettingsModel(newSettingsDeps(newTestConfig(), nil))
 			m.focusIndex = tt.focusIndex
 			tt.mutate(m)
 

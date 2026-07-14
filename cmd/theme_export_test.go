@@ -20,12 +20,12 @@ func resetThemeExportVars() {
 	themeExportFile = ""
 }
 
-func setupThemeExportTest(t *testing.T) (*testutil.TestDeps, *config.Manager) {
+func setupThemeExportTest(t *testing.T) (*testDeps, *config.Manager) {
 	t.Helper()
 	resetThemeExportVars()
-	deps := testutil.SetupTestDeps(t)
+	deps := setupTestDeps(t)
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() {
 		viper.Set("config", "")
@@ -90,13 +90,13 @@ func TestThemeExport(t *testing.T) {
 		deps, manager := setupThemeExportTest(t)
 		defer deps.Cleanup()
 
-		deps.Config.ThemeDark = config.Theme{
+		deps.Config.Settings().ThemeDark = config.Theme{
 			BackgroundColor: "#aabbcc",
 			CursorColor:     "#112233",
 			CursorTextColor: "#ffffff",
 		}
-		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		deps.Config.Settings().ThemeDarkRev = config.DarkThemeDefaultsRev
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runThemeExport(themeExportCmd, []string{"roundtrip"})
 		testutil.AssertNoError(t, err)

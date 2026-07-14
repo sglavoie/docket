@@ -109,7 +109,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		Width:         width,
 		Counter:       FormatOpenLoops(m.openLoops),
 	}
-	b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
+	b.WriteString(renderProjectTitle(m.project, m.runtime, titleParams))
 	b.WriteString("\n")
 
 	// Pinned tag tab bar
@@ -185,7 +185,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	sectionWarning := ""
 	if sn := viewModeToSection(m.viewMode); sn != "" {
 		count := sectionTaskCount(m.project.Tasks, sn)
-		limit := m.config.GetSectionLimit(sn)
+		limit := m.runtime.Settings().GetSectionLimit(sn)
 		if limit > 0 && count > limit {
 			sectionWarning = sectionLimitWarning(count-limit, limit)
 		}
@@ -365,7 +365,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 			Task:         selectedTaskForStrip,
 			Project:      m.project,
-			Config:       m.config,
+			Runtime:      m.runtime,
 			Width:        stripInnerWidth,
 			AlreadyShown: alreadyShown,
 			ColumnConfig: m.columnConfig,

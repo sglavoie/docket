@@ -114,7 +114,7 @@ func (s *Service) SaveNote(projectID string, note *models.Note) (NoteResult, err
 	if strings.TrimSpace(note.Title) == "" {
 		return NoteResult{}, invalidInput("note", "title is required")
 	}
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return NoteResult{}, err
 	}
@@ -131,7 +131,7 @@ func (s *Service) SaveNote(projectID string, note *models.Note) (NoteResult, err
 	if err != nil {
 		return NoteResult{}, err
 	}
-	rev, err := s.commitArtifact(ArtifactNotes, project, revision, change, "Save Note", note.Title)
+	rev, err := s.commitArtifact(ArtifactNotes, project, revision, snap.Document(project.ID), change, "Save Note", note.Title)
 	if err != nil {
 		return NoteResult{}, err
 	}
@@ -146,7 +146,7 @@ func (s *Service) DeleteNote(projectID, filename string) (NoteResult, error) {
 	if strings.TrimSpace(filename) == "" {
 		return NoteResult{}, invalidInput("note", "filename is required")
 	}
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return NoteResult{}, err
 	}
@@ -154,7 +154,7 @@ func (s *Service) DeleteNote(projectID, filename string) (NoteResult, error) {
 	if err != nil {
 		return NoteResult{}, err
 	}
-	rev, err := s.commitArtifact(ArtifactNotes, project, revision, change, "Delete Note", filename)
+	rev, err := s.commitArtifact(ArtifactNotes, project, revision, snap.Document(project.ID), change, "Delete Note", filename)
 	if err != nil {
 		return NoteResult{}, err
 	}
@@ -166,7 +166,7 @@ func (s *Service) DeleteNote(projectID, filename string) (NoteResult, error) {
 // title) and defaulted (a fresh ID and creation time when unset) before the
 // commit, so a rejected request never persists a partial list.
 func (s *Service) SetBlockers(projectID string, blockers []*models.Blocker) (BlockersResult, error) {
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return BlockersResult{}, err
 	}
@@ -192,7 +192,7 @@ func (s *Service) SetBlockers(projectID string, blockers []*models.Blocker) (Blo
 	if err != nil {
 		return BlockersResult{}, err
 	}
-	rev, err := s.commitArtifact(ArtifactBlockers, project, revision, change, "Update Blockers", project.Name)
+	rev, err := s.commitArtifact(ArtifactBlockers, project, revision, snap.Document(project.ID), change, "Update Blockers", project.Name)
 	if err != nil {
 		return BlockersResult{}, err
 	}
@@ -203,7 +203,7 @@ func (s *Service) SetBlockers(projectID string, blockers []*models.Blocker) (Blo
 // one transaction, returning the project's new revision. It refuses a machine-local
 // artifact kind: machine-local UI state must never be committed to the durable
 // workspace, so routing it here is a programming error caught before any commit.
-func (s *Service) commitArtifact(kind ArtifactKind, project *models.Project, expectedRevision string, change storage.ArtifactChange, undoAction, undoContext string) (string, error) {
+func (s *Service) commitArtifact(kind ArtifactKind, project *models.Project, expectedRevision string, base *storage.ProjectDocument, change storage.ArtifactChange, undoAction, undoContext string) (string, error) {
 	if !kind.IsDurable() {
 		return "", invalidInput("artifact", fmt.Sprintf("%s is not durable synced state and cannot be committed to the workspace", kind))
 	}
@@ -211,6 +211,7 @@ func (s *Service) commitArtifact(kind ArtifactKind, project *models.Project, exp
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          project,
 		ExpectedRevision: expectedRevision,
+		Base:             base,
 		Artifacts:        []storage.ArtifactChange{change},
 		UndoAction:       undoAction,
 		UndoContext:      undoContext,

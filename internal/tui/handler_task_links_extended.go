@@ -49,10 +49,9 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 	// ID so the shared jump/open/status logic runs off the reloaded pointers.
 	if msg.Result != nil {
 		m.reloadProjectByID(msg.Result.New.ProjectID)
-		if project := m.config.GetProject(msg.Result.New.ProjectID); project != nil {
+		if project := m.projectByID(msg.Result.New.ProjectID); project != nil {
 			msg.Project = project
 			msg.NewTask = project.GetTaskByID(msg.Result.New.TaskID)
-			msg.SourceTask = project.GetTaskByID(msg.Result.Source.TaskID)
 		}
 	}
 	m.popView()
@@ -73,7 +72,7 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 	m.setSuccessStatus(fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID))
 
 	// Jump to new task if configured
-	if m.config.GetLinkedTaskJumpToNew() && m.projectTree != nil && msg.NewTask != nil {
+	if m.runtime.Settings().GetLinkedTaskJumpToNew() && m.projectTree != nil && msg.NewTask != nil {
 		m.projectTree.JumpToTask(msg.NewTask)
 	}
 
@@ -103,7 +102,7 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 // handleShowLinkedTaskSelector handles the ShowLinkedTaskSelectorMsg.
 func (m *AppModel) handleShowLinkedTaskSelector(msg ShowLinkedTaskSelectorMsg) (bool, tea.Cmd) {
 	if msg.Task != nil && msg.Project != nil {
-		selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.config, m.secondaryFeatures.Link)
+		selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.runtime, m.secondaryFeatures.Link)
 		// If no linked tasks, do nothing
 		if !selector.HasLinkedTasks() {
 			m.setInfoStatus("No linked tasks")
@@ -134,7 +133,7 @@ func (m *AppModel) handleLinkedTaskSelected(msg LinkedTaskSelectedMsg) (bool, te
 // handleShowCrossProjectLinker handles the ShowCrossProjectLinkerMsg.
 func (m *AppModel) handleShowCrossProjectLinker(msg ShowCrossProjectLinkerMsg) (bool, tea.Cmd) {
 	if msg.SourceTask != nil && msg.SourceProject != nil {
-		linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.config, m.secondaryFeatures.Link)
+		linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.runtime, m.secondaryFeatures.Link)
 		m.showView(ViewCrossProjectLinker, linker)
 	}
 	return true, nil

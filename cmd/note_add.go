@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -60,12 +59,12 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 
 	var scope string
 	if ctx.Project == nil {
-		if err := storage.SaveNoteTo(ctx.Dir, note); err != nil {
+		if err := saveNoteContext(ctx, note); err != nil {
 			return fmt.Errorf("failed to save note: %w", err)
 		}
 		scope = "global"
 	} else {
-		if err := storage.SaveNote(ctx.Project, note); err != nil {
+		if err := saveNoteContext(ctx, note); err != nil {
 			return fmt.Errorf("failed to save note: %w", err)
 		}
 		scope = ctx.Project.Name

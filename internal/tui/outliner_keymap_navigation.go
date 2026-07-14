@@ -121,7 +121,7 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 				}
 			}
 			return m, func() tea.Msg {
-				return ShowQuickCaptureMsg{Project: project, AllProjects: m.config.GetActiveProjects()}
+				return ShowQuickCaptureMsg{Project: project, AllProjects: m.runtime.ActiveProjects()}
 			}
 		},
 		BulkCapture: func() (tea.Model, tea.Cmd) {

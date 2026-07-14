@@ -97,7 +97,7 @@ func (m *WeeklyReviewModel) View() tea.View {
 			stripText = renderTaskMetadataStrip(TaskMetadataStripOpts{
 				Task:    stripTask.Task,
 				Project: stripTask.Project,
-				Config:  m.config,
+				Runtime: m.runtime,
 				Width:   m.width,
 				AlreadyShown: TaskMetadataAlreadyShown{
 					Project:  true,

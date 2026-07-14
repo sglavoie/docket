@@ -51,23 +51,27 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	project := cfg.GetCurrentProject()
+	project := workspace.Runtime.CurrentProject()
 	if project == nil {
 		return NoCurrentProjectError()
 	}
 
-	profile := cfg.GetScoringProfile(args[0])
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	profile := domains.Automation.GetScoringProfile(args[0])
 	if profile == nil {
 		return fmt.Errorf("scoring profile %q not found", args[0])
 	}
 
-	cfg.SetProjectScoringProfile(project.ID, profile.ID)
-	if err := saveConfig(configManager, cfg); err != nil {
+	domains.Automation.SetProjectScoringProfile(project.ID, profile.ID)
+	if err := commitCLIAutomation(workspace, domains.Automation); err != nil {
 		return err
 	}
 
@@ -92,18 +96,22 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	project := cfg.GetCurrentProject()
+	project := workspace.Runtime.CurrentProject()
 	if project == nil {
 		return NoCurrentProjectError()
 	}
 
-	cfg.UnsetProjectScoringProfile(project.ID)
-	if err := saveConfig(configManager, cfg); err != nil {
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	domains.Automation.UnsetProjectScoringProfile(project.ID)
+	if err := commitCLIAutomation(workspace, domains.Automation); err != nil {
 		return err
 	}
 

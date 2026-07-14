@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // Update handles state transitions for the filter builder.
@@ -337,15 +339,17 @@ func (m *FilterBuilderModel) saveSavedFilter() tea.Cmd {
 	}
 
 	sf := m.buildSavedFilter()
-	m.config.SaveFilter(sf)
 
-	mgr := m.configManager
-	cfg := m.config
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
-		return FilterBuilderSavedMsg{}
+	// Saved filters are planning-domain state. Commit only the planning domain
+	// through the shared runtime snapshot (a checked commit that refreshes the
+	// snapshot), rather than a whole-config save. The commit runs synchronously
+	// in the update loop — matching the focus views — because RuntimeState is not
+	// safe for concurrent use with the render/update path.
+	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+		p.SaveFilter(sf)
+	}); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)} }
 	}
+
+	return func() tea.Msg { return FilterBuilderSavedMsg{} }
 }

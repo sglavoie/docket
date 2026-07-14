@@ -272,7 +272,7 @@ func TestHierarchicalBlockerCountBuildsTaskMapFromAllTasks(t *testing.T) {
 // is a no-op when the destination matches the source project (by name or ID).
 // Without this guard, a rule that moves a task to its own project would inflate
 // trigger counts, mark the task modified, kick off a recursive re-evaluation
-// pass, AND queue a destructive self-move that callers like processDeferredMoves
+// pass, AND queue a destructive self-move that callers like app.ApplyWorkflows
 // would execute — dropping cross-project deps/relations and reassigning ShortIDs
 // for no real change.
 func TestApplyAction_MoveToProjectSelfMoveNoOp(t *testing.T) {

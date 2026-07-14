@@ -25,10 +25,10 @@ func makeDashboardScrollProjects(count int) []*models.Project {
 }
 
 func newDashboardShortcutTestModel(projectCount int) *DashboardModel {
-	cfg := config.NewConfig()
-	cfg.SetInfoPanelMode(config.InfoPanelOff)
+	cfg := newTestConfig()
+	cfg.Machine().SetInfoPanelMode(config.InfoPanelOff)
 	m := &DashboardModel{
-		config:                cfg,
+		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
 		projects:              makeDashboardScrollProjects(projectCount),
 		dashboardCompactCards: true,
 	}
@@ -102,7 +102,7 @@ func TestDashboardCtrlNavigationDoesNotBypassSearchMode(t *testing.T) {
 }
 
 func TestDashboardProjectListPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
-	m := &DashboardModel{config: config.NewConfig()}
+	m := &DashboardModel{runtime: newTestConfig()}
 	m.SetSize(100, 8)
 	projects := makeDashboardScrollProjects(8)
 	m.projects = projects
@@ -122,7 +122,7 @@ func TestDashboardProjectListPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 }
 
 func TestDashboardProjectListFilterShrinkClampsScrollOffset(t *testing.T) {
-	m := &DashboardModel{config: config.NewConfig()}
+	m := &DashboardModel{runtime: newTestConfig()}
 	m.SetSize(100, 8)
 	projects := makeDashboardScrollProjects(5)
 	m.projects = projects
@@ -158,7 +158,7 @@ func makeGlobalSearchScrollResults(count int) []filteredSearchResult {
 
 func TestGlobalSearchPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	m := &GlobalSearchModel{
-		config:    config.NewConfig(),
+		runtime:   newTestConfig(),
 		filtered:  makeGlobalSearchScrollResults(8),
 		listWidth: 80,
 	}
@@ -179,7 +179,7 @@ func TestGlobalSearchPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 
 func TestGlobalSearchResultShrinkClampsScrollOffset(t *testing.T) {
 	m := &GlobalSearchModel{
-		config:       config.NewConfig(),
+		runtime:      newTestConfig(),
 		filtered:     makeGlobalSearchScrollResults(5),
 		listWidth:    80,
 		cursor:       4,

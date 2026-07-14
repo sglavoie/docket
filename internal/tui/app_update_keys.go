@@ -92,10 +92,7 @@ func (m *AppModel) openTaskReferenceSnapshot(task *models.Task, project *models.
 		return errorCmd("failed to create reference snapshot: %w", err)
 	}
 
-	externalEditor := ""
-	if m.config != nil {
-		externalEditor = m.config.GetExternalEditor()
-	}
+	externalEditor := m.runtime.Machine().GetExternalEditor()
 	result, err := openReferenceFile(externalEditor, path)
 	if err != nil {
 		if result.Status == external.ReferenceOpenStatusUnsupportedEditor {
@@ -300,7 +297,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	case ";":
 		if !m.hasActiveTextInput() && !m.hasActivePendingPrefix() {
 			m.pendingSemicolonPrefix = true
-			timeout := m.config.GetPopupTimeoutSeconds()
+			timeout := m.runtime.Settings().GetPopupTimeoutSeconds()
 			if timeout <= 0 {
 				return true, nil
 			}
@@ -428,9 +425,9 @@ func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
 		return nil
 	}
 	if redo {
-		return performRedoForProjectsCmd(m.persister, project, activeUndoProjects(m.config), m.repairTaskProjectRefsAfterRestore)
+		return performRedoForProjectsCmd(m.persister, project, activeUndoProjectsFromRuntime(m.runtime), m.repairTaskProjectRefsAfterRestore)
 	}
-	return performUndoForProjectsCmd(m.persister, project, activeUndoProjects(m.config), m.repairTaskProjectRefsAfterRestore)
+	return performUndoForProjectsCmd(m.persister, project, activeUndoProjectsFromRuntime(m.runtime), m.repairTaskProjectRefsAfterRestore)
 }
 
 func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {

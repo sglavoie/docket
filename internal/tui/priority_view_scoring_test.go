@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -158,7 +159,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 
 func TestComputeSuggestionScore_SectionOrdering(t *testing.T) {
 	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	makeTask := func(section string) *models.Task {
 		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")

@@ -3,7 +3,6 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -16,7 +15,7 @@ func TestReconstructProjectViewRefreshesCachedMetricsDashboardProject(t *testing
 	app := newTestAppModel()
 	projectA := testutil.NewTestProjectWithTasks("Project A")
 	projectB := testutil.NewTestProjectWithTasks("Project B")
-	app.config.Projects = []*models.Project{projectA, projectB}
+	setTestAppProjects(app, projectA, projectB)
 
 	// Simulate the user having opened the metrics dashboard for project A.
 	app.currentProject = projectA
@@ -43,10 +42,10 @@ func TestReconstructProjectViewRefreshesCachedRoadmapProject(t *testing.T) {
 	app := newTestAppModel()
 	projectA := testutil.NewTestProjectWithTasks("Project A")
 	projectB := testutil.NewTestProjectWithTasks("Project B")
-	app.config.Projects = []*models.Project{projectA, projectB}
+	setTestAppProjects(app, projectA, projectB)
 
 	app.currentProject = projectA
-	app.roadmap = NewRoadmapModelForProject(app.config, projectA)
+	app.roadmap = NewRoadmapModelForProject(app.runtime, projectA)
 	if app.roadmap.project != projectA {
 		t.Fatalf("setup precondition: expected roadmap pinned to project A")
 	}

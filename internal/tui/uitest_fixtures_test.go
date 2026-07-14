@@ -1,14 +1,10 @@
 package tui
 
 import (
-	"encoding/json"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -17,7 +13,7 @@ import (
 
 func TestUITestFixtureNames(t *testing.T) {
 	got := BuiltinFixtureNames()
-	want := []string{"alerts", "empty", "narrow", "rich", "workflow"}
+	want := []string{"alerts", "empty", "fresh", "narrow", "rich", "workflow"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuiltinFixtureNames() = %v, want %v", got, want)
 	}
@@ -53,8 +49,8 @@ func TestUITestFixtureBuildsAndRenders(t *testing.T) {
 			if !strings.HasPrefix(ws.Root, os.TempDir()) {
 				t.Fatalf("workspace root %q is not under temp dir %q", ws.Root, os.TempDir())
 			}
-			if ws.Config.DataDir != ws.DataDir || !strings.HasPrefix(ws.DataDir, ws.Root) {
-				t.Fatalf("config DataDir %q not rooted in workspace %q", ws.Config.DataDir, ws.Root)
+			if ws.Runtime.DataDir() != ws.DataDir || !strings.HasPrefix(ws.DataDir, ws.Root) {
+				t.Fatalf("runtime DataDir %q not rooted in workspace %q", ws.Runtime.DataDir(), ws.Root)
 			}
 
 			obs := driver.Observe(ObserveOptions{})
@@ -84,10 +80,106 @@ func TestUITestFixtureEmptyHasNoUserTasks(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	for _, p := range driver.App().config.GetActiveProjects() {
+	for _, p := range driver.App().activeProjects() {
 		if len(p.Tasks) != 0 {
 			t.Fatalf("empty fixture project %q unexpectedly has %d tasks", p.Name, len(p.Tasks))
 		}
+	}
+}
+
+func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
+	driver, ws, fixtureErr := NewFixtureDriver(FixtureFresh, 100, 35)
+	if fixtureErr != nil {
+		t.Fatalf("NewFixtureDriver(fresh) error: %v", fixtureErr)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	inbox := driver.App().runtime.SystemInboxProject()
+	if inbox == nil {
+		t.Fatal("fresh install has no system Inbox")
+	}
+	if inbox.Name != config.SystemInboxName || inbox.Internal || inbox.Archived {
+		t.Fatalf("system Inbox metadata = %+v", inbox)
+	}
+	active := driver.App().runtime.ActiveProjects()
+	if len(active) != 1 || active[0].ID != inbox.ID {
+		t.Fatalf("fresh active projects = %+v, want visible system Inbox", active)
+	}
+	if _, err := os.Stat(storage.TasksFilePath(inbox.Path)); err != nil {
+		t.Fatalf("system Inbox tasks file: %v", err)
+	}
+
+	reloaded, reloadErr := config.LoadRuntimeState(ws.DataDir)
+	if reloadErr != nil {
+		t.Fatalf("reload runtime: %v", reloadErr)
+	}
+	relaunched, err := NewAppModel(reloaded, config.NewManager(ws.ConfigPath))
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
+	if got := relaunched.runtime.SystemInboxProject(); got == nil || got.ID != inbox.ID {
+		t.Fatalf("system Inbox identity changed across launch: before=%q after=%v", inbox.ID, got)
+	}
+}
+
+func TestFreshFixtureCaptureKeysShareInboxFlow(t *testing.T) {
+	tests := []struct {
+		name string
+		keys []string
+	}{
+		{name: "a", keys: []string{"a"}},
+		{name: "i", keys: []string{"i"}},
+		{name: ";i", keys: []string{";", "i"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			driver, ws, err := NewFixtureDriver(FixtureFresh, 100, 35)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+			for _, key := range tc.keys {
+				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: key}, ObserveOptions{}); err != nil {
+					t.Fatalf("key %q: %v", key, err)
+				}
+			}
+			if driver.App().currentView() != ViewQuickCapture {
+				t.Fatalf("current view = %s, want QuickCapture", driver.App().currentView())
+			}
+			capture, ok := driver.App().views.Get(ViewQuickCapture).(*QuickCaptureModel)
+			if !ok || capture.project == nil || !driver.App().runtime.IsSystemInboxProject(capture.project.ID) {
+				t.Fatalf("capture default project = %v, want system Inbox", capture)
+			}
+			if capture.skipProjectSyntax {
+				t.Fatal("shared capture flow disabled optional project routing")
+			}
+		})
+	}
+}
+
+func TestFreshFixtureCapturePersistsOnboardingProgress(t *testing.T) {
+	driver, ws, fixtureErr := NewFixtureDriver(FixtureFresh, 100, 35)
+	if fixtureErr != nil {
+		t.Fatal(fixtureErr)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+	for _, action := range []UITestAction{
+		{Type: UITestActionKey, Key: "a"},
+		{Type: UITestActionText, Text: "Persist this milestone"},
+		{Type: UITestActionKey, Key: "enter"},
+		{Type: UITestActionWait},
+	} {
+		if _, err := driver.ApplyAction(action, ObserveOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	settings, settingsErr := config.NewDomainFileStore(ws.DataDir).LoadSettings()
+	if settingsErr != nil {
+		t.Fatalf("load settings: %v", settingsErr)
+	}
+	progress := settings.GetOnboardingProgress()
+	if !progress.TaskCaptured || progress.ProjectCreated || progress.CompletedCount() != 1 {
+		t.Fatalf("persisted onboarding progress = %+v", progress)
 	}
 }
 
@@ -98,7 +190,7 @@ func TestUITestFixtureRichLoadsTasksFromDisk(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	current := driver.App().config.GetCurrentProject()
+	current := driver.App().currentProject
 	if current == nil {
 		t.Fatal("rich fixture has no current project")
 	}
@@ -119,7 +211,7 @@ func TestUITestFixtureRichLoadsTasksFromDisk(t *testing.T) {
 
 func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	src := newSourceWorkspace(t)
-	srcProject := src.Config.Projects[0]
+	srcProject := src.Runtime.ActiveProjects()[0]
 	srcTasksPath := storage.GetTasksFilePath(srcProject)
 	srcBefore := mustReadFile(t, srcTasksPath)
 
@@ -133,12 +225,12 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	if ws.DataDir == src.DataDir {
 		t.Fatal("copied workspace shares the source data dir")
 	}
-	if driver.App().config.DataDir != ws.DataDir {
-		t.Fatalf("driver config DataDir = %q, want copied dir %q", driver.App().config.DataDir, ws.DataDir)
+	if driver.App().runtime.DataDir() != ws.DataDir {
+		t.Fatalf("driver runtime DataDir = %q, want copied dir %q", driver.App().runtime.DataDir(), ws.DataDir)
 	}
 
 	// The copied project points at the temp copy and its tasks.md matches source.
-	copied := driver.App().config.GetProject(srcProject.ID)
+	copied := driver.App().projectByID(srcProject.ID)
 	if copied == nil {
 		t.Fatal("copied config is missing the source project")
 	}
@@ -153,7 +245,7 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 
 func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	src := newSourceWorkspace(t)
-	srcProject := src.Config.Projects[0]
+	srcProject := src.Runtime.ActiveProjects()[0]
 	srcTasksPath := storage.GetTasksFilePath(srcProject)
 	// Persistence is the decomposed domain files, not the legacy monolithic
 	// .tt.json (which Manager.Save no longer writes), so the source "config" to
@@ -170,7 +262,7 @@ func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 
 	// Write through the copied project — the isolation guarantee is that this
 	// never reaches the source tree.
-	copied := driver.App().config.GetProject(srcProject.ID)
+	copied := driver.App().projectByID(srcProject.ID)
 	if copied == nil {
 		t.Fatal("copied config is missing the source project")
 	}
@@ -189,85 +281,6 @@ func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	}
 	if got := mustReadFile(t, srcCatalogPath); got != srcConfigBefore {
 		t.Fatal("source config was mutated by copied-workspace launch")
-	}
-}
-
-func TestUITestWorkspaceIsolatesExternalProject(t *testing.T) {
-	// The domain-file catalog derives every project path from the data dir and
-	// never persists an absolute path, so a project stored OUTSIDE the data dir (a
-	// custom project location) survives only through the legacy monolithic .tt.json
-	// read fallback. This exercises that fallback plus the reroot-external copy
-	// path: NewCopiedWorkspaceDriver must relocate the external project INTO the
-	// copy rather than leave it pointed at the source tree.
-	root := t.TempDir()
-	dataDir := filepath.Join(root, "data")
-	if err := os.MkdirAll(dataDir, os.FileMode(0o700)); err != nil {
-		t.Fatalf("mkdir data dir: %v", err)
-	}
-
-	// A project stored OUTSIDE the source data dir (a custom project location).
-	externalDir := t.TempDir()
-	project, err := models.NewProject(uuid.New().String(), "External Project", "")
-	if err != nil {
-		t.Fatalf("NewProject error: %v", err)
-	}
-	project.Path = externalDir
-	project.EnsureDefaultSections()
-	task := newFixtureTask(project, models.TaskTypeTask, "External task")
-	task.Priority = 1
-	project.BuildTaskTree()
-	if err = storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject(external) error: %v", err)
-	}
-
-	// Persist a LEGACY monolithic config (no domain files) that records the
-	// external project's absolute path, so Manager.Load takes the migration-read
-	// fallback and preserves the custom location for the reroot to relocate.
-	cfg := config.NewConfig()
-	cfg.DataDir = dataDir
-	cfg.FzfEnabled = false
-	cfg.GlowEnabled = false
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
-	configPath := filepath.Join(dataDir, ".tt.json")
-	writeLegacyMonolithConfig(t, configPath, cfg)
-
-	externalTasksPath := storage.GetTasksFilePath(project)
-	externalBefore := mustReadFile(t, externalTasksPath)
-
-	driver, copyWs, err := NewCopiedWorkspaceDriver(configPath, 100, 30)
-	if err != nil {
-		t.Fatalf("NewCopiedWorkspaceDriver error: %v", err)
-	}
-	t.Cleanup(func() { _ = copyWs.Cleanup() })
-
-	// The external project must be relocated INTO the copy, not left pointed at
-	// the source tree, and its tasks.md must match the source content.
-	copied := driver.App().config.GetProject(project.ID)
-	if copied == nil {
-		t.Fatal("copied config is missing the external project")
-	}
-	if !strings.HasPrefix(copied.Path, copyWs.DataDir) {
-		t.Fatalf("external project path %q not relocated under copy data dir %q", copied.Path, copyWs.DataDir)
-	}
-	copiedTasksPath := storage.GetTasksFilePath(copied)
-	if got := mustReadFile(t, copiedTasksPath); got != externalBefore {
-		t.Fatal("copied external tasks.md differs from source")
-	}
-
-	// Writing through the copied project must not touch the original external
-	// tasks.md — the core isolation guarantee for custom project locations.
-	newTask, err := models.NewTask("copy-only-task", copied.NextShortID, models.TaskTypeTask, "Copy-only task")
-	if err != nil {
-		t.Fatalf("NewTask error: %v", err)
-	}
-	copied.Tasks = append(copied.Tasks, newTask)
-	copied.BuildTaskTree()
-	if err := storage.SaveProject(copied); err != nil {
-		t.Fatalf("SaveProject(copied) error: %v", err)
-	}
-	if got := mustReadFile(t, externalTasksPath); got != externalBefore {
-		t.Fatal("source external tasks.md was mutated by copied-workspace writes")
 	}
 }
 
@@ -291,26 +304,11 @@ func newSourceWorkspace(t *testing.T) *uitestWorkspace {
 	if err != nil {
 		t.Fatalf("addProject error: %v", err)
 	}
-	ws.Config.CurrentProject = project.ID
-	if err := ws.Manager.Save(ws.Config); err != nil {
-		t.Fatalf("Manager.Save error: %v", err)
+	ws.setCurrentProject(project.ID)
+	if err := ws.persistSyncedDomains(); err != nil {
+		t.Fatalf("persistSyncedDomains error: %v", err)
 	}
 	return ws
-}
-
-// writeLegacyMonolithConfig persists cfg in the pre-cutover single-file .tt.json
-// format (which Manager.Save no longer produces) so a test can exercise the
-// legacy migration-read fallback — including custom absolute project paths the
-// domain-file catalog would otherwise drop.
-func writeLegacyMonolithConfig(t *testing.T, path string, cfg *config.Config) {
-	t.Helper()
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal legacy config: %v", err)
-	}
-	if err := os.WriteFile(path, data, os.FileMode(0o600)); err != nil {
-		t.Fatalf("write legacy config %q: %v", path, err)
-	}
 }
 
 func mustReadFile(t *testing.T, path string) string {

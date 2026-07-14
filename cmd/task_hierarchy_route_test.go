@@ -21,7 +21,7 @@ func newHierarchyTestCmd() *cobra.Command {
 // seedTwoRootLeaves replaces the seeded project's tasks with two known root leaf
 // tasks in a deterministic order and persists them, so an ordering test starts from
 // a stable state.
-func seedTwoRootLeaves(t *testing.T, deps *testutil.TestDeps, project *models.Project) (*models.Task, *models.Task) {
+func seedTwoRootLeaves(t *testing.T, deps *testDeps, project *models.Project) (*models.Task, *models.Task) {
 	t.Helper()
 	first, err := models.NewTask("route-first", 1, models.TaskTypeTask, "first")
 	testutil.AssertNoError(t, err)

@@ -22,16 +22,16 @@ Examples:
   tt ctx add "Side Projects" cool-app`,
 	RunE: runContextAdd,
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		cfg, _, err := LoadConfig()
+		workspace, err := LoadCLIWorkspace()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 		if len(args) == 0 {
-			return cfg.GetCustomContextNames(), cobra.ShellCompDirectiveNoFileComp
+			return workspace.Runtime.Machine().GetCustomContextNames(), cobra.ShellCompDirectiveNoFileComp
 		}
 		if len(args) == 1 {
 			var slugs []string
-			for _, p := range cfg.Projects {
+			for _, p := range workspace.Runtime.AllProjects() {
 				slugs = append(slugs, p.Slug)
 			}
 			return slugs, cobra.ShellCompDirectiveNoFileComp
@@ -58,19 +58,24 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	contextName := args[0]
 	projectSlug := args[1]
 
-	cfg, mgr, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	machine := domains.Machine
 
 	// Check if custom context exists
-	projectIDs := cfg.GetCustomContext(contextName)
+	projectIDs := machine.GetCustomContext(contextName)
 	if projectIDs == nil {
 		return fmt.Errorf("custom context '%s' not found; use 'tt context list' to see contexts", contextName)
 	}
 
 	// Find project by slug
-	project := cfg.GetProject(projectSlug)
+	project := workspace.Runtime.GetProject(projectSlug)
 	if project == nil {
 		return tterrors.NewProjectNotFoundError(projectSlug)
 	}
@@ -82,9 +87,9 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 
 	// Add project
 	projectIDs = append(projectIDs, project.ID)
-	cfg.SetCustomContext(contextName, projectIDs)
+	machine.SetCustomContext(contextName, projectIDs)
 
-	if err := saveConfig(mgr, cfg); err != nil {
+	if err := workspace.Runtime.CommitMachine(machine); err != nil {
 		return err
 	}
 

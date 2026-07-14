@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -14,7 +13,6 @@ import (
 type primaryProjectView interface {
 	getProject() *models.Project
 	getCursorTask() *models.Task
-	getConfig() *config.Config
 	reloadFromDisk() tea.Cmd
 	performUndo() tea.Cmd
 	performRedo() tea.Cmd
@@ -27,7 +25,6 @@ type prefixableView interface {
 	getProject() *models.Project
 	getMultiSelectedTasks() []*models.Task // nil = not in multi-select
 	clearMultiSelect()
-	refreshView()                                                  // buildTree / loadTasks / rebuildRows
 	singleTaskCoordinator() TaskItemCoordinator                    // application-layer single-task mutations
 	setUndoContext(action, detail string)                          // sets undo label before persist
 	setUndoTaskIDs(ids []string)                                   // sets targeted task IDs for undo

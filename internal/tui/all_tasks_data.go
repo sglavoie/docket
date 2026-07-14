@@ -37,7 +37,7 @@ func (m *AllTasksViewModel) loadAllTasks() {
 	includeCompleted := m.activeTabIncludesCompleted()
 	m.loadedWithCompleted = includeCompleted
 
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	for _, project := range projects {
 		if err := m.projectService.Load(project); err != nil {
 			continue
@@ -76,7 +76,7 @@ func (m *AllTasksViewModel) activeTabIncludesCompleted() bool {
 	if entry == nil || entry.IsBuiltIn || entry.IsOverflow {
 		return false
 	}
-	sf := m.config.GetSavedFilter(entry.SavedFilterID)
+	sf := m.runtime.Planning().GetSavedFilter(entry.SavedFilterID)
 	return sf != nil && sf.IncludeCompleted
 }
 
@@ -87,7 +87,7 @@ func (m *AllTasksViewModel) applyFiltersAndGroup() {
 	if hasActiveCommonFilters(&m.filter) {
 		filtered = nil
 		for _, item := range m.allTasks {
-			if passesCommonFilters(item.Task, &m.filter, item.Project, m.config) {
+			if passesCommonFilters(item.Task, &m.filter, item.Project, m.runtime.Automation()) {
 				filtered = append(filtered, item)
 			}
 		}
@@ -193,21 +193,8 @@ func (m *AllTasksViewModel) getTaskRef() (*models.Task, *models.Project) {
 	return item.Task, item.Project
 }
 
-func (m *AllTasksViewModel) getPersister() Persister           { return m.projectService }
 func (m *AllTasksViewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *AllTasksViewModel) reloadData() {
-	var taskID string
-	if item := m.getTaskAtCursor(); item != nil && item.Task != nil {
-		taskID = item.Task.ID
-	}
-	m.loadAllTasks()
-	if taskID != "" {
-		if idx := m.findNavigableIndex(taskID); idx >= 0 {
-			m.cursor = idx
-		}
-	}
-	m.clampCursor()
-}
+func (m *AllTasksViewModel) getRuntime() *config.RuntimeState  { return m.runtime }
 
 // findNavigableIndex returns the navigable cursor position (header + task rows)
 // for the task with the given ID, or -1 if not found.
@@ -226,7 +213,6 @@ func (m *AllTasksViewModel) findNavigableIndex(taskID string) int {
 	}
 	return -1
 }
-func (m *AllTasksViewModel) setErr(err error)     { m.err = err }
 func (m *AllTasksViewModel) setStatus(msg string) { m.statusMessage = msg }
 
 // clampCursor ensures cursor is within valid range.

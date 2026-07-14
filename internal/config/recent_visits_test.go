@@ -4,7 +4,7 @@ import "testing"
 
 func TestRecentTaskVisitHelpers(t *testing.T) {
 	t.Run("SetRecentTaskVisits replaces entire list", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		cfg.SetRecentTaskVisits([]RecentTaskVisit{
 			{TaskID: "t1", ProjectID: "p1"},
 			{TaskID: "t2", ProjectID: "p1"},
@@ -20,7 +20,7 @@ func TestRecentTaskVisitHelpers(t *testing.T) {
 	})
 
 	t.Run("SetRecentTaskVisits overwrites previous list", func(t *testing.T) {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		cfg.SetRecentTaskVisits([]RecentTaskVisit{
 			{TaskID: "t1", ProjectID: "p1"},
 		})
@@ -38,7 +38,7 @@ func TestRecentTaskVisitHelpers(t *testing.T) {
 // TestGetMaxRecentTaskVisits_ZeroReturnsDefault verifies that a stored value of
 // 0 (which is below the minimum valid value of 1) returns the default instead.
 func TestGetMaxRecentTaskVisits_ZeroReturnsDefault(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	zero := 0
 	cfg.MaxRecentTaskVisits = &zero
 
@@ -50,7 +50,7 @@ func TestGetMaxRecentTaskVisits_ZeroReturnsDefault(t *testing.T) {
 
 // TestGetMaxRecentTaskVisits_NilReturnsDefault verifies nil returns the default.
 func TestGetMaxRecentTaskVisits_NilReturnsDefault(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	cfg.MaxRecentTaskVisits = nil
 
 	got := cfg.GetMaxRecentTaskVisits()
@@ -61,7 +61,7 @@ func TestGetMaxRecentTaskVisits_NilReturnsDefault(t *testing.T) {
 
 // TestGetMaxRecentTaskVisits_ValidValuePassesThrough ensures normal values are not modified.
 func TestGetMaxRecentTaskVisits_ValidValuePassesThrough(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	v := 25
 	cfg.MaxRecentTaskVisits = &v
 
@@ -77,7 +77,7 @@ func TestGetMaxRecentTaskVisits_ValidValuePassesThrough(t *testing.T) {
 // Load() (or a programmatic caller) could yield a runaway slice cap when used
 // by the quick-switch trimming logic in the TUI.
 func TestGetMaxRecentTaskVisits_AboveUpperBoundClamped(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	v := 9999
 	cfg.MaxRecentTaskVisits = &v
 
@@ -91,7 +91,7 @@ func TestGetMaxRecentTaskVisits_AboveUpperBoundClamped(t *testing.T) {
 // TestGetMaxRecentTaskVisits_AtUpperBoundPassesThrough ensures values exactly
 // at the upper bound are not modified.
 func TestGetMaxRecentTaskVisits_AtUpperBoundPassesThrough(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	v := MaxRecentTaskVisitsUpperBound
 	cfg.MaxRecentTaskVisits = &v
 

@@ -7,14 +7,14 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 func newGlobalSearchHistoryTestModel(history []string, results []models.SearchResult) *GlobalSearchModel {
 	input := textinput.New()
+	cfg := newTestConfig()
 	m := &GlobalSearchModel{
-		config:             config.NewConfig(),
+		runtime:            testRuntimeAt("", cfg),
 		allTasks:           results,
 		searchInput:        input,
 		tabs:               TabState{Names: globalSearchTabNames},
@@ -89,7 +89,7 @@ func TestGlobalSearchEnterRecordsTaskQuery(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter on a task result should return a command")
 	}
-	if history := m.config.GetGlobalSearchHistory(); len(history) != 1 || history[0] != "alpha" {
+	if history := m.runtime.Machine().GetGlobalSearchHistory(); len(history) != 1 || history[0] != "alpha" {
 		t.Fatalf("expected task query to be recorded, got %#v", history)
 	}
 }
@@ -104,7 +104,7 @@ func TestGlobalSearchEnterRecordsNoteQuery(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter on a note result should return a command")
 	}
-	if history := m.config.GetGlobalSearchHistory(); len(history) != 1 || history[0] != "alpha" {
+	if history := m.runtime.Machine().GetGlobalSearchHistory(); len(history) != 1 || history[0] != "alpha" {
 		t.Fatalf("expected note query to be recorded, got %#v", history)
 	}
 }
@@ -116,7 +116,7 @@ func TestGlobalSearchEnterDoesNotRecordWithoutSelectableQuery(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("enter without a selectable result should not return a command")
 	}
-	if history := m.config.GetGlobalSearchHistory(); len(history) != 0 {
+	if history := m.runtime.Machine().GetGlobalSearchHistory(); len(history) != 0 {
 		t.Fatalf("expected no recorded history, got %#v", history)
 	}
 
@@ -126,7 +126,7 @@ func TestGlobalSearchEnterDoesNotRecordWithoutSelectableQuery(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter on a result should still return a command")
 	}
-	if history := m.config.GetGlobalSearchHistory(); len(history) != 0 {
+	if history := m.runtime.Machine().GetGlobalSearchHistory(); len(history) != 0 {
 		t.Fatalf("expected blank query not to be recorded, got %#v", history)
 	}
 }
@@ -140,7 +140,7 @@ func TestGlobalSearchRecordHistoryDedupesAndCaps(t *testing.T) {
 
 	m.recordGlobalSearchHistory()
 
-	history := m.config.GetGlobalSearchHistory()
+	history := m.runtime.Machine().GetGlobalSearchHistory()
 	if len(history) != 10 {
 		t.Fatalf("expected capped history length 10, got %d: %#v", len(history), history)
 	}

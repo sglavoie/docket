@@ -122,10 +122,6 @@ func recordRecentSelection(item PaletteItem, itemID string) {
 
 // persistRecentSelections saves the current recent selections to config.
 func (m *CommandPaletteModel) persistRecentSelections() {
-	if m.configManager == nil {
-		return
-	}
-
 	var configItems []config.RecentPaletteItem
 	for _, r := range recentPaletteSelections {
 		configItems = append(configItems, config.RecentPaletteItem{
@@ -135,8 +131,9 @@ func (m *CommandPaletteModel) persistRecentSelections() {
 		})
 	}
 
-	m.config.SetRecentPaletteItems(configItems)
-	if err := m.configManager.Save(m.config); err != nil {
-		logging.Warn("failed to save config: %v", err)
+	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+		machine.SetRecentPaletteItems(configItems)
+	}); err != nil {
+		logging.Warn("failed to save machine state: %v", err)
 	}
 }

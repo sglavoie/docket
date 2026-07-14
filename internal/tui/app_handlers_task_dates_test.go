@@ -174,7 +174,7 @@ func TestHandleDueDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing.T)
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
+	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
 	app.allTasksView.multiSelectMode = true
 	app.allTasksView.selectedTasks[taskA.ID] = true
 	app.allTasksView.selectedTasks[taskB.ID] = true
@@ -241,9 +241,9 @@ func TestHandleDueDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing.T)
 
 	task := newBulkPickerTestTask(t, 1, "cross outliner no due date")
 	project := newBulkPickerTestProject(t, "Cross Outliner Due", task)
-	app.config.Projects = []*models.Project{project}
+	setTestAppProjects(app, project)
 
-	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	crossOutliner.loadedProjects = []*models.Project{project}
 	crossOutliner.activePerspective = PerspectiveAll
 	crossOutliner.filter.DueDate = DueDateNone
@@ -285,9 +285,9 @@ func TestHandleSnoozeDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing
 
 	task := newBulkPickerTestTask(t, 1, "cross outliner active task")
 	project := newBulkPickerTestProject(t, "Cross Outliner Snooze", task)
-	app.config.Projects = []*models.Project{project}
+	setTestAppProjects(app, project)
 
-	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	crossOutliner.loadedProjects = []*models.Project{project}
 	crossOutliner.activePerspective = PerspectiveAll
 	crossOutliner.crossForceRebuild = true
@@ -373,7 +373,7 @@ func TestHandleSnoozeDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
+	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
 	app.allTasksView.multiSelectMode = true
 	app.allTasksView.selectedTasks[taskA.ID] = true
 	app.allTasksView.selectedTasks[taskB.ID] = true

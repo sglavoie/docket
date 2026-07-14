@@ -159,6 +159,9 @@ type BulkResult struct {
 	// RuleTriggerCounts accumulates fired workflow-rule IDs when the request
 	// carried rules; the adapter persists them to its config store best-effort.
 	RuleTriggerCounts map[string]int
+	// FocusChanges reports the Focus Queue membership changes that were applied
+	// through a revision-checked planning artifact in this same transaction.
+	FocusChanges []WorkflowFocusChange
 }
 
 // deleteTasks removes every root's subtree from its source project, carries the
@@ -229,6 +232,7 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 		changesets = append(changesets, storage.ChangeSet{
 			Project:          p,
 			ExpectedRevision: snap.Revision(p.ID),
+			Base:             snap.Document(p.ID),
 			Artifacts:        arts,
 			AttachmentOps:    ops,
 			UndoAction:       "Delete Task",
@@ -297,7 +301,7 @@ func distinctProjectCommits(refs []TaskRef, snap Snapshot) ([]projectCommit, map
 			continue
 		}
 		idx[r.Project.ID] = len(commits)
-		commits = append(commits, projectCommit{project: r.Project, expectedRevision: snap.Revision(r.Project.ID)})
+		commits = append(commits, projectCommit{project: r.Project, expectedRevision: snap.Revision(r.Project.ID), base: snap.Document(r.Project.ID)})
 	}
 	return commits, idx
 }

@@ -10,7 +10,7 @@ import (
 // NewCommandPaletteModel creates a new command palette model.
 // The currentView parameter determines which commands are shown (context-aware filtering).
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
-func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
+func NewCommandPaletteModel(runtime *config.RuntimeState, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search · :cmd :task :prj :tag :sec :saved :sv :note :view · Alt+↑↓ history"
 	searchInput.CharLimit = 100
@@ -18,9 +18,9 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 	searchInput.Focus()
 	applyThemedTextInput(&searchInput)
 
-	// Load persisted recent items from config
+	// Load persisted recent items from machine-local state.
 	recentPaletteSelections = nil
-	for _, item := range cfg.GetRecentPaletteItems() {
+	for _, item := range runtime.Machine().GetRecentPaletteItems() {
 		recentPaletteSelections = append(recentPaletteSelections, recentSelection{
 			Category: ItemCategory(item.Category),
 			ID:       item.ID,
@@ -30,13 +30,12 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 
 	// Build pinned commands set for quick lookup
 	pinnedSet := make(map[string]bool)
-	for _, name := range cfg.GetPinnedCommands() {
+	for _, name := range runtime.Machine().GetPinnedCommands() {
 		pinnedSet[name] = true
 	}
 
 	m := &CommandPaletteModel{
-		config:                      cfg,
-		configManager:               manager,
+		runtime:                     runtime,
 		registry:                    registry,
 		currentView:                 currentView,
 		currentProject:              currentProject,
@@ -45,7 +44,7 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 		scrollAnchor:                -1,
 		showTips:                    true,
 		categoryCursors:             make(map[ItemCategory]int),
-		searchHistory:               cfg.GetPaletteSearchHistory(),
+		searchHistory:               runtime.Machine().GetPaletteSearchHistory(),
 		searchHistoryIndex:          -1,
 		suppressCategoryPersistence: true,
 		pinnedCommands:              pinnedSet,

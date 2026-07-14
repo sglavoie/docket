@@ -230,7 +230,7 @@ func (b *projectTreeKeymapBuilder) actionEntries() []keymap.Entry {
 
 			return m, nil
 		}),
-		keymap.Bind("alt+f", "Focus view (project)", "Views", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("alt+f", "Focus Queue (project)", "Views", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectFocusViewMsg{Project: m.project} }
 		}),
 		keymap.Bind("C", "Filter by context", "Filters", func() (tea.Model, tea.Cmd) {

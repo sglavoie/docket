@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -85,10 +86,7 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 		m.draft.hasTime = false
 		return nil
 	}
-	weekEndDay := "sun"
-	if m.config != nil {
-		weekEndDay = m.config.GetWeekEndDay()
-	}
+	weekEndDay := m.runtime.Settings().GetWeekEndDay()
 	date, hasTime, err := util.ParseRelativeDateWithTime(value, weekEndDay)
 	if err != nil {
 		return err
@@ -106,10 +104,7 @@ func (m *TaskFormModel) parseDraftStartDate() error {
 		m.draft.startDate = nil
 		return nil
 	}
-	weekEndDay := "sun"
-	if m.config != nil {
-		weekEndDay = m.config.GetWeekEndDay()
-	}
+	weekEndDay := m.runtime.Settings().GetWeekEndDay()
 	date, _, err := util.ParseRelativeDateWithTime(value, weekEndDay)
 	if err != nil {
 		return err
@@ -233,10 +228,11 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	// Increment template use count when created from a template. This is a config
 	// write (not a tasks.md save), left as a separate persistence step exactly as
 	// the legacy path had it.
-	if m.fromTemplate != nil && m.config != nil && m.configManager != nil {
-		m.config.IncrementTemplateUseCount(m.fromTemplate.ID)
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config after template use: %v", err)
+	if m.fromTemplate != nil {
+		if err := commitAutomationToRuntime(m.runtime, func(automation *config.AutomationConfig) {
+			automation.IncrementTemplateUseCount(m.fromTemplate.ID)
+		}); err != nil {
+			logging.Warn("failed to save automation after template use: %v", err)
 		}
 	}
 

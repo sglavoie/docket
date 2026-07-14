@@ -18,16 +18,16 @@ type ThemeConfig struct {
 	ZebraStriping bool
 }
 
-// NewThemeConfig constructs a ThemeConfig from the application config.
-func NewThemeConfig(cfg *config.Config) ThemeConfig {
-	t := cfg.ActiveThemeConfig()
+// NewThemeConfig constructs a ThemeConfig from the portable settings domain.
+func NewThemeConfig(s *config.Settings) ThemeConfig {
+	t := s.ActiveThemeConfig()
 	return ThemeConfig{
-		Name:          cfg.ActiveTheme,
+		Name:          s.ActiveTheme,
 		BgColor:       t.BackgroundColor,
 		CursorBg:      t.CursorColor,
 		CursorFg:      t.CursorTextColor,
 		Palette:       t.Palette,
-		ZebraStriping: cfg.ZebraStriping(),
+		ZebraStriping: s.ZebraStriping(),
 	}
 }
 

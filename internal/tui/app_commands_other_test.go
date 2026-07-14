@@ -10,9 +10,9 @@ func TestOtherCommands_ProjectFocus(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 
 	cmds := app.otherCommands()
-	cmd := findCommand(cmds, "project focus")
+	cmd := findCommand(cmds, "project focus queue")
 	if cmd == nil {
-		t.Fatal("expected to find 'project focus' command")
+		t.Fatal("expected to find 'project focus queue' command")
 	}
 
 	result := cmd.Handler()
@@ -26,9 +26,9 @@ func TestOtherCommands_ProjectFocus_NilProject(t *testing.T) {
 	app.currentProject = nil
 
 	cmds := app.otherCommands()
-	cmd := findCommand(cmds, "project focus")
+	cmd := findCommand(cmds, "project focus queue")
 	if cmd == nil {
-		t.Fatal("expected to find 'project focus' command")
+		t.Fatal("expected to find 'project focus queue' command")
 	}
 
 	result := cmd.Handler()
@@ -59,9 +59,9 @@ func TestOtherCommands_BlockersView(t *testing.T) {
 func TestOtherCommands_BlockersView_DashboardUsesSelectedProject(t *testing.T) {
 	app, firstProject := newTestAppModelWithProject()
 	secondProject := testutil.NewTestProjectWithTasks("Second Project")
-	app.config.Projects = append(app.config.Projects, secondProject)
+	addTestAppProject(app, secondProject)
 	app.currentProject = firstProject
-	app.dashboard = NewDashboardModel(app.config, app.configManager)
+	app.dashboard = NewDashboardModel(app.runtime)
 	visible := app.dashboard.visibleProjects()
 	if len(visible) < 2 {
 		t.Fatalf("expected at least 2 visible projects, got %d", len(visible))
@@ -83,7 +83,7 @@ func TestOtherCommands_BlockersView_DashboardUsesSelectedProject(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected ShowBlockersMsg, got %T", result)
 	}
-	if msg.Project != selectedProject {
+	if msg.Project == nil || msg.Project.ID != selectedProject.ID {
 		t.Errorf("expected selected dashboard project %q, got %#v", selectedProject.Name, msg.Project)
 	}
 }

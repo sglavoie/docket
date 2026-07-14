@@ -164,11 +164,10 @@ func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
 	return defaultStatusTimeout()
 }
 
-// persistDailyPlan saves the current daily plan state to config.
+// persistDailyPlan saves the current daily plan state through a checked planning
+// commit. The Daily Plan is planning-domain state, so it is committed to
+// planning.json alone rather than routed through a whole-config save.
 func (m *AppModel) persistDailyPlan() {
-	if m.configManager == nil {
-		return
-	}
 	today := time.Now().Format("2006-01-02")
 	items := make([]config.DailyPlanItem, len(m.dailyPlan))
 	for i, ft := range m.dailyPlan {
@@ -178,8 +177,13 @@ func (m *AppModel) persistDailyPlan() {
 			PlannedDate: today,
 		}
 	}
-	m.config.SetDailyPlan(items)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+		p.SetDailyPlan(items)
+	}); err != nil {
 		m.err = err
+		return
+	}
+	if len(items) > 0 {
+		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.TaskPlanned = true })
 	}
 }

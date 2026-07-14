@@ -7,10 +7,10 @@ import (
 
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
-	projectTree   *ProjectTreeModel
-	project       *models.Project // Used directly when projectTree is nil
-	config        *config.Config
-	configManager *config.Manager
+	projectTree *ProjectTreeModel
+	project     *models.Project // Used directly when projectTree is nil
+	// runtime backs the domain-native global section-color commit (Settings).
+	runtime       *config.RuntimeState
 	sections      []SectionInfo
 	cursor        int
 	width         int
@@ -59,13 +59,12 @@ type SectionColorChangedMsg struct {
 
 // NewSectionManagerModel creates a new section manager model.
 // Either pt or proj must be provided. If pt is provided, proj is ignored.
-func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, cfg *config.Config, mgr *config.Manager, _ bool) *SectionManagerModel {
+func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, runtime *config.RuntimeState, _ bool) *SectionManagerModel {
 	m := &SectionManagerModel{
-		projectTree:   pt,
-		project:       proj,
-		config:        cfg,
-		configManager: mgr,
-		cursor:        0,
+		projectTree: pt,
+		project:     proj,
+		runtime:     runtime,
+		cursor:      0,
 	}
 	m.buildSectionList()
 	return m

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/planner"
 	"github.com/sglavoie/tt/internal/storage"
@@ -175,7 +174,8 @@ func TestRoadmapToggleTimelineRowCollapsedIgnoresNegativeCursor(t *testing.T) {
 }
 
 func TestRoadmapLoadsArchivedSummariesForVelocity(t *testing.T) {
-	projectPath := filepath.Join(t.TempDir(), "roadmap-summary")
+	dataDir := t.TempDir()
+	projectPath := filepath.Join(dataDir, "projects", "roadmap-summary")
 	project, err := models.NewProject("roadmap-summary", "Roadmap Summary", projectPath)
 	if err != nil {
 		t.Fatalf("new project: %v", err)
@@ -207,9 +207,9 @@ func TestRoadmapLoadsArchivedSummariesForVelocity(t *testing.T) {
 		_ = os.Chmod(archivePath, storage.FilePermissions)
 	}()
 
-	cfg := config.NewConfig()
-	cfg.Projects = []*models.Project{project}
-	model := NewRoadmapModel(cfg)
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, []*models.Project{project})
+	model := NewRoadmapModel(testRuntimeAt(cfg.DataDir(), cfg))
 
 	if model.velocity < 0.09 || model.velocity > 0.11 {
 		t.Fatalf("velocity = %v, want about 0.1 from archived large-effort summary", model.velocity)

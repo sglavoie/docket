@@ -24,13 +24,13 @@ const (
 type GlobalSearchModel struct {
 	BaseView
 
-	config        *config.Config
-	configManager *config.Manager
-	projects      []*models.Project
-	allTasks      []models.SearchResult  // flattened list of all tasks with project refs
-	filtered      []filteredSearchResult // tasks matching current query with highlight positions
-	cursor        int
-	scrollOffset  int
+	runtime         *config.RuntimeState
+	workspaceLoader *workspace.Loader
+	projects        []*models.Project
+	allTasks        []models.SearchResult  // flattened list of all tasks with project refs
+	filtered        []filteredSearchResult // tasks matching current query with highlight positions
+	cursor          int
+	scrollOffset    int
 
 	// Input for filtering
 	searchInput textinput.Model
@@ -64,7 +64,7 @@ type GlobalSearchModel struct {
 }
 
 // NewGlobalSearchModel creates a new global search model.
-func NewGlobalSearchModel(cfg *config.Config, manager *config.Manager) *GlobalSearchModel {
+func NewGlobalSearchModel(runtime *config.RuntimeState) *GlobalSearchModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search tasks… ($status #tag @due ^type) · Alt+↑↓ history"
 	searchInput.CharLimit = 100
@@ -72,18 +72,19 @@ func NewGlobalSearchModel(cfg *config.Config, manager *config.Manager) *GlobalSe
 	searchInput.Focus()
 	applyThemedTextInput(&searchInput)
 
-	projects, allTasks := loadGlobalSearchIndex(cfg)
+	loader := workspace.NewLoader()
+	projects, allTasks := loadGlobalSearchIndex(runtime, loader)
 
 	m := &GlobalSearchModel{
-		config:             cfg,
-		configManager:      manager,
+		runtime:            runtime,
+		workspaceLoader:    loader,
 		projects:           projects,
 		allTasks:           allTasks,
 		searchInput:        searchInput,
 		cursor:             0,
 		tabs:               TabState{Names: globalSearchTabNames},
 		hideCompleted:      true,
-		searchHistory:      cfg.GetGlobalSearchHistory(),
+		searchHistory:      runtime.Machine().GetGlobalSearchHistory(),
 		searchHistoryIndex: -1,
 	}
 
@@ -133,7 +134,7 @@ func (m *GlobalSearchModel) buildCaches() {
 
 // Rebuild reloads notes for all projects to refresh the search index.
 func (m *GlobalSearchModel) Rebuild() {
-	projects, allTasks := loadGlobalSearchIndex(m.config)
+	projects, allTasks := loadGlobalSearchIndex(m.runtime, m.workspaceLoader)
 	m.projects = projects
 	m.allTasks = allTasks
 	m.buildCaches()
@@ -144,8 +145,11 @@ func (m *GlobalSearchModel) Rebuild() {
 // workspace snapshot and flattens tasks and notes into search results. Snapshot
 // diagnostics (skipped/corrupt projects) are logged rather than silently
 // dropped so the index visibly reflects any project that could not be read.
-func loadGlobalSearchIndex(cfg *config.Config) ([]*models.Project, []models.SearchResult) {
-	snap := workspace.NewLoader().Build(cfg.GetActiveProjects())
+func loadGlobalSearchIndex(runtime *config.RuntimeState, loader *workspace.Loader) ([]*models.Project, []models.SearchResult) {
+	if loader == nil {
+		loader = workspace.NewLoader()
+	}
+	snap := loader.Build(runtime.ActiveProjects())
 	for _, diag := range snap.Diagnostics() {
 		logging.Warn("global search: %s", diag.String())
 	}
@@ -368,10 +372,6 @@ func (m *GlobalSearchModel) setGlobalSearchQuery(query string) {
 }
 
 func (m *GlobalSearchModel) recordGlobalSearchHistory() {
-	if m.config == nil {
-		return
-	}
-
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
 		return
@@ -391,11 +391,10 @@ func (m *GlobalSearchModel) recordGlobalSearchHistory() {
 
 	m.searchHistory = newHistory
 	m.searchHistoryIndex = -1
-	m.config.SetGlobalSearchHistory(newHistory)
-	if m.configManager != nil {
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
-		}
+	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
+		machine.SetGlobalSearchHistory(newHistory)
+	}); err != nil {
+		logging.Warn("failed to save machine state: %v", err)
 	}
 }
 

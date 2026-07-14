@@ -16,14 +16,14 @@ import (
 // newRenderKanban builds a minimal KanbanModel ready for rendering tests.
 // cols is set directly; FilterMixin is initialized so filteredCards() works.
 func newRenderKanban(width, height int, cols []KanbanColumn) *KanbanModel {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	m := &KanbanModel{
 		columns:     cols,
 		activeCol:   0,
 		mode:        KanbanModeSection,
 		width:       width,
 		height:      height,
-		config:      cfg,
+		runtime:     testRuntimeAt("", cfg),
 		FilterMixin: FilterMixin{filter: newFilterState()},
 	}
 	return m
@@ -238,9 +238,9 @@ func TestKanbanRender_DetailPane_ThreeLineLayout(t *testing.T) {
 	task.DueDate = &due
 
 	profile := scoring.NewWSJFProfile()
-	cfg := testutil.NewTestConfig()
-	cfg.ScoringProfiles = []scoring.ScoringProfile{profile}
-	cfg.SetProjectScoringProfile(project.ID, profile.ID)
+	cfg := newTestConfig()
+	cfg.Automation().ScoringProfiles = []scoring.ScoringProfile{profile}
+	cfg.Automation().SetProjectScoringProfile(project.ID, profile.ID)
 
 	m := newRenderKanban(96, 24, []KanbanColumn{{
 		ID:    "inbox",
@@ -248,7 +248,7 @@ func TestKanbanRender_DetailPane_ThreeLineLayout(t *testing.T) {
 		Icon:  "·",
 		Tasks: []KanbanCard{{Task: task, Project: project}},
 	}})
-	m.config = cfg
+	m.runtime = testRuntimeAt("", cfg)
 	m.detailPaneVisible = true
 
 	lines := strippedDetailPaneLines(t, m)

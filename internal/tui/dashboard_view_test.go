@@ -15,21 +15,20 @@ import (
 )
 
 func TestDashboardVerticalProjectSummaryFitsAlerts(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
-	cfg.SetDashboardBottomLayout(config.DashboardLayoutVertical)
-	cfg.SetInfoPanelMode(config.InfoPanelProjectSummary)
+	cfg := newTestConfigAt(t.TempDir())
+	cfg.Machine().SetDashboardBottomLayout(config.DashboardLayoutVertical)
+	cfg.Machine().SetInfoPanelMode(config.InfoPanelProjectSummary)
 
 	project := testutil.NewTestProject("Data pipelines")
 	completed := testutil.NewTestTaskWithStatus("ship dashboard fix", models.StatusDone)
 	now := time.Now()
 	completed.CompletedAt = &now
 	project.Tasks = []*models.Task{completed}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
 	m := &DashboardModel{
-		config:   cfg,
 		projects: []*models.Project{project},
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 	}
 	m.SetSize(140, 32)
 
@@ -69,20 +68,19 @@ func TestDashboardProjectSummaryResumeCardForParkedTasks(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := testutil.NewTestConfig()
-			cfg.DataDir = t.TempDir()
-			cfg.SetDashboardBottomLayout(tc.layout)
-			cfg.SetInfoPanelMode(config.InfoPanelProjectSummary)
+			cfg := newTestConfigAt(t.TempDir())
+			cfg.Machine().SetDashboardBottomLayout(tc.layout)
+			cfg.Machine().SetInfoPanelMode(config.InfoPanelProjectSummary)
 
 			project := testutil.NewTestProject("Ops")
 			project.Tasks = []*models.Task{
 				parkedDashboardTask("restart deploy", "review rollback notes", now.Add(-time.Hour)),
 			}
-			cfg.Projects = []*models.Project{project}
+			setTestProjects(cfg, []*models.Project{project})
 
 			m := &DashboardModel{
-				config:   cfg,
 				projects: []*models.Project{project},
+				runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 			}
 			m.SetSize(tc.width, tc.height)
 
@@ -105,23 +103,23 @@ func TestDashboardProjectSummaryResumeHiddenWhenInfoAreaHidden(t *testing.T) {
 	now := time.Now()
 	cases := []struct {
 		name  string
-		setup func(*config.Config, *DashboardModel)
+		setup func(*config.RuntimeState, *DashboardModel)
 	}{
 		{
 			name: "list only layout",
-			setup: func(cfg *config.Config, _ *DashboardModel) {
-				cfg.SetDashboardBottomLayout(config.DashboardLayoutListOnly)
+			setup: func(cfg *config.RuntimeState, _ *DashboardModel) {
+				cfg.Machine().SetDashboardBottomLayout(config.DashboardLayoutListOnly)
 			},
 		},
 		{
 			name: "info panel off",
-			setup: func(cfg *config.Config, _ *DashboardModel) {
-				cfg.SetInfoPanelMode(config.InfoPanelOff)
+			setup: func(cfg *config.RuntimeState, _ *DashboardModel) {
+				cfg.Machine().SetInfoPanelMode(config.InfoPanelOff)
 			},
 		},
 		{
 			name: "active search",
-			setup: func(_ *config.Config, m *DashboardModel) {
+			setup: func(_ *config.RuntimeState, m *DashboardModel) {
 				m.SetSearchQuery("ops")
 			},
 		},
@@ -129,23 +127,25 @@ func TestDashboardProjectSummaryResumeHiddenWhenInfoAreaHidden(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := testutil.NewTestConfig()
-			cfg.DataDir = t.TempDir()
-			cfg.SetDashboardBottomLayout(config.DashboardLayoutHorizontal)
-			cfg.SetInfoPanelMode(config.InfoPanelProjectSummary)
+			cfg := newTestConfigAt(t.TempDir())
+			cfg.Machine().SetDashboardBottomLayout(config.DashboardLayoutHorizontal)
+			cfg.Machine().SetInfoPanelMode(config.InfoPanelProjectSummary)
 
 			project := testutil.NewTestProject("Ops")
 			project.Tasks = []*models.Task{
 				parkedDashboardTask("restart deploy", "review rollback notes", now.Add(-time.Hour)),
 			}
-			cfg.Projects = []*models.Project{project}
+			setTestProjects(cfg, []*models.Project{project})
 
 			m := &DashboardModel{
-				config:   cfg,
 				projects: []*models.Project{project},
+				runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 			}
 			m.SetSize(140, 32)
 			tc.setup(cfg, m)
+			// Re-derive the machine snapshot after tc.setup mutates the layout /
+			// info-panel config, since renderDashboard reads it via runtime.Machine().
+			m.runtime = testRuntimeAt(cfg.DataDir(), cfg)
 
 			plain := ansi.Strip(m.renderDashboard([]*models.Project{project}, 0))
 			if strings.Contains(plain, "Resume") || strings.Contains(plain, "review rollback notes") {
@@ -156,9 +156,9 @@ func TestDashboardProjectSummaryResumeHiddenWhenInfoAreaHidden(t *testing.T) {
 }
 
 func TestDashboardResumeCardSortsAndLimitsParkedTasks(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	limit := 2
-	cfg.ResumeCardLimit = &limit
+	cfg.Settings().ResumeCardLimit = &limit
 	now := time.Now()
 
 	project := testutil.NewTestProject("Ops")
@@ -170,8 +170,8 @@ func TestDashboardResumeCardSortsAndLimitsParkedTasks(t *testing.T) {
 	project.Tasks = []*models.Task{oldest, completed, middle, newest}
 
 	m := &DashboardModel{
-		config:   cfg,
 		projects: []*models.Project{project},
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 	}
 	m.SetSize(240, 32)
 
@@ -239,11 +239,11 @@ func TestDashboardResumeCardSnippetUsesRowWidthPolicy(t *testing.T) {
 }
 
 func TestDashboardResumeCardCompactEmptyState(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Ops")
 	m := &DashboardModel{
-		config:   cfg,
 		projects: []*models.Project{project},
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 	}
 	m.SetSize(140, 32)
 
@@ -254,17 +254,17 @@ func TestDashboardResumeCardCompactEmptyState(t *testing.T) {
 }
 
 func TestDashboardResumeCollectorClampsLimit(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	tooHigh := 999
-	cfg.ResumeCardLimit = &tooHigh
+	cfg.Settings().ResumeCardLimit = &tooHigh
 	project := testutil.NewTestProject("Ops")
 	now := time.Now()
 	for i := range config.ResumeCardLimitUpperBound + 5 {
 		project.Tasks = append(project.Tasks, parkedDashboardTask(fmt.Sprintf("parked %02d", i), "resume", now.Add(-time.Duration(i)*time.Minute)))
 	}
 	m := &DashboardModel{
-		config:   cfg,
 		projects: []*models.Project{project},
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
 	}
 
 	entries := m.collectParkedResumeTasks(m.resumeCardLimit())

@@ -20,11 +20,11 @@ import (
 func TestRunTaskList_RejectsInvalidFilterValues(t *testing.T) {
 	setup := func(t *testing.T) func() {
 		t.Helper()
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 		viper.Set("config", deps.ConfigPath)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository

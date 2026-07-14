@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // newSnapshotWorkspace builds an isolated workspace preloaded with the rich
@@ -16,8 +18,8 @@ func newSnapshotWorkspace(t *testing.T) *uitestWorkspace {
 	if err := buildRichFixture(ws); err != nil {
 		t.Fatalf("buildRichFixture: %v", err)
 	}
-	if err := ws.Manager.Save(ws.Config); err != nil {
-		t.Fatalf("save config: %v", err)
+	if err := ws.persistSyncedDomains(); err != nil {
+		t.Fatalf("save domains: %v", err)
 	}
 	return ws
 }
@@ -50,7 +52,7 @@ func snapInt(t *testing.T, snap map[string]any, key string) int {
 
 func TestUITestSnapshotDashboard(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
-	m := NewDashboardModel(ws.Config, ws.Manager)
+	m := NewDashboardModel(ws.Runtime)
 
 	snap := m.UITestSnapshot()
 	if got := snapInt(t, snap, "project_count"); got != 1 {
@@ -70,7 +72,7 @@ func TestUITestSnapshotDashboard(t *testing.T) {
 func TestUITestSnapshotFocusBoard(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
 	dailyPlan := []FocusTask{}
-	m := NewFocusBoardModel(ws.Config, ws.Manager, &dailyPlan,
+	m := NewFocusBoardModel(nil, ws.Manager, &dailyPlan,
 		map[string]bool{}, map[string]bool{}, map[string]bool{})
 
 	snap := m.UITestSnapshot()
@@ -87,8 +89,11 @@ func TestUITestSnapshotFocusBoard(t *testing.T) {
 
 func TestUITestSnapshotOutliner(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
-	project := ws.Config.Projects[0]
-	m := NewOutlinerModel(project, ws.Config, ws.Manager)
+	project := ws.Runtime.ActiveProjects()[0]
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("load project: %v", err)
+	}
+	m := NewOutlinerModel(project, ws.Manager, ws.Runtime)
 	// Rows are rebuilt on render; mirror the driver flow (Observe renders the
 	// active view before reading its snapshot) so the snapshot has rows.
 	m.SetSize(100, 30)
@@ -120,8 +125,11 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 
 func TestUITestSnapshotKanban(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
-	project := ws.Config.Projects[0]
-	m := NewKanbanModel(project, ws.Config, ws.Manager, NewProjectService())
+	project := ws.Runtime.ActiveProjects()[0]
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("load project: %v", err)
+	}
+	m := NewKanbanModel(project, ws.Manager, nil, NewProjectService())
 
 	snap := m.UITestSnapshot()
 	if got := snapString(t, snap, "mode"); got != "Section" {
@@ -142,7 +150,7 @@ func TestUITestSnapshotCommandPalette(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
 	registry := NewCommandRegistry()
 	_ = registry.Register(Command{Name: "Create Task", Shortcut: "n", Category: CategoryTasks})
-	m := NewCommandPaletteModel(ws.Config, ws.Manager, registry, ViewDashboard, nil)
+	m := NewCommandPaletteModel(ws.Runtime, registry, ViewDashboard, nil)
 
 	snap := m.UITestSnapshot()
 	if _, ok := snap["query"]; !ok {

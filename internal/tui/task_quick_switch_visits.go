@@ -7,7 +7,7 @@ import (
 )
 
 // recordTaskVisit records a task visit for the quick-switch list.
-// It deduplicates by task ID (moving revisits to the front), trims to m.config.GetMaxRecentTaskVisits(),
+// It deduplicates by task ID (moving revisits to the front), trims to m.runtime.Settings().GetMaxRecentTaskVisits(),
 // and persists the ID-only form to config.
 func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 	if task == nil || project == nil {
@@ -26,7 +26,7 @@ func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 
 	m.recentTaskVisits = append([]RecentTaskVisitEntry{{Task: task, Project: project, Pinned: wasPinned}}, filtered...)
 
-	if len(m.recentTaskVisits) > m.config.GetMaxRecentTaskVisits() {
+	if len(m.recentTaskVisits) > m.runtime.Settings().GetMaxRecentTaskVisits() {
 		var pinned, unpinned []RecentTaskVisitEntry
 		for _, entry := range m.recentTaskVisits {
 			if entry.Pinned {
@@ -35,7 +35,7 @@ func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 				unpinned = append(unpinned, entry)
 			}
 		}
-		remaining := max(m.config.GetMaxRecentTaskVisits()-len(pinned), 0)
+		remaining := max(m.runtime.Settings().GetMaxRecentTaskVisits()-len(pinned), 0)
 		if len(unpinned) > remaining {
 			unpinned = unpinned[:remaining]
 		}
@@ -55,9 +55,10 @@ func (m *AppModel) persistRecentTaskVisits() {
 			Pinned:    entry.Pinned,
 		}
 	}
-	m.config.SetRecentTaskVisits(visits)
-	if err := m.configManager.Save(m.config); err != nil {
-		logging.Warn("failed to save config: %v", err)
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		machine.SetRecentTaskVisits(visits)
+	}); err != nil {
+		logging.Warn("failed to save machine state: %v", err)
 	}
 }
 

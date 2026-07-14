@@ -46,8 +46,8 @@ type FocusBoardModel struct {
 	BaseSearchableView
 	InteractiveViewState
 
-	config         *config.Config
 	configManager  *config.Manager
+	runtime        *config.RuntimeState
 	projectService *ProjectService
 	capture        CaptureCoordinator
 	taskItem       TaskItemCoordinator
@@ -125,7 +125,7 @@ func (m *FocusBoardModel) SetSize(width, height int) {
 }
 
 // NewFocusBoardModel creates a new focus board model.
-func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
+func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
 	ti := textinput.New()
 	ti.Placeholder = "Task title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
@@ -138,8 +138,15 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 	ei.SetWidth(60)
 	applyThemedTextInput(&ei)
 
+	// The focus-board default mode is a portable behavior preference owned by the
+	// Settings domain, read from the cached runtime snapshot rather than the
+	// config facade. A nil runtime (isolated tests) defaults to the list mode.
 	initialFocusMode := focusModeList
-	switch cfg.GetFocusBoardDefaultMode() {
+	defaultMode := "list"
+	if runtime != nil {
+		defaultMode = runtime.Settings().GetFocusBoardDefaultMode()
+	}
+	switch defaultMode {
 	case "tunnel":
 		initialFocusMode = focusModeTunnel
 	case "zen":
@@ -147,8 +154,8 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 	}
 
 	m := &FocusBoardModel{
-		config:            cfg,
 		configManager:     manager,
+		runtime:           runtime,
 		projectService:    NewProjectService(),
 		queueIDs:          queueIDs,
 		dailyPlan:         dailyPlan,
@@ -180,7 +187,7 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.InitSearchInput("Search...", 100, 40)
 	m.loadItems()
 	return m
@@ -280,7 +287,7 @@ func (m *FocusBoardModel) escSteps() []EscStep {
 		{Active: func() bool { return m.focusMode > focusModeList }, Clear: func() {
 			m.focusMode = focusModeList
 			m.resetViewScrollOffset()
-			m.setStatus("Focus mode cleared")
+			m.setStatus("Tunnel mode cleared")
 		}},
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()

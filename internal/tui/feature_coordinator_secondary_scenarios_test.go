@@ -396,11 +396,11 @@ func TestLinkScenario(t *testing.T) {
 
 // newConfigEnv builds a temp-dir config manager over a fresh config so the config
 // coordinators can persist and reload.
-func newConfigEnv(t *testing.T) (*config.Manager, *config.Config, string) {
+func newConfigEnv(t *testing.T) (*config.Manager, *config.RuntimeState, string) {
 	t.Helper()
 	configPath := filepath.Join(t.TempDir(), ".tt.json")
 	mgr := config.NewManager(configPath)
-	cfg := &config.Config{}
+	cfg := newTestConfig()
 	return mgr, cfg, configPath
 }
 
@@ -411,15 +411,22 @@ func TestSettingsScenario(t *testing.T) {
 	mgr, cfg, configPath := newConfigEnv(t)
 	features := newSecondaryCoordinators(&app.Service{}, mgr)
 
-	cfg.Editor = "hx"
-	runConfigResult(t, features.Settings.Save(cfg))
+	// Seed the complete synced-domain set so a domain-scoped settings commit
+	// (which writes only settings.json + machine.json) leaves a loadable,
+	// non-partial workspace.
+	if err := saveTestRuntime(mgr, cfg); err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
 
-	reloaded, err := config.NewManager(configPath).Load()
+	cfg.Machine().Editor = "hx"
+	runConfigResult(t, features.Settings.Save(cfg.Settings(), cfg.Machine()))
+
+	reloaded, err := config.NewManager(configPath).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	if reloaded.Editor != "hx" {
-		t.Fatalf("reloaded editor = %q, want hx", reloaded.Editor)
+	if reloaded.Machine().Editor != "hx" {
+		t.Fatalf("reloaded editor = %q, want hx", reloaded.Machine().Editor)
 	}
 }
 
@@ -430,18 +437,24 @@ func TestWorkflowScenario(t *testing.T) {
 	mgr, cfg, configPath := newConfigEnv(t)
 	features := newSecondaryCoordinators(&app.Service{}, mgr)
 
-	cfg.WorkflowRules = append(cfg.WorkflowRules, workflow.WorkflowRule{
+	// Seed the complete synced-domain set so a domain-scoped automation commit
+	// leaves a loadable, non-partial workspace.
+	if err := saveTestRuntime(mgr, cfg); err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
+
+	cfg.Automation().WorkflowRules = append(cfg.Automation().WorkflowRules, workflow.WorkflowRule{
 		ID:      "rule-1",
 		Name:    "Auto-ready on capture",
 		Enabled: true,
 	})
-	runConfigResult(t, features.Workflow.Save(cfg))
+	runConfigResult(t, features.Workflow.Save(cfg.Automation()))
 
-	reloaded, err := config.NewManager(configPath).Load()
+	reloaded, err := config.NewManager(configPath).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	rules := reloaded.GetWorkflowRules()
+	rules := reloaded.Automation().GetWorkflowRules()
 	if len(rules) != 1 || rules[0].ID != "rule-1" {
 		t.Fatalf("reloaded workflow rules = %+v, want one rule-1", rules)
 	}
@@ -458,7 +471,8 @@ func TestSettingsSaveError(t *testing.T) {
 	mgr := config.NewManager(filepath.Join(bad, "nested", ".tt.json"))
 	features := newSecondaryCoordinators(&app.Service{}, mgr)
 
-	if err := runError(t, features.Settings.Save(&config.Config{})); err == nil {
-		t.Fatal("expected a save error through a broken gateway")
+	cfg := newTestConfig()
+	if err := runError(t, features.Settings.Save(cfg.Settings(), cfg.Machine())); err == nil {
+		t.Fatal("expected a save error through a broken committer")
 	}
 }

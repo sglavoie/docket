@@ -71,9 +71,15 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	oldDays, _ := strconv.Atoi(strings.TrimSpace(m.oldDaysInput.Value()))
 	completedHours, _ := strconv.Atoi(strings.TrimSpace(m.completedHoursInput.Value()))
 
-	m.config.Editor = editor
-	m.config.DefaultContext = context
-	m.config.UndoHistoryDepth = &undoDepth
+	// Apply the editor's widget values onto copies of the domain snapshots
+	// captured when the view opened, so every field the editor does not own
+	// (fzf/glow, histories, navigation, cross-outliner state) is preserved.
+	s := m.baseSettings
+	mach := m.baseMachine
+
+	mach.Editor = editor
+	s.DefaultContext = context
+	s.UndoHistoryDepth = &undoDepth
 
 	activeTheme := config.Theme{
 		BackgroundColor: normalizeHexColor(m.bgColorInput.Value()),
@@ -101,107 +107,107 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	}
 	inactiveTheme := draftToTheme(m.inactiveThemeDraft)
 	if m.activeTheme == "light" {
-		m.config.ThemeLight = activeTheme
-		m.config.ThemeLightName = m.activePresetName
-		m.config.ThemeDark = inactiveTheme
-		m.config.ThemeDarkName = m.inactivePresetName
+		s.ThemeLight = activeTheme
+		s.ThemeLightName = m.activePresetName
+		s.ThemeDark = inactiveTheme
+		s.ThemeDarkName = m.inactivePresetName
 	} else {
-		m.config.ThemeDark = activeTheme
-		m.config.ThemeDarkName = m.activePresetName
-		m.config.ThemeLight = inactiveTheme
-		m.config.ThemeLightName = m.inactivePresetName
+		s.ThemeDark = activeTheme
+		s.ThemeDarkName = m.activePresetName
+		s.ThemeLight = inactiveTheme
+		s.ThemeLightName = m.inactivePresetName
 	}
-	m.config.ActiveTheme = m.activeTheme
-	m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
-	m.config.ReviewDueSoonDays = &dueSoon
-	m.config.ReviewFutureDays = &futureDays
-	m.config.ReviewOldDays = &oldDays
-	m.config.ReviewCompletedHours = &completedHours
+	s.ActiveTheme = m.activeTheme
+	s.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
+	s.ReviewDueSoonDays = &dueSoon
+	s.ReviewFutureDays = &futureDays
+	s.ReviewOldDays = &oldDays
+	s.ReviewCompletedHours = &completedHours
 	staleTaskDays, _ := strconv.Atoi(strings.TrimSpace(m.staleTaskDaysInput.Value()))
-	m.config.StaleTaskDays = &staleTaskDays
+	s.StaleTaskDays = &staleTaskDays
 	recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
-	m.config.RecentActivityLimit = &recentActivityLimit
-	m.config.RecentActivityShowAll = &m.recentActivityShowAll
-	m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
+	s.RecentActivityLimit = &recentActivityLimit
+	s.RecentActivityShowAll = &m.recentActivityShowAll
+	s.LinkedTaskJumpToNew = &m.linkedTaskJump
 	maxPinned, _ := strconv.Atoi(strings.TrimSpace(m.maxPinnedInput.Value()))
-	m.config.MaxPinnedBarItems = &maxPinned
+	s.MaxPinnedBarItems = &maxPinned
 	maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
-	m.config.MaxRecentTaskVisits = &maxRecentVisits
+	s.MaxRecentTaskVisits = &maxRecentVisits
 	popupTimeout, _ := strconv.Atoi(strings.TrimSpace(m.popupTimeoutInput.Value()))
-	m.config.PopupTimeoutSeconds = &popupTimeout
+	s.PopupTimeoutSeconds = &popupTimeout
 	sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
-	m.config.SectionLimitActive = &sectionLimitActive
+	s.SectionLimitActive = &sectionLimitActive
 	sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
-	m.config.SectionLimitNext = &sectionLimitNext
+	s.SectionLimitNext = &sectionLimitNext
 	sectionLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
-	m.config.SectionLimitInbox = &sectionLimitInbox
+	s.SectionLimitInbox = &sectionLimitInbox
 	sectionLimitStandby, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
-	m.config.SectionLimitStandby = &sectionLimitStandby
+	s.SectionLimitStandby = &sectionLimitStandby
 	sectionLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
-	m.config.SectionLimitWaiting = &sectionLimitWaiting
+	s.SectionLimitWaiting = &sectionLimitWaiting
 	sectionLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
-	m.config.SectionLimitSomeday = &sectionLimitSomeday
+	s.SectionLimitSomeday = &sectionLimitSomeday
 	sectionLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
-	m.config.SectionLimitReview = &sectionLimitReview
-	m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
-	m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
-	m.config.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())
-	m.config.TreeDefaultColumns = treeColumnDefaultsToMap(m.treeColumnDefaults)
-	m.config.OutlinerDefaultColumns = outlinerColumnDefaultsToMap(m.outlinerColumnDefaults)
+	s.SectionLimitReview = &sectionLimitReview
+	mach.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
+	mach.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
+	mach.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())
+	mach.TreeDefaultColumns = treeColumnDefaultsToMap(m.treeColumnDefaults)
+	mach.OutlinerDefaultColumns = outlinerColumnDefaultsToMap(m.outlinerColumnDefaults)
 
-	m.config.TreePriorityMode = priorityModeValues[m.treePriorityMode]
-	m.config.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
-	if m.config.TreePriorityMode == PriorityModeConditional {
-		m.config.TreePriorityMode = ""
+	mach.TreePriorityMode = priorityModeValues[m.treePriorityMode]
+	mach.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
+	if mach.TreePriorityMode == PriorityModeConditional {
+		mach.TreePriorityMode = ""
 	}
-	if m.config.OutlinerPriorityMode == PriorityModeConditional {
-		m.config.OutlinerPriorityMode = ""
+	if mach.OutlinerPriorityMode == PriorityModeConditional {
+		mach.OutlinerPriorityMode = ""
 	}
 
-	m.config.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
-	m.config.CrossOutlinerCycleOnly = boolPtr(m.crossOutlinerCycleOnly)
-	m.config.StartView = startViewValues[m.startViewCursor]
-	m.config.TaskFormCollapsed = boolPtr(m.taskFormCollapsed)
-	m.config.SetFocusBoardDefaultMode(focusBoardModeValues[m.focusBoardModeCursor])
-	m.config.SetDashboardBottomLayout(config.DashboardBottomLayout(m.dashboardLayoutCursor))
+	mach.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
+	mach.CrossOutlinerCycleOnly = boolPtr(m.crossOutlinerCycleOnly)
+	mach.StartView = startViewValues[m.startViewCursor]
+	mach.TaskFormCollapsed = boolPtr(m.taskFormCollapsed)
+	s.SetFocusBoardDefaultMode(focusBoardModeValues[m.focusBoardModeCursor])
+	mach.SetDashboardBottomLayout(config.DashboardBottomLayout(m.dashboardLayoutCursor))
 	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardHorizSplitInput.Value())); err == nil {
-		m.config.SetDashboardHorizontalSplitPct(pct)
+		mach.SetDashboardHorizontalSplitPct(pct)
 	}
 	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardVertSplitInput.Value())); err == nil {
-		m.config.SetDashboardVerticalSplitPct(pct)
+		mach.SetDashboardVerticalSplitPct(pct)
 	}
 	if limit, err := strconv.Atoi(strings.TrimSpace(m.resumeCardLimitInput.Value())); err == nil {
-		m.config.ResumeCardLimit = &limit
+		s.ResumeCardLimit = &limit
 	}
-	m.config.TUIZebraStriping = boolPtr(m.zebraStriping)
-	m.config.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
-	m.config.TimeFormat = timeFormatValues[m.timeFormatCursor]
-	m.config.AutoTheme = boolPtr(m.autoTheme)
-	m.config.UseEmoji = boolPtr(m.useEmoji)
+	s.TUIZebraStriping = boolPtr(m.zebraStriping)
+	s.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
+	s.TimeFormat = timeFormatValues[m.timeFormatCursor]
+	s.AutoTheme = boolPtr(m.autoTheme)
+	s.UseEmoji = boolPtr(m.useEmoji)
 
-	m.config.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
-	m.config.AlertWeeklyReviewEnabled = boolPtr(m.alertWeeklyReviewEnabled)
-	m.config.AlertOverdueEnabled = boolPtr(m.alertOverdueEnabled)
-	m.config.AlertDueSoonEnabled = boolPtr(m.alertDueSoonEnabled)
-	m.config.AlertStaleEnabled = boolPtr(m.alertStaleEnabled)
-	m.config.AlertInboxEnabled = boolPtr(m.alertInboxEnabled)
-	m.config.AlertBlockedEnabled = boolPtr(m.alertBlockedEnabled)
-	m.config.AlertProjectHealthEnabled = boolPtr(m.alertProjectHealthEnabled)
+	s.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
+	s.AlertWeeklyReviewEnabled = boolPtr(m.alertWeeklyReviewEnabled)
+	s.AlertOverdueEnabled = boolPtr(m.alertOverdueEnabled)
+	s.AlertDueSoonEnabled = boolPtr(m.alertDueSoonEnabled)
+	s.AlertStaleEnabled = boolPtr(m.alertStaleEnabled)
+	s.AlertInboxEnabled = boolPtr(m.alertInboxEnabled)
+	s.AlertBlockedEnabled = boolPtr(m.alertBlockedEnabled)
+	s.AlertProjectHealthEnabled = boolPtr(m.alertProjectHealthEnabled)
 
 	alertDailyHour, _ := strconv.Atoi(strings.TrimSpace(m.alertDailyReviewHourInput.Value()))
-	m.config.AlertDailyReviewHour = &alertDailyHour
-	m.config.AlertWeeklyReviewDay = &m.alertWeeklyReviewDay
+	s.AlertDailyReviewHour = &alertDailyHour
+	s.AlertWeeklyReviewDay = &m.alertWeeklyReviewDay
 
 	alertDueSoonDays, _ := strconv.Atoi(strings.TrimSpace(m.alertDueSoonDaysInput.Value()))
-	m.config.AlertDueSoonDays = &alertDueSoonDays
+	s.AlertDueSoonDays = &alertDueSoonDays
 	alertStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertStaleDaysInput.Value()))
-	m.config.AlertStaleDays = &alertStaleDays
+	s.AlertStaleDays = &alertStaleDays
 	alertInboxThreshold, _ := strconv.Atoi(strings.TrimSpace(m.alertInboxThresholdInput.Value()))
-	m.config.AlertInboxThreshold = &alertInboxThreshold
+	s.AlertInboxThreshold = &alertInboxThreshold
 	alertBlockedDays, _ := strconv.Atoi(strings.TrimSpace(m.alertBlockedDaysInput.Value()))
-	m.config.AlertBlockedDays = &alertBlockedDays
+	s.AlertBlockedDays = &alertBlockedDays
 	alertProjectStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertProjectStaleDaysInput.Value()))
-	m.config.AlertProjectStaleDays = &alertProjectStaleDays
+	s.AlertProjectStaleDays = &alertProjectStaleDays
 
 	collapsed := make(map[string]bool)
 	for i, name := range outlinerSectionNames {
@@ -210,13 +216,13 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		}
 	}
 	if len(collapsed) > 0 {
-		m.config.OutlinerCollapsedSections = collapsed
+		mach.OutlinerCollapsedSections = collapsed
 	} else {
-		m.config.OutlinerCollapsedSections = nil
+		mach.OutlinerCollapsedSections = nil
 	}
 
 	// Kanban settings.
-	ks := &m.config.KanbanSettings
+	ks := &s.KanbanSettings
 	ks.DefaultMode = kanbanModeValues[m.kanbanDefaultModeCursor]
 	ks.DefaultStartColumn = strings.TrimSpace(m.kanbanStartColInput.Value())
 	showEmpty := m.kanbanShowEmptyColumns
@@ -240,7 +246,12 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		ks.EnabledModes = enabledModes
 	}
 
-	return m.coordinator.SaveThen(m.config, func() tea.Msg { return SettingsSavedMsg{} })
+	// Persist the mutated working copy back into the base snapshots so a
+	// subsequent preset save/reset in the same session commits from the
+	// just-saved values, then commit only the settings + machine domains.
+	m.baseSettings = s
+	m.baseMachine = mach
+	return m.coordinator.SaveThen(&s, &mach, func() tea.Msg { return SettingsSavedMsg{} })
 }
 
 // priorityModeToCursor converts a config string to cursor index.

@@ -69,7 +69,7 @@ func TestFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 }
 
 func TestProjectFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("focus-test")
 	queue := make([]config.FocusQueueItem, 0, 8)
 	for i := range 8 {
@@ -79,9 +79,9 @@ func TestProjectFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 		queue = append(queue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
 	}
 	project.BuildTaskTree()
-	cfg.SetFocusQueue(queue)
+	cfg.Planning().SetFocusQueue(queue)
 
-	m := NewProjectFocusViewModel(project, cfg)
+	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(100, 11)
 
 	m.cursor = 4

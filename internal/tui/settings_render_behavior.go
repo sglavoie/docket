@@ -229,7 +229,7 @@ func (m *SettingsModel) renderBehaviorFocusBoardSection() string {
 	b.WriteString(renderEnumSelector(focusBoardModeOptions, m.focusBoardModeCursor, m.focusIndex == base+0, m.width-indent))
 	b.WriteString(renderDefaultHint(focusBoardModeOptions[m.focusBoardModeCursor], "List"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Starting focus mode when Today opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
+	b.WriteString(renderFormFieldDesc("Display mode when Today opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

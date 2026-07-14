@@ -52,8 +52,10 @@ const (
 // - workflow_rule_creator_view.go: View() and rendering
 // - workflow_rule_creator_validation.go: saveRule() validation
 type WorkflowRuleCreatorModel struct {
-	config        *config.Config
-	configManager *config.Manager
+	// runtime backs the automation-domain commit; the saved rule is written
+	// through the coordinator over it (RuntimeState.CommitAutomation).
+	runtime     *config.RuntimeState
+	coordinator WorkflowCoordinator
 
 	// Form fields
 	nameInput     textinput.Model
@@ -108,7 +110,7 @@ type WorkflowRuleCreatorModel struct {
 }
 
 // NewWorkflowRuleCreatorModel creates a new workflow rule creator.
-func NewWorkflowRuleCreatorModel(cfg *config.Config, manager *config.Manager) *WorkflowRuleCreatorModel {
+func NewWorkflowRuleCreatorModel(runtime *config.RuntimeState) *WorkflowRuleCreatorModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInput("Rule name")
@@ -134,9 +136,13 @@ func NewWorkflowRuleCreatorModel(cfg *config.Config, manager *config.Manager) *W
 	scopeTypesInput := factory.NewTextInput("Types (comma-separated)")
 	scopeSectionsInput := factory.NewTextInput("Sections (comma-separated)")
 
+	var coordinator WorkflowCoordinator
+	if runtime != nil {
+		coordinator = newWorkflowCoordinator(runtime)
+	}
 	return &WorkflowRuleCreatorModel{
-		config:             cfg,
-		configManager:      manager,
+		runtime:            runtime,
+		coordinator:        coordinator,
 		nameInput:          nameInput,
 		priorityInput:      priorityInput,
 		triggers:           triggers,
@@ -163,8 +169,8 @@ func (m *WorkflowRuleCreatorModel) isWideScreen() bool {
 }
 
 // NewWorkflowRuleEditorModel creates a model for editing an existing rule.
-func NewWorkflowRuleEditorModel(cfg *config.Config, manager *config.Manager, rule workflow.WorkflowRule) *WorkflowRuleCreatorModel {
-	m := NewWorkflowRuleCreatorModel(cfg, manager)
+func NewWorkflowRuleEditorModel(runtime *config.RuntimeState, rule workflow.WorkflowRule) *WorkflowRuleCreatorModel {
+	m := NewWorkflowRuleCreatorModel(runtime)
 	m.editingRule = &rule
 
 	// Populate name and priority

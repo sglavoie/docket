@@ -65,8 +65,8 @@ func (m *PriorityViewModel) loadActionableTasks() {
 
 	// Compute score-ranked list if a scoring profile is assigned
 	m.scoredTasks = nil
-	if m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+	if m.runtime != nil {
+		if profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID); profile != nil {
 			var all []*PriorityTask
 			all = append(all, m.overdue...)
 			all = append(all, m.today...)

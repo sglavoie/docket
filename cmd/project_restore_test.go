@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -89,14 +88,14 @@ func TestResolveTrashEntry_ByEntryID(t *testing.T) {
 }
 
 func TestProjectRestore_ActiveProjectConflict(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	existingProject := &models.Project{
 		ID:   uuid.New().String(),
 		Slug: "conflicting-slug",
 		Name: "Existing Project",
 	}
-	cfg.Projects = []*models.Project{existingProject}
+	setTestProjects(cfg, []*models.Project{existingProject})
 
 	found := cfg.GetProject("conflicting-slug")
 	if found == nil {
@@ -104,14 +103,14 @@ func TestProjectRestore_ActiveProjectConflict(t *testing.T) {
 	}
 }
 
-func TestConfigAddProjectOnRestore(t *testing.T) {
-	cfg := &config.Config{}
+func TestCatalogAddProjectOnRestore(t *testing.T) {
+	cfg := newTestConfig()
 
 	project := testutil.NewTestProject("Test Project")
-	cfg.AddProject(project)
+	addTestProject(cfg, project)
 
-	testutil.AssertEqual(t, len(cfg.Projects), 1)
-	testutil.AssertEqual(t, cfg.Projects[0].Name, "Test Project")
+	testutil.AssertEqual(t, len(cfg.AllProjects()), 1)
+	testutil.AssertEqual(t, cfg.AllProjects()[0].Name, "Test Project")
 }
 
 // TestProjectRestoreRejectsEmptySlug guards against an empty-string reference
@@ -121,7 +120,7 @@ func TestProjectRestoreRejectsEmptySlug(t *testing.T) {
 	deps, _ := setupProjectTest(t)
 
 	// Seed a legacy trash directory that must survive an empty-ref restore.
-	trashDir := filepath.Join(deps.Config.DataDir, ".tt", "trash")
+	trashDir := filepath.Join(deps.Config.DataDir(), ".tt", "trash")
 	siblingDir := filepath.Join(trashDir, "sibling-project")
 	if err := os.MkdirAll(siblingDir, 0755); err != nil {
 		t.Fatalf("failed to seed trash dir: %v", err)

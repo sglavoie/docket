@@ -39,7 +39,7 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 	var glowEnabled bool
 
 	if noteGlobal {
-		dir, cfg, gErr := globalNotesDir()
+		dir, workspace, gErr := globalNotesDir()
 		if gErr != nil {
 			return gErr
 		}
@@ -48,9 +48,9 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		glowEnabled = cfg.GlowEnabled
+		glowEnabled = workspace.Runtime.Settings().GlowEnabled
 	} else {
-		project, cfg, _, err := LoadCurrentProject()
+		project, workspace, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
@@ -58,7 +58,7 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		glowEnabled = cfg.GlowEnabled
+		glowEnabled = workspace.Runtime.Settings().GlowEnabled
 	}
 
 	content := fmt.Sprintf("# %s\n\n%s", note.Title, note.Body)

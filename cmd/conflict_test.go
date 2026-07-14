@@ -10,7 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // setupConflictTest wires a workspace so the conflict subcommands resolve their
@@ -18,9 +17,9 @@ import (
 // store, the project on disk, and its data dir.
 func setupConflictTest(t *testing.T) (*storage.ConflictStore, *storage.CommitService, *models.Project) {
 	t.Helper()
-	deps := testutil.SetupTestDeps(t)
+	deps := setupTestDeps(t)
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 	viper.Set("config", deps.ConfigPath)

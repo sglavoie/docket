@@ -41,10 +41,15 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("custom context name cannot be empty")
 	}
 
-	cfg, mgr, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	machine := domains.Machine
 
 	out, err := getOutputOpts(cmd)
 	if err != nil {
@@ -52,11 +57,11 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if custom context already exists (case-insensitive)
-	if cfg.CustomContextExists(name) {
+	if machine.CustomContextExists(name) {
 		return fmt.Errorf("custom context '%s' already exists", name)
 	}
 
-	projects := cfg.GetActiveProjects()
+	projects := workspace.Runtime.ActiveProjects()
 	if len(projects) == 0 {
 		return fmt.Errorf("no active projects available. Create one first with: tt project new <name>")
 	}
@@ -64,7 +69,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 	var selectedIDs []string
 
 	// Use fzf if available
-	if cfg.FzfEnabled && external.FzfAvailable() {
+	if workspace.Runtime.Settings().FzfEnabled && external.FzfAvailable() {
 		selected, err := external.FzfMultiSelectProjects(projects, "Select projects for "+name, nil)
 		if err != nil {
 			if errors.Is(err, tterrors.ErrCanceled) {
@@ -98,7 +103,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		slugs := strings.SplitSeq(input, ",")
 		for slug := range slugs {
 			slug = strings.TrimSpace(slug)
-			if p := cfg.GetProject(slug); p != nil {
+			if p := workspace.Runtime.GetProject(slug); p != nil {
 				selectedIDs = append(selectedIDs, p.ID)
 			} else {
 				fmt.Fprintf(os.Stderr, "warning: project '%s' not found, skipping\n", slug)
@@ -110,8 +115,8 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no valid projects selected")
 	}
 
-	cfg.SetCustomContext(name, selectedIDs)
-	if err := saveConfig(mgr, cfg); err != nil {
+	machine.SetCustomContext(name, selectedIDs)
+	if err := workspace.Runtime.CommitMachine(machine); err != nil {
 		return err
 	}
 

@@ -55,7 +55,7 @@ const (
 type PriorityViewModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	ViewBundle
+	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -105,9 +105,9 @@ type PriorityViewModel struct {
 }
 
 // NewPriorityViewModel creates a new priority view for the given project.
-func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *config.Manager) *PriorityViewModel {
+func NewPriorityViewModel(project *models.Project, runtime *config.RuntimeState, mgr *config.Manager) *PriorityViewModel {
 	m := &PriorityViewModel{
-		ViewBundle:         ViewBundle{config: cfg, configManager: mgr},
+		PrimaryViewBundle:  NewPrimaryViewBundle(mgr, runtime),
 		project:            project,
 		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
@@ -133,7 +133,7 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.InitSearchInput("Search tasks...", 100, 30)
 	m.loadActionableTasks()
 	return m
@@ -340,7 +340,7 @@ func (m *PriorityViewModel) View() tea.View {
 		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 			Task:    stripTask,
 			Project: stripProject,
-			Config:  m.config,
+			Runtime: m.runtime,
 			Width:   m.Width(),
 			AlreadyShown: TaskMetadataAlreadyShown{
 				Project:  true,

@@ -217,7 +217,9 @@ func TestTaskLineParkedSnippetExpandsWithViewWidth(t *testing.T) {
 
 func TestCrossProjectSelectedStripDoesNotRepeatInlineStaleBadge(t *testing.T) {
 	staleDays := 1
-	cfg := &config.Config{StaleTaskDays: &staleDays}
+	cfg := newTestConfig()
+	cfg.Settings().StaleTaskDays = &staleDays
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 	proj := &models.Project{ID: "p1", Name: "Proj"}
 	task := &models.Task{
 		ID:            "t1",
@@ -228,11 +230,11 @@ func TestCrossProjectSelectedStripDoesNotRepeatInlineStaleBadge(t *testing.T) {
 		UpdatedAt:     time.Now().Add(-30 * 24 * time.Hour),
 	}
 
-	row := RenderCrossProjectTaskLine(task, proj, cfg, true, 120, 40, CrossProjectTaskLineOpts{})
+	row := RenderCrossProjectTaskLine(task, proj, runtime, true, 120, 40, CrossProjectTaskLineOpts{})
 	strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 		Task:    task,
 		Project: proj,
-		Config:  cfg,
+		Runtime: runtime,
 		Width:   120,
 		AlreadyShown: TaskMetadataAlreadyShown{
 			Project:  true,
@@ -259,7 +261,7 @@ func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
 		{
 			name: "all tasks",
 			view: func() string {
-				m := NewAllTasksViewModel(cfg, nil)
+				m := NewAllTasksViewModel(testRuntimeAt(cfg.DataDir(), cfg), nil)
 				m.SetSize(118, 18)
 				item := CrossProjectTask{Task: task, Project: proj}
 				m.allTasks = []CrossProjectTask{item}
@@ -273,7 +275,7 @@ func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
 		{
 			name: "due date overview",
 			view: func() string {
-				m := NewDueDateOverviewModel(cfg, nil)
+				m := NewDueDateOverviewModel(testRuntimeAt("", cfg), nil)
 				m.SetSize(118, 18)
 				m.today = []CrossProjectTask{{Task: task, Project: proj}}
 				m.recalcTotalTasks()
@@ -285,7 +287,7 @@ func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
 			name: "focus view",
 			view: func() string {
 				queue := []FocusTask{}
-				m := NewFocusViewModel(cfg, nil, &queue, map[string]bool{}, map[string]bool{}, map[string]bool{})
+				m := NewFocusViewModel(nil, nil, &queue, map[string]bool{}, map[string]bool{}, map[string]bool{})
 				m.SetSize(118, 18)
 				m.tabs.Active = focusTabByProject
 				ft := FocusTask{Task: task, Project: proj}
@@ -308,11 +310,11 @@ func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
 	}
 }
 
-func staleCrossProjectViewFixture(t *testing.T) (*config.Config, *models.Project, *models.Task) {
+func staleCrossProjectViewFixture(t *testing.T) (*config.RuntimeState, *models.Project, *models.Task) {
 	t.Helper()
 	staleDays := 1
-	cfg := config.NewConfig()
-	cfg.StaleTaskDays = &staleDays
+	cfg := newTestConfig()
+	cfg.Settings().StaleTaskDays = &staleDays
 
 	proj, err := models.NewProject("p-stale-regression", "Alpha", t.TempDir())
 	if err != nil {

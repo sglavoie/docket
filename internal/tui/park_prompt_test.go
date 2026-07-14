@@ -144,7 +144,7 @@ func TestMaybePromptParkSkipMatrix(t *testing.T) {
 func TestPromptParkEnterSavesSynchronouslyBeforeContinuation(t *testing.T) {
 	app, project, source, target := newParkPromptTestApp(t)
 	depth := 10
-	app.config.UndoHistoryDepth = &depth
+	app.runtime.Settings().UndoHistoryDepth = &depth
 	markSessionTaskMutated(project.ID, []string{source.ID})
 
 	continued := 0
@@ -257,11 +257,11 @@ func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 		tk.Project = project
 	}
 
-	app.config.CurrentProject = project.ID
+	setTestCurrentProject(app, project.ID)
 	app.currentProject = project
 	app.lastProjectView = ViewProjectTree
 	app.projectLastView[project.ID] = ViewProjectTree
-	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 	app.projectTree.SetSize(app.width, app.height-2)
 	app.views.Register(ViewProjectTree, app.projectTree)
 	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree}

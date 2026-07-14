@@ -27,7 +27,7 @@ func (m *TutorModel) buildKeyMap() *keymap.KeyMap {
 	)
 
 	return &keymap.KeyMap{
-		ViewName: "Tutor",
+		ViewName: "Reference",
 		Entries:  entries,
 	}
 }

@@ -138,13 +138,13 @@ func (m *OutlinerModel) crossPriorityRowPredicate(proj *models.Project) func(*mo
 		if pinnedTag != "" && !t.HasTag(pinnedTag) {
 			return false
 		}
-		if query != "" && !matchesSearch(t, query, m.config) {
+		if query != "" && !matchesSearch(t, query, m.runtime.Planning()) {
 			return false
 		}
-		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.config) {
+		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.runtime.Automation()) {
 			return false
 		}
-		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, m.config) {
+		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, m.runtime.Automation()) {
 			return false
 		}
 		if len(sections) > 0 && !sections[taskSectionBucket(t)] {

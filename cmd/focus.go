@@ -130,23 +130,20 @@ func jsonRequested(cmd *cobra.Command) bool {
 }
 
 func runFocus(cmd *cobra.Command, args []string) error {
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
 	// Load and collect tasks from all active projects
-	projects := loadActiveProjects(cfg)
+	projects := loadActiveProjects(workspace.Runtime.ActiveProjects())
 	var tasks []focus.FocusTask
 
 	if focusActiveOnly {
 		// Legacy flag: now backed by Focus Queue membership (the planning
 		// collection that replaced the per-task Active flag).
 		fmt.Fprintf(os.Stderr, "warning: --active is deprecated; run 'tt focus' without flags to see all actionable tasks, or 'tt focus queue' for the focus queue\n")
-		planning, planErr := planningStore(cfgMgr).LoadPlanning()
-		if planErr != nil {
-			return planErr
-		}
+		planning := workspace.Runtime.Planning()
 		tasks = collectFocusQueueTasks(planning.FocusQueue, projects)
 	} else {
 		tasks = focus.CollectActionableTasks(projects)
@@ -273,9 +270,9 @@ func buildProjectAndTaskMaps(projects []*models.Project) (map[string]*models.Pro
 
 // loadActiveProjects loads task data for all active projects, returning
 // only those that loaded successfully.
-func loadActiveProjects(cfg *config.Config) []*models.Project {
+func loadActiveProjects(projects []*models.Project) []*models.Project {
 	var loaded []*models.Project
-	for _, project := range cfg.GetActiveProjects() {
+	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to load project %q: %v\n", project.Slug, err)
 			continue
@@ -290,18 +287,18 @@ func runFocusSuggest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("number of suggestions must be at least 1")
 	}
 
-	cfg, _, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	tasks := focus.CollectActionableTasks(loadActiveProjects(cfg))
+	tasks := focus.CollectActionableTasks(loadActiveProjects(workspace.Runtime.ActiveProjects()))
 	if len(tasks) == 0 {
 		fmt.Println("No actionable tasks found.")
 		return nil
 	}
 
-	ranked := focus.RankCrossProjectTasks(tasks, nil, cfg)
+	ranked := focus.RankCrossProjectTasks(tasks, nil, workspace.Runtime)
 	if len(ranked) == 0 {
 		fmt.Println("No suggestions available.")
 		return nil
@@ -350,15 +347,12 @@ func runFocusSuggest(cmd *cobra.Command, args []string) error {
 }
 
 func runFocusToday(cmd *cobra.Command, args []string) error {
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	planning, err := planningStore(cfgMgr).LoadPlanning()
-	if err != nil {
-		return err
-	}
+	planning := workspace.Runtime.Planning()
 	planItems := planning.DailyPlan
 	wantJSON := jsonRequested(cmd)
 	if len(planItems) == 0 {
@@ -370,7 +364,7 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(cfg))
+	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(workspace.Runtime.ActiveProjects()))
 
 	if wantJSON {
 		entries := make([]focusTaskJSON, 0, len(planItems))
@@ -428,16 +422,12 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 }
 
 func runFocusQueue(cmd *cobra.Command, args []string) error {
-	cfg, cfgMgr, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	store := planningStore(cfgMgr)
-	planning, err := store.LoadPlanning()
-	if err != nil {
-		return err
-	}
+	planning := workspace.Runtime.Planning()
 	queueItems := planning.FocusQueue
 	wantJSON := jsonRequested(cmd)
 	if len(queueItems) == 0 {
@@ -449,7 +439,7 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(cfg))
+	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(workspace.Runtime.ActiveProjects()))
 
 	if wantJSON {
 		entries := make([]focusTaskJSON, 0, len(queueItems))
@@ -499,8 +489,12 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 
 	// Prune stale entries from the planning domain if any were skipped
 	if len(activeItems) < len(queueItems) {
-		planning.FocusQueue = activeItems
-		if err := store.SavePlanning(planning); err != nil {
+		domains, cloneErr := cloneCLIWorkspaceDomains(workspace)
+		if cloneErr != nil {
+			return cloneErr
+		}
+		domains.Planning.FocusQueue = activeItems
+		if err := commitCLIPlanning(workspace, domains.Planning); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
 		}
 	}

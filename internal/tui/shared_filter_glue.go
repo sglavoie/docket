@@ -18,7 +18,7 @@ type tagFilterApplicable interface {
 // standard F-prefix filter system implement this to share the dispatch logic.
 type commonFilterView interface {
 	getFilter() *CommonFilterState
-	getConfig() *config.Config
+	getFilterMachine() *config.MachineState
 	setFilterPendingPrefix(string)
 	refreshAndClamp()
 	buildTagCmd() tea.Cmd
@@ -39,7 +39,7 @@ func handleFilterPrefixForView(v commonFilterView, key string) (tea.Cmd, bool) {
 // handleFilterSubPrefixForView handles all filter sub-prefix keys (Ft, Fs, Fd,
 // Fa, Fas-Fap, FS) for views using CommonFilterState.
 func handleFilterSubPrefixForView(v commonFilterView, prefix, key string) {
-	if dispatchFilterSubPrefix(prefix, key, v.getFilter(), v.getConfig(), v.setFilterPendingPrefix) {
+	if dispatchFilterSubPrefix(prefix, key, v.getFilter(), v.getFilterMachine(), v.setFilterPendingPrefix) {
 		v.refreshAndClamp()
 	}
 }

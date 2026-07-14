@@ -34,8 +34,9 @@ func (m *FocusBoardModel) loadItems() {
 	now := time.Now()
 	today := util.StartOfDay(now)
 
-	// Iterate all loadable projects (including internal ones like action-inbox)
-	_, projects, _ := LoadCrossScopeTasks(m.config, m.projectService, CrossScopeOpts{})
+	// Iterate all loadable projects, including the visible system Inbox and any
+	// legacy internal projects that still participate in cross-project counts.
+	_, projects, _ := LoadCrossScopeTasks(m.runtime, m.projectService, CrossScopeOpts{})
 	for _, project := range projects {
 		for _, task := range project.Tasks {
 			row := boardRow{
@@ -149,7 +150,7 @@ func (m *FocusBoardModel) applyFilter() {
 	if hasActiveCommonFilters(&m.filter) || m.searchQuery != "" {
 		var passed []boardRow
 		for _, r := range m.filtered {
-			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(r.Task, &m.filter, r.Project, m.config) {
+			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(r.Task, &m.filter, r.Project, m.runtime.Automation()) {
 				continue
 			}
 			if m.searchQuery != "" && !m.matchesSearch(r) {
@@ -214,14 +215,14 @@ func (m *FocusBoardModel) focusBoardSortLess(ri, rj boardRow) bool {
 	}
 	cmp := CompareTasksCrossProject(
 		ri.Task, rj.Task, m.sort.Field,
-		ri.Project.ID, rj.Project.ID, m.config,
+		ri.Project.ID, rj.Project.ID, m.runtime.Automation(),
 	)
 	return ApplySortDirection(cmp, m.sort.Ascending)
 }
 
 // scorePercent returns the normalized score percentage for a task row.
 func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
-	profile := m.config.GetProjectScoringProfile(r.Project.ID)
+	profile := m.runtime.Automation().GetProjectScoringProfile(r.Project.ID)
 	if profile == nil {
 		return 0
 	}

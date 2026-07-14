@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 )
 
@@ -15,19 +16,21 @@ import (
 func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowScoringProfilePickerMsg:
-		picker := NewScoringProfilePickerModel(m.config, m.configManager, msg.ProjectID)
+		auto := m.runtime.Automation()
+		picker := NewScoringProfilePickerModel(auto.GetProjectScoringProfile(msg.ProjectID), auto.ScoringProfiles, m.configManager, msg.ProjectID)
 		m.showView(ViewScoringProfilePicker, picker)
 		return true, nil
 
 	case ScoringProfilePickerDoneMsg:
 		m.popView()
 		if !msg.Canceled {
-			if msg.ProfileID == "" {
-				m.config.UnsetProjectScoringProfile(msg.ProjectID)
-			} else {
-				m.config.SetProjectScoringProfile(msg.ProjectID, msg.ProfileID)
-			}
-			if err := m.secondaryFeatures.Workflow.SaveNow(m.config); err != nil {
+			if err := m.commitAutomationMutation(func(a *config.AutomationConfig) {
+				if msg.ProfileID == "" {
+					a.UnsetProjectScoringProfile(msg.ProjectID)
+				} else {
+					a.SetProjectScoringProfile(msg.ProjectID, msg.ProfileID)
+				}
+			}); err != nil {
 				logging.Warn("failed to save config: %v", err)
 			}
 			// Refresh the preview viewport content if it's visible
@@ -41,7 +44,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowScoreEditorMsg:
 		if msg.Task != nil && msg.Project != nil {
-			editor := NewScoreEditorModel(msg.Task, msg.Project, m.config, m.secondaryFeatures.TaskItem)
+			editor := NewScoreEditorModel(msg.Task, msg.Project, m.runtime.Automation().GetProjectScoringProfile(msg.Project.ID), m.secondaryFeatures.TaskItem)
 			if editor != nil {
 				m.showView(ViewScoreEditor, editor)
 			} else {
@@ -58,7 +61,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if projectID == "" && m.currentProject != nil {
 			projectID = m.currentProject.ID
 		}
-		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
+		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.runtime, projectID))
 		return true, nil
 
 	case ScoreProfileChangedMsg:
@@ -72,7 +75,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if projectID == "" && m.currentProject != nil {
 				projectID = m.currentProject.ID
 			}
-			mgr := NewScoreProfileManagerModel(m.config, m.configManager, projectID)
+			mgr := NewScoreProfileManagerModel(m.runtime, projectID)
 			mgr.SetSize(m.width, m.height-2)
 			m.views.Register(ViewScoreProfileManager, mgr)
 		}

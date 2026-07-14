@@ -49,12 +49,12 @@ func (m *AppModel) navigateHistoryForward() tea.Cmd {
 // isNavEntryValid checks whether a history entry still refers to existing entities.
 func (m *AppModel) isNavEntryValid(entry NavEntry) bool {
 	if entry.ProjectID != "" {
-		if m.config.GetProject(entry.ProjectID) == nil {
+		if m.projectByID(entry.ProjectID) == nil {
 			return false
 		}
 	}
 	if entry.TaskID != "" && entry.ProjectID != "" {
-		project := m.config.GetProject(entry.ProjectID)
+		project := m.projectByID(entry.ProjectID)
 		if project == nil {
 			return false
 		}
@@ -98,7 +98,7 @@ func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
 
 func (m *AppModel) reconstructDashboard() tea.Cmd {
 	if m.dashboard != nil {
-		m.dashboard.Refresh(m.config)
+		m.dashboard.Refresh()
 	}
 	return nil
 }
@@ -106,48 +106,48 @@ func (m *AppModel) reconstructDashboard() tea.Cmd {
 func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 	switch entry.ViewType {
 	case ViewDailyReview:
-		dr := NewDailyReviewModel(m.config, m.configManager)
+		dr := NewDailyReviewModel(m.runtime, m.configManager)
 		dr.queueIDs = m.focusQueueIDs
 		dr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDailyReview, dr)
 	case ViewWeeklyReview:
-		wr := NewWeeklyReviewModel(m.config, m.configManager)
+		wr := NewWeeklyReviewModel(m.runtime, m.configManager)
 		wr.queueIDs = m.focusQueueIDs
 		wr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewWeeklyReview, wr)
 	case ViewFocusView:
-		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.focusDismissedIDs))
+		m.showView(ViewFocusView, NewFocusViewModel(m.runtime, m.configManager, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.focusDismissedIDs))
 	case ViewDueDateOverview:
-		ddo := NewDueDateOverviewModel(m.config, m.configManager)
+		ddo := NewDueDateOverviewModel(m.runtime, m.configManager)
 		ddo.queueIDs = m.focusQueueIDs
 		ddo.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDueDateOverview, ddo)
 	case ViewRecentActivity:
-		ra := NewRecentActivityModel(m.config, m.configManager)
+		ra := NewRecentActivityModel(m.runtime, m.configManager)
 		ra.queueIDs = m.focusQueueIDs
 		ra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewRecentActivity, ra)
 	case ViewGlobalSearch:
-		m.globalSearch = NewGlobalSearchModel(m.config, m.configManager)
+		m.globalSearch = NewGlobalSearchModel(m.runtime)
 		m.showView(ViewGlobalSearch, m.globalSearch)
 		return m.globalSearch.Init()
 	case ViewGlobalBlockers:
-		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config, m.secondaryFeatures.Blocker))
+		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.runtime, m.secondaryFeatures.Blocker))
 	case ViewGlobalNotes:
-		dir := storage.GlobalNotesDir(m.config.DataDir)
-		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.config))
+		dir := storage.GlobalNotesDir(m.runtime.DataDir())
+		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.runtime.Machine()))
 	case ViewGlobalInboxProcessor:
-		processor := NewGlobalInboxProcessorModel(m.config, m.configManager)
+		processor := NewGlobalInboxProcessorModel(m.configManager, m.runtime)
 		m.globalInboxProcessor = processor
 		m.showView(ViewGlobalInboxProcessor, processor)
 	case ViewGlobalTagManager:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.secondaryFeatures.Tag, m.configManager))
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.runtime.ActiveProjects(), m.runtime, m.secondaryFeatures.Tag))
 	case ViewSettings:
-		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
+		m.showView(ViewSettings, NewSettingsModel(m.deps))
 	case ViewWorkflowRules:
-		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.config, m.configManager))
+		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.runtime))
 	case ViewTaskTemplates:
-		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.config, m.configManager))
+		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.runtime))
 	case ViewTutor:
 		m.showView(ViewTutor, NewTutorModel())
 	case ViewScoreProfileManager:
@@ -155,7 +155,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		if m.currentProject != nil {
 			projectID = m.currentProject.ID
 		}
-		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
+		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.runtime, projectID))
 	case ViewMetricsDashboard:
 		// Recreate when cached model is project-scoped so the global view is
 		// not contaminated by a previous project's metrics.
@@ -167,22 +167,22 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewMetricsDashboard, m.metricsDashboard)
 	case ViewRoadmap:
 		if m.roadmap == nil || !m.roadmap.isGlobal {
-			m.roadmap = NewRoadmapModel(m.config)
+			m.roadmap = NewRoadmapModel(m.runtime)
 		} else {
 			m.roadmap.computeData()
 		}
 		m.showView(ViewRoadmap, m.roadmap)
 	case ViewCrossProjectOutliner:
-		m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
+		m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
 		m.crossOutliner.queueIDs = m.focusQueueIDs
 		m.crossOutliner.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
 		return m.crossOutliner.Init()
 	case ViewFocusBoard:
-		fb := NewFocusBoardModel(m.config, m.configManager, &m.dailyPlan, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
+		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
 		m.showView(ViewFocusBoard, fb)
 	case ViewAllTasks:
-		atv := NewAllTasksViewModel(m.config, m.configManager)
+		atv := NewAllTasksViewModel(m.runtime, m.configManager)
 		atv.bulk = m.secondaryFeatures.Bulk
 		atv.queueIDs = m.focusQueueIDs
 		atv.dailyPlanIDs = m.dailyPlanIDs
@@ -200,7 +200,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 }
 
 func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
-	project := m.config.GetProject(entry.ProjectID)
+	project := m.projectByID(entry.ProjectID)
 	if project == nil {
 		return nil
 	}
@@ -215,7 +215,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	// Push the target view on top of the project tree
 	switch entry.ViewType {
 	case ViewPriorityView:
-		pv := NewPriorityViewModel(project, m.config, m.configManager)
+		pv := NewPriorityViewModel(project, m.runtime, m.configManager)
 		pv.queueIDs = m.focusQueueIDs
 		pv.dailyPlanIDs = m.dailyPlanIDs
 		if cached, ok := m.priorityViewFilterCache[project.ID]; ok {
@@ -225,24 +225,24 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		}
 		m.showView(ViewPriorityView, pv)
 	case ViewNotes:
-		m.showView(ViewNotes, NewNotesViewModel(project, m.config))
+		m.showView(ViewNotes, NewNotesViewModel(project, m.runtime.Machine()))
 	case ViewBlockers:
-		m.showView(ViewBlockers, NewBlockersModelWithEditor(project, m.config.Editor, m.secondaryFeatures.Blocker))
+		m.showView(ViewBlockers, NewBlockersModelWithEditor(project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Blocker))
 	case ViewInboxProcessor:
-		processor := NewInboxProcessorModel(project, m.config, m.configManager)
+		processor := NewInboxProcessorModel(project, m.configManager, m.runtime)
 		m.inboxProcessor = processor
 		m.showView(ViewInboxProcessor, processor)
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
 		m.outliner.queueIDs = m.focusQueueIDs
 		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()
 		m.restoreOutlinerFilterState()
 		m.showView(ViewOutliner, m.outliner)
 	case ViewProjectFocusView:
-		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project, m.config))
+		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project, m.runtime))
 	case ViewMetricsDashboard:
 		// Recreate when cached model is for a different project (or global)
 		// to avoid leaking the previous project's metrics into this view.
@@ -254,18 +254,18 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.showView(ViewMetricsDashboard, m.metricsDashboard)
 	case ViewRoadmap:
 		if m.roadmap == nil || m.roadmap.isGlobal || m.roadmap.project != project {
-			m.roadmap = NewRoadmapModelForProject(m.config, project)
+			m.roadmap = NewRoadmapModelForProject(m.runtime, project)
 		} else {
 			m.roadmap.computeData()
 		}
 		m.showView(ViewRoadmap, m.roadmap)
 	case ViewTemporaryOutliner:
-		fresh := NewOutlinerModel(project, m.config, m.configManager)
+		fresh := NewOutlinerModel(project, m.configManager, m.runtime)
 		fresh.queueIDs = m.focusQueueIDs
 		fresh.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewTemporaryOutliner, fresh)
 	case ViewProjectRecentActivity:
-		pra := NewProjectRecentActivityModel(m.config, m.configManager, project)
+		pra := NewProjectRecentActivityModel(m.runtime, m.configManager, project)
 		pra.queueIDs = m.focusQueueIDs
 		pra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewProjectRecentActivity, pra)
@@ -275,7 +275,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 }
 
 func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
-	project := m.config.GetProject(entry.ProjectID)
+	project := m.projectByID(entry.ProjectID)
 	if project == nil {
 		return nil
 	}
@@ -291,16 +291,16 @@ func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
 	switch entry.ViewType {
 	case ViewTaskComments:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(task, project, m.config.Editor, m.secondaryFeatures.Subview))
+		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(task, project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Subview))
 	case ViewTaskDecisions:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(task, project, m.config.Editor, m.secondaryFeatures.Subview))
+		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(task, project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Subview))
 	case ViewTaskChecklist:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(task, project, m.config.Editor, m.secondaryFeatures.Subview))
+		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(task, project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Subview))
 	case ViewTaskAttachments:
 		m.lastNavigatedTaskID = task.ID
-		m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(task, project, m.config, m.secondaryFeatures.Attachment))
+		m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(task, project, m.runtime, m.secondaryFeatures.Attachment))
 	case ViewTaskActivity:
 		m.lastNavigatedTaskID = task.ID
 		m.showView(ViewTaskActivity, NewTaskActivityModel(task, project))

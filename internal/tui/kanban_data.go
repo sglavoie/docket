@@ -149,9 +149,9 @@ func legacyStatusColumnForState(state models.WorkflowState) string {
 }
 
 // columnForTask returns the column ID that the task belongs to for the given mode.
-// For ScoreBuckets mode the profile is resolved per-project via cfg; if no
-// profile is assigned the task falls into "0-25".
-func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, projectID string) string {
+// For ScoreBuckets mode the profile is resolved per-project via the automation
+// snapshot; if no profile is assigned the task falls into "0-25".
+func columnForTask(task *models.Task, mode KanbanMode, auto *config.AutomationConfig, projectID string) string {
 	switch mode {
 	case KanbanModeSection:
 		s := taskSectionBucket(task)
@@ -180,7 +180,7 @@ func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, proje
 		}
 
 	case KanbanModeScoreBuckets:
-		profile := cfg.GetProjectScoringProfile(projectID)
+		profile := auto.GetProjectScoringProfile(projectID)
 		if profile == nil {
 			return "0-25"
 		}
@@ -228,7 +228,7 @@ func rebuildColumns(
 	mode KanbanMode,
 	prev []KanbanColumn,
 	sectionOrder, statusOrder []string,
-	cfg *config.Config,
+	auto *config.AutomationConfig,
 ) []KanbanColumn {
 	// Build base column set.
 	var cols []KanbanColumn
@@ -267,7 +267,7 @@ func rebuildColumns(
 
 	// Distribute cards.
 	for _, card := range cards {
-		colID := columnForTask(card.Task, mode, cfg, card.Project.ID)
+		colID := columnForTask(card.Task, mode, auto, card.Project.ID)
 		if ci, ok := idx[colID]; ok {
 			cols[ci].Tasks = append(cols[ci].Tasks, card)
 		} else {

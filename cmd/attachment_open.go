@@ -45,7 +45,7 @@ func runAttachmentOpen(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("task ID and attachment index")
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func runAttachmentOpen(cmd *cobra.Command, args []string) error {
 
 	// Handle code references
 	if att.IsCodeRef {
-		codeEditor := cfg.GetCodeEditor()
+		codeEditor := workspace.Runtime.Machine().GetCodeEditor()
 		if !storage.CodeReferenceFileExists(att.OriginalPath) {
 			return fmt.Errorf("code reference file not found: %s", att.OriginalPath)
 		}
@@ -86,8 +86,9 @@ func runAttachmentOpen(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if we should use a configured attachment editor (for non-URL files)
-	if !att.IsURL && cfg.GetAttachmentEditor() != "" {
-		openCmd := buildAttachmentEditorCmd(cfg.GetAttachmentEditor(), target)
+	attachmentEditor := workspace.Runtime.Machine().GetAttachmentEditor()
+	if !att.IsURL && attachmentEditor != "" {
+		openCmd := buildAttachmentEditorCmd(attachmentEditor, target)
 		if err := openCmd.Start(); err != nil {
 			return fmt.Errorf("failed to open attachment: %w", err)
 		}

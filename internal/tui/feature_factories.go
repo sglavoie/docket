@@ -21,15 +21,15 @@ import "github.com/sglavoie/tt/internal/models"
 // project. It returns nil only when neither is available, which the caller's
 // constructor tolerates (an empty project view).
 func resolveRouteProject(ctx ViewContext, params RouteParams) *models.Project {
-	if ctx.Config == nil {
+	if ctx.Runtime == nil {
 		return nil
 	}
 	if params.ProjectID != "" {
-		if p := ctx.Config.GetProject(params.ProjectID); p != nil {
+		if p := ctx.Runtime.GetProject(params.ProjectID); p != nil {
 			return p
 		}
 	}
-	return ctx.Config.GetCurrentProject()
+	return ctx.Runtime.CurrentProject()
 }
 
 // primaryFeatureFactories returns the RouteFactory for each primary feature view
@@ -39,26 +39,26 @@ func resolveRouteProject(ctx ViewContext, params RouteParams) *models.Project {
 func primaryFeatureFactories() map[ViewType]RouteFactory {
 	return map[ViewType]RouteFactory{
 		ViewDashboard: func(ctx ViewContext, _ RouteParams) View {
-			return NewDashboardModel(ctx.Config, ctx.ConfigManager)
+			return NewDashboardModel(ctx.Runtime)
 		},
 		ViewProjectTree: func(ctx ViewContext, params RouteParams) View {
-			return NewProjectTreeModel(resolveRouteProject(ctx, params), ctx.Config, ctx.ConfigManager)
+			return NewProjectTreeModel(resolveRouteProject(ctx, params), ctx.ConfigManager, ctx.Runtime)
 		},
 		ViewOutliner: func(ctx ViewContext, params RouteParams) View {
-			return NewOutlinerModel(resolveRouteProject(ctx, params), ctx.Config, ctx.ConfigManager)
+			return NewOutlinerModel(resolveRouteProject(ctx, params), ctx.ConfigManager, ctx.Runtime)
 		},
 		ViewQuickCapture: func(ctx ViewContext, params RouteParams) View {
 			var allProjects []*models.Project
-			if ctx.Config != nil {
-				allProjects = ctx.Config.GetActiveProjects()
+			if ctx.Runtime != nil {
+				allProjects = ctx.Runtime.ActiveProjects()
 			}
 			return NewQuickCaptureModel(resolveRouteProject(ctx, params), allProjects, false)
 		},
 		ViewInboxProcessor: func(ctx ViewContext, params RouteParams) View {
-			return NewInboxProcessorModel(resolveRouteProject(ctx, params), ctx.Config, ctx.ConfigManager)
+			return NewInboxProcessorModel(resolveRouteProject(ctx, params), ctx.ConfigManager, ctx.Runtime)
 		},
 		ViewGlobalInboxProcessor: func(ctx ViewContext, _ RouteParams) View {
-			return NewGlobalInboxProcessorModel(ctx.Config, ctx.ConfigManager)
+			return NewGlobalInboxProcessorModel(ctx.ConfigManager, ctx.Runtime)
 		},
 	}
 }

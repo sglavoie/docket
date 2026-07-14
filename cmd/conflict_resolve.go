@@ -26,7 +26,13 @@ var conflictResolveCmd = &cobra.Command{
 Before committing, the current remote revision is re-checked: if the remote
 changed since the conflict was recorded, your resolution is re-merged against it,
 and a fresh conflict is recorded if that re-merge cannot be resolved
-automatically.`,
+automatically.
+
+When the conflict came from an aborted multi-artifact transaction, the bundle
+cannot safely replay only its project document. In that case local and file
+resolution fail closed: adopt remote to clear the record, then retry the original
+operation so every project, configuration artifact, and attachment is rebuilt in
+one transaction.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runConflictResolve,
 }
@@ -59,6 +65,9 @@ func runConflictResolve(_ *cobra.Command, args []string) error {
 
 	result, err := storage.ResolveConflict(store, commit, id, resolution, conflictResolveFile)
 	if err != nil {
+		if errors.Is(err, storage.ErrConflictRetryRequired) {
+			return fmt.Errorf("cannot apply only the project document: adopt remote with --use remote, then retry the original operation: %w", err)
+		}
 		if errors.Is(err, storage.ErrRemoteReconflict) {
 			fmt.Printf("The remote changed during resolution and the re-merge conflicts.\n")
 			fmt.Printf("A new conflict was recorded: %s\n", shortConflictID(result.NewConflictID))
@@ -73,6 +82,8 @@ func runConflictResolve(_ *cobra.Command, args []string) error {
 	}
 
 	switch {
+	case result.RetryRequired:
+		fmt.Printf("Cleared conflict %s without applying the aborted transaction. Retry the original operation.\n", shortConflictID(id))
 	case result.Committed && result.Remerged:
 		fmt.Printf("Resolved conflict %s: committed the re-merged result (revision %s).\n", shortConflictID(id), shortRev(result.Revision))
 	case result.Committed:

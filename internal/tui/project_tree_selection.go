@@ -143,6 +143,6 @@ func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
 		return false
 	}
 
-	cmp := CompareTasks(a.Task, b.Task, m.sort.Field, m.project.ID, m.config)
+	cmp := CompareTasks(a.Task, b.Task, m.sort.Field, m.project.ID, m.runtime.Automation())
 	return ApplySortDirection(cmp, m.sort.Ascending)
 }

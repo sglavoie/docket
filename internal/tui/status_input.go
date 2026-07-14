@@ -14,16 +14,15 @@ import (
 
 // StatusInputModel handles editing a project's status note.
 type StatusInputModel struct {
-	project       *models.Project
-	config        *config.Config
-	configManager *config.Manager
-	input         textinput.Model
-	width         int
-	height        int
+	project *models.Project
+	runtime *config.RuntimeState
+	input   textinput.Model
+	width   int
+	height  int
 }
 
 // NewStatusInputModel creates a new status input model pre-filled with the current status.
-func NewStatusInputModel(project *models.Project, cfg *config.Config, mgr *config.Manager) *StatusInputModel {
+func NewStatusInputModel(project *models.Project, runtime *config.RuntimeState) *StatusInputModel {
 	input := textinput.New()
 	input.Placeholder = "Enter project status"
 	input.Focus()
@@ -33,10 +32,9 @@ func NewStatusInputModel(project *models.Project, cfg *config.Config, mgr *confi
 	applyThemedTextInput(&input)
 
 	return &StatusInputModel{
-		project:       project,
-		config:        cfg,
-		configManager: mgr,
-		input:         input,
+		project: project,
+		runtime: runtime,
+		input:   input,
 	}
 }
 
@@ -61,10 +59,16 @@ func (m *StatusInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			status := strings.TrimSpace(m.input.Value())
+			oldStatus := m.project.Description
+			oldUpdatedAt := m.project.UpdatedAt
 			m.project.Description = status
 			m.project.UpdatedAt = time.Now()
 
-			if err := m.configManager.Save(m.config); err != nil {
+			if err := commitCatalogToRuntime(m.runtime, func(catalog *config.WorkspaceCatalog) {
+				catalog.UpsertProject(m.project)
+			}); err != nil {
+				m.project.Description = oldStatus
+				m.project.UpdatedAt = oldUpdatedAt
 				return m, func() tea.Msg {
 					return ErrorMsg{Err: err}
 				}

@@ -12,10 +12,10 @@ import (
 // newTestAppModelWithMockPersisterAndProject creates an AppModel with mock persister and test project.
 func newTestAppModelWithMockPersisterAndProject(t *testing.T) (*AppModel, *MockPersister, *models.Project) {
 	t.Helper()
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
 
 	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
@@ -24,19 +24,28 @@ func newTestAppModelWithMockPersisterAndProject(t *testing.T) (*AppModel, *MockP
 	// Store the project in mock for Load operations
 	mockPersister.Projects[project.ID] = project
 
-	app := NewAppModel(cfg, manager, WithPersister(mockPersister))
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager, WithPersister(mockPersister))
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
 	app.currentProject = project
+	// NewAppModel hydrates the selected project because RuntimeState catalogs
+	// contain metadata only. These tests measure the subsequent handler call.
+	mockPersister.LoadCalls = nil
 
 	return app, mockPersister, project
 }
 
 func TestWithPersisterOption(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
 
 	mockPersister := NewMockPersister()
-	app := NewAppModel(cfg, manager, WithPersister(mockPersister))
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager, WithPersister(mockPersister))
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
 
 	if app.persister != mockPersister {
 		t.Error("WithPersister option should set the persister")
@@ -44,11 +53,14 @@ func TestWithPersisterOption(t *testing.T) {
 }
 
 func TestDefaultPersisterIsProjectService(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
 
-	app := NewAppModel(cfg, manager)
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager)
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
 
 	if app.persister == nil {
 		t.Error("Default persister should not be nil")
@@ -270,8 +282,9 @@ func TestCycleProjectUsesPersister(t *testing.T) {
 	// Add project to cycle
 	project2 := testutil.NewTestProjectWithTasks("Project 2")
 	mockPersister.Projects[project2.ID] = project2
-	app.config.Projects = append(app.config.Projects, project2)
-	app.config.CycleProjects = []string{project.ID, project2.ID}
+	addTestAppProject(app, project2)
+	app.runtime.Machine().CycleProjects = []string{project.ID, project2.ID}
+	syncTestRuntime(app)
 
 	// Cycle forward
 	handled, _ := app.handleCycleProject(true)

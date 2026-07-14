@@ -35,10 +35,13 @@ func TestLoadCrossScopeTasks_ReturnsLoadFailureDetails(t *testing.T) {
 		t.Fatalf("WriteFile(tasks.md): %v", err)
 	}
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
+	cfg := newTestConfig()
+	// Root the workspace at dir so the catalog-derived project path (DataDir/
+	// projects/<slug>) matches where the malformed tasks.md was written.
+	cfg = testRuntimeAt(dir, cfg)
+	setTestProjects(cfg, []*models.Project{project})
 
-	_, loaded, failed := LoadCrossScopeTasks(cfg, NewProjectService(), CrossScopeOpts{})
+	_, loaded, failed := LoadCrossScopeTasks(testRuntimeAt(cfg.DataDir(), cfg), NewProjectService(), CrossScopeOpts{})
 	if len(loaded) != 0 {
 		t.Fatalf("loaded projects = %d, want 0", len(loaded))
 	}

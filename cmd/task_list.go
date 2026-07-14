@@ -87,21 +87,17 @@ func init() {
 
 func runTaskList(cmd *cobra.Command, args []string) error {
 	var (
-		project       *models.Project
-		cfg           *config.Config
-		configManager *config.Manager
-		err           error
+		project   *models.Project
+		workspace *CLIWorkspace
+		err       error
 	)
 
 	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
-		cfg, configManager, err = LoadConfig()
+		workspace, err = LoadCLIWorkspace()
 		if err != nil {
 			return err
 		}
-		project, err = lookupProject(configManager, slug)
-		if err != nil {
-			return err
-		}
+		project = workspace.Runtime.GetProject(slug)
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(slug)
 		}
@@ -109,13 +105,11 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load project %s: %w", slug, err)
 		}
 	} else {
-		project, cfg, configManager, err = LoadCurrentProject()
+		project, workspace, err = LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}
 	}
-
-	_, _ = cfg, configManager
 
 	// Validate filter flag values up front so a typo (e.g. --type fix) surfaces
 	// as an error instead of silently returning an empty list.
@@ -157,7 +151,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	}
 
 	if listJSON {
-		return displayTaskJSON(cfg, tasks)
+		return displayTaskJSON(workspace.Runtime.Planning().GetFocusQueue(), tasks)
 	}
 
 	if len(tasks) == 0 {
@@ -209,7 +203,7 @@ type taskJSONEntry struct {
 // State() and Active reports Focus Queue membership (the config-aware successor
 // to the retired Task.Active flag); the retired Stage concept has no state
 // equivalent, so it is no longer emitted (session 33.7.6.3).
-func taskListJSONEntries(cfg *config.Config, tasks []*models.Task) []taskJSONEntry {
+func taskListJSONEntries(focusQueue []config.FocusQueueItem, tasks []*models.Task) []taskJSONEntry {
 	entries := make([]taskJSONEntry, len(tasks))
 	for i, t := range tasks {
 		tags := t.Tags
@@ -228,7 +222,7 @@ func taskListJSONEntries(cfg *config.Config, tasks []*models.Task) []taskJSONEnt
 			Tags:         tags,
 			Section:      models.SectionForState(t.State()),
 			Pinned:       t.Pinned,
-			Active:       taskInFocusQueue(cfg, t.ID),
+			Active:       taskInFocusQueue(focusQueue, t.ID),
 			Dimmed:       t.Dimmed,
 			SnoozedUntil: t.SnoozedUntil,
 			Parked:       t.IsParked(),
@@ -243,8 +237,8 @@ func taskListJSONEntries(cfg *config.Config, tasks []*models.Task) []taskJSONEnt
 	return entries
 }
 
-func displayTaskJSON(cfg *config.Config, tasks []*models.Task) error {
-	entries := taskListJSONEntries(cfg, tasks)
+func displayTaskJSON(focusQueue []config.FocusQueueItem, tasks []*models.Task) error {
+	entries := taskListJSONEntries(focusQueue, tasks)
 	return printJSON(entries)
 }
 

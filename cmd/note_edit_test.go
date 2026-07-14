@@ -14,6 +14,17 @@ func resetNoteEditVars() {
 	noteEditEditor = ""
 }
 
+func applyNoteEdit(dir string, original *models.Note, modified string) (*models.Note, error) {
+	updated, err := parseNoteEdit(original, modified)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.SaveNoteTo(dir, updated); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
 func TestRunNoteEdit(t *testing.T) {
 	t.Run("rejects missing args", func(t *testing.T) {
 		resetNoteEditVars()

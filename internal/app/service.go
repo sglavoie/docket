@@ -122,13 +122,14 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 // durable artifacts (e.g. a config store carrying a bumped template use-count) as
 // ONE ChangeSet, so a mutation whose side effects live outside tasks.md stays
 // atomic with the task write — either the task and its side effects all land or
-// none do. It is the single-project analogue of the note/blocker commitArtifact
+// none do. It is the single-project analog of the note/blocker commitArtifact
 // path, generalized to carry an already-encoded artifact set the caller assembled.
 func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
 	generated := applyPostMutationHooks(ref.Project)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
+		Base:             ref.Base,
 		Artifacts:        artifacts,
 		UndoAction:       undoAction,
 		UndoContext:      undoContext,
@@ -153,6 +154,9 @@ func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision strin
 type projectCommit struct {
 	project          *models.Project
 	expectedRevision string
+	// base is the exact lossless document retained by the snapshot that supplied
+	// project and expectedRevision.
+	base *storage.ProjectDocument
 	// artifacts are auxiliary durable files committed in the same transaction.
 	artifacts []storage.ArtifactChange
 	// attachmentOps are attachment file side effects (move/copy/delete) committed
@@ -173,6 +177,7 @@ func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContex
 		changesets[i] = storage.ChangeSet{
 			Project:          c.project,
 			ExpectedRevision: c.expectedRevision,
+			Base:             c.base,
 			Artifacts:        c.artifacts,
 			AttachmentOps:    c.attachmentOps,
 			UndoAction:       undoAction,

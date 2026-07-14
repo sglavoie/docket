@@ -14,7 +14,7 @@ type TaskAttachmentsModel struct {
 	InteractiveViewState
 	task    *models.Task
 	project *models.Project
-	config  *config.Config
+	runtime *config.RuntimeState
 	// coordinator routes attachment mutations through the application layer
 	// (one atomic ChangeSet each) instead of a direct project save. See
 	// feature_coordinator_secondary.go.
@@ -26,7 +26,7 @@ type TaskAttachmentsModel struct {
 }
 
 // NewTaskAttachmentsModel creates a new task attachments viewer.
-func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *config.Config, coordinator AttachmentCoordinator) *TaskAttachmentsModel {
+func NewTaskAttachmentsModel(task *models.Task, project *models.Project, runtime *config.RuntimeState, coordinator AttachmentCoordinator) *TaskAttachmentsModel {
 	ti := textinput.New()
 	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500
@@ -36,7 +36,7 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *co
 	return &TaskAttachmentsModel{
 		task:        task,
 		project:     project,
-		config:      cfg,
+		runtime:     runtime,
 		coordinator: coordinator,
 		textInput:   ti,
 	}

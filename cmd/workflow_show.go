@@ -39,15 +39,11 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 
 	ruleID := args[0]
 
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-
-	automation, err := automationStore(configManager).LoadAutomation()
-	if err != nil {
-		return err
-	}
+	automation := workspace.Runtime.Automation()
 
 	rule := automation.GetWorkflowRule(ruleID)
 	if rule == nil {

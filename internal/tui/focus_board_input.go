@@ -6,9 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleAddInput handles keyboard input in add mode.
@@ -114,22 +112,10 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	}
 
 	if targetProject == nil {
-		// Use the action inbox as default, creating it on first use. The empty
-		// project's tasks.md is written by the capture transaction below (the
-		// commit creates the file), so no separate raw project save is needed —
-		// only the directory and the config catalog entry are established here.
-		project, created := m.config.EnsureActionInboxProject()
-		targetProject = project
-		if created {
-			if err := storage.CreateProjectDir(targetProject); err != nil {
-				m.setStatus("Failed to create action inbox: " + err.Error())
-				return m, nil
-			}
-			if m.configManager != nil {
-				if err := m.configManager.Save(m.config); err != nil {
-					logging.Warn("failed to save config: %v", err)
-				}
-			}
+		targetProject = m.runtime.SystemInboxProject()
+		if targetProject == nil {
+			m.setStatus("System Inbox is unavailable")
+			return m, nil
 		}
 	}
 

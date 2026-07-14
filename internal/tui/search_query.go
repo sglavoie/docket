@@ -194,7 +194,7 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 // TaskMatchesFilters checks if a task matches all the specified filters. The
 // config resolves Focus Queue membership for the active filters (the successor
 // of the deprecated Task.Active flag); a nil config matches no task as active.
-func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, cfg *config.Config) bool {
+func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, planning *config.PlanningState) bool {
 	if filters == nil {
 		return true
 	}
@@ -252,7 +252,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, cfg *conf
 	}
 
 	// Active filter (Focus Queue membership)
-	if filters.ActiveOnly && !TaskInFocusQueue(cfg, task.ID) {
+	if filters.ActiveOnly && !TaskInFocusQueue(planning, task.ID) {
 		return false
 	}
 
@@ -272,7 +272,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, cfg *conf
 
 	// is: filters (must match the state)
 	for _, f := range filters.IsState {
-		if !matchesIsFilter(task, f, cfg) {
+		if !matchesIsFilter(task, f, planning) {
 			return false
 		}
 	}
@@ -374,14 +374,14 @@ func matchesHasFilter(task *models.Task, filter string) bool {
 }
 
 // matchesIsFilter returns true if the task matches the specified state.
-func matchesIsFilter(task *models.Task, filter string, cfg *config.Config) bool {
+func matchesIsFilter(task *models.Task, filter string, planning *config.PlanningState) bool {
 	switch filter {
 	case "note":
 		return false
 	case "pinned":
 		return task.Pinned
 	case "active":
-		return TaskInFocusQueue(cfg, task.ID)
+		return TaskInFocusQueue(planning, task.ID)
 	case "dimmed":
 		return task.Dimmed
 	case "blocked":

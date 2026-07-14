@@ -13,16 +13,15 @@ import (
 func newExternalEditorSettingsModel(t *testing.T, externalEditor string) *SettingsModel {
 	t.Helper()
 
-	cfg := &config.Config{
-		Editor:         "code",
-		DefaultContext: "personal",
-		ExternalEditor: externalEditor,
-		ActiveTheme:    "dark",
-		ThemeDark:      config.DefaultDarkTheme(),
-		ThemeLight:     config.DefaultLightTheme(),
-	}
+	cfg := newTestConfig()
+	cfg.Machine().Editor = "code"
+	cfg.Machine().ExternalEditor = externalEditor
+	cfg.Settings().DefaultContext = "personal"
+	cfg.Settings().ActiveTheme = "dark"
+	cfg.Settings().ThemeDark = config.DefaultDarkTheme()
+	cfg.Settings().ThemeLight = config.DefaultLightTheme()
 	mgr := config.NewManager(filepath.Join(t.TempDir(), "config.json"))
-	return NewSettingsModel(cfg, mgr)
+	return NewSettingsModel(newSettingsDeps(cfg, mgr))
 }
 
 func TestSettingsExternalEditorRegistryAndSearch(t *testing.T) {
@@ -99,10 +98,7 @@ func TestSettingsExternalEditorInitAndSaveRoundTrip(t *testing.T) {
 	m.externalEditorInput.SetValue("code --reuse-window")
 	m.saveSettings()
 
-	if got := m.config.ExternalEditor; got != "code --reuse-window" {
-		t.Fatalf("Config.ExternalEditor = %q, want code --reuse-window", got)
-	}
-	if got := m.config.GetExternalEditor(); got != "code --reuse-window" {
-		t.Fatalf("Config.GetExternalEditor() = %q, want code --reuse-window", got)
+	if got := m.baseMachine.ExternalEditor; got != "code --reuse-window" {
+		t.Fatalf("MachineState.ExternalEditor = %q, want code --reuse-window", got)
 	}
 }

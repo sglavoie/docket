@@ -16,13 +16,15 @@ func (m *AppModel) handleConflictMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.openNewestConflict()
 
 	case ShowConflictResolutionMsg:
-		return m.showViewInit(ViewConflictResolution, NewConflictResolutionModel(m.config, m.configManager, msg.Bundle))
+		return m.showViewInit(ViewConflictResolution, NewConflictResolutionModel(m.runtime, msg.Bundle))
 
 	case ConflictResolvedMsg:
 		m.popView()
 		switch {
 		case msg.NewConflictID != "":
 			m.setInfoStatus("Remote changed during resolution; new conflict recorded (" + shortConflictNoticeID(msg.NewConflictID) + ")")
+		case msg.RetryRequired:
+			m.setInfoStatus("Conflict cleared without applying changes; retry the original operation")
 		case msg.Adopted:
 			m.setSuccessStatus("Conflict resolved: adopted remote state")
 		default:
@@ -55,7 +57,7 @@ func (m *AppModel) openNewestConflict() (bool, tea.Cmd) {
 		m.setInfoStatus("Could not load conflict: " + err.Error())
 		return true, nil
 	}
-	return m.showViewInit(ViewConflictResolution, NewConflictResolutionModel(m.config, m.configManager, bundle))
+	return m.showViewInit(ViewConflictResolution, NewConflictResolutionModel(m.runtime, bundle))
 }
 
 // conflictStore builds the conflict store for the active workspace.

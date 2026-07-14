@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -31,7 +32,7 @@ func (m *DashboardModel) getAllContexts() []string {
 func (m *DashboardModel) matchesFilters(p *models.Project) bool {
 	// Apply custom context filter first (list of specific project IDs)
 	if m.filterCustomContext != "" {
-		if !m.config.IsProjectInCustomContext(m.filterCustomContext, p.ID) {
+		if !m.runtime.Machine().IsProjectInCustomContext(m.filterCustomContext, p.ID) {
 			return false
 		}
 	} else if m.filterContext != "" && p.Context != m.filterContext {
@@ -112,9 +113,9 @@ func (m *DashboardModel) renderFilterBar() (string, int) {
 
 func (m *DashboardModel) loadProjects() {
 	if m.showArchived {
-		m.projects = m.config.GetArchivedProjects()
+		m.projects = m.runtime.ArchivedProjects()
 	} else {
-		m.projects = m.config.GetActiveProjects()
+		m.projects = m.runtime.ActiveProjects()
 	}
 	for _, p := range m.projects {
 		if err := storage.LoadProject(p); err != nil {
@@ -123,7 +124,7 @@ func (m *DashboardModel) loadProjects() {
 	}
 
 	// Evaluate project-level workflow rules for all loaded projects
-	rules := m.config.GetEnabledWorkflowRules()
+	rules := m.runtime.Automation().GetEnabledWorkflowRules()
 	if len(rules) > 0 {
 		changed := false
 		for _, p := range m.projects {
@@ -141,8 +142,12 @@ func (m *DashboardModel) loadProjects() {
 				changed = true
 			}
 		}
-		if changed && m.configManager != nil {
-			if err := m.configManager.Save(m.config); err != nil {
+		if changed {
+			if err := commitCatalogToRuntime(m.runtime, func(catalog *config.WorkspaceCatalog) {
+				for _, project := range m.projects {
+					catalog.UpsertProject(project)
+				}
+			}); err != nil {
 				logging.Warn("failed to save config: %v", err)
 			}
 		}

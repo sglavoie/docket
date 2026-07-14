@@ -17,7 +17,7 @@ func TestApplySavedFilterToProjectViewsKeepsZeroUseCatalogTag(t *testing.T) {
 		FilterTags: []string{"catalog-only", "missing"},
 	}
 
-	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 	app.applySavedFilterToTree(filter)
 	if !app.projectTree.filter.Tags["catalog-only"] {
 		t.Fatalf("project tree tags = %v, want catalog-only restored", app.projectTree.filter.Tags)
@@ -26,7 +26,7 @@ func TestApplySavedFilterToProjectViewsKeepsZeroUseCatalogTag(t *testing.T) {
 		t.Fatalf("project tree tags = %v, want missing tag rejected", app.projectTree.filter.Tags)
 	}
 
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.applySavedFilterToOutliner(filter)
 	if !app.outliner.filter.Tags["catalog-only"] {
 		t.Fatalf("outliner tags = %v, want catalog-only restored", app.outliner.filter.Tags)
@@ -44,7 +44,7 @@ func TestLoadSavedFilterAppliesCrossProjectCatalogTags(t *testing.T) {
 		Tags: []string{"catalog-only"},
 	}
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.pushView(ViewCrossProjectOutliner)
 
@@ -80,7 +80,7 @@ func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
 		Sections: []string{models.SectionNext, "Sprint-1"},
 	}
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.pushView(ViewCrossProjectOutliner)
 
@@ -111,7 +111,7 @@ func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
 func TestCaptureAndLoadSavedFilterRestoresSingleProjectPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.PinnedTags = []string{"backend"}
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.pushView(ViewOutliner)
 	app.outliner.setPinnedTagTabIndex(1)
 
@@ -136,7 +136,8 @@ func TestCaptureAndLoadSavedFilterRestoresSingleProjectPinnedTagTab(t *testing.T
 
 func TestCaptureAndLoadSavedFilterRestoresCrossProjectPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
-	app.config.GlobalPinnedTags = []string{"backend"}
+	app.runtime.Settings().GlobalPinnedTags = []string{"backend"}
+	syncTestRuntime(app)
 	task := &models.Task{ID: "task", Title: "Backend", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{
 		ID:    "alpha",
@@ -144,7 +145,7 @@ func TestCaptureAndLoadSavedFilterRestoresCrossProjectPinnedTagTab(t *testing.T)
 		Tasks: []*models.Task{task},
 	}
 	project.BuildTaskTree()
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.pushView(ViewCrossProjectOutliner)
 	app.crossOutliner.setPinnedTagTabIndex(1)

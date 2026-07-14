@@ -42,12 +42,17 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 
 	templateID := args[0]
 
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
-	t := cfg.GetTaskTemplate(templateID)
+	t := automation.GetTaskTemplate(templateID)
 	if t == nil {
 		return fmt.Errorf("task template not found: %s. Use 'tt template list' to see templates", templateID)
 	}
@@ -61,11 +66,11 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if !cfg.DeleteTaskTemplate(templateID) {
+	if !automation.DeleteTaskTemplate(templateID) {
 		return fmt.Errorf("failed to delete task template: %s", templateID)
 	}
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 

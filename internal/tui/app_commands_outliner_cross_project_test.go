@@ -14,7 +14,7 @@ func setupCrossPaletteApp(t *testing.T) (app *AppModel, singleProj *models.Proje
 	t.Helper()
 	app, singleProj = newTestAppModelWithProject()
 
-	app.outliner = NewOutlinerModel(singleProj, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(singleProj, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 	app.views.Register(ViewOutliner, app.outliner)
@@ -25,7 +25,7 @@ func setupCrossPaletteApp(t *testing.T) (app *AppModel, singleProj *models.Proje
 	crossProj.Tasks = []*models.Task{crossTask}
 	crossProj.BuildTaskTree()
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{crossProj}
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProj.ID}}
 	app.crossOutliner.cursor = 0

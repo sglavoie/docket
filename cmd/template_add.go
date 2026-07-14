@@ -187,15 +187,18 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid template: %w", err)
 	}
 
-	// Load config and save
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
+	if err != nil {
+		return err
+	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
 
-	cfg.AddTaskTemplate(*t)
+	domains.Automation.AddTaskTemplate(*t)
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, domains.Automation); err != nil {
 		return err
 	}
 

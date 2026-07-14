@@ -5,17 +5,19 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // GlobalTagManagerModel is the model for the global tag management view.
 type GlobalTagManagerModel struct {
-	config        *config.Config
-	configManager *config.Manager
-	coordinator   TagCoordinator
-	tags          []GlobalTagInfo
-	cursor        int
-	width         int
-	height        int
+	projects []*models.Project
+	// runtime backs the domain-native global-pinned-tag read/commit (Settings).
+	runtime     *config.RuntimeState
+	coordinator TagCoordinator
+	tags        []GlobalTagInfo
+	cursor      int
+	width       int
+	height      int
 
 	// Rename state
 	renameMode   bool
@@ -34,24 +36,19 @@ type GlobalTagManagerModel struct {
 // NewGlobalTagManagerModel creates a new global tag manager model. The
 // coordinator backs the workspace-wide tag-rename use case; task and catalog
 // mutations still route through the shell.
-func NewGlobalTagManagerModel(cfg *config.Config, coordinator TagCoordinator, managers ...*config.Manager) *GlobalTagManagerModel {
+func NewGlobalTagManagerModel(projects []*models.Project, runtime *config.RuntimeState, coordinator TagCoordinator) *GlobalTagManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
 	renameInput.SetWidth(30)
 	applyThemedTextInput(&renameInput)
 
-	var manager *config.Manager
-	if len(managers) > 0 {
-		manager = managers[0]
-	}
-
 	m := &GlobalTagManagerModel{
-		config:        cfg,
-		configManager: manager,
-		coordinator:   coordinator,
-		cursor:        0,
-		renameInput:   renameInput,
+		projects:    projects,
+		runtime:     runtime,
+		coordinator: coordinator,
+		cursor:      0,
+		renameInput: renameInput,
 	}
 	m.buildGlobalTagList()
 	return m

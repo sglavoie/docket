@@ -332,8 +332,8 @@ func (s *Service) moveToProject(taskID, destProjectID string, destSection *strin
 	}
 
 	results, err := s.commitProjects([]projectCommit{
-		{project: src, expectedRevision: srcRev, artifacts: artifacts, attachmentOps: attachmentOps},
-		{project: dest, expectedRevision: destRev},
+		{project: src, expectedRevision: srcRev, base: ref.Base, artifacts: artifacts, attachmentOps: attachmentOps},
+		{project: dest, expectedRevision: destRev, base: snap.Document(dest.ID)},
 	}, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
 	if err != nil {
 		return MoveResult{}, err

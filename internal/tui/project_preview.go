@@ -25,22 +25,21 @@ type CloseProjectPreviewMsg struct{ PopViewMsg }
 
 // ProjectPreviewModel is the model for the project preview view.
 type ProjectPreviewModel struct {
-	project       *models.Project
-	config        *config.Config
-	configManager *config.Manager
-	viewport      viewport.Model
-	width         int
-	height        int
-	ready         bool
+	project *models.Project
+	// runtime backs the domain-native scoring read (project scoring profile).
+	runtime  *config.RuntimeState
+	viewport viewport.Model
+	width    int
+	height   int
+	ready    bool
 }
 
 // NewProjectPreviewModel creates a new project preview model.
-func NewProjectPreviewModel(project *models.Project, cfg *config.Config, mgr *config.Manager) *ProjectPreviewModel {
+func NewProjectPreviewModel(project *models.Project, runtime *config.RuntimeState) *ProjectPreviewModel {
 	return &ProjectPreviewModel{
-		project:       project,
-		config:        cfg,
-		configManager: mgr,
-		ready:         false,
+		project: project,
+		runtime: runtime,
+		ready:   false,
 	}
 }
 
@@ -156,18 +155,16 @@ func (m *ProjectPreviewModel) renderContent() string {
 	b.WriteString("\n")
 
 	// Scoring Profile
-	if m.config != nil {
-		b.WriteString(BoldStyle.Render("Scoring Profile"))
-		b.WriteString("\n")
-		profile := m.config.GetProjectScoringProfile(p.ID)
-		if profile != nil {
-			fmt.Fprintf(&b, "  %s (%s)\n", profile.Name, profile.Formula)
-		} else {
-			b.WriteString(MutedStyle.Render("  None"))
-			b.WriteString("\n")
-		}
+	b.WriteString(BoldStyle.Render("Scoring Profile"))
+	b.WriteString("\n")
+	profile := m.runtime.Automation().GetProjectScoringProfile(p.ID)
+	if profile != nil {
+		fmt.Fprintf(&b, "  %s (%s)\n", profile.Name, profile.Formula)
+	} else {
+		b.WriteString(MutedStyle.Render("  None"))
 		b.WriteString("\n")
 	}
+	b.WriteString("\n")
 
 	// Task summary
 	total := p.CountTasks()

@@ -11,21 +11,19 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// This file decomposes the monolithic Config aggregate into five explicit
-// persistence domains that mirror the durable layout described in context.md:
+// Configuration is split into five explicit persistence domains:
 //
 //   - WorkspaceCatalog -> <data>/.tt/workspace.json
 //   - PlanningState    -> <data>/.tt/planning.json
 //   - Settings         -> <data>/.tt/settings.json
 //   - AutomationConfig -> <data>/.tt/automation.json
-//   - MachineState     -> ~/.tt/runtime/<workspace-id>/machine.json
+//   - MachineState     -> ~/.tt/machine.json for the default local workspace,
+//     otherwise ~/.tt/runtime/<data-dir-hash>/machine.json
 //
-// Each aggregate owns a narrow, cohesive slice of the former Config fields,
-// its own defaults, its own validation, and its own project-reference cleanup.
-// The legacy Config struct remains the on-disk format for now; Decompose /
-// ApplyTo (see domain_store.go) provide the temporary facade so existing call
-// sites keep operating on *Config while new code can target one domain at a
-// time. Later sessions route persistence through these domains directly.
+// Each aggregate owns its defaults, validation, project-reference cleanup, and
+// persistence lifecycle. RuntimeState composes the five loaded domains for
+// long-lived consumers, while mutations commit only the owning domain (or an
+// explicit checked multi-domain transaction).
 
 // CatalogProject is the persisted, portable description of a project inside the
 // WorkspaceCatalog. It deliberately omits the absolute on-disk Path that the
@@ -49,6 +47,18 @@ type CatalogProject struct {
 	Sandbox          bool       `json:"sandbox,omitempty"`
 	Internal         bool       `json:"internal,omitempty"`
 }
+
+const (
+	// SystemInboxName and SystemInboxSlug are the user-facing identity of the
+	// workspace-owned capture project. The catalog reference, rather than the
+	// display name or slug, is the durable identity used by callers.
+	SystemInboxName = "Inbox"
+	SystemInboxSlug = "inbox"
+
+	// LegacyActionInboxSlug identifies the hidden predecessor migrated by the
+	// TUI when it first opens a workspace created by an older release.
+	LegacyActionInboxSlug = "action-inbox"
+)
 
 // CatalogPath derives a project's data directory from the workspace data
 // directory and the project slug. Absolute paths are never persisted; this is
@@ -115,6 +125,13 @@ type WorkspaceCatalog struct {
 	SystemInboxProjectID string           `json:"system_inbox_project_id,omitempty"`
 }
 
+// IsSystemInboxProject reports whether id is the catalog-owned Inbox. Names and
+// slugs are deliberately ignored so identity stays stable across presentation
+// changes and legacy migrations.
+func (w *WorkspaceCatalog) IsSystemInboxProject(id string) bool {
+	return w != nil && id != "" && w.SystemInboxProjectID == id
+}
+
 // NewWorkspaceCatalog returns a catalog seeded with defaults.
 func NewWorkspaceCatalog() *WorkspaceCatalog {
 	return &WorkspaceCatalog{
@@ -173,6 +190,25 @@ func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
 		changed = true
 	}
 	return changed
+}
+
+// UpsertProject adds a project to the catalog or, when one with the same ID
+// already exists, replaces its snapshot in place. The project is stored in its
+// portable catalog form (absolute Path and computed fields dropped), so a TUI
+// that mutates catalog-owned flags on a rehydrated models.Project (Archive,
+// Pin, rename) can write the change back through a checked catalog commit.
+func (w *WorkspaceCatalog) UpsertProject(p *models.Project) {
+	if p == nil {
+		return
+	}
+	cp := catalogProjectFromModel(p)
+	for i := range w.Projects {
+		if w.Projects[i].ID == p.ID {
+			w.Projects[i] = cp
+			return
+		}
+	}
+	w.Projects = append(w.Projects, cp)
 }
 
 // PlanningState owns the planning collections: focus queue, daily plan, review
@@ -249,25 +285,51 @@ type AIConsentSettings struct {
 	GrantedAt *time.Time `json:"granted_at,omitempty"`
 }
 
+// OnboardingProgress records the five durable first-run milestones. Each flag
+// is monotonic: once observed it remains complete even if the corresponding
+// task or project is later removed.
+type OnboardingProgress struct {
+	ProjectCreated bool `json:"project_created,omitempty"`
+	TaskCaptured   bool `json:"task_captured,omitempty"`
+	InboxTriaged   bool `json:"inbox_triaged,omitempty"`
+	TaskPlanned    bool `json:"task_planned,omitempty"`
+	TaskCompleted  bool `json:"task_completed,omitempty"`
+}
+
+// CompletedCount returns the number of finished onboarding milestones.
+func (p OnboardingProgress) CompletedCount() int {
+	count := 0
+	for _, done := range []bool{p.ProjectCreated, p.TaskCaptured, p.InboxTriaged, p.TaskPlanned, p.TaskCompleted} {
+		if done {
+			count++
+		}
+	}
+	return count
+}
+
+// Complete reports whether every onboarding milestone has been observed.
+func (p OnboardingProgress) Complete() bool { return p.CompletedCount() == 5 }
+
 // Settings owns portable behavior, appearance, alert, and privacy/AI-consent
 // preferences. It maps to <data>/.tt/settings.json.
 type Settings struct {
 	// Behavior.
-	DefaultContext        string            `json:"default_context,omitempty"`
-	FzfEnabled            bool              `json:"fzf_enabled"`
-	GlowEnabled           bool              `json:"glow_enabled"`
-	FzfTimeout            *int              `json:"fzf_timeout,omitempty"`
-	UndoHistoryDepth      *int              `json:"undo_history_depth,omitempty"`
-	PopupTimeoutSeconds   *int              `json:"popup_timeout_seconds,omitempty"`
-	TimeFormat            string            `json:"time_format,omitempty"`
-	WeekEndDay            string            `json:"week_end_day,omitempty"`
-	UseEmoji              *bool             `json:"use_emoji,omitempty"`
-	LinkedTaskJumpToNew   *bool             `json:"linked_task_jump_to_new,omitempty"`
-	TutorDismissed        *bool             `json:"tutor_dismissed,omitempty"`
-	DefaultProjectView    string            `json:"default_project_view,omitempty"`
-	FocusBoardDefaultMode string            `json:"focus_board_default_mode,omitempty"`
-	GlobalPinnedTags      []string          `json:"global_pinned_tags,omitempty"`
-	SectionColors         map[string]string `json:"section_colors,omitempty"`
+	DefaultContext        string              `json:"default_context,omitempty"`
+	FzfEnabled            bool                `json:"fzf_enabled"`
+	GlowEnabled           bool                `json:"glow_enabled"`
+	FzfTimeout            *int                `json:"fzf_timeout,omitempty"`
+	UndoHistoryDepth      *int                `json:"undo_history_depth,omitempty"`
+	PopupTimeoutSeconds   *int                `json:"popup_timeout_seconds,omitempty"`
+	TimeFormat            string              `json:"time_format,omitempty"`
+	WeekEndDay            string              `json:"week_end_day,omitempty"`
+	UseEmoji              *bool               `json:"use_emoji,omitempty"`
+	LinkedTaskJumpToNew   *bool               `json:"linked_task_jump_to_new,omitempty"`
+	TutorDismissed        *bool               `json:"tutor_dismissed,omitempty"`
+	Onboarding            *OnboardingProgress `json:"onboarding,omitempty"`
+	DefaultProjectView    string              `json:"default_project_view,omitempty"`
+	FocusBoardDefaultMode string              `json:"focus_board_default_mode,omitempty"`
+	GlobalPinnedTags      []string            `json:"global_pinned_tags,omitempty"`
+	SectionColors         map[string]string   `json:"section_colors,omitempty"`
 
 	// Behavior — activity, list, and pin limits.
 	MaxActivityEntries    *int  `json:"max_activity_entries,omitempty"`
@@ -413,7 +475,8 @@ func (a *AutomationConfig) RemoveProjectReferences(id, slug string) bool {
 
 // MachineState owns machine-specific preferences that should not follow a
 // workspace between machines: editors, navigation, histories, and layout. It
-// maps to ~/.tt/runtime/<workspace-id>/machine.json.
+// maps to ~/.tt/machine.json for the default local workspace and otherwise to
+// ~/.tt/runtime/<data-dir-hash>/machine.json, keyed by the cleaned data-dir path.
 type MachineState struct {
 	// Editors and integrations.
 	Editor           string `json:"editor,omitempty"`

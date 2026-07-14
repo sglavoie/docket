@@ -58,11 +58,7 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var cfgEditor string
-	if ctx.Config != nil {
-		cfgEditor = ctx.Config.Editor
-	}
-	editor := resolveEditor(noteEditEditor, cfgEditor)
+	editor := resolveEditor(noteEditEditor, ctx.Editor)
 
 	content, err := storage.RenderNoteContent(note)
 	if err != nil {
@@ -81,9 +77,12 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	updatedNote, err := applyNoteEdit(ctx.Dir, note, modified)
+	updatedNote, err := parseNoteEdit(note, modified)
 	if err != nil {
 		return err
+	}
+	if err := saveNoteContext(ctx, updatedNote); err != nil {
+		return fmt.Errorf("failed to save note: %w", err)
 	}
 
 	if out.Quiet {
@@ -115,7 +114,7 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 // original title was something else — storage.parseNote silently substitutes
 // the filename when the YAML title is empty, so the only way to detect "user
 // wiped the title" is to compare against the pre-edit title.
-func applyNoteEdit(dir string, original *models.Note, modified string) (*models.Note, error) {
+func parseNoteEdit(original *models.Note, modified string) (*models.Note, error) {
 	updated, err := storage.ParseNoteContent(original.Filename, modified)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse edited note: %w", err)
@@ -135,9 +134,6 @@ func applyNoteEdit(dir string, original *models.Note, modified string) (*models.
 		if updated.Title == substituted {
 			return nil, fmt.Errorf("edited note has empty title (changes not saved)")
 		}
-	}
-	if err := storage.SaveNoteTo(dir, updated); err != nil {
-		return nil, fmt.Errorf("failed to save note: %w", err)
 	}
 	return updated, nil
 }

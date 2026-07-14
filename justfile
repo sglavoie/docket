@@ -81,20 +81,13 @@ lint-ci:
     echo "Running golangci-lint..."
     golangci-lint run
 
-# Run all CI checks locally (test, coverage, lint)
+# Run the exact platform-independent gate invoked by GitHub CI.
 ci:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Running CI checks locally..."
-    echo "Running tests with race detector..."
-    go test -race -coverprofile=coverage.out ./cmd/... ./internal/...
-    if ! command -v golangci-lint &>/dev/null; then
-        echo "Error: golangci-lint not found. Install it from https://golangci-lint.run/welcome/install/"
-        exit 1
-    fi
-    echo "Running golangci-lint..."
-    golangci-lint run
-    echo "All CI checks passed!"
+    ./scripts/ci.sh
+
+# Replay every committed TUI scenario with one command.
+tui-scenarios:
+    ./scripts/run_tui_scenarios.sh
 
 # Run code quality checks (deadcode, vet, fmt, goimports, staticcheck)
 check:

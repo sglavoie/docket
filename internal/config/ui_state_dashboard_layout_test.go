@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGetDashboardBottomLayout_DefaultHorizontal(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	if got := cfg.GetDashboardBottomLayout(); got != DashboardLayoutHorizontal {
 		t.Errorf("expected DashboardLayoutHorizontal (0) by default, got %d", got)
@@ -20,7 +20,7 @@ func TestGetDashboardBottomLayout_ExplicitValues(t *testing.T) {
 		{2, DashboardLayoutListOnly},
 	}
 	for _, tc := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		v := tc.stored
 		cfg.DashboardBottomLayout = &v
 		if got := cfg.GetDashboardBottomLayout(); got != tc.want {
@@ -32,7 +32,7 @@ func TestGetDashboardBottomLayout_ExplicitValues(t *testing.T) {
 func TestGetDashboardBottomLayout_ClampInvalid(t *testing.T) {
 	cases := []int{-1, 3, 99}
 	for _, stored := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		v := stored
 		cfg.DashboardBottomLayout = &v
 		if got := cfg.GetDashboardBottomLayout(); got != DashboardLayoutHorizontal {
@@ -42,7 +42,7 @@ func TestGetDashboardBottomLayout_ClampInvalid(t *testing.T) {
 }
 
 func TestSetDashboardBottomLayout(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SetDashboardBottomLayout(DashboardLayoutVertical)
 
 	if cfg.DashboardBottomLayout == nil {
@@ -62,7 +62,7 @@ func TestSetDashboardBottomLayout(t *testing.T) {
 func TestSetDashboardBottomLayout_ClampsInvalid(t *testing.T) {
 	cases := []DashboardBottomLayout{-1, 3, 99, DashboardBottomLayout(-50)}
 	for _, in := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		cfg.SetDashboardBottomLayout(in)
 		if cfg.DashboardBottomLayout == nil {
 			t.Fatalf("in=%d: pointer should not be nil after Set", in)
@@ -74,7 +74,7 @@ func TestSetDashboardBottomLayout_ClampsInvalid(t *testing.T) {
 }
 
 func TestGetDashboardHorizontalSplitPct_Default(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	if got := cfg.GetDashboardHorizontalSplitPct(); got != DefaultDashboardHorizontalSplitPct {
 		t.Errorf("expected default %d, got %d", DefaultDashboardHorizontalSplitPct, got)
 	}
@@ -95,7 +95,7 @@ func TestGetDashboardHorizontalSplitPct_ClampStored(t *testing.T) {
 		{-5, MinDashboardSplitPct},
 	}
 	for _, tc := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		v := tc.stored
 		cfg.DashboardHorizontalSplitPct = &v
 		if got := cfg.GetDashboardHorizontalSplitPct(); got != tc.want {
@@ -114,7 +114,7 @@ func TestSetDashboardHorizontalSplitPct_Clamps(t *testing.T) {
 		{99, MaxDashboardSplitPct},
 	}
 	for _, tc := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		cfg.SetDashboardHorizontalSplitPct(tc.in)
 		if cfg.DashboardHorizontalSplitPct == nil {
 			t.Fatalf("in=%d: pointer should not be nil after Set", tc.in)
@@ -126,7 +126,7 @@ func TestSetDashboardHorizontalSplitPct_Clamps(t *testing.T) {
 }
 
 func TestGetDashboardVerticalSplitPct_Default(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	if got := cfg.GetDashboardVerticalSplitPct(); got != DefaultDashboardVerticalSplitPct {
 		t.Errorf("expected default %d, got %d", DefaultDashboardVerticalSplitPct, got)
 	}
@@ -145,7 +145,7 @@ func TestGetDashboardVerticalSplitPct_ClampStored(t *testing.T) {
 		{-1, MinDashboardSplitPct},
 	}
 	for _, tc := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		v := tc.stored
 		cfg.DashboardVerticalSplitPct = &v
 		if got := cfg.GetDashboardVerticalSplitPct(); got != tc.want {
@@ -164,7 +164,7 @@ func TestSetDashboardVerticalSplitPct_Clamps(t *testing.T) {
 		{500, MaxDashboardSplitPct},
 	}
 	for _, tc := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		cfg.SetDashboardVerticalSplitPct(tc.in)
 		if cfg.DashboardVerticalSplitPct == nil {
 			t.Fatalf("in=%d: pointer should not be nil after Set", tc.in)

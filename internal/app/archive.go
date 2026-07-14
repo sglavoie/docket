@@ -37,7 +37,7 @@ type ArchiveResult struct {
 // the adapter after a successful commit. When the project has no completed tasks
 // nothing is committed and ArchivedCount is 0.
 func (s *Service) ArchiveTasks(projectID string, artifacts ...storage.ArtifactChange) (ArchiveResult, error) {
-	_, project, revision, err := s.resolveProject(projectID)
+	snap, project, revision, err := s.resolveProject(projectID)
 	if err != nil {
 		return ArchiveResult{}, err
 	}
@@ -65,6 +65,7 @@ func (s *Service) ArchiveTasks(projectID string, artifacts ...storage.ArtifactCh
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          project,
 		ExpectedRevision: revision,
+		Base:             snap.Document(project.ID),
 		Artifacts:        arts,
 		AttachmentOps:    plan.AttachmentOps,
 		UndoAction:       "Archive Tasks",
@@ -133,9 +134,9 @@ func (s *Service) ArchiveAllTasks(projectIDs []string, artifacts ...storage.Arti
 		if project == nil {
 			return ArchiveAllResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, pid)
 		}
-		plan, err := storage.PlanArchiveTasks(project)
-		if err != nil {
-			return ArchiveAllResult{}, err
+		plan, planErr := storage.PlanArchiveTasks(project)
+		if planErr != nil {
+			return ArchiveAllResult{}, planErr
 		}
 		if plan.Count == 0 {
 			continue
@@ -151,6 +152,7 @@ func (s *Service) ArchiveAllTasks(projectIDs []string, artifacts ...storage.Arti
 		commits = append(commits, projectCommit{
 			project:          project,
 			expectedRevision: snap.Revision(pid),
+			base:             snap.Document(pid),
 			artifacts:        arts,
 			attachmentOps:    plan.AttachmentOps,
 		})

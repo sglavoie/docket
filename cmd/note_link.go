@@ -42,7 +42,7 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--global cannot be used with 'note link': links require a project task")
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,8 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		note.AddLink(task.ID)
 	}
 
-	if err := storage.SaveNote(project, note); err != nil {
+	ctx := &NoteContext{Dir: storage.NotesDir(project), Project: project, Workspace: workspace}
+	if err := saveNoteContext(ctx, note); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 

@@ -15,8 +15,11 @@ import (
 // - template_list_preview.go: preview rendering helpers
 type TaskTemplatesModel struct {
 	BaseSearchableView
-	config        *config.Config
-	configManager *config.Manager
+	// runtime is the domain-native snapshot: templates read from
+	// runtime.Automation() and mutations commit through the coordinator built
+	// over it (RuntimeState.CommitAutomation), which refreshes the snapshot.
+	runtime     *config.RuntimeState
+	coordinator WorkflowCoordinator
 
 	InteractiveViewState
 	allTemplates      []template.TaskTemplate
@@ -28,12 +31,16 @@ type TaskTemplatesModel struct {
 }
 
 // NewTaskTemplatesModel creates a new task templates model.
-func NewTaskTemplatesModel(cfg *config.Config, manager *config.Manager) *TaskTemplatesModel {
-	defaultTemplates, customTemplates := cfg.GetTaskTemplatesSorted()
+func NewTaskTemplatesModel(runtime *config.RuntimeState) *TaskTemplatesModel {
+	defaultTemplates, customTemplates := runtime.Automation().GetTaskTemplatesSorted()
 	allTemplates := append(defaultTemplates, customTemplates...)
+	var coordinator WorkflowCoordinator
+	if runtime != nil {
+		coordinator = newWorkflowCoordinator(runtime)
+	}
 	m := &TaskTemplatesModel{
-		config:            cfg,
-		configManager:     manager,
+		runtime:           runtime,
+		coordinator:       coordinator,
 		allTemplates:      allTemplates,
 		filteredTemplates: allTemplates,
 		defaultCount:      len(defaultTemplates),

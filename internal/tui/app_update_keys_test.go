@@ -300,8 +300,10 @@ func TestHandleGlobalKeyPress_SpaceFallsThroughWithoutCursorTask(t *testing.T) {
 
 func TestCustomContextEditorSpaceTogglesProjectThroughApp(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.config.SetCustomContext("Work", []string{project.ID})
-	editor := NewCustomContextEditorModel(app.config, "Work")
+	// Custom contexts are machine-local state; the editor reads them from the
+	// runtime snapshot (which diverges from app.config in the in-memory harness).
+	app.runtime.Machine().SetCustomContext("Work", []string{project.ID})
+	editor := NewCustomContextEditorModel(app.runtime, "Work")
 	app.showView(ViewCustomContextEditor, editor)
 
 	if !editor.selectedIDs[project.ID] {
@@ -324,8 +326,8 @@ func TestCustomContextEditorSpaceTogglesProjectThroughApp(t *testing.T) {
 
 func TestHandleGlobalKeyPress_CtrlOOpensTaskReference(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.config.Editor = "vim"
-	app.config.ExternalEditor = "code"
+	app.runtime.Machine().Editor = "vim"
+	app.runtime.Machine().ExternalEditor = "code"
 	task := project.Tasks[0]
 	taskTitle := task.Title
 
@@ -429,7 +431,7 @@ func TestHandleGlobalKeyPress_CtrlOOpensTaskReferenceFromPrimaryViews(t *testing
 			name:     "project tree",
 			viewType: ViewProjectTree,
 			setupView: func(app *AppModel, project *models.Project) View {
-				tree := NewProjectTreeModel(project, app.config, app.configManager)
+				tree := NewProjectTreeModel(project, app.configManager, app.runtime)
 				app.projectTree = tree
 				return tree
 			},
@@ -438,7 +440,7 @@ func TestHandleGlobalKeyPress_CtrlOOpensTaskReferenceFromPrimaryViews(t *testing
 			name:     "outliner",
 			viewType: ViewOutliner,
 			setupView: func(app *AppModel, project *models.Project) View {
-				outliner := NewOutlinerModel(project, app.config, app.configManager)
+				outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 				outliner.rebuildRows()
 				for i, row := range outliner.rows {
 					if row.isTaskRow() && row.task != nil {
@@ -455,8 +457,8 @@ func TestHandleGlobalKeyPress_CtrlOOpensTaskReferenceFromPrimaryViews(t *testing
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			app, project := newTestAppModelWithProject()
-			app.config.Editor = "vim"
-			app.config.ExternalEditor = "code"
+			app.runtime.Machine().Editor = "vim"
+			app.runtime.Machine().ExternalEditor = "code"
 
 			view := tc.setupView(app, project)
 			refProvider, ok := view.(taskReferenceProvider)

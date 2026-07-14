@@ -11,7 +11,7 @@ import (
 // ActiveFilterCount() and producing "Filters: ready ready" in the badge.
 func TestProjectTreeActiveFilterParts_ReadyAppearsOnce(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	pt := NewProjectTreeModel(project, app.config, nil)
+	pt := NewProjectTreeModel(project, nil, app.runtime)
 	pt.filter.Actionable = true
 
 	parts := pt.activeFilterParts()
@@ -33,7 +33,7 @@ func TestProjectTreeActiveFilterParts_ReadyAppearsOnce(t *testing.T) {
 // TestProjectTreeActiveFilterParts_ReadyAppearsOnce.
 func TestOutlinerActiveFilterParts_ReadyAppearsOnce(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	ol := NewOutlinerModel(project, app.config, app.configManager)
+	ol := NewOutlinerModel(project, app.configManager, app.runtime)
 	ol.filter.Actionable = true
 
 	parts := ol.activeFilterParts()
@@ -55,7 +55,7 @@ func TestOutlinerActiveFilterParts_ReadyAppearsOnce(t *testing.T) {
 // when Actionable is not toggled on.
 func TestProjectTreeActiveFilterParts_NoReadyWhenInactive(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	pt := NewProjectTreeModel(project, app.config, nil)
+	pt := NewProjectTreeModel(project, nil, app.runtime)
 	pt.filter.Actionable = false
 
 	for _, p := range pt.activeFilterParts() {

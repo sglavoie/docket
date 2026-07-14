@@ -1,31 +1,104 @@
 package tui
 
 import (
-	"os/exec"
-	"strings"
+	"context"
+	"errors"
+	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *AskViewModel) applyCommands() tea.Cmd {
-	commands := make([]string, len(m.commands))
-	copy(commands, m.commands)
-	m.commands = nil
-
-	return func() tea.Msg {
-		var results []AskCommandResultMsg
-		for _, c := range commands {
-			parts := strings.Fields(c)
-			if len(parts) < 2 {
-				continue
-			}
-			cmd := exec.Command(parts[0], parts[1:]...)
-			out, err := cmd.CombinedOutput()
-			results = append(results, AskCommandResultMsg{Command: c, Output: string(out), Err: err})
-		}
-		if len(results) == 0 {
-			return nil
-		}
-		return AskCommandBatchMsg{Results: results}
+func (m *AskViewModel) applyPlan(plan app.ActionPlan, destructive bool) tea.Cmd {
+	service := m.service
+	runtime := m.runtime
+	var pendingDomains *config.Domains
+	var runtimeErr error
+	if runtime != nil {
+		pendingDomains, runtimeErr = runtime.CloneDomains()
 	}
+	m.state = askStateApplying
+	return func() tea.Msg {
+		if service == nil {
+			return AskActionPlanAppliedMsg{Err: fmt.Errorf("application service is unavailable")}
+		}
+		result, err := service.ApplyActionPlan(context.Background(), plan, app.ApplyActionPlanOptions{
+			ConfirmSafe:        true,
+			ConfirmDestructive: destructive,
+			DeletedTaskArtifacts: func(deletedTaskIDs []string) ([]storage.ArtifactChange, error) {
+				if runtime == nil {
+					return nil, fmt.Errorf("runtime state is unavailable")
+				}
+				if runtimeErr != nil {
+					return nil, runtimeErr
+				}
+				if pendingDomains == nil {
+					return nil, fmt.Errorf("runtime domains are unavailable")
+				}
+				if pendingDomains.Planning.RemoveDurableTaskRefs(askActionPlanTaskIDSet(deletedTaskIDs)) == 0 || runtime.DataDir() == "" {
+					return nil, nil
+				}
+				artifact, artifactErr := runtime.CheckedPlanningArtifact(pendingDomains.Planning)
+				if artifactErr != nil {
+					return nil, artifactErr
+				}
+				return []storage.ArtifactChange{{
+					Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
+				}}, nil
+			},
+		})
+		if err != nil {
+			return AskActionPlanAppliedMsg{Err: err}
+		}
+		return AskActionPlanAppliedMsg{Result: result, PendingDomains: pendingDomains}
+	}
+}
+
+func repairAskActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []string, pendingDomains *config.Domains) error {
+	if len(deletedTaskIDs) == 0 {
+		return nil
+	}
+	if runtime == nil {
+		return fmt.Errorf("runtime state is unavailable")
+	}
+	deleted := askActionPlanTaskIDSet(deletedTaskIDs)
+	if runtime.DataDir() == "" {
+		if pendingDomains == nil {
+			var err error
+			pendingDomains, err = runtime.CloneDomains()
+			if err != nil {
+				return err
+			}
+		}
+		pendingDomains.Machine.RemoveMachineLocalTaskRefs(deleted)
+		runtime.SetDomainsInMemory(pendingDomains)
+		return nil
+	}
+
+	var warnings []error
+	if err := runtime.RefreshAfterCommit(); err != nil {
+		warnings = append(warnings, fmt.Errorf("refresh planning state: %w", err))
+	}
+	domains, err := runtime.CloneDomains()
+	if err != nil {
+		warnings = append(warnings, err)
+		return errors.Join(warnings...)
+	}
+	if domains.Machine.RemoveMachineLocalTaskRefs(deleted) > 0 {
+		if err := runtime.CommitMachine(domains.Machine); err != nil {
+			warnings = append(warnings, fmt.Errorf("update recent visits: %w", err))
+		}
+	}
+	return errors.Join(warnings...)
+}
+
+func askActionPlanTaskIDSet(ids []string) map[string]bool {
+	set := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		set[id] = true
+	}
+	return set
 }

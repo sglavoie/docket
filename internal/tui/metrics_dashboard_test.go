@@ -18,10 +18,9 @@ import (
 func TestMetricsDashboardWeekStartPropagation(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
-	cfg := config.NewConfig()
-	cfg.DataDir = config.WorkspaceRootFromConfigPath(configPath)
-	cfg.WeekEndDay = "sat" // week ends Saturday → starts Sunday
-	if err := manager.Save(cfg); err != nil {
+	cfg := newTestConfigAt(config.WorkspaceRootFromConfigPath(configPath))
+	cfg.Settings().WeekEndDay = "sat" // week ends Saturday → starts Sunday
+	if err := saveTestRuntime(manager, cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 

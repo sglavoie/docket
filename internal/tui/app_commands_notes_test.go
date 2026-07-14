@@ -65,7 +65,7 @@ func TestNotesCommands_ShowNotes_UsesSelectedTaskProjectFromCrossProjectOrigin(t
 	crossProject.Tasks = []*models.Task{crossTask}
 	crossProject.BuildTaskTree()
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{crossProject}
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProject.ID}}
 	app.crossOutliner.cursor = 0
@@ -144,7 +144,7 @@ func TestNotesCommands_CreateNote(t *testing.T) {
 
 func TestProjectTreeCtrlNDispatchesShowNotes(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	tree := NewProjectTreeModel(project, app.config, nil)
+	tree := NewProjectTreeModel(project, nil, app.runtime)
 
 	_, cmd, handled := tree.Dispatcher.Dispatch(syntheticCtrlKey('n'))
 	if !handled {
@@ -169,7 +169,7 @@ func TestProjectTreeCtrlNDispatchesShowNotes(t *testing.T) {
 
 func TestOutlinerCtrlNDispatchesShowNotes(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	outliner := NewOutlinerModel(project, app.config, app.configManager)
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 
 	_, cmd, handled := outliner.Dispatcher.Dispatch(syntheticCtrlKey('n'))
 	if !handled {

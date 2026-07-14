@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -18,7 +19,7 @@ func TestGetTaskAtCursor(t *testing.T) {
 
 		project.Tasks = []*models.Task{overdue, today, thisWeek}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		m.cursor = 0
 		task := m.getTaskAtCursor()
@@ -47,7 +48,7 @@ func TestGetTaskAtCursor(t *testing.T) {
 		}
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		m.cursor = 10
 
 		if got := m.getTaskAtCursor(); got != nil {
@@ -57,7 +58,7 @@ func TestGetTaskAtCursor(t *testing.T) {
 
 	t.Run("returns nil for empty project", func(t *testing.T) {
 		project := newTestPriorityProject(t)
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if got := m.getTaskAtCursor(); got != nil {
 			t.Errorf("expected nil for empty project, got %v", got)
@@ -92,7 +93,7 @@ func TestPriorityViewClampCursor(t *testing.T) {
 				project.Tasks = append(project.Tasks, task)
 			}
 
-			m := NewPriorityViewModel(project, nil, nil)
+			m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 			m.cursor = tt.cursor
 			m.clampCursor()
 
@@ -116,7 +117,7 @@ func TestJumpToTask_UsesFilteredGroups(t *testing.T) {
 
 	project.Tasks = []*models.Task{overdue, today, thisWeek}
 
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	// Without filters, jumpToTask should find the correct index
 	m.jumpToTask(thisWeek)
@@ -151,7 +152,7 @@ func TestJumpToTask_BlockedTab(t *testing.T) {
 
 	project.Tasks = []*models.Task{blockedTask, normalTask}
 
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	// Switch to Blocked tab
 	m.tabs.Active = priorityTabBlocked
@@ -168,7 +169,7 @@ func TestJumpToTask_BlockedTab(t *testing.T) {
 
 func TestHasActiveSearch(t *testing.T) {
 	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	if m.HasActiveSearch() {
 		t.Error("HasActiveSearch() should return false for priority view")
@@ -177,7 +178,7 @@ func TestHasActiveSearch(t *testing.T) {
 
 func TestWaitingOnCollapsed(t *testing.T) {
 	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
+	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 	if !m.waitingOnCollapsed {
 		t.Error("waitingOnCollapsed should be true by default")

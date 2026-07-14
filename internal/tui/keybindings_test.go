@@ -149,7 +149,7 @@ func TestGetForView_TaskCapableViewsIncludeScopedTaskGlobals(t *testing.T) {
 func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	tree := NewProjectTreeModel(project, app.config, app.configManager)
+	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
 	treeItems := tree.GetHelpItems()
 	assertHasHelpItem(t, treeItems, ViewProjectTree, "w", "Toggle today's plan")
 	assertHasHelpItem(t, treeItems, ViewProjectTree, "ctrl+o", "Open task reference copy")
@@ -164,7 +164,7 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "w", "Toggle today's plan")
 	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "y", "Copy title")
 
-	detail := NewTaskDetailModel(project.Tasks[0], project, app.config, app.configManager)
+	detail := NewTaskDetailModel(project.Tasks[0], project, app.runtime)
 	detailItems := detail.GetHelpItems()
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "j/k", "Scroll down/up")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "q", "Toggle queue")

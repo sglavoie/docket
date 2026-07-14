@@ -49,7 +49,7 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		app.BulkTransitionRequest{
 			TaskIDs:     taskIDs,
 			Target:      target,
-			Rules:       m.config.GetEnabledWorkflowRules(),
+			Rules:       m.runtime.Automation().GetEnabledWorkflowRules(),
 			UndoAction:  undoAction,
 			UndoContext: fmt.Sprintf("%d tasks", len(taskIDs)),
 			SkipInvalid: true,

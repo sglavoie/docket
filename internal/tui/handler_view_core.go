@@ -10,6 +10,10 @@ import (
 func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case BackMsg:
+		if m.currentView() == ViewProjectCreator {
+			m.pendingProjectMoveTask = nil
+			m.pendingProjectMoveSource = nil
+		}
 		m.popView()
 		return true, nil
 
@@ -18,7 +22,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case RefreshMsg:
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		return true, nil
 
@@ -52,7 +56,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowAskMsg:
-		return m.showViewInit(ViewAsk, NewAskViewModel(m.currentProject, m.cliReference))
+		return m.showViewInit(ViewAsk, NewAskViewModelWithDeps(m.currentProject, m.cliReference, m.runtime, m.appService))
 
 	case ShowMessageLogMsg:
 		m.showView(ViewMessageLog, NewMessageLogViewModel(m.messageLog.Entries()))
@@ -63,6 +67,9 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case StatusClearMsg:
+		if !msg.ScheduledAt.IsZero() && m.statusUpdatedAt.After(msg.ScheduledAt) {
+			return true, nil
+		}
 		// A 2s plain-status tick may arrive after a newer setUndoableStatus
 		// has installed a still-live toast (6s window). Don't dismiss a toast
 		// that hasn't reached its own deadline yet — its dedicated

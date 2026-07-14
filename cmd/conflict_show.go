@@ -51,6 +51,9 @@ func runConflictShow(_ *cobra.Command, args []string) error {
 	fmt.Printf("  Recorded:  %s\n", rec.CreatedAt.Local().Format("2006-01-02 15:04:05"))
 	fmt.Printf("  Revisions: base %s · local %s · remote %s\n",
 		shortRev(rec.BaseRevision), shortRev(rec.LocalRevision), shortRev(rec.RemoteRevision))
+	if rec.OperationRetryRequired() {
+		fmt.Printf("  Retry:      required — adopt remote to clear this record, then retry the original operation\n")
+	}
 	fmt.Printf("\n%d conflict(s):\n", len(rec.Conflicts))
 	for i, c := range rec.Conflicts {
 		fmt.Printf("\n  [%d] %s", i+1, c.Kind)
@@ -69,6 +72,10 @@ func runConflictShow(_ *cobra.Command, args []string) error {
 		if c.Detail != "" {
 			fmt.Printf("      detail:  %s\n", c.Detail)
 		}
+	}
+	if rec.OperationRetryRequired() {
+		fmt.Printf("\nClear with: tt conflict resolve %s --use remote\n", shortConflictID(rec.ID))
+		return nil
 	}
 	fmt.Printf("\nResolve with: tt conflict resolve %s --use local|remote|file\n", shortConflictID(rec.ID))
 	return nil

@@ -49,7 +49,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("task ID and comment index")
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 
 	comment := task.Comments[index]
 
-	editor := resolveEditor(commentEditEditor, cfg.Editor)
+	editor := resolveEditor(commentEditEditor, workspace.Runtime.Machine().GetEditor())
 
 	// Build content for editing
 	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n", index, task.ShortID, task.Title)
@@ -98,7 +98,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 	// Persist the new text through the application layer (the comment timestamp
 	// is preserved by the use case) so the edit commits atomically,
 	// revision-checked, and undoably via the workspace ledger.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.CommentResult, error) {
 		return svc.EditComment(task.ID, index, newText)
 	})

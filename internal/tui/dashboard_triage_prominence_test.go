@@ -20,17 +20,16 @@ func TestComputeGlobalAlertLinesSurfacesTriageCount(t *testing.T) {
 	icons.SetUseEmoji(false)
 	t.Cleanup(func() { icons.SetUseEmoji(false) })
 
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Triage Demo")
 	inboxA := testutil.NewTestTask("triage me", models.TaskTypeTask)
 	inboxA.SetSection(models.SectionInbox)
 	inboxB := testutil.NewTestTask("triage me too", models.TaskTypeTask)
 	inboxB.SetSection(models.SectionInbox)
 	project.Tasks = []*models.Task{inboxA, inboxB}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
-	m := &DashboardModel{config: cfg, projects: cfg.Projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
 	lines := m.computeGlobalAlertLines(nil)
 	if len(lines) == 0 {
 		t.Fatal("expected at least one alert line")
@@ -44,13 +43,12 @@ func TestComputeGlobalAlertLinesSurfacesTriageCount(t *testing.T) {
 // TestComputeGlobalAlertLinesSkipsTriageWhenEmpty verifies the triage line is
 // absent when no project has inbox tasks.
 func TestComputeGlobalAlertLinesSkipsTriageWhenEmpty(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Clean Inbox")
 	project.Tasks = []*models.Task{}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 
-	m := &DashboardModel{config: cfg, projects: cfg.Projects}
+	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
 	lines := m.computeGlobalAlertLines(nil)
 	for _, line := range lines {
 		if strings.Contains(ansi.Strip(line), "to triage") {
@@ -107,10 +105,10 @@ func TestPipelineCardLabelsUseTriage(t *testing.T) {
 // TestDashboardOpenInboxTriageKeyDispatchesMsg verifies the new `O` keybinding
 // opens the inbox processor for the currently selected project.
 func TestDashboardOpenInboxTriageKeyDispatchesMsg(t *testing.T) {
-	cfg, project := testutil.NewTestConfigWithProject("Alpha")
-	cfg.DataDir = t.TempDir()
+	cfg, project := newTestConfigWithProject("Alpha")
+	cfg = testRuntimeAt(t.TempDir(), cfg)
 
-	dashboard := NewDashboardModel(cfg, nil)
+	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
 	_, cmd, consumed := dashboard.Dispatcher.Dispatch(syntheticKey('O'))
 	if !consumed {
 		t.Fatal("dashboard O binding should be active")
@@ -123,7 +121,7 @@ func TestDashboardOpenInboxTriageKeyDispatchesMsg(t *testing.T) {
 	if !ok {
 		t.Fatalf("dashboard O returned %T, want ShowInboxProcessorMsg", cmd())
 	}
-	if msg.Project != project {
+	if msg.Project == nil || msg.Project.ID != project.ID {
 		t.Fatal("dashboard O should target the currently selected project")
 	}
 }

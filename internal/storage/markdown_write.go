@@ -54,16 +54,16 @@ func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, sectio
 	writePinnedTagsMetadata(&builder, pinnedTags)
 	builder.WriteString("\n")
 
-	rootTasks := collectRootTasks(tasks)
+	hierarchy := indexTaskHierarchy(tasks)
 	visited := make(map[string]bool, len(tasks))
-	for i, task := range rootTasks {
-		writeTaskPreservingOrder(&builder, task, tasks, 2, visited, writeMeta)
-		if i < len(rootTasks)-1 {
+	for i, task := range hierarchy.roots {
+		writeTaskPreservingOrder(&builder, task, hierarchy.children, 2, visited, writeMeta)
+		if i < len(hierarchy.roots)-1 {
 			builder.WriteString("\n")
 		}
 	}
 
-	appendOrphanedTasks(&builder, tasks, visited, writeMeta)
+	appendOrphanedTasks(&builder, tasks, hierarchy.children, visited, writeMeta)
 
 	return builder.String()
 }
@@ -104,20 +104,31 @@ func writePinnedTagsMetadata(builder *strings.Builder, pinnedTags []string) {
 	fmt.Fprintf(builder, "<!-- pinned_tags: %s -->\n", strings.Join(pinnedTags, ";"))
 }
 
-func collectRootTasks(tasks []*models.Task) []*models.Task {
-	var rootTasks []*models.Task
+// taskHierarchyIndex records the roots and ordered child adjacency lists for a
+// flat task slice. Building it once keeps serialization linear: the previous
+// recursive writer rescanned every task to discover each node's children,
+// making a wide or deeply nested project O(n²).
+type taskHierarchyIndex struct {
+	roots    []*models.Task
+	children map[string][]*models.Task
+}
+
+func indexTaskHierarchy(tasks []*models.Task) taskHierarchyIndex {
+	index := taskHierarchyIndex{children: make(map[string][]*models.Task)}
 	for _, task := range tasks {
 		if task == nil {
 			continue
 		}
 		if task.ParentID == nil {
-			rootTasks = append(rootTasks, task)
+			index.roots = append(index.roots, task)
+			continue
 		}
+		index.children[*task.ParentID] = append(index.children[*task.ParentID], task)
 	}
-	return rootTasks
+	return index
 }
 
-func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited map[string]bool, writeMeta func(*models.Task) string) {
+func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, children map[string][]*models.Task, visited map[string]bool, writeMeta func(*models.Task) string) {
 	for _, task := range tasks {
 		if task == nil {
 			continue
@@ -128,23 +139,8 @@ func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited
 
 		logging.Warn("task #%d %q has missing parent reference, saving as root-level entry", task.ShortID, task.Title)
 		builder.WriteString("\n")
-		writeTaskPreservingOrder(builder, task, tasks, 2, visited, writeMeta)
+		writeTaskPreservingOrder(builder, task, children, 2, visited, writeMeta)
 	}
-}
-
-// getChildrenInOrder returns tasks that are children of the given parent ID,
-// preserving their original order in the tasks slice.
-func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
-	var children []*models.Task
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		if task.ParentID != nil && *task.ParentID == parentID {
-			children = append(children, task)
-		}
-	}
-	return children
 }
 
 // writeTaskPreservingOrder writes a single task and its children to the builder,
@@ -157,7 +153,7 @@ func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 // the heading level is capped.
 const maxHeadingLevel = 6
 
-func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool, writeMeta func(*models.Task) string) {
+func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, children map[string][]*models.Task, level int, visited map[string]bool, writeMeta func(*models.Task) string) {
 	if visited[task.ID] {
 		return
 	}
@@ -203,8 +199,8 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTa
 		builder.WriteString(decisions)
 	}
 
-	for _, child := range getChildrenInOrder(task.ID, allTasks) {
+	for _, child := range children[task.ID] {
 		builder.WriteString("\n")
-		writeTaskPreservingOrder(builder, child, allTasks, level+1, visited, writeMeta)
+		writeTaskPreservingOrder(builder, child, children, level+1, visited, writeMeta)
 	}
 }

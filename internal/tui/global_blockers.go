@@ -16,7 +16,7 @@ type GlobalBlockerEntry struct {
 
 // GlobalBlockersModel displays and manages blockers across all active projects.
 type GlobalBlockersModel struct {
-	config  *config.Config
+	runtime *config.RuntimeState
 	entries []GlobalBlockerEntry
 	state   blockerViewState
 	// coordinator commits blocker-list replacements through the application
@@ -24,11 +24,12 @@ type GlobalBlockersModel struct {
 	coordinator BlockerCoordinator
 }
 
-// NewGlobalBlockersModel loads blockers from all active projects.
-func NewGlobalBlockersModel(cfg *config.Config, coordinator BlockerCoordinator) *GlobalBlockersModel {
+// NewGlobalBlockersModel loads blockers from all active projects, reading the
+// project catalog and editor preference from the domain-native runtime snapshot.
+func NewGlobalBlockersModel(runtime *config.RuntimeState, coordinator BlockerCoordinator) *GlobalBlockersModel {
 	m := &GlobalBlockersModel{
-		config:      cfg,
-		state:       newBlockerViewState(cfg.Editor),
+		runtime:     runtime,
+		state:       newBlockerViewState(runtime.Machine().Editor),
 		coordinator: coordinator,
 	}
 	m.loadAllBlockers()
@@ -37,7 +38,7 @@ func NewGlobalBlockersModel(cfg *config.Config, coordinator BlockerCoordinator) 
 
 func (m *GlobalBlockersModel) loadAllBlockers() {
 	m.entries = nil
-	for _, project := range m.config.GetActiveProjects() {
+	for _, project := range m.runtime.ActiveProjects() {
 		blockers, err := storage.LoadBlockers(project)
 		if err != nil {
 			continue
@@ -167,7 +168,7 @@ func (m *GlobalBlockersModel) getAddProject() *models.Project {
 	if len(visible) > 0 && m.state.cursor < len(visible) {
 		return visible[m.state.cursor].Project
 	}
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	if len(projects) > 0 {
 		return projects[0]
 	}

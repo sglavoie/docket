@@ -14,7 +14,8 @@ import (
 type ShowPipelineHubMsg struct{}
 
 // PipelineHubCaptureMsg is emitted when Enter is pressed on a capture entry
-// in the pipeline hub. The app pops the hub before opening the project picker.
+// in the pipeline hub. Quick Capture opens the shared Inbox-default flow;
+// capture modes that require a destination still open the project picker.
 type PipelineHubCaptureMsg struct{ Purpose PickerPurpose }
 
 // pipelineEntry is a single row within a pipeline column.
@@ -46,8 +47,7 @@ type PipelineHubModel struct {
 	columns        []pipelineColumn
 	activeCol      int
 	activeRow      int
-	config         *config.Config
-	manager        *config.Manager
+	runtime        *config.RuntimeState
 	counts         pipelineCounts
 	currentProject *models.Project
 	recommendation RecommendedAction
@@ -56,15 +56,14 @@ type PipelineHubModel struct {
 
 // NewPipelineHubModel creates a Pipeline Hub model populated with live counts
 // and the engine-derived Next Action recommendation.
-func NewPipelineHubModel(cfg *config.Config, manager *config.Manager, queueIDs, dailyPlanIDs map[string]bool, contextProject *models.Project) *PipelineHubModel {
-	counts, projects := loadPipelineCounts(cfg, queueIDs, dailyPlanIDs)
+func NewPipelineHubModel(runtime *config.RuntimeState, queueIDs, dailyPlanIDs map[string]bool, contextProject *models.Project) *PipelineHubModel {
+	counts, projects := loadPipelineCounts(runtime, queueIDs, dailyPlanIDs)
 	m := &PipelineHubModel{
-		config:         cfg,
-		manager:        manager,
+		runtime:        runtime,
 		counts:         counts,
 		currentProject: contextProject,
 	}
-	m.recommendation = computePipelineRecommendation(cfg, projects)
+	m.recommendation = computePipelineRecommendation(runtime, projects)
 	m.buildColumns()
 	return m
 }
@@ -79,13 +78,13 @@ func (m *PipelineHubModel) setOpenLoops(o OpenLoops) {
 // computePipelineRecommendation runs the shared deterministic recommendation
 // engine against the already-loaded project slice plus the persisted daily
 // plan. Returns the zero RecommendedAction when cfg is nil.
-func computePipelineRecommendation(cfg *config.Config, projects []*models.Project) RecommendedAction {
-	if cfg == nil {
+func computePipelineRecommendation(runtime *config.RuntimeState, projects []*models.Project) RecommendedAction {
+	if runtime == nil {
 		return RecommendedAction{}
 	}
 	return Recommend(RecommendationEngineInput{
 		Projects:  projects,
-		DailyPlan: cfg.GetDailyPlan(),
+		DailyPlan: runtime.Planning().GetDailyPlan(),
 		Now:       time.Now(),
 	})
 }

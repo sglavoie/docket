@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGetInfoPanelMode_DefaultInfoCards(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	mode := cfg.GetInfoPanelMode()
 	if mode != InfoPanelInfoCards {
@@ -12,7 +12,7 @@ func TestGetInfoPanelMode_DefaultInfoCards(t *testing.T) {
 }
 
 func TestGetInfoPanelMode_LegacyFalse(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	f := false
 	cfg.ShowInfoPanel = &f
 
@@ -23,7 +23,7 @@ func TestGetInfoPanelMode_LegacyFalse(t *testing.T) {
 }
 
 func TestGetInfoPanelMode_LegacyTrue(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	tr := true
 	cfg.ShowInfoPanel = &tr
 
@@ -34,7 +34,7 @@ func TestGetInfoPanelMode_LegacyTrue(t *testing.T) {
 }
 
 func TestGetInfoPanelMode_ExplicitMode(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	m := int(InfoPanelProjectSummary)
 	cfg.InfoPanelMode = &m
 
@@ -45,7 +45,7 @@ func TestGetInfoPanelMode_ExplicitMode(t *testing.T) {
 }
 
 func TestGetInfoPanelMode_ClampOutOfRange(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	m := 99
 	cfg.InfoPanelMode = &m
 
@@ -56,7 +56,7 @@ func TestGetInfoPanelMode_ClampOutOfRange(t *testing.T) {
 }
 
 func TestGetInfoPanelMode_ClampNegative(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	m := -1
 	cfg.InfoPanelMode = &m
 
@@ -67,7 +67,7 @@ func TestGetInfoPanelMode_ClampNegative(t *testing.T) {
 }
 
 func TestCycleInfoPanelMode(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	mode := cfg.CycleInfoPanelMode()
 	if mode != InfoPanelProjectSummary {
@@ -86,7 +86,7 @@ func TestCycleInfoPanelMode(t *testing.T) {
 }
 
 func TestSetInfoPanelMode_ClearsLegacy(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	tr := true
 	cfg.ShowInfoPanel = &tr
 
@@ -105,7 +105,7 @@ func TestSetInfoPanelMode_ClearsLegacy(t *testing.T) {
 func TestSetInfoPanelMode_ClampsInvalid(t *testing.T) {
 	cases := []InfoPanelMode{-1, 3, 99}
 	for _, in := range cases {
-		cfg := NewConfig()
+		cfg := NewMachineState()
 		cfg.SetInfoPanelMode(in)
 		if cfg.InfoPanelMode == nil {
 			t.Fatalf("in=%d: pointer should not be nil after Set", in)
@@ -118,7 +118,7 @@ func TestSetInfoPanelMode_ClampsInvalid(t *testing.T) {
 }
 
 func TestGetShowInfoPanel_DelegatesToMode(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SetInfoPanelMode(InfoPanelOff)
 	if cfg.GetShowInfoPanel() {
 		t.Error("GetShowInfoPanel should return false when mode is Off")
@@ -136,7 +136,7 @@ func TestGetShowInfoPanel_DelegatesToMode(t *testing.T) {
 }
 
 func TestGetShowInfoPanel_DefaultTrue(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	if !cfg.GetShowInfoPanel() {
 		t.Error("GetShowInfoPanel should default to true")
@@ -144,7 +144,7 @@ func TestGetShowInfoPanel_DefaultTrue(t *testing.T) {
 }
 
 func TestGetShowInfoPanel_ExplicitFalse(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SetShowInfoPanel(false)
 
 	if cfg.GetShowInfoPanel() {
@@ -153,7 +153,7 @@ func TestGetShowInfoPanel_ExplicitFalse(t *testing.T) {
 }
 
 func TestGetShowInfoPanel_ExplicitTrue(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SetShowInfoPanel(true)
 
 	if !cfg.GetShowInfoPanel() {
@@ -162,7 +162,7 @@ func TestGetShowInfoPanel_ExplicitTrue(t *testing.T) {
 }
 
 func TestSetShowInfoPanel(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 
 	cfg.SetShowInfoPanel(false)
 	if cfg.ShowInfoPanel == nil {
@@ -179,7 +179,7 @@ func TestSetShowInfoPanel(t *testing.T) {
 }
 
 func TestSetShowInfoPanel_OverridesExplicitMode(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewMachineState()
 	cfg.SetInfoPanelMode(InfoPanelProjectSummary)
 
 	cfg.SetShowInfoPanel(false)

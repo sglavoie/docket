@@ -123,17 +123,11 @@ func (v *sharedTaskPrefixCreateView) getTaskRef() (*models.Task, *models.Project
 	return v.task, v.project
 }
 
-func (v *sharedTaskPrefixCreateView) getPersister() Persister { return nil }
-
-func (v *sharedTaskPrefixCreateView) getConfig() *config.Config { return nil }
+func (v *sharedTaskPrefixCreateView) getRuntime() *config.RuntimeState { return nil }
 
 func (v *sharedTaskPrefixCreateView) getConfigManager() *config.Manager { return nil }
 
-func (v *sharedTaskPrefixCreateView) reloadData() {}
-
 func (v *sharedTaskPrefixCreateView) clampCursor() {}
-
-func (v *sharedTaskPrefixCreateView) setErr(error) {}
 
 func (v *sharedTaskPrefixCreateView) setStatus(string) {}
 

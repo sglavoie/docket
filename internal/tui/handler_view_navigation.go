@@ -9,7 +9,7 @@ import (
 
 // handleNavigateToView dispatches a NavigateToViewMsg to the appropriate Show message.
 func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
-	project := m.config.GetCurrentProject()
+	project := m.currentProject
 
 	switch msg.ViewType {
 	case ViewDailyReview:

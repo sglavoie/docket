@@ -70,11 +70,11 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 	// revision-checked, and undoably (via the workspace ledger) with stale-revision
 	// retry. Batch semantics are preserved: per-task errors are aggregated and
 	// reported as partial success, matching the legacy loop.
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 
 	var errs []string
 	succeeded := 0

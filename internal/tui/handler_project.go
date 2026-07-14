@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -25,17 +26,37 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, cmd
 
 	case CreateProjectMsg:
-		m.showView(ViewProjectCreator, NewProjectCreatorModel(m.config, m.configManager))
+		m.pendingProjectMoveTask = msg.MoveTask
+		m.pendingProjectMoveSource = msg.SourceProject
+		m.showView(ViewProjectCreator, NewProjectCreatorModel(m.runtime))
 		return true, nil
 
 	case ProjectCreatedMsg:
 		m.popView()
+		m.syncProjectCache()
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
+		}
+		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.ProjectCreated = true })
+		moveTask := m.pendingProjectMoveTask
+		moveSource := m.pendingProjectMoveSource
+		m.pendingProjectMoveTask = nil
+		m.pendingProjectMoveSource = nil
+		if moveTask != nil && moveSource != nil && msg.Project != nil {
+			return true, func() tea.Msg {
+				return MoveTaskToProjectMsg{
+					Task:          moveTask,
+					SourceProject: moveSource,
+					DestProjectID: msg.Project.ID,
+				}
+			}
 		}
 		return true, nil
 
 	case ProjectArchiveRequestMsg:
+		if msg.Project != nil && m.runtime.IsSystemInboxProject(msg.Project.ID) {
+			return true, errorCmd("cannot archive the system Inbox project")
+		}
 		return true, m.showProjectArchiveConfirm(msg.Project, msg.Archive)
 
 	case projectArchiveConfirmedMsg:
@@ -43,9 +64,13 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case ProjectArchivedMsg:
 		popCmd := m.popView()
+		domains := cloneRuntimeDomains(m.runtime)
+		if msg.Project != nil {
+			domains.Catalog.UpsertProject(msg.Project)
+		}
 		// Clear current project if archived
-		if msg.Project != nil && m.config != nil && msg.Project.Archived && m.config.CurrentProject == msg.Project.ID {
-			m.config.CurrentProject = ""
+		if msg.Project != nil && msg.Project.Archived && domains.Machine.CurrentProject == msg.Project.ID {
+			domains.Machine.CurrentProject = ""
 		}
 		if msg.Project != nil && msg.Project.Archived && m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
 			m.currentProject = nil
@@ -56,17 +81,16 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			for _, t := range msg.Project.Tasks {
 				taskIDs[t.ID] = true
 			}
-			m.config.RemoveTaskRefs(taskIDs)
+			domains.Planning.RemoveDurableTaskRefs(taskIDs)
+			domains.Machine.RemoveMachineLocalTaskRefs(taskIDs)
+		}
+		if err := m.commitRuntimeDomains(domains); err != nil {
+			m.err = err
+			return true, nil
 		}
 		m.pruneDeletedTaskRefs()
-		if m.configManager != nil {
-			if err := m.configManager.Save(m.config); err != nil {
-				m.err = err
-				return true, nil
-			}
-		}
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		if msg.Project != nil {
 			m.setSuccessStatus(fmt.Sprintf("Archived %s", msg.Project.Name))
@@ -75,12 +99,14 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, popCmd
 
 	case ProjectPinnedToggledMsg:
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
+			catalog.UpsertProject(msg.Project)
+		}); err != nil {
 			m.err = err
 			return true, nil
 		}
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		statusMsg := "Pinned"
 		if !msg.Project.Pinned {
@@ -90,31 +116,32 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, defaultStatusTimeout()
 
 	case ProjectDeletedMsg:
-		m.config.RemoveProject(msg.Project.ID)
+		domains := cloneRuntimeDomains(m.runtime)
+		domains.RemoveProjectReferences(msg.Project.ID, msg.Project.Slug)
 		if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
 			m.currentProject = nil
 		}
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := m.commitRuntimeDomains(domains); err != nil {
 			m.err = err
 		}
 		m.pruneDeletedTaskRefs()
 		// Pop back to dashboard since the project no longer exists
 		m.viewStack = m.viewStack[:1]
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 			m.dashboard.ResetCursor()
 		}
 		return true, nil
 
 	case ProjectRestoredMsg:
-		if m.configManager != nil {
-			if err := m.configManager.Save(m.config); err != nil {
-				m.err = err
-				return true, nil
-			}
+		if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
+			catalog.UpsertProject(msg.Project)
+		}); err != nil {
+			m.err = err
+			return true, nil
 		}
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		if msg.Project != nil {
 			m.setSuccessStatus(fmt.Sprintf("Unarchived %s", msg.Project.Name))
@@ -124,21 +151,26 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case EditProjectMsg:
 		if msg.Project != nil {
-			m.showView(ViewProjectEditor, NewProjectEditorModel(msg.Project, m.config, m.configManager))
+			if m.runtime.IsSystemInboxProject(msg.Project.ID) {
+				return true, errorCmd("cannot rename the system Inbox project")
+			}
+			m.showView(ViewProjectEditor, NewProjectEditorModel(msg.Project, m.configManager, m.runtime, m.appService))
 		}
 		return true, nil
 
 	case ProjectUpdatedMsg:
 		m.popView()
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		m.refreshProjectTree()
 		return true, nil
 
 	case ToggleInfoPanelMsg:
-		mode := m.config.CycleInfoPanelMode()
-		if err := m.configManager.Save(m.config); err != nil {
+		var mode config.InfoPanelMode
+		if err := m.commitMachineMutation(func(machine *config.MachineState) {
+			mode = machine.CycleInfoPanelMode()
+		}); err != nil {
 			m.err = err
 			return true, nil
 		}
@@ -153,16 +185,19 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, defaultStatusTimeout()
 
 	case TutorDismissedMsg:
-		m.config.SetTutorDismissed(true)
-		if err := m.configManager.Save(m.config); err != nil {
+		// Tutor dismissal is a portable behavior preference (Settings domain), so
+		// it commits only the settings domain rather than saving the whole config.
+		if err := m.commitSettingsMutation(func(s *config.Settings) {
+			s.SetTutorDismissed(true)
+		}); err != nil {
 			m.err = err
 			return true, nil
 		}
-		m.setSuccessStatus("Tutor prompt dismissed")
+		m.setSuccessStatus("Reference prompt dismissed")
 		return true, defaultStatusTimeout()
 
 	case ShowTrashedProjectsMsg:
-		m.showView(ViewTrashedProjects, NewTrashedProjectsModel(m.config.DataDir))
+		m.showView(ViewTrashedProjects, NewTrashedProjectsModel(m.runtime.DataDir()))
 		return true, nil
 
 	case RestoreFromTrashMsg:
@@ -177,11 +212,42 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case projectRestoredFromTrashMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.popView() // Close trashed projects picker
-		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+		if msg.Project == nil {
+			m.err = fmt.Errorf("project restore returned no project")
+			return true, nil
 		}
+		if m.currentView() == ViewTrashedProjects {
+			m.popView()
+		}
+		m.rememberTrashRestoreRecovery(msg)
+		if err := m.completeTrashRestoreRecovery(msg.Project.ID); err != nil {
+			m.err = trashRestorePartialError(msg.Project.Name, err)
+			if m.dashboard != nil {
+				m.dashboard.Refresh()
+			}
+			return true, retryTrashRestoreMachineRefsCmd(msg.Project.ID)
+		}
+		if m.dashboard != nil {
+			m.dashboard.Refresh()
+		}
+		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", msg.Project.Name))
+		return true, defaultStatusTimeout()
+
+	case retryTrashRestoreMachineRefsMsg:
+		recovery, ok := m.pendingTrashRestoreRecovery[msg.ProjectID]
+		if !ok {
+			return true, nil
+		}
+		if err := m.completeTrashRestoreRecovery(msg.ProjectID); err != nil {
+			m.err = trashRestorePartialError(recovery.Project.Name, err)
+			return true, retryTrashRestoreMachineRefsCmd(msg.ProjectID)
+		}
+		if m.dashboard != nil {
+			m.dashboard.Refresh()
+		}
+		m.err = nil
+		m.setSuccessStatus(fmt.Sprintf("Restored: %s", recovery.Project.Name))
 		return true, defaultStatusTimeout()
 
 	case PurgeFromTrashMsg:
@@ -197,14 +263,14 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.isLoading = false
 		m.loadingMessage = ""
 		// Refresh the trashed projects list by re-registering the view
-		newModel := NewTrashedProjectsModel(m.config.DataDir)
+		newModel := NewTrashedProjectsModel(m.runtime.DataDir())
 		newModel.SetSize(m.width, m.height-2)
 		m.views.Register(ViewTrashedProjects, newModel)
 		m.setSuccessStatus(fmt.Sprintf("Permanently deleted: %s", msg.Slug))
 		return true, defaultStatusTimeout()
 
 	case ShowProjectPickerMsg:
-		projects := projectDiscoveryProjects(m.config)
+		projects := projectDiscoveryProjects(m.runtime)
 		for _, p := range projects {
 			if err := storage.LoadProject(p); err != nil {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
@@ -227,7 +293,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			case ViewOutliner:
 				m.saveOutlinerToggleState()
 				m.saveOutlinerFilterState()
-				m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+				m.outliner = NewOutlinerModel(msg.Project, m.configManager, m.runtime)
 				m.outliner.queueIDs = m.focusQueueIDs
 				m.outliner.dailyPlanIDs = m.dailyPlanIDs
 				m.restoreOutlinerToggleState()
@@ -240,7 +306,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case SandboxResetRequestMsg:
-		sandbox := m.config.GetSandboxProject()
+		sandbox := m.runtime.GetSandboxProject()
 		if sandbox == nil {
 			m.setInfoStatus("Sandbox project not found")
 			return true, defaultStatusTimeout()
@@ -276,7 +342,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.refreshProjectTree()
 		}
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		return true, defaultStatusTimeout()
 	}
@@ -297,7 +363,7 @@ func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
 	default:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
 		m.outliner.queueIDs = m.focusQueueIDs
 		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()
@@ -315,6 +381,10 @@ func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bo
 	if project.Sandbox {
 		m.clearPendingProjectArchive()
 		return errorCmd("cannot archive the sandbox project")
+	}
+	if m.runtime.IsSystemInboxProject(project.ID) {
+		m.clearPendingProjectArchive()
+		return errorCmd("cannot archive the system Inbox project")
 	}
 
 	m.pendingProjectArchive = project
@@ -345,6 +415,9 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	if project.Sandbox {
 		return errorCmd("cannot archive the sandbox project")
 	}
+	if m.runtime.IsSystemInboxProject(project.ID) {
+		return errorCmd("cannot archive the system Inbox project")
+	}
 
 	if archive {
 		project.Archive()
@@ -359,77 +432,156 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	}
 }
 
-// restoreProjectFromTrash restores a specific versioned trash entry.
+// restoreProjectFromTrash captures an immutable command input on the Bubble Tea
+// update loop. The command commits the directory move, drained trash-entry
+// removal, and synced configuration rewrite atomically, then returns the
+// restored project and its machine-reference recovery payload. It never reads
+// or mutates the live RuntimeState or AppModel from the asynchronous goroutine.
 func (m *AppModel) restoreProjectFromTrash(entryID string) tea.Cmd {
-	cfg := m.config
+	if m == nil || m.runtime == nil {
+		return errorCmd("runtime state is unavailable")
+	}
 	mgr := m.configManager
-	dataDir := cfg.DataDir
+	svc := m.appService
+	if mgr == nil || svc == nil {
+		return errorCmd("project restore service is unavailable")
+	}
+	domains, err := m.runtime.CloneDomains()
+	if err != nil {
+		return errorCmd("failed to capture restore state: %v", err)
+	}
+	dataDir := m.runtime.DataDir()
 	return func() tea.Msg {
-		tomb, err := storage.ReadTrashTombstone(dataDir, entryID)
-		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("trash entry '%s' not found: %w", entryID, err)}
-		}
-
-		// Check if active project with same slug exists
-		if tomb.Project != nil && cfg.GetProject(tomb.Project.Slug) != nil {
-			return ErrorMsg{Err: fmt.Errorf("active project '%s' already exists; rename or delete it first", tomb.Project.Slug)}
-		}
-
-		// Backup config before making changes
-		if backupErr := mgr.BackupConfig(); backupErr != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create config backup: %w", backupErr)}
-		}
-
-		// Restore project directory from trash and reconstruct faithful metadata.
-		project, restoredTomb, err := storage.RestoreTrashEntry(dataDir, entryID)
+		var refs config.ProjectReferences
+		res, err := svc.RestoreProject(app.RestoreProjectRequest{
+			DataDir: dataDir,
+			EntryID: entryID,
+			BuildConfig: func(project *models.Project, tomb *storage.TrashTombstone) ([]storage.ArtifactChange, error) {
+				if catalogContainsProject(domains.Catalog, project.ID, project.Slug) {
+					return nil, fmt.Errorf("active project '%s' already exists; rename or delete it first", project.Slug)
+				}
+				refs = restoredProjectReferences(tomb)
+				domains.Catalog.UpsertProject(project)
+				domains.ApplySyncedProjectReferences(project.ID, refs)
+				return syncedDomainArtifacts(
+					mgr,
+					domains.Catalog,
+					domains.Planning,
+					domains.Settings,
+					domains.Automation,
+				)
+			},
+		})
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to restore project from trash: %w", err)}
 		}
 
-		// Add project to config and re-establish its configuration references.
-		cfg.AddProject(project)
-		applyRestoredConfigRefs(cfg, project.ID, restoredTomb)
+		return projectRestoredFromTrashMsg{Project: res.Project, References: refs}
+	}
+}
 
-		// Save config
-		if err := mgr.Save(cfg); err != nil {
-			// Move back to trash on failure (best effort)
-			_, _ = storage.MoveProjectToTrash(project, dataDir, "restore rollback", restoredTomb.ConfigRefs)
-			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+func catalogContainsProject(catalog *config.WorkspaceCatalog, projectID, slug string) bool {
+	if catalog == nil {
+		return false
+	}
+	for _, project := range catalog.Projects {
+		if project.ID == projectID || project.Slug == slug {
+			return true
 		}
-
-		return projectRestoredFromTrashMsg{Project: project}
 	}
+	return false
 }
 
-// marshalProjectReferences captures the given project's configuration
-// references and encodes them for storage in a trash tombstone. A marshal
-// failure is non-fatal: the project data is still trashed, only the later
-// config-reference restoration would be lost, so we return nil.
-func marshalProjectReferences(cfg *config.Config, id, slug string) json.RawMessage {
-	raw, err := json.Marshal(cfg.ExtractProjectReferences(id, slug))
-	if err != nil {
-		return nil
-	}
-	return raw
-}
-
-// applyRestoredConfigRefs decodes and re-applies the configuration references
-// captured in the tombstone. Decode failures are non-fatal: the project data is
-// already restored, so we skip reference restoration rather than abort.
-func applyRestoredConfigRefs(cfg *config.Config, projectID string, tomb *storage.TrashTombstone) {
+// restoredProjectReferences decodes the caller-owned reference snapshot stored
+// in a tombstone. Decode failures retain the historical best-effort behavior:
+// the project itself remains restorable, with an empty recovery payload.
+func restoredProjectReferences(tomb *storage.TrashTombstone) config.ProjectReferences {
 	if tomb == nil || len(tomb.ConfigRefs) == 0 {
-		return
+		return config.ProjectReferences{}
 	}
 	var refs config.ProjectReferences
 	if err := json.Unmarshal(tomb.ConfigRefs, &refs); err != nil {
-		return
+		return config.ProjectReferences{}
 	}
-	cfg.ApplyProjectReferences(projectID, refs)
+	return refs
 }
 
 // projectRestoredFromTrashMsg is an internal message for trash restoration completion.
 type projectRestoredFromTrashMsg struct {
-	Project *models.Project
+	Project    *models.Project
+	References config.ProjectReferences
+}
+
+type trashRestoreMachineRecovery struct {
+	Project    *models.Project
+	References config.ProjectReferences
+}
+
+type retryTrashRestoreMachineRefsMsg struct {
+	ProjectID string
+}
+
+const trashRestoreMachineRetryDelay = time.Second
+
+func retryTrashRestoreMachineRefsCmd(projectID string) tea.Cmd {
+	return tea.Tick(trashRestoreMachineRetryDelay, func(time.Time) tea.Msg {
+		return retryTrashRestoreMachineRefsMsg{ProjectID: projectID}
+	})
+}
+
+func (m *AppModel) rememberTrashRestoreRecovery(msg projectRestoredFromTrashMsg) {
+	if msg.Project == nil {
+		return
+	}
+	if m.pendingTrashRestoreRecovery == nil {
+		m.pendingTrashRestoreRecovery = make(map[string]trashRestoreMachineRecovery)
+	}
+	m.pendingTrashRestoreRecovery[msg.Project.ID] = trashRestoreMachineRecovery{
+		Project: msg.Project, References: msg.References,
+	}
+}
+
+// completeTrashRestoreRecovery runs only on the Bubble Tea update loop. It
+// refreshes the durable domains and project cache before attempting machine
+// repair, and removes the captured payload only after machine.json succeeds.
+func (m *AppModel) completeTrashRestoreRecovery(projectID string) error {
+	recovery, ok := m.pendingTrashRestoreRecovery[projectID]
+	if !ok || recovery.Project == nil {
+		return nil
+	}
+	if m.runtime == nil {
+		return fmt.Errorf("runtime state is unavailable")
+	}
+	if err := m.runtime.RefreshAfterCommit(); err != nil {
+		return fmt.Errorf("refresh restored workspace: %w", err)
+	}
+	if m.projects == nil {
+		m.projects = make(map[string]*models.Project)
+	}
+	// Seed the cache with the fully loaded result before syncing catalog
+	// metadata, so the restored task tree is not replaced by a metadata-only
+	// RuntimeState project.
+	m.projects[projectID] = recovery.Project
+	m.syncProjectCache()
+
+	machine := cloneMachineState(m.runtime.Machine())
+	if machine.ApplyProjectReferences(projectID, recovery.References) {
+		if m.runtime.DataDir() == "" {
+			m.runtime.SetMachineInMemory(machine)
+		} else if err := m.runtime.CommitMachine(machine); err != nil {
+			return fmt.Errorf("restore machine-local project references: %w", err)
+		}
+	}
+	m.syncProjectCache()
+	if m.runtime.Machine().CurrentProject == projectID {
+		m.currentProject = m.projectByID(projectID)
+	}
+	delete(m.pendingTrashRestoreRecovery, projectID)
+	return nil
+}
+
+func trashRestorePartialError(projectName string, err error) error {
+	return fmt.Errorf("restored %s, but machine-state recovery is incomplete and will retry: %w", projectName, err)
 }
 
 // projectPurgedFromTrashMsg is an internal message for trash purge completion.
@@ -437,26 +589,33 @@ type projectPurgedFromTrashMsg struct {
 	Slug string
 }
 
-// purgeProjectFromTrash permanently deletes a single trash entry.
+// purgeProjectFromTrash permanently deletes a single trash entry through the
+// application layer's journaled recursive-delete transaction (irreversible, no
+// undo), replacing the direct storage purge.
 func (m *AppModel) purgeProjectFromTrash(entryID, slug string) tea.Cmd {
-	dataDir := m.config.DataDir
+	svc := m.appService
+	dataDir := m.runtime.DataDir()
 	return func() tea.Msg {
-		if err := storage.PurgeTrashEntry(dataDir, entryID); err != nil {
+		if _, err := svc.PurgeProject(app.PurgeProjectRequest{
+			DataDir: dataDir,
+			EntryID: entryID,
+			Slug:    slug,
+			Confirm: true,
+		}); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to delete project: %w", err)}
 		}
 		return projectPurgedFromTrashMsg{Slug: slug}
 	}
 }
 
-// executeSandboxReset performs the actual sandbox reset operation.
+// executeSandboxReset performs the actual sandbox reset operation. The task-level
+// clear commits through the application-layer transaction boundary
+// (Service.ResetSandbox), so the reset is atomic and restores through the
+// workspace undo ledger; notes live outside the project document and are cleared
+// as a filesystem side effect, matching the pre-transaction undo scope.
 func (m *AppModel) executeSandboxReset() tea.Cmd {
-	cfg := m.config
-	mgr := m.configManager
-	sandbox := cfg.GetSandboxProject()
-	undoDepth := 0
-	if cfg.UndoHistoryDepth != nil {
-		undoDepth = *cfg.UndoHistoryDepth
-	}
+	svc := m.appService
+	sandbox := m.runtime.GetSandboxProject()
 	return func() tea.Msg {
 		if sandbox == nil {
 			return ErrorMsg{Err: fmt.Errorf("sandbox project not found")}
@@ -477,26 +636,21 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 			return SandboxResetDoneMsg{TaskCount: 0}
 		}
 
-		// Record undo snapshot before clearing (only captures tasks, not notes)
-		if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth, nil); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to record undo snapshot: %w", err)}
+		// Clear tasks, sections, and tags through the app transaction (undoable).
+		if _, err := svc.ResetSandbox(sandbox.ID); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to reset sandbox: %w", err)}
 		}
 
-		// Clear tasks and reset NextShortID
+		// Mirror the committed clear onto the in-memory project so any shared
+		// pointer (e.g. the current project) reflects the reset immediately.
 		sandbox.Tasks = nil
 		sandbox.NextShortID = 1
-
-		// Reset sections to default
 		sandbox.Sections = []string{models.SectionNext}
 		sandbox.SectionColors = make(map[string]string)
 		sandbox.Tags = []string{}
 		sandbox.PinnedTags = []string{}
 
-		if err := storage.SaveProjectLocked(sandbox); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save sandbox: %w", err)}
-		}
-
-		// Clear notes directory
+		// Clear notes directory (not part of the project document).
 		if noteCount > 0 {
 			notesDir := storage.NotesDir(sandbox)
 			if err := os.RemoveAll(notesDir); err != nil {
@@ -504,11 +658,9 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 			}
 		}
 
-		// Save config for NextShortID persistence
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
-		}
-
+		// The sandbox reset's durable effect (the cleared tasks.md) already
+		// committed through Service.ResetSandbox; sandbox catalog metadata is
+		// unchanged by a reset, so no config write is needed.
 		return SandboxResetDoneMsg{TaskCount: totalItems}
 	}
 }

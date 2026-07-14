@@ -71,7 +71,7 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.Snooze(task.ID, snoozeDate)
 	})

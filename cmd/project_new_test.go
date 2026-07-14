@@ -32,7 +32,7 @@ func resetProjectNewVars() {
 // trimming, "  work  " is stored verbatim, which makes isKnownContext lookups
 // fail elsewhere and pollutes the JSON config with stray spaces.
 func TestProjectNew_TrimsContextBeforeStoring(t *testing.T) {
-	deps := testutil.SetupTestDeps(t)
+	deps := setupTestDeps(t)
 	defer deps.Cleanup()
 	defer resetProjectNewVars()
 
@@ -40,7 +40,7 @@ func TestProjectNew_TrimsContextBeforeStoring(t *testing.T) {
 	defer viper.Set("config", "")
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 
@@ -56,13 +56,13 @@ func TestProjectNew_TrimsContextBeforeStoring(t *testing.T) {
 		t.Fatalf("runProjectNew: %v", err)
 	}
 
-	reloaded, err := manager.Load()
+	reloaded, err := manager.LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
 
 	var got *models.Project
-	for _, p := range reloaded.Projects {
+	for _, p := range reloaded.AllProjects() {
 		if p.Slug == "trimmable" {
 			got = p
 			break
@@ -144,14 +144,14 @@ func TestProjectDescriptionDefault(t *testing.T) {
 }
 
 func TestDuplicateSlugDetection(t *testing.T) {
-	cfg, _ := testutil.NewTestConfigWithProject("Existing Project")
+	cfg, _ := newTestConfigWithProject("Existing Project")
 
 	// Slugify the existing project
-	cfg.Projects[0].Slug = models.Slugify("Existing Project")
+	cfg.AllProjects()[0].Slug = models.Slugify("Existing Project")
 
 	// Check if a new project with the same slug would be detected
 	newSlug := models.Slugify("Existing Project")
-	for _, p := range cfg.Projects {
+	for _, p := range cfg.AllProjects() {
 		if p.Slug == newSlug {
 			return // Test passes - duplicate detected
 		}
@@ -160,8 +160,8 @@ func TestDuplicateSlugDetection(t *testing.T) {
 }
 
 func TestDuplicateSlugWithDifferentCasing(t *testing.T) {
-	cfg, _ := testutil.NewTestConfigWithProject("my project")
-	cfg.Projects[0].Slug = models.Slugify("my project")
+	cfg, _ := newTestConfigWithProject("my project")
+	cfg.AllProjects()[0].Slug = models.Slugify("my project")
 
 	// A project with different casing should produce the same slug
 	slug1 := models.Slugify("my project")
@@ -172,7 +172,7 @@ func TestDuplicateSlugWithDifferentCasing(t *testing.T) {
 	testutil.AssertEqual(t, slug2, slug3)
 
 	// Check duplicate detection
-	for _, p := range cfg.Projects {
+	for _, p := range cfg.AllProjects() {
 		if p.Slug == slug2 {
 			return // Duplicate detected
 		}
@@ -181,13 +181,13 @@ func TestDuplicateSlugWithDifferentCasing(t *testing.T) {
 }
 
 func TestProjectSlugUniqueness(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	// Add two projects with different names but same slug after processing
 	project1 := testutil.NewTestProject("My Project!!!")
 	project1.Slug = models.Slugify(project1.Name)
 
-	cfg.Projects = append(cfg.Projects, project1)
+	addTestProject(cfg, project1)
 
 	// Verify a new project with similar name would have same slug
 	newSlug := models.Slugify("My Project")
@@ -296,14 +296,14 @@ func TestProjectGetTaskByID(t *testing.T) {
 // `isKnownContext` check, producing a bogus warning and an untrimmed
 // project.Context.
 func TestProjectNewTrimsContext(t *testing.T) {
-	deps := testutil.SetupTestDeps(t)
+	deps := setupTestDeps(t)
 	t.Cleanup(deps.Cleanup)
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 	oldStorageRepo := storage.DefaultRepository
 	storage.DefaultRepository = deps.Repository
@@ -325,11 +325,11 @@ func TestProjectNewTrimsContext(t *testing.T) {
 	err := runProjectNew(nil, []string{"Trim Context Project"})
 	testutil.AssertNoError(t, err)
 
-	cfg, err := manager.Load()
+	cfg, err := manager.LoadRuntimeState()
 	testutil.AssertNoError(t, err)
 
 	var created *models.Project
-	for _, p := range cfg.Projects {
+	for _, p := range cfg.AllProjects() {
 		if p.Slug == "trim-context-project" {
 			created = p
 			break

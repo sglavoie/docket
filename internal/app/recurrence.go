@@ -34,8 +34,8 @@ func (s *Service) mutateRecurrence(taskID, undoAction string, undoContext func(*
 	if err != nil {
 		return RecurrenceResult{}, err
 	}
-	if err := mutate(ref.Task); err != nil {
-		return RecurrenceResult{}, err
+	if mutateErr := mutate(ref.Task); mutateErr != nil {
+		return RecurrenceResult{}, mutateErr
 	}
 	res, err := s.commitProject(ref, revision, undoAction, undoContext(ref.Task))
 	if err != nil {

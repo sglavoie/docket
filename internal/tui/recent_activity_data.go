@@ -9,11 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *RecentActivityModel) getPersister() Persister           { return defaultPersister }
-func (m *RecentActivityModel) getConfig() *config.Config         { return m.config }
+func (m *RecentActivityModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *RecentActivityModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *RecentActivityModel) reloadData()                       { m.loadTasks() }
-func (m *RecentActivityModel) setErr(err error)                  { m.setStatus(err.Error()) }
 
 // getTaskRef returns the focused task and its project for queue toggling.
 func (m *RecentActivityModel) getTaskRef() (*models.Task, *models.Project) {
@@ -27,14 +24,14 @@ func (m *RecentActivityModel) getTaskRef() (*models.Task, *models.Project) {
 // loadTasks aggregates tasks from all active projects, sorted by UpdatedAt desc.
 func (m *RecentActivityModel) loadTasks() {
 	m.tasks = nil
-	limit := m.config.GetRecentActivityLimit()
+	limit := m.runtime.Settings().GetRecentActivityLimit()
 
 	if m.projectScope != nil {
 		for _, task := range m.projectScope.Tasks {
 			m.tasks = append(m.tasks, CrossProjectTask{Task: task, Project: m.projectScope})
 		}
 	} else {
-		projects := m.config.GetActiveProjects()
+		projects := m.runtime.ActiveProjects()
 		for _, project := range projects {
 			if err := storage.LoadProject(project); err != nil {
 				continue
@@ -82,7 +79,7 @@ func (m *RecentActivityModel) applyFilter() {
 				continue
 			}
 		}
-		if hasFilters && !passesCommonFilters(dt.Task, &m.filter, dt.Project, m.config) {
+		if hasFilters && !passesCommonFilters(dt.Task, &m.filter, dt.Project, m.runtime.Automation()) {
 			continue
 		}
 		tabFiltered = append(tabFiltered, dt)

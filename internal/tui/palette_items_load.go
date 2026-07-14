@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/storage"
@@ -11,6 +12,8 @@ import (
 // This follows the lazy loading pattern from GlobalSearchModel, loading all searchable
 // items when the palette opens rather than maintaining a persistent index.
 // Commands are filtered by the current view context (only showing relevant commands).
+//
+//nolint:gocyclo // Palette aggregation intentionally keeps every item category in one ordered pipeline.
 func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	var items []PaletteItem
 
@@ -32,7 +35,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 
 	// Load project discovery rows from active projects plus archived projects.
 	// Operational task/tag/section/note rows below stay active-only.
-	for _, project := range projectDiscoveryProjects(m.config) {
+	for _, project := range projectDiscoveryProjects(m.runtime) {
 		items = append(items, PaletteItem{
 			Name:        project.Name,
 			Description: projectDiscoveryDescription(project),
@@ -43,7 +46,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 
 	// Load tasks, tags, sections, and notes from active projects.
 	// When currentProject is set, only load tasks from that project
-	projects := m.config.GetActiveProjects()
+	projects := m.runtime.ActiveProjects()
 	// Include sandbox if it's the current project (GetActiveProjects excludes it)
 	if m.currentProject != nil && m.currentProject.Sandbox {
 		projects = append(projects, m.currentProject)
@@ -87,7 +90,13 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		}
 	}
 
-	for tag, count := range tagCounts {
+	tags := make([]string, 0, len(tagCounts))
+	for tag := range tagCounts {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	for _, tag := range tags {
+		count := tagCounts[tag]
 		var desc string
 		if count == 1 {
 			desc = "Tag (1 task)"
@@ -102,7 +111,13 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
-	for section, count := range sectionCounts {
+	sections := make([]string, 0, len(sectionCounts))
+	for section := range sectionCounts {
+		sections = append(sections, section)
+	}
+	sort.Strings(sections)
+	for _, section := range sections {
+		count := sectionCounts[section]
 		var desc string
 		if count == 1 {
 			desc = "Section (1 task)"
@@ -117,7 +132,14 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
-	for name, query := range m.config.GetSavedSearches() {
+	savedSearches := m.runtime.Machine().GetSavedSearches()
+	savedSearchNames := make([]string, 0, len(savedSearches))
+	for name := range savedSearches {
+		savedSearchNames = append(savedSearchNames, name)
+	}
+	sort.Strings(savedSearchNames)
+	for _, name := range savedSearchNames {
+		query := savedSearches[name]
 		items = append(items, PaletteItem{
 			Name:        name,
 			Description: query,
@@ -146,8 +168,9 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		}
 	}
 
-	for i := range m.config.GetSavedFilters() {
-		sf := m.config.GetSavedFilters()[i]
+	savedFilters := m.runtime.Planning().GetSavedFilters()
+	for i := range savedFilters {
+		sf := savedFilters[i]
 		desc := describeSavedFilterSummary(&sf)
 		modeBadge := "[S] "
 		if sf.Mode == "criteria" {

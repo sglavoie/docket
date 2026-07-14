@@ -11,8 +11,8 @@ import (
 
 // The project-lifecycle use cases route project archive-location, trash, restore,
 // and purge through typed application requests, modeling each command's durable
-// effects — a directory move, a tombstone, a config rewrite, cross-reference
-// repairs, a recursive delete — as ONE atomic journaled transaction committed
+// effects — a directory move, a tombstone, checked domain artifacts,
+// cross-reference repairs, a recursive delete — as ONE atomic transaction committed
 // through the OpsCommitter boundary. They mirror the task-mutation use cases:
 // validate intent, plan every effect before any write, and commit the whole set
 // atomically so a partial project lifecycle can never leave data and catalog out of
@@ -27,33 +27,109 @@ func (s *Service) opsCommitter() (OpsCommitter, error) {
 	return nil, fmt.Errorf("app: repository does not support project-lifecycle commits")
 }
 
-// artifactToOp converts a durable config/cross-reference artifact into the journal
-// operation that applies it: a delete removes the target, a write replaces it with
-// the artifact's bytes (defaulting the mode to the standard private file
-// permission).
-func artifactToOp(art storage.ArtifactChange) transaction.Op {
-	if art.Delete {
-		return transaction.Op{Kind: transaction.OpDelete, Target: art.Path}
-	}
-	return transaction.Op{Kind: transaction.OpWrite, Target: art.Path, Data: art.Data, Mode: art.Mode}
-}
-
-// CommitConfig commits a durable configuration rewrite — now the set of synced
-// domain-file artifacts — as one atomic journaled transaction. Project archive and
-// unarchive change only catalog/config state (the archived flag, the current-
-// project pointer, and the archived project's planning references), so their whole
-// durable effect is these config artifacts, committed through the same journal that
-// guards every other mutation.
+// CommitConfig commits synced domain-file artifacts as one atomic journaled
+// transaction while retaining each artifact's revision contract. Project archive
+// and unarchive use it for catalog/planning changes; machine-local state is
+// committed separately because it lives outside the workspace transaction root.
 func (s *Service) CommitConfig(configArtifacts ...storage.ArtifactChange) error {
 	oc, err := s.opsCommitter()
 	if err != nil {
 		return err
 	}
-	ops := make([]transaction.Op, 0, len(configArtifacts))
-	for _, art := range configArtifacts {
-		ops = append(ops, artifactToOp(art))
+	return oc.CommitOps(nil, configArtifacts)
+}
+
+// CommitWorkspaceBootstrap atomically applies bootstrap file operations and
+// their revision-checked catalog/project artifacts. It is intentionally narrow:
+// adapters use it only while installing or upgrading workspace-owned projects.
+func (s *Service) CommitWorkspaceBootstrap(ops []transaction.Op, artifacts ...storage.ArtifactChange) error {
+	oc, err := s.opsCommitter()
+	if err != nil {
+		return err
 	}
-	return oc.CommitOps(ops)
+	return oc.CommitOps(ops, artifacts)
+}
+
+// RenameProjectRequest asks to rename a project as one atomic transaction. Project
+// is the in-memory project already mutated to its new Name/Slug; OldSlug/NewSlug
+// derive the directory move. TasksMarkdown is the renamed project's rewritten
+// tasks.md (heading reflecting the new name), and TasksExpectedRevision is the
+// raw revision captured from the exact old-path bytes used to render it. Leave
+// TasksMarkdown nil to skip the tasks write. Config is the encoded catalog after
+// the rename, and CrossRefWrites carry every other project's revision-checked
+// tasks.md rewrite to point its cross-project references at the new slug.
+type RenameProjectRequest struct {
+	Project               *models.Project
+	DataDir               string
+	OldSlug               string
+	NewSlug               string
+	TasksMarkdown         []byte
+	TasksExpectedRevision *string
+	Config                []storage.ArtifactChange
+	CrossRefWrites        []storage.ArtifactChange
+}
+
+// RenameProjectResult reports a rename: the project's new on-disk path and whether
+// the slug actually changed (a name change can leave the slug unchanged).
+type RenameProjectResult struct {
+	NewPath     string
+	SlugChanged bool
+}
+
+// RenameProject renames a project's data directory, rewrites its tasks.md heading,
+// updates the catalog, and repairs cross-project references — all as ONE atomic
+// journaled transaction. Either the whole rename lands (directory at the new slug,
+// heading and catalog updated, references repointed) or none of it does; a crash
+// mid-commit is rolled forward by recovery. This replaces the pre-migration path
+// that renamed the directory eagerly during validation and then saved the config,
+// tasks.md, and each referencing project as independent effects, any of which
+// could fail after the directory had already moved.
+func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, error) {
+	if req.Project == nil {
+		return RenameProjectResult{}, invalidInput("project", "project is required")
+	}
+	if req.TasksMarkdown != nil && req.TasksExpectedRevision == nil {
+		return RenameProjectResult{}, invalidInput("tasks revision", "renamed tasks.md requires an expected revision")
+	}
+	if err := validateLifecycleTaskWrites(req.CrossRefWrites); err != nil {
+		return RenameProjectResult{}, err
+	}
+	oc, err := s.opsCommitter()
+	if err != nil {
+		return RenameProjectResult{}, err
+	}
+
+	plan, err := storage.PlanProjectRename(req.DataDir, req.OldSlug, req.NewSlug)
+	if err != nil {
+		return RenameProjectResult{}, err
+	}
+
+	ops := make([]transaction.Op, 0, len(plan.Ops))
+	ops = append(ops, plan.Ops...)
+	artifacts := make([]storage.ArtifactChange, 0, 1+len(req.CrossRefWrites)+len(req.Config))
+	if req.TasksMarkdown != nil {
+		tasksWrite := storage.ArtifactChange{
+			Path:             storage.TasksFilePath(plan.NewPath),
+			Data:             req.TasksMarkdown,
+			Mode:             storage.FilePermissions,
+			ExpectedRevision: req.TasksExpectedRevision,
+		}
+		// A slug-changing rename validates and locks the old tasks.md even though
+		// the replacement is written below the new path after the directory move.
+		// When no move is planned (same slug or an unpersisted source), the target
+		// itself is the correct expected-revision path.
+		if len(plan.Ops) > 0 {
+			tasksWrite.ExpectedRevisionPath = storage.TasksFilePath(plan.Ops[0].Source)
+		}
+		artifacts = append(artifacts, tasksWrite)
+	}
+	artifacts = append(artifacts, req.CrossRefWrites...)
+	artifacts = append(artifacts, req.Config...)
+	if err := oc.CommitOps(ops, artifacts); err != nil {
+		return RenameProjectResult{}, err
+	}
+	req.Project.Path = plan.NewPath
+	return RenameProjectResult{NewPath: plan.NewPath, SlugChanged: req.OldSlug != req.NewSlug}, nil
 }
 
 // DeleteProjectRequest asks to move a project into the versioned trash as one atomic
@@ -92,6 +168,9 @@ func (s *Service) DeleteProject(req DeleteProjectRequest) (DeleteProjectResult, 
 	if !req.Confirm {
 		return DeleteProjectResult{}, fmt.Errorf("%w: deleting project %q", ErrDestructiveConfirmationRequired, req.Project.Slug)
 	}
+	if err := validateLifecycleTaskWrites(req.CrossRefWrites); err != nil {
+		return DeleteProjectResult{}, err
+	}
 	oc, err := s.opsCommitter()
 	if err != nil {
 		return DeleteProjectResult{}, err
@@ -102,19 +181,26 @@ func (s *Service) DeleteProject(req DeleteProjectRequest) (DeleteProjectResult, 
 		return DeleteProjectResult{}, err
 	}
 
-	ops := make([]transaction.Op, 0, len(plan.Ops)+len(req.Config)+len(req.CrossRefWrites))
+	ops := make([]transaction.Op, 0, len(plan.Ops))
 	ops = append(ops, plan.Ops...)
-	for _, w := range req.CrossRefWrites {
-		ops = append(ops, artifactToOp(w))
-	}
-	for _, c := range req.Config {
-		ops = append(ops, artifactToOp(c))
-	}
-
-	if err := oc.CommitOps(ops); err != nil {
+	artifacts := append(append([]storage.ArtifactChange(nil), req.CrossRefWrites...), req.Config...)
+	if err := oc.CommitOps(ops, artifacts); err != nil {
 		return DeleteProjectResult{}, err
 	}
 	return DeleteProjectResult{EntryID: plan.EntryID, ProjectSlug: req.Project.Slug}, nil
+}
+
+// validateLifecycleTaskWrites fails closed when an adapter tries to submit a
+// lifecycle-generated full-file tasks.md rewrite without the revision captured
+// during planning. The commit boundary can only prevent stale-byte clobbers when
+// every rewrite participates in the same optimistic-concurrency preflight.
+func validateLifecycleTaskWrites(writes []storage.ArtifactChange) error {
+	for i := range writes {
+		if writes[i].ExpectedRevision == nil {
+			return invalidInput("tasks revision", fmt.Sprintf("cross-project rewrite %d requires an expected revision", i))
+		}
+	}
+	return nil
 }
 
 // RestoreProjectRequest asks to restore a trashed project as one atomic transaction.
@@ -160,13 +246,9 @@ func (s *Service) RestoreProject(req RestoreProjectRequest) (RestoreProjectResul
 		return RestoreProjectResult{}, err
 	}
 
-	ops := make([]transaction.Op, 0, len(plan.Ops)+len(configArtifacts))
+	ops := make([]transaction.Op, 0, len(plan.Ops))
 	ops = append(ops, plan.Ops...)
-	for _, c := range configArtifacts {
-		ops = append(ops, artifactToOp(c))
-	}
-
-	if err := oc.CommitOps(ops); err != nil {
+	if err := oc.CommitOps(ops, configArtifacts); err != nil {
 		return RestoreProjectResult{}, err
 	}
 
@@ -213,7 +295,7 @@ func (s *Service) PurgeProject(req PurgeProjectRequest) (PurgeProjectResult, err
 	if len(ops) == 0 {
 		return PurgeProjectResult{Purged: false, Slug: req.Slug}, nil
 	}
-	if err := oc.CommitOps(ops); err != nil {
+	if err := oc.CommitOps(ops, nil); err != nil {
 		return PurgeProjectResult{}, err
 	}
 	return PurgeProjectResult{Purged: true, Slug: req.Slug}, nil

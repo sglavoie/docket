@@ -88,7 +88,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		// Create a config entry with the same ID but nil Tasks,
 		// simulating a project the user hasn't navigated to yet.
 		otherProject := &models.Project{ID: storedProject.ID, Name: "Other Project"}
-		app.config.Projects = append(app.config.Projects, otherProject)
+		addTestAppProject(app, otherProject)
 
 		// Put tasks from both projects in the focus queue
 		app.focusQueue = []FocusTask{
@@ -143,7 +143,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 
 func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 
 	// Set up a task that will be "deleted"
 	deletedTask := &models.Task{ID: "will-be-deleted", Title: "Ghost"}
@@ -167,14 +167,15 @@ func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
 }
 
 func TestTasksArchivedMsgCleansConfigRefs(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProjectWithTasks("Test")
-	cfg.Projects = []*models.Project{project}
-	cfg.CurrentProject = project.ID
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
 
 	app := newTestAppModel()
-	app.config = cfg
-	app.currentProject = project
+	app.runtime = testRuntimeAt(cfg.DataDir(), cfg)
+	setTestAppProjects(app, project)
+	setTestCurrentProject(app, project.ID)
 
 	// Simulate an archived task that no longer exists in project
 	archivedTask := &models.Task{ID: "archived-task", Title: "Done"}

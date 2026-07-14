@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -93,12 +92,12 @@ func runTaskArchiveRebuildIndex(cmd *cobra.Command, _ []string) error {
 }
 
 func runTaskArchiveRebuildIndexAll(out MutateOutput) error {
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	projects := archiveIndexRepairProjects(cfg)
+	projects := archiveIndexRepairProjects(workspace.Runtime.AllProjects())
 	results := make([]archiveRebuildIndexResult, 0, len(projects))
 	failures := 0
 	rebuilt := 0
@@ -149,12 +148,9 @@ func runTaskArchiveRebuildIndexAll(out MutateOutput) error {
 	return nil
 }
 
-func archiveIndexRepairProjects(cfg *config.Config) []*models.Project {
-	if cfg == nil {
-		return nil
-	}
-	projects := make([]*models.Project, 0, len(cfg.Projects))
-	for _, project := range cfg.Projects {
+func archiveIndexRepairProjects(all []*models.Project) []*models.Project {
+	projects := make([]*models.Project, 0, len(all))
+	for _, project := range all {
 		if project == nil || project.Sandbox {
 			continue
 		}

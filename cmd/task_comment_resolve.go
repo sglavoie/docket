@@ -41,7 +41,7 @@ func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
 	// Resolve the task in the current project; index validation runs against the
 	// loaded copy so error messages match the legacy surface, and the toggle
 	// itself persists through the application layer.
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.CommentResult, error) {
 		return svc.ToggleCommentResolved(task.ID, index)
 	})

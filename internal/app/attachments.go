@@ -54,8 +54,8 @@ func (s *Service) AttachFile(taskID, sourcePath string) (AttachFileResult, error
 	filename := filepath.Base(sourcePath)
 	// Validate and record the metadata BEFORE staging the copy. A rejected filename
 	// aborts here, so the AttachmentCopy op — and therefore any byte write — never runs.
-	if err := ref.Task.AddAttachment(filename, false, sourcePath); err != nil {
-		return AttachFileResult{}, err
+	if addErr := ref.Task.AddAttachment(filename, false, sourcePath); addErr != nil {
+		return AttachFileResult{}, addErr
 	}
 	op := storage.AttachmentOp{
 		Kind:        storage.AttachmentCopy,
@@ -150,12 +150,13 @@ func (s *Service) ReorderAttachment(taskID string, from, to int) (TaskResult, er
 // project write plus zero or more attachment file side effects (copy/delete) as
 // ONE ChangeSet, so a task's attachment bytes and the metadata that references
 // them are staged, committed, and crash-recovered together. It is the attachment
-// analogue of commitProjectWithArtifacts.
+// analog of commitProjectWithArtifacts.
 func (s *Service) commitTaskWithSideEffects(ref TaskRef, expectedRevision string, ops []storage.AttachmentOp, undoAction, undoContext string) (TaskResult, error) {
 	generated := applyPostMutationHooks(ref.Project)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
+		Base:             ref.Base,
 		AttachmentOps:    ops,
 		UndoAction:       undoAction,
 		UndoContext:      undoContext,

@@ -10,9 +10,6 @@ import (
 )
 
 func (m *AppModel) handleQuickSwitchToggle() tea.Cmd {
-	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
-		return func() tea.Msg { return TutorDismissedMsg{} }
-	}
 	return m.toggleQuickSwitch()
 }
 

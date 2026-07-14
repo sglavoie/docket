@@ -170,9 +170,8 @@ type inlineTaskPreview struct {
 // It implements the View interface and follows the existing view stack pattern
 // used by GlobalSearchModel and HelpViewModel.
 type CommandPaletteModel struct {
-	config        *config.Config
-	configManager *config.Manager
-	registry      *CommandRegistry
+	runtime  *config.RuntimeState
+	registry *CommandRegistry
 
 	// Current view context for filtering commands
 	currentView ViewType

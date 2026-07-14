@@ -1,15 +1,13 @@
 package config
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestConfig_GetGlobalSectionColor(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 
 	if color := cfg.GetGlobalSectionColor("Unknown"); color != "gray" {
 		t.Errorf("expected gray for unknown section, got %s", color)
@@ -27,7 +25,7 @@ func TestConfig_GetGlobalSectionColor(t *testing.T) {
 }
 
 func TestConfig_SetGlobalSectionColor(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 
 	cfg.SetGlobalSectionColor("Active", "green")
 	cfg.SetGlobalSectionColor("Done", "blue")
@@ -46,7 +44,7 @@ func TestConfig_SetGlobalSectionColor(t *testing.T) {
 }
 
 func TestConfig_SetGlobalSectionColor_NilMap(t *testing.T) {
-	cfg := &Config{}
+	cfg := &Settings{}
 	cfg.SectionColors = nil
 
 	cfg.SetGlobalSectionColor("Active", "green")
@@ -60,7 +58,7 @@ func TestConfig_SetGlobalSectionColor_NilMap(t *testing.T) {
 }
 
 func TestConfig_MigrateProjectSectionColors(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	cfg.SetGlobalSectionColor("Active", "blue")
 
 	projectColors := map[string]string{
@@ -90,7 +88,7 @@ func TestConfig_MigrateProjectSectionColors(t *testing.T) {
 }
 
 func TestConfig_MigrateProjectSectionColors_NilInput(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	cfg.SetGlobalSectionColor("Active", "green")
 
 	cfg.MigrateProjectSectionColors(nil)
@@ -101,7 +99,7 @@ func TestConfig_MigrateProjectSectionColors_NilInput(t *testing.T) {
 }
 
 func TestConfig_ApplyGlobalColorsToProject(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	cfg.SetGlobalSectionColor("Active", "green")
 	cfg.SetGlobalSectionColor("Done", "blue")
 
@@ -129,7 +127,7 @@ func TestConfig_ApplyGlobalColorsToProject(t *testing.T) {
 }
 
 func TestConfig_ApplyGlobalColorsToProject_NilProjectColors(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewSettings()
 	cfg.SetGlobalSectionColor("Active", "green")
 
 	project, err := models.NewProject("test", "Test", "/tmp/test")
@@ -146,52 +144,5 @@ func TestConfig_ApplyGlobalColorsToProject_NilProjectColors(t *testing.T) {
 	}
 	if project.SectionColors["Active"] != "green" {
 		t.Errorf("expected Active to be green")
-	}
-}
-
-func TestConfig_SectionColorsPersistedInJSON(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "test-config.json")
-
-	manager := NewManager(configPath)
-	cfg, _ := manager.LoadOrCreate()
-
-	cfg.SetGlobalSectionColor("Active", "green")
-	cfg.SetGlobalSectionColor("Done", "blue")
-
-	if err := manager.Save(cfg); err != nil {
-		t.Fatalf("Save failed: %v", err)
-	}
-
-	loaded, err := manager.Load()
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
-	}
-
-	if loaded.GetGlobalSectionColor("Active") != "green" {
-		t.Errorf("expected Active to be green after reload")
-	}
-	if loaded.GetGlobalSectionColor("Done") != "blue" {
-		t.Errorf("expected Done to be blue after reload")
-	}
-}
-
-func TestConfig_LoadInitializesSectionColors(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "test-config.json")
-
-	content := `{"editor": "vim"}`
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to write test config: %v", err)
-	}
-
-	manager := NewManager(configPath)
-	cfg, err := manager.Load()
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
-	}
-
-	if cfg.SectionColors == nil {
-		t.Error("SectionColors should be initialized on load")
 	}
 }

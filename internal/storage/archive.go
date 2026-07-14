@@ -98,8 +98,7 @@ func ArchiveTasks(project *models.Project) (int, error) {
 }
 
 // archiveCommitService returns a CommitService for a project stored on the real
-// filesystem in the canonical <data>/projects/<slug> layout, mirroring the
-// routing cmd.SaveProject uses for ordinary saves. It returns ok=false for
+// filesystem in the canonical <data>/projects/<slug> layout. It returns ok=false for
 // non-filesystem repositories and any project outside that layout so callers fall
 // back to the legacy archive path. The service is ledger-less; production undo of
 // archiving still flows through the caller's pre-mutation undo snapshot until the

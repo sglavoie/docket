@@ -9,7 +9,7 @@ import (
 
 func TestFilterCommands_FilterByTag_WithProjectTree(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	cmds := app.filterCommands()
@@ -25,7 +25,7 @@ func TestFilterCommands_FilterByTag_WithProjectTree(t *testing.T) {
 
 func TestFilterCommands_FilterByTag_WithOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.pushView(ViewOutliner)
 
 	cmds := app.filterCommands()
@@ -69,7 +69,7 @@ func TestFilterCommands_FilterByTag_WithCrossProjectOutlinerCatalogTags(t *testi
 		Tags: []string{"beta-only"},
 	}
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{alpha, beta}
 	app.crossOutliner.filter.Tags = map[string]bool{"catalog-only": true}
 	app.pushView(ViewCrossProjectOutliner)
@@ -98,7 +98,7 @@ func TestFilterCommands_FilterByTag_WithCrossProjectOutlinerCatalogTags(t *testi
 
 func TestFilterCommands_FilterBySection(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	cmds := app.filterCommands()
@@ -114,7 +114,7 @@ func TestFilterCommands_FilterBySection(t *testing.T) {
 
 func TestFilterCommands_ClearFilters_ProjectTree(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	app.projectTree.filter.Priority = 1
@@ -133,7 +133,7 @@ func TestFilterCommands_ClearFilters_ProjectTree(t *testing.T) {
 
 func TestFilterCommands_ClearFilters_Outliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.pushView(ViewOutliner)
 
 	app.outliner.filter.Priority = 1
@@ -180,7 +180,7 @@ func TestFilterCommands_JumpToTask_NilProject(t *testing.T) {
 
 func TestFilterCommands_TagManager(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	cmds := app.filterCommands()
@@ -233,7 +233,7 @@ func TestFilterCommands_GlobalTagManagerAvailableInCrossProjectOutliner(t *testi
 
 func TestFilterCommands_SectionManager(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	cmds := app.filterCommands()
@@ -270,7 +270,7 @@ func TestFilterCommands_SectionManagerAvailableInCrossProjectOutliner(t *testing
 
 func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *testing.T) {
 	app, singleProject := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(singleProject, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(singleProject, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 	app.views.Register(ViewOutliner, app.outliner)
@@ -283,7 +283,7 @@ func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *
 	crossProject.Tasks = []*models.Task{crossTask}
 	crossProject.BuildTaskTree()
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{crossProject}
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProject.ID}}
 	app.crossOutliner.cursor = 0
@@ -312,7 +312,7 @@ func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
 	app := newTestAppModel()
 	project := &models.Project{ID: "cross-project", Name: "Cross Project"}
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox, ProjectID: project.ID}}
 	app.crossOutliner.cursor = 0

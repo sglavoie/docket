@@ -46,7 +46,7 @@ func TestHandleTaskMessagesCloseDependencyViewer(t *testing.T) {
 
 func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	msg := UndoPerformedMsg{Action: "Task deleted"}
@@ -65,7 +65,7 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 
 func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
 	app.pushView(ViewProjectTree)
 
 	msg := RedoPerformedMsg{Action: "Task restored"}

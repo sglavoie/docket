@@ -90,12 +90,12 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case OpenDataFolderMsg:
 		var path string
 		if msg.Project != nil {
-			path = m.config.GetProjectPath(msg.Project.Slug)
+			path = m.runtime.ProjectPath(msg.Project.Slug)
 		} else {
-			path = m.config.DataDir
+			path = m.runtime.DataDir()
 		}
 
-		editor, editorErr := external.ResolveEditor(m.config.Editor)
+		editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
 		if editorErr != nil {
 			return true, errorCmd("%s", editorErr)
 		}
@@ -117,7 +117,7 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 		return true, errorCmd("%s", err)
 	}
 
-	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
 	if editorErr != nil {
 		_ = os.Remove(tmpPath)
 		return true, errorCmd("%s", editorErr)

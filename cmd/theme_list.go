@@ -33,12 +33,12 @@ func runThemeList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	themes, err := configManager.ListThemes()
+	themes, err := workspace.Manager.ListThemes()
 	if err != nil {
 		return fmt.Errorf("list themes: %w", err)
 	}

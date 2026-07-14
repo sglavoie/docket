@@ -159,7 +159,7 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 	}
 
 	// Empty attachment_editor means "use OS default app", not a text editor.
-	if m.config.GetAttachmentEditor() == "" {
+	if m.runtime.Machine().GetAttachmentEditor() == "" {
 		openCmd, err := buildOpenCommand(target)
 		if err != nil {
 			return errorCmd("%s", err)
@@ -172,7 +172,7 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 		})
 	}
 
-	editor, editorErr := external.ResolveEditor(m.config.GetAttachmentEditor())
+	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetAttachmentEditor())
 	if editorErr != nil {
 		return errorCmd("%s", editorErr)
 	}
@@ -298,7 +298,7 @@ func (m *TaskAttachmentsModel) openCodeReference(att models.Attachment) tea.Cmd 
 		m.err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
 		return nil
 	}
-	codeEditor := m.config.GetCodeEditor()
+	codeEditor := m.runtime.Machine().GetCodeEditor()
 	if err := external.OpenCodeReference(codeEditor, att.OriginalPath, att.LineNumber); err != nil {
 		m.err = fmt.Errorf("failed to open code reference: %w", err)
 		return nil

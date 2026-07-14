@@ -66,8 +66,9 @@ type QuitMsg struct{}
 // ErrorMsg reports an error that should be displayed to the user.
 type ErrorMsg struct{ Err error }
 
-// StatusClearMsg clears the status message after a timeout.
-type StatusClearMsg struct{}
+// StatusClearMsg clears the status message after a timeout. ScheduledAt
+// identifies the timer generation so an older timer cannot clear newer text.
+type StatusClearMsg struct{ ScheduledAt time.Time }
 
 // UndoToastTimeoutMsg fires when an undo-available toast's window has
 // elapsed. The handler clears the toast only if it has not been replaced
@@ -166,8 +167,9 @@ const StatusUpdateTimeout = 2 * time.Second
 
 // statusTimeout returns a command that clears the status message after the given duration.
 func statusTimeout(d time.Duration) tea.Cmd {
+	scheduledAt := time.Now()
 	return tea.Tick(d, func(time.Time) tea.Msg {
-		return StatusClearMsg{}
+		return StatusClearMsg{ScheduledAt: scheduledAt}
 	})
 }
 

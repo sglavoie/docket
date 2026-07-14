@@ -235,7 +235,7 @@ func TestSession6_InboxPaletteSuggestedItemsLeadWithTriageVocab(t *testing.T) {
 	recentPaletteSelections = nil
 	t.Cleanup(func() { recentPaletteSelections = nil })
 
-	palette := NewCommandPaletteModel(app.config, app.configManager, registry, ViewInboxProcessor, nil)
+	palette := NewCommandPaletteModel(app.runtime, registry, ViewInboxProcessor, nil)
 	palette.searchInput.SetValue("")
 	palette.filterItems()
 
@@ -292,7 +292,7 @@ func TestSession6_NonInboxPaletteSuggestedItemsKeepGenericOrdering(t *testing.T)
 	recentPaletteSelections = nil
 	t.Cleanup(func() { recentPaletteSelections = nil })
 
-	palette := NewCommandPaletteModel(app.config, app.configManager, registry, ViewDashboard, nil)
+	palette := NewCommandPaletteModel(app.runtime, registry, ViewDashboard, nil)
 	palette.searchInput.SetValue("")
 	palette.filterItems()
 

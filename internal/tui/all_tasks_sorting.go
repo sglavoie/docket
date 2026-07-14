@@ -13,7 +13,7 @@ func (m *AllTasksViewModel) applySorting(tasks []CrossProjectTask) {
 	sort.SliceStable(tasks, func(i, j int) bool {
 		cmp := CompareTasksCrossProject(
 			tasks[i].Task, tasks[j].Task, m.sort.Field,
-			tasks[i].Project.ID, tasks[j].Project.ID, m.config,
+			tasks[i].Project.ID, tasks[j].Project.ID, m.runtime.Automation(),
 		)
 		return ApplySortDirection(cmp, m.sort.Ascending)
 	})

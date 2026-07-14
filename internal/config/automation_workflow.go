@@ -1,6 +1,114 @@
 package config
 
-import "github.com/sglavoie/tt/internal/workflow"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"sort"
+	"time"
+
+	"github.com/sglavoie/tt/internal/workflow"
+)
+
+type WorkflowEvalState struct {
+	LastEvalTime time.Time `json:"last_eval_time"`
+	RulesHash    string    `json:"rules_hash,omitempty"`
+}
+
+func partitionAndSortWorkflowRules(all []workflow.WorkflowRule) (defaultRules, customRules []workflow.WorkflowRule) {
+	for _, rule := range all {
+		if rule.Source == "default" {
+			defaultRules = append(defaultRules, rule)
+		} else {
+			customRules = append(customRules, rule)
+		}
+	}
+	sortByPriorityThenName := func(rules []workflow.WorkflowRule) {
+		sort.SliceStable(rules, func(i, j int) bool {
+			pi, pj := rules[i].Priority, rules[j].Priority
+			if pi == 0 && pj == 0 {
+				return rules[i].Name < rules[j].Name
+			}
+			if pi == 0 {
+				return false
+			}
+			if pj == 0 {
+				return true
+			}
+			if pi == pj {
+				return rules[i].Name < rules[j].Name
+			}
+			return pi < pj
+		})
+	}
+	sortByPriorityThenName(defaultRules)
+	sortByPriorityThenName(customRules)
+	return defaultRules, customRules
+}
+
+func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
+	if a.Name != b.Name || a.Priority != b.Priority || a.GetTriggerLogic() != b.GetTriggerLogic() {
+		return true
+	}
+	aTriggers := a.GetTriggers()
+	bTriggers := b.GetTriggers()
+	if len(aTriggers) != len(bTriggers) {
+		return true
+	}
+	aTriggerSigs := make(map[string]int)
+	for _, trigger := range aTriggers {
+		aTriggerSigs[string(trigger.Field)+"|"+string(trigger.Operation)+"|"+trigger.Value]++
+	}
+	bTriggerSigs := make(map[string]int)
+	for _, trigger := range bTriggers {
+		bTriggerSigs[string(trigger.Field)+"|"+string(trigger.Operation)+"|"+trigger.Value]++
+	}
+	if len(aTriggerSigs) != len(bTriggerSigs) {
+		return true
+	}
+	for sig, count := range aTriggerSigs {
+		if bTriggerSigs[sig] != count {
+			return true
+		}
+	}
+	if (a.TriggerGroup == nil) != (b.TriggerGroup == nil) {
+		return true
+	}
+	if a.TriggerGroup != nil {
+		aJSON, aErr := json.Marshal(a.TriggerGroup)
+		bJSON, bErr := json.Marshal(b.TriggerGroup)
+		if aErr != nil || bErr != nil || string(aJSON) != string(bJSON) {
+			return true
+		}
+	}
+	if len(a.Actions) != len(b.Actions) {
+		return true
+	}
+	aActionSigs := make(map[string]int)
+	for _, action := range a.Actions {
+		aActionSigs[string(action.ActionType)+"|"+action.Value+"|"+conditionSignature(action.Condition)]++
+	}
+	bActionSigs := make(map[string]int)
+	for _, action := range b.Actions {
+		bActionSigs[string(action.ActionType)+"|"+action.Value+"|"+conditionSignature(action.Condition)]++
+	}
+	if len(aActionSigs) != len(bActionSigs) {
+		return true
+	}
+	for sig, count := range aActionSigs {
+		if bActionSigs[sig] != count {
+			return true
+		}
+	}
+	return false
+}
+
+func conditionSignature(c *workflow.RuleTrigger) string {
+	if c == nil {
+		return ""
+	}
+	return string(c.Field) + "|" + string(c.Operation) + "|" + c.Value
+}
 
 // Workflow-rule behavior on the AutomationConfig domain aggregate. These mirror
 // the equivalent *Config facade methods but depend only on the automation
@@ -11,6 +119,13 @@ import "github.com/sglavoie/tt/internal/workflow"
 
 // GetWorkflowRulesSorted returns rules sorted default-first, then custom, each
 // group ordered by priority then name.
+func (a *AutomationConfig) GetWorkflowRules() []workflow.WorkflowRule {
+	if a.WorkflowRules == nil {
+		return []workflow.WorkflowRule{}
+	}
+	return a.WorkflowRules
+}
+
 func (a *AutomationConfig) GetWorkflowRulesSorted() (defaultRules, customRules []workflow.WorkflowRule) {
 	return partitionAndSortWorkflowRules(a.WorkflowRules)
 }
@@ -84,6 +199,16 @@ func (a *AutomationConfig) ToggleWorkflowRule(id string) (enabled bool, found bo
 		}
 	}
 	return false, false
+}
+
+// IncrementRuleTriggerCounts records workflow firings on their owning
+// automation-domain rules.
+func (a *AutomationConfig) IncrementRuleTriggerCounts(counts map[string]int) {
+	for i := range a.WorkflowRules {
+		if count, ok := counts[a.WorkflowRules[i].ID]; ok {
+			a.WorkflowRules[i].TriggerCount += int64(count)
+		}
+	}
 }
 
 // ResetRuleTriggerCount resets one rule's trigger count, returning true when
@@ -182,4 +307,69 @@ func (a *AutomationConfig) InvalidateWorkflowEvalStates() {
 		state.RulesHash = ""
 		a.WorkflowEvalStates[projectID] = state
 	}
+}
+
+func (a *AutomationConfig) GetWorkflowEvalState(projectID string) WorkflowEvalState {
+	if a.WorkflowEvalStates == nil {
+		return WorkflowEvalState{}
+	}
+	return a.WorkflowEvalStates[projectID]
+}
+
+func (a *AutomationConfig) SetWorkflowEvalState(projectID string, state WorkflowEvalState) {
+	if a.WorkflowEvalStates == nil {
+		a.WorkflowEvalStates = make(map[string]WorkflowEvalState)
+	}
+	a.WorkflowEvalStates[projectID] = state
+}
+
+func (a *AutomationConfig) GetWorkflowEvalInterval() int {
+	if a.WorkflowEvalInterval == nil {
+		return 60
+	}
+	if *a.WorkflowEvalInterval < 0 {
+		return 0
+	}
+	return *a.WorkflowEvalInterval
+}
+
+func (a *AutomationConfig) SetWorkflowEvalInterval(minutes int) {
+	if minutes < 0 {
+		minutes = 0
+	}
+	a.WorkflowEvalInterval = &minutes
+}
+
+func (a *AutomationConfig) ComputeWorkflowRulesHash() string {
+	var rules []workflow.WorkflowRule
+	for _, rule := range a.WorkflowRules {
+		if rule.Enabled {
+			rules = append(rules, rule)
+		}
+	}
+	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
+	data, err := json.Marshal(rules)
+	if err != nil {
+		return ""
+	}
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:8])
+}
+
+func (a *AutomationConfig) ShouldEvaluateWorkflow(projectID string) bool {
+	if len(a.GetEnabledWorkflowRules()) == 0 {
+		return false
+	}
+	interval := a.GetWorkflowEvalInterval()
+	if interval == 0 {
+		return false
+	}
+	state := a.GetWorkflowEvalState(projectID)
+	if state.RulesHash != a.ComputeWorkflowRulesHash() {
+		return true
+	}
+	if state.LastEvalTime.IsZero() {
+		return true
+	}
+	return time.Since(state.LastEvalTime) >= time.Duration(interval)*time.Minute
 }

@@ -288,70 +288,13 @@ func TestMachineStateRemoveProjectReferences(t *testing.T) {
 	}
 }
 
-func TestDecomposeNilConfigYieldsDefaults(t *testing.T) {
-	d := Decompose(nil)
+func TestNewDomainsYieldsDefaults(t *testing.T) {
+	d := NewDomains()
 	if d.Catalog == nil || d.Planning == nil || d.Settings == nil || d.Automation == nil || d.Machine == nil {
 		t.Fatal("all domains should be populated with defaults")
 	}
 	if d.Settings.DefaultContext != "personal" {
 		t.Errorf("nil-config settings should carry defaults, got %q", d.Settings.DefaultContext)
-	}
-}
-
-func TestDecomposeApplyRoundTrip(t *testing.T) {
-	depth := 7
-	proj := &models.Project{ID: "p1", Slug: "p1", Name: "Proj One", Path: "/legacy/abs/p1"}
-	cfg := &Config{
-		Version:               3,
-		DataDir:               "/data/root",
-		CurrentProject:        "p1",
-		Editor:                "vim",
-		DefaultContext:        "work",
-		FzfEnabled:            true,
-		GlowEnabled:           false,
-		UndoHistoryDepth:      &depth,
-		Projects:              []*models.Project{proj},
-		ActionInboxProjectID:  "p1",
-		FocusQueue:            []FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}},
-		ProjectScoringProfile: map[string]string{"p1": "fast"},
-		StartView:             "dashboard",
-	}
-
-	d := Decompose(cfg)
-
-	if d.Catalog.SystemInboxProjectID != "p1" {
-		t.Errorf("catalog system inbox = %q", d.Catalog.SystemInboxProjectID)
-	}
-	if len(d.Catalog.Projects) != 1 || d.Catalog.Projects[0].ID != "p1" {
-		t.Fatalf("catalog projects = %+v", d.Catalog.Projects)
-	}
-	if d.Machine.CurrentProject != "p1" || d.Machine.Editor != "vim" {
-		t.Errorf("machine navigation not captured: %+v", d.Machine)
-	}
-	if d.Settings.DefaultContext != "work" || d.Settings.GlowEnabled {
-		t.Errorf("settings not captured: %+v", d.Settings)
-	}
-	if d.Automation.ProjectScoringProfile["p1"] != "fast" {
-		t.Errorf("automation not captured: %+v", d.Automation)
-	}
-
-	// Apply back onto a fresh config and confirm owned fields round-trip and the
-	// project path is re-derived (not the legacy absolute one).
-	out := &Config{DataDir: "/data/root", Projects: []*models.Project{proj}}
-	d.ApplyTo(out)
-
-	if out.CurrentProject != "p1" || out.Editor != "vim" || out.DefaultContext != "work" {
-		t.Errorf("round-trip lost owned fields: current=%q editor=%q ctx=%q", out.CurrentProject, out.Editor, out.DefaultContext)
-	}
-	if len(out.Projects) != 1 {
-		t.Fatalf("expected 1 project after apply, got %d", len(out.Projects))
-	}
-	wantPath := filepath.Join("/data/root", "projects", "p1")
-	if out.Projects[0].Path != wantPath {
-		t.Errorf("applied project Path = %q, want derived %q", out.Projects[0].Path, wantPath)
-	}
-	if out.ProjectScoringProfile["p1"] != "fast" {
-		t.Errorf("automation not applied: %+v", out.ProjectScoringProfile)
 	}
 }
 

@@ -65,7 +65,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 // resolves the task's unresolved dependencies within its project). A nil
 // project disables both project-scoped filters; the state filter is
 // project-independent because WorkflowState is derived from the task alone.
-func passesCommonFilters(task *models.Task, f *CommonFilterState, project *models.Project, cfg *config.Config) bool {
+func passesCommonFilters(task *models.Task, f *CommonFilterState, project *models.Project, auto *config.AutomationConfig) bool {
 	projectID := ""
 	if project != nil {
 		projectID = project.ID
@@ -107,8 +107,8 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, project *model
 	if !passesAttrFilters(task, f.Attrs) {
 		return false
 	}
-	if f.ScoreMin > 0 && cfg != nil {
-		if profile := cfg.GetProjectScoringProfile(projectID); profile != nil {
+	if f.ScoreMin > 0 && auto != nil {
+		if profile := auto.GetProjectScoringProfile(projectID); profile != nil {
 			if scoring.NormalizedScore(task, profile) < f.ScoreMin {
 				return false
 			}
@@ -405,13 +405,13 @@ func renderFilterBadge(parts []string) string {
 }
 
 // FilterMixin provides standard commonFilterView bridge methods. Views that
-// embed this struct get getFilter, getConfig, setFilterPendingPrefix,
+// embed this struct get getFilter, getFilterMachine, setFilterPendingPrefix,
 // HasActiveFilters, ClearAllFilters, and renderActiveFilterIndicator for free.
 // Views with custom filter logic (extra filter fields) override the methods
 // they need; the embedded defaults still handle the common cases.
 type FilterMixin struct {
-	filter    CommonFilterState
-	filterCfg *config.Config
+	filter        CommonFilterState
+	filterMachine *config.MachineState
 
 	// dispatcher is the keymap dispatcher; when non-nil it owns prefix state.
 	dispatcher *keymap.Dispatcher
@@ -420,10 +420,11 @@ type FilterMixin struct {
 	activeCriteriaFilter *config.SavedFilter
 }
 
-// initFilterMixinWithDispatcher wires the mixin to a declarative dispatcher and config.
-func (fm *FilterMixin) initFilterMixinWithDispatcher(d *keymap.Dispatcher, cfg *config.Config) {
+// initFilterMixinWithDispatcher wires the mixin to a declarative dispatcher
+// and the machine-local custom score-filter preference.
+func (fm *FilterMixin) initFilterMixinWithDispatcher(d *keymap.Dispatcher, runtime *config.RuntimeState) {
 	fm.dispatcher = d
-	fm.filterCfg = cfg
+	fm.filterMachine = runtime.Machine()
 }
 
 // newFilterState returns an initialized CommonFilterState with allocated maps.
@@ -434,8 +435,8 @@ func newFilterState() CommonFilterState {
 	}
 }
 
-func (fm *FilterMixin) getFilter() *CommonFilterState { return &fm.filter }
-func (fm *FilterMixin) getConfig() *config.Config     { return fm.filterCfg }
+func (fm *FilterMixin) getFilter() *CommonFilterState          { return &fm.filter }
+func (fm *FilterMixin) getFilterMachine() *config.MachineState { return fm.filterMachine }
 func (fm *FilterMixin) setFilterPendingPrefix(p string) {
 	fm.dispatcher.SetPendingPrefix(p)
 }

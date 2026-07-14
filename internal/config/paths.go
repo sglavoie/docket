@@ -212,13 +212,6 @@ func ResolveWorkspaceDataDir(flagValue string) (string, bool) {
 	return LocalDataRoot(), false
 }
 
-// ResolveDataDir returns only the resolved data directory from
-// ResolveWorkspaceDataDir, discarding the explicit-selection flag.
-func ResolveDataDir(flagValue string) string {
-	dir, _ := ResolveWorkspaceDataDir(flagValue)
-	return dir
-}
-
 // resolveHomeDir returns the user's home directory and whether it could be
 // determined. It is the single wrapper over os.UserHomeDir so every path helper
 // shares one source of truth (and tests can drive it via $HOME).

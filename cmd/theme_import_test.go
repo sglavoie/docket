@@ -15,13 +15,13 @@ func resetThemeImportVars() {
 	themeImportInto = ""
 }
 
-func setupThemeImportTest(t *testing.T) (*testutil.TestDeps, *config.Manager) {
+func setupThemeImportTest(t *testing.T) (*testDeps, *config.Manager) {
 	t.Helper()
 	resetThemeImportVars()
 	resetThemeExportVars()
-	deps := testutil.SetupTestDeps(t)
+	deps := setupTestDeps(t)
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() {
 		viper.Set("config", "")
@@ -37,13 +37,13 @@ func TestThemeImport(t *testing.T) {
 		defer deps.Cleanup()
 
 		// Set a custom dark theme and save it.
-		deps.Config.ThemeDark = config.Theme{
+		deps.Config.Settings().ThemeDark = config.Theme{
 			BackgroundColor: "#aabbcc",
 			CursorColor:     "#112233",
 			CursorTextColor: "#ffffff",
 		}
-		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		deps.Config.Settings().ThemeDarkRev = config.DarkThemeDefaultsRev
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		// Export it.
 		themeExportSlot = "dark"
@@ -51,17 +51,17 @@ func TestThemeImport(t *testing.T) {
 		themeExportSlot = ""
 
 		// Wipe the dark theme and save.
-		deps.Config.ThemeDark = config.Theme{CursorColor: "#000001"} // keep non-zero
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		deps.Config.Settings().ThemeDark = config.Theme{CursorColor: "#000001"} // keep non-zero
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		// Import the exported theme back.
 		testutil.AssertNoError(t, runThemeImport(themeImportCmd, []string{"rt"}))
 
-		reloaded, err := manager.Load()
+		reloaded, err := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
-		testutil.AssertEqual(t, reloaded.ThemeDark.BackgroundColor, "#aabbcc")
-		testutil.AssertEqual(t, reloaded.ThemeDark.CursorColor, "#112233")
-		testutil.AssertEqual(t, reloaded.ThemeDark.CursorTextColor, "#ffffff")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeDark.BackgroundColor, "#aabbcc")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeDark.CursorColor, "#112233")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeDark.CursorTextColor, "#ffffff")
 	})
 
 	t.Run("--into overrides variant", func(t *testing.T) {
@@ -69,13 +69,13 @@ func TestThemeImport(t *testing.T) {
 		defer deps.Cleanup()
 
 		// Export a custom dark theme.
-		deps.Config.ThemeDark = config.Theme{
+		deps.Config.Settings().ThemeDark = config.Theme{
 			BackgroundColor: "#112233",
 			CursorColor:     "#aabbcc",
 			CursorTextColor: "#ddee00",
 		}
-		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		deps.Config.Settings().ThemeDarkRev = config.DarkThemeDefaultsRev
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		themeExportSlot = "dark"
 		testutil.AssertNoError(t, runThemeExport(themeExportCmd, []string{"into-test"}))
@@ -85,10 +85,10 @@ func TestThemeImport(t *testing.T) {
 		themeImportInto = "light"
 		testutil.AssertNoError(t, runThemeImport(themeImportCmd, []string{"into-test"}))
 
-		reloaded, err := manager.Load()
+		reloaded, err := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
-		testutil.AssertEqual(t, reloaded.ThemeLight.BackgroundColor, "#112233")
-		testutil.AssertEqual(t, reloaded.ThemeLight.CursorColor, "#aabbcc")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeLight.BackgroundColor, "#112233")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeLight.CursorColor, "#aabbcc")
 	})
 
 	t.Run("rejects schema mismatch", func(t *testing.T) {
@@ -121,9 +121,9 @@ func TestThemeImport(t *testing.T) {
 		defer deps.Cleanup()
 
 		// Export a custom dark theme under a known name.
-		deps.Config.ThemeDark = config.Theme{BackgroundColor: "#abcdef"}
-		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		deps.Config.Settings().ThemeDark = config.Theme{BackgroundColor: "#abcdef"}
+		deps.Config.Settings().ThemeDarkRev = config.DarkThemeDefaultsRev
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		themeExportSlot = "dark"
 		testutil.AssertNoError(t, runThemeExport(themeExportCmd, []string{"named-preset"}))
@@ -132,18 +132,18 @@ func TestThemeImport(t *testing.T) {
 		// Import it back; expect ThemeDarkName to reflect the imported preset.
 		testutil.AssertNoError(t, runThemeImport(themeImportCmd, []string{"named-preset"}))
 
-		reloaded, err := manager.Load()
+		reloaded, err := manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
-		testutil.AssertEqual(t, reloaded.ThemeDarkName, "named-preset")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeDarkName, "named-preset")
 
 		// Cross-slot import (--into light) should populate ThemeLightName.
 		themeImportInto = "light"
 		testutil.AssertNoError(t, runThemeImport(themeImportCmd, []string{"named-preset"}))
 		themeImportInto = ""
 
-		reloaded, err = manager.Load()
+		reloaded, err = manager.LoadRuntimeState()
 		testutil.AssertNoError(t, err)
-		testutil.AssertEqual(t, reloaded.ThemeLightName, "named-preset")
+		testutil.AssertEqual(t, reloaded.Settings().ThemeLightName, "named-preset")
 	})
 
 	t.Run("rejects invalid --into value", func(t *testing.T) {

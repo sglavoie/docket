@@ -28,7 +28,7 @@ Examples:
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		project, _, _, err := LoadCurrentProject()
+		project, _, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

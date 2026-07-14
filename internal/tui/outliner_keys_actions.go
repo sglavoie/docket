@@ -211,13 +211,16 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	// after the commit from the batch's RemovedTaskIDs.
 	deleteIDs := collectDescendantIDs(m.project.Tasks, map[string]bool{task.ID: true})
 	var artifacts []storage.ArtifactChange
-	if m.config != nil && m.configManager != nil && m.config.RemoveDurableTaskRefs(deleteIDs) > 0 {
-		arts, err := configDomainArtifacts(m.configManager, m.config)
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Error: %v", err))
-			return m, nil
+	if m.runtime != nil && m.configManager != nil {
+		planning := clonePlanningState(m.runtime.Planning())
+		if planning.RemoveDurableTaskRefs(deleteIDs) > 0 {
+			arts, err := planningDomainArtifact(m.configManager, planning)
+			if err != nil {
+				m.setStatus(fmt.Sprintf("Error: %v", err))
+				return m, nil
+			}
+			artifacts = arts
 		}
-		artifacts = arts
 	}
 	return m, m.bulk.Delete([]string{task.ID}, artifacts...)
 }
@@ -287,7 +290,9 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 	cmd := m.commitWorkflow(prevStates, fmt.Sprintf("Deleted %d tasks", count))
 
 	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	cleanupConfigTaskRefs(m.config, m.configManager, idsToDelete)
+	if err := cleanupRuntimeTaskRefs(m.runtime, idsToDelete); err != nil {
+		m.setStatus(fmt.Sprintf("Error: %v", err))
+	}
 
 	m.clearMultiSelect()
 	return m, cmd
@@ -308,8 +313,8 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 	}
 
 	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
+	if m.runtime.Settings().UndoHistoryDepth != nil {
+		undoDepth = *m.runtime.Settings().UndoHistoryDepth
 	}
 	completedCount := proj.CountCompletedTasks()
 

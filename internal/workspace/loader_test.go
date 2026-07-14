@@ -110,6 +110,50 @@ func TestLoaderReparsesChangedProjectOnly(t *testing.T) {
 	}
 }
 
+func TestLoaderRepresentative36ProjectWorkspaceParsesOnlyChanges(t *testing.T) {
+	src := newFakeSource()
+	loader := src.newLoader()
+	const projectCount = 36
+
+	fresh := func() []*models.Project {
+		projects := make([]*models.Project, 0, projectCount)
+		for i := range projectCount {
+			id := fmt.Sprintf("p%02d", i)
+			projects = append(projects, makeProject(id, id))
+		}
+		return projects
+	}
+
+	loader.Build(fresh())
+	if got := loader.ParseCount(); got != projectCount {
+		t.Fatalf("initial ParseCount = %d, want %d", got, projectCount)
+	}
+
+	loader.Build(fresh())
+	if got := loader.ParseCount(); got != projectCount {
+		t.Fatalf("unchanged workspace reparsed projects: ParseCount = %d, want %d", got, projectCount)
+	}
+	if got := loader.CacheHits(); got != projectCount {
+		t.Fatalf("unchanged workspace CacheHits = %d, want %d", got, projectCount)
+	}
+
+	changedID := "p17"
+	src.identity[changedID] = sourceIdentity{exists: true, size: 2, modTime: baseTime.Add(time.Minute)}
+	loader.Build(fresh())
+	if got := loader.ParseCount(); got != projectCount+1 {
+		t.Fatalf("one changed project ParseCount = %d, want %d", got, projectCount+1)
+	}
+	for id, parses := range src.parses {
+		want := 1
+		if id == changedID {
+			want = 2
+		}
+		if parses != want {
+			t.Fatalf("project %s parsed %d times, want %d", id, parses, want)
+		}
+	}
+}
+
 func TestLoaderDoesNotCacheMissingSourceFile(t *testing.T) {
 	src := newFakeSource()
 	loader := src.newLoader()

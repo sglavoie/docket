@@ -22,7 +22,7 @@ func TestSettingsTodayStartViewCopyPreservesConfigValue(t *testing.T) {
 }
 
 func TestSettingsTodayCopyAvoidsStaleFocusBoardLabels(t *testing.T) {
-	model := NewSettingsModel(config.NewConfig(), nil)
+	model := NewSettingsModel(newSettingsDeps(newTestConfig(), nil))
 	model.focusIndex = subTabFieldStart(tabBehavior, 6)
 	startup := model.renderBehaviorStartupSection()
 	if !strings.Contains(startup, "default: Today cockpit") {

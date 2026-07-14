@@ -25,7 +25,7 @@ func TestSelectTaskForMove_WithDirectID(t *testing.T) {
 }
 
 func TestSelectTaskForMove_TaskNotFound(t *testing.T) {
-	deps, project := testutil.SetupTestDepsWithProject(t, "Move Not Found Test")
+	deps, project := setupTestDepsWithProject(t, "Move Not Found Test")
 	defer deps.Cleanup()
 
 	args := []string{"nonexistent-task-id"}

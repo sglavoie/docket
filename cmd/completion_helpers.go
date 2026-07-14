@@ -30,7 +30,7 @@ func completeEnum(values []string) func(*cobra.Command, []string, string) ([]str
 // completeProjectSections returns a completion function that loads the current project's sections.
 func completeProjectSections() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		project, _, _, err := LoadCurrentProject()
+		project, _, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -42,14 +42,11 @@ func completeProjectSections() func(*cobra.Command, []string, string) ([]string,
 // with any custom contexts defined in the user's config.
 func completeContexts() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		_, mgr, err := LoadConfig()
+		workspace, err := LoadCLIWorkspace()
 		if err != nil {
 			return builtinContexts, cobra.ShellCompDirectiveNoFileComp
 		}
-		custom, err := customContextNames(mgr)
-		if err != nil {
-			return builtinContexts, cobra.ShellCompDirectiveNoFileComp
-		}
+		custom := workspace.Runtime.Machine().GetCustomContextNames()
 		all := make([]string, 0, len(builtinContexts)+len(custom))
 		all = append(all, builtinContexts...)
 		all = append(all, custom...)
@@ -85,7 +82,7 @@ func knownContextList(customNames []string) string {
 // completeCurrentProjectTaskIDs returns a completion function that lists task short IDs from the current project.
 func completeCurrentProjectTaskIDs() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		project, _, _, err := LoadCurrentProject()
+		project, _, err := LoadRuntimeCurrentProject()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -100,14 +97,11 @@ func completeCurrentProjectTaskIDs() func(*cobra.Command, []string, string) ([]s
 // completeProjectSlugs returns a completion function that lists active project slugs.
 func completeProjectSlugs() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		_, mgr, err := LoadConfig()
+		workspace, err := LoadCLIWorkspace()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		projects, err := activeProjects(mgr)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
+		projects := workspace.Runtime.ActiveProjects()
 		var slugs []string
 		for _, p := range projects {
 			slugs = append(slugs, p.Slug)
@@ -116,28 +110,22 @@ func completeProjectSlugs() func(*cobra.Command, []string, string) ([]string, co
 	}
 }
 
-// completeConfigStages returns a completion function that loads workflow stages from config.
+// completeConfigStages remains as a compatibility registration for commands
+// whose retired stage flag may still be present in older completion scripts.
 func completeConfigStages() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		cfg, _, err := LoadConfig()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return cfg.Stages, cobra.ShellCompDirectiveNoFileComp
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
 // completeTemplates returns a completion function that lists task template IDs and names.
 func completeTemplates() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		_, mgr, err := LoadConfig()
+		workspace, err := LoadCLIWorkspace()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		templates, err := taskTemplates(mgr)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
+		templates := workspace.Runtime.Automation().GetTaskTemplates()
 		var completions []string
 		for _, t := range templates {
 			completions = append(completions, t.ID+"\t"+t.Name)

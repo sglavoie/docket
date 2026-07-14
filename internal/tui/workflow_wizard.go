@@ -35,8 +35,10 @@ var noValueActionTypes = map[workflow.ActionType]bool{
 // WorkflowWizardModel is a linear wizard for creating a workflow rule.
 // It guides the user through trigger → operation → value → action → value → name+review.
 type WorkflowWizardModel struct {
-	config        *config.Config
-	configManager *config.Manager
+	// runtime backs the automation-domain commit; the new rule is written through
+	// the coordinator over it (RuntimeState.CommitAutomation).
+	runtime     *config.RuntimeState
+	coordinator WorkflowCoordinator
 
 	step wizardStep
 
@@ -79,16 +81,20 @@ type WorkflowWizardSavedMsg struct {
 }
 
 // NewWorkflowWizardModel creates a new workflow rule wizard.
-func NewWorkflowWizardModel(cfg *config.Config, manager *config.Manager) *WorkflowWizardModel {
+func NewWorkflowWizardModel(runtime *config.RuntimeState) *WorkflowWizardModel {
 	factory := DefaultFormFieldFactory()
 
 	triggerValueInput := factory.NewTextInput("Trigger value (e.g. done, 1, active)")
 	actionValueInput := factory.NewTextInput("Action value (e.g. done, 1, #tag, +3d)")
 	nameInput := factory.NewTextInput("Rule name")
 
+	var coordinator WorkflowCoordinator
+	if runtime != nil {
+		coordinator = newWorkflowCoordinator(runtime)
+	}
 	m := &WorkflowWizardModel{
-		config:            cfg,
-		configManager:     manager,
+		runtime:           runtime,
+		coordinator:       coordinator,
 		triggerFields:     workflow.ValidTriggerFields(),
 		triggerOps:        workflow.ValidTriggerOperations(),
 		actionTypes:       workflow.ValidActionTypes(),
@@ -238,15 +244,11 @@ func (m *WorkflowWizardModel) saveRule() tea.Cmd {
 		return nil
 	}
 
-	m.config.AddWorkflowRule(*rule)
-	mgr := m.configManager
-	cfg := m.config
+	automation := cloneAutomationConfig(m.runtime.Automation())
+	automation.AddWorkflowRule(*rule)
 	savedRule := *rule
 
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
+	return m.coordinator.SaveThen(automation, func() tea.Msg {
 		return WorkflowWizardSavedMsg{Rule: savedRule}
-	}
+	})
 }

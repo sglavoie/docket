@@ -42,7 +42,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 	// Resolve the task in the current project; index validation runs against the
 	// loaded copy so error messages match the legacy surface, and the mutation
 	// itself persists through the application layer.
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 
 	if commentClearFlag {
 		// No-op fast path: skip the save entirely when there is nothing to clear.

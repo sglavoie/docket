@@ -3,10 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // scenarioCreateForm builds a create task form for env.project wired to the
@@ -14,8 +11,8 @@ import (
 // transactional stack (mutation → reload) instead of a raw project save.
 func scenarioCreateForm(t *testing.T, env *scenarioEnv) *TaskFormModel {
 	t.Helper()
-	cfg := testutil.NewTestConfig()
-	m := NewTaskFormModelCreate(env.project, cfg, nil, nil)
+	cfg := newTestConfig()
+	m := NewTaskFormModelCreate(env.project, testRuntimeAt(cfg.DataDir(), cfg), nil)
 	m.SetTaskFormCoordinator(env.features.TaskForm)
 	return m
 }
@@ -290,7 +287,7 @@ func TestTaskForm_Save_CreateWithoutCoordinatorBuildsCmd(t *testing.T) {
 	m := newTestTaskForm()
 	m.draft.title = "no coordinator"
 	m.titleInput.SetValue("no coordinator")
-	var cmd tea.Cmd = m.saveCreate()
+	cmd := m.saveCreate()
 	if cmd == nil {
 		t.Fatal("saveCreate should build a command even without a coordinator")
 	}

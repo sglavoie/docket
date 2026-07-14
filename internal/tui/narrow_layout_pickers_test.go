@@ -57,6 +57,25 @@ func TestProjectPickerViewRespectsVisualWidth(t *testing.T) {
 	}
 }
 
+func TestGlobalProjectPickerRespectsTerminalWidth(t *testing.T) {
+	project, err := models.NewProject("proj-a", "ui-fix-sprint", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	project.Name = "A project name long enough to pressure the narrow picker"
+	project.Context = "context-with-a-long-label"
+
+	for _, width := range []int{32, 18} {
+		picker := newGlobalProjectPicker([]*models.Project{project}, []*models.Project{project}, PickerPurposeQuickCapture, nil, nil)
+		rendered := picker.render(width)
+		for line := range strings.SplitSeq(rendered, "\n") {
+			if got := lipgloss.Width(ansi.Strip(line)); got > width {
+				t.Fatalf("global project picker line exceeds width %d: %q (width=%d)\n\n%s", width, ansi.Strip(line), got, ansi.Strip(rendered))
+			}
+		}
+	}
+}
+
 func TestPriorityPickerViewRespectsVisualWidth(t *testing.T) {
 	task, err := models.NewTask("task-1", 5, models.TaskTypeTask, "修复优先级选择器标题在窄宽度下的溢出问题")
 	if err != nil {

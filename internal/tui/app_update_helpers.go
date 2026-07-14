@@ -62,10 +62,11 @@ func (m *AppModel) hasActiveTextInput() bool {
 	return false
 }
 
-// resolveQuickCaptureProject returns the best project for quick capture,
-// preferring the dashboard selection when on the dashboard view.
+// resolveQuickCaptureProject enters the shared capture flow. The system Inbox
+// is the default destination and %project syntax makes routing elsewhere
+// optional inside the same input.
 func (m *AppModel) resolveQuickCaptureProject() tea.Msg {
-	return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeQuickCapture}
+	return ShowQuickCaptureMsg{}
 }
 
 func (m *AppModel) resolveQuickCaptureCmd() tea.Cmd {

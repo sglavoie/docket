@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 )
 
@@ -164,12 +165,13 @@ func (m *AppModel) sidebarCommands() []Command {
 			Views:       []ViewType{},
 			Aliases:     []string{"sidebar on all", "show sidebar all"},
 			Handler: func() tea.Msg {
-				for _, p := range m.config.GetActiveProjects() {
-					state, _ := m.config.GetProjectViewState(p.ID)
-					state.SidebarEnabled = true
-					m.config.SetProjectViewState(p.ID, state)
-				}
-				if err := m.configManager.Save(m.config); err != nil {
+				if err := m.commitMachineMutation(func(machine *config.MachineState) {
+					for _, p := range m.runtime.ActiveProjects() {
+						state, _ := machine.GetProjectViewState(p.ID)
+						state.SidebarEnabled = true
+						machine.SetProjectViewState(p.ID, state)
+					}
+				}); err != nil {
 					logging.Warn("failed to save config: %v", err)
 				}
 				if m.projectTree != nil {
@@ -188,12 +190,13 @@ func (m *AppModel) sidebarCommands() []Command {
 			Views:       []ViewType{},
 			Aliases:     []string{"sidebar off all", "hide sidebar all"},
 			Handler: func() tea.Msg {
-				for _, p := range m.config.GetActiveProjects() {
-					state, _ := m.config.GetProjectViewState(p.ID)
-					state.SidebarEnabled = false
-					m.config.SetProjectViewState(p.ID, state)
-				}
-				if err := m.configManager.Save(m.config); err != nil {
+				if err := m.commitMachineMutation(func(machine *config.MachineState) {
+					for _, p := range m.runtime.ActiveProjects() {
+						state, _ := machine.GetProjectViewState(p.ID)
+						state.SidebarEnabled = false
+						machine.SetProjectViewState(p.ID, state)
+					}
+				}); err != nil {
 					logging.Warn("failed to save config: %v", err)
 				}
 				if m.projectTree != nil {

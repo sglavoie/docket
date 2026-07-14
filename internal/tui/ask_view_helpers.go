@@ -17,7 +17,7 @@ func (m *AskViewModel) IsFullHeight() bool {
 
 // ShouldCaptureEsc returns true when the view needs to handle esc internally.
 func (m *AskViewModel) ShouldCaptureEsc() bool {
-	return m.state == askStateInput || m.state == askStateLoading
+	return m.state != askStateResult
 }
 
 func (m *AskViewModel) HandledKeys() []string {

@@ -61,8 +61,8 @@ func TestProjectTrashRestoreRoundTripCommitsAtomically(t *testing.T) {
 		t.Fatalf("PlanTrash: %v", err)
 	}
 	ops := append(plan.Ops, transaction.Op{Kind: transaction.OpWrite, Target: configPath, Data: []byte(`{"v":"after-delete"}`), Mode: FilePermissions})
-	if err := svc.CommitOps(ops); err != nil {
-		t.Fatalf("CommitOps(trash): %v", err)
+	if commitErr := svc.CommitOps(ops); commitErr != nil {
+		t.Fatalf("CommitOps(trash): %v", commitErr)
 	}
 
 	if _, statErr := os.Stat(project.Path); !os.IsNotExist(statErr) {
@@ -131,8 +131,8 @@ func TestPlanRestoreDestinationOccupied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlanTrash: %v", err)
 	}
-	if err := svc.CommitOps(plan.Ops); err != nil {
-		t.Fatalf("CommitOps(trash): %v", err)
+	if commitErr := svc.CommitOps(plan.Ops); commitErr != nil {
+		t.Fatalf("CommitOps(trash): %v", commitErr)
 	}
 	// Recreate an active project at the destination slug.
 	newLifecycleTestProject(t, dataDir, "beta", "Beta Reborn")
@@ -151,8 +151,8 @@ func TestPlanPurgeRemovesEntryAndNoopsWhenMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlanTrash: %v", err)
 	}
-	if err := svc.CommitOps(plan.Ops); err != nil {
-		t.Fatalf("CommitOps(trash): %v", err)
+	if commitErr := svc.CommitOps(plan.Ops); commitErr != nil {
+		t.Fatalf("CommitOps(trash): %v", commitErr)
 	}
 
 	purgeOps, err := PlanPurge(dataDir, plan.EntryID)
@@ -162,8 +162,8 @@ func TestPlanPurgeRemovesEntryAndNoopsWhenMissing(t *testing.T) {
 	if len(purgeOps) == 0 {
 		t.Fatal("expected purge operations for a populated entry")
 	}
-	if err := svc.CommitOps(purgeOps); err != nil {
-		t.Fatalf("CommitOps(purge): %v", err)
+	if commitErr := svc.CommitOps(purgeOps); commitErr != nil {
+		t.Fatalf("CommitOps(purge): %v", commitErr)
 	}
 	if _, statErr := os.Stat(plan.EntryPath); !os.IsNotExist(statErr) {
 		t.Fatalf("expected trash entry purged, stat err = %v", statErr)
@@ -202,5 +202,77 @@ func TestTrashCommitAbortsAtomicallyOnInvalidOp(t *testing.T) {
 	}
 	if _, statErr := os.Stat(outside); !os.IsNotExist(statErr) {
 		t.Fatalf("expected no file written outside root, stat err = %v", statErr)
+	}
+}
+
+// TestLifecycleCommitStaleArtifactAbortsBeforeMove proves project lifecycle
+// operations preserve a checked domain artifact's optimistic-concurrency
+// contract. A concurrent catalog writer wins, and the accompanying trash move
+// never starts.
+func TestLifecycleCommitStaleArtifactAbortsBeforeMove(t *testing.T) {
+	svc, dataDir := lifecycleService(t)
+	project := newLifecycleTestProject(t, dataDir, "epsilon", "Epsilon")
+	catalogPath := filepath.Join(dataDir, "workspace.json")
+	loaded := []byte(`{"projects":["epsilon"]}`)
+	if err := os.WriteFile(catalogPath, loaded, FilePermissions); err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+	expected := RawArtifactRevision(loaded)
+
+	plan, err := PlanTrash(project, dataDir, "deleted", nil)
+	if err != nil {
+		t.Fatalf("PlanTrash: %v", err)
+	}
+	concurrent := []byte(`{"projects":["epsilon","zeta"]}`)
+	if writeErr := os.WriteFile(catalogPath, concurrent, FilePermissions); writeErr != nil {
+		t.Fatalf("concurrent catalog write: %v", writeErr)
+	}
+
+	err = svc.CommitOpsWithArtifacts(plan.Ops, []ArtifactChange{{
+		Path:             catalogPath,
+		Data:             []byte(`{"projects":[]}`),
+		ExpectedRevision: &expected,
+	}})
+	var conflict *ArtifactConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("CommitOpsWithArtifacts err = %v, want ArtifactConflictError", err)
+	}
+	if _, statErr := os.Stat(project.Path); statErr != nil {
+		t.Fatalf("project moved despite stale catalog: %v", statErr)
+	}
+	if got, readErr := os.ReadFile(catalogPath); readErr != nil || string(got) != string(concurrent) {
+		t.Fatalf("catalog after conflict = %q, %v; want concurrent bytes", got, readErr)
+	}
+}
+
+// TestLifecycleArtifactRevisionSourceMustStayWithinRoot covers the rename-only
+// ExpectedRevisionPath seam. A lifecycle artifact may validate an old source and
+// write a new target, but both paths (and the source's advisory lock) must remain
+// inside the approved workspace before the commit creates anything.
+func TestLifecycleArtifactRevisionSourceMustStayWithinRoot(t *testing.T) {
+	svc, dataDir := lifecycleService(t)
+	target := filepath.Join(dataDir, "projects", "beta", "tasks.md")
+	outsideDir := t.TempDir()
+	outside := filepath.Join(outsideDir, "tasks.md")
+	base := []byte("# Outside\n")
+	if err := os.WriteFile(outside, base, FilePermissions); err != nil {
+		t.Fatalf("seed outside revision source: %v", err)
+	}
+	expected := RawArtifactRevision(base)
+
+	err := svc.CommitOpsWithArtifacts(nil, []ArtifactChange{{
+		Path:                 target,
+		Data:                 []byte("# Beta\n"),
+		ExpectedRevision:     &expected,
+		ExpectedRevisionPath: outside,
+	}})
+	if !errors.Is(err, transaction.ErrTargetOutsideRoot) {
+		t.Fatalf("CommitOpsWithArtifacts err = %v, want ErrTargetOutsideRoot", err)
+	}
+	if _, statErr := os.Stat(target); !os.IsNotExist(statErr) {
+		t.Fatalf("target created despite out-of-root revision source: %v", statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(outsideDir, LockFileName)); !os.IsNotExist(statErr) {
+		t.Fatalf("outside lock created during rejected preflight: %v", statErr)
 	}
 }

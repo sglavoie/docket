@@ -1,6 +1,9 @@
 package tui
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // sortItemsByCategory sorts items by the predefined category order for display without search.
 // Pinned commands are placed at the very top before all other categories.
@@ -19,7 +22,23 @@ func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []Palette
 		if iPinned != jPinned {
 			return iPinned
 		}
-		return orderMap[sorted[i].Category] < orderMap[sorted[j].Category]
+		iOrder, iKnown := orderMap[sorted[i].Category]
+		jOrder, jKnown := orderMap[sorted[j].Category]
+		if !iKnown {
+			iOrder = len(categoryOrder)
+		}
+		if !jKnown {
+			jOrder = len(categoryOrder)
+		}
+		if iOrder != jOrder {
+			return iOrder < jOrder
+		}
+		iName := strings.ToLower(sorted[i].Name)
+		jName := strings.ToLower(sorted[j].Name)
+		if iName != jName {
+			return iName < jName
+		}
+		return m.getItemID(sorted[i]) < m.getItemID(sorted[j])
 	})
 
 	return sorted

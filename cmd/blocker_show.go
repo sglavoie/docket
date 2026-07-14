@@ -43,7 +43,7 @@ func runBlockerShow(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("blocker not found: %s", args[0])
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}

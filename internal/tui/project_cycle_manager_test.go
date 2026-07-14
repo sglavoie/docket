@@ -12,13 +12,20 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// syncTestRuntime reconciles the shell project cache after a test mutates the
+// in-memory runtime domains.
+func syncTestRuntime(app *AppModel) {
+	app.syncProjectCache()
+}
+
 func TestRenderProjectCyclePopupKeepsCountsOnSameLine(t *testing.T) {
 	app := newTestAppModel()
 	app.width = 80
 	app.height = 24
 	app.showProjectCycle = true
-	app.config.FilterCustomContext = "Work"
-	app.config.SetCycleProjectsForContext("+Work", []string{"p1", "p2", "p3", "p4"})
+	app.runtime.Machine().FilterCustomContext = "Work"
+	app.runtime.Machine().SetCycleProjectsForContext("+Work", []string{"p1", "p2", "p3", "p4"})
+	syncTestRuntime(app)
 
 	app.projectCycleItems = []ProjectInfo{
 		{Project: &models.Project{ID: "p1", Name: "Excel Add-in"}, TaskCount: 2},
@@ -56,8 +63,9 @@ func TestRenderProjectCyclePopupKeepsCountsOnSameLine(t *testing.T) {
 
 func TestHandleCycleProjectReportsArchivedOnlyCycle(t *testing.T) {
 	app := newTestAppModel()
-	app.config.AddProject(&models.Project{ID: "p1", Name: "Archived Project", Archived: true})
-	app.config.SetCycleProjects([]string{"p1"})
+	addTestAppProject(app, &models.Project{ID: "p1", Slug: "archived-project", Name: "Archived Project", Archived: true})
+	app.runtime.Machine().SetCycleProjects([]string{"p1"})
+	syncTestRuntime(app)
 
 	handled, _ := app.handleCycleProject(true)
 
@@ -77,10 +85,11 @@ func TestHandleCycleProjectReportsArchivedOnlyCycle(t *testing.T) {
 
 func TestHandleCycleProjectReportsArchivedOnlyCustomContextCycle(t *testing.T) {
 	app := newTestAppModel()
-	app.config.FilterCustomContext = "Work"
-	app.config.AddProject(&models.Project{ID: "p1", Name: "Archived One", Archived: true})
-	app.config.AddProject(&models.Project{ID: "p2", Name: "Archived Two", Archived: true})
-	app.config.SetCycleProjectsForContext("+Work", []string{"p1", "p2"})
+	app.runtime.Machine().FilterCustomContext = "Work"
+	addTestAppProject(app, &models.Project{ID: "p1", Slug: "archived-one", Name: "Archived One", Archived: true})
+	addTestAppProject(app, &models.Project{ID: "p2", Slug: "archived-two", Name: "Archived Two", Archived: true})
+	app.runtime.Machine().SetCycleProjectsForContext("+Work", []string{"p1", "p2"})
+	syncTestRuntime(app)
 
 	handled, _ := app.handleCycleProject(true)
 
@@ -105,8 +114,9 @@ func TestRenderProjectCyclePopupShowsArchivedHiddenCount(t *testing.T) {
 	app.showProjectCycle = true
 	active := &models.Project{ID: "p1", Name: "Active Project"}
 	archived := &models.Project{ID: "p2", Name: "Archived Project", Archived: true}
-	app.config.Projects = []*models.Project{active, archived}
-	app.config.SetCycleProjects([]string{"p1", "p2"})
+	setTestAppProjects(app, active, archived)
+	app.runtime.Machine().SetCycleProjects([]string{"p1", "p2"})
+	syncTestRuntime(app)
 	app.projectCycleAllItems = []ProjectInfo{{Project: active, TaskCount: 3}}
 	app.projectCycleItems = app.projectCycleAllItems
 
@@ -128,8 +138,9 @@ func TestRenderProjectCyclePopupExplainsAllArchivedCycle(t *testing.T) {
 	app.width = 100
 	app.height = 24
 	app.showProjectCycle = true
-	app.config.AddProject(&models.Project{ID: "p1", Name: "Archived Project", Archived: true})
-	app.config.SetCycleProjects([]string{"p1"})
+	addTestAppProject(app, &models.Project{ID: "p1", Slug: "archived-project", Name: "Archived Project", Archived: true})
+	app.runtime.Machine().SetCycleProjects([]string{"p1"})
+	syncTestRuntime(app)
 
 	rendered := ansi.Strip(app.renderProjectCyclePopup())
 	normalized := strings.Join(strings.Fields(rendered), " ")
@@ -267,14 +278,14 @@ func TestProjectCyclePreviewCardConsumesRowsAbovePopup(t *testing.T) {
 	)
 	app, _ := newProjectCyclePreviewTestApp(t, width, height, taskCount)
 	limit := 2
-	app.config.SectionLimitNext = &limit
+	app.runtime.Settings().SectionLimitNext = &limit
 	project := app.projectCycleItems[0].Project
 	for _, task := range project.Tasks {
 		task.SetSection(models.SectionNext)
 	}
 	project.BuildTaskTree()
 
-	app.projectCyclePreview = NewProjectTreeModel(project, app.config, app.configManager)
+	app.projectCyclePreview = NewProjectTreeModel(project, app.configManager, app.runtime)
 	app.projectCyclePreviewID = project.ID
 	app.projectCyclePreview.viewMode = ViewModeNext
 	app.projectCyclePreview.updateVisibility()
@@ -316,7 +327,8 @@ func newProjectCycleSearchTestApp() *AppModel {
 		{ID: "p2", Name: "Beta Client", Context: "client"},
 		{ID: "p3", Name: "Gamma Notes", Context: "personal"},
 	}
-	app.config.Projects = projects
+	setTestAppProjects(app, projects...)
+	syncTestRuntime(app)
 	app.projectCycleAllItems = []ProjectInfo{
 		{Project: projects[0], TaskCount: 2},
 		{Project: projects[1], TaskCount: 4},
@@ -458,13 +470,13 @@ func TestProjectCycleActionsUseFilteredItems(t *testing.T) {
 	sendProjectCycleKeys(app, syntheticSpecialKey(tea.KeyEnter))
 
 	sendProjectCycleKeys(app, syntheticKey(' '))
-	cycleIDs := app.config.GetCycleProjectIDsForContext("")
+	cycleIDs := app.runtime.Machine().GetCycleProjectIDsForContext("")
 	if len(cycleIDs) != 1 || cycleIDs[0] != "p2" {
 		t.Fatalf("cycle IDs after filtered space toggle = %v, want [p2]", cycleIDs)
 	}
 
 	sendProjectCycleKeys(app, syntheticKey('p'))
-	beta := app.config.GetProject("p2")
+	beta := app.projectByID("p2")
 	if beta == nil || !beta.Pinned {
 		t.Fatal("expected filtered p key to pin Beta Client")
 	}

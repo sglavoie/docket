@@ -16,7 +16,7 @@ func TestStructureCommands_Reparent_DispatchesToCrossOutliner(t *testing.T) {
 
 	// Create the single-project outliner (would have been picked up by the
 	// old "first non-nil" handler).
-	app.outliner = NewOutlinerModel(singleProj, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(singleProj, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 	app.views.Register(ViewOutliner, app.outliner)
@@ -28,7 +28,7 @@ func TestStructureCommands_Reparent_DispatchesToCrossOutliner(t *testing.T) {
 	crossProj.Tasks = []*models.Task{crossTask}
 	crossProj.BuildTaskTree()
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{crossProj}
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProj.ID}}
 	app.crossOutliner.cursor = 0
@@ -62,7 +62,7 @@ func TestStructureCommands_Reparent_DispatchesToCrossOutliner(t *testing.T) {
 // in cross-project mode and would silently drop the action.
 func TestStructureCommands_QuickNote_DispatchesToCrossOutliner(t *testing.T) {
 	app, singleProj := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(singleProj, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(singleProj, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 	app.views.Register(ViewOutliner, app.outliner)
@@ -73,7 +73,7 @@ func TestStructureCommands_QuickNote_DispatchesToCrossOutliner(t *testing.T) {
 	crossProj.Tasks = []*models.Task{crossTask}
 	crossProj.BuildTaskTree()
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{crossProj}
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProj.ID}}
 	app.crossOutliner.cursor = 0
@@ -105,7 +105,7 @@ func TestStructureCommands_QuickNote_DispatchesToCrossOutliner(t *testing.T) {
 // ViewOutliner.
 func TestStructureCommands_Reparent_DispatchesToOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 

@@ -59,7 +59,7 @@ func reloadCoordinatorTask(t *testing.T, project *models.Project, taskID string)
 // transition through the single-task coordinator.
 func TestPriorityViewStartSuggestedTaskCommitsThroughCoordinator(t *testing.T) {
 	project, taskID := savedCoordinatorProject(t)
-	m := NewPriorityViewModel(project, testutil.NewTestConfig(), nil)
+	m := NewPriorityViewModel(project, newTestConfig(), nil)
 	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
 	m.suggestion = &SuggestedTask{Task: &PriorityTask{Task: project.GetTaskByID(taskID)}}
 
@@ -99,7 +99,7 @@ func TestFocusBoardEditTitleCommitsThroughCoordinator(t *testing.T) {
 // priority change commits through the single-task coordinator.
 func TestKanbanPriorityMoveCommitsThroughCoordinator(t *testing.T) {
 	project, taskID := savedCoordinatorProject(t)
-	m := NewKanbanModel(project, testutil.NewTestConfig(), nil, NewProjectService())
+	m := NewKanbanModel(project, nil, nil, NewProjectService())
 	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
 
 	if _, cmd := m.applyKanbanPriorityChange(project, project.GetTaskByID(taskID), 1); cmd == nil {
@@ -115,9 +115,9 @@ func TestKanbanPriorityMoveCommitsThroughCoordinator(t *testing.T) {
 // progress, and that a rejected mutation surfaces an error without advancing it.
 func TestDailyReviewMutationCommitsAndTracksProgress(t *testing.T) {
 	project, taskID := savedCoordinatorProject(t)
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
-	m := NewDailyReviewModel(cfg, nil)
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
+	m := NewDailyReviewModel(testRuntimeAt("", cfg), nil)
 	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
 
 	before := m.reviewedCount

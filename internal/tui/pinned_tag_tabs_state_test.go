@@ -10,12 +10,12 @@ import (
 func TestSaveProjectTreeStatePersistsPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.PinnedTags = []string{"backend"}
-	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 	app.projectTree.pinnedTagTab = 1
 
 	app.saveProjectTreeState()
 
-	state := app.config.ProjectViewStates[project.ID]
+	state := app.runtime.Machine().ProjectViewStates[project.ID]
 	if got := state.PinnedTagTab; got != "backend" {
 		t.Fatalf("PinnedTagTab = %q, want backend", got)
 	}
@@ -24,8 +24,8 @@ func TestSaveProjectTreeStatePersistsPinnedTagTab(t *testing.T) {
 func TestRestoreProjectTreeStateRestoresPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.PinnedTags = []string{"backend"}
-	app.config.SetProjectViewState(project.ID, config.ProjectViewState{PinnedTagTab: "backend"})
-	app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+	app.runtime.Machine().SetProjectViewState(project.ID, config.ProjectViewState{PinnedTagTab: "backend"})
+	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 
 	app.restoreProjectTreeState()
 
@@ -37,12 +37,12 @@ func TestRestoreProjectTreeStateRestoresPinnedTagTab(t *testing.T) {
 func TestSaveOutlinerFilterStatePersistsPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.PinnedTags = []string{"backend"}
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.setPinnedTagTabIndex(1)
 
 	app.saveOutlinerFilterState()
 
-	state := app.config.ProjectViewStates[project.ID]
+	state := app.runtime.Machine().ProjectViewStates[project.ID]
 	if got := state.PinnedTagTab; got != "backend" {
 		t.Fatalf("PinnedTagTab = %q, want backend", got)
 	}
@@ -51,8 +51,8 @@ func TestSaveOutlinerFilterStatePersistsPinnedTagTab(t *testing.T) {
 func TestRestoreOutlinerFilterStateRestoresPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.PinnedTags = []string{"backend"}
-	app.config.SetProjectViewState(project.ID, config.ProjectViewState{PinnedTagTab: "backend"})
-	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
+	app.runtime.Machine().SetProjectViewState(project.ID, config.ProjectViewState{PinnedTagTab: "backend"})
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 
 	app.restoreOutlinerFilterState()
 
@@ -63,8 +63,9 @@ func TestRestoreOutlinerFilterStateRestoresPinnedTagTab(t *testing.T) {
 
 func TestSaveCrossOutlinerStatePersistsPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
-	app.config.GlobalPinnedTags = []string{"backend"}
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.runtime.Settings().GlobalPinnedTags = []string{"backend"}
+	syncTestRuntime(app)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	task := &models.Task{ID: "task", Title: "Backend task", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	project.BuildTaskTree()
@@ -73,19 +74,20 @@ func TestSaveCrossOutlinerStatePersistsPinnedTagTab(t *testing.T) {
 
 	app.saveCrossOutlinerState()
 
-	if got := app.config.CrossOutlinerPinnedTagTab; got != "backend" {
+	if got := app.runtime.Machine().CrossOutlinerPinnedTagTab; got != "backend" {
 		t.Fatalf("CrossOutlinerPinnedTagTab = %q, want backend", got)
 	}
 }
 
 func TestHandleCrossProjectsLoadedRestoresPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
-	app.config.GlobalPinnedTags = []string{"backend"}
-	app.config.CrossOutlinerPinnedTagTab = "backend"
+	app.runtime.Settings().GlobalPinnedTags = []string{"backend"}
+	syncTestRuntime(app)
+	app.runtime.Machine().CrossOutlinerPinnedTagTab = "backend"
 	task := &models.Task{ID: "task", Title: "Backend task", WorkflowState: models.StateReady, Tags: []string{"backend"}}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	project.BuildTaskTree()
-	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
 
 	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   []*models.Project{project},

@@ -7,22 +7,27 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 )
 
 func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 	m.state = askStateLoading
 	m.response = ""
-	m.commands = nil
+	m.raw = ""
+	m.plan = app.ActionPlan{}
+	m.preview = app.PlanPreview{}
 	m.textarea.Blur()
 
-	var systemPrompt string
-	if m.project != nil {
-		systemPrompt = external.BuildTaskContext(m.project)
+	var taskContext string
+	if m.project != nil && m.contextMode != external.TaskContextNone && m.contextConsentGranted() {
+		taskContext = external.BuildTaskContextWithMode(m.project, m.contextMode)
 	}
+	var cliContext string
 	if m.cliReference != "" {
-		systemPrompt += "\n\n" + external.BuildCLIContext(m.cliReference, query)
+		cliContext = external.BuildCLIContext(m.cliReference, query)
 	}
+	systemPrompt := external.BuildActionPlanPrompt(taskContext, cliContext)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancelFn = cancel
@@ -45,6 +50,10 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 		return AskStreamDoneMsg{}
 	}
 	return tea.Batch(streamCmd, m.spinner.Tick())
+}
+
+func (m *AskViewModel) contextConsentGranted() bool {
+	return m.runtime != nil && m.runtime.Settings().AIConsent.Granted
 }
 
 func (m *AskViewModel) readNextChunk() tea.Cmd {

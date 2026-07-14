@@ -24,7 +24,7 @@ func TestOutlinerScoreKey_DispatchesCrossProjectTaskAndProject(t *testing.T) {
 	app := newTestAppModel()
 	project, task := newCrossScoreTestProject(t)
 
-	outliner := NewOutlinerModel(nil, app.config, app.configManager)
+	outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	outliner.loadedProjects = []*models.Project{project}
 	outliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
 	outliner.cursor = 0
@@ -54,14 +54,14 @@ func TestOutlinerScoreKey_DispatchesCrossProjectTaskAndProject(t *testing.T) {
 
 func TestOutlinerCommands_ScoreEditor_DispatchesToCrossOutliner(t *testing.T) {
 	app, singleProject := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(singleProject, app.config, app.configManager)
+	app.outliner = NewOutlinerModel(singleProject, app.configManager, app.runtime)
 	app.outliner.rebuildRows()
 	advanceCursorToTask(app.outliner)
 	app.views.Register(ViewOutliner, app.outliner)
 	app.viewStack = append(app.viewStack, ViewOutliner)
 
 	crossProject, crossTask := newCrossScoreTestProject(t)
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{crossProject}
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProject.ID}}
 	app.crossOutliner.cursor = 0
@@ -94,7 +94,7 @@ func TestScoreEditorDone_ReturningToCrossOutlinerForwardsViewDidAppear(t *testin
 	app := newTestAppModel()
 	project, task := newCrossScoreTestProject(t)
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
 	app.crossOutliner.cursor = 0
@@ -119,7 +119,7 @@ func TestScoreEditorDone_CancelReturningToCrossOutlinerForwardsViewDidAppear(t *
 	app := newTestAppModel()
 	project, task := newCrossScoreTestProject(t)
 
-	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
 	app.crossOutliner.cursor = 0

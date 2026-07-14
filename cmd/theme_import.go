@@ -41,17 +41,22 @@ func init() {
 func runThemeImport(cmd *cobra.Command, args []string) error {
 	arg := args[0]
 
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	settings := domains.Settings
 
 	// Resolve path: bare name → themes dir; path separators or .json → file path.
 	var filePath string
 	if filepath.IsAbs(arg) || strings.ContainsAny(arg, `/\`) || strings.HasSuffix(arg, ".json") {
 		filePath = arg
 	} else {
-		p, themeErr := configManager.ThemePath(arg)
+		p, themeErr := workspace.Manager.ThemePath(arg)
 		if themeErr != nil {
 			return themeErr
 		}
@@ -76,15 +81,15 @@ func runThemeImport(cmd *cobra.Command, args []string) error {
 		slot = themeImportInto
 	}
 
-	cfg.SetActiveTheme(slot, tf.Theme)
+	settings.SetActiveTheme(slot, tf.Theme)
 	if slot == "dark" {
-		cfg.ThemeDarkRev = config.DarkThemeDefaultsRev
-		cfg.ThemeDarkName = tf.Name
+		settings.ThemeDarkRev = config.DarkThemeDefaultsRev
+		settings.ThemeDarkName = tf.Name
 	} else {
-		cfg.ThemeLightRev = config.LightThemeDefaultsRev
-		cfg.ThemeLightName = tf.Name
+		settings.ThemeLightRev = config.LightThemeDefaultsRev
+		settings.ThemeLightName = tf.Name
 	}
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLISettings(workspace, settings); err != nil {
 		return err
 	}
 

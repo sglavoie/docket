@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -30,7 +31,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{done, canceled, active}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 1 {
 			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
@@ -54,7 +55,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{blocked, active}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 1 {
 			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
@@ -82,7 +83,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{blocker, dependent}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 1 {
 			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
@@ -115,7 +116,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{low, high, medium}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if len(m.backlog) != 3 {
 			t.Fatalf("expected 3 backlog tasks, got %d", len(m.backlog))
@@ -148,7 +149,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{task, bug}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if len(m.backlog) != 2 {
 			t.Fatalf("expected 2 backlog tasks, got %d", len(m.backlog))
@@ -178,7 +179,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{bug, task}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if len(m.backlog) != 2 {
 			t.Fatalf("expected 2 backlog tasks, got %d", len(m.backlog))
@@ -209,7 +210,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 		}
 		project.Tasks = tasks
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if len(m.backlog) != len(ids) {
 			t.Fatalf("expected %d backlog tasks, got %d", len(ids), len(m.backlog))
@@ -243,7 +244,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 
 		project.Tasks = []*models.Task{active1, active2, blocked}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 2 {
 			t.Errorf("expected totalTasks=2 (excluding waitingOn), got %d", m.totalTasks)
@@ -254,7 +255,7 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 func TestEdgeCases(t *testing.T) {
 	t.Run("empty project", func(t *testing.T) {
 		project := newTestPriorityProject(t)
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 0 {
 			t.Errorf("expected 0 total tasks for empty project, got %d", m.totalTasks)
@@ -282,7 +283,7 @@ func TestEdgeCases(t *testing.T) {
 
 		project.Tasks = []*models.Task{done1, done2}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 0 {
 			t.Errorf("expected 0 total tasks when all completed, got %d", m.totalTasks)
@@ -306,7 +307,7 @@ func TestEdgeCases(t *testing.T) {
 
 		project.Tasks = []*models.Task{blocked1, blocked2}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.totalTasks != 0 {
 			t.Errorf("expected 0 actionable tasks when all blocked, got %d", m.totalTasks)
@@ -364,7 +365,7 @@ func TestPriorityViewActionableFilter(t *testing.T) {
 
 		project.Tasks = []*models.Task{actionable, inbox, waiting, someday, review, standby, next}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		// The Waiting-section task derives the waiting state and groups under
 		// Waiting On, so only 6 of the 7 tasks land in the backlog.
@@ -402,7 +403,7 @@ func TestPriorityViewActionableFilter(t *testing.T) {
 
 		project.Tasks = []*models.Task{actionable, blocked}
 
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 		m.filter.Actionable = true
 		m.loadActionableTasks()
 
@@ -413,7 +414,7 @@ func TestPriorityViewActionableFilter(t *testing.T) {
 
 	t.Run("HasActiveFilters reflects actionable state", func(t *testing.T) {
 		project := newTestPriorityProject(t)
-		m := NewPriorityViewModel(project, nil, nil)
+		m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
 
 		if m.HasActiveFilters() {
 			t.Error("HasActiveFilters should be false initially")

@@ -191,11 +191,11 @@ func TestBaselineQuickCaptureRendersAcrossSizes(t *testing.T) {
 // height-blocked (task card + 4-group panel + footer exceed 20 lines).
 func TestBaselineInboxProcessorRendersAcrossSizes(t *testing.T) {
 	project := newBaselineInboxProject("Inbox Baseline")
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	for _, sz := range baselineSizes {
 		t.Run(sz.label, func(t *testing.T) {
-			m := NewInboxProcessorModel(project, cfg, nil)
+			m := NewInboxProcessorModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 			m.SetSize(sz.width, sz.height)
 
 			rendered := m.View().Content
@@ -224,11 +224,11 @@ func TestBaselineInboxProcessorRendersAcrossSizes(t *testing.T) {
 // The w: Today action and the four-group panel must also be visible across
 // all sizes so the local/global processors stay in lockstep.
 func TestBaselineGlobalInboxProcessorRendersAcrossSizes(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 
 	for _, sz := range baselineSizes {
 		t.Run(sz.label, func(t *testing.T) {
-			m := NewGlobalInboxProcessorModel(cfg, nil)
+			m := NewGlobalInboxProcessorModel(nil, testRuntimeAt(cfg.DataDir(), cfg))
 
 			// Inject in-memory inbox tasks after construction so we exercise
 			// the populated render path without writing fixtures to disk. The
@@ -269,11 +269,10 @@ func TestBaselineGlobalInboxProcessorRendersAcrossSizes(t *testing.T) {
 func TestBaselineDashboardTriageAlertsRendersAcrossSizes(t *testing.T) {
 	for _, sz := range baselineSizes {
 		t.Run(sz.label, func(t *testing.T) {
-			cfg := testutil.NewTestConfig()
-			cfg.DataDir = t.TempDir()
+			cfg := newTestConfigAt(t.TempDir())
 
-			m := NewDashboardModel(cfg, nil)
-			// loadProjects ran with an empty cfg.Projects, so m.projects is
+			m := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
+			// loadProjects ran with an empty cfg.AllProjects(), so m.projects is
 			// nil. Assign fresh in-memory projects (with their tasks intact)
 			// so the alerts card sees real triage backlog and overdue items.
 			m.projects = newBaselineAlertProjects()
@@ -300,19 +299,20 @@ func TestBaselineDashboardTriageAlertsRendersAcrossSizes(t *testing.T) {
 // the empty-state path, which is exactly the surface session 5 will hand
 // the user momentum copy on.
 func TestBaselineFocusBoardTodayRendersAcrossSizes(t *testing.T) {
-	cfg := testutil.NewTestConfig()
 	sizes := append([]baselineSize{}, baselineSizes...)
 	sizes = append(sizes, narrowBaseline)
 
 	for _, sz := range sizes {
 		t.Run(sz.label, func(t *testing.T) {
 			dailyPlan := []FocusTask{}
-			m := NewFocusBoardModel(cfg, nil,
+			m := NewFocusBoardModel(
+				nil, nil,
+
 				&dailyPlan,
-				map[string]bool{}, // queueIDs
-				map[string]bool{}, // dailyPlanIDs
-				map[string]bool{}, // carriedOverIDs
-			)
+				map[string]bool{},
+				map[string]bool{},
+				map[string]bool{})
+
 			m.SetSize(sz.width, sz.height)
 
 			rendered := m.View().Content

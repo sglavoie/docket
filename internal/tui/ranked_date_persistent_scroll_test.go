@@ -21,10 +21,10 @@ func newRankedDateScrollTask(t *testing.T, id string, shortID int, title string)
 }
 
 func TestPriorityViewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Priority")
 	m := &PriorityViewModel{
-		ViewBundle:         ViewBundle{config: cfg},
+		PrimaryViewBundle:  NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		project:            project,
 		waitingOnCollapsed: true,
 		tabs:               TabState{Names: priorityTabNames},
@@ -65,11 +65,11 @@ func TestPriorityViewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
 }
 
 func TestDueDateOverviewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Due Dates")
 	m := &DueDateOverviewModel{
-		ViewBundle: ViewBundle{config: cfg},
-		tabs:       TabState{Names: dueDateTabNames},
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
+		tabs:              TabState{Names: dueDateTabNames},
 	}
 	m.SetSize(100, 11)
 
@@ -104,11 +104,11 @@ func TestDueDateOverviewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
 }
 
 func TestRecentActivityPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := testutil.NewTestProject("Recent")
 	m := &RecentActivityModel{
-		config: cfg,
-		tabs:   TabState{Names: recentActivityTabNames},
+		runtime: testRuntimeAt(cfg.DataDir(), cfg),
+		tabs:    TabState{Names: recentActivityTabNames},
 	}
 	m.SetSize(100, 10)
 

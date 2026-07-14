@@ -20,9 +20,7 @@ func (m *WeeklyReviewModel) getTaskRef() (*models.Task, *models.Project) {
 	return dt.Task, dt.Project
 }
 
-func (m *WeeklyReviewModel) getPersister() Persister           { return defaultPersister }
-func (m *WeeklyReviewModel) getConfig() *config.Config         { return m.config }
+func (m *WeeklyReviewModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *WeeklyReviewModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *WeeklyReviewModel) reloadData()                       { m.loadData() }
-func (m *WeeklyReviewModel) setErr(err error)                  { m.err = err }
 func (m *WeeklyReviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // handleAxisManagerKey processes key events when the axis manager popup is open.
@@ -63,14 +65,14 @@ func (m *KanbanModel) toggleAxisMode(mode KanbanMode) {
 		m.enabledModes = updated
 	}
 
-	// Persist enabled modes to config
-	m.config.KanbanSettings.EnabledModes = nil
+	// Persist enabled modes to the portable Settings domain.
+	enabledIDs := make([]string, 0, len(m.enabledModes))
 	for _, em := range m.enabledModes {
-		m.config.KanbanSettings.EnabledModes = append(m.config.KanbanSettings.EnabledModes, em.ID())
+		enabledIDs = append(enabledIDs, em.ID())
 	}
-	if m.configManager != nil {
-		_ = m.configManager.Save(m.config)
-	}
+	_ = commitSettingsToRuntime(m.runtime, func(settings *config.Settings) {
+		settings.KanbanSettings.EnabledModes = enabledIDs
+	})
 
 	// If current mode is no longer enabled, switch to first enabled mode
 	currentEnabled := slices.Contains(m.enabledModeList(), m.mode)

@@ -38,7 +38,7 @@ func init() {
 }
 
 func runProjectRestore(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 
 	// If no args, list trashed projects
 	if len(args) == 0 {
-		return listTrashedProjects(cfg)
+		return listTrashedProjects(workspace.Runtime.DataDir())
 	}
 
 	ref := args[0]
@@ -58,13 +58,13 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("project slug")
 	}
 
-	entry, err := resolveTrashEntry(cfg.DataDir, ref)
+	entry, err := resolveTrashEntry(workspace.Runtime.DataDir(), ref)
 	if err != nil {
 		return err
 	}
 
 	// Check if active project with same slug exists
-	if cfg.GetProject(entry.Slug) != nil {
+	if workspace.Runtime.GetProject(entry.Slug) != nil {
 		return fmt.Errorf("active project '%s' already exists; rename or delete it first", entry.Slug)
 	}
 
@@ -74,18 +74,25 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	// journaled transaction. The config artifact is built from the identity the plan
 	// reconstructs from the tombstone, so it commits atomically with the move; a
 	// failure leaves the entry in trash and the config untouched (no manual rollback).
-	svc := newAppService(cfg)
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	svc := newWorkspaceAppService(workspace)
 	res, err := svc.RestoreProject(app.RestoreProjectRequest{
-		DataDir: cfg.DataDir,
+		DataDir: workspace.Runtime.DataDir(),
 		EntryID: entry.EntryID,
 		BuildConfig: func(project *models.Project, tomb *storage.TrashTombstone) ([]storage.ArtifactChange, error) {
-			cfg.AddProject(project)
-			applyRestoredConfigRefs(cfg, project.ID, tomb)
-			return encodeConfigArtifacts(configManager, cfg)
+			domains.Catalog.UpsertProject(project)
+			applyRestoredConfigRefs(domains, project.ID, tomb)
+			return encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		},
 	})
 	if err != nil {
 		return translateAppError(err)
+	}
+	if err := workspace.Runtime.CommitMachine(domains.Machine); err != nil {
+		return fmt.Errorf("project restored but machine-local references could not be saved: %w", err)
 	}
 
 	return out.OutputProject(res.Project, func() { fmt.Println(successMsg("Restored project '%s'", res.Project.Name)) })
@@ -116,7 +123,7 @@ func resolveTrashEntry(dataDir, ref string) (storage.TrashEntry, error) {
 // applyRestoredConfigRefs decodes and re-applies the configuration references
 // captured in the tombstone. Decode failures are non-fatal: the project data is
 // already restored, so we skip reference restoration rather than abort.
-func applyRestoredConfigRefs(cfg *config.Config, projectID string, tomb *storage.TrashTombstone) {
+func applyRestoredConfigRefs(domains *config.Domains, projectID string, tomb *storage.TrashTombstone) {
 	if tomb == nil || len(tomb.ConfigRefs) == 0 {
 		return
 	}
@@ -124,11 +131,11 @@ func applyRestoredConfigRefs(cfg *config.Config, projectID string, tomb *storage
 	if err := json.Unmarshal(tomb.ConfigRefs, &refs); err != nil {
 		return
 	}
-	cfg.ApplyProjectReferences(projectID, refs)
+	domains.ApplyProjectReferences(projectID, refs)
 }
 
-func listTrashedProjects(cfg *config.Config) error {
-	entries, err := storage.ListTrashEntries(cfg.DataDir)
+func listTrashedProjects(dataDir string) error {
+	entries, err := storage.ListTrashEntries(dataDir)
 	if err != nil {
 		return fmt.Errorf("failed to list trashed projects: %w", err)
 	}

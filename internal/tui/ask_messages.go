@@ -3,6 +3,9 @@ package tui
 import (
 	"io"
 	"os/exec"
+
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // AskStreamStartMsg signals the start of a streaming response.
@@ -22,14 +25,15 @@ type AskStreamDoneMsg struct {
 	Err error
 }
 
-// AskCommandResultMsg contains the result of executing a single command.
-type AskCommandResultMsg struct {
-	Command string
-	Output  string
-	Err     error
+// AskConsentSavedMsg resumes a pending query after remembered consent is saved.
+type AskConsentSavedMsg struct {
+	Err error
 }
 
-// AskCommandBatchMsg contains results from multiple commands.
-type AskCommandBatchMsg struct {
-	Results []AskCommandResultMsg
+// AskActionPlanAppliedMsg contains the one transaction produced by applying an
+// accepted structured plan.
+type AskActionPlanAppliedMsg struct {
+	Result         app.ActionPlanResult
+	PendingDomains *config.Domains
+	Err            error
 }

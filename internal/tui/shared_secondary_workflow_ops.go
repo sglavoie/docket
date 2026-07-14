@@ -185,7 +185,7 @@ func wfUnblock(v workflowOpsView) tea.Cmd {
 // by the shell after the commit (see handleBatchTransactionResult). cfg/mgr are the
 // shell's authoritative config so the in-memory and on-disk views agree once
 // committed.
-func wfDeleteTask(v workflowOpsView, cfg *config.Config, mgr *config.Manager) tea.Cmd {
+func wfDeleteTask(v workflowOpsView, runtime *config.RuntimeState, mgr *config.Manager) tea.Cmd {
 	task, project := v.getTaskRef()
 	if task == nil || project == nil {
 		return nil
@@ -193,10 +193,11 @@ func wfDeleteTask(v workflowOpsView, cfg *config.Config, mgr *config.Manager) te
 	shortID := task.ShortID
 
 	var artifacts []storage.ArtifactChange
-	if cfg != nil && mgr != nil {
+	if runtime != nil && mgr != nil {
 		idsToDelete := collectDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
-		if cfg.RemoveDurableTaskRefs(idsToDelete) > 0 {
-			arts, err := configDomainArtifacts(mgr, cfg)
+		planning := clonePlanningState(runtime.Planning())
+		if planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
+			arts, err := planningDomainArtifact(mgr, planning)
 			if err != nil {
 				return func() tea.Msg { return ErrorMsg{Err: err} }
 			}

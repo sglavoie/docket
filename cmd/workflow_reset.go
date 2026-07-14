@@ -41,21 +41,20 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
-
-	store := automationStore(configManager)
-	automation, err := store.LoadAutomation()
+	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
+	automation := domains.Automation
 
 	if workflowResetAll {
 		total := len(automation.WorkflowRules)
 		automation.ResetAllRuleTriggerCounts()
-		if err := saveAutomation(store, automation); err != nil {
+		if err := commitCLIAutomation(workspace, automation); err != nil {
 			return err
 		}
 		if out.Quiet {
@@ -83,7 +82,7 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("workflow rule not found: %s", ruleID)
 	}
 
-	if err := saveAutomation(store, automation); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 

@@ -173,7 +173,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 	}
 
 	return &keymap.KeyMap{
-		ViewName: "Project Focus",
+		ViewName: "Project Focus Queue",
 		Entries:  entries,
 	}
 }
@@ -187,7 +187,7 @@ func (m *ProjectFocusViewModel) projectFocusTaskKeymapDeps(hasItem func() bool) 
 		View:    m,
 		HasItem: hasItem,
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
-			return m, helpCmd(ViewProjectFocusView, "Project Focus", m.GetHelpItems())
+			return m, helpCmd(ViewProjectFocusView, "Project Focus Queue", m.GetHelpItems())
 		},
 		DeleteTask: func() (tea.Model, tea.Cmd) { return m, nil },
 	}

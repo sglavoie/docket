@@ -49,7 +49,7 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 		notes, err = storage.ListNotesFrom(dir)
 	} else {
 		var project *models.Project
-		project, _, _, err = LoadCurrentProject()
+		project, _, err = LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}

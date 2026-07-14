@@ -7,6 +7,7 @@
     { "type": "key", "label": "open Today (;w)", "key": ";" },
     { "type": "key", "key": "w" },
     { "type": "assert", "assert": "view", "value": "Today" },
+    { "type": "assert", "assert": "contains", "value": "Today" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

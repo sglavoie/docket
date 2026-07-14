@@ -7,7 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -170,8 +169,8 @@ func TestEscCascadeOnlyAffectsCrossProjectMode(t *testing.T) {
 // ordering ignores m.sort.Field while in priority mode, so a non-default sort
 // configured before mode entry does not perturb the priority grouping.
 func TestCrossPriorityModeBypassesSortField(t *testing.T) {
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 
 	high := makePriorityTask("high", "High prio", intPtr(0))
 	high.Priority = 1 // highest urgency
@@ -207,8 +206,8 @@ func TestCrossPriorityModeBypassesSortField(t *testing.T) {
 // TestCrossPriorityModeTitleRendering verifies the title prefix swap from
 // "Cross-project Outliner" to "Cross-project Priority" while in priority mode.
 func TestCrossPriorityModeTitleRendering(t *testing.T) {
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(120, 24)
 
 	proj := &models.Project{ID: "proj-title", Name: "Title"}
@@ -241,8 +240,8 @@ func TestCrossPriorityModeTitleRendering(t *testing.T) {
 //   - omits the sort suffix (no "Sort:")
 //   - still surfaces the active filter badge and the search indicator
 func TestCrossPriorityModeSuppressesPerspectiveAndSort(t *testing.T) {
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(160, 24)
 
 	proj := &models.Project{ID: "proj-suppress", Name: "Suppress"}
@@ -299,8 +298,8 @@ func TestCrossPriorityModeSuppressesPerspectiveAndSort(t *testing.T) {
 // TestCrossPriorityModeStatusBarLabel verifies the status bar label swap from
 // "Cross-Outliner" to "Cross-Outliner: Priority" while in priority mode.
 func TestCrossPriorityModeStatusBarLabel(t *testing.T) {
-	cfg := config.NewConfig()
-	m := NewOutlinerModel(nil, cfg, nil)
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 
 	off := m.crossStatusBarLabel()
 	if !strings.HasPrefix(off, "Cross-Outliner · ") {
@@ -341,11 +340,11 @@ func TestCrossPriorityModeFingerprintInvalidatesMemoization(t *testing.T) {
 // outliner is operating in cross-project context (m.project == nil) and emits
 // the single-project ShowPriorityViewMsg when a project is loaded.
 func TestPriorityViewKeyTogglesCrossModeInOutliner(t *testing.T) {
-	cfg := config.NewConfig()
+	cfg := newTestConfig()
 	pKey := tea.KeyPressMsg{Code: 'p', Text: "p"}
 
 	// Cross-project context: `p` toggles the mode in place; no message emitted.
-	cross := NewOutlinerModel(nil, cfg, nil)
+	cross := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	model, cmd, ok := cross.Dispatcher.Dispatch(pKey)
 	if !ok {
 		t.Fatal("dispatcher should handle `p` in cross-project outliner")
@@ -368,7 +367,7 @@ func TestPriorityViewKeyTogglesCrossModeInOutliner(t *testing.T) {
 	// Single-project context: `p` emits ShowPriorityViewMsg and does not flip
 	// the unrelated crossPriorityMode flag.
 	proj := &models.Project{ID: "p1", Name: "P1"}
-	single := NewOutlinerModel(proj, cfg, nil)
+	single := NewOutlinerModel(proj, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	_, singleCmd, ok := single.Dispatcher.Dispatch(pKey)
 	if !ok {
 		t.Fatal("dispatcher should handle `p` in single-project outliner")

@@ -28,7 +28,7 @@ type ScoredFocusTask = focus.ScoredFocusTask
 type FocusViewModel struct {
 	BaseView
 	InteractiveViewState
-	ViewBundle
+	PrimaryViewBundle
 
 	projectService *ProjectService
 
@@ -67,17 +67,17 @@ type FocusViewModel struct {
 }
 
 // NewFocusViewModel creates a new focus view model.
-func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dailyPlanIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
+func NewFocusViewModel(runtime *config.RuntimeState, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dailyPlanIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
 	m := &FocusViewModel{
-		ViewBundle:       ViewBundle{config: cfg, configManager: mgr},
-		projectService:   NewProjectService(),
-		queue:            queue,
-		queueIDs:         queueIDs,
-		dailyPlanIDs:     dailyPlanIDs,
-		dismissedIDs:     dismissedIDs,
-		FilterMixin:      FilterMixin{filter: newFilterState()},
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		tabs:             TabState{Names: focusTabNames},
+		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
+		projectService:    NewProjectService(),
+		queue:             queue,
+		queueIDs:          queueIDs,
+		dailyPlanIDs:      dailyPlanIDs,
+		dismissedIDs:      dismissedIDs,
+		FilterMixin:       FilterMixin{filter: newFilterState()},
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		tabs:              TabState{Names: focusTabNames},
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
@@ -87,7 +87,7 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
 				if confirmed, handled := m.HandleConfirmKey(key); handled {
 					if confirmed {
-						return m, wfDeleteTask(m, m.config, m.configManager), true
+						return m, wfDeleteTask(m, m.runtime, m.configManager), true
 					}
 					return m, nil, true
 				}
@@ -95,7 +95,7 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadTasks()
 	return m
 }
@@ -131,10 +131,8 @@ func (m *FocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 	return ft.Task, ft.Project
 }
 
-func (m *FocusViewModel) getPersister() Persister           { return m.projectService }
 func (m *FocusViewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *FocusViewModel) reloadData()                       { m.loadTasks() }
-func (m *FocusViewModel) setErr(err error)                  { m.err = err }
+func (m *FocusViewModel) getRuntime() *config.RuntimeState  { return m.runtime }
 func (m *FocusViewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 // clampCursor ensures cursor is within valid range.

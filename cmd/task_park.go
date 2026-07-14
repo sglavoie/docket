@@ -53,7 +53,7 @@ func runTaskPark(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func runTaskPark(cmd *cobra.Command, args []string) error {
 	// Route the mutation through the application service (atomic, revision-checked,
 	// undoable via the workspace ledger). The completed-task guard now lives in
 	// Service.Park; the CLI keeps only reference resolution and presentation.
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.Park(task.ID, note)
 	})
@@ -95,7 +95,7 @@ func runTaskUnpark(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func runTaskUnpark(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		return svc.Unpark(task.ID)
 	})

@@ -17,13 +17,13 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 	switch msg := msg.(type) {
 	case ShowNotesMsg:
 		if msg.Project != nil {
-			m.showView(ViewNotes, NewNotesViewModel(msg.Project, m.config))
+			m.showView(ViewNotes, NewNotesViewModel(msg.Project, m.runtime.Machine()))
 		}
 		return true, nil
 
 	case ShowGlobalNotesMsg:
-		dir := storage.GlobalNotesDir(m.config.DataDir)
-		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.config))
+		dir := storage.GlobalNotesDir(m.runtime.DataDir())
+		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.runtime.Machine()))
 		return true, nil
 
 	case ShowGlobalNoteCreatorMsg:
@@ -31,7 +31,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 
 	case ShowGlobalNoteMoveMsg:
 		// Open a project picker for moving the note
-		projects := m.config.GetActiveProjects()
+		projects := m.activeProjects()
 		if len(projects) == 0 {
 			m.setInfoStatus("No projects available")
 			return true, nil
@@ -163,7 +163,7 @@ func (m *AppModel) handleCreateGlobalNote(notesDir string) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create note: %w", err)
 	}
 
-	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
 	if editorErr != nil {
 		return true, errorCmd("%s", editorErr)
 	}
@@ -191,7 +191,7 @@ func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create note: %w", err)
 	}
 
-	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
 	if editorErr != nil {
 		return true, errorCmd("%s", editorErr)
 	}

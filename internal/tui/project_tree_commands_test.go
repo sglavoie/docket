@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -240,7 +239,7 @@ func TestDeleteRecurringStopRecurrence_KeepsTask(t *testing.T) {
 // after rebuilding the tree, preventing out-of-bounds access when the
 // visible list shrinks (e.g., after a task is filtered out or deleted).
 func TestRefreshViewClampsCursor(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	project := &models.Project{
 		Name:        "Test",
 		ID:          "test-proj",
@@ -252,7 +251,7 @@ func TestRefreshViewClampsCursor(t *testing.T) {
 	project.Tasks = []*models.Task{t1, t2, t3}
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, cfg, nil)
+	m := NewProjectTreeModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(120, 40)
 
 	// Cursor at last task (index 2)
@@ -278,7 +277,7 @@ func TestRefreshViewClampsCursor(t *testing.T) {
 }
 
 // TestNewProjectTreeModelNilConfig verifies that NewProjectTreeModel does not
-// panic when cfg is nil. Previously, cfg.TreeDefaultColumns was accessed
+// panic when cfg is nil. Previously, cfg.Machine().TreeDefaultColumns was accessed
 // outside the nil-check guard, causing a nil pointer dereference.
 func TestNewProjectTreeModelNilConfig(t *testing.T) {
 	project := &models.Project{

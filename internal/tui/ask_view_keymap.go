@@ -17,11 +17,14 @@ func (m *AskViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("ctrl+s", "Submit query", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),
+		keymap.Bind("ctrl+t", "Cycle AI context (full/redacted/off)", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
 	)
 
 	// Result state keys
 	entries = append(entries,
-		keymap.Bind("a", "Apply extracted commands (result)", "Actions", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("a", "Review and apply structured plan (result)", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),
 		keymap.Bind("n", "New query (result)", "Actions", func() (tea.Model, tea.Cmd) {

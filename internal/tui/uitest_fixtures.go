@@ -33,6 +33,7 @@ import (
 // surfaced by `tt tui-test fixtures`.
 const (
 	FixtureEmpty    = "empty"
+	FixtureFresh    = "fresh"
 	FixtureRich     = "rich"
 	FixtureAlerts   = "alerts"
 	FixtureWorkflow = "workflow"
@@ -44,6 +45,7 @@ const (
 // when the builder runs; the builder only adds projects and sets config state.
 var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureEmpty:    buildEmptyFixture,
+	FixtureFresh:    buildFreshFixture,
 	FixtureRich:     buildRichFixture,
 	FixtureAlerts:   buildAlertsFixture,
 	FixtureWorkflow: buildWorkflowFixture,
@@ -69,8 +71,11 @@ type uitestWorkspace struct {
 	Root       string
 	DataDir    string
 	ConfigPath string
-	Config     *config.Config
+	Runtime    *config.RuntimeState
 	Manager    *config.Manager
+	// startAtDefault asks launch to apply the same startup navigation selected by
+	// AppModel.Init, without scheduling the real program's periodic timers.
+	startAtDefault bool
 }
 
 // Cleanup removes the workspace's temp directory. It is safe to call more than
@@ -92,12 +97,11 @@ func newUITestWorkspace() (*uitestWorkspace, error) {
 	}
 
 	dataDir := filepath.Join(root, "data")
-	cfg := config.NewConfig()
-	cfg.DataDir = dataDir
-	cfg.FzfEnabled = false
-	cfg.GlowEnabled = false
-	cfg.Projects = []*models.Project{}
-	if err := cfg.EnsureDataDir(); err != nil {
+	runtime := config.EmptyRuntimeState(dataDir)
+	runtime.Settings().FzfEnabled = false
+	runtime.Settings().GlowEnabled = false
+	runtime.Catalog().UpsertProject(newSandboxProject(runtime))
+	if err := runtime.EnsureDataDir(); err != nil {
 		_ = os.RemoveAll(root)
 		return nil, fmt.Errorf("failed to create workspace data dir: %w", err)
 	}
@@ -114,7 +118,7 @@ func newUITestWorkspace() (*uitestWorkspace, error) {
 		Root:       root,
 		DataDir:    dataDir,
 		ConfigPath: configPath,
-		Config:     cfg,
+		Runtime:    runtime,
 		Manager:    config.NewManager(configPath),
 	}, nil
 }
@@ -127,29 +131,70 @@ func (w *uitestWorkspace) addProject(name string, build func(*models.Project)) (
 	if err != nil {
 		return nil, err
 	}
-	project.Path = w.Config.GetProjectPath(project.Slug)
+	project.Path = w.Runtime.ProjectPath(project.Slug)
 	project.EnsureDefaultSections()
 	if build != nil {
 		build(project)
 	}
 	project.BuildTaskTree()
 
-	w.Config.Projects = append(w.Config.Projects, project)
+	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
+	catalog.UpsertProject(project)
+	w.Runtime.SetCatalogInMemory(catalog)
 	if err := storage.SaveProject(project); err != nil {
 		return nil, fmt.Errorf("failed to write project %q: %w", name, err)
 	}
 	return project, nil
 }
 
-// launch persists the config and builds a driver over a freshly constructed
+// launch persists the four synced domains and builds a driver over the existing
 // AppModel. NewAppModel reloads each active project's tasks from disk, so the
 // driver observes exactly what storage round-tripped.
 func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
-	if err := w.Manager.Save(w.Config); err != nil {
-		return nil, fmt.Errorf("failed to write workspace config: %w", err)
+	if err := w.persistSyncedDomains(); err != nil {
+		return nil, fmt.Errorf("failed to write workspace domains: %w", err)
 	}
-	app := NewAppModel(w.Config, w.Manager)
+	// Reload the synced files so RuntimeState holds the revisions just written;
+	// bootstrap commits must compare against those baselines. Preserve the
+	// intentionally in-memory machine fixture because machine.json is outside
+	// the isolated workspace and is not persisted by this harness.
+	machine := cloneMachineState(w.Runtime.Machine())
+	if err := w.Runtime.Reload(); err != nil {
+		return nil, fmt.Errorf("failed to reload workspace domains: %w", err)
+	}
+	w.Runtime.SetMachineInMemory(machine)
+	app, err := NewAppModel(w.Runtime, w.Manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize app model: %w", err)
+	}
+	if w.startAtDefault {
+		if vt, ok := resolveStartupNavigation(app.runtime.Machine().GetStartView()); ok {
+			_, _ = app.Update(NavigateToViewMsg{ViewType: vt})
+		}
+	}
 	return NewUITestDriver(app, width, height), nil
+}
+
+func (w *uitestWorkspace) persistSyncedDomains() error {
+	store := config.NewDomainFileStore(w.DataDir)
+	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
+	catalog.WorkspaceID = store.EnsureWorkspaceID()
+	if err := store.SaveCatalog(catalog); err != nil {
+		return err
+	}
+	if err := store.SavePlanning(w.Runtime.Planning()); err != nil {
+		return err
+	}
+	if err := store.SaveSettings(w.Runtime.Settings()); err != nil {
+		return err
+	}
+	return store.SaveAutomation(w.Runtime.Automation())
+}
+
+func (w *uitestWorkspace) setCurrentProject(projectID string) {
+	machine := cloneMachineState(w.Runtime.Machine())
+	machine.CurrentProject = projectID
+	w.Runtime.SetMachineInMemory(machine)
 }
 
 // NewFixtureDriver builds an isolated workspace preloaded with the named
@@ -187,13 +232,10 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 	if strings.TrimSpace(sourceConfigPath) == "" {
 		return nil, nil, fmt.Errorf("source config path is required")
 	}
-
 	// Persistence is the decomposed domain files under the workspace root, so the
 	// source "config" is the whole workspace directory (the .tt/ config domain
 	// files plus the project data), not a single monolithic file. Copy that durable
-	// tree into a fresh temp workspace FIRST, then load from the copy: Manager.Load
-	// re-saves first-load migrations, and copying before loading keeps every such
-	// write on the copy so the source is never mutated. MigrateCopyTree refuses to
+	// tree into a fresh temp workspace FIRST, then load from the copy. MigrateCopyTree refuses to
 	// overwrite and skips runtime-only entries.
 	srcRoot := config.WorkspaceRootFromConfigPath(sourceConfigPath)
 
@@ -209,36 +251,25 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 	}
 
 	ws.Manager = config.NewManager(ws.ConfigPath)
-	cfg, err := ws.Manager.Load()
-	if err != nil {
+	if _, err = ws.Manager.LoadDomains(); err != nil {
 		_ = ws.Cleanup()
 		return nil, nil, fmt.Errorf("failed to load copied config: %w", err)
 	}
-
-	// The copied workspace roots at `root`. A domain-loaded config already derives
-	// DataDir and every project path there; only a legacy config with persisted
-	// absolute paths still points into the source and needs rerooting onto the copy.
-	srcDataDir := cfg.DataDir
-	cfg.DataDir = root
-	cfg.FzfEnabled = false
-	cfg.GlowEnabled = false
-	for _, p := range cfg.Projects {
-		if p == nil {
-			continue
-		}
-		if pathUnderRoot(root, p.Path) {
-			continue
-		}
-		newPath, rerootErr := rerootProjectPath(p.Path, srcDataDir, root, p.ID)
-		if rerootErr != nil {
-			_ = ws.Cleanup()
-			return nil, nil, fmt.Errorf("failed to isolate project %q: %w", p.ID, rerootErr)
-		}
-		p.Path = newPath
+	runtime, err := ws.Manager.LoadRuntimeState()
+	if err != nil {
+		_ = ws.Cleanup()
+		return nil, nil, fmt.Errorf("failed to load copied runtime domains: %w", err)
 	}
+	runtime.Settings().FzfEnabled = false
+	runtime.Settings().GlowEnabled = false
 
 	ws.DataDir = root
-	ws.Config = cfg
+	ws.Runtime = runtime
+	if runtime.Machine().CurrentProject == "" {
+		if projects := runtime.ActiveProjects(); len(projects) > 0 {
+			ws.setCurrentProject(projects[0].ID)
+		}
+	}
 
 	driver, err := ws.launch(width, height)
 	if err != nil {
@@ -248,73 +279,19 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 	return driver, ws, nil
 }
 
-// pathUnderRoot reports whether path is root itself or lives inside root, on
-// cleaned relative paths. It lets NewCopiedWorkspaceDriver skip rerooting project
-// paths a domain reload already derived into the copy.
-func pathUnderRoot(root, path string) bool {
-	if strings.TrimSpace(path) == "" {
-		return false
-	}
-	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(path))
-	if err != nil {
-		return false
-	}
-	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
-}
-
-// rerootProjectPath maps a project's data directory into the copied workspace
-// so writes through the copy never reach the source tree.
-//
-// Paths under srcDataDir are rerooted onto dstDataDir, preserving the relative
-// subpath — the data dir itself was already copied wholesale by MigrateCopyTree.
-// Paths outside srcDataDir (custom/external project locations) are copied into a
-// deterministic per-project subdir under the copy (dstDataDir/projects/
-// __external_<projectID>) and repointed there, so the original external
-// directory is left byte-for-byte untouched.
-//
-// Containment is decided on cleaned absolute paths. Empty, unreadable, or
-// non-directory external paths return an actionable error rather than silently
-// leaving the project pointed at the source tree.
-func rerootProjectPath(path, srcDataDir, dstDataDir, projectID string) (string, error) {
-	if strings.TrimSpace(path) == "" {
-		return "", fmt.Errorf("project path is empty")
-	}
-	absPath, err := filepath.Abs(filepath.Clean(path))
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve project path %q: %w", path, err)
-	}
-	absSrc, err := filepath.Abs(filepath.Clean(srcDataDir))
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve source data dir %q: %w", srcDataDir, err)
-	}
-
-	// Under the source data dir: reroot onto the already-copied destination.
-	rel, relErr := filepath.Rel(absSrc, absPath)
-	if relErr == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return filepath.Join(dstDataDir, rel), nil
-	}
-
-	// External project directory: copy it into the workspace so writes stay
-	// isolated from the original external tree.
-	info, err := os.Stat(absPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read external project dir %q: %w", absPath, err)
-	}
-	if !info.IsDir() {
-		return "", fmt.Errorf("external project path %q is not a directory", absPath)
-	}
-	dst := filepath.Join(dstDataDir, "projects", "__external_"+projectID)
-	if err := config.MigrateCopyTree(absPath, dst); err != nil {
-		return "", fmt.Errorf("failed to copy external project dir %q: %w", absPath, err)
-	}
-	return dst, nil
-}
-
 // --- Built-in fixture builders ---
 
 // buildEmptyFixture leaves the workspace with no user projects, exercising the
 // zero-task onboarding surface (the dashboard capture hint).
 func buildEmptyFixture(_ *uitestWorkspace) error {
+	return nil
+}
+
+// buildFreshFixture removes even the harness-seeded sandbox so NewAppModel must
+// bootstrap a genuine blank install, then starts on the configured default view.
+func buildFreshFixture(w *uitestWorkspace) error {
+	w.Runtime.SetCatalogInMemory(config.NewWorkspaceCatalog())
+	w.startAtDefault = true
 	return nil
 }
 
@@ -357,7 +334,7 @@ func buildRichFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
-	w.Config.CurrentProject = project.ID
+	w.setCurrentProject(project.ID)
 	return nil
 }
 
@@ -397,7 +374,7 @@ func buildAlertsFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
-	w.Config.CurrentProject = project.ID
+	w.setCurrentProject(project.ID)
 	return nil
 }
 
@@ -423,7 +400,7 @@ func buildWorkflowFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
-	w.Config.CurrentProject = project.ID
+	w.setCurrentProject(project.ID)
 	return nil
 }
 
@@ -444,7 +421,7 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
-	w.Config.CurrentProject = project.ID
+	w.setCurrentProject(project.ID)
 	return nil
 }
 

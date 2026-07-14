@@ -4,8 +4,14 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
+
+func newCrossProjectRefreshPrimaryBundle() PrimaryViewBundle {
+	cfg := newTestConfig()
+	bundle := NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))
+	bundle.projectService = NewProjectService()
+	return bundle
+}
 
 // TestHandleWithRefreshTriggersCrossProjectReload verifies the S2 contract:
 // when handleWithRefresh runs with reload=true and the outliner is in
@@ -20,10 +26,7 @@ func TestHandleWithRefreshTriggersCrossProjectReload(t *testing.T) {
 		{ID: "beta", Name: "Beta"},
 	}
 	app.outliner = &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
-			projectService: NewProjectService(),
-		},
+		PrimaryViewBundle:    newCrossProjectRefreshPrimaryBundle(),
 		InteractiveViewState: InteractiveViewState{cursor: 7},
 		project:              nil, // cross-project mode
 		loadedProjects:       loaded,
@@ -52,12 +55,9 @@ func TestHandleWithRefreshNoReloadSkipsCrossProjectReload(t *testing.T) {
 
 	loaded := []*models.Project{{ID: "alpha", Name: "Alpha"}}
 	app.outliner = &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
-			projectService: NewProjectService(),
-		},
-		project:        nil,
-		loadedProjects: loaded,
+		PrimaryViewBundle: newCrossProjectRefreshPrimaryBundle(),
+		project:           nil,
+		loadedProjects:    loaded,
 	}
 
 	_ = app.handleWithRefresh(false, false, "")
@@ -85,10 +85,7 @@ func TestHandleWithRefreshTriggersCrossOutlinerInstanceReload(t *testing.T) {
 		{ID: "beta", Name: "Beta"},
 	}
 	app.crossOutliner = &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
-			projectService: NewProjectService(),
-		},
+		PrimaryViewBundle:    newCrossProjectRefreshPrimaryBundle(),
 		InteractiveViewState: InteractiveViewState{cursor: 7},
 		project:              nil, // cross-project mode
 		loadedProjects:       loaded,
@@ -118,12 +115,9 @@ func TestHandleWithRefreshSingleProjectOutlinerSkipsCrossReload(t *testing.T) {
 
 	loaded := []*models.Project{{ID: "alpha", Name: "Alpha"}}
 	app.outliner = &OutlinerModel{
-		PrimaryViewBundle: PrimaryViewBundle{
-			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
-			projectService: NewProjectService(),
-		},
-		project:        project,
-		loadedProjects: loaded,
+		PrimaryViewBundle: newCrossProjectRefreshPrimaryBundle(),
+		project:           project,
+		loadedProjects:    loaded,
 	}
 
 	_ = app.handleWithRefresh(false, true, "")

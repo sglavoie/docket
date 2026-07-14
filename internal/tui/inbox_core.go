@@ -61,8 +61,9 @@ type inboxBackend interface {
 type inboxCore struct {
 	BaseView
 	InteractiveViewState
-	config        *config.Config
 	configManager *config.Manager
+	// runtime backs the domain-native global section-color read (Settings).
+	runtime *config.RuntimeState
 
 	currentIndex      int
 	processedIDs      map[string]bool
@@ -91,9 +92,9 @@ type processingAction struct {
 }
 
 // initCore initializes the shared core fields. Call from the outer model's constructor.
-func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, cfg *config.Config, manager *config.Manager) {
-	c.config = cfg
+func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, manager *config.Manager, runtime *config.RuntimeState) {
 	c.configManager = manager
+	c.runtime = runtime
 	c.currentIndex = 0
 	c.processedIDs = make(map[string]bool)
 	c.skippedIDs = make(map[string]bool)

@@ -10,18 +10,17 @@ import (
 // minimalFactoryConfig is the smallest config the primary view constructors
 // accept: a single current project (the project-scoped views require one) with
 // the maps they read initialized.
-func minimalFactoryConfig(t *testing.T) *config.Config {
+func minimalFactoryConfig(t *testing.T) *config.RuntimeState {
 	t.Helper()
 	project, err := models.NewProject("proj-1", "Factory Project", "")
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
-	return &config.Config{
-		Projects:          []*models.Project{project},
-		CurrentProject:    project.ID,
-		ProjectViewStates: make(map[string]config.ProjectViewState),
-		SectionColors:     make(map[string]string),
-	}
+	runtime := testConfigWithProjects(project)
+	runtime.Machine().CurrentProject = project.ID
+	runtime.Machine().ProjectViewStates = make(map[string]config.ProjectViewState)
+	runtime.Settings().SectionColors = make(map[string]string)
+	return runtime
 }
 
 // TestPrimaryFeatureFactoriesPopulated asserts every primary feature view that
@@ -40,7 +39,8 @@ func TestPrimaryFeatureFactoriesPopulated(t *testing.T) {
 // minimal ViewContext and asserts it returns a non-nil View. This guards the
 // factory wiring (correct constructor, View conformance) without navigating.
 func TestPrimaryFeatureFactoriesBuildViews(t *testing.T) {
-	ctx := ViewContext{Width: 80, Height: 24, Config: minimalFactoryConfig(t)}
+	cfg := minimalFactoryConfig(t)
+	ctx := ViewContext{Width: 80, Height: 24, Runtime: testRuntimeAt(cfg.DataDir(), cfg)}
 	for vt, factory := range primaryFeatureFactories() {
 		view := factory(ctx, RouteParams{})
 		if view == nil {

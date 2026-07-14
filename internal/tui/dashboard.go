@@ -12,10 +12,9 @@ import (
 type DashboardModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	config        *config.Config
-	configManager *config.Manager
-	projects      []*models.Project
-	showArchived  bool
+	runtime      *config.RuntimeState
+	projects     []*models.Project
+	showArchived bool
 
 	// Context filter state
 	filterContext       string   // Empty string means "all contexts"
@@ -39,12 +38,12 @@ func (m *DashboardModel) SetPipelineCounts(counts pipelineCounts) {
 }
 
 // NewDashboardModel creates a new dashboard model.
-func NewDashboardModel(cfg *config.Config, manager *config.Manager) *DashboardModel {
+func NewDashboardModel(runtime *config.RuntimeState) *DashboardModel {
+	machine := runtime.Machine()
 	m := &DashboardModel{
-		config:                cfg,
-		configManager:         manager,
-		filterContext:         cfg.FilterContext,       // Load persisted context filter
-		filterCustomContext:   cfg.FilterCustomContext, // Load persisted custom context filter
+		runtime:               runtime,
+		filterContext:         machine.FilterContext,       // Machine-local context filter
+		filterCustomContext:   machine.FilterCustomContext, // Machine-local custom context filter
 		dashboardCompactCards: true,
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
@@ -60,10 +59,10 @@ func (m *DashboardModel) HasActiveSearch() bool {
 }
 
 // Refresh reloads the dashboard data.
-func (m *DashboardModel) Refresh(cfg *config.Config) {
-	m.config = cfg
-	m.filterContext = cfg.FilterContext
-	m.filterCustomContext = cfg.FilterCustomContext
+func (m *DashboardModel) Refresh() {
+	machine := m.runtime.Machine()
+	m.filterContext = machine.FilterContext
+	m.filterCustomContext = machine.FilterCustomContext
 	m.loadProjects()
 }
 

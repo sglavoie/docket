@@ -12,7 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // This file covers the shared bulk picker/palette chokepoints migrated onto the
@@ -35,13 +34,16 @@ type appBulkPickerEnv struct {
 	svc      *app.Service
 	features SecondaryCoordinators
 	mgr      *config.Manager
-	cfg      *config.Config
+	cfg      *config.RuntimeState
 	projects []*models.Project
 }
 
 func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPickerEnv {
 	t.Helper()
 	dataDir := t.TempDir()
+	// Machine-local domain (machine.json) resolves under HOME; isolate it so a
+	// checked machine commit + facade reload stays inside the temp workspace.
+	t.Setenv("HOME", dataDir)
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
@@ -72,8 +74,15 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 	svc := app.NewService(repo, nil, nil)
 
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = projects
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, projects)
+	// Persist the config so the domain files (catalog included) exist on disk:
+	// a machine-domain commit in a migrated handler refreshes the facade via
+	// Manager.Load, which must recompose the seeded projects rather than an
+	// empty catalog.
+	if err := saveTestRuntime(mgr, cfg); err != nil {
+		t.Fatalf("seed config save: %v", err)
+	}
 	return &appBulkPickerEnv{
 		dataDir:  dataDir,
 		ledger:   ledger,
@@ -88,9 +97,14 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 // appModel builds an AppModel wired to the seeded projects' coordinators, ready
 // to receive a shared picker/palette message.
 func (e *appBulkPickerEnv) appModel() *AppModel {
+	projects := make(map[string]*models.Project, len(e.projects))
+	for _, project := range e.projects {
+		projects[project.ID] = project
+	}
 	return &AppModel{
-		config:                   e.cfg,
 		configManager:            e.mgr,
+		runtime:                  testRuntimeAt(e.cfg.DataDir(), e.cfg),
+		projects:                 projects,
 		persister:                NewProjectService(),
 		appService:               e.svc,
 		secondaryFeatures:        e.features,
@@ -154,7 +168,7 @@ func TestHandlePriorityPickerDoneBulkMigratedCommitsAsync(t *testing.T) {
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
+	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
 	app.allTasksView.multiSelectMode = true
 	app.allTasksView.selectedTasks[taskA.ID] = true
 	app.allTasksView.selectedTasks[taskB.ID] = true

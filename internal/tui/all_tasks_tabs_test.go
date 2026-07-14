@@ -10,7 +10,7 @@ import (
 )
 
 func TestAllTasksBuiltInTabOrderIncludesParked(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	m := newAllTasksTabsTestModel(cfg)
 
 	m.buildTabEntries()
@@ -28,8 +28,8 @@ func TestAllTasksBuiltInTabOrderIncludesParked(t *testing.T) {
 }
 
 func TestAllTasksOldTabOrderAppendsParkedBuiltIn(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.AllTasksTabOrder = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
+	cfg := newTestConfig()
+	cfg.Machine().AllTasksTabOrder = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
 	m := newAllTasksTabsTestModel(cfg)
 
 	m.buildTabEntries()
@@ -38,8 +38,8 @@ func TestAllTasksOldTabOrderAppendsParkedBuiltIn(t *testing.T) {
 }
 
 func TestAllTasksSavedFilterOverflowWithSevenBuiltIns(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.SaveFilter(config.SavedFilter{ID: "triage", Name: "Triage", ShowAsTab: true})
+	cfg := newTestConfig()
+	cfg.Planning().SaveFilter(config.SavedFilter{ID: "triage", Name: "Triage", ShowAsTab: true})
 	m := newAllTasksTabsTestModel(cfg)
 
 	m.buildTabEntries()
@@ -58,7 +58,7 @@ func TestAllTasksSavedFilterOverflowWithSevenBuiltIns(t *testing.T) {
 }
 
 func TestAllTasksParkedTabFiltersParkedTasks(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
 	proj := testutil.NewTestProject("alpha")
 	m := newAllTasksTabsTestModel(cfg)
 	m.groupBy = ATGroupByFlat
@@ -89,9 +89,9 @@ func TestAllTasksParkedTabFiltersParkedTasks(t *testing.T) {
 	}
 }
 
-func newAllTasksTabsTestModel(cfg *config.Config) *AllTasksViewModel {
+func newAllTasksTabsTestModel(cfg *config.RuntimeState) *AllTasksViewModel {
 	m := newMinimalAllTasksVM()
-	m.ViewBundle = ViewBundle{config: cfg}
+	m.PrimaryViewBundle = NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.FilterMixin = FilterMixin{filter: newFilterState()}
 	m.projectFilter = make(map[string]bool)
 	m.sort = NewSortState()

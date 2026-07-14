@@ -16,7 +16,7 @@ import (
 // RoadmapModel is the TUI model for the roadmap / Gantt view.
 type RoadmapModel struct {
 	BaseView
-	config *config.Config
+	runtime *config.RuntimeState
 
 	// Scope
 	project   *models.Project // nil = global scope
@@ -43,9 +43,9 @@ type RoadmapModel struct {
 }
 
 // NewRoadmapModel creates a global roadmap view.
-func NewRoadmapModel(cfg *config.Config) *RoadmapModel {
+func NewRoadmapModel(runtime *config.RuntimeState) *RoadmapModel {
 	m := &RoadmapModel{
-		config:     cfg,
+		runtime:    runtime,
 		isGlobal:   true,
 		canToggle:  false,
 		zoom:       ZoomMonth,
@@ -57,9 +57,9 @@ func NewRoadmapModel(cfg *config.Config) *RoadmapModel {
 }
 
 // NewRoadmapModelForProject creates a project-scoped roadmap view.
-func NewRoadmapModelForProject(cfg *config.Config, project *models.Project) *RoadmapModel {
+func NewRoadmapModelForProject(runtime *config.RuntimeState, project *models.Project) *RoadmapModel {
 	m := &RoadmapModel{
-		config:     cfg,
+		runtime:    runtime,
 		project:    project,
 		isGlobal:   false,
 		canToggle:  true,
@@ -76,7 +76,7 @@ func (m *RoadmapModel) computeData() {
 	var allArchived []metrics.TaskSummary
 
 	if m.isGlobal {
-		for _, p := range m.config.GetActiveProjects() {
+		for _, p := range m.runtime.ActiveProjects() {
 			if err := storage.LoadProject(p); err != nil {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
 			}
@@ -103,7 +103,7 @@ func (m *RoadmapModel) computeData() {
 
 	// Compute effort-weighted velocity from throughput data. Use the user's
 	// configured week-start so weekly buckets match dashboard preferences.
-	weekStart := metrics.WeekStartFromWeekEnd(m.config.GetWeekEndDay())
+	weekStart := metrics.WeekStartFromWeekEnd(m.runtime.Settings().GetWeekEndDay())
 	agg := metrics.ComputeAllAtWithWeekStartAndSummaries(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
 	var allTasks []*models.Task
 	for _, p := range projects {

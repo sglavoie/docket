@@ -12,11 +12,9 @@ import (
 )
 
 // TestProjectDeleteCleansCrossProjectRefsOnDisk exercises the real
-// FileSystemRepository path. Regression for an interaction with
-// validateCrossProjectRefs: when LoadProject strips refs to the (already
-// trashed) project in-memory before cleanCrossProjectRefs computes its
-// diff, the diff sees zero and never saves the cleaned tasks.md, leaving
-// stale refs on disk that resurface on each load.
+// FileSystemRepository path. The rewrite loader retains both persisted qualifier
+// formats, and the returned artifact write carries the identity-cleaned tasks.md
+// content that the atomic delete transaction commits.
 func TestProjectDeleteCleansCrossProjectRefsOnDisk(t *testing.T) {
 	origRepo := storage.DefaultRepository
 	storage.DefaultRepository = storage.NewFileSystemRepository()
@@ -28,6 +26,7 @@ func TestProjectDeleteCleansCrossProjectRefsOnDisk(t *testing.T) {
 		t.Fatalf("mkdir projects: %v", err)
 	}
 
+	// Both projects exist on disk in the pre-trash state used by the planner.
 	projectA := testutil.NewTestProject("Project A")
 	projectA.Path = filepath.Join(projectsDir, projectA.Slug)
 	projectB := testutil.NewTestProject("Project B")
@@ -37,35 +36,93 @@ func TestProjectDeleteCleansCrossProjectRefsOnDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.DependsOn = []string{projectA.Slug + ":task-a1"}
-	task1.RelatedTo = []string{projectA.Slug + ":task-a2"}
+	task1.DependsOn = []string{
+		projectA.Slug + ":task-a1",
+		projectA.ID + ":task-a2",
+	}
+	task1.RelatedTo = []string{
+		projectA.ID + ":task-a3",
+		projectA.Slug + ":task-a4",
+	}
 	projectB.Tasks = []*models.Task{task1}
 
+	if createErr := storage.CreateProjectDir(projectA); createErr != nil {
+		t.Fatalf("create project A: %v", createErr)
+	}
 	if createErr := storage.CreateProjectDir(projectB); createErr != nil {
 		t.Fatalf("create project B: %v", createErr)
 	}
+	base, readErr := os.ReadFile(storage.TasksFilePath(projectB.Path))
+	if readErr != nil {
+		t.Fatalf("read project B base: %v", readErr)
+	}
+	refs, projectsWithRefs := countCrossProjectRefs([]*models.Project{projectB}, projectA.Slug, projectA.ID)
+	testutil.AssertEqual(t, refs, 4)
+	testutil.AssertEqual(t, projectsWithRefs, 1)
 
-	// Simulate post-trash state: projectA's directory does not exist under
-	// projects/, so validateCrossProjectRefs (run by LoadProject) will strip
-	// the in-memory refs before cleanCrossProjectRefs can diff them.
-	if _, cleanErr := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug); cleanErr != nil {
-		t.Fatalf("cleanCrossProjectRefs: %v", cleanErr)
+	writes, cleaned := planCrossProjectRefCleanup([]*models.Project{projectB}, projectA.Slug, projectA.ID)
+	testutil.AssertEqual(t, cleaned, 4)
+	if len(writes) != 1 {
+		t.Fatalf("expected 1 tasks.md rewrite, got %d", len(writes))
 	}
 
-	content, err := os.ReadFile(filepath.Join(projectB.Path, "tasks.md"))
+	content := string(writes[0].Data)
+	if strings.Contains(content, projectA.Slug+":task-a1") {
+		t.Errorf("rewritten tasks.md still contains stale DependsOn ref to deleted project A:\n%s", content)
+	}
+	for _, qualifier := range []string{projectA.Slug, projectA.ID} {
+		if strings.Contains(content, qualifier+":") {
+			t.Errorf("rewritten tasks.md still contains stale ref to deleted project A via %q:\n%s", qualifier, content)
+		}
+	}
+	testutil.AssertEqual(t, writes[0].Path, storage.TasksFilePath(projectB.Path))
+	if writes[0].ExpectedRevision == nil {
+		t.Fatal("cleanup rewrite is missing its tasks.md revision precondition")
+	}
+	testutil.AssertEqual(t, *writes[0].ExpectedRevision, storage.RawArtifactRevision(base))
+}
+
+func TestProjectRenameCrossProjectRewriteCarriesRevision(t *testing.T) {
+	origRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	defer func() { storage.DefaultRepository = origRepo }()
+
+	dataDir := t.TempDir()
+	projectsDir := filepath.Join(dataDir, "projects")
+	projectA := testutil.NewTestProject("Project A")
+	projectA.Path = filepath.Join(projectsDir, projectA.Slug)
+	projectB := testutil.NewTestProject("Project B")
+	projectB.Path = filepath.Join(projectsDir, projectB.Slug)
+	task, err := models.NewTask("task-b", projectB.GetNextShortID(), models.TaskTypeTask, "Task B")
 	if err != nil {
-		t.Fatalf("read tasks.md: %v", err)
+		t.Fatal(err)
 	}
-	if strings.Contains(string(content), projectA.Slug+":task-a1") {
-		t.Errorf("tasks.md still contains stale DependsOn ref to deleted project A:\n%s", content)
+	task.DependsOn = []string{projectA.Slug + ":task-a"}
+	projectB.Tasks = []*models.Task{task}
+	if err := storage.CreateProjectDir(projectA); err != nil {
+		t.Fatalf("create project A: %v", err)
 	}
-	if strings.Contains(string(content), projectA.Slug+":task-a2") {
-		t.Errorf("tasks.md still contains stale RelatedTo ref to deleted project A:\n%s", content)
+	if err := storage.CreateProjectDir(projectB); err != nil {
+		t.Fatalf("create project B: %v", err)
 	}
+	base, err := os.ReadFile(storage.TasksFilePath(projectB.Path))
+	if err != nil {
+		t.Fatalf("read project B base: %v", err)
+	}
+
+	writes, updated := planCrossProjectRefRewrites(
+		[]*models.Project{projectB}, projectA.Slug, "renamed-project-a", projectA.ID)
+	if updated != 1 || len(writes) != 1 {
+		t.Fatalf("rewrite result = %d refs and %d writes; want 1 and 1", updated, len(writes))
+	}
+	if writes[0].ExpectedRevision == nil {
+		t.Fatal("rename rewrite is missing its tasks.md revision precondition")
+	}
+	testutil.AssertEqual(t, *writes[0].ExpectedRevision, storage.RawArtifactRevision(base))
 }
 
 func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
-	// Set up mock repository so LoadProject/SaveProject work without filesystem
+	// Set up mock repository so LoadProject works without a filesystem.
 	mockRepo := testutil.NewMockRepository()
 	origRepo := storage.DefaultRepository
 	storage.DefaultRepository = mockRepo
@@ -91,12 +148,13 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	}
 	task1.DependsOn = []string{
 		projectA.Slug + ":task-a1", // cross-project ref to A (should be removed)
+		projectA.ID + ":task-a4",   // stable-ID ref to A (should be removed)
 		localDepTask.ID,            // same-project ref (should be preserved)
 		"other-project:task-x1",    // cross-project ref to different project (should be preserved)
 	}
 	task1.RelatedTo = []string{
-		projectA.Slug + ":task-a2", // cross-project ref to A (should be removed)
-		localRelatedTask.ID,        // same-project ref (should be preserved)
+		projectA.ID + ":task-a2", // stable-ID ref to A (should be removed)
+		localRelatedTask.ID,      // same-project ref (should be preserved)
 	}
 
 	task2, err := models.NewTask("task-b2", projectB.GetNextShortID(), models.TaskTypeTask, "Task B2")
@@ -118,45 +176,53 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	mockProjectB.Tasks = []*models.Task{task1, localDepTask, localRelatedTask, task2}
 	mockRepo.Projects[projectB.ID] = mockProjectB
 
-	// Run cleanup: only project B remains (A is being deleted)
-	// Pass slug (not UUID) since cross-project refs use the slug format
-	remainingProjects := []*models.Project{projectB}
-	totalCleaned, err := cleanCrossProjectRefs(remainingProjects, projectA.Slug)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	// Plan cleanup: only project B remains (A is being deleted). Pass the slug
+	// (not UUID) since cross-project refs use the slug format.
+	writes, totalCleaned := planCrossProjectRefCleanup([]*models.Project{projectB}, projectA.Slug, projectA.ID)
+
+	// Should have cleaned 4 refs total (3 from task1 + 1 from task2), covering
+	// both persisted qualifier representations.
+	testutil.AssertEqual(t, totalCleaned, 4)
+	if len(writes) != 1 {
+		t.Fatalf("expected 1 tasks.md rewrite, got %d", len(writes))
 	}
 
-	// Should have cleaned 3 refs total (2 from task1 + 1 from task2)
-	testutil.AssertEqual(t, totalCleaned, 3)
-
-	// Verify task1 DependsOn: only same-project and other-project refs remain
-	savedB := mockRepo.Projects[projectB.ID]
-	var savedTask1, savedTask2 *models.Task
-	for _, task := range savedB.Tasks {
-		switch task.ID {
-		case "task-b1":
-			savedTask1 = task
-		case "task-b2":
-			savedTask2 = task
+	// The rewritten tasks.md must drop every ref to project A but keep the
+	// same-project and other-project refs.
+	content := string(writes[0].Data)
+	for _, qualifier := range []string{projectA.Slug, projectA.ID} {
+		if strings.Contains(content, qualifier+":") {
+			t.Errorf("rewritten tasks.md still references deleted project A via %q:\n%s", qualifier, content)
 		}
 	}
-
-	if savedTask1 == nil {
-		t.Fatal("task-b1 not found in saved project")
+	if !strings.Contains(content, "other-project:task-x1") {
+		t.Errorf("rewritten tasks.md dropped an unrelated cross-project ref:\n%s", content)
 	}
-	testutil.AssertEqual(t, len(savedTask1.DependsOn), 2)
-	testutil.AssertEqual(t, savedTask1.DependsOn[0], "same-project-task-id")
-	testutil.AssertEqual(t, savedTask1.DependsOn[1], "other-project:task-x1")
 
-	// Verify task1 RelatedTo: only local ref remains
-	testutil.AssertEqual(t, len(savedTask1.RelatedTo), 1)
-	testutil.AssertEqual(t, savedTask1.RelatedTo[0], "local-task-id")
-
-	// Verify task2 DependsOn: empty after removal
-	if savedTask2 == nil {
-		t.Fatal("task-b2 not found in saved project")
+	// The in-memory projectB tasks are mutated in place by the planner; verify the
+	// surviving refs directly.
+	var planTask1, planTask2 *models.Task
+	for _, task := range projectB.Tasks {
+		switch task.ID {
+		case "task-b1":
+			planTask1 = task
+		case "task-b2":
+			planTask2 = task
+		}
 	}
-	testutil.AssertEqual(t, len(savedTask2.DependsOn), 0)
+	if planTask1 == nil {
+		t.Fatal("task-b1 not found")
+	}
+	testutil.AssertEqual(t, len(planTask1.DependsOn), 2)
+	testutil.AssertEqual(t, planTask1.DependsOn[0], "same-project-task-id")
+	testutil.AssertEqual(t, planTask1.DependsOn[1], "other-project:task-x1")
+	testutil.AssertEqual(t, len(planTask1.RelatedTo), 1)
+	testutil.AssertEqual(t, planTask1.RelatedTo[0], "local-task-id")
+
+	if planTask2 == nil {
+		t.Fatal("task-b2 not found")
+	}
+	testutil.AssertEqual(t, len(planTask2.DependsOn), 0)
 }
 
 func TestProjectDeleteCleansCrossProjectRefsNoRefsUnchanged(t *testing.T) {
@@ -194,17 +260,18 @@ func TestProjectDeleteCleansCrossProjectRefsNoRefsUnchanged(t *testing.T) {
 	mockProjectB.Tasks = []*models.Task{task1, localDepTask, localRelatedTask}
 	mockRepo.Projects[projectB.ID] = mockProjectB
 
-	totalCleaned, err := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	writes, totalCleaned := planCrossProjectRefCleanup([]*models.Project{projectB}, projectA.Slug, projectA.ID)
 
-	// No refs to clean
+	// No refs to clean.
 	testutil.AssertEqual(t, totalCleaned, 0)
+	if len(writes) != 0 {
+		t.Fatalf("expected no rewrites when nothing changed, got %d", len(writes))
+	}
 }
 
 func TestFilterRefs(t *testing.T) {
 	deletedSlug := "project-a"
+	deletedID := "project-id-a"
 
 	tests := []struct {
 		name     string
@@ -227,6 +294,11 @@ func TestFilterRefs(t *testing.T) {
 			expected: []string{"local-task"},
 		},
 		{
+			name:     "removes stable ID ref to deleted project",
+			refs:     []string{deletedID + ":task-1", "local-task"},
+			expected: []string{"local-task"},
+		},
+		{
 			name:     "preserves cross-project ref to other project",
 			refs:     []string{"other-project:task-1", deletedSlug + ":task-2"},
 			expected: []string{"other-project:task-1"},
@@ -238,14 +310,14 @@ func TestFilterRefs(t *testing.T) {
 		},
 		{
 			name:     "removes all when all match",
-			refs:     []string{deletedSlug + ":t1", deletedSlug + ":t2"},
+			refs:     []string{deletedSlug + ":t1", deletedID + ":t2"},
 			expected: []string{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := filterRefs(tc.refs, deletedSlug)
+			result := filterRefs(tc.refs, deletedSlug, deletedID)
 			if tc.refs == nil {
 				if result != nil {
 					t.Errorf("expected nil, got %v", result)
@@ -258,4 +330,31 @@ func TestFilterRefs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCountCrossProjectRefsMatchesIDAndSlugQualifiers(t *testing.T) {
+	mockRepo := testutil.NewMockRepository()
+	origRepo := storage.DefaultRepository
+	storage.DefaultRepository = mockRepo
+	defer func() { storage.DefaultRepository = origRepo }()
+
+	deleted := testutil.NewTestProject("Deleted")
+	carrier := testutil.NewTestProject("Carrier")
+	task, err := models.NewTask("carrier-task", carrier.GetNextShortID(), models.TaskTypeTask, "Carrier task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.DependsOn = []string{deleted.ID + ":dep", "other:dep"}
+	task.RelatedTo = []string{deleted.Slug + ":rel"}
+	carrier.Tasks = []*models.Task{task}
+
+	stored := testutil.NewTestProject("Carrier")
+	stored.ID = carrier.ID
+	stored.Slug = carrier.Slug
+	stored.Tasks = []*models.Task{task}
+	mockRepo.Projects[carrier.ID] = stored
+
+	refs, projects := countCrossProjectRefs([]*models.Project{carrier}, deleted.Slug, deleted.ID)
+	testutil.AssertEqual(t, refs, 2)
+	testutil.AssertEqual(t, projects, 1)
 }

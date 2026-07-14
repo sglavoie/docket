@@ -37,14 +37,19 @@ func init() {
 }
 
 func runThemeReset(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	settings := domains.Settings
 
 	slot := themeResetSlot
 	if slot == "" {
-		slot = cfg.ActiveTheme
+		slot = settings.ActiveTheme
 		if slot == "" {
 			slot = "dark"
 		}
@@ -64,8 +69,8 @@ func runThemeReset(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	cfg.SetActiveTheme(slot, config.DefaultTheme(slot))
-	if err := saveConfig(configManager, cfg); err != nil {
+	settings.SetActiveTheme(slot, config.DefaultTheme(slot))
+	if err := commitCLISettings(workspace, settings); err != nil {
 		return err
 	}
 

@@ -31,7 +31,7 @@ func (m *AppModel) taskCommands() []Command {
 					if project == nil {
 						return StatusMsg(statusNoProjectUnderCursor)
 					}
-					return ShowQuickCaptureMsg{Project: project, AllProjects: m.config.GetActiveProjects()}
+					return ShowQuickCaptureMsg{Project: project, AllProjects: m.activeProjects()}
 				}
 				return m.resolveQuickCaptureProject()
 			},

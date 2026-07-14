@@ -16,7 +16,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestTaskArchiveListUsesSummariesAndFilters(t *testing.T) {
@@ -126,17 +125,17 @@ func TestSearchDoesNotIncludeCompletedArchiveFiles(t *testing.T) {
 	}
 }
 
-func setupArchiveAccessTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupArchiveAccessTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
 	resetArchiveAccessVars()
 
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	if err := manager.Save(deps.Config); err != nil {
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("save test config: %v", err)
 	}
 

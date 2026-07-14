@@ -47,10 +47,7 @@ func (m *OutlinerModel) cursorProject() *models.Project {
 	return m.crossResolveProject(row.ProjectID)
 }
 
-func (m *OutlinerModel) getPersister() Persister { return m.projectService }
-func (m *OutlinerModel) reloadData()             { m.rebuildRows() }
-func (m *OutlinerModel) setErr(err error)        { m.err = err }
-func (m *OutlinerModel) setStatus(msg string)    { m.InteractiveViewState.setStatus(msg) }
+func (m *OutlinerModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }
 
 // toggleMultiSelectMode enters or exits multi-select mode.
 func (m *OutlinerModel) toggleMultiSelectMode() {

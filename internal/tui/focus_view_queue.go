@@ -22,11 +22,10 @@ func (m *FocusViewModel) isInQueue(taskID string) bool {
 	return m.queueIDs[taskID]
 }
 
-// persistQueue saves the current queue state to config.
+// persistQueue saves the current queue state through a checked planning commit.
+// The Focus Queue is planning-domain state, committed to planning.json alone
+// rather than through a whole-config save.
 func (m *FocusViewModel) persistQueue() {
-	if m.configManager == nil {
-		return
-	}
 	items := make([]config.FocusQueueItem, len(*m.queue))
 	for i, ft := range *m.queue {
 		items[i] = config.FocusQueueItem{
@@ -34,8 +33,9 @@ func (m *FocusViewModel) persistQueue() {
 			ProjectID: ft.Project.ID,
 		}
 	}
-	m.config.SetFocusQueue(items)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+		p.SetFocusQueue(items)
+	}); err != nil {
 		m.err = err
 	}
 }
@@ -64,18 +64,18 @@ func (m *FocusViewModel) removeFromQueue() {
 	m.setStatus(fmt.Sprintf("Removed from queue: %s", ft.Task.Title))
 }
 
-// persistDismissed saves the current dismissed IDs to config.
+// persistDismissed saves the current dismissed IDs through a checked planning
+// commit. Dismissed focus suggestions are planning-domain state, committed to
+// planning.json alone rather than through a whole-config save.
 func (m *FocusViewModel) persistDismissed() {
-	if m.configManager == nil {
-		return
-	}
 	ids := make([]string, 0, len(m.dismissedIDs))
 	for id := range m.dismissedIDs {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	m.config.SetFocusDismissedIDs(ids)
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+		p.SetFocusDismissedIDs(ids)
+	}); err != nil {
 		m.err = err
 	}
 }

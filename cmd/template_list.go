@@ -40,12 +40,12 @@ func runTemplateList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, _, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	defaultTemplates, customTemplates := cfg.GetTaskTemplatesSorted()
+	defaultTemplates, customTemplates := workspace.Runtime.Automation().GetTaskTemplatesSorted()
 	total := len(defaultTemplates) + len(customTemplates)
 
 	// Apply filters

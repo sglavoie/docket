@@ -150,13 +150,13 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	cfg, configManager, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
 	tui.AppVersion = Version
-	return tui.RunApp(cfg, configManager, tui.WithCLIReference(CLIReference))
+	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.WithCLIReference(CLIReference))
 }
 
 func printVersion() {

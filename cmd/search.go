@@ -49,16 +49,16 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("search query cannot be empty")
 	}
 
-	cfg, _, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
 	var projects []*models.Project
 	if searchIncludeArchived {
-		projects = cfg.Projects
+		projects = workspace.Runtime.AllProjects()
 	} else {
-		projects = cfg.GetActiveProjects()
+		projects = workspace.Runtime.ActiveProjects()
 	}
 
 	if len(projects) == 0 {

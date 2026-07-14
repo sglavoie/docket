@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 )
 
@@ -14,29 +15,31 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowContextPickerMsg:
 		if msg.Dashboard != nil {
-			m.showView(ViewContextPicker, NewContextPickerModel(msg.Dashboard, m.config))
+			m.showView(ViewContextPicker, NewContextPickerModel(msg.Dashboard, m.runtime))
 		} else {
-			m.showView(ViewContextPicker, NewContextPickerModelFromConfig(m.config))
+			m.showView(ViewContextPicker, NewContextPickerModelFromRuntime(m.runtime))
 		}
 		return true, nil
 
 	case ShowContextPickerForCycleMsg:
-		m.showView(ViewContextPicker, NewContextPickerModelFromConfig(m.config))
+		m.showView(ViewContextPicker, NewContextPickerModelFromRuntime(m.runtime))
 		return true, nil
 
 	case ContextPickerDoneMsg:
 		m.popView()
 		if !msg.Canceled {
-			// Persist context filter to config - custom and regular contexts are mutually exclusive
-			if msg.IsCustomContext {
-				m.config.FilterCustomContext = msg.SelectedContext
-				m.config.FilterContext = ""
-			} else {
-				m.config.FilterContext = msg.SelectedContext
-				m.config.FilterCustomContext = ""
-			}
-			if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
+			// Context filters are machine-local navigation state; custom and
+			// regular contexts are mutually exclusive.
+			if err := m.commitMachineMutation(func(machine *config.MachineState) {
+				if msg.IsCustomContext {
+					machine.FilterCustomContext = msg.SelectedContext
+					machine.FilterContext = ""
+				} else {
+					machine.FilterContext = msg.SelectedContext
+					machine.FilterCustomContext = ""
+				}
+			}); err != nil {
+				logging.Warn("failed to save machine state: %v", err)
 			}
 
 			if msg.FromCycle {
@@ -83,32 +86,26 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowCustomContextEditorMsg:
-		m.showView(ViewCustomContextEditor, NewCustomContextEditorModel(m.config, msg.EditName))
+		m.showView(ViewCustomContextEditor, NewCustomContextEditorModel(m.runtime, msg.EditName))
 		return true, nil
 
 	case CustomContextDeletedMsg:
-		// Save config after deletion
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
-		}
+		// The deletion was already committed to machine-local state by the picker.
 		// If the deleted context was active, clear the dashboard filter
 		if msg.WasActive && m.dashboard != nil {
 			m.dashboard.filterCustomContext = ""
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		m.setSuccessStatus("Deleted custom context: " + msg.Name)
 		return true, defaultStatusTimeout()
 
 	case CustomContextSavedMsg:
-		// Save config and go back to context picker
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
-		}
+		// The save was already committed to machine-local state by the editor.
 		m.popView() // Pop editor view
 		// Refresh context picker if it's the current view
 		if m.currentView() == ViewContextPicker {
 			if m.dashboard != nil {
-				picker := NewContextPickerModel(m.dashboard, m.config)
+				picker := NewContextPickerModel(m.dashboard, m.runtime)
 				picker.SetSize(m.width, m.height-2)
 				m.views.Register(ViewContextPicker, picker)
 			}
@@ -122,13 +119,11 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, defaultStatusTimeout()
 
 	case ContextRenamedMsg:
-		// Save config after renaming a context
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
-		}
+		// The picker already committed the catalog-only rename through RuntimeState.
+		m.syncProjectCache()
 		// Refresh dashboard if needed
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
 		m.setSuccessStatus(fmt.Sprintf("Renamed '%s' to '%s' (%d projects)", msg.OldName, msg.NewName, msg.ProjectCount))
 		return true, defaultStatusTimeout()

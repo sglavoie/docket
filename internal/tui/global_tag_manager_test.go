@@ -15,7 +15,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestOutlinerCtrlTOpensGlobalTagManagerInCrossProjectMode(t *testing.T) {
@@ -43,10 +42,10 @@ func TestGlobalTagManagerIncludesCatalogOnlyTags(t *testing.T) {
 	project.BuildTaskTree()
 	saveGlobalTagTestProject(t, project)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
 
-	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
+	manager := NewGlobalTagManagerModel([]*models.Project{project}, testRuntimeAt(cfg.DataDir(), cfg), TagCoordinator{})
 
 	catalogOnly := findGlobalTagInfo(t, manager.tags, "catalog-only")
 	if catalogOnly.TaskCount != 0 {
@@ -72,11 +71,11 @@ func TestGlobalTagManagerBuildListMarksPinnedTags(t *testing.T) {
 	project.Tags = []string{"backend", "frontend"}
 	saveGlobalTagTestProject(t, project)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
-	cfg.GlobalPinnedTags = []string{"frontend"}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Settings().GlobalPinnedTags = []string{"frontend"}
 
-	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
+	manager := NewGlobalTagManagerModel([]*models.Project{project}, testRuntimeAt(cfg.DataDir(), cfg), TagCoordinator{})
 
 	backend := findGlobalTagInfo(t, manager.tags, "backend")
 	if backend.Pinned {
@@ -93,10 +92,10 @@ func TestGlobalTagManagerViewShowsPinnedMarker(t *testing.T) {
 	project.Tags = []string{"backend"}
 	saveGlobalTagTestProject(t, project)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
-	cfg.GlobalPinnedTags = []string{"backend"}
-	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Settings().GlobalPinnedTags = []string{"backend"}
+	manager := NewGlobalTagManagerModel([]*models.Project{project}, testRuntimeAt(cfg.DataDir(), cfg), TagCoordinator{})
 
 	plain := ansi.Strip(manager.View().Content)
 	if !strings.Contains(plain, "* backend") {
@@ -114,9 +113,9 @@ func TestGlobalTagManagerMinimumLayoutScrollsTagsNoOverflow(t *testing.T) {
 	}
 	saveGlobalTagTestProject(t, project)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
-	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
+	manager := NewGlobalTagManagerModel([]*models.Project{project}, testRuntimeAt(cfg.DataDir(), cfg), TagCoordinator{})
 	manager.SetSize(72, 18)
 	manager.cursor = globalTagIndex(t, manager.tags, "tag-23")
 
@@ -133,15 +132,17 @@ func TestGlobalTagManagerMinimumLayoutScrollsTagsNoOverflow(t *testing.T) {
 }
 
 func TestGlobalTagManagerProjectPickerMinimumLayoutNoOverflow(t *testing.T) {
-	cfg := testutil.NewTestConfig()
+	cfg := newTestConfig()
+	projects := make([]*models.Project, 0, 20)
 	for i := range 20 {
 		project := newGlobalTagTestProject(t, fmt.Sprintf("project-%02d", i), fmt.Sprintf("Project %02d", i))
 		project.Tags = []string{"shared"}
 		saveGlobalTagTestProject(t, project)
-		cfg.Projects = append(cfg.Projects, project)
+		addTestProject(cfg, project)
+		projects = append(projects, project)
 	}
 
-	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
+	manager := NewGlobalTagManagerModel(projects, testRuntimeAt(cfg.DataDir(), cfg), TagCoordinator{})
 	manager.SetSize(72, 18)
 	manager.showProjectPicker = true
 	manager.selectedTag = "shared"
@@ -164,10 +165,10 @@ func TestGlobalTagManagerTogglePinnedTagPersists(t *testing.T) {
 	project.Tags = []string{"backend"}
 	saveGlobalTagTestProject(t, project)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
-	manager := config.NewManager(filepath.Join(t.TempDir(), "config.json"))
-	model := NewGlobalTagManagerModel(cfg, TagCoordinator{}, manager)
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
+	rs := testRuntimeAt(t.TempDir(), cfg)
+	model := NewGlobalTagManagerModel([]*models.Project{project}, rs, TagCoordinator{})
 	model.cursor = globalTagIndex(t, model.tags, "backend")
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
@@ -186,17 +187,17 @@ func TestGlobalTagManagerTogglePinnedTagPersists(t *testing.T) {
 	updated, _ = model.Update(msg)
 	model = updated.(*GlobalTagManagerModel)
 
-	if !cfg.IsGlobalTagPinned("backend") {
-		t.Fatal("backend should be globally pinned")
+	if !rs.Settings().IsGlobalTagPinned("backend") {
+		t.Fatal("backend should be globally pinned in the settings domain")
 	}
 	if got := findGlobalTagInfo(t, model.tags, "backend"); !got.Pinned {
 		t.Fatalf("manager tag = %#v, want pinned backend", got)
 	}
-	loaded, err := manager.Load()
+	reloaded, err := config.LoadRuntimeState(rs.DataDir())
 	if err != nil {
-		t.Fatalf("Load config: %v", err)
+		t.Fatalf("reload runtime: %v", err)
 	}
-	if got, want := loaded.GlobalPinnedTagList(), []string{"backend"}; !slices.Equal(got, want) {
+	if got, want := reloaded.Settings().GlobalPinnedTagList(), []string{"backend"}; !slices.Equal(got, want) {
 		t.Fatalf("persisted global pinned tags = %v, want %v", got, want)
 	}
 }
@@ -206,10 +207,10 @@ func TestGlobalTagManagerNavigatesCatalogOnlyTag(t *testing.T) {
 	project.Tags = []string{"catalog-only"}
 	saveGlobalTagTestProject(t, project)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{project}
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{project})
 
-	manager := NewGlobalTagManagerModel(cfg, TagCoordinator{})
+	manager := NewGlobalTagManagerModel([]*models.Project{project}, testRuntimeAt(cfg.DataDir(), cfg), TagCoordinator{})
 	manager.cursor = globalTagIndex(t, manager.tags, "catalog-only")
 
 	_, cmd := manager.handleNormalMode(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -228,7 +229,8 @@ func TestGlobalTagManagerNavigatesCatalogOnlyTag(t *testing.T) {
 
 func TestGlobalTagNavigateRespectsDefaultOutlinerView(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.config.DefaultProjectView = "outliner"
+	app.runtime.Settings().DefaultProjectView = "outliner"
+	syncTestRuntime(app)
 	project.Tags = []string{"catalog-only"}
 	mockPersister := NewMockPersister()
 	mockPersister.Projects[project.ID] = project
@@ -253,7 +255,8 @@ func TestGlobalTagNavigateRespectsDefaultOutlinerView(t *testing.T) {
 
 func TestGlobalTagNavigateCanStillOpenProjectTreeWhenDefault(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.config.DefaultProjectView = "project_tree"
+	app.runtime.Settings().DefaultProjectView = "project_tree"
+	syncTestRuntime(app)
 	project.Tags = []string{"catalog-only"}
 	mockPersister := NewMockPersister()
 	mockPersister.Projects[project.ID] = project
@@ -299,9 +302,9 @@ func TestGlobalTagRenameCommitsWorkspaceWideAndUndoes(t *testing.T) {
 	svc := app.NewService(repo, nil, nil)
 	coords := newSecondaryCoordinators(svc, nil)
 
-	cfg := testutil.NewTestConfig()
-	cfg.Projects = []*models.Project{catalog, tasksProject}
-	manager := NewGlobalTagManagerModel(cfg, coords.Tag)
+	cfg := newTestConfig()
+	setTestProjects(cfg, []*models.Project{catalog, tasksProject})
+	manager := NewGlobalTagManagerModel([]*models.Project{catalog, tasksProject}, testRuntimeAt(cfg.DataDir(), cfg), coords.Tag)
 
 	cmd := manager.renameGlobalTag("legacy", "modern")
 	if cmd == nil {

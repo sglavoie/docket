@@ -103,7 +103,7 @@ func (m *SettingsModel) openPresetSave() {
 // openPresetLoad enters load mode after fetching the theme list.
 // Sets themePresetErr and stays in presetModeNone if no presets exist.
 func (m *SettingsModel) openPresetLoad() {
-	themes, err := m.configManager.ListThemes()
+	themes, err := m.manager.ListThemes()
 	if err != nil {
 		m.themePresetErr = "could not list presets: " + err.Error()
 		return
@@ -131,18 +131,19 @@ func (m *SettingsModel) execPresetSave(name string) tea.Cmd {
 	tf := config.NewThemeFile(name, m.activeTheme, AppVersion, m.themeFromInputs())
 	m.activePresetName = name
 	if m.activeTheme == "light" {
-		m.config.ThemeLightName = name
+		m.baseSettings.ThemeLightName = name
 	} else {
-		m.config.ThemeDarkName = name
+		m.baseSettings.ThemeDarkName = name
 	}
-	cfg := m.config
-	mgr := m.configManager
+	settings := m.baseSettings
+	machine := m.baseMachine
+	mgr := m.manager
 	coordinator := m.coordinator
 	return func() tea.Msg {
 		if err := mgr.WriteTheme(tf); err != nil {
 			return presetErrMsg{err: err.Error()}
 		}
-		if errMsg, ok := coordinator.Save(cfg)().(TransactionErrorMsg); ok {
+		if errMsg, ok := coordinator.Save(&settings, &machine)().(TransactionErrorMsg); ok {
 			return presetErrMsg{err: errMsg.Err.Error()}
 		}
 		return presetSavedMsg{name: name}
@@ -159,17 +160,18 @@ func (m *SettingsModel) execPresetLoad() tea.Cmd {
 	ApplyTheme(m.buildTentativeThemeConfig())
 	m.activePresetName = tf.Name
 	if m.activeTheme == "light" {
-		m.config.ThemeLight = tf.Theme
-		m.config.ThemeLightName = tf.Name
+		m.baseSettings.ThemeLight = tf.Theme
+		m.baseSettings.ThemeLightName = tf.Name
 	} else {
-		m.config.ThemeDark = tf.Theme
-		m.config.ThemeDarkName = tf.Name
+		m.baseSettings.ThemeDark = tf.Theme
+		m.baseSettings.ThemeDarkName = tf.Name
 	}
-	cfg := m.config
+	settings := m.baseSettings
+	machine := m.baseMachine
 	coordinator := m.coordinator
 	name := tf.Name
 	return func() tea.Msg {
-		if errMsg, ok := coordinator.Save(cfg)().(TransactionErrorMsg); ok {
+		if errMsg, ok := coordinator.Save(&settings, &machine)().(TransactionErrorMsg); ok {
 			return presetErrMsg{err: errMsg.Err.Error()}
 		}
 		return presetLoadedMsg{name: name}
@@ -182,7 +184,7 @@ func (m *SettingsModel) execPresetDelete() tea.Cmd {
 		return nil
 	}
 	name := m.themePresetList[m.themePresetCursor].Name
-	mgr := m.configManager
+	mgr := m.manager
 	return func() tea.Msg {
 		if err := mgr.DeleteTheme(name); err != nil {
 			return presetErrMsg{err: err.Error()}
@@ -198,16 +200,17 @@ func (m *SettingsModel) execPresetReset() tea.Cmd {
 	ApplyTheme(m.buildTentativeThemeConfig())
 	m.activePresetName = ""
 	if m.activeTheme == "light" {
-		m.config.ThemeLight = config.Theme{}
-		m.config.ThemeLightName = ""
+		m.baseSettings.ThemeLight = config.Theme{}
+		m.baseSettings.ThemeLightName = ""
 	} else {
-		m.config.ThemeDark = config.Theme{}
-		m.config.ThemeDarkName = ""
+		m.baseSettings.ThemeDark = config.Theme{}
+		m.baseSettings.ThemeDarkName = ""
 	}
-	cfg := m.config
+	settings := m.baseSettings
+	machine := m.baseMachine
 	coordinator := m.coordinator
 	return func() tea.Msg {
-		if errMsg, ok := coordinator.Save(cfg)().(TransactionErrorMsg); ok {
+		if errMsg, ok := coordinator.Save(&settings, &machine)().(TransactionErrorMsg); ok {
 			return presetErrMsg{err: errMsg.Err.Error()}
 		}
 		return presetResetMsg{}

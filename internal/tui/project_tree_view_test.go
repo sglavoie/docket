@@ -12,12 +12,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func newTestProjectTreeConfig() *config.Config {
-	return &config.Config{
-		Projects:          []*models.Project{},
-		ProjectViewStates: make(map[string]config.ProjectViewState),
-		SectionColors:     make(map[string]string),
-	}
+func newTestProjectTreeConfig() *config.RuntimeState {
+	runtime := newTestConfig()
+	runtime.Machine().ProjectViewStates = make(map[string]config.ProjectViewState)
+	runtime.Settings().SectionColors = make(map[string]string)
+	return runtime
 }
 
 func newTestProjectTreeProject(t *testing.T, name string, tasks []*models.Task) *models.Project {
@@ -45,7 +44,7 @@ func TestProjectTreeView_BasicRender(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Test Project", []*models.Task{task1, task2})
 	cfg := newTestProjectTreeConfig()
 
-	m := NewProjectTreeModel(project, cfg, nil)
+	m := NewProjectTreeModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(80, 24)
 
 	output := m.View().Content
@@ -66,7 +65,7 @@ func TestProjectTreePinnedTagTabFiltersByTag(t *testing.T) {
 	project.PinnedTags = []string{"backend"}
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.pinnedTagTab = 1
 	m.updateVisibility()
 
@@ -83,7 +82,7 @@ func TestProjectTreeView_EmptyProject(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Empty Project", nil)
 	cfg := newTestProjectTreeConfig()
 
-	m := NewProjectTreeModel(project, cfg, nil)
+	m := NewProjectTreeModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.SetSize(80, 24)
 
 	output := m.View().Content
@@ -96,7 +95,7 @@ func TestProjectTreeView_CursorBounds(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Empty", nil)
 	cfg := newTestProjectTreeConfig()
 
-	m := NewProjectTreeModel(project, cfg, nil)
+	m := NewProjectTreeModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.cursor = 100
 	m.clampCursor()
 
@@ -129,7 +128,7 @@ func TestViewModeCycleIncludesAll(t *testing.T) {
 
 func TestProjectTreeCyclableViewModesInboxFirst(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Test", nil)
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 
 	got := m.cyclableViewModes()
 	want := []ViewMode{ViewModeInbox, ViewModeActive, ViewModeNext, ViewModeWaiting, ViewModeSomeday}
@@ -151,7 +150,7 @@ func TestProjectTreeViewModeIndicatorRendersInboxFirst(t *testing.T) {
 	next.SetSection(models.SectionNext)
 
 	project := newTestProjectTreeProject(t, "Test", []*models.Task{active, inbox, next})
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.SetSize(120, 24)
 
 	got := ansi.Strip(m.renderViewModeIndicator())
@@ -170,7 +169,7 @@ func TestProjectTreeView_FilterState(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Test", nil)
 	cfg := newTestProjectTreeConfig()
 
-	m := NewProjectTreeModel(project, cfg, nil)
+	m := NewProjectTreeModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if m.filter.Type != "" {
 		t.Errorf("expected empty type filter, got %q", m.filter.Type)
@@ -192,7 +191,7 @@ func TestNavigateToTaskResetsStalePinnedTagTab(t *testing.T) {
 	project.EnsureSection("Sprint-1")
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.pinnedTagTab = 1
 	m.updateVisibility()
 
@@ -225,7 +224,7 @@ func TestNavigateToTaskNonGTDSectionUsesActiveView(t *testing.T) {
 	project.EnsureSection("Sprint-2")
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	m.viewMode = ViewModeInbox
 	m.pinnedTagTab = 2
 	m.updateVisibility()
@@ -262,7 +261,7 @@ func TestNavigateToTaskShowsSnoozedTasks(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Test Project", []*models.Task{snoozedTask})
 	project.BuildTaskTree()
 
-	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m := NewProjectTreeModel(project, nil, nil)
 	if len(m.visibleNodes()) != 0 {
 		t.Fatalf("expected snoozed task hidden from default view, got %#v", m.visibleNodes())
 	}

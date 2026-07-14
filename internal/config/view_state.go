@@ -1,6 +1,5 @@
 package config
 
-// ProjectViewState holds filter/sort state for a project's tree view.
 type ProjectViewState struct {
 	FilterType                string            `json:"filter_type,omitempty"`
 	FilterStatus              string            `json:"filter_status,omitempty"`
@@ -44,21 +43,4 @@ type ProjectViewState struct {
 	OutlinerSortAscending     bool              `json:"outliner_sort_ascending"`
 	OutlinerActivePerspective int               `json:"outliner_active_perspective,omitempty"`
 	OutlinerFilterBarEnabled  bool              `json:"outliner_filter_bar_enabled"`
-}
-
-// GetProjectViewState returns the saved view state for a project.
-func (c *Config) GetProjectViewState(projectID string) (ProjectViewState, bool) {
-	if c.ProjectViewStates == nil {
-		return ProjectViewState{}, false
-	}
-	state, exists := c.ProjectViewStates[projectID]
-	return state, exists
-}
-
-// SetProjectViewState saves the view state for a project.
-func (c *Config) SetProjectViewState(projectID string, state ProjectViewState) {
-	if c.ProjectViewStates == nil {
-		c.ProjectViewStates = make(map[string]ProjectViewState)
-	}
-	c.ProjectViewStates[projectID] = state
 }

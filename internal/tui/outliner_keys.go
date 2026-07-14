@@ -10,7 +10,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	// Handle score filter custom value input
 	if m.scoreFilterInput.IsActive() {
-		cmd := m.scoreFilterInput.ProcessKey(msg, m.config, m.configManager, &m.filter.ScoreMin, func() { m.rebuildRows() })
+		cmd := m.scoreFilterInput.ProcessKey(msg, m.runtime, &m.filter.ScoreMin, func() { m.rebuildRows() })
 		return m, cmd
 	}
 

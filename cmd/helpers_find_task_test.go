@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -288,12 +287,10 @@ func TestFindTaskGloballyByID(t *testing.T) {
 	storage.DefaultRepository = repo
 	defer func() { storage.DefaultRepository = oldRepo }()
 
-	cfg := &config.Config{
-		Projects: []*models.Project{project},
-	}
+	projects := []*models.Project{project}
 
 	t.Run("mixed numeric prefix matches UUID prefix", func(t *testing.T) {
-		gotTask, gotProject, err := FindTaskGloballyByID(cfg, "123abc")
+		gotTask, gotProject, err := FindTaskGloballyByID(projects, "123abc")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -309,7 +306,7 @@ func TestFindTaskGloballyByID(t *testing.T) {
 	})
 
 	t.Run("pure numeric query still matches short ID", func(t *testing.T) {
-		gotTask, gotProject, err := FindTaskGloballyByID(cfg, "123")
+		gotTask, gotProject, err := FindTaskGloballyByID(projects, "123")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -328,7 +325,7 @@ func TestFindTaskGloballyByID(t *testing.T) {
 	// first loadable project because HasPrefix("", "") is true. Guard against
 	// returning arbitrary tasks for what is effectively a missing argument.
 	t.Run("empty query returns no match", func(t *testing.T) {
-		gotTask, gotProject, err := FindTaskGloballyByID(cfg, "")
+		gotTask, gotProject, err := FindTaskGloballyByID(projects, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -363,8 +360,7 @@ func TestFindTaskGloballyByIDAmbiguousPrefix(t *testing.T) {
 		storage.DefaultRepository = ambigRepo
 		defer func() { storage.DefaultRepository = swap }()
 
-		ambigCfg := &config.Config{Projects: []*models.Project{ambigProject}}
-		gotTask, gotProject, err := FindTaskGloballyByID(ambigCfg, "abc")
+		gotTask, gotProject, err := FindTaskGloballyByID([]*models.Project{ambigProject}, "abc")
 		if err == nil {
 			t.Fatalf("expected ambiguity error, got task=%v project=%v", gotTask, gotProject)
 		}
@@ -397,8 +393,7 @@ func TestFindTaskGloballyByIDAmbiguousPrefix(t *testing.T) {
 		storage.DefaultRepository = ambigRepo
 		defer func() { storage.DefaultRepository = swap }()
 
-		ambigCfg := &config.Config{Projects: []*models.Project{ambigProject}}
-		gotTask, gotProject, err := FindTaskGloballyByID(ambigCfg, "ab")
+		gotTask, gotProject, err := FindTaskGloballyByID([]*models.Project{ambigProject}, "ab")
 		if err == nil {
 			t.Fatalf("expected ambiguity error, got task=%v project=%v", gotTask, gotProject)
 		}
@@ -430,14 +425,12 @@ func TestFindTaskGloballyByIDNormalizesUUIDPrefix(t *testing.T) {
 	storage.DefaultRepository = repo
 	defer func() { storage.DefaultRepository = oldRepo }()
 
-	cfg := &config.Config{
-		Projects: []*models.Project{project},
-	}
+	projects := []*models.Project{project}
 
 	// Regression: UUIDs are stored lowercase but users may paste uppercase
 	// from external tools. Resolution must be case-insensitive.
 	t.Run("uppercase UUID prefix matches lowercase stored ID", func(t *testing.T) {
-		gotTask, _, err := FindTaskGloballyByID(cfg, "123ABC")
+		gotTask, _, err := FindTaskGloballyByID(projects, "123ABC")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -449,7 +442,7 @@ func TestFindTaskGloballyByIDNormalizesUUIDPrefix(t *testing.T) {
 	// Regression: shell paste / quoting often leaves whitespace around the
 	// argument. Trim before resolving rather than failing to match.
 	t.Run("whitespace around query is trimmed", func(t *testing.T) {
-		gotTask, _, err := FindTaskGloballyByID(cfg, "  123abc  ")
+		gotTask, _, err := FindTaskGloballyByID(projects, "  123abc  ")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -459,10 +452,10 @@ func TestFindTaskGloballyByIDNormalizesUUIDPrefix(t *testing.T) {
 	})
 }
 
-// twoProjectShortIDConfig builds two projects that both own short ID 5 and wires
+// twoProjectShortIDProjects builds two projects that both own short ID 5 and wires
 // a mock repository so FindTaskGloballyByID can load them. It returns the config
 // and the two tasks so callers can assert exact targeting identity.
-func twoProjectShortIDConfig(t *testing.T) (*config.Config, *models.Task, *models.Task) {
+func twoProjectShortIDProjects(t *testing.T) ([]*models.Project, *models.Task, *models.Task) {
 	t.Helper()
 
 	projA := testutil.NewTestProject("Alpha Project")
@@ -492,8 +485,7 @@ func twoProjectShortIDConfig(t *testing.T) (*config.Config, *models.Task, *model
 	storage.DefaultRepository = repo
 	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
 
-	cfg := &config.Config{Projects: []*models.Project{projA, projB}}
-	return cfg, taskA, taskB
+	return []*models.Project{projA, projB}, taskA, taskB
 }
 
 // Regression: a bare numeric short ID is unique only within a project. When two
@@ -501,9 +493,9 @@ func twoProjectShortIDConfig(t *testing.T) (*config.Config, *models.Task, *model
 // on the first match. FindTaskGloballyByID must fail closed with an ambiguity
 // error that lists the qualified candidates.
 func TestFindTaskGloballyByIDRejectsAmbiguousShortID(t *testing.T) {
-	cfg, _, _ := twoProjectShortIDConfig(t)
+	projects, _, _ := twoProjectShortIDProjects(t)
 
-	gotTask, gotProject, err := FindTaskGloballyByID(cfg, "5")
+	gotTask, gotProject, err := FindTaskGloballyByID(projects, "5")
 	if err == nil {
 		t.Fatalf("expected ambiguity error for cross-project short ID, got task=%v project=%v", gotTask, gotProject)
 	}
@@ -523,10 +515,10 @@ func TestFindTaskGloballyByIDRejectsAmbiguousShortID(t *testing.T) {
 // named project. This proves the selected project/task identity for destructive
 // commands: the same short ID targets different tasks depending on the slug.
 func TestFindTaskGloballyByIDQualifiedRefSelectsCorrectProject(t *testing.T) {
-	cfg, taskA, taskB := twoProjectShortIDConfig(t)
+	projects, taskA, taskB := twoProjectShortIDProjects(t)
 
 	t.Run("slug with hash selects its project", func(t *testing.T) {
-		gotTask, gotProject, err := FindTaskGloballyByID(cfg, "alpha-project:#5")
+		gotTask, gotProject, err := FindTaskGloballyByID(projects, "alpha-project:#5")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -539,7 +531,7 @@ func TestFindTaskGloballyByIDQualifiedRefSelectsCorrectProject(t *testing.T) {
 	})
 
 	t.Run("slug without hash selects the other project", func(t *testing.T) {
-		gotTask, gotProject, err := FindTaskGloballyByID(cfg, "beta-project:5")
+		gotTask, gotProject, err := FindTaskGloballyByID(projects, "beta-project:5")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -552,7 +544,7 @@ func TestFindTaskGloballyByIDQualifiedRefSelectsCorrectProject(t *testing.T) {
 	})
 
 	t.Run("unknown slug reports project not found", func(t *testing.T) {
-		_, _, err := FindTaskGloballyByID(cfg, "ghost-project:5")
+		_, _, err := FindTaskGloballyByID(projects, "ghost-project:5")
 		if err == nil {
 			t.Fatal("expected error for unknown project slug")
 		}

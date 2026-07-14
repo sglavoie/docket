@@ -87,22 +87,16 @@ func (r *doctorResults) totalIssues() int {
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	fix, _ := cmd.Flags().GetBool("fix")
 
-	_, mgr, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
 
-	projects, err := allLoadableProjects(mgr)
-	if err != nil {
-		return err
-	}
+	projects := workspace.Runtime.AllLoadableProjects()
 
 	// Load all projects (including archived) so cross-project ref checks
 	// don't report false positives for refs pointing to archived projects.
-	everyProject, err := allProjects(mgr)
-	if err != nil {
-		return err
-	}
+	everyProject := workspace.Runtime.AllProjects()
 	resolver := newProjectResolver(everyProject)
 	var loadedProjects []*models.Project
 	results := &doctorResults{}

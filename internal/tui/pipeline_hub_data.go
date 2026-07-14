@@ -22,20 +22,20 @@ type pipelineCounts struct {
 // loadPipelineCounts aggregates counts from all active projects and returns
 // the loaded project slice so callers (e.g., the Next Action engine) can
 // reuse it without a second I/O pass.
-func loadPipelineCounts(cfg *config.Config, queueIDs, dailyPlanIDs map[string]bool) (pipelineCounts, []*models.Project) {
+func loadPipelineCounts(runtime *config.RuntimeState, queueIDs, dailyPlanIDs map[string]bool) (pipelineCounts, []*models.Project) {
 	counts := pipelineCounts{
 		queueLen:     len(queueIDs),
 		dailyPlanLen: len(dailyPlanIDs),
 	}
 
-	if cfg == nil {
+	if runtime == nil {
 		return counts, nil
 	}
 
 	today := time.Now()
 	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
 
-	active := cfg.GetActiveProjects()
+	active := runtime.ActiveProjects()
 	loaded := make([]*models.Project, 0, len(active))
 	for _, project := range active {
 		if err := storage.LoadProject(project); err != nil {

@@ -28,6 +28,10 @@ type BulkTransitionRequest struct {
 	UndoAction string
 	// UndoContext describes the batch; empty defaults to the target state.
 	UndoContext string
+	// FocusArtifacts applies set_active side effects to the planning domain and
+	// renders its revision-checked artifact. It is required when a rule requests
+	// any Focus Queue change so that planning and task writes share one commit.
+	FocusArtifacts WorkflowFocusArtifactBuilder
 	// SkipInvalid switches the batch from all-or-nothing to best-effort: tasks
 	// that cannot transition (invalid transition, dependency-blocked completion,
 	// or an incomplete-children guard) are dropped from the batch instead of
@@ -85,8 +89,8 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 		}
 	} else {
 		for _, r := range refs {
-			if err := s.bulkTransitionReject(resolver, r, req.Target); err != nil {
-				return BulkResult{}, err
+			if rejectionErr := s.bulkTransitionReject(resolver, r, req.Target); rejectionErr != nil {
+				return BulkResult{}, rejectionErr
 			}
 		}
 	}
@@ -111,6 +115,7 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 	commits, idx := distinctProjectCommits(refs, snap)
 
 	triggerCounts := make(map[string]int)
+	var focusChanges []WorkflowFocusChange
 	if len(req.Rules) > 0 {
 		// Run the cascade per source project. Move destinations join the same
 		// commit set; a destination that is itself a source is committed once.
@@ -121,12 +126,17 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 		sources := len(commits)
 		for i := 0; i < sources; i++ {
 			project := commits[i].project
-			added, err := s.applyBulkWorkflowCascade(snap, project, req.Rules, prevStates[project.ID], committed, triggerCounts)
-			if err != nil {
-				return BulkResult{}, err
+			added, focus, cascadeErr := s.applyBulkWorkflowCascade(snap, project, req.Rules, prevStates[project.ID], committed, triggerCounts)
+			if cascadeErr != nil {
+				return BulkResult{}, cascadeErr
 			}
 			commits = append(commits, added...)
+			focusChanges = append(focusChanges, focus...)
 		}
+	}
+	resolvedFocus, err := attachWorkflowFocusArtifacts(commits, focusChanges, req.FocusArtifacts)
+	if err != nil {
+		return BulkResult{}, err
 	}
 
 	undoAction := req.UndoAction
@@ -146,6 +156,7 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 	if len(triggerCounts) > 0 {
 		out.RuleTriggerCounts = triggerCounts
 	}
+	out.FocusChanges = resolvedFocus
 	for _, r := range refs {
 		out.Tasks = append(out.Tasks, newTaskResult(r, revisionAt(results, idx[r.Project.ID])))
 	}
@@ -186,7 +197,7 @@ func (s *Service) applyBulkWorkflowCascade(
 	prev map[string]*models.Task,
 	committed map[string]bool,
 	counts map[string]int,
-) ([]projectCommit, error) {
+) ([]projectCommit, []WorkflowFocusChange, error) {
 	var result *workflow.EvaluationResult
 	if prev != nil {
 		evalCtx := workflow.BuildEvaluationContext(project.Tasks, prev, project.Name, project.ID)
@@ -202,6 +213,7 @@ func (s *Service) applyBulkWorkflowCascade(
 	for id, n := range result.RuleTriggerCounts {
 		counts[id] += n
 	}
+	focusChanges := appendWorkflowFocusChanges(nil, project.ID, result.FocusChanges)
 
 	var added []projectCommit
 	for _, move := range result.DeferredMoves {
@@ -214,11 +226,11 @@ func (s *Service) applyBulkWorkflowCascade(
 			continue
 		}
 		if _, err := project.MoveTaskToProject(task, dest); err != nil {
-			return nil, fmt.Errorf("workflow move_to_project failed: %w", err)
+			return nil, nil, fmt.Errorf("workflow move_to_project failed: %w", err)
 		}
 		if !committed[dest.ID] {
 			committed[dest.ID] = true
-			added = append(added, projectCommit{project: dest, expectedRevision: snap.Revision(dest.ID)})
+			added = append(added, projectCommit{project: dest, expectedRevision: snap.Revision(dest.ID), base: snap.Document(dest.ID)})
 		}
 	}
 
@@ -237,5 +249,5 @@ func (s *Service) applyBulkWorkflowCascade(
 			}
 		}
 	}
-	return added, nil
+	return added, focusChanges, nil
 }

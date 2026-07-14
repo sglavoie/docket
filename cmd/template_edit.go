@@ -109,12 +109,17 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	templateID := args[0]
 
-	cfg, configManager, err := LoadConfigStrict()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		return err
+	}
+	automation := domains.Automation
 
-	t := cfg.GetTaskTemplate(templateID)
+	t := automation.GetTaskTemplate(templateID)
 	if t == nil {
 		return fmt.Errorf("task template not found: %s", templateID)
 	}
@@ -292,11 +297,11 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	// Update
-	if !cfg.UpdateTaskTemplate(*t) {
+	if !automation.UpdateTaskTemplate(*t) {
 		return fmt.Errorf("failed to update template")
 	}
 
-	if err := saveConfig(configManager, cfg); err != nil {
+	if err := commitCLIAutomation(workspace, automation); err != nil {
 		return err
 	}
 

@@ -20,7 +20,7 @@ func TestRunTaskAdd_TemplateUseCountIsAtomic(t *testing.T) {
 	defer deps.Cleanup()
 
 	// Register a template and re-persist the config the command will load.
-	deps.Config.TaskTemplates = []template.TaskTemplate{{
+	deps.Config.Automation().TaskTemplates = []template.TaskTemplate{{
 		ID:        "tmpl-bug",
 		Name:      "Bug Report",
 		Enabled:   true,
@@ -29,7 +29,7 @@ func TestRunTaskAdd_TemplateUseCountIsAtomic(t *testing.T) {
 		Checklist: []string{"reproduce", "fix"},
 	}}
 	manager := config.NewManager(deps.ConfigPath)
-	testutil.AssertNoError(t, manager.Save(deps.Config))
+	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 	taskTemplateFlag = "tmpl-bug"
 	defer func() { taskTemplateFlag = "" }()
@@ -55,9 +55,9 @@ func TestRunTaskAdd_TemplateUseCountIsAtomic(t *testing.T) {
 	// The template use-count bump was committed with the add: reloading the config
 	// from disk shows the incremented count (written as the commit's config
 	// artifact), not the pre-add value.
-	reloaded, err := config.NewManager(deps.ConfigPath).Load()
+	reloaded, err := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 	testutil.AssertNoError(t, err)
-	tmpl := reloaded.GetTaskTemplate("tmpl-bug")
+	tmpl := reloaded.Automation().GetTaskTemplate("tmpl-bug")
 	if tmpl == nil {
 		t.Fatal("template missing from reloaded config")
 	}

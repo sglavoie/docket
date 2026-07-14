@@ -14,17 +14,18 @@ import (
 func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case SettingsMsg:
-		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
+		m.showView(ViewSettings, NewSettingsModel(m.deps))
 		return true, nil
 
 	case SettingsSavedMsg:
 		m.popView()
-		ApplyTheme(NewThemeConfig(m.config))
-		icons.SetUseEmoji(m.config.GetUseEmoji())
+		settings := m.runtime.Settings()
+		ApplyTheme(NewThemeConfig(settings))
+		icons.SetUseEmoji(settings.GetUseEmoji())
 		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
+			m.dashboard.Refresh()
 		}
-		if m.config.GetAutoTheme() {
+		if settings.GetAutoTheme() {
 			return true, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
 				return systemAppearanceCheckMsg{}
 			})
@@ -48,21 +49,21 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, statusTimeout(5 * time.Second)
 
 	case ShowWorkflowRulesMsg:
-		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.config, m.configManager))
+		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.runtime))
 		return true, nil
 
 	case ShowTaskTemplatesMsg:
-		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.config, m.configManager))
+		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.runtime))
 		return true, nil
 
 	case TaskTemplatesUpdatedMsg:
 		return true, nil
 
 	case ShowTaskTemplateCreatorMsg:
-		return m.showViewInit(ViewTaskTemplateCreator, NewTaskTemplateCreatorModel(m.config, m.configManager))
+		return m.showViewInit(ViewTaskTemplateCreator, NewTaskTemplateCreatorModel(m.runtime))
 
 	case ShowTaskTemplateEditorMsg:
-		return m.showViewInit(ViewTaskTemplateEditor, NewTaskTemplateEditorModel(m.config, m.configManager, msg.Template))
+		return m.showViewInit(ViewTaskTemplateEditor, NewTaskTemplateEditorModel(m.runtime, msg.Template))
 
 	case TaskTemplateCreatedMsg:
 		m.popView()
@@ -76,7 +77,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 
 	case ShowTemplatePickerMsg:
 		if msg.Project != nil {
-			return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, msg.Project))
+			return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.runtime.Automation().GetEnabledTaskTemplates(), msg.Project))
 		}
 		return true, nil
 
@@ -105,7 +106,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 				project = m.currentProject
 			}
 			if project != nil {
-				return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, project))
+				return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.runtime.Automation().GetEnabledTaskTemplates(), project))
 			}
 			return true, nil
 		}
@@ -117,10 +118,10 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowRuleCreatorMsg:
-		return m.showViewInit(ViewWorkflowRuleCreator, NewWorkflowRuleCreatorModel(m.config, m.configManager))
+		return m.showViewInit(ViewWorkflowRuleCreator, NewWorkflowRuleCreatorModel(m.runtime))
 
 	case ShowWorkflowRuleEditorMsg:
-		return m.showViewInit(ViewWorkflowRuleEditor, NewWorkflowRuleEditorModel(m.config, m.configManager, msg.Rule))
+		return m.showViewInit(ViewWorkflowRuleEditor, NewWorkflowRuleEditorModel(m.runtime, msg.Rule))
 
 	case WorkflowRuleCreatedMsg:
 		m.popView()
@@ -128,7 +129,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowWizardMsg:
-		return m.showViewInit(ViewWorkflowWizard, NewWorkflowWizardModel(m.config, m.configManager))
+		return m.showViewInit(ViewWorkflowWizard, NewWorkflowWizardModel(m.runtime))
 
 	case WorkflowWizardSavedMsg:
 		m.popView()
@@ -141,20 +142,17 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowDryRunMsg:
-		return m.showViewInit(ViewWorkflowDryRun, NewWorkflowDryRunModel(m.config.DataDir, m.configManager, m.persister, msg.SingleRule))
+		return m.showViewInit(ViewWorkflowDryRun, NewWorkflowDryRunModel(m.runtime.DataDir(), m.configManager, m.persister, msg.SingleRule))
 
 	case ShowFilterBuilderMsg:
-		return m.showViewInit(ViewFilterBuilder, NewFilterBuilderModel(m.config, m.configManager))
+		return m.showViewInit(ViewFilterBuilder, NewFilterBuilderModel(m.runtime))
 
 	case ShowFilterEditorMsg:
-		return m.showViewInit(ViewFilterBuilder, NewFilterEditorModel(m.config, m.configManager, msg.Filter))
+		return m.showViewInit(ViewFilterBuilder, NewFilterEditorModel(m.runtime, msg.Filter))
 
 	case FilterBuilderSavedMsg:
 		m.popView()
-		if m.allTasksView != nil {
-			m.allTasksView.buildTabEntries()
-			m.allTasksView.loadAllTasks()
-		}
+		m.refreshAllTasksTabs()
 		return true, nil
 	}
 
@@ -166,7 +164,7 @@ func (m *AppModel) refreshTaskTemplatesView() {
 		return
 	}
 
-	templatesView := NewTaskTemplatesModel(m.config, m.configManager)
+	templatesView := NewTaskTemplatesModel(m.runtime)
 	templatesView.SetSize(m.width, m.height-2)
 	m.views.Register(ViewTaskTemplates, templatesView)
 }
@@ -180,7 +178,7 @@ func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplat
 		project = m.currentProject
 	}
 	if project != nil {
-		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(project, m.config, m.configManager, parentTask, taskTemplate))
+		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(project, m.runtime, parentTask, taskTemplate))
 	}
 
 	return true, nil
@@ -191,7 +189,7 @@ func (m *AppModel) refreshWorkflowRulesView() {
 		return
 	}
 
-	rulesView := NewWorkflowRulesModel(m.config, m.configManager)
+	rulesView := NewWorkflowRulesModel(m.runtime)
 	rulesView.SetSize(m.width, m.height-2)
 	m.views.Register(ViewWorkflowRules, rulesView)
 }

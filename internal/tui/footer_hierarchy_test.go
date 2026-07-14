@@ -81,8 +81,8 @@ func TestTodayFooterIncludesEscapeHatchCluster(t *testing.T) {
 // Without this guarantee, Hub users would have a different muscle-memory
 // surface for opening help / the command palette than the rest of tt.
 func TestPipelineHubFooterIncludesEscapeHatchCluster(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(140, 30)
 
 	plain := ansi.Strip(m.View().Content)
@@ -98,8 +98,8 @@ func TestPipelineHubFooterIncludesEscapeHatchCluster(t *testing.T) {
 // contribute at most three more (so the footer holds six `·`-separated
 // segments before the right-side counter pill).
 func TestPipelineHubFooterContextualCappedAtThreeHints(t *testing.T) {
-	cfg := &config.Config{Projects: []*models.Project{}}
-	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	cfg := newTestConfig()
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, nil)
 	m.SetSize(160, 30)
 
 	plain := ansi.Strip(m.View().Content)
@@ -233,28 +233,27 @@ func TestAppStatusBarDefaultHelpMatchesFooterEscapeHints(t *testing.T) {
 // than first-run. Mirrors the fixture shape pipeline_hub_orientation_test.go
 // uses for strip coverage.
 func TestPipelineHubFooterRendersAtPlannedTodayFixture(t *testing.T) {
-	cfg := testutil.NewTestConfig()
-	cfg.DataDir = t.TempDir()
+	cfg := newTestConfigAt(t.TempDir())
 	project := testutil.NewTestProject("Hub Plan")
-	project.Path = cfg.GetProjectPath(project.Slug)
+	project.Path = cfg.ProjectPath(project.Slug)
 	planned, err := models.NewTask("planned-footer", 1, models.TaskTypeTask, "Ship pipeline polish")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	planned.WorkflowState = models.StateInProgress
 	project.Tasks = []*models.Task{planned}
-	cfg.Projects = []*models.Project{project}
+	setTestProjects(cfg, []*models.Project{project})
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject: %v", err)
 	}
 	todayKey := util.StartOfDay(time.Now()).Format(util.DateFormat)
-	cfg.DailyPlan = []config.DailyPlanItem{{
+	cfg.Planning().DailyPlan = []config.DailyPlanItem{{
 		TaskID:      planned.ID,
 		ProjectID:   project.ID,
 		PlannedDate: todayKey,
 	}}
 
-	m := NewPipelineHubModel(cfg, nil, nil, nil, project)
+	m := NewPipelineHubModel(testRuntimeAt("", cfg), nil, nil, project)
 	m.SetSize(160, 30)
 	m.setOpenLoops(OpenLoops{TodayTotal: 1, HasTasks: true})
 

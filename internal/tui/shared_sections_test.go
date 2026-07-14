@@ -4,7 +4,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -20,9 +19,10 @@ func TestPinnedTagTabsRenderHashLabels(t *testing.T) {
 }
 
 func TestGlobalPinnedTagTabsRenderHashLabels(t *testing.T) {
-	cfg := &config.Config{GlobalPinnedTags: []string{"cross", "#urgent", "cross"}}
+	cfg := newTestConfig()
+	cfg.Settings().GlobalPinnedTags = []string{"cross", "#urgent", "cross"}
 
-	got := GlobalPinnedTagTabs(cfg)
+	got := GlobalPinnedTagTabs(cfg.Settings())
 	want := []string{"All", "#cross", "#urgent"}
 
 	if !slices.Equal(got, want) {
@@ -31,7 +31,8 @@ func TestGlobalPinnedTagTabsRenderHashLabels(t *testing.T) {
 }
 
 func TestGlobalPinnedTagTabsForProjectsHidesStalePins(t *testing.T) {
-	cfg := &config.Config{GlobalPinnedTags: []string{"backend", "stale"}}
+	cfg := newTestConfig()
+	cfg.Settings().GlobalPinnedTags = []string{"backend", "stale"}
 	projects := []*models.Project{
 		{
 			Tags: []string{"backend"},
@@ -41,14 +42,14 @@ func TestGlobalPinnedTagTabsForProjectsHidesStalePins(t *testing.T) {
 		},
 	}
 
-	got := GlobalPinnedTagTabsForProjects(cfg, projects)
+	got := GlobalPinnedTagTabsForProjects(cfg.Settings(), projects)
 	want := []string{"All", "#backend"}
 
 	if !slices.Equal(got, want) {
 		t.Fatalf("GlobalPinnedTagTabsForProjects() = %v, want %v", got, want)
 	}
-	if !slices.Equal(cfg.GlobalPinnedTagList(), []string{"backend", "stale"}) {
-		t.Fatalf("GlobalPinnedTagList() = %v, want stale pin retained", cfg.GlobalPinnedTagList())
+	if !slices.Equal(cfg.Settings().GlobalPinnedTagList(), []string{"backend", "stale"}) {
+		t.Fatalf("GlobalPinnedTagList() = %v, want stale pin retained", cfg.Settings().GlobalPinnedTagList())
 	}
 }
 

@@ -4,21 +4,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 // newCrossOutlinerFromEnv builds a cross-project OutlinerModel wired to the
-// seeded projects' BulkCoordinator and workspace ledger (via cfg.DataDir), so its
+// seeded projects' BulkCoordinator and workspace ledger (via cfg.DataDir()), so its
 // bulk mutations commit through the application layer and its u/ctrl+r handlers
 // restore from the same ledger the coordinator wrote to.
 func newCrossOutlinerFromEnv(env *kanbanBulkEnv) *OutlinerModel {
-	cfg := config.NewConfig()
-	cfg.DataDir = env.dataDir
-	cfg.Projects = env.projects
+	cfg := newTestConfigAt(env.dataDir)
+	setTestProjects(cfg, env.projects)
 	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[string]bool),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},

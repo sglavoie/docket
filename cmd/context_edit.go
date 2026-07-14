@@ -40,10 +40,15 @@ func runContextEdit(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	cfg, mgr, err := LoadConfig()
+	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	domains, err := workspace.Runtime.CloneDomains()
+	if err != nil {
+		return err
+	}
+	machine := domains.Machine
 
 	out, err := getOutputOpts(cmd)
 	if err != nil {
@@ -51,12 +56,12 @@ func runContextEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if custom context exists
-	currentIDs := cfg.GetCustomContext(name)
+	currentIDs := machine.GetCustomContext(name)
 	if currentIDs == nil {
 		return fmt.Errorf("custom context '%s' not found", name)
 	}
 
-	projects := cfg.GetActiveProjects()
+	projects := workspace.Runtime.ActiveProjects()
 	if len(projects) == 0 {
 		return fmt.Errorf("no active projects available")
 	}
@@ -69,7 +74,7 @@ func runContextEdit(cmd *cobra.Command, args []string) error {
 
 	var selectedIDs []string
 
-	if cfg.FzfEnabled && external.FzfAvailable() {
+	if workspace.Runtime.Settings().FzfEnabled && external.FzfAvailable() {
 		selected, err := external.FzfMultiSelectProjects(projects, "Edit projects for "+name, currentSet)
 		if err != nil {
 			if errors.Is(err, tterrors.ErrCanceled) {
@@ -108,7 +113,7 @@ func runContextEdit(cmd *cobra.Command, args []string) error {
 		slugs := strings.SplitSeq(input, ",")
 		for slug := range slugs {
 			slug = strings.TrimSpace(slug)
-			if p := cfg.GetProject(slug); p != nil {
+			if p := workspace.Runtime.GetProject(slug); p != nil {
 				selectedIDs = append(selectedIDs, p.ID)
 			} else {
 				fmt.Fprintf(os.Stderr, "warning: project '%s' not found, skipping\n", slug)
@@ -120,8 +125,8 @@ func runContextEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no valid projects selected")
 	}
 
-	cfg.SetCustomContext(name, selectedIDs)
-	if err := saveConfig(mgr, cfg); err != nil {
+	machine.SetCustomContext(name, selectedIDs)
+	if err := workspace.Runtime.CommitMachine(machine); err != nil {
 		return err
 	}
 

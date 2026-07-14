@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -43,7 +44,6 @@ func (m *AppModel) saveCrossOutlinerState() {
 	if m.crossOutliner == nil {
 		return
 	}
-	m.config.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
 
 	// Persist per-task fold state (only collapsed nodes, sparse representation)
 	collapsedNodes := make(map[string]bool)
@@ -52,50 +52,47 @@ func (m *AppModel) saveCrossOutlinerState() {
 			collapsedNodes[id] = true
 		}
 	}
-	if len(collapsedNodes) > 0 {
-		m.config.CrossOutlinerFoldState = collapsedNodes
-	} else {
-		m.config.CrossOutlinerFoldState = nil
-	}
-
-	if m.crossOutliner.columnConfig != nil {
-		m.config.CrossOutlinerColumnToggles = m.crossOutliner.columnConfig.Toggles()
-	}
-
-	// Persist all filter/sort state
-	m.config.CrossOutlinerFilterType = string(m.crossOutliner.filter.Type)
-	m.config.CrossOutlinerFilterStatus = string(m.crossOutliner.filter.Status)
-	m.config.CrossOutlinerFilterPriority = m.crossOutliner.filter.Priority
-	m.config.CrossOutlinerFilterDueDate = int(m.crossOutliner.filter.DueDate)
-	m.config.CrossOutlinerFilterActionable = m.crossOutliner.filter.Actionable
-	m.config.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
-	m.config.CrossOutlinerFilterGitHubIssue = m.crossOutliner.filter.GitHubIssue
-	m.config.CrossOutlinerFilterParked = m.crossOutliner.filter.Parked
-	m.config.CrossOutlinerFilterScoreMin = m.crossOutliner.filter.ScoreMin
-	m.config.CrossOutlinerSortField = int(m.crossOutliner.sort.Field)
-	m.config.CrossOutlinerSortAscending = m.crossOutliner.sort.Ascending
-	m.config.CrossOutlinerFilterBarEnabled = m.crossOutliner.filterBar.IsEnabled()
 
 	var crossTags []string
 	for tag := range m.crossOutliner.filter.Tags {
 		crossTags = append(crossTags, tag)
 	}
-	m.config.CrossOutlinerFilterTags = crossTags
-
 	var crossSections []string
 	for section := range m.crossOutliner.filter.Sections {
 		crossSections = append(crossSections, section)
 	}
-	m.config.CrossOutlinerFilterSections = crossSections
 
-	if len(m.crossOutliner.filter.Attrs) > 0 {
-		m.config.CrossOutlinerFilterAttrs = maps.Clone(m.crossOutliner.filter.Attrs)
-	} else {
-		m.config.CrossOutlinerFilterAttrs = nil
-	}
-	m.config.CrossOutlinerPinnedTagTab = m.crossOutliner.activePinnedTagFilter()
-
-	if err := m.configManager.Save(m.config); err != nil {
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		machine.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
+		if len(collapsedNodes) > 0 {
+			machine.CrossOutlinerFoldState = collapsedNodes
+		} else {
+			machine.CrossOutlinerFoldState = nil
+		}
+		if m.crossOutliner.columnConfig != nil {
+			machine.CrossOutlinerColumnToggles = m.crossOutliner.columnConfig.Toggles()
+		}
+		machine.CrossOutlinerFilterType = string(m.crossOutliner.filter.Type)
+		machine.CrossOutlinerFilterStatus = string(m.crossOutliner.filter.Status)
+		machine.CrossOutlinerFilterPriority = m.crossOutliner.filter.Priority
+		machine.CrossOutlinerFilterDueDate = int(m.crossOutliner.filter.DueDate)
+		machine.CrossOutlinerFilterActionable = m.crossOutliner.filter.Actionable
+		machine.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
+		machine.CrossOutlinerFilterGitHubIssue = m.crossOutliner.filter.GitHubIssue
+		machine.CrossOutlinerFilterParked = m.crossOutliner.filter.Parked
+		machine.CrossOutlinerFilterScoreMin = m.crossOutliner.filter.ScoreMin
+		machine.CrossOutlinerSortField = int(m.crossOutliner.sort.Field)
+		machine.CrossOutlinerSortAscending = m.crossOutliner.sort.Ascending
+		machine.CrossOutlinerFilterBarEnabled = m.crossOutliner.filterBar.IsEnabled()
+		machine.CrossOutlinerFilterTags = crossTags
+		machine.CrossOutlinerFilterSections = crossSections
+		if len(m.crossOutliner.filter.Attrs) > 0 {
+			machine.CrossOutlinerFilterAttrs = maps.Clone(m.crossOutliner.filter.Attrs)
+		} else {
+			machine.CrossOutlinerFilterAttrs = nil
+		}
+		machine.CrossOutlinerPinnedTagTab = m.crossOutliner.activePinnedTagFilter()
+	}); err != nil {
 		logging.Warn("failed to save cross-outliner state: %v", err)
 	}
 }
@@ -111,7 +108,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 // saveOutlinerFilterStateFrom persists the given outliner's filter state to config.
 // Used for both the primary and temporary outliners.
 func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
-	if o == nil || o.project == nil || m.config == nil {
+	if o == nil || o.project == nil {
 		return
 	}
 
@@ -124,20 +121,6 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 		filterSections = append(filterSections, section)
 	}
 
-	state, _ := m.config.GetProjectViewState(o.project.ID)
-	state.OutlinerFilterType = string(o.filter.Type)
-	state.OutlinerFilterStatus = string(o.filter.Status)
-	state.OutlinerFilterPriority = o.filter.Priority
-	state.OutlinerFilterTags = filterTags
-	state.OutlinerFilterDueDate = int(o.filter.DueDate)
-	state.OutlinerFilterSections = filterSections
-	state.OutlinerFilterActionable = o.filter.Actionable
-	state.OutlinerFilterHideDimmed = o.filter.HideDimmed
-	state.OutlinerFilterGitHubIssue = o.filter.GitHubIssue
-	state.OutlinerFilterParked = o.filter.Parked
-	state.OutlinerFilterScoreMin = o.filter.ScoreMin
-	state.OutlinerColumnToggles = o.columnConfig.Toggles()
-
 	// Persist fold state to disk (only collapsed nodes)
 	collapsedNodes := make(map[string]bool)
 	for id, expanded := range o.expandedNodes {
@@ -145,33 +128,49 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 			collapsedNodes[id] = true
 		}
 	}
-	if len(collapsedNodes) > 0 {
-		state.OutlinerFoldState = collapsedNodes
-	} else {
-		state.OutlinerFoldState = nil
-	}
 
-	if len(o.collapsedSections) > 0 {
-		state.OutlinerCollapsedSections = maps.Clone(o.collapsedSections)
-	} else {
-		state.OutlinerCollapsedSections = nil
-	}
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		state, _ := machine.GetProjectViewState(o.project.ID)
+		state.OutlinerFilterType = string(o.filter.Type)
+		state.OutlinerFilterStatus = string(o.filter.Status)
+		state.OutlinerFilterPriority = o.filter.Priority
+		state.OutlinerFilterTags = filterTags
+		state.OutlinerFilterDueDate = int(o.filter.DueDate)
+		state.OutlinerFilterSections = filterSections
+		state.OutlinerFilterActionable = o.filter.Actionable
+		state.OutlinerFilterHideDimmed = o.filter.HideDimmed
+		state.OutlinerFilterGitHubIssue = o.filter.GitHubIssue
+		state.OutlinerFilterParked = o.filter.Parked
+		state.OutlinerFilterScoreMin = o.filter.ScoreMin
+		state.OutlinerColumnToggles = o.columnConfig.Toggles()
 
-	if len(o.filter.Attrs) > 0 {
-		state.OutlinerFilterAttrs = make(map[string]string)
-		maps.Copy(state.OutlinerFilterAttrs, o.filter.Attrs)
-	} else {
-		state.OutlinerFilterAttrs = nil
-	}
+		if len(collapsedNodes) > 0 {
+			state.OutlinerFoldState = collapsedNodes
+		} else {
+			state.OutlinerFoldState = nil
+		}
 
-	state.OutlinerSortField = int(o.sort.Field)
-	state.OutlinerSortAscending = o.sort.Ascending
-	state.OutlinerActivePerspective = o.activePerspective
-	state.OutlinerFilterBarEnabled = o.filterBar.IsEnabled()
-	state.PinnedTagTab = o.activePinnedTagFilter()
+		if len(o.collapsedSections) > 0 {
+			state.OutlinerCollapsedSections = maps.Clone(o.collapsedSections)
+		} else {
+			state.OutlinerCollapsedSections = nil
+		}
 
-	m.config.SetProjectViewState(o.project.ID, state)
-	if err := m.configManager.Save(m.config); err != nil {
+		if len(o.filter.Attrs) > 0 {
+			state.OutlinerFilterAttrs = make(map[string]string)
+			maps.Copy(state.OutlinerFilterAttrs, o.filter.Attrs)
+		} else {
+			state.OutlinerFilterAttrs = nil
+		}
+
+		state.OutlinerSortField = int(o.sort.Field)
+		state.OutlinerSortAscending = o.sort.Ascending
+		state.OutlinerActivePerspective = o.activePerspective
+		state.OutlinerFilterBarEnabled = o.filterBar.IsEnabled()
+		state.PinnedTagTab = o.activePinnedTagFilter()
+
+		machine.SetProjectViewState(o.project.ID, state)
+	}); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}
 }
@@ -191,7 +190,7 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	if o == nil || o.project == nil {
 		return
 	}
-	state, exists := m.config.GetProjectViewState(o.project.ID)
+	state, exists := m.runtime.Machine().GetProjectViewState(o.project.ID)
 	if !exists {
 		return
 	}

@@ -109,13 +109,16 @@ func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
 	// delete transaction as a config artifact.
 	deleteIDs := collectDescendantIDs(proj.Tasks, map[string]bool{task.ID: true})
 	var artifacts []storage.ArtifactChange
-	if m.config != nil && m.configManager != nil && m.config.RemoveDurableTaskRefs(deleteIDs) > 0 {
-		arts, err := configDomainArtifacts(m.configManager, m.config)
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Error: %v", err))
-			return m, nil
+	if m.runtime != nil && m.configManager != nil {
+		planning := clonePlanningState(m.runtime.Planning())
+		if planning.RemoveDurableTaskRefs(deleteIDs) > 0 {
+			arts, err := planningDomainArtifact(m.configManager, planning)
+			if err != nil {
+				m.setStatus(fmt.Sprintf("Error: %v", err))
+				return m, nil
+			}
+			artifacts = arts
 		}
-		artifacts = arts
 	}
 
 	return m, m.bulk.Delete([]string{task.ID}, artifacts...)

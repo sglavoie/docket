@@ -32,23 +32,88 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
-		project.Tasks = []*models.Task{}
-		project.NextShortID = 1
-		project.Sections = []string{models.SectionNext}
-		project.Tags = []string{}
-		project.PinnedTags = []string{}
-		if auditErr := auditLoadedProject(project); auditErr != nil {
-			return nil, auditErr
-		}
-		// A missing tasks file is a successful load of an empty project; return a
-		// non-nil (empty) migration audit so callers can rely on it being present
-		// whenever the load succeeds.
-		return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
+		return loadMissingProject(project)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tasks file: %w", err)
 	}
+	return loadProjectContent(project, content)
+}
 
+// LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to
+// render as a full-file replacement and returns their raw optimistic-concurrency
+// revision. A missing file is represented by a non-nil pointer to the empty
+// revision, which means the eventual write must still observe the file as absent.
+//
+// Filesystem-backed loads parse the same byte slice whose hash is returned, so a
+// lifecycle planner can never render one version while carrying the revision of
+// another. Test repositories still load through their injected implementation;
+// their revision contract reflects any physical shadow tasks.md when present and
+// otherwise requires absence.
+func LoadProjectForRewrite(project *models.Project) (*string, error) {
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		if err := LoadProject(project); err != nil {
+			return nil, err
+		}
+		content, err := os.ReadFile(tasksFilePath(project.Path))
+		if os.IsNotExist(err) {
+			expected := ""
+			return &expected, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read tasks file for rewrite: %w", err)
+		}
+		expected := RawArtifactRevision(content)
+		return &expected, nil
+	}
+
+	content, err := os.ReadFile(tasksFilePath(project.Path))
+	if os.IsNotExist(err) {
+		if _, loadErr := loadMissingProject(project); loadErr != nil {
+			return nil, loadErr
+		}
+		expected := ""
+		return &expected, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tasks file for rewrite: %w", err)
+	}
+	// Full-file lifecycle rewrites must retain every parsed cross-project
+	// reference until the caller deliberately rewrites it. Ordinary loads may
+	// prune a legacy slug whose project directory is gone, but that validation
+	// cannot resolve stable project-ID qualifiers from filesystem paths and would
+	// otherwise hide them from identity-based rename/delete cleanup.
+	if _, err := loadProjectContentForRewrite(project, content); err != nil {
+		return nil, err
+	}
+	expected := RawArtifactRevision(content)
+	return &expected, nil
+}
+
+func loadProjectContentForRewrite(project *models.Project, content []byte) (*ProjectLoadResult, error) {
+	return loadProjectContentWithCrossRefValidation(project, content, false)
+}
+
+func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
+	project.Tasks = []*models.Task{}
+	project.NextShortID = 1
+	project.Sections = []string{models.SectionNext}
+	project.Tags = []string{}
+	project.PinnedTags = []string{}
+	if auditErr := auditLoadedProject(project); auditErr != nil {
+		return nil, auditErr
+	}
+	// A missing tasks file is a successful load of an empty project; return a
+	// non-nil (empty) migration audit so callers can rely on it being present
+	// whenever the load succeeds.
+	return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
+}
+
+func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadResult, error) {
+	return loadProjectContentWithCrossRefValidation(project, content, true)
+}
+
+func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, validateCrossRefs bool) (*ProjectLoadResult, error) {
 	result, err := ParseTasksMarkdownWithSections(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
@@ -71,7 +136,9 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
-	validateCrossProjectRefs(project, result)
+	if validateCrossRefs {
+		validateCrossProjectRefs(project, result)
+	}
 	populateProjectWarnings(project, result.Warnings)
 	if err := auditLoadedProject(project); err != nil {
 		return nil, err

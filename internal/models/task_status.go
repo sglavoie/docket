@@ -42,26 +42,6 @@ func IsGTDSection(name string) bool {
 		name == SectionWaiting || name == SectionSomeday || name == SectionReview || name == SectionStandby || name == SectionCompleted
 }
 
-// IsGTDSectionNameCI reports whether the given name matches a built-in GTD
-// section name under case-insensitive comparison. Use this at command/TUI
-// boundaries that accept user-supplied names (e.g., `tt section add inbox`)
-// to reject case-variant collisions before they corrupt project.Sections.
-// IsGTDSection (exact-case) remains the right check for persisted/canonical
-// data such as task.Section values read from markdown.
-func IsGTDSectionNameCI(name string) bool {
-	switch strings.ToLower(name) {
-	case strings.ToLower(SectionNext),
-		strings.ToLower(SectionInbox),
-		strings.ToLower(SectionWaiting),
-		strings.ToLower(SectionSomeday),
-		strings.ToLower(SectionReview),
-		strings.ToLower(SectionStandby),
-		strings.ToLower(SectionCompleted):
-		return true
-	}
-	return false
-}
-
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
 	return []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusMaybe, StatusDone, StatusBlocked, StatusCanceled}

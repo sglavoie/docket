@@ -95,7 +95,7 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--clear cannot be combined with other attribute flags")
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		changes = collectAttrDeltas(task, attrTypeAttrs, cmd)
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		if attrClear {
 			return svc.ClearTypeAttrs(task.ID)

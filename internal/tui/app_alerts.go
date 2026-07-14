@@ -13,7 +13,7 @@ import (
 // then applies the dismissal post-filter pipeline.
 func (m *AppModel) reevaluateAlerts() {
 	cfg := m.buildAlertConfig()
-	activeProjects := m.config.GetActiveProjects()
+	activeProjects := m.activeProjects()
 
 	var projectData []alerts.ProjectData
 	for _, p := range activeProjects {
@@ -29,13 +29,14 @@ func (m *AppModel) reevaluateAlerts() {
 	rawSnapshot := alerts.Evaluate(cfg, projectData)
 	m.rawAlerts = rawSnapshot
 
-	// Post-filter pipeline: apply dismissals
-	dismissals := m.config.GetAlertDismissals()
+	// Post-filter pipeline: apply dismissals. Dismissals are planning-owned
+	// bookkeeping, read from the cached planning domain (not config.Config).
+	dismissals := m.runtime.Planning().GetAlertDismissals()
 	if len(dismissals) == 0 {
 		m.dismissedSet = nil
 		m.proactiveAlerts = rawSnapshot
 		if m.dashboard != nil {
-			counts, _ := loadPipelineCounts(m.config, m.focusQueueIDs, m.dailyPlanIDs)
+			counts, _ := loadPipelineCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
 			m.dashboard.SetPipelineCounts(counts)
 		}
 		return
@@ -67,18 +68,21 @@ func (m *AppModel) reevaluateAlerts() {
 		dismissedSet[d.Key] = true
 	}
 
-	// Persist if dismissal list changed
+	// Persist if dismissal list changed. Dismissals are planning-owned, so this
+	// commits only the planning domain under a checked commit rather than saving
+	// the whole config.
 	if len(surviving) != len(dismissals) {
-		m.config.SetAlertDismissals(surviving)
-		if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
+		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
+			p.SetAlertDismissals(surviving)
+		}); err != nil {
+			logging.Warn("failed to save alert dismissals: %v", err)
 		}
 	}
 
 	m.dismissedSet = dismissedSet
 	m.proactiveAlerts = alerts.FilterDismissed(rawSnapshot, dismissedSet)
 	if m.dashboard != nil {
-		counts, _ := loadPipelineCounts(m.config, m.focusQueueIDs, m.dailyPlanIDs)
+		counts, _ := loadPipelineCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
 		m.dashboard.SetPipelineCounts(counts)
 	}
 }
@@ -108,29 +112,33 @@ func (m *AppModel) refreshNotificationCenter() {
 	m.views.Register(ViewNotificationCenter, nc)
 }
 
-// buildAlertConfig creates an AlertConfig from the current config state.
+// buildAlertConfig creates an AlertConfig from the cached configuration domains:
+// alert enablement/threshold policy is Settings-owned, while the review
+// completion timestamps are Planning-owned. Neither is read through config.Config.
 func (m *AppModel) buildAlertConfig() alerts.AlertConfig {
+	s := m.runtime.Settings()
+	pl := m.runtime.Planning()
 	return alerts.AlertConfig{
-		DailyReviewHour: m.config.GetAlertDailyReviewHour(),
-		WeeklyReviewDay: m.config.GetAlertWeeklyReviewDay(),
+		DailyReviewHour: s.GetAlertDailyReviewHour(),
+		WeeklyReviewDay: s.GetAlertWeeklyReviewDay(),
 
-		LastDailyReviewAt:  m.config.GetLastDailyReviewAt(),
-		LastWeeklyReviewAt: m.config.GetLastWeeklyReviewAt(),
+		LastDailyReviewAt:  pl.GetLastDailyReviewAt(),
+		LastWeeklyReviewAt: pl.GetLastWeeklyReviewAt(),
 
-		DailyReviewEnabled:   m.config.GetAlertDailyReviewEnabled(),
-		WeeklyReviewEnabled:  m.config.GetAlertWeeklyReviewEnabled(),
-		OverdueEnabled:       m.config.GetAlertOverdueEnabled(),
-		DueSoonEnabled:       m.config.GetAlertDueSoonEnabled(),
-		StaleEnabled:         m.config.GetAlertStaleEnabled(),
-		InboxEnabled:         m.config.GetAlertInboxEnabled(),
-		BlockedEnabled:       m.config.GetAlertBlockedEnabled(),
-		ProjectHealthEnabled: m.config.GetAlertProjectHealthEnabled(),
+		DailyReviewEnabled:   s.GetAlertDailyReviewEnabled(),
+		WeeklyReviewEnabled:  s.GetAlertWeeklyReviewEnabled(),
+		OverdueEnabled:       s.GetAlertOverdueEnabled(),
+		DueSoonEnabled:       s.GetAlertDueSoonEnabled(),
+		StaleEnabled:         s.GetAlertStaleEnabled(),
+		InboxEnabled:         s.GetAlertInboxEnabled(),
+		BlockedEnabled:       s.GetAlertBlockedEnabled(),
+		ProjectHealthEnabled: s.GetAlertProjectHealthEnabled(),
 
-		DueSoonDays:      m.config.GetAlertDueSoonDays(),
-		StaleDays:        m.config.GetAlertStaleDays(),
-		InboxThreshold:   m.config.GetAlertInboxThreshold(),
-		BlockedDays:      m.config.GetAlertBlockedDays(),
-		ProjectStaleDays: m.config.GetAlertProjectStaleDays(),
+		DueSoonDays:      s.GetAlertDueSoonDays(),
+		StaleDays:        s.GetAlertStaleDays(),
+		InboxThreshold:   s.GetAlertInboxThreshold(),
+		BlockedDays:      s.GetAlertBlockedDays(),
+		ProjectStaleDays: s.GetAlertProjectStaleDays(),
 	}
 }
 

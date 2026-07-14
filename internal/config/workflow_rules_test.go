@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetWorkflowRules_NilSlice(t *testing.T) {
-	cfg := &Config{}
+	cfg := &AutomationConfig{}
 	cfg.WorkflowRules = nil
 
 	rules := cfg.GetWorkflowRules()
@@ -20,7 +20,7 @@ func TestGetWorkflowRules_NilSlice(t *testing.T) {
 }
 
 func TestGetWorkflowRules_ReturnsAllRules(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 		{ID: "r2", Name: "Rule 2", Enabled: false},
@@ -34,7 +34,7 @@ func TestGetWorkflowRules_ReturnsAllRules(t *testing.T) {
 }
 
 func TestGetEnabledWorkflowRules_FiltersCorrectly(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 		{ID: "r2", Name: "Rule 2", Enabled: false},
@@ -55,7 +55,7 @@ func TestGetEnabledWorkflowRules_FiltersCorrectly(t *testing.T) {
 }
 
 func TestGetEnabledWorkflowRules_EmptyWhenNoneEnabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: false},
 		{ID: "r2", Name: "Rule 2", Enabled: false},
@@ -68,7 +68,7 @@ func TestGetEnabledWorkflowRules_EmptyWhenNoneEnabled(t *testing.T) {
 }
 
 func TestGetWorkflowRulesSorted(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "c2", Name: "Zebra Custom", Source: "custom"},
 		{ID: "d1", Name: "Beta Default", Source: "default"},
@@ -100,7 +100,7 @@ func TestGetWorkflowRulesSorted(t *testing.T) {
 }
 
 func TestGetWorkflowRulesSorted_EmptySlice(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = nil
 
 	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
@@ -113,7 +113,7 @@ func TestGetWorkflowRulesSorted_EmptySlice(t *testing.T) {
 }
 
 func TestGetWorkflowRule_FindsByID(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 		{ID: "r2", Name: "Rule 2"},
@@ -130,7 +130,7 @@ func TestGetWorkflowRule_FindsByID(t *testing.T) {
 }
 
 func TestGetWorkflowRule_ReturnsNilWhenNotFound(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 	}
@@ -142,7 +142,7 @@ func TestGetWorkflowRule_ReturnsNilWhenNotFound(t *testing.T) {
 }
 
 func TestGetWorkflowRule_ReturnsPointerToOriginal(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: false},
 	}
@@ -156,7 +156,7 @@ func TestGetWorkflowRule_ReturnsPointerToOriginal(t *testing.T) {
 }
 
 func TestAddWorkflowRule(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	rule := workflow.WorkflowRule{ID: "new", Name: "New Rule", Enabled: true}
 	cfg.AddWorkflowRule(rule)
@@ -170,7 +170,7 @@ func TestAddWorkflowRule(t *testing.T) {
 }
 
 func TestAddWorkflowRule_AppendsToExisting(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 	}
@@ -184,7 +184,7 @@ func TestAddWorkflowRule_AppendsToExisting(t *testing.T) {
 }
 
 func TestUpdateWorkflowRule_UpdatesExisting(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Old Name", Enabled: false},
 	}
@@ -207,7 +207,7 @@ func TestUpdateWorkflowRule_UpdatesExisting(t *testing.T) {
 }
 
 func TestUpdateWorkflowRule_ReturnsFalseWhenNotFound(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 	}
@@ -220,7 +220,7 @@ func TestUpdateWorkflowRule_ReturnsFalseWhenNotFound(t *testing.T) {
 }
 
 func TestDeleteWorkflowRule_DeletesExisting(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 		{ID: "r2", Name: "Rule 2"},
@@ -241,7 +241,7 @@ func TestDeleteWorkflowRule_DeletesExisting(t *testing.T) {
 }
 
 func TestDeleteWorkflowRule_ReturnsFalseWhenNotFound(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 	}
@@ -257,7 +257,7 @@ func TestDeleteWorkflowRule_ReturnsFalseWhenNotFound(t *testing.T) {
 }
 
 func TestToggleWorkflowRule_TogglesEnabled(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: false},
 	}
@@ -286,7 +286,7 @@ func TestToggleWorkflowRule_TogglesEnabled(t *testing.T) {
 }
 
 func TestToggleWorkflowRule_NotFound(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", Enabled: true},
 	}
@@ -301,7 +301,7 @@ func TestToggleWorkflowRule_NotFound(t *testing.T) {
 }
 
 func TestIncrementRuleTriggerCounts(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", TriggerCount: 5},
 		{ID: "r2", Name: "Rule 2", TriggerCount: 10},
@@ -326,7 +326,7 @@ func TestIncrementRuleTriggerCounts(t *testing.T) {
 }
 
 func TestResetRuleTriggerCount(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", TriggerCount: 100},
 		{ID: "r2", Name: "Rule 2", TriggerCount: 50},
@@ -345,7 +345,7 @@ func TestResetRuleTriggerCount(t *testing.T) {
 }
 
 func TestResetRuleTriggerCount_NotFound(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", TriggerCount: 100},
 	}
@@ -357,7 +357,7 @@ func TestResetRuleTriggerCount_NotFound(t *testing.T) {
 }
 
 func TestResetAllRuleTriggerCounts(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1", TriggerCount: 100},
 		{ID: "r2", Name: "Rule 2", TriggerCount: 50},
@@ -374,7 +374,7 @@ func TestResetAllRuleTriggerCounts(t *testing.T) {
 }
 
 func TestHasRuleWithID(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{ID: "r1", Name: "Rule 1"},
 		{ID: "r2", Name: "Rule 2"},
@@ -398,7 +398,7 @@ func TestHasRuleWithID(t *testing.T) {
 // "preserve" path for updates and left re-added rules with their shipped
 // (mostly disabled) state, so `--enable` silently failed to enable them.
 func TestResetChangedDefaultRules_EnableRulesTrueAppliesToAll(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Seed with the first two default rules to exercise both phases:
 	// rule 0 has its content drifted (will be updated),
@@ -439,7 +439,7 @@ func TestResetChangedDefaultRules_EnableRulesTrueAppliesToAll(t *testing.T) {
 // that enableRules=false keeps the user's enabled state for drifted rules
 // and disables newly re-added rules (matching the original semantics).
 func TestResetChangedDefaultRules_EnableRulesFalsePreservesUserState(t *testing.T) {
-	cfg := NewConfig()
+	cfg := NewAutomationConfig()
 
 	// Pick the first default rule, mark it user-enabled but with drifted content.
 	defs := workflowDefaultsCopy()

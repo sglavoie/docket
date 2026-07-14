@@ -10,14 +10,14 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func setupContextTest(t *testing.T) (*testutil.TestDeps, func()) {
+func setupContextTest(t *testing.T) (*testDeps, func()) {
 	t.Helper()
-	deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, _ := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository
@@ -70,9 +70,9 @@ func TestRunContextAdd(t *testing.T) {
 		deps, cleanup := setupContextTest(t)
 		defer cleanup()
 
-		deps.Config.SetCustomContext("Work", []string{})
+		deps.Config.Machine().SetCustomContext("Work", []string{})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextAdd(contextAddCmd, []string{"Work", "nonexistent-slug"})
 		if err == nil {
@@ -84,18 +84,18 @@ func TestRunContextAdd(t *testing.T) {
 		deps, cleanup := setupContextTest(t)
 		defer cleanup()
 
-		deps.Config.SetCustomContext("Work", []string{})
+		deps.Config.Machine().SetCustomContext("Work", []string{})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
-		project := deps.Config.Projects[0]
+		project := deps.Config.AllProjects()[0]
 		err := runContextAdd(contextAddCmd, []string{"Work", project.Slug})
 		testutil.AssertNoError(t, err)
 
 		// Reload config and verify
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
 		testutil.AssertNoError(t, loadErr)
-		ids := reloaded.GetCustomContext("Work")
+		ids := reloaded.Machine().GetCustomContext("Work")
 		if len(ids) != 1 {
 			t.Errorf("expected 1 project in context, got %d", len(ids))
 		}
@@ -108,10 +108,10 @@ func TestRunContextAdd(t *testing.T) {
 		deps, cleanup := setupContextTest(t)
 		defer cleanup()
 
-		project := deps.Config.Projects[0]
-		deps.Config.SetCustomContext("Work", []string{project.ID})
+		project := deps.Config.AllProjects()[0]
+		deps.Config.Machine().SetCustomContext("Work", []string{project.ID})
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		err := runContextAdd(contextAddCmd, []string{"Work", project.Slug})
 		if err == nil {

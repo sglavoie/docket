@@ -42,7 +42,7 @@ func TestWorkflowDryRun(t *testing.T) {
 			},
 		)
 		rule.Enabled = true
-		deps.Config.WorkflowRules = append(deps.Config.WorkflowRules, *rule)
+		deps.Config.Automation().WorkflowRules = append(deps.Config.Automation().WorkflowRules, *rule)
 
 		err = runWorkflowTest(workflowTestCmd, []string{})
 		if err != nil {

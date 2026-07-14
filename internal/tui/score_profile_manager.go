@@ -1,17 +1,21 @@
 package tui
 
 import (
+	"slices"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
-// ScoreProfileManagerModel manages scoring profiles and project assignment.
+// ScoreProfileManagerModel manages scoring profiles and project assignment. It
+// reads scoring profiles and per-project assignments from the automation domain
+// (runtime.Automation()) and commits mutations through the automation committer
+// so the in-memory snapshot refreshes on save — no config.Config facade.
 type ScoreProfileManagerModel struct {
-	config        *config.Config
-	configManager *config.Manager
-	// coordinator routes the durable config write through the secondary
+	runtime *config.RuntimeState
+	// coordinator routes the durable automation write through the secondary
 	// feature-coordinator seam (feature_coordinator_secondary.go).
 	coordinator      WorkflowCoordinator
 	profiles         []scoring.ScoringProfile
@@ -30,18 +34,13 @@ type ScoreProfileManagerModel struct {
 	height int
 }
 
-// NewScoreProfileManagerModel creates a new score profile manager view.
-func NewScoreProfileManagerModel(cfg *config.Config, manager *config.Manager, currentProjectID string) *ScoreProfileManagerModel {
-	profiles := make([]scoring.ScoringProfile, len(cfg.ScoringProfiles))
-	copy(profiles, cfg.ScoringProfiles)
-	var coordinator WorkflowCoordinator
-	if manager != nil {
-		coordinator = newWorkflowCoordinator(manager)
-	}
+// NewScoreProfileManagerModel creates a new score profile manager view backed by
+// the runtime automation snapshot.
+func NewScoreProfileManagerModel(runtime *config.RuntimeState, currentProjectID string) *ScoreProfileManagerModel {
+	profiles := slices.Clone(runtime.Automation().ScoringProfiles)
 	return &ScoreProfileManagerModel{
-		config:           cfg,
-		configManager:    manager,
-		coordinator:      coordinator,
+		runtime:          runtime,
+		coordinator:      newWorkflowCoordinator(runtime),
 		profiles:         profiles,
 		currentProjectID: currentProjectID,
 	}
@@ -66,10 +65,11 @@ func (m *ScoreProfileManagerModel) Init() tea.Cmd {
 
 // assignedProfileID returns the profile ID assigned to the current project, or "".
 func (m *ScoreProfileManagerModel) assignedProfileID() string {
-	if m.config.ProjectScoringProfile == nil || m.currentProjectID == "" {
+	assignments := m.runtime.Automation().ProjectScoringProfile
+	if assignments == nil || m.currentProjectID == "" {
 		return ""
 	}
-	return m.config.ProjectScoringProfile[m.currentProjectID]
+	return assignments[m.currentProjectID]
 }
 
 // ShouldCaptureEsc returns true when confirm or preset picker is active.

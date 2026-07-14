@@ -25,7 +25,7 @@ type TitleParams struct {
 // filter badges, and archived status. Shared across all project-level views.
 // When params is non-nil, filter/sort info is appended inline, truncated to fit
 // within params.Width (reserving space for the alert indicator).
-func renderProjectTitle(project *models.Project, cfg *config.Config, params *TitleParams) string {
+func renderProjectTitle(project *models.Project, runtime *config.RuntimeState, params *TitleParams) string {
 	var b strings.Builder
 	title := fmt.Sprintf("%s - Tasks", project.Name)
 	b.WriteString(TitleStyle.Render(title))
@@ -35,12 +35,13 @@ func renderProjectTitle(project *models.Project, cfg *config.Config, params *Tit
 	if storage.NotesExist(project) {
 		b.WriteString(" ✎ Notes")
 	}
-	if cfg.FilterCustomContext != "" {
+	machine := runtime.Machine()
+	if machine.FilterCustomContext != "" {
 		b.WriteString(" ")
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", cfg.FilterCustomContext)))
-	} else if cfg.FilterContext != "" {
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", machine.FilterCustomContext)))
+	} else if machine.FilterContext != "" {
 		b.WriteString(" ")
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", cfg.FilterContext)))
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", machine.FilterContext)))
 	}
 	if project.Archived {
 		b.WriteString(" ")

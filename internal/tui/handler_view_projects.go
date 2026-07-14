@@ -8,7 +8,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
 			if msg.Temporary {
-				fresh := NewOutlinerModel(msg.Project, m.config, m.configManager)
+				fresh := NewOutlinerModel(msg.Project, m.configManager, m.runtime)
 				fresh.queueIDs = m.focusQueueIDs
 				fresh.dailyPlanIDs = m.dailyPlanIDs
 				fresh.OpenAtTask = msg.OpenAtTask
@@ -25,7 +25,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
-			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+			m.outliner = NewOutlinerModel(msg.Project, m.configManager, m.runtime)
 			m.outliner.queueIDs = m.focusQueueIDs
 			m.outliner.dailyPlanIDs = m.dailyPlanIDs
 			m.restoreOutlinerToggleState()
@@ -63,7 +63,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.saveOutlinerFilterState()
 		}
 		if m.crossOutliner == nil {
-			m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
+			m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
 			m.crossOutliner.queueIDs = m.focusQueueIDs
 			m.crossOutliner.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewCrossProjectOutliner, m.crossOutliner)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -31,11 +30,11 @@ func init() {
 }
 
 func runWorkflowTest(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(resolveConfigPath())
-	automation, err := automationStore(configManager).LoadAutomation()
+	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
+	automation := workspace.Runtime.Automation()
 
 	rules := automation.GetEnabledWorkflowRules()
 	if len(rules) == 0 {
@@ -43,7 +42,7 @@ func runWorkflowTest(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, err := loadRuntimeCurrentProject(workspace)
 	if err != nil {
 		return err
 	}

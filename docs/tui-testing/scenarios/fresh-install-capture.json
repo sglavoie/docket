@@ -1,0 +1,17 @@
+{
+  "name": "fresh-install-capture",
+  "fixture": "fresh",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "Today" },
+    { "type": "key", "label": "open unified capture", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "QuickCapture" },
+    { "type": "text", "label": "enter first task", "text": "Triage the welcome checklist" },
+    { "type": "assert", "assert": "contains", "value": "Inbox (default)" },
+    { "type": "key", "label": "capture into Inbox", "key": "enter" },
+    { "type": "wait", "label": "wait for capture commit" },
+    { "type": "assert", "assert": "view", "value": "Today" },
+    { "type": "assert", "assert": "status_contains", "value": "Task captured" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

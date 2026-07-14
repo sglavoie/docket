@@ -18,7 +18,7 @@ func (m *FocusViewModel) loadTasks() {
 
 	var failedProjects []string
 	var loadedProjects []*models.Project
-	for _, project := range m.config.GetActiveProjects() {
+	for _, project := range m.runtime.ActiveProjects() {
 		if err := m.projectService.Load(project); err != nil {
 			failedProjects = append(failedProjects, project.Name)
 			continue
@@ -62,7 +62,7 @@ func (m *FocusViewModel) loadTasks() {
 // recomputeSuggested re-ranks suggestions, respecting showDismissed mode.
 func (m *FocusViewModel) recomputeSuggested() {
 	if m.showDismissed {
-		all := focus.RankCrossProjectTasks(m.tasks, nil, m.config)
+		all := focus.RankCrossProjectTasks(m.tasks, nil, m.runtime)
 		m.ranked = nil
 		for _, sft := range all {
 			if m.dismissedIDs[sft.Task.ID] {
@@ -70,7 +70,7 @@ func (m *FocusViewModel) recomputeSuggested() {
 			}
 		}
 	} else {
-		m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.config)
+		m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.runtime)
 	}
 
 	m.applyFilter()
@@ -216,7 +216,7 @@ func (m *FocusViewModel) applySuggestedFilter() {
 	m.filtered = nil
 	var queued []FocusTask
 	for _, sft := range m.ranked {
-		if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(sft.Task, &m.filter, sft.Project, m.config) {
+		if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(sft.Task, &m.filter, sft.Project, m.runtime.Automation()) {
 			continue
 		}
 		if m.isInQueue(sft.Task.ID) {
@@ -237,7 +237,7 @@ func (m *FocusViewModel) baseFilteredTasks() []FocusTask {
 
 	var baseTasks []FocusTask
 	for _, ft := range m.tasks {
-		if passesCommonFilters(ft.Task, &m.filter, ft.Project, m.config) {
+		if passesCommonFilters(ft.Task, &m.filter, ft.Project, m.runtime.Automation()) {
 			baseTasks = append(baseTasks, ft)
 		}
 	}

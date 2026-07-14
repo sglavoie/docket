@@ -52,7 +52,7 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 	// Resolve the task in the current project, then persist through the
 	// application layer so the comment commits atomically, revision-checked,
 	// and undoably via the workspace ledger.
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	svc := newAppService(cfg)
+	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.CommentResult, error) {
 		return svc.AddComment(task.ID, commentText)
 	})

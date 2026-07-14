@@ -138,13 +138,13 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	}
 
 	// Apply common filters (type, status, priority, tags, due date, attrs, score)
-	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, m.project, m.config) {
+	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, m.project, m.runtime.Automation()) {
 		return false
 	}
 
 	// Apply criteria filter (from a loaded criteria-mode SavedFilter)
 	if m.activeCriteriaFilter != nil {
-		if !passesSavedFilterCriteria(node.Task, m.project, m.activeCriteriaFilter, m.config) {
+		if !passesSavedFilterCriteria(node.Task, m.project, m.activeCriteriaFilter, m.runtime.Automation()) {
 			return false
 		}
 	}
@@ -203,7 +203,7 @@ func (m *ProjectTreeModel) markAncestorsAsContext(node *TreeNode, intrinsicVisib
 }
 
 func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
-	return TaskMatchesStructuredSearch(task, m.SearchQuery(), m.config)
+	return TaskMatchesStructuredSearch(task, m.SearchQuery(), m.runtime.Planning())
 }
 
 // getSearchMatchPositions returns match positions for the title if there's a search query.

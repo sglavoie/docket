@@ -178,6 +178,8 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | File                            | Demonstrates                                              |
 | ------------------------------- | -------------------------------------------------------- |
 | `open-today.json`               | Open the Today cockpit (`;w`) and assert its view.       |
+| `reference-review-shortcuts.json` | Open Reference by command, assert its copy, then exercise `;d` and `;r`. |
+| `fresh-install-alerts-quiet.json` | Open first-use notifications and assert review reminders stay quiet. |
 | `command-palette-search.json`   | Open the command palette (`:`) and type a search query.  |
 | `command-palette-all-blockers.json` | Execute the `all blockers` palette alias and assert the global blockers view. |
 | `command-palette-task-actions-narrow-layout.json` | Open task action mode on the long-title narrow fixture at `72x20`. |
@@ -211,6 +213,12 @@ Run any of them:
 
 ```bash
 tt tui-test run --scenario docs/tui-testing/scenarios/open-today.json --json
+```
+
+Replay every committed scenario with the same one-command gate used by CI:
+
+```bash
+just tui-scenarios
 ```
 
 ## Interactive session mode (NDJSON)

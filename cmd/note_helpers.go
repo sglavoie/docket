@@ -4,33 +4,61 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 // NoteContext holds resolved note directory and optional project context.
 type NoteContext struct {
-	Dir     string          // Notes directory path
-	Project *models.Project // nil for global notes
-	Config  *config.Config  // loaded config (available for both global and project notes)
+	Dir       string          // Notes directory path
+	Project   *models.Project // nil for global notes
+	Editor    string          // machine-local editor selected at command startup
+	Workspace *CLIWorkspace   // domain-native commit composition
 }
 
 // resolveNoteContext returns the notes directory and optional project based on the --global flag.
 func resolveNoteContext() (*NoteContext, error) {
 	if noteGlobal {
-		dir, cfg, err := globalNotesDir()
+		dir, workspace, err := globalNotesDir()
 		if err != nil {
 			return nil, err
 		}
-		return &NoteContext{Dir: dir, Config: cfg}, nil
+		return &NoteContext{Dir: dir, Editor: workspace.Runtime.Machine().GetEditor(), Workspace: workspace}, nil
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return nil, err
 	}
-	return &NoteContext{Dir: storage.NotesDir(project), Project: project, Config: cfg}, nil
+	return &NoteContext{Dir: storage.NotesDir(project), Project: project, Editor: workspace.Runtime.Machine().GetEditor(), Workspace: workspace}, nil
+}
+
+// saveNoteContext stages note bytes through the application transaction
+// boundary. Project notes use the typed SaveNote use case; global notes use the
+// same journal-backed config-artifact commit because they have no owning project.
+func saveNoteContext(ctx *NoteContext, note *models.Note) error {
+	path, data, err := storage.PrepareNoteSaveTo(ctx.Dir, note)
+	if err != nil {
+		return err
+	}
+	service := newWorkspaceAppService(ctx.Workspace)
+	if ctx.Project != nil {
+		_, err = service.SaveNote(ctx.Project.ID, note)
+		return translateAppError(err)
+	}
+	return translateAppError(service.CommitConfig(storage.ArtifactChange{Path: path, Data: data}))
+}
+
+func deleteNoteContext(ctx *NoteContext, filename string) error {
+	if ctx.Project != nil {
+		_, err := newWorkspaceAppService(ctx.Workspace).DeleteNote(ctx.Project.ID, filename)
+		return translateAppError(err)
+	}
+	path, err := storage.NoteFilePathIn(ctx.Dir, filename)
+	if err != nil {
+		return err
+	}
+	return translateAppError(newWorkspaceAppService(ctx.Workspace).CommitConfig(storage.ArtifactChange{Path: path, Delete: true}))
 }
 
 // findNote locates a note by exact filename or title prefix match.

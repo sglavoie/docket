@@ -316,7 +316,8 @@ func TestAllTasksPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) 
 	}
 
 	m := newMinimalAllTasksVM()
-	m.ViewBundle = ViewBundle{config: testutil.NewTestConfig()}
+	cfg := newTestConfig()
+	m.PrimaryViewBundle = NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))
 	m.FilterMixin = FilterMixin{filter: newFilterState()}
 	m.projectFilter = make(map[string]bool)
 	m.tabs = TabState{Names: []string{"All"}}

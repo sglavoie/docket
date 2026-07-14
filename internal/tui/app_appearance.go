@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/appearance"
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // handleAppearanceResult switches the active theme when the OS appearance has
@@ -14,7 +15,7 @@ func (m *AppModel) handleAppearanceResult(msg systemAppearanceResultMsg) tea.Cmd
 	}
 
 	desired := string(msg.Appearance)
-	if desired == m.config.ActiveTheme {
+	if desired == m.runtime.Settings().ActiveTheme {
 		return nil
 	}
 
@@ -23,12 +24,19 @@ func (m *AppModel) handleAppearanceResult(msg systemAppearanceResultMsg) tea.Cmd
 		return nil
 	}
 
-	m.config.ActiveTheme = desired
-	ApplyTheme(NewThemeConfig(m.config))
-	saveConfigWarn(m.configManager, m.config, "auto-theme sync")
+	// Persist the theme flip through the settings domain (not a whole-config
+	// save). CommitSettings refreshes the runtime snapshot on success, so the
+	// theme read below observes the committed value.
+	settings := *m.runtime.Settings()
+	settings.ActiveTheme = desired
+	if err := m.runtime.CommitSettings(&settings, m.runtime.Machine()); err != nil {
+		logging.Warn("failed to save config (auto-theme sync): %v", err)
+	}
+
+	ApplyTheme(NewThemeConfig(m.runtime.Settings()))
 
 	if m.dashboard != nil {
-		m.dashboard.Refresh(m.config)
+		m.dashboard.Refresh()
 	}
 
 	return nil

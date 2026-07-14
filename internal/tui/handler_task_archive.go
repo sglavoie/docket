@@ -18,8 +18,8 @@ func (m *AppModel) handleArchiveCompletedTasks(msg ArchiveCompletedTasksMsg) (bo
 	}
 	persister := m.persister
 	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
+	if m.runtime.Settings().UndoHistoryDepth != nil {
+		undoDepth = *m.runtime.Settings().UndoHistoryDepth
 	}
 
 	cmd := func() tea.Msg {
@@ -56,7 +56,7 @@ func (m *AppModel) handleArchiveCompletedTasks(msg ArchiveCompletedTasksMsg) (bo
 
 // handleArchiveAllCompletedTasks archives completed tasks across all active projects.
 func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
-	projects := m.config.GetActiveProjects()
+	projects := m.activeProjects()
 	persister := m.persister
 	currentProject := m.currentProject
 

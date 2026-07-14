@@ -21,17 +21,17 @@ func resetTemplateUseVars() {
 }
 
 // setupTemplateUseTest creates common test dependencies and returns them.
-func setupTemplateUseTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+func setupTemplateUseTest(t *testing.T) (*testDeps, *models.Project) {
 	t.Helper()
 	resetTemplateUseVars()
 
-	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	deps, project := setupTestDepsWithProject(t, "Test Project")
 
 	viper.Set("config", deps.ConfigPath)
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := manager.Save(deps.Config)
+	err := saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository
@@ -102,9 +102,9 @@ func TestRunTemplateUse(t *testing.T) {
 			Priority: 2,
 			Tags:     []string{"backend"},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		initialCount := len(project.Tasks)
 
@@ -134,9 +134,9 @@ func TestRunTemplateUse(t *testing.T) {
 			Enabled: true,
 			Type:    models.TaskTypeTask,
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		initialCount := len(project.Tasks)
 
@@ -162,9 +162,9 @@ func TestRunTemplateUse(t *testing.T) {
 			Type:      models.TaskTypeTask,
 			Checklist: []string{"Step 1", "Step 2"},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		initialCount := len(project.Tasks)
 
@@ -197,9 +197,9 @@ func TestRunTemplateUse(t *testing.T) {
 				{Title: "Optional Child", Optional: true},
 			},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		initialCount := len(project.Tasks)
 
@@ -227,9 +227,9 @@ func TestRunTemplateUse(t *testing.T) {
 				{Title: "Optional Child", Optional: true},
 			},
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		templateUseSkipOptional = true
 		initialCount := len(project.Tasks)
@@ -254,9 +254,9 @@ func TestRunTemplateUse(t *testing.T) {
 			Enabled: true,
 			Type:    models.TaskTypeTask,
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		templateUseParent = "99999"
 
@@ -277,9 +277,9 @@ func TestRunTemplateUse(t *testing.T) {
 			Type:    models.TaskTypeTask,
 			Section: "Backlog",
 		}
-		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
 		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, manager.Save(deps.Config))
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
 		initialCount := len(project.Tasks)
 		err := runTemplateUse(templateUseCmd, []string{"bad-section-tmpl", "Bad Section Task"})

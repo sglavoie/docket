@@ -91,7 +91,7 @@ func (m *DueDateOverviewModel) View() tea.View {
 		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 			Task:    stripTask,
 			Project: stripProject,
-			Config:  m.config,
+			Runtime: m.runtime,
 			Width:   m.Width(),
 			AlreadyShown: TaskMetadataAlreadyShown{
 				Project:  true,
@@ -122,7 +122,7 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	prefix := m.Dispatcher.PendingPrefix()
 	hints := PrefixHints{}
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
 	if _, ok := hints[prefix]; !ok {
 		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
 		for _, h := range m.Dispatcher.PrefixHints() {
@@ -218,10 +218,10 @@ func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentInde
 // renderTaskLine renders a single task line.
 func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	dateStr := m.formatDueDate(dt.Task)
-	return RenderCrossProjectTaskLine(dt.Task, dt.Project, m.config, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(dt.Task, dt.Project, m.runtime, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[dt.Task.ID],
 		DailyPlanned:    m.dailyPlanIDs[dt.Task.ID],
-		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		ShowDescription: m.runtime.Machine().IsDescriptionColumnVisible(),
 		MaxProjectLen:   15,
 		Prefix:          m.Checkbox(dt.Task.ID) + dateStr + " ",
 		Flash:           m.cursorFlash,
@@ -236,6 +236,6 @@ func (m *DueDateOverviewModel) formatDueDate(task *models.Task) string {
 		return "         "
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)
-	dateStr = AppendTimeIfHasTime(task, dateStr, m.config.GetTimeFormat())
+	dateStr = AppendTimeIfHasTime(task, dateStr, m.runtime.Settings().GetTimeFormat())
 	return style.Render(fmt.Sprintf("%-9s", dateStr))
 }
