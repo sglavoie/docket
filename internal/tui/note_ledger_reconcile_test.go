@@ -388,6 +388,9 @@ func TestProjectNoteLedgerRestoreReportsRefreshFailureWithoutUndoingRestore(t *t
 	if err := os.WriteFile(config.PlanningStatePath(env.dataDir), []byte("{not-json"), storage.FilePermissions); err != nil {
 		t.Fatalf("corrupt planning fixture: %v", err)
 	}
+	if err := os.WriteFile(config.PlanningStatePath(env.dataDir)+".bak", []byte("{also-not-json"), storage.FilePermissions); err != nil {
+		t.Fatalf("corrupt planning backup fixture: %v", err)
+	}
 	if handled, _ := env.shell.handleNotesMessages(msg); !handled {
 		t.Fatal("notes ledger result was not handled")
 	}

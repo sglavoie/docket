@@ -271,7 +271,7 @@ func rebuildColumns(
 		if ci, ok := idx[colID]; ok {
 			cols[ci].Tasks = append(cols[ci].Tasks, card)
 		} else {
-			// Dynamic column (e.g. unknown stage or section) - create on the fly
+			// Dynamic column (for example, an unknown section) - create on the fly
 			// and append at the end with a check for duplicates.
 			newIdx := -1
 			for i, c := range cols {

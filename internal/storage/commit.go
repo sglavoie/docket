@@ -149,6 +149,12 @@ type ArtifactChange struct {
 	Data   []byte
 	Mode   os.FileMode
 	Delete bool
+	// BackupPath, when non-empty, receives the current Path bytes as a private
+	// 0600 write immediately before the primary write or delete in the same
+	// journal manifest. An absent primary produces no backup operation, matching
+	// first-save behavior. Backup writes are transaction-internal maintenance and
+	// are deliberately excluded from user-visible undo ledger images.
+	BackupPath string
 	// ExpectedRevision applies optimistic concurrency to this artifact, validated
 	// under the commit's deterministic artifact locks before any bytes are staged.
 	// Its three states are distinct on purpose:
@@ -401,7 +407,7 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	}
 
 	seenPaths := make(map[string]bool, len(changesets))
-	var artifactLocks []string
+	var artifacts []ArtifactChange
 	for i := range changesets {
 		project := changesets[i].Project
 		if project == nil {
@@ -415,11 +421,11 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 			return nil, fmt.Errorf("storage: changeset %d duplicates project path %q; a project may appear at most once per commit", i, project.Path)
 		}
 		seenPaths[cleanPath] = true
-		locks, err := artifactLockPaths(changesets[i].Artifacts, s.roots)
-		if err != nil {
-			return nil, fmt.Errorf("storage: changeset %d: %w", i, err)
-		}
-		artifactLocks = append(artifactLocks, locks...)
+		artifacts = append(artifacts, changesets[i].Artifacts...)
+	}
+	artifactLocks, err := artifactLockPaths(artifacts, s.roots)
+	if err != nil {
+		return nil, fmt.Errorf("storage: changeset artifacts: %w", err)
 	}
 
 	// The whole commit pipeline — crash recovery plus the project-scoped apply —
@@ -506,19 +512,13 @@ func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts [
 				return err
 			}
 
-			allOps := make([]transaction.Op, 0, len(ops)+len(artifacts))
-			allOps = append(allOps, ops...)
-			for _, artifact := range artifacts {
-				if artifact.Delete {
-					allOps = append(allOps, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
-					continue
-				}
-				mode := artifact.Mode
-				if mode == 0 {
-					mode = FilePermissions
-				}
-				allOps = append(allOps, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
+			artifactOps, _, err := expandArtifactChanges(artifacts)
+			if err != nil {
+				return err
 			}
+			allOps := make([]transaction.Op, 0, len(ops)+len(artifactOps))
+			allOps = append(allOps, ops...)
+			allOps = append(allOps, artifactOps...)
 
 			manifest, err := journal.Prepare(allOps)
 			if err != nil {
@@ -696,19 +696,9 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 						return fmt.Errorf("capturing undo images for artifact transaction: %w", captureErr)
 					}
 				}
-				ops := make([]transaction.Op, 0, len(artifacts))
-				var dirsToCreate []string
-				for _, artifact := range artifacts {
-					if artifact.Delete {
-						ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
-						continue
-					}
-					mode := artifact.Mode
-					if mode == 0 {
-						mode = FilePermissions
-					}
-					ops = append(ops, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
-					dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
+				ops, dirsToCreate, expandErr := expandArtifactChanges(artifacts)
+				if expandErr != nil {
+					return expandErr
 				}
 
 				var ledgerRecord *LedgerRecord
@@ -854,26 +844,151 @@ func artifactAdvisoryLockPath(path string) string {
 // Domain artifacts use the adjacent ".lock" suffix; tasks.md uses the canonical
 // project .tasks.md.lock so lifecycle rewrites serialize with ordinary commits.
 func artifactLockPaths(artifacts []ArtifactChange, roots []string) ([]string, error) {
-	paths := make([]string, 0, len(artifacts))
+	if err := validateArtifactPaths(artifacts, roots); err != nil {
+		return nil, err
+	}
+	paths := make([]string, 0, len(artifacts)*2)
 	for i := range artifacts {
-		path := artifacts[i].Path
-		if path == "" {
-			return nil, fmt.Errorf("storage: artifact change requires a path")
+		artifact := artifacts[i]
+		checkPath := artifactRevisionPath(artifact)
+		paths = append(paths, artifactAdvisoryLockPath(checkPath))
+		// A marked artifact reads Path to capture its backup. When revision
+		// validation uses a different source, also hold the primary's advisory lock
+		// so a checked single-file writer cannot change those bytes between capture
+		// and journal preparation.
+		if artifact.BackupPath != "" && artifactPathIdentity(checkPath) != artifactPathIdentity(artifact.Path) {
+			paths = append(paths, artifactAdvisoryLockPath(artifact.Path))
 		}
-		if !pathWithinApprovedRoots(path, roots) {
-			return nil, fmt.Errorf("storage: artifact target %q: %w", path, transaction.ErrTargetOutsideRoot)
-		}
-		checkPath := artifactRevisionPath(artifacts[i])
-		if !pathWithinApprovedRoots(checkPath, roots) {
-			return nil, fmt.Errorf("storage: artifact revision source %q: %w", checkPath, transaction.ErrTargetOutsideRoot)
-		}
-		lockPath := artifactAdvisoryLockPath(checkPath)
-		if !pathWithinApprovedRoots(lockPath, roots) {
-			return nil, fmt.Errorf("storage: artifact lock %q: %w", lockPath, transaction.ErrTargetOutsideRoot)
-		}
-		paths = append(paths, lockPath)
 	}
 	return paths, nil
+}
+
+type artifactPathRole struct {
+	path string
+	role string
+}
+
+// validateArtifactPaths checks every primary, revision source, backup target,
+// and adjacent advisory lock before the commit boundary creates directories or
+// lock files. Backup targets may not alias their own primary, another backup, an
+// artifact target/revision source, or a lock file. Identity resolution follows
+// existing symlink prefixes so an in-root symlink alias cannot evade collision
+// checks while pathWithinApprovedRoots separately rejects symlink escapes.
+func validateArtifactPaths(artifacts []ArtifactChange, roots []string) error {
+	reserved := make([]artifactPathRole, 0, len(artifacts)*4)
+	backups := make([]artifactPathRole, 0, len(artifacts))
+	for i := range artifacts {
+		artifact := artifacts[i]
+		if artifact.Path == "" {
+			return fmt.Errorf("storage: artifact change requires a path")
+		}
+		checkPath := artifactRevisionPath(artifact)
+		checks := []artifactPathRole{
+			{path: artifact.Path, role: fmt.Sprintf("artifact %d target", i)},
+			{path: checkPath, role: fmt.Sprintf("artifact %d revision source", i)},
+			{path: artifactAdvisoryLockPath(artifact.Path), role: fmt.Sprintf("artifact %d target lock", i)},
+			{path: artifactAdvisoryLockPath(checkPath), role: fmt.Sprintf("artifact %d revision lock", i)},
+		}
+		for _, check := range checks {
+			if !pathWithinApprovedRoots(check.path, roots) {
+				return fmt.Errorf("storage: %s %q: %w", check.role, check.path, transaction.ErrTargetOutsideRoot)
+			}
+			reserved = append(reserved, check)
+		}
+		if artifact.BackupPath == "" {
+			continue
+		}
+		if !pathWithinApprovedRoots(artifact.BackupPath, roots) {
+			return fmt.Errorf("storage: artifact %d backup target %q: %w", i, artifact.BackupPath, transaction.ErrTargetOutsideRoot)
+		}
+		backupLock := artifactAdvisoryLockPath(artifact.BackupPath)
+		if !pathWithinApprovedRoots(backupLock, roots) {
+			return fmt.Errorf("storage: artifact %d backup lock %q: %w", i, backupLock, transaction.ErrTargetOutsideRoot)
+		}
+		backups = append(backups, artifactPathRole{path: artifact.BackupPath, role: fmt.Sprintf("artifact %d backup", i)})
+	}
+
+	for i, backup := range backups {
+		backupID := artifactPathIdentity(backup.path)
+		for _, path := range reserved {
+			if backupID != artifactPathIdentity(path.path) {
+				continue
+			}
+			if strings.Contains(path.role, " target") {
+				return fmt.Errorf("storage: %s path %q is self-referential or collides with %s %q", backup.role, backup.path, path.role, path.path)
+			}
+			return fmt.Errorf("storage: %s path %q collides with %s %q", backup.role, backup.path, path.role, path.path)
+		}
+		for j := 0; j < i; j++ {
+			if backupID == artifactPathIdentity(backups[j].path) {
+				return fmt.Errorf("storage: %s path %q collides with %s path %q", backup.role, backup.path, backups[j].role, backups[j].path)
+			}
+		}
+	}
+	return nil
+}
+
+// artifactPathIdentity resolves symlinks on the longest existing prefix and
+// rejoins any missing suffix. It is intentionally the collision-key counterpart
+// to util.PathWithinRoot's containment resolution.
+func artifactPathIdentity(path string) string {
+	current := filepath.Clean(path)
+	var rest []string
+	for {
+		if resolved, err := filepath.EvalSymlinks(current); err == nil {
+			for i := len(rest) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, rest[i])
+			}
+			return filepath.Clean(resolved)
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return filepath.Clean(path)
+		}
+		rest = append(rest, filepath.Base(current))
+		current = parent
+	}
+}
+
+// expandArtifactChanges converts typed artifacts into ordered journal
+// operations. Callers invoke it only after revision validation while holding the
+// workspace and artifact locks. A marked artifact snapshots the current primary
+// into a private backup write before its primary write/delete; an absent primary
+// adds no backup op. The returned directories cover every generated write.
+func expandArtifactChanges(artifacts []ArtifactChange) ([]transaction.Op, []string, error) {
+	ops := make([]transaction.Op, 0, len(artifacts)*2)
+	dirsToCreate := make([]string, 0, len(artifacts)*2)
+	for _, artifact := range artifacts {
+		if artifact.BackupPath != "" {
+			current, err := os.ReadFile(artifact.Path)
+			switch {
+			case err == nil:
+				ops = append(ops, transaction.Op{
+					Kind:   transaction.OpWrite,
+					Target: artifact.BackupPath,
+					Data:   current,
+					Mode:   FilePermissions,
+				})
+				dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.BackupPath))
+			case os.IsNotExist(err):
+				// First save: there is no preceding committed value to preserve.
+			default:
+				return nil, nil, fmt.Errorf("reading artifact %s for backup: %w", filepath.Base(artifact.Path), err)
+			}
+		}
+
+		if artifact.Delete {
+			ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
+			continue
+		}
+		mode := artifact.Mode
+		if mode == 0 {
+			mode = FilePermissions
+		}
+		ops = append(ops, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
+		dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
+	}
+	return ops, dirsToCreate, nil
 }
 
 // artifactPreconditionLockPaths validates each read-only guard and returns the
@@ -1131,23 +1246,12 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 			Data:   []byte(content),
 			Mode:   FilePermissions,
 		})
-		for _, artifact := range cs.Artifacts {
-			if artifact.Delete {
-				ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
-				continue
-			}
-			mode := artifact.Mode
-			if mode == 0 {
-				mode = FilePermissions
-			}
-			ops = append(ops, transaction.Op{
-				Kind:   transaction.OpWrite,
-				Target: artifact.Path,
-				Data:   artifact.Data,
-				Mode:   mode,
-			})
-			dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
+		artifactOps, artifactDirs, err := expandArtifactChanges(cs.Artifacts)
+		if err != nil {
+			return nil, err
 		}
+		ops = append(ops, artifactOps...)
+		dirsToCreate = append(dirsToCreate, artifactDirs...)
 		// Resolve this changeset's attachment side effects into transaction ops
 		// under the held locks. A resolution failure (missing copy source, occupied
 		// move destination, nested directory) aborts the whole commit here — before
@@ -1260,10 +1364,11 @@ func (s *CommitService) currentDocAndRevision(tasksPath string, project *models.
 
 // resolveAttachmentOps translates a changeset's attachment side effects into
 // concrete transaction operations. Copies stage the source bytes for the
-// destination path; a move renames the task's whole attachments directory (a no-op
-// when the task has none); a delete removes every file and then the directory. The
-// returned dirsToCreate name destination .attachments parents that a move rename
-// needs in place before commit. Any error aborts the caller's whole commit.
+// destination path; a move renames a non-empty task attachment directory (or
+// deletes an empty source directory); a delete removes every file and then the
+// directory. The returned dirsToCreate name destination .attachments parents
+// that a move rename needs in place before commit. Any error aborts the caller's
+// whole commit.
 func resolveAttachmentOps(ops []AttachmentOp) (txnOps []transaction.Op, dirsToCreate []string, err error) {
 	for i := range ops {
 		op := ops[i]
@@ -1328,10 +1433,11 @@ func resolveAttachmentCopy(op AttachmentOp) (transaction.Op, error) {
 }
 
 // resolveAttachmentMove builds the transaction op that renames a task's whole
-// attachments directory to the destination project. It is a no-op (no ops, no
-// destination parent) when the task has no attachments directory, and it fails
-// closed when the destination directory already exists. The returned destParent is
-// the destination .attachments directory the rename target needs in place.
+// attachments directory to the destination project. It is a no-op when the task
+// has no attachment directory, deletes an empty source without creating a
+// destination, and fails closed when the destination directory already exists.
+// The returned destParent is the destination .attachments directory a non-empty
+// rename target needs in place.
 func resolveAttachmentMove(op AttachmentOp) (ops []transaction.Op, destParent string, err error) {
 	if op.SourceProject == nil || op.DestProject == nil {
 		return nil, "", fmt.Errorf("storage: attachment move requires source and destination projects")
@@ -1358,6 +1464,13 @@ func resolveAttachmentMove(op AttachmentOp) (ops []transaction.Op, destParent st
 		return nil, "", fmt.Errorf("destination task attachments directory already exists: %s", destDir)
 	} else if !os.IsNotExist(destStatErr) {
 		return nil, "", fmt.Errorf("failed to stat destination attachments directory: %w", destStatErr)
+	}
+	files, _, err := listTaskAttachmentFiles(srcDir)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(files) == 0 {
+		return []transaction.Op{{Kind: transaction.OpDelete, Target: srcDir}}, "", nil
 	}
 	return []transaction.Op{{Kind: transaction.OpMove, Source: srcDir, Target: destDir}}, filepath.Dir(destDir), nil
 }

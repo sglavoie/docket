@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -121,6 +122,48 @@ func TestRunTemplateUse(t *testing.T) {
 		testutil.AssertEqual(t, task.Priority, 2)
 		if !task.HasTag("backend") {
 			t.Error("task should have 'backend' tag from template")
+		}
+	})
+
+	t.Run("increments use count through automation artifact only", func(t *testing.T) {
+		deps, _ := setupTemplateUseTest(t)
+		defer deps.Cleanup()
+
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, template.TaskTemplate{
+			ID:      "scoped-artifact-tmpl",
+			Name:    "Scoped Artifact",
+			Enabled: true,
+			Type:    models.TaskTypeTask,
+		})
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
+
+		unchangedPaths := []string{
+			config.WorkspaceCatalogPath(deps.DataDir),
+			config.PlanningStatePath(deps.DataDir),
+			config.SettingsPath(deps.DataDir),
+		}
+		before := make(map[string][]byte, len(unchangedPaths))
+		for _, path := range unchangedPaths {
+			data, err := os.ReadFile(path)
+			testutil.AssertNoError(t, err)
+			before[path] = data
+		}
+
+		err := runTemplateUse(templateUseCmd, []string{"scoped-artifact-tmpl", "Scoped Task"})
+		testutil.AssertNoError(t, err)
+
+		for _, path := range unchangedPaths {
+			after, readErr := os.ReadFile(path)
+			testutil.AssertNoError(t, readErr)
+			if !bytes.Equal(after, before[path]) {
+				t.Fatalf("template use unexpectedly rewrote %s", path)
+			}
+		}
+		runtime, err := config.NewManager(deps.ConfigPath).LoadRuntimeState()
+		testutil.AssertNoError(t, err)
+		if tmpl := runtime.Automation().GetTaskTemplate("scoped-artifact-tmpl"); tmpl == nil || tmpl.UseCount != 1 {
+			t.Fatalf("automation template = %+v, want use count 1", tmpl)
 		}
 	})
 

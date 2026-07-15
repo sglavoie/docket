@@ -19,17 +19,16 @@ selected tasks instead of only the cursor task:
 
   ,s  Start all selected
   ,d  Complete all selected
-  ,b  Block all selected
+  ,b  Set all selected to waiting
   ,x  Cancel all selected
   !1-!5  Set priority
   dt/dm/dw/dn/d0 or dd  Set, clear, or pick due dates
   zt/zw/zm/zn/z0 or zd  Set, clear, or pick snooze dates
-  s1-s9/s0  Set or clear stage
   ts  Move to section
   tt  Replace tags
 
-Bulk tags replace each selected task's tag set. Status, priority,
-due date, snooze, stage, and tag updates can span projects in
+Bulk tags replace each selected task's tag set. Workflow-state,
+priority, due date, snooze, and tag updates can span projects in
 cross-project views. Section moves require a single target project;
 cross-project section moves are not supported.
 
@@ -199,7 +198,6 @@ dimension by pressing the corresponding key:
   Fp  Filter by priority
   F#  Filter by tag
   F/  Filter by section
-  F.  Filter by stage
   Fi  Filter to tasks linked to a GitHub issue
   Fk  Filter to parked tasks
   FS  Filter by score threshold
@@ -607,31 +605,6 @@ Tasks in the Someday section are excluded from stale notifications
 regardless of how long they have been inactive.`,
 		},
 		{
-			Title:    "Stages",
-			Category: "TUI",
-			Content: `# Setting Stages with s Prefix
-
-Press s on a selected task to open the stage overlay.
-Keys 1-9 map to your configured stages. Press 0 to clear
-the stage.
-
-  s 1  Set first stage (e.g., Brainstorm)
-  s 2  Set second stage (e.g., Design)
-  s 0  Clear stage
-
-# Filtering by Stage
-
-Press F then . to filter tasks by stage. The same 1-9 and
-0 keys apply: select a stage to show only matching tasks,
-or press 0 to clear the filter.
-
-# Managing Stages
-
-Open Settings and navigate to the Stages tab to add, edit,
-delete, or reorder stages. You can also reach it from the
-command palette by typing "stages".`,
-		},
-		{
 			Title:    "Scoring",
 			Category: "TUI",
 			Content: `# Score Editor
@@ -674,21 +647,22 @@ duration key. The task will be hidden until the snooze
 period expires.`,
 		},
 		{
-			Title:    "Status Changes",
+			Title:    "Workflow State Changes",
 			Category: "TUI",
 			Content: `# Comma-Prefix Bindings
 
-Change task status using , followed by a letter:
+Change a task's workflow state using , followed by a letter:
 
   ,s  Start (set to in_progress)
   ,d  Mark done
-  ,b  Block task
-  ,o  Reopen (set to todo)
-  ,x  Cancel task
-  ,r  Review (send to review)
-  ,S  Standby (put on standby)
+  ,b  Set to waiting
+  ,o  Reopen (set to inbox)
+  ,x  Set to canceled
+  ,r  Send to review
+  ,S  Set to paused
+  ,m  Set to someday
 
-Each binding sets the status directly. Select a task first,
+Each binding transitions the workflow state. Select a task first,
 then press the key combination.`,
 		},
 		{
@@ -748,7 +722,6 @@ Works with prefix-chord mutations applied to a single task:
   !1-5      Set priority
   d1-9      Set quick due date (today, tomorrow, +3d, +1w, +2w, +1m)
   d0        Clear due date
-  s1-9      Set workflow stage
 
 # Behavior
 

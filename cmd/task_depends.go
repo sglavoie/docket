@@ -111,13 +111,22 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return nil
 		}
 
-		svc := newWorkspaceAppService(workspace)
-		res, err := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.ClearDependencies(task.ID)
+		workflows := newCLIWorkflowRunner(workspace)
+		defer workflows.flush()
+		cascade, err := withResultRetry(func() (app.BulkResult, error) {
+			return workflows.service.ClearDependenciesWithWorkflow(task.ID, workflows.options(true, "Clear Dependencies", task))
 		})
 		if err != nil {
 			return translateAppError(err)
 		}
+		workflows.observe(cascade)
+		if !workflowResultCommitted(cascade) {
+			if !out.Quiet {
+				fmt.Printf("Task #%d has no dependencies to clear.\n", task.ShortID)
+			}
+			return nil
+		}
+		res := workflowResultTask(cascade)
 		if out.JSON {
 			return emitMutation(out, "Cleared dependencies", res)
 		}
@@ -145,13 +154,16 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("task #%d does not depend on #%d", task.ShortID, blocker.ShortID)
 		}
 
-		svc := newWorkspaceAppService(workspace)
-		res, err := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.RemoveDependency(task.ID, blocker.ID)
+		workflows := newCLIWorkflowRunner(workspace)
+		defer workflows.flush()
+		cascade, err := withResultRetry(func() (app.BulkResult, error) {
+			return workflows.service.RemoveDependencyWithWorkflow(task.ID, blocker.ID, workflows.options(true, "Remove Dependency", task))
 		})
 		if err != nil {
 			return translateAppError(err)
 		}
+		workflows.observe(cascade)
+		res := workflowResultTask(cascade)
 		if out.JSON {
 			return emitMutation(out, "Removed dependency", res)
 		}
@@ -186,13 +198,16 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("cannot add dependency: %w", tterrors.ErrCircularDep)
 		}
 
-		svc := newWorkspaceAppService(workspace)
-		res, err := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.AddDependency(task.ID, blocker.ID)
+		workflows := newCLIWorkflowRunner(workspace)
+		defer workflows.flush()
+		cascade, err := withResultRetry(func() (app.BulkResult, error) {
+			return workflows.service.AddDependencyWithWorkflow(task.ID, blocker.ID, workflows.options(true, "Add Dependency", task))
 		})
 		if err != nil {
 			return translateAppError(err)
 		}
+		workflows.observe(cascade)
+		res := workflowResultTask(cascade)
 		if out.JSON {
 			return emitMutation(out, "Added dependency", res)
 		}

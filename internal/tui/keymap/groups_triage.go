@@ -12,8 +12,8 @@ package keymap
 //     n (skip), e (edit), D (mark done), T (manage tags), u (undo), ? (help).
 //   - Prefix vocabulary (multi-key deeper actions) — exposed by sibling groups:
 //     m (route/section, MoveGroup), d (due date, DueDateGroup), ! and 1-5
-//     (priority, PriorityGroup), , (status, StatusGroup), z (snooze, SnoozeGroup),
-//     . (stage, StageGroup), t (task ops, TaskPrefixGroup), c (linked task,
+//     (priority, PriorityGroup), , (state, StatusGroup), z (snooze, SnoozeGroup),
+//     t (task ops, TaskPrefixGroup), c (linked task,
 //     LinkedTaskGroup), b (blocker, BlockerGroup).
 //
 // Primary triage actions never use chord modifiers (no ctrl+/alt+); the shared

@@ -288,8 +288,6 @@ func handleCommonFilterPrefix(key string, f *CommonFilterState, buildTagCmd func
 		return FilterPrefixResult{Handled: true, NewPrefix: "Fa"}
 	case "S":
 		return FilterPrefixResult{Handled: true, NewPrefix: "FS"}
-	case ".":
-		return FilterPrefixResult{Handled: true, NewPrefix: "F."}
 	case "x":
 		clearCommonFilters(f)
 		return FilterPrefixResult{Handled: true, Changed: true}

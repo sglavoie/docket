@@ -10,12 +10,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // AppVersion is the application version string used when writing theme files.
@@ -238,7 +238,10 @@ func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Man
 
 	ledger := workspaceLedgerFromConfig(runtime)
 	svc := newTUIAppService(runtime.DataDir(), manager.RuntimeDependencies(), ledger)
-	wr, err := svc.ApplyWorkflows(project.ID, rules, nil, workflowFocusArtifactBuilder(manager))
+	wr, err := svc.ApplyWorkflowsWithArtifacts(project.ID, rules, nil, app.WorkflowArtifactBuilders{
+		Focus:         workflowFocusArtifactBuilder(manager),
+		ProjectStatus: workflowProjectStatusArtifactBuilder(manager),
+	})
 	if err != nil {
 		logging.Warn("startup workflow evaluation failed: %v", err)
 		return result
@@ -248,32 +251,15 @@ func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Man
 	result.ModifiedTasks = len(wr.ModifiedTaskIDs)
 	result.RulesApplied = len(wr.RuleTriggerCounts)
 
-	if len(wr.FocusChanges) > 0 {
-		// ApplyWorkflows committed the planning artifact with the task cascade;
-		// reload only the runtime snapshot so startup consumers observe it.
+	if len(wr.FocusChanges) > 0 || len(wr.ProjectStatusChanges) > 0 {
+		// ApplyWorkflows committed planning/catalog artifacts with the task
+		// cascade; reload the runtime snapshot so startup consumers observe them.
 		if err := runtime.RefreshAfterCommit(); err != nil {
-			logging.Warn("failed to refresh startup workflow planning changes: %v", err)
+			logging.Warn("failed to refresh startup workflow domain changes: %v", err)
 		}
 	}
 
 	automation.IncrementRuleTriggerCounts(wr.RuleTriggerCounts)
-	projectChanged := false
-	if project.StatusIconSource != "user" {
-		if err := storage.LoadProject(project); err == nil {
-			projResult := workflow.EvaluateProjectRules(&workflow.ProjectEvaluationContext{
-				Project: project,
-				Tasks:   project.Tasks,
-			}, rules)
-			if projResult.NewStatusIcon != "" {
-				project.StatusIcon = projResult.NewStatusIcon
-				project.StatusIconSource = "auto"
-				projectChanged = true
-				for _, id := range projResult.TriggeredRuleIDs {
-					automation.IncrementRuleTriggerCounts(map[string]int{id: 1})
-				}
-			}
-		}
-	}
 
 	automation.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
 		LastEvalTime: time.Now(),
@@ -282,13 +268,5 @@ func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Man
 	if err := runtime.CommitAutomation(automation); err != nil {
 		logging.Warn("failed to persist startup workflow automation state: %v", err)
 	}
-	if projectChanged {
-		catalog := cloneWorkspaceCatalog(runtime.Catalog())
-		catalog.UpsertProject(project)
-		if err := runtime.CommitCatalog(catalog); err != nil {
-			logging.Warn("failed to persist startup workflow project status: %v", err)
-		}
-	}
-
 	return result
 }

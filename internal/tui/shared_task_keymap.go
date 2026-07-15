@@ -71,7 +71,7 @@ type TaskKeymapDeps struct {
 
 // buildStandardTaskActionEntries returns the standard task-action keymap entries
 // for the groups: Status, Priority, DueDate, Snooze, Move, LinkedTask, TaskPrefix,
-// Stage, Blocker, and CommonTaskAction — wired through wf* helpers.
+// Blocker, and CommonTaskAction — wired through wf* helpers.
 //
 // Each prefix group is gated on deps.HasItem or an active selected-task target.
 // The caller appends the returned entries alongside view-specific navigation,

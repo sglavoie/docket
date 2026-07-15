@@ -24,8 +24,7 @@ const (
 	tabOutliner      = 6
 	tabKanban        = 7
 	tabNotifications = 8
-	tabStages        = 9
-	tabAppearance    = 10
+	tabAppearance    = 9
 )
 
 // settingsVisualTabNames are the 5 consolidated tab names shown in the tab bar.
@@ -76,7 +75,7 @@ var visualTabSubTabs = [][]visualSubTabRef{
 	{
 		{"Review", tabReview, 0},
 	},
-	// vtab 4: Notifications = old Notifications sub-sections + old Stages
+	// vtab 4: Notifications
 	{
 		{"Reviews", tabNotifications, 0},
 		{"Tasks", tabNotifications, 1},
@@ -102,10 +101,10 @@ func visualSubTabNamesForVTab(vt int) []string {
 }
 
 var (
-	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
+	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 5, 20, 2, 15, 24, 9, 15, 0, 5}
+	tabFieldCount = []int{5, 18, 5, 20, 2, 15, 24, 9, 15, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -125,8 +124,7 @@ var (
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 6: Outliner
 		nil, // 7: Kanban
 		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}}, // 8: Notifications
-		nil, // 9: Stages
-		nil, // 10: Appearance
+		nil, // 9: Appearance
 	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
@@ -413,7 +411,7 @@ type SettingsModel struct {
 	subTabRowFocused bool // true when shift+left/right navigates sub-tabs instead of main tabs
 	visualTab        int  // active visual tab (0-4), for tab bar display
 	visualSubTab     int  // active sub-tab within the visual tab, for sub-tab bar display
-	focusIndex       int  // 0=editor .. 74=outlinerColumnDefaults, 75-89=alert settings, 90=stages, 91=appearance
+	focusIndex       int  // absolute index into the compacted settings field registry
 	scrollOffset     int  // vertical scroll offset within current tab content
 	validationErr    string
 

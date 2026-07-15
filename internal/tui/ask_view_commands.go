@@ -45,9 +45,7 @@ func (m *AskViewModel) applyPlan(plan app.ActionPlan, destructive bool) tea.Cmd 
 				if artifactErr != nil {
 					return nil, artifactErr
 				}
-				return []storage.ArtifactChange{{
-					Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
-				}}, nil
+				return []storage.ArtifactChange{artifact.StorageChange()}, nil
 			},
 		})
 		if err != nil {

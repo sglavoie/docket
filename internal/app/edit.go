@@ -67,32 +67,51 @@ type FormEdit struct {
 // granular pointer fields.
 func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	return s.mutateTask(req.TaskID, "Edit Task", "", func(ref TaskRef) error {
-		task := ref.Task
-		if req.Form != nil {
-			return s.applyFormEdit(task, *req.Form)
-		}
-		if req.Title != nil {
-			title := strings.TrimSpace(*req.Title)
-			if err := models.ValidateTaskTitle(title); err != nil {
-				return invalidInput("title", err.Error())
-			}
-			task.Title = title
-		}
-		if req.Description != nil {
-			task.Description = *req.Description
-		}
-		if req.Type != nil {
-			if !req.Type.IsValid() {
-				return invalidInput("type", string(*req.Type)+" is not a valid task type")
-			}
-			if task.Type != *req.Type {
-				task.ClearTypeAttrs()
-				task.Type = *req.Type
-			}
-		}
-		task.UpdatedAt = s.clock.Now()
-		return nil
+		return s.applyEdit(ref.Task, req)
 	})
+}
+
+// EditWithWorkflow applies the same edit mutation as Edit, then evaluates rules
+// contextually against the true pre-edit task states captured from the shared
+// workflow snapshot. Contextual evaluation is mandatory for this API even when
+// opts.Contextual is false because edit rules may depend on field transitions.
+func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts.Contextual = true
+	if opts.UndoAction == "" {
+		opts.UndoAction = "Edit Task"
+	}
+	return s.mutateWithWorkflow(req.TaskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return s.applyEdit(ref.Task, req)
+	})
+}
+
+// applyEdit is the shared validation and mutation seam for bare and
+// workflow-aware edits.
+func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
+	if req.Form != nil {
+		return s.applyFormEdit(task, *req.Form)
+	}
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if err := models.ValidateTaskTitle(title); err != nil {
+			return invalidInput("title", err.Error())
+		}
+		task.Title = title
+	}
+	if req.Description != nil {
+		task.Description = *req.Description
+	}
+	if req.Type != nil {
+		if !req.Type.IsValid() {
+			return invalidInput("type", string(*req.Type)+" is not a valid task type")
+		}
+		if task.Type != *req.Type {
+			task.ClearTypeAttrs()
+			task.Type = *req.Type
+		}
+	}
+	task.UpdatedAt = s.clock.Now()
+	return nil
 }
 
 // applyFormEdit replaces a task's editable fields from the task form's draft,

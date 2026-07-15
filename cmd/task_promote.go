@@ -123,13 +123,16 @@ func changeTaskType(cmd *cobra.Command, args []string, action string, change app
 
 	oldType := task.Type
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.ChangeTaskType(task.ID, change)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.ChangeTaskTypeWithWorkflow(task.ID, change, workflows.options(true, typeChangeUndoAction(change), task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	if out.Quiet {
 		return nil
@@ -144,6 +147,19 @@ func changeTaskType(cmd *cobra.Command, args []string, action string, change app
 	fmt.Printf("%s %s: %s (%s -> %s)\n",
 		newType.HeadingPrefix(), res.QualifiedRef, res.Title, oldType, newType)
 	return nil
+}
+
+func typeChangeUndoAction(change app.TaskTypeChange) string {
+	switch change {
+	case app.PromoteType:
+		return "Promote Task"
+	case app.DemoteType:
+		return "Demote Task"
+	case app.CycleTypeRight, app.CycleTypeLeft:
+		return "Cycle Task Type"
+	default:
+		return "Change Task Type"
+	}
 }
 
 // previewTypeChange returns the type a successful type change produces from the

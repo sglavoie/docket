@@ -197,20 +197,23 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	// service owns ID/short-ID minting, validation, the workspace-ledger undo
 	// record, and the single atomic ChangeSet commit. Quick-add and `tt task add`
 	// are the same task-capture family, so both share this path.
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.AddTask(app.AddTaskRequest{
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.AddTaskWithWorkflow(app.AddTaskRequest{
 			ProjectID: project.ID,
 			Title:     title,
 			Type:      taskType,
 			Priority:  priority,
 			Tags:      tags,
 			ParentID:  parentID,
-		})
+		}, workflows.options(false, "Add Task", nil))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	// Reconstruct the display tag list with the same normalize/dedup semantics the
 	// use case applied, keeping the explicit-then-inline order for the message.

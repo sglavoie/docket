@@ -164,16 +164,26 @@ type projectCommit struct {
 	attachmentOps []storage.AttachmentOp
 }
 
+// groupedCommitOutcome retains both the storage result for each changeset and
+// application-level effects produced while preparing that project for commit.
+// Keeping recurring counts keyed by project prevents a grouped workflow commit
+// from losing which project generated each new instance.
+type groupedCommitOutcome struct {
+	results              []*storage.CommitResult
+	recurringByProjectID map[string]int
+}
+
 // commitProjects runs the post-mutation hooks on every project and commits their
 // ChangeSets as ONE transaction, so a cascade that spans projects (a cross-project
 // move, a workflow move_to_project) applies atomically or not at all. Any per-commit
-// artifacts and attachment ops ride the same transaction. The results are returned
-// in the same order as commits. A stale revision on any project aborts the whole
-// commit.
-func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) ([]*storage.CommitResult, error) {
+// artifacts and attachment ops ride the same transaction. The storage results are
+// retained in commit order, while recurring-instance counts remain associated with
+// their projects. A stale revision on any project aborts the whole commit.
+func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) (groupedCommitOutcome, error) {
 	changesets := make([]storage.ChangeSet, len(commits))
+	recurring := make(map[string]int, len(commits))
 	for i, c := range commits {
-		applyPostMutationHooks(c.project)
+		recurring[c.project.ID] += applyPostMutationHooks(c.project)
 		changesets[i] = storage.ChangeSet{
 			Project:          c.project,
 			ExpectedRevision: c.expectedRevision,
@@ -184,7 +194,11 @@ func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContex
 			UndoContext:      undoContext,
 		}
 	}
-	return s.repo.Commit(changesets...)
+	results, err := s.repo.Commit(changesets...)
+	if err != nil {
+		return groupedCommitOutcome{}, err
+	}
+	return groupedCommitOutcome{results: results, recurringByProjectID: recurring}, nil
 }
 
 // revisionAt returns the new revision reported for the changeset at index i, or

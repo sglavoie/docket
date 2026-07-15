@@ -224,22 +224,18 @@ priority, tag, section, or parked state.
   tt task list --priority 1`,
 		},
 		{
-			Title:    "Stages",
+			Title:    "Workflow States",
 			Category: "CLI",
-			Content: `# Setting a Stage
+			Content: `# Setting a Workflow State
 
-  tt task stage 5 Brainstorm
-  tt task stage 12 Design
-  tt task stage 3 Implement
+  tt task state in_progress 5
+  tt task state waiting 12
+  tt task state review web:#3
 
-# Clearing a Stage
+# Planning Shortcuts
 
-  tt task stage 5 ""
-
-# Creating Tasks with a Stage
-
-  tt task add "Design login flow" --stage Design
-  tt task add "Research caching !2 #perf" --stage Brainstorm`,
+  tt task ready 5
+  tt task next 12`,
 		},
 		{
 			Title:    "Task Management",

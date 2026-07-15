@@ -18,19 +18,28 @@ import (
 // UndoLedgerSchemaVersion is stamped into every persisted ledger file. A file
 // carrying a newer version than the running binary understands is rejected
 // rather than misinterpreted, matching the transaction manifest contract.
-const UndoLedgerSchemaVersion = 1
+const UndoLedgerSchemaVersion = 2
+
+const undoLedgerSchemaVersionV1 = 1
 
 const (
 	undoLedgerFileName = "ledger.json"
 	undoLedgerBlobsDir = "blobs"
 )
 
-// ArtifactImage is the before/after byte-image of a single file touched by a
-// committed transaction. Undo restores the "before" state and redo restores the
-// "after" state, where a state is either the retained blob bytes (Exists true)
-// or the file's absence (Exists false). Blob bytes live in content-addressed
-// files under the ledger's blobs directory; the JSON keeps only the hash
-// reference so identical images across entries share one blob.
+// ArtifactImageKind distinguishes retained file contents from directory
+// existence. Schema-v1 images have no kind and are interpreted as files.
+type ArtifactImageKind string
+
+const (
+	ArtifactImageKindFile      ArtifactImageKind = "file"
+	ArtifactImageKindDirectory ArtifactImageKind = "directory"
+)
+
+// ArtifactImage is the before/after image of one filesystem artifact touched by
+// a committed transaction. File images retain byte hashes; directory images
+// retain only type and existence. Undo restores the "before" state and redo
+// restores the "after" state.
 //
 // This uniform model reverses every kind of committed side effect: a project
 // tasks.md rewrite is one artifact (before-bytes → after-bytes); an artifact
@@ -41,14 +50,16 @@ const (
 // gains them), so undo and redo relocate the bytes by writing each side to its
 // recorded state.
 type ArtifactImage struct {
-	// Path is the absolute file the image restores.
+	// Kind is file or directory. It was absent from schema-v1 file images.
+	Kind ArtifactImageKind `json:"kind"`
+	// Path is the absolute filesystem path the image restores.
 	Path string `json:"path"`
-	// BeforeExists reports whether the file existed before the transaction.
+	// BeforeExists reports whether the artifact existed before the transaction.
 	BeforeExists bool `json:"before_exists"`
 	// BeforeHash references the retained blob holding the pre-transaction bytes.
 	// Empty when BeforeExists is false.
 	BeforeHash string `json:"before_hash,omitempty"`
-	// AfterExists reports whether the file existed after the transaction.
+	// AfterExists reports whether the artifact existed after the transaction.
 	AfterExists bool `json:"after_exists"`
 	// AfterHash references the retained blob holding the post-transaction bytes.
 	// Empty when AfterExists is false.
@@ -74,25 +85,19 @@ type LedgerEntry struct {
 	// ProjectIDs lists the logical ids of every project the transaction touched,
 	// so current-project undo can select the newest entry affecting a project.
 	ProjectIDs []string `json:"project_ids,omitempty"`
-	// Artifacts carries every affected file's before/after image.
+	// Artifacts carries every affected file or directory's before/after image.
 	Artifacts []ArtifactImage `json:"artifacts,omitempty"`
+	// LegacySchemaVersion preserves the provenance of entries upgraded from v1.
+	// Their file-only images need conservative attachment-directory cleanup on
+	// every undo/redo, including after the containing ledger is rewritten as v2.
+	LegacySchemaVersion int `json:"legacy_schema_version,omitempty"`
 }
 
-// paths returns the sorted, de-duplicated set of every file path this entry
-// touches. It is the overlap key for redo invalidation.
-func (e LedgerEntry) paths() []string {
-	seen := make(map[string]bool, len(e.Artifacts))
-	out := make([]string, 0, len(e.Artifacts))
-	for _, a := range e.Artifacts {
-		clean := filepath.Clean(a.Path)
-		if seen[clean] {
-			continue
-		}
-		seen[clean] = true
-		out = append(out, clean)
+func (a ArtifactImage) imageKind() ArtifactImageKind {
+	if a.Kind == "" {
+		return ArtifactImageKindFile
 	}
-	sort.Strings(out)
-	return out
+	return a.Kind
 }
 
 func (e LedgerEntry) touchesProject(projectID string) bool {
@@ -129,12 +134,11 @@ type ledgerFile struct {
 	RedoEntries   []LedgerEntry `json:"redo_entries"`
 }
 
-// LedgerArtifact is a caller-supplied before/after byte-image for one file. The
-// commit boundary captures these under the project locks (before images before
-// applying the transaction, after images from the content it is about to write)
-// and hands them to Record, which persists the bytes into content-addressed
-// blobs and reduces them to an ArtifactImage.
+// LedgerArtifact is a caller-supplied before/after image. File images carry
+// bytes; directory images carry only existence. The commit boundary captures
+// these under the project locks and hands them to Record for persistence.
 type LedgerArtifact struct {
+	Kind         ArtifactImageKind
 	Path         string
 	BeforeExists bool
 	Before       []byte
@@ -237,10 +241,16 @@ func (l *WorkspaceLedger) load() (*ledgerFile, error) {
 		return nil, fmt.Errorf("failed to parse undo ledger: %w", err)
 	}
 	if lf.SchemaVersion == 0 {
-		lf.SchemaVersion = UndoLedgerSchemaVersion
+		lf.SchemaVersion = undoLedgerSchemaVersionV1
 	}
 	if lf.SchemaVersion > UndoLedgerSchemaVersion {
 		return nil, fmt.Errorf("undo ledger schema version %d newer than supported %d", lf.SchemaVersion, UndoLedgerSchemaVersion)
+	}
+	if lf.SchemaVersion < undoLedgerSchemaVersionV1 {
+		return nil, fmt.Errorf("undo ledger schema version %d is invalid", lf.SchemaVersion)
+	}
+	if err := normalizeLedgerImages(&lf); err != nil {
+		return nil, err
 	}
 	if lf.NextSeq == 0 {
 		lf.NextSeq = 1
@@ -249,12 +259,46 @@ func (l *WorkspaceLedger) load() (*ledgerFile, error) {
 }
 
 func encodeLedgerFile(lf *ledgerFile) ([]byte, error) {
+	if err := normalizeLedgerImages(lf); err != nil {
+		return nil, err
+	}
 	lf.SchemaVersion = UndoLedgerSchemaVersion
 	data, err := json.MarshalIndent(lf, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal undo ledger: %w", err)
 	}
 	return data, nil
+}
+
+func normalizeLedgerImages(lf *ledgerFile) error {
+	stacks := [][]LedgerEntry{lf.Entries, lf.RedoEntries}
+	for _, stack := range stacks {
+		for entryIdx := range stack {
+			entry := &stack[entryIdx]
+			if lf.SchemaVersion == undoLedgerSchemaVersionV1 && entry.LegacySchemaVersion == 0 {
+				entry.LegacySchemaVersion = undoLedgerSchemaVersionV1
+			}
+			for imageIdx := range entry.Artifacts {
+				image := &entry.Artifacts[imageIdx]
+				if image.Kind == "" {
+					if lf.SchemaVersion != undoLedgerSchemaVersionV1 {
+						return fmt.Errorf("storage: ledger v%d entry %d artifact %q is missing its image kind", lf.SchemaVersion, entry.Seq, image.Path)
+					}
+					image.Kind = ArtifactImageKindFile
+				}
+				switch image.Kind {
+				case ArtifactImageKindFile:
+				case ArtifactImageKindDirectory:
+					if image.BeforeHash != "" || image.AfterHash != "" {
+						return fmt.Errorf("storage: ledger directory artifact %q cannot reference file blobs", image.Path)
+					}
+				default:
+					return fmt.Errorf("storage: ledger artifact %q has unknown image kind %q", image.Path, image.Kind)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (l *WorkspaceLedger) readBlob(hash string) ([]byte, error) {
@@ -288,6 +332,10 @@ func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int)
 	if loadErr != nil {
 		return nil, loadErr
 	}
+	// load marks every entry originating in a v1 ledger before a new v2 entry is
+	// appended. Advance the in-memory schema now so normalization does not mistake
+	// that new entry for legacy history when the mixed ledger is encoded.
+	lf.SchemaVersion = UndoLedgerSchemaVersion
 
 	var ops []transaction.Op
 	plannedBlobs := make(map[string]bool)
@@ -312,19 +360,27 @@ func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int)
 
 	images := make([]ArtifactImage, 0, len(rec.Artifacts))
 	for _, a := range rec.Artifacts {
+		kind := a.Kind
+		if kind == "" {
+			kind = ArtifactImageKindFile
+		}
+		if kind != ArtifactImageKindFile && kind != ArtifactImageKindDirectory {
+			return nil, fmt.Errorf("storage: ledger artifact %q has unknown image kind %q", a.Path, kind)
+		}
 		img := ArtifactImage{
+			Kind:         kind,
 			Path:         filepath.Clean(a.Path),
 			BeforeExists: a.BeforeExists,
 			AfterExists:  a.AfterExists,
 		}
-		if a.BeforeExists {
+		if kind == ArtifactImageKindFile && a.BeforeExists {
 			hash, blobErr := planBlob(a.Before)
 			if blobErr != nil {
 				return nil, blobErr
 			}
 			img.BeforeHash = hash
 		}
-		if a.AfterExists {
+		if kind == ArtifactImageKindFile && a.AfterExists {
 			hash, blobErr := planBlob(a.After)
 			if blobErr != nil {
 				return nil, blobErr
@@ -346,9 +402,9 @@ func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int)
 	lf.NextSeq++
 	lf.Entries = append(lf.Entries, entry)
 
-	// Redo invalidation: any pending redo entry that shares a file with the new
-	// mutation can no longer be safely replayed, so drop it.
-	lf.RedoEntries = removeOverlappingRedo(lf.RedoEntries, entry.paths())
+	// Redo invalidation: any pending redo entry that overlaps an artifact in the
+	// new mutation can no longer be safely replayed, so drop it.
+	lf.RedoEntries = removeOverlappingRedo(lf.RedoEntries, entry)
 
 	// Retention pruning: keep only the newest maxDepth undo entries.
 	if len(lf.Entries) > maxDepth {
@@ -482,6 +538,11 @@ func entryMatchesScope(entry LedgerEntry, scope LedgerScope) bool {
 		if pathWithinArtifactRoot(scope.ArtifactRoot, artifact.Path) {
 			return true
 		}
+		// A directory image also touches scopes nested below that directory. This
+		// matters when callers scope history to one attachment file or subtree.
+		if artifact.imageKind() == ArtifactImageKindDirectory && pathWithinArtifactRoot(artifact.Path, scope.ArtifactRoot) {
+			return true
+		}
 	}
 	return false
 }
@@ -575,9 +636,25 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 			return fmt.Errorf("no %s history available", label)
 		}
 
-		artifacts := make([]ArtifactChange, 0, len(entry.Artifacts))
+		var directoryLockPaths []string
 		for _, image := range entry.Artifacts {
+			if image.imageKind() == ArtifactImageKindDirectory {
+				directoryLockPaths = append(directoryLockPaths, filepath.Clean(image.Path))
+			}
+		}
+		// Attachment files use the adjacent task-directory lock even when the
+		// directory itself did not transition. Creating a per-file lock inside an
+		// attachment directory would add a non-user sibling and alter cleanup.
+		directoryLockPaths = append(directoryLockPaths, attachmentDirectoryPaths(entry)...)
+		artifacts := make([]ArtifactChange, 0, len(entry.Artifacts)+len(directoryLockPaths))
+		for _, image := range entry.Artifacts {
+			if image.imageKind() == ArtifactImageKindFile && pathWithinAnyDirectory(image.Path, directoryLockPaths) {
+				continue
+			}
 			artifacts = append(artifacts, ArtifactChange{Path: image.Path})
+		}
+		for _, dir := range directoryLockPaths {
+			artifacts = append(artifacts, ArtifactChange{Path: dir})
 		}
 		lockPaths, lockErr := artifactLockPaths(artifacts, l.roots)
 		if lockErr != nil {
@@ -603,6 +680,15 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 		return LedgerEntry{}, "", err
 	}
 	return restored, ledgerEntryDescription(restored), nil
+}
+
+func pathWithinAnyDirectory(path string, dirs []string) bool {
+	for _, dir := range dirs {
+		if pathWithinArtifactRoot(dir, path) {
+			return true
+		}
+	}
+	return false
 }
 
 // prepareRestoreTransaction validates the complete selected entry before it
@@ -641,37 +727,45 @@ func (l *WorkspaceLedger) prepareRestoreTransaction(
 	return manifest, nil
 }
 
-// preflightRestoreOps validates both retained images for every artifact and the
-// current target revision before returning the desired write/delete operations.
-// Undo expects each target to still match its after-image; redo expects the
-// before-image. Any drift aborts the whole grouped restore before Journal.Prepare
-// creates a staging file or manifest.
+// preflightRestoreOps validates both retained images and every current file or
+// directory state before returning phased operations. File writes/deletes are
+// emitted first. Directories that should be absent are removed deepest-first;
+// directories that should exist are recreated by descendant file writes. Any
+// drift aborts the grouped restore before Journal.Prepare stages bytes.
 func (l *WorkspaceLedger) preflightRestoreOps(entry LedgerEntry, redo bool) ([]transaction.Op, error) {
-	blobs := make(map[string][]byte)
-	loadImage := func(path, label string, exists bool, hash string) error {
-		if !exists {
-			if hash != "" {
-				return fmt.Errorf("storage: ledger artifact %q has a %s hash for an absent image", path, label)
-			}
-			return nil
-		}
-		if hash == "" {
-			return fmt.Errorf("storage: ledger artifact %q is missing its %s blob hash", path, label)
-		}
-		if _, ok := blobs[hash]; ok {
-			return nil
-		}
-		data, err := l.readBlob(hash)
-		if err != nil {
-			return err
-		}
-		if actual := RawArtifactRevision(data); actual != hash {
-			return fmt.Errorf("storage: undo blob %s failed its content hash check", shortRevision(hash))
-		}
-		blobs[hash] = data
-		return nil
+	blobs, err := l.validateRestoreImages(entry)
+	if err != nil {
+		return nil, err
 	}
 
+	fileOps := make([]transaction.Op, 0, len(entry.Artifacts))
+	directoryDeletes := make(map[string]bool)
+	fileDeletes := make(map[string]bool)
+	for _, image := range entry.Artifacts {
+		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes)
+		if planErr != nil {
+			return nil, planErr
+		}
+		if planned {
+			fileOps = append(fileOps, op)
+		}
+	}
+
+	if entry.LegacySchemaVersion == undoLedgerSchemaVersionV1 {
+		legacyDeletes, legacyErr := preflightLegacyAttachmentDirectoryDeletes(legacyAttachmentCleanupCandidates(entry, redo), fileDeletes)
+		if legacyErr != nil {
+			return nil, legacyErr
+		}
+		for _, dir := range legacyDeletes {
+			directoryDeletes[dir] = true
+		}
+	}
+
+	return appendDirectoryDeleteOps(fileOps, directoryDeletes), nil
+}
+
+func (l *WorkspaceLedger) validateRestoreImages(entry LedgerEntry) (map[string][]byte, error) {
+	blobs := make(map[string][]byte)
 	seen := make(map[string]bool, len(entry.Artifacts))
 	for _, image := range entry.Artifacts {
 		path := filepath.Clean(image.Path)
@@ -679,45 +773,242 @@ func (l *WorkspaceLedger) preflightRestoreOps(entry LedgerEntry, redo bool) ([]t
 			return nil, fmt.Errorf("storage: ledger entry contains duplicate artifact target %q", path)
 		}
 		seen[path] = true
-		if err := loadImage(path, "before", image.BeforeExists, image.BeforeHash); err != nil {
-			return nil, err
-		}
-		if err := loadImage(path, "after", image.AfterExists, image.AfterHash); err != nil {
-			return nil, err
+		switch image.imageKind() {
+		case ArtifactImageKindDirectory:
+			if image.BeforeHash != "" || image.AfterHash != "" {
+				return nil, fmt.Errorf("storage: ledger directory artifact %q cannot reference file blobs", path)
+			}
+		case ArtifactImageKindFile:
+			if err := l.loadRestoreBlob(blobs, path, "before", image.BeforeExists, image.BeforeHash); err != nil {
+				return nil, err
+			}
+			if err := l.loadRestoreBlob(blobs, path, "after", image.AfterExists, image.AfterHash); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("storage: ledger artifact %q has unknown image kind %q", path, image.Kind)
 		}
 	}
+	return blobs, nil
+}
 
-	ops := make([]transaction.Op, 0, len(entry.Artifacts))
-	for _, image := range entry.Artifacts {
-		path := filepath.Clean(image.Path)
-		expectedExists, expectedHash := image.AfterExists, image.AfterHash
-		desiredExists, desiredHash := image.BeforeExists, image.BeforeHash
-		if redo {
-			expectedExists, expectedHash = image.BeforeExists, image.BeforeHash
-			desiredExists, desiredHash = image.AfterExists, image.AfterHash
+func (l *WorkspaceLedger) loadRestoreBlob(blobs map[string][]byte, path, label string, exists bool, hash string) error {
+	if !exists {
+		if hash != "" {
+			return fmt.Errorf("storage: ledger artifact %q has a %s hash for an absent image", path, label)
 		}
+		return nil
+	}
+	if hash == "" {
+		return fmt.Errorf("storage: ledger artifact %q is missing its %s blob hash", path, label)
+	}
+	if _, ok := blobs[hash]; ok {
+		return nil
+	}
+	data, err := l.readBlob(hash)
+	if err != nil {
+		return err
+	}
+	if actual := RawArtifactRevision(data); actual != hash {
+		return fmt.Errorf("storage: undo blob %s failed its content hash check", shortRevision(hash))
+	}
+	blobs[hash] = data
+	return nil
+}
 
-		current, currentExists, err := readFileMaybe(path)
+func preflightRestoreImage(
+	image ArtifactImage,
+	redo bool,
+	blobs map[string][]byte,
+	directoryDeletes map[string]bool,
+	fileDeletes map[string]bool,
+) (transaction.Op, bool, error) {
+	path := filepath.Clean(image.Path)
+	expectedExists, expectedHash := image.AfterExists, image.AfterHash
+	desiredExists, desiredHash := image.BeforeExists, image.BeforeHash
+	if redo {
+		expectedExists, expectedHash = image.BeforeExists, image.BeforeHash
+		desiredExists, desiredHash = image.AfterExists, image.AfterHash
+	}
+
+	if image.imageKind() == ArtifactImageKindDirectory {
+		actualExists, actualKind, err := readDirectoryState(path)
 		if err != nil {
-			return nil, fmt.Errorf("reading ledger restore target %q: %w", path, err)
+			return transaction.Op{}, false, err
 		}
-		actualHash := ""
-		if currentExists {
-			actualHash = RawArtifactRevision(current)
+		expectedState := "<absent>"
+		if expectedExists {
+			expectedState = "directory"
 		}
-		if currentExists != expectedExists || (currentExists && actualHash != expectedHash) {
-			return nil, &ArtifactConflictError{Path: path, Expected: expectedHash, Actual: actualHash}
+		if actualExists != expectedExists || (actualExists && actualKind != "directory") {
+			return transaction.Op{}, false, &ArtifactConflictError{Path: path, Expected: expectedState, Actual: actualKind}
 		}
+		if !desiredExists {
+			directoryDeletes[path] = true
+		}
+		return transaction.Op{}, false, nil
+	}
 
+	current, currentExists, actualKind, err := readRegularFileMaybe(path)
+	if err != nil {
+		return transaction.Op{}, false, fmt.Errorf("reading ledger restore target %q: %w", path, err)
+	}
+	actualHash := ""
+	if currentExists && actualKind == "file" {
+		actualHash = RawArtifactRevision(current)
+	}
+	if currentExists != expectedExists || (currentExists && (actualKind != "file" || actualHash != expectedHash)) {
+		if actualKind != "file" {
+			actualHash = actualKind
+		}
+		return transaction.Op{}, false, &ArtifactConflictError{Path: path, Expected: expectedHash, Actual: actualHash}
+	}
+
+	if desiredExists {
+		return transaction.Op{Kind: transaction.OpWrite, Target: path, Data: blobs[desiredHash], Mode: FilePermissions}, true, nil
+	}
+	fileDeletes[path] = true
+	return transaction.Op{Kind: transaction.OpDelete, Target: path}, true, nil
+}
+
+func appendDirectoryDeleteOps(fileOps []transaction.Op, directoryDeletes map[string]bool) []transaction.Op {
+	dirs := make([]string, 0, len(directoryDeletes))
+	for dir := range directoryDeletes {
+		dirs = append(dirs, dir)
+	}
+	sort.Slice(dirs, func(i, j int) bool {
+		leftDepth := strings.Count(filepath.Clean(dirs[i]), string(filepath.Separator))
+		rightDepth := strings.Count(filepath.Clean(dirs[j]), string(filepath.Separator))
+		if leftDepth != rightDepth {
+			return leftDepth > rightDepth
+		}
+		return dirs[i] < dirs[j]
+	})
+	for _, dir := range dirs {
+		fileOps = append(fileOps, transaction.Op{Kind: transaction.OpDelete, Target: dir})
+	}
+	return fileOps
+}
+
+func readRegularFileMaybe(path string) ([]byte, bool, string, error) {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return nil, false, "<absent>", nil
+	}
+	if err != nil {
+		return nil, false, "", err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, true, filesystemKind(info), nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, true, "file", err
+	}
+	return data, true, "file", nil
+}
+
+func readDirectoryState(path string) (bool, string, error) {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return false, "<absent>", nil
+	}
+	if err != nil {
+		return false, "", fmt.Errorf("stating ledger directory restore target %q: %w", path, err)
+	}
+	return true, filesystemKind(info), nil
+}
+
+func filesystemKind(info os.FileInfo) string {
+	switch {
+	case info.IsDir():
+		return "directory"
+	case info.Mode().IsRegular():
+		return "file"
+	case info.Mode()&os.ModeSymlink != 0:
+		return "symlink"
+	default:
+		return "non-regular"
+	}
+}
+
+// legacyAttachmentCleanupCandidates identifies task attachment directories that
+// a v1 file-only restore may need to remove. Safety is decided later from the
+// complete current directory contents while the restore locks are held.
+func legacyAttachmentCleanupCandidates(entry LedgerEntry, redo bool) []string {
+	seen := make(map[string]bool)
+	var dirs []string
+	for _, image := range entry.Artifacts {
+		if image.imageKind() != ArtifactImageKindFile {
+			continue
+		}
+		desiredExists := image.BeforeExists
+		if redo {
+			desiredExists = image.AfterExists
+		}
 		if desiredExists {
-			ops = append(ops, transaction.Op{
-				Kind: transaction.OpWrite, Target: path, Data: blobs[desiredHash], Mode: FilePermissions,
-			})
-		} else {
-			ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: path})
+			continue
+		}
+		dir := filepath.Dir(filepath.Clean(image.Path))
+		if filepath.Base(filepath.Dir(dir)) != attachmentsDirName || seen[dir] {
+			continue
+		}
+		seen[dir] = true
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	return dirs
+}
+
+func attachmentDirectoryPaths(entry LedgerEntry) []string {
+	seen := make(map[string]bool)
+	var dirs []string
+	for _, image := range entry.Artifacts {
+		if image.imageKind() != ArtifactImageKindFile {
+			continue
+		}
+		dir := filepath.Dir(filepath.Clean(image.Path))
+		if filepath.Base(filepath.Dir(dir)) != attachmentsDirName || seen[dir] {
+			continue
+		}
+		seen[dir] = true
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	return dirs
+}
+
+// preflightLegacyAttachmentDirectoryDeletes applies the v1 conservative rule:
+// remove a task directory only when it currently contains at least one regular
+// file and every entry is one of the files this restore already plans to delete.
+// Unrelated siblings, symlinks, and nested directories always preserve it.
+func preflightLegacyAttachmentDirectoryDeletes(candidates []string, fileDeletes map[string]bool) ([]string, error) {
+	var deletes []string
+	for _, dir := range candidates {
+		entries, err := os.ReadDir(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("reading legacy attachment directory %q during restore preflight: %w", dir, err)
+		}
+		safe := len(entries) > 0
+		for _, entry := range entries {
+			info, err := entry.Info()
+			if err != nil {
+				return nil, fmt.Errorf("stating legacy attachment entry %q during restore preflight: %w", filepath.Join(dir, entry.Name()), err)
+			}
+			path := filepath.Join(dir, entry.Name())
+			if !info.Mode().IsRegular() || !fileDeletes[path] {
+				safe = false
+				break
+			}
+		}
+		if safe {
+			deletes = append(deletes, dir)
 		}
 	}
-	return ops, nil
+	return deletes, nil
 }
 
 // gcBlobs removes every retained blob no longer referenced by any surviving
@@ -776,31 +1067,35 @@ func removeEntryAt(stack []LedgerEntry, idx int) []LedgerEntry {
 	return out
 }
 
-// removeOverlappingRedo drops every redo entry that touches any path in
-// newPaths, so a redo whose files were changed by a later mutation is discarded
-// rather than replayed onto diverged content.
-func removeOverlappingRedo(redo []LedgerEntry, newPaths []string) []LedgerEntry {
-	if len(redo) == 0 || len(newPaths) == 0 {
+// removeOverlappingRedo drops every redo entry that overlaps the new entry.
+// Directory images overlap both their exact path and every descendant path, so
+// a later attachment mutation cannot leave an unsafe directory-level redo.
+func removeOverlappingRedo(redo []LedgerEntry, newEntry LedgerEntry) []LedgerEntry {
+	if len(redo) == 0 || len(newEntry.Artifacts) == 0 {
 		return redo
-	}
-	newSet := make(map[string]bool, len(newPaths))
-	for _, p := range newPaths {
-		newSet[p] = true
 	}
 	kept := make([]LedgerEntry, 0, len(redo))
 	for _, e := range redo {
-		overlap := false
-		for _, p := range e.paths() {
-			if newSet[p] {
-				overlap = true
-				break
-			}
-		}
-		if !overlap {
+		if !ledgerEntriesOverlap(e, newEntry) {
 			kept = append(kept, e)
 		}
 	}
 	return kept
+}
+
+func ledgerEntriesOverlap(left, right LedgerEntry) bool {
+	for _, a := range left.Artifacts {
+		for _, b := range right.Artifacts {
+			leftPath := filepath.Clean(a.Path)
+			rightPath := filepath.Clean(b.Path)
+			if leftPath == rightPath ||
+				(a.imageKind() == ArtifactImageKindDirectory && pathWithinArtifactRoot(leftPath, rightPath)) ||
+				(b.imageKind() == ArtifactImageKindDirectory && pathWithinArtifactRoot(rightPath, leftPath)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func ledgerEntryDescription(entry LedgerEntry) string {

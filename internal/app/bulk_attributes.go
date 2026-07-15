@@ -63,7 +63,7 @@ func (s *Service) bulkAttribute(taskIDs []string, undoAction, undoContext string
 
 	out := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
 	for _, r := range refs {
-		out.Tasks = append(out.Tasks, newTaskResult(r, revisionAt(results, idx[r.Project.ID])))
+		out.Tasks = append(out.Tasks, newTaskResult(r, revisionAt(results.results, idx[r.Project.ID])))
 	}
 	for _, c := range commits {
 		out.TouchedProjectIDs = append(out.TouchedProjectIDs, c.project.ID)

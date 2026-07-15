@@ -50,7 +50,7 @@ func (m *ProjectFocusViewModel) handleFilterPrefix(key string) (tea.Model, tea.C
 	return m, nil
 }
 
-// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS, F.).
+// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS).
 func (m *ProjectFocusViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil

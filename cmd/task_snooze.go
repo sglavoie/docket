@@ -127,13 +127,20 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.Snooze(task.ID, snoozeDate)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.GuardedSnoozeWithWorkflow(task.ID, snoozeDate, workflows.options(true, "Snooze Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	if !workflowResultCommitted(cascade) {
+		fmt.Printf("Task #%d is not snoozed.\n", task.ShortID)
+		return nil
+	}
+	res := workflowResultTask(cascade)
 
 	if out.JSON {
 		return emitMutation(out, "", res)

@@ -84,7 +84,7 @@ func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS, F.).
+// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS).
 func (m *FocusBoardModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil

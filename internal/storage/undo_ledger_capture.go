@@ -44,10 +44,11 @@ func captureArtifactLedgerImages(artifacts []ArtifactChange) ([]LedgerArtifact, 
 //   - the project tasks.md: before = current bytes (if any), after = content;
 //   - each artifact: before = current bytes (if any), after = data (or absent
 //     for a delete);
-//   - an attachment copy: the destination file (absent → source bytes);
-//   - an attachment delete: one image per file (bytes → absent);
-//   - an attachment move: two images per file (source loses its bytes; the
-//     destination gains them), so a reversal relocates the bytes back.
+//   - an attachment copy: the destination file (absent → source bytes), plus
+//     the task directory when this is its first file;
+//   - an attachment delete: one image per file and the task directory;
+//   - an attachment move: source/destination file images plus both task
+//     directories, so reversal restores bytes and meaningful topology.
 func captureLedgerArtifacts(cs ChangeSet, content string) ([]LedgerArtifact, error) {
 	var out []LedgerArtifact
 
@@ -119,9 +120,21 @@ func captureAttachmentCopyImage(op AttachmentOp) ([]LedgerArtifact, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read attachment source for undo image: %w", err)
 	}
+	destDir := filepath.Dir(destPath)
+	dirExists, err := directoryExists(destDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect attachment directory for undo image: %w", err)
+	}
+	var out []LedgerArtifact
+	if !dirExists {
+		out = append(out, LedgerArtifact{
+			Kind: ArtifactImageKindDirectory, Path: destDir, AfterExists: true,
+		})
+	}
 	// A copy fails closed on an existing destination, so its before state is
-	// always absent: undo simply removes the ingested file.
-	return []LedgerArtifact{{Path: destPath, AfterExists: true, After: data}}, nil
+	// always absent: undo removes the ingested file and, for a first copy, the
+	// newly created task directory after the file delete.
+	return append(out, LedgerArtifact{Path: destPath, AfterExists: true, After: data}), nil
 }
 
 func captureAttachmentMoveImages(op AttachmentOp) ([]LedgerArtifact, error) {
@@ -143,7 +156,16 @@ func captureAttachmentMoveImages(op AttachmentOp) ([]LedgerArtifact, error) {
 	if !exists {
 		return nil, nil
 	}
-	var out []LedgerArtifact
+	// Empty task attachment directories contain no user data. Moving one removes
+	// the source but creates no destination, and undo deliberately does not
+	// recreate the empty source.
+	if len(files) == 0 {
+		return nil, nil
+	}
+	out := []LedgerArtifact{
+		{Kind: ArtifactImageKindDirectory, Path: srcDir, BeforeExists: true},
+		{Kind: ArtifactImageKindDirectory, Path: destDir, AfterExists: true},
+	}
 	for _, srcFile := range files {
 		data, err := os.ReadFile(srcFile)
 		if err != nil {
@@ -196,7 +218,14 @@ func captureAttachmentDeleteImages(op AttachmentOp) ([]LedgerArtifact, error) {
 	if !exists {
 		return nil, nil
 	}
-	var out []LedgerArtifact
+	// Empty task directories are non-semantic: the concrete delete removes them,
+	// but history does not recreate them on undo.
+	if len(files) == 0 {
+		return nil, nil
+	}
+	out := []LedgerArtifact{{
+		Kind: ArtifactImageKindDirectory, Path: dir, BeforeExists: true,
+	}}
 	for _, f := range files {
 		data, err := os.ReadFile(f)
 		if err != nil {
@@ -205,6 +234,20 @@ func captureAttachmentDeleteImages(op AttachmentOp) ([]LedgerArtifact, error) {
 		out = append(out, LedgerArtifact{Path: f, BeforeExists: true, Before: data})
 	}
 	return out, nil
+}
+
+func directoryExists(path string) (bool, error) {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !info.IsDir() {
+		return false, fmt.Errorf("path is not a directory: %s", path)
+	}
+	return true, nil
 }
 
 // readFileMaybe reads a file, reporting (nil, false, nil) when it does not exist

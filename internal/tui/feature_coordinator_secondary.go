@@ -338,9 +338,10 @@ func runBatch(feature, action string, mutate func() ([]string, string, error)) t
 
 // BulkCoordinator backs the bulk-edit / bulk-capture selection overlays.
 type BulkCoordinator struct {
-	name           string
-	bulk           BulkMutator
-	focusArtifacts app.WorkflowFocusArtifactBuilder
+	name                   string
+	bulk                   BulkMutator
+	focusArtifacts         app.WorkflowFocusArtifactBuilder
+	projectStatusArtifacts app.WorkflowProjectStatusArtifactBuilder
 }
 
 // Transition moves every selected task to the target state as one transaction.
@@ -364,6 +365,7 @@ func (c BulkCoordinator) Transition(taskIDs []string, target models.WorkflowStat
 // TransactionErrorMsg, matching the other coordinator commands.
 func (c BulkCoordinator) TransitionWithWorkflow(req app.BulkTransitionRequest, summary func(changed int) string) tea.Cmd {
 	req.FocusArtifacts = c.focusArtifacts
+	req.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return func() tea.Msg {
 		res, err := c.bulk.BulkTransitionWithWorkflow(req)
 		if err != nil {
@@ -475,9 +477,10 @@ func (c BulkCoordinator) SetTags(taskIDs []string, tags []string) tea.Cmd {
 // crossOutliner.reloadCrossProjects(). Nothing routes through it yet — it is the
 // seam a later child migrates the cross-project single-task raw-save family onto.
 type TaskItemCoordinator struct {
-	name           string
-	task           TaskItemMutator
-	focusArtifacts app.WorkflowFocusArtifactBuilder
+	name                   string
+	task                   TaskItemMutator
+	focusArtifacts         app.WorkflowFocusArtifactBuilder
+	projectStatusArtifacts app.WorkflowProjectStatusArtifactBuilder
 }
 
 // SetSection commits one task's legacy GTD section field as one transaction.
@@ -695,6 +698,7 @@ func runTaskWorkflow(feature, action string, summary func(app.TaskResult) string
 // cascade as one atomic transaction.
 func (c TaskItemCoordinator) TransitionWorkflow(taskID string, target models.WorkflowState, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Change State", summary, func() (app.BulkResult, error) {
 		return c.task.StateWithWorkflow(taskID, target, opts)
 	})
@@ -703,6 +707,7 @@ func (c TaskItemCoordinator) TransitionWorkflow(taskID string, target models.Wor
 // SetPriorityWorkflow sets one task's priority and runs the workflow cascade.
 func (c TaskItemCoordinator) SetPriorityWorkflow(taskID string, priority int, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Set Priority", summary, func() (app.BulkResult, error) {
 		return c.task.SetPriorityWithWorkflow(taskID, priority, opts)
 	})
@@ -711,6 +716,7 @@ func (c TaskItemCoordinator) SetPriorityWorkflow(taskID string, priority int, op
 // SetDueDateWorkflow sets or clears one task's due date and runs the workflow cascade.
 func (c TaskItemCoordinator) SetDueDateWorkflow(taskID string, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Set Due Date", summary, func() (app.BulkResult, error) {
 		return c.task.SetDueDateWithWorkflow(taskID, due, hasTime, opts)
 	})
@@ -719,6 +725,7 @@ func (c TaskItemCoordinator) SetDueDateWorkflow(taskID string, due *time.Time, h
 // SnoozeWorkflow sets or clears one task's snooze date and runs the workflow cascade.
 func (c TaskItemCoordinator) SnoozeWorkflow(taskID string, until *time.Time, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Snooze", summary, func() (app.BulkResult, error) {
 		return c.task.SnoozeWithWorkflow(taskID, until, opts)
 	})
@@ -727,6 +734,7 @@ func (c TaskItemCoordinator) SnoozeWorkflow(taskID string, until *time.Time, opt
 // SetSectionWorkflow sets one task's GTD section and runs the workflow cascade.
 func (c TaskItemCoordinator) SetSectionWorkflow(taskID, section string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Move to Section", summary, func() (app.BulkResult, error) {
 		return c.task.SetSectionWithWorkflow(taskID, section, opts)
 	})
@@ -736,6 +744,7 @@ func (c TaskItemCoordinator) SetSectionWorkflow(taskID, section string, opts app
 // the workflow cascade.
 func (c TaskItemCoordinator) TogglePinnedWorkflow(taskID string, pinned *bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Toggle Pin", summary, func() (app.BulkResult, error) {
 		return c.task.SetPinnedWithWorkflow(taskID, pinned, opts)
 	})
@@ -744,6 +753,7 @@ func (c TaskItemCoordinator) TogglePinnedWorkflow(taskID string, pinned *bool, o
 // ToggleDimmedWorkflow flips one task's Dimmed flag and runs the workflow cascade.
 func (c TaskItemCoordinator) ToggleDimmedWorkflow(taskID string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Toggle Dim", summary, func() (app.BulkResult, error) {
 		return c.task.ToggleDimmedWithWorkflow(taskID, opts)
 	})
@@ -786,6 +796,7 @@ func (c TaskItemCoordinator) DeleteTask(taskID string, artifacts []storage.Artif
 // view's synchronously-set status intact (the shell skips an empty success line).
 func (c TaskItemCoordinator) CommitProjectWorkflow(project *models.Project, opts app.ProjectWorkflowOptions, summary string) tea.Cmd {
 	opts.FocusArtifacts = c.focusArtifacts
+	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return func() tea.Msg {
 		res, err := c.task.CommitProjectWithWorkflow(project, opts)
 		if err != nil {
@@ -1214,14 +1225,18 @@ func newSecondaryCoordinators(
 	focusBuilders ...app.WorkflowFocusArtifactBuilder,
 ) SecondaryCoordinators {
 	var focusArtifacts app.WorkflowFocusArtifactBuilder
+	var projectStatusArtifacts app.WorkflowProjectStatusArtifactBuilder
 	if len(focusBuilders) > 0 {
 		focusArtifacts = focusBuilders[0]
 	} else if manager, ok := committer.(*config.Manager); ok {
 		focusArtifacts = workflowFocusArtifactBuilder(manager)
 	}
+	if manager, ok := committer.(*config.Manager); ok {
+		projectStatusArtifacts = workflowProjectStatusArtifactBuilder(manager)
+	}
 	return SecondaryCoordinators{
-		Bulk:       BulkCoordinator{name: "bulk", bulk: svc, focusArtifacts: focusArtifacts},
-		TaskItem:   TaskItemCoordinator{name: "task-item", task: svc, focusArtifacts: focusArtifacts},
+		Bulk:       BulkCoordinator{name: "bulk", bulk: svc, focusArtifacts: focusArtifacts, projectStatusArtifacts: projectStatusArtifacts},
+		TaskItem:   TaskItemCoordinator{name: "task-item", task: svc, focusArtifacts: focusArtifacts, projectStatusArtifacts: projectStatusArtifacts},
 		Attachment: AttachmentCoordinator{name: "attachment", attach: svc},
 		Tag:        TagCoordinator{name: "tag", tag: svc},
 		Subview:    SubviewCoordinator{name: "subview", sub: svc},

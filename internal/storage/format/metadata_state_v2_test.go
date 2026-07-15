@@ -75,3 +75,22 @@ func TestStateCodecMalformedWarns(t *testing.T) {
 		t.Errorf("malformed state set State to %q, want fallback %q", parsed.State(), models.StateReady)
 	}
 }
+
+func TestRetiredStageMetadataRemainsReadOnlyMigrationInput(t *testing.T) {
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, "id: legacy-review, status: todo, stage: Review, priority: 2")
+	if len(warnings) != 0 {
+		t.Fatalf("legacy stage metadata produced warnings: %v", warnings)
+	}
+	if got := parsed.State(); got != models.StateReview {
+		t.Fatalf("legacy review stage migrated to %q, want %q", got, models.StateReview)
+	}
+
+	written := WriteMetadataV2(parsed)
+	if strings.Contains(written, "stage:") {
+		t.Fatalf("current metadata writer resurrected retired stage field: %q", written)
+	}
+	if !strings.Contains(written, "state: review") {
+		t.Fatalf("current metadata writer lost migrated workflow state: %q", written)
+	}
+}

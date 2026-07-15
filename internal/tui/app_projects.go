@@ -218,9 +218,7 @@ func (m *AppModel) ensureSystemInboxProject() error {
 		if err != nil {
 			return err
 		}
-		artifacts = append(artifacts, storage.ArtifactChange{
-			Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
-		})
+		artifacts = append(artifacts, artifact.StorageChange())
 	}
 	if tasksMissing {
 		doc, err := storage.CanonicalProjectDocument(project, nil)

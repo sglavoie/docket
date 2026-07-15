@@ -389,7 +389,7 @@ func (m *SettingsModel) IsFullHeight() bool     { return true }
 func (m *SettingsModel) StatusBarLabel() string { return "Settings" }
 
 // HandledKeys returns all keys the Settings view's Update method can process.
-// This is the complete set across all tabs and modes (palette presets, stages, etc.).
+// This is the complete set across all tabs and modes (including palette presets).
 func (m *SettingsModel) HandledKeys() []string {
 	return []string{
 		// Field navigation

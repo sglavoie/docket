@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
@@ -50,9 +52,51 @@ func workflowFocusArtifactBuilder(mgr *config.Manager) app.WorkflowFocusArtifact
 		if err != nil {
 			return nil, err
 		}
-		return []storage.ArtifactChange{{
-			Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
-		}}, nil
+		return []storage.ArtifactChange{artifact.StorageChange()}, nil
+	}
+}
+
+// workflowProjectStatusArtifactBuilder applies project-rule status changes to
+// the catalog domain and renders one optimistic-concurrency-checked artifact.
+// The app service groups it with every task, destination-project, and planning
+// write produced by the same cascade.
+func workflowProjectStatusArtifactBuilder(mgr *config.Manager) app.WorkflowProjectStatusArtifactBuilder {
+	if mgr == nil {
+		return nil
+	}
+	return func(changes []app.WorkflowProjectStatusChange) ([]storage.ArtifactChange, error) {
+		coord := mgr.DomainCoordinator()
+		catalog, err := coord.LoadCatalog()
+		if err != nil {
+			return nil, err
+		}
+		changed := false
+		for _, change := range changes {
+			found := false
+			for i := range catalog.Projects {
+				if catalog.Projects[i].ID != change.ProjectID {
+					continue
+				}
+				found = true
+				if catalog.Projects[i].StatusIcon != change.StatusIcon || catalog.Projects[i].StatusIconSource != change.StatusIconSource {
+					catalog.Projects[i].StatusIcon = change.StatusIcon
+					catalog.Projects[i].StatusIconSource = change.StatusIconSource
+					changed = true
+				}
+				break
+			}
+			if !found {
+				return nil, fmt.Errorf("workflow project status target %q is absent from the workspace catalog", change.ProjectID)
+			}
+		}
+		if !changed {
+			return nil, nil
+		}
+		artifact, err := coord.CheckedCatalogArtifact(catalog)
+		if err != nil {
+			return nil, err
+		}
+		return []storage.ArtifactChange{artifact.StorageChange()}, nil
 	}
 }
 
@@ -76,7 +120,7 @@ func syncedDomainArtifacts(
 	}
 	arts := make([]storage.ArtifactChange, 0, len(domainArts))
 	for _, da := range domainArts {
-		arts = append(arts, storage.ArtifactChange{Path: da.Path, Data: da.Data, ExpectedRevision: da.ExpectedRevision})
+		arts = append(arts, da.StorageChange())
 	}
 	return arts, nil
 }
@@ -94,9 +138,7 @@ func planningDomainArtifact(mgr *config.Manager, planning *config.PlanningState)
 	if err != nil {
 		return nil, err
 	}
-	return []storage.ArtifactChange{{
-		Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
-	}}, nil
+	return []storage.ArtifactChange{artifact.StorageChange()}, nil
 }
 
 // catalogDomainArtifact renders only workspace.json for a project metadata
@@ -112,7 +154,5 @@ func catalogDomainArtifact(mgr *config.Manager, catalog *config.WorkspaceCatalog
 	if err != nil {
 		return nil, err
 	}
-	return []storage.ArtifactChange{{
-		Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
-	}}, nil
+	return []storage.ArtifactChange{artifact.StorageChange()}, nil
 }

@@ -20,30 +20,6 @@ func PriorityIcon(priority int) string {
 	return icons.Get("priority.3")
 }
 
-// GetStatusStyle returns the appropriate style for a task status.
-func GetStatusStyle(status string) lipgloss.Style {
-	switch status {
-	case "todo":
-		return TodoStyle
-	case "in_progress":
-		return InProgressStyle
-	case "review":
-		return ReviewStyle
-	case "standby":
-		return StandbyStyle
-	case "maybe":
-		return MaybeStyle
-	case "done":
-		return DoneStyle
-	case "blocked":
-		return BlockedStyle
-	case "canceled":
-		return CanceledStyle
-	default:
-		return NormalStyle
-	}
-}
-
 // GetStateStyle returns the appropriate foreground style for a workflow state.
 // Each state reuses the style of the legacy status it collapses into, matching
 // GetStateBadge.

@@ -228,3 +228,34 @@ func TestRuntimeState_CheckedArtifactsKeepStartupRevision(t *testing.T) {
 	}
 	t.Fatal("settings artifact not emitted")
 }
+
+func TestRuntimeState_CheckedAutomationArtifactKeepsStartupRevision(t *testing.T) {
+	manager, _ := seededManager(t)
+	rs, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	automationPath := AutomationPath(rs.DataDir())
+	loaded, err := os.ReadFile(automationPath)
+	if err != nil {
+		t.Fatalf("read loaded automation: %v", err)
+	}
+	concurrent := []byte(`{"concurrent":true}`)
+	if writeErr := os.WriteFile(automationPath, concurrent, FilePermissions); writeErr != nil {
+		t.Fatalf("write concurrent automation: %v", writeErr)
+	}
+
+	artifact, err := rs.CheckedAutomationArtifact(rs.Automation())
+	if err != nil {
+		t.Fatalf("CheckedAutomationArtifact: %v", err)
+	}
+	if artifact.Path != automationPath || artifact.ExpectedRevision == nil {
+		t.Fatalf("artifact = %+v, want checked automation path", artifact)
+	}
+	if got, want := *artifact.ExpectedRevision, revisionOf(loaded); got != want {
+		t.Fatalf("expected revision = %q, want startup revision %q", got, want)
+	}
+	if *artifact.ExpectedRevision == revisionOf(concurrent) {
+		t.Fatal("automation artifact incorrectly adopted concurrent revision")
+	}
+}

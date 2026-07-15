@@ -495,6 +495,49 @@ func TestDomainFileStore_RecoversFromBackupWithRepairedRevision(t *testing.T) {
 	}
 }
 
+func TestDomainFileStore_RecoversTransactionalDomainBackup(t *testing.T) {
+	s := newIsolatedStore(t)
+	planning := NewPlanningState()
+	planning.StreakCount = 7
+	if err := s.SavePlanning(planning); err != nil {
+		t.Fatalf("seed planning: %v", err)
+	}
+	path := PlanningStatePath(s.DataDir())
+	before, revision, err := s.LoadPlanningChecked()
+	if err != nil {
+		t.Fatalf("LoadPlanningChecked: %v", err)
+	}
+	before.StreakCount = 8
+	updated, err := encodeDomainEnvelope(domainPlanning, testWorkspaceID, before)
+	if err != nil {
+		t.Fatalf("encode planning update: %v", err)
+	}
+	change := (DomainArtifact{Path: path, Data: updated, ExpectedRevision: &revision}).StorageChange()
+	if _, commitErr := storage.NewCommitService(TransactionsDir(s.DataDir()), []string{s.DataDir()}).CommitArtifacts([]storage.ArtifactChange{change}); commitErr != nil {
+		t.Fatalf("CommitArtifacts: %v", commitErr)
+	}
+
+	backup, err := os.ReadFile(path + ".bak")
+	if err != nil {
+		t.Fatalf("read transactional backup: %v", err)
+	}
+	if writeErr := os.WriteFile(path, []byte("{not json"), FilePermissions); writeErr != nil {
+		t.Fatalf("corrupt primary: %v", writeErr)
+	}
+	recovered, _, err := NewDomainFileStore(s.DataDir()).LoadPlanningChecked()
+	if err != nil {
+		t.Fatalf("LoadPlanningChecked after corruption: %v", err)
+	}
+	if recovered.StreakCount != 7 {
+		t.Fatalf("recovered streak = %d, want 7", recovered.StreakCount)
+	}
+	if repaired, err := os.ReadFile(path); err != nil {
+		t.Fatalf("read repaired primary: %v", err)
+	} else if !bytes.Equal(repaired, backup) {
+		t.Fatal("repaired primary differs from transactional backup")
+	}
+}
+
 func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T) {
 	goodBackup, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDA, &PlanningState{StreakCount: 7})
 	if err != nil {

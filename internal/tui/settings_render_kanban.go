@@ -3,18 +3,17 @@ package tui
 import "strings"
 
 // renderKanbanTab renders the Kanban settings tab content.
-// Focus indices 94-103:
+// Focus offsets relative to the Kanban tab start:
 //
-//	94  Default Mode
-//	95  Default Start Column
-//	96  Show Empty Columns
-//	97  Detail Pane Visible
-//	98  Detail Pane Height
-//	99  Enabled: Section (GTD)
-//	100 Enabled: Status
-//	101 Enabled: Priority
-//	102 Enabled: Stages
-//	103 Enabled: Score Buckets
+//	0 Default Mode
+//	1 Default Start Column
+//	2 Show Empty Columns
+//	3 Detail Pane Visible
+//	4 Detail Pane Height
+//	5 Enabled: Section (GTD)
+//	6 Enabled: Status
+//	7 Enabled: Priority
+//	8 Enabled: Score Buckets
 func (m *SettingsModel) renderKanbanTab() string {
 	var b strings.Builder
 	const labelWidth = 22

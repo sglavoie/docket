@@ -175,7 +175,7 @@ func (s *Service) ArchiveAllTasks(projectIDs []string, artifacts ...storage.Arti
 
 	out := ArchiveAllResult{Projects: make([]ArchiveResult, 0, len(planned)), TotalArchived: total}
 	for i := range planned {
-		planned[i].Revision = revisionAt(results, i)
+		planned[i].Revision = revisionAt(results.results, i)
 		out.Projects = append(out.Projects, planned[i])
 		out.TouchedProjectIDs = append(out.TouchedProjectIDs, planned[i].ProjectID)
 	}

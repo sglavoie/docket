@@ -114,19 +114,22 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		changes = collectAttrDeltas(task, attrTypeAttrs, cmd)
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
 		if attrClear {
-			return svc.ClearTypeAttrs(task.ID)
+			return workflows.service.ClearTypeAttrsWithWorkflow(task.ID, workflows.options(true, "Clear Attributes", task))
 		}
 		vals := attrTypeAttrs
 		vals.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
 		vals.StoryPointsSet = cmd.Flags().Changed("story.points")
-		return svc.ApplyTypeAttrs(task.ID, vals)
+		return workflows.service.ApplyTypeAttrsWithWorkflow(task.ID, vals, workflows.options(true, "Set Attributes", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	if out.JSON {
 		return emitMutation(out, "", res)

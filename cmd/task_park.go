@@ -66,13 +66,16 @@ func runTaskPark(cmd *cobra.Command, args []string) error {
 	// Route the mutation through the application service (atomic, revision-checked,
 	// undoable via the workspace ledger). The completed-task guard now lives in
 	// Service.Park; the CLI keeps only reference resolution and presentation.
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.Park(task.ID, note)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.ParkWithWorkflow(task.ID, note, workflows.options(true, "Park Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	if out.JSON {
 		return emitMutation(out, "", res)
@@ -117,13 +120,33 @@ func runTaskUnpark(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.Unpark(task.ID)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.UnparkWithWorkflow(task.ID, workflows.options(true, "Unpark Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	if !workflowResultCommitted(cascade) {
+		if out.JSON {
+			freshProject, _, loadErr := LoadRuntimeCurrentProject()
+			if loadErr != nil {
+				return loadErr
+			}
+			freshTask, findErr := FindTaskByIdentifier(freshProject, task.ID)
+			if findErr != nil {
+				return findErr
+			}
+			return outputSingleTaskJSON(freshTask)
+		}
+		if !out.Quiet {
+			fmt.Printf("Task #%d is not parked.\n", task.ShortID)
+		}
+		return nil
+	}
+	res := workflowResultTask(cascade)
 
 	if out.JSON {
 		return emitMutation(out, "", res)

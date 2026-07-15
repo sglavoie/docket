@@ -420,7 +420,7 @@ func TestFilterGroup_Base(t *testing.T) {
 	if pn.Key != "F" {
 		t.Errorf("FilterGroup: want key 'F', got %q", pn.Key)
 	}
-	// Ft, Fs, Fa, FS + direct: #, p, h, i, k, x = 10 children (no Fd, no F.)
+	// Ft, Fs, Fa, FS + direct: #, p, h, i, k, x = 10 children (no Fd).
 	if len(pn.Children) != 10 {
 		t.Errorf("FilterGroup (base): want 10 children, got %d", len(pn.Children))
 	}

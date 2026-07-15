@@ -162,6 +162,13 @@ type BulkResult struct {
 	// FocusChanges reports the Focus Queue membership changes that were applied
 	// through a revision-checked planning artifact in this same transaction.
 	FocusChanges []WorkflowFocusChange
+	// Conflicts reports workflow rules that competed to set the same task field.
+	// The field is left unchanged; adapters may warn while existing TUI callers
+	// can continue ignoring the presentation-neutral details.
+	Conflicts []WorkflowConflict
+	// ProjectStatusChanges reports catalog-owned project status effects already
+	// committed through a revision-checked artifact in this transaction.
+	ProjectStatusChanges []WorkflowProjectStatusChange
 }
 
 // deleteTasks removes every root's subtree from its source project, carries the

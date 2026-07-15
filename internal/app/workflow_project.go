@@ -30,6 +30,9 @@ type ProjectWorkflowOptions struct {
 	// FocusArtifacts applies set_active side effects to a revision-checked
 	// planning artifact committed with this project mutation.
 	FocusArtifacts WorkflowFocusArtifactBuilder
+	// ProjectStatusArtifacts applies project-rule status effects to a checked
+	// workspace-catalog artifact committed with this project mutation.
+	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
 }
 
 // CommitProjectWithWorkflow commits an already-mutated project through the
@@ -57,51 +60,43 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 		undoAction = "Task Modified"
 	}
 
-	// The caller supplies an already-mutated project, but its persistence base is
-	// still the exact on-disk document. Load one repository snapshot for every
-	// path (including a bare mutation) so the commit is revision-checked and can
-	// preserve opaque content instead of falling back to last-write-wins.
-	snap, err := s.repo.Snapshot()
-	if err != nil {
-		return BulkResult{}, err
-	}
-	if snap.ProjectByID(project.ID) == nil {
-		return BulkResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, project.ID)
-	}
-
-	triggerCounts := make(map[string]int)
-	var focusChanges []WorkflowFocusChange
-	commits := []projectCommit{{
-		project:          project,
-		expectedRevision: snap.Revision(project.ID),
-		base:             snap.Document(project.ID),
-	}}
-
-	if len(opts.Rules) > 0 {
-		committed := map[string]bool{project.ID: true}
-		added, focus, cerr := s.applyBulkWorkflowCascade(snap, project, opts.Rules, opts.PrevStates, committed, triggerCounts)
-		if cerr != nil {
-			return BulkResult{}, cerr
-		}
-		commits = append(commits, added...)
-		focusChanges = append(focusChanges, focus...)
-	}
-	resolvedFocus, err := attachWorkflowFocusArtifacts(commits, focusChanges, opts.FocusArtifacts)
+	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
+		rules:                  opts.Rules,
+		focusArtifacts:         opts.FocusArtifacts,
+		projectStatusArtifacts: opts.ProjectStatusArtifacts,
+		undoAction:             undoAction,
+		undoContext:            opts.UndoContext,
+		forceCommit:            true,
+		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
+			if snap.ProjectByID(project.ID) == nil {
+				return workflowMutationPlan{}, fmt.Errorf("%w: %s", ErrProjectNotFound, project.ID)
+			}
+			plan := workflowMutationPlan{
+				commits: []projectCommit{{
+					project:          project,
+					expectedRevision: snap.Revision(project.ID),
+					base:             snap.Document(project.ID),
+				}},
+				sources: []*models.Project{project},
+			}
+			if opts.PrevStates != nil {
+				plan.previousStates = map[string]map[string]*models.Task{project.ID: opts.PrevStates}
+			}
+			return plan, nil
+		},
+	})
 	if err != nil {
 		return BulkResult{}, err
 	}
 
-	if _, err := s.commitProjects(commits, undoAction, opts.UndoContext); err != nil {
-		return BulkResult{}, err
+	out := BulkResult{
+		RuleTriggerCounts:    orchestrated.ruleTriggerCounts,
+		FocusChanges:         orchestrated.focusChanges,
+		Conflicts:            orchestrated.conflicts,
+		ProjectStatusChanges: orchestrated.projectStatusChanges,
 	}
-
-	out := BulkResult{}
-	if len(triggerCounts) > 0 {
-		out.RuleTriggerCounts = triggerCounts
-	}
-	out.FocusChanges = resolvedFocus
-	for _, c := range commits {
-		out.TouchedProjectIDs = append(out.TouchedProjectIDs, c.project.ID)
+	for _, commit := range orchestrated.commits {
+		out.TouchedProjectIDs = append(out.TouchedProjectIDs, commit.project.ID)
 	}
 	return out, nil
 }

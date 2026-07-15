@@ -120,9 +120,9 @@ func (s *Service) ResetSandbox(projectID string) (SandboxResetResult, error) {
 		ProjectName: reset.Name,
 		Cleared:     plan.counts,
 	}
-	if len(results) > 0 && results[0] != nil {
-		result.Revision = results[0].Revision
-		result.TransactionID = results[0].TransactionID
+	if len(results.results) > 0 && results.results[0] != nil {
+		result.Revision = results.results[0].Revision
+		result.TransactionID = results.results[0].TransactionID
 	}
 	return result, nil
 }

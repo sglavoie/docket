@@ -69,13 +69,16 @@ func runTaskDim(_ *cobra.Command, args []string) error {
 	// mutates a freshly-snapshotted task, so its result carries no dimmed flag.
 	nowDimmed := !task.Dimmed
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.ToggleDimmed(task.ID)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.ToggleDimmedWithWorkflow(task.ID, workflows.options(true, "Toggle Dim", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	if nowDimmed {
 		fmt.Printf("Dimmed task #%d: %s\n", task.ShortID, res.Title)
@@ -114,13 +117,20 @@ func runTaskUndim(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.Undim(task.ID)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.UndimWithWorkflow(task.ID, workflows.options(true, "Undim Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	if !workflowResultCommitted(cascade) {
+		fmt.Printf("Task #%d is not dimmed\n", task.ShortID)
+		return nil
+	}
+	res := workflowResultTask(cascade)
 
 	fmt.Printf("Undimmed task #%d: %s\n", task.ShortID, res.Title)
 	return nil

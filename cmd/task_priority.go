@@ -74,7 +74,8 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	svc := newWorkspaceAppService(workspace)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
 
 	var errs []string
 	succeeded := 0
@@ -96,13 +97,15 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		res, mutErr := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.SetPriority(task.ID, priority)
+		cascade, mutErr := withResultRetry(func() (app.BulkResult, error) {
+			return workflows.service.SetPriorityWithWorkflow(task.ID, priority, workflows.options(true, "Set Priority", task))
 		})
 		if mutErr != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, translateAppError(mutErr)))
 			continue
 		}
+		workflows.observe(cascade)
+		res := workflowResultTask(cascade)
 
 		succeeded++
 		if out.JSON {

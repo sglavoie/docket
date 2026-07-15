@@ -110,14 +110,6 @@ func completeProjectSlugs() func(*cobra.Command, []string, string) ([]string, co
 	}
 }
 
-// completeConfigStages remains as a compatibility registration for commands
-// whose retired stage flag may still be present in older completion scripts.
-func completeConfigStages() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
 // completeTemplates returns a completion function that lists task template IDs and names.
 func completeTemplates() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

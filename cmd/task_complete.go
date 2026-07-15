@@ -204,19 +204,27 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 
 	state := actionToState[action]
 	verb := actionVerbs[action]
-	svc := newWorkspaceAppService(workspace)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
 
 	var errs []string
 	succeeded := 0
 
 	transition := func(display, taskID string) error {
-		res, err := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.Transition(app.StateRequest{TaskID: taskID, Target: state})
+		task, err := resolveAppTask(workspace.Manager, taskID)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", display, err))
+			return nil
+		}
+		cascade, err := withResultRetry(func() (app.BulkResult, error) {
+			return workflows.service.StateWithWorkflow(task.ID, state, workflows.options(true, "Change State", task))
 		})
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", display, translateAppError(err)))
 			return nil
 		}
+		workflows.observe(cascade)
+		res := workflowResultTask(cascade)
 		succeeded++
 		if err := emitMutation(out, verb, res); err != nil {
 			return err

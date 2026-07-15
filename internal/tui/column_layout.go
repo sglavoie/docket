@@ -19,7 +19,7 @@ func ComputeTreeColumnLayout(nodes []*TreeNode, columnConfig *ColumnConfig) *Col
 	for _, node := range nodes {
 		task := node.Task
 
-		// Priority (inline, before stage badge)
+		// Priority (inline before the task title)
 		if columnConfig.ShouldShowPriority(task.Priority) {
 			badge := renderPriorityBadge(task.Priority)
 			if w := lipgloss.Width(badge); w > 0 {
@@ -80,11 +80,8 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 // hideLowPriority mirrors the HideLowPriority flag on TaskLine.
 //
 // Equivalent to ComputeBadgeWidths with IncludeStatus/IncludeType enabled.
-// Stage is no longer measured anywhere: shared TaskLine rows do not render a
-// stage column inline; views that need stage surface it through the metadata
-// strip (see task_metadata_strip.go) instead. Callers that need a Project
-// column should call ComputeBadgeWidths directly with a ProjectNameFor
-// callback.
+// Callers that need a Project column should call ComputeBadgeWidths directly
+// with a ProjectNameFor callback.
 func ComputeTaskLineColumnLayout(tasks []*models.Task, hideLowPriority bool) *ColumnLayout {
 	return ComputeBadgeWidths(tasks, BadgeWidthOpts{
 		HideLowPriority: hideLowPriority,

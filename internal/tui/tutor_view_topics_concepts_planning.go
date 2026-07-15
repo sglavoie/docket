@@ -77,32 +77,37 @@ project tags. In cross-project views, Ctrl+T opens the global tag
 manager for cross-project pinned tag tabs.`,
 		},
 		{
-			Title:    "Stages",
+			Title:    "Workflow States",
 			Category: "Concepts",
-			Content: `# What Are Stages
+			Content: `# Canonical Workflow States
 
-Stages track workflow progress within a task, independent of
-its section or status. A task in the Active section with
-in_progress status might be in the Design stage.
+Every task has exactly one workflow state:
 
-# How Stages Work
+  inbox        Newly captured work awaiting triage
+  ready        Triaged work with no scheduling commitment
+  next         Work explicitly queued to do next
+  in_progress  Work currently underway
+  waiting      Work suspended on an external dependency
+  paused       Work deliberately suspended
+  review       Work awaiting review, QA, or approval
+  someday      Uncommitted someday/maybe work
+  done         Successfully completed work
+  canceled     Abandoned work
 
-Stages are a free-text field. Default stages are Brainstorm,
-Design, Implement, Test, Review, and Deploy, but you can
-configure any stages you want in Settings.
+done and canceled are terminal. Reopening either returns the task
+to inbox so it can be triaged again.
 
-# Stages vs Sections vs Status
+# Comma-Prefix Mappings
 
-Sections (Active, Next, Inbox) organize where tasks live in
-your workflow. Status (todo, in_progress, done) tracks the
-lifecycle state. Stages add a third dimension: what phase of
-work the task is in. All three are independent.
+The TUI comma prefix exposes the current direct transitions:
 
-# Configuration
+  ,s  in_progress     ,d  done
+  ,b  waiting         ,o  inbox (reopen)
+  ,x  canceled        ,r  review
+  ,S  paused          ,m  someday
 
-Stages are global (not per-project). Manage them in Settings
-under the Stages tab, or use the command palette to navigate
-there directly.`,
+Use the CLI task state command for any explicit state, including
+ready and next.`,
 		},
 		{
 			Title:    "Scoring",
@@ -172,31 +177,6 @@ its previous section and appears in your task list again.
 Snooze is useful for tasks you cannot act on right now but
 do not want to forget. Instead of leaving them in your active
 list as noise, snooze them until the right time.`,
-		},
-		{
-			Title:    "Statuses",
-			Category: "Concepts",
-			Content: `# Available Statuses
-
-Tasks move through seven statuses: todo, in_progress, review,
-standby, done, blocked, canceled.
-
-# Transitions
-
-todo is the default status for new tasks. Moving to in_progress
-means work has started. review indicates the task is awaiting
-code review, QA, or approval. standby means the task has ongoing
-work but is paused (e.g., more urgent work arrived). done marks
-a task as finished. blocked indicates the task cannot proceed
-until an external dependency is resolved. canceled removes the
-task from active work without completing it.
-
-# Status Flow
-
-A typical task flows from todo to in_progress to review to
-done. Tasks can be blocked at any point and reopened back to
-todo. Canceled tasks are terminal and do not appear in active
-views.`,
 		},
 	}
 }

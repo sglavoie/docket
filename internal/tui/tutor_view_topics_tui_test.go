@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestTutorBulkOperationsTopicDocumentsSelectedTaskFieldActions(t *testing.T) {
@@ -13,7 +15,7 @@ func TestTutorBulkOperationsTopicDocumentsSelectedTaskFieldActions(t *testing.T)
 		"!1-!5  Set priority",
 		"Set, clear, or pick due dates",
 		"Set, clear, or pick snooze dates",
-		"Set or clear stage",
+		"Workflow-state",
 		"Move to section",
 		"Replace tags",
 		"cross-project views",
@@ -33,6 +35,64 @@ func TestTutorBulkOperationsTopicDocumentsSelectedTaskFieldActions(t *testing.T)
 	stale := "Multi-select is available in the outliner, project tree, and\nall-tasks views."
 	if strings.Contains(topic.Content, stale) {
 		t.Fatalf("Bulk Operations topic still contains stale view scope text")
+	}
+}
+
+func TestRetiredTaskStageTutorAndSettingsSurfacesStayRemoved(t *testing.T) {
+	forbiddenContent := []string{
+		"task stage",
+		"--stage",
+		"stages tab",
+		"setting stages",
+		"set or clear stage",
+		"filter by stage",
+		"configured stages",
+		"workflow stage",
+		"s1-s9",
+	}
+	for _, topic := range tutorTopics() {
+		title := strings.ToLower(topic.Title)
+		if title == "stages" || title == "statuses" {
+			t.Fatalf("tutor still exposes retired topic %q", topic.Title)
+		}
+		content := strings.ToLower(topic.Content)
+		for _, forbidden := range forbiddenContent {
+			if strings.Contains(content, forbidden) {
+				t.Fatalf("tutor topic %q still advertises %q:\n%s", topic.Title, forbidden, topic.Content)
+			}
+		}
+	}
+
+	for _, name := range settingsTabNames {
+		if name == "Stages" {
+			t.Fatal("settings registry still exposes the retired Stages tab")
+		}
+	}
+	if len(settingsTabNames) != len(tabFieldCount) || len(settingsTabNames) != len(settingsTabSections) {
+		t.Fatalf("settings registries are misaligned: names=%d counts=%d sections=%d",
+			len(settingsTabNames), len(tabFieldCount), len(settingsTabSections))
+	}
+	if tabAppearance != len(settingsTabNames)-1 {
+		t.Fatalf("Appearance tab index = %d, want compacted final index %d", tabAppearance, len(settingsTabNames)-1)
+	}
+
+	workflow := findTutorTopicByTitle(t, "Workflow States")
+	for _, state := range models.AllWorkflowStates() {
+		if !strings.Contains(workflow.Content, state.String()) {
+			t.Errorf("Workflow States topic omits canonical state %q", state)
+		}
+	}
+	for _, mapping := range []string{",s  in_progress", ",d  done", ",b  waiting", ",o  inbox", ",x  canceled", ",r  review", ",S  paused", ",m  someday"} {
+		if !strings.Contains(workflow.Content, mapping) {
+			t.Errorf("Workflow States topic omits comma-prefix mapping %q", mapping)
+		}
+	}
+
+	pipeline := findTutorTopicByTitle(t, "The Task Pipeline")
+	for _, allowed := range []string{"six pipeline stages", "Capture", "Triage", "Plan", "Work", "Review", "Support"} {
+		if !strings.Contains(pipeline.Content, allowed) {
+			t.Errorf("pipeline topic lost legitimate pipeline-stage wording %q", allowed)
+		}
 	}
 }
 

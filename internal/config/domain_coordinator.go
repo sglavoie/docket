@@ -156,6 +156,19 @@ func (c *DomainCoordinator) LoadPlanning() (*PlanningState, error) {
 	return planning, nil
 }
 
+// LoadAutomation reads only the automation domain and records its raw revision
+// for a subsequent CheckedAutomationArtifact call. It is the scoped load seam
+// for template-use counts, workflow counters, and other automation-only
+// mutations that must join a task transaction without rewriting planning.
+func (c *DomainCoordinator) LoadAutomation() (*AutomationConfig, error) {
+	automation, rev, err := c.store.LoadAutomationChecked()
+	if err != nil {
+		return nil, err
+	}
+	c.revs[domainAutomation] = rev
+	return automation, nil
+}
+
 // LoadCatalog reads only the workspace catalog and records its raw revision for
 // a subsequent CheckedCatalogArtifact call. It is the catalog-scoped counterpart
 // to LoadPlanning for project metadata mutations folded into a larger workspace
@@ -225,6 +238,34 @@ func (c *DomainCoordinator) CheckedPlanningArtifact(planning *PlanningState) (Do
 	}
 	rev := c.revs[domainPlanning]
 	return DomainArtifact{Path: PlanningStatePath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
+}
+
+// CheckedAutomationArtifact renders only automation.json against the revision
+// observed by LoadAutomation (or LoadDomains), leaving catalog, planning, and
+// settings untouched. Template use-count updates use this seam so a workflow-
+// generated planning artifact can coexist in the same transaction without a
+// duplicate target or an unrelated stale baseline.
+func (c *DomainCoordinator) CheckedAutomationArtifact(automation *AutomationConfig) (DomainArtifact, error) {
+	if automation == nil {
+		return DomainArtifact{}, fmt.Errorf("automation config is required")
+	}
+	_, catalogRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
+		return DomainArtifact{}, err
+	}
+	if catalogRev == "" {
+		return DomainArtifact{}, fmt.Errorf("%w: checked automation artifacts require an existing workspace catalog", ErrWorkspaceIDRequired)
+	}
+	workspaceID, err := c.store.validatedWorkspaceID()
+	if err != nil {
+		return DomainArtifact{}, err
+	}
+	data, err := encodeDomainEnvelope(domainAutomation, workspaceID, automation)
+	if err != nil {
+		return DomainArtifact{}, err
+	}
+	rev := c.revs[domainAutomation]
+	return DomainArtifact{Path: AutomationPath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
 }
 
 // AdoptArtifacts advances the coordinator's baseline to the revisions of a set of

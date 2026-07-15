@@ -245,6 +245,16 @@ func (rs *RuntimeState) CheckedPlanningArtifact(planning *PlanningState) (Domain
 	return rs.coord.CheckedPlanningArtifact(planning)
 }
 
+// CheckedAutomationArtifact renders an automation-only mutation against the
+// revision this runtime observed at startup, leaving catalog, planning, and
+// settings untouched. It is used when automation state must join a task commit.
+func (rs *RuntimeState) CheckedAutomationArtifact(automation *AutomationConfig) (DomainArtifact, error) {
+	if rs == nil || rs.coord == nil {
+		return DomainArtifact{}, fmt.Errorf("runtime state is unavailable")
+	}
+	return rs.coord.CheckedAutomationArtifact(automation)
+}
+
 // CommitCatalog persists a mutated workspace-catalog domain under an optimistic
 // concurrency check and refreshes the snapshot to the committed state, so the
 // views observe the change without a render-time disk load. Only the catalog

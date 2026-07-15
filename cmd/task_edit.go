@@ -110,17 +110,21 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// local because they need the loaded task; only the mutation moves. The task
 	// was resolved from the current project, so its UUID targets the use case
 	// directly.
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.Edit(app.EditRequest{
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	undoContext := fmt.Sprintf("#%d %s", task.ShortID, newTitle)
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.EditWithWorkflow(app.EditRequest{
 			TaskID:      task.ID,
 			Title:       &newTitle,
 			Description: &newDesc,
-		})
+		}, workflows.optionsWithContext(true, "Edit Task", undoContext))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	return emitMutation(out, "Updated", res)
 }

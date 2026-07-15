@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -36,6 +37,9 @@ type SingleTaskWorkflowOptions struct {
 	// planning artifact that is committed with the task changes. It is required
 	// only when the evaluated rules request Focus Queue changes.
 	FocusArtifacts WorkflowFocusArtifactBuilder
+	// ProjectStatusArtifacts applies project-rule status effects to a checked
+	// workspace-catalog artifact committed with the project changes.
+	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
 }
 
 // mutateWithWorkflow is the shared runner for a workflow-aware single-task
@@ -52,57 +56,82 @@ type SingleTaskWorkflowOptions struct {
 // batch result plumbing (reload every touched project, persist trigger counts to
 // config) the bulk-with-workflow path already uses.
 func (s *Service) mutateWithWorkflow(taskID string, opts SingleTaskWorkflowOptions, mutate func(TaskRef, *WorkspaceResolver) error) (BulkResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
-	if err != nil {
-		return BulkResult{}, err
-	}
-	resolver := NewWorkspaceResolver(snap)
+	return s.mutateWithWorkflowGuarded(taskID, opts, nil, mutate)
+}
 
-	var prev map[string]*models.Task
-	if opts.Contextual && len(opts.Rules) > 0 {
-		prev = workflow.CaptureTaskStates(ref.Project.Tasks)
-	}
-
-	if mutateErr := mutate(ref, resolver); mutateErr != nil {
-		return BulkResult{}, mutateErr
-	}
-	ref.Task.UpdatedAt = s.clock.Now()
-
-	commits := []projectCommit{{project: ref.Project, expectedRevision: revision, base: ref.Base}}
-	triggerCounts := make(map[string]int)
-	var focusChanges []WorkflowFocusChange
-	if len(opts.Rules) > 0 {
-		committed := map[string]bool{ref.Project.ID: true}
-		added, focus, cerr := s.applyBulkWorkflowCascade(snap, ref.Project, opts.Rules, prev, committed, triggerCounts)
-		if cerr != nil {
-			return BulkResult{}, cerr
-		}
-		commits = append(commits, added...)
-		focusChanges = append(focusChanges, focus...)
-	}
-	resolvedFocus, err := attachWorkflowFocusArtifacts(commits, focusChanges, opts.FocusArtifacts)
-	if err != nil {
-		return BulkResult{}, err
-	}
-
+// mutateWithWorkflowGuarded is mutateWithWorkflow plus a fresh-snapshot no-op
+// predicate. Legacy CLI commands used read-only prechecks for operations such as
+// clearing an already-empty collection. Rechecking those predicates here keeps a
+// stale-revision retry from evaluating rules or creating a ledger entry after a
+// concurrent writer has already made the requested mutation unnecessary.
+func (s *Service) mutateWithWorkflowGuarded(
+	taskID string,
+	opts SingleTaskWorkflowOptions,
+	skip func(TaskRef) bool,
+	mutate func(TaskRef, *WorkspaceResolver) error,
+) (BulkResult, error) {
 	undoAction := opts.UndoAction
 	if undoAction == "" {
 		undoAction = "Task Modified"
 	}
-	results, err := s.commitProjects(commits, undoAction, opts.UndoContext)
+
+	var ref TaskRef
+	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
+		rules:                  opts.Rules,
+		focusArtifacts:         opts.FocusArtifacts,
+		projectStatusArtifacts: opts.ProjectStatusArtifacts,
+		undoAction:             undoAction,
+		undoContext:            opts.UndoContext,
+		forceCommit:            true,
+		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
+			if strings.TrimSpace(taskID) == "" {
+				return workflowMutationPlan{}, invalidInput("task", "id is required")
+			}
+			resolved, ok := snap.Lookup(taskID)
+			if !ok {
+				return workflowMutationPlan{}, fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+			}
+			ref = resolved
+			if skip != nil && skip(ref) {
+				return workflowMutationPlan{skipCommit: true}, nil
+			}
+			plan := workflowMutationPlan{
+				commits: []projectCommit{{
+					project:          ref.Project,
+					expectedRevision: snap.Revision(ref.Project.ID),
+					base:             ref.Base,
+				}},
+				sources: []*models.Project{ref.Project},
+				mutate: func(resolver *WorkspaceResolver) error {
+					if err := mutate(ref, resolver); err != nil {
+						return err
+					}
+					ref.Task.UpdatedAt = s.clock.Now()
+					return nil
+				},
+			}
+			if opts.Contextual && len(opts.Rules) > 0 {
+				plan.previousStates = map[string]map[string]*models.Task{
+					ref.Project.ID: workflow.CaptureTaskStates(ref.Project.Tasks),
+				}
+			}
+			return plan, nil
+		},
+	})
 	if err != nil {
 		return BulkResult{}, err
 	}
 
-	out := BulkResult{Tasks: []TaskResult{newTaskResult(ref, revisionAt(results, 0))}}
-	if len(triggerCounts) > 0 {
-		out.RuleTriggerCounts = triggerCounts
-	}
-	out.FocusChanges = resolvedFocus
-	for _, c := range commits {
-		out.TouchedProjectIDs = append(out.TouchedProjectIDs, c.project.ID)
-	}
+	out := bulkResultFromWorkflow(orchestrated)
+	out.Tasks = []TaskResult{taskResultFromWorkflow(orchestrated, ref, ref.Project.ID)}
 	return out, nil
+}
+
+func withDefaultWorkflowUndoAction(opts SingleTaskWorkflowOptions, action string) SingleTaskWorkflowOptions {
+	if opts.UndoAction == "" {
+		opts.UndoAction = action
+	}
+	return opts
 }
 
 // StateWithWorkflow moves one task to a target workflow state and runs the
@@ -165,13 +194,21 @@ func (s *Service) SetDueDateWithWorkflow(taskID string, due *time.Time, hasTime 
 // the CLI-facing Snooze use case).
 func (s *Service) SnoozeWithWorkflow(taskID string, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
-		if until == nil {
-			ref.Task.SnoozedUntil = nil
-			return nil
-		}
-		u := *until
-		ref.Task.SnoozedUntil = &u
-		return nil
+		return s.applySnooze(ref.Task, until, false)
+	})
+}
+
+// GuardedSnoozeWithWorkflow is the CLI-facing snooze variant. Unlike the
+// intentionally gate-free secondary-view SnoozeWithWorkflow method, it rejects
+// terminal and in-progress targets through the same mutation helper as Snooze.
+// Clearing an already-clear snooze is a true no-op: no rules are evaluated and
+// no transaction or ledger entry is created.
+func (s *Service) GuardedSnoozeWithWorkflow(taskID string, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Snooze Task")
+	return s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
+		return until == nil && ref.Task.SnoozedUntil == nil
+	}, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return s.applySnooze(ref.Task, until, true)
 	})
 }
 
@@ -211,7 +248,6 @@ func (s *Service) SetPinnedWithWorkflow(taskID string, pinned *bool, opts Single
 // dimming, per the model) and runs the workflow cascade.
 func (s *Service) ToggleDimmedWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
-		ref.Task.ToggleDimmed()
-		return nil
+		return toggleDimmedTask(ref.Task)
 	})
 }

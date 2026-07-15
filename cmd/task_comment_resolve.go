@@ -55,24 +55,26 @@ func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withResultRetry(func() (app.CommentResult, error) {
-		return svc.ToggleCommentResolved(task.ID, index)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	res, err := withResultRetry(func() (app.CommentWorkflowResult, error) {
+		return workflows.service.ToggleCommentResolvedWithWorkflow(task.ID, index, workflows.options(true, "Resolve Comment", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(res.Cascade)
 
 	state := "resolved"
-	if !res.Resolved {
+	if !res.Comment.Resolved {
 		state = "unresolved"
 	}
 
 	if out.JSON {
-		return printMutationJSON(res.Task)
+		return printMutationJSON(res.Comment.Task)
 	}
 	if !out.Quiet {
-		fmt.Printf("Comment %d marked as %s on #%d: %s\n", res.Index, state, res.Task.ShortID, res.Task.Title)
+		fmt.Printf("Comment %d marked as %s on #%d: %s\n", res.Comment.Index, state, res.Comment.Task.ShortID, res.Comment.Task.Title)
 	}
 	return nil
 }

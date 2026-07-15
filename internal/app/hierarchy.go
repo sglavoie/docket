@@ -208,19 +208,40 @@ func (s *Service) ChangeTaskType(taskID string, change TaskTypeChange) (TaskResu
 		return TaskResult{}, invalidInput("type change", "unknown type change operation")
 	}
 	return s.mutateTask(taskID, undoAction, "", func(ref TaskRef) error {
-		switch change {
-		case PromoteType:
-			return ref.Task.Promote()
-		case DemoteType:
-			return ref.Task.Demote()
-		case CycleTypeRight:
-			return ref.Task.CycleLeafType(false)
-		case CycleTypeLeft:
-			return ref.Task.CycleLeafType(true)
-		default:
-			return invalidInput("type change", "unknown type change operation")
-		}
+		return applyTaskTypeChange(ref.Task, change)
 	})
+}
+
+// ChangeTaskTypeWithWorkflow applies the same structural type mutation as
+// ChangeTaskType and evaluates workflow rules contextually against the true
+// pre-change type. This is required for type_changed event rules.
+func (s *Service) ChangeTaskTypeWithWorkflow(taskID string, change TaskTypeChange, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	undoAction, ok := typeChangeUndoAction(change)
+	if !ok {
+		return BulkResult{}, invalidInput("type change", "unknown type change operation")
+	}
+	opts.Contextual = true
+	if opts.UndoAction == "" {
+		opts.UndoAction = undoAction
+	}
+	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return applyTaskTypeChange(ref.Task, change)
+	})
+}
+
+func applyTaskTypeChange(task *models.Task, change TaskTypeChange) error {
+	switch change {
+	case PromoteType:
+		return task.Promote()
+	case DemoteType:
+		return task.Demote()
+	case CycleTypeRight:
+		return task.CycleLeafType(false)
+	case CycleTypeLeft:
+		return task.CycleLeafType(true)
+	default:
+		return invalidInput("type change", "unknown type change operation")
+	}
 }
 
 // typeChangeUndoAction maps a type change to its undo-ledger label.
@@ -339,7 +360,7 @@ func (s *Service) moveToProject(taskID, destProjectID string, destSection *strin
 		return MoveResult{}, err
 	}
 
-	srcNewRev, destNewRev := revisionAt(results, 0), revisionAt(results, 1)
+	srcNewRev, destNewRev := revisionAt(results.results, 0), revisionAt(results.results, 1)
 	return MoveResult{
 		Task:            newTaskResult(TaskRef{Task: ref.Task, Project: dest}, destNewRev),
 		MovedCount:      len(moveRes.MovedTasks),

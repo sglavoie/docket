@@ -27,8 +27,8 @@ func (m *OutlinerModel) activeFilterParts() []string {
 		parts = append(parts, SavedFilterBadgeStyle.Render("View: "+m.activeSavedFilter))
 	}
 
-	// Add common filter parts (type, status, priority, tags, due date, attrs,
-	// score, actionable, hide-dimmed, stage). commonFilterParts already emits
+	// Add common filter parts (type, state, priority, tags, due date, attrs,
+	// score, actionable, hide-dimmed). commonFilterParts already emits
 	// "ready" for Actionable, so do not re-append it below.
 	parts = append(parts, commonFilterParts(&m.filter.CommonFilterState)...)
 

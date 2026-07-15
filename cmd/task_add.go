@@ -82,7 +82,6 @@ func init() {
 
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
-	_ = taskAddCmd.RegisterFlagCompletionFunc("stage", completeConfigStages())
 	_ = taskAddCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
 	_ = taskAddCmd.RegisterFlagCompletionFunc("template", completeTemplates())
 }
@@ -168,7 +167,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			fmt.Sprintf("must be %d-%d", models.PriorityMin, models.PriorityMax))
 	}
 
-	// Resolve tags (template tags first, then flags), section, stage, description,
+	// Resolve tags (template tags first, then flags), section, description,
 	// recurrence, parent, checklist, and type attributes into presentation-neutral
 	// primitives. The application-layer AddTask use case owns task construction,
 	// validation, ID/short-ID minting, and the single atomic commit.
@@ -255,16 +254,17 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return cloneErr
 		}
 		domains.Automation.IncrementTemplateUseCount(tmpl.ID)
-		arts, artifactErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
+		arts, artifactErr := encodeAutomationArtifact(workspace.Runtime, domains.Automation)
 		if artifactErr != nil {
 			return artifactErr
 		}
 		artifacts = arts
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.AddTask(app.AddTaskRequest{
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.AddTaskWithWorkflow(app.AddTaskRequest{
 			ProjectID:   project.ID,
 			Title:       title,
 			Type:        taskType,
@@ -277,11 +277,13 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			Checklist:   checklist,
 			Attrs:       addTypeAttrs,
 			Artifacts:   artifacts,
-		})
+		}, workflows.options(false, "Add Task", nil))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(cascade)
+	res := workflowResultTask(cascade)
 
 	if err := emitMutation(out, "Created", res); err != nil {
 		return err

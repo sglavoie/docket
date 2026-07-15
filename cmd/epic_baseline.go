@@ -50,25 +50,27 @@ func runEpicBaseline(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withResultRetry(func() (app.EpicBaselineResult, error) {
-		return svc.BaselineEpic(task.ID)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	res, err := withResultRetry(func() (app.EpicBaselineWorkflowResult, error) {
+		return workflows.service.BaselineEpicWithWorkflow(task.ID, workflows.options(true, "Baseline Epic", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(res.Cascade)
 
 	if out.Quiet {
 		return nil
 	}
 	if out.JSON {
-		return printMutationJSON(res.Task)
+		return printMutationJSON(res.Baseline.Task)
 	}
 
 	fmt.Printf("Baselined Epic #%d: %s (%d children)\n",
-		res.Task.ShortID,
-		res.Task.Title,
-		res.ChildCount,
+		res.Baseline.Task.ShortID,
+		res.Baseline.Task.Title,
+		res.Baseline.ChildCount,
 	)
 	return nil
 }

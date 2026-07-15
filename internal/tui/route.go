@@ -214,7 +214,7 @@ var routeAccentCategories = map[ViewType]AccentCategory{
 	// Work stage (orange)
 	ViewFocusBoard: AccentCatWork,
 
-	// Execute stage (teal)
+	// Legacy Execute accent (teal) for project work views
 	ViewProjectTree:       AccentCatExecute,
 	ViewOutliner:          AccentCatExecute,
 	ViewTemporaryOutliner: AccentCatExecute,

@@ -245,20 +245,28 @@ func (s *Service) AddDependency(taskID, blockerRef string) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
+	resolver := NewWorkspaceResolver(snap)
+	blockerRef, err = s.addDependency(ref, resolver, blockerRef)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProject(ref, revision, "Add Dependency", blockerRef)
+}
+
+func (s *Service) addDependency(ref TaskRef, resolver *WorkspaceResolver, blockerRef string) (string, error) {
 	blockerRef = strings.TrimSpace(blockerRef)
 	if blockerRef == "" {
-		return TaskResult{}, invalidInput("dependency", "blocker reference is required")
+		return "", invalidInput("dependency", "blocker reference is required")
 	}
-	resolver := NewWorkspaceResolver(snap)
 	blocker, blockerProject, ok := resolver.resolveRef(blockerRef, ref.Project)
 	if !ok {
-		return TaskResult{}, fmt.Errorf("%w: blocker %s", ErrTaskNotFound, blockerRef)
+		return "", fmt.Errorf("%w: blocker %s", ErrTaskNotFound, blockerRef)
 	}
 	if blocker.ID == ref.Task.ID && blockerProject.ID == ref.Project.ID {
-		return TaskResult{}, invalidInput("dependency", "a task cannot depend on itself")
+		return "", invalidInput("dependency", "a task cannot depend on itself")
 	}
 	if resolver.WouldCreateDependencyCycle(ref.Project, ref.Task.ID, blockerRef) {
-		return TaskResult{}, invalidInput("dependency", "would create a circular dependency")
+		return "", invalidInput("dependency", "would create a circular dependency")
 	}
 	var deduplicated bool
 	ref.Task.DependsOn, deduplicated = resolver.deduplicateTaskReferences(ref.Task.DependsOn, ref.Project)
@@ -267,10 +275,23 @@ func (s *Service) AddDependency(taskID, blockerRef string) (TaskResult, error) {
 	}
 	if !resolver.containsTaskReference(ref.Task.DependsOn, ref.Project, blockerProject, blocker.ID) {
 		if err := ref.Task.AddDependency(blockerRef); err != nil {
-			return TaskResult{}, invalidInput("dependency", err.Error())
+			return "", invalidInput("dependency", err.Error())
 		}
 	}
-	return s.commitProject(ref, revision, "Add Dependency", blockerRef)
+	return blockerRef, nil
+}
+
+// AddDependencyWithWorkflow validates and adds a dependency through the same
+// workspace-aware resolver as AddDependency, then runs the workflow cascade.
+func (s *Service) AddDependencyWithWorkflow(taskID, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Add Dependency")
+	if opts.UndoContext == "" {
+		opts.UndoContext = strings.TrimSpace(blockerRef)
+	}
+	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, resolver *WorkspaceResolver) error {
+		_, err := s.addDependency(ref, resolver, blockerRef)
+		return err
+	})
 }
 
 // RemoveDependency drops a dependency edge. Removing an edge the task does not
@@ -280,16 +301,37 @@ func (s *Service) RemoveDependency(taskID, blockerRef string) (TaskResult, error
 	if err != nil {
 		return TaskResult{}, err
 	}
+	blockerRef, err = s.removeDependency(ref, NewWorkspaceResolver(snap), blockerRef)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProject(ref, revision, "Remove Dependency", blockerRef)
+}
+
+func (s *Service) removeDependency(ref TaskRef, resolver *WorkspaceResolver, blockerRef string) (string, error) {
 	blockerRef = strings.TrimSpace(blockerRef)
 	if blockerRef == "" {
-		return TaskResult{}, invalidInput("dependency", "blocker reference is required")
+		return "", invalidInput("dependency", "blocker reference is required")
 	}
 	var removed int
-	ref.Task.DependsOn, removed = NewWorkspaceResolver(snap).removeEquivalentTaskReferences(ref.Task.DependsOn, ref.Project, blockerRef)
+	ref.Task.DependsOn, removed = resolver.removeEquivalentTaskReferences(ref.Task.DependsOn, ref.Project, blockerRef)
 	if removed > 0 {
 		ref.Task.UpdatedAt = s.clock.Now()
 	}
-	return s.commitProject(ref, revision, "Remove Dependency", blockerRef)
+	return blockerRef, nil
+}
+
+// RemoveDependencyWithWorkflow removes every reference equivalent to blockerRef
+// and runs the workflow cascade on the resulting fresh-snapshot task.
+func (s *Service) RemoveDependencyWithWorkflow(taskID, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Remove Dependency")
+	if opts.UndoContext == "" {
+		opts.UndoContext = strings.TrimSpace(blockerRef)
+	}
+	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, resolver *WorkspaceResolver) error {
+		_, err := s.removeDependency(ref, resolver, blockerRef)
+		return err
+	})
 }
 
 // ClearDependencies removes every dependency edge from the task. Dependency
@@ -300,8 +342,23 @@ func (s *Service) RemoveDependency(taskID, blockerRef string) (TaskResult, error
 // commits the (unchanged) project.
 func (s *Service) ClearDependencies(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Clear Dependencies", "", func(ref TaskRef) error {
-		ref.Task.ClearDependencies()
-		return nil
+		return clearTaskDependencies(ref.Task)
+	})
+}
+
+func clearTaskDependencies(task *models.Task) error {
+	task.ClearDependencies()
+	return nil
+}
+
+// ClearDependenciesWithWorkflow clears dependency edges while preserving the
+// task's workflow state. An already-empty set is a legacy CLI no-op.
+func (s *Service) ClearDependenciesWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Clear Dependencies")
+	return s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
+		return len(ref.Task.DependsOn) == 0
+	}, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return clearTaskDependencies(ref.Task)
 	})
 }
 

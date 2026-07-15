@@ -44,6 +44,10 @@ var (
 	// planning-artifact builder. Failing closed prevents set_active rules from
 	// appearing to succeed while silently discarding their durable side effect.
 	ErrWorkflowFocusPersistenceUnavailable = errors.New("app: workflow focus persistence unavailable")
+	// ErrWorkflowProjectStatusPersistenceUnavailable marks a project rule that
+	// requested a catalog-owned status change without a revision-checked catalog
+	// artifact builder. The task/project transaction must not commit separately.
+	ErrWorkflowProjectStatusPersistenceUnavailable = errors.New("app: workflow project status persistence unavailable")
 )
 
 // IncompleteChild describes one direct child that blocks a parent's terminal

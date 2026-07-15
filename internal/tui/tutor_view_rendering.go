@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // tutorColorRule defines a regex-based colorization rule for tutor content.
@@ -26,16 +28,15 @@ func init() {
 	primaryStyle := makeColorStyle(ColorPrimary)
 	keybindStyle := makeColorStyle(ColorWarning)
 
-	rules := []rule{
-		// Statuses (longest first to match in_progress before partial)
-		{`\bin_progress\b`, InProgressStyle, 0},
-		{`\bcanceled\b`, GetStatusStyle("canceled"), 0},
-		{`\bblocked\b`, BlockedStyle, 0},
-		{`\breview\b`, ReviewStyle, 0},
-		{`\bstandby\b`, StandbyStyle, 0},
-		{`\bmaybe\b`, makeColorStyle(ColorViewSomeday), 0},
-		{`\btodo\b`, TodoStyle, 0},
-		{`\bdone\b`, DoneStyle, 0},
+	rules := make([]rule, 0, len(models.AllWorkflowStates())+32)
+	for _, state := range models.AllWorkflowStates() {
+		rules = append(rules, rule{
+			pattern: `\b` + regexp.QuoteMeta(state.String()) + `\b`,
+			style:   GetStateStyle(state),
+		})
+	}
+
+	rules = append(rules, []rule{
 
 		// Task types (singular and plural)
 		{`\bEpics?\b`, EpicStyle, 0},
@@ -110,12 +111,9 @@ func init() {
 		{`:sv\b`, keybindStyle, 0},
 		// "by s", "then l", "then d" — color the single key after by/then
 		{`(?:by|then) ([sld]) `, keybindStyle, 1},
-		// Stage prefix bindings: .0-.9
-		{`^\.[0-9]\b`, keybindStyle, 0},
-		// "Press . " and "F then ." patterns
+		// Repeat-last-action key
 		{`Press (\.) `, keybindStyle, 1},
-		{`then (\.) to`, keybindStyle, 1},
-	}
+	}...)
 
 	for _, r := range rules {
 		tutorColorRules = append(tutorColorRules, tutorColorRule{

@@ -212,12 +212,11 @@ func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, d
 		if encodeErr != nil {
 			return encodeErr
 		}
-		changes = append(changes, storage.ArtifactChange{
+		changes = append(changes, DomainArtifact{
 			Path:             path,
 			Data:             data,
-			Mode:             FilePermissions,
 			ExpectedRevision: &absentRevision,
-		})
+		}.StorageChange())
 	}
 	if _, err := commit.CommitArtifacts(changes); err != nil {
 		return err
@@ -291,6 +290,19 @@ type DomainArtifact struct {
 	Path             string
 	Data             []byte
 	ExpectedRevision *string
+}
+
+// StorageChange converts a synced domain artifact into its canonical
+// transaction representation. Every synced write keeps the preceding primary
+// bytes in a private .bak sidecar inside the same journal transaction.
+func (a DomainArtifact) StorageChange() storage.ArtifactChange {
+	return storage.ArtifactChange{
+		Path:             a.Path,
+		Data:             a.Data,
+		Mode:             FilePermissions,
+		BackupPath:       a.Path + ".bak",
+		ExpectedRevision: a.ExpectedRevision,
+	}
 }
 
 func (m *Manager) GetConfigPath() string { return m.configPath }

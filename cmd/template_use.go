@@ -155,16 +155,19 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 
 	// The template use-count bump rides the SAME commit as the created tasks so
 	// the pair is atomic — replacing the legacy save-then-bump sequence that
-	// could persist the tasks without the counter on a partial failure.
+	// could persist the tasks without the counter on a partial failure. Render
+	// only automation.json: workflow focus changes own planning.json and must be
+	// able to join this transaction without a duplicate artifact target.
 	automation.IncrementTemplateUseCount(t.ID)
-	arts, err := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
+	arts, err := encodeAutomationArtifact(workspace.Runtime, automation)
 	if err != nil {
 		return err
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withResultRetry(func() (app.ApplyTemplateResult, error) {
-		return svc.ApplyTemplate(app.ApplyTemplateRequest{
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	res, err := withResultRetry(func() (app.ApplyTemplateWorkflowResult, error) {
+		return workflows.service.ApplyTemplateWithWorkflow(app.ApplyTemplateRequest{
 			AddTaskRequest: app.AddTaskRequest{
 				ProjectID:   project.ID,
 				Title:       title,
@@ -179,18 +182,19 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 			},
 			TemplateName: t.Name,
 			Children:     children,
-		})
+		}, workflows.options(false, "Use Template", nil))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(res.Cascade)
 
-	fmt.Printf("Created %s #%d: %s (from template %q)\n", t.Type.HeadingPrefix(), res.Task.ShortID, res.Task.Title, t.Name)
+	fmt.Printf("Created %s #%d: %s (from template %q)\n", t.Type.HeadingPrefix(), res.Template.Task.ShortID, res.Template.Task.Title, t.Name)
 	if len(t.Checklist) > 0 {
 		fmt.Printf("  Added %s\n", Pluralize(len(t.Checklist), "checklist item", "checklist items"))
 	}
-	if res.SubtasksCreated > 0 {
-		fmt.Printf("  Created %s\n", Pluralize(res.SubtasksCreated, "subtask", "subtasks"))
+	if res.Template.SubtasksCreated > 0 {
+		fmt.Printf("  Created %s\n", Pluralize(res.Template.SubtasksCreated, "subtask", "subtasks"))
 	}
 
 	return nil

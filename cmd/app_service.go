@@ -174,11 +174,32 @@ func (r *cliRepository) CommitArtifactTransaction(request storage.ArtifactCommit
 // applyArtifactChange writes or deletes a single ChangeSet artifact directly on
 // the filesystem. It backs the test-double fallback in cliRepository.Commit; the
 // production path routes artifacts through the transactional commit service
-// instead. It mirrors the commit service's semantics: a delete tolerates a missing
-// target, and a write creates parent directories and defaults the file mode.
+// instead. It mirrors the commit service's observable semantics: a marked
+// change first copies an existing primary to its private backup, a delete
+// tolerates a missing target, and a write creates parent directories and
+// defaults the file mode.
 func applyArtifactChange(art storage.ArtifactChange) error {
 	if art.Path == "" {
 		return nil
+	}
+	if art.BackupPath != "" {
+		if filepath.Clean(art.BackupPath) == filepath.Clean(art.Path) {
+			return fmt.Errorf("artifact backup path %q is self-referential", art.BackupPath)
+		}
+		current, readErr := os.ReadFile(art.Path)
+		switch {
+		case readErr == nil:
+			if mkdirErr := os.MkdirAll(filepath.Dir(art.BackupPath), config.DirPermissions); mkdirErr != nil {
+				return mkdirErr
+			}
+			if writeErr := util.AtomicWriteFile(art.BackupPath, current, config.FilePermissions); writeErr != nil {
+				return writeErr
+			}
+		case os.IsNotExist(readErr):
+			// First save: there is no preceding primary value to preserve.
+		default:
+			return readErr
+		}
 	}
 	if art.Delete {
 		if err := os.Remove(art.Path); err != nil && !os.IsNotExist(err) {
@@ -266,10 +287,23 @@ func encodeCatalogArtifact(runtime *config.RuntimeState, catalog *config.Workspa
 	return storageArtifacts([]config.DomainArtifact{artifact}), nil
 }
 
+// encodeAutomationArtifact renders only automation.json for a task transaction
+// whose configuration effect is automation-scoped, such as incrementing a
+// template use count. Keeping planning out of this artifact set lets workflow
+// focus changes supply their own checked planning artifact without duplicate
+// targets or stale unrelated baselines.
+func encodeAutomationArtifact(runtime *config.RuntimeState, automation *config.AutomationConfig) ([]storage.ArtifactChange, error) {
+	artifact, err := runtime.CheckedAutomationArtifact(automation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode automation config: %w", err)
+	}
+	return storageArtifacts([]config.DomainArtifact{artifact}), nil
+}
+
 func storageArtifacts(domainArts []config.DomainArtifact) []storage.ArtifactChange {
 	arts := make([]storage.ArtifactChange, 0, len(domainArts))
 	for _, da := range domainArts {
-		arts = append(arts, storage.ArtifactChange{Path: da.Path, Data: da.Data, ExpectedRevision: da.ExpectedRevision})
+		arts = append(arts, da.StorageChange())
 	}
 	return arts
 }
@@ -397,14 +431,24 @@ func newWorkspaceAppService(workspace *CLIWorkspace) *app.Service {
 // must be qualified (slug:#short-id / slug:uuid), and ambiguity is reported as an
 // error listing candidates rather than silently acting on the wrong task.
 func resolveAppTaskID(mgr *config.Manager, ref string) (string, error) {
-	task, _, err := findAppTaskGlobally(mgr, ref)
+	task, err := resolveAppTask(mgr, ref)
 	if err != nil {
 		return "", err
 	}
-	if task == nil {
-		return "", tterrors.NewTaskNotFoundError(ref)
-	}
 	return task.ID, nil
+}
+
+// resolveAppTask is resolveAppTaskID's richer form for workflow-aware adapters
+// that also need the command-start task title/short ID as undo context.
+func resolveAppTask(mgr *config.Manager, ref string) (*models.Task, error) {
+	task, _, err := findAppTaskGlobally(mgr, ref)
+	if err != nil {
+		return nil, err
+	}
+	if task == nil {
+		return nil, tterrors.NewTaskNotFoundError(ref)
+	}
+	return task, nil
 }
 
 // findAppTaskGlobally is the domain-backed task resolver used by application

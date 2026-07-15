@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -157,6 +158,13 @@ func TestDomainCoordinator_CheckedArtifactsCaptureLoadRevision(t *testing.T) {
 		if a.ExpectedRevision == nil {
 			t.Fatalf("artifact %s has nil ExpectedRevision; a coordinator must check every synced domain", filepath.Base(a.Path))
 		}
+		change := a.StorageChange()
+		if change.Path != a.Path || !bytes.Equal(change.Data, a.Data) || change.ExpectedRevision != a.ExpectedRevision {
+			t.Fatalf("artifact %s StorageChange lost domain metadata: %#v", filepath.Base(a.Path), change)
+		}
+		if change.BackupPath != a.Path+".bak" || change.Mode != FilePermissions {
+			t.Fatalf("artifact %s StorageChange backup=%q mode=%o, want %q at %o", filepath.Base(a.Path), change.BackupPath, change.Mode, a.Path+".bak", FilePermissions)
+		}
 		raw, err := os.ReadFile(a.Path)
 		if err != nil {
 			t.Fatalf("read on-disk artifact %s: %v", filepath.Base(a.Path), err)
@@ -222,6 +230,37 @@ func TestDomainCoordinator_AdoptArtifactsAdvancesBaseline(t *testing.T) {
 		if want := revisionOf(byPath[a.Path]); *a.ExpectedRevision != want {
 			t.Fatalf("artifact %s baseline = %s after adopt, want %s (hash of committed bytes)", filepath.Base(a.Path), *a.ExpectedRevision, want)
 		}
+	}
+}
+
+func TestDomainCoordinator_CheckedAutomationArtifactIsScopedAndRevisionChecked(t *testing.T) {
+	manager, _ := seededManager(t)
+	coord := manager.DomainCoordinator()
+	automation, err := coord.LoadAutomation()
+	if err != nil {
+		t.Fatalf("LoadAutomation: %v", err)
+	}
+
+	artifact, err := coord.CheckedAutomationArtifact(automation)
+	if err != nil {
+		t.Fatalf("CheckedAutomationArtifact: %v", err)
+	}
+	if artifact.Path != AutomationPath(coord.store.DataDir()) {
+		t.Fatalf("artifact path = %q, want automation.json only", artifact.Path)
+	}
+	if artifact.ExpectedRevision == nil {
+		t.Fatal("automation artifact has no expected revision")
+	}
+	raw, err := os.ReadFile(artifact.Path)
+	if err != nil {
+		t.Fatalf("read automation: %v", err)
+	}
+	if got, want := *artifact.ExpectedRevision, revisionOf(raw); got != want {
+		t.Fatalf("expected revision = %q, want load-time revision %q", got, want)
+	}
+	change := artifact.StorageChange()
+	if change.Path != artifact.Path || change.BackupPath != artifact.Path+".bak" {
+		t.Fatalf("storage change = %+v, want scoped transactional backup", change)
 	}
 }
 

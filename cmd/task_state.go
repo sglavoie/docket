@@ -80,24 +80,27 @@ func runAppTransition(cmd *cobra.Command, refs []string, target models.WorkflowS
 	if err != nil {
 		return err
 	}
-	svc := newWorkspaceAppService(workspace)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
 
 	verb := capitalizeState(string(target))
 	var errs []string
 	succeeded := 0
 	for _, ref := range refs {
-		taskID, err := resolveAppTaskID(workspace.Manager, ref)
+		task, err := resolveAppTask(workspace.Manager, ref)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", ref, err))
 			continue
 		}
-		res, err := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.Transition(app.StateRequest{TaskID: taskID, Target: target})
+		cascade, err := withResultRetry(func() (app.BulkResult, error) {
+			return workflows.service.StateWithWorkflow(task.ID, target, workflows.options(true, "Change State", task))
 		})
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", ref, translateAppError(err)))
 			continue
 		}
+		workflows.observe(cascade)
+		res := workflowResultTask(cascade)
 		succeeded++
 		if err := emitMutation(out, verb, res); err != nil {
 			return err

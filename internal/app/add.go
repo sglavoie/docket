@@ -10,8 +10,8 @@ import (
 )
 
 // AddTaskRequest is the full typed representation of a `tt task add` invocation:
-// every supported input — metadata (type, priority, tags, description, section,
-// stage), hierarchy placement, recurrence, task-type attributes, and a
+// every supported input — metadata (type, priority, tags, description, section),
+// hierarchy placement, recurrence, task-type attributes, and a
 // template-materialized checklist — plus any auxiliary durable artifacts that must
 // commit atomically with the new task (the config store carrying an incremented
 // template use-count). The adapter resolves presentation concerns (flag
@@ -122,6 +122,67 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	return s.commitProjectWithArtifacts(ref, revision, req.Artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 }
 
+// AddTaskWithWorkflow creates a fully-specified task and runs a stateless
+// workflow cascade over the resulting project, committing the new task, any
+// caller-supplied artifacts, follow-ups, focus/catalog effects, and deferred
+// cross-project moves as one grouped transaction. Creation deliberately has no
+// previous-state map: event-only rules must not treat a newly created task as a
+// transition from a fabricated prior state.
+func (s *Service) AddTaskWithWorkflow(req AddTaskRequest, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	normalized, err := normalizeAddTaskRequest(req)
+	if err != nil {
+		return BulkResult{}, err
+	}
+
+	undoAction := opts.UndoAction
+	if undoAction == "" {
+		undoAction = "Add Task"
+	}
+	var ref TaskRef
+	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
+		rules:                  opts.Rules,
+		focusArtifacts:         opts.FocusArtifacts,
+		projectStatusArtifacts: opts.ProjectStatusArtifacts,
+		undoAction:             undoAction,
+		undoContext:            opts.UndoContext,
+		forceCommit:            true,
+		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
+			built, revision, buildErr := s.buildNormalizedAddTask(snap, req, normalized)
+			if buildErr != nil {
+				return workflowMutationPlan{}, buildErr
+			}
+			ref = built
+			undoContext := opts.UndoContext
+			if undoContext == "" {
+				undoContext = fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
+			}
+			return workflowMutationPlan{
+				commits: []projectCommit{{
+					project:          ref.Project,
+					expectedRevision: revision,
+					base:             ref.Base,
+					artifacts:        req.Artifacts,
+				}},
+				sources: []*models.Project{ref.Project},
+				mutate: func(*WorkspaceResolver) error {
+					// Snapshot indexes predate this new task; rebuild the model tree so
+					// hierarchical rules see its real parent and level.
+					ref.Project.BuildTaskTree()
+					return nil
+				},
+				undoContext: undoContext,
+			}, nil
+		},
+	})
+	if err != nil {
+		return BulkResult{}, err
+	}
+
+	out := bulkResultFromWorkflow(orchestrated)
+	out.Tasks = []TaskResult{taskResultFromWorkflow(orchestrated, ref, ref.Project.ID)}
+	return out, nil
+}
+
 type normalizedAddTaskRequest struct {
 	title    string
 	taskType models.TaskType
@@ -176,6 +237,15 @@ func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
 	if err != nil {
 		return TaskRef{}, "", err
 	}
+	return s.buildNormalizedAddTask(snap, req, normalized)
+}
+
+// buildNormalizedAddTask constructs a validated task inside a caller-owned
+// snapshot without committing it. Bare creation obtains its own snapshot before
+// calling this helper; workflow-aware creation supplies the orchestration
+// runner's snapshot so validation, mutation, rule evaluation, and commit all
+// share one revision-consistent workspace view.
+func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, normalized normalizedAddTaskRequest) (TaskRef, string, error) {
 	project := snap.ProjectByID(req.ProjectID)
 	if project == nil {
 		return TaskRef{}, "", fmt.Errorf("%w: %s", ErrProjectNotFound, req.ProjectID)

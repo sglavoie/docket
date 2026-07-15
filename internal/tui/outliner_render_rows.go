@@ -14,8 +14,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 	var colLayout *ColumnLayout
 	if viewport.rowWidth >= MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx], m.columnConfig)
-		// Augment with status/type widths from the same row set. Stage moved to
-		// the selected-task metadata strip so it is no longer measured here.
+		// Augment with status/type widths from the same row set.
 		var visibleTasks []*models.Task
 		for _, row := range m.rows[viewport.startIdx:viewport.endIdx] {
 			if !row.isTaskRow() || row.task == nil {

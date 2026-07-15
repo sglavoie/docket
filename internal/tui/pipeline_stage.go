@@ -1,7 +1,7 @@
 package tui
 
 // pipelineStage returns the pipeline stage name for a given view type.
-// Returns "" for Execute-stage views and views that don't belong to a named stage.
+// Returns "" for legacy Execute-accent views and views outside the named pipeline stages.
 func pipelineStage(vt ViewType) string {
 	switch vt {
 	case ViewQuickCapture, ViewBulkCapture:

@@ -25,6 +25,7 @@ type fakeRepo struct {
 	revisions map[string]string
 	documents map[string]*storage.ProjectDocument
 	commits   [][]storage.ChangeSet
+	snapshots int
 	snapErr   error
 	commitErr error
 	// preCommit runs at the start of Commit so a test can simulate a concurrent
@@ -95,6 +96,7 @@ func documentOf(p *models.Project, base *storage.ProjectDocument) *storage.Proje
 }
 
 func (r *fakeRepo) Snapshot() (app.Snapshot, error) {
+	r.snapshots++
 	if r.snapErr != nil {
 		return nil, r.snapErr
 	}

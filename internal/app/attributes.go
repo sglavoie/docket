@@ -140,21 +140,25 @@ func (s *Service) ReorderPinnedTasks(taskAID, taskBID string) (PinnedReorderResu
 // rather than replicating the check at each command edge.
 func (s *Service) Snooze(taskID string, until *time.Time) (TaskResult, error) {
 	return s.mutateTask(taskID, "Snooze Task", "", func(ref TaskRef) error {
-		if until == nil {
-			ref.Task.ClearSnooze()
-			return nil
-		}
-		if ref.Task.IsTerminalState() {
-			return invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", ref.Task.State()))
-		}
-		if ref.Task.IsInState(models.StateInProgress) {
-			return invalidInput("snooze", "cannot snooze an in-progress task (change state first)")
-		}
-		u := *until
-		ref.Task.SnoozedUntil = &u
-		ref.Task.UpdatedAt = s.clock.Now()
-		return nil
+		return s.applySnooze(ref.Task, until, true)
 	})
+}
+
+func (s *Service) applySnooze(task *models.Task, until *time.Time, guarded bool) error {
+	if until == nil {
+		task.ClearSnooze()
+		return nil
+	}
+	if guarded && task.IsTerminalState() {
+		return invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", task.State()))
+	}
+	if guarded && task.IsInState(models.StateInProgress) {
+		return invalidInput("snooze", "cannot snooze an in-progress task (change state first)")
+	}
+	u := *until
+	task.SnoozedUntil = &u
+	task.UpdatedAt = s.clock.Now()
+	return nil
 }
 
 // Park stores a resume note on a task, preserving any previous note as a
@@ -162,11 +166,24 @@ func (s *Service) Snooze(taskID string, until *time.Time) (TaskResult, error) {
 // left off makes no sense once the task is done or canceled.
 func (s *Service) Park(taskID, note string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Park Task", "", func(ref TaskRef) error {
-		if ref.Task.IsTerminalState() {
-			return invalidInput("park", fmt.Sprintf("cannot park a %s task", ref.Task.State()))
-		}
-		ref.Task.Park(note)
-		return nil
+		return s.parkTask(ref.Task, note)
+	})
+}
+
+func (s *Service) parkTask(task *models.Task, note string) error {
+	if task.IsTerminalState() {
+		return invalidInput("park", fmt.Sprintf("cannot park a %s task", task.State()))
+	}
+	task.Park(note)
+	return nil
+}
+
+// ParkWithWorkflow parks a task through the same guarded mutation as Park and
+// then runs the configured contextual or stateless workflow cascade.
+func (s *Service) ParkWithWorkflow(taskID, note string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Park Task")
+	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return s.parkTask(ref.Task, note)
 	})
 }
 
@@ -176,8 +193,23 @@ func (s *Service) Park(taskID, note string) (TaskResult, error) {
 // prior note as a comment.
 func (s *Service) Unpark(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Unpark Task", "", func(ref TaskRef) error {
-		ref.Task.Unpark(false)
-		return nil
+		return unparkTask(ref.Task)
+	})
+}
+
+func unparkTask(task *models.Task) error {
+	task.Unpark(false)
+	return nil
+}
+
+// UnparkWithWorkflow clears the parked state and runs the workflow cascade. An
+// already-unparked task preserves the legacy CLI no-op behavior.
+func (s *Service) UnparkWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Unpark Task")
+	return s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
+		return !ref.Task.IsParked()
+	}, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return unparkTask(ref.Task)
 	})
 }
 
@@ -186,9 +218,13 @@ func (s *Service) Unpark(taskID string) (TaskResult, error) {
 // focus; that coupling lives in the model's ToggleDimmed.
 func (s *Service) ToggleDimmed(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Toggle Dim", "", func(ref TaskRef) error {
-		ref.Task.ToggleDimmed()
-		return nil
+		return toggleDimmedTask(ref.Task)
 	})
+}
+
+func toggleDimmedTask(task *models.Task) error {
+	task.ToggleDimmed()
+	return nil
 }
 
 // Undim clears a task's dimmed flag, restoring normal rendering. Undimming an
@@ -196,8 +232,23 @@ func (s *Service) ToggleDimmed(taskID string) (TaskResult, error) {
 // idempotent attribute mutations.
 func (s *Service) Undim(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Undim Task", "", func(ref TaskRef) error {
-		ref.Task.Undim()
-		return nil
+		return undimTask(ref.Task)
+	})
+}
+
+func undimTask(task *models.Task) error {
+	task.Undim()
+	return nil
+}
+
+// UndimWithWorkflow clears dimming and runs the workflow cascade. An
+// already-undimmed task is returned without evaluating rules or committing.
+func (s *Service) UndimWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Undim Task")
+	return s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
+		return !ref.Task.Dimmed
+	}, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return undimTask(ref.Task)
 	})
 }
 
@@ -218,14 +269,40 @@ func (s *Service) SetSection(taskID, section string) (TaskResult, error) {
 // any commit, leaving the task untouched.
 func (s *Service) ApplyTypeAttrs(taskID string, vals models.TypeAttrValues) (TaskResult, error) {
 	return s.mutateTask(taskID, "Set Attributes", "", func(ref TaskRef) error {
-		return models.ApplyTypeAttrValues(ref.Task, vals)
+		return applyTypeAttrs(ref.Task, vals)
+	})
+}
+
+func applyTypeAttrs(task *models.Task, vals models.TypeAttrValues) error {
+	return models.ApplyTypeAttrValues(task, vals)
+}
+
+// ApplyTypeAttrsWithWorkflow applies validated type-specific attributes and
+// runs the workflow cascade in one transaction.
+func (s *Service) ApplyTypeAttrsWithWorkflow(taskID string, vals models.TypeAttrValues, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Set Attributes")
+	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return applyTypeAttrs(ref.Task, vals)
 	})
 }
 
 // ClearTypeAttrs removes all type-specific attributes from a task.
 func (s *Service) ClearTypeAttrs(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Clear Attributes", "", func(ref TaskRef) error {
-		ref.Task.ClearTypeAttrs()
-		return nil
+		return clearTypeAttrs(ref.Task)
+	})
+}
+
+func clearTypeAttrs(task *models.Task) error {
+	task.ClearTypeAttrs()
+	return nil
+}
+
+// ClearTypeAttrsWithWorkflow removes all type-specific attributes and runs the
+// configured workflow cascade.
+func (s *Service) ClearTypeAttrsWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Clear Attributes")
+	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return clearTypeAttrs(ref.Task)
 	})
 }

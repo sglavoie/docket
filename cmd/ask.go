@@ -222,9 +222,7 @@ func applyCLIActionPlan(
 		if err != nil {
 			return nil, err
 		}
-		return append(artifacts, storage.ArtifactChange{
-			Path: artifact.Path, Data: artifact.Data, ExpectedRevision: artifact.ExpectedRevision,
-		}), nil
+		return append(artifacts, artifact.StorageChange()), nil
 	}
 
 	result, err := service.ApplyActionPlan(ctx, plan, opts)

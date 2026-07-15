@@ -61,19 +61,21 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	svc := newWorkspaceAppService(workspace)
-	res, err := withResultRetry(func() (app.CommentResult, error) {
-		return svc.AddComment(task.ID, commentText)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	res, err := withResultRetry(func() (app.CommentWorkflowResult, error) {
+		return workflows.service.AddCommentWithWorkflow(task.ID, commentText, workflows.options(true, "Add Comment", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(res.Cascade)
 
 	if out.JSON {
-		return printMutationJSON(res.Task)
+		return printMutationJSON(res.Comment.Task)
 	}
 	if !out.Quiet {
-		fmt.Printf("Added comment to #%d: %s\n", res.Task.ShortID, res.Task.Title)
+		fmt.Printf("Added comment to #%d: %s\n", res.Comment.Task.ShortID, res.Comment.Task.Title)
 	}
 	return nil
 }

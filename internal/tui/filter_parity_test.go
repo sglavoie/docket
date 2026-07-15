@@ -21,7 +21,7 @@ import (
 //
 // Scope per view:
 //   - Top-level F children (keys directly under "F", sorted).
-//   - Presence of the canonical sub-prefixes: Ft, Fs, Fd, Fa, FS, F.
+//   - Presence of the canonical sub-prefixes: Ft, Fs, Fd, Fa, FS.
 //   - Cross-view parity for Fh (hide-dimmed) and for the FS score sub-prefix
 //     using lowercase "c" (stored custom threshold) — not uppercase "C".
 //   - Dispatcher.PrefixHints() and KeyMap.HelpItems() agree on the F subtree.
@@ -267,9 +267,9 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 // sessions 2-4 can diff against them when they touch wiring.
 func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	wants := map[string][]string{
-		// Focus Board: full shared wiring including F. stage and Fd due date.
+		// Focus Board: full shared wiring including Fd due date.
 		"FocusBoard": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		// Full shared wiring including F. stage and Fd due date.
+		// Full shared wiring including Fd due date.
 		"FocusView":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		"ProjectFocus": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// All Tasks: Fd is a direct cycle-binding (not a sub-prefix), and P is
@@ -306,7 +306,7 @@ func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 
 // TestFilterParity_FocusBoard_AdvertisesSharedFilterGroup asserts that Focus
 // Board (Today) exposes the shared F prefix wired through FilterGroup, including
-// the Fh hide-dimmed toggle and the full sub-prefix family (Ft, Fs, Fd, FS, F.).
+// the Fh hide-dimmed toggle and the full sub-prefix family (Ft, Fs, Fd, FS).
 func TestFilterParity_FocusBoard_AdvertisesSharedFilterGroup(t *testing.T) {
 	km := (&FocusBoardModel{}).buildKeyMap()
 	if findRootFPrefix(km) == nil {
@@ -325,7 +325,7 @@ func TestFilterParity_FocusBoard_AdvertisesSharedFilterGroup(t *testing.T) {
 // TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup asserts Project
 // Focus exposes the full shared F filter group wired through FilterGroup,
 // including the Fh hide-dimmed toggle and the full sub-prefix family
-// (Ft, Fs, Fd, FS, F.). Session 4 closed the F. stage-filter gap.
+// (Ft, Fs, Fd, FS).
 func TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup(t *testing.T) {
 	km := (&ProjectFocusViewModel{}).buildKeyMap()
 	if findRootFPrefix(km) == nil {
@@ -344,7 +344,7 @@ func TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup(t *testing.T) {
 // TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup asserts Recent
 // Activity exposes the full shared F filter group wired through FilterGroup,
 // including the Fh hide-dimmed toggle and the full sub-prefix family
-// (Ft, Fs, Fd, FS, F.). Session 5 closed the F. stage-filter gap.
+// (Ft, Fs, Fd, FS).
 func TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup(t *testing.T) {
 	km := (&RecentActivityModel{}).buildKeyMap()
 	if findRootFPrefix(km) == nil {

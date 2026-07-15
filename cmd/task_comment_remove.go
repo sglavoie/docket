@@ -51,7 +51,8 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	svc := newWorkspaceAppService(workspace)
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
 
 	if commentClearFlag {
 		// No-op fast path: skip the save entirely when there is nothing to clear.
@@ -61,17 +62,24 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-		res, clearErr := withResultRetry(func() (app.CommentResult, error) {
-			return svc.ClearComments(task.ID)
+		res, clearErr := withResultRetry(func() (app.CommentWorkflowResult, error) {
+			return workflows.service.ClearCommentsWithWorkflow(task.ID, workflows.options(true, "Clear Comments", task))
 		})
 		if clearErr != nil {
 			return translateAppError(clearErr)
 		}
+		workflows.observe(res.Cascade)
+		if !workflowResultCommitted(res.Cascade) {
+			if !out.Quiet {
+				fmt.Printf("Task #%d has no comments to clear\n", task.ShortID)
+			}
+			return nil
+		}
 		if out.JSON {
-			return printMutationJSON(res.Task)
+			return printMutationJSON(res.Comment.Task)
 		}
 		if !out.Quiet {
-			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", res.Count, res.Task.ShortID, res.Task.Title)
+			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", res.Comment.Count, res.Comment.Task.ShortID, res.Comment.Task.Title)
 		}
 		return nil
 	}
@@ -85,18 +93,19 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	res, err := withResultRetry(func() (app.CommentResult, error) {
-		return svc.RemoveComment(task.ID, index)
+	res, err := withResultRetry(func() (app.CommentWorkflowResult, error) {
+		return workflows.service.RemoveCommentWithWorkflow(task.ID, index, workflows.options(true, "Remove Comment", task))
 	})
 	if err != nil {
 		return translateAppError(err)
 	}
+	workflows.observe(res.Cascade)
 
 	if out.JSON {
-		return printMutationJSON(res.Task)
+		return printMutationJSON(res.Comment.Task)
 	}
 	if !out.Quiet {
-		fmt.Printf("Removed comment %d from #%d: %s\n", res.Index, res.Task.ShortID, res.Task.Title)
+		fmt.Printf("Removed comment %d from #%d: %s\n", res.Comment.Index, res.Comment.Task.ShortID, res.Comment.Task.Title)
 	}
 	return nil
 }
