@@ -238,7 +238,7 @@ func TestActionPlanCancellationAndRevisionConflictCommitNothing(t *testing.T) {
 
 func TestActionPlanRollbackThroughWorkspaceUndo(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	project := realTestProject(t, dataDir, "alpha", "Before")
 	taskID := project.Tasks[0].ID
@@ -284,7 +284,7 @@ func TestActionPlanRollbackThroughWorkspaceUndo(t *testing.T) {
 func TestActionPlanDeleteCleansDurableSubtreeRefsAndUndoRestoresThem(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "Delete root")

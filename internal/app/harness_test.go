@@ -12,6 +12,8 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+const testWorkspaceLedgerDepth = 1000
+
 // fakeRepo is an in-memory Repository that mirrors the transactional storage
 // boundary closely enough to exercise the application use cases: it hands out
 // the live project pointers through a snapshot, tracks each project's revision

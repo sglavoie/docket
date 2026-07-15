@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/sglavoie/tt/internal/transaction"
@@ -153,7 +155,7 @@ type LedgerRecord struct {
 // missing content-addressed blobs first and the new ledger file last, so a
 // CommitService can append them to the same transaction manifest as the user
 // artifacts. file is the resulting in-memory ledger state used for post-commit
-// best-effort blob garbage collection.
+// best-effort blob garbage collection. A nil plan means recording is disabled.
 type preparedLedgerRecord struct {
 	ops  []transaction.Op
 	file *ledgerFile
@@ -173,7 +175,7 @@ type preparedLedgerRecord struct {
 type WorkspaceLedger struct {
 	dir             string
 	transactionsDir string
-	maxDepth        int
+	maxDepth        atomic.Int64
 	roots           []string
 	now             func() time.Time
 }
@@ -182,8 +184,8 @@ type WorkspaceLedger struct {
 // config.UndoLedgerDir(dataDir)). It retains at most maxDepth undo entries,
 // pruning the oldest beyond that depth, and restricts every restore write and
 // delete to paths inside roots as defense in depth. A maxDepth <= 0 disables
-// retention limits (history grows unbounded); callers pass the configured undo
-// depth.
+// new history recording without hiding or removing existing entries; callers
+// pass the configured undo depth.
 func NewWorkspaceLedger(dir string, maxDepth int, roots []string) *WorkspaceLedger {
 	cleanRoots := make([]string, 0, len(roots))
 	for _, r := range roots {
@@ -191,13 +193,22 @@ func NewWorkspaceLedger(dir string, maxDepth int, roots []string) *WorkspaceLedg
 			cleanRoots = append(cleanRoots, filepath.Clean(r))
 		}
 	}
-	return &WorkspaceLedger{
+	ledger := &WorkspaceLedger{
 		dir:             filepath.Clean(dir),
 		transactionsDir: filepath.Join(filepath.Dir(filepath.Clean(dir)), "transactions"),
-		maxDepth:        maxDepth,
 		roots:           cleanRoots,
 		now:             time.Now,
 	}
+	ledger.maxDepth.Store(int64(maxDepth))
+	return ledger
+}
+
+// SetMaxDepth updates the retention depth used by subsequent record operations.
+// Values at or below zero disable new history recording. Existing undo and redo
+// entries remain readable and restorable, and a positive reduction is applied
+// when the next record is successfully committed.
+func (l *WorkspaceLedger) SetMaxDepth(maxDepth int) {
+	l.maxDepth.Store(int64(maxDepth))
 }
 
 func (l *WorkspaceLedger) ledgerPath() string {
@@ -257,8 +268,19 @@ func (l *WorkspaceLedger) readBlob(hash string) ([]byte, error) {
 // prepareRecord builds the complete filesystem change for one ledger append
 // without writing anything. That lets every undoable commit stage the ledger
 // blobs and JSON in its user-artifact manifest instead of risking a successful
-// mutation followed by a failed, missing undo entry.
+// mutation followed by a failed, missing undo entry. It returns a nil plan when
+// the sampled depth disables recording.
 func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord, error) {
+	maxDepth := int(l.maxDepth.Load())
+	if maxDepth <= 0 {
+		return nil, nil
+	}
+	return l.prepareRecordWithDepth(rec, maxDepth)
+}
+
+// prepareRecordWithDepth builds a record plan using the depth sampled once by
+// the caller at the start of the record operation.
+func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int) (*preparedLedgerRecord, error) {
 	if rec.TransactionID == "" {
 		return nil, fmt.Errorf("storage: ledger record requires a transaction id")
 	}
@@ -329,9 +351,9 @@ func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord
 	lf.RedoEntries = removeOverlappingRedo(lf.RedoEntries, entry.paths())
 
 	// Retention pruning: keep only the newest maxDepth undo entries.
-	if l.maxDepth > 0 && len(lf.Entries) > l.maxDepth {
+	if len(lf.Entries) > maxDepth {
 		sort.SliceStable(lf.Entries, func(i, j int) bool { return lf.Entries[i].Seq < lf.Entries[j].Seq })
-		lf.Entries = lf.Entries[len(lf.Entries)-l.maxDepth:]
+		lf.Entries = lf.Entries[len(lf.Entries)-maxDepth:]
 	}
 
 	data, encodeErr := encodeLedgerFile(lf)
@@ -349,16 +371,21 @@ func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord
 // redo entries, prunes the undo stack to its retention depth, and finally
 // garbage-collects unreferenced blobs. CommitService uses prepareRecord directly
 // so those writes share the user transaction; Record remains available to the
-// standalone ledger API and focused ledger tests. The standalone path still uses
-// the workspace commit lock and journal so it cannot race a commit or restore.
+// standalone ledger API and focused ledger tests. When recording is enabled,
+// the standalone path uses the workspace commit lock and journal so it cannot
+// race a commit or restore.
 func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
+	maxDepth := int(l.maxDepth.Load())
+	if maxDepth <= 0 {
+		return nil
+	}
 	service := NewCommitService(l.transactionsDir, l.roots)
 	return service.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(l.transactionsDir, l.roots)
 		if _, err := service.recoverLocked(journal); err != nil {
 			return err
 		}
-		plan, err := l.prepareRecord(rec)
+		plan, err := l.prepareRecordWithDepth(rec, maxDepth)
 		if err != nil {
 			return err
 		}
@@ -375,11 +402,17 @@ func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
 }
 
 // LedgerScope selects which history line an undo/redo targets: the whole
-// workspace, or the newest entry affecting one project.
+// workspace, the newest entry affecting one project, the newest entry touching
+// an artifact root, or the intersection of project and artifact restrictions.
 type LedgerScope struct {
 	// ProjectID, when non-empty, restricts selection to the newest entry that
-	// touched that project (current-project undo). Empty selects globally.
+	// touched that project (current-project undo).
 	ProjectID string
+	// ArtifactRoot, when non-empty, restricts selection to entries with at least
+	// one artifact lexically contained by this path. Matching deliberately does
+	// not resolve symlinks or require the artifact to exist: undo entries commonly
+	// describe files that a create, delete, rename, or move made absent.
+	ArtifactRoot string
 }
 
 // GlobalScope targets the newest entry across the whole workspace.
@@ -387,6 +420,12 @@ func GlobalScope() LedgerScope { return LedgerScope{} }
 
 // ProjectScope targets the newest entry affecting a single project.
 func ProjectScope(projectID string) LedgerScope { return LedgerScope{ProjectID: projectID} }
+
+// ArtifactRootScope targets the newest entry touching root or one of its
+// descendants, using cleaned lexical paths and path-component containment.
+func ArtifactRootScope(root string) LedgerScope {
+	return LedgerScope{ArtifactRoot: filepath.Clean(root)}
+}
 
 // SelectNewestUndo returns the entry a subsequent Undo(scope) would reverse
 // without applying it, and whether one exists. It is the read-only counterpart
@@ -420,16 +459,45 @@ func (l *WorkspaceLedger) RedoCount(scope LedgerScope) (int, error) {
 }
 
 func countInScope(stack []LedgerEntry, scope LedgerScope) int {
-	if scope.ProjectID == "" {
-		return len(stack)
-	}
 	n := 0
 	for i := range stack {
-		if stack[i].touchesProject(scope.ProjectID) {
+		if entryMatchesScope(stack[i], scope) {
 			n++
 		}
 	}
 	return n
+}
+
+// entryMatchesScope is the single matching rule shared by selection and stack
+// counts. Non-empty restrictions combine with AND semantics; the zero-value
+// scope therefore matches every workspace entry.
+func entryMatchesScope(entry LedgerEntry, scope LedgerScope) bool {
+	if scope.ProjectID != "" && !entry.touchesProject(scope.ProjectID) {
+		return false
+	}
+	if scope.ArtifactRoot == "" {
+		return true
+	}
+	for _, artifact := range entry.Artifacts {
+		if pathWithinArtifactRoot(scope.ArtifactRoot, artifact.Path) {
+			return true
+		}
+	}
+	return false
+}
+
+// pathWithinArtifactRoot reports lexical path-component containment only. It
+// intentionally avoids filesystem inspection and symlink resolution because a
+// restore target may currently be absent.
+func pathWithinArtifactRoot(root, target string) bool {
+	if root == "" || target == "" {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(target))
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // SelectNewestRedo returns the entry a subsequent Redo(scope) would replay.
@@ -496,8 +564,13 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 		}
 		entry, idx, ok := selectNewest(source, scope)
 		if !ok {
-			if scope.ProjectID != "" {
+			switch {
+			case scope.ProjectID != "" && scope.ArtifactRoot != "":
+				return fmt.Errorf("no %s history available for project %q under artifact root %q", label, scope.ProjectID, scope.ArtifactRoot)
+			case scope.ProjectID != "":
 				return fmt.Errorf("no %s history available for project %q", label, scope.ProjectID)
+			case scope.ArtifactRoot != "":
+				return fmt.Errorf("no %s history available for artifact root %q", label, scope.ArtifactRoot)
 			}
 			return fmt.Errorf("no %s history available", label)
 		}
@@ -683,7 +756,7 @@ func (l *WorkspaceLedger) gcBlobs(lf *ledgerFile) {
 func selectNewest(stack []LedgerEntry, scope LedgerScope) (LedgerEntry, int, bool) {
 	best := -1
 	for i := range stack {
-		if scope.ProjectID != "" && !stack[i].touchesProject(scope.ProjectID) {
+		if !entryMatchesScope(stack[i], scope) {
 			continue
 		}
 		if best == -1 || stack[i].Seq > stack[best].Seq {

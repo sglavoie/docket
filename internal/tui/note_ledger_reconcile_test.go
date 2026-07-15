@@ -34,7 +34,7 @@ type noteLedgerReconcileEnv struct {
 func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitService := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project, err := models.NewProject(uuid.New().String(), "ledger-reconcile", "")
@@ -354,12 +354,27 @@ func TestProjectNoteLedgerRestoreReconcilesTasksPlanningAttachmentsAndViews(t *t
 	env.assertReconciled(t, true)
 }
 
-func TestGlobalNoteLedgerRestoreReconcilesTasksPlanningAttachmentsAndViews(t *testing.T) {
+func TestGlobalNoteLedgerRestoreReportsNoChangeForUnrelatedWorkspaceMutation(t *testing.T) {
 	env := newNoteLedgerReconcileEnv(t, true)
-	env.restoreThroughNotes(t, false)
-	env.assertReconciled(t, false)
-	env.restoreThroughNotes(t, true)
-	env.assertReconciled(t, true)
+	raw := env.view.undoDelete()()
+	failure, ok := raw.(ProjectNoteLedgerErrorMsg)
+	if !ok {
+		t.Fatalf("global notes undo = %T, want ProjectNoteLedgerErrorMsg", raw)
+	}
+	if failure.Err == nil || !strings.Contains(failure.Err.Error(), "no undo history available for artifact root") {
+		t.Fatalf("global notes undo error = %v", failure.Err)
+	}
+	if handled, _ := env.shell.handleNotesMessages(failure); !handled {
+		t.Fatal("global notes ledger error was not handled")
+	}
+	if !env.view.statusIsError || !strings.Contains(env.view.statusMessage, "no undo history available for artifact root") {
+		t.Fatalf("global notes status = %q error=%v", env.view.statusMessage, env.view.statusIsError)
+	}
+	env.assertDiskReconciled(t, true, "After restore")
+	entry, available, err := env.ledger.SelectNewestUndo(storage.GlobalScope())
+	if err != nil || !available || entry.TransactionID != env.transactionID {
+		t.Fatalf("unrelated workspace mutation was consumed: entry=%#v available=%v err=%v", entry, available, err)
+	}
 }
 
 func TestProjectNoteLedgerRestoreReportsRefreshFailureWithoutUndoingRestore(t *testing.T) {

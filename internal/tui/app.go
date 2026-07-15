@@ -166,7 +166,8 @@ type AppModel struct {
 	runtime *config.RuntimeState
 
 	// deps is the domain-native dependency bundle (RuntimeState + application
-	// service + config manager) shared by the shell and feature groups.
+	// service + config manager + workspace ledger) shared by the shell and
+	// feature groups.
 	deps *shellDeps
 
 	// projects preserves the loaded models.Project pointers used by open views.

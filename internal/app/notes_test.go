@@ -17,7 +17,7 @@ import (
 
 func newNoteTestService(t *testing.T, dataDir string, projects ...*models.Project) (*app.Service, *storageRepo) {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newStorageRepo(commitSvc, projects...)
 	repo.seed(t)
@@ -520,7 +520,7 @@ func mutateNoteTestCatalog(t *testing.T, dataDir string, mutate func(*config.Wor
 
 func noteUndoCount(t *testing.T, dataDir string) int {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	count, err := ledger.UndoCount(storage.GlobalScope())
 	if err != nil {
 		t.Fatalf("UndoCount: %v", err)

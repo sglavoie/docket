@@ -597,11 +597,12 @@ func (s *CommitService) CommitProjectRepair(project *models.Project, expectedRaw
 }
 
 // prepareTransaction stages one journal manifest and, when record is non-nil and
-// a workspace ledger is configured, includes the complete ledger append in that
-// same manifest. The transaction ID is allocated before ledger planning so the
-// entry and manifest share an identity. User operations stay first; retained
-// blobs and ledger.json follow, with ledger.json last by prepareRecord's contract.
-// A ledger planning failure returns before Journal.Prepare stages any operation.
+// an enabled workspace ledger is configured, includes the complete ledger append
+// in that same manifest. A disabled ledger yields a user-operations-only manifest.
+// The transaction ID is allocated before ledger planning so the entry and manifest
+// share an identity. User operations stay first; retained blobs and ledger.json
+// follow, with ledger.json last by prepareRecord's contract. A ledger planning
+// failure returns before Journal.Prepare stages any operation.
 func (s *CommitService) prepareTransaction(
 	journal *transaction.Journal,
 	ops []transaction.Op,
@@ -621,6 +622,13 @@ func (s *CommitService) prepareTransaction(
 	ledgerPlan, err := s.ledger.prepareRecord(ledgerRecord)
 	if err != nil {
 		return nil, nil, fmt.Errorf("preparing undo ledger entry: %w", err)
+	}
+	if ledgerPlan == nil {
+		manifest, prepareErr := journal.PrepareWithID(txnID, ops)
+		if prepareErr != nil {
+			return nil, nil, fmt.Errorf("preparing transaction: %w", prepareErr)
+		}
+		return manifest, nil, nil
 	}
 
 	combinedOps := make([]transaction.Op, 0, len(ops)+len(ledgerPlan.ops))

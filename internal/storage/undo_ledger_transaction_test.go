@@ -15,7 +15,7 @@ import (
 // validates every retained image before staging the first target. One missing
 // blob leaves all user files and both ledger stacks untouched.
 func TestLedgerRestoreAtomicPreflightRejectsMissingBlob(t *testing.T) {
-	ledger, root := newTestLedger(t, 0)
+	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
 	first := filepath.Join(root, "projects", "alpha", "tasks.md")
 	second := filepath.Join(root, "projects", "beta", "tasks.md")
 	writeFile(t, first, "alpha after")
@@ -41,7 +41,7 @@ func TestLedgerRestoreAtomicPreflightRejectsMissingBlob(t *testing.T) {
 // no longer matches the entry's after-image. Preflight detects the drift before
 // the earlier artifact can be restored.
 func TestLedgerRestoreAtomicRevisionDrift(t *testing.T) {
-	ledger, root := newTestLedger(t, 0)
+	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
 	first := filepath.Join(root, "projects", "alpha", "tasks.md")
 	second := filepath.Join(root, "projects", "beta", "tasks.md")
 	writeFile(t, first, "alpha after")
@@ -102,7 +102,7 @@ func TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation(t *testing.T) {
 // outcomes: commit-then-undo, or undo followed by a stale commit rejection.
 func TestUndoConcurrentCommitSerializesLedgerRestore(t *testing.T) {
 	root := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), 0, []string{root})
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), testWorkspaceLedgerDepth, []string{root})
 	service := NewCommitServiceWithLedger(filepath.Join(root, ".tt", "transactions"), []string{root}, ledger)
 	path := filepath.Join(root, "notes", "race.md")
 	writeFile(t, path, "before")
@@ -165,7 +165,7 @@ func TestUndoConcurrentCommitSerializesLedgerRestore(t *testing.T) {
 // redo together while both stacks are populated. The result must match one of
 // the two legal serial orders, with neither entry duplicated or lost.
 func TestUndoRedoConcurrentCallersSerializeStackMovement(t *testing.T) {
-	ledger, root := newTestLedger(t, 0)
+	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
 	first := filepath.Join(root, "first.md")
 	second := filepath.Join(root, "second.md")
 	writeFile(t, first, "one after")
@@ -247,7 +247,7 @@ func prepareLedgerRestoreCrashFixture(t *testing.T) ledgerRestoreCrashFixture {
 	t.Helper()
 	root := t.TempDir()
 	transactionsDir := filepath.Join(root, ".tt", "transactions")
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), 0, []string{root})
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), testWorkspaceLedgerDepth, []string{root})
 	editedPath := filepath.Join(root, "projects", "alpha", "tasks.md")
 	createdPath := filepath.Join(root, "notes", "created.md")
 	writeFile(t, editedPath, "edited after")

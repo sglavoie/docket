@@ -114,7 +114,7 @@ func newSandboxResetTUIFixture(t *testing.T, commitErr error) (*AppModel, *model
 	project.PinnedTags = []string{"catalog"}
 	project.SectionColors = map[string]string{models.SectionNext: "blue"}
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	base := newScenarioRepo(commitSvc, project)
 	base.seed(t)

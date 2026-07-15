@@ -287,7 +287,7 @@ func TestGlobalTagNavigateCanStillOpenProjectTreeWhenDefault(t *testing.T) {
 // and re-applies the whole workspace-wide rename.
 func TestGlobalTagRenameCommitsWorkspaceWideAndUndoes(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	catalog := newLedgerTagProject(t, dataDir, "catalog")

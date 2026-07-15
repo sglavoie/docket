@@ -45,7 +45,7 @@ func canonicalArchiveProject(t *testing.T) (dataDir string, project *models.Proj
 }
 
 func ledgerForDataDir(dataDir string) *WorkspaceLedger {
-	return NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	return NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 }
 
 func commitServiceForDataDir(dataDir string, ledger *WorkspaceLedger) *CommitService {

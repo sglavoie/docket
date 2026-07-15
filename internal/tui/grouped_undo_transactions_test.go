@@ -251,7 +251,7 @@ type moveHandlerEnv struct {
 func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *moveHandlerEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	newProject := func(slug, name string, tasks []*models.Task) *models.Project {

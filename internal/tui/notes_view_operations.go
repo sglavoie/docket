@@ -232,7 +232,7 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 	if location.Scope == "" {
 		return nil
 	}
-	return noteLedgerRestoreCmd(m.noteLedger, location, false)
+	return noteLedgerRestoreCmd(m.noteLedger, location, m.noteLedgerScope(), false)
 }
 
 func (m *NotesViewModel) redoNoteMutation() tea.Cmd {
@@ -240,7 +240,7 @@ func (m *NotesViewModel) redoNoteMutation() tea.Cmd {
 	if location.Scope == "" {
 		return nil
 	}
-	return noteLedgerRestoreCmd(m.noteLedger, location, true)
+	return noteLedgerRestoreCmd(m.noteLedger, location, m.noteLedgerScope(), true)
 }
 
 func (m *NotesViewModel) linkCurrentNote() tea.Cmd {

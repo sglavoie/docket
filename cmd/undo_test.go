@@ -299,3 +299,68 @@ func TestRunUndo(t *testing.T) {
 		}
 	})
 }
+
+func TestRunUndoGlobalWithoutCurrentProject(t *testing.T) {
+	ledger, path := configureCLIUndoRedoLedger(t)
+	oldGlobal := undoGlobal
+	undoGlobal = true
+	t.Cleanup(func() { undoGlobal = oldGlobal })
+
+	if err := runUndo(nil, nil); err != nil {
+		t.Fatalf("runUndo --global without current project: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read restored global artifact: %v", err)
+	}
+	if got := string(data); got != "before" {
+		t.Fatalf("global artifact after undo = %q, want before", got)
+	}
+	if entry, ok, err := ledger.SelectNewestRedo(storage.GlobalScope()); err != nil || !ok || entry.TransactionID != "global-restore" {
+		t.Fatalf("global redo entry = %#v, ok=%v, err=%v", entry, ok, err)
+	}
+}
+
+func TestRunUndoWithoutCurrentProjectStillFails(t *testing.T) {
+	ledger, _ := configureCLIUndoRedoLedger(t)
+	oldGlobal := undoGlobal
+	undoGlobal = false
+	t.Cleanup(func() { undoGlobal = oldGlobal })
+
+	err := runUndo(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "no current project selected") {
+		t.Fatalf("runUndo without current project error = %v", err)
+	}
+	if entry, ok, selectErr := ledger.SelectNewestUndo(storage.GlobalScope()); selectErr != nil || !ok || entry.TransactionID != "global-restore" {
+		t.Fatalf("non-global failure changed ledger: entry=%#v ok=%v err=%v", entry, ok, selectErr)
+	}
+}
+
+func configureCLIUndoRedoLedger(t *testing.T) (*storage.WorkspaceLedger, string) {
+	t.Helper()
+	dataDir := t.TempDir()
+	configPath := filepath.Join(dataDir, "config.json")
+	manager := config.NewManager(configPath)
+	if err := saveTestRuntime(manager, newFileBackedTestRuntime(dataDir, "")); err != nil {
+		t.Fatalf("save runtime without current project: %v", err)
+	}
+	oldConfig := viper.GetString("config")
+	viper.Set("config", configPath)
+	t.Cleanup(func() { viper.Set("config", oldConfig) })
+
+	path := filepath.Join(dataDir, "global-artifact.txt")
+	if err := os.WriteFile(path, []byte("after"), storage.FilePermissions); err != nil {
+		t.Fatalf("write global artifact: %v", err)
+	}
+	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), 10, []string{dataDir})
+	if err := ledger.Record(storage.LedgerRecord{
+		TransactionID: "global-restore",
+		Action:        "global fixture",
+		Artifacts: []storage.LedgerArtifact{{
+			Path: path, BeforeExists: true, Before: []byte("before"), AfterExists: true, After: []byte("after"),
+		}},
+	}); err != nil {
+		t.Fatalf("record global restore fixture: %v", err)
+	}
+	return ledger, path
+}

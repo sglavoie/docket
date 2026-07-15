@@ -79,7 +79,7 @@ func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.P
 	// Wire the single-task coordinator over the same in-memory project pointers,
 	// so migrated priority-mode mutations commit through the application layer and
 	// the ledger while remaining observable on alpha/beta directly.
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newScenarioRepo(commitSvc, alpha, beta)
 	svc := app.NewService(repo, nil, nil)

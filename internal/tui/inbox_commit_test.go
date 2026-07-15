@@ -82,7 +82,7 @@ func TestInboxProcessorCommitsTriageThroughTransaction(t *testing.T) {
 	}
 
 	// A workspace-ledger entry was recorded and undoes the triage change.
-	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), testWorkspaceLedgerDepth, []string{dataDir})
 	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger undo: %v", err)
 	}

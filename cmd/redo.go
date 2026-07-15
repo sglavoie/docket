@@ -38,18 +38,12 @@ func init() {
 }
 
 func runRedo(cmd *cobra.Command, args []string) error {
-	project, workspace, err := LoadRuntimeCurrentProject()
+	ctx, err := loadUndoRedoContext(redoGlobal)
 	if err != nil {
 		return err
 	}
 
-	ledger := workspaceLedgerForRestore(workspace.Runtime)
-	scope := storage.ProjectScope(project.ID)
-	if redoGlobal {
-		scope = storage.GlobalScope()
-	}
-
-	entry, ledgerHas, err := ledger.SelectNewestRedo(scope)
+	entry, ledgerHas, err := ctx.ledger.SelectNewestRedo(ctx.scope)
 	if err != nil {
 		return fmt.Errorf("redo failed: %w", err)
 	}
@@ -60,26 +54,26 @@ func runRedo(cmd *cobra.Command, args []string) error {
 	// the more recent entry so interleaved histories restore in order; the
 	// fallback dies with the legacy pipeline. Global scope is ledger-only —
 	// the legacy system has no workspace-wide notion.
-	if !redoGlobal && legacyHistoryIsNewer(project, entry, ledgerHas, storage.LoadRedoHistory) {
-		return runLegacyRedo(project, workspace.Runtime.AllProjects(), workspace.Runtime)
+	if !redoGlobal && legacyHistoryIsNewer(ctx.project, entry, ledgerHas, storage.LoadRedoHistory) {
+		return runLegacyRedo(ctx.project, ctx.workspace.Runtime.AllProjects(), ctx.workspace.Runtime)
 	}
 	if !ledgerHas {
 		if redoGlobal {
 			return fmt.Errorf("no redo history available")
 		}
-		return fmt.Errorf("no redo history available for project '%s'", project.Name)
+		return fmt.Errorf("no redo history available for project '%s'", ctx.project.Name)
 	}
 
-	restoredEntry, actionDesc, err := ledger.RedoWithEntry(scope)
+	restoredEntry, actionDesc, err := ctx.ledger.RedoWithEntry(ctx.scope)
 	if err != nil {
 		return fmt.Errorf("redo failed: %w", err)
 	}
-	if err := repairConfigRefsAfterLedgerRestore(workspace.Runtime, restoredEntry.ProjectIDs); err != nil {
+	if err := repairConfigRefsAfterLedgerRestore(ctx.workspace.Runtime, restoredEntry.ProjectIDs); err != nil {
 		return err
 	}
 
 	fmt.Printf("Redo: %s\n", actionDesc)
-	if remaining, countErr := ledger.RedoCount(scope); countErr == nil && remaining > 0 {
+	if remaining, countErr := ctx.ledger.RedoCount(ctx.scope); countErr == nil && remaining > 0 {
 		fmt.Printf("%d more redo step(s) available.\n", remaining)
 	}
 	return nil

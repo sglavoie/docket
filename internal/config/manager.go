@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -116,7 +117,10 @@ func (m *Manager) LoadDomains() (*Domains, error) {
 	case domainStateComplete:
 		// Load the complete split-domain set below.
 	}
+	return loadDomainBundle(store)
+}
 
+func loadDomainBundle(store *DomainFileStore) (*Domains, error) {
 	catalog, err := store.LoadCatalog()
 	if err != nil {
 		return nil, err
@@ -143,22 +147,123 @@ func (m *Manager) LoadDomains() (*Domains, error) {
 // LoadOrCreateDomains loads explicit domains and persists their defaults when
 // the workspace has not yet been initialized.
 func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
+	dataDir := m.workspaceDataDir()
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir})
+	if _, err := commit.RecoverWorkspace(); err != nil {
+		return nil, fmt.Errorf("failed to recover workspace before loading split configuration domains: %w", err)
+	}
+
 	store := m.domainStore()
 	state, partialErr := m.classifyDomainState(store)
 	if state == domainStatePartial {
 		return nil, partialErr
 	}
-	domains, err := m.LoadDomains()
-	if err != nil {
-		return nil, err
-	}
 	if state == domainStateComplete {
-		return domains, nil
+		return loadDomainBundle(store)
 	}
-	if err := saveDomainBundle(store, domains); err != nil {
+
+	domains := NewDomains()
+	if err := createDomainBundle(commit, store, domains); err != nil {
+		if errors.Is(err, storage.ErrStaleArtifact) {
+			return m.loadAfterBootstrapRace(err)
+		}
 		return nil, fmt.Errorf("failed to create split configuration domains: %w", err)
 	}
 	return domains, nil
+}
+
+// createDomainBundle validates and encodes the complete default bundle before
+// the synced transaction creates anything. Machine state lives outside the
+// workspace root and is intentionally saved only after all four synced domains
+// have committed successfully.
+func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, domains *Domains) error {
+	if commit == nil {
+		return fmt.Errorf("configuration commit service is required")
+	}
+	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Settings == nil || domains.Automation == nil || domains.Machine == nil {
+		return fmt.Errorf("all configuration domains are required")
+	}
+	workspaceID, err := store.bindCatalogPayload(domains.Catalog)
+	if err != nil {
+		return err
+	}
+	if err := validateDomainBundle(domains); err != nil {
+		return err
+	}
+
+	type syncedDomain struct {
+		kind    domainKind
+		payload any
+	}
+	synced := []syncedDomain{
+		{kind: domainCatalog, payload: domains.Catalog},
+		{kind: domainPlanning, payload: domains.Planning},
+		{kind: domainSettings, payload: domains.Settings},
+		{kind: domainAutomation, payload: domains.Automation},
+	}
+	absentRevision := ""
+	changes := make([]storage.ArtifactChange, 0, len(synced))
+	for _, domain := range synced {
+		path, pathErr := store.pathFor(domain.kind)
+		if pathErr != nil {
+			return pathErr
+		}
+		data, encodeErr := encodeDomainEnvelope(domain.kind, workspaceID, domain.payload)
+		if encodeErr != nil {
+			return encodeErr
+		}
+		changes = append(changes, storage.ArtifactChange{
+			Path:             path,
+			Data:             data,
+			Mode:             FilePermissions,
+			ExpectedRevision: &absentRevision,
+		})
+	}
+	if _, err := commit.CommitArtifacts(changes); err != nil {
+		return err
+	}
+	if err := store.SaveMachine(domains.Machine); err != nil {
+		return fmt.Errorf("failed to save machine-local configuration after synced bootstrap: %w", err)
+	}
+	return nil
+}
+
+func validateDomainBundle(domains *Domains) error {
+	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Settings == nil || domains.Automation == nil || domains.Machine == nil {
+		return fmt.Errorf("all configuration domains are required")
+	}
+	checks := []struct {
+		name     string
+		validate func() error
+	}{
+		{name: "catalog", validate: domains.Catalog.Validate},
+		{name: "planning", validate: domains.Planning.Validate},
+		{name: "settings", validate: domains.Settings.Validate},
+		{name: "automation", validate: domains.Automation.Validate},
+		{name: "machine", validate: domains.Machine.Validate},
+	}
+	for _, check := range checks {
+		if err := check.validate(); err != nil {
+			return fmt.Errorf("invalid %s domain: %w", check.name, err)
+		}
+	}
+	return nil
+}
+
+// loadAfterBootstrapRace resolves the only expected create conflict: another
+// initializer committed first. A fresh store must see either the winner's whole
+// bundle or an explicit partial state; an absent result preserves the original
+// stale-artifact error rather than silently retrying with a new identity.
+func (m *Manager) loadAfterBootstrapRace(staleErr error) (*Domains, error) {
+	store := m.domainStore()
+	switch state, partialErr := m.classifyDomainState(store); state {
+	case domainStateComplete:
+		return loadDomainBundle(store)
+	case domainStatePartial:
+		return nil, partialErr
+	default:
+		return nil, staleErr
+	}
 }
 
 func saveDomainBundle(store *DomainFileStore, domains *Domains) error {

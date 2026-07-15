@@ -41,19 +41,49 @@ func init() {
 	rootCmd.AddCommand(undoCmd)
 }
 
-func runUndo(cmd *cobra.Command, args []string) error {
+// undoRedoContext is the shared restore composition for both CLI commands. A
+// global restore loads only the workspace and never resolves the machine's
+// current project; a project restore keeps the current-project and legacy
+// history behavior intact.
+type undoRedoContext struct {
+	project   *models.Project
+	workspace *CLIWorkspace
+	ledger    *storage.WorkspaceLedger
+	scope     storage.LedgerScope
+}
+
+func loadUndoRedoContext(global bool) (undoRedoContext, error) {
+	if global {
+		workspace, err := LoadCLIWorkspace()
+		if err != nil {
+			return undoRedoContext{}, err
+		}
+		return undoRedoContext{
+			workspace: workspace,
+			ledger:    workspaceLedgerForRestore(workspace.Runtime),
+			scope:     storage.GlobalScope(),
+		}, nil
+	}
+
 	project, workspace, err := LoadRuntimeCurrentProject()
+	if err != nil {
+		return undoRedoContext{}, err
+	}
+	return undoRedoContext{
+		project:   project,
+		workspace: workspace,
+		ledger:    workspaceLedgerForRestore(workspace.Runtime),
+		scope:     storage.ProjectScope(project.ID),
+	}, nil
+}
+
+func runUndo(cmd *cobra.Command, args []string) error {
+	ctx, err := loadUndoRedoContext(undoGlobal)
 	if err != nil {
 		return err
 	}
 
-	ledger := workspaceLedgerForRestore(workspace.Runtime)
-	scope := storage.ProjectScope(project.ID)
-	if undoGlobal {
-		scope = storage.GlobalScope()
-	}
-
-	entry, ledgerHas, err := ledger.SelectNewestUndo(scope)
+	entry, ledgerHas, err := ctx.ledger.SelectNewestUndo(ctx.scope)
 	if err != nil {
 		return fmt.Errorf("undo failed: %w", err)
 	}
@@ -64,26 +94,26 @@ func runUndo(cmd *cobra.Command, args []string) error {
 	// the more recent entry so interleaved histories restore in order; the
 	// fallback dies with the legacy pipeline. Global scope is ledger-only —
 	// the legacy system has no workspace-wide notion.
-	if !undoGlobal && legacyHistoryIsNewer(project, entry, ledgerHas, storage.LoadUndoHistory) {
-		return runLegacyUndo(project, workspace.Runtime.AllProjects(), workspace.Runtime)
+	if !undoGlobal && legacyHistoryIsNewer(ctx.project, entry, ledgerHas, storage.LoadUndoHistory) {
+		return runLegacyUndo(ctx.project, ctx.workspace.Runtime.AllProjects(), ctx.workspace.Runtime)
 	}
 	if !ledgerHas {
 		if undoGlobal {
 			return fmt.Errorf("no undo history available")
 		}
-		return fmt.Errorf("no undo history available for project '%s'", project.Name)
+		return fmt.Errorf("no undo history available for project '%s'", ctx.project.Name)
 	}
 
-	restoredEntry, actionDesc, err := ledger.UndoWithEntry(scope)
+	restoredEntry, actionDesc, err := ctx.ledger.UndoWithEntry(ctx.scope)
 	if err != nil {
 		return fmt.Errorf("undo failed: %w", err)
 	}
-	if err := repairConfigRefsAfterLedgerRestore(workspace.Runtime, restoredEntry.ProjectIDs); err != nil {
+	if err := repairConfigRefsAfterLedgerRestore(ctx.workspace.Runtime, restoredEntry.ProjectIDs); err != nil {
 		return err
 	}
 
 	fmt.Printf("Undone: %s\n", actionDesc)
-	if remaining, countErr := ledger.UndoCount(scope); countErr == nil && remaining > 0 {
+	if remaining, countErr := ctx.ledger.UndoCount(ctx.scope); countErr == nil && remaining > 0 {
 		fmt.Printf("%d more undo step(s) available.\n", remaining)
 	}
 	return nil

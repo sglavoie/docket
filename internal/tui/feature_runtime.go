@@ -32,8 +32,8 @@ import (
 //
 // It depends on explicit domain-backed capabilities rather than the config.Config
 // facade: the catalog domain (via RuntimeDependencies) supplies the loadable
-// project set for Snapshot, and the durable data-dir path plus the settings
-// domain size the commit service and its undo ledger.
+// project set for Snapshot, while the durable data-dir path and explicitly
+// injected ledger fix the commit service's transaction and history boundaries.
 type tuiAppRepository struct {
 	deps    *config.RuntimeDependencies
 	dataDir string
@@ -41,17 +41,11 @@ type tuiAppRepository struct {
 }
 
 // newTUIAppRepository builds the storage-backed application repository for the
-// active workspace from explicit domain-backed capabilities: the durable
-// data-dir path fixes the transaction, undo-ledger, and approved-root
-// boundaries, while the settings domain sizes the undo ledger's history depth
-// and the catalog domain (both reachable through deps) supplies Snapshot's
-// loadable project set.
-func newTUIAppRepository(dataDir string, deps *config.RuntimeDependencies) *tuiAppRepository {
-	depth := config.DefaultUndoHistoryDepth
-	if settings, err := deps.Settings.LoadSettings(); err == nil && settings.UndoHistoryDepth != nil {
-		depth = *settings.UndoHistoryDepth
-	}
-	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
+// active workspace from explicit domain-backed capabilities. The durable
+// data-dir path fixes the transaction and approved-root boundaries, the caller
+// owns the ledger's identity and retention policy, and the catalog domain
+// supplies Snapshot's loadable project set.
+func newTUIAppRepository(dataDir string, deps *config.RuntimeDependencies, ledger *storage.WorkspaceLedger) *tuiAppRepository {
 	svc := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger).
 		WithConflictStore(storage.NewConflictStore(config.ConflictsDir(dataDir)))
 	return &tuiAppRepository{deps: deps, dataDir: dataDir, svc: svc}
@@ -219,9 +213,9 @@ func (r *tuiAppRepository) CommitOps(ops []transaction.Op, artifacts []storage.A
 // coordinators drive. The service owns the storage-backed repository, the system
 // clock, and the UUID generator; every primary-view mutation routes through one
 // of its use cases instead of the view orchestrating load/mutate/save itself.
-func newTUIAppService(dataDir string, deps *config.RuntimeDependencies) *app.Service {
+func newTUIAppService(dataDir string, deps *config.RuntimeDependencies, ledger *storage.WorkspaceLedger) *app.Service {
 	return app.NewServiceWithArtifacts(
-		newTUIAppRepository(dataDir, deps),
+		newTUIAppRepository(dataDir, deps, ledger),
 		nil,
 		nil,
 		app.NewStorageWorkspaceNotePort(dataDir),

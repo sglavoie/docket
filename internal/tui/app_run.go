@@ -236,7 +236,8 @@ func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Man
 		return result
 	}
 
-	svc := newTUIAppService(runtime.DataDir(), manager.RuntimeDependencies())
+	ledger := workspaceLedgerFromConfig(runtime)
+	svc := newTUIAppService(runtime.DataDir(), manager.RuntimeDependencies(), ledger)
 	wr, err := svc.ApplyWorkflows(project.ID, rules, nil, workflowFocusArtifactBuilder(manager))
 	if err != nil {
 		logging.Warn("startup workflow evaluation failed: %v", err)

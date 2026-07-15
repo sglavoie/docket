@@ -27,7 +27,7 @@ type globalNoteTUIEnv struct {
 func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	project, err := models.NewProject(uuid.New().String(), "destination", "")
 	if err != nil {
@@ -93,6 +93,51 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 	env.shell.handleNotesMessages(result)
 	if !env.view.notes[0].Pinned || env.view.notes[0] == before {
 		t.Fatal("Update did not reconcile the committed global note")
+	}
+}
+
+func TestGlobalNotesUndoRedoSkipsNewerProjectTaskMutation(t *testing.T) {
+	env := newGlobalNoteTUIEnv(t, "Scoped note")
+	note := env.view.notes[0]
+	noteMutation := runProjectNoteMutation(t, func() any { return env.view.togglePin()() })
+	env.shell.handleNotesMessages(noteMutation)
+	if !env.note(t, note.Filename).Pinned {
+		t.Fatal("global note mutation did not persist")
+	}
+
+	taskResult, err := env.svc.AddTask(app.AddTaskRequest{ProjectID: env.project.ID, Title: "Newer project task"})
+	if err != nil {
+		t.Fatalf("AddTask: %v", err)
+	}
+
+	undo, ok := env.view.undoDelete()().(ProjectNoteLedgerResultMsg)
+	if !ok || undo.Entry.TransactionID != noteMutation.Result.Results[0].TransactionID {
+		t.Fatalf("global note undo selected %#v, want note transaction %q", undo, noteMutation.Result.Results[0].TransactionID)
+	}
+	env.shell.handleNotesMessages(undo)
+	if env.note(t, note.Filename).Pinned {
+		t.Fatal("global note undo did not restore the note")
+	}
+	if err := storage.LoadProject(env.project); err != nil {
+		t.Fatalf("reload project after note undo: %v", err)
+	}
+	if task := env.project.GetTaskByID(taskResult.TaskID); task == nil || task.Title != "Newer project task" {
+		t.Fatalf("newer project task changed by global note undo: %#v", task)
+	}
+
+	redo, ok := env.view.redoNoteMutation()().(ProjectNoteLedgerResultMsg)
+	if !ok || redo.Entry.TransactionID != noteMutation.Result.Results[0].TransactionID {
+		t.Fatalf("global note redo selected %#v, want note transaction %q", redo, noteMutation.Result.Results[0].TransactionID)
+	}
+	env.shell.handleNotesMessages(redo)
+	if !env.note(t, note.Filename).Pinned {
+		t.Fatal("global note redo did not replay the note mutation")
+	}
+	if err := storage.LoadProject(env.project); err != nil {
+		t.Fatalf("reload project after note redo: %v", err)
+	}
+	if task := env.project.GetTaskByID(taskResult.TaskID); task == nil || task.Title != "Newer project task" {
+		t.Fatalf("newer project task changed by global note redo: %#v", task)
 	}
 }
 

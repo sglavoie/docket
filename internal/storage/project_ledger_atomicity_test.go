@@ -35,7 +35,7 @@ func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 	alpha.Tasks[0].Title = "alpha after"
 	beta.Tasks[0].Title = "beta after"
 
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	results, err := service.CommitMulti([]ChangeSet{
 		{
@@ -109,7 +109,7 @@ func TestCommitMultiLedgerPreparationFailureChangesNoUserArtifacts(t *testing.T)
 	alpha.Tasks[0].Title = "alpha after"
 	beta.Tasks[0].Title = "beta after"
 	malformed := []byte("{not-json")
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	writeArtifactBytes(t, ledger.ledgerPath(), malformed)
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 
@@ -250,7 +250,7 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 		{Kind: transaction.OpWrite, Target: artifactPath, Data: artifactAfter, Mode: FilePermissions},
 		{Kind: transaction.OpWrite, Target: betaPath, Data: betaAfter, Mode: FilePermissions},
 	}
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	journal := transaction.NewJournal(transactionsDir, []string{dataDir})
 	manifest, ledgerPlan, err := service.prepareTransaction(journal, userOps, &LedgerRecord{

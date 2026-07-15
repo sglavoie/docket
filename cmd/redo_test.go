@@ -164,3 +164,42 @@ func TestRunRedo(t *testing.T) {
 		}
 	})
 }
+
+func TestRunRedoGlobalWithoutCurrentProject(t *testing.T) {
+	ledger, path := configureCLIUndoRedoLedger(t)
+	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("prepare global redo: %v", err)
+	}
+	oldGlobal := redoGlobal
+	redoGlobal = true
+	t.Cleanup(func() { redoGlobal = oldGlobal })
+
+	if err := runRedo(nil, nil); err != nil {
+		t.Fatalf("runRedo --global without current project: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read replayed global artifact: %v", err)
+	}
+	if got := string(data); got != "after" {
+		t.Fatalf("global artifact after redo = %q, want after", got)
+	}
+}
+
+func TestRunRedoWithoutCurrentProjectStillFails(t *testing.T) {
+	ledger, _ := configureCLIUndoRedoLedger(t)
+	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("prepare global redo: %v", err)
+	}
+	oldGlobal := redoGlobal
+	redoGlobal = false
+	t.Cleanup(func() { redoGlobal = oldGlobal })
+
+	err := runRedo(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "no current project selected") {
+		t.Fatalf("runRedo without current project error = %v", err)
+	}
+	if entry, ok, selectErr := ledger.SelectNewestRedo(storage.GlobalScope()); selectErr != nil || !ok || entry.TransactionID != "global-restore" {
+		t.Fatalf("non-global failure changed ledger: entry=%#v ok=%v err=%v", entry, ok, selectErr)
+	}
+}

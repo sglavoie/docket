@@ -59,6 +59,9 @@ func TestManagerLoad_PartialDomainStateIsRecoverableError(t *testing.T) {
 	if !sliceHasString(partial.Present, "workspace") {
 		t.Fatalf("present domains = %v, want to include workspace", partial.Present)
 	}
+	if _, createErr := manager.LoadOrCreateDomains(); !errors.Is(createErr, ErrPartialDomainState) {
+		t.Fatalf("LoadOrCreateDomains partial state error = %v, want ErrPartialDomainState", createErr)
+	}
 }
 
 // TestManagerLoad_AbsentDomainsFallBackToLegacy confirms that a workspace with no

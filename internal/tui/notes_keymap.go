@@ -9,6 +9,12 @@ import (
 // buildKeyMap constructs the declarative KeyMap for NotesViewModel.
 func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 	var entries []keymap.Entry
+	undoDescription := "Undo project change"
+	redoDescription := "Redo project change"
+	if m.isGlobal {
+		undoDescription = "Undo last note change"
+		redoDescription = "Redo last note change"
+	}
 
 	// Navigation
 	entries = append(entries,
@@ -53,10 +59,10 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, m.deleteCurrentNote()
 		}),
-		keymap.Bind("u", "Undo project change", "Actions", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("u", undoDescription, "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.undoDelete()
 		}),
-		keymap.Bind("ctrl+r", "Redo project change", "Actions", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("ctrl+r", redoDescription, "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.redoNoteMutation()
 		}),
 		keymap.Bind("L", "Link note to task", "Actions", func() (tea.Model, tea.Cmd) {

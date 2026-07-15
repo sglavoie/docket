@@ -92,7 +92,7 @@ func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusB
 	// the application layer / workspace ledger. Mutations write to disk; the board
 	// reloads from disk via refreshData(), simulating the shell's post-commit
 	// refresh (finishFocusBoardMutation drives that round-trip in the tests).
-	ledger := storage.NewWorkspaceLedger(filepath.Join(cfg.DataDir(), ".tt", "undo"), 0, []string{cfg.DataDir()})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(cfg.DataDir(), ".tt", "undo"), testWorkspaceLedgerDepth, []string{cfg.DataDir()})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(cfg.DataDir(), ".tt", "transactions"), []string{cfg.DataDir()}, ledger)
 	repo := newScenarioRepo(commitSvc, project)
 	svc := app.NewService(repo, nil, nil)

@@ -81,13 +81,15 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	if manager != nil {
 		runtimeDeps = manager.RuntimeDependencies()
 	}
-	appService := newTUIAppService(dataDir, runtimeDeps)
+	depth := effectiveUndoHistoryDepth(runtime.Settings())
+	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
+	appService := newTUIAppService(dataDir, runtimeDeps, ledger)
 	app.appService = appService
 	app.features = newFeatureCoordinators(appService, appService)
 	app.secondaryFeatures = newSecondaryCoordinators(appService, manager, workflowFocusArtifactBuilder(manager))
 
 	// Assemble the domain-native dependency bundle shared by the shell and views.
-	app.deps = newShellDeps(runtime, appService, manager)
+	app.deps = newShellDeps(runtime, appService, manager, ledger)
 
 	if err := app.ensureSystemInboxProject(); err != nil {
 		logging.Warn("failed to ensure system inbox project: %v", err)

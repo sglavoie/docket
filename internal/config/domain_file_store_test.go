@@ -1,12 +1,15 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 const (
@@ -361,11 +364,18 @@ func TestDomainFileStore_FreshBundleStampsOneWorkspaceID(t *testing.T) {
 			t.Fatalf("read %s: %v", path, err)
 		}
 		var env domainEnvelope
-		if err := json.Unmarshal(data, &env); err != nil {
-			t.Fatalf("decode %s: %v", path, err)
+		if decodeErr := json.Unmarshal(data, &env); decodeErr != nil {
+			t.Fatalf("decode %s: %v", path, decodeErr)
 		}
 		if env.WorkspaceID != workspaceID {
 			t.Errorf("%s workspace ID = %q, want %q", filepath.Base(path), env.WorkspaceID, workspaceID)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("stat %s: %v", path, err)
+		}
+		if got := info.Mode().Perm(); got != os.FileMode(FilePermissions) {
+			t.Errorf("%s permissions = %o, want %o", filepath.Base(path), got, FilePermissions)
 		}
 	}
 }
@@ -418,7 +428,7 @@ func TestDomainFileStore_ConcurrentStaleObjectDetection(t *testing.T) {
 	}
 }
 
-func TestDomainFileStore_RecoversFromBackup(t *testing.T) {
+func TestDomainFileStore_RecoversFromBackupWithRepairedRevision(t *testing.T) {
 	s := newIsolatedStore(t)
 
 	planning := NewPlanningState()
@@ -434,20 +444,121 @@ func TestDomainFileStore_RecoversFromBackup(t *testing.T) {
 
 	// Corrupt the primary; the .bak (streak 7) should be recovered.
 	path := PlanningStatePath(s.DataDir())
-	if err := os.WriteFile(path, []byte("{not json"), FilePermissions); err != nil {
-		t.Fatalf("corrupt primary: %v", err)
+	backupData, err := os.ReadFile(path + ".bak")
+	if err != nil {
+		t.Fatalf("read planning backup: %v", err)
+	}
+	if writeErr := os.WriteFile(path, []byte("{not json"), FilePermissions); writeErr != nil {
+		t.Fatalf("corrupt primary: %v", writeErr)
 	}
 
-	recovered, err := NewDomainFileStore(s.DataDir()).LoadPlanning()
+	recovered, recoveredRevision, err := NewDomainFileStore(s.DataDir()).LoadPlanningChecked()
 	if err != nil {
-		t.Fatalf("LoadPlanning after corruption: %v", err)
+		t.Fatalf("LoadPlanningChecked after corruption: %v", err)
 	}
 	if recovered.StreakCount != 7 {
 		t.Fatalf("recovered streak = %d, want 7 from backup", recovered.StreakCount)
 	}
-	// Recovery re-persisted the good bytes so the primary parses again.
-	if _, err := NewDomainFileStore(s.DataDir()).LoadPlanning(); err != nil {
-		t.Fatalf("primary not repaired after recovery: %v", err)
+	repairedData, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read repaired primary: %v", err)
+	}
+	if !bytes.Equal(repairedData, backupData) {
+		t.Fatal("repaired primary bytes differ from the recovered backup")
+	}
+	if want := revisionOf(repairedData); recoveredRevision != want {
+		t.Fatalf("recovered revision = %q, want repaired-byte revision %q", recoveredRevision, want)
+	}
+
+	// The revision returned by the recovering load must be immediately usable as
+	// a checked transaction baseline; hashing the corrupt pre-recovery bytes would
+	// make this commit fail stale.
+	recovered.StreakCount = 9
+	updated, err := encodeDomainEnvelope(domainPlanning, testWorkspaceID, recovered)
+	if err != nil {
+		t.Fatalf("encode recovered planning update: %v", err)
+	}
+	if _, commitErr := storage.NewCommitService(TransactionsDir(s.DataDir()), []string{s.DataDir()}).CommitArtifacts([]storage.ArtifactChange{{
+		Path:             path,
+		Data:             updated,
+		Mode:             FilePermissions,
+		ExpectedRevision: &recoveredRevision,
+	}}); commitErr != nil {
+		t.Fatalf("commit checked artifact after recovery: %v", commitErr)
+	}
+	fresh, err := NewDomainFileStore(s.DataDir()).LoadPlanning()
+	if err != nil {
+		t.Fatalf("reload committed planning: %v", err)
+	}
+	if fresh.StreakCount != 9 {
+		t.Fatalf("committed streak = %d, want 9", fresh.StreakCount)
+	}
+}
+
+func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T) {
+	goodBackup, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDA, &PlanningState{StreakCount: 7})
+	if err != nil {
+		t.Fatalf("encode backup: %v", err)
+	}
+
+	var unsupported domainEnvelope
+	if decodeErr := json.Unmarshal(goodBackup, &unsupported); decodeErr != nil {
+		t.Fatalf("decode backup fixture: %v", decodeErr)
+	}
+	unsupported.SchemaVersion = CurrentDomainSchemaVersion + 1
+	unsupportedData, err := json.MarshalIndent(unsupported, "", "  ")
+	if err != nil {
+		t.Fatalf("encode unsupported primary: %v", err)
+	}
+	mismatchedData, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDB, &PlanningState{StreakCount: 8})
+	if err != nil {
+		t.Fatalf("encode mismatched primary: %v", err)
+	}
+	invalidPayloadData, err := json.MarshalIndent(domainEnvelope{
+		SchemaVersion: CurrentDomainSchemaVersion,
+		WorkspaceID:   testWorkspaceIDA,
+		Kind:          domainPlanning.name(),
+		Data:          json.RawMessage(`"not a planning object"`),
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("encode invalid-payload primary: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		primary []byte
+		check   func(error) bool
+	}{
+		{name: "unsupported-schema", primary: unsupportedData, check: func(err error) bool { return strings.Contains(err.Error(), "not supported") }},
+		{name: "workspace-mismatch", primary: mismatchedData, check: func(err error) bool { return errors.Is(err, ErrWorkspaceIDMismatch) }},
+		{name: "invalid-payload", primary: invalidPayloadData, check: func(err error) bool { return strings.Contains(err.Error(), "failed to parse planning.json payload") }},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dataDir := filepath.Join(t.TempDir(), "workspace")
+			path := PlanningStatePath(dataDir)
+			if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
+				t.Fatalf("mkdir domain dir: %v", err)
+			}
+			if err := os.WriteFile(path, tc.primary, FilePermissions); err != nil {
+				t.Fatalf("write primary: %v", err)
+			}
+			if err := os.WriteFile(path+".bak", goodBackup, FilePermissions); err != nil {
+				t.Fatalf("write backup: %v", err)
+			}
+
+			_, _, loadErr := NewDomainFileStoreWithWorkspace(dataDir, testWorkspaceIDA).LoadPlanningChecked()
+			if loadErr == nil || !tc.check(loadErr) {
+				t.Fatalf("LoadPlanningChecked error = %v, want %s primary failure", loadErr, tc.name)
+			}
+			primaryAfter, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read primary after load: %v", err)
+			}
+			if !bytes.Equal(primaryAfter, tc.primary) {
+				t.Fatal("semantic primary error incorrectly triggered backup replacement")
+			}
+		})
 	}
 }
 

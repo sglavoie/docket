@@ -49,11 +49,12 @@ func newTrashRestoreTestApp(
 	if err != nil {
 		t.Fatalf("LoadRuntimeState: %v", err)
 	}
-	service := newTUIAppService(dataDir, manager.RuntimeDependencies())
+	ledger := workspaceLedgerFromConfig(runtime)
+	service := newTUIAppService(dataDir, manager.RuntimeDependencies(), ledger)
 	app := &AppModel{
 		configManager:            manager,
 		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, service, manager),
+		deps:                     newShellDeps(runtime, service, manager, ledger),
 		appService:               service,
 		projects:                 make(map[string]*models.Project),
 		persister:                NewProjectService(),

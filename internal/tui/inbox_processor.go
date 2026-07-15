@@ -82,8 +82,9 @@ func (m *InboxProcessorModel) saveProjectCmd(project *models.Project) tea.Cmd {
 	}
 	dataDir := m.runtime.DataDir()
 	deps := m.configManager.RuntimeDependencies()
+	ledger := workspaceLedgerFromConfig(m.runtime)
 	return func() tea.Msg {
-		if err := commitInboxProject(dataDir, deps, project); err != nil {
+		if err := commitInboxProject(dataDir, deps, ledger, project); err != nil {
 			return InboxProjectSavedMsg{Error: fmt.Errorf("save failed: %w", err)}
 		}
 		return InboxProjectSavedMsg{Error: nil}

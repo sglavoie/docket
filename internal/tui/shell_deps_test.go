@@ -9,9 +9,9 @@ import (
 
 // TestNewAppModelWiresShellDeps proves the composition root assembles the
 // domain-native dependency bundle alongside the legacy config.Config facade: the
-// bundle carries the same RuntimeState snapshot, application service, and config
-// manager the shell holds, so a feature group can migrate onto the bundle without
-// re-plumbing its construction.
+// bundle carries the same RuntimeState snapshot, application service, config
+// manager, and workspace ledger the shell holds, so a feature group can migrate
+// onto the bundle without re-plumbing its construction.
 func TestNewAppModelWiresShellDeps(t *testing.T) {
 	cfg := newTestConfig()
 	configPath := filepath.Join(t.TempDir(), "tt.json")
@@ -39,6 +39,9 @@ func TestNewAppModelWiresShellDeps(t *testing.T) {
 	}
 	if app.deps.Manager != manager {
 		t.Error("bundle Manager must be the injected config manager")
+	}
+	if app.deps.Ledger == nil {
+		t.Error("bundle must carry the shared workspace ledger")
 	}
 }
 

@@ -243,11 +243,12 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 	rev := revisionOf(data)
 	env, decErr := decodeEnvelope(data)
 	if decErr != nil {
-		recovered, recErr := s.recoverEnvelopeFromBackup(path, decErr)
+		recovered, recoveredData, recErr := s.recoverEnvelopeFromBackup(path, decErr)
 		if recErr != nil {
 			return rev, recErr
 		}
 		env = recovered
+		rev = revisionOf(recoveredData)
 	}
 	if env.SchemaVersion > CurrentDomainSchemaVersion {
 		return rev, fmt.Errorf("%s schema version %d not supported, please upgrade tt", filepath.Base(path), env.SchemaVersion)
@@ -418,19 +419,19 @@ func migratedMachineEnvelope(path string, data []byte, workspaceID string) ([]by
 // recoverEnvelopeFromBackup restores an artifact from its .bak sidecar when the
 // primary is corrupted, re-persisting the recovered bytes so later loads do not
 // hit the corruption again.
-func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr error) (domainEnvelope, error) {
+func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr error) (domainEnvelope, []byte, error) {
 	backupData, err := os.ReadFile(path + ".bak")
 	if err != nil {
-		return domainEnvelope{}, fmt.Errorf("failed to parse %s (no backup available): %w", filepath.Base(path), primaryErr)
+		return domainEnvelope{}, nil, fmt.Errorf("failed to parse %s (no backup available): %w", filepath.Base(path), primaryErr)
 	}
 	env, err := decodeEnvelope(backupData)
 	if err != nil {
-		return domainEnvelope{}, fmt.Errorf("failed to parse %s and backup is also corrupted: %w", filepath.Base(path), primaryErr)
+		return domainEnvelope{}, nil, fmt.Errorf("failed to parse %s and backup is also corrupted: %w", filepath.Base(path), primaryErr)
 	}
 	if writeErr := util.AtomicWriteFile(path, backupData, FilePermissions); writeErr != nil {
-		return domainEnvelope{}, fmt.Errorf("recovered %s from backup but failed to persist it: %w", filepath.Base(path), writeErr)
+		return domainEnvelope{}, nil, fmt.Errorf("recovered %s from backup but failed to persist it: %w", filepath.Base(path), writeErr)
 	}
-	return env, nil
+	return env, backupData, nil
 }
 
 // save writes an artifact atomically under a per-file lock with a backup and

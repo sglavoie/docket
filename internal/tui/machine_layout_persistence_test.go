@@ -40,7 +40,7 @@ func newMachineLayoutTestApp(t *testing.T) (*AppModel, *models.Project) {
 	app := &AppModel{
 		configManager:            manager,
 		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager),
+		deps:                     newShellDeps(runtime, nil, manager, nil),
 		persister:                NewProjectService(),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
 		projectLastView:          make(map[string]ViewType),

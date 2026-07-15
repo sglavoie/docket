@@ -44,7 +44,7 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 	// Machine-local domain (machine.json) resolves under HOME; isolate it so a
 	// checked machine commit + facade reload stays inside the temp workspace.
 	t.Setenv("HOME", dataDir)
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	projects := make([]*models.Project, len(taskGroups))

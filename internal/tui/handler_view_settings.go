@@ -20,6 +20,9 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 	case SettingsSavedMsg:
 		m.popView()
 		settings := m.runtime.Settings()
+		if ledger := m.deps.historyLedger(); ledger != nil {
+			ledger.SetMaxDepth(effectiveUndoHistoryDepth(settings))
+		}
 		ApplyTheme(NewThemeConfig(settings))
 		icons.SetUseEmoji(settings.GetUseEmoji())
 		if m.dashboard != nil {

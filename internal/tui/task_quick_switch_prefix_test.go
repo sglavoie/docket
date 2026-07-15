@@ -39,7 +39,7 @@ func quickSwitchServiceFixture(t *testing.T) (*AppModel, *models.Project, string
 	cfg := newTestConfigAt(dataDir)
 	setTestProjects(cfg, []*models.Project{proj})
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newScenarioRepo(commitSvc, proj)
 	svc := app.NewService(repo, nil, nil)

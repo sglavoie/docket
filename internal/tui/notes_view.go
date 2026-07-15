@@ -186,7 +186,7 @@ func NewNotesViewModelWithService(project *models.Project, service projectNoteSe
 }
 
 // NewGlobalNotesViewModelWithService creates a global notes view backed by the
-// typed application API and the workspace-global undo/redo line.
+// typed application API and undo/redo restricted to the global notes directory.
 func NewGlobalNotesViewModelWithService(notesDir string, service projectNoteService, ledger *storage.WorkspaceLedger, cfg ...notesConfig) *NotesViewModel {
 	m := &NotesViewModel{
 		notesDir:      notesDir,
@@ -212,6 +212,18 @@ func (m *NotesViewModel) noteLocation() app.NoteLocation {
 		return app.NoteLocation{}
 	}
 	return app.ProjectNoteLocation(m.project.ID)
+}
+
+// noteLedgerScope preserves project Notes' project-wide restore behavior while
+// restricting Global Notes to transactions that touch its own collection.
+func (m *NotesViewModel) noteLedgerScope() storage.LedgerScope {
+	if m.isGlobal {
+		return storage.ArtifactRootScope(m.notesDir)
+	}
+	if m.project == nil {
+		return storage.GlobalScope()
+	}
+	return storage.ProjectScope(m.project.ID)
 }
 
 // effectiveDir returns the notes directory path for either global or project notes.

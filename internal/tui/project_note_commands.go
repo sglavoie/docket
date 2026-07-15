@@ -104,14 +104,10 @@ func noteMutationCmd(service projectNoteService, location app.NoteLocation, req 
 	}
 }
 
-func noteLedgerRestoreCmd(ledger *storage.WorkspaceLedger, location app.NoteLocation, redo bool) tea.Cmd {
+func noteLedgerRestoreCmd(ledger *storage.WorkspaceLedger, location app.NoteLocation, scope storage.LedgerScope, redo bool) tea.Cmd {
 	return func() tea.Msg {
 		if ledger == nil {
 			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Redo: redo, Err: fmt.Errorf("workspace undo ledger is unavailable")}
-		}
-		scope := storage.GlobalScope()
-		if location.Scope == app.NoteScopeProject {
-			scope = storage.ProjectScope(location.ProjectID)
 		}
 		restore := ledger.UndoWithEntry
 		if redo {

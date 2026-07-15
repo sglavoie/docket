@@ -356,6 +356,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	if m.isGlobal {
 		items = append(items,
 			HelpItem{Key: "u", Description: "Undo last note change"},
+			HelpItem{Key: "Ctrl+R", Description: "Redo last note change"},
 			HelpItem{Key: "m", Description: "Move note to project"},
 		)
 	} else {

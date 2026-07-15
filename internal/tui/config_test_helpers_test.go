@@ -9,6 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
+const testWorkspaceLedgerDepth = 1000
+
 func newTestConfig() *config.RuntimeState {
 	return newTestConfigAt("")
 }

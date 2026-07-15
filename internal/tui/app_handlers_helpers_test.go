@@ -22,7 +22,7 @@ func newTestAppModel() *AppModel {
 	return &AppModel{
 		configManager:            manager,
 		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager),
+		deps:                     newShellDeps(runtime, nil, manager, nil),
 		projects:                 make(map[string]*models.Project),
 		persister:                NewProjectService(),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
@@ -53,7 +53,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	app := &AppModel{
 		configManager:            manager,
 		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager),
+		deps:                     newShellDeps(runtime, nil, manager, nil),
 		projects:                 map[string]*models.Project{project.ID: project},
 		persister:                NewProjectService(),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),

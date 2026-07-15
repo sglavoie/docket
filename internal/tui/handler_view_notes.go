@@ -100,13 +100,13 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 
 	case ShowNotesMsg:
 		if msg.Project != nil {
-			m.showView(ViewNotes, NewNotesViewModelWithService(msg.Project, m.appService, workspaceLedgerFromConfig(m.runtime), m.runtime.Machine()))
+			m.showView(ViewNotes, NewNotesViewModelWithService(msg.Project, m.appService, m.deps.historyLedger(), m.runtime.Machine()))
 		}
 		return true, nil
 
 	case ShowGlobalNotesMsg:
 		dir := storage.GlobalNotesDir(m.runtime.DataDir())
-		m.showView(ViewGlobalNotes, NewGlobalNotesViewModelWithService(dir, m.appService, workspaceLedgerFromConfig(m.runtime), m.runtime.Machine()))
+		m.showView(ViewGlobalNotes, NewGlobalNotesViewModelWithService(dir, m.appService, m.deps.historyLedger(), m.runtime.Machine()))
 		return true, nil
 
 	case ShowGlobalNoteCreatorMsg:

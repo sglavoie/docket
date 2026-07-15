@@ -19,11 +19,11 @@ const inboxTriageUndoAction = "Inbox Triage"
 // write now flows through the same transactional boundary every other TUI
 // mutation uses. No post-mutation reconciliation hooks run here, matching the
 // legacy inbox save behavior (SaveProject never ran them either).
-func commitInboxProject(dataDir string, deps *config.RuntimeDependencies, project *models.Project) error {
+func commitInboxProject(dataDir string, deps *config.RuntimeDependencies, ledger *storage.WorkspaceLedger, project *models.Project) error {
 	if project == nil {
 		return nil
 	}
-	repo := newTUIAppRepository(dataDir, deps)
+	repo := newTUIAppRepository(dataDir, deps, ledger)
 	if _, err := repo.Commit(storage.ChangeSet{
 		Project:    project,
 		UndoAction: inboxTriageUndoAction,

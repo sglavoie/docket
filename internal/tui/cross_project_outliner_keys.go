@@ -297,18 +297,26 @@ func crossRestoreVerb(redo bool) string {
 	return "Undid"
 }
 
-// workspaceLedgerFromConfig opens the workspace undo ledger the transactional
-// commit boundary records to, sized from the configured history depth — the same
-// construction newTUIAppRepository uses, so cross-project undo/redo reads exactly
-// what the coordinator wrote.
-func workspaceLedgerFromConfig(runtime *config.RuntimeState) *storage.WorkspaceLedger {
-	depth := config.DefaultUndoHistoryDepth
-	dataDir := ""
-	if runtime != nil {
-		if d := runtime.Settings().UndoHistoryDepth; d != nil {
-			depth = *d
-		}
-		dataDir = runtime.DataDir()
+// effectiveUndoHistoryDepth resolves the persisted optional setting to the
+// concrete retention policy used by a workspace ledger.
+func effectiveUndoHistoryDepth(settings *config.Settings) int {
+	if settings != nil && settings.UndoHistoryDepth != nil {
+		return *settings.UndoHistoryDepth
 	}
+	return config.DefaultUndoHistoryDepth
+}
+
+// workspaceLedgerFromConfig opens a short-lived workspace undo ledger sized
+// from the current runtime settings. Interactive composition owns a shared
+// handle instead; this factory remains for startup/test mutation paths and
+// restore-only surfaces such as cross-project undo/redo.
+func workspaceLedgerFromConfig(runtime *config.RuntimeState) *storage.WorkspaceLedger {
+	dataDir := ""
+	var settings *config.Settings
+	if runtime != nil {
+		dataDir = runtime.DataDir()
+		settings = runtime.Settings()
+	}
+	depth := effectiveUndoHistoryDepth(settings)
 	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
 }
