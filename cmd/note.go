@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -59,19 +58,10 @@ func runNoteShortcut(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := saveNoteContext(ctx, note); err != nil {
+	result, err := createNoteContext(ctx, note)
+	if err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
-	fmt.Printf("[global] Created note: %s (%s)\n", title, note.Filename)
+	fmt.Printf("[global] Created note: %s (%s)\n", title, result.Filename)
 	return nil
-}
-
-// globalNotesDir returns the global notes directory path and its domain-native
-// workspace snapshot.
-func globalNotesDir() (string, *CLIWorkspace, error) {
-	workspace, err := LoadCLIWorkspaceStrict()
-	if err != nil {
-		return "", nil, err
-	}
-	return storage.GlobalNotesDir(workspace.Runtime.DataDir()), workspace, nil
 }

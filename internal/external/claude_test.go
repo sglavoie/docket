@@ -104,17 +104,32 @@ func TestParseActionPlan_RejectsMalformedAndCommandOutput(t *testing.T) {
 	}
 }
 
-func TestParseActionPlan_RejectsTerminalControlSummaries(t *testing.T) {
+func TestParseActionPlan_RejectsUnsafeProviderDisplayText(t *testing.T) {
 	tests := map[string]string{
-		"CSI": `{"version":1,"summary":"clear\u001b[2Jspoof","actions":[]}`,
-		"OSC": `{"version":1,"summary":"title\u001b]0;spoof\u0007","actions":[]}`,
+		"summary CSI":     `{"version":1,"summary":"clear\u001b[2Jspoof","actions":[]}`,
+		"title OSC":       `{"version":1,"summary":"x","actions":[{"type":"create_task","project_id":"p1","title":"title\u001b]0;spoof\u0007"}]}`,
+		"description BEL": `{"version":1,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","description":"ring\u0007bell"}]}`,
+		"description CR":  `{"version":1,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","description":"replace\rline"}]}`,
+		"tag bidi":        `{"version":1,"summary":"x","actions":[{"type":"set_tags","task_id":"t1","tags":["safe\u202e"]}]}`,
+		"reference C1":    `{"version":1,"summary":"x","actions":[{"type":"delete_task","task_id":"t1\u009b"}]}`,
 	}
 	for name, response := range tests {
 		t.Run(name, func(t *testing.T) {
 			if _, err := ParseActionPlan(response); err == nil {
-				t.Fatal("ParseActionPlan unexpectedly accepted terminal control summary")
+				t.Fatal("ParseActionPlan unexpectedly accepted unsafe provider display text")
 			}
 		})
+	}
+}
+
+func TestParseActionPlan_AllowsMultilineMarkdownDescription(t *testing.T) {
+	response := `{"version":1,"summary":"Edit it","actions":[{"type":"edit_task","task_id":"t1","description":"## Notes\n\t- keep **Markdown**"}]}`
+	plan, err := ParseActionPlan(response)
+	if err != nil {
+		t.Fatalf("ParseActionPlan: %v", err)
+	}
+	if got := *plan.Actions[0].Description; got != "## Notes\n\t- keep **Markdown**" {
+		t.Fatalf("description = %q", got)
 	}
 }
 

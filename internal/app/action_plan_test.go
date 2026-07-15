@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -65,6 +66,49 @@ func TestActionPlanDestructiveRiskCannotBeDowngraded(t *testing.T) {
 	}
 	if project.GetTaskByID(task.ID) == nil {
 		t.Fatal("unconfirmed destructive plan mutated the source snapshot")
+	}
+}
+
+func TestActionPlanDisplaySafetyRejectsUnsafeFieldsBeforePreview(t *testing.T) {
+	task := newTask("task-1", 1, "Existing")
+	project := newProject("p1", "Alpha", task)
+	service := newTestService(newFakeRepo(project))
+
+	unsafeTitle := "spoof\x1b[2J"
+	unsafeDescription := "safe line\nsecond\u202e"
+	for name, plan := range map[string]app.ActionPlan{
+		"title": {
+			Version: app.ActionPlanVersion,
+			Actions: []app.Action{{Type: app.ActionCreateTask, ProjectID: project.ID, Title: &unsafeTitle}},
+		},
+		"multiline description": {
+			Version: app.ActionPlanVersion,
+			Actions: []app.Action{{Type: app.ActionEditTask, TaskID: task.ID, Description: &unsafeDescription}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := service.PreviewActionPlan(plan); err == nil || !strings.Contains(err.Error(), "unsafe terminal") {
+				t.Fatalf("PreviewActionPlan error = %v, want display-safety rejection", err)
+			}
+		})
+	}
+}
+
+func TestActionPlanDisplaySafetyPreservesMultilineMarkdownDescription(t *testing.T) {
+	task := newTask("task-1", 1, "Existing")
+	project := newProject("p1", "Alpha", task)
+	service := newTestService(newFakeRepo(project))
+	description := "## Notes\n\t- keep **Markdown**"
+
+	preview, err := service.PreviewActionPlan(app.ActionPlan{
+		Version: app.ActionPlanVersion,
+		Actions: []app.Action{{Type: app.ActionEditTask, TaskID: task.ID, Description: &description}},
+	})
+	if err != nil {
+		t.Fatalf("PreviewActionPlan: %v", err)
+	}
+	if len(preview.Actions) != 1 || !strings.Contains(preview.Actions[0].Description, `## Notes\n\t- keep **Markdown**`) {
+		t.Fatalf("preview = %#v, want preserved visible multiline description", preview)
 	}
 }
 
@@ -256,6 +300,9 @@ func TestActionPlanDeleteCleansDurableSubtreeRefsAndUndoRestoresThem(t *testing.
 	project.BuildTaskTree()
 
 	runtime := config.EmptyRuntimeState(dataDir)
+	if err := runtime.CommitCatalog(runtime.Catalog()); err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
 	planning := config.NewPlanningState()
 	for _, id := range []string{root.ID, child.ID} {
 		planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{TaskID: id, ProjectID: project.ID})

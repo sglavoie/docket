@@ -526,7 +526,9 @@ func TestVSCodeEditorOpenFileAtLineNonPositiveLineOpensFileOnly(t *testing.T) {
 		t.Fatalf("OpenFileAtLine(..., 0) failed: %v", err)
 	}
 
-	recorded, err := readFileEventually(argFile, 5*time.Second)
+	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(data []byte) bool {
+		return strings.TrimSpace(string(data)) == filePath
+	})
 	if err != nil {
 		t.Fatalf("read arg file: %v", err)
 	}

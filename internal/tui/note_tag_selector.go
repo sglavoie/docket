@@ -7,25 +7,19 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // NoteTagSelectorModel allows multi-selecting tags for a note.
 type NoteTagSelectorModel struct {
 	*BasePicker[TagInfo]
 	TagAdder
-	note         *models.Note
-	project      *models.Project
-	notesDir     string
-	isGlobal     bool
+	source       noteMutationRef
 	originalTags []string
 }
 
 // NewNoteTagSelectorModel creates a new tag selector for a note.
-func NewNoteTagSelectorModel(note *models.Note, project *models.Project, notesDir string, isGlobal bool, currentTags []string) *NoteTagSelectorModel {
-	tags := buildNoteTagList(project, notesDir)
-
-	titleStr := truncateToVisualWidth(note.Title, 30)
+func NewNoteTagSelectorModel(source noteMutationRef, tags []TagInfo, currentTags []string) *NoteTagSelectorModel {
+	titleStr := truncateToVisualWidth(source.Note.Title, 30)
 
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          fmt.Sprintf("Tags for: %s", titleStr),
@@ -45,23 +39,15 @@ func NewNoteTagSelectorModel(note *models.Note, project *models.Project, notesDi
 	return &NoteTagSelectorModel{
 		BasePicker:   picker,
 		TagAdder:     NewTagAdder(),
-		note:         note,
-		project:      project,
-		notesDir:     notesDir,
-		isGlobal:     isGlobal,
+		source:       source,
 		originalTags: append([]string{}, currentTags...),
 	}
 }
 
-// buildNoteTagList scans all notes and builds a sorted tag list.
-func buildNoteTagList(project *models.Project, notesDir string) []TagInfo {
+// buildNoteTagList builds the selector catalog from already-observed notes and
+// optional project task tags; the overlay retains no canonical source path.
+func buildNoteTagList(notes []*models.Note, project *models.Project) []TagInfo {
 	tagCounts := make(map[string]int)
-	var notes []*models.Note
-	if project != nil {
-		notes, _ = storage.ListNotes(project)
-	} else if notesDir != "" {
-		notes, _ = storage.ListNotesFrom(notesDir)
-	}
 	for _, n := range notes {
 		for _, tag := range n.Tags {
 			tagCounts[tag]++
@@ -117,10 +103,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg {
 				return NoteTagSelectorDoneMsg{
-					Note:     m.note,
-					Project:  m.project,
-					NotesDir: m.notesDir,
-					IsGlobal: m.isGlobal,
+					Source:   m.source,
 					Canceled: true,
 				}
 			}
@@ -130,10 +113,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			sort.Strings(selectedTags)
 			return m, func() tea.Msg {
 				return NoteTagSelectorDoneMsg{
-					Note:         m.note,
-					Project:      m.project,
-					NotesDir:     m.notesDir,
-					IsGlobal:     m.isGlobal,
+					Source:       m.source,
 					SelectedTags: selectedTags,
 					Canceled:     false,
 				}

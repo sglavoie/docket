@@ -49,6 +49,14 @@ func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
 	if err != nil {
 		return nil, err
 	}
+	if catRev == "" {
+		// A fresh coordinator needs one stable identity before it can render
+		// checked catalog artifacts. There is no machine path to inspect until
+		// that catalog is persisted, so machine state remains at its defaults.
+		if _, bindErr := c.store.bindCatalogPayload(catalog); bindErr != nil {
+			return nil, bindErr
+		}
+	}
 	planning, planRev, err := c.store.LoadPlanningChecked()
 	if err != nil {
 		return nil, err
@@ -61,9 +69,12 @@ func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
 	if err != nil {
 		return nil, err
 	}
-	machine, err := c.store.LoadMachine()
-	if err != nil {
-		return nil, err
+	machine := NewMachineState()
+	if catRev != "" {
+		machine, err = c.store.LoadMachine()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	c.revs[domainCatalog] = catRev
@@ -93,12 +104,19 @@ func (c *DomainCoordinator) CheckedDomainArtifacts(
 	if catalog == nil || planning == nil || settings == nil || automation == nil {
 		return nil, fmt.Errorf("all synced configuration domains are required")
 	}
-	// Adopt the on-disk workspace ID (or mint one) so the artifacts carry the same
-	// identity Save stamps and a reload agrees on workspace identity.
-	if _, err := c.store.LoadCatalog(); err != nil {
+	// Bind the on-disk catalog first when it exists. A fresh multi-domain artifact
+	// set may mint exactly one ID because it includes workspace.json itself.
+	diskCatalog, diskRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
 		return nil, err
 	}
-	workspaceID := c.store.EnsureWorkspaceID()
+	if diskRev != "" && catalog.WorkspaceID == "" {
+		catalog.WorkspaceID = diskCatalog.WorkspaceID
+	}
+	workspaceID, err := c.store.bindCatalogPayload(catalog)
+	if err != nil {
+		return nil, err
+	}
 
 	dataDir := c.store.DataDir()
 	catalog.WorkspaceID = workspaceID
@@ -147,6 +165,11 @@ func (c *DomainCoordinator) LoadCatalog() (*WorkspaceCatalog, error) {
 	if err != nil {
 		return nil, err
 	}
+	if rev == "" {
+		if _, err := c.store.bindCatalogPayload(catalog); err != nil {
+			return nil, err
+		}
+	}
 	c.revs[domainCatalog] = rev
 	return catalog, nil
 }
@@ -157,11 +180,17 @@ func (c *DomainCoordinator) CheckedCatalogArtifact(catalog *WorkspaceCatalog) (D
 	if catalog == nil {
 		return DomainArtifact{}, fmt.Errorf("workspace catalog is required")
 	}
-	if _, err := c.store.LoadCatalog(); err != nil {
+	diskCatalog, diskRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
 		return DomainArtifact{}, err
 	}
-	workspaceID := c.store.EnsureWorkspaceID()
-	catalog.WorkspaceID = workspaceID
+	if diskRev != "" && catalog.WorkspaceID == "" {
+		catalog.WorkspaceID = diskCatalog.WorkspaceID
+	}
+	workspaceID, err := c.store.bindCatalogPayload(catalog)
+	if err != nil {
+		return DomainArtifact{}, err
+	}
 	data, err := encodeDomainEnvelope(domainCatalog, workspaceID, catalog)
 	if err != nil {
 		return DomainArtifact{}, err
@@ -179,10 +208,17 @@ func (c *DomainCoordinator) CheckedPlanningArtifact(planning *PlanningState) (Do
 	if planning == nil {
 		return DomainArtifact{}, fmt.Errorf("planning state is required")
 	}
-	if _, err := c.store.LoadCatalog(); err != nil {
+	_, catalogRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
 		return DomainArtifact{}, err
 	}
-	workspaceID := c.store.EnsureWorkspaceID()
+	if catalogRev == "" {
+		return DomainArtifact{}, fmt.Errorf("%w: checked planning artifacts require an existing workspace catalog", ErrWorkspaceIDRequired)
+	}
+	workspaceID, err := c.store.validatedWorkspaceID()
+	if err != nil {
+		return DomainArtifact{}, err
+	}
 	data, err := encodeDomainEnvelope(domainPlanning, workspaceID, planning)
 	if err != nil {
 		return DomainArtifact{}, err

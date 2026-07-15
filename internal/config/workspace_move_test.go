@@ -30,6 +30,7 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 		"themes/custom.json":      `{"name":"custom"}`,
 		// Runtime-only entries must not be moved.
 		"logs/tt.log":          "log",
+		"machine.json":         `{"kind":"machine"}`,
 		"runtime/abc/pid.lock": "999",
 	})
 
@@ -52,6 +53,9 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dst, "runtime")); !os.IsNotExist(err) {
 		t.Errorf("runtime must not be moved, stat err=%v", err)
 	}
+	if _, err := os.Stat(filepath.Join(dst, "machine.json")); !os.IsNotExist(err) {
+		t.Errorf("legacy machine state must not be moved, stat err=%v", err)
+	}
 	// Source retained by default.
 	if !report.SourceRetained {
 		t.Error("source should be retained by default")
@@ -70,6 +74,40 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 	}
 	if runtime.DataDir() != filepath.Clean(dst) {
 		t.Errorf("moved runtime data dir = %q, want %q", runtime.DataDir(), filepath.Clean(dst))
+	}
+}
+
+func TestMoveWorkspacePreservesMigratedMachineStateForSameID(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	src := filepath.Join(t.TempDir(), "src")
+	dst := filepath.Join(t.TempDir(), "dst")
+	seedSyncedWorkspaceWithoutMachine(t, src, testWorkspaceIDA)
+	legacyPath := legacyMachineStatePaths(src)[0]
+	legacyBytes := writeLegacyMachineEnvelope(t, legacyPath, testWorkspaceIDA, &MachineState{
+		Editor:         "same-id-editor",
+		CurrentProject: "project-1",
+	})
+
+	if _, err := MoveWorkspace(src, dst); err != nil {
+		t.Fatalf("MoveWorkspace: %v", err)
+	}
+	moved, err := NewManager(ConfigPathForDataDir(dst)).LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("load moved runtime: %v", err)
+	}
+	if got := moved.Catalog().WorkspaceID; got != testWorkspaceIDA {
+		t.Fatalf("moved workspace ID = %q, want %q", got, testWorkspaceIDA)
+	}
+	if got := moved.Machine().Editor; got != "same-id-editor" {
+		t.Fatalf("moved editor = %q, want same-id-editor", got)
+	}
+	if got := moved.Machine().CurrentProject; got != "project-1" {
+		t.Fatalf("moved current project = %q, want project-1", got)
+	}
+	if got, err := os.ReadFile(legacyPath); err != nil || string(got) != string(legacyBytes) {
+		t.Fatalf("move changed legacy rollback source: bytes=%q err=%v", got, err)
 	}
 }
 

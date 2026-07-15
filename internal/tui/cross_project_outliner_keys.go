@@ -241,40 +241,21 @@ func (m *OutlinerModel) crossHandleRedo(key string) (tea.Model, tea.Cmd, bool) {
 func (m *OutlinerModel) crossRestore(redo bool) {
 	ledger := workspaceLedgerFromConfig(m.runtime)
 	scope := storage.GlobalScope()
-
-	selectNewest := ledger.SelectNewestUndo
+	restore := ledger.UndoWithEntry
 	if redo {
-		selectNewest = ledger.SelectNewestRedo
+		restore = ledger.RedoWithEntry
 	}
-
-	entry, ledgerHas, err := selectNewest(scope)
+	entry, actionDesc, err := restore(scope)
 	if err != nil {
 		m.setStatus(formatUndoRedoRestoreErrorMessage(crossRestoreLabel(redo), err))
 		return
 	}
-	if !ledgerHas {
-		m.setStatus(crossNothingMessage(redo))
-		return
-	}
-	m.crossPerformLedgerRestore(ledger, entry, redo)
+	m.crossPerformLedgerRestore(entry, actionDesc, redo)
 }
 
-// crossPerformLedgerRestore reverses (or replays) the selected ledger entry, then
-// reloads the touched projects into memory and repairs config task references.
-// The ledger already wrote the correct bytes to disk, so the in-memory projects
-// are reloaded rather than re-saved.
-func (m *OutlinerModel) crossPerformLedgerRestore(ledger *storage.WorkspaceLedger, entry storage.LedgerEntry, redo bool) {
-	scope := storage.GlobalScope()
-	restore := ledger.Undo
-	if redo {
-		restore = ledger.Redo
-	}
-	actionDesc, err := restore(scope)
-	if err != nil {
-		m.setStatus(formatUndoRedoRestoreErrorMessage(crossRestoreLabel(redo), err))
-		m.rebuildRows()
-		return
-	}
+// crossPerformLedgerRestore reloads the touched projects after the ledger has
+// atomically restored the entry and moved it between stacks.
+func (m *OutlinerModel) crossPerformLedgerRestore(entry storage.LedgerEntry, actionDesc string, redo bool) {
 	if reloadErr := m.crossReloadLedgerRestoredProjects(entry.ProjectIDs); reloadErr != nil {
 		m.setStatus(fmt.Sprintf("%s completed, refresh failed: %s", crossRestoreVerb(redo), reloadErr))
 	} else {

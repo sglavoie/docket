@@ -12,7 +12,8 @@ import (
 
 // GlobalNoteMoveDoneMsg indicates the user selected a project (or canceled).
 type GlobalNoteMoveDoneMsg struct {
-	Project *models.Project // nil if canceled
+	ProjectID   string
+	ProjectName string
 }
 
 // GlobalNoteMoveProjectSelectorModel provides fuzzy-find selection of projects
@@ -56,7 +57,8 @@ func NewGlobalNoteMoveProjectSelectorModel(projects []*models.Project) *GlobalNo
 			if cursor >= len(filtered) || len(filtered) == 0 {
 				return GlobalNoteMoveDoneMsg{}
 			}
-			return GlobalNoteMoveDoneMsg{Project: filtered[cursor].Project}
+			project := filtered[cursor].Project
+			return GlobalNoteMoveDoneMsg{ProjectID: project.ID, ProjectName: project.Name}
 		},
 	})
 	m.PrimeAlwaysSearch()

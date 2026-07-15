@@ -22,8 +22,9 @@ import (
 //     isolated temp data dir, write projects through storage, and launch the
 //     driver from that copied config.
 //   - Copied-config workspaces load a real user config, copy its data dir into
-//     temp storage, rewrite DataDir + project paths to the copy, and launch the
-//     driver from there — never mutating the source config or task files.
+//     temp storage, assign the copy a fresh workspace identity, and launch the
+//     driver from there — never mutating the source config, machine state, or
+//     task files.
 //
 // Fixture builders live in internal/tui (production code) rather than
 // internal/testutil so the hidden `tt tui-test` CLI (session 5+) can import them
@@ -156,8 +157,9 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	}
 	// Reload the synced files so RuntimeState holds the revisions just written;
 	// bootstrap commits must compare against those baselines. Preserve the
-	// intentionally in-memory machine fixture because machine.json is outside
-	// the isolated workspace and is not persisted by this harness.
+	// intentionally in-memory machine fixture. A newly minted fixture identity
+	// gets a canonical default machine file only to prevent legacy-path import;
+	// fixture-specific machine values remain in memory until the app commits one.
 	machine := cloneMachineState(w.Runtime.Machine())
 	if err := w.Runtime.Reload(); err != nil {
 		return nil, fmt.Errorf("failed to reload workspace domains: %w", err)
@@ -178,17 +180,30 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 func (w *uitestWorkspace) persistSyncedDomains() error {
 	store := config.NewDomainFileStore(w.DataDir)
 	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
-	catalog.WorkspaceID = store.EnsureWorkspaceID()
+	// A copied workspace already carries the fresh identity assigned by
+	// forkCopiedWorkspaceIdentity. Built-in fixtures start blank and mint once
+	// here before the remaining domains save.
+	freshIdentity := catalog.WorkspaceID == ""
+	if freshIdentity {
+		catalog.WorkspaceID = store.EnsureWorkspaceID()
+	}
 	if err := store.SaveCatalog(catalog); err != nil {
 		return err
 	}
+	w.Runtime.SetCatalogInMemory(catalog)
 	if err := store.SavePlanning(w.Runtime.Planning()); err != nil {
 		return err
 	}
 	if err := store.SaveSettings(w.Runtime.Settings()); err != nil {
 		return err
 	}
-	return store.SaveAutomation(w.Runtime.Automation())
+	if err := store.SaveAutomation(w.Runtime.Automation()); err != nil {
+		return err
+	}
+	if freshIdentity {
+		return store.SaveMachine(config.NewMachineState())
+	}
+	return nil
 }
 
 func (w *uitestWorkspace) setCurrentProject(projectID string) {
@@ -249,6 +264,10 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		_ = ws.Cleanup()
 		return nil, nil, fmt.Errorf("failed to copy source workspace: %w", err)
 	}
+	if err = forkCopiedWorkspaceIdentity(root); err != nil {
+		_ = ws.Cleanup()
+		return nil, nil, fmt.Errorf("failed to isolate copied workspace identity: %w", err)
+	}
 
 	ws.Manager = config.NewManager(ws.ConfigPath)
 	if _, err = ws.Manager.LoadDomains(); err != nil {
@@ -277,6 +296,63 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		return nil, nil, err
 	}
 	return driver, ws, nil
+}
+
+// forkCopiedWorkspaceIdentity rewrites every copied synced-domain envelope with
+// one fresh workspace ID, then creates canonical default machine state for that
+// new identity. The source store is read before any copied artifact is removed;
+// failures affect only the disposable temp copy. Removing stale .bak sidecars is
+// essential because restoring one would otherwise resurrect the source ID.
+func forkCopiedWorkspaceIdentity(dataDir string) error {
+	source := config.NewDomainFileStore(dataDir)
+	catalog, err := source.LoadCatalog()
+	if err != nil {
+		return err
+	}
+	planning, err := source.LoadPlanning()
+	if err != nil {
+		return err
+	}
+	settings, err := source.LoadSettings()
+	if err != nil {
+		return err
+	}
+	automation, err := source.LoadAutomation()
+	if err != nil {
+		return err
+	}
+
+	paths := []string{
+		config.WorkspaceCatalogPath(dataDir),
+		config.PlanningStatePath(dataDir),
+		config.SettingsPath(dataDir),
+		config.AutomationPath(dataDir),
+	}
+	for _, path := range paths {
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("remove copied domain %s: %w", filepath.Base(path), err)
+		}
+		if err := os.Remove(path + ".bak"); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove copied domain backup %s: %w", filepath.Base(path), err)
+		}
+	}
+
+	workspaceID := config.NewWorkspaceID()
+	catalog.WorkspaceID = workspaceID
+	destination := config.NewDomainFileStoreWithWorkspace(dataDir, workspaceID)
+	if err := destination.SaveCatalog(catalog); err != nil {
+		return err
+	}
+	if err := destination.SavePlanning(planning); err != nil {
+		return err
+	}
+	if err := destination.SaveSettings(settings); err != nil {
+		return err
+	}
+	if err := destination.SaveAutomation(automation); err != nil {
+		return err
+	}
+	return destination.SaveMachine(config.NewMachineState())
 }
 
 // --- Built-in fixture builders ---

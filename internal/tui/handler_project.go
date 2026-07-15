@@ -3,7 +3,6 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -311,40 +310,47 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.setInfoStatus("Sandbox project not found")
 			return true, defaultStatusTimeout()
 		}
-		if err := storage.LoadProject(sandbox); err != nil {
-			m.err = fmt.Errorf("failed to load sandbox: %w", err)
+		if m.appService == nil {
+			m.err = fmt.Errorf("sandbox reset service is unavailable")
 			return true, nil
 		}
-		taskCount := len(sandbox.Tasks)
-		notes, _ := storage.ListNotes(sandbox)
-		noteCount := len(notes)
-		tagCount := len(sandbox.AllTags())
-		pinnedTagCount := len(sandbox.PinnedTagList())
-
-		if taskCount == 0 && noteCount == 0 && tagCount == 0 && pinnedTagCount == 0 {
+		preview, err := m.appService.PreviewSandboxReset(sandbox.ID)
+		if err != nil {
+			m.err = fmt.Errorf("failed to inspect sandbox: %w", err)
+			return true, nil
+		}
+		if preview.Counts.Empty() {
 			m.setInfoStatus("Sandbox is already empty")
 			return true, defaultStatusTimeout()
 		}
 
-		// Build item count for confirmation
-		totalItems := taskCount + noteCount + tagCount + pinnedTagCount
 		m.pendingSandboxReset = true
-		m.pendingSandboxTaskCount = totalItems
-		m.setInfoStatus(fmt.Sprintf("Reset sandbox? Delete %d item(s)?", totalItems))
+		m.pendingSandboxProjectID = preview.ProjectID
+		m.pendingSandboxTaskCount = preview.Counts.Total()
+		m.setInfoStatus(fmt.Sprintf("Reset sandbox? Delete %d item(s)?", preview.Counts.Total()))
 		return true, nil
 
 	case SandboxResetDoneMsg:
 		m.pendingSandboxReset = false
+		m.pendingSandboxProjectID = ""
 		m.pendingSandboxTaskCount = 0
-		m.setSuccessStatus(fmt.Sprintf("Cleared %d item(s) from sandbox", msg.TaskCount))
+		m.reloadProjectByID(msg.Result.ProjectID)
+		m.setSuccessStatus(fmt.Sprintf("Cleared %d item(s) from sandbox", msg.Result.Cleared.Total()))
 		// Refresh views if sandbox is currently displayed
-		if m.currentProject != nil && m.currentProject.Sandbox {
+		if m.currentProject != nil && m.currentProject.ID == msg.Result.ProjectID {
 			m.refreshProjectTree()
 		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh()
 		}
 		return true, defaultStatusTimeout()
+
+	case SandboxResetFailedMsg:
+		m.pendingSandboxReset = false
+		m.pendingSandboxProjectID = ""
+		m.pendingSandboxTaskCount = 0
+		m.err = msg.Err
+		return true, statusTimeout(5 * time.Second)
 	}
 	return false, nil
 }
@@ -536,9 +542,7 @@ func (m *AppModel) rememberTrashRestoreRecovery(msg projectRestoredFromTrashMsg)
 	if m.pendingTrashRestoreRecovery == nil {
 		m.pendingTrashRestoreRecovery = make(map[string]trashRestoreMachineRecovery)
 	}
-	m.pendingTrashRestoreRecovery[msg.Project.ID] = trashRestoreMachineRecovery{
-		Project: msg.Project, References: msg.References,
-	}
+	m.pendingTrashRestoreRecovery[msg.Project.ID] = trashRestoreMachineRecovery(msg)
 }
 
 // completeTrashRestoreRecovery runs only on the Bubble Tea update loop. It
@@ -608,59 +612,24 @@ func (m *AppModel) purgeProjectFromTrash(entryID, slug string) tea.Cmd {
 	}
 }
 
-// executeSandboxReset performs the actual sandbox reset operation. The task-level
-// clear commits through the application-layer transaction boundary
-// (Service.ResetSandbox), so the reset is atomic and restores through the
-// workspace undo ledger; notes live outside the project document and are cleared
-// as a filesystem side effect, matching the pre-transaction undo scope.
+// executeSandboxReset captures only the stable project id and application
+// service. The asynchronous command never loads through or mutates AppModel's
+// cached sandbox pointer; committed state is reloaded by SandboxResetDoneMsg on
+// the Bubble Tea update loop.
 func (m *AppModel) executeSandboxReset() tea.Cmd {
 	svc := m.appService
-	sandbox := m.runtime.GetSandboxProject()
+	projectID := m.pendingSandboxProjectID
 	return func() tea.Msg {
-		if sandbox == nil {
-			return ErrorMsg{Err: fmt.Errorf("sandbox project not found")}
+		if svc == nil {
+			return SandboxResetFailedMsg{Err: fmt.Errorf("sandbox reset service is unavailable")}
 		}
-
-		if err := storage.LoadProject(sandbox); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to load sandbox: %w", err)}
+		if projectID == "" {
+			return SandboxResetFailedMsg{Err: fmt.Errorf("sandbox project not found")}
 		}
-
-		taskCount := len(sandbox.Tasks)
-		notes, _ := storage.ListNotes(sandbox)
-		noteCount := len(notes)
-		tagCount := len(sandbox.AllTags())
-		pinnedTagCount := len(sandbox.PinnedTagList())
-		totalItems := taskCount + noteCount + tagCount + pinnedTagCount
-
-		if totalItems == 0 {
-			return SandboxResetDoneMsg{TaskCount: 0}
+		result, err := svc.ResetSandbox(projectID)
+		if err != nil {
+			return SandboxResetFailedMsg{Err: fmt.Errorf("failed to reset sandbox: %w", err)}
 		}
-
-		// Clear tasks, sections, and tags through the app transaction (undoable).
-		if _, err := svc.ResetSandbox(sandbox.ID); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to reset sandbox: %w", err)}
-		}
-
-		// Mirror the committed clear onto the in-memory project so any shared
-		// pointer (e.g. the current project) reflects the reset immediately.
-		sandbox.Tasks = nil
-		sandbox.NextShortID = 1
-		sandbox.Sections = []string{models.SectionNext}
-		sandbox.SectionColors = make(map[string]string)
-		sandbox.Tags = []string{}
-		sandbox.PinnedTags = []string{}
-
-		// Clear notes directory (not part of the project document).
-		if noteCount > 0 {
-			notesDir := storage.NotesDir(sandbox)
-			if err := os.RemoveAll(notesDir); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to clear notes: %w", err)}
-			}
-		}
-
-		// The sandbox reset's durable effect (the cleared tasks.md) already
-		// committed through Service.ResetSandbox; sandbox catalog metadata is
-		// unchanged by a reset, so no config write is needed.
-		return SandboxResetDoneMsg{TaskCount: totalItems}
+		return SandboxResetDoneMsg{Result: result}
 	}
 }

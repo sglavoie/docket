@@ -53,8 +53,11 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, m.deleteCurrentNote()
 		}),
-		keymap.Bind("u", "Undo last delete", "Actions", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("u", "Undo project change", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.undoDelete()
+		}),
+		keymap.Bind("ctrl+r", "Redo project change", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, m.redoNoteMutation()
 		}),
 		keymap.Bind("L", "Link note to task", "Actions", func() (tea.Model, tea.Cmd) {
 			if m.isGlobal {

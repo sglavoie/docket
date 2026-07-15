@@ -290,7 +290,9 @@ func TestOpenCodeReference_NonPositiveLineOmitsLineArgForGotoEditor(t *testing.T
 		t.Fatalf("OpenCodeReference('code', ..., -3) failed: %v", err)
 	}
 
-	recorded, err := readFileEventually(argFile, 5*time.Second)
+	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(data []byte) bool {
+		return strings.TrimSpace(string(data)) == filePath
+	})
 	if err != nil {
 		t.Fatalf("read arg file: %v", err)
 	}
@@ -324,7 +326,9 @@ func TestOpenCodeReference_CodiumUsesGotoPattern(t *testing.T) {
 		t.Fatalf("OpenCodeReference('codium', ..., 12) failed: %v", err)
 	}
 
-	recorded, err := readFileEventually(argFile, 5*time.Second)
+	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(data []byte) bool {
+		return strings.TrimSpace(string(data)) == "--goto\n"+filePath+":12"
+	})
 	if err != nil {
 		t.Fatalf("read arg file: %v", err)
 	}
@@ -334,30 +338,10 @@ func TestOpenCodeReference_CodiumUsesGotoPattern(t *testing.T) {
 	}
 }
 
-func readFileEventually(path string, timeout time.Duration) ([]byte, error) {
-	deadline := time.Now().Add(timeout)
-	var lastErr error
-	for time.Now().Before(deadline) {
-		b, err := os.ReadFile(path)
-		if err == nil && len(strings.TrimSpace(string(b))) > 0 {
-			return b, nil
-		}
-		if err != nil {
-			lastErr = err
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if lastErr == nil {
-		lastErr = os.ErrNotExist
-	}
-	return nil, lastErr
-}
-
 // readFileEventuallyMatching polls path until want reports the content is
-// complete, or the timeout elapses. Unlike readFileEventually, which returns as
-// soon as the file is nonempty, this waits for the full expected content. Use it
-// for fire-and-forget launch assertions so a partially written argument file is
-// never mistaken for the final, complete launch record.
+// complete, or the timeout elapses. Use it for fire-and-forget launch assertions
+// so a partially written argument file is never mistaken for the final, complete
+// launch record.
 func readFileEventuallyMatching(path string, timeout time.Duration, want func([]byte) bool) ([]byte, error) {
 	deadline := time.Now().Add(timeout)
 	var last []byte

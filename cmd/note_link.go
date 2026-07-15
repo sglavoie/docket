@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -47,7 +47,8 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	note, err := findNote(project, args[0])
+	ctx := &NoteContext{Location: app.ProjectNoteLocation(project.ID), Project: project, Workspace: workspace}
+	note, err := findNoteContext(ctx, args[0])
 	if err != nil {
 		return err
 	}
@@ -63,8 +64,7 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		note.AddLink(task.ID)
 	}
 
-	ctx := &NoteContext{Dir: storage.NotesDir(project), Project: project, Workspace: workspace}
-	if err := saveNoteContext(ctx, note); err != nil {
+	if _, err := updateNoteContext(ctx, note); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 

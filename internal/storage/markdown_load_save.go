@@ -37,7 +37,13 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tasks file: %w", err)
 	}
-	return loadProjectContent(project, content)
+	result, err := loadProjectContent(project, content)
+	if err != nil {
+		return nil, err
+	}
+	rawRevision := RawArtifactRevision(content)
+	result.RawRevision = &rawRevision
+	return result, nil
 }
 
 // LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to
@@ -106,7 +112,11 @@ func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
 	// A missing tasks file is a successful load of an empty project; return a
 	// non-nil (empty) migration audit so callers can rely on it being present
 	// whenever the load succeeds.
-	return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
+	absentRevision := ""
+	return &ProjectLoadResult{
+		RawRevision:    &absentRevision,
+		MigrationAudit: NewMigrationAudit(project.ID, nil),
+	}, nil
 }
 
 func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadResult, error) {

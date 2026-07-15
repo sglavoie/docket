@@ -165,13 +165,16 @@ Logs, machine settings, and process locks always stay machine-local under
 
 Projects use markdown files for tasks plus project-local notes and attachments.
 Machine-specific navigation, editors, history, and layout are kept separately
-and are not synced with the portable workspace domains. The default local
-workspace uses `~/.tt/machine.json`; any other data directory uses
-`~/.tt/runtime/<data-dir-hash>/machine.json`, where `<data-dir-hash>` is the
-first 12 hexadecimal characters of the SHA-256 hash of the cleaned data-directory
-path. Moving a workspace changes that key, so the machine state at the old path
-is not reused automatically. Configuration changes are committed to these owning
-domains directly rather than through a monolithic configuration file. See
+and are not synced with the portable workspace domains. Every workspace uses
+`~/.tt/runtime/<workspace-id>/machine.json`, keyed by the canonical UUID in
+`workspace.json`. Moving the same workspace preserves that ID and therefore
+keeps its machine-local navigation and layout on this machine; a copied or new
+workspace with a new ID receives isolated defaults. On first startup after an
+upgrade, `tt` imports a matching former data-path-keyed machine file atomically
+and retains the source as rollback evidence. Logs and PID locks remain keyed by
+the current data-directory path under the local `~/.tt` root. Configuration
+changes are committed to these owning domains directly rather than through a
+monolithic configuration file. See
 [Architecture, data, privacy, and recovery](docs/architecture.md) for the complete
 state model, transaction and conflict semantics, cloud and AI consent, migration
 expectations, backup guidance, and platform support.

@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -190,6 +191,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			}
 		case "u":
 			return m, m.undoDelete()
+		case "ctrl+r":
+			return m, m.redoNoteMutation()
 		case "p":
 			return m, m.togglePin()
 		case "s":
@@ -299,16 +302,13 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			m.setStatus("Rename canceled: same title")
 			return m, nil
 		}
-		_, err := storage.RenameNoteIn(m.effectiveDir(), note.Filename, newTitle)
-		if err != nil {
-			m.setStatus("Rename failed: " + err.Error())
-			m.renaming = false
-			return m, nil
-		}
-		m.setStatus(fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle))
-		m.loadNotes()
+		location := m.noteLocation()
 		m.renaming = false
-		return m, func() tea.Msg { return NotesRefreshMsg{} }
+		return m, noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
+			Operations:  []app.NoteMutationRequest{{Kind: app.NoteRename, Location: location, Note: note, NewTitle: newTitle}},
+			UndoAction:  "Rename Note",
+			UndoContext: oldTitle,
+		}, fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle), false)
 	case "esc":
 		if m.cursor < len(m.notes) && strings.TrimSpace(m.renameInput.Value()) != m.notes[m.cursor].Title {
 			m.confirmDiscard = true

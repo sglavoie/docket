@@ -20,7 +20,8 @@ func TestArtifactsContract(t *testing.T) {
 	t.Run("in-memory", func(t *testing.T) {
 		project := newProject("p1", "alpha")
 		repo := newFakeRepo(project)
-		svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, nil, repo.artifactReader())
+		port := repo.artifactPort()
+		svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port, port)
 		runArtifactContract(t, svc, project.ID)
 	})
 
@@ -125,10 +126,14 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 func TestArtifactsValidation(t *testing.T) {
 	project := newProject("p1", "alpha")
 	repo := newFakeRepo(project)
-	svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, nil, repo.artifactReader())
+	port := repo.artifactPort()
+	svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port, port)
 
 	if _, err := svc.SaveNote(project.ID, &models.Note{Title: "  "}); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("SaveNote blank title err = %v, want ErrInvalidInput", err)
+	}
+	if _, err := svc.CreateNote(app.NoteCreateRequest{Location: app.GlobalNoteLocation(), Note: &models.Note{Title: "  "}}); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("CreateNote blank global title err = %v, want ErrInvalidInput", err)
 	}
 	if _, err := svc.SaveNote("missing", &models.Note{Title: "x", Filename: "x.md"}); !errors.Is(err, app.ErrProjectNotFound) {
 		t.Fatalf("SaveNote unknown project err = %v, want ErrProjectNotFound", err)
@@ -139,7 +144,7 @@ func TestArtifactsValidation(t *testing.T) {
 	if _, err := svc.DeleteNote(project.ID, ""); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("DeleteNote blank filename err = %v, want ErrInvalidInput", err)
 	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("a rejected request committed %d changesets, want 0", len(repo.commits))
+	if len(repo.commits) != 0 || len(repo.artifactCommits) != 0 {
+		t.Fatalf("a rejected request committed %d changesets and %d artifact transactions, want 0", len(repo.commits), len(repo.artifactCommits))
 	}
 }

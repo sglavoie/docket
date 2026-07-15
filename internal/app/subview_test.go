@@ -232,34 +232,36 @@ func TestPinAndUnpinProjectTag(t *testing.T) {
 	}
 }
 
-func TestResetProjectTasksClearsEverything(t *testing.T) {
+func TestResetSandboxClearsEverything(t *testing.T) {
 	task := newTask("t1", 1, "Doomed")
 	project := newProject("p1", "Sandbox", task)
+	project.Sandbox = true
 	project.Tags = []string{"catalog"}
 	project.PinnedTags = []string{"catalog"}
 	project.SectionColors = map[string]string{models.SectionNext: "blue"}
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	res, err := svc.ResetProjectTasks("p1")
+	res, err := svc.ResetSandbox("p1")
 	if err != nil {
-		t.Fatalf("ResetProjectTasks: %v", err)
+		t.Fatalf("ResetSandbox: %v", err)
 	}
-	if res.TasksCleared != 1 {
-		t.Fatalf("TasksCleared = %d, want 1", res.TasksCleared)
-	}
-	if len(project.Tasks) != 0 || project.NextShortID != 1 {
-		t.Fatalf("project not cleared: tasks=%d nextShortID=%d", len(project.Tasks), project.NextShortID)
-	}
-	if len(project.Tags) != 0 || len(project.PinnedTags) != 0 || len(project.SectionColors) != 0 {
-		t.Fatal("tags/pinned tags/section colors must be cleared")
-	}
-	if len(project.Sections) != 1 || project.Sections[0] != models.SectionNext {
-		t.Fatalf("Sections = %v, want [Next]", project.Sections)
+	if res.Cleared.Tasks != 1 {
+		t.Fatalf("Cleared.Tasks = %d, want 1", res.Cleared.Tasks)
 	}
 	cs, ok := repo.lastCommit()
-	if !ok || cs.UndoAction != "Reset Project" {
-		t.Fatalf("lastCommit = %+v ok=%v, want Reset Project", cs, ok)
+	if !ok || cs.UndoAction != "Reset Sandbox" {
+		t.Fatalf("lastCommit = %+v ok=%v, want Reset Sandbox", cs, ok)
+	}
+	committed := cs.Project
+	if len(committed.Tasks) != 0 || committed.NextShortID != 1 {
+		t.Fatalf("project not cleared: tasks=%d nextShortID=%d", len(committed.Tasks), committed.NextShortID)
+	}
+	if len(committed.Tags) != 0 || len(committed.PinnedTags) != 0 || len(committed.SectionColors) != 0 {
+		t.Fatal("tags/pinned tags/section colors must be cleared")
+	}
+	if len(committed.Sections) != 1 || committed.Sections[0] != models.SectionNext {
+		t.Fatalf("Sections = %v, want [Next]", committed.Sections)
 	}
 }
 

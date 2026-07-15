@@ -163,6 +163,14 @@ func (r *cliRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.Comm
 	return results, nil
 }
 
+// CommitArtifactTransaction implements app.ArtifactCommitter for note-only user
+// mutations. It always uses the journal-backed service, even when project
+// metadata is supplied by a test-double repository: note artifacts are real
+// workspace files and do not require a synthetic tasks.md save.
+func (r *cliRepository) CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error) {
+	return r.svc.CommitArtifactTransaction(request)
+}
+
 // applyArtifactChange writes or deletes a single ChangeSet artifact directly on
 // the filesystem. It backs the test-double fallback in cliRepository.Commit; the
 // production path routes artifacts through the transactional commit service
@@ -365,14 +373,21 @@ func applyRawOp(op transaction.Op) error {
 // generator; every task/project mutation command routes through one of its use
 // cases instead of orchestrating load/mutate/save itself.
 func newAppService(mgr *config.Manager) *app.Service {
-	return app.NewService(newCLIRepository(mgr, nil), nil, nil)
+	dataDir := catalogWorkspaceDataDir(mgr)
+	return app.NewServiceWithArtifacts(newCLIRepository(mgr, nil), nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil)
 }
 
 // newWorkspaceAppService reuses the command's single RuntimeDependencies
 // composition object for lifecycle snapshots and settings instead of rebuilding
 // the domain service graph at each mutation boundary.
 func newWorkspaceAppService(workspace *CLIWorkspace) *app.Service {
-	return app.NewService(newCLIRepository(workspace.Manager, workspace.Dependencies), nil, nil)
+	return app.NewServiceWithArtifacts(
+		newCLIRepository(workspace.Manager, workspace.Dependencies),
+		nil,
+		nil,
+		app.NewStorageWorkspaceNotePort(workspace.Runtime.DataDir()),
+		nil,
+	)
 }
 
 // resolveAppTaskID applies the strict qualified-reference rules at the adapter
@@ -501,7 +516,7 @@ func translateAppError(err error) error {
 		// verbatim so the user is pointed at `tt conflict resolve` rather than a
 		// generic retry, and so the app-layer retry never loops on it.
 		return err
-	case errors.Is(err, storage.ErrStaleRevision):
+	case errors.Is(err, storage.ErrStaleRevision), errors.Is(err, storage.ErrStaleArtifact):
 		return fmt.Errorf("the workspace changed since this command loaded it; please retry: %w", err)
 	case errors.Is(err, app.ErrParentHasIncompleteChildren):
 		// *app.ChildrenBlockedError already renders "task #N has M incomplete

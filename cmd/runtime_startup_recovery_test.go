@@ -34,8 +34,8 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 	task := testutil.NewTestTask("Recovered task", models.TaskTypeTask)
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID = 2
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
+	if saveErr := storage.SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject: %v", saveErr)
 	}
 
 	domains, err := runtime.CloneDomains()
@@ -78,6 +78,63 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 		}
 	}
 	return configPath, project.ID, task.ID
+}
+
+func writeCLILegacyMachineState(t *testing.T, dataDir, workspaceID string, machine *config.MachineState) string {
+	t.Helper()
+	legacyPath := filepath.Join(config.LocalRuntimeDirForDataDir(dataDir), "machine.json")
+	data, err := json.MarshalIndent(map[string]any{
+		"schema_version": config.CurrentDomainSchemaVersion,
+		"workspace_id":   workspaceID,
+		"kind":           "machine",
+		"data":           machine,
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal legacy machine state: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(legacyPath), config.DirPermissions); err != nil {
+		t.Fatalf("mkdir legacy machine dir: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, data, config.FilePermissions); err != nil {
+		t.Fatalf("write legacy machine state: %v", err)
+	}
+	return legacyPath
+}
+
+func TestLoadCLIWorkspaceMigratesMachineStateAtStartup(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	configPath := config.ConfigPathForDataDir(dataDir)
+	manager := config.NewManager(configPath)
+	domains, err := manager.LoadOrCreateDomains()
+	if err != nil {
+		t.Fatalf("LoadOrCreateDomains: %v", err)
+	}
+	canonicalPath, err := config.MachineStatePath(domains.Catalog.WorkspaceID)
+	if err != nil {
+		t.Fatalf("MachineStatePath: %v", err)
+	}
+	if removeErr := os.Remove(canonicalPath); removeErr != nil {
+		t.Fatalf("remove canonical machine fixture: %v", removeErr)
+	}
+	legacyPath := writeCLILegacyMachineState(t, dataDir, domains.Catalog.WorkspaceID, &config.MachineState{Editor: "cli-legacy-editor"})
+
+	oldConfig := viper.GetString("config")
+	viper.Set("config", configPath)
+	t.Cleanup(func() { viper.Set("config", oldConfig) })
+	workspace, err := LoadCLIWorkspaceStrict()
+	if err != nil {
+		t.Fatalf("LoadCLIWorkspaceStrict: %v", err)
+	}
+	if got := workspace.Runtime.Machine().Editor; got != "cli-legacy-editor" {
+		t.Fatalf("CLI startup editor = %q, want cli-legacy-editor", got)
+	}
+	if _, err := os.Stat(canonicalPath); err != nil {
+		t.Fatalf("canonical machine state not created: %v", err)
+	}
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatalf("legacy rollback source not retained: %v", err)
+	}
 }
 
 func TestLoadCLIWorkspaceRecoversTransactionsBeforeLoadingDomains(t *testing.T) {

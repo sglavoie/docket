@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/keymap"
@@ -16,19 +17,14 @@ import (
 
 // ShowNoteTagSelectorMsg opens the tag selector for a note.
 type ShowNoteTagSelectorMsg struct {
-	Note        *models.Note
-	Project     *models.Project
-	NotesDir    string
-	IsGlobal    bool
-	CurrentTags []string
+	Source        noteMutationRef
+	AvailableTags []TagInfo
+	CurrentTags   []string
 }
 
 // NoteTagSelectorDoneMsg returns the result from the note tag selector.
 type NoteTagSelectorDoneMsg struct {
-	Note         *models.Note
-	Project      *models.Project
-	NotesDir     string
-	IsGlobal     bool
+	Source       noteMutationRef
 	SelectedTags []string
 	Canceled     bool
 }
@@ -37,10 +33,12 @@ type NoteTagSelectorDoneMsg struct {
 type NotesViewModel struct {
 	BaseView
 
-	project  *models.Project
-	notesDir string // when set, use path-based storage (global notes mode)
-	isGlobal bool   // true when operating on global notes
-	config   interface {
+	project     *models.Project
+	notesDir    string // when set, use path-based storage (global notes mode)
+	isGlobal    bool   // true when operating on global notes
+	noteService projectNoteService
+	noteLedger  *storage.WorkspaceLedger
+	config      interface {
 		GetEditor() string
 		GetExternalEditor() string
 	}
@@ -56,12 +54,6 @@ type NotesViewModel struct {
 	// Delete confirmation state
 	confirm          ConfirmDialog
 	pendingDeleteIdx int
-
-	// Undo state
-	lastDeleted     *models.Note
-	lastBulkDeleted []*models.Note
-	lastTagUndo     []noteTagUndoEntry
-	lastLinkUndo    []noteLinkUndoEntry
 
 	// Details pane state
 	detailsPane DetailsPaneState
@@ -169,28 +161,19 @@ func (s noteSortMode) String() string {
 	}
 }
 
-// noteTagUndoEntry stores a note's previous tags for undo.
-type noteTagUndoEntry struct {
-	Note    *models.Note
-	OldTags []string
-}
-
-// noteLinkUndoEntry stores a note's previous links for undo.
-type noteLinkUndoEntry struct {
-	Note     *models.Note
-	OldLinks []string
-}
-
 // notesConfig is a minimal interface for config access.
 type notesConfig interface {
 	GetEditor() string
 	GetExternalEditor() string
 }
 
-// NewNotesViewModel creates a new notes view.
-func NewNotesViewModel(project *models.Project, cfg ...notesConfig) *NotesViewModel {
+// NewNotesViewModelWithService creates a project notes view backed by the typed
+// note application API and project-scoped workspace ledger.
+func NewNotesViewModelWithService(project *models.Project, service projectNoteService, ledger *storage.WorkspaceLedger, cfg ...notesConfig) *NotesViewModel {
 	m := &NotesViewModel{
 		project:       project,
+		noteService:   service,
+		noteLedger:    ledger,
 		filterTags:    make(map[string]bool),
 		selectedNotes: make(map[string]bool),
 		tabs:          TabState{Names: noteTabNames},
@@ -202,11 +185,14 @@ func NewNotesViewModel(project *models.Project, cfg ...notesConfig) *NotesViewMo
 	return m
 }
 
-// NewGlobalNotesViewModel creates a notes view for global notes.
-func NewGlobalNotesViewModel(notesDir string, cfg ...notesConfig) *NotesViewModel {
+// NewGlobalNotesViewModelWithService creates a global notes view backed by the
+// typed application API and the workspace-global undo/redo line.
+func NewGlobalNotesViewModelWithService(notesDir string, service projectNoteService, ledger *storage.WorkspaceLedger, cfg ...notesConfig) *NotesViewModel {
 	m := &NotesViewModel{
 		notesDir:      notesDir,
 		isGlobal:      true,
+		noteService:   service,
+		noteLedger:    ledger,
 		filterTags:    make(map[string]bool),
 		selectedNotes: make(map[string]bool),
 		tabs:          TabState{Names: noteTabNames},
@@ -216,6 +202,16 @@ func NewGlobalNotesViewModel(notesDir string, cfg ...notesConfig) *NotesViewMode
 	}
 	m.loadNotes()
 	return m
+}
+
+func (m *NotesViewModel) noteLocation() app.NoteLocation {
+	if m.isGlobal {
+		return app.GlobalNoteLocation()
+	}
+	if m.project == nil {
+		return app.NoteLocation{}
+	}
+	return app.ProjectNoteLocation(m.project.ID)
 }
 
 // effectiveDir returns the notes directory path for either global or project notes.
@@ -229,7 +225,9 @@ func (m *NotesViewModel) effectiveDir() string {
 func (m *NotesViewModel) loadNotes() {
 	var notes []*models.Note
 	var err error
-	if m.isGlobal {
+	if m.noteService != nil && (m.isGlobal || m.project != nil) {
+		notes, err = m.noteService.NotesAt(m.noteLocation())
+	} else if m.isGlobal {
 		notes, err = storage.ListNotesFrom(m.notesDir)
 	} else {
 		notes, err = storage.ListNotes(m.project)
@@ -324,14 +322,11 @@ func (m *NotesViewModel) SetSize(width, height int) {
 }
 
 // ShowGlobalNoteCreatorMsg opens a note creator in global notes mode.
-type ShowGlobalNoteCreatorMsg struct {
-	NotesDir string
-}
+type ShowGlobalNoteCreatorMsg struct{}
 
 // ShowGlobalNoteMoveMsg requests a project picker to move a global note.
 type ShowGlobalNoteMoveMsg struct {
-	Note      *models.Note
-	SourceDir string
+	Source noteMutationRef
 }
 
 // GlobalNoteMoveCompleteMsg indicates a global note was moved to a project.

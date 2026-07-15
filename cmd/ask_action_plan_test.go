@@ -5,6 +5,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
@@ -12,27 +13,30 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestPrintActionPlanPreviewEscapesTerminalControls(t *testing.T) {
+func TestPrintActionPlanPreviewDisplaySafety(t *testing.T) {
 	var out bytes.Buffer
 	printActionPlanPreview(&out, app.PlanPreview{
-		Summary: "clear\x1b[2J\u009bspoof",
+		Summary: "clear\x1b[2J\u009bspoof\r\u202e\n\ttail",
 		Actions: []app.ActionPreview{{
 			Index:       1,
 			Risk:        app.ActionRiskSafe,
-			Description: "title\x1b]0;spoof\x07\u009dhidden\u009c",
+			Description: "title\x1b]0;spoof\x07\u009dhidden\u009c\u2066\n\tmarkdown",
 		}},
 	})
 
 	got := out.String()
 	for _, r := range got {
-		if r == '\x1b' || r == '\x07' || r == '\u009b' || r == '\u009c' || r == '\u009d' {
+		if (unicode.IsControl(r) && r != '\n' && r != '\t') || unicode.Is(unicode.Cf, r) {
 			t.Fatalf("preview contains raw terminal control U+%04X: %q", r, got)
 		}
 	}
-	for _, want := range []string{`\x1b[2J`, `\u009bspoof`, `\x1b]0;spoof\a`, `\u009dhidden\u009c`} {
+	for _, want := range []string{`\x1b[2J`, `\u009bspoof`, `\r`, `\u202e`, `\n\ttail`, `\x1b]0;spoof\a`, `\u009dhidden\u009c`, `\u2066`} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("preview = %q, want visible escape %q", got, want)
 		}
+	}
+	if !strings.Contains(got, "\\u2066\n\tmarkdown") {
+		t.Fatalf("preview = %q, want multiline description layout preserved", got)
 	}
 }
 

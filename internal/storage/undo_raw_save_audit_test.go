@@ -18,7 +18,6 @@ const (
 	rawSaveDoctorRepair  = "explicit tt doctor repair rewrites an already-loaded damaged project; it is not an ordinary user mutation"
 	rawSaveRestoreResult = "legacy undo/redo restore reapply writes the restored result; the locked call graph below restricts access to restore commands"
 	rawSaveTUIHelper     = "ProjectService Persister.Save implementation is injected only into the locked TUI undo/redo restore reapply chain"
-	rawSaveStartupRepair = "TUI startup persists parser auto-repairs only when the loaded project reports repair warnings"
 	rawSaveReviewFixture = "TUI scenario fixture seeds an isolated throwaway workspace before the app runs; it cannot target user data"
 	rawSaveAppTestRepo   = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
 )
@@ -29,7 +28,6 @@ var rawProjectSaveAllowlist = map[string]string{
 	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                 rawSaveDoctorRepair,
 	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":              rawSaveDoctorRepair,
 	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":                         rawSaveRestoreResult,
-	"internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)":                          rawSaveStartupRepair,
 	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
 	"internal/tui/project_service.go:(*ProjectService).Save:storage.SaveProjectLocked(project)":  rawSaveTUIHelper,
 	"internal/tui/shared_task_ops_persist.go:reapplySideEffects:persister.Save(project)":         rawSaveRestoreResult,

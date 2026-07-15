@@ -83,22 +83,30 @@ schema-v2 header blocks are preserved when task Markdown is rewritten.
 Machine-specific state is intentionally separate:
 
 ```text
-default local data directory (~/.tt):  ~/.tt/machine.json
-any other data directory:              ~/.tt/runtime/<data-dir-hash>/machine.json
+every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 ```
 
-`<data-dir-hash>` is the first 12 hexadecimal characters of the SHA-256 hash of
-the cleaned data-directory path; it is not the workspace ID. The file contains
-editors, integration choices, current navigation, histories, and layout state.
-Logs and process locks are also machine-local and are never synced with a
-workspace.
+`<workspace-id>` is the canonical UUID stored in synced `workspace.json`. The
+file contains editors, integration choices, current navigation, histories, and
+layout state. A workspace with a different ID never shares this state. On first
+startup after upgrading from the former layout, `tt` checks the machine file
+keyed by the current data-directory path, then the historical
+`~/.tt/machine.json`; it imports only an empty-ID or catalog-matching envelope,
+writes it atomically to the canonical path, and retains the source for rollback.
+An identity mismatch is an explicit error. Once canonical state exists, legacy
+copies are ignored.
 
-A workspace-location move copies and validates the portable workspace, then
-switches the machine-local active-workspace pointer. Because the machine-state
-key is derived from the data-directory path, the destination selects a different
-`machine.json`; state at the old machine-local path remains there and is not
-reused automatically. Moving the same workspace ID therefore does not carry
-machine-specific navigation, history, or layout into the new path.
+Logs and process locks are also machine-local and never synced, but unlike
+`machine.json` they remain keyed by the current data-directory path. This keeps
+two separately opened paths isolated even if their durable contents claim the
+same workspace identity.
+
+A workspace-location move copies and validates the portable workspace, binds
+and migrates its machine state while the source path is still known, then
+switches the machine-local active-workspace pointer. Because the catalog ID is
+preserved, navigation, history, and layout remain available at the destination
+on the same machine. A true copy that is assigned a new workspace ID receives a
+separate default machine-state namespace.
 
 ## Transactions, recovery, and undo
 

@@ -32,6 +32,45 @@ type fakeRepo struct {
 	// blockers), keyed by cleaned target path, so an in-memory ProjectArtifactReader
 	// can read back exactly what a ChangeSet committed.
 	files map[string][]byte
+	// artifactCommits records artifact-only note transactions separately from
+	// project ChangeSets; these commits must never rewrite tasks.md.
+	artifactCommits         []storage.ArtifactCommitRequest
+	validateChangeArtifacts bool
+}
+
+func (r *fakeRepo) CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error) {
+	if r.preCommit != nil {
+		r.preCommit()
+	}
+	if r.commitErr != nil {
+		return "", r.commitErr
+	}
+	// Validate the complete optimistic-concurrency set before mutating the map so
+	// a stale source or occupied destination leaves the batch all-or-none.
+	for _, artifact := range request.Artifacts {
+		if artifact.ExpectedRevision == nil {
+			continue
+		}
+		path := filepath.Clean(artifact.Path)
+		data, exists := r.files[path]
+		actual := ""
+		if exists {
+			actual = storage.RawArtifactRevision(data)
+		}
+		if (!exists && *artifact.ExpectedRevision != "") || (exists && (*artifact.ExpectedRevision == "" || *artifact.ExpectedRevision != actual)) {
+			return "", &storage.ArtifactConflictError{Path: path, Expected: *artifact.ExpectedRevision, Actual: actual}
+		}
+	}
+	for _, artifact := range request.Artifacts {
+		path := filepath.Clean(artifact.Path)
+		if artifact.Delete {
+			delete(r.files, path)
+			continue
+		}
+		r.files[path] = append([]byte(nil), artifact.Data...)
+	}
+	r.artifactCommits = append(r.artifactCommits, request)
+	return fmt.Sprintf("txn-note-%d", len(r.artifactCommits)), nil
 }
 
 func newFakeRepo(projects ...*models.Project) *fakeRepo {
@@ -75,7 +114,8 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 	if r.commitErr != nil {
 		return nil, r.commitErr
 	}
-	results := make([]*storage.CommitResult, len(changesets))
+	// Validate the complete project-and-artifact revision set before changing the
+	// in-memory repository, mirroring CommitService's all-or-none preflight.
 	for i := range changesets {
 		cs := changesets[i]
 		stored := r.revisions[cs.Project.ID]
@@ -87,9 +127,36 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 				Actual:      stored,
 			}
 		}
+		for _, artifact := range cs.Artifacts {
+			if !r.validateChangeArtifacts {
+				continue
+			}
+			if artifact.ExpectedRevision == nil {
+				continue
+			}
+			path := filepath.Clean(artifact.Path)
+			data, exists := r.files[path]
+			actual := ""
+			if exists {
+				actual = storage.RawArtifactRevision(data)
+			}
+			if (!exists && *artifact.ExpectedRevision != "") || (exists && (*artifact.ExpectedRevision == "" || *artifact.ExpectedRevision != actual)) {
+				return nil, &storage.ArtifactConflictError{Path: path, Expected: *artifact.ExpectedRevision, Actual: actual}
+			}
+		}
+	}
+	results := make([]*storage.CommitResult, len(changesets))
+	for i := range changesets {
+		cs := changesets[i]
 		newDoc := documentOf(cs.Project, cs.Base)
 		r.documents[cs.Project.ID] = newDoc
 		r.revisions[cs.Project.ID] = newDoc.Revision
+		for j, project := range r.projects {
+			if project != nil && project.ID == cs.Project.ID {
+				r.projects[j] = cs.Project
+				break
+			}
+		}
 		results[i] = &storage.CommitResult{Revision: newDoc.Revision, TransactionID: "txn-test"}
 		// Apply artifact writes/deletes to the in-memory file store so an in-memory
 		// reader observes exactly what the real commit service would persist.
@@ -106,15 +173,28 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 	return results, nil
 }
 
-// artifactReader returns an in-memory ProjectArtifactReader over the repo's
-// committed artifact bytes, parsing them with the same storage codecs the
-// filesystem reader uses.
-func (r *fakeRepo) artifactReader() app.ProjectArtifactReader { return &memArtifactReader{repo: r} }
+// artifactPort returns in-memory workspace-note and project-blocker ports over
+// the repo's committed artifact bytes.
+func (r *fakeRepo) artifactPort() *memArtifactPort { return &memArtifactPort{repo: r} }
 
-type memArtifactReader struct{ repo *fakeRepo }
+type memArtifactPort struct{ repo *fakeRepo }
 
-func (m *memArtifactReader) Notes(project *models.Project) ([]*models.Note, error) {
-	prefix := filepath.Clean(storage.NotesDir(project)) + string(filepath.Separator)
+func (m *memArtifactPort) noteDir(location app.NoteLocation, project *models.Project) (string, error) {
+	if location.Scope == app.NoteScopeGlobal {
+		return filepath.Join("mem-workspace", ".tt", "global-notes"), nil
+	}
+	if project == nil {
+		return "", fmt.Errorf("project is required")
+	}
+	return storage.NotesDir(project), nil
+}
+
+func (m *memArtifactPort) Notes(location app.NoteLocation, project *models.Project) ([]*models.Note, error) {
+	dir, err := m.noteDir(location, project)
+	if err != nil {
+		return nil, err
+	}
+	prefix := filepath.Clean(dir) + string(filepath.Separator)
 	var notes []*models.Note
 	for path, data := range m.repo.files {
 		if !strings.HasPrefix(path, prefix) {
@@ -124,13 +204,50 @@ func (m *memArtifactReader) Notes(project *models.Project) ([]*models.Note, erro
 		if err != nil {
 			return nil, err
 		}
+		note.RawRevision = storage.RawArtifactRevision(data)
 		notes = append(notes, note)
 	}
 	sort.Slice(notes, func(i, j int) bool { return notes[i].Filename < notes[j].Filename })
 	return notes, nil
 }
 
-func (m *memArtifactReader) Blockers(project *models.Project) ([]*models.Blocker, error) {
+func (m *memArtifactPort) NotesForMutation(location app.NoteLocation, project *models.Project) ([]*models.Note, error) {
+	return m.Notes(location, project)
+}
+
+func (m *memArtifactPort) EncodeNoteSave(location app.NoteLocation, project *models.Project, note *models.Note) (storage.ArtifactChange, error) {
+	dir, err := m.noteDir(location, project)
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	path, err := storage.NoteFilePathIn(dir, note.Filename)
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	content, err := storage.RenderNoteContent(note)
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	return storage.ArtifactChange{Path: path, Data: []byte(content)}, nil
+}
+
+func (m *memArtifactPort) EncodeNoteDelete(location app.NoteLocation, project *models.Project, filename string) (storage.ArtifactChange, error) {
+	dir, err := m.noteDir(location, project)
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	path, err := storage.NoteFilePathIn(dir, filename)
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	return storage.ArtifactChange{Path: path, Delete: true}, nil
+}
+
+func (m *memArtifactPort) EncodeBlockers(project *models.Project, blockers []*models.Blocker) (storage.ArtifactChange, error) {
+	return storage.ArtifactChange{Path: storage.BlockersFilePath(project), Data: []byte(storage.RenderBlockersContent(blockers))}, nil
+}
+
+func (m *memArtifactPort) Blockers(project *models.Project) ([]*models.Blocker, error) {
 	data, ok := m.repo.files[filepath.Clean(storage.BlockersFilePath(project))]
 	if !ok {
 		return []*models.Blocker{}, nil
@@ -168,7 +285,8 @@ func (s *seqIDs) NewID() string {
 // newTestService wires a Service over the fake repo with a fixed clock and
 // deterministic ID generator.
 func newTestService(repo *fakeRepo) *app.Service {
-	return app.NewService(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{})
+	artifacts := repo.artifactPort()
+	return app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, artifacts, artifacts)
 }
 
 // newProject builds an in-memory project with the given tasks appended and the

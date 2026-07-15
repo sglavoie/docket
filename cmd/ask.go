@@ -5,13 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
+	"io"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/actionplan"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
@@ -114,29 +114,9 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	confirmSafe := preview.SafeCount == 0
-	if preview.SafeCount > 0 {
-		if _, writeErr := fmt.Fprintf(out, "\nApply %d safe action(s) as one transaction? [y/N] ", preview.SafeCount); writeErr != nil {
-			return fmt.Errorf("write safe-action confirmation: %w", writeErr)
-		}
-		answer, readErr := reader.ReadString('\n')
-		if readErr != nil {
-			return fmt.Errorf("failed to read confirmation: %w", readErr)
-		}
-		answer = strings.TrimSpace(strings.ToLower(answer))
-		confirmSafe = answer == "y" || answer == "yes"
-	}
-
-	confirmDestructive := false
-	if preview.DestructiveCount > 0 {
-		if _, writeErr := fmt.Fprintf(out, "\n%d destructive action(s) require separate approval. Type DELETE to include them: ", preview.DestructiveCount); writeErr != nil {
-			return fmt.Errorf("write destructive-action confirmation: %w", writeErr)
-		}
-		answer, readErr := reader.ReadString('\n')
-		if readErr != nil {
-			return fmt.Errorf("failed to read destructive confirmation: %w", readErr)
-		}
-		confirmDestructive = strings.TrimSpace(answer) == "DELETE"
+	confirmSafe, confirmDestructive, err := confirmCLIActionPlan(reader, out, preview)
+	if err != nil {
+		return err
 	}
 
 	accepted := plan
@@ -168,6 +148,34 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func confirmCLIActionPlan(reader *bufio.Reader, out io.Writer, preview app.PlanPreview) (bool, bool, error) {
+	confirmSafe := preview.SafeCount == 0
+	if preview.SafeCount > 0 {
+		if _, err := fmt.Fprintf(out, "\nApply %d safe action(s) as one transaction? [y/N] ", preview.SafeCount); err != nil {
+			return false, false, fmt.Errorf("write safe-action confirmation: %w", err)
+		}
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			return false, false, fmt.Errorf("failed to read confirmation: %w", err)
+		}
+		answer = strings.TrimSpace(strings.ToLower(answer))
+		confirmSafe = answer == "y" || answer == "yes"
+	}
+
+	confirmDestructive := false
+	if preview.DestructiveCount > 0 {
+		if _, err := fmt.Fprintf(out, "\n%d destructive action(s) require separate approval. Type DELETE to include them: ", preview.DestructiveCount); err != nil {
+			return false, false, fmt.Errorf("write destructive-action confirmation: %w", err)
+		}
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			return false, false, fmt.Errorf("failed to read destructive confirmation: %w", err)
+		}
+		confirmDestructive = strings.TrimSpace(answer) == "DELETE"
+	}
+	return confirmSafe, confirmDestructive, nil
 }
 
 // applyCLIActionPlan joins AI task deletion to the same planning and machine
@@ -310,7 +318,7 @@ func ensureAIContextConsent(cmd *cobra.Command, workspace *CLIWorkspace, reader 
 
 func printActionPlanPreview(out interface{ Write([]byte) (int, error) }, preview app.PlanPreview) {
 	if preview.Summary != "" {
-		_, _ = fmt.Fprintf(out, "%s\n", terminalSafePreviewText(preview.Summary))
+		_, _ = fmt.Fprintf(out, "%s\n", actionplan.TerminalSafeDisplayText(preview.Summary, actionplan.DisplayTextSingleLine))
 	}
 	if len(preview.Actions) == 0 {
 		_, _ = fmt.Fprintln(out, "No actions proposed.")
@@ -318,19 +326,6 @@ func printActionPlanPreview(out interface{ Write([]byte) (int, error) }, preview
 	}
 	_, _ = fmt.Fprintln(out, "\nProposed actions:")
 	for _, action := range preview.Actions {
-		_, _ = fmt.Fprintf(out, "  %d. [%s] %s\n", action.Index, action.Risk, terminalSafePreviewText(action.Description))
+		_, _ = fmt.Fprintf(out, "  %d. [%s] %s\n", action.Index, action.Risk, actionplan.TerminalSafeDisplayText(action.Description, actionplan.DisplayTextMultiline))
 	}
-}
-
-func terminalSafePreviewText(value string) string {
-	var safe strings.Builder
-	for _, r := range value {
-		if !unicode.IsControl(r) {
-			safe.WriteRune(r)
-			continue
-		}
-		quoted := strconv.QuoteRune(r)
-		safe.WriteString(quoted[1 : len(quoted)-1])
-	}
-	return safe.String()
 }

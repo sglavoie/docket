@@ -33,8 +33,8 @@ const (
 	iCloudDriveRelPath = "Library/Mobile Documents/com~apple~CloudDocs"
 
 	// runtimeDirName is the subdirectory under the local data root that holds
-	// machine-local runtime state keyed by data dir when the durable data dir
-	// is not the local default.
+	// machine-local state. machine.json is keyed by workspace ID beneath this
+	// directory; path-local ephemeral files use LocalRuntimeDirForDataDir.
 	runtimeDirName = "runtime"
 
 	// DataDirEnvVar is the environment variable that selects the workspace data
@@ -51,8 +51,8 @@ const (
 
 	// machineStateFileName is the machine-local decomposed-config file that holds
 	// editors, navigation, histories, and layout state. It lives under the local
-	// runtime dir keyed by the data dir so distinct workspaces stay isolated and
-	// nothing machine-specific ever syncs.
+	// runtime dir keyed by the durable workspace ID so moving a workspace does
+	// not lose its machine-local state and distinct identities never share it.
 	machineStateFileName = "machine.json"
 )
 
@@ -124,11 +124,37 @@ func ConflictsDir(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "conflicts")
 }
 
-// MachineStatePath returns the machine-local machine.json path for a data dir.
-// It always lives under the local runtime root keyed by the data dir, so it
-// never follows a synced (e.g. iCloud) workspace between machines.
-func MachineStatePath(dataDir string) string {
-	return filepath.Join(LocalRuntimeDirForDataDir(dataDir), machineStateFileName)
+// MachineStatePath returns the canonical machine-local machine.json path for a
+// workspace ID. Every workspace, including the default local workspace, is
+// isolated beneath ~/.tt/runtime/<workspace-id>. The ID must be a canonical
+// UUID before it is used as a path component.
+func MachineStatePath(workspaceID string) (string, error) {
+	if err := validateWorkspaceID(workspaceID); err != nil {
+		return "", err
+	}
+	return filepath.Join(LocalDataRoot(), runtimeDirName, workspaceID, machineStateFileName), nil
+}
+
+// legacyMachineStatePaths returns the two locations used before machine state
+// was keyed by workspace identity. The path derived from the workspace's
+// current data directory wins; the historical default-local path is consulted
+// only when that path is absent. Duplicate paths are removed for ~/.tt itself.
+func legacyMachineStatePaths(dataDir string) []string {
+	candidates := []string{
+		filepath.Join(LocalRuntimeDirForDataDir(dataDir), machineStateFileName),
+		filepath.Join(LocalDataRoot(), machineStateFileName),
+	}
+	paths := make([]string, 0, len(candidates))
+	seen := make(map[string]struct{}, len(candidates))
+	for _, candidate := range candidates {
+		candidate = filepath.Clean(candidate)
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		paths = append(paths, candidate)
+	}
+	return paths
 }
 
 // activeWorkspacePointerPath returns the fixed machine-local path of the

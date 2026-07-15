@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -98,10 +97,8 @@ func Validate(plan ActionPlan) error {
 	if plan.Version != Version {
 		return fmt.Errorf("unsupported version %d (want %d)", plan.Version, Version)
 	}
-	for _, r := range plan.Summary {
-		if unicode.IsControl(r) {
-			return fmt.Errorf("summary contains unsafe terminal control character U+%04X", r)
-		}
+	if err := validateDisplayText("summary", plan.Summary, DisplayTextSingleLine); err != nil {
+		return err
 	}
 	if plan.Actions == nil {
 		return fmt.Errorf("actions must be an array")
@@ -122,6 +119,9 @@ func Validate(plan ActionPlan) error {
 //
 //nolint:gocyclo
 func validateAction(action Action) error {
+	if err := validateActionDisplayText(action); err != nil {
+		return err
+	}
 	requireTask := func() error {
 		if strings.TrimSpace(action.TaskID) == "" {
 			return fmt.Errorf("task_id is required")
@@ -300,6 +300,45 @@ func validateAction(action Action) error {
 	default:
 		return fmt.Errorf("action type %q is not allowlisted", action.Type)
 	}
+}
+
+func validateActionDisplayText(action Action) error {
+	type displayField struct {
+		field string
+		value string
+	}
+	singleLine := []displayField{
+		{field: "type", value: string(action.Type)},
+		{field: "project_id", value: action.ProjectID},
+		{field: "task_id", value: action.TaskID},
+		{field: "blocker_task_id", value: action.BlockerTaskID},
+	}
+	if action.Title != nil {
+		singleLine = append(singleLine, displayField{field: "title", value: *action.Title})
+	}
+	if action.TaskType != nil {
+		singleLine = append(singleLine, displayField{field: "task_type", value: string(*action.TaskType)})
+	}
+	if action.State != nil {
+		singleLine = append(singleLine, displayField{field: "state", value: string(*action.State)})
+	}
+	if action.Due != nil {
+		singleLine = append(singleLine, displayField{field: "due", value: *action.Due})
+	}
+	for i, tag := range action.Tags {
+		singleLine = append(singleLine, displayField{field: fmt.Sprintf("tags[%d]", i), value: tag})
+	}
+	for _, field := range singleLine {
+		if err := validateDisplayText(field.field, field.value, DisplayTextSingleLine); err != nil {
+			return err
+		}
+	}
+	if action.Description != nil {
+		if err := validateDisplayText("description", *action.Description, DisplayTextMultiline); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validDue(value string) bool {

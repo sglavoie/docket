@@ -49,6 +49,37 @@ func TestNewNoteAndSaveLoad(t *testing.T) {
 	}
 }
 
+func TestLoadNoteRetainsExactRawRevision(t *testing.T) {
+	project := &models.Project{Path: t.TempDir()}
+	note := models.NewNote("Revision")
+	note.Body = "exact bytes"
+	if err := SaveNote(project, note); err != nil {
+		t.Fatalf("SaveNote: %v", err)
+	}
+	path, err := NoteFilePath(project, note.Filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadNote(project, note.Filename)
+	if err != nil {
+		t.Fatalf("LoadNote: %v", err)
+	}
+	if got, want := loaded.RawRevision, RawArtifactRevision(raw); got != want {
+		t.Fatalf("RawRevision = %q, want %q", got, want)
+	}
+	rendered, err := RenderNoteContent(loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(rendered, loaded.RawRevision) {
+		t.Fatal("RawRevision leaked into serialized note content")
+	}
+}
+
 func TestListNotes(t *testing.T) {
 	project := newTestProject(t)
 
@@ -80,6 +111,24 @@ func TestListNotes(t *testing.T) {
 	// Then by modified date desc
 	if notes[1].Title != "Second" {
 		t.Errorf("second note should be Second, got %q", notes[1].Title)
+	}
+}
+
+func TestListNotesForMutationFailsClosedOnUnreadableArtifact(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Symlink(filepath.Join(dir, "missing-target"), filepath.Join(dir, "unreadable.md")); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	if _, err := ListNotesForMutationFrom(dir); err == nil {
+		t.Fatal("ListNotesForMutationFrom error = nil, want unreadable artifact failure")
+	}
+	notes, err := ListNotesFrom(dir)
+	if err != nil {
+		t.Fatalf("ordinary ListNotesFrom should remain tolerant: %v", err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("ordinary ListNotesFrom returned %d notes, want unreadable note skipped", len(notes))
 	}
 }
 

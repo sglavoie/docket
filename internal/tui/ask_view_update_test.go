@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -63,6 +64,31 @@ func TestAskViewRequiresFirstUseConsentAndOffersContextControls(t *testing.T) {
 	_, _ = m.handleKey(tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl})
 	if m.contextMode != external.TaskContextNone {
 		t.Fatalf("second context cycle = %s, want none", m.contextMode)
+	}
+}
+
+func TestAskActionPlanMarkdownDisplaySafety(t *testing.T) {
+	got := renderActionPlanMarkdown(app.PlanPreview{
+		Summary: "summary\x1b[2J\r\u202e\nspoof",
+		Actions: []app.ActionPreview{{
+			Index:       1,
+			Risk:        app.ActionRiskSafe,
+			Description: "description\x1b]0;x\x07\u009b\u2066\n\t- **Markdown**",
+		}},
+	})
+
+	for _, r := range got {
+		if (unicode.IsControl(r) && r != '\n' && r != '\t') || unicode.Is(unicode.Cf, r) {
+			t.Fatalf("rendered Markdown contains unsafe U+%04X: %q", r, got)
+		}
+	}
+	for _, want := range []string{`\x1b[2J`, `\r`, `\u202e`, `\nspoof`, `\x1b]0;x\a`, `\u009b`, `\u2066`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered Markdown = %q, want visible escape %q", got, want)
+		}
+	}
+	if !strings.Contains(got, "\\u2066\n\t- **Markdown**") {
+		t.Fatalf("rendered Markdown = %q, want multiline description preserved", got)
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -31,7 +30,7 @@ Examples:
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		notes, err := storage.ListNotesFrom(ctx.Dir)
+		notes, err := notesNoteContext(ctx)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -64,7 +63,7 @@ func runNoteDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	note, err := findNoteIn(ctx.Dir, args[0])
+	note, err := findNoteContext(ctx, args[0])
 	if err != nil {
 		return err
 	}
@@ -76,7 +75,7 @@ func runNoteDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if err := deleteNoteContext(ctx, note.Filename); err != nil {
+	if _, err := deleteNoteContext(ctx, note); err != nil {
 		return fmt.Errorf("failed to delete note: %w", err)
 	}
 

@@ -135,7 +135,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.runtime, m.secondaryFeatures.Blocker))
 	case ViewGlobalNotes:
 		dir := storage.GlobalNotesDir(m.runtime.DataDir())
-		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.runtime.Machine()))
+		m.showView(ViewGlobalNotes, NewGlobalNotesViewModelWithService(dir, m.appService, workspaceLedgerFromConfig(m.runtime), m.runtime.Machine()))
 	case ViewGlobalInboxProcessor:
 		processor := NewGlobalInboxProcessorModel(m.configManager, m.runtime)
 		m.globalInboxProcessor = processor
@@ -225,7 +225,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		}
 		m.showView(ViewPriorityView, pv)
 	case ViewNotes:
-		m.showView(ViewNotes, NewNotesViewModel(project, m.runtime.Machine()))
+		m.showView(ViewNotes, NewNotesViewModelWithService(project, m.appService, workspaceLedgerFromConfig(m.runtime), m.runtime.Machine()))
 	case ViewBlockers:
 		m.showView(ViewBlockers, NewBlockersModelWithEditor(project, m.runtime.Machine().GetEditor(), m.secondaryFeatures.Blocker))
 	case ViewInboxProcessor:

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"slices"
 	"testing"
 
@@ -110,13 +111,24 @@ func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	sandbox.ID = "sandbox"
 	sandbox.Slug = "_sandbox"
 	sandbox.Name = "Sandbox"
-	sandbox.Path = config.InternalDir(deps.Config.DataDir()) + "/sandbox"
+	sandbox.Path = deps.Config.ProjectPath(sandbox.Slug)
 	sandbox.Sandbox = true
 	sandbox.Tags = []string{"catalog"}
 	sandbox.PinnedTags = []string{"catalog", "task-tag"}
 	task := testutil.NewTestTask("Tagged", models.TaskTypeTask)
 	task.Tags = []string{"task-tag"}
 	sandbox.Tasks = []*models.Task{task}
+	sandbox.NextShortID = 2
+	sandbox.SectionColors = map[string]string{models.SectionNext: "blue"}
+	note := models.NewNote("Reset with sandbox")
+	note.Body = "the CLI must delete this through the application transaction"
+	if err := storage.SaveNote(sandbox, note); err != nil {
+		t.Fatalf("SaveNote: %v", err)
+	}
+	notePath, err := storage.NoteFilePath(sandbox, note.Filename)
+	if err != nil {
+		t.Fatalf("NoteFilePath: %v", err)
+	}
 
 	setTestProjects(deps.Config, []*models.Project{sandbox})
 	deps.Repository.Projects[sandbox.ID] = sandbox
@@ -125,7 +137,7 @@ func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	t.Cleanup(func() { viper.Set("config", "") })
 
 	manager := config.NewManager(deps.ConfigPath)
-	err := saveTestRuntime(manager, deps.Config)
+	err = saveTestRuntime(manager, deps.Config)
 	testutil.AssertNoError(t, err)
 
 	oldStorageRepo := storage.DefaultRepository
@@ -150,5 +162,11 @@ func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	}
 	if got, want := saved.Sections, []string{models.SectionNext}; !slices.Equal(got, want) {
 		t.Fatalf("saved.Sections = %v, want %v", got, want)
+	}
+	if saved.NextShortID != 1 || len(saved.SectionColors) != 0 {
+		t.Fatalf("saved short-id/colors = %d/%v, want reset", saved.NextShortID, saved.SectionColors)
+	}
+	if _, err := os.Stat(notePath); !os.IsNotExist(err) {
+		t.Fatalf("sandbox note exists after CLI reset, stat error=%v", err)
 	}
 }

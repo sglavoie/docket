@@ -109,8 +109,29 @@ func (j *Journal) ManifestPath(id string) string {
 // the manifest write fails, any staging files created by this call are removed
 // and no prepared manifest is left behind.
 func (j *Journal) Prepare(ops []Op) (*Manifest, error) {
+	return j.prepareWithID(j.newID(), ops)
+}
+
+// PrepareWithID is Prepare with a caller-supplied transaction ID. It exists for
+// commit coordinators that must embed the same ID in another operation staged in
+// this manifest (for example a workspace-ledger entry). IDs are restricted to a
+// single portable filename component and an existing manifest is never reused.
+// Ordinary callers should use Prepare, which generates a fresh UUID.
+func (j *Journal) PrepareWithID(id string, ops []Op) (*Manifest, error) {
+	return j.prepareWithID(id, ops)
+}
+
+func (j *Journal) prepareWithID(id string, ops []Op) (*Manifest, error) {
 	if len(ops) == 0 {
 		return nil, ErrEmptyTransaction
+	}
+	if !validTransactionID(id) {
+		return nil, fmt.Errorf("transaction id %q is invalid: %w", id, ErrInvalidManifest)
+	}
+	if _, err := os.Lstat(j.ManifestPath(id)); err == nil {
+		return nil, fmt.Errorf("transaction id %q already exists: %w", id, ErrInvalidManifest)
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("checking transaction id %q: %w", id, err)
 	}
 
 	// Validate every operation up front so a bad target is caught before any
@@ -121,7 +142,6 @@ func (j *Journal) Prepare(ops []Op) (*Manifest, error) {
 		}
 	}
 
-	id := j.newID()
 	manifest := &Manifest{
 		SchemaVersion: SchemaVersion,
 		ID:            id,
@@ -169,6 +189,19 @@ func (j *Journal) Prepare(ops []Op) (*Manifest, error) {
 		return nil, fmt.Errorf("writing manifest %s: %w", id, err)
 	}
 	return manifest, nil
+}
+
+func validTransactionID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, r := range id {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // Commit applies a prepared manifest's file operations online, advancing it

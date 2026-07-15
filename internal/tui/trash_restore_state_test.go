@@ -33,8 +33,8 @@ func newTrashRestoreTestApp(
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
+	if saveErr := storage.SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject: %v", saveErr)
 	}
 	rawRefs, err := json.Marshal(refs)
 	if err != nil {
@@ -131,13 +131,7 @@ func TestRestoreProjectFromTrashMachineFailureRefreshesAndRetries(t *testing.T) 
 	// A directory at the adjacent lock path lets refresh read machine.json but
 	// makes CommitMachine fail deterministically, including when tests run as a
 	// privileged user. Removing it makes the exact same recovery payload retryable.
-	machineLock := config.MachineStatePath(app.runtime.DataDir()) + ".lock"
-	if err := os.Remove(machineLock); err != nil && !os.IsNotExist(err) {
-		t.Fatalf("remove machine lock: %v", err)
-	}
-	if err := os.Mkdir(machineLock, 0o700); err != nil {
-		t.Fatalf("replace machine lock with directory: %v", err)
-	}
+	machineLock := blockTrashRestoreMachineCommit(t, app)
 
 	handled, retryCmd := app.handleProjectMessages(msg)
 	if !handled {
@@ -206,4 +200,20 @@ func TestRestoreProjectFromTrashMachineFailureRefreshesAndRetries(t *testing.T) 
 	if app.statusMessage != "Restored: Restored Project" {
 		t.Fatalf("success status = %q, want final restored toast", app.statusMessage)
 	}
+}
+
+func blockTrashRestoreMachineCommit(t *testing.T, app *AppModel) string {
+	t.Helper()
+	machinePath, err := config.MachineStatePath(app.runtime.Catalog().WorkspaceID)
+	if err != nil {
+		t.Fatalf("machine-state path: %v", err)
+	}
+	machineLock := machinePath + ".lock"
+	if removeErr := os.Remove(machineLock); removeErr != nil && !os.IsNotExist(removeErr) {
+		t.Fatalf("remove machine lock: %v", removeErr)
+	}
+	if mkdirErr := os.Mkdir(machineLock, 0o700); mkdirErr != nil {
+		t.Fatalf("replace machine lock with directory: %v", mkdirErr)
+	}
+	return machineLock
 }

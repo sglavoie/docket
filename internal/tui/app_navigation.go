@@ -274,6 +274,7 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingSemicolonPrefix = false
 	m.pendingSemicolonTPrefix = false
 	m.pendingSandboxReset = false
+	m.pendingSandboxProjectID = ""
 	m.pendingSandboxTaskCount = 0
 
 	m.showQuickSwitch = false

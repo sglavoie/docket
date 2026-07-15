@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // =============================================================================
 // Notes Messages (Show/Close Pattern)
@@ -16,6 +19,56 @@ type CloseNotesMsg struct{ PopViewMsg }
 
 // NotesRefreshMsg refreshes the notes list.
 type NotesRefreshMsg struct{}
+
+// ProjectNoteMutationResultMsg reports one committed note transaction. The
+// historical name is retained for compatibility, but Location may be either a
+// project collection or the workspace-global collection. The command that emits
+// it owns only copied request data; AppModel.Update reloads from committed state.
+type ProjectNoteMutationResultMsg struct {
+	Location       app.NoteLocation
+	ProjectID      string
+	Result         app.NoteBatchResult
+	SuccessMessage string
+	ClearSelection bool
+}
+
+// ProjectNoteMutationErrorMsg preserves the typed application/storage error
+// produced by a rejected note transaction. Update handling surfaces it without
+// touching the view's note cache or selection.
+type ProjectNoteMutationErrorMsg struct {
+	Location  app.NoteLocation
+	ProjectID string
+	Err       error
+}
+
+// ProjectNoteLedgerResultMsg reports a completed workspace-ledger restore for
+// a project or global note view. Notes reload only after this reaches Update.
+type ProjectNoteLedgerResultMsg struct {
+	Location  app.NoteLocation
+	ProjectID string
+	Action    string
+	Redo      bool
+}
+
+// ProjectNoteLedgerErrorMsg reports a rejected project or global undo/redo.
+type ProjectNoteLedgerErrorMsg struct {
+	Location  app.NoteLocation
+	ProjectID string
+	Err       error
+	Redo      bool
+}
+
+// ProjectNoteEditorDoneMsg carries only copied note/editor data back from a
+// temporary-file editor process. The canonical note is not opened or mutated.
+type ProjectNoteEditorDoneMsg struct {
+	Location        app.NoteLocation
+	ProjectID       string
+	Original        *models.Note
+	OriginalContent string
+	Modified        string
+	Create          bool
+	Err             error
+}
 
 // ShowGlobalNotesMsg opens the global notes view.
 type ShowGlobalNotesMsg struct{}
@@ -42,20 +95,8 @@ type ShowNoteTaskLinkerMsg struct {
 
 // BulkNoteTagMsg opens the tag selector for multiple notes.
 type BulkNoteTagMsg struct {
-	Notes    []*models.Note
-	Project  *models.Project
-	NotesDir string
-	IsGlobal bool
-}
-
-// BulkNoteTagDoneMsg returns the result from bulk note tagging.
-type BulkNoteTagDoneMsg struct {
-	Notes        []*models.Note
-	Project      *models.Project
-	NotesDir     string
-	IsGlobal     bool
-	SelectedTags []string
-	Canceled     bool
+	Sources       []noteMutationRef
+	AvailableTags []TagInfo
 }
 
 // BulkNoteLinkMsg opens the task linker for multiple notes.
@@ -66,10 +107,10 @@ type BulkNoteLinkMsg struct {
 
 // BulkNoteLinkDoneMsg returns the result from bulk note linking.
 type BulkNoteLinkDoneMsg struct {
-	Notes    []*models.Note
-	Project  *models.Project
-	TaskID   string
-	Canceled bool
+	Notes       []*models.Note
+	ProjectID   string
+	LinkChanges map[string]bool
+	Canceled    bool
 }
 
 // CloseNoteTaskLinkerMsg closes the note task linker.

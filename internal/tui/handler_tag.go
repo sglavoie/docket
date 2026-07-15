@@ -5,10 +5,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleTagMessages handles tag-related messages.
@@ -152,53 +152,16 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case BulkNoteTagMsg:
-		if msg.Project != nil && len(msg.Notes) > 0 {
+		if len(msg.Sources) > 0 {
 			// Use first note's tags as current; open the standard note tag selector
-			selector := NewNoteTagSelectorModel(msg.Notes[0], msg.Project, msg.NotesDir, msg.IsGlobal, msg.Notes[0].Tags)
-			m.pendingBulkNotes = msg.Notes
+			selector := NewNoteTagSelectorModel(msg.Sources[0], msg.AvailableTags, msg.Sources[0].Note.Tags)
+			m.pendingBulkNotes = append([]noteMutationRef(nil), msg.Sources...)
 			m.showView(ViewNoteTagSelector, selector)
 		}
 		return true, nil
 
-	case BulkNoteTagDoneMsg:
-		if !msg.Canceled {
-			// Snapshot for undo
-			var undoEntries []noteTagUndoEntry
-			for _, note := range msg.Notes {
-				oldTags := make([]string, len(note.Tags))
-				copy(oldTags, note.Tags)
-				undoEntries = append(undoEntries, noteTagUndoEntry{Note: note, OldTags: oldTags})
-			}
-			var failed int
-			for _, note := range msg.Notes {
-				note.SetTags(msg.SelectedTags)
-				var saveErr error
-				if msg.IsGlobal {
-					saveErr = storage.SaveNoteTo(msg.NotesDir, note)
-				} else {
-					saveErr = storage.SaveNote(msg.Project, note)
-				}
-				if saveErr != nil {
-					failed++
-				}
-			}
-			total := len(msg.Notes)
-			if failed > 0 {
-				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes (%d failed)", total, failed))
-			} else {
-				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes", total))
-			}
-			// Store undo state on notes view
-			if nv := m.getActiveNotesView(); nv != nil {
-				nv.lastTagUndo = undoEntries
-				nv.lastLinkUndo = nil
-			}
-		}
-		m.pendingBulkNotes = nil
-		return true, func() tea.Msg { return NotesRefreshMsg{} }
-
 	case ShowNoteTagSelectorMsg:
-		selector := NewNoteTagSelectorModel(msg.Note, msg.Project, msg.NotesDir, msg.IsGlobal, msg.CurrentTags)
+		selector := NewNoteTagSelectorModel(msg.Source, msg.AvailableTags, msg.CurrentTags)
 		m.showView(ViewNoteTagSelector, selector)
 		return true, nil
 
@@ -210,52 +173,11 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		}
 		// Bulk mode: apply tags to all pending notes
 		if len(m.pendingBulkNotes) > 0 {
-			// Snapshot for undo
-			var undoEntries []noteTagUndoEntry
-			for _, note := range m.pendingBulkNotes {
-				oldTags := make([]string, len(note.Tags))
-				copy(oldTags, note.Tags)
-				undoEntries = append(undoEntries, noteTagUndoEntry{Note: note, OldTags: oldTags})
-			}
-			var failed int
-			for _, note := range m.pendingBulkNotes {
-				note.SetTags(msg.SelectedTags)
-				var saveErr error
-				if msg.IsGlobal {
-					saveErr = storage.SaveNoteTo(msg.NotesDir, note)
-				} else {
-					saveErr = storage.SaveNote(msg.Project, note)
-				}
-				if saveErr != nil {
-					failed++
-				}
-			}
-			total := len(m.pendingBulkNotes)
-			if failed > 0 {
-				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes (%d failed)", total, failed))
-			} else {
-				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes", total))
-			}
-			// Store undo state on notes view
-			if nv := m.getActiveNotesView(); nv != nil {
-				nv.lastTagUndo = undoEntries
-				nv.lastLinkUndo = nil
-			}
-			m.pendingBulkNotes = nil
-			return true, func() tea.Msg { return NotesRefreshMsg{} }
+			location := m.pendingBulkNotes[0].Location
+			return true, m.applyNoteTags(location, noteRefsToCopies(m.pendingBulkNotes), msg.SelectedTags, true)
 		}
 		// Single note mode
-		msg.Note.SetTags(msg.SelectedTags)
-		var saveErr error
-		if msg.IsGlobal {
-			saveErr = storage.SaveNoteTo(msg.NotesDir, msg.Note)
-		} else {
-			saveErr = storage.SaveNote(msg.Project, msg.Note)
-		}
-		if saveErr != nil {
-			return true, errorCmd("failed to save note tags: %w", saveErr)
-		}
-		return true, func() tea.Msg { return NotesRefreshMsg{} }
+		return true, m.applyNoteTags(msg.Source.Location, []*models.Note{msg.Source.noteCopy()}, msg.SelectedTags, false)
 
 	case GlobalTagNavigateMsg:
 		m.popView()
@@ -275,6 +197,31 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 	}
 	return false, nil
+}
+
+func (m *AppModel) applyProjectNoteTags(projectID string, notes []*models.Note, tags []string, bulk bool) tea.Cmd {
+	return m.applyNoteTags(app.ProjectNoteLocation(projectID), notes, tags, bulk)
+}
+
+func (m *AppModel) applyNoteTags(location app.NoteLocation, notes []*models.Note, tags []string, bulk bool) tea.Cmd {
+	operations := make([]app.NoteMutationRequest, 0, len(notes))
+	for _, note := range notes {
+		updated := cloneNoteForCommand(note)
+		if updated == nil {
+			continue
+		}
+		updated.SetTags(tags)
+		operations = append(operations, app.NoteMutationRequest{Kind: app.NoteUpdate, Location: location, Note: updated})
+	}
+	label := "Updated note tags"
+	if bulk {
+		label = fmt.Sprintf("Tagged %d notes", len(operations))
+	}
+	return noteMutationCmd(m.appService, location, app.NoteBatchRequest{
+		Operations:  operations,
+		UndoAction:  "Tag Notes",
+		UndoContext: fmt.Sprintf("%d notes", len(operations)),
+	}, label, bulk)
 }
 
 func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string) {

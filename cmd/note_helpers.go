@@ -4,66 +4,62 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// NoteContext holds resolved note directory and optional project context.
+// NoteContext holds a path-free workspace note location plus presentation data.
 type NoteContext struct {
-	Dir       string          // Notes directory path
-	Project   *models.Project // nil for global notes
+	Location  app.NoteLocation
+	Project   *models.Project // nil for global notes; used only for labels/task lookup
 	Editor    string          // machine-local editor selected at command startup
 	Workspace *CLIWorkspace   // domain-native commit composition
 }
 
-// resolveNoteContext returns the notes directory and optional project based on the --global flag.
+// resolveNoteContext returns the path-free note location and optional project
+// presentation context selected by the --global flag.
 func resolveNoteContext() (*NoteContext, error) {
 	if noteGlobal {
-		dir, workspace, err := globalNotesDir()
+		workspace, err := LoadCLIWorkspaceStrict()
 		if err != nil {
 			return nil, err
 		}
-		return &NoteContext{Dir: dir, Editor: workspace.Runtime.Machine().GetEditor(), Workspace: workspace}, nil
+		return &NoteContext{Location: app.GlobalNoteLocation(), Editor: workspace.Runtime.Machine().GetEditor(), Workspace: workspace}, nil
 	}
 
 	project, workspace, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return nil, err
 	}
-	return &NoteContext{Dir: storage.NotesDir(project), Project: project, Editor: workspace.Runtime.Machine().GetEditor(), Workspace: workspace}, nil
+	return &NoteContext{Location: app.ProjectNoteLocation(project.ID), Project: project, Editor: workspace.Runtime.Machine().GetEditor(), Workspace: workspace}, nil
 }
 
-// saveNoteContext stages note bytes through the application transaction
-// boundary. Project notes use the typed SaveNote use case; global notes use the
-// same journal-backed config-artifact commit because they have no owning project.
-func saveNoteContext(ctx *NoteContext, note *models.Note) error {
-	path, data, err := storage.PrepareNoteSaveTo(ctx.Dir, note)
+func notesNoteContext(ctx *NoteContext) ([]*models.Note, error) {
+	return newWorkspaceAppService(ctx.Workspace).NotesAt(ctx.Location)
+}
+
+func createNoteContext(ctx *NoteContext, note *models.Note) (app.NoteResult, error) {
+	result, err := newWorkspaceAppService(ctx.Workspace).CreateNote(app.NoteCreateRequest{Location: ctx.Location, Note: note})
+	return result, translateAppError(err)
+}
+
+func updateNoteContext(ctx *NoteContext, note *models.Note) (app.NoteResult, error) {
+	result, err := newWorkspaceAppService(ctx.Workspace).UpdateNote(app.NoteUpdateRequest{Location: ctx.Location, Note: note})
+	return result, translateAppError(err)
+}
+
+func deleteNoteContext(ctx *NoteContext, note *models.Note) (app.NoteResult, error) {
+	result, err := newWorkspaceAppService(ctx.Workspace).RemoveNote(app.NoteDeleteRequest{Location: ctx.Location, Note: note})
+	return result, translateAppError(err)
+}
+
+func findNoteContext(ctx *NoteContext, query string) (*models.Note, error) {
+	notes, err := notesNoteContext(ctx)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to list notes: %w", err)
 	}
-	service := newWorkspaceAppService(ctx.Workspace)
-	if ctx.Project != nil {
-		_, err = service.SaveNote(ctx.Project.ID, note)
-		return translateAppError(err)
-	}
-	return translateAppError(service.CommitConfig(storage.ArtifactChange{Path: path, Data: data}))
-}
-
-func deleteNoteContext(ctx *NoteContext, filename string) error {
-	if ctx.Project != nil {
-		_, err := newWorkspaceAppService(ctx.Workspace).DeleteNote(ctx.Project.ID, filename)
-		return translateAppError(err)
-	}
-	path, err := storage.NoteFilePathIn(ctx.Dir, filename)
-	if err != nil {
-		return err
-	}
-	return translateAppError(newWorkspaceAppService(ctx.Workspace).CommitConfig(storage.ArtifactChange{Path: path, Delete: true}))
-}
-
-// findNote locates a note by exact filename or title prefix match.
-func findNote(project *models.Project, query string) (*models.Note, error) {
-	return findNoteIn(storage.NotesDir(project), query)
+	return findNoteFromList(notes, query)
 }
 
 // findNoteIn locates a note in a directory by exact filename or title prefix match.
@@ -77,12 +73,8 @@ func findNote(project *models.Project, query string) (*models.Note, error) {
 // returned so a destructive command like `note delete` cannot silently target
 // the wrong note.
 func findNoteIn(dir, query string) (*models.Note, error) {
-	if query == "" {
-		return nil, fmt.Errorf("note not found: %s", query)
-	}
-
 	// Try exact filename first
-	if strings.HasSuffix(query, ".md") {
+	if query != "" && strings.HasSuffix(query, ".md") {
 		note, err := storage.LoadNoteFrom(dir, query)
 		if err == nil {
 			return note, nil
@@ -93,6 +85,13 @@ func findNoteIn(dir, query string) (*models.Note, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list notes: %w", err)
 	}
+	return findNoteFromList(notes, query)
+}
+
+func findNoteFromList(notes []*models.Note, query string) (*models.Note, error) {
+	if query == "" {
+		return nil, fmt.Errorf("note not found: %s", query)
+	}
 
 	// Two-pass search: prefer an exact title match (case-insensitive) over a
 	// prefix match. Without this, querying "meeting" when notes
@@ -100,6 +99,9 @@ func findNoteIn(dir, query string) (*models.Note, error) {
 	// note happened to be listed first.
 	lowerQuery := strings.ToLower(query)
 	for _, note := range notes {
+		if strings.ToLower(note.Filename) == lowerQuery {
+			return note, nil
+		}
 		if strings.ToLower(note.Title) == lowerQuery {
 			return note, nil
 		}

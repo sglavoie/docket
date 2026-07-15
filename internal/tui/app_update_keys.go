@@ -137,6 +137,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, m.executeSandboxReset()
 		case "n", "N", "esc":
 			m.pendingSandboxReset = false
+			m.pendingSandboxProjectID = ""
 			m.pendingSandboxTaskCount = 0
 			m.setInfoStatus("Canceled")
 			return true, defaultStatusTimeout()

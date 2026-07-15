@@ -26,6 +26,20 @@ const CurrentDomainSchemaVersion = 1
 // concurrent writer's changes.
 var ErrStaleObject = errors.New("config: object changed on disk since it was loaded")
 
+// ErrInvalidWorkspaceID reports an identity that is not a canonical UUID.
+// Workspace IDs are path components for machine-local state, so accepting an
+// arbitrary string would permit aliasing or path traversal.
+var ErrInvalidWorkspaceID = errors.New("config: workspace ID must be a canonical UUID")
+
+// ErrWorkspaceIDMismatch reports two artifacts (or an artifact and an already
+// bound store) that claim different workspace identities. The catalog identity
+// is immutable for a workspace and may never be silently replaced.
+var ErrWorkspaceIDMismatch = errors.New("config: workspace ID mismatch")
+
+// ErrWorkspaceIDRequired reports machine-state access attempted before the
+// synced workspace catalog established the workspace identity.
+var ErrWorkspaceIDRequired = errors.New("config: workspace ID is required")
+
 // domainKind identifies one of the five decomposed configuration domains.
 type domainKind int
 
@@ -71,6 +85,17 @@ func NewWorkspaceID() string {
 	return uuid.New().String()
 }
 
+// validateWorkspaceID accepts only the canonical lower-case hyphenated UUID
+// representation produced by NewWorkspaceID. Besides keeping one spelling per
+// identity, this makes the value safe to use as a single path component.
+func validateWorkspaceID(workspaceID string) error {
+	parsed, err := uuid.Parse(workspaceID)
+	if err != nil || parsed.String() != workspaceID {
+		return fmt.Errorf("%w: %q", ErrInvalidWorkspaceID, workspaceID)
+	}
+	return nil
+}
+
 // DomainFileStore persists the five decomposed configuration domains to their
 // own JSON files, mirroring the durable layout in context.md:
 //
@@ -78,8 +103,7 @@ func NewWorkspaceID() string {
 //   - <data>/.tt/planning.json    (synced)  — PlanningState
 //   - <data>/.tt/settings.json    (synced)  — Settings
 //   - <data>/.tt/automation.json  (synced)  — AutomationConfig
-//   - ~/.tt/machine.json for the default local workspace, otherwise
-//     ~/.tt/runtime/<data-dir-hash>/machine.json (machine-local) — MachineState
+//   - ~/.tt/runtime/<workspace-id>/machine.json (machine-local) — MachineState
 //
 // Every file is wrapped in a versioned envelope carrying a schema version and
 // the workspace ID, written atomically under a per-file lock with a .bak backup
@@ -119,6 +143,20 @@ func (s *DomainFileStore) DataDir() string { return s.dataDir }
 // be empty until an artifact is read or EnsureWorkspaceID is called.
 func (s *DomainFileStore) WorkspaceID() string { return s.workspaceID }
 
+// BindWorkspaceID validates and binds the store to one immutable workspace
+// identity. Rebinding to the same UUID is idempotent; attempting to adopt a
+// different identity fails explicitly.
+func (s *DomainFileStore) BindWorkspaceID(workspaceID string) error {
+	if err := validateWorkspaceID(workspaceID); err != nil {
+		return err
+	}
+	if s.workspaceID != "" && s.workspaceID != workspaceID {
+		return fmt.Errorf("%w: store is bound to %q, artifact has %q", ErrWorkspaceIDMismatch, s.workspaceID, workspaceID)
+	}
+	s.workspaceID = workspaceID
+	return nil
+}
+
 // EnsureWorkspaceID mints a workspace ID when the store has none yet and returns
 // the effective ID. It does not persist anything on its own; the ID is written
 // the next time an artifact is saved.
@@ -129,21 +167,52 @@ func (s *DomainFileStore) EnsureWorkspaceID() string {
 	return s.workspaceID
 }
 
+func (s *DomainFileStore) validatedWorkspaceID() (string, error) {
+	workspaceID := s.WorkspaceID()
+	if workspaceID == "" {
+		return "", ErrWorkspaceIDRequired
+	}
+	if err := validateWorkspaceID(workspaceID); err != nil {
+		return "", err
+	}
+	return workspaceID, nil
+}
+
+// bindCatalogPayload makes catalog identity authoritative for this store. A
+// fresh catalog receives the store's one minted identity; an existing identity
+// must match the identity already bound from disk or from the caller.
+func (s *DomainFileStore) bindCatalogPayload(catalog *WorkspaceCatalog) (string, error) {
+	if catalog == nil {
+		return "", fmt.Errorf("config: nil workspace catalog")
+	}
+	if catalog.WorkspaceID == "" {
+		catalog.WorkspaceID = s.EnsureWorkspaceID()
+	}
+	if err := s.BindWorkspaceID(catalog.WorkspaceID); err != nil {
+		return "", err
+	}
+	return s.validatedWorkspaceID()
+}
+
 // pathFor resolves the on-disk path of a domain artifact.
-func (s *DomainFileStore) pathFor(kind domainKind) string {
+func (s *DomainFileStore) pathFor(kind domainKind) (string, error) {
 	switch kind {
 	case domainCatalog:
-		return WorkspaceCatalogPath(s.dataDir)
+		return WorkspaceCatalogPath(s.dataDir), nil
 	case domainPlanning:
-		return PlanningStatePath(s.dataDir)
+		return PlanningStatePath(s.dataDir), nil
 	case domainSettings:
-		return SettingsPath(s.dataDir)
+		return SettingsPath(s.dataDir), nil
 	case domainAutomation:
-		return AutomationPath(s.dataDir)
+		return AutomationPath(s.dataDir), nil
 	case domainMachine:
-		return MachineStatePath(s.dataDir)
+		workspaceID, err := s.validatedWorkspaceID()
+		if err != nil {
+			return "", err
+		}
+		return MachineStatePath(workspaceID)
 	default:
-		return filepath.Join(InternalDir(s.dataDir), kind.name()+".json")
+		return filepath.Join(InternalDir(s.dataDir), kind.name()+".json"), nil
 	}
 }
 
@@ -159,7 +228,10 @@ func revisionOf(data []byte) string {
 // file yields ("", nil) so the caller keeps its seeded defaults; corruption
 // falls back to the .bak sidecar before failing.
 func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
-	path := s.pathFor(kind)
+	path, err := s.pathFor(kind)
+	if err != nil {
+		return "", err
+	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return "", nil
@@ -180,14 +252,22 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 	if env.SchemaVersion > CurrentDomainSchemaVersion {
 		return rev, fmt.Errorf("%s schema version %d not supported, please upgrade tt", filepath.Base(path), env.SchemaVersion)
 	}
-	if s.workspaceID == "" && env.WorkspaceID != "" {
-		s.workspaceID = env.WorkspaceID
+	if err := s.BindWorkspaceID(env.WorkspaceID); err != nil {
+		return rev, fmt.Errorf("invalid workspace identity in %s: %w", filepath.Base(path), err)
 	}
 	if len(env.Data) == 0 {
 		return rev, nil
 	}
 	if err := json.Unmarshal(env.Data, out); err != nil {
 		return rev, fmt.Errorf("failed to parse %s payload: %w", filepath.Base(path), err)
+	}
+	if catalog, ok := out.(*WorkspaceCatalog); ok {
+		if catalog.WorkspaceID == "" {
+			return rev, fmt.Errorf("invalid workspace identity in %s payload: %w", filepath.Base(path), ErrWorkspaceIDRequired)
+		}
+		if err := s.BindWorkspaceID(catalog.WorkspaceID); err != nil {
+			return rev, fmt.Errorf("invalid workspace identity in %s payload: %w", filepath.Base(path), err)
+		}
 	}
 	return rev, nil
 }
@@ -198,6 +278,9 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 // domain file produced by a transaction is byte-compatible with one produced by
 // Manager.Save, and a reload observes the same content either way.
 func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]byte, error) {
+	if err := validateWorkspaceID(workspaceID); err != nil {
+		return nil, err
+	}
 	rawPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %s payload: %w", kind.name(), err)
@@ -223,6 +306,91 @@ func decodeEnvelope(data []byte) (domainEnvelope, error) {
 	return env, nil
 }
 
+// migrateLegacyMachineState imports the first former path-local machine file
+// into the canonical workspace-ID namespace. The source is deliberately kept
+// byte-for-byte as rollback evidence. A canonical file always wins, including
+// over a stale or mismatched legacy copy, so restart is idempotent.
+func (s *DomainFileStore) migrateLegacyMachineState() error {
+	workspaceID, err := s.validatedWorkspaceID()
+	if err != nil {
+		return err
+	}
+	canonicalPath, err := MachineStatePath(workspaceID)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(canonicalPath); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to inspect canonical machine state %s: %w", canonicalPath, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(canonicalPath), DirPermissions); err != nil {
+		return fmt.Errorf("failed to create canonical machine-state directory: %w", err)
+	}
+
+	return util.WithFileLock(canonicalPath+".lock", true, func() error {
+		if _, statErr := os.Stat(canonicalPath); statErr == nil {
+			return nil
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			return fmt.Errorf("failed to inspect canonical machine state %s: %w", canonicalPath, statErr)
+		}
+
+		for _, legacyPath := range legacyMachineStatePaths(s.dataDir) {
+			legacyData, readErr := os.ReadFile(legacyPath)
+			if errors.Is(readErr, os.ErrNotExist) {
+				continue
+			}
+			if readErr != nil {
+				return fmt.Errorf("failed to read legacy machine state %s: %w", legacyPath, readErr)
+			}
+			migrated, migrateErr := migratedMachineEnvelope(legacyPath, legacyData, workspaceID)
+			if migrateErr != nil {
+				return migrateErr
+			}
+			if writeErr := util.AtomicWriteFile(canonicalPath, migrated, FilePermissions); writeErr != nil {
+				return fmt.Errorf("failed to import legacy machine state from %s: %w", legacyPath, writeErr)
+			}
+			return nil
+		}
+		return nil
+	})
+}
+
+// migratedMachineEnvelope validates a legacy candidate before it can select
+// state for a catalog identity. Empty legacy IDs are claimed by the catalog;
+// non-empty IDs must already match. The payload is decoded as MachineState so a
+// wrong-kind or malformed file cannot be copied into the canonical namespace.
+func migratedMachineEnvelope(path string, data []byte, workspaceID string) ([]byte, error) {
+	env, err := decodeEnvelope(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse legacy machine state %s: %w", path, err)
+	}
+	if env.SchemaVersion > CurrentDomainSchemaVersion {
+		return nil, fmt.Errorf("legacy machine state %s schema version %d not supported, please upgrade tt", path, env.SchemaVersion)
+	}
+	if env.Kind != domainMachine.name() {
+		return nil, fmt.Errorf("legacy machine state %s has artifact kind %q, want %q", path, env.Kind, domainMachine.name())
+	}
+	if env.WorkspaceID != "" && env.WorkspaceID != workspaceID {
+		return nil, fmt.Errorf("legacy machine state %s: %w: catalog has %q, envelope has %q", path, ErrWorkspaceIDMismatch, workspaceID, env.WorkspaceID)
+	}
+	if len(env.Data) > 0 {
+		var machine MachineState
+		if decodeErr := json.Unmarshal(env.Data, &machine); decodeErr != nil {
+			return nil, fmt.Errorf("failed to parse legacy machine-state payload %s: %w", path, decodeErr)
+		}
+	}
+	if env.WorkspaceID == workspaceID {
+		return data, nil
+	}
+	env.WorkspaceID = workspaceID
+	out, err := json.MarshalIndent(env, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to stamp migrated machine state from %s: %w", path, err)
+	}
+	return out, nil
+}
+
 // recoverEnvelopeFromBackup restores an artifact from its .bak sidecar when the
 // primary is corrupted, re-persisting the recovered bytes so later loads do not
 // hit the corruption again.
@@ -246,26 +414,46 @@ func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr erro
 // verified inside the lock and a mismatch (including a vanished file) returns
 // ErrStaleObject without writing.
 func (s *DomainFileStore) save(kind domainKind, payload any, expectedRev string) error {
-	path := s.pathFor(kind)
+	if catalog, ok := payload.(*WorkspaceCatalog); ok {
+		if _, err := s.bindCatalogPayload(catalog); err != nil {
+			return err
+		}
+	} else if _, err := s.validatedWorkspaceID(); err != nil {
+		return err
+	}
+
+	path, err := s.pathFor(kind)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	// A workspace-catalog save is the authoritative source of the workspace ID;
-	// adopt it so subsequent artifacts written by this store agree.
-	if wc, ok := payload.(*WorkspaceCatalog); ok && wc.WorkspaceID != "" {
-		s.workspaceID = wc.WorkspaceID
-	}
-
 	lockPath := path + ".lock"
 	return util.WithFileLock(lockPath, true, func() error {
+		// Workspace identity is immutable even for last-writer-wins saves. Check
+		// the current envelope while holding the same lock as the write so a
+		// concurrent catalog create cannot be replaced with another identity.
+		current, currentErr := os.ReadFile(path)
+		if currentErr == nil {
+			env, decErr := decodeEnvelope(current)
+			if decErr != nil {
+				return fmt.Errorf("failed to validate workspace identity in %s: %w", filepath.Base(path), decErr)
+			}
+			if bindErr := s.BindWorkspaceID(env.WorkspaceID); bindErr != nil {
+				return fmt.Errorf("invalid workspace identity in %s: %w", filepath.Base(path), bindErr)
+			}
+		} else if !errors.Is(currentErr, os.ErrNotExist) {
+			return fmt.Errorf("failed to read %s for workspace identity check: %w", filepath.Base(path), currentErr)
+		}
+
 		if expectedRev != "" {
-			current, err := os.ReadFile(path)
 			switch {
-			case errors.Is(err, os.ErrNotExist):
+			case errors.Is(currentErr, os.ErrNotExist):
 				return ErrStaleObject
-			case err != nil:
-				return fmt.Errorf("failed to re-read %s for concurrency check: %w", filepath.Base(path), err)
+			case currentErr != nil:
+				return fmt.Errorf("failed to re-read %s for concurrency check: %w", filepath.Base(path), currentErr)
 			default:
 				if revisionOf(current) != expectedRev {
 					return ErrStaleObject
@@ -315,6 +503,27 @@ func (s *DomainFileStore) LoadCatalogChecked() (*WorkspaceCatalog, string, error
 	return out, rev, nil
 }
 
+// bindWorkspaceIDFromCatalog resolves the synced catalog before any machine
+// path is requested. A machine-only artifact cannot establish workspace
+// identity because doing so would let a stale or foreign local file select its
+// own namespace.
+func (s *DomainFileStore) bindWorkspaceIDFromCatalog() error {
+	if s.workspaceID != "" {
+		if err := validateWorkspaceID(s.workspaceID); err != nil {
+			return err
+		}
+	}
+	_, rev, err := s.LoadCatalogChecked()
+	if err != nil {
+		return err
+	}
+	if rev == "" {
+		return fmt.Errorf("%w: workspace catalog must exist before machine-state access", ErrWorkspaceIDRequired)
+	}
+	_, err = s.validatedWorkspaceID()
+	return err
+}
+
 // SaveCatalog implements WorkspaceCatalogStore (last-writer-wins).
 func (s *DomainFileStore) SaveCatalog(catalog *WorkspaceCatalog) error {
 	return s.SaveCatalogChecked(catalog, "")
@@ -355,6 +564,9 @@ func (s *DomainFileStore) SavePlanningChecked(planning *PlanningState, rev strin
 	if planning == nil {
 		return fmt.Errorf("config: nil planning state")
 	}
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return err
+	}
 	return s.save(domainPlanning, planning, rev)
 }
 
@@ -383,6 +595,9 @@ func (s *DomainFileStore) SaveSettings(settings *Settings) error {
 func (s *DomainFileStore) SaveSettingsChecked(settings *Settings, rev string) error {
 	if settings == nil {
 		return fmt.Errorf("config: nil settings")
+	}
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return err
 	}
 	return s.save(domainSettings, settings, rev)
 }
@@ -414,6 +629,9 @@ func (s *DomainFileStore) SaveAutomationChecked(automation *AutomationConfig, re
 	if automation == nil {
 		return fmt.Errorf("config: nil automation config")
 	}
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return err
+	}
 	return s.save(domainAutomation, automation, rev)
 }
 
@@ -425,6 +643,12 @@ func (s *DomainFileStore) LoadMachine() (*MachineState, error) {
 
 // LoadMachineChecked loads machine state and its revision.
 func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return nil, "", err
+	}
+	if err := s.migrateLegacyMachineState(); err != nil {
+		return nil, "", err
+	}
 	out := NewMachineState()
 	rev, err := s.load(domainMachine, out)
 	if err != nil {
@@ -442,6 +666,9 @@ func (s *DomainFileStore) SaveMachine(machine *MachineState) error {
 func (s *DomainFileStore) SaveMachineChecked(machine *MachineState, rev string) error {
 	if machine == nil {
 		return fmt.Errorf("config: nil machine state")
+	}
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return err
 	}
 	return s.save(domainMachine, machine, rev)
 }

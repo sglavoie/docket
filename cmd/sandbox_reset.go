@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var sandboxResetForce bool
@@ -18,11 +17,9 @@ var sandboxResetCmd = &cobra.Command{
 	Short: "Clear all tasks, notes, and tag metadata from sandbox",
 	Long: `Clear all tasks, notes, tags, and pinned tags from the sandbox project.
 
-This resets the sandbox to a clean state by removing all tasks, notes, and
-tag metadata, then resetting to the default "Next" section only.
-
-An undo snapshot is recorded before clearing, allowing task restoration via
-'tt undo'. Note that notes and tag metadata are not restored by undo.
+This resets the sandbox to a clean state by removing all tasks, notes, and tag
+metadata, then resetting to the default "Next" section only. The reset commits
+as one workspace transaction, so 'tt undo' restores the complete prior state.
 
 Use --force to skip the confirmation prompt.
 
@@ -54,17 +51,12 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("sandbox project not found")
 	}
 
-	if err := storage.LoadProject(sandbox); err != nil {
-		return fmt.Errorf("failed to load sandbox: %w", err)
+	svc := newWorkspaceAppService(workspace)
+	preview, err := svc.PreviewSandboxReset(sandbox.ID)
+	if err != nil {
+		return translateAppError(err)
 	}
-
-	taskCount := len(sandbox.Tasks)
-	notes, _ := storage.ListNotes(sandbox)
-	noteCount := len(notes)
-	tagCount := len(sandbox.AllTags())
-	pinnedTagCount := len(sandbox.PinnedTagList())
-
-	if taskCount == 0 && noteCount == 0 && tagCount == 0 && pinnedTagCount == 0 {
+	if preview.Counts.Empty() {
 		if !out.Quiet {
 			fmt.Println("Sandbox is already empty.")
 		}
@@ -72,19 +64,7 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	}
 
 	// Build confirmation message
-	var parts []string
-	if taskCount > 0 {
-		parts = append(parts, Pluralize(taskCount, "task", "tasks"))
-	}
-	if noteCount > 0 {
-		parts = append(parts, Pluralize(noteCount, "note", "notes"))
-	}
-	if tagCount > 0 {
-		parts = append(parts, Pluralize(tagCount, "tag", "tags"))
-	}
-	if pinnedTagCount > 0 {
-		parts = append(parts, Pluralize(pinnedTagCount, "pinned tag", "pinned tags"))
-	}
+	parts := sandboxResetParts(preview.Counts)
 	confirmMsg := fmt.Sprintf("Clear %s from sandbox? [y/N] ", joinWithAnd(parts))
 
 	if !ConfirmYN(confirmMsg, sandboxResetForce) {
@@ -94,54 +74,43 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Record a legacy per-project undo snapshot before clearing so `tt undo`
-	// (which still reads the per-project history) can restore the tasks; the
-	// app-layer commit below additionally records the wipe in the workspace
-	// ledger.
-	settings := workspace.Runtime.Settings()
-	undoDepth := 0
-	if settings.UndoHistoryDepth != nil {
-		undoDepth = *settings.UndoHistoryDepth
-	}
-	if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth, nil); err != nil {
-		return fmt.Errorf("failed to record undo snapshot: %w", err)
-	}
-
-	// The wipe itself (tasks, short-ID counter, sections, tags, pinned tags)
-	// commits through the application layer as one transaction.
-	svc := newWorkspaceAppService(workspace)
-	if _, err := withResultRetry(func() (app.ProjectResetResult, error) {
-		return svc.ResetProjectTasks(sandbox.ID)
-	}); err != nil {
+	result, err := withResultRetry(func() (app.SandboxResetResult, error) {
+		return svc.ResetSandbox(sandbox.ID)
+	})
+	if err != nil {
 		return translateAppError(err)
 	}
 
-	// Clear notes directory
-	if noteCount > 0 {
-		notesDir := storage.NotesDir(sandbox)
-		if err := os.RemoveAll(notesDir); err != nil {
-			return fmt.Errorf("failed to clear notes: %w", err)
-		}
-	}
-
-	// Build output message
-	var cleared []string
-	if taskCount > 0 {
-		cleared = append(cleared, Pluralize(taskCount, "task", "tasks"))
-	}
-	if noteCount > 0 {
-		cleared = append(cleared, Pluralize(noteCount, "note", "notes"))
-	}
-	if tagCount > 0 {
-		cleared = append(cleared, Pluralize(tagCount, "tag", "tags"))
-	}
-	if pinnedTagCount > 0 {
-		cleared = append(cleared, Pluralize(pinnedTagCount, "pinned tag", "pinned tags"))
-	}
 	if !out.Quiet {
-		fmt.Printf("Cleared %s from sandbox.\n", joinWithAnd(cleared))
+		fmt.Printf("Cleared %s from sandbox.\n", joinWithAnd(sandboxResetParts(result.Cleared)))
 	}
 	return nil
+}
+
+func sandboxResetParts(counts app.SandboxResetCounts) []string {
+	var parts []string
+	if counts.Tasks > 0 {
+		parts = append(parts, Pluralize(counts.Tasks, "task", "tasks"))
+	}
+	if counts.Notes > 0 {
+		parts = append(parts, Pluralize(counts.Notes, "note", "notes"))
+	}
+	if counts.Tags > 0 {
+		parts = append(parts, Pluralize(counts.Tags, "tag", "tags"))
+	}
+	if counts.PinnedTags > 0 {
+		parts = append(parts, Pluralize(counts.PinnedTags, "pinned tag", "pinned tags"))
+	}
+	if counts.SectionLayout > 0 {
+		parts = append(parts, "section layout")
+	}
+	if counts.SectionColors > 0 {
+		parts = append(parts, Pluralize(counts.SectionColors, "section color", "section colors"))
+	}
+	if counts.ShortIDCounter > 0 {
+		parts = append(parts, "short-ID counter")
+	}
+	return parts
 }
 
 // joinWithAnd joins strings with commas and "and" for the last item.

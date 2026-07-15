@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -35,31 +34,15 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("note ID")
 	}
 
-	var note *models.Note
-	var glowEnabled bool
-
-	if noteGlobal {
-		dir, workspace, gErr := globalNotesDir()
-		if gErr != nil {
-			return gErr
-		}
-		var err error
-		note, err = findNoteIn(dir, args[0])
-		if err != nil {
-			return err
-		}
-		glowEnabled = workspace.Runtime.Settings().GlowEnabled
-	} else {
-		project, workspace, err := LoadRuntimeCurrentProject()
-		if err != nil {
-			return err
-		}
-		note, err = findNote(project, args[0])
-		if err != nil {
-			return err
-		}
-		glowEnabled = workspace.Runtime.Settings().GlowEnabled
+	ctx, err := resolveNoteContext()
+	if err != nil {
+		return err
 	}
+	note, err := findNoteContext(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	glowEnabled := ctx.Workspace.Runtime.Settings().GlowEnabled
 
 	content := fmt.Sprintf("# %s\n\n%s", note.Title, note.Body)
 	if len(note.Tags) > 0 {

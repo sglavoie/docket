@@ -67,9 +67,14 @@ var allDomainKinds = []domainKind{domainCatalog, domainPlanning, domainSettings,
 var syncedDomainKinds = []domainKind{domainCatalog, domainPlanning, domainSettings, domainAutomation}
 
 func (m *Manager) domainFilesExist(store *DomainFileStore) bool {
-	for _, kind := range allDomainKinds {
-		if _, err := os.Stat(store.pathFor(kind)); err == nil {
-			return true
+	// Synced domains establish whether a workspace exists. machine.json cannot
+	// be addressed until workspace.json has supplied a validated workspace ID.
+	for _, kind := range syncedDomainKinds {
+		path, err := store.pathFor(kind)
+		if err == nil {
+			if _, statErr := os.Stat(path); statErr == nil {
+				return true
+			}
 		}
 	}
 	return false
@@ -79,7 +84,11 @@ func (m *Manager) classifyDomainState(store *DomainFileStore) (domainStateKind, 
 	present := make([]string, 0, len(syncedDomainKinds))
 	missing := make([]string, 0, len(syncedDomainKinds))
 	for _, kind := range syncedDomainKinds {
-		if _, err := os.Stat(store.pathFor(kind)); err == nil {
+		path, err := store.pathFor(kind)
+		if err == nil {
+			_, err = os.Stat(path)
+		}
+		if err == nil {
 			present = append(present, kind.name())
 		} else {
 			missing = append(missing, kind.name())
@@ -184,13 +193,32 @@ func (m *Manager) GetConfigPath() string { return m.configPath }
 // Exists reports whether any split-domain artifact exists.
 func (m *Manager) Exists() bool { return m.domainFilesExist(m.domainStore()) }
 
-func (m *Manager) domainFilePaths() []string {
+func (m *Manager) domainFilePaths() ([]string, error) {
 	store := m.domainStore()
 	paths := make([]string, 0, len(allDomainKinds))
-	for _, kind := range allDomainKinds {
-		paths = append(paths, store.pathFor(kind))
+	for _, kind := range syncedDomainKinds {
+		path, err := store.pathFor(kind)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, path)
 	}
-	return paths
+
+	// Resolve workspace.json before asking for the workspace-ID machine path.
+	// An absent catalog means there is no valid machine artifact to enumerate.
+	if _, err := os.Stat(WorkspaceCatalogPath(m.workspaceDataDir())); errors.Is(err, os.ErrNotExist) {
+		return paths, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to inspect workspace catalog: %w", err)
+	}
+	if _, err := store.LoadCatalog(); err != nil {
+		return nil, err
+	}
+	machinePath, err := store.pathFor(domainMachine)
+	if err != nil {
+		return nil, err
+	}
+	return append(paths, machinePath), nil
 }
 
 func (m *Manager) GetBackupPath() string {
@@ -198,7 +226,11 @@ func (m *Manager) GetBackupPath() string {
 }
 
 func (m *Manager) ConfigBackupExists() bool {
-	for _, path := range m.domainFilePaths() {
+	paths, err := m.domainFilePaths()
+	if err != nil {
+		return false
+	}
+	for _, path := range paths {
 		if _, err := os.Stat(path + ".bak"); err == nil {
 			return true
 		}
@@ -207,7 +239,11 @@ func (m *Manager) ConfigBackupExists() bool {
 }
 
 func (m *Manager) BackupConfig() error {
-	for _, path := range m.domainFilePaths() {
+	paths, err := m.domainFilePaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
 		content, err := os.ReadFile(path)
 		if os.IsNotExist(err) {
 			continue
@@ -226,7 +262,11 @@ func (m *Manager) RestoreConfigFromBackup() error {
 	if !m.ConfigBackupExists() {
 		return fmt.Errorf("no config backup available")
 	}
-	for _, path := range m.domainFilePaths() {
+	paths, err := m.domainFilePaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
 		backupPath := path + ".bak"
 		backupContent, err := os.ReadFile(backupPath)
 		if os.IsNotExist(err) {

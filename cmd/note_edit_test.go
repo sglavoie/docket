@@ -118,3 +118,82 @@ func TestApplyNoteEditSucceedsOnValidEdit(t *testing.T) {
 		t.Errorf("expected title %q, got %q", "First Updated", updated.Title)
 	}
 }
+
+func TestNoteEditorCancellationLeavesCanonicalNoteUnchanged(t *testing.T) {
+	deps, project := setupNoteLinkTest(t)
+	defer deps.Cleanup()
+	noteGlobal = false
+
+	note := models.NewNote("Cancel Edit")
+	note.Body = "canonical body"
+	writeNoteToProject(t, project, note)
+	path := filepath.Join(storage.NotesDir(project), note.Filename)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, err := resolveNoteContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notes, listErr := notesNoteContext(ctx); listErr != nil || len(notes) != 1 {
+		t.Fatalf("typed note lookup before editor = %v, %v (written path %s, resolved project path %s, data dir %s)", notes, listErr, project.Path, ctx.Project.Path, ctx.Workspace.Runtime.DataDir())
+	}
+
+	originalEditor := editNoteInExternalEditor
+	editNoteInExternalEditor = func(_ string, content string, _ string) (string, error) {
+		return content, nil
+	}
+	t.Cleanup(func() { editNoteInExternalEditor = originalEditor })
+
+	if runErr := runNoteEdit(noteEditCmd, []string{note.Filename}); runErr != nil {
+		t.Fatalf("runNoteEdit: %v", runErr)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatalf("canceled editor changed canonical note:\n%s", after)
+	}
+}
+
+func TestNoteEditorMalformedOutputLeavesCanonicalNoteUnchanged(t *testing.T) {
+	deps, project := setupNoteLinkTest(t)
+	defer deps.Cleanup()
+	noteGlobal = false
+
+	note := models.NewNote("Malformed Edit")
+	note.Body = "canonical body"
+	writeNoteToProject(t, project, note)
+	path := filepath.Join(storage.NotesDir(project), note.Filename)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, err := resolveNoteContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notes, listErr := notesNoteContext(ctx); listErr != nil || len(notes) != 1 {
+		t.Fatalf("typed note lookup before editor = %v, %v (written path %s, resolved project path %s, data dir %s)", notes, listErr, project.Path, ctx.Project.Path, ctx.Workspace.Runtime.DataDir())
+	}
+
+	originalEditor := editNoteInExternalEditor
+	editNoteInExternalEditor = func(_ string, _ string, _ string) (string, error) {
+		return "malformed output without frontmatter", nil
+	}
+	t.Cleanup(func() { editNoteInExternalEditor = originalEditor })
+
+	err = runNoteEdit(noteEditCmd, []string{note.Filename})
+	if err == nil || !strings.Contains(err.Error(), "invalid frontmatter") {
+		t.Fatalf("runNoteEdit err = %v, want invalid frontmatter", err)
+	}
+	after, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(after) != string(before) {
+		t.Fatalf("malformed editor output changed canonical note:\n%s", after)
+	}
+}

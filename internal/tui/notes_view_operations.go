@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -173,27 +174,28 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	if editorErr != nil {
 		return errorCmd("%s", editorErr)
 	}
-	path, err := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
-	if err != nil {
-		return errorCmd("invalid note path: %w", err)
+	location := m.noteLocation()
+	if location.Scope == "" {
+		return errorCmd("cannot edit note without a location")
 	}
-	c := external.EditorCommand(editor, path)
-
-	oldFilename := note.Filename
-	dir := m.effectiveDir()
-	return tea.ExecProcess(c, func(err error) tea.Msg {
-		reloaded, loadErr := storage.LoadNoteFrom(dir, oldFilename)
-		if loadErr == nil && reloaded.Title != note.Title {
-			_, _ = storage.RenameNoteIn(dir, oldFilename, reloaded.Title)
+	if note.ParseError != "" {
+		path, pathErr := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+		if pathErr != nil {
+			return errorCmd("invalid note path: %w", pathErr)
 		}
-		return NotesRefreshMsg{}
-	})
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return errorCmd("failed to read malformed note: %w", readErr)
+		}
+		return startNoteEditorWithContent(editor, location, note, string(raw), false)
+	}
+	return startNoteEditor(editor, location, note, false)
 }
 
 func (m *NotesViewModel) createNote() tea.Cmd {
 	if m.isGlobal {
 		return func() tea.Msg {
-			return ShowGlobalNoteCreatorMsg{NotesDir: m.notesDir}
+			return ShowGlobalNoteCreatorMsg{}
 		}
 	}
 	return func() tea.Msg {
@@ -217,97 +219,28 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 		return nil
 	}
 	note := m.notes[m.pendingDeleteIdx]
-
-	if err := storage.DeleteNoteFrom(m.effectiveDir(), note.Filename); err != nil {
-		m.setStatus("Failed to delete: " + err.Error())
-		return nil
-	}
-
-	m.lastDeleted = note
-	m.lastBulkDeleted = nil
-	m.setStatus("Deleted: " + note.Title)
-	m.loadNotes()
-	return func() tea.Msg { return NotesRefreshMsg{} }
-}
-
-// batchSaveNotes saves a slice of notes and returns the count of failures.
-func (m *NotesViewModel) batchSaveNotes(notes []*models.Note) int {
-	dir := m.effectiveDir()
-	var failed int
-	for _, note := range notes {
-		if err := storage.SaveNoteTo(dir, note); err != nil {
-			failed++
-		}
-	}
-	return failed
+	location := m.noteLocation()
+	return noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
+		Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: location, Note: note}},
+		UndoAction:  "Delete Note",
+		UndoContext: note.Title,
+	}, "Deleted: "+note.Title, false)
 }
 
 func (m *NotesViewModel) undoDelete() tea.Cmd {
-	// Priority: delete > tag > link
-	if m.lastBulkDeleted != nil {
-		count := len(m.lastBulkDeleted)
-		failed := m.batchSaveNotes(m.lastBulkDeleted)
-		m.lastBulkDeleted = nil
-		if failed > 0 {
-			m.setStatus(fmt.Sprintf("Restored %d notes (%d failed)", count-failed, failed))
-		} else {
-			m.setStatus(fmt.Sprintf("Restored %d notes", count))
-		}
-		m.loadNotes()
+	location := m.noteLocation()
+	if location.Scope == "" {
 		return nil
 	}
+	return noteLedgerRestoreCmd(m.noteLedger, location, false)
+}
 
-	if m.lastDeleted != nil {
-		if err := storage.SaveNoteTo(m.effectiveDir(), m.lastDeleted); err != nil {
-			m.setStatus("Failed to restore: " + err.Error())
-			return nil
-		}
-		m.setStatus("Restored: " + m.lastDeleted.Title)
-		m.lastDeleted = nil
-		m.loadNotes()
+func (m *NotesViewModel) redoNoteMutation() tea.Cmd {
+	location := m.noteLocation()
+	if location.Scope == "" {
 		return nil
 	}
-
-	if len(m.lastTagUndo) > 0 {
-		notes := make([]*models.Note, len(m.lastTagUndo))
-		for i, entry := range m.lastTagUndo {
-			entry.Note.Tags = entry.OldTags
-			entry.Note.ModifiedAt = time.Now()
-			notes[i] = entry.Note
-		}
-		count := len(m.lastTagUndo)
-		failed := m.batchSaveNotes(notes)
-		m.lastTagUndo = nil
-		if failed > 0 {
-			m.setStatus(fmt.Sprintf("Undid tags on %d notes (%d failed)", count, failed))
-		} else {
-			m.setStatus(fmt.Sprintf("Undid tags on %d notes", count))
-		}
-		m.loadNotes()
-		return nil
-	}
-
-	if len(m.lastLinkUndo) > 0 {
-		notes := make([]*models.Note, len(m.lastLinkUndo))
-		for i, entry := range m.lastLinkUndo {
-			entry.Note.LinkedTasks = entry.OldLinks
-			entry.Note.ModifiedAt = time.Now()
-			notes[i] = entry.Note
-		}
-		count := len(m.lastLinkUndo)
-		failed := m.batchSaveNotes(notes)
-		m.lastLinkUndo = nil
-		if failed > 0 {
-			m.setStatus(fmt.Sprintf("Undid links on %d notes (%d failed)", count, failed))
-		} else {
-			m.setStatus(fmt.Sprintf("Undid links on %d notes", count))
-		}
-		m.loadNotes()
-		return nil
-	}
-
-	m.setStatus("Nothing to undo")
-	return nil
+	return noteLedgerRestoreCmd(m.noteLedger, location, true)
 }
 
 func (m *NotesViewModel) linkCurrentNote() tea.Cmd {
@@ -335,11 +268,9 @@ func (m *NotesViewModel) showTagSelector() tea.Cmd {
 	}
 	return func() tea.Msg {
 		return ShowNoteTagSelectorMsg{
-			Note:        note,
-			Project:     m.project,
-			NotesDir:    m.notesDir,
-			IsGlobal:    m.isGlobal,
-			CurrentTags: note.Tags,
+			Source:        newNoteMutationRef(m.noteLocation(), note),
+			AvailableTags: m.noteTagOptions(),
+			CurrentTags:   append([]string(nil), note.Tags...),
 		}
 	}
 }
@@ -353,19 +284,19 @@ func (m *NotesViewModel) togglePin() tea.Cmd {
 		m.setErrorStatus("cannot pin — note has parse error. Press e to edit.")
 		return nil
 	}
-	note.Pinned = !note.Pinned
-	note.ModifiedAt = time.Now()
-	if err := storage.SaveNoteTo(m.effectiveDir(), note); err != nil {
-		m.setStatus("Failed to save: " + err.Error())
-		return nil
-	}
+	updated := cloneNoteForCommand(note)
+	updated.Pinned = !updated.Pinned
+	updated.ModifiedAt = time.Now()
+	status := "Pinned: " + note.Title
 	if note.Pinned {
-		m.setStatus("Pinned: " + note.Title)
-	} else {
-		m.setStatus("Unpinned: " + note.Title)
+		status = "Unpinned: " + note.Title
 	}
-	m.loadNotes()
-	return nil
+	location := m.noteLocation()
+	return noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
+		Operations:  []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
+		UndoAction:  "Toggle Note Pin",
+		UndoContext: note.Title,
+	}, status, false)
 }
 
 func (m *NotesViewModel) performBulkDelete() tea.Cmd {
@@ -374,30 +305,16 @@ func (m *NotesViewModel) performBulkDelete() tea.Cmd {
 		return nil
 	}
 
-	dir := m.effectiveDir()
-	var deleted []*models.Note
-	var errors int
-	for _, note := range selected {
-		if err := storage.DeleteNoteFrom(dir, note.Filename); err == nil {
-			deleted = append(deleted, note)
-		} else {
-			errors++
-		}
+	location := m.noteLocation()
+	operations := make([]app.NoteMutationRequest, len(selected))
+	for i, note := range selected {
+		operations[i] = app.NoteMutationRequest{Kind: app.NoteDelete, Location: location, Note: note}
 	}
-
-	m.selectedNotes = make(map[string]bool)
-	m.multiSelectMode = false
-
-	if errors > 0 {
-		m.setStatus(fmt.Sprintf("Deleted %d/%d notes (%d failed)", len(deleted), len(selected), errors))
-	} else {
-		m.setStatus(fmt.Sprintf("Deleted %d notes", len(deleted)))
-	}
-
-	m.lastBulkDeleted = deleted
-	m.lastDeleted = nil
-	m.loadNotes()
-	return func() tea.Msg { return NotesRefreshMsg{} }
+	return noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
+		Operations:  operations,
+		UndoAction:  "Delete Notes",
+		UndoContext: fmt.Sprintf("%d notes", len(selected)),
+	}, fmt.Sprintf("Deleted %d notes", len(selected)), true)
 }
 
 func (m *NotesViewModel) bulkTagNotes() tea.Cmd {
@@ -407,12 +324,20 @@ func (m *NotesViewModel) bulkTagNotes() tea.Cmd {
 	}
 	return func() tea.Msg {
 		return BulkNoteTagMsg{
-			Notes:    selected,
-			Project:  m.project,
-			NotesDir: m.notesDir,
-			IsGlobal: m.isGlobal,
+			Sources:       newNoteMutationRefs(m.noteLocation(), selected),
+			AvailableTags: m.noteTagOptions(),
 		}
 	}
+}
+
+func (m *NotesViewModel) noteTagOptions() []TagInfo {
+	notes := m.notes
+	if m.noteService != nil {
+		if loaded, err := m.noteService.NotesAt(m.noteLocation()); err == nil {
+			notes = loaded
+		}
+	}
+	return buildNoteTagList(notes, m.project)
 }
 
 func (m *NotesViewModel) bulkLinkNotes() tea.Cmd {
@@ -499,6 +424,6 @@ func (m *NotesViewModel) moveNoteToProject() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		return ShowGlobalNoteMoveMsg{Note: note, SourceDir: m.notesDir}
+		return ShowGlobalNoteMoveMsg{Source: newNoteMutationRef(app.GlobalNoteLocation(), note)}
 	}
 }

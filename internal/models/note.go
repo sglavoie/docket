@@ -13,7 +13,9 @@ import (
 // Pre-compiled regexp for note slugify to avoid recompilation on each call.
 var noteMultiDashRe = regexp.MustCompile(`-{2,}`)
 
-// Note represents a project-level markdown document.
+// Note represents a workspace note. Notes may belong to a project or to the
+// workspace-global note collection; location is supplied separately by the
+// application layer rather than persisted in the note itself.
 type Note struct {
 	Title       string    `yaml:"title"`
 	Tags        []string  `yaml:"tags,omitempty"`
@@ -31,6 +33,12 @@ type Note struct {
 	// ParseError holds the parse error message if frontmatter failed to parse.
 	// Non-empty means the note is in an error state and only Filename is reliable.
 	ParseError string `yaml:"-"`
+
+	// RawRevision is the SHA-256 revision of the exact canonical file bytes that
+	// were loaded. It is deliberately not serialized: callers carry it back to
+	// the application mutation boundary as the optimistic-concurrency precondition
+	// for update, rename, move, and delete operations.
+	RawRevision string `yaml:"-" json:"-"`
 }
 
 // NewNote creates a new note with a dated slug filename.

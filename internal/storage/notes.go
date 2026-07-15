@@ -54,7 +54,16 @@ func LoadNoteFrom(dir, filename string) (*models.Note, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseNote(filename, string(data))
+	note, err := parseNote(filename, string(data))
+	if err != nil {
+		return nil, err
+	}
+	// Retain the revision of the exact bytes read, including for a note whose
+	// frontmatter parsed into a recoverable ParseError value. Any later canonical
+	// mutation must compare against these bytes instead of an unlocked stat probe
+	// or a re-rendered approximation.
+	note.RawRevision = RawArtifactRevision(data)
+	return note, nil
 }
 
 // SaveNote writes a note to disk as a markdown file with YAML frontmatter.
@@ -128,6 +137,18 @@ func ListNotes(project *models.Project) ([]*models.Note, error) {
 
 // ListNotesFrom returns all notes from a directory path.
 func ListNotesFrom(dir string) ([]*models.Note, error) {
+	return listNotesFrom(dir, false)
+}
+
+// ListNotesForMutationFrom returns every canonical note artifact with the exact
+// raw revision observed from disk. Unlike the user-facing list path, it fails
+// closed when any note cannot be read so a revision-checked whole-collection
+// mutation cannot silently skip an artifact.
+func ListNotesForMutationFrom(dir string) ([]*models.Note, error) {
+	return listNotesFrom(dir, true)
+}
+
+func listNotesFrom(dir string, failOnUnreadable bool) ([]*models.Note, error) {
 	entries, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -143,6 +164,9 @@ func ListNotesFrom(dir string) ([]*models.Note, error) {
 		}
 		note, err := LoadNoteFrom(dir, entry.Name())
 		if err != nil {
+			if failOnUnreadable {
+				return nil, fmt.Errorf("load note artifact %q: %w", entry.Name(), err)
+			}
 			logging.Warn("skipping unreadable note %s: %v", entry.Name(), err)
 			continue
 		}

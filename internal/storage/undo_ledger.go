@@ -10,7 +10,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/tt/internal/transaction"
 )
 
 // UndoLedgerSchemaVersion is stamped into every persisted ledger file. A file
@@ -149,21 +149,33 @@ type LedgerRecord struct {
 	Artifacts     []LedgerArtifact
 }
 
+// preparedLedgerRecord is a side-effect-free ledger append plan. Ops write any
+// missing content-addressed blobs first and the new ledger file last, so a
+// CommitService can append them to the same transaction manifest as the user
+// artifacts. file is the resulting in-memory ledger state used for post-commit
+// best-effort blob garbage collection.
+type preparedLedgerRecord struct {
+	ops  []transaction.Op
+	file *ledgerFile
+}
+
 // WorkspaceLedger is the single workspace-wide undo/redo history. It is an
 // append-only ledger of committed transactions: each successful commit appends
 // one entry referencing the transaction manifest and retaining the before/after
 // image of every file the transaction touched. Undo and redo move entries
 // between the undo and redo stacks while restoring the recorded images to disk.
 //
-// Recording is the finalization step of a successful commit so callers cannot
-// forget it; the commit boundary wires an optional ledger and calls Record only
-// after the journal has committed. A nil ledger disables history entirely,
-// preserving the pre-ledger behavior for callers and tests that do not opt in.
+// The commit boundary wires an optional ledger so callers cannot forget history.
+// Project ChangeSets and ledger-aware artifact-only transactions use
+// prepareRecord to put the blobs and ledger JSON in the same durable manifest as
+// the user artifacts. A nil ledger disables history entirely, preserving behavior
+// for callers and tests that do not opt in.
 type WorkspaceLedger struct {
-	dir      string
-	maxDepth int
-	roots    []string
-	now      func() time.Time
+	dir             string
+	transactionsDir string
+	maxDepth        int
+	roots           []string
+	now             func() time.Time
 }
 
 // NewWorkspaceLedger returns a ledger persisted under dir (typically
@@ -180,10 +192,11 @@ func NewWorkspaceLedger(dir string, maxDepth int, roots []string) *WorkspaceLedg
 		}
 	}
 	return &WorkspaceLedger{
-		dir:      filepath.Clean(dir),
-		maxDepth: maxDepth,
-		roots:    cleanRoots,
-		now:      time.Now,
+		dir:             filepath.Clean(dir),
+		transactionsDir: filepath.Join(filepath.Dir(filepath.Clean(dir)), "transactions"),
+		maxDepth:        maxDepth,
+		roots:           cleanRoots,
+		now:             time.Now,
 	}
 }
 
@@ -224,41 +237,13 @@ func (l *WorkspaceLedger) load() (*ledgerFile, error) {
 	return &lf, nil
 }
 
-// save persists the ledger atomically.
-func (l *WorkspaceLedger) save(lf *ledgerFile) error {
-	if err := os.MkdirAll(l.dir, DirPermissions); err != nil {
-		return fmt.Errorf("failed to create undo ledger directory: %w", err)
-	}
+func encodeLedgerFile(lf *ledgerFile) ([]byte, error) {
 	lf.SchemaVersion = UndoLedgerSchemaVersion
 	data, err := json.MarshalIndent(lf, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal undo ledger: %w", err)
+		return nil, fmt.Errorf("failed to marshal undo ledger: %w", err)
 	}
-	if err := util.AtomicWriteFile(l.ledgerPath(), data, FilePermissions); err != nil {
-		return fmt.Errorf("failed to write undo ledger: %w", err)
-	}
-	return nil
-}
-
-// writeBlob content-addresses data and durably stores it, returning its hex
-// hash. Identical bytes across entries reuse the same blob (write is idempotent),
-// so before/after images that repeat never duplicate storage.
-func (l *WorkspaceLedger) writeBlob(data []byte) (string, error) {
-	sum := sha256.Sum256(data)
-	hash := hex.EncodeToString(sum[:])
-	path := l.blobPath(hash)
-	if _, err := os.Stat(path); err == nil {
-		return hash, nil
-	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("failed to stat undo blob: %w", err)
-	}
-	if err := os.MkdirAll(l.blobsDir(), DirPermissions); err != nil {
-		return "", fmt.Errorf("failed to create undo blobs directory: %w", err)
-	}
-	if err := util.AtomicWriteFile(path, data, FilePermissions); err != nil {
-		return "", fmt.Errorf("failed to write undo blob: %w", err)
-	}
-	return hash, nil
+	return data, nil
 }
 
 func (l *WorkspaceLedger) readBlob(hash string) ([]byte, error) {
@@ -269,20 +254,38 @@ func (l *WorkspaceLedger) readBlob(hash string) ([]byte, error) {
 	return data, nil
 }
 
-// Record appends a committed transaction to the ledger. It retains every
-// artifact's before/after bytes as content-addressed blobs, clears the whole
-// redo stack of entries whose touched files overlap the new entry's (so a
-// divergent redo can never be replayed onto changed files), prunes the undo
-// stack to the retention depth, and finally garbage-collects any blob no longer
-// referenced by a surviving entry. The append is the last step of a successful
-// commit; a Record failure leaves the ledger unchanged.
-func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
+// prepareRecord builds the complete filesystem change for one ledger append
+// without writing anything. That lets every undoable commit stage the ledger
+// blobs and JSON in its user-artifact manifest instead of risking a successful
+// mutation followed by a failed, missing undo entry.
+func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord, error) {
 	if rec.TransactionID == "" {
-		return fmt.Errorf("storage: ledger record requires a transaction id")
+		return nil, fmt.Errorf("storage: ledger record requires a transaction id")
 	}
-	lf, err := l.load()
-	if err != nil {
-		return err
+	lf, loadErr := l.load()
+	if loadErr != nil {
+		return nil, loadErr
+	}
+
+	var ops []transaction.Op
+	plannedBlobs := make(map[string]bool)
+	planBlob := func(data []byte) (string, error) {
+		sum := sha256.Sum256(data)
+		hash := hex.EncodeToString(sum[:])
+		if plannedBlobs[hash] {
+			return hash, nil
+		}
+		plannedBlobs[hash] = true
+		path := l.blobPath(hash)
+		if _, statErr := os.Stat(path); statErr == nil {
+			return hash, nil
+		} else if !os.IsNotExist(statErr) {
+			return "", fmt.Errorf("failed to stat undo blob: %w", statErr)
+		}
+		ops = append(ops, transaction.Op{
+			Kind: transaction.OpWrite, Target: path, Data: data, Mode: FilePermissions,
+		})
+		return hash, nil
 	}
 
 	images := make([]ArtifactImage, 0, len(rec.Artifacts))
@@ -293,16 +296,16 @@ func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
 			AfterExists:  a.AfterExists,
 		}
 		if a.BeforeExists {
-			hash, err := l.writeBlob(a.Before)
-			if err != nil {
-				return err
+			hash, blobErr := planBlob(a.Before)
+			if blobErr != nil {
+				return nil, blobErr
 			}
 			img.BeforeHash = hash
 		}
 		if a.AfterExists {
-			hash, err := l.writeBlob(a.After)
-			if err != nil {
-				return err
+			hash, blobErr := planBlob(a.After)
+			if blobErr != nil {
+				return nil, blobErr
 			}
 			img.AfterHash = hash
 		}
@@ -331,11 +334,44 @@ func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
 		lf.Entries = lf.Entries[len(lf.Entries)-l.maxDepth:]
 	}
 
-	if err := l.save(lf); err != nil {
-		return err
+	data, encodeErr := encodeLedgerFile(lf)
+	if encodeErr != nil {
+		return nil, encodeErr
 	}
-	l.gcBlobs(lf)
-	return nil
+	ops = append(ops, transaction.Op{
+		Kind: transaction.OpWrite, Target: l.ledgerPath(), Data: data, Mode: FilePermissions,
+	})
+	return &preparedLedgerRecord{ops: ops, file: lf}, nil
+}
+
+// Record appends a committed transaction to the ledger. It retains every
+// artifact's before/after bytes as content-addressed blobs, clears overlapping
+// redo entries, prunes the undo stack to its retention depth, and finally
+// garbage-collects unreferenced blobs. CommitService uses prepareRecord directly
+// so those writes share the user transaction; Record remains available to the
+// standalone ledger API and focused ledger tests. The standalone path still uses
+// the workspace commit lock and journal so it cannot race a commit or restore.
+func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
+	service := NewCommitService(l.transactionsDir, l.roots)
+	return service.withWorkspaceCommitLock(func() error {
+		journal := transaction.NewJournal(l.transactionsDir, l.roots)
+		if _, err := service.recoverLocked(journal); err != nil {
+			return err
+		}
+		plan, err := l.prepareRecord(rec)
+		if err != nil {
+			return err
+		}
+		manifest, err := journal.Prepare(plan.ops)
+		if err != nil {
+			return fmt.Errorf("preparing undo ledger transaction: %w", err)
+		}
+		if err := journal.Commit(manifest); err != nil {
+			return fmt.Errorf("committing undo ledger transaction: %w", err)
+		}
+		l.gcBlobs(plan.file)
+		return nil
+	})
 }
 
 // LedgerScope selects which history line an undo/redo targets: the whole
@@ -412,12 +448,26 @@ func (l *WorkspaceLedger) SelectNewestRedo(scope LedgerScope) (LedgerEntry, bool
 // scope selects the newest entry that touched that project even when later
 // entries for other projects sit above it (out-of-order project histories).
 func (l *WorkspaceLedger) Undo(scope LedgerScope) (string, error) {
+	_, action, err := l.UndoWithEntry(scope)
+	return action, err
+}
+
+// UndoWithEntry is Undo plus the exact entry selected under the workspace lock.
+// Callers that must refresh affected projects use this instead of previewing the
+// ledger separately and then racing a concurrent commit before restore begins.
+func (l *WorkspaceLedger) UndoWithEntry(scope LedgerScope) (LedgerEntry, string, error) {
 	return l.restore(scope, false)
 }
 
 // Redo replays the newest entry in scope, restoring every artifact to its
 // after-image, then moves the entry back onto the undo stack.
 func (l *WorkspaceLedger) Redo(scope LedgerScope) (string, error) {
+	_, action, err := l.RedoWithEntry(scope)
+	return action, err
+}
+
+// RedoWithEntry is Redo plus the exact entry selected under the workspace lock.
+func (l *WorkspaceLedger) RedoWithEntry(scope LedgerScope) (LedgerEntry, string, error) {
 	return l.restore(scope, true)
 }
 
@@ -425,88 +475,176 @@ func (l *WorkspaceLedger) Redo(scope LedgerScope) (string, error) {
 // applies before-images; redo=true consumes the redo stack and applies
 // after-images. The consumed entry moves to the opposite stack so the operation
 // is itself reversible, matching the linear Vim-style contract.
-func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (string, error) {
-	lf, err := l.load()
-	if err != nil {
-		return "", err
-	}
-
-	source := &lf.Entries
-	dest := &lf.RedoEntries
-	label := "undo"
-	if redo {
-		source = &lf.RedoEntries
-		dest = &lf.Entries
-		label = "redo"
-	}
-
-	entry, idx, ok := selectNewest(*source, scope)
-	if !ok {
-		if scope.ProjectID != "" {
-			return "", fmt.Errorf("no %s history available for project %q", label, scope.ProjectID)
+func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, string, error) {
+	service := NewCommitService(l.transactionsDir, l.roots)
+	var restored LedgerEntry
+	err := service.withWorkspaceCommitLock(func() error {
+		journal := transaction.NewJournal(l.transactionsDir, l.roots)
+		if _, recoverErr := service.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
 		}
-		return "", fmt.Errorf("no %s history available", label)
-	}
 
-	if err := l.applyEntry(entry, redo); err != nil {
-		return "", err
-	}
+		lf, loadErr := l.load()
+		if loadErr != nil {
+			return loadErr
+		}
+		source := lf.Entries
+		label := "undo"
+		if redo {
+			source = lf.RedoEntries
+			label = "redo"
+		}
+		entry, idx, ok := selectNewest(source, scope)
+		if !ok {
+			if scope.ProjectID != "" {
+				return fmt.Errorf("no %s history available for project %q", label, scope.ProjectID)
+			}
+			return fmt.Errorf("no %s history available", label)
+		}
 
-	*source = removeEntryAt(*source, idx)
-	*dest = append(*dest, entry)
-	if err := l.save(lf); err != nil {
-		return "", err
+		artifacts := make([]ArtifactChange, 0, len(entry.Artifacts))
+		for _, image := range entry.Artifacts {
+			artifacts = append(artifacts, ArtifactChange{Path: image.Path})
+		}
+		lockPaths, lockErr := artifactLockPaths(artifacts, l.roots)
+		if lockErr != nil {
+			return lockErr
+		}
+		if err := createArtifactLockDirectories(lockPaths); err != nil {
+			return err
+		}
+		return withOrderedFileLocks(lockPaths, func() error {
+			manifest, prepareErr := l.prepareRestoreTransaction(journal, lf, entry, idx, redo)
+			if prepareErr != nil {
+				return prepareErr
+			}
+			if commitErr := journal.Commit(manifest); commitErr != nil {
+				return fmt.Errorf("committing %s transaction: %w", label, commitErr)
+			}
+			l.gcBlobs(lf)
+			restored = entry
+			return nil
+		})
+	})
+	if err != nil {
+		return LedgerEntry{}, "", err
 	}
-	l.gcBlobs(lf)
-	return ledgerEntryDescription(entry), nil
+	return restored, ledgerEntryDescription(restored), nil
 }
 
-// applyEntry writes every artifact to its target state: the before-image for an
-// undo (useAfter=false) or the after-image for a redo (useAfter=true). A present
-// state writes the retained blob bytes; an absent state removes the path. Every
-// target is re-checked against the approved roots before it is touched, so a
-// tampered ledger cannot escape the workspace.
-func (l *WorkspaceLedger) applyEntry(entry LedgerEntry, useAfter bool) error {
-	for _, img := range entry.Artifacts {
-		if !l.withinRoots(img.Path) {
-			return fmt.Errorf("storage: ledger artifact %q escapes approved workspace roots", img.Path)
-		}
-		exists := img.BeforeExists
-		hash := img.BeforeHash
-		if useAfter {
-			exists = img.AfterExists
-			hash = img.AfterHash
-		}
+// prepareRestoreTransaction validates the complete selected entry before it
+// stages anything, then journals every target image with the moved stack state.
+// Artifact operations stay first and ledger.json is last, so recovery can always
+// roll a crash forward to matching user bytes and visible history.
+func (l *WorkspaceLedger) prepareRestoreTransaction(
+	journal *transaction.Journal,
+	lf *ledgerFile,
+	entry LedgerEntry,
+	idx int,
+	redo bool,
+) (*transaction.Manifest, error) {
+	ops, err := l.preflightRestoreOps(entry, redo)
+	if err != nil {
+		return nil, err
+	}
+	if redo {
+		lf.RedoEntries = removeEntryAt(lf.RedoEntries, idx)
+		lf.Entries = append(lf.Entries, entry)
+	} else {
+		lf.Entries = removeEntryAt(lf.Entries, idx)
+		lf.RedoEntries = append(lf.RedoEntries, entry)
+	}
+	ledgerData, err := encodeLedgerFile(lf)
+	if err != nil {
+		return nil, err
+	}
+	ops = append(ops, transaction.Op{
+		Kind: transaction.OpWrite, Target: l.ledgerPath(), Data: ledgerData, Mode: FilePermissions,
+	})
+	manifest, err := journal.Prepare(ops)
+	if err != nil {
+		return nil, fmt.Errorf("preparing ledger restore transaction: %w", err)
+	}
+	return manifest, nil
+}
+
+// preflightRestoreOps validates both retained images for every artifact and the
+// current target revision before returning the desired write/delete operations.
+// Undo expects each target to still match its after-image; redo expects the
+// before-image. Any drift aborts the whole grouped restore before Journal.Prepare
+// creates a staging file or manifest.
+func (l *WorkspaceLedger) preflightRestoreOps(entry LedgerEntry, redo bool) ([]transaction.Op, error) {
+	blobs := make(map[string][]byte)
+	loadImage := func(path, label string, exists bool, hash string) error {
 		if !exists {
-			if err := os.Remove(img.Path); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("failed to remove %q during restore: %w", img.Path, err)
+			if hash != "" {
+				return fmt.Errorf("storage: ledger artifact %q has a %s hash for an absent image", path, label)
 			}
-			continue
+			return nil
+		}
+		if hash == "" {
+			return fmt.Errorf("storage: ledger artifact %q is missing its %s blob hash", path, label)
+		}
+		if _, ok := blobs[hash]; ok {
+			return nil
 		}
 		data, err := l.readBlob(hash)
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(filepath.Dir(img.Path), DirPermissions); err != nil {
-			return fmt.Errorf("failed to create directory for %q during restore: %w", img.Path, err)
+		if actual := RawArtifactRevision(data); actual != hash {
+			return fmt.Errorf("storage: undo blob %s failed its content hash check", shortRevision(hash))
 		}
-		if err := util.AtomicWriteFile(img.Path, data, FilePermissions); err != nil {
-			return fmt.Errorf("failed to restore %q: %w", img.Path, err)
-		}
+		blobs[hash] = data
+		return nil
 	}
-	return nil
-}
 
-func (l *WorkspaceLedger) withinRoots(path string) bool {
-	if len(l.roots) == 0 {
-		return true
-	}
-	for _, root := range l.roots {
-		if util.PathWithinRoot(root, path) {
-			return true
+	seen := make(map[string]bool, len(entry.Artifacts))
+	for _, image := range entry.Artifacts {
+		path := filepath.Clean(image.Path)
+		if seen[path] {
+			return nil, fmt.Errorf("storage: ledger entry contains duplicate artifact target %q", path)
+		}
+		seen[path] = true
+		if err := loadImage(path, "before", image.BeforeExists, image.BeforeHash); err != nil {
+			return nil, err
+		}
+		if err := loadImage(path, "after", image.AfterExists, image.AfterHash); err != nil {
+			return nil, err
 		}
 	}
-	return false
+
+	ops := make([]transaction.Op, 0, len(entry.Artifacts))
+	for _, image := range entry.Artifacts {
+		path := filepath.Clean(image.Path)
+		expectedExists, expectedHash := image.AfterExists, image.AfterHash
+		desiredExists, desiredHash := image.BeforeExists, image.BeforeHash
+		if redo {
+			expectedExists, expectedHash = image.BeforeExists, image.BeforeHash
+			desiredExists, desiredHash = image.AfterExists, image.AfterHash
+		}
+
+		current, currentExists, err := readFileMaybe(path)
+		if err != nil {
+			return nil, fmt.Errorf("reading ledger restore target %q: %w", path, err)
+		}
+		actualHash := ""
+		if currentExists {
+			actualHash = RawArtifactRevision(current)
+		}
+		if currentExists != expectedExists || (currentExists && actualHash != expectedHash) {
+			return nil, &ArtifactConflictError{Path: path, Expected: expectedHash, Actual: actualHash}
+		}
+
+		if desiredExists {
+			ops = append(ops, transaction.Op{
+				Kind: transaction.OpWrite, Target: path, Data: blobs[desiredHash], Mode: FilePermissions,
+			})
+		} else {
+			ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: path})
+		}
+	}
+	return ops, nil
 }
 
 // gcBlobs removes every retained blob no longer referenced by any surviving

@@ -288,45 +288,11 @@ func (s *Service) TogglePinnedProjectTag(projectID, tag string) (TagCatalogResul
 	return TagCatalogResult{ProjectID: project.ID, Tag: normalized, Pinned: pinned, Changed: true, Revision: rev}, nil
 }
 
-// ProjectResetResult is the presentation-neutral outcome of a whole-project
-// task reset.
-type ProjectResetResult struct {
-	// ProjectID is the reset project's stable ID.
-	ProjectID string
-	// TasksCleared is the number of tasks removed by the reset.
-	TasksCleared int
-	// Revision is the project's new canonical revision after the commit.
-	Revision string
-}
-
-// ResetProjectTasks clears every task, tag, and pinned tag from a project,
-// resets the short-ID counter, and restores the default single Next section,
-// committing the wipe as one ChangeSet. It backs `tt sandbox reset`; the
-// destructive confirmation lives at the adapter edge, which prompts before
-// calling.
-func (s *Service) ResetProjectTasks(projectID string) (ProjectResetResult, error) {
-	snap, project, revision, err := s.resolveProject(projectID)
-	if err != nil {
-		return ProjectResetResult{}, err
-	}
-	cleared := len(project.Tasks)
-	project.Tasks = []*models.Task{}
-	project.NextShortID = 1
-	project.Sections = []string{models.SectionNext}
-	project.SectionColors = make(map[string]string)
-	project.Tags = []string{}
-	project.PinnedTags = []string{}
-	rev, err := s.commitProjectMetadata(project, revision, snap.Document(project.ID), "Reset Project", project.Name)
-	if err != nil {
-		return ProjectResetResult{}, err
-	}
-	return ProjectResetResult{ProjectID: project.ID, TasksCleared: cleared, Revision: rev}, nil
-}
-
 // commitProjectMetadata commits a project-scoped (non-task) mutation — pinned
-// tags, a whole-project reset — as one ChangeSet, returning the project's new
+// tags and tag-catalog edits — as one ChangeSet, returning the project's new
 // revision. It is the project-metadata counterpart of commitProject, which
-// serves single-task mutations.
+// serves single-task mutations. Sandbox reset has its own project-plus-note
+// transaction in sandbox.go.
 func (s *Service) commitProjectMetadata(project *models.Project, expectedRevision string, base *storage.ProjectDocument, undoAction, undoContext string) (string, error) {
 	applyPostMutationHooks(project)
 	results, err := s.repo.Commit(storage.ChangeSet{

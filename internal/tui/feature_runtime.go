@@ -149,6 +149,17 @@ func (r *tuiAppRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.C
 	return results, nil
 }
 
+// CommitArtifactTransaction implements app.ArtifactCommitter for note-only
+// mutations. The real workspace path journals note bytes and the matching
+// workspace-ledger record as one transaction; test-double repositories fail
+// closed because a sequential fallback could violate note batch atomicity.
+func (r *tuiAppRepository) CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error) {
+	if !r.useCommitService() {
+		return "", fmt.Errorf("tui fallback commit cannot apply an artifact-only transaction")
+	}
+	return r.svc.CommitArtifactTransaction(request)
+}
+
 // CommitOps implements app.OpsCommitter so TUI-owned project lifecycle and
 // bootstrap transactions can atomically combine catalog and project artifacts.
 func (r *tuiAppRepository) CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error {
@@ -209,5 +220,11 @@ func (r *tuiAppRepository) CommitOps(ops []transaction.Op, artifacts []storage.A
 // clock, and the UUID generator; every primary-view mutation routes through one
 // of its use cases instead of the view orchestrating load/mutate/save itself.
 func newTUIAppService(dataDir string, deps *config.RuntimeDependencies) *app.Service {
-	return app.NewService(newTUIAppRepository(dataDir, deps), nil, nil)
+	return app.NewServiceWithArtifacts(
+		newTUIAppRepository(dataDir, deps),
+		nil,
+		nil,
+		app.NewStorageWorkspaceNotePort(dataDir),
+		nil,
+	)
 }

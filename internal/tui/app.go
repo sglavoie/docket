@@ -316,8 +316,9 @@ type AppModel struct {
 	pendingBulkSectionTasks   []*models.Task
 	pendingBulkSectionProject *models.Project
 
-	// Pending bulk notes for multi-select operations
-	pendingBulkNotes []*models.Note
+	// Pending bulk note snapshots. Values are path-free and immutable after
+	// capture so overlays cannot retain mutable view-cache pointers.
+	pendingBulkNotes []noteMutationRef
 
 	// Pending global note move operation
 	pendingGlobalNoteMove *pendingNoteMove
@@ -347,6 +348,7 @@ type AppModel struct {
 
 	// Pending sandbox reset confirmation
 	pendingSandboxReset     bool
+	pendingSandboxProjectID string
 	pendingSandboxTaskCount int
 
 	// Pending project archive/unarchive confirmation
@@ -489,8 +491,7 @@ type AppModel struct {
 
 // pendingNoteMove holds state for a global note move operation.
 type pendingNoteMove struct {
-	Note      *models.Note
-	SourceDir string
+	Source noteMutationRef
 }
 
 // AppOption is a functional option for configuring AppModel.

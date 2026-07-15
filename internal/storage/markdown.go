@@ -27,6 +27,12 @@ const (
 // ProjectLoadResult contains the result of loading a project, including any warnings.
 type ProjectLoadResult struct {
 	Warnings []ParseWarning
+	// RawRevision is the optimistic-concurrency revision of the exact tasks.md
+	// bytes parsed by this load. A non-nil pointer to "" means the file was
+	// absent; nil means the active test repository cannot provide a filesystem
+	// revision. Callers that persist load-time normalization must carry this
+	// revision into the checked maintenance commit rather than re-reading later.
+	RawRevision *string
 	// MigrationAudit records the retired schema-v1 lifecycle values the loaded
 	// tasks carried, for the Active -> Focus Queue migration and migration report.
 	// Nil when the project was not loaded through the markdown parser (e.g. an

@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -49,13 +52,23 @@ func testRuntimeAt(dataDir string, runtime *config.RuntimeState) *config.Runtime
 	if runtime == nil {
 		return config.EmptyRuntimeState(dataDir)
 	}
-	return config.NewRuntimeState(dataDir, &config.Domains{
+	domains := &config.Domains{
 		Catalog:    runtime.Catalog(),
 		Planning:   runtime.Planning(),
 		Settings:   runtime.Settings(),
 		Automation: runtime.Automation(),
 		Machine:    runtime.Machine(),
-	})
+	}
+	if dataDir != "" {
+		// Checked non-catalog commits now require the authoritative catalog
+		// identity. Persist that one foundation artifact for real-directory test
+		// runtimes instead of letting each test mint an unrelated domain ID.
+		manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
+		if err := manager.CommitCatalog(domains.Catalog); err != nil {
+			panic(fmt.Sprintf("seed test workspace catalog: %v", err))
+		}
+	}
+	return config.NewRuntimeState(dataDir, domains)
 }
 
 func saveTestRuntime(manager *config.Manager, runtime *config.RuntimeState) error {

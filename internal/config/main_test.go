@@ -6,8 +6,8 @@ import (
 )
 
 // TestMain isolates $HOME for every test in the config package. Manager
-// persistence resolves machine-local runtime state (machine.json under
-// LocalRuntimeDirForDataDir) relative to $HOME, so without isolation a test
+// persistence resolves machine-local state under
+// ~/.tt/runtime/<workspace-id>/machine.json relative to $HOME, so without isolation a test
 // that exercises Save/LoadOrCreate would write into the developer's real home
 // directory once that tier becomes part of Manager persistence. Individual
 // tests that need a specific $HOME still override it via t.Setenv; those

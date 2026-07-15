@@ -347,7 +347,6 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "Ctrl+O", Description: "Open note reference copy"},
 		{Key: "n", Description: "Create new note"},
 		{Key: "d", Description: "Delete note (confirm)"},
-		{Key: "u", Description: "Undo last delete"},
 		{Key: "r", Description: "Rename note"},
 		{Key: "s", Description: "Cycle sort mode"},
 		{Key: "y", Description: "Copy title to clipboard"},
@@ -355,9 +354,16 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "Ctrl+Y", Description: "Copy title and body to clipboard"},
 	}
 	if m.isGlobal {
-		items = append(items, HelpItem{Key: "m", Description: "Move note to project"})
+		items = append(items,
+			HelpItem{Key: "u", Description: "Undo last note change"},
+			HelpItem{Key: "m", Description: "Move note to project"},
+		)
 	} else {
-		items = append(items, HelpItem{Key: "L", Description: "Link note to task"})
+		items = append(items,
+			HelpItem{Key: "u", Description: "Undo project change"},
+			HelpItem{Key: "Ctrl+R", Description: "Redo project change"},
+			HelpItem{Key: "L", Description: "Link note to task"},
+		)
 	}
 	items = append(items,
 		HelpItem{Key: "p", Description: "Toggle pin"},

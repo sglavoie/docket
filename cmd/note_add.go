@@ -57,16 +57,16 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var scope string
-	if ctx.Project == nil {
-		if err := saveNoteContext(ctx, note); err != nil {
-			return fmt.Errorf("failed to save note: %w", err)
-		}
-		scope = "global"
-	} else {
-		if err := saveNoteContext(ctx, note); err != nil {
-			return fmt.Errorf("failed to save note: %w", err)
-		}
+	result, err := createNoteContext(ctx, note)
+	if err != nil {
+		return fmt.Errorf("failed to save note: %w", err)
+	}
+	committed := result.Note
+	if committed == nil {
+		return fmt.Errorf("failed to save note: commit returned no note")
+	}
+	scope := "global"
+	if ctx.Project != nil {
 		scope = ctx.Project.Name
 	}
 
@@ -74,9 +74,9 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		return outputNoteJSON(note, scope)
+		return outputNoteJSON(committed, scope)
 	}
 
-	fmt.Println(successMsg("[%s] Created note: %s [%s]", scope, title, note.Filename))
+	fmt.Println(successMsg("[%s] Created note: %s [%s]", scope, title, committed.Filename))
 	return nil
 }

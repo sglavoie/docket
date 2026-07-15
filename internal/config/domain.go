@@ -17,8 +17,7 @@ import (
 //   - PlanningState    -> <data>/.tt/planning.json
 //   - Settings         -> <data>/.tt/settings.json
 //   - AutomationConfig -> <data>/.tt/automation.json
-//   - MachineState     -> ~/.tt/machine.json for the default local workspace,
-//     otherwise ~/.tt/runtime/<data-dir-hash>/machine.json
+//   - MachineState     -> ~/.tt/runtime/<workspace-id>/machine.json
 //
 // Each aggregate owns its defaults, validation, project-reference cleanup, and
 // persistence lifecycle. RuntimeState composes the five loaded domains for
@@ -475,8 +474,8 @@ func (a *AutomationConfig) RemoveProjectReferences(id, slug string) bool {
 
 // MachineState owns machine-specific preferences that should not follow a
 // workspace between machines: editors, navigation, histories, and layout. It
-// maps to ~/.tt/machine.json for the default local workspace and otherwise to
-// ~/.tt/runtime/<data-dir-hash>/machine.json, keyed by the cleaned data-dir path.
+// maps to ~/.tt/runtime/<workspace-id>/machine.json. The durable catalog UUID,
+// rather than the current data-directory path, selects its machine-local state.
 type MachineState struct {
 	// Editors and integrations.
 	Editor           string `json:"editor,omitempty"`

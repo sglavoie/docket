@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -68,7 +69,10 @@ func TestManager_CommitSettings_MachineStaysLocal(t *testing.T) {
 		t.Fatalf("CommitSettings: %v", err)
 	}
 
-	machinePath := MachineStatePath(dataDir)
+	machinePath, err := MachineStatePath(cfg.Catalog.WorkspaceID)
+	if err != nil {
+		t.Fatalf("MachineStatePath: %v", err)
+	}
 	if _, err := os.Stat(machinePath); err != nil {
 		t.Fatalf("machine.json not written at machine-local path %q: %v", machinePath, err)
 	}
@@ -199,5 +203,48 @@ func TestManager_CommitCatalog_NilArg(t *testing.T) {
 	}
 	if err := mgr.CommitMachine(nil); err == nil {
 		t.Error("expected error for nil machine state")
+	}
+}
+
+func TestDomainCoordinator_CheckedCommitsRejectWorkspaceIDMismatch(t *testing.T) {
+	mgr, _ := seedWorkspace(t, NewDomains())
+	existing, err := mgr.LoadDomains()
+	if err != nil {
+		t.Fatalf("LoadDomains: %v", err)
+	}
+	originalID := existing.Catalog.WorkspaceID
+	foreign := NewWorkspaceCatalog()
+	foreign.WorkspaceID = testWorkspaceIDB
+
+	coord := mgr.DomainCoordinator()
+	loaded, err := coord.LoadDomains()
+	if err != nil {
+		t.Fatalf("coordinator LoadDomains: %v", err)
+	}
+	if _, artifactsErr := coord.CheckedDomainArtifacts(foreign, loaded.Planning, loaded.Settings, loaded.Automation); !errors.Is(artifactsErr, ErrWorkspaceIDMismatch) {
+		t.Fatalf("CheckedDomainArtifacts mismatch error = %v, want ErrWorkspaceIDMismatch", artifactsErr)
+	}
+	if commitErr := coord.CommitCatalog(foreign); !errors.Is(commitErr, ErrWorkspaceIDMismatch) {
+		t.Fatalf("CommitCatalog mismatch error = %v, want ErrWorkspaceIDMismatch", commitErr)
+	}
+
+	reloaded, err := mgr.LoadDomains()
+	if err != nil {
+		t.Fatalf("reload after rejected commits: %v", err)
+	}
+	if reloaded.Catalog.WorkspaceID != originalID {
+		t.Fatalf("rejected commit changed catalog workspace ID to %q, want %q", reloaded.Catalog.WorkspaceID, originalID)
+	}
+}
+
+func TestDomainCoordinator_CheckedNonCatalogCommitDoesNotMintWorkspaceID(t *testing.T) {
+	dataDir := t.TempDir()
+	coord := NewDomainCoordinator(dataDir)
+
+	if err := coord.CommitPlanning(NewPlanningState()); !errors.Is(err, ErrWorkspaceIDRequired) {
+		t.Fatalf("CommitPlanning without catalog error = %v, want ErrWorkspaceIDRequired", err)
+	}
+	if _, err := os.Stat(PlanningStatePath(dataDir)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("checked planning commit without catalog wrote an artifact, stat err = %v", err)
 	}
 }

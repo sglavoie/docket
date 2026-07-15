@@ -70,6 +70,10 @@ func (r *storageRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.Commit
 	return results, nil
 }
 
+func (r *storageRepo) CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error) {
+	return r.svc.CommitArtifactTransaction(request)
+}
+
 // RawSaveProject implements app.MaintenanceRepository: it rewrites a project's
 // tasks.md outside the transactional commit boundary, the deliberate repair-only
 // escape hatch a doctor command uses.

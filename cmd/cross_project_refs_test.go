@@ -99,11 +99,11 @@ func TestProjectRenameCrossProjectRewriteCarriesRevision(t *testing.T) {
 	}
 	task.DependsOn = []string{projectA.Slug + ":task-a"}
 	projectB.Tasks = []*models.Task{task}
-	if err := storage.CreateProjectDir(projectA); err != nil {
-		t.Fatalf("create project A: %v", err)
+	if createErr := storage.CreateProjectDir(projectA); createErr != nil {
+		t.Fatalf("create project A: %v", createErr)
 	}
-	if err := storage.CreateProjectDir(projectB); err != nil {
-		t.Fatalf("create project B: %v", err)
+	if createErr := storage.CreateProjectDir(projectB); createErr != nil {
+		t.Fatalf("create project B: %v", createErr)
 	}
 	base, err := os.ReadFile(storage.TasksFilePath(projectB.Path))
 	if err != nil {

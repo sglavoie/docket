@@ -1,6 +1,7 @@
 .github/skills/
 cmd/cli-reference.md
 coverage.out
+/coverage*.out
 tt
 .tasks.md.lock
 .claude/

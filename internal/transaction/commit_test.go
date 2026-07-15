@@ -272,7 +272,7 @@ func TestRenameRecoveryConvergesAtEveryCommitBoundary(t *testing.T) {
 				t.Fatalf("Prepare: %v", err)
 			}
 			tc.inject(j, m, oldPath, newPath)
-			if err := j.Commit(m); err == nil {
+			if commitErr := j.Commit(m); commitErr == nil {
 				t.Fatal("Commit unexpectedly crossed injected crash boundary")
 			}
 

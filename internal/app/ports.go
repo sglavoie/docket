@@ -34,6 +34,14 @@ type OpsCommitter interface {
 	CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error
 }
 
+// ArtifactCommitter is the repository capability used by workspace-note
+// mutations. It commits only the note artifacts: no project tasks.md rewrite is
+// manufactured for a note-only action. The storage implementation journals the
+// artifacts and their workspace-ledger record atomically.
+type ArtifactCommitter interface {
+	CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error)
+}
+
 // Clock supplies wall-clock time to the use cases. Injecting it keeps
 // time-derived behavior (snooze targets, due dates) deterministic under test.
 type Clock interface {

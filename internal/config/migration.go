@@ -24,10 +24,11 @@ const projectsDirName = "projects"
 // never sync to iCloud Drive; matching names below projects/ and other durable
 // subtrees are copied normally.
 var migrationRootExcludedNames = map[string]bool{
-	"logs":     true,
-	"pid.lock": true,
-	"runtime":  true,
-	".runtime": true,
+	"logs":               true,
+	"pid.lock":           true,
+	machineStateFileName: true,
+	"runtime":            true,
+	".runtime":           true,
 }
 
 func isMigrationRootExcluded(rel string) bool {

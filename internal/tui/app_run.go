@@ -43,8 +43,8 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 	// Keep the TUI PID lock machine-local: when the durable data dir lives on
 	// iCloud Drive it must never sync, so route it through the local runtime dir.
 	runtimeDir := config.LocalRuntimeDirForDataDir(dataDir)
-	if err := os.MkdirAll(runtimeDir, 0700); err != nil {
-		return fmt.Errorf("create runtime dir: %w", err)
+	if mkdirErr := os.MkdirAll(runtimeDir, 0700); mkdirErr != nil {
+		return fmt.Errorf("create runtime dir: %w", mkdirErr)
 	}
 	lockPath := pidLockPath(dataDir)
 	lock, err := util.AcquirePIDLock(lockPath)
@@ -88,7 +88,7 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 			if n := len(current.Warnings); n > 0 {
 				model.statusMessage = fmt.Sprintf("%d data issue(s) auto-repaired (run tt doctor for details)", n)
 				model.statusIsInfo = true
-				if saveErr := storage.SaveProjectLocked(current); saveErr != nil {
+				if saveErr := persistStartupProjectRepair(model, current); saveErr != nil {
 					logging.Warn("failed to persist auto-repaired data: %v", saveErr)
 				}
 			}
@@ -123,6 +123,35 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 		}
 		printSessionSummary(app.sessionStats)
 	}
+	return err
+}
+
+type startupRepairRevisionProvider interface {
+	startupRepairRevision(project *models.Project) (string, bool)
+}
+
+// persistStartupProjectRepair commits only when the production project loader
+// retained the exact raw revision that produced the in-memory normalization. A
+// custom/test persister without that contract is deliberately a no-op; falling
+// back to an unchecked save would recreate the startup clobber race.
+func persistStartupProjectRepair(model *AppModel, project *models.Project) error {
+	if model == nil || project == nil || model.runtime == nil {
+		return nil
+	}
+	provider, ok := model.persister.(startupRepairRevisionProvider)
+	if !ok {
+		return nil
+	}
+	expectedRawRevision, ok := provider.startupRepairRevision(project)
+	if !ok {
+		return nil
+	}
+	dataDir := model.runtime.DataDir()
+	if dataDir == "" {
+		return fmt.Errorf("startup project repair requires a workspace data directory")
+	}
+	_, err := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir}).
+		CommitProjectRepair(project, expectedRawRevision)
 	return err
 }
 

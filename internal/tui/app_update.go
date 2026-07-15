@@ -32,6 +32,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.showProjectCyclePicker = false
 			m.showProjectCycle = false
 			m.pendingSandboxReset = false
+			m.pendingSandboxProjectID = ""
 			m.pendingBulkTasks = nil
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkNotes = nil

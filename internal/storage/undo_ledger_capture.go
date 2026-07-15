@@ -6,6 +6,32 @@ import (
 	"path/filepath"
 )
 
+// captureArtifactLedgerImages captures the byte-exact state transition for an
+// artifact-only transaction. It runs after every optimistic revision has been
+// validated and while every artifact lock is held, so each before-image is the
+// same state the journal is about to replace or delete. Writes carry their exact
+// requested bytes as the after-image; deletes carry an absent after-state.
+func captureArtifactLedgerImages(artifacts []ArtifactChange) ([]LedgerArtifact, error) {
+	out := make([]LedgerArtifact, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		before, beforeExists, err := readFileMaybe(artifact.Path)
+		if err != nil {
+			return nil, err
+		}
+		image := LedgerArtifact{
+			Path:         artifact.Path,
+			BeforeExists: beforeExists,
+			Before:       before,
+		}
+		if !artifact.Delete {
+			image.AfterExists = true
+			image.After = artifact.Data
+		}
+		out = append(out, image)
+	}
+	return out, nil
+}
+
 // captureLedgerArtifacts expands a ChangeSet into the flat list of per-file
 // before/after images the workspace undo ledger retains. It runs under the
 // commit locks BEFORE the transaction applies, so every before-image is the real

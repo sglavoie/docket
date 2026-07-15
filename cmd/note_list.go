@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -39,22 +38,12 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var notes []*models.Note
-
-	if noteGlobal {
-		dir, _, gErr := globalNotesDir()
-		if gErr != nil {
-			return gErr
-		}
-		notes, err = storage.ListNotesFrom(dir)
-	} else {
-		var project *models.Project
-		project, _, err = LoadRuntimeCurrentProject()
-		if err != nil {
-			return err
-		}
-		notes, err = storage.ListNotes(project)
+	ctx, err := resolveNoteContext()
+	if err != nil {
+		return err
 	}
+	var notes []*models.Note
+	notes, err = notesNoteContext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list notes: %w", err)
 	}

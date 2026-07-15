@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -133,20 +135,50 @@ func TestLocalRuntimeDirForDataDir(t *testing.T) {
 	}
 }
 
-func TestMachineStatePathLocalAndExternal(t *testing.T) {
+func TestMachineStatePathUsesValidatedWorkspaceIDForLocalAndExternal(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	local := filepath.Join(home, dataDirName)
-	localWant := filepath.Join(local, machineStateFileName)
-	if got := MachineStatePath(local); got != localWant {
-		t.Fatalf("MachineStatePath(local) = %q, want %q", got, localWant)
+	want := filepath.Join(home, dataDirName, runtimeDirName, testWorkspaceIDA, machineStateFileName)
+	localPath, err := MachineStatePath(testWorkspaceIDA)
+	if err != nil {
+		t.Fatalf("MachineStatePath(local workspace): %v", err)
+	}
+	if localPath != want {
+		t.Fatalf("MachineStatePath(local workspace) = %q, want %q", localPath, want)
 	}
 
-	external := filepath.Join(string(os.PathSeparator), "external", "tt")
-	externalWant := filepath.Join(local, runtimeDirName, "c216d857b581", machineStateFileName)
-	if got := MachineStatePath(external); got != externalWant {
-		t.Fatalf("MachineStatePath(external) = %q, want %q", got, externalWant)
+	// A move from the default local data directory to an external directory does
+	// not change machine-state addressing: the stable workspace ID is the only
+	// path input.
+	externalPath, err := MachineStatePath(testWorkspaceIDA)
+	if err != nil {
+		t.Fatalf("MachineStatePath(external workspace): %v", err)
+	}
+	if externalPath != localPath {
+		t.Fatalf("same workspace ID at external path = %q, want local path %q", externalPath, localPath)
+	}
+
+	otherPath, err := MachineStatePath(testWorkspaceIDB)
+	if err != nil {
+		t.Fatalf("MachineStatePath(other workspace): %v", err)
+	}
+	if otherPath == localPath {
+		t.Fatal("distinct workspace IDs must produce distinct machine-state paths")
+	}
+}
+
+func TestMachineStatePathRejectsInvalidWorkspaceID(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, workspaceID := range []string{
+		"",
+		"not-a-uuid",
+		"../" + testWorkspaceIDA,
+		strings.ToUpper("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+	} {
+		if path, err := MachineStatePath(workspaceID); !errors.Is(err, ErrInvalidWorkspaceID) || path != "" {
+			t.Errorf("MachineStatePath(%q) = (%q, %v), want empty path and ErrInvalidWorkspaceID", workspaceID, path, err)
+		}
 	}
 }
 

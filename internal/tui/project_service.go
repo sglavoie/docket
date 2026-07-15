@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"sync"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workspace"
@@ -48,17 +50,43 @@ type Persister interface {
 // It encapsulates the load/backup/save/undo primitives used by the undo/redo
 // restore path and the archive flow. ProjectService implements the Persister interface.
 type ProjectService struct {
-	workspaceLoader *workspace.Loader
+	workspaceLoader        *workspace.Loader
+	repairRevisionMu       sync.Mutex
+	startupRepairRevisions map[*models.Project]string
 }
 
 // NewProjectService creates a new ProjectService instance.
 func NewProjectService() *ProjectService {
-	return &ProjectService{workspaceLoader: workspace.NewLoader()}
+	return &ProjectService{
+		workspaceLoader:        workspace.NewLoader(),
+		startupRepairRevisions: make(map[*models.Project]string),
+	}
 }
 
 // Load reloads a project from disk.
 func (s *ProjectService) Load(project *models.Project) error {
-	return storage.LoadProject(project)
+	result, err := storage.LoadProjectWithWarnings(project)
+	s.repairRevisionMu.Lock()
+	defer s.repairRevisionMu.Unlock()
+	if s.startupRepairRevisions == nil {
+		s.startupRepairRevisions = make(map[*models.Project]string)
+	}
+	delete(s.startupRepairRevisions, project)
+	if err == nil && result != nil && result.RawRevision != nil && len(project.Warnings) > 0 {
+		s.startupRepairRevisions[project] = *result.RawRevision
+	}
+	return err
+}
+
+// startupRepairRevision returns the raw tasks.md revision observed by the load
+// that produced this project's parser repairs. Keeping it on the persister (not
+// the domain model) makes it transient startup coordination state and prevents a
+// later re-read from weakening the optimistic-concurrency boundary.
+func (s *ProjectService) startupRepairRevision(project *models.Project) (string, bool) {
+	s.repairRevisionMu.Lock()
+	defer s.repairRevisionMu.Unlock()
+	revision, ok := s.startupRepairRevisions[project]
+	return revision, ok
 }
 
 // BackupExists checks if a backup file exists for the project.

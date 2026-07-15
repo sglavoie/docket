@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	appdomain "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -618,10 +619,14 @@ func TestHandleProjectMessagesShowProjectPicker(t *testing.T) {
 func TestHandleProjectMessagesSandboxResetDone(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	app.pendingSandboxReset = true
+	app.pendingSandboxProjectID = "sandbox"
 	app.pendingSandboxTaskCount = 5
 	app.dashboard = NewDashboardModel(app.runtime)
 
-	msg := SandboxResetDoneMsg{TaskCount: 3}
+	msg := SandboxResetDoneMsg{Result: appdomain.SandboxResetResult{
+		ProjectID: "sandbox",
+		Cleared:   appdomain.SandboxResetCounts{Tasks: 3},
+	}}
 	handled, cmd := app.handleProjectMessages(msg)
 
 	if !handled {
@@ -632,6 +637,9 @@ func TestHandleProjectMessagesSandboxResetDone(t *testing.T) {
 	}
 	if app.pendingSandboxTaskCount != 0 {
 		t.Errorf("pendingSandboxTaskCount should be 0, got %d", app.pendingSandboxTaskCount)
+	}
+	if app.pendingSandboxProjectID != "" {
+		t.Errorf("pendingSandboxProjectID should be empty, got %q", app.pendingSandboxProjectID)
 	}
 	if app.statusMessage != "Cleared 3 item(s) from sandbox" {
 		t.Errorf("statusMessage should contain clear count, got %q", app.statusMessage)

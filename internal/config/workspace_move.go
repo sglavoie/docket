@@ -43,10 +43,12 @@ type workspaceEntry struct {
 //  2. Pre-check every destination file: absent, or byte-identical (an
 //     interrupted move re-run is idempotent). A divergent existing file aborts
 //     the whole move before anything is written.
-//  3. Copy each missing file through a temp file with fsync and a sha256 read-
+//  3. Bind the catalog identity and import any former path-local machine state
+//     before the data-directory path changes.
+//  4. Copy each missing file through a temp file with fsync and a sha256 read-
 //     back verification, then atomically rename it into place.
-//  4. Rewrite the destination config's data_dir and legacy project paths.
-//  5. Switch the machine-local active-workspace pointer to the destination
+//  5. Rewrite the destination config's data_dir and legacy project paths.
+//  6. Switch the machine-local active-workspace pointer to the destination
 //     (the atomic "the workspace now lives here" commit).
 //
 // The source is retained by default (SourceRetained is always true here); it is
@@ -80,6 +82,9 @@ func MoveWorkspace(srcDataDir, dstDataDir string) (*MoveReport, error) {
 	if err := precheckDestination(entries, dst); err != nil {
 		return nil, err
 	}
+	if err := prepareWorkspaceMachineStateForMove(src); err != nil {
+		return nil, err
+	}
 
 	if err := os.MkdirAll(dst, util.DirPermissions); err != nil {
 		return nil, fmt.Errorf("workspace move: failed to create destination %s: %w", dst, err)
@@ -109,6 +114,25 @@ func MoveWorkspace(srcDataDir, dstDataDir string) (*MoveReport, error) {
 	}
 
 	return report, nil
+}
+
+// prepareWorkspaceMachineStateForMove resolves an existing catalog before the
+// source data-directory path changes. This gives the machine store one chance
+// to import the source's former path-derived file into the stable workspace-ID
+// location. Workspaces without split-domain state are left unchanged.
+func prepareWorkspaceMachineStateForMove(dataDir string) error {
+	store := NewDomainFileStore(dataDir)
+	_, catalogRev, err := store.LoadCatalogChecked()
+	if err != nil {
+		return fmt.Errorf("workspace move: failed to load workspace identity: %w", err)
+	}
+	if catalogRev == "" {
+		return nil
+	}
+	if _, err := store.LoadMachine(); err != nil {
+		return fmt.Errorf("workspace move: failed to bind machine state before moving: %w", err)
+	}
+	return nil
 }
 
 // precheckDestination verifies every destination file is absent or byte-

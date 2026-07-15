@@ -8,10 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// TestPIDLockPathIsLocalAndDataDirSpecific verifies the TUI PID lock stays under
-// the machine-local runtime root (never the synced data dir) and that distinct
-// data dirs resolve to distinct lock paths.
-func TestPIDLockPathIsLocalAndDataDirSpecific(t *testing.T) {
+// TestMachineStateAndPIDLockPathsRemainDistinct verifies that PID locks remain
+// data-path keyed even though machine.json is now workspace-ID keyed.
+func TestMachineStateAndPIDLockPathsRemainDistinct(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -36,5 +35,13 @@ func TestPIDLockPathIsLocalAndDataDirSpecific(t *testing.T) {
 	// Data-dir-specific: a different data dir yields a different lock path.
 	if other := pidLockPath(icloud + "-other"); other == lock {
 		t.Errorf("distinct data dirs must yield distinct lock paths, both = %q", lock)
+	}
+
+	machinePath, err := config.MachineStatePath("11111111-1111-4111-8111-111111111111")
+	if err != nil {
+		t.Fatalf("MachineStatePath: %v", err)
+	}
+	if filepath.Dir(machinePath) == filepath.Dir(lock) {
+		t.Fatalf("machine state and PID lock unexpectedly share directory %q", filepath.Dir(lock))
 	}
 }

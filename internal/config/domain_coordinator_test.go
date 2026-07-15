@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -73,6 +74,60 @@ func TestManagerLoad_AbsentDomainsFallBackToLegacy(t *testing.T) {
 	}
 	if cfg == nil {
 		t.Fatalf("expected a fresh config")
+	}
+}
+
+func TestManagerLoad_ResolvesCatalogWorkspaceIDBeforeMachinePath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	if err := os.MkdirAll(InternalDir(dataDir), DirPermissions); err != nil {
+		t.Fatalf("mkdir internal dir: %v", err)
+	}
+
+	invalidCatalog := NewWorkspaceCatalog()
+	invalidCatalog.WorkspaceID = "../not-a-workspace-uuid"
+	payload, err := json.Marshal(invalidCatalog)
+	if err != nil {
+		t.Fatalf("marshal invalid catalog payload: %v", err)
+	}
+	catalogBytes, err := json.MarshalIndent(domainEnvelope{
+		SchemaVersion: CurrentDomainSchemaVersion,
+		WorkspaceID:   invalidCatalog.WorkspaceID,
+		Kind:          domainCatalog.name(),
+		Data:          payload,
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal invalid catalog envelope: %v", err)
+	}
+	if err := os.WriteFile(WorkspaceCatalogPath(dataDir), catalogBytes, FilePermissions); err != nil {
+		t.Fatalf("write invalid catalog: %v", err)
+	}
+
+	for _, spec := range []struct {
+		kind    domainKind
+		path    string
+		payload any
+	}{
+		{domainPlanning, PlanningStatePath(dataDir), NewPlanningState()},
+		{domainSettings, SettingsPath(dataDir), NewSettings()},
+		{domainAutomation, AutomationPath(dataDir), NewAutomationConfig()},
+	} {
+		data, err := encodeDomainEnvelope(spec.kind, testWorkspaceIDA, spec.payload)
+		if err != nil {
+			t.Fatalf("encode %s: %v", spec.kind.name(), err)
+		}
+		if err := os.WriteFile(spec.path, data, FilePermissions); err != nil {
+			t.Fatalf("write %s: %v", spec.kind.name(), err)
+		}
+	}
+
+	manager := NewManager(ConfigPathForDataDir(dataDir))
+	if _, err := manager.LoadDomains(); !errors.Is(err, ErrInvalidWorkspaceID) {
+		t.Fatalf("LoadDomains invalid catalog ID error = %v, want ErrInvalidWorkspaceID", err)
+	}
+	if _, err := os.Stat(filepath.Join(LocalDataRoot(), runtimeDirName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid catalog identity must fail before constructing a machine path, stat err = %v", err)
 	}
 }
 

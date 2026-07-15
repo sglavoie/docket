@@ -31,8 +31,8 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 	task := testutil.NewTestTask("Recovered task", models.TaskTypeTask)
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID = 2
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
+	if saveErr := storage.SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject: %v", saveErr)
 	}
 
 	domains, err := staleRuntime.CloneDomains()
@@ -77,6 +77,63 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 	return staleRuntime, manager, project.ID, task.ID
 }
 
+func writeTUILegacyMachineState(t *testing.T, dataDir, workspaceID string, machine *config.MachineState) string {
+	t.Helper()
+	legacyPath := filepath.Join(config.LocalRuntimeDirForDataDir(dataDir), "machine.json")
+	data, err := json.MarshalIndent(map[string]any{
+		"schema_version": config.CurrentDomainSchemaVersion,
+		"workspace_id":   workspaceID,
+		"kind":           "machine",
+		"data":           machine,
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal legacy machine state: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(legacyPath), config.DirPermissions); err != nil {
+		t.Fatalf("mkdir legacy machine dir: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, data, config.FilePermissions); err != nil {
+		t.Fatalf("write legacy machine state: %v", err)
+	}
+	return legacyPath
+}
+
+func TestTUIStartupUsesMigratedMachineState(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	manager := config.NewManager(config.ConfigPathForDataDir(dataDir))
+	domains, err := manager.LoadOrCreateDomains()
+	if err != nil {
+		t.Fatalf("LoadOrCreateDomains: %v", err)
+	}
+	canonicalPath, err := config.MachineStatePath(domains.Catalog.WorkspaceID)
+	if err != nil {
+		t.Fatalf("MachineStatePath: %v", err)
+	}
+	if removeErr := os.Remove(canonicalPath); removeErr != nil {
+		t.Fatalf("remove canonical machine fixture: %v", removeErr)
+	}
+	legacyPath := writeTUILegacyMachineState(t, dataDir, domains.Catalog.WorkspaceID, &config.MachineState{Editor: "tui-legacy-editor"})
+
+	runtime, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	app, err := NewAppModel(runtime, manager)
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
+	if got := app.runtime.Machine().Editor; got != "tui-legacy-editor" {
+		t.Fatalf("TUI startup editor = %q, want tui-legacy-editor", got)
+	}
+	if _, err := os.Stat(canonicalPath); err != nil {
+		t.Fatalf("canonical machine state not created: %v", err)
+	}
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatalf("legacy rollback source not retained: %v", err)
+	}
+}
+
 func TestNewAppModelRecoversTransactionsBeforeLoadingWorkspace(t *testing.T) {
 	for _, state := range []transaction.State{transaction.StatePrepared, transaction.StateCommitting} {
 		t.Run(string(state), func(t *testing.T) {
@@ -106,11 +163,11 @@ func TestNewAppModelBlocksOnRecoveryQuarantine(t *testing.T) {
 		t.Fatalf("LoadRuntimeState: %v", err)
 	}
 	txnDir := config.TransactionsDir(dataDir)
-	if err := os.MkdirAll(txnDir, storage.DirPermissions); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
+	if mkdirErr := os.MkdirAll(txnDir, storage.DirPermissions); mkdirErr != nil {
+		t.Fatalf("MkdirAll: %v", mkdirErr)
 	}
-	if err := os.WriteFile(filepath.Join(txnDir, "corrupt.json"), []byte("{"), storage.FilePermissions); err != nil {
-		t.Fatalf("write corrupt manifest: %v", err)
+	if writeErr := os.WriteFile(filepath.Join(txnDir, "corrupt.json"), []byte("{"), storage.FilePermissions); writeErr != nil {
+		t.Fatalf("write corrupt manifest: %v", writeErr)
 	}
 
 	app, err := NewAppModel(runtime, manager)

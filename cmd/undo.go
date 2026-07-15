@@ -74,11 +74,11 @@ func runUndo(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no undo history available for project '%s'", project.Name)
 	}
 
-	actionDesc, err := ledger.Undo(scope)
+	restoredEntry, actionDesc, err := ledger.UndoWithEntry(scope)
 	if err != nil {
 		return fmt.Errorf("undo failed: %w", err)
 	}
-	if err := repairConfigRefsAfterLedgerRestore(workspace.Runtime, entry.ProjectIDs); err != nil {
+	if err := repairConfigRefsAfterLedgerRestore(workspace.Runtime, restoredEntry.ProjectIDs); err != nil {
 		return err
 	}
 

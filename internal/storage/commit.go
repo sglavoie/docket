@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/transaction"
@@ -168,6 +169,23 @@ type ArtifactChange struct {
 	ExpectedRevisionPath string
 }
 
+// ArtifactCommitRequest describes an artifact-only user mutation. Artifacts are
+// committed through the same workspace lock, recovery, optimistic-revision, and
+// journal path as configuration-only artifact commits, while ProjectIDs and the
+// undo description let a configured workspace ledger expose the transaction to
+// global and current-project undo selection without requiring a tasks.md rewrite.
+//
+// ProjectIDs may be empty for a workspace-global mutation. A transaction that
+// affects one or more projects lists their durable IDs; the ledger de-duplicates
+// them before persistence. UndoAction and UndoContext are presentation metadata
+// only and do not affect transaction semantics.
+type ArtifactCommitRequest struct {
+	Artifacts   []ArtifactChange
+	ProjectIDs  []string
+	UndoAction  string
+	UndoContext string
+}
+
 // ChangeSet is the unit of a single project's mutation committed atomically: the
 // project whose tasks.md is rewritten, the exact document and revision the caller
 // loaded (for lossless preservation and optimistic concurrency), and any
@@ -270,9 +288,10 @@ type CommitResult struct {
 type CommitService struct {
 	transactionsDir string
 	roots           []string
-	// ledger, when non-nil, records every successful commit into the workspace
-	// undo ledger as the final finalization step, so callers cannot forget to
-	// capture history. A nil ledger disables history recording entirely.
+	// ledger, when non-nil, records undoable commits into the workspace ledger so
+	// callers cannot forget to capture history. Project ChangeSets and ledger-aware
+	// artifact-only transactions stage their retained blobs and ledger entry inside
+	// the same manifest as the user artifacts. A nil ledger disables history.
 	ledger *WorkspaceLedger
 	// conflicts, when non-nil, turns a stale-revision commit into a three-way
 	// merge: the loaded base, the caller's local intent, and the current on-disk
@@ -293,13 +312,18 @@ func NewCommitService(transactionsDir string, roots []string) *CommitService {
 }
 
 // NewCommitServiceWithLedger returns a CommitService that, in addition to
-// journaling every mutation, records each successful commit into ledger as one
-// append-only workspace undo entry. Recording runs after the journal commits, so
-// history reflects only mutations that actually landed, and it captures the
-// before/after image of every file the transaction touched — project markdown,
-// configuration artifacts, and attachment bytes alike — so undo and redo can
-// reverse or replay the whole transaction.
+// journaling every mutation, records undoable commits into ledger as one
+// append-only workspace entry. Project ChangeSets and CommitArtifactTransaction
+// put their retained blobs and ledger JSON in the user-artifact manifest itself
+// so recovery cannot land one without the other. Both paths capture the exact
+// before/after image of every user file the transaction touched.
 func NewCommitServiceWithLedger(transactionsDir string, roots []string, ledger *WorkspaceLedger) *CommitService {
+	if ledger != nil {
+		// Restore must acquire the exact workspace lock used by the service that
+		// records entries. The standard layout already makes these sibling paths;
+		// binding explicitly also keeps custom/test layouts on the same lock.
+		ledger.transactionsDir = filepath.Clean(transactionsDir)
+	}
 	return &CommitService{transactionsDir: transactionsDir, roots: roots, ledger: ledger}
 }
 
@@ -507,32 +531,108 @@ func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts [
 	})
 }
 
-// CommitArtifacts commits a set of configuration-domain artifacts — with no
-// accompanying project tasks.md — as ONE atomic journaled transaction. It is the
-// config-only counterpart of CommitMulti: production domain coordinators encode
-// the four synced domain files (workspace/planning/settings/automation.json) into
-// revision-checked ArtifactChange values and drive them through here, so a config
-// mutation that rides no task write still commits all-or-nothing with journal-
-// backed crash recovery.
-//
-// Like every commit path it runs under the workspace commit lock after crash
-// recovery (refusing while a transaction is quarantined), then acquires each
-// artifact's deterministic lock, validates every ExpectedRevision under those
-// locks, and only then stages and commits. A single stale artifact aborts the
-// whole set with an *ArtifactConflictError before any byte is written, so two
-// coordinators updating the same shared domain can never silently overwrite each
-// other. It records no undo-ledger entry: the config-only path is reversed through
-// the config domain's own revision history, not the task-oriented workspace ledger.
+// CommitArtifactTransaction commits an artifact-only user mutation as one
+// recoverable transaction and, when the service has a workspace ledger, records
+// its byte-exact before/after images as one undo entry. It deliberately does not
+// rewrite any project tasks.md file. ProjectIDs control ledger selection only: an
+// empty set makes the entry global-only, while any listed project can select and
+// reverse the entire grouped transaction through ProjectScope.
+func (s *CommitService) CommitArtifactTransaction(request ArtifactCommitRequest) (string, error) {
+	return s.commitArtifacts(request, true)
+}
+
+// CommitArtifacts commits configuration-domain artifacts with no accompanying
+// project tasks.md as one atomic journaled transaction. It remains the legacy
+// config-only wrapper: although it shares the artifact transaction machinery, it
+// intentionally records no workspace-ledger entry so existing configuration
+// saves do not become user-visible undo steps.
 func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, error) {
+	return s.commitArtifacts(ArtifactCommitRequest{Artifacts: artifacts}, false)
+}
+
+// CommitProjectRepair persists normalization performed while loading a project
+// as a dedicated journaled maintenance transaction. expectedRawRevision must be
+// the raw tasks.md revision returned by the load that produced project. The
+// revision is checked under the canonical project lock before any bytes are
+// staged, so a CLI or another TUI process that commits between load and repair
+// makes this operation fail with ErrStaleArtifact instead of being overwritten.
+//
+// Repairs intentionally do not create a user-visible undo entry: they preserve
+// the parser's normalized interpretation of existing data rather than expressing
+// a user mutation. They still use the workspace journal so an interrupted repair
+// is recoverable through the normal startup recovery boundary.
+func (s *CommitService) CommitProjectRepair(project *models.Project, expectedRawRevision string) (string, error) {
+	if project == nil {
+		return "", fmt.Errorf("storage: project repair requires a project")
+	}
+	if err := auditProjectBeforeSave(project); err != nil {
+		return "", err
+	}
+	doc, err := CanonicalProjectDocument(project, nil)
+	if err != nil {
+		return "", fmt.Errorf("rendering project repair for %s: %w", project.Name, err)
+	}
+	return s.CommitArtifacts([]ArtifactChange{{
+		Path:             tasksFilePath(project.Path),
+		Data:             []byte(doc.WriteV2()),
+		Mode:             FilePermissions,
+		ExpectedRevision: &expectedRawRevision,
+	}})
+}
+
+// prepareTransaction stages one journal manifest and, when record is non-nil and
+// a workspace ledger is configured, includes the complete ledger append in that
+// same manifest. The transaction ID is allocated before ledger planning so the
+// entry and manifest share an identity. User operations stay first; retained
+// blobs and ledger.json follow, with ledger.json last by prepareRecord's contract.
+// A ledger planning failure returns before Journal.Prepare stages any operation.
+func (s *CommitService) prepareTransaction(
+	journal *transaction.Journal,
+	ops []transaction.Op,
+	record *LedgerRecord,
+) (*transaction.Manifest, *preparedLedgerRecord, error) {
+	if record == nil || s.ledger == nil {
+		manifest, err := journal.Prepare(ops)
+		if err != nil {
+			return nil, nil, fmt.Errorf("preparing transaction: %w", err)
+		}
+		return manifest, nil, nil
+	}
+
+	txnID := uuid.NewString()
+	ledgerRecord := *record
+	ledgerRecord.TransactionID = txnID
+	ledgerPlan, err := s.ledger.prepareRecord(ledgerRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("preparing undo ledger entry: %w", err)
+	}
+
+	combinedOps := make([]transaction.Op, 0, len(ops)+len(ledgerPlan.ops))
+	combinedOps = append(combinedOps, ops...)
+	combinedOps = append(combinedOps, ledgerPlan.ops...)
+	manifest, err := journal.PrepareWithID(txnID, combinedOps)
+	if err != nil {
+		return nil, nil, fmt.Errorf("preparing transaction: %w", err)
+	}
+	return manifest, ledgerPlan, nil
+}
+
+// commitArtifacts is the shared artifact-only persistence path. recordUndo is
+// explicit rather than inferred from empty metadata because a valid global-only
+// user mutation may have no project IDs or description, while CommitArtifacts
+// must preserve its historical no-ledger behavior even on a ledger-backed
+// service.
+func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUndo bool) (string, error) {
+	artifacts := request.Artifacts
 	if len(artifacts) == 0 {
 		return "", fmt.Errorf("storage: commit requires at least one artifact")
 	}
-	lockPaths, err := artifactLockPaths(artifacts, s.roots)
-	if err != nil {
-		return "", err
+	lockPaths, lockErr := artifactLockPaths(artifacts, s.roots)
+	if lockErr != nil {
+		return "", lockErr
 	}
 	var txnID string
-	err = s.withWorkspaceCommitLock(func() error {
+	commitErr := s.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(s.transactionsDir, s.roots)
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
@@ -545,6 +645,14 @@ func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, err
 			// Preflight every artifact revision under the held locks before staging.
 			if err := validateArtifactRevisions(artifacts); err != nil {
 				return err
+			}
+			var ledgerArtifacts []LedgerArtifact
+			if recordUndo && s.ledger != nil {
+				var captureErr error
+				ledgerArtifacts, captureErr = captureArtifactLedgerImages(artifacts)
+				if captureErr != nil {
+					return fmt.Errorf("capturing undo images for artifact transaction: %w", captureErr)
+				}
 			}
 			ops := make([]transaction.Op, 0, len(artifacts))
 			var dirsToCreate []string
@@ -560,9 +668,19 @@ func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, err
 				ops = append(ops, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
 				dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
 			}
-			manifest, err := journal.Prepare(ops)
-			if err != nil {
-				return fmt.Errorf("preparing transaction: %w", err)
+
+			var ledgerRecord *LedgerRecord
+			if recordUndo && s.ledger != nil {
+				ledgerRecord = &LedgerRecord{
+					Action:     request.UndoAction,
+					Context:    request.UndoContext,
+					ProjectIDs: request.ProjectIDs,
+					Artifacts:  ledgerArtifacts,
+				}
+			}
+			manifest, ledgerPlan, prepareErr := s.prepareTransaction(journal, ops, ledgerRecord)
+			if prepareErr != nil {
+				return prepareErr
 			}
 			for _, dir := range dirsToCreate {
 				if err := os.MkdirAll(dir, DirPermissions); err != nil {
@@ -572,12 +690,18 @@ func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, err
 			if err := journal.Commit(manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
+			if ledgerPlan != nil {
+				// Cleanup is deliberately post-commit and best-effort. A crash can leak
+				// an unreferenced content-addressed blob, but the journal has already
+				// made the user artifacts and the ledger entry durable together.
+				s.ledger.gcBlobs(ledgerPlan.file)
+			}
 			txnID = manifest.ID
 			return nil
 		})
 	})
-	if err != nil {
-		return "", err
+	if commitErr != nil {
+		return "", commitErr
 	}
 	return txnID, nil
 }
@@ -933,9 +1057,18 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 		dirsToCreate = append(dirsToCreate, dirs...)
 	}
 
-	manifest, err := journal.Prepare(ops)
+	var ledgerRecord *LedgerRecord
+	if s.ledger != nil {
+		ledgerRecord = &LedgerRecord{
+			Action:     recordAction,
+			Context:    recordContext,
+			ProjectIDs: ledgerProjectIDs,
+			Artifacts:  ledgerArtifacts,
+		}
+	}
+	manifest, ledgerPlan, err := s.prepareTransaction(journal, ops, ledgerRecord)
 	if err != nil {
-		return nil, fmt.Errorf("preparing transaction: %w", err)
+		return nil, err
 	}
 	// Create every collected target parent directory (attachment destinations and
 	// artifact write parents) now that Prepare validated every target and before
@@ -949,21 +1082,11 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 	if err := journal.Commit(manifest); err != nil {
 		return nil, fmt.Errorf("committing transaction: %w", err)
 	}
-
-	// Finalization: record the committed transaction into the workspace undo
-	// ledger. This runs only after the journal committed, so history never
-	// references a mutation that did not land. A record failure is surfaced —
-	// the bytes are committed, but the caller learns history was not captured.
-	if s.ledger != nil {
-		if err := s.ledger.Record(LedgerRecord{
-			TransactionID: manifest.ID,
-			Action:        recordAction,
-			Context:       recordContext,
-			ProjectIDs:    ledgerProjectIDs,
-			Artifacts:     ledgerArtifacts,
-		}); err != nil {
-			return nil, fmt.Errorf("recording undo ledger entry: %w", err)
-		}
+	if ledgerPlan != nil {
+		// Cleanup is deliberately post-commit and best-effort. A crash can leak an
+		// unreferenced content-addressed blob, but the journal has already made the
+		// project, companion artifacts, retained blobs, and ledger entry durable.
+		s.ledger.gcBlobs(ledgerPlan.file)
 	}
 
 	results := make([]*CommitResult, len(changesets))

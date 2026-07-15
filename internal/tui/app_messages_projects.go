@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // =============================================================================
 // Project CRUD Messages
@@ -112,5 +115,8 @@ type SandboxResetRequestMsg struct{}
 
 // SandboxResetDoneMsg signals the sandbox was reset.
 type SandboxResetDoneMsg struct {
-	TaskCount int // Number of tasks that were cleared
+	Result app.SandboxResetResult
 }
+
+// SandboxResetFailedMsg reports a rejected reset without changing live caches.
+type SandboxResetFailedMsg struct{ Err error }

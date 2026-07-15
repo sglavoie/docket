@@ -43,14 +43,18 @@ func commitChecked(loadRev func() (string, error), save func(rev string) error) 
 	return err
 }
 
-// adoptWorkspaceID reads the on-disk catalog (or mints an ID) so the domain
-// artifacts a committer writes carry the same workspace identity Manager.Save
-// stamps, keeping a later reload's identity consistent across the domain files.
+// adoptWorkspaceID reads the on-disk catalog so checked non-catalog commits are
+// bound to the workspace's existing identity. These commits must not mint an ID:
+// without also creating workspace.json, doing so could establish a second
+// identity that a later coordinator would silently abandon.
 func adoptWorkspaceID(store *DomainFileStore) error {
-	if _, err := store.LoadCatalog(); err != nil {
+	_, rev, err := store.LoadCatalogChecked()
+	if err != nil {
 		return err
 	}
-	store.EnsureWorkspaceID()
+	if rev == "" {
+		return fmt.Errorf("%w: checked domain commit requires an existing workspace catalog", ErrWorkspaceIDRequired)
+	}
 	return nil
 }
 
@@ -60,10 +64,16 @@ func (c *DomainCoordinator) CommitCatalog(catalog *WorkspaceCatalog) error {
 	if catalog == nil {
 		return fmt.Errorf("workspace catalog is required")
 	}
-	if err := adoptWorkspaceID(c.store); err != nil {
+	diskCatalog, diskRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
 		return err
 	}
-	catalog.WorkspaceID = c.store.EnsureWorkspaceID()
+	if diskRev != "" && catalog.WorkspaceID == "" {
+		catalog.WorkspaceID = diskCatalog.WorkspaceID
+	}
+	if _, err := c.store.bindCatalogPayload(catalog); err != nil {
+		return err
+	}
 	return commitChecked(
 		func() (string, error) { _, rev, err := c.store.LoadCatalogChecked(); return rev, err },
 		func(rev string) error { return c.store.SaveCatalogChecked(catalog, rev) },

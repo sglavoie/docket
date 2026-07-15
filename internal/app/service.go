@@ -15,11 +15,11 @@ import (
 // revision, apply domain rules, run the shared post-mutation hooks, and commit
 // exactly one ChangeSet.
 type Service struct {
-	repo   Repository
-	clock  Clock
-	ids    IDGenerator
-	codec  ProjectArtifactCodec
-	reader ProjectArtifactReader
+	repo     Repository
+	clock    Clock
+	ids      IDGenerator
+	notes    WorkspaceNotePort
+	blockers ProjectBlockerPort
 }
 
 // NewService constructs a Service backed by the storage note/blocker artifact
@@ -29,24 +29,24 @@ func NewService(repo Repository, clock Clock, ids IDGenerator) *Service {
 	return NewServiceWithArtifacts(repo, clock, ids, nil, nil)
 }
 
-// NewServiceWithArtifacts constructs a Service with explicit note/blocker artifact
-// ports. A nil codec or reader falls back to the storage-backed implementation, so
-// production callers use NewService while tests inject in-memory ports to exercise
-// the same use cases against a non-filesystem backend.
-func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, codec ProjectArtifactCodec, reader ProjectArtifactReader) *Service {
+// NewServiceWithArtifacts constructs a Service with explicit, deliberately
+// separate note and blocker ports. A nil port falls back to storage. The default
+// note port supports project notes; callers that need global notes inject
+// NewStorageWorkspaceNotePort with the active workspace data directory.
+func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, notes WorkspaceNotePort, blockers ProjectBlockerPort) *Service {
 	if clock == nil {
 		clock = SystemClock()
 	}
 	if ids == nil {
 		ids = UUIDGenerator()
 	}
-	if codec == nil {
-		codec = storageArtifactCodec{}
+	if notes == nil {
+		notes = NewStorageWorkspaceNotePort("")
 	}
-	if reader == nil {
-		reader = storageArtifactReader{}
+	if blockers == nil {
+		blockers = storageProjectBlockerPort{}
 	}
-	return &Service{repo: repo, clock: clock, ids: ids, codec: codec, reader: reader}
+	return &Service{repo: repo, clock: clock, ids: ids, notes: notes, blockers: blockers}
 }
 
 // resolveProject loads a snapshot and resolves a project by its ID, returning the

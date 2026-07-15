@@ -89,6 +89,18 @@ func archivedTaskIDs(t *testing.T, project *models.Project) map[string]bool {
 	return ids
 }
 
+// archivedTaskIDsCanonical reads archive Markdown directly. Restore tests use it
+// between undo and redo so merely asserting canonical state does not rebuild the
+// journaled derived index and intentionally trigger the restore drift guard.
+func archivedTaskIDsCanonical(project *models.Project) map[string]bool {
+	tasks := LoadArchivedTasks(project)
+	ids := make(map[string]bool, len(tasks))
+	for _, task := range tasks {
+		ids[task.ID] = true
+	}
+	return ids
+}
+
 // assertActiveXorArchived enforces the core invariant: no task ID may be both
 // active (present in tasks.md) and archived (present in the archive) at once.
 func assertActiveXorArchived(t *testing.T, project *models.Project, phase string) {
@@ -170,11 +182,15 @@ func TestArchiveTasksTxUndoRestoresActiveAndRemovesArchivedCopy(t *testing.T) {
 	if !active["done-1"] || !active["done-2"] {
 		t.Fatalf("undo did not restore active tasks: %v", active)
 	}
-	archived := archivedTaskIDs(t, project)
+	archived := archivedTaskIDsCanonical(project)
 	if len(archived) != 0 {
 		t.Fatalf("undo left archived copies behind: %v", archived)
 	}
-	assertActiveXorArchived(t, project, "after undo")
+	for id := range active {
+		if archived[id] {
+			t.Fatalf("after undo: task %s is simultaneously active and archived", id)
+		}
+	}
 
 	if _, err := ledger.Redo(GlobalScope()); err != nil {
 		t.Fatalf("Redo failed: %v", err)

@@ -214,6 +214,17 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	srcProject := src.Runtime.ActiveProjects()[0]
 	srcTasksPath := storage.GetTasksFilePath(srcProject)
 	srcBefore := mustReadFile(t, srcTasksPath)
+	sourceCatalog, err := config.NewDomainFileStore(src.DataDir).LoadCatalog()
+	if err != nil {
+		t.Fatalf("LoadCatalog(source): %v", err)
+	}
+	sourceWorkspaceID := sourceCatalog.WorkspaceID
+	sourceMachine := config.NewMachineState()
+	sourceMachine.Editor = "source-only-editor"
+	sourceStore := config.NewDomainFileStoreWithWorkspace(src.DataDir, sourceWorkspaceID)
+	if saveErr := sourceStore.SaveMachine(sourceMachine); saveErr != nil {
+		t.Fatalf("SaveMachine(source): %v", saveErr)
+	}
 
 	driver, ws, err := NewCopiedWorkspaceDriver(src.ConfigPath, 100, 30)
 	if err != nil {
@@ -227,6 +238,12 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	}
 	if driver.App().runtime.DataDir() != ws.DataDir {
 		t.Fatalf("driver runtime DataDir = %q, want copied dir %q", driver.App().runtime.DataDir(), ws.DataDir)
+	}
+	if got := driver.App().runtime.Catalog().WorkspaceID; got == "" || got == sourceWorkspaceID {
+		t.Fatalf("copied workspace ID = %q, want a fresh identity distinct from %q", got, sourceWorkspaceID)
+	}
+	if got, want := driver.App().runtime.Machine().Editor, config.NewMachineState().Editor; got != want {
+		t.Fatalf("copied workspace machine editor = %q, want isolated default %q", got, want)
 	}
 
 	// The copied project points at the temp copy and its tasks.md matches source.

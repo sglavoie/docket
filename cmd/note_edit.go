@@ -14,6 +14,11 @@ import (
 
 var noteEditEditor string
 
+// editNoteInExternalEditor is a test seam around the temporary-file editor
+// helper. Production uses external.EditInExternalEditor; tests can model cancel,
+// malformed output, and success without touching a canonical note path.
+var editNoteInExternalEditor = external.EditInExternalEditor
+
 var noteEditCmd = &cobra.Command{
 	Use:   "edit <filename-or-title>",
 	Short: "Edit a note in an external editor",
@@ -48,7 +53,7 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	note, err := findNoteIn(ctx.Dir, args[0])
+	note, err := findNoteContext(ctx, args[0])
 	if err != nil {
 		return err
 	}
@@ -65,7 +70,7 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to render note: %w", err)
 	}
 
-	modified, err := external.EditInExternalEditor(editor, content, ".md")
+	modified, err := editNoteInExternalEditor(editor, content, ".md")
 	if err != nil {
 		return fmt.Errorf("failed to edit: %w", err)
 	}
@@ -81,8 +86,13 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := saveNoteContext(ctx, updatedNote); err != nil {
+	result, err := updateNoteContext(ctx, updatedNote)
+	if err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
+	}
+	committed := result.Note
+	if committed == nil {
+		return fmt.Errorf("failed to save note: commit returned no note")
 	}
 
 	if out.Quiet {
@@ -92,7 +102,7 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return printJSON(struct {
 			Filename string `json:"filename"`
 			Updated  bool   `json:"updated"`
-		}{Filename: updatedNote.Filename, Updated: true})
+		}{Filename: committed.Filename, Updated: true})
 	}
 	fmt.Println("Note updated.")
 	return nil
@@ -135,5 +145,9 @@ func parseNoteEdit(original *models.Note, modified string) (*models.Note, error)
 			return nil, fmt.Errorf("edited note has empty title (changes not saved)")
 		}
 	}
+	// The edited bytes came from a temporary file. Preserve the revision of the
+	// canonical source that supplied the editor content so UpdateNote can reject a
+	// concurrent canonical edit instead of treating the temp bytes as its baseline.
+	updated.RawRevision = original.RawRevision
 	return updated, nil
 }

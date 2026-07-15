@@ -231,7 +231,7 @@ func TestGlobalNoteMoveProjectSelectorUpdate_SelectsProject(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected GlobalNoteMoveDoneMsg, got %T", cmd())
 	}
-	if msg.Project != projectB {
-		t.Fatalf("expected selected project %q, got %#v", projectB.ID, msg.Project)
+	if msg.ProjectID != projectB.ID || msg.ProjectName != projectB.Name {
+		t.Fatalf("expected selected project %q, got %#v", projectB.ID, msg)
 	}
 }

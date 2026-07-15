@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // noteTaskItem wraps a task for use with BasePicker.
@@ -27,6 +27,9 @@ type NoteTaskLinkerModel struct {
 	picker        *BasePicker[noteTaskItem]
 	project       *models.Project
 	note          *models.Note
+	noteService   projectNoteService
+	deferCommit   bool
+	linkChanges   map[string]bool
 	changed       bool
 	lastToggled   string // ID of the last toggled task
 	statusMessage string // error message shown on save failure
@@ -34,8 +37,10 @@ type NoteTaskLinkerModel struct {
 	height        int
 }
 
-// NewNoteTaskLinkerModel creates a new note-to-task linker.
-func NewNoteTaskLinkerModel(project *models.Project, note *models.Note) *NoteTaskLinkerModel {
+// NewNoteTaskLinkerModelWithService creates a linker backed by the typed note
+// application API. Bulk mode defers all toggles and commits them as one batch
+// when the overlay closes.
+func NewNoteTaskLinkerModelWithService(project *models.Project, note *models.Note, service projectNoteService, deferCommit bool) *NoteTaskLinkerModel {
 	var items []noteTaskItem
 	for _, t := range project.Tasks {
 		items = append(items, noteTaskItem{task: t})
@@ -49,11 +54,21 @@ func NewNoteTaskLinkerModel(project *models.Project, note *models.Note) *NoteTas
 	})
 
 	return &NoteTaskLinkerModel{
-		picker:  picker,
-		project: project,
-		note:    note,
+		picker:      picker,
+		project:     project,
+		note:        cloneNoteForCommand(note),
+		noteService: service,
+		deferCommit: deferCommit,
+		linkChanges: make(map[string]bool),
 	}
 }
+
+type noteTaskLinkCommitResultMsg struct {
+	Result app.NoteResult
+	TaskID string
+}
+
+type noteTaskLinkCommitErrorMsg struct{ Err error }
 
 // setStatus sets the status message.
 func (m *NoteTaskLinkerModel) setStatus(msg string) {
@@ -92,31 +107,88 @@ func (m *NoteTaskLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "space":
 			selected := m.picker.SelectedItem()
 			if selected.task != nil {
-				m.toggleLink(selected.task)
+				return m, m.toggleLink(selected.task)
 			}
 		}
+	case noteTaskLinkCommitResultMsg:
+		if msg.Result.Note != nil {
+			m.note = cloneNoteForCommand(msg.Result.Note)
+		}
+		m.clearStatus()
+		m.changed = true
+		m.lastToggled = msg.TaskID
+	case noteTaskLinkCommitErrorMsg:
+		m.setStatus(fmt.Sprintf("Failed to save note: %v", msg.Err))
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 	}
 	return m, nil
 }
 
-func (m *NoteTaskLinkerModel) toggleLink(task *models.Task) {
-	if m.note.HasLink(task.ID) {
-		m.note.RemoveLink(task.ID)
+func (m *NoteTaskLinkerModel) toggleLink(task *models.Task) tea.Cmd {
+	if task == nil || m.note == nil || m.project == nil {
+		return nil
+	}
+	if m.deferCommit {
+		if m.note.HasLink(task.ID) {
+			m.note.RemoveLink(task.ID)
+			m.linkChanges[task.ID] = false
+		} else {
+			m.note.AddLink(task.ID)
+			m.linkChanges[task.ID] = true
+		}
+		m.changed = true
+		m.lastToggled = task.ID
+		m.clearStatus()
+		return nil
+	}
+
+	updated := cloneNoteForCommand(m.note)
+	if updated.HasLink(task.ID) {
+		updated.RemoveLink(task.ID)
 	} else {
-		m.note.AddLink(task.ID)
+		updated.AddLink(task.ID)
 	}
-	if err := storage.SaveNote(m.project, m.note); err != nil {
-		m.setStatus(fmt.Sprintf("Failed to save note: %v", err))
-		return
+	request := cloneNoteBatchRequest(app.NoteBatchRequest{
+		Operations: []app.NoteMutationRequest{{
+			Kind:     app.NoteUpdate,
+			Location: app.ProjectNoteLocation(m.project.ID),
+			Note:     updated,
+		}},
+		UndoAction:  "Link Note to Task",
+		UndoContext: m.note.Title,
+	})
+	service := m.noteService
+	taskID := task.ID
+	return func() tea.Msg {
+		if service == nil {
+			return noteTaskLinkCommitErrorMsg{Err: fmt.Errorf("project note service is unavailable")}
+		}
+		result, err := service.ApplyNoteBatch(request)
+		if err != nil {
+			return noteTaskLinkCommitErrorMsg{Err: err}
+		}
+		return noteTaskLinkCommitResultMsg{Result: result.Results[0], TaskID: taskID}
 	}
-	m.clearStatus()
-	m.changed = true
-	m.lastToggled = task.ID
 }
 
 func (m *NoteTaskLinkerModel) close() tea.Cmd {
+	if m.deferCommit {
+		if !m.changed {
+			return func() tea.Msg { return CloseNoteTaskLinkerMsg{} }
+		}
+		changes := make(map[string]bool, len(m.linkChanges))
+		for taskID, linked := range m.linkChanges {
+			changes[taskID] = linked
+		}
+		projectID := ""
+		if m.project != nil {
+			projectID = m.project.ID
+		}
+		return func() tea.Msg {
+			return BulkNoteLinkDoneMsg{ProjectID: projectID, LinkChanges: changes}
+		}
+	}
 	if m.changed {
 		taskID := m.lastToggled
 		return func() tea.Msg { return NoteTaskLinkedMsg{TaskID: taskID} }

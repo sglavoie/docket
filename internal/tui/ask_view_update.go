@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/actionplan"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
@@ -307,7 +308,7 @@ func (m *AskViewModel) applyAcceptedPlan(includeDestructive bool) tea.Cmd {
 func renderActionPlanMarkdown(preview app.PlanPreview) string {
 	var b strings.Builder
 	if preview.Summary != "" {
-		b.WriteString(preview.Summary)
+		b.WriteString(actionplan.TerminalSafeDisplayText(preview.Summary, actionplan.DisplayTextSingleLine))
 		b.WriteString("\n\n")
 	}
 	if len(preview.Actions) == 0 {
@@ -316,7 +317,7 @@ func renderActionPlanMarkdown(preview app.PlanPreview) string {
 	}
 	b.WriteString("### Proposed actions\n\n")
 	for _, action := range preview.Actions {
-		fmt.Fprintf(&b, "%d. **%s** — %s\n", action.Index, action.Risk, action.Description)
+		fmt.Fprintf(&b, "%d. **%s** — %s\n", action.Index, action.Risk, actionplan.TerminalSafeDisplayText(action.Description, actionplan.DisplayTextMultiline))
 	}
 	return b.String()
 }

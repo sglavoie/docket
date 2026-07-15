@@ -66,15 +66,23 @@ func (s *Service) ProjectSections(projectID string) ([]string, error) {
 	return copyStrings(project.GetSections()), nil
 }
 
-// Notes returns a project's notes, newest first, through the artifact reader. The
-// project is resolved from the snapshot so an unknown project fails with
-// ErrProjectNotFound before any read.
+// Notes returns a project's notes through the workspace-aware note port.
 func (s *Service) Notes(projectID string) ([]*models.Note, error) {
-	_, project, _, err := s.resolveProject(projectID)
+	return s.NotesAt(ProjectNoteLocation(projectID))
+}
+
+// NotesAt returns project or global notes for an explicit path-free location.
+// Locations are resolved against one workspace snapshot before the port reads.
+func (s *Service) NotesAt(location NoteLocation) ([]*models.Note, error) {
+	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return nil, err
 	}
-	return s.reader.Notes(project)
+	project, err := resolveNoteLocation(snap, location)
+	if err != nil {
+		return nil, err
+	}
+	return s.notes.Notes(location, project)
 }
 
 // Blockers returns a project's blockers through the artifact reader.
@@ -83,7 +91,7 @@ func (s *Service) Blockers(projectID string) ([]*models.Blocker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.reader.Blockers(project)
+	return s.blockers.Blockers(project)
 }
 
 // ActiveBlockerCount returns the number of unresolved blockers in a project.
