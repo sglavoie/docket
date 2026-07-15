@@ -292,10 +292,21 @@ func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 }
 
 func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
+	return m.refreshTaskViews(true)
+}
+
+// refreshTaskViewsAfterRestore uses the same cache/view fan-out as a committed
+// save. When the runtime reload failed, it rebuilds the current project tree in
+// memory without persisting view state from the stale runtime snapshot.
+func (m *AppModel) refreshTaskViewsAfterRestore(runtimeReloaded bool) []tea.Cmd {
+	return m.refreshTaskViews(runtimeReloaded)
+}
+
+func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 	m.invalidateFilterCaches()
 	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
 	m.refreshNotesSearchState()
-	m.refreshProjectTree()
+	m.refreshProjectTreeAfterTaskMutation(persistProjectTreeState)
 	if m.allTasksView != nil {
 		m.allTasksView.loadAllTasks()
 		m.allTasksView.clampCursor()
@@ -362,6 +373,7 @@ func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
 				td.refreshAfterReload()
 			}
 		}
+		m.refreshLinkedTaskSelectorAfterReload()
 		for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
 			if v := m.views.Get(vt); v != nil {
 				if kb, ok := v.(*KanbanModel); ok {
@@ -375,6 +387,22 @@ func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
 		m.globalInboxProcessor.loadAllInboxTasks()
 	}
 	return saveCmds
+}
+
+func (m *AppModel) refreshProjectTreeAfterTaskMutation(persistProjectTreeState bool) {
+	if persistProjectTreeState {
+		m.refreshProjectTree()
+	} else {
+		m.refreshProjectTreeInMemory()
+	}
+}
+
+func (m *AppModel) refreshLinkedTaskSelectorAfterReload() {
+	if v := m.views.Get(ViewLinkedTaskSelector); v != nil {
+		if ls, ok := v.(*LinkedTaskSelectorModel); ok {
+			ls.refreshAfterReload(m.projectByID(tuiUndoProjectID(ls.project)))
+		}
+	}
 }
 
 func (m *AppModel) refreshNotesSearchState() {

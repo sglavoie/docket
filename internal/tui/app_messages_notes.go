@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // =============================================================================
@@ -46,6 +47,7 @@ type ProjectNoteMutationErrorMsg struct {
 type ProjectNoteLedgerResultMsg struct {
 	Location  app.NoteLocation
 	ProjectID string
+	Entry     storage.LedgerEntry
 	Action    string
 	Redo      bool
 }

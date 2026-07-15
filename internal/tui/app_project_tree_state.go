@@ -42,6 +42,19 @@ func (m *AppModel) refreshProjectTree() {
 	m.projectTree.buildTree()
 }
 
+// refreshProjectTreeInMemory refreshes rows without saving or restoring
+// machine-owned view state. It is the safe fallback after a runtime-domain
+// reload failure, when committing from the stale snapshot is forbidden.
+func (m *AppModel) refreshProjectTreeInMemory() {
+	if m.currentProject == nil || m.projectTree == nil {
+		return
+	}
+	m.currentProject.BuildTaskTree()
+	m.projectTree.project = m.currentProject
+	m.projectTree.buildTree()
+	m.projectTree.clampCursor()
+}
+
 // saveProjectTreeState persists the current project tree filter/sort state to config.
 func (m *AppModel) saveProjectTreeState() {
 	if m.projectTree == nil || m.currentProject == nil {

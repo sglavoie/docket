@@ -297,13 +297,6 @@ func crossRestoreVerb(redo bool) string {
 	return "Undid"
 }
 
-func crossNothingMessage(redo bool) string {
-	if redo {
-		return "Nothing to redo"
-	}
-	return "Nothing to undo"
-}
-
 // workspaceLedgerFromConfig opens the workspace undo ledger the transactional
 // commit boundary records to, sized from the configured history depth — the same
 // construction newTUIAppRepository uses, so cross-project undo/redo reads exactly

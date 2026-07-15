@@ -31,6 +31,7 @@ func TestArtifactsContract(t *testing.T) {
 		project := realTestProject(t, dataDir, "alpha", "seed task")
 		repo := newStorageRepo(commitSvc, project)
 		repo.seed(t)
+		seedNoteTestCatalog(t, dataDir, project)
 		svc := app.NewService(repo, nil, nil)
 		runArtifactContract(t, svc, project.ID)
 	})

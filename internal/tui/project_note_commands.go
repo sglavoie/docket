@@ -113,14 +113,14 @@ func noteLedgerRestoreCmd(ledger *storage.WorkspaceLedger, location app.NoteLoca
 		if location.Scope == app.NoteScopeProject {
 			scope = storage.ProjectScope(location.ProjectID)
 		}
-		restore := ledger.Undo
+		restore := ledger.UndoWithEntry
 		if redo {
-			restore = ledger.Redo
+			restore = ledger.RedoWithEntry
 		}
-		action, err := restore(scope)
+		entry, action, err := restore(scope)
 		if err != nil {
 			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Redo: redo, Err: err}
 		}
-		return ProjectNoteLedgerResultMsg{Location: location, ProjectID: location.ProjectID, Action: action, Redo: redo}
+		return ProjectNoteLedgerResultMsg{Location: location, ProjectID: location.ProjectID, Entry: entry, Action: action, Redo: redo}
 	}
 }

@@ -169,21 +169,37 @@ type ArtifactChange struct {
 	ExpectedRevisionPath string
 }
 
+// ArtifactPrecondition is a read-only optimistic-concurrency guard for an
+// artifact that is not itself part of a transaction's writes or deletes. Path
+// is locked with the transaction's ArtifactChanges and its raw bytes must match
+// ExpectedRevision before ledger images are captured or journal operations are
+// staged. An empty ExpectedRevision requires Path to be absent.
+//
+// Preconditions never become journal operations or workspace-ledger images;
+// they only close races between an earlier application-level validation and
+// the commit boundary.
+type ArtifactPrecondition struct {
+	Path             string
+	ExpectedRevision string
+}
+
 // ArtifactCommitRequest describes an artifact-only user mutation. Artifacts are
 // committed through the same workspace lock, recovery, optimistic-revision, and
 // journal path as configuration-only artifact commits, while ProjectIDs and the
 // undo description let a configured workspace ledger expose the transaction to
 // global and current-project undo selection without requiring a tasks.md rewrite.
 //
-// ProjectIDs may be empty for a workspace-global mutation. A transaction that
-// affects one or more projects lists their durable IDs; the ledger de-duplicates
-// them before persistence. UndoAction and UndoContext are presentation metadata
-// only and do not affect transaction semantics.
+// Preconditions are read-only guards and never become journal or ledger
+// artifacts. ProjectIDs may be empty for a workspace-global mutation. A
+// transaction that affects one or more projects lists their durable IDs; the
+// ledger de-duplicates them before persistence. UndoAction and UndoContext are
+// presentation metadata only and do not affect transaction semantics.
 type ArtifactCommitRequest struct {
-	Artifacts   []ArtifactChange
-	ProjectIDs  []string
-	UndoAction  string
-	UndoContext string
+	Artifacts     []ArtifactChange
+	Preconditions []ArtifactPrecondition
+	ProjectIDs    []string
+	UndoAction    string
+	UndoContext   string
 }
 
 // ChangeSet is the unit of a single project's mutation committed atomically: the
@@ -627,10 +643,15 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 	if len(artifacts) == 0 {
 		return "", fmt.Errorf("storage: commit requires at least one artifact")
 	}
-	lockPaths, lockErr := artifactLockPaths(artifacts, s.roots)
+	artifactLocks, lockErr := artifactLockPaths(artifacts, s.roots)
 	if lockErr != nil {
 		return "", lockErr
 	}
+	preconditionLocks, lockErr := artifactPreconditionLockPaths(request.Preconditions, s.roots)
+	if lockErr != nil {
+		return "", lockErr
+	}
+	artifactLocks = lockPathsNotHeldBy(artifactLocks, preconditionLocks)
 	var txnID string
 	commitErr := s.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(s.transactionsDir, s.roots)
@@ -638,72 +659,100 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 			return recoverErr
 		}
 
-		if err := createArtifactLockDirectories(lockPaths); err != nil {
+		// Preconditions guard the validity of artifact locations themselves. Take
+		// and validate those locks first so a stale project path is rejected before
+		// creating a note lock directory below a location that was just moved or
+		// trashed. The workspace commit lock serializes other CommitServices while
+		// config writers serialize on the held precondition lock.
+		if err := createArtifactLockDirectories(preconditionLocks); err != nil {
 			return err
 		}
-		return withOrderedFileLocks(lockPaths, func() error {
-			// Preflight every artifact revision under the held locks before staging.
-			if err := validateArtifactRevisions(artifacts); err != nil {
+		return withOrderedFileLocks(preconditionLocks, func() error {
+			if err := validateArtifactPreconditions(request.Preconditions); err != nil {
 				return err
 			}
-			var ledgerArtifacts []LedgerArtifact
-			if recordUndo && s.ledger != nil {
-				var captureErr error
-				ledgerArtifacts, captureErr = captureArtifactLedgerImages(artifacts)
-				if captureErr != nil {
-					return fmt.Errorf("capturing undo images for artifact transaction: %w", captureErr)
-				}
+			if err := createArtifactLockDirectories(artifactLocks); err != nil {
+				return err
 			}
-			ops := make([]transaction.Op, 0, len(artifacts))
-			var dirsToCreate []string
-			for _, artifact := range artifacts {
-				if artifact.Delete {
-					ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
-					continue
+			return withOrderedFileLocks(artifactLocks, func() error {
+				// Preflight every artifact revision while the read-only guards remain
+				// held, before capturing ledger images or staging journal operations.
+				if err := validateArtifactRevisions(artifacts); err != nil {
+					return err
 				}
-				mode := artifact.Mode
-				if mode == 0 {
-					mode = FilePermissions
+				var ledgerArtifacts []LedgerArtifact
+				if recordUndo && s.ledger != nil {
+					var captureErr error
+					ledgerArtifacts, captureErr = captureArtifactLedgerImages(artifacts)
+					if captureErr != nil {
+						return fmt.Errorf("capturing undo images for artifact transaction: %w", captureErr)
+					}
 				}
-				ops = append(ops, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
-				dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
-			}
+				ops := make([]transaction.Op, 0, len(artifacts))
+				var dirsToCreate []string
+				for _, artifact := range artifacts {
+					if artifact.Delete {
+						ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: artifact.Path})
+						continue
+					}
+					mode := artifact.Mode
+					if mode == 0 {
+						mode = FilePermissions
+					}
+					ops = append(ops, transaction.Op{Kind: transaction.OpWrite, Target: artifact.Path, Data: artifact.Data, Mode: mode})
+					dirsToCreate = append(dirsToCreate, filepath.Dir(artifact.Path))
+				}
 
-			var ledgerRecord *LedgerRecord
-			if recordUndo && s.ledger != nil {
-				ledgerRecord = &LedgerRecord{
-					Action:     request.UndoAction,
-					Context:    request.UndoContext,
-					ProjectIDs: request.ProjectIDs,
-					Artifacts:  ledgerArtifacts,
+				var ledgerRecord *LedgerRecord
+				if recordUndo && s.ledger != nil {
+					ledgerRecord = &LedgerRecord{
+						Action:     request.UndoAction,
+						Context:    request.UndoContext,
+						ProjectIDs: request.ProjectIDs,
+						Artifacts:  ledgerArtifacts,
+					}
 				}
-			}
-			manifest, ledgerPlan, prepareErr := s.prepareTransaction(journal, ops, ledgerRecord)
-			if prepareErr != nil {
-				return prepareErr
-			}
-			for _, dir := range dirsToCreate {
-				if err := os.MkdirAll(dir, DirPermissions); err != nil {
-					return fmt.Errorf("creating commit target directory: %w", err)
+				manifest, ledgerPlan, prepareErr := s.prepareTransaction(journal, ops, ledgerRecord)
+				if prepareErr != nil {
+					return prepareErr
 				}
-			}
-			if err := journal.Commit(manifest); err != nil {
-				return fmt.Errorf("committing transaction: %w", err)
-			}
-			if ledgerPlan != nil {
-				// Cleanup is deliberately post-commit and best-effort. A crash can leak
-				// an unreferenced content-addressed blob, but the journal has already
-				// made the user artifacts and the ledger entry durable together.
-				s.ledger.gcBlobs(ledgerPlan.file)
-			}
-			txnID = manifest.ID
-			return nil
+				for _, dir := range dirsToCreate {
+					if err := os.MkdirAll(dir, DirPermissions); err != nil {
+						return fmt.Errorf("creating commit target directory: %w", err)
+					}
+				}
+				if err := journal.Commit(manifest); err != nil {
+					return fmt.Errorf("committing transaction: %w", err)
+				}
+				if ledgerPlan != nil {
+					// Cleanup is deliberately post-commit and best-effort. A crash can leak
+					// an unreferenced content-addressed blob, but the journal has already
+					// made the user artifacts and the ledger entry durable together.
+					s.ledger.gcBlobs(ledgerPlan.file)
+				}
+				txnID = manifest.ID
+				return nil
+			})
 		})
 	})
 	if commitErr != nil {
 		return "", commitErr
 	}
 	return txnID, nil
+}
+
+func lockPathsNotHeldBy(paths, held []string) []string {
+	heldSet := make(map[string]bool, len(held))
+	for _, path := range held {
+		heldSet[filepath.Clean(path)] = true
+	}
+	remaining := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if !heldSet[filepath.Clean(path)] {
+			remaining = append(remaining, path)
+		}
+	}
+	return remaining
 }
 
 // RawArtifactRevision returns the optimistic-concurrency revision of an artifact's
@@ -750,6 +799,31 @@ func validateArtifactRevisions(artifacts []ArtifactChange) error {
 	return nil
 }
 
+// validateArtifactPreconditions checks read-only artifact guards under their
+// held advisory locks. It deliberately shares ArtifactConflictError with
+// ArtifactChange revision failures so callers can classify both as
+// ErrStaleArtifact while inspecting the conflicting path and revisions.
+func validateArtifactPreconditions(preconditions []ArtifactPrecondition) error {
+	for i := range preconditions {
+		precondition := preconditions[i]
+		data, err := os.ReadFile(precondition.Path)
+		switch {
+		case os.IsNotExist(err):
+			if precondition.ExpectedRevision != "" {
+				return &ArtifactConflictError{Path: precondition.Path, Expected: precondition.ExpectedRevision, Actual: ""}
+			}
+		case err != nil:
+			return fmt.Errorf("reading artifact %s for precondition check: %w", filepath.Base(precondition.Path), err)
+		default:
+			actual := RawArtifactRevision(data)
+			if precondition.ExpectedRevision == "" || actual != precondition.ExpectedRevision {
+				return &ArtifactConflictError{Path: precondition.Path, Expected: precondition.ExpectedRevision, Actual: actual}
+			}
+		}
+	}
+	return nil
+}
+
 func artifactRevisionPath(artifact ArtifactChange) string {
 	if artifact.ExpectedRevisionPath != "" {
 		return artifact.ExpectedRevisionPath
@@ -788,6 +862,27 @@ func artifactLockPaths(artifacts []ArtifactChange, roots []string) ([]string, er
 		lockPath := artifactAdvisoryLockPath(checkPath)
 		if !pathWithinApprovedRoots(lockPath, roots) {
 			return nil, fmt.Errorf("storage: artifact lock %q: %w", lockPath, transaction.ErrTargetOutsideRoot)
+		}
+		paths = append(paths, lockPath)
+	}
+	return paths, nil
+}
+
+// artifactPreconditionLockPaths validates each read-only guard and returns the
+// same adjacent advisory lock path an ArtifactChange revision check would use.
+func artifactPreconditionLockPaths(preconditions []ArtifactPrecondition, roots []string) ([]string, error) {
+	paths := make([]string, 0, len(preconditions))
+	for i := range preconditions {
+		path := preconditions[i].Path
+		if path == "" {
+			return nil, fmt.Errorf("storage: artifact precondition requires a path")
+		}
+		if !pathWithinApprovedRoots(path, roots) {
+			return nil, fmt.Errorf("storage: artifact precondition %q: %w", path, transaction.ErrTargetOutsideRoot)
+		}
+		lockPath := artifactAdvisoryLockPath(path)
+		if !pathWithinApprovedRoots(lockPath, roots) {
+			return nil, fmt.Errorf("storage: artifact precondition lock %q: %w", lockPath, transaction.ErrTargetOutsideRoot)
 		}
 		paths = append(paths, lockPath)
 	}

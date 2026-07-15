@@ -123,6 +123,89 @@ func TestCommitArtifactTransaction_StaleRevisionIsAllOrNone(t *testing.T) {
 	assertJournalClean(t, dataDir)
 }
 
+func TestCommitArtifactTransaction_PreconditionsAreReadOnlyAndAllOrNone(t *testing.T) {
+	t.Run("stale", func(t *testing.T) {
+		service, ledger, dataDir := newArtifactLedgerTestService(t)
+		guardPath := filepath.Join(dataDir, ".tt", "workspace.json")
+		targetPath := filepath.Join(dataDir, "notes", "guarded.md")
+		observed := []byte("catalog before")
+		concurrent := []byte("catalog concurrent")
+		writeArtifactBytes(t, guardPath, observed)
+		writeArtifactBytes(t, guardPath, concurrent)
+
+		_, err := service.CommitArtifactTransaction(ArtifactCommitRequest{
+			Artifacts: []ArtifactChange{{Path: targetPath, Data: []byte("note"), ExpectedRevision: strptr("")}},
+			Preconditions: []ArtifactPrecondition{{
+				Path:             guardPath,
+				ExpectedRevision: RawArtifactRevision(observed),
+			}},
+			UndoAction: "guarded note",
+		})
+		if !errors.Is(err, ErrStaleArtifact) {
+			t.Fatalf("CommitArtifactTransaction err = %v, want ErrStaleArtifact", err)
+		}
+		requireAbsent(t, targetPath)
+		requireAbsent(t, filepath.Dir(targetPath))
+		assertArtifactBytes(t, guardPath, concurrent)
+		if _, ok, selectErr := ledger.SelectNewestUndo(GlobalScope()); selectErr != nil || ok {
+			t.Fatalf("stale precondition recorded history: ok=%v err=%v", ok, selectErr)
+		}
+		assertJournalClean(t, dataDir)
+	})
+
+	t.Run("successful guard is excluded from history", func(t *testing.T) {
+		service, ledger, dataDir := newArtifactLedgerTestService(t)
+		guardPath := filepath.Join(dataDir, ".tt", "workspace.json")
+		targetPath := filepath.Join(dataDir, "notes", "guarded.md")
+		guardBytes := []byte("catalog stable")
+		writeArtifactBytes(t, guardPath, guardBytes)
+
+		_, err := service.CommitArtifactTransaction(ArtifactCommitRequest{
+			Artifacts: []ArtifactChange{{Path: targetPath, Data: []byte("note"), ExpectedRevision: strptr("")}},
+			Preconditions: []ArtifactPrecondition{{
+				Path:             guardPath,
+				ExpectedRevision: RawArtifactRevision(guardBytes),
+			}},
+			UndoAction: "guarded note",
+		})
+		if err != nil {
+			t.Fatalf("CommitArtifactTransaction: %v", err)
+		}
+		entry, ok, err := ledger.SelectNewestUndo(GlobalScope())
+		if err != nil || !ok {
+			t.Fatalf("SelectNewestUndo ok=%v err=%v", ok, err)
+		}
+		if len(entry.Artifacts) != 1 || entry.Artifacts[0].Path != targetPath {
+			t.Fatalf("ledger artifacts = %+v, want only %s", entry.Artifacts, targetPath)
+		}
+		assertArtifactBytes(t, guardPath, guardBytes)
+		if _, err := ledger.Undo(GlobalScope()); err != nil {
+			t.Fatalf("Undo: %v", err)
+		}
+		requireAbsent(t, targetPath)
+		assertArtifactBytes(t, guardPath, guardBytes)
+	})
+
+	t.Run("outside approved root", func(t *testing.T) {
+		service, ledger, dataDir := newArtifactLedgerTestService(t)
+		targetPath := filepath.Join(dataDir, "notes", "guarded.md")
+		outsideGuard := filepath.Join(t.TempDir(), "workspace.json")
+		_, err := service.CommitArtifactTransaction(ArtifactCommitRequest{
+			Artifacts:     []ArtifactChange{{Path: targetPath, Data: []byte("note")}},
+			Preconditions: []ArtifactPrecondition{{Path: outsideGuard}},
+		})
+		if !errors.Is(err, transaction.ErrTargetOutsideRoot) {
+			t.Fatalf("CommitArtifactTransaction err = %v, want ErrTargetOutsideRoot", err)
+		}
+		requireAbsent(t, targetPath)
+		requireAbsent(t, outsideGuard)
+		requireAbsent(t, outsideGuard+".lock")
+		if _, ok, selectErr := ledger.SelectNewestUndo(GlobalScope()); selectErr != nil || ok {
+			t.Fatalf("invalid precondition recorded history: ok=%v err=%v", ok, selectErr)
+		}
+	})
+}
+
 // TestCommitArtifactTransaction_RecoveryPrecedesCapture proves artifact-only
 // commits reuse the workspace crash-recovery gate. A prepared older transaction
 // is rolled forward before the new transaction captures its own undo images, and

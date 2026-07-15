@@ -85,10 +85,10 @@ func TestStartupRepairCommitFailureLeavesProjectBytesUnchanged(t *testing.T) {
 
 	dataDir := filepath.Dir(filepath.Dir(project.Path))
 	transactionsPath := filepath.Join(dataDir, "transactions-is-a-file")
-	if err := os.WriteFile(transactionsPath, []byte("not a directory"), FilePermissions); err != nil {
-		t.Fatalf("seed invalid transactions path: %v", err)
+	if writeErr := os.WriteFile(transactionsPath, []byte("not a directory"), FilePermissions); writeErr != nil {
+		t.Fatalf("seed invalid transactions path: %v", writeErr)
 	}
-	if _, err := NewCommitService(transactionsPath, []string{dataDir}).CommitProjectRepair(project, *load.RawRevision); err == nil {
+	if _, commitErr := NewCommitService(transactionsPath, []string{dataDir}).CommitProjectRepair(project, *load.RawRevision); commitErr == nil {
 		t.Fatal("CommitProjectRepair succeeded with an invalid journal directory")
 	}
 	after, err := os.ReadFile(tasksFilePath(project.Path))
@@ -113,8 +113,8 @@ func TestStartupRepairCommitRejectsStaleRawRevision(t *testing.T) {
 	concurrent := testutil.NewTestProject("Startup Repair")
 	concurrent.ID = project.ID
 	concurrent.Path = project.Path
-	if err := LoadProject(concurrent); err != nil {
-		t.Fatalf("LoadProject(concurrent): %v", err)
+	if loadErr := LoadProject(concurrent); loadErr != nil {
+		t.Fatalf("LoadProject(concurrent): %v", loadErr)
 	}
 	base, err := LoadProjectDocument(concurrent)
 	if err != nil {
@@ -123,8 +123,8 @@ func TestStartupRepairCommitRejectsStaleRawRevision(t *testing.T) {
 	concurrent.Tasks[0].Title = "CLI mutation survived"
 	dataDir := filepath.Dir(filepath.Dir(project.Path))
 	svc := NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
-	if _, err := svc.Commit(ChangeSet{Project: concurrent, ExpectedRevision: base.Revision, Base: base}); err != nil {
-		t.Fatalf("concurrent CLI-style Commit: %v", err)
+	if _, commitErr := svc.Commit(ChangeSet{Project: concurrent, ExpectedRevision: base.Revision, Base: base}); commitErr != nil {
+		t.Fatalf("concurrent CLI-style Commit: %v", commitErr)
 	}
 	cliBytes, err := os.ReadFile(tasksFilePath(project.Path))
 	if err != nil {

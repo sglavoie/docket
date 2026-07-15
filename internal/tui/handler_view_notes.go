@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -31,16 +32,23 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 
 	case ProjectNoteLedgerResultMsg:
 		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
-		if nv := m.getActiveNotesView(); noteViewMatchesLocation(nv, location) {
-			nv.loadNotes()
+		cmds, refreshErr := m.reconcileNoteLedgerRestore(msg.Entry)
+		nv := m.reloadActiveNotesAfterLedgerRestore()
+		if noteViewMatchesLocation(nv, location) {
 			verb := "Undid"
 			if msg.Redo {
 				verb = "Redid"
 			}
-			nv.setStatus(fmt.Sprintf("%s: %s", verb, msg.Action))
+			if refreshErr != nil {
+				nv.setErrorStatus(fmt.Sprintf("%s completed, refresh failed: %v", ledgerRestoreLabel(msg.Redo), refreshErr))
+			} else {
+				nv.setStatus(fmt.Sprintf("%s: %s", verb, msg.Action))
+			}
+		} else if refreshErr != nil {
+			m.err = fmt.Errorf("%s completed, refresh failed: %w", ledgerRestoreLabel(msg.Redo), refreshErr)
+			cmds = append(cmds, statusTimeout(5*time.Second))
 		}
-		m.refreshNotesSearchState()
-		return true, nil
+		return true, tea.Batch(cmds...)
 
 	case ProjectNoteLedgerErrorMsg:
 		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
@@ -222,6 +230,13 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 	}
 	return false, nil
+}
+
+func ledgerRestoreLabel(redo bool) string {
+	if redo {
+		return "redo"
+	}
+	return "undo"
 }
 
 func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {

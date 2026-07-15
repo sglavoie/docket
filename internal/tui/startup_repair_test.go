@@ -45,8 +45,8 @@ func TestConcurrentCLICommitAbortsStartupRepair(t *testing.T) {
 	}
 	cliProject.Slug = project.Slug
 	cliProject.Path = project.Path
-	if err := storage.LoadProject(cliProject); err != nil {
-		t.Fatalf("CLI LoadProject: %v", err)
+	if loadErr := storage.LoadProject(cliProject); loadErr != nil {
+		t.Fatalf("CLI LoadProject: %v", loadErr)
 	}
 	base, err := storage.LoadProjectDocument(cliProject)
 	if err != nil {
@@ -54,8 +54,8 @@ func TestConcurrentCLICommitAbortsStartupRepair(t *testing.T) {
 	}
 	cliProject.Tasks[0].Title = "Committed by CLI"
 	svc := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir})
-	if _, err := svc.Commit(storage.ChangeSet{Project: cliProject, ExpectedRevision: base.Revision, Base: base}); err != nil {
-		t.Fatalf("CLI Commit: %v", err)
+	if _, commitErr := svc.Commit(storage.ChangeSet{Project: cliProject, ExpectedRevision: base.Revision, Base: base}); commitErr != nil {
+		t.Fatalf("CLI Commit: %v", commitErr)
 	}
 	cliBytes, err := os.ReadFile(storage.GetTasksFilePath(project))
 	if err != nil {

@@ -343,7 +343,11 @@ func (s *DomainFileStore) migrateLegacyMachineState() error {
 			if readErr != nil {
 				return fmt.Errorf("failed to read legacy machine state %s: %w", legacyPath, readErr)
 			}
-			migrated, migrateErr := migratedMachineEnvelope(legacyPath, legacyData, workspaceID)
+			candidatePath, candidateData, candidateErr := legacyMachineEnvelopeCandidate(legacyPath, legacyData)
+			if candidateErr != nil {
+				return candidateErr
+			}
+			migrated, migrateErr := migratedMachineEnvelope(candidatePath, candidateData, workspaceID)
 			if migrateErr != nil {
 				return migrateErr
 			}
@@ -354,6 +358,26 @@ func (s *DomainFileStore) migrateLegacyMachineState() error {
 		}
 		return nil
 	})
+}
+
+// legacyMachineEnvelopeCandidate selects the primary legacy bytes unless they
+// cannot decode as an envelope. Only that syntactic failure permits consulting
+// the .bak sidecar; semantic validation remains in migratedMachineEnvelope.
+// Neither rollback source is rewritten during migration.
+func legacyMachineEnvelopeCandidate(path string, data []byte) (string, []byte, error) {
+	_, primaryErr := decodeEnvelope(data)
+	if primaryErr == nil {
+		return path, data, nil
+	}
+	backupPath := path + ".bak"
+	backupData, readErr := os.ReadFile(backupPath)
+	if readErr != nil {
+		return "", nil, fmt.Errorf("failed to parse legacy machine state %s (%w); backup %s is unavailable: %w", path, primaryErr, backupPath, readErr)
+	}
+	if _, backupErr := decodeEnvelope(backupData); backupErr != nil {
+		return "", nil, fmt.Errorf("failed to parse legacy machine state %s (%w); backup %s is also corrupted: %w", path, primaryErr, backupPath, backupErr)
+	}
+	return backupPath, backupData, nil
 }
 
 // migratedMachineEnvelope validates a legacy candidate before it can select

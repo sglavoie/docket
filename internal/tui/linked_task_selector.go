@@ -61,6 +61,33 @@ func (m *LinkedTaskSelectorModel) GetSingleLinkedTask() *models.Task {
 	return nil
 }
 
+// refreshAfterReload rebinds the selector to the task pointer produced by a
+// project reload and rebuilds its relation cache. Keep the previous source
+// pointer when the task is temporarily absent (for example after undoing a
+// cross-project move) so a later redo can resolve the same stable task ID.
+func (m *LinkedTaskSelectorModel) refreshAfterReload(project *models.Project) {
+	if project != nil {
+		m.project = project
+	}
+	if m.project == nil || m.sourceTask == nil {
+		m.relations = nil
+		m.filtered = nil
+		m.cursor = 0
+		return
+	}
+	fresh := m.project.GetTaskByID(m.sourceTask.ID)
+	if fresh == nil {
+		m.relations = nil
+		m.filtered = nil
+		m.cursor = 0
+		return
+	}
+	m.sourceTask = fresh
+	m.loadRelations()
+	m.filterRelations()
+	m.cursor = ClampCursor(m.cursor, len(m.filtered))
+}
+
 // SetSize sets the view dimensions.
 func (m *LinkedTaskSelectorModel) SetSize(width, height int) {
 	m.width = width

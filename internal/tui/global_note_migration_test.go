@@ -36,6 +36,7 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	project.Path = filepath.Join(dataDir, "projects", "destination")
 	repo := newScenarioRepo(commitSvc, project)
 	repo.seed(t)
+	seedNoteMigrationCatalog(t, dataDir, project)
 	dir := storage.GlobalNotesDir(dataDir)
 	for _, title := range titles {
 		note := models.NewNote(title)

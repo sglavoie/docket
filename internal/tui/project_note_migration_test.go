@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -42,6 +43,7 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	project.Path = filepath.Join(dataDir, "projects", "notes")
 	repo := newScenarioRepo(commitSvc, project)
 	repo.seed(t)
+	seedNoteMigrationCatalog(t, dataDir, project)
 	for _, title := range titles {
 		note := models.NewNote(title)
 		note.Body = title + " body"
@@ -64,6 +66,18 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	return &projectNoteTUIEnv{dataDir: dataDir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}
 }
 
+func seedNoteMigrationCatalog(t *testing.T, dataDir string, projects ...*models.Project) {
+	t.Helper()
+	store := config.NewDomainFileStore(dataDir)
+	catalog := config.NewWorkspaceCatalog()
+	for _, project := range projects {
+		catalog.UpsertProject(project)
+	}
+	if err := store.SaveCatalog(catalog); err != nil {
+		t.Fatalf("seed workspace catalog: %v", err)
+	}
+}
+
 func (e *projectNoteTUIEnv) note(t *testing.T, filename string) *models.Note {
 	t.Helper()
 	note, err := storage.LoadNote(e.project, filename)
@@ -84,6 +98,31 @@ func runProjectNoteMutation(t *testing.T, cmd func() any) ProjectNoteMutationRes
 		t.Fatalf("project note mutation message = %T", msg)
 	}
 	return result
+}
+
+func writeMalformedProjectNote(t *testing.T, env *projectNoteTUIEnv, filename string, raw []byte) string {
+	t.Helper()
+	dir := storage.NotesDir(env.project)
+	if err := os.MkdirAll(dir, storage.DirPermissions); err != nil {
+		t.Fatalf("create notes directory: %v", err)
+	}
+	path := filepath.Join(dir, filename)
+	if err := os.WriteFile(path, raw, storage.FilePermissions); err != nil {
+		t.Fatalf("write malformed note: %v", err)
+	}
+	env.view.loadNotes()
+	return path
+}
+
+func projectNoteIndex(t *testing.T, notes []*models.Note, filename string) int {
+	t.Helper()
+	for i, note := range notes {
+		if note.Filename == filename {
+			return i
+		}
+	}
+	t.Fatalf("note %q not found", filename)
+	return -1
 }
 
 func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
@@ -135,17 +174,64 @@ func TestProjectNoteStaleCommitPreservesDiskAndViewCache(t *testing.T) {
 	}
 }
 
-func TestProjectNoteBulkDeleteIsAtomicAndKeepsSelectionOnFailure(t *testing.T) {
-	env := newProjectNoteTUIEnv(t, "Alpha", "Beta")
+func TestProjectMalformedNoteDeleteSingleAndMixedBulk(t *testing.T) {
+	t.Run("single", func(t *testing.T) {
+		env := newProjectNoteTUIEnv(t)
+		path := writeMalformedProjectNote(t, env, "malformed-single.md", []byte("missing frontmatter\n"))
+		index := projectNoteIndex(t, env.view.notes, "malformed-single.md")
+		if env.view.notes[index].ParseError == "" || env.view.notes[index].RawRevision == "" {
+			t.Fatalf("view did not retain malformed note evidence: %+v", env.view.notes[index])
+		}
+		env.view.pendingDeleteIdx = index
+
+		result := runProjectNoteMutation(t, func() any { return env.view.performDelete()() })
+		if len(result.Result.Results) != 1 || result.Result.Results[0].Note.ParseError == "" {
+			t.Fatalf("single malformed delete result = %+v", result.Result)
+		}
+		env.shell.handleNotesMessages(result)
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("single malformed note still exists: %v", err)
+		}
+		if len(env.view.notes) != 0 {
+			t.Fatalf("view retained deleted malformed note: %+v", env.view.notes)
+		}
+	})
+
+	t.Run("mixed bulk", func(t *testing.T) {
+		env := newProjectNoteTUIEnv(t, "Valid")
+		malformedPath := writeMalformedProjectNote(t, env, "malformed-bulk.md", []byte("missing frontmatter\n"))
+		for _, note := range env.view.notes {
+			env.view.selectedNotes[note.Filename] = true
+		}
+		env.view.multiSelectMode = true
+
+		result := runProjectNoteMutation(t, func() any { return env.view.performBulkDelete()() })
+		if len(result.Result.Results) != 2 || result.Result.Results[0].TransactionID != result.Result.Results[1].TransactionID {
+			t.Fatalf("mixed bulk delete did not commit as one batch: %+v", result.Result)
+		}
+		env.shell.handleNotesMessages(result)
+		if _, err := os.Stat(malformedPath); !os.IsNotExist(err) {
+			t.Fatalf("bulk delete retained malformed note: %v", err)
+		}
+		if len(env.view.notes) != 0 || env.view.multiSelectMode || len(env.view.selectedNotes) != 0 {
+			t.Fatalf("bulk delete reconciliation left stale view state: notes=%d multi=%v selected=%d", len(env.view.notes), env.view.multiSelectMode, len(env.view.selectedNotes))
+		}
+	})
+}
+
+func TestProjectMalformedNoteBulkDeleteIsAtomicAndKeepsSelectionOnFailure(t *testing.T) {
+	env := newProjectNoteTUIEnv(t, "Valid")
+	malformedPath := writeMalformedProjectNote(t, env, "malformed-stale.md", []byte("original malformed bytes\n"))
 	for _, note := range env.view.notes {
 		env.view.selectedNotes[note.Filename] = true
 	}
 	env.view.multiSelectMode = true
-	stale := env.view.notes[1]
-	concurrent := env.note(t, stale.Filename)
-	concurrent.Body = "newer beta"
-	if err := storage.SaveNote(env.project, concurrent); err != nil {
-		t.Fatalf("concurrent save: %v", err)
+	staleIndex := projectNoteIndex(t, env.view.notes, "malformed-stale.md")
+	if env.view.notes[staleIndex].ParseError == "" {
+		t.Fatal("stale source is not malformed")
+	}
+	if err := os.WriteFile(malformedPath, []byte("newer malformed bytes\n"), storage.FilePermissions); err != nil {
+		t.Fatalf("concurrent malformed write: %v", err)
 	}
 
 	cmd := env.view.performBulkDelete()

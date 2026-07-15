@@ -42,10 +42,12 @@ func (m *AppModel) handleUndoRedoPerformed(statusMsg string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project) error {
-	if err := repairRuntimeTaskRefsAfterRestore(m.runtime)(projects); err != nil {
-		return err
-	}
+	runtimeErr := repairRuntimeTaskRefsAfterRestore(m.runtime)(projects)
+	m.rewireTaskProjectRefsAfterRestore(projects)
+	return runtimeErr
+}
 
+func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project) {
 	refs := make(map[string]TaskProjectRef)
 	for _, project := range projects {
 		if project == nil {
@@ -85,5 +87,4 @@ func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project)
 			m.recentTaskVisits[i].Project = ref.Project
 		}
 	}
-	return nil
 }

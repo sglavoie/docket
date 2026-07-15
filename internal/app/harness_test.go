@@ -243,6 +243,10 @@ func (m *memArtifactPort) EncodeNoteDelete(location app.NoteLocation, project *m
 	return storage.ArtifactChange{Path: path, Delete: true}, nil
 }
 
+func (m *memArtifactPort) ProjectLocationPrecondition([]*models.Project) (*storage.ArtifactPrecondition, error) {
+	return nil, nil
+}
+
 func (m *memArtifactPort) EncodeBlockers(project *models.Project, blockers []*models.Blocker) (storage.ArtifactChange, error) {
 	return storage.ArtifactChange{Path: storage.BlockersFilePath(project), Data: []byte(storage.RenderBlockersContent(blockers))}, nil
 }
