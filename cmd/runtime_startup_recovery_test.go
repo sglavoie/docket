@@ -101,6 +101,64 @@ func writeCLILegacyMachineState(t *testing.T, dataDir, workspaceID string, machi
 	return legacyPath
 }
 
+func TestLoadCLIWorkspaceRejectsLegacyBeforeStartupEffects(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		load func() (*CLIWorkspace, error)
+	}{
+		{name: "strict", load: LoadCLIWorkspaceStrict},
+		{name: "create-on-load", load: LoadCLIWorkspace},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			dataDir := filepath.Join(home, "legacy-workspace")
+			if err := os.MkdirAll(dataDir, config.DirPermissions); err != nil {
+				t.Fatalf("mkdir legacy workspace: %v", err)
+			}
+			legacyPath := config.ConfigPathForDataDir(dataDir)
+			if err := os.WriteFile(legacyPath, []byte(`{"version":1}`), config.FilePermissions); err != nil {
+				t.Fatalf("write legacy config: %v", err)
+			}
+
+			oldConfig := viper.GetString("config")
+			viper.Set("config", legacyPath)
+			t.Cleanup(func() { viper.Set("config", oldConfig) })
+
+			workspace, err := tc.load()
+			if workspace != nil {
+				t.Fatal("legacy-only CLI startup returned a workspace")
+			}
+			if !errors.Is(err, config.ErrLegacyConfigRequiresMigration) {
+				t.Fatalf("CLI startup error = %v, want ErrLegacyConfigRequiresMigration", err)
+			}
+			var migrationErr *config.LegacyConfigRequiresMigrationError
+			if !errors.As(err, &migrationErr) {
+				t.Fatalf("CLI startup error type = %T, want *LegacyConfigRequiresMigrationError", err)
+			}
+			if migrationErr.Path != legacyPath {
+				t.Fatalf("migration path = %q, want %q", migrationErr.Path, legacyPath)
+			}
+
+			entries, readErr := os.ReadDir(dataDir)
+			if readErr != nil {
+				t.Fatalf("read legacy workspace: %v", readErr)
+			}
+			if len(entries) != 1 || entries[0].Name() != filepath.Base(legacyPath) {
+				t.Fatalf("CLI startup created workspace effects: %v", entries)
+			}
+			for _, path := range []string{
+				config.InternalDir(dataDir),
+				filepath.Join(config.LocalDataRoot(), "runtime"),
+			} {
+				if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
+					t.Fatalf("CLI startup created %q, stat error = %v", path, statErr)
+				}
+			}
+		})
+	}
+}
+
 func TestLoadCLIWorkspaceMigratesMachineStateAtStartup(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dataDir := filepath.Join(t.TempDir(), "workspace")

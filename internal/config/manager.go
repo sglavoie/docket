@@ -16,6 +16,26 @@ import (
 // discard state after an interrupted write.
 var ErrPartialDomainState = errors.New("config: incomplete split-domain configuration; recover the missing domain files before continuing")
 
+// ErrLegacyConfigRequiresMigration is returned when a legacy aggregate config
+// exists without any split-domain state. Startup must stop before recovery or
+// bootstrap creates files so an explicit migration can choose the source of
+// truth safely.
+var ErrLegacyConfigRequiresMigration = errors.New("config: legacy configuration requires migration")
+
+// LegacyConfigRequiresMigrationError identifies the aggregate config that must
+// be migrated before this workspace can use split-domain persistence.
+type LegacyConfigRequiresMigrationError struct {
+	Path string
+}
+
+func (e *LegacyConfigRequiresMigrationError) Error() string {
+	return fmt.Sprintf("config: legacy configuration at %q requires migration before continuing", e.Path)
+}
+
+func (e *LegacyConfigRequiresMigrationError) Unwrap() error {
+	return ErrLegacyConfigRequiresMigration
+}
+
 // PartialDomainStateError names the present and missing synced domains.
 type PartialDomainStateError struct {
 	Present []string
@@ -105,6 +125,39 @@ func (m *Manager) classifyDomainState(store *DomainFileStore) (domainStateKind, 
 	}
 }
 
+// rejectLegacyOnlyState refuses an aggregate config only when no synced domain
+// marker exists. Complete and partial split workspaces take precedence over a
+// stale aggregate file left beside them.
+func (m *Manager) rejectLegacyOnlyState(store *DomainFileStore) error {
+	state, _ := m.classifyDomainState(store)
+	if state != domainStateAbsent {
+		return nil
+	}
+	if _, err := os.Stat(m.configPath); err == nil {
+		return &LegacyConfigRequiresMigrationError{Path: m.configPath}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to inspect legacy configuration at %q: %w", m.configPath, err)
+	}
+	return nil
+}
+
+// RecoverWorkspace completes interrupted split-domain transactions after first
+// rejecting legacy-only state. Frontends use this guarded entry point so crash
+// recovery cannot create transaction directories or locks beside an aggregate
+// config that still requires migration.
+func (m *Manager) RecoverWorkspace() error {
+	store := m.domainStore()
+	if err := m.rejectLegacyOnlyState(store); err != nil {
+		return err
+	}
+	dataDir := m.workspaceDataDir()
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir})
+	if _, err := commit.RecoverWorkspace(); err != nil {
+		return fmt.Errorf("failed to recover workspace before loading split configuration domains: %w", err)
+	}
+	return nil
+}
+
 // LoadDomains loads the five explicit domains. An uninitialized workspace
 // yields defaults; a partial synced set is rejected.
 func (m *Manager) LoadDomains() (*Domains, error) {
@@ -113,6 +166,9 @@ func (m *Manager) LoadDomains() (*Domains, error) {
 	case domainStatePartial:
 		return nil, partialErr
 	case domainStateAbsent:
+		if err := m.rejectLegacyOnlyState(store); err != nil {
+			return nil, err
+		}
 		return NewDomains(), nil
 	case domainStateComplete:
 		// Load the complete split-domain set below.
@@ -148,10 +204,10 @@ func loadDomainBundle(store *DomainFileStore) (*Domains, error) {
 // the workspace has not yet been initialized.
 func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 	dataDir := m.workspaceDataDir()
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir})
-	if _, err := commit.RecoverWorkspace(); err != nil {
-		return nil, fmt.Errorf("failed to recover workspace before loading split configuration domains: %w", err)
+	if err := m.RecoverWorkspace(); err != nil {
+		return nil, err
 	}
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir})
 
 	store := m.domainStore()
 	state, partialErr := m.classifyDomainState(store)

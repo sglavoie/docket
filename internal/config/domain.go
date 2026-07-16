@@ -140,8 +140,8 @@ func NewWorkspaceCatalog() *WorkspaceCatalog {
 }
 
 // Validate reports structural problems with the catalog: a project must have a
-// non-empty ID and slug, IDs and slugs must be unique, and the system inbox
-// reference must point at a cataloged project when set.
+// non-empty ID and canonical safe slug, IDs and slugs must be unique, and the
+// system inbox reference must point at a cataloged project when set.
 func (w *WorkspaceCatalog) Validate() error {
 	if w.SchemaVersion <= 0 {
 		return fmt.Errorf("workspace catalog: schema version must be positive, got %d", w.SchemaVersion)
@@ -152,8 +152,8 @@ func (w *WorkspaceCatalog) Validate() error {
 		if p.ID == "" {
 			return fmt.Errorf("workspace catalog: project %d has empty id", i)
 		}
-		if p.Slug == "" {
-			return fmt.Errorf("workspace catalog: project %q has empty slug", p.ID)
+		if err := models.ValidateProjectSlug(p.Slug, p.Sandbox); err != nil {
+			return fmt.Errorf("workspace catalog: project %q has invalid slug: %w", p.ID, err)
 		}
 		if seenID[p.ID] {
 			return fmt.Errorf("workspace catalog: duplicate project id %q", p.ID)

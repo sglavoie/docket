@@ -42,11 +42,10 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 	dataDir := runtime.DataDir()
 	// Keep the TUI PID lock machine-local: when the durable data dir lives on
 	// iCloud Drive it must never sync, so route it through the local runtime dir.
-	runtimeDir := config.LocalRuntimeDirForDataDir(dataDir)
-	if mkdirErr := os.MkdirAll(runtimeDir, 0700); mkdirErr != nil {
+	lockPath := config.TUIProcessLockPath(dataDir)
+	if mkdirErr := os.MkdirAll(filepath.Dir(lockPath), 0700); mkdirErr != nil {
 		return fmt.Errorf("create runtime dir: %w", mkdirErr)
 	}
-	lockPath := pidLockPath(dataDir)
 	lock, err := util.AcquirePIDLock(lockPath)
 	if err != nil {
 		return err
@@ -153,13 +152,6 @@ func persistStartupProjectRepair(model *AppModel, project *models.Project) error
 	_, err := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir}).
 		CommitProjectRepair(project, expectedRawRevision)
 	return err
-}
-
-// pidLockPath returns the machine-local PID lock path for a given durable data
-// dir. The lock lives under the local runtime dir (never synced) and is keyed by
-// data dir so distinct data directories get isolated locks.
-func pidLockPath(dataDir string) string {
-	return filepath.Join(config.LocalRuntimeDirForDataDir(dataDir), "pid.lock")
 }
 
 // printSessionSummary writes a brief session summary to stderr after the TUI exits.

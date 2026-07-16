@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Pre-compiled regexps for Slugify to avoid recompilation on each call.
@@ -48,7 +50,48 @@ const (
 	SectionNext = "Next"
 	// SectionInbox is the default section for newly created recurring instances.
 	SectionInbox = "Inbox"
+	// MaxProjectSlugLength bounds the portable directory component persisted in
+	// the workspace catalog. Slugify can emit at most one ASCII byte per rune in
+	// a valid project name, so this matches MaxProjectNameLength.
+	MaxProjectSlugLength = MaxProjectNameLength
 )
+
+var reservedProjectSlugs = map[string]bool{
+	".tt":      true,
+	"projects": true,
+	"new":      true,
+	"list":     true,
+	"delete":   true,
+	"switch":   true,
+	"archive":  true,
+}
+
+// ValidateProjectSlug reports whether slug is the exact portable directory
+// component accepted in a workspace catalog. Ordinary slugs must already be in
+// Slugify's canonical lowercase ASCII form; validation never normalizes persisted
+// input. The hidden _sandbox component is the sole exception and is accepted only
+// for a project explicitly marked as the workspace sandbox.
+func ValidateProjectSlug(slug string, sandbox bool) error {
+	if err := util.ValidateChildName(slug); err != nil {
+		return fmt.Errorf("project slug %q is not a safe path component: %w", slug, err)
+	}
+	if len(slug) > MaxProjectSlugLength {
+		return fmt.Errorf("project slug too long (%d chars, max %d)", len(slug), MaxProjectSlugLength)
+	}
+	if slug == "_sandbox" {
+		if sandbox {
+			return nil
+		}
+		return fmt.Errorf("project slug %q is reserved for the sandbox project", slug)
+	}
+	if reservedProjectSlugs[slug] {
+		return fmt.Errorf("project slug %q is reserved", slug)
+	}
+	if canonical := Slugify(slug); canonical != slug {
+		return fmt.Errorf("project slug %q is not canonical (canonical form %q)", slug, canonical)
+	}
+	return nil
+}
 
 // NewProject creates a new project with default values.
 // Returns an error if id or name is empty.
@@ -65,6 +108,9 @@ func NewProject(id, name, path string) (*Project, error) {
 	slug := Slugify(name)
 	if slug == "" {
 		return nil, fmt.Errorf("project name %q produces empty slug after sanitization", name)
+	}
+	if err := ValidateProjectSlug(slug, false); err != nil {
+		return nil, err
 	}
 	now := time.Now()
 	return &Project{

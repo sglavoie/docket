@@ -20,13 +20,17 @@ an atomic switch of the machine-local active-workspace pointer.
 
 The source directory is retained as a backup by default; it is never deleted, so
 an interrupted move can simply be re-run (already-copied files are skipped).
-Machine-local runtime state (logs, locks) is not moved.`,
+Machine-local runtime state (logs, locks) is not moved.
+
+Close any tt TUI using either the source or destination before relocating. An
+active TUI blocks the move. --force skips only the confirmation prompt; it does
+not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runWorkspaceMove,
 }
 
 func init() {
-	workspaceMoveCmd.Flags().BoolVarP(&workspaceMoveForce, "force", "f", false, "skip the confirmation prompt")
+	workspaceMoveCmd.Flags().BoolVarP(&workspaceMoveForce, "force", "f", false, "skip confirmation only; never bypass TUI or workspace safety locks")
 }
 
 func runWorkspaceMove(_ *cobra.Command, args []string) error {

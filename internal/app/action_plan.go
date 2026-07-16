@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sglavoie/tt/internal/actionplan"
@@ -78,9 +80,9 @@ type ApplyActionPlanOptions struct {
 	Artifacts          []storage.ArtifactChange
 	// DeletedTaskArtifacts is called with the complete, sorted set of task IDs
 	// removed by accepted delete actions, including every subtree descendant. The
-	// callback runs after the plan has been resolved against the same fresh
-	// snapshot the commit uses and before any mutation is persisted, allowing an
-	// adapter to fold durable planning-reference cleanup into the transaction.
+	// callback uses the exact deletion set resolved into the retained prepared
+	// snapshot and runs before any mutation is persisted, allowing an adapter to
+	// fold durable planning-reference cleanup into the transaction.
 	DeletedTaskArtifacts func([]string) ([]storage.ArtifactChange, error)
 }
 
@@ -95,6 +97,43 @@ type ActionPlanResult struct {
 	Actions         []ActionPreview `json:"actions"`
 }
 
+// PreparedActionPlan is an opaque, snapshot-bound interpretation of provider
+// output. Its fields are deliberately private: callers may inspect defensive
+// previews and select locally classified risk tiers, but cannot replace the
+// retained actions, snapshot, resolved deletion subtrees, or revision guards.
+// A prepared value and every risk-selected view derived from it share one
+// single-use state.
+type PreparedActionPlan struct {
+	owner          *Service
+	snapshot       Snapshot
+	summary        string
+	actions        []preparedAction
+	deletionRoots  []preparedDeletionRoot
+	deletedTaskIDs []string
+	state          *preparedActionPlanState
+}
+
+type preparedAction struct {
+	action            Action
+	preview           ActionPreview
+	targetProjectID   string
+	blockerProjectID  string
+	readProjectIDs    []string
+	guardsAllProjects bool
+}
+
+type preparedDeletionRoot struct {
+	projectID string
+	taskID    string
+	taskIDs   []string
+}
+
+type preparedActionPlanState struct {
+	mu       sync.Mutex
+	applying bool
+	consumed bool
+}
+
 var (
 	// ErrActionPlanConfirmationRequired is returned before any snapshot mutation
 	// when the caller did not record the safe batch confirmation.
@@ -102,6 +141,15 @@ var (
 	// ErrActionPlanDestructiveConfirmationRequired is the separate escalation
 	// gate for locally classified destructive actions.
 	ErrActionPlanDestructiveConfirmationRequired = errors.New("app: AI action plan contains destructive actions requiring separate confirmation")
+	// ErrPreparedActionPlanConsumed prevents a reviewed snapshot from being
+	// committed more than once, including through a risk-selected view.
+	ErrPreparedActionPlanConsumed = errors.New("app: prepared AI action plan has already been applied")
+	// ErrPreparedActionPlanInUse prevents concurrent application of one retained
+	// snapshot. Failed non-concurrent attempts remain retryable.
+	ErrPreparedActionPlanInUse = errors.New("app: prepared AI action plan is already being applied")
+	// ErrPreparedActionPlanServiceMismatch prevents a plan prepared by one
+	// application service/repository from being applied through another.
+	ErrPreparedActionPlanServiceMismatch = errors.New("app: prepared AI action plan belongs to a different service")
 )
 
 // ValidateActionPlan validates the version, tagged union, required properties,
@@ -125,46 +173,219 @@ func RiskForAction(action Action) ActionRisk {
 	return ActionRiskSafe
 }
 
-// FilterActionPlan returns a plan containing only actions of the requested risk
-// tier. It is used when a user accepts the safe batch but declines the separate
-// destructive escalation.
-func FilterActionPlan(plan ActionPlan, risk ActionRisk) ActionPlan {
-	filtered := ActionPlan{Version: plan.Version, Summary: plan.Summary}
-	for _, action := range plan.Actions {
-		if RiskForAction(action) == risk {
-			filtered.Actions = append(filtered.Actions, action)
-		}
-	}
-	return filtered
-}
-
-// PreviewActionPlan resolves every target against one fresh workspace snapshot
-// and returns the exact operations and locally computed risk shown to the user.
-// It performs no mutation.
-func (s *Service) PreviewActionPlan(plan ActionPlan) (PlanPreview, error) {
+// PrepareActionPlan validates and defensively copies provider output, takes one
+// workspace snapshot, and resolves every executable detail that must remain
+// bound from preview through commit. ApplyPreparedActionPlan never snapshots or
+// re-resolves deletion subtrees against live workspace state.
+func (s *Service) PrepareActionPlan(plan ActionPlan) (*PreparedActionPlan, error) {
 	if err := ValidateActionPlan(plan); err != nil {
-		return PlanPreview{}, err
+		return nil, err
 	}
-	snap, err := s.repo.Snapshot()
+	retainedPlan := cloneActionPlan(plan)
+	live, err := s.repo.Snapshot()
 	if err != nil {
-		return PlanPreview{}, err
+		return nil, err
 	}
-	preview := PlanPreview{Summary: strings.TrimSpace(plan.Summary), Risk: ActionRiskSafe}
-	for i, action := range plan.Actions {
-		description, err := describeAction(snap, action)
+	retained, err := cloneActionSnapshot(live)
+	if err != nil {
+		return nil, fmt.Errorf("retain action-plan snapshot: %w", err)
+	}
+
+	deleted, roots, err := plannedDeletions(retained, retainedPlan.Actions)
+	if err != nil {
+		return nil, err
+	}
+	prepared := &PreparedActionPlan{
+		owner:          s,
+		snapshot:       retained,
+		summary:        strings.TrimSpace(retainedPlan.Summary),
+		deletedTaskIDs: sortedActionTaskIDs(deleted),
+		state:          &preparedActionPlanState{},
+	}
+	for _, root := range roots {
+		ids := sortedActionTaskIDs(collectSubtreeIDs(root.Task))
+		prepared.deletionRoots = append(prepared.deletionRoots, preparedDeletionRoot{
+			projectID: root.Project.ID,
+			taskID:    root.Task.ID,
+			taskIDs:   ids,
+		})
+	}
+
+	for i, action := range retainedPlan.Actions {
+		description, err := describeAction(retained, action)
 		if err != nil {
-			return PlanPreview{}, fmt.Errorf("action %d: %w", i+1, err)
+			return nil, fmt.Errorf("action %d: %w", i+1, err)
 		}
 		risk := RiskForAction(action)
-		if risk == ActionRiskDestructive {
+		if action.Type == ActionDeleteTask {
+			ref, ok := retained.Lookup(action.TaskID)
+			if !ok {
+				return nil, fmt.Errorf("action %d: %w: %s", i+1, ErrTaskNotFound, action.TaskID)
+			}
+			descendants := len(collectSubtreeIDs(ref.Task)) - 1
+			noun := "descendants"
+			if descendants == 1 {
+				noun = "descendant"
+			}
+			description = fmt.Sprintf("%s (%d %s)", description, descendants, noun)
+		}
+		targetProjectID, blockerProjectID, readProjectIDs, resolveErr := resolvedActionProjects(retained, action)
+		if resolveErr != nil {
+			return nil, fmt.Errorf("action %d: %w", i+1, resolveErr)
+		}
+		prepared.actions = append(prepared.actions, preparedAction{
+			action:            action,
+			preview:           ActionPreview{Index: i + 1, Type: action.Type, Risk: risk, Description: description},
+			targetProjectID:   targetProjectID,
+			blockerProjectID:  blockerProjectID,
+			readProjectIDs:    readProjectIDs,
+			guardsAllProjects: action.Type == ActionDeleteTask,
+		})
+	}
+	return prepared, nil
+}
+
+// Preview returns a defensive confirmation view. Original provider indexes are
+// retained even after SelectRisks filters the executable set.
+func (p *PreparedActionPlan) Preview() PlanPreview {
+	if p == nil {
+		return PlanPreview{}
+	}
+	preview := PlanPreview{Summary: p.summary, Risk: ActionRiskSafe}
+	preview.Actions = make([]ActionPreview, len(p.actions))
+	for i := range p.actions {
+		action := p.actions[i].preview
+		preview.Actions[i] = action
+		if action.Risk == ActionRiskDestructive {
 			preview.Risk = ActionRiskDestructive
 			preview.DestructiveCount++
 		} else {
 			preview.SafeCount++
 		}
-		preview.Actions = append(preview.Actions, ActionPreview{Index: i + 1, Type: action.Type, Risk: risk, Description: description})
 	}
-	return preview, nil
+	return preview
+}
+
+// SelectRisks derives an executable view containing every action in the
+// requested locally classified tiers. It neither re-snapshots nor re-resolves
+// actions, and it shares the source plan's single-use state.
+func (p *PreparedActionPlan) SelectRisks(risks ...ActionRisk) *PreparedActionPlan {
+	if p == nil {
+		return nil
+	}
+	selected := make(map[ActionRisk]bool, len(risks))
+	for _, risk := range risks {
+		selected[risk] = true
+	}
+	result := &PreparedActionPlan{
+		owner:    p.owner,
+		snapshot: p.snapshot,
+		summary:  p.summary,
+		state:    p.state,
+	}
+	includeDeletions := false
+	for i := range p.actions {
+		if !selected[p.actions[i].preview.Risk] {
+			continue
+		}
+		result.actions = append(result.actions, p.actions[i])
+		if p.actions[i].guardsAllProjects {
+			includeDeletions = true
+		}
+	}
+	if includeDeletions {
+		result.deletedTaskIDs = append([]string(nil), p.deletedTaskIDs...)
+		result.deletionRoots = clonePreparedDeletionRoots(p.deletionRoots)
+	}
+	return result
+}
+
+func resolvedActionProjects(snap Snapshot, action Action) (string, string, []string, error) {
+	if action.Type == ActionCreateTask {
+		project := snap.ProjectByID(action.ProjectID)
+		if project == nil {
+			return "", "", nil, fmt.Errorf("%w: %s", ErrProjectNotFound, action.ProjectID)
+		}
+		return project.ID, "", []string{project.ID}, nil
+	}
+	ref, ok := snap.Lookup(action.TaskID)
+	if !ok {
+		return "", "", nil, fmt.Errorf("%w: %s", ErrTaskNotFound, action.TaskID)
+	}
+	read := map[string]bool{ref.Project.ID: true}
+	if action.Type != ActionAddDependency && action.Type != ActionRemoveDependency {
+		if action.Type == ActionSetState && action.State != nil && *action.State == models.StateDone {
+			addReferencedProjectReads(snap, read, ref.Project, ref.Task.DependsOn)
+		}
+		return ref.Project.ID, "", orderedProjectIDs(snap, read), nil
+	}
+	blocker, ok := snap.Lookup(action.BlockerTaskID)
+	if !ok {
+		return "", "", nil, fmt.Errorf("%w: blocker %s", ErrTaskNotFound, action.BlockerTaskID)
+	}
+	read[blocker.Project.ID] = true
+	addReferencedProjectReads(snap, read, ref.Project, ref.Task.DependsOn)
+	if action.Type == ActionAddDependency {
+		addDependencyTraversalReads(snap, read, blocker.Task, blocker.Project, make(map[string]bool))
+	}
+	return ref.Project.ID, blocker.Project.ID, orderedProjectIDs(snap, read), nil
+}
+
+func addReferencedProjectReads(snap Snapshot, read map[string]bool, owner *models.Project, refs []string) {
+	for _, stored := range refs {
+		if project := projectForStoredTaskRef(snap, owner, stored); project != nil {
+			read[project.ID] = true
+		}
+	}
+}
+
+func addDependencyTraversalReads(snap Snapshot, read map[string]bool, task *models.Task, owner *models.Project, visited map[string]bool) {
+	if task == nil || owner == nil {
+		return
+	}
+	key := owner.ID + "\x00" + task.ID
+	if visited[key] {
+		return
+	}
+	visited[key] = true
+	read[owner.ID] = true
+	for _, stored := range task.DependsOn {
+		project := projectForStoredTaskRef(snap, owner, stored)
+		if project == nil {
+			continue
+		}
+		read[project.ID] = true
+		parsed := models.ParseTaskRef(stored)
+		if next := project.GetTaskByID(parsed.TaskID); next != nil {
+			addDependencyTraversalReads(snap, read, next, project, visited)
+		}
+	}
+}
+
+func projectForStoredTaskRef(snap Snapshot, owner *models.Project, stored string) *models.Project {
+	parsed := models.ParseTaskRef(stored)
+	if !parsed.IsCrossProject() {
+		return owner
+	}
+	if project := snap.ProjectByID(parsed.ProjectID); project != nil {
+		return project
+	}
+	for _, project := range snap.Projects() {
+		if project != nil && project.Slug == parsed.ProjectID {
+			return project
+		}
+	}
+	return nil
+}
+
+func orderedProjectIDs(snap Snapshot, selected map[string]bool) []string {
+	ids := make([]string, 0, len(selected))
+	for _, project := range snap.Projects() {
+		if project != nil && selected[project.ID] {
+			ids = append(ids, project.ID)
+		}
+	}
+	return ids
 }
 
 func describeAction(snap Snapshot, action Action) (string, error) {
@@ -252,23 +473,45 @@ func describeAction(snap Snapshot, action Action) (string, error) {
 	}
 }
 
-// ApplyActionPlan validates, locally risk-gates, and executes all accepted
-// actions as one application-layer transaction. A canceled context, invalid
-// action, or revision conflict commits nothing.
+// ApplyPreparedActionPlan locally risk-gates and executes the already-resolved
+// actions against a clone of the exact snapshot retained at preparation. It
+// never asks the repository for a second snapshot. Every project the accepted
+// actions read is attached to the storage transaction as a read-only canonical
+// revision guard, so relevant drift expires the plan instead of entering the
+// ordinary three-way merge path.
 //
 //nolint:gocyclo // The explicit phases preserve the all-or-nothing transaction boundary.
-func (s *Service) ApplyActionPlan(ctx context.Context, plan ActionPlan, opts ApplyActionPlanOptions) (ActionPlanResult, error) {
-	if err := ValidateActionPlan(plan); err != nil {
-		return ActionPlanResult{}, err
+func (s *Service) ApplyPreparedActionPlan(ctx context.Context, prepared *PreparedActionPlan, opts ApplyActionPlanOptions) (result ActionPlanResult, err error) {
+	if prepared == nil {
+		return ActionPlanResult{}, invalidInput("prepared action plan", "is required")
 	}
-	if len(plan.Actions) == 0 {
-		return ActionPlanResult{}, nil
+	if prepared.owner != s {
+		return ActionPlanResult{}, ErrPreparedActionPlanServiceMismatch
+	}
+	if beginErr := prepared.beginApply(); beginErr != nil {
+		return ActionPlanResult{}, beginErr
+	}
+	succeeded := false
+	defer func() { prepared.finishApply(succeeded) }()
+
+	result, err = s.applyPreparedActionPlan(ctx, prepared, opts)
+	if err == nil {
+		succeeded = true
+	}
+	return result, err
+}
+
+//nolint:gocyclo // The explicit phases preserve the all-or-nothing transaction boundary.
+func (s *Service) applyPreparedActionPlan(ctx context.Context, prepared *PreparedActionPlan, opts ApplyActionPlanOptions) (ActionPlanResult, error) {
+	preview := prepared.Preview()
+	if len(prepared.actions) == 0 {
+		return ActionPlanResult{Actions: preview.Actions}, nil
 	}
 	if !opts.ConfirmSafe {
 		return ActionPlanResult{}, ErrActionPlanConfirmationRequired
 	}
-	for _, action := range plan.Actions {
-		if RiskForAction(action) == ActionRiskDestructive && !opts.ConfirmDestructive {
+	for i := range prepared.actions {
+		if prepared.actions[i].preview.Risk == ActionRiskDestructive && !opts.ConfirmDestructive {
 			return ActionPlanResult{}, ErrActionPlanDestructiveConfirmationRequired
 		}
 	}
@@ -276,44 +519,33 @@ func (s *Service) ApplyActionPlan(ctx context.Context, plan ActionPlan, opts App
 		return ActionPlanResult{}, err
 	}
 
-	original, snapshotErr := s.repo.Snapshot()
-	if snapshotErr != nil {
-		return ActionPlanResult{}, snapshotErr
-	}
-	working, cloneErr := cloneActionSnapshot(original)
+	working, cloneErr := cloneActionSnapshot(prepared.snapshot)
 	if cloneErr != nil {
 		return ActionPlanResult{}, cloneErr
 	}
 
-	previews := make([]ActionPreview, 0, len(plan.Actions))
-	for i, action := range plan.Actions {
-		description, describeErr := describeAction(working, action)
-		if describeErr != nil {
-			return ActionPlanResult{}, fmt.Errorf("action %d: %w", i+1, describeErr)
-		}
-		previews = append(previews, ActionPreview{Index: i + 1, Type: action.Type, Risk: RiskForAction(action), Description: description})
+	deletedIDs := make(map[string]bool, len(prepared.deletedTaskIDs))
+	for _, id := range prepared.deletedTaskIDs {
+		deletedIDs[id] = true
 	}
-
-	deletedIDs, deleteRoots, deletionErr := plannedDeletions(working, plan.Actions)
-	if deletionErr != nil {
-		return ActionPlanResult{}, deletionErr
-	}
-	for i, action := range plan.Actions {
+	for i := range prepared.actions {
+		action := prepared.actions[i].action
 		if action.Type != ActionDeleteTask && deletedIDs[action.TaskID] {
-			return ActionPlanResult{}, invalidInput("action plan", fmt.Sprintf("action %d targets a task deleted by the same plan", i+1))
+			return ActionPlanResult{}, invalidInput("action plan", fmt.Sprintf("action %d targets a task deleted by the same plan", prepared.actions[i].preview.Index))
 		}
 		if deletedIDs[action.BlockerTaskID] {
-			return ActionPlanResult{}, invalidInput("action plan", fmt.Sprintf("action %d references a blocker deleted by the same plan", i+1))
+			return ActionPlanResult{}, invalidInput("action plan", fmt.Sprintf("action %d references a blocker deleted by the same plan", prepared.actions[i].preview.Index))
 		}
 	}
 
 	touched := make(map[string]bool)
-	for i, action := range plan.Actions {
+	for i := range prepared.actions {
+		action := prepared.actions[i].action
 		if action.Type == ActionDeleteTask {
 			continue
 		}
 		if applyErr := s.applyPlannedAction(working, action, touched); applyErr != nil {
-			return ActionPlanResult{}, fmt.Errorf("action %d: %w", i+1, applyErr)
+			return ActionPlanResult{}, fmt.Errorf("action %d: %w", prepared.actions[i].preview.Index, applyErr)
 		}
 		if contextErr := ctx.Err(); contextErr != nil {
 			return ActionPlanResult{}, contextErr
@@ -321,25 +553,37 @@ func (s *Service) ApplyActionPlan(ctx context.Context, plan ActionPlan, opts App
 	}
 
 	attachmentOps := make(map[string][]storage.AttachmentOp)
-	if len(deleteRoots) > 0 {
-		for _, root := range deleteRoots {
-			project := root.Project
-			for _, task := range tasksMatching(project.Tasks, collectSubtreeIDs(root.Task)) {
+	if len(prepared.deletionRoots) > 0 {
+		for _, root := range prepared.deletionRoots {
+			project := working.ProjectByID(root.projectID)
+			if project == nil {
+				return ActionPlanResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, root.projectID)
+			}
+			subtree := make(map[string]bool, len(root.taskIDs))
+			for _, id := range root.taskIDs {
+				subtree[id] = true
+			}
+			for _, task := range tasksMatching(project.Tasks, subtree) {
 				attachmentOps[project.ID] = append(attachmentOps[project.ID], storage.AttachmentOp{
 					Kind:          storage.AttachmentDelete,
 					Task:          task,
 					SourceProject: project,
 				})
 			}
-			project.Tasks = filterOutTasks(project.Tasks, collectSubtreeIDs(root.Task))
+			project.Tasks = filterOutTasks(project.Tasks, subtree)
 			touched[project.ID] = true
 		}
 		for _, project := range working.Projects() {
-			for _, root := range deleteRoots {
-				if project.ID == root.Project.ID {
+			for _, root := range prepared.deletionRoots {
+				if project.ID == root.projectID {
 					continue
 				}
-				if clearCrossProjectRefs(project, root.Project, collectSubtreeIDs(root.Task)) > 0 {
+				rootProject := working.ProjectByID(root.projectID)
+				subtree := make(map[string]bool, len(root.taskIDs))
+				for _, id := range root.taskIDs {
+					subtree[id] = true
+				}
+				if clearCrossProjectRefs(project, rootProject, subtree) > 0 {
 					touched[project.ID] = true
 				}
 			}
@@ -349,7 +593,7 @@ func (s *Service) ApplyActionPlan(ctx context.Context, plan ActionPlan, opts App
 	if contextErr := ctx.Err(); contextErr != nil {
 		return ActionPlanResult{}, contextErr
 	}
-	deletedTaskIDs := sortedActionTaskIDs(deletedIDs)
+	deletedTaskIDs := append([]string(nil), prepared.deletedTaskIDs...)
 	artifacts := append([]storage.ArtifactChange(nil), opts.Artifacts...)
 	if len(deletedTaskIDs) > 0 && opts.DeletedTaskArtifacts != nil {
 		deleteArtifacts, artifactErr := opts.DeletedTaskArtifacts(append([]string(nil), deletedTaskIDs...))
@@ -371,18 +615,19 @@ func (s *Service) ApplyActionPlan(ctx context.Context, plan ActionPlan, opts App
 		}
 		changesets = append(changesets, storage.ChangeSet{
 			Project:          project,
-			ExpectedRevision: original.Revision(project.ID),
-			Base:             original.Document(project.ID),
+			ExpectedRevision: prepared.snapshot.Revision(project.ID),
+			Base:             prepared.snapshot.Document(project.ID),
 			Artifacts:        projectArtifacts,
 			AttachmentOps:    attachmentOps[project.ID],
 			UndoAction:       "Apply AI Action Plan",
-			UndoContext:      strings.TrimSpace(plan.Summary),
+			UndoContext:      prepared.summary,
 		})
 		touchedOrder = append(touchedOrder, project.ID)
 	}
 	if len(changesets) == 0 {
-		return ActionPlanResult{DeletedTaskIDs: deletedTaskIDs, Actions: previews}, nil
+		return ActionPlanResult{DeletedTaskIDs: deletedTaskIDs, Actions: preview.Actions}, nil
 	}
+	changesets[0].ProjectPreconditions = prepared.projectPreconditions()
 	results, commitErr := s.repo.Commit(changesets...)
 	if commitErr != nil {
 		return ActionPlanResult{}, commitErr
@@ -396,8 +641,55 @@ func (s *Service) ApplyActionPlan(ctx context.Context, plan ActionPlan, opts App
 		UndoID:          txnID,
 		TouchedProjects: touchedOrder,
 		DeletedTaskIDs:  deletedTaskIDs,
-		Actions:         previews,
+		Actions:         append([]ActionPreview(nil), preview.Actions...),
 	}, nil
+}
+
+func (p *PreparedActionPlan) beginApply() error {
+	p.state.mu.Lock()
+	defer p.state.mu.Unlock()
+	if p.state.consumed {
+		return ErrPreparedActionPlanConsumed
+	}
+	if p.state.applying {
+		return ErrPreparedActionPlanInUse
+	}
+	p.state.applying = true
+	return nil
+}
+
+func (p *PreparedActionPlan) finishApply(succeeded bool) {
+	p.state.mu.Lock()
+	p.state.applying = false
+	if succeeded {
+		p.state.consumed = true
+	}
+	p.state.mu.Unlock()
+}
+
+func (p *PreparedActionPlan) projectPreconditions() []storage.ProjectRevisionPrecondition {
+	guardAll := false
+	relevant := make(map[string]bool)
+	for i := range p.actions {
+		action := p.actions[i]
+		guardAll = guardAll || action.guardsAllProjects
+		for _, projectID := range action.readProjectIDs {
+			relevant[projectID] = true
+		}
+	}
+	preconditions := make([]storage.ProjectRevisionPrecondition, 0, len(relevant))
+	for _, project := range p.snapshot.Projects() {
+		if project == nil || (!guardAll && !relevant[project.ID]) {
+			continue
+		}
+		preconditions = append(preconditions, storage.ProjectRevisionPrecondition{
+			ProjectID:        project.ID,
+			ProjectName:      project.Name,
+			Path:             project.Path,
+			ExpectedRevision: p.snapshot.Revision(project.ID),
+		})
+	}
+	return preconditions
 }
 
 func sortedActionTaskIDs(ids map[string]bool) []string {
@@ -583,6 +875,60 @@ func parseActionDue(value string) (time.Time, bool, error) {
 	return time.Time{}, false, invalidInput("due", "must be YYYY-MM-DD or RFC3339")
 }
 
+func cloneActionPlan(source ActionPlan) ActionPlan {
+	clone := ActionPlan{Version: source.Version, Summary: source.Summary}
+	clone.Actions = make([]Action, len(source.Actions))
+	for i := range source.Actions {
+		clone.Actions[i] = cloneAction(source.Actions[i])
+	}
+	return clone
+}
+
+func cloneAction(source Action) Action {
+	clone := Action{
+		Type:          source.Type,
+		ProjectID:     source.ProjectID,
+		TaskID:        source.TaskID,
+		HasTime:       source.HasTime,
+		Tags:          append([]string(nil), source.Tags...),
+		BlockerTaskID: source.BlockerTaskID,
+	}
+	if source.Title != nil {
+		value := *source.Title
+		clone.Title = &value
+	}
+	if source.Description != nil {
+		value := *source.Description
+		clone.Description = &value
+	}
+	if source.TaskType != nil {
+		value := *source.TaskType
+		clone.TaskType = &value
+	}
+	if source.State != nil {
+		value := *source.State
+		clone.State = &value
+	}
+	if source.Priority != nil {
+		value := *source.Priority
+		clone.Priority = &value
+	}
+	if source.Due != nil {
+		value := *source.Due
+		clone.Due = &value
+	}
+	return clone
+}
+
+func clonePreparedDeletionRoots(source []preparedDeletionRoot) []preparedDeletionRoot {
+	clones := make([]preparedDeletionRoot, len(source))
+	for i := range source {
+		clones[i] = source[i]
+		clones[i].taskIDs = append([]string(nil), source[i].taskIDs...)
+	}
+	return clones
+}
+
 func cloneActionSnapshot(source Snapshot) (Snapshot, error) {
 	projects := source.Projects()
 	clones := make([]*models.Project, 0, len(projects))
@@ -593,42 +939,49 @@ func cloneActionSnapshot(source Snapshot) (Snapshot, error) {
 			continue
 		}
 		clone := *project
+		if project.ArchivedAt != nil {
+			value := *project.ArchivedAt
+			clone.ArchivedAt = &value
+		}
+		if project.PinnedAt != nil {
+			value := *project.PinnedAt
+			clone.PinnedAt = &value
+		}
 		clone.Tasks = make([]*models.Task, 0, len(project.Tasks))
 		for _, task := range project.Tasks {
 			if task == nil {
 				continue
 			}
-			copyTask := *task
-			copyTask.Parent = nil
-			copyTask.Project = nil
-			copyTask.Children = nil
-			copyTask.Tags = append([]string(nil), task.Tags...)
-			copyTask.DependsOn = append([]string(nil), task.DependsOn...)
-			copyTask.RelatedTo = append([]string(nil), task.RelatedTo...)
-			copyTask.Checklist = append([]models.ChecklistItem(nil), task.Checklist...)
-			copyTask.Attachments = append([]models.Attachment(nil), task.Attachments...)
-			copyTask.Comments = append([]*models.Comment(nil), task.Comments...)
-			copyTask.Decisions = append([]*models.Decision(nil), task.Decisions...)
-			copyTask.Activity = append([]*models.ActivityEntry(nil), task.Activity...)
-			if task.ScoreDimensions != nil {
-				copyTask.ScoreDimensions = make(map[string]int, len(task.ScoreDimensions))
-				for key, value := range task.ScoreDimensions {
-					copyTask.ScoreDimensions[key] = value
-				}
+			data, err := json.Marshal(task)
+			if err != nil {
+				return nil, fmt.Errorf("clone task %s: %w", task.ID, err)
+			}
+			var copyTask models.Task
+			if err := json.Unmarshal(data, &copyTask); err != nil {
+				return nil, fmt.Errorf("clone task %s: %w", task.ID, err)
 			}
 			clone.Tasks = append(clone.Tasks, &copyTask)
 		}
 		clone.Sections = append([]string(nil), project.Sections...)
 		clone.Tags = append([]string(nil), project.Tags...)
 		clone.PinnedTags = append([]string(nil), project.PinnedTags...)
-		clone.SectionColors = make(map[string]string, len(project.SectionColors))
-		for key, value := range project.SectionColors {
-			clone.SectionColors[key] = value
+		clone.Warnings = append([]string(nil), project.Warnings...)
+		if project.SectionColors != nil {
+			clone.SectionColors = make(map[string]string, len(project.SectionColors))
+			for key, value := range project.SectionColors {
+				clone.SectionColors[key] = value
+			}
 		}
 		clone.BuildTaskTree()
 		clones = append(clones, &clone)
 		revisions[clone.ID] = source.Revision(clone.ID)
-		documents[clone.ID] = source.Document(clone.ID)
+		if document := source.Document(clone.ID); document != nil {
+			copyDocument, err := storage.ParseProjectDocument(document.WriteV2())
+			if err != nil {
+				return nil, fmt.Errorf("clone document for project %s: %w", clone.ID, err)
+			}
+			documents[clone.ID] = copyDocument
+		}
 	}
 	return NewSnapshot(clones, revisions, documents), nil
 }

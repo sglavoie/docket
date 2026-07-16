@@ -39,12 +39,11 @@ func LoadCLIWorkspaceStrict() (*CLIWorkspace, error) {
 
 func loadCLIWorkspace(strict bool) (*CLIWorkspace, error) {
 	manager := config.NewManager(resolveConfigPath())
-	dataDir := config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
-	if _, err := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir}).RecoverWorkspace(); err != nil {
-		return nil, fmt.Errorf("failed to recover workspace before startup: %w", err)
-	}
 	var err error
 	if strict {
+		if recoverErr := manager.RecoverWorkspace(); recoverErr != nil {
+			return nil, fmt.Errorf("failed to recover workspace before startup: %w", recoverErr)
+		}
 		_, err = manager.LoadDomains()
 	} else {
 		_, err = manager.LoadOrCreateDomains()

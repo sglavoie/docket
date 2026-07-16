@@ -189,6 +189,24 @@ type ArtifactPrecondition struct {
 	ExpectedRevision string
 }
 
+// ProjectRevisionPrecondition is a read-only optimistic-concurrency guard for
+// a project that an application transaction consulted but may not rewrite.
+// Path is the project directory containing tasks.md. The current canonical
+// project revision must equal ExpectedRevision while the project's advisory
+// lock is held; any divergence aborts the whole transaction with a
+// RevisionConflictError before normal stale-revision merging, activity diffs,
+// conflict recording, undo capture, or journal staging begins.
+//
+// Preconditions never become project writes, journal operations, conflict
+// bundles, or workspace-ledger images. ProjectID and ProjectName are retained
+// only to identify a failed guard precisely to callers.
+type ProjectRevisionPrecondition struct {
+	ProjectID        string
+	ProjectName      string
+	Path             string
+	ExpectedRevision string
+}
+
 // ArtifactCommitRequest describes an artifact-only user mutation. Artifacts are
 // committed through the same workspace lock, recovery, optimistic-revision, and
 // journal path as configuration-only artifact commits, while ProjectIDs and the
@@ -235,6 +253,11 @@ type ChangeSet struct {
 	// merge base when ExpectedRevision is stale. Nil is accepted only for legacy,
 	// repair, and initial-create callers that have no loaded document.
 	Base *ProjectDocument
+	// ProjectPreconditions guard every additional project state this mutation
+	// consulted without turning those projects into writes. They participate in
+	// the same early path validation and deterministic project-lock set as Project,
+	// then validate before the ordinary expected-revision merge path begins.
+	ProjectPreconditions []ProjectRevisionPrecondition
 	// Artifacts are additional files committed atomically with the project write.
 	Artifacts []ArtifactChange
 	// AttachmentOps are attachment file side effects (copy, move, delete) resolved
@@ -416,12 +439,21 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 		if err := auditProjectBeforeSave(project); err != nil {
 			return nil, err
 		}
-		cleanPath := filepath.Clean(project.Path)
-		if seenPaths[cleanPath] {
+		if err := validateProjectPaths(i, project.Path, s.roots); err != nil {
+			return nil, err
+		}
+		pathID := artifactPathIdentity(project.Path)
+		if seenPaths[pathID] {
 			return nil, fmt.Errorf("storage: changeset %d duplicates project path %q; a project may appear at most once per commit", i, project.Path)
 		}
-		seenPaths[cleanPath] = true
+		seenPaths[pathID] = true
 		artifacts = append(artifacts, changesets[i].Artifacts...)
+		for j := range changesets[i].ProjectPreconditions {
+			precondition := changesets[i].ProjectPreconditions[j]
+			if err := validateProjectPreconditionPath(i, j, precondition.Path, s.roots); err != nil {
+				return nil, err
+			}
+		}
 	}
 	artifactLocks, err := artifactLockPaths(artifacts, s.roots)
 	if err != nil {
@@ -439,7 +471,32 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 			return recoverErr
 		}
 
-		lockPaths := make([]string, 0, len(changesets))
+		// A prepared snapshot can outlive removal of a project it only read. Detect
+		// that case under the workspace lock before opening an in-project lock file;
+		// recreating the missing directory would turn a read-only failed guard into a
+		// filesystem mutation.
+		var projectPreconditionLocks []string
+		for i := range changesets {
+			for j := range changesets[i].ProjectPreconditions {
+				precondition := changesets[i].ProjectPreconditions[j]
+				if _, statErr := os.Stat(precondition.Path); os.IsNotExist(statErr) {
+					if precondition.ExpectedRevision != "" {
+						return &RevisionConflictError{
+							ProjectID:   precondition.ProjectID,
+							ProjectName: precondition.ProjectName,
+							Expected:    precondition.ExpectedRevision,
+							Actual:      "",
+						}
+					}
+					continue
+				} else if statErr != nil {
+					return fmt.Errorf("reading project %s for precondition lock: %w", precondition.ProjectName, statErr)
+				}
+				projectPreconditionLocks = append(projectPreconditionLocks, filepath.Join(precondition.Path, LockFileName))
+			}
+		}
+
+		lockPaths := make([]string, 0, len(changesets)+len(projectPreconditionLocks))
 		for i := range changesets {
 			project := changesets[i].Project
 			if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
@@ -447,6 +504,7 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 			}
 			lockPaths = append(lockPaths, filepath.Join(project.Path, LockFileName))
 		}
+		lockPaths = append(lockPaths, projectPreconditionLocks...)
 		// Artifact and adjacent lock paths were containment-checked before the
 		// workspace lock created anything. Only now may their parent directories be
 		// created so the lock files can be opened safely.
@@ -836,6 +894,48 @@ func artifactAdvisoryLockPath(path string) string {
 	return path + ".lock"
 }
 
+// validateProjectPaths checks every path CommitMulti reads, writes, or opens for
+// a project before the workspace lock can create the transactions directory.
+// PathWithinRoot resolves existing symlinks, so an escaping project directory,
+// tasks.md, backup, or advisory lock is rejected without filesystem effects.
+func validateProjectPaths(changeset int, projectPath string, roots []string) error {
+	if projectPath == "" {
+		return fmt.Errorf("storage: changeset %d project requires a path", changeset)
+	}
+	checks := []artifactPathRole{
+		{path: projectPath, role: "project directory"},
+		{path: tasksFilePath(projectPath), role: "project tasks"},
+		{path: backupFilePath(projectPath), role: "project backup"},
+		{path: filepath.Join(projectPath, LockFileName), role: "project lock"},
+	}
+	for _, check := range checks {
+		if !pathWithinApprovedRoots(check.path, roots) {
+			return fmt.Errorf("storage: changeset %d %s %q: %w", changeset, check.role, check.path, transaction.ErrTargetOutsideRoot)
+		}
+	}
+	return nil
+}
+
+// validateProjectPreconditionPath checks every path a read-only project guard
+// may inspect or open before the workspace lock can create transaction or lock
+// files. A guard has no backup target because it never writes tasks.md.
+func validateProjectPreconditionPath(changeset, precondition int, projectPath string, roots []string) error {
+	if projectPath == "" {
+		return fmt.Errorf("storage: changeset %d project precondition %d requires a path", changeset, precondition)
+	}
+	checks := []artifactPathRole{
+		{path: projectPath, role: "project directory"},
+		{path: tasksFilePath(projectPath), role: "project tasks"},
+		{path: filepath.Join(projectPath, LockFileName), role: "project lock"},
+	}
+	for _, check := range checks {
+		if !pathWithinApprovedRoots(check.path, roots) {
+			return fmt.Errorf("storage: changeset %d project precondition %d %s %q: %w", changeset, precondition, check.role, check.path, transaction.ErrTargetOutsideRoot)
+		}
+	}
+	return nil
+}
+
 // artifactLockPaths returns the deterministic lock-file path for every artifact
 // target after validating both the write target and revision source against the
 // approved roots. It is deliberately read-only: all artifact and lock paths,
@@ -1039,6 +1139,24 @@ func createArtifactLockDirectories(lockPaths []string) error {
 // the entire commit pipeline for a workspace.
 const workspaceCommitLockName = "commit.lock"
 
+type workspaceCommitLockTarget struct {
+	identity string
+	service  *CommitService
+}
+
+// WithWorkspaceCommitLocks runs fn while holding the commit locks for every
+// supplied workspace. Locks are resolved to canonical filesystem identities,
+// de-duplicated, and acquired in sorted order so callers that request the same
+// workspaces in opposite directions cannot deadlock. Once every lock is held,
+// each distinct workspace journal is recovered before fn is invoked.
+//
+// A CommitService supplies both the canonical transactions directory and the
+// approved roots needed to recover that workspace's journal. The locks remain
+// held until fn returns.
+func WithWorkspaceCommitLocks(services []*CommitService, fn func() error) error {
+	return withWorkspaceCommitLocks(services, true, fn)
+}
+
 // withWorkspaceCommitLock runs fn while holding an exclusive lock on one stable
 // per-workspace lock file. It serializes the whole commit pipeline — crash
 // recovery and the project-scoped apply together — across every committer of the
@@ -1053,10 +1171,63 @@ const workspaceCommitLockName = "commit.lock"
 // lock, at one fixed path, so it can never deadlock with the ordered per-project
 // locks.
 func (s *CommitService) withWorkspaceCommitLock(fn func() error) error {
-	if err := os.MkdirAll(s.transactionsDir, DirPermissions); err != nil {
-		return fmt.Errorf("creating transactions directory: %w", err)
+	return withWorkspaceCommitLocks([]*CommitService{s}, false, fn)
+}
+
+// withWorkspaceCommitLocks is the shared lock acquisition primitive. The
+// recover flag is false for existing CommitService entry points because those
+// paths perform recovery inside their callbacks as part of their established
+// pipeline; the exported multi-workspace boundary requests recovery here.
+func withWorkspaceCommitLocks(services []*CommitService, recover bool, fn func() error) error {
+	if len(services) == 0 {
+		return fmt.Errorf("storage: at least one workspace commit service is required")
 	}
-	return util.WithFileLock(filepath.Join(s.transactionsDir, workspaceCommitLockName), true, fn)
+	if fn == nil {
+		return fmt.Errorf("storage: workspace commit lock callback is required")
+	}
+
+	targets := make([]workspaceCommitLockTarget, 0, len(services))
+	for i, service := range services {
+		if service == nil {
+			return fmt.Errorf("storage: workspace commit service %d is nil", i)
+		}
+		if service.transactionsDir == "" || service.transactionsDir == "." {
+			return fmt.Errorf("storage: workspace commit service %d requires a transactions directory", i)
+		}
+		if err := os.MkdirAll(service.transactionsDir, DirPermissions); err != nil {
+			return fmt.Errorf("creating transactions directory %s: %w", service.transactionsDir, err)
+		}
+		targets = append(targets, workspaceCommitLockTarget{
+			identity: artifactPathIdentity(filepath.Join(service.transactionsDir, workspaceCommitLockName)),
+			service:  service,
+		})
+	}
+
+	sort.SliceStable(targets, func(i, j int) bool {
+		return targets[i].identity < targets[j].identity
+	})
+
+	orderedLocks := make([]string, 0, len(targets))
+	distinctJournals := make([]*CommitService, 0, len(targets))
+	for _, target := range targets {
+		if len(orderedLocks) > 0 && orderedLocks[len(orderedLocks)-1] == target.identity {
+			continue
+		}
+		orderedLocks = append(orderedLocks, target.identity)
+		distinctJournals = append(distinctJournals, target.service)
+	}
+
+	return acquireLocksInOrder(orderedLocks, func() error {
+		if recover {
+			for _, service := range distinctJournals {
+				journal := transaction.NewJournal(service.transactionsDir, service.roots)
+				if _, err := service.recoverLocked(journal); err != nil {
+					return err
+				}
+			}
+		}
+		return fn()
+	})
 }
 
 // recoverLocked runs one journal recovery pass while the caller holds the
@@ -1083,6 +1254,14 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 	// conflicts. A non-empty set aborts the whole commit after every conflict is
 	// durably recorded, so no project or artifact is written.
 	var recorded []RecordedConflict
+
+	// Project preconditions are deliberately a separate first phase. They guard
+	// the complete application-level read set and must expire atomically before
+	// the ordinary ExpectedRevision path can mutate activity, attempt a merge, or
+	// record a durable conflict bundle for any changeset.
+	if err := s.validateProjectRevisionPreconditions(changesets); err != nil {
+		return nil, nil, err
+	}
 
 	// Phase 1: preflight every project's expected revision under the held locks.
 	// No bytes are written yet, so a conflict here leaves every project untouched.
@@ -1163,6 +1342,32 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 		}
 	}
 	return mergedDocs, recorded, nil
+}
+
+func (s *CommitService) validateProjectRevisionPreconditions(changesets []ChangeSet) error {
+	for i := range changesets {
+		for j := range changesets[i].ProjectPreconditions {
+			precondition := changesets[i].ProjectPreconditions[j]
+			identity := &models.Project{
+				ID:   precondition.ProjectID,
+				Name: precondition.ProjectName,
+				Path: precondition.Path,
+			}
+			_, actual, err := s.currentDocAndRevision(tasksFilePath(precondition.Path), identity)
+			if err != nil {
+				return err
+			}
+			if actual != precondition.ExpectedRevision {
+				return &RevisionConflictError{
+					ProjectID:   precondition.ProjectID,
+					ProjectName: precondition.ProjectName,
+					Expected:    precondition.ExpectedRevision,
+					Actual:      actual,
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // commitMultiLocked performs the full preflight, staging, and commit for every
@@ -1316,12 +1521,12 @@ func withOrderedFileLocks(lockPaths []string, fn func() error) error {
 	seen := make(map[string]bool, len(lockPaths))
 	ordered := make([]string, 0, len(lockPaths))
 	for _, p := range lockPaths {
-		clean := filepath.Clean(p)
-		if seen[clean] {
+		identity := artifactPathIdentity(p)
+		if seen[identity] {
 			continue
 		}
-		seen[clean] = true
-		ordered = append(ordered, clean)
+		seen[identity] = true
+		ordered = append(ordered, identity)
 	}
 	sort.Strings(ordered)
 	return acquireLocksInOrder(ordered, fn)

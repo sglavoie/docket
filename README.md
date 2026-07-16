@@ -61,6 +61,10 @@ none; the TUI cycles the same modes with `Ctrl+T`.
 Claude returns a versioned structured action plan, which tt validates and previews
 locally. Safe actions receive one batch confirmation, destructive actions require
 a separate approval, and every accepted plan commits as one undoable transaction.
+The preview and accepted risk selection stay bound to the exact workspace snapshot
+that produced them. If a project consulted by the plan changes before confirmation,
+the plan expires without committing; request a fresh AI response, preview, and
+confirmation instead of applying stale advice.
 
 ## Core Concepts
 
@@ -164,6 +168,17 @@ Logs, machine settings, and process locks always stay machine-local under
 ```
 
 Projects use markdown files for tasks plus project-local notes and attachments.
+Catalog slugs must already be canonical lowercase ASCII path components, and project
+paths are always derived beneath the workspace's `projects/` directory. Creating a
+project is create-only: if an uncataloged `tasks.md` already occupies the canonical
+path, tt stops and preserves it rather than overwriting it.
+
+Startup classifies durable state before recovery or bootstrap can write anything. A
+complete split-domain bundle is authoritative even when a stale `.tt.json` remains;
+a partial bundle fails for repair. A legacy-only `.tt.json` also fails closed and is
+not converted automatically, so the operator can explicitly migrate the intended
+source of truth. Only a truly empty workspace is initialized with defaults.
+
 Machine-specific navigation, editors, history, and layout are kept separately
 and are not synced with the portable workspace domains. Every workspace uses
 `~/.tt/runtime/<workspace-id>/machine.json`, keyed by the canonical UUID in
@@ -178,6 +193,12 @@ monolithic configuration file. See
 [Architecture, data, privacy, and recovery](docs/architecture.md) for the complete
 state model, transaction and conflict semantics, cloud and AI consent, migration
 expectations, backup guidance, and platform support.
+
+Before `tt workspace move` inventories data, close every tt TUI using either the
+source or destination. Relocation holds both machine-local TUI process locks and
+both workspace commit locks until the validated copy and pointer switch finish.
+`--force` skips only the confirmation prompt; it never bypasses these locks or
+snapshot validation.
 
 ## Completed Task Archive
 

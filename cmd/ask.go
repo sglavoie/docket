@@ -105,12 +105,13 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	service := newWorkspaceAppService(workspace)
-	preview, err := service.PreviewActionPlan(plan)
+	prepared, err := service.PrepareActionPlan(plan)
 	if err != nil {
 		return translateAppError(err)
 	}
+	preview := prepared.Preview()
 	printActionPlanPreview(out, preview)
-	if !askApply || len(plan.Actions) == 0 {
+	if !askApply || len(preview.Actions) == 0 {
 		return nil
 	}
 
@@ -119,14 +120,8 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	accepted := plan
-	if !confirmSafe {
-		accepted = app.FilterActionPlan(accepted, app.ActionRiskDestructive)
-	}
-	if !confirmDestructive {
-		accepted = app.FilterActionPlan(accepted, app.ActionRiskSafe)
-	}
-	if len(accepted.Actions) == 0 {
+	accepted := selectCLIActionPlan(prepared, confirmSafe, confirmDestructive)
+	if len(accepted.Preview().Actions) == 0 {
 		if _, writeErr := fmt.Fprintln(out, "No actions applied."); writeErr != nil {
 			return fmt.Errorf("write action-plan result: %w", writeErr)
 		}
@@ -138,6 +133,9 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		ConfirmDestructive: confirmDestructive,
 	})
 	if err != nil {
+		if isStaleActionPlanError(err) {
+			return fmt.Errorf("the workspace changed while this action plan was awaiting confirmation; request a fresh AI response and review its new preview: %w", err)
+		}
 		return translateAppError(err)
 	}
 	if warning != nil {
@@ -148,6 +146,21 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func selectCLIActionPlan(prepared *app.PreparedActionPlan, includeSafe, includeDestructive bool) *app.PreparedActionPlan {
+	var risks []app.ActionRisk
+	if includeSafe {
+		risks = append(risks, app.ActionRiskSafe)
+	}
+	if includeDestructive {
+		risks = append(risks, app.ActionRiskDestructive)
+	}
+	return prepared.SelectRisks(risks...)
+}
+
+func isStaleActionPlanError(err error) bool {
+	return errors.Is(err, storage.ErrStaleRevision) || errors.Is(err, storage.ErrStaleArtifact)
 }
 
 func confirmCLIActionPlan(reader *bufio.Reader, out io.Writer, preview app.PlanPreview) (bool, bool, error) {
@@ -179,17 +192,17 @@ func confirmCLIActionPlan(reader *bufio.Reader, out io.Writer, preview app.PlanP
 }
 
 // applyCLIActionPlan joins AI task deletion to the same planning and machine
-// reference contract as the ordinary delete command. ApplyActionPlan resolves
-// the exact subtree against its fresh snapshot, then invokes the artifact
-// callback before committing so Focus Queue, Daily Plan, and dismissals ride the
-// task transaction and workspace undo ledger. Machine-local visits are repaired
-// only after that durable commit succeeds; their failure is returned separately
-// as a warning so callers never retry an already-applied plan.
+// reference contract as the ordinary delete command. The prepared plan retains
+// the exact reviewed deletion subtree, then invokes the artifact callback before
+// committing so Focus Queue, Daily Plan, and dismissals ride the task transaction
+// and workspace undo ledger. Machine-local visits are repaired only after that
+// durable commit succeeds; their failure is returned separately as a warning so
+// callers never retry an already-applied plan.
 func applyCLIActionPlan(
 	ctx context.Context,
 	runtime *config.RuntimeState,
 	service *app.Service,
-	plan app.ActionPlan,
+	prepared *app.PreparedActionPlan,
 	opts app.ApplyActionPlanOptions,
 ) (app.ActionPlanResult, error, error) {
 	if service == nil {
@@ -225,7 +238,7 @@ func applyCLIActionPlan(
 		return append(artifacts, artifact.StorageChange()), nil
 	}
 
-	result, err := service.ApplyActionPlan(ctx, plan, opts)
+	result, err := service.ApplyPreparedActionPlan(ctx, prepared, opts)
 	if err != nil {
 		return app.ActionPlanResult{}, nil, err
 	}

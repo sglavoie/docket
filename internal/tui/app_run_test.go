@@ -17,23 +17,23 @@ func TestMachineStateAndPIDLockPathsRemainDistinct(t *testing.T) {
 	local := config.LocalDataRoot()
 
 	// When the data dir is the local root, the lock lives directly under it.
-	if got, want := pidLockPath(local), filepath.Join(local, "pid.lock"); got != want {
-		t.Errorf("pidLockPath(local) = %q, want %q", got, want)
+	if got, want := config.TUIProcessLockPath(local), filepath.Join(local, "pid.lock"); got != want {
+		t.Errorf("TUIProcessLockPath(local) = %q, want %q", got, want)
 	}
 
 	// An iCloud-style (non-local) data dir must not host the lock; it lives under
 	// the local runtime dir instead.
 	icloud := filepath.Join(home, "Library", "Mobile Documents", "com~apple~CloudDocs", "tt")
-	lock := pidLockPath(icloud)
+	lock := config.TUIProcessLockPath(icloud)
 	if strings.HasPrefix(lock, filepath.Clean(icloud)) {
-		t.Errorf("pidLockPath(icloud) = %q must not live under the synced data dir", lock)
+		t.Errorf("TUIProcessLockPath(icloud) = %q must not live under the synced data dir", lock)
 	}
 	if !strings.HasPrefix(lock, filepath.Clean(local)) {
-		t.Errorf("pidLockPath(icloud) = %q must live under the local root %q", lock, local)
+		t.Errorf("TUIProcessLockPath(icloud) = %q must live under the local root %q", lock, local)
 	}
 
 	// Data-dir-specific: a different data dir yields a different lock path.
-	if other := pidLockPath(icloud + "-other"); other == lock {
+	if other := config.TUIProcessLockPath(icloud + "-other"); other == lock {
 		t.Errorf("distinct data dirs must yield distinct lock paths, both = %q", lock)
 	}
 

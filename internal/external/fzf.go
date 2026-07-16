@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -17,14 +18,24 @@ import (
 
 const defaultFzfTimeoutSeconds = 30
 
-// fzfTimeoutSeconds is the timeout for fzf invocations. Configurable via SetFzfTimeout.
-var fzfTimeoutSeconds = defaultFzfTimeoutSeconds
+// fzfTimeoutSeconds is the timeout for fzf invocations. CLI workspace loads can
+// overlap in tests and embedded callers, so process-global settings use atomic
+// access just like the icon package's global presentation setting.
+var fzfTimeoutSeconds atomic.Int64
+
+func configuredFzfTimeoutSeconds() int {
+	seconds := int(fzfTimeoutSeconds.Load())
+	if seconds <= 0 {
+		return defaultFzfTimeoutSeconds
+	}
+	return seconds
+}
 
 // SetFzfTimeout sets the fzf invocation timeout in seconds.
 // Values <= 0 are ignored and the default (30s) is kept.
 func SetFzfTimeout(seconds int) {
 	if seconds > 0 {
-		fzfTimeoutSeconds = seconds
+		fzfTimeoutSeconds.Store(int64(seconds))
 	}
 }
 
@@ -49,7 +60,7 @@ func classifyFzfRunError(ctx context.Context, err error) error {
 		return tterrors.ErrCanceled
 	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
+		return fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", configuredFzfTimeoutSeconds())
 	}
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
@@ -97,7 +108,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	input := strings.Join(lines, "\n")
 
 	// Run fzf
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configuredFzfTimeoutSeconds())*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, fzfPath,
@@ -177,7 +188,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configuredFzfTimeoutSeconds())*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, fzfPath, args...)
@@ -247,7 +258,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 	input := strings.Join(lines, "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configuredFzfTimeoutSeconds())*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, fzfPath,
@@ -321,7 +332,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	input := strings.Join(lines, "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configuredFzfTimeoutSeconds())*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, fzfPath,

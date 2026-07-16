@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *AskViewModel) applyPlan(plan app.ActionPlan, destructive bool) tea.Cmd {
+func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive bool) tea.Cmd {
 	service := m.service
 	runtime := m.runtime
 	var pendingDomains *config.Domains
@@ -25,7 +25,7 @@ func (m *AskViewModel) applyPlan(plan app.ActionPlan, destructive bool) tea.Cmd 
 		if service == nil {
 			return AskActionPlanAppliedMsg{Err: fmt.Errorf("application service is unavailable")}
 		}
-		result, err := service.ApplyActionPlan(context.Background(), plan, app.ApplyActionPlanOptions{
+		result, err := service.ApplyPreparedActionPlan(context.Background(), prepared, app.ApplyActionPlanOptions{
 			ConfirmSafe:        true,
 			ConfirmDestructive: destructive,
 			DeletedTaskArtifacts: func(deletedTaskIDs []string) ([]storage.ArtifactChange, error) {

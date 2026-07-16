@@ -121,6 +121,19 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 	// Validate the complete project-and-artifact revision set before changing the
 	// in-memory repository, mirroring CommitService's all-or-none preflight.
 	for i := range changesets {
+		for _, precondition := range changesets[i].ProjectPreconditions {
+			stored := r.revisions[precondition.ProjectID]
+			if precondition.ExpectedRevision != stored {
+				return nil, &storage.RevisionConflictError{
+					ProjectID:   precondition.ProjectID,
+					ProjectName: precondition.ProjectName,
+					Expected:    precondition.ExpectedRevision,
+					Actual:      stored,
+				}
+			}
+		}
+	}
+	for i := range changesets {
 		cs := changesets[i]
 		stored := r.revisions[cs.Project.ID]
 		if cs.ExpectedRevision != "" && cs.ExpectedRevision != stored {

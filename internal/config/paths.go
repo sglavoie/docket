@@ -276,6 +276,24 @@ func iCloudDataRoot() (string, bool) {
 	return filepath.Join(drive, iCloudDataDirName), true
 }
 
+// hasSplitDomainMarker reports whether a data directory contains any synced
+// split-domain artifact. A single marker is enough: selecting a partial iCloud
+// workspace lets normal loading surface the corruption instead of silently
+// falling back to an unrelated local workspace.
+func hasSplitDomainMarker(dataDir string) bool {
+	for _, path := range []string{
+		WorkspaceCatalogPath(dataDir),
+		PlanningStatePath(dataDir),
+		SettingsPath(dataDir),
+		AutomationPath(dataDir),
+	} {
+		if _, err := os.Stat(path); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 // ActiveDefaultDataDir returns the data directory tt uses by default when the
 // user has made no explicit workspace selection.
 //
@@ -286,6 +304,9 @@ func iCloudDataRoot() (string, bool) {
 // iCloud is now an explicit action — see MoveWorkspace and `tt workspace move`.
 func ActiveDefaultDataDir() string {
 	if root, ok := iCloudDataRoot(); ok {
+		if hasSplitDomainMarker(root) {
+			return root
+		}
 		if _, err := os.Stat(filepath.Join(root, configFileName)); err == nil {
 			return root
 		}
@@ -346,4 +367,12 @@ func LocalRuntimeDirForDataDir(dataDir string) string {
 	sum := sha256.Sum256([]byte(cleanData))
 	key := hex.EncodeToString(sum[:])[:12]
 	return filepath.Join(local, runtimeDirName, key)
+}
+
+// TUIProcessLockPath returns the machine-local PID lock path that excludes a
+// second TUI process from a workspace. Keeping this derivation in config lets
+// TUI startup and workspace relocation coordinate on the exact same lock while
+// ensuring it never lives in a synced data directory.
+func TUIProcessLockPath(dataDir string) string {
+	return filepath.Join(LocalRuntimeDirForDataDir(dataDir), "pid.lock")
 }

@@ -27,8 +27,7 @@ type AskViewModel struct {
 	ready        bool
 	response     string
 	raw          string
-	plan         app.ActionPlan
-	preview      app.PlanPreview
+	prepared     *app.PreparedActionPlan
 	cancelFn     func()
 	pendingQuery string
 	acceptedSafe bool

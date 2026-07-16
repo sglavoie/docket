@@ -1,6 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -73,6 +79,129 @@ func TestProjectNew_TrimsContextBeforeStoring(t *testing.T) {
 	}
 	if got.Context != "work" {
 		t.Errorf("project.Context = %q, want %q (trimmed)", got.Context, "work")
+	}
+}
+
+func TestProjectNew_OrphanTasksFileAbortsCatalogCreate(t *testing.T) {
+	deps := setupTestDeps(t)
+	defer resetProjectNewVars()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+	manager := config.NewManager(deps.ConfigPath)
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	oldRepository := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	t.Cleanup(func() { storage.DefaultRepository = oldRepository })
+
+	projectPath := deps.Config.ProjectPath("orphan-project")
+	tasksPath := storage.TasksFilePath(projectPath)
+	if err := os.MkdirAll(projectPath, storage.DirPermissions); err != nil {
+		t.Fatal(err)
+	}
+	wantTasks := []byte("uncataloged data that must survive\n")
+	if err := os.WriteFile(tasksPath, wantTasks, storage.FilePermissions); err != nil {
+		t.Fatal(err)
+	}
+	catalogPath := config.WorkspaceCatalogPath(deps.DataDir)
+	wantCatalog, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newProjectNewCmd()
+	if flagErr := cmd.Flags().Set("quiet", "true"); flagErr != nil {
+		t.Fatal(flagErr)
+	}
+	err = runProjectNew(cmd, []string{"Orphan Project"})
+	if !errors.Is(err, storage.ErrStaleArtifact) {
+		t.Fatalf("runProjectNew error = %v, want ErrStaleArtifact", err)
+	}
+	gotTasks, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(gotTasks, wantTasks) {
+		t.Fatalf("orphan tasks overwritten: got %q want %q", gotTasks, wantTasks)
+	}
+	gotCatalog, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(gotCatalog, wantCatalog) {
+		t.Fatal("catalog changed despite orphan tasks conflict")
+	}
+}
+
+func TestProjectNew_ConcurrentSameSlugCommitsOneCompleteProject(t *testing.T) {
+	deps := setupTestDeps(t)
+	defer resetProjectNewVars()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+	manager := config.NewManager(deps.ConfigPath)
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	oldRepository := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	t.Cleanup(func() { storage.DefaultRepository = oldRepository })
+
+	names := []string{"Race Project", "Race-Project"}
+	commands := []*cobra.Command{newProjectNewCmd(), newProjectNewCmd()}
+	for _, cmd := range commands {
+		if err := cmd.Flags().Set("quiet", "true"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	start := make(chan struct{})
+	errs := make([]error, len(names))
+	var wg sync.WaitGroup
+	for i := range names {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			errs[i] = runProjectNew(commands[i], []string{names[i]})
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+
+	winner := -1
+	for i, err := range errs {
+		if err == nil {
+			if winner != -1 {
+				t.Fatalf("both concurrent creates succeeded: errors=%v", errs)
+			}
+			winner = i
+		}
+	}
+	if winner == -1 {
+		t.Fatalf("neither concurrent create succeeded: errors=%v", errs)
+	}
+
+	runtimeState, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("reload runtime: %v", err)
+	}
+	var matching []*models.Project
+	for _, project := range runtimeState.AllProjects() {
+		if project.Slug == "race-project" {
+			matching = append(matching, project)
+		}
+	}
+	if len(matching) != 1 || matching[0].Name != names[winner] {
+		t.Fatalf("catalog projects = %+v, want sole winner %q", matching, names[winner])
+	}
+	content, err := os.ReadFile(filepath.Join(deps.DataDir, "projects", "race-project", "tasks.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), names[winner]) {
+		t.Fatalf("tasks.md does not match catalog winner %q:\n%s", names[winner], content)
 	}
 }
 

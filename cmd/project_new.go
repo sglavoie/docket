@@ -77,13 +77,8 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("project name %q produces an empty slug (must contain at least one ASCII letter or digit)", name)
 	}
 
-	// Reject reserved slugs
-	reservedSlugs := map[string]bool{
-		".tt": true, "projects": true,
-		"new": true, "list": true, "delete": true, "switch": true, "archive": true,
-	}
-	if reservedSlugs[slug] {
-		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, slug)
+	if validationErr := models.ValidateProjectSlug(slug, false); validationErr != nil {
+		return fmt.Errorf("%w: %w", tterrors.ErrInvalidValue, validationErr)
 	}
 
 	for _, p := range workspace.Runtime.AllProjects() {
@@ -149,10 +144,12 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	requireAbsent := ""
 	artifacts = append(artifacts, storage.ArtifactChange{
-		Path: storage.TasksFilePath(project.Path),
-		Data: []byte(doc.WriteV2()),
-		Mode: storage.FilePermissions,
+		Path:             storage.TasksFilePath(project.Path),
+		Data:             []byte(doc.WriteV2()),
+		Mode:             storage.FilePermissions,
+		ExpectedRevision: &requireAbsent,
 	})
 	if err := translateAppError(newWorkspaceAppService(workspace).CommitConfig(artifacts...)); err != nil {
 		return err

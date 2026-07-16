@@ -2,6 +2,7 @@ package config
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -58,6 +59,30 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 		{
 			name:    "dangling system inbox",
 			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a"}}, SystemInboxProjectID: "missing"},
+			wantErr: true,
+		},
+		{
+			name:    "sandbox slug on sandbox project",
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "sandbox", Slug: "_sandbox", Sandbox: true}}},
+		},
+		{
+			name:    "sandbox slug on ordinary project",
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "not-sandbox", Slug: "_sandbox"}}},
+			wantErr: true,
+		},
+		{
+			name:    "traversal slug",
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "escape", Slug: "../escape"}}},
+			wantErr: true,
+		},
+		{
+			name:    "noncanonical slug",
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "upper", Slug: "Upper"}}},
+			wantErr: true,
+		},
+		{
+			name:    "overlong slug",
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "long", Slug: strings.Repeat("a", models.MaxProjectSlugLength+1)}}},
 			wantErr: true,
 		},
 	}

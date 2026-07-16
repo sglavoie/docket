@@ -51,6 +51,15 @@ once for a rebuild and unchanged indexed projects are not reparsed. Hierarchy
 and Markdown traversal use lookup and child-adjacency indexes rather than
 repeated full-project scans.
 
+AI mutations use an opaque prepared action plan from preview through apply. The
+prepared value defensively retains the exact snapshot, resolved actions, original
+provider indexes, and accepted risk tiers shown to the user; callers cannot rebuild
+an executable plan from a detached preview. Apply is single-use and adds read-only
+revision preconditions for every project whose state influenced the accepted plan,
+including transitive dependency reads and delete cleanup. Any relevant drift expires
+the plan atomically and requires a fresh response, preview, and confirmation.
+Unrelated project drift does not invalidate the plan.
+
 ## Durable data layout
 
 Markdown remains canonical for project tasks. A workspace rooted at `<data>`
@@ -76,9 +85,25 @@ uses this layout:
         └── .attachments/
 ```
 
-Project paths are derived from the data directory and safe catalog identifiers;
-absolute project paths are not durable workspace configuration. Unknown
-schema-v2 header blocks are preserved when task Markdown is rewritten.
+Project paths are derived from the data directory and validated catalog slugs;
+absolute project paths are not durable workspace configuration. Ordinary slugs must
+already be canonical lowercase ASCII components, reserved names are rejected, and
+`_sandbox` is accepted only for the catalog's sandbox project. Catalog load and
+transactional encode both enforce this invariant. The storage boundary validates
+the project directory plus its task, backup, and lock paths against approved roots,
+resolving existing symlinks before it creates transaction or lock artifacts.
+Project creation is create-only: an uncataloged existing `tasks.md` aborts creation
+without changing either the file or catalog. Unknown schema-v2 header blocks are
+preserved when task Markdown is rewritten.
+
+Startup classifies the synced domain bundle before recovery or bootstrap. The
+precedence is: a complete split bundle loads; a partial bundle fails for repair; a
+legacy-only aggregate `.tt.json` returns a typed migration-required error; and only
+a truly empty workspace bootstraps defaults. A stale aggregate beside a complete or
+partial split bundle is ignored. Legacy-only rejection happens before transaction
+directories, locks, domain files, or machine files can be created. This release does
+not automatically convert the aggregate format: migration must explicitly choose
+the authoritative source of truth.
 
 Machine-specific state is intentionally separate:
 
@@ -101,12 +126,20 @@ Logs and process locks are also machine-local and never synced, but unlike
 two separately opened paths isolated even if their durable contents claim the
 same workspace identity.
 
-A workspace-location move copies and validates the portable workspace, binds
-and migrates its machine state while the source path is still known, then
-switches the machine-local active-workspace pointer. Because the catalog ID is
-preserved, navigation, history, and layout remain available at the destination
-on the same machine. A true copy that is assigned a new workspace ID receives a
-separate default machine-state namespace.
+A workspace-location move first acquires the machine-local TUI process locks for
+both source and destination in deterministic order, so an active TUI at either path
+blocks relocation. It then acquires and recovers both workspace commit locks before
+inventory. The locked inventory is hash-bound: source drift, a divergent destination,
+or a destination race aborts without switching the active-workspace pointer, and
+publication never replaces a competing file. `--force` skips only the confirmation
+prompt and never bypasses process locks, commit locks, or snapshot validation.
+
+After copying and validating the portable workspace, the move binds and migrates
+machine state while the source path is still known, rechecks source and destination,
+then switches the machine-local active-workspace pointer as the final commit. The
+source remains as a backup. Because the catalog ID is preserved, navigation, history,
+and layout remain available at the destination on the same machine. A true copy that
+is assigned a new workspace ID receives a separate default machine-state namespace.
 
 ## Transactions, recovery, and undo
 
@@ -141,6 +174,13 @@ Project revisions are SHA-256 hashes of canonical schema-v2 content. If the
 on-disk revision changed after a snapshot was loaded, `tt` performs a field-level
 three-way merge using the retained base, the local intent, and current disk
 content.
+
+Read-only project preconditions are stricter than ordinary write revisions. They
+guard project state consulted by a prepared AI plan under the same deterministic
+project-lock set, but never become writes, conflicts, undo images, or journal
+operations. A missing or changed guarded project stops the transaction before
+three-way merge, conflict recording, or durable staging. Ordinary non-AI mutations
+retain the merge behavior below.
 
 Independent task additions, different-field edits, identical edits, and
 delete-versus-unchanged changes merge automatically. The transaction stops and
@@ -181,9 +221,12 @@ remembered consent stored in portable `settings.json`. Each request supports:
 Prompts are sent to the configured provider over standard input, not process arguments.
 Provider output is treated as untrusted data and must match the
 versioned structured action schema. `tt` resolves targets and classifies risk
-locally, previews safe actions as one batch, requires a separate confirmation
-for destructive actions, and commits accepted actions as one undoable
-transaction. Shell commands from provider output are rejected.
+locally, prepares one snapshot-bound preview, previews safe actions as one batch,
+requires a separate confirmation for destructive actions, and commits accepted
+actions as one undoable transaction. If any project consulted by the accepted plan
+changes before apply, the plan expires without merge or partial effects and the user
+must obtain a fresh response and preview. Shell commands from provider output are
+rejected.
 
 Consent controls what `tt` supplies; the provider's own CLI, account, and data
 retention policies still apply. Use `--no-context` when no workspace data should
@@ -202,6 +245,12 @@ Workspace-domain migration and location moves use staged writes and validation.
 Keep the pre-migration copy until the audit and acceptance checks pass. Do not
 manually convert `state:` metadata or delete the audit merely to silence a
 warning; fix the source or restore the backup and rerun the migration.
+
+An aggregate `.tt.json` without split-domain markers is not imported during normal
+startup. Startup fails before creating split files or recovery artifacts so an
+operator can migrate or archive the legacy source deliberately. Conversely, a stale
+aggregate beside a split bundle never overrides that bundle. No permanent aggregate
+compatibility or implicit conversion path is part of the runtime architecture.
 
 ## Backup and restore
 

@@ -52,6 +52,59 @@ func TestActiveDefaultDataDir_ExistingICloudWorkspacePreserved(t *testing.T) {
 	}
 }
 
+func TestActiveDefaultDataDir_ExistingICloudSplitWorkspacePreserved(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		markers []func(string) string
+	}{
+		{
+			name: "complete",
+			markers: []func(string) string{
+				WorkspaceCatalogPath,
+				PlanningStatePath,
+				SettingsPath,
+				AutomationPath,
+			},
+		},
+		{
+			name:    "partial",
+			markers: []func(string) string{PlanningStatePath},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			makeICloudDrive(t, home)
+
+			// A stale local aggregate must not hide the authoritative iCloud
+			// split workspace, including when that split state is partial.
+			if err := os.MkdirAll(LocalDataRoot(), DirPermissions); err != nil {
+				t.Fatalf("mkdir local root: %v", err)
+			}
+			if err := os.WriteFile(LegacyConfigPath(), []byte(`{"version":1}`), FilePermissions); err != nil {
+				t.Fatalf("write local legacy config: %v", err)
+			}
+
+			icloudRoot := filepath.Join(home, iCloudDriveRelPath, iCloudDataDirName)
+			for _, marker := range tc.markers {
+				path := marker(icloudRoot)
+				if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
+					t.Fatalf("mkdir marker parent: %v", err)
+				}
+				if err := os.WriteFile(path, []byte("{}"), FilePermissions); err != nil {
+					t.Fatalf("write split marker: %v", err)
+				}
+			}
+			if _, err := os.Stat(ConfigPathForDataDir(icloudRoot)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("iCloud aggregate config should be absent, stat error = %v", err)
+			}
+			if got := ActiveDefaultDataDir(); got != icloudRoot {
+				t.Fatalf("ActiveDefaultDataDir() = %q, want split iCloud root %q", got, icloudRoot)
+			}
+		})
+	}
+}
+
 func TestActiveDefaultDataDir_ICloudAbsent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

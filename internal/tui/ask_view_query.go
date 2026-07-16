@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 )
 
@@ -15,8 +14,8 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 	m.state = askStateLoading
 	m.response = ""
 	m.raw = ""
-	m.plan = app.ActionPlan{}
-	m.preview = app.PlanPreview{}
+	m.prepared = nil
+	m.acceptedSafe = false
 	m.textarea.Blur()
 
 	var taskContext string

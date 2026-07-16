@@ -19,6 +19,10 @@ func TestArchitectureDocumentationCoversReleaseCandidateContracts(t *testing.T) 
 		".tt/transactions/",
 		"## Transactions, recovery, and undo",
 		"## Concurrent edits and conflicts",
+		"opaque prepared action plan",
+		"legacy-only aggregate `.tt.json`",
+		"canonical lowercase ASCII components",
+		"active TUI at either path",
 		"## Workspace location and cloud consent",
 		"New workspaces start in local storage",
 		"## AI privacy and consent",
@@ -44,6 +48,8 @@ func TestREADMEPointsToArchitectureAndLocalFirstStorage(t *testing.T) {
 	for _, needle := range []string{
 		"local `~/.tt/` workspace by default",
 		"iCloud only after explicit selection",
+		"not converted automatically",
+		"`--force` skips only the confirmation prompt",
 		"docs/architecture.md",
 		"just tui-scenarios",
 	} {

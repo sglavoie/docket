@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -61,5 +62,18 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 
 	if err := runWorkspaceLocation(nil, nil); err != nil {
 		t.Fatalf("runWorkspaceLocation: %v", err)
+	}
+}
+
+func TestWorkspaceMoveHelpExplainsTUILocksAndForceSafety(t *testing.T) {
+	if !strings.Contains(workspaceMoveCmd.Long, "active TUI blocks the move") {
+		t.Fatalf("workspace move help must explain active TUI exclusion:\n%s", workspaceMoveCmd.Long)
+	}
+	if !strings.Contains(workspaceMoveCmd.Long, "--force skips only the confirmation prompt") {
+		t.Fatalf("workspace move help must explain --force safety scope:\n%s", workspaceMoveCmd.Long)
+	}
+	flag := workspaceMoveCmd.Flags().Lookup("force")
+	if flag == nil || !strings.Contains(flag.Usage, "never bypass TUI or workspace safety locks") {
+		t.Fatalf("--force usage must preserve lock guarantees: %+v", flag)
 	}
 }

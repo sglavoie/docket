@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -58,13 +59,12 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.service == nil {
 				m.response = "Structured response received, but the application service is unavailable."
 			} else {
-				preview, previewErr := m.service.PreviewActionPlan(plan)
-				if previewErr != nil {
-					m.response = fmt.Sprintf("Action plan rejected: %v", previewErr)
+				prepared, prepareErr := m.service.PrepareActionPlan(plan)
+				if prepareErr != nil {
+					m.response = fmt.Sprintf("Action plan rejected: %v", prepareErr)
 				} else {
-					m.plan = plan
-					m.preview = preview
-					m.response = renderActionPlanMarkdown(preview)
+					m.prepared = prepared
+					m.response = renderActionPlanMarkdown(prepared.Preview())
 				}
 			}
 		}
@@ -86,15 +86,23 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case AskActionPlanAppliedMsg:
 		m.state = askStateResult
 		if msg.Err != nil {
-			m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed: %v", msg.Err)
+			switch {
+			case isStalePreparedActionPlanError(msg.Err):
+				m.prepared = nil
+				m.acceptedSafe = false
+				m.response += "\n\nApply failed; no action plan was committed. The workspace changed while you were reviewing it. Request a fresh AI response and review the new preview."
+			case shouldDiscardPreparedActionPlan(msg.Err):
+				m.prepared = nil
+				m.acceptedSafe = false
+				m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed, and this preview can no longer be applied. Request a fresh AI response: %v", msg.Err)
+			default:
+				m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed: %v", msg.Err)
+			}
 		} else {
 			warning := repairAskActionPlanTaskRefs(m.runtime, msg.Result.DeletedTaskIDs, msg.PendingDomains)
-			// A successful plan is single-use. Clear all executable and preview
-			// state before returning to the result screen so the apply key and
-			// footer are disabled. The failure branch deliberately retains both
-			// values so a legitimate retry remains possible.
-			m.plan = app.ActionPlan{}
-			m.preview = app.PlanPreview{}
+			// A successful plan is single-use. Clear executable state before
+			// returning to the result screen so the apply key and footer are disabled.
+			m.prepared = nil
 			m.acceptedSafe = false
 			m.response += fmt.Sprintf("\n\nApplied %d action(s).\n\nTransaction ID: `%s`  \nUndo ID: `%s`", len(msg.Result.Actions), msg.Result.TransactionID, msg.Result.UndoID)
 			if warning != nil {
@@ -194,9 +202,10 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return BackMsg{} }
 		case "a":
-			if len(m.plan.Actions) > 0 {
+			preview := m.prepared.Preview()
+			if len(preview.Actions) > 0 {
 				m.acceptedSafe = false
-				if m.preview.SafeCount > 0 {
+				if preview.SafeCount > 0 {
 					m.state = askStateConfirmSafe
 				} else {
 					m.state = askStateConfirmDestructive
@@ -209,8 +218,8 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.textarea.Focus()
 			m.response = ""
 			m.raw = ""
-			m.plan = app.ActionPlan{}
-			m.preview = app.PlanPreview{}
+			m.prepared = nil
+			m.acceptedSafe = false
 			return m, textarea.Blink
 		default:
 			var cmd tea.Cmd
@@ -219,17 +228,18 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case askStateConfirmSafe:
+		preview := m.prepared.Preview()
 		switch strings.ToLower(msg.String()) {
 		case "y":
 			m.acceptedSafe = true
-			if m.preview.DestructiveCount > 0 {
+			if preview.DestructiveCount > 0 {
 				m.state = askStateConfirmDestructive
 				return m, nil
 			}
 			return m, m.applyAcceptedPlan(false)
 		case "n", "esc":
 			m.acceptedSafe = false
-			if m.preview.DestructiveCount > 0 {
+			if preview.DestructiveCount > 0 {
 				m.state = askStateConfirmDestructive
 			} else {
 				m.state = askStateResult
@@ -288,21 +298,31 @@ func (m *AskViewModel) saveContextConsent() tea.Cmd {
 }
 
 func (m *AskViewModel) applyAcceptedPlan(includeDestructive bool) tea.Cmd {
-	accepted := app.ActionPlan{Version: m.plan.Version, Summary: m.plan.Summary}
-	for _, action := range m.plan.Actions {
-		risk := app.RiskForAction(action)
-		if risk == app.ActionRiskSafe && m.acceptedSafe {
-			accepted.Actions = append(accepted.Actions, action)
-		}
-		if risk == app.ActionRiskDestructive && includeDestructive {
-			accepted.Actions = append(accepted.Actions, action)
-		}
+	var risks []app.ActionRisk
+	if m.acceptedSafe {
+		risks = append(risks, app.ActionRiskSafe)
 	}
-	if len(accepted.Actions) == 0 {
+	if includeDestructive {
+		risks = append(risks, app.ActionRiskDestructive)
+	}
+	accepted := m.prepared.SelectRisks(risks...)
+	if len(accepted.Preview().Actions) == 0 {
 		m.state = askStateResult
 		return nil
 	}
 	return m.applyPlan(accepted, includeDestructive)
+}
+
+func isStalePreparedActionPlanError(err error) bool {
+	return errors.Is(err, storage.ErrStaleRevision) || errors.Is(err, storage.ErrStaleArtifact)
+}
+
+func shouldDiscardPreparedActionPlan(err error) bool {
+	return errors.Is(err, app.ErrPreparedActionPlanConsumed) ||
+		errors.Is(err, app.ErrPreparedActionPlanServiceMismatch) ||
+		errors.Is(err, app.ErrInvalidInput) ||
+		errors.Is(err, app.ErrProjectNotFound) ||
+		errors.Is(err, app.ErrTaskNotFound)
 }
 
 func renderActionPlanMarkdown(preview app.PlanPreview) string {

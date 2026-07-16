@@ -181,12 +181,8 @@ func applyProjectNameChange(project *models.Project, rawName string, projects []
 		return tterrors.NewInvalidValueError("project name", newName, "produces an empty slug")
 	}
 
-	reservedSlugs := map[string]bool{
-		".tt": true, "projects": true,
-		"new": true, "list": true, "delete": true, "switch": true, "archive": true,
-	}
-	if reservedSlugs[newSlug] {
-		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, newSlug)
+	if err := models.ValidateProjectSlug(newSlug, false); err != nil {
+		return fmt.Errorf("%w: %w", tterrors.ErrInvalidValue, err)
 	}
 
 	for _, p := range projects {

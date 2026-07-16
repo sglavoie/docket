@@ -33,6 +33,106 @@ func TestCreateDomainBundle_ValidatesBeforeBootstrapEffects(t *testing.T) {
 	}
 }
 
+func TestManagerLegacyOnlyStateRequiresMigrationBeforeEffects(t *testing.T) {
+	loaders := []struct {
+		name string
+		load func(*Manager) (*Domains, error)
+	}{
+		{name: "strict", load: (*Manager).LoadDomains},
+		{name: "create-on-load", load: (*Manager).LoadOrCreateDomains},
+	}
+	for _, loader := range loaders {
+		t.Run(loader.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			dataDir := filepath.Join(home, "legacy-workspace")
+			if err := os.MkdirAll(dataDir, DirPermissions); err != nil {
+				t.Fatalf("mkdir legacy workspace: %v", err)
+			}
+			legacyPath := ConfigPathForDataDir(dataDir)
+			if err := os.WriteFile(legacyPath, []byte(`{"version": 1}`), FilePermissions); err != nil {
+				t.Fatalf("write legacy config: %v", err)
+			}
+
+			domains, err := loader.load(NewManager(legacyPath))
+			if domains != nil {
+				t.Fatal("legacy-only load returned domains")
+			}
+			if !errors.Is(err, ErrLegacyConfigRequiresMigration) {
+				t.Fatalf("legacy-only error = %v, want ErrLegacyConfigRequiresMigration", err)
+			}
+			var migrationErr *LegacyConfigRequiresMigrationError
+			if !errors.As(err, &migrationErr) {
+				t.Fatalf("legacy-only error type = %T, want *LegacyConfigRequiresMigrationError", err)
+			}
+			if migrationErr.Path != legacyPath {
+				t.Fatalf("migration path = %q, want %q", migrationErr.Path, legacyPath)
+			}
+
+			entries, readErr := os.ReadDir(dataDir)
+			if readErr != nil {
+				t.Fatalf("read legacy workspace: %v", readErr)
+			}
+			if len(entries) != 1 || entries[0].Name() != configFileName {
+				t.Fatalf("legacy-only load created workspace effects: %v", entries)
+			}
+			for _, path := range []string{
+				InternalDir(dataDir),
+				filepath.Join(LocalDataRoot(), runtimeDirName),
+			} {
+				if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
+					t.Fatalf("legacy-only load created %q, stat error = %v", path, statErr)
+				}
+			}
+		})
+	}
+}
+
+func TestManagerCompleteSplitStateWinsOverStaleLegacyConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	dataDir := filepath.Join(home, "split-workspace")
+	manager := NewManager(ConfigPathForDataDir(dataDir))
+	want, err := manager.LoadOrCreateDomains()
+	if err != nil {
+		t.Fatalf("bootstrap split workspace: %v", err)
+	}
+	if err := os.WriteFile(manager.GetConfigPath(), []byte("not valid legacy JSON"), FilePermissions); err != nil {
+		t.Fatalf("write stale legacy config: %v", err)
+	}
+
+	for _, loader := range []struct {
+		name string
+		load func() (*Domains, error)
+	}{
+		{name: "strict", load: manager.LoadDomains},
+		{name: "create-on-load", load: manager.LoadOrCreateDomains},
+	} {
+		t.Run(loader.name, func(t *testing.T) {
+			got, loadErr := loader.load()
+			if loadErr != nil {
+				t.Fatalf("complete split load with stale legacy config: %v", loadErr)
+			}
+			if got.Catalog.WorkspaceID != want.Catalog.WorkspaceID {
+				t.Fatalf("workspace ID = %q, want %q", got.Catalog.WorkspaceID, want.Catalog.WorkspaceID)
+			}
+		})
+	}
+}
+
+func TestManagerLoadOrCreateDomains_EmptyWorkspaceStillBootstraps(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "new-workspace")
+	domains, err := NewManager(ConfigPathForDataDir(dataDir)).LoadOrCreateDomains()
+	if err != nil {
+		t.Fatalf("bootstrap empty workspace: %v", err)
+	}
+	if domains == nil || domains.Catalog == nil {
+		t.Fatal("bootstrap empty workspace returned incomplete domains")
+	}
+	assertCompleteSyncedBootstrap(t, dataDir, domains.Catalog.WorkspaceID)
+}
+
 func TestManagerLoadOrCreateDomains_RecoversInterruptedBootstrapBeforeClassification(t *testing.T) {
 	const workspaceID = "44444444-4444-4444-8444-444444444444"
 	for prefix := 0; prefix <= len(syncedDomainKinds); prefix++ {

@@ -282,6 +282,11 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 	if err := validateWorkspaceID(workspaceID); err != nil {
 		return nil, err
 	}
+	if catalog, ok := payload.(*WorkspaceCatalog); ok {
+		if err := catalog.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid workspace catalog: %w", err)
+		}
+	}
 	rawPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %s payload: %w", kind.name(), err)
@@ -525,6 +530,9 @@ func (s *DomainFileStore) LoadCatalogChecked() (*WorkspaceCatalog, string, error
 	if err != nil {
 		return nil, "", err
 	}
+	if err := out.Validate(); err != nil {
+		return nil, rev, fmt.Errorf("invalid workspace catalog: %w", err)
+	}
 	return out, rev, nil
 }
 
@@ -559,6 +567,9 @@ func (s *DomainFileStore) SaveCatalog(catalog *WorkspaceCatalog) error {
 func (s *DomainFileStore) SaveCatalogChecked(catalog *WorkspaceCatalog, rev string) error {
 	if catalog == nil {
 		return fmt.Errorf("config: nil workspace catalog")
+	}
+	if err := catalog.Validate(); err != nil {
+		return fmt.Errorf("invalid workspace catalog: %w", err)
 	}
 	return s.save(domainCatalog, catalog, rev)
 }

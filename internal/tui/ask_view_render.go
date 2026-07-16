@@ -81,7 +81,7 @@ func (m *AskViewModel) View() tea.View {
 		}
 		b.WriteString("\n")
 		footer := "n: new query · Esc: close"
-		if len(m.plan.Actions) > 0 {
+		if len(m.prepared.Preview().Actions) > 0 {
 			footer = "a: review/apply plan · " + footer
 		}
 		footerLeft = HelpStyle.Render(footer)
@@ -90,14 +90,16 @@ func (m *AskViewModel) View() tea.View {
 		}
 
 	case askStateConfirmSafe:
+		preview := m.prepared.Preview()
 		b.WriteString(pad)
-		_, _ = fmt.Fprintf(&b, "Apply %d safe action(s) as one transaction? [y/N]", m.preview.SafeCount)
+		_, _ = fmt.Fprintf(&b, "Apply %d safe action(s) as one transaction? [y/N]", preview.SafeCount)
 		b.WriteString("\n")
 		footerLeft = HelpStyle.Render("y: accept safe batch · n: decline")
 
 	case askStateConfirmDestructive:
+		preview := m.prepared.Preview()
 		b.WriteString(pad)
-		b.WriteString(ErrorStatusStyle.Render(fmt.Sprintf("Destructive escalation: include %d destructive action(s)? [y/N]", m.preview.DestructiveCount)))
+		b.WriteString(ErrorStatusStyle.Render(fmt.Sprintf("Destructive escalation: include %d destructive action(s)? [y/N]", preview.DestructiveCount)))
 		b.WriteString("\n")
 		footerLeft = HelpStyle.Render("y: explicitly include · n: exclude")
 

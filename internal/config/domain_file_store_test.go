@@ -116,6 +116,63 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	}
 }
 
+func TestDomainFileStore_RejectsMalformedCatalogSlugs(t *testing.T) {
+	for _, slug := range []string{"../escape", "Upper", "_sandbox"} {
+		t.Run(slug, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			dataDir := filepath.Join(t.TempDir(), "workspace")
+			path := WorkspaceCatalogPath(dataDir)
+			if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
+				t.Fatal(err)
+			}
+			payload, err := json.Marshal(&WorkspaceCatalog{
+				SchemaVersion: CurrentConfigVersion,
+				WorkspaceID:   testWorkspaceID,
+				Projects:      []CatalogProject{{ID: "unsafe", Slug: slug}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, err := json.Marshal(domainEnvelope{
+				SchemaVersion: CurrentDomainSchemaVersion,
+				WorkspaceID:   testWorkspaceID,
+				Kind:          domainCatalog.name(),
+				Data:          payload,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if writeErr := os.WriteFile(path, raw, FilePermissions); writeErr != nil {
+				t.Fatal(writeErr)
+			}
+
+			if _, loadErr := NewDomainFileStore(dataDir).LoadCatalog(); loadErr == nil {
+				t.Fatalf("LoadCatalog accepted malformed slug %q", slug)
+			}
+			after, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(after, raw) {
+				t.Fatal("malformed catalog was rewritten during rejected load")
+			}
+		})
+	}
+}
+
+func TestDomainFileStore_RejectsInvalidCatalogBeforeSaveEffects(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "absent", "workspace")
+	catalog := NewWorkspaceCatalog()
+	catalog.Projects = []CatalogProject{{ID: "escape", Slug: "../escape"}}
+
+	if err := NewDomainFileStore(dataDir).SaveCatalog(catalog); err == nil {
+		t.Fatal("SaveCatalog accepted traversal slug")
+	}
+	if _, err := os.Lstat(dataDir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid catalog save created workspace effects: %v", err)
+	}
+}
+
 func TestDomainFileStore_StampsSchemaAndWorkspaceID(t *testing.T) {
 	s := newIsolatedStore(t)
 	if err := s.SaveSettings(NewSettings()); err != nil {

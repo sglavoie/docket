@@ -32,7 +32,7 @@ func pinnedPopupFixture(t *testing.T) (*AppModel, *models.Project, string, strin
 	}
 	taskB.Pinned, taskB.PinnedAt = true, &late
 
-	proj := &models.Project{ID: "pin-proj", Name: "Pinned", Path: filepath.Join(dataDir, "projects", "pin-proj")}
+	proj := &models.Project{ID: "pin-proj", Slug: "pin-proj", Name: "Pinned", Path: filepath.Join(dataDir, "projects", "pin-proj")}
 	proj.Tasks = []*models.Task{taskA, taskB}
 	proj.NextShortID = 3
 	proj.BuildTaskTree()

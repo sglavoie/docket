@@ -10,8 +10,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -33,28 +35,45 @@ type workspaceEntry struct {
 	rel  string
 	dir  bool
 	perm fs.FileMode
+	hash string
+}
+
+// workspaceMoveTestHooks provides deterministic pause points for concurrency
+// tests. Production callers always pass nil.
+type workspaceMoveTestHooks struct {
+	beforeWorkspaceLocks     func()
+	afterInventory           func()
+	afterDestinationPrecheck func()
+	afterCopy                func()
 }
 
 // MoveWorkspace relocates a workspace's durable data directory from srcDataDir
 // to dstDataDir using a staged, verified, resumable flow:
 //
-//  1. Inventory the durable source tree, excluding machine-local runtime state
+//  1. Exclude active TUIs from both paths, then acquire and recover both
+//     workspaces under deterministic commit-lock ordering.
+//  2. Inventory the durable source tree, excluding machine-local runtime state
 //     and refusing symlinks / non-regular files.
-//  2. Pre-check every destination file: absent, or byte-identical (an
+//  3. Pre-check every destination file: absent, or byte-identical (an
 //     interrupted move re-run is idempotent). A divergent existing file aborts
 //     the whole move before anything is written.
-//  3. Bind the catalog identity and import any former path-local machine state
+//  4. Bind the catalog identity and import any former path-local machine state
 //     before the data-directory path changes.
-//  4. Copy each missing file through a temp file with fsync and a sha256 read-
-//     back verification, then atomically rename it into place.
-//  5. Rewrite the destination config's data_dir and legacy project paths.
-//  6. Switch the machine-local active-workspace pointer to the destination
+//  5. Copy each missing file through a temp file with fsync and a sha256 read-
+//     back verification, publishing without replacement.
+//  6. Revalidate source hashes and destination occupancy, then rewrite the
+//     destination config's data_dir and legacy project paths.
+//  7. Switch the machine-local active-workspace pointer to the destination
 //     (the atomic "the workspace now lives here" commit).
 //
 // The source is retained by default (SourceRetained is always true here); it is
 // never deleted, so the operation is safe to interrupt and re-run. Callers that
 // want to reclaim the old space remove the source themselves after verifying.
 func MoveWorkspace(srcDataDir, dstDataDir string) (*MoveReport, error) {
+	return moveWorkspace(srcDataDir, dstDataDir, nil)
+}
+
+func moveWorkspace(srcDataDir, dstDataDir string, hooks *workspaceMoveTestHooks) (*MoveReport, error) {
 	src := filepath.Clean(srcDataDir)
 	dst := filepath.Clean(dstDataDir)
 	if src == "" || src == "." || dst == "" || dst == "." {
@@ -75,45 +94,115 @@ func MoveWorkspace(srcDataDir, dstDataDir string) (*MoveReport, error) {
 		return nil, err
 	}
 
-	entries, invErr := inventoryWorkspace(src)
-	if invErr != nil {
-		return nil, invErr
-	}
-	if err := precheckDestination(entries, dst); err != nil {
-		return nil, err
-	}
-	if err := prepareWorkspaceMachineStateForMove(src); err != nil {
-		return nil, err
-	}
-
-	if err := os.MkdirAll(dst, util.DirPermissions); err != nil {
-		return nil, fmt.Errorf("workspace move: failed to create destination %s: %w", dst, err)
-	}
-
-	report := &MoveReport{Source: src, Destination: dst, SourceRetained: true}
-	if err := createDestinationDirs(entries, dst, report); err != nil {
-		return nil, err
-	}
-	if err := copyDestinationFiles(entries, dst, report); err != nil {
-		return nil, err
-	}
-
-	// Rewrite the destination config so data_dir and legacy project paths point
-	// at the new root. Only legacy default paths are rewritten; custom paths are
-	// preserved. Absent config (fresh workspace) is a no-op.
-	dstConfig := ConfigPathForDataDir(dst)
-	if _, cfgStatErr := os.Stat(dstConfig); cfgStatErr == nil {
-		if err := WriteMigratedConfig(dstConfig, src, dst); err != nil {
-			return nil, fmt.Errorf("workspace move: failed to rewrite destination config: %w", err)
+	var report *MoveReport
+	err := withWorkspaceTUILocks(src, dst, func() error {
+		if hooks != nil && hooks.beforeWorkspaceLocks != nil {
+			hooks.beforeWorkspaceLocks()
 		}
-	}
 
-	// Atomic pointer switch: from here on this machine opens the destination.
-	if err := WriteActiveWorkspacePointer(dst, readWorkspaceID(dst)); err != nil {
-		return nil, fmt.Errorf("workspace move: failed to switch active workspace pointer: %w", err)
-	}
+		sourceCommits := storage.NewCommitService(TransactionsDir(src), []string{src})
+		destinationCommits := storage.NewCommitService(TransactionsDir(dst), []string{dst})
+		return storage.WithWorkspaceCommitLocks([]*storage.CommitService{sourceCommits, destinationCommits}, func() error {
+			entries, invErr := inventoryWorkspace(src)
+			if invErr != nil {
+				return invErr
+			}
+			if hooks != nil && hooks.afterInventory != nil {
+				hooks.afterInventory()
+			}
+			if err := precheckDestination(entries, dst); err != nil {
+				return err
+			}
+			if hooks != nil && hooks.afterDestinationPrecheck != nil {
+				hooks.afterDestinationPrecheck()
+			}
+			if err := prepareWorkspaceMachineStateForMove(src); err != nil {
+				return err
+			}
 
+			if err := os.MkdirAll(dst, util.DirPermissions); err != nil {
+				return fmt.Errorf("workspace move: failed to create destination %s: %w", dst, err)
+			}
+
+			report = &MoveReport{Source: src, Destination: dst, SourceRetained: true}
+			if err := createDestinationDirs(entries, dst, report); err != nil {
+				return err
+			}
+			if err := copyDestinationFiles(entries, dst, report); err != nil {
+				return err
+			}
+			if hooks != nil && hooks.afterCopy != nil {
+				hooks.afterCopy()
+			}
+
+			// A non-cooperating writer may bypass the workspace commit lock. Detect
+			// that before publication by proving the copied source snapshot is still
+			// current and every destination target still contains the expected bytes.
+			if err := validateSourceSnapshot(entries); err != nil {
+				return err
+			}
+			if err := precheckDestination(entries, dst); err != nil {
+				return err
+			}
+
+			// Rewrite the destination config so data_dir and legacy project paths
+			// point at the new root. Only legacy default paths are rewritten; custom
+			// paths are preserved. Absent config (fresh workspace) is a no-op.
+			dstConfig := ConfigPathForDataDir(dst)
+			if _, cfgStatErr := os.Stat(dstConfig); cfgStatErr == nil {
+				if err := WriteMigratedConfig(dstConfig, src, dst); err != nil {
+					return fmt.Errorf("workspace move: failed to rewrite destination config: %w", err)
+				}
+			}
+
+			// Atomic pointer switch: from here on this machine opens the destination.
+			if err := WriteActiveWorkspacePointer(dst, readWorkspaceID(dst)); err != nil {
+				return fmt.Errorf("workspace move: failed to switch active workspace pointer: %w", err)
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
 	return report, nil
+}
+
+type workspaceTUILockTarget struct {
+	path string
+	role string
+}
+
+// withWorkspaceTUILocks excludes live TUIs from both the retained source and
+// the destination before any durable workspace locks are taken. Sorting gives
+// opposite-direction moves one global acquisition order.
+func withWorkspaceTUILocks(src, dst string, fn func() error) error {
+	targets := []workspaceTUILockTarget{
+		{path: filepath.Clean(TUIProcessLockPath(src)), role: "source"},
+		{path: filepath.Clean(TUIProcessLockPath(dst)), role: "destination"},
+	}
+	sort.SliceStable(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
+	if targets[0].path == targets[1].path {
+		targets = targets[:1]
+		targets[0].role = "source/destination"
+	}
+	return acquireWorkspaceTUILocks(targets, fn)
+}
+
+func acquireWorkspaceTUILocks(targets []workspaceTUILockTarget, fn func() error) error {
+	if len(targets) == 0 {
+		return fn()
+	}
+	target := targets[0]
+	if err := os.MkdirAll(filepath.Dir(target.path), util.DirPermissions); err != nil {
+		return fmt.Errorf("workspace move: failed to create %s TUI runtime directory: %w", target.role, err)
+	}
+	lock, err := util.AcquirePIDLock(target.path)
+	if err != nil {
+		return fmt.Errorf("workspace move blocked by %s TUI safety lock: %w; close the active tt TUI using this workspace and retry", target.role, err)
+	}
+	defer lock.Release()
+	return acquireWorkspaceTUILocks(targets[1:], fn)
 }
 
 // prepareWorkspaceMachineStateForMove resolves an existing catalog before the
@@ -158,11 +247,11 @@ func precheckDestination(entries []workspaceEntry, dst string) error {
 		if info.IsDir() {
 			return fmt.Errorf("workspace move aborted: destination %s is a directory but the source has a file there", target)
 		}
-		same, cmpErr := filesIdentical(e.src, target)
-		if cmpErr != nil {
-			return cmpErr
+		targetHash, hashErr := hashFile(target)
+		if hashErr != nil {
+			return fmt.Errorf("workspace move: failed to hash destination %s: %w", target, hashErr)
 		}
-		if !same {
+		if targetHash != e.hash {
 			return fmt.Errorf("workspace move aborted: destination file already exists with different contents, refusing to overwrite: %s", target)
 		}
 	}
@@ -197,16 +286,51 @@ func copyDestinationFiles(entries []workspaceEntry, dst string, report *MoveRepo
 			continue
 		}
 		target := filepath.Join(dst, e.rel)
-		if info, statErr := os.Lstat(target); statErr == nil && info.Mode().IsRegular() {
+		if info, statErr := os.Lstat(target); statErr == nil {
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("workspace move aborted: destination path became occupied while copying, refusing to overwrite: %s", target)
+			}
+			targetHash, hashErr := hashFile(target)
+			if hashErr != nil {
+				return fmt.Errorf("workspace move: failed to hash destination %s: %w", target, hashErr)
+			}
+			if targetHash != e.hash {
+				return fmt.Errorf("workspace move aborted: destination file changed while copying, refusing to overwrite: %s", target)
+			}
 			report.FilesSkipped++
 			continue
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			return fmt.Errorf("workspace move: cannot inspect destination %s: %w", target, statErr)
 		}
-		n, err := copyFileVerified(e.src, target, e.perm)
+		n, copied, err := copyFileVerified(e.src, target, e.perm, e.hash)
 		if err != nil {
 			return err
 		}
-		report.FilesCopied++
-		report.BytesCopied += n
+		if copied {
+			report.FilesCopied++
+			report.BytesCopied += n
+		} else {
+			report.FilesSkipped++
+		}
+	}
+	return nil
+}
+
+// validateSourceSnapshot proves every inventoried source file still has the
+// hash captured under the workspace locks. Ordinary tt commits cannot reach
+// this point concurrently; this guard catches direct filesystem writers.
+func validateSourceSnapshot(entries []workspaceEntry) error {
+	for _, e := range entries {
+		if e.dir {
+			continue
+		}
+		current, err := hashFile(e.src)
+		if err != nil {
+			return fmt.Errorf("workspace move aborted: source changed while copying (%s): %w", e.src, err)
+		}
+		if current != e.hash {
+			return fmt.Errorf("workspace move aborted: source changed while copying, refusing to publish a mixed snapshot: %s", e.src)
+		}
 	}
 	return nil
 }
@@ -228,7 +352,7 @@ func inventoryWorkspace(root string) ([]workspaceEntry, error) {
 		if rel == "." {
 			return nil
 		}
-		if isMigrationRootExcluded(rel) {
+		if isWorkspaceMoveExcluded(rel) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
@@ -244,13 +368,27 @@ func inventoryWorkspace(root string) ([]workspaceEntry, error) {
 		if !d.IsDir() && !info.Mode().IsRegular() {
 			return fmt.Errorf("workspace move aborted: source contains a non-regular file, resolve it before moving: %s", path)
 		}
-		entries = append(entries, workspaceEntry{src: path, rel: rel, dir: d.IsDir(), perm: info.Mode().Perm()})
+		entry := workspaceEntry{src: path, rel: rel, dir: d.IsDir(), perm: info.Mode().Perm()}
+		if !entry.dir {
+			entry.hash, infoErr = hashFile(path)
+			if infoErr != nil {
+				return fmt.Errorf("failed to hash source file %s: %w", path, infoErr)
+			}
+		}
+		entries = append(entries, entry)
 		return nil
 	})
 	if walkErr != nil {
 		return nil, fmt.Errorf("workspace move: failed to inventory source %s: %w", root, walkErr)
 	}
 	return entries, nil
+}
+
+func isWorkspaceMoveExcluded(rel string) bool {
+	if isMigrationRootExcluded(rel) {
+		return true
+	}
+	return filepath.Clean(rel) == filepath.Join(dataDirName, "transactions", "commit.lock")
 }
 
 // ensureNotNested refuses a move where source and destination overlap, which a
@@ -285,19 +423,6 @@ func isSubpath(parent, child string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
-// filesIdentical reports whether two files have identical sha256 content hashes.
-func filesIdentical(a, b string) (bool, error) {
-	ha, err := hashFile(a)
-	if err != nil {
-		return false, fmt.Errorf("workspace move: failed to hash %s: %w", a, err)
-	}
-	hb, err := hashFile(b)
-	if err != nil {
-		return false, fmt.Errorf("workspace move: failed to hash %s: %w", b, err)
-	}
-	return ha == hb, nil
-}
-
 // hashFile returns the hex sha256 of a file's contents.
 func hashFile(path string) (string, error) {
 	f, err := os.Open(path)
@@ -314,19 +439,20 @@ func hashFile(path string) (string, error) {
 
 // copyFileVerified copies src to dst durably: it streams into a temp file in the
 // destination directory while hashing, fsyncs it, verifies the on-disk copy
-// matches the source hash, atomically renames it into place, and fsyncs the
-// destination directory. The number of bytes copied is returned.
-func copyFileVerified(src, dst string, perm fs.FileMode) (int64, error) {
+// matches the inventoried source hash, atomically links it into place without
+// replacement, and fsyncs the destination directory. The bool reports whether
+// this call published the file; an identical destination race is reusable.
+func copyFileVerified(src, dst string, perm fs.FileMode, expectedHash string) (int64, bool, error) {
 	in, openErr := os.Open(src)
 	if openErr != nil {
-		return 0, fmt.Errorf("workspace move: failed to open source %s: %w", src, openErr)
+		return 0, false, fmt.Errorf("workspace move: failed to open source %s: %w", src, openErr)
 	}
 	defer func() { _ = in.Close() }()
 
 	dir := filepath.Dir(dst)
 	tmp, tmpErr := os.CreateTemp(dir, ".tt-move-*")
 	if tmpErr != nil {
-		return 0, fmt.Errorf("workspace move: failed to create temp file in %s: %w", dir, tmpErr)
+		return 0, false, fmt.Errorf("workspace move: failed to create temp file in %s: %w", dir, tmpErr)
 	}
 	tmpName := tmp.Name()
 
@@ -335,39 +461,61 @@ func copyFileVerified(src, dst string, perm fs.FileMode) (int64, error) {
 	if copyErr != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: failed to copy %s: %w", src, copyErr)
+		return 0, false, fmt.Errorf("workspace move: failed to copy %s: %w", src, copyErr)
+	}
+	if err := os.Chmod(tmpName, perm); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return 0, false, fmt.Errorf("workspace move: failed to set permissions on %s: %w", tmpName, err)
 	}
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: failed to fsync %s: %w", tmpName, err)
+		return 0, false, fmt.Errorf("workspace move: failed to fsync %s: %w", tmpName, err)
 	}
 	if err := tmp.Close(); err != nil {
 		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: failed to close %s: %w", tmpName, err)
-	}
-	if err := os.Chmod(tmpName, perm); err != nil {
-		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: failed to set permissions on %s: %w", tmpName, err)
+		return 0, false, fmt.Errorf("workspace move: failed to close %s: %w", tmpName, err)
 	}
 
 	// Read-back verification: the published file must match the source exactly.
 	dstHash, hashErr := hashFile(tmpName)
 	if hashErr != nil {
 		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: failed to verify copy of %s: %w", src, hashErr)
+		return 0, false, fmt.Errorf("workspace move: failed to verify copy of %s: %w", src, hashErr)
 	}
-	if dstHash != hex.EncodeToString(srcHash.Sum(nil)) {
+	copiedSourceHash := hex.EncodeToString(srcHash.Sum(nil))
+	if copiedSourceHash != expectedHash {
 		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: hash mismatch after copying %s (corruption detected)", src)
+		return 0, false, fmt.Errorf("workspace move aborted: source changed while copying, refusing to publish mixed bytes: %s", src)
+	}
+	if dstHash != copiedSourceHash {
+		_ = os.Remove(tmpName)
+		return 0, false, fmt.Errorf("workspace move: hash mismatch after copying %s (corruption detected)", src)
 	}
 
-	if err := os.Rename(tmpName, dst); err != nil {
+	// Publish without replacement. A destination writer racing the move must
+	// never be overwritten between the occupancy check and publication.
+	if err := os.Link(tmpName, dst); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			existingHash, hashErr := hashFile(dst)
+			_ = os.Remove(tmpName)
+			if hashErr != nil {
+				return 0, false, fmt.Errorf("workspace move: failed to inspect destination race at %s: %w", dst, hashErr)
+			}
+			if existingHash == expectedHash {
+				return 0, false, nil
+			}
+			return 0, false, fmt.Errorf("workspace move aborted: destination file appeared while copying, refusing to overwrite: %s", dst)
+		}
 		_ = os.Remove(tmpName)
-		return 0, fmt.Errorf("workspace move: failed to publish %s: %w", dst, err)
+		return 0, false, fmt.Errorf("workspace move: failed to publish %s without overwrite: %w", dst, err)
+	}
+	if err := os.Remove(tmpName); err != nil {
+		return 0, false, fmt.Errorf("workspace move: failed to remove linked temp file %s: %w", tmpName, err)
 	}
 	fsyncDir(dir)
-	return written, nil
+	return written, true, nil
 }
 
 // fsyncDir best-effort fsyncs a directory so a rename into it is durable.
