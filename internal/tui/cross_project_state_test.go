@@ -270,6 +270,115 @@ func TestReloadCrossProjectsResetsMissingInMemoryPinnedTagTab(t *testing.T) {
 	}
 }
 
+func TestReloadCrossProjectsRestoresCursorByProjectAndTask(t *testing.T) {
+	app := newTestAppModel()
+	projectA := &models.Project{
+		ID:   "alpha",
+		Name: "Alpha",
+		Tasks: []*models.Task{
+			makeTask("a1", "Alpha one", models.SectionInbox),
+			makeTask("a2", "Alpha two", models.SectionInbox),
+		},
+	}
+	projectB := &models.Project{
+		ID:   "beta",
+		Name: "Beta",
+		Tasks: []*models.Task{
+			makeTask("b1", "Beta one", models.SectionInbox),
+			makeTask("b2", "Beta two", models.SectionInbox),
+		},
+	}
+	projectA.BuildTaskTree()
+	projectB.BuildTaskTree()
+
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
+	m.loadedProjects = []*models.Project{projectA, projectB}
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+	m.cursor = findTaskRowInProject(m, projectB.ID, "b1")
+	if m.cursor < 0 {
+		t.Fatal("setup: could not locate beta/b1")
+	}
+
+	_ = m.reloadCrossProjects()
+	validGeneration := m.crossLoadGen
+	if m.crossReloadProjectID != projectB.ID || m.crossReloadTaskID != "b1" {
+		t.Fatalf("captured cursor = %q/%q, want %q/%q", m.crossReloadProjectID, m.crossReloadTaskID, projectB.ID, "b1")
+	}
+
+	// A superseded result must not consume the target needed by the accepted load.
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{projectA, projectB},
+		generation: validGeneration - 1,
+	})
+	if m.crossReloadProjectID != projectB.ID || m.crossReloadTaskID != "b1" {
+		t.Fatal("stale load consumed the pending cursor target")
+	}
+
+	reloadedA := &models.Project{ID: projectA.ID, Name: projectA.Name, Tasks: []*models.Task{
+		makeTask("a1", "Alpha one", models.SectionInbox),
+		makeTask("a2", "Alpha two", models.SectionInbox),
+	}}
+	reloadedB := &models.Project{ID: projectB.ID, Name: projectB.Name, Tasks: []*models.Task{
+		makeTask("b2", "Beta two", models.SectionInbox),
+		makeTask("b1", "Beta one", models.SectionInbox),
+	}}
+	reloadedA.BuildTaskTree()
+	reloadedB.BuildTaskTree()
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{reloadedA, reloadedB},
+		generation: validGeneration,
+	})
+
+	want := findTaskRowInProject(m, projectB.ID, "b1")
+	if want < 0 || m.cursor != want {
+		t.Fatalf("cursor = %d, want beta/b1 row %d", m.cursor, want)
+	}
+	if m.crossReloadProjectID != "" || m.crossReloadTaskID != "" {
+		t.Fatalf("cursor target was not consumed: %q/%q", m.crossReloadProjectID, m.crossReloadTaskID)
+	}
+}
+
+func TestReloadCrossProjectsMissingCursorTaskFallsBackAndClearsTarget(t *testing.T) {
+	app := newTestAppModel()
+	project := &models.Project{
+		ID:   "alpha",
+		Name: "Alpha",
+		Tasks: []*models.Task{
+			makeTask("keep", "Keep", models.SectionInbox),
+			makeTask("gone", "Gone", models.SectionInbox),
+		},
+	}
+	project.BuildTaskTree()
+	m := NewOutlinerModel(nil, app.configManager, app.runtime)
+	m.loadedProjects = []*models.Project{project}
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+	m.cursor = findTaskRowInProject(m, project.ID, "gone")
+	if m.cursor < 0 {
+		t.Fatal("setup: could not locate task that will disappear")
+	}
+
+	_ = m.reloadCrossProjects()
+	reloaded := &models.Project{
+		ID:    project.ID,
+		Name:  project.Name,
+		Tasks: []*models.Task{makeTask("keep", "Keep", models.SectionInbox)},
+	}
+	reloaded.BuildTaskTree()
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{reloaded},
+		generation: m.crossLoadGen,
+	})
+
+	if len(m.rows) > 0 && (m.cursor < 0 || m.cursor >= len(m.rows)) {
+		t.Fatalf("fallback cursor %d is invalid for %d rows", m.cursor, len(m.rows))
+	}
+	if m.crossReloadProjectID != "" || m.crossReloadTaskID != "" {
+		t.Fatalf("missing task left a stale cursor target: %q/%q", m.crossReloadProjectID, m.crossReloadTaskID)
+	}
+}
+
 func TestCrossProjectStatePreservationAfterReload(t *testing.T) {
 	const collapsedSection = models.SectionNext
 

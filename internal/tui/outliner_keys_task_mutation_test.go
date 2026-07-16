@@ -466,6 +466,29 @@ func newCrossNestedEnv(t *testing.T) (*OutlinerModel, *kanbanBulkEnv) {
 	return m, env
 }
 
+// completeCrossReorderReload mirrors the shell's successful batch refresh: the
+// current row is captured, fresh project snapshots replace the old rows, and the
+// accepted load restores the cursor by project and task identity.
+func completeCrossReorderReload(t *testing.T, m *OutlinerModel, env *kanbanBulkEnv, projectID, taskID string) {
+	t.Helper()
+	_ = m.reloadCrossProjects()
+	projects := make([]*models.Project, len(env.projects))
+	for i := range env.projects {
+		projects[i] = env.reload(t, i)
+	}
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   projects,
+		generation: m.crossLoadGen,
+	})
+	want := findTaskRowInProject(m, projectID, taskID)
+	if want < 0 {
+		t.Fatalf("could not locate task %q in project %q after reload", taskID, projectID)
+	}
+	if m.cursor != want {
+		t.Fatalf("cursor = %d, want %d for task %q in project %q", m.cursor, want, taskID, projectID)
+	}
+}
+
 // TestOutlinerJ_CrossProjectNestedChildReorders: J on projB's "bshared" child
 // commits a MoveDown through the coordinator, reordering projB's story children
 // on disk to [baux, bshared] while projA is untouched.
@@ -481,6 +504,7 @@ func TestOutlinerJ_CrossProjectNestedChildReorders(t *testing.T) {
 		t.Fatal("expected handled=true for cross-project nested J")
 	}
 	runBatchResult(t, cmd)
+	completeCrossReorderReload(t, m, env, env.projects[1].ID, "bshared")
 
 	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(env.reload(t, 0).GetTaskByID("astory")), []string{"ashared", "aaux"})
 	assertIDsEqual(t, "projB story.Children after J", taskChildIDs(env.reload(t, 1).GetTaskByID("bstory")), []string{"baux", "bshared"})
@@ -500,6 +524,7 @@ func TestOutlinerK_CrossProjectNestedChildReorders(t *testing.T) {
 		t.Fatal("expected handled=true for cross-project nested K")
 	}
 	runBatchResult(t, cmd)
+	completeCrossReorderReload(t, m, env, env.projects[1].ID, "baux")
 
 	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(env.reload(t, 0).GetTaskByID("astory")), []string{"ashared", "aaux"})
 	assertIDsEqual(t, "projB story.Children after K", taskChildIDs(env.reload(t, 1).GetTaskByID("bstory")), []string{"baux", "bshared"})
@@ -517,6 +542,7 @@ func TestOutlinerMJ_CrossProjectNestedChildReorders(t *testing.T) {
 
 	_, cmd := m.moveTaskToPosition(m.rows[m.cursor].task, false /* toBottom */)
 	runBatchResult(t, cmd)
+	completeCrossReorderReload(t, m, env, env.projects[1].ID, "bshared")
 
 	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(env.reload(t, 0).GetTaskByID("astory")), []string{"ashared", "aaux"})
 	assertIDsEqual(t, "projB story.Children after mJ", taskChildIDs(env.reload(t, 1).GetTaskByID("bstory")), []string{"baux", "bshared"})
@@ -533,6 +559,7 @@ func TestOutlinerMK_CrossProjectNestedChildReorders(t *testing.T) {
 
 	_, cmd := m.moveTaskToPosition(m.rows[m.cursor].task, true /* toTop */)
 	runBatchResult(t, cmd)
+	completeCrossReorderReload(t, m, env, env.projects[1].ID, "baux")
 
 	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(env.reload(t, 0).GetTaskByID("astory")), []string{"ashared", "aaux"})
 	assertIDsEqual(t, "projB story.Children after mK", taskChildIDs(env.reload(t, 1).GetTaskByID("bstory")), []string{"baux", "bshared"})

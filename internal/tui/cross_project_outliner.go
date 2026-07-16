@@ -122,6 +122,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossForceRebuild = true
 	m.resetViewScrollOffset()
 	m.crossProjectRebuildRows()
+	m.restoreCrossOutlinerCursorAfterReload()
 
 	if len(msg.failedLoads) == 0 {
 		return nil
@@ -483,10 +484,41 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 // so any in-flight stale result is discarded on arrival.
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	m.preserveCrossOutlinerPinnedTagTabForReload()
+	m.preserveCrossOutlinerCursorForReload()
 	m.loadedProjects = nil
 	m.rows = m.rows[:0]
 	m.resetViewScrollOffset()
 	return m.startCrossProjectLoad()
+}
+
+// preserveCrossOutlinerCursorForReload captures the selected task by project and
+// task ID before reloadCrossProjects clears the rows. If a superseding reload
+// starts while rows are already empty, keep the existing target for the newest
+// accepted load instead of losing the user's selection.
+func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
+	if m.cursor < 0 || m.cursor >= len(m.rows) {
+		return
+	}
+	row := m.rows[m.cursor]
+	if !row.isTaskRow() || row.task == nil || row.ProjectID == "" || row.task.ID == "" {
+		return
+	}
+	m.crossReloadProjectID = row.ProjectID
+	m.crossReloadTaskID = row.task.ID
+}
+
+// restoreCrossOutlinerCursorAfterReload consumes the captured cursor identity
+// after the accepted load rebuilds rows. If the task disappeared or is hidden by
+// the current view, crossProjectRebuildRows has already clamped the numeric cursor
+// to a valid fallback position.
+func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload() {
+	projectID, taskID := m.crossReloadProjectID, m.crossReloadTaskID
+	m.crossReloadProjectID = ""
+	m.crossReloadTaskID = ""
+	if projectID == "" || taskID == "" {
+		return
+	}
+	m.moveCursorToProjectTask(taskID, projectID)
 }
 
 // crossMergedTaskSlice returns a single flat slice of all tasks from every

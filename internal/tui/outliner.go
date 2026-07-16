@@ -95,6 +95,8 @@ type OutlinerModel struct {
 	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
 	crossReloadTabName    string            // Pinned tag tab name preserved while async reload clears loadedProjects
 	crossReloadTabSet     bool              // True when crossReloadTabName is an intentional live selection, including All
+	crossReloadProjectID  string            // Project owning the cursor task captured before an async reload
+	crossReloadTaskID     string            // Cursor task captured before an async reload; restored after rows rebuild
 
 	// Memoization guard for crossProjectRebuildRows
 	crossLastPerspective     int
