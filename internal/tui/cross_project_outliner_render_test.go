@@ -100,33 +100,48 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	const rowWidth = 72
 	m, selectedTask := crossProjectRenderFixture(t, 112, 18)
 	parentIdx := findOutlinerRowIndex(t, m.rows, "alpha-parent")
 	childIdx := findOutlinerRowIndex(t, m.rows, selectedTask.ID)
+	if got := m.rows[childIdx].task.ID; got != selectedTask.ID {
+		t.Fatalf("promoted row task ID = %q, want child ID %q", got, selectedTask.ID)
+	}
 
-	parentLine := m.renderOutlinerTaskRow(m.rows[parentIdx], false, rowWidth, rowWidth, parentIdx, nil)
+	const wideRowWidth = 112
+	parentLine := m.renderOutlinerTaskRow(m.rows[parentIdx], false, wideRowWidth, wideRowWidth, parentIdx, nil)
 	parentPlain := ansi.Strip(parentLine)
 	assertContains(t, parentPlain, "└────", "section-local parent tree prefix")
 	assertNotContains(t, parentPlain, IconExpanded, "cross-section child does not create a fold indicator")
 	assertNotContains(t, parentPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 
-	childLine := m.renderOutlinerTaskRow(m.rows[childIdx], true, rowWidth, rowWidth, childIdx, nil)
-	childPlain := ansi.Strip(childLine)
-	assertContains(t, childPlain, "└────", "promoted section-root prefix")
-	assertContains(t, childPlain, "Alpha parent", "promoted child ancestor breadcrumb")
-	assertNotContains(t, childPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
-	assertContains(t, childPlain, "#42", "child short ID metadata")
-	assertNotContains(t, childPlain, "#ops #today", "dense rows no longer carry tag metadata inline")
-	assertContains(t, childPlain, "Selected chi", "truncated child title prefix")
-	if strings.Contains(childPlain, selectedTask.Title) {
-		t.Fatalf("expected child title to be truncated at width %d, got full title in %q", rowWidth, childPlain)
+	wideChildLine := m.renderOutlinerTaskRow(m.rows[childIdx], true, wideRowWidth, wideRowWidth, childIdx, nil)
+	wideChildPlain := ansi.Strip(wideChildLine)
+	assertContains(t, wideChildPlain, "└────", "promoted section-root prefix")
+	assertContains(t, wideChildPlain, selectedTask.Title, "promoted child primary title")
+	assertContains(t, wideChildPlain, "Alpha parent", "promoted child ancestor suffix")
+	if childPos, parentPos := strings.Index(wideChildPlain, selectedTask.Title), strings.Index(wideChildPlain, "Alpha parent"); childPos < 0 || parentPos <= childPos {
+		t.Fatalf("promoted row labels are not child-first: %q", wideChildPlain)
 	}
-	if got := lipgloss.Width(childLine); got != rowWidth {
-		t.Fatalf("selected child row width = %d, want %d, stripped=%q", got, rowWidth, childPlain)
+	assertNotContains(t, wideChildPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
+	assertContains(t, wideChildPlain, "#42", "child short ID metadata")
+	assertNotContains(t, wideChildPlain, "#ops #today", "dense rows no longer carry tag metadata inline")
+	if got := lipgloss.Width(wideChildLine); got != wideRowWidth {
+		t.Fatalf("wide selected child row width = %d, want %d, stripped=%q", got, wideRowWidth, wideChildPlain)
 	}
-	if childLine == childPlain {
-		t.Fatalf("selected child row has no ANSI styling applied: %q", childLine)
+
+	const narrowRowWidth = 72
+	narrowChildLine := m.renderOutlinerTaskRow(m.rows[childIdx], true, narrowRowWidth, narrowRowWidth, childIdx, nil)
+	narrowChildPlain := ansi.Strip(narrowChildLine)
+	assertContains(t, narrowChildPlain, "Selected chi", "truncated child title prefix")
+	assertNotContains(t, narrowChildPlain, "Alpha parent", "ancestor context omitted when the child title is truncated")
+	if strings.Contains(narrowChildPlain, selectedTask.Title) {
+		t.Fatalf("expected child title to be truncated at width %d, got full title in %q", narrowRowWidth, narrowChildPlain)
+	}
+	if got := lipgloss.Width(narrowChildLine); got != narrowRowWidth {
+		t.Fatalf("narrow selected child row width = %d, want %d, stripped=%q", got, narrowRowWidth, narrowChildPlain)
+	}
+	if narrowChildLine == narrowChildPlain {
+		t.Fatalf("selected child row has no ANSI styling applied: %q", narrowChildLine)
 	}
 }
 

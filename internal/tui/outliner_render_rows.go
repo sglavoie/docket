@@ -408,22 +408,52 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) string {
 	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
 	availableWidth := max(rowWidth-nonTitleWidth, 1)
-	breadcrumb = compactAncestorBreadcrumb(breadcrumb, max(availableWidth-4, 0))
-	breadcrumbRendered := ""
-	if breadcrumb != "" {
-		breadcrumbRendered = MutedStyle.Render(breadcrumb) + " "
+	title := task.Title
+	remainingWidth := availableWidth - lipgloss.Width(title)
+	if remainingWidth < 0 {
+		title = truncateToVisualWidth(title, availableWidth)
+		remainingWidth = 0
 	}
-	titleWidth := max(availableWidth-lipgloss.Width(breadcrumbRendered), 1)
-	truncatedTitle := truncateToVisualWidth(task.Title, titleWidth)
 	query := strings.TrimSpace(ExtractSearchTextQuery(m.SearchQuery()))
+	titleRendered := ""
 	if query == "" {
-		return breadcrumbRendered + titleStyle.Render(truncatedTitle)
+		titleRendered = titleStyle.Render(title)
+	} else {
+		_, positions := fuzzy.ScoreTermsWithPositions(title, query)
+		if len(positions) == 0 {
+			titleRendered = titleStyle.Render(title)
+		} else {
+			titleRendered = HighlightText(title, positions, titleStyle)
+		}
 	}
-	_, positions := fuzzy.ScoreTermsWithPositions(truncatedTitle, query)
-	if len(positions) == 0 {
-		return breadcrumbRendered + titleStyle.Render(truncatedTitle)
+
+	suffix := compactPromotedAncestorSuffix(breadcrumb, remainingWidth)
+	if suffix == "" {
+		return titleRendered
 	}
-	return breadcrumbRendered + HighlightText(truncatedTitle, positions, titleStyle)
+	return titleRendered + MutedStyle.Render(suffix)
+}
+
+func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
+	if breadcrumb == "" || maxWidth < 5 {
+		return ""
+	}
+
+	trimmed := strings.TrimSuffix(strings.TrimSpace(breadcrumb), " ›")
+	if trimmed == "" {
+		return ""
+	}
+	ancestors := strings.Split(trimmed, " › ")
+	full := "  ‹ " + strings.Join(ancestors, " › ")
+	if lipgloss.Width(full) <= maxWidth {
+		return full
+	}
+
+	compacted := full
+	if len(ancestors) > 1 {
+		compacted = "  ‹ … › " + ancestors[len(ancestors)-1]
+	}
+	return truncateToVisualWidth(compacted, maxWidth)
 }
 
 func compactAncestorBreadcrumb(breadcrumb string, maxWidth int) string {

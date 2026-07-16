@@ -96,6 +96,126 @@ func TestOutlinerNarrowDeepRowKeepsTitleVisible(t *testing.T) {
 	}
 }
 
+func TestOutlinerPromotedChildTitleLayout(t *testing.T) {
+	tests := []struct {
+		name           string
+		title          string
+		breadcrumb     string
+		availableWidth int
+		want           string
+	}{
+		{
+			name:           "no breadcrumb preserves title",
+			title:          "Child",
+			availableWidth: 12,
+			want:           "Child",
+		},
+		{
+			name:           "one ancestor",
+			title:          "Child",
+			breadcrumb:     "Parent ›",
+			availableWidth: 15,
+			want:           "Child  ‹ Parent",
+		},
+		{
+			name:           "multiple ancestors",
+			title:          "Child",
+			breadcrumb:     "Epic › Story ›",
+			availableWidth: 21,
+			want:           "Child  ‹ Epic › Story",
+		},
+		{
+			name:           "multiple ancestors compact to immediate parent",
+			title:          "Child",
+			breadcrumb:     "Epic › Story ›",
+			availableWidth: 18,
+			want:           "Child  ‹ … › Story",
+		},
+		{
+			name:           "four suffix columns omits context",
+			title:          "Child",
+			breadcrumb:     "Parent ›",
+			availableWidth: 9,
+			want:           "Child",
+		},
+		{
+			name:           "five suffix columns includes truncated context",
+			title:          "Child",
+			breadcrumb:     "Parent ›",
+			availableWidth: 10,
+			want:           "Child  ‹ …",
+		},
+		{
+			name:           "exact child fit omits context",
+			title:          "Child",
+			breadcrumb:     "Parent ›",
+			availableWidth: 5,
+			want:           "Child",
+		},
+		{
+			name:           "narrow title truncates before adding context",
+			title:          "Child task",
+			breadcrumb:     "Parent ›",
+			availableWidth: 6,
+			want:           "Child…",
+		},
+		{
+			name:           "wide characters in title and ancestor",
+			title:          "修正",
+			breadcrumb:     "親🧭 ›",
+			availableWidth: 12,
+			want:           "修正  ‹ 親🧭",
+		},
+		{
+			name:           "wide title truncation",
+			title:          "修正作業",
+			breadcrumb:     "親 ›",
+			availableWidth: 7,
+			want:           "修正作…",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &OutlinerModel{}
+			task := &models.Task{Title: tt.title}
+			// With every variable-width segment empty, outlinerNonTitleWidth
+			// accounts for four fixed separator columns.
+			rendered := m.renderTaskTitle(task, tt.breadcrumb, lipgloss.NewStyle(), tt.availableWidth+4,
+				"", "", "", "", "", "", "", "", "")
+			plain := ansi.Strip(rendered)
+			if plain != tt.want {
+				t.Fatalf("renderTaskTitle() = %q, want %q", plain, tt.want)
+			}
+			if got := lipgloss.Width(rendered); got > tt.availableWidth {
+				t.Fatalf("renderTaskTitle() width = %d, want <= %d: %q", got, tt.availableWidth, plain)
+			}
+		})
+	}
+}
+
+func TestOutlinerPromotedChildSearchHighlighting(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	m := &OutlinerModel{}
+	m.SetSearchQuery("Child")
+	task := &models.Task{Title: "Child plan"}
+	const suffix = "  ‹ Child ancestor"
+	rendered := m.renderTaskTitle(task, "Child ancestor ›", NormalStyle, 44,
+		"", "", "", "", "", "", "", "", "")
+	plain := ansi.Strip(rendered)
+	if plain != task.Title+suffix {
+		t.Fatalf("highlighted promoted title plain text = %q, want child-first %q", plain, task.Title+suffix)
+	}
+	if !strings.Contains(rendered, HighlightStyle.Render("C")) {
+		t.Fatalf("child title does not contain search highlighting: %q", rendered)
+	}
+	if !strings.HasSuffix(rendered, MutedStyle.Render(suffix)) {
+		t.Fatalf("ancestor suffix is not a separately muted segment: %q", rendered)
+	}
+}
+
 // TestOutlinerFullWidthHeaderFitsWidth guards the full-width header overflow:
 // renderWithSidebar clamps content via Width(treeWidth), but renderFullWidth
 // passed the tree through with no enclosing width style, so a long project name
