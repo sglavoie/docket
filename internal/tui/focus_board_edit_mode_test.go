@@ -29,6 +29,30 @@ func newTestFocusBoard() *FocusBoardModel {
 	}
 }
 
+func TestFocusBoardPerspectiveUsesWorkflowSection(t *testing.T) {
+	project, _ := models.NewProject("project", "Project", "/tmp/project")
+	next := &models.Task{ID: "next", Title: "Next", WorkflowState: models.StateNext, Priority: 3}
+	inbox := &models.Task{ID: "inbox", Title: "Inbox", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"tagged"}}
+	m := newTestFocusBoard()
+	m.tabs.Active = boardTabToday
+	m.todayRows = []boardRow{
+		{Task: next, Project: project},
+		{Task: inbox, Project: project},
+	}
+
+	m.activePerspective = 3
+	m.applyFilter()
+	if len(m.filtered) != 1 || m.filtered[0].Task.ID != next.ID {
+		t.Fatalf("Next perspective: got %#v, want only %q", m.filtered, next.ID)
+	}
+
+	m.activePerspective = 4
+	m.applyFilter()
+	if len(m.filtered) != 1 || m.filtered[0].Task.ID != inbox.ID {
+		t.Fatalf("Inbox perspective: got %#v, want only %q", m.filtered, inbox.ID)
+	}
+}
+
 // TestFocusBoardLoadItems_CancelsEditMode verifies that loadItems cancels
 // editMode so that a stale editIdx cannot apply changes to the wrong task.
 func TestFocusBoardLoadItems_CancelsEditMode(t *testing.T) {

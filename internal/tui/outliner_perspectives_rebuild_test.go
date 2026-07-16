@@ -106,19 +106,25 @@ func TestRebuildRows_PinnedTagTabFiltersByTag(t *testing.T) {
 func TestRebuildRows_ActivePerspective(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: 2}
 	m.rebuildRows()
-	assertRowTitles(t, m.rows, []string{"Epic", "Story A"})
+	assertRowTitles(t, m.rows, []string{"Epic", "Story A", "Task A1", "Bug Root"})
 }
 
 func TestRebuildRows_NextPerspective(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 3}
+	next := &models.Task{ID: "next", Title: "Next task", WorkflowState: models.StateNext, Priority: 3}
+	inbox := &models.Task{ID: "inbox", Title: "Inbox task", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"tagged"}}
+	project := &models.Project{Tasks: []*models.Task{next, inbox}}
+	m := &OutlinerModel{project: project, activePerspective: 3}
 	m.rebuildRows()
-	assertRowTitles(t, m.rows, []string{"Epic", "Story A", "Task A1", "Bug Root"})
+	assertRowTitles(t, m.rows, []string{"Next task"})
 }
 
 func TestRebuildRows_InboxPerspective(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 4}
+	next := &models.Task{ID: "next", Title: "Next task", WorkflowState: models.StateNext, Priority: 3}
+	inbox := &models.Task{ID: "inbox", Title: "Inbox task", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"tagged"}}
+	project := &models.Project{Tasks: []*models.Task{next, inbox}}
+	m := &OutlinerModel{project: project, activePerspective: 4}
 	m.rebuildRows()
-	assertRowTitles(t, m.rows, []string{"Epic", "Story A", "Task A1", "Bug Root"})
+	assertRowTitles(t, m.rows, []string{"Inbox task"})
 }
 
 func TestRebuildRows_StandbyPerspective(t *testing.T) {
@@ -220,7 +226,7 @@ func TestRebuildRows_ParentExcludedWhenNoDescendantsMatch(t *testing.T) {
 		Tasks: []*models.Task{parent, child},
 	}
 
-	m := &OutlinerModel{project: proj, activePerspective: 2}
+	m := &OutlinerModel{project: proj, activePerspective: 3}
 	m.rebuildRows()
 	if len(m.rows) != 0 {
 		t.Fatalf("expected 0 rows when no tasks match, got %d: %v", len(m.rows), rowTitles(m.rows))

@@ -422,6 +422,42 @@ func TestKanbanFilteredCards_TagFilter(t *testing.T) {
 	}
 }
 
+func TestKanbanFilteredCards_PerspectiveUsesWorkflowSection(t *testing.T) {
+	project := testutil.NewTestProject("p")
+	next := &models.Task{ID: "next", Title: "Next", WorkflowState: models.StateNext, Priority: 3}
+	inbox := &models.Task{ID: "inbox", Title: "Inbox", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"tagged"}}
+	done := &models.Task{ID: "done", Title: "Done", WorkflowState: models.StateDone}
+	canceled := &models.Task{ID: "canceled", Title: "Canceled", WorkflowState: models.StateCanceled}
+	m := &KanbanModel{
+		crossProject:      true,
+		activePerspective: 3,
+		allCards: []KanbanCard{
+			{Task: next, Project: project},
+			{Task: inbox, Project: project},
+			{Task: done, Project: project},
+			{Task: canceled, Project: project},
+		},
+		FilterMixin: FilterMixin{filter: newFilterState()},
+	}
+
+	got := m.filteredCards()
+	if len(got) != 1 || got[0].Task.ID != next.ID {
+		t.Fatalf("Next perspective: got %#v, want only %q", got, next.ID)
+	}
+
+	m.activePerspective = 4
+	got = m.filteredCards()
+	if len(got) != 1 || got[0].Task.ID != inbox.ID {
+		t.Fatalf("Inbox perspective: got %#v, want only %q", got, inbox.ID)
+	}
+
+	m.activePerspective = PerspectiveCompleted
+	got = m.filteredCards()
+	if len(got) != 2 || got[0].Task.ID != done.ID || got[1].Task.ID != canceled.ID {
+		t.Fatalf("Completed perspective: got %#v, want done and canceled", got)
+	}
+}
+
 func TestKanbanRefreshAndClamp_AppliesTagFilter(t *testing.T) {
 	proj := testutil.NewTestProject("p")
 	tagged := testutil.NewTestTask("tagged", models.TaskTypeTask)

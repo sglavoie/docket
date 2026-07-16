@@ -78,56 +78,56 @@ var perspectives = [10]Perspective{
 		Name: "Active",
 		Key:  2,
 		Filter: func(t *models.Task) bool {
-			return t.IsInState(models.StateInProgress) && !t.IsSnoozed()
+			return t.InSection("") && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Next",
 		Key:  3,
 		Filter: func(t *models.Task) bool {
-			return taskInPlanningState(t) && t.Priority >= 1 && t.Priority <= 2 && !t.IsSnoozed()
+			return t.InSection(models.SectionNext) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Inbox",
 		Key:  4,
 		Filter: func(t *models.Task) bool {
-			return taskInPlanningState(t) && len(t.Tags) == 0 && !t.IsSnoozed()
+			return t.InSection(models.SectionInbox) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Standby",
 		Key:  5,
 		Filter: func(t *models.Task) bool {
-			return t.IsInState(models.StatePaused)
+			return t.InSection(models.SectionStandby) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Waiting",
 		Key:  6,
 		Filter: func(t *models.Task) bool {
-			return t.IsInState(models.StateWaiting) && !t.IsSnoozed()
+			return t.InSection(models.SectionWaiting) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Someday",
 		Key:  7,
 		Filter: func(t *models.Task) bool {
-			return taskInPlanningState(t) && t.Priority >= 4 && t.Priority <= 5 && !t.IsSnoozed()
+			return t.InSection(models.SectionSomeday) && !t.IsSnoozed()
 		},
 	},
 	{
 		Name: "Completed",
 		Key:  8,
 		Filter: func(t *models.Task) bool {
-			return t.IsInState(models.StateDone)
+			return t.InSection(models.SectionCompleted)
 		},
 	},
 	{
 		Name: "Review",
 		Key:  9,
 		Filter: func(t *models.Task) bool {
-			return t.IsInState(models.StateReview) && !t.IsSnoozed()
+			return t.InSection(models.SectionReview) && !t.IsSnoozed()
 		},
 	},
 }
