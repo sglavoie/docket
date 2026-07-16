@@ -139,19 +139,17 @@ func wrappedLineCount(s string, width int) int {
 }
 
 func (m *OutlinerModel) buildPerspectiveLabel(perspective Perspective) string {
-	presets := PerspectivePresets()
-	perspCount := len(presets)
-	prevIdx := (m.activePerspective + perspCount - 1) % perspCount
-	nextIdx := (m.activePerspective + 1) % perspCount
+	prevID := CyclePerspective(perspective.ID, -1)
+	nextID := CyclePerspective(perspective.ID, 1)
+	previous, _ := PerspectiveByID(prevID)
+	next, _ := PerspectiveByID(nextID)
 
 	currentStyle := GetViewModeStyleForSection(perspective.Name)
-	prevName := presets[prevIdx].Name
-	nextName := presets[nextIdx].Name
 
 	return "  " +
-		MutedStyle.Render("‹ "+prevName) + " " +
+		MutedStyle.Render("‹ "+previous.Name) + " " +
 		currentStyle.Render("@ "+perspective.Name) + " " +
-		MutedStyle.Render(nextName+" ›")
+		MutedStyle.Render(next.Name+" ›")
 }
 
 func (m *OutlinerModel) renderOutlinerBreadcrumb(width int) string {

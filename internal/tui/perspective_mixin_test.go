@@ -1,25 +1,34 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
+)
 
 func TestCyclePerspectiveLens_FromInactive(t *testing.T) {
-	if got := CyclePerspectiveLens(PerspectiveInactive, 1); got != 1 {
-		t.Errorf("forward from inactive: got %d, want 1 (All)", got)
+	if got := CyclePerspectiveLens(PerspectiveInactive, 1); got != PerspectiveAll {
+		t.Errorf("forward from inactive: got %d, want %d (All)", got, PerspectiveAll)
 	}
-	if got := CyclePerspectiveLens(PerspectiveInactive, -1); got != 9 {
-		t.Errorf("backward from inactive: got %d, want 9 (Review)", got)
+	if got := CyclePerspectiveLens(PerspectiveInactive, -1); got != PerspectiveCompleted {
+		t.Errorf("backward from inactive: got %d, want %d (Completed)", got, PerspectiveCompleted)
 	}
 }
 
-func TestCyclePerspectiveLens_WrapsModulo10(t *testing.T) {
-	if got := CyclePerspectiveLens(9, 1); got != 0 {
-		t.Errorf("9 + 1: got %d, want 0", got)
+func TestCyclePerspectiveLens_UsesCanonicalOrder(t *testing.T) {
+	if got := CyclePerspectiveLens(PerspectiveReview, 1); got != PerspectiveSnoozed {
+		t.Errorf("Review next: got %d, want Snoozed", got)
 	}
-	if got := CyclePerspectiveLens(0, -1); got != 9 {
-		t.Errorf("0 - 1: got %d, want 9", got)
+	if got := CyclePerspectiveLens(PerspectiveSnoozed, 1); got != PerspectiveCompleted {
+		t.Errorf("Snoozed next: got %d, want Completed", got)
 	}
-	if got := CyclePerspectiveLens(5, 1); got != 6 {
-		t.Errorf("5 + 1: got %d, want 6", got)
+	if got := CyclePerspectiveLens(PerspectiveCompleted, 1); got != PerspectiveAll {
+		t.Errorf("Completed next: got %d, want All", got)
+	}
+	if got := CyclePerspectiveLens(PerspectiveAll, -1); got != PerspectiveCompleted {
+		t.Errorf("All previous: got %d, want Completed", got)
 	}
 }
 
@@ -48,5 +57,34 @@ func TestPerspectiveLensFilter_AppliesPreset(t *testing.T) {
 	filter := PerspectiveLensFilter(1) // "All" — excludes complete + snoozed
 	if filter == nil {
 		t.Fatal("preset 1 should return non-nil filter")
+	}
+}
+
+func TestBuildPerspectivePrefixEntryUsesRemappedShortcutIDs(t *testing.T) {
+	selected := PerspectiveInactive
+	noop := func() (tea.Model, tea.Cmd) { return nil, nil }
+	entry := BuildPerspectivePrefixEntry(PerspectivePrefixDeps{
+		SelectByID: func(id int) (tea.Model, tea.Cmd) {
+			selected = id
+			return nil, nil
+		},
+		CycleNext: noop,
+		CyclePrev: noop,
+	})
+
+	for _, tc := range []struct {
+		key  string
+		want int
+	}{
+		{key: "0", want: PerspectiveCompleted},
+		{key: "8", want: PerspectiveReview},
+		{key: "9", want: PerspectiveSnoozed},
+	} {
+		selected = PerspectiveInactive
+		action := findPrefixChildBinding(t, []keymap.Entry{entry}, "P", tc.key)
+		_, _ = action()
+		if selected != tc.want {
+			t.Errorf("P%s selected perspective %d, want %d", tc.key, selected, tc.want)
+		}
 	}
 }

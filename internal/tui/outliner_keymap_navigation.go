@@ -299,13 +299,13 @@ func (b *outlinerKeymapBuilder) perspectiveEntries() []keymap.Entry {
 			keymap.Bind("7", "Someday perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
 				return m.handlePerspectivePrefix("7")
 			}),
-			keymap.Bind("8", "Completed perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
+			keymap.Bind("8", "Review perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
 				return m.handlePerspectivePrefix("8")
 			}),
-			keymap.Bind("9", "Review perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
+			keymap.Bind("9", "Snoozed perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
 				return m.handlePerspectivePrefix("9")
 			}),
-			keymap.Bind("0", "Snoozed perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
+			keymap.Bind("0", "Completed perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
 				return m.handlePerspectivePrefix("0")
 			}),
 		}),

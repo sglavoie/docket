@@ -23,7 +23,7 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	plain := ansi.Strip(rendered)
 
 	assertContains(t, plain, "Cross-project Outliner (2 projects)", "title")
-	assertContains(t, plain, "‹ Snoozed", "previous perspective label")
+	assertContains(t, plain, "‹ Completed", "previous perspective label")
 	assertContains(t, plain, "@ All", "current perspective label")
 	assertContains(t, plain, "Active ›", "next perspective label")
 	assertContains(t, plain, IconExpanded, "expanded section indicator")
@@ -31,7 +31,7 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	assertContains(t, plain, "(1)", "Inbox section count")
 	assertContains(t, plain, "@ Next", "Next section label")
 	assertContains(t, plain, "@ Active", "Active section label")
-	assertContains(t, rendered, MutedStyle.Render("‹ Snoozed"), "styled previous perspective")
+	assertContains(t, rendered, MutedStyle.Render("‹ Completed"), "styled previous perspective")
 	assertContains(t, rendered, GetViewModeStyleForSection("All").Render("@ All"), "styled current perspective")
 	assertContains(t, rendered, MutedStyle.Render("Active ›"), "styled next perspective")
 	assertContains(t, rendered, GetViewModeStyleForSection(models.SectionInbox).Bold(true).Render("@ Inbox"), "styled Inbox section")

@@ -51,13 +51,12 @@ func (m *OutlinerModel) crossInterceptCreationKeys(key string) (tea.Model, tea.C
 // or project sub-header) the cursor may have landed on after the row list is
 // reconstructed.
 func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.Cmd) {
-	perspCount := len(PerspectivePresets())
 	prevCursor := m.cursor
 	switch key {
 	case "h":
-		m.activePerspective = (m.activePerspective + perspCount - 1) % perspCount
+		m.activePerspective = CyclePerspective(m.activePerspective, -1)
 	case "l":
-		m.activePerspective = (m.activePerspective + 1) % perspCount
+		m.activePerspective = CyclePerspective(m.activePerspective, 1)
 	}
 	m.resetViewScrollOffset()
 	m.rebuildRows()
@@ -68,9 +67,9 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 // cross-project outliner. It sets activePerspective, forces a rebuild via
 // rebuildRows, then skips past any non-navigable row the cursor may have
 // landed on.
-func (m *OutlinerModel) crossHandlePerspectiveJump(perspKey int) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) crossHandlePerspectiveJump(perspID int) (tea.Model, tea.Cmd) {
 	prevCursor := m.cursor
-	m.activePerspective = perspKey
+	m.activePerspective = perspID
 	m.resetViewScrollOffset()
 	m.rebuildRows()
 	return m.crossSkipNonNavigableRows(prevCursor, nil)

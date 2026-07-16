@@ -45,29 +45,42 @@ func sectionOrderCopy() []string {
 // The Filter predicate returns true for tasks that should be visible.
 // A nil Filter means all tasks are shown (no filtering).
 type Perspective struct {
+	ID     int // stable internal ID persisted in saved filters and view state
 	Name   string
 	Key    int // 0-9 numeric key binding
 	Filter func(t *models.Task) bool
 }
 
-// Perspective key constants for commonly referenced perspectives.
+// Perspective ID constants. These values are persisted in saved filters and
+// view state, so they must remain stable even when shortcut keys are remapped.
 const (
-	PerspectiveSnoozed   = 0
-	PerspectiveAll       = 1
-	PerspectiveCompleted = 8
+	PerspectiveSnoozed = iota
+	PerspectiveAll
+	PerspectiveActive
+	PerspectiveNext
+	PerspectiveInbox
+	PerspectiveStandby
+	PerspectiveWaiting
+	PerspectiveSomeday
+	PerspectiveCompleted
+	PerspectiveReview
 )
 
-// perspectives holds the ten hardcoded perspective presets, indexed 0-9.
-// Access via PerspectivePresets().
+// perspectives holds the ten hardcoded perspective presets, indexed by their
+// stable IDs. Shortcut keys deliberately differ for Completed, Review, and
+// Snoozed so the visible cycle ends with Completed without changing persisted
+// perspective meanings.
 var perspectives = [10]Perspective{
 	{
+		ID:   PerspectiveSnoozed,
 		Name: "Snoozed",
-		Key:  0,
+		Key:  9,
 		Filter: func(t *models.Task) bool {
 			return t.IsSnoozed()
 		},
 	},
 	{
+		ID:   PerspectiveAll,
 		Name: "All",
 		Key:  1,
 		Filter: func(t *models.Task) bool {
@@ -75,6 +88,7 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveActive,
 		Name: "Active",
 		Key:  2,
 		Filter: func(t *models.Task) bool {
@@ -82,6 +96,7 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveNext,
 		Name: "Next",
 		Key:  3,
 		Filter: func(t *models.Task) bool {
@@ -89,6 +104,7 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveInbox,
 		Name: "Inbox",
 		Key:  4,
 		Filter: func(t *models.Task) bool {
@@ -96,6 +112,7 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveStandby,
 		Name: "Standby",
 		Key:  5,
 		Filter: func(t *models.Task) bool {
@@ -103,6 +120,7 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveWaiting,
 		Name: "Waiting",
 		Key:  6,
 		Filter: func(t *models.Task) bool {
@@ -110,6 +128,7 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveSomeday,
 		Name: "Someday",
 		Key:  7,
 		Filter: func(t *models.Task) bool {
@@ -117,32 +136,83 @@ var perspectives = [10]Perspective{
 		},
 	},
 	{
+		ID:   PerspectiveCompleted,
 		Name: "Completed",
-		Key:  8,
+		Key:  0,
 		Filter: func(t *models.Task) bool {
 			return t.InSection(models.SectionCompleted)
 		},
 	},
 	{
+		ID:   PerspectiveReview,
 		Name: "Review",
-		Key:  9,
+		Key:  8,
 		Filter: func(t *models.Task) bool {
 			return t.InSection(models.SectionReview) && !t.IsSnoozed()
 		},
 	},
 }
 
+// perspectiveCycleOrder is the canonical visible rotation shared by every
+// TUI surface that cycles perspectives.
+var perspectiveCycleOrder = [...]int{
+	PerspectiveAll,
+	PerspectiveActive,
+	PerspectiveNext,
+	PerspectiveInbox,
+	PerspectiveStandby,
+	PerspectiveWaiting,
+	PerspectiveSomeday,
+	PerspectiveReview,
+	PerspectiveSnoozed,
+	PerspectiveCompleted,
+}
+
 // PerspectivePresets returns the ten hardcoded perspective presets.
-// The returned slice is indexed 0-9 corresponding to keys 0-9.
+// The returned array is indexed by stable perspective ID, not shortcut key.
 func PerspectivePresets() [10]Perspective {
 	return perspectives
 }
 
-// PerspectiveByKey returns the perspective for the given key (0-9) and true,
-// or an empty Perspective and false if the key is out of range.
+// PerspectiveByID returns the perspective for the given stable ID and true,
+// or an empty Perspective and false if the ID is out of range.
+func PerspectiveByID(id int) (Perspective, bool) {
+	if id < 0 || id >= len(perspectives) {
+		return Perspective{}, false
+	}
+	return perspectives[id], true
+}
+
+// PerspectiveByKey returns the perspective bound to the given shortcut key
+// (0-9) and true, or an empty Perspective and false if the key is out of range.
 func PerspectiveByKey(key int) (Perspective, bool) {
 	if key < 0 || key > 9 {
 		return Perspective{}, false
 	}
-	return perspectives[key], true
+	for _, perspective := range perspectives {
+		if perspective.Key == key {
+			return perspective, true
+		}
+	}
+	return Perspective{}, false
+}
+
+// CyclePerspective advances a stable perspective ID by delta in the canonical
+// visible rotation. Invalid IDs enter at All when moving forward and Completed
+// when moving backward.
+func CyclePerspective(current, delta int) int {
+	for idx, id := range perspectiveCycleOrder {
+		if id != current {
+			continue
+		}
+		next := (idx + delta) % len(perspectiveCycleOrder)
+		if next < 0 {
+			next += len(perspectiveCycleOrder)
+		}
+		return perspectiveCycleOrder[next]
+	}
+	if delta < 0 {
+		return PerspectiveCompleted
+	}
+	return PerspectiveAll
 }

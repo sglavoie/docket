@@ -13,24 +13,46 @@ func TestPerspectivePresetCount(t *testing.T) {
 	if len(presets) != 10 {
 		t.Fatalf("expected 10 presets, got %d", len(presets))
 	}
-	for i, p := range presets {
-		if p.Key != i {
-			t.Errorf("preset %d: expected key %d, got %d", i, i, p.Key)
+	wantKeys := []int{9, 1, 2, 3, 4, 5, 6, 7, 0, 8}
+	for id, p := range presets {
+		if p.ID != id {
+			t.Errorf("preset %d: stable ID = %d", id, p.ID)
+		}
+		if p.Key != wantKeys[id] {
+			t.Errorf("preset %d: key = %d, want %d", id, p.Key, wantKeys[id])
 		}
 		if p.Name == "" {
-			t.Errorf("preset %d: empty name", i)
+			t.Errorf("preset %d: empty name", id)
 		}
 	}
 }
 
 func TestPerspectiveByKey(t *testing.T) {
-	for key := 0; key <= 9; key++ {
+	want := []struct {
+		name string
+		id   int
+	}{
+		{"Completed", PerspectiveCompleted},
+		{"All", PerspectiveAll},
+		{"Active", PerspectiveActive},
+		{"Next", PerspectiveNext},
+		{"Inbox", PerspectiveInbox},
+		{"Standby", PerspectiveStandby},
+		{"Waiting", PerspectiveWaiting},
+		{"Someday", PerspectiveSomeday},
+		{"Review", PerspectiveReview},
+		{"Snoozed", PerspectiveSnoozed},
+	}
+	for key, expected := range want {
 		p, ok := PerspectiveByKey(key)
 		if !ok {
-			t.Errorf("PerspectiveByKey(%d) returned false", key)
+			t.Fatalf("PerspectiveByKey(%d) returned false", key)
 		}
 		if p.Key != key {
 			t.Errorf("PerspectiveByKey(%d).Key = %d", key, p.Key)
+		}
+		if p.ID != expected.id || p.Name != expected.name {
+			t.Errorf("PerspectiveByKey(%d) = (%d, %q), want (%d, %q)", key, p.ID, p.Name, expected.id, expected.name)
 		}
 	}
 
@@ -42,8 +64,53 @@ func TestPerspectiveByKey(t *testing.T) {
 	}
 }
 
+func TestPerspectiveByIDPreservesPersistedMeanings(t *testing.T) {
+	want := map[int]string{
+		PerspectiveSnoozed:   "Snoozed",
+		PerspectiveAll:       "All",
+		PerspectiveCompleted: "Completed",
+		PerspectiveReview:    "Review",
+	}
+	for id, name := range want {
+		p, ok := PerspectiveByID(id)
+		if !ok || p.Name != name {
+			t.Errorf("PerspectiveByID(%d) = (%q, %v), want %q", id, p.Name, ok, name)
+		}
+	}
+	for _, bad := range []int{-1, 10, 100} {
+		if _, ok := PerspectiveByID(bad); ok {
+			t.Errorf("PerspectiveByID(%d) should return false", bad)
+		}
+	}
+}
+
+func TestCyclePerspectiveUsesCanonicalOrder(t *testing.T) {
+	order := []int{
+		PerspectiveAll,
+		PerspectiveActive,
+		PerspectiveNext,
+		PerspectiveInbox,
+		PerspectiveStandby,
+		PerspectiveWaiting,
+		PerspectiveSomeday,
+		PerspectiveReview,
+		PerspectiveSnoozed,
+		PerspectiveCompleted,
+	}
+	for idx, id := range order {
+		wantNext := order[(idx+1)%len(order)]
+		if got := CyclePerspective(id, 1); got != wantNext {
+			t.Errorf("forward from %d = %d, want %d", id, got, wantNext)
+		}
+		wantPrevious := order[(idx+len(order)-1)%len(order)]
+		if got := CyclePerspective(id, -1); got != wantPrevious {
+			t.Errorf("backward from %d = %d, want %d", id, got, wantPrevious)
+		}
+	}
+}
+
 func TestSnoozedPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(0)
+	p, _ := PerspectiveByID(PerspectiveSnoozed)
 	if p.Name != "Snoozed" {
 		t.Fatalf("expected 'Snoozed', got %q", p.Name)
 	}
@@ -61,7 +128,7 @@ func TestSnoozedPerspective(t *testing.T) {
 }
 
 func TestAllPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(1)
+	p, _ := PerspectiveByID(PerspectiveAll)
 	if p.Name != "All" {
 		t.Fatalf("expected 'All', got %q", p.Name)
 	}
@@ -89,7 +156,7 @@ func TestAllPerspective(t *testing.T) {
 }
 
 func TestActivePerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(2)
+	p, _ := PerspectiveByID(PerspectiveActive)
 	accept := []*models.Task{
 		{WorkflowState: models.StateReady},
 		{WorkflowState: models.StateInProgress},
@@ -122,7 +189,7 @@ func TestActivePerspective(t *testing.T) {
 }
 
 func TestNextPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(3)
+	p, _ := PerspectiveByID(PerspectiveNext)
 
 	for _, pri := range []int{1, 2, 3, 4, 5} {
 		task := &models.Task{WorkflowState: models.StateNext, Priority: pri}
@@ -146,7 +213,7 @@ func TestNextPerspective(t *testing.T) {
 }
 
 func TestInboxPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(4)
+	p, _ := PerspectiveByID(PerspectiveInbox)
 
 	accept := &models.Task{WorkflowState: models.StateInbox, Tags: nil}
 	if !p.Filter(accept) {
@@ -173,7 +240,7 @@ func TestInboxPerspective(t *testing.T) {
 }
 
 func TestStandbyPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(5)
+	p, _ := PerspectiveByID(PerspectiveStandby)
 	if p.Name != "Standby" {
 		t.Fatalf("expected 'Standby', got %q", p.Name)
 	}
@@ -205,7 +272,7 @@ func TestStandbyPerspective(t *testing.T) {
 }
 
 func TestWaitingPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(6)
+	p, _ := PerspectiveByID(PerspectiveWaiting)
 
 	accept := &models.Task{WorkflowState: models.StateWaiting}
 	if !p.Filter(accept) {
@@ -232,7 +299,7 @@ func TestWaitingPerspective(t *testing.T) {
 }
 
 func TestSomedayPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(7)
+	p, _ := PerspectiveByID(PerspectiveSomeday)
 
 	for _, pri := range []int{1, 2, 3, 4, 5} {
 		task := &models.Task{WorkflowState: models.StateSomeday, Priority: pri}
@@ -261,7 +328,7 @@ func TestSomedayPerspective(t *testing.T) {
 }
 
 func TestCompletedPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(8)
+	p, _ := PerspectiveByID(PerspectiveCompleted)
 
 	accept := &models.Task{WorkflowState: models.StateDone}
 	if !p.Filter(accept) {
@@ -286,7 +353,7 @@ func TestCompletedPerspective(t *testing.T) {
 }
 
 func TestReviewPerspective(t *testing.T) {
-	p, _ := PerspectiveByKey(9)
+	p, _ := PerspectiveByID(PerspectiveReview)
 
 	accept := &models.Task{WorkflowState: models.StateReview}
 	if !p.Filter(accept) {

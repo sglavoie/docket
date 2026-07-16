@@ -37,8 +37,7 @@ func (b *outlinerKeymapBuilder) perspectiveCycleEntries() []keymap.Entry {
 			if m.project == nil {
 				return m.crossHandlePerspectiveCycle("h")
 			}
-			perspCount := len(PerspectivePresets())
-			m.activePerspective = (m.activePerspective + perspCount - 1) % perspCount
+			m.activePerspective = CyclePerspective(m.activePerspective, -1)
 			m.rebuildRows()
 			return m, nil
 		}),
@@ -46,8 +45,7 @@ func (b *outlinerKeymapBuilder) perspectiveCycleEntries() []keymap.Entry {
 			if m.project == nil {
 				return m.crossHandlePerspectiveCycle("l")
 			}
-			perspCount := len(PerspectivePresets())
-			m.activePerspective = (m.activePerspective + 1) % perspCount
+			m.activePerspective = CyclePerspective(m.activePerspective, 1)
 			m.rebuildRows()
 			return m, nil
 		}),

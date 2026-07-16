@@ -234,7 +234,7 @@ func (m *OutlinerModel) currentPerspective() Perspective {
 	if idx < 0 || idx > 9 {
 		idx = 1
 	}
-	perspective, _ := PerspectiveByKey(idx)
+	perspective, _ := PerspectiveByID(idx)
 	return perspective
 }
 

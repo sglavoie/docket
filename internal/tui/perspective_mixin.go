@@ -16,14 +16,14 @@ const PerspectiveInactive = -1
 
 // PerspectivePrefixDeps wires the "P" prefix perspective bindings to a view.
 //
-// SelectByKey is invoked for P0..P9 with the literal index (0..9).
+// SelectByID is invoked for P0..P9 with the shortcut's stable perspective ID.
 // CycleNext / CyclePrev advance the active perspective by ±1 with view-defined
 // semantics (e.g. wrapping, skipping the inactive sentinel).
 type PerspectivePrefixDeps struct {
-	SelectByKey func(perspKey int) (tea.Model, tea.Cmd)
-	CycleNext   func() (tea.Model, tea.Cmd)
-	CyclePrev   func() (tea.Model, tea.Cmd)
-	Gate        keymap.Gate // optional; nil = always active
+	SelectByID func(perspID int) (tea.Model, tea.Cmd)
+	CycleNext  func() (tea.Model, tea.Cmd)
+	CyclePrev  func() (tea.Model, tea.Cmd)
+	Gate       keymap.Gate // optional; nil = always active
 }
 
 // BuildPerspectivePrefixEntry returns the "P" prefix entry shared by views that
@@ -33,15 +33,15 @@ type PerspectivePrefixDeps struct {
 //   - N         cycle to previous perspective (PN)
 func BuildPerspectivePrefixEntry(deps PerspectivePrefixDeps) keymap.Entry {
 	cat := "Perspectives"
-	presets := PerspectivePresets()
 	children := make([]keymap.Entry, 0, 12)
-	for i := range 10 {
-		idx := i
+	for key := range 10 {
+		perspective, _ := PerspectiveByKey(key)
+		id := perspective.ID
 		children = append(children, keymap.Bind(
-			strconv.Itoa(i),
-			presets[i].Name+" perspective",
+			strconv.Itoa(key),
+			perspective.Name+" perspective",
 			cat,
-			func() (tea.Model, tea.Cmd) { return deps.SelectByKey(idx) },
+			func() (tea.Model, tea.Cmd) { return deps.SelectByID(id) },
 		))
 	}
 	children = append(children,
@@ -57,17 +57,10 @@ func BuildPerspectivePrefixEntry(deps PerspectivePrefixDeps) keymap.Entry {
 
 // CyclePerspectiveLens advances `current` by `delta` (±1) for views that use
 // the PerspectiveInactive sentinel. Cycling from PerspectiveInactive lands on
-// preset 1 ("All") for delta>0 and preset 9 ("Review") for delta<0; otherwise
-// cycling is modulo 10 across 0..9. The sentinel state is exited but never
-// re-entered automatically.
+// All for delta>0 and Completed for delta<0; otherwise it follows the shared
+// canonical rotation. The sentinel state is exited but never re-entered.
 func CyclePerspectiveLens(current, delta int) int {
-	if current < 0 || current > 9 {
-		if delta > 0 {
-			return 1
-		}
-		return 9
-	}
-	return (current + delta + 10) % 10
+	return CyclePerspective(current, delta)
 }
 
 // PerspectiveLensName returns the display name for `idx`, or "" when the lens
@@ -76,7 +69,7 @@ func PerspectiveLensName(idx int) string {
 	if idx < 0 || idx > 9 {
 		return ""
 	}
-	p, _ := PerspectiveByKey(idx)
+	p, _ := PerspectiveByID(idx)
 	return p.Name
 }
 
@@ -86,7 +79,7 @@ func PerspectiveLensFilter(idx int) func(*models.Task) bool {
 	if idx < 0 || idx > 9 {
 		return nil
 	}
-	p, ok := PerspectiveByKey(idx)
+	p, ok := PerspectiveByID(idx)
 	if !ok {
 		return nil
 	}

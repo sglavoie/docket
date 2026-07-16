@@ -260,11 +260,11 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 	// --- Perspective lens (cross-project mode only): "P" prefix ---
 	if m.crossProject {
 		entries = append(entries, BuildPerspectivePrefixEntry(PerspectivePrefixDeps{
-			SelectByKey: func(perspKey int) (tea.Model, tea.Cmd) {
-				m.activePerspective = perspKey
+			SelectByID: func(perspID int) (tea.Model, tea.Cmd) {
+				m.activePerspective = perspID
 				m.rebuildCols()
 				m.clampCursor()
-				name := PerspectiveLensName(perspKey)
+				name := PerspectiveLensName(perspID)
 				if name != "" {
 					m.setStatus(fmt.Sprintf("Perspective: %s", name))
 				}
