@@ -183,6 +183,69 @@ func TestFreshFixtureCapturePersistsOnboardingProgress(t *testing.T) {
 	}
 }
 
+func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	target := driver.App().currentProject
+	inbox := driver.App().runtime.SystemInboxProject()
+	if target == nil || inbox == nil || target.ID == inbox.ID {
+		t.Fatalf("fixture projects: target=%v inbox=%v", target, inbox)
+	}
+	targetCount := len(target.Tasks)
+	inboxCount := len(inbox.Tasks)
+
+	driver.dispatch(ShowQuickCaptureMsg{Project: target, AllProjects: driver.App().activeProjects()})
+	if driver.App().currentView() != ViewQuickCapture {
+		t.Fatalf("current view = %s, want QuickCapture", driver.App().currentView())
+	}
+	const title = "Contextual capture stays with Rich Project"
+	for _, action := range []UITestAction{
+		{Type: UITestActionText, Text: title},
+		{Type: UITestActionKey, Key: "enter"},
+		{Type: UITestActionWait},
+	} {
+		if _, actionErr := driver.ApplyAction(action, ObserveOptions{}); actionErr != nil {
+			t.Fatal(actionErr)
+		}
+	}
+
+	if err = storage.LoadProject(target); err != nil {
+		t.Fatalf("reload target project: %v", err)
+	}
+	if err = storage.LoadProject(inbox); err != nil {
+		t.Fatalf("reload system Inbox: %v", err)
+	}
+	if len(target.Tasks) != targetCount+1 {
+		t.Fatalf("target task count = %d, want %d", len(target.Tasks), targetCount+1)
+	}
+	if len(inbox.Tasks) != inboxCount {
+		t.Fatalf("system Inbox task count = %d, want %d", len(inbox.Tasks), inboxCount)
+	}
+
+	var captured *models.Task
+	for _, task := range target.Tasks {
+		if task.Title == title {
+			captured = task
+			break
+		}
+	}
+	if captured == nil {
+		t.Fatalf("captured task %q not found in target project", title)
+	}
+	if models.SectionForState(captured.State()) != models.SectionInbox {
+		t.Fatalf("captured task section = %q, want Inbox", models.SectionForState(captured.State()))
+	}
+	for _, task := range inbox.Tasks {
+		if task.Title == title {
+			t.Fatalf("captured task %q was persisted in the system Inbox", title)
+		}
+	}
+}
+
 func TestUITestFixtureRichLoadsTasksFromDisk(t *testing.T) {
 	driver, ws, err := NewFixtureDriver(FixtureRich, 120, 40)
 	if err != nil {

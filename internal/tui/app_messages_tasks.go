@@ -247,7 +247,7 @@ type CloseParentSelectorMsg struct{ PopViewMsg }
 
 // ShowQuickCaptureMsg opens the quick capture input.
 type ShowQuickCaptureMsg struct {
-	Project           *models.Project
+	Project           *models.Project   // Explicit contextual destination; nil defaults to the system Inbox
 	AllProjects       []*models.Project // All non-archived projects for cross-project capture
 	FromGlobalCapture bool              // True when opened via ;i (project already selected)
 	SuggestedTag      string            // Pre-fill with #tag when single active tag filter

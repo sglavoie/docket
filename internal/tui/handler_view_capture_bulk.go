@@ -10,15 +10,13 @@ import (
 func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowQuickCaptureMsg:
-		// All quick-capture entry points share the visible system Inbox as their
-		// default. Selecting another destination is optional via %project inside
-		// the capture input, so no project-picker pre-step is required.
-		project := m.projectByID(m.runtime.Catalog().SystemInboxProjectID)
-		// Isolated view tests intentionally use an in-memory runtime without a
-		// bootstrapped workspace; retain their supplied project as a non-durable
-		// fallback while real workspaces always resolve the system identity above.
+		// Contextual entry points (project tree, dashboard, outliner, kanban, and
+		// their palette commands) supply the owning project. Context-free capture
+		// falls back to the visible system Inbox and may still be rerouted with
+		// %project inside the capture input.
+		project := msg.Project
 		if project == nil {
-			project = msg.Project
+			project = m.projectByID(m.runtime.Catalog().SystemInboxProjectID)
 		}
 		if project != nil {
 			var parts []string
