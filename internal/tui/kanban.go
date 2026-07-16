@@ -201,7 +201,7 @@ func (m *KanbanModel) getCursorCard() *KanbanCard {
 // the cross-project result.
 func (m *KanbanModel) filteredCards() []KanbanCard {
 	hideCanceled := m.mode != KanbanModeStatus &&
-		!(m.crossProject && m.activePerspective == PerspectiveCompleted)
+		(!m.crossProject || m.activePerspective != PerspectiveCompleted)
 	hasFilters := hasActiveCommonFilters(&m.filter)
 	var perspFilter func(*models.Task) bool
 	if m.crossProject {

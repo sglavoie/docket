@@ -266,6 +266,20 @@ func TestStatusClearMsgDoesNotReplaceNewerStatusWithFooter(t *testing.T) {
 	}
 }
 
+func TestStatusClearMsgPreservesStatusWithSameTimestamp(t *testing.T) {
+	app := newTestAppModel()
+	app.setInfoStatus("coalesced-clock guidance")
+	scheduledAt := app.statusUpdatedAt
+
+	handled, _ := app.handleViewMessages(StatusClearMsg{ScheduledAt: scheduledAt})
+	if !handled {
+		t.Fatal("StatusClearMsg should be handled")
+	}
+	if app.statusMessage != "coalesced-clock guidance" {
+		t.Fatalf("same-timestamp stale clear replaced newer status: %q", app.statusMessage)
+	}
+}
+
 // TestStatusClearMsgClearsExpiredUndoToast verifies that StatusClearMsg still
 // clears the screen when the undo toast has already expired — otherwise an
 // expired toast string could linger indefinitely.

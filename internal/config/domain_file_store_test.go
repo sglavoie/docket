@@ -38,7 +38,7 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 
 	catalog := NewWorkspaceCatalog()
 	catalog.WorkspaceID = testWorkspaceID
-	catalog.Projects = append(catalog.Projects, CatalogProject{ID: "p1", Slug: "proj", Name: "Proj"})
+	catalog.Projects = append(catalog.Projects, CatalogProject{ID: "p1", Slug: "proj", Name: "Proj", ColorSlot: 31})
 	catalog.SystemInboxProjectID = "p1"
 	if err := s.SaveCatalog(catalog); err != nil {
 		t.Fatalf("SaveCatalog: %v", err)
@@ -77,6 +77,9 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	}
 	if gotCatalog.WorkspaceID != testWorkspaceID || len(gotCatalog.Projects) != 1 || gotCatalog.SystemInboxProjectID != "p1" {
 		t.Fatalf("catalog round-trip mismatch: %+v", gotCatalog)
+	}
+	if gotCatalog.Projects[0].ColorSlot != 31 {
+		t.Fatalf("catalog ColorSlot = %d, want 31", gotCatalog.Projects[0].ColorSlot)
 	}
 	// The store adopts the workspace ID from the catalog it read.
 	if s2.WorkspaceID() != testWorkspaceID {
@@ -157,6 +160,60 @@ func TestDomainFileStore_RejectsMalformedCatalogSlugs(t *testing.T) {
 				t.Fatal("malformed catalog was rewritten during rejected load")
 			}
 		})
+	}
+}
+
+func TestDomainFileStore_LoadCatalogAllowsRepairableOutOfRangeColorSlots(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	path := WorkspaceCatalogPath(dataDir)
+	if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
+		t.Fatal(err)
+	}
+	catalog := &WorkspaceCatalog{
+		SchemaVersion: CurrentConfigVersion,
+		WorkspaceID:   testWorkspaceID,
+		Projects: []CatalogProject{
+			{ID: "assigned", Slug: "assigned", ColorSlot: 1},
+			{ID: "eligible", Slug: "eligible", ColorSlot: ProjectColorSlotCount + 1},
+			{ID: "internal", Slug: "internal", Internal: true, ColorSlot: -1},
+		},
+	}
+	payload, err := json.Marshal(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(domainEnvelope{
+		SchemaVersion: CurrentDomainSchemaVersion,
+		WorkspaceID:   testWorkspaceID,
+		Kind:          domainCatalog.name(),
+		Data:          payload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, FilePermissions); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, rev, err := NewDomainFileStore(dataDir).LoadCatalogChecked()
+	if err != nil {
+		t.Fatalf("LoadCatalogChecked rejected repairable color slots: %v", err)
+	}
+	if !loaded.EnsureProjectColorSlots() {
+		t.Fatal("EnsureProjectColorSlots did not repair out-of-range slots")
+	}
+	want := map[string]int{"assigned": 1, "eligible": 2, "internal": 0}
+	for _, project := range loaded.Projects {
+		if project.ColorSlot != want[project.ID] {
+			t.Errorf("project %s ColorSlot = %d, want %d", project.ID, project.ColorSlot, want[project.ID])
+		}
+	}
+	if err := loaded.Validate(); err != nil {
+		t.Fatalf("repaired catalog does not validate: %v", err)
+	}
+	if err := NewDomainFileStore(dataDir).SaveCatalogChecked(loaded, rev); err != nil {
+		t.Fatalf("persist repaired catalog: %v", err)
 	}
 }
 

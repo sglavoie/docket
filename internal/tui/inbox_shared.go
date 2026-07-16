@@ -133,8 +133,8 @@ func willLeaveInbox(task *models.Task) bool {
 }
 
 // renderInboxTaskDisplay renders the current task details for both local and global inbox.
-// Pass projectName="" to omit the project line (local inbox).
-func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projectName string, settings *config.Settings) string {
+// Pass project=nil to omit the project line (local inbox).
+func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, project *models.Project, settings *config.Settings) string {
 	var b strings.Builder
 	inner := inboxInnerWidth(width)
 
@@ -171,8 +171,9 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 	b.WriteString("\n")
 
 	// Project context (global inbox only)
-	if projectName != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s", projectName)))
+	if project != nil {
+		b.WriteString(MutedStyle.Render("Project: "))
+		b.WriteString(projectColorStyle(project).Render(project.Name))
 		b.WriteString("\n")
 	}
 

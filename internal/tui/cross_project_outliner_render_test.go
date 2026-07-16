@@ -18,6 +18,8 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 
 	const width = 112
 	m, _ := crossProjectRenderFixture(t, width, 18)
+	alphaProject := m.crossResolveProject("proj-alpha")
+	betaProject := m.crossResolveProject("proj-beta")
 
 	rendered := m.renderOutlinerTreeContent(width)
 	plain := ansi.Strip(rendered)
@@ -38,8 +40,8 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	assertContains(t, rendered, GetViewModeStyleForSection(models.SectionNext).Bold(true).Render("@ Next"), "styled Next section")
 	assertContains(t, rendered, MutedStyle.Render("(1)"), "styled Inbox count")
 	assertContains(t, rendered, MutedStyle.Render("(1)"), "styled per-section counts")
-	assertContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "styled Alpha project sub-header badge")
-	assertContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "styled Beta project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge(alphaProject), "styled Alpha project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge(betaProject), "styled Beta project sub-header badge")
 
 	selectedLine := findRenderedLineContaining(t, rendered, "#42")
 	selectedPlain := ansi.Strip(selectedLine)
@@ -59,6 +61,110 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 			t.Fatalf("rendered line %d exceeds width %d: width=%d stripped=%q", i, width, got, ansi.Strip(line))
 		}
 	}
+}
+
+func TestCrossProjectOutlinerProjectColorsFollowSlotsAcrossThemesAndPerspectives(t *testing.T) {
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	for _, theme := range []ThemeConfig{{Name: ""}, {Name: "light"}} {
+		themeName := theme.Name
+		if themeName == "" {
+			themeName = "dark"
+		}
+		t.Run(themeName, func(t *testing.T) {
+			ApplyTheme(theme)
+
+			cfg := newTestConfig()
+			m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
+			m.SetSize(96, 18)
+
+			alphaTask := renderFixtureTask(t, "alpha-task", 1, models.TaskTypeTask, "Alpha active item", models.StatusInProgress, 1, "")
+			platformTask := renderFixtureTask(t, "platform-task", 2, models.TaskTypeTask, "Platform active item", models.StatusInProgress, 1, "")
+			// "Alpha Project" and "Platform" mapped to the same entry in the
+			// retired 12-color FNV palette. Persisted slots must keep them distinct.
+			alpha := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{alphaTask})
+			platform := renderFixtureProject(t, "proj-platform", "platform", "Platform", []*models.Task{platformTask})
+			alpha.ColorSlot = 1
+			platform.ColorSlot = 2
+			m.loadedProjects = []*models.Project{alpha, platform}
+
+			alphaHeader := renderedProjectHeaderBadge(alpha)
+			platformHeader := renderedProjectHeaderBadge(platform)
+			if alphaHeader == platformHeader {
+				t.Fatalf("persisted slots rendered the same %s-theme project header: %q", themeName, alphaHeader)
+			}
+
+			m.activePerspective = PerspectiveAll
+			m.crossForceRebuild = true
+			m.crossProjectRebuildRows()
+			allRendered := m.renderOutlinerTreeContent(96)
+			assertContains(t, allRendered, alphaHeader, "All perspective alpha project color")
+			assertContains(t, allRendered, platformHeader, "All perspective platform project color")
+
+			m.activePerspective = PerspectiveActive
+			m.crossForceRebuild = true
+			m.crossProjectRebuildRows()
+			activeRendered := m.renderOutlinerTreeContent(96)
+			assertContains(t, activeRendered, alphaHeader, "Active perspective alpha project color")
+			assertContains(t, activeRendered, platformHeader, "Active perspective platform project color")
+
+			m.enterCrossPriorityMode()
+			m.crossProjectRebuildRows()
+			for _, tc := range []struct {
+				taskID  string
+				project *models.Project
+			}{
+				{taskID: alphaTask.ID, project: alpha},
+				{taskID: platformTask.ID, project: platform},
+			} {
+				rowIndex := findOutlinerRowIndex(t, m.rows, tc.taskID)
+				badge := m.renderTaskProjectBadge(m.rows[rowIndex])
+				want := projectColorStyle(tc.project).Render("[" + tc.project.Slug + "]")
+				assertContains(t, badge, want, "Priority perspective inline project color")
+			}
+		})
+	}
+}
+
+func TestOutlinerProjectQualifiedSectionHeaderUsesProjectColor(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: "light"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
+	project := renderFixtureProject(t, "proj-section", "section", "Section Project", nil)
+	project.ColorSlot = 7
+	m.loadedProjects = []*models.Project{project}
+
+	line := m.renderOutlinerSectionHeaderRow(outlinerRow{
+		IsSectionHeader: true,
+		SectionName:     models.SectionNext,
+		SectionCount:    2,
+		ProjectID:       project.ID,
+	}, false, 80, 0)
+	want := projectColorStyle(project).Render("[" + project.Name + "]")
+	assertContains(t, line, want, "project-qualified section header color")
+}
+
+func TestOutlinerProjectHeaderColorPreservesNarrowWidth(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	cfg := newTestConfig()
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
+	project := renderFixtureProject(t, "proj-narrow", "project-slug-that-is-too-wide", "Narrow Project", nil)
+	project.ColorSlot = 11
+	m.loadedProjects = []*models.Project{project}
+
+	const width = 18
+	line := m.renderOutlinerProjectHeaderRow(outlinerRow{IsProjectHeader: true, ProjectID: project.ID}, false, width, 0)
+	if strings.Contains(line, "\n") {
+		t.Fatalf("narrow project header wrapped to multiple rows: %q", ansi.Strip(line))
+	}
+	if got := lipgloss.Width(line); got > width {
+		t.Fatalf("narrow project header width = %d, want <= %d: %q", got, width, ansi.Strip(line))
+	}
+	assertContains(t, line, projectColorStyle(project).Bold(true).Render("[project-slug"), "narrow project header retains slot color")
 }
 
 func TestCrossProjectOutlinerViewMultiSelectTitleFitsNarrowWidth(t *testing.T) {
@@ -316,6 +422,8 @@ func crossProjectRenderFixture(t *testing.T, width, height int) (*OutlinerModel,
 
 	alphaProject := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{parent, selectedChild})
 	betaProject := renderFixtureProject(t, "proj-beta", "beta", "Beta Project", []*models.Task{betaTask})
+	alphaProject.ColorSlot = 1
+	betaProject.ColorSlot = 2
 
 	m.loadedProjects = []*models.Project{alphaProject, betaProject}
 	m.crossProjectRebuildRows()
@@ -349,11 +457,10 @@ func renderFixtureTask(t *testing.T, id string, shortID int, taskType models.Tas
 	return task
 }
 
-func renderedProjectHeaderBadge(projectName, slug string) string {
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color(projectBadgeColor(projectName))).
+func renderedProjectHeaderBadge(project *models.Project) string {
+	return projectColorStyle(project).
 		Bold(true).
-		Render("[" + slug + "]")
+		Render("[" + project.Slug + "]")
 }
 
 func findOutlinerRowIndex(t *testing.T, rows []outlinerRow, taskID string) int {
@@ -418,6 +525,8 @@ func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 	betaTask := renderFixtureTask(t, "beta-active", 2, models.TaskTypeTask, "Beta active item", models.StatusInProgress, 2, "")
 	alpha := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{alphaTask})
 	beta := renderFixtureProject(t, "proj-beta", "beta", "Beta Project", []*models.Task{betaTask})
+	alpha.ColorSlot = 1
+	beta.ColorSlot = 2
 
 	m.loadedProjects = []*models.Project{alpha, beta}
 	m.activePerspective = 2 // Active
@@ -441,8 +550,8 @@ func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 	}
 
 	rendered := m.renderOutlinerTreeContent(width)
-	assertContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "non-All perspective renders bold project sub-header badge")
-	assertContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "non-All perspective renders bold project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge(alpha), "non-All perspective renders bold project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge(beta), "non-All perspective renders bold project sub-header badge")
 
 	// The inline `[slug]` task-row badge must be suppressed in normal
 	// cross-project perspectives: project identity now lives on the bold
@@ -473,6 +582,8 @@ func TestCrossProjectPriorityModeOmitsProjectSubHeaders(t *testing.T) {
 	betaTask.Priority = 1
 	alpha := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{alphaTask})
 	beta := renderFixtureProject(t, "proj-beta", "beta", "Beta Project", []*models.Task{betaTask})
+	alpha.ColorSlot = 1
+	beta.ColorSlot = 2
 
 	m.loadedProjects = []*models.Project{alpha, beta}
 	m.enterCrossPriorityMode()
@@ -488,8 +599,8 @@ func TestCrossProjectPriorityModeOmitsProjectSubHeaders(t *testing.T) {
 	plain := ansi.Strip(rendered)
 	assertContains(t, plain, "[alpha]", "Priority mode preserves inline alpha project badge")
 	assertContains(t, plain, "[beta]", "Priority mode preserves inline beta project badge")
-	assertNotContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "Priority mode must not render bold project sub-header badge")
-	assertNotContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "Priority mode must not render bold project sub-header badge")
+	assertNotContains(t, rendered, renderedProjectHeaderBadge(alpha), "Priority mode must not render bold project sub-header badge")
+	assertNotContains(t, rendered, renderedProjectHeaderBadge(beta), "Priority mode must not render bold project sub-header badge")
 }
 
 // TestCrossProjectAllPerspectiveCollapsedSectionHidesProjectSubHeaders

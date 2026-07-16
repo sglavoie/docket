@@ -67,7 +67,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case StatusClearMsg:
-		if !msg.ScheduledAt.IsZero() && m.statusUpdatedAt.After(msg.ScheduledAt) {
+		if !msg.ScheduledAt.IsZero() && !m.statusUpdatedAt.Before(msg.ScheduledAt) {
 			return true, nil
 		}
 		// A 2s plain-status tick may arrive after a newer setUndoableStatus

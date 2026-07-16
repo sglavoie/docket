@@ -33,13 +33,13 @@ func TestInboxProcessors_HandledKeysParity(t *testing.T) {
 	}
 }
 
-// TestRenderInboxTaskDisplay_ProjectNameVisibility locks in the only render-time
+// TestRenderInboxTaskDisplay_ProjectVisibility locks in the only render-time
 // difference between local and global inbox: the global processor surfaces
 // "Project: <name>" while the local processor omits the line entirely. inboxCore
 // routes the choice through backend.showProjectInHeader() — see
 // inbox_core_render.go — so any future redesign of the task card must keep the
-// projectName-controlled branch in renderInboxTaskDisplay.
-func TestRenderInboxTaskDisplay_ProjectNameVisibility(t *testing.T) {
+// project-controlled branch in renderInboxTaskDisplay.
+func TestRenderInboxTaskDisplay_ProjectVisibility(t *testing.T) {
 	task := &models.Task{
 		ID:            "t1",
 		ShortID:       42,
@@ -51,16 +51,17 @@ func TestRenderInboxTaskDisplay_ProjectNameVisibility(t *testing.T) {
 	}
 	cfg := newTestConfig()
 	cfg.Settings().SectionColors = map[string]string{}
+	project := &models.Project{ID: "backend-api", Name: "Backend API", ColorSlot: 1}
 
 	t.Run("global mode shows project line", func(t *testing.T) {
-		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, "Backend API", cfg.Settings()))
+		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, project, cfg.Settings()))
 		if !strings.Contains(out, "Project: Backend API") {
 			t.Fatalf("expected 'Project: Backend API' line in global render, got:\n%s", out)
 		}
 	})
 
 	t.Run("local mode omits project line", func(t *testing.T) {
-		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, "", cfg.Settings()))
+		out := ansi.Strip(renderInboxTaskDisplay(task, 100, false, nil, cfg.Settings()))
 		if strings.Contains(out, "Project:") {
 			t.Fatalf("expected no 'Project:' line in local render, got:\n%s", out)
 		}

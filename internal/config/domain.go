@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -45,9 +46,14 @@ type CatalogProject struct {
 	PinnedAt         *time.Time `json:"pinned_at,omitempty"`
 	Sandbox          bool       `json:"sandbox,omitempty"`
 	Internal         bool       `json:"internal,omitempty"`
+	ColorSlot        int        `json:"color_slot,omitempty"`
 }
 
 const (
+	// ProjectColorSlotCount is the fixed number of durable project identity
+	// colors. Slot zero represents a legacy or otherwise unassigned project.
+	ProjectColorSlotCount = 48
+
 	// SystemInboxName and SystemInboxSlug are the user-facing identity of the
 	// workspace-owned capture project. The catalog reference, rather than the
 	// display name or slug, is the durable identity used by callers.
@@ -88,6 +94,7 @@ func catalogProjectFromModel(p *models.Project) CatalogProject {
 		PinnedAt:         p.PinnedAt,
 		Sandbox:          p.Sandbox,
 		Internal:         p.Internal,
+		ColorSlot:        p.ColorSlot,
 	}
 }
 
@@ -112,6 +119,7 @@ func (p CatalogProject) ToModel(dataDir string) *models.Project {
 		PinnedAt:         p.PinnedAt,
 		Sandbox:          p.Sandbox,
 		Internal:         p.Internal,
+		ColorSlot:        p.ColorSlot,
 	}
 }
 
@@ -143,6 +151,17 @@ func NewWorkspaceCatalog() *WorkspaceCatalog {
 // non-empty ID and canonical safe slug, IDs and slugs must be unique, and the
 // system inbox reference must point at a cataloged project when set.
 func (w *WorkspaceCatalog) Validate() error {
+	return w.validate(false)
+}
+
+// validateForLoad permits invalid project color slots so callers can repair
+// them with EnsureProjectColorSlots after the catalog's structural fields have
+// been validated. Save paths continue to use Validate and reject invalid slots.
+func (w *WorkspaceCatalog) validateForLoad() error {
+	return w.validate(true)
+}
+
+func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 	if w.SchemaVersion <= 0 {
 		return fmt.Errorf("workspace catalog: schema version must be positive, got %d", w.SchemaVersion)
 	}
@@ -161,6 +180,9 @@ func (w *WorkspaceCatalog) Validate() error {
 		if seenSlug[p.Slug] {
 			return fmt.Errorf("workspace catalog: duplicate project slug %q", p.Slug)
 		}
+		if !allowRepairableColorSlots && (p.ColorSlot < 0 || p.ColorSlot > ProjectColorSlotCount) {
+			return fmt.Errorf("workspace catalog: project %q has invalid color slot %d", p.ID, p.ColorSlot)
+		}
 		seenID[p.ID] = true
 		seenSlug[p.Slug] = true
 	}
@@ -168,6 +190,87 @@ func (w *WorkspaceCatalog) Validate() error {
 		return fmt.Errorf("workspace catalog: system inbox references unknown project %q", w.SystemInboxProjectID)
 	}
 	return nil
+}
+
+// EnsureProjectColorSlots assigns durable color slots to every eligible
+// project that is missing one or carries an out-of-range value. Valid existing
+// assignments are never changed, including duplicates. Assignment order is
+// deterministic and independent of the catalog slice order.
+func (w *WorkspaceCatalog) EnsureProjectColorSlots() bool {
+	if w == nil {
+		return false
+	}
+
+	usage := projectColorSlotUsage(w.Projects, -1)
+	pending := make([]int, 0)
+	changed := false
+	for i := range w.Projects {
+		project := &w.Projects[i]
+		if projectColorEligible(*project) {
+			if !validProjectColorSlot(project.ColorSlot) {
+				pending = append(pending, i)
+			}
+			continue
+		}
+		if project.ColorSlot < 0 || project.ColorSlot > ProjectColorSlotCount {
+			project.ColorSlot = 0
+			changed = true
+		}
+	}
+
+	sort.SliceStable(pending, func(i, j int) bool {
+		left := w.Projects[pending[i]]
+		right := w.Projects[pending[j]]
+		if !left.CreatedAt.Equal(right.CreatedAt) {
+			return left.CreatedAt.Before(right.CreatedAt)
+		}
+		return left.ID < right.ID
+	})
+	for _, index := range pending {
+		slot := leastUsedProjectColorSlot(usage)
+		w.Projects[index].ColorSlot = slot
+		usage[slot]++
+		changed = true
+	}
+	return changed
+}
+
+func projectColorEligible(project CatalogProject) bool {
+	return !project.Sandbox && !project.Internal
+}
+
+func validProjectColorSlot(slot int) bool {
+	return slot >= 1 && slot <= ProjectColorSlotCount
+}
+
+func projectColorSlotUsage(projects []CatalogProject, skipIndex int) [ProjectColorSlotCount + 1]int {
+	var usage [ProjectColorSlotCount + 1]int
+	for i, project := range projects {
+		if i == skipIndex || !projectColorEligible(project) || !validProjectColorSlot(project.ColorSlot) {
+			continue
+		}
+		usage[project.ColorSlot]++
+	}
+	return usage
+}
+
+func leastUsedProjectColorSlot(usage [ProjectColorSlotCount + 1]int) int {
+	selected := 1
+	for slot := 2; slot <= ProjectColorSlotCount; slot++ {
+		if usage[slot] < usage[selected] {
+			selected = slot
+		}
+	}
+	return selected
+}
+
+func allProjectColorSlotsUsed(usage [ProjectColorSlotCount + 1]int) bool {
+	for slot := 1; slot <= ProjectColorSlotCount; slot++ {
+		if usage[slot] == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // RemoveProjectReferences drops the cataloged project and clears the system
@@ -197,16 +300,37 @@ func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
 // that mutates catalog-owned flags on a rehydrated models.Project (Archive,
 // Pin, rename) can write the change back through a checked catalog commit.
 func (w *WorkspaceCatalog) UpsertProject(p *models.Project) {
-	if p == nil {
+	if w == nil || p == nil {
 		return
 	}
-	cp := catalogProjectFromModel(p)
+	w.EnsureProjectColorSlots()
 	for i := range w.Projects {
 		if w.Projects[i].ID == p.ID {
+			storedSlot := w.Projects[i].ColorSlot
+			if !validProjectColorSlot(storedSlot) && projectColorEligible(catalogProjectFromModel(p)) {
+				usage := projectColorSlotUsage(w.Projects, i)
+				storedSlot = leastUsedProjectColorSlot(usage)
+			}
+			if !validProjectColorSlot(storedSlot) {
+				storedSlot = 0
+			}
+			p.ColorSlot = storedSlot
+			cp := catalogProjectFromModel(p)
 			w.Projects[i] = cp
 			return
 		}
 	}
+
+	cp := catalogProjectFromModel(p)
+	if projectColorEligible(cp) {
+		usage := projectColorSlotUsage(w.Projects, -1)
+		if !validProjectColorSlot(cp.ColorSlot) || (usage[cp.ColorSlot] > 0 && !allProjectColorSlotsUsed(usage)) {
+			cp.ColorSlot = leastUsedProjectColorSlot(usage)
+		}
+	} else if !validProjectColorSlot(cp.ColorSlot) {
+		cp.ColorSlot = 0
+	}
+	p.ColorSlot = cp.ColorSlot
 	w.Projects = append(w.Projects, cp)
 }
 

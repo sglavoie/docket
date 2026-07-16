@@ -99,6 +99,57 @@ func TestRenderCrossProjectTaskLineNoLongerRendersStageBadge(t *testing.T) {
 	}
 }
 
+func TestRenderCrossProjectTaskLineUsesProjectColorWithoutChangingLayout(t *testing.T) {
+	previousTheme := activeThemeName
+	defer func() { activeThemeName = previousTheme }()
+	activeThemeName = "dark"
+
+	project := &models.Project{ID: "p1", Name: "Project", ColorSlot: 1}
+	unassigned := *project
+	unassigned.ColorSlot = 0
+	task := &models.Task{ID: "t1", Title: "title"}
+
+	colored := RenderCrossProjectTaskLine(task, project, nil, false, 120, 40, CrossProjectTaskLineOpts{})
+	muted := RenderCrossProjectTaskLine(task, &unassigned, nil, false, 120, 40, CrossProjectTaskLineOpts{})
+	if !strings.Contains(colored, projectColorStyle(project).Render("[Project]")) {
+		t.Fatalf("expected project-colored badge in rendered row, got %q", colored)
+	}
+	if ansi.Strip(colored) != ansi.Strip(muted) {
+		t.Fatalf("project color changed stripped row text:\ncolored=%q\nmuted=%q", ansi.Strip(colored), ansi.Strip(muted))
+	}
+	if lipgloss.Width(colored) != lipgloss.Width(muted) {
+		t.Fatalf("project color changed row width: colored=%d muted=%d", lipgloss.Width(colored), lipgloss.Width(muted))
+	}
+}
+
+func TestRenderCrossProjectTaskLineBadgeColorOverridesProjectColor(t *testing.T) {
+	previousTheme := activeThemeName
+	defer func() { activeThemeName = previousTheme }()
+	activeThemeName = "dark"
+
+	project := &models.Project{ID: "p1", Name: "Project", ColorSlot: 1}
+	task := &models.Task{ID: "t1", Title: "title"}
+	override := lipgloss.Color("#123456")
+	got := RenderCrossProjectTaskLine(task, project, nil, false, 120, 40, CrossProjectTaskLineOpts{
+		BadgeColor: override,
+	})
+
+	if want := lipgloss.NewStyle().Foreground(override).Render("[Project]"); !strings.Contains(got, want) {
+		t.Fatalf("expected explicit badge override %q in rendered row, got %q", want, got)
+	}
+	if strings.Contains(got, projectColorStyle(project).Render("[Project]")) {
+		t.Fatalf("project color remained after explicit badge override, got %q", got)
+	}
+}
+
+func TestRenderCrossProjectTaskLineNilProjectUsesMutedFallback(t *testing.T) {
+	task := &models.Task{ID: "t1", Title: "title"}
+	got := RenderCrossProjectTaskLine(task, nil, nil, false, 120, 40, CrossProjectTaskLineOpts{ShowScore: true})
+	if want := MutedStyle.Render("[]"); !strings.Contains(got, want) {
+		t.Fatalf("expected nil project to render a muted empty badge %q, got %q", want, got)
+	}
+}
+
 func TestTaskLineShowsParkedSnippet(t *testing.T) {
 	task := &models.Task{
 		ID:            "t1",

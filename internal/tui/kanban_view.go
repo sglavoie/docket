@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 const kanbanMinColWidth = 25
@@ -239,8 +241,8 @@ func kanbanRender(m *KanbanModel) string {
 
 	// === Build display rows per column (with project group headers in cross-project mode) ===
 	type displayRow struct {
-		isHeader bool   // true = project group header
-		header   string // project name for header rows
+		project  *models.Project // owning project for header rows
+		isHeader bool            // true = project group header
 		card     *KanbanCard
 		taskIdx  int // index into col.Tasks (for cursor matching)
 	}
@@ -250,16 +252,14 @@ func kanbanRender(m *KanbanModel) string {
 		if m.crossProject && len(col.Tasks) > 0 {
 			// Group tasks by project, insert header rows.
 			var rows []displayRow
-			lastProj := ""
+			var lastProject *models.Project
+			haveProjectGroup := false
 			for ti := range col.Tasks {
 				card := &col.Tasks[ti]
-				projName := ""
-				if card.Project != nil {
-					projName = card.Project.Name
-				}
-				if projName != lastProj {
-					rows = append(rows, displayRow{isHeader: true, header: projName})
-					lastProj = projName
+				if !haveProjectGroup || card.Project != lastProject {
+					rows = append(rows, displayRow{isHeader: true, project: card.Project})
+					lastProject = card.Project
+					haveProjectGroup = true
 				}
 				rows = append(rows, displayRow{card: card, taskIdx: ti})
 			}
@@ -300,10 +300,13 @@ func kanbanRender(m *KanbanModel) string {
 
 			// Project group header row.
 			if dr.isHeader {
-				headerText := truncateToVisualWidth(dr.header, colWidth-2)
-				headerStyle := lipgloss.NewStyle().
+				headerText := ""
+				if dr.project != nil {
+					headerText = dr.project.Name
+				}
+				headerText = truncateToVisualWidth(headerText, colWidth-2)
+				headerStyle := projectColorStyle(dr.project).
 					Background(ColorDimmedBg).
-					Foreground(ColorDimmedFg).
 					Bold(true).
 					Width(colWidth)
 				rowParts = append(rowParts, headerStyle.Render(headerText))

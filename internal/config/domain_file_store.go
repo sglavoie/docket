@@ -530,7 +530,10 @@ func (s *DomainFileStore) LoadCatalogChecked() (*WorkspaceCatalog, string, error
 	if err != nil {
 		return nil, "", err
 	}
-	if err := out.Validate(); err != nil {
+	// Color slots are cosmetic and explicitly self-healing. Validate every
+	// structural field while allowing EnsureProjectColorSlots at startup or the
+	// next catalog mutation to repair and persist an out-of-range slot.
+	if err := out.validateForLoad(); err != nil {
 		return nil, rev, fmt.Errorf("invalid workspace catalog: %w", err)
 	}
 	return out, rev, nil

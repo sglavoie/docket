@@ -1,11 +1,16 @@
 package tui
 
 import (
+	"bytes"
+	"log"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
@@ -53,4 +58,133 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	if got := len(app.recentTaskVisits); got != 1 {
 		t.Fatalf("recent visits = %d, want 1", got)
 	}
+}
+
+func TestEnsureProjectColorSlotsCommitsStartupBackfillOnce(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	store := config.NewDomainFileStore(dataDir)
+	catalog := config.NewWorkspaceCatalog()
+	catalog.Projects = []config.CatalogProject{{ID: "legacy", Slug: "legacy", Name: "Legacy"}}
+	if err := store.SaveCatalog(catalog); err != nil {
+		t.Fatalf("SaveCatalog: %v", err)
+	}
+
+	runtime, err := config.LoadRuntimeState(dataDir)
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	app := &AppModel{runtime: runtime, projects: make(map[string]*models.Project)}
+	if ensureErr := app.ensureProjectColorSlots(); ensureErr != nil {
+		t.Fatalf("ensureProjectColorSlots: %v", ensureErr)
+	}
+	if project := app.projectByID("legacy"); project == nil || project.ColorSlot != 1 {
+		t.Fatalf("startup cache project = %+v, want ColorSlot 1", project)
+	}
+
+	catalogPath := config.WorkspaceCatalogPath(dataDir)
+	persisted, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	concurrentBytes := append(append([]byte(nil), persisted...), '\n')
+	if writeErr := os.WriteFile(catalogPath, concurrentBytes, config.FilePermissions); writeErr != nil {
+		t.Fatalf("write concurrent marker: %v", writeErr)
+	}
+	if ensureErr := app.ensureProjectColorSlots(); ensureErr != nil {
+		t.Fatalf("idempotent ensureProjectColorSlots: %v", ensureErr)
+	}
+	after, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatalf("ReadFile after no-op: %v", err)
+	}
+	if !bytes.Equal(after, concurrentBytes) {
+		t.Fatal("second startup rewrote an already-backfilled catalog")
+	}
+}
+
+func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	store := config.NewDomainFileStore(dataDir)
+	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	catalog := config.NewWorkspaceCatalog()
+	catalog.Projects = []config.CatalogProject{
+		{
+			ID: "legacy", Slug: "legacy", Name: "Legacy", Context: "personal",
+			CreatedAt: now, UpdatedAt: now,
+		},
+		{
+			ID: "system-inbox", Slug: config.SystemInboxSlug, Name: config.SystemInboxName, Context: "personal",
+			CreatedAt: now, UpdatedAt: now, ColorSlot: 1,
+		},
+		{
+			ID: "sandbox", Slug: "_sandbox", Name: "Sandbox", Context: "personal",
+			CreatedAt: now, UpdatedAt: now, Sandbox: true,
+		},
+	}
+	catalog.SystemInboxProjectID = "system-inbox"
+	if err := store.SaveCatalog(catalog); err != nil {
+		t.Fatalf("SaveCatalog: %v", err)
+	}
+
+	inboxPath := catalog.Projects[1].CatalogPath(dataDir)
+	if err := os.MkdirAll(inboxPath, 0o755); err != nil {
+		t.Fatalf("create Inbox directory: %v", err)
+	}
+	if err := os.WriteFile(storage.TasksFilePath(inboxPath), []byte("# Inbox\n"), config.FilePermissions); err != nil {
+		t.Fatalf("write Inbox tasks: %v", err)
+	}
+
+	runtime, err := config.LoadRuntimeState(dataDir)
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	catalogPath := config.WorkspaceCatalogPath(dataDir)
+	original, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if err := os.WriteFile(catalogPath, []byte("{broken"), config.FilePermissions); err != nil {
+		t.Fatalf("corrupt catalog: %v", err)
+	}
+
+	previousLogOutput := log.Writer()
+	var logOutput bytes.Buffer
+	log.SetOutput(&logOutput)
+	t.Cleanup(func() { log.SetOutput(previousLogOutput) })
+	app, err := NewAppModel(runtime, &config.Manager{}, WithPersister(NewMockPersister()))
+	if err != nil {
+		t.Fatalf("NewAppModel returned startup persistence error: %v", err)
+	}
+	if !bytes.Contains(logOutput.Bytes(), []byte("failed to persist project color slots")) {
+		t.Fatalf("startup did not log the failed color-slot commit: %s", logOutput.String())
+	}
+	if project := app.projectByID("legacy"); project == nil || project.ColorSlot != 0 {
+		t.Fatalf("startup cache project = %+v, want muted ColorSlot 0 after failed commit", project)
+	}
+	if project := runtime.GetProject("legacy"); project == nil || project.ColorSlot != 0 {
+		t.Fatalf("runtime project = %+v, want unchanged ColorSlot 0 after failed commit", project)
+	}
+
+	if err := os.WriteFile(catalogPath, original, config.FilePermissions); err != nil {
+		t.Fatalf("restore catalog: %v", err)
+	}
+	if err := app.ensureProjectColorSlots(); err != nil {
+		t.Fatalf("retry ensureProjectColorSlots: %v", err)
+	}
+	project := app.projectByID("legacy")
+	if project == nil || project.ColorSlot == 0 {
+		t.Fatalf("retry cache project = %+v, want assigned ColorSlot", project)
+	}
+	persisted, err := store.LoadCatalog()
+	if err != nil {
+		t.Fatalf("LoadCatalog after retry: %v", err)
+	}
+	for _, candidate := range persisted.Projects {
+		if candidate.ID == "legacy" && candidate.ColorSlot == project.ColorSlot {
+			return
+		}
+	}
+	t.Fatalf("persisted legacy project did not retain retry ColorSlot %d: %+v", project.ColorSlot, persisted.Projects)
 }

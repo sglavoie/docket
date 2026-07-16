@@ -101,8 +101,8 @@ type CloseRecentActivityMsg struct{ PopToAnchorMsg }
 
 // ShowRecentActivityPreviewMsg opens a task preview from recent activity.
 type ShowRecentActivityPreviewMsg struct {
-	Task    CrossProjectTask
-	Project *models.Project
+	Task         CrossProjectTask
+	ProjectScope *models.Project
 }
 
 // CloseRecentActivityPreviewMsg closes the recent activity task preview.

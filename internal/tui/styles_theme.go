@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
+const zebraBackgroundDarkenFactor = 0.08
+
 // ThemeConfig bundles all user-configurable theme values for ApplyTheme.
 type ThemeConfig struct {
 	Name          string // "light" or "dark"
@@ -142,7 +144,7 @@ func ApplyTheme(tc ThemeConfig) {
 
 	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
 	if effectiveBgColor != "" {
-		derivedZebra := darkenHex(effectiveBgColor, 0.08)
+		derivedZebra := darkenHex(effectiveBgColor, zebraBackgroundDarkenFactor)
 		ZebraRowStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedZebra))
 	} else {
 		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)

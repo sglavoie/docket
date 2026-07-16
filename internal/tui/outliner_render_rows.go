@@ -85,7 +85,12 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
 	}
 	if row.ProjectID != "" {
-		line += "  " + MutedStyle.Render("["+m.projectNameByID(row.ProjectID)+"]")
+		project := m.resolveProjectForRow(row)
+		projectName := row.ProjectID
+		if project != nil {
+			projectName = project.Name
+		}
+		line += "  " + projectColorStyle(project).Render("["+projectName+"]")
 	}
 
 	if selected {
@@ -105,18 +110,23 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 // that visually clusters adjacent tasks from the same project in cross-project
 // perspectives. In the All perspective these rows sit beneath shared section
 // headers; other project-grouped perspectives emit them directly above each
-// project's task group. The header reuses the per-project badge color and slug
+// project's task group. The header reuses the persisted project color and slug
 // text so the inline `[slug]` badges on individual task rows can be suppressed.
 // Sub-headers are skipped by keyboard navigation; the selected styling branches
 // are kept defensive only.
 func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
-	projName := m.projectNameByID(row.ProjectID)
-	projSlug := m.projectSlugByID(row.ProjectID)
-	badge := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(projectBadgeColor(projName))).
+	project := m.resolveProjectForRow(row)
+	projectSlug := row.ProjectID
+	if project != nil {
+		projectSlug = project.Slug
+		if projectSlug == "" {
+			projectSlug = project.Name
+		}
+	}
+	badge := projectColorStyle(project).
 		Bold(true).
-		Render("[" + projSlug + "]")
-	line := "    " + badge
+		Render("[" + projectSlug + "]")
+	line := truncateToVisualWidth("    "+badge, rowWidth)
 
 	if selected {
 		if m.mutationFlash {
@@ -253,10 +263,15 @@ func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 		return ""
 	}
 
-	projName := m.projectNameByID(row.ProjectID)
-	projSlug := m.projectSlugByID(row.ProjectID)
-	badgeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(projectBadgeColor(projName)))
-	return badgeStyle.Render("["+projSlug+"]") + " "
+	project := m.resolveProjectForRow(row)
+	projectSlug := row.ProjectID
+	if project != nil {
+		projectSlug = project.Slug
+		if projectSlug == "" {
+			projectSlug = project.Name
+		}
+	}
+	return projectColorStyle(project).Render("["+projectSlug+"]") + " "
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task, proj *models.Project) string {

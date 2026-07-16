@@ -195,16 +195,6 @@ func effectiveDisplaySection(t *models.Task) string {
 	return taskSectionBucket(t)
 }
 
-// groupTasksBySection groups tasks by their GTD header section, preserving hierarchy.
-func (m *OutlinerModel) groupTasksBySection(tasks []*models.Task) map[string][]*models.Task {
-	groups := make(map[string][]*models.Task)
-	for _, task := range tasks {
-		section := renderedHeaderSectionForTask(task)
-		groups[section] = append(groups[section], task)
-	}
-	return groups
-}
-
 func renderedHeaderSectionForTask(task *models.Task) string {
 	section := headerSectionForTask(task)
 	if section == "" || isRenderedOutlinerHeaderSection(section) {
@@ -215,16 +205,6 @@ func renderedHeaderSectionForTask(task *models.Task) string {
 
 func isRenderedOutlinerHeaderSection(section string) bool {
 	return slices.Contains(SectionOrder, section)
-}
-
-// countTasksRecursive counts all tasks in a tree, including descendants.
-func (m *OutlinerModel) countTasksRecursive(tasks []*models.Task) int {
-	count := 0
-	for _, task := range tasks {
-		count++
-		count += m.countTasksRecursive(task.Children)
-	}
-	return count
 }
 
 // currentPerspective returns the active perspective preset.

@@ -124,8 +124,11 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 	var preBadges string
 	maxTitleLen := m.Width() - 50
 	if m.projectScope == nil {
-		projectName := truncateToVisualWidth(dt.Project.Name, 12)
-		preBadges = MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " " +
+		projectName := ""
+		if dt.Project != nil {
+			projectName = truncateToVisualWidth(dt.Project.Name, 12)
+		}
+		preBadges = projectColorStyle(dt.Project).Render(fmt.Sprintf("[%s]", projectName)) + " " +
 			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
 	} else {
 		preBadges = MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "

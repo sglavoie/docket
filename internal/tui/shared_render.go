@@ -66,7 +66,7 @@ type CrossProjectTaskLineOpts struct {
 	HideLowPriority bool          // omit priority badge when priority > 2
 	Flash           bool          // cursor flash highlight active
 	SearchQuery     string        // when set, highlight matching substring in title
-	BadgeColor      color.Color   // when set, overrides MutedStyle on the [project-name] badge
+	BadgeColor      color.Color   // when set, overrides the project identity color on the [project-name] badge
 	RowIndex        int           // visual row index for zebra striping (0-based)
 	Layout          *ColumnLayout // when non-nil, use fixed-width badge columns
 }
@@ -91,11 +91,15 @@ func RenderCrossProjectTaskLine(
 		maxProjLen = 12
 	}
 
-	badgeStyle := MutedStyle
+	projectName := ""
+	if proj != nil {
+		projectName = proj.Name
+	}
+	badgeStyle := projectColorStyle(proj)
 	if opts.BadgeColor != nil {
 		badgeStyle = lipgloss.NewStyle().Foreground(opts.BadgeColor)
 	}
-	projectBadge := badgeStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(proj.Name, maxProjLen)))
+	projectBadge := badgeStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(projectName, maxProjLen)))
 	if opts.Layout != nil && opts.Layout.HasProject {
 		projectBadge = PadBadge(projectBadge, opts.Layout.ProjectWidth)
 	}
@@ -119,7 +123,7 @@ func RenderCrossProjectTaskLine(
 		tagsStr = renderTruncatedTags(task.Tags, 2, 8)
 	}
 	scoreBadge := ""
-	if opts.ShowScore && runtime != nil {
+	if opts.ShowScore && runtime != nil && proj != nil {
 		if profile := runtime.Automation().GetProjectScoringProfile(proj.ID); profile != nil {
 			scoreBadge = RenderScoreBadge(task, profile)
 		}

@@ -48,12 +48,28 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 		maxNameWidth = min(maxNameWidth, max(m.width-lipgloss.Width(cursor)-lipgloss.Width(badgeStr), 1))
 	}
 	name := truncateToVisualWidth(wp.Project.Name, maxNameWidth)
+	styledName := projectColorStyle(wp.Project).Render(name)
+	if isSelected {
+		// The selected-row foreground remains the primary identity cue while the
+		// cursor is on this project; the durable project color returns when the
+		// row is no longer selected.
+		styledName = name
+	}
 
-	line := fmt.Sprintf("%s%s%s", cursor, name, badgeStr)
+	line := fmt.Sprintf("%s%s%s", cursor, styledName, badgeStr)
 	if m.width > 0 && lipgloss.Width(line) > m.width {
 		excess := lipgloss.Width(line) - m.width
 		name = truncateToVisualWidth(wp.Project.Name, max(maxNameWidth-excess, 1))
-		line = fmt.Sprintf("%s%s%s", cursor, name, badgeStr)
+		styledName = projectColorStyle(wp.Project).Render(name)
+		if isSelected {
+			styledName = name
+		}
+		line = fmt.Sprintf("%s%s%s", cursor, styledName, badgeStr)
+	}
+	if m.width > 0 {
+		// At very narrow widths the metric badges alone can exceed the available
+		// budget even after the project name reaches its one-column minimum.
+		line = fitStyledLineToWidth(line, m.width)
 	}
 
 	if isSelected {

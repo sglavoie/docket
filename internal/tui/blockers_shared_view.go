@@ -58,7 +58,8 @@ func blockerExpandedView(s *blockerViewState, ds blockerDataSource, b *strings.B
 		b.WriteString(FieldLabelFocusedStyle.Render(blocker.Title))
 		b.WriteString("\n")
 		if ds.showProjectName() {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s", item.Project.Name)))
+			b.WriteString(MutedStyle.Render("Project: "))
+			b.WriteString(projectColorStyle(item.Project).Render(item.Project.Name))
 			b.WriteString("\n")
 		}
 		b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", blocker.CreatedAt)))
@@ -171,7 +172,9 @@ func blockerListItemView(s *blockerViewState, ds blockerDataSource, item blocker
 	line.WriteString("\n")
 
 	if ds.showProjectName() {
-		fmt.Fprintf(&line, "      %s", MutedStyle.Render(fmt.Sprintf("[%s] %s", item.Project.Name, relativeTime)))
+		fmt.Fprintf(&line, "      %s %s",
+			projectColorStyle(item.Project).Render(fmt.Sprintf("[%s]", item.Project.Name)),
+			MutedStyle.Render(relativeTime))
 	} else {
 		fmt.Fprintf(&line, "      %s", MutedStyle.Render(relativeTime))
 	}

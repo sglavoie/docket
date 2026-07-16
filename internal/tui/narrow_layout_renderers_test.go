@@ -84,7 +84,7 @@ func TestRenderInboxTaskDisplayRespectsVisualWidth(t *testing.T) {
 	}
 	task.Description = "这是一段需要在窄宽度下正确截断的描述内容，用于验证收件箱卡片布局。"
 
-	rendered := renderInboxTaskDisplay(task, 32, true, "界面修复项目", newTestConfig().Settings())
+	rendered := renderInboxTaskDisplay(task, 32, true, &models.Project{Name: "界面修复项目", ColorSlot: 1}, newTestConfig().Settings())
 	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("inbox task display line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))

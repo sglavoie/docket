@@ -94,6 +94,182 @@ func TestKanbanRender_NonFocusedCardUsesPriorityTitleStyle(t *testing.T) {
 	}
 }
 
+func TestCrossProjectKanbanHeadersUsePersistedColorsAcrossThemes(t *testing.T) {
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	for _, theme := range []ThemeConfig{{Name: ""}, {Name: "light"}} {
+		themeName := theme.Name
+		if themeName == "" {
+			themeName = "dark"
+		}
+		t.Run(themeName, func(t *testing.T) {
+			ApplyTheme(theme)
+
+			// These names collided in the retired 12-color FNV palette.
+			alpha := testutil.NewTestProject("Alpha Project")
+			platform := testutil.NewTestProject("Platform")
+			alpha.ColorSlot = 1
+			platform.ColorSlot = 2
+			alphaTask := testutil.NewTestTask("Alpha kanban card", models.TaskTypeTask)
+			platformTask := testutil.NewTestTask("Platform kanban card", models.TaskTypeTask)
+			col := KanbanColumn{
+				ID:    "inbox",
+				Label: "inbox",
+				Icon:  "·",
+				Tasks: []KanbanCard{
+					{Task: alphaTask, Project: alpha},
+					{Task: platformTask, Project: platform},
+				},
+			}
+			m := newRenderKanban(80, 24, []KanbanColumn{col})
+			m.crossProject = true
+			colored := kanbanRender(m)
+			layout := computeKanbanColumnLayout(m.width, len(m.columns), m.colScrollOff)
+
+			wantAlpha := projectColorStyle(alpha).
+				Background(ColorDimmedBg).
+				Bold(true).
+				Width(layout.colWidth).
+				Render(alpha.Name)
+			wantPlatform := projectColorStyle(platform).
+				Background(ColorDimmedBg).
+				Bold(true).
+				Width(layout.colWidth).
+				Render(platform.Name)
+			if wantAlpha == wantPlatform {
+				t.Fatalf("persisted slots rendered the same %s-theme kanban header", themeName)
+			}
+			assertContains(t, colored, wantAlpha, "alpha kanban project header color")
+			assertContains(t, colored, wantPlatform, "platform kanban project header color")
+
+			alpha.ColorSlot = 0
+			platform.ColorSlot = 0
+			fallback := kanbanRender(m)
+			if got, want := ansi.Strip(colored), ansi.Strip(fallback); got != want {
+				t.Fatalf("project header colors changed stripped kanban layout\ncolored:\n%s\nfallback:\n%s", got, want)
+			}
+			coloredLines := strings.Split(colored, "\n")
+			fallbackLines := strings.Split(fallback, "\n")
+			if len(coloredLines) != len(fallbackLines) {
+				t.Fatalf("colored row count = %d, fallback row count = %d", len(coloredLines), len(fallbackLines))
+			}
+			for i := range coloredLines {
+				if got, want := lipgloss.Width(coloredLines[i]), lipgloss.Width(fallbackLines[i]); got != want {
+					t.Fatalf("row %d width changed with project color: got %d want %d", i, got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestCrossProjectKanbanGroupsEqualNamesByProjectPointer(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	first := testutil.NewTestProject("Shared Name")
+	second := testutil.NewTestProject("Shared Name")
+	first.ColorSlot = 3
+	second.ColorSlot = 4
+	col := KanbanColumn{
+		ID:    "inbox",
+		Label: "inbox",
+		Icon:  "·",
+		Tasks: []KanbanCard{
+			{Task: testutil.NewTestTask("First project card", models.TaskTypeTask), Project: first},
+			{Task: testutil.NewTestTask("Second project card", models.TaskTypeTask), Project: second},
+		},
+	}
+	m := newRenderKanban(80, 24, []KanbanColumn{col})
+	m.crossProject = true
+	rendered := kanbanRender(m)
+	layout := computeKanbanColumnLayout(m.width, len(m.columns), m.colScrollOff)
+
+	for _, project := range []*models.Project{first, second} {
+		want := projectColorStyle(project).
+			Background(ColorDimmedBg).
+			Bold(true).
+			Width(layout.colWidth).
+			Render(project.Name)
+		if got := strings.Count(rendered, want); got != 1 {
+			t.Fatalf("project slot %d header count = %d, want 1", project.ColorSlot, got)
+		}
+	}
+}
+
+func TestCrossProjectKanbanNilHeaderFallbackScrollingOverflowAndSelection(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: "light"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	project := testutil.NewTestProject("Scrolled Project")
+	project.ColorSlot = 8
+	nilTask := testutil.NewTestTask("Nil project card", models.TaskTypeTask)
+	selectedTask := testutil.NewTestTask("Selected scrolled card", models.TaskTypeTask)
+	col := KanbanColumn{
+		ID:           "inbox",
+		Label:        "inbox",
+		Icon:         "·",
+		Cursor:       1,
+		ScrollOffset: 2,
+		Tasks: []KanbanCard{
+			{Task: nilTask, Project: nil},
+			{Task: selectedTask, Project: project},
+			{Task: testutil.NewTestTask("Overflow card one", models.TaskTypeTask), Project: project},
+			{Task: testutil.NewTestTask("Overflow card two", models.TaskTypeTask), Project: project},
+			{Task: testutil.NewTestTask("Overflow card three", models.TaskTypeTask), Project: project},
+		},
+	}
+	m := newRenderKanban(80, 10, []KanbanColumn{col})
+	m.crossProject = true
+	rendered := kanbanRender(m)
+	layout := computeKanbanColumnLayout(m.width, len(m.columns), m.colScrollOff)
+
+	wantProjectHeader := projectColorStyle(project).
+		Background(ColorDimmedBg).
+		Bold(true).
+		Width(layout.colWidth).
+		Render(project.Name)
+	assertContains(t, rendered, wantProjectHeader, "scrolled project header color")
+	assertContains(t, ansi.Strip(rendered), "more", "cross-project overflow row")
+
+	selectedLine := findRenderedLineContaining(t, rendered, selectedTask.Title)
+	selectedContent := strings.TrimRight(ansi.Strip(selectedLine), " ")
+	if want := SelectedLine(selectedContent, layout.colWidth); selectedLine != want {
+		t.Fatalf("selected cross-project card lost focused styling\ngot:  %q\nwant: %q", selectedLine, want)
+	}
+
+	// Rewind to the nil-owned group and verify the shared muted fallback is
+	// used without panicking or inventing a project identity.
+	m.columns[0].ScrollOffset = 0
+	rendered = kanbanRender(m)
+	wantNilHeader := projectColorStyle(nil).
+		Background(ColorDimmedBg).
+		Bold(true).
+		Width(layout.colWidth).
+		Render("")
+	assertContains(t, rendered, wantNilHeader, "nil-project kanban header fallback")
+}
+
+func TestSingleProjectKanbanIgnoresProjectColorSlot(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	project := testutil.NewTestProject("Single Project")
+	project.ColorSlot = 12
+	col := KanbanColumn{
+		ID:    "inbox",
+		Label: "inbox",
+		Icon:  "·",
+		Tasks: []KanbanCard{{Task: testutil.NewTestTask("Single-project card", models.TaskTypeTask), Project: project}},
+	}
+	m := newRenderKanban(80, 24, []KanbanColumn{col})
+	withSlot := kanbanRender(m)
+	project.ColorSlot = 0
+	withoutSlot := kanbanRender(m)
+	if withSlot != withoutSlot {
+		t.Fatal("single-project kanban rendering changed when only ColorSlot changed")
+	}
+}
+
 // ── overflow indicator ────────────────────────────────────────────────────────
 
 func TestKanbanRender_OverflowIndicator(t *testing.T) {

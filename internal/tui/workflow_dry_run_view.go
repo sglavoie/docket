@@ -145,8 +145,8 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]
-		projectName := truncateToVisualWidth(result.ProjectName, max(contentWidth-6, 1))
-		projectTag := MutedStyle.Render("[" + projectName + "]")
+		projectName := truncateToVisualWidth(dryRunProjectName(result.Project), max(contentWidth-6, 1))
+		projectTag := projectColorStyle(result.Project).Render("[" + projectName + "]")
 		changeCount := MutedStyle.Render(fmt.Sprintf("(%d)", len(result.Changes)))
 		titleWidth := max(contentWidth-lipgloss.Width(changeCount)-4, 1)
 		title := truncateToVisualWidth(result.Task.Title, titleWidth)
@@ -189,8 +189,10 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	// Task info
 	b.WriteString(TaskTitleStyleFor(result.Task, TaskTitleStyleOptions{}).Render(result.Task.Title))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s  Status: %s  Priority: %d",
-		result.ProjectName, string(result.Task.State()), result.Task.Priority)))
+	b.WriteString(MutedStyle.Render("Project: "))
+	b.WriteString(projectColorStyle(result.Project).Render(dryRunProjectName(result.Project)))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("  Status: %s  Priority: %d",
+		string(result.Task.State()), result.Task.Priority)))
 	b.WriteString("\n\n")
 
 	// Matched rules
@@ -248,12 +250,12 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]
 		title := truncateToVisualWidth(result.Task.Title, maxTitleLen)
-		projectName := truncateToVisualWidth(result.ProjectName, max(m.Width()-8, 1))
+		projectName := truncateToVisualWidth(dryRunProjectName(result.Project), max(m.Width()-8, 1))
 
 		if i == m.cursor {
 			b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %s", IconCursorRight, title)))
 			b.WriteString(" ")
-			b.WriteString(MutedStyle.Render("[" + projectName + "]"))
+			b.WriteString(projectColorStyle(result.Project).Render("[" + projectName + "]"))
 			b.WriteString("\n")
 			// Show rules and changes for selected task
 			for _, name := range result.MatchedRules {

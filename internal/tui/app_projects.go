@@ -72,6 +72,30 @@ func copyCatalogMetadata(dst, src *models.Project) {
 	dst.PinnedAt = src.PinnedAt
 	dst.Sandbox = src.Sandbox
 	dst.Internal = src.Internal
+	dst.ColorSlot = src.ColorSlot
+}
+
+// ensureProjectColorSlots persists legacy catalog backfill once during startup.
+// A failed checked commit leaves the runtime snapshot untouched so startup can
+// continue with the muted fallback and retry on the next catalog mutation.
+func (m *AppModel) ensureProjectColorSlots() error {
+	if m == nil || m.runtime == nil {
+		return nil
+	}
+	catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
+	if !catalog.EnsureProjectColorSlots() {
+		return nil
+	}
+	if m.runtime.DataDir() == "" {
+		m.runtime.SetCatalogInMemory(catalog)
+		m.syncProjectCache()
+		return nil
+	}
+	if err := m.runtime.CommitCatalog(catalog); err != nil {
+		return err
+	}
+	m.syncProjectCache()
+	return nil
 }
 
 func (m *AppModel) projectByID(idOrSlug string) *models.Project {

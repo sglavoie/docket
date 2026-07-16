@@ -13,11 +13,11 @@ import (
 
 // DryRunTaskResult holds the evaluation result for a single task.
 type DryRunTaskResult struct {
-	Task         *models.Task // original (unmodified) task
-	ProjectName  string
-	MatchedRules []string       // names of rules that matched
-	Actions      []string       // human-readable action descriptions
-	Changes      []DryRunChange // specific field changes
+	Task         *models.Task    // original (unmodified) task
+	Project      *models.Project // owning project; read-only during dry-run display
+	MatchedRules []string        // names of rules that matched
+	Actions      []string        // human-readable action descriptions
+	Changes      []DryRunChange  // specific field changes
 }
 
 // DryRunChange describes a single field change from the dry run.
@@ -162,7 +162,7 @@ func (m *WorkflowDryRunModel) runDryRun() tea.Msg {
 
 			allResults = append(allResults, DryRunTaskResult{
 				Task:         original,
-				ProjectName:  project.Name,
+				Project:      project,
 				MatchedRules: ruleNames,
 				Actions:      actionDescs,
 				Changes:      changes,
@@ -455,7 +455,7 @@ func (m *WorkflowDryRunModel) filterResults() {
 		m.filtered = nil
 		for _, r := range m.results {
 			titleLower := strings.ToLower(r.Task.Title)
-			projectLower := strings.ToLower(r.ProjectName)
+			projectLower := strings.ToLower(dryRunProjectName(r.Project))
 			if strings.Contains(titleLower, query) || strings.Contains(projectLower, query) {
 				m.filtered = append(m.filtered, r)
 			}
@@ -469,6 +469,13 @@ func (m *WorkflowDryRunModel) filterResults() {
 			m.cursor = 0
 		}
 	}
+}
+
+func dryRunProjectName(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	return project.Name
 }
 
 func (m *WorkflowDryRunModel) HasTextInput() bool     { return m.searchActive }

@@ -167,6 +167,7 @@ func TestRestoreTrashEntry_FaithfulMetadata(t *testing.T) {
 		ArchivedAt: &archivedAt,
 		Pinned:     true,
 		PinnedAt:   &pinnedAt,
+		ColorSlot:  23,
 	}
 
 	entryID, err := MoveProjectToTrash(original, dataDir, "faithful test", nil)
@@ -199,6 +200,9 @@ func TestRestoreTrashEntry_FaithfulMetadata(t *testing.T) {
 	}
 	if !restored.Pinned || restored.PinnedAt == nil {
 		t.Error("pinned state should be preserved on restore")
+	}
+	if restored.ColorSlot != original.ColorSlot || tomb.Project.ColorSlot != original.ColorSlot {
+		t.Errorf("color slot was not preserved through trash: restored=%d tombstone=%d want=%d", restored.ColorSlot, tomb.Project.ColorSlot, original.ColorSlot)
 	}
 	if len(restored.Tasks) != 1 {
 		t.Errorf("expected 1 task loaded from disk, got %d", len(restored.Tasks))

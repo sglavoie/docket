@@ -34,6 +34,7 @@ type Project struct {
 	PinnedAt         *time.Time `json:"pinned_at,omitempty"`
 	Sandbox          bool       `json:"sandbox,omitempty"`
 	Internal         bool       `json:"internal,omitempty"`
+	ColorSlot        int        `json:"color_slot,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks         []*Task           `json:"-"`

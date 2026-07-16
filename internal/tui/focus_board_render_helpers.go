@@ -240,7 +240,7 @@ func (m *FocusBoardModel) buildBoardRowSegments(row boardRow, isSelected bool, m
 		prefix:          renderBoardRowPrefix(rowNum, isFirstPlanItem),
 		statusIcon:      renderBoardStatusIcon(task, colLayout),
 		prioritySegment: renderBoardPrioritySegment(task, colLayout),
-		projectBadge:    MutedStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(row.Project.Name, 10))),
+		projectBadge:    projectColorStyle(row.Project).Render(fmt.Sprintf("[%s]", truncateToVisualWidth(row.Project.Name, 10))),
 		typeIcon:        renderBoardTypeIcon(task, colLayout),
 		dueStr:          renderBoardDueString(task),
 	}

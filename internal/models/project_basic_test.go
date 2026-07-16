@@ -1,6 +1,8 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -31,6 +33,33 @@ func TestNewProject(t *testing.T) {
 	}
 	if project.NextShortID != 1 {
 		t.Errorf("expected NextShortID 1, got %d", project.NextShortID)
+	}
+}
+
+func TestProjectColorSlotJSONRoundTrip(t *testing.T) {
+	project := &Project{ID: "project-1", ColorSlot: 23}
+	payload, err := json.Marshal(project)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !bytes.Contains(payload, []byte(`"color_slot":23`)) {
+		t.Fatalf("project JSON does not contain color slot: %s", payload)
+	}
+
+	var restored Project
+	if unmarshalErr := json.Unmarshal(payload, &restored); unmarshalErr != nil {
+		t.Fatalf("Unmarshal: %v", unmarshalErr)
+	}
+	if restored.ColorSlot != project.ColorSlot {
+		t.Fatalf("ColorSlot = %d, want %d", restored.ColorSlot, project.ColorSlot)
+	}
+
+	legacy, err := json.Marshal(&Project{ID: "legacy"})
+	if err != nil {
+		t.Fatalf("Marshal legacy project: %v", err)
+	}
+	if bytes.Contains(legacy, []byte("color_slot")) {
+		t.Fatalf("zero color slot should be omitted from JSON: %s", legacy)
 	}
 }
 

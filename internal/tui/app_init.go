@@ -99,6 +99,10 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		logging.Warn("failed to ensure sandbox project: %v", err)
 	}
 	app.syncProjectCache()
+	if err := app.ensureProjectColorSlots(); err != nil {
+		logging.Warn("failed to persist project color slots: %v", err)
+	}
+	app.syncProjectCache()
 	activeProjects := app.activeProjects()
 	startupLoads := make(map[string]error, len(activeProjects))
 	// The catalog owns project metadata only. Rehydrate the selected project's

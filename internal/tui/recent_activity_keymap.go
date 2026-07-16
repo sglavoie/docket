@@ -78,7 +78,7 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 			if m.cursor >= 0 && m.cursor < len(m.filtered) {
 				dt := m.filtered[m.cursor]
 				return m, func() tea.Msg {
-					return ShowRecentActivityPreviewMsg{Task: dt, Project: dt.Project}
+					return ShowRecentActivityPreviewMsg{Task: dt, ProjectScope: m.projectScope}
 				}
 			}
 			return m, nil

@@ -54,7 +54,7 @@ func (m *GlobalSearchModel) renderNoteSearchRow(index int, filteredResult filter
 	note := filteredResult.result.Note
 	cursor := m.searchRowCursor(index)
 	projectSlug := truncateToVisualWidth(filteredResult.result.Project.Slug, 8)
-	projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
+	projectName := projectColorStyle(filteredResult.result.Project).Render(fmt.Sprintf("[%s]", projectSlug))
 	noteIcon := MutedStyle.Render("[N]")
 	prefix := fmt.Sprintf("%s%s %s ", cursor, noteIcon, projectName)
 	prefixWidth := lipgloss.Width(prefix)
@@ -92,7 +92,7 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
 	}
 	projectSlug := truncateToVisualWidth(filteredResult.result.Project.Slug, 8)
-	projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
+	projectName := projectColorStyle(filteredResult.result.Project).Render(fmt.Sprintf("[%s]", projectSlug))
 	shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 	prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, typeIcon, statusIcon, shortID, projectName)
 	descSuffix := ""

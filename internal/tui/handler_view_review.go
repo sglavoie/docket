@@ -167,7 +167,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowRecentActivityPreviewMsg:
-		preview := NewRecentActivityPreviewModel(msg.Task, msg.Project)
+		preview := NewRecentActivityPreviewModel(msg.Task, msg.ProjectScope)
 		m.showView(ViewRecentActivityPreview, preview)
 		return true, nil
 

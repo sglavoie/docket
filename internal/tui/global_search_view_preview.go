@@ -27,7 +27,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 func (m *GlobalSearchModel) renderNotePreview(result models.SearchResult) string {
 	var b strings.Builder
 	b.WriteString(MutedStyle.Render("Project: "))
-	b.WriteString(BoldStyle.Render(result.Project.Name))
+	b.WriteString(projectColorStyle(result.Project).Bold(true).Render(result.Project.Name))
 	b.WriteString("\n\n")
 	noteHeader := "Note: " + truncateToVisualWidth(result.Note.Title, max(m.previewWidth-8, 1))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(noteHeader))
@@ -53,7 +53,7 @@ func (m *GlobalSearchModel) renderTaskPreview(filteredResult filteredSearchResul
 	var b strings.Builder
 
 	b.WriteString(MutedStyle.Render("Project: "))
-	b.WriteString(BoldStyle.Render(project.Name))
+	b.WriteString(projectColorStyle(project).Bold(true).Render(project.Name))
 	b.WriteString("\n\n")
 
 	typeStyle := GetTypeStyle(string(task.Type))

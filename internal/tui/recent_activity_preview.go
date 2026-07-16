@@ -15,19 +15,19 @@ import (
 
 // RecentActivityPreviewModel shows a scrollable task preview overlay.
 type RecentActivityPreviewModel struct {
-	task     CrossProjectTask
-	project  *models.Project
-	viewport viewport.Model
-	width    int
-	height   int
-	ready    bool
+	task         CrossProjectTask
+	projectScope *models.Project
+	viewport     viewport.Model
+	width        int
+	height       int
+	ready        bool
 }
 
 // NewRecentActivityPreviewModel creates a new preview model.
-func NewRecentActivityPreviewModel(task CrossProjectTask, project *models.Project) *RecentActivityPreviewModel {
+func NewRecentActivityPreviewModel(task CrossProjectTask, projectScope *models.Project) *RecentActivityPreviewModel {
 	return &RecentActivityPreviewModel{
-		task:    task,
-		project: project,
+		task:         task,
+		projectScope: projectScope,
 	}
 }
 
@@ -98,7 +98,11 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 	// Project name
 	if m.task.Project != nil {
 		b.WriteString(MutedStyle.Render("Project: "))
-		b.WriteString(BoldStyle.Render(m.task.Project.Name))
+		projectNameStyle := BoldStyle
+		if m.projectScope == nil {
+			projectNameStyle = projectColorStyle(m.task.Project).Bold(true)
+		}
+		b.WriteString(projectNameStyle.Render(m.task.Project.Name))
 		b.WriteString("\n\n")
 	}
 

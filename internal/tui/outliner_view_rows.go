@@ -80,20 +80,6 @@ func (m *OutlinerModel) projectNameByID(id string) string {
 	return id
 }
 
-// projectSlugByID looks up a project slug from m.loadedProjects by ID.
-// Falls back to projectNameByID when the slug is empty.
-func (m *OutlinerModel) projectSlugByID(id string) string {
-	for _, p := range m.loadedProjects {
-		if p.ID == id {
-			if p.Slug != "" {
-				return p.Slug
-			}
-			return p.Name
-		}
-	}
-	return id
-}
-
 // buildTreePrefix computes the connector prefix string from the ancestor
 // is-last-child boolean stack. Each true entry means that ancestor was the
 // last child of its parent (so we render spaces), while false means we need
