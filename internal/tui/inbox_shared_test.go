@@ -327,3 +327,21 @@ func TestRenderInboxFooterShowsPrimaryTriageVocabulary(t *testing.T) {
 		}
 	}
 }
+
+func TestNestedInboxTaskIsProcessableAndKeepsParentContext(t *testing.T) {
+	parent := &models.Task{ID: "parent", Title: "Epic", WorkflowState: models.StateNext}
+	child := &models.Task{ID: "child", Title: "Nested inbox item", WorkflowState: models.StateInbox, ParentID: &parent.ID}
+	project := &models.Project{Tasks: []*models.Task{parent, child}}
+	project.BuildTaskTree()
+
+	if !isProcessableInboxTask(child) {
+		t.Fatal("nested Inbox task should be processable")
+	}
+	queue := getInboxTasksForModel(project)
+	if len(queue) != 1 || queue[0].ID != child.ID {
+		t.Fatalf("Inbox queue length/first task = %d/%v, want nested child once", len(queue), queue)
+	}
+	if got := taskAncestorBreadcrumb(child); !strings.Contains(got, parent.Title) {
+		t.Fatalf("breadcrumb = %q, want parent title", got)
+	}
+}

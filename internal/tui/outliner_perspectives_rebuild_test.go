@@ -11,7 +11,8 @@ func TestRebuildRows_AllPerspective(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
 	assertRowTitles(t, m.rows, []string{
-		"[Active]", "Epic", "Story A", "Task A1", "Story B", "Task B1", "Bug Root",
+		"[Active]", "Epic", "Story A", "Task A1", "Bug Root",
+		"[Waiting]", "Story B", "[Review]", "Task B1",
 	})
 }
 
@@ -187,7 +188,8 @@ func TestRebuildRows_AllPerspectiveExcludesSnoozed(t *testing.T) {
 	m := &OutlinerModel{project: proj, activePerspective: 1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
 	assertRowTitles(t, m.rows, []string{
-		"[Active]", "Epic", "Story A", "Task A1", "Story B", "Task B1",
+		"[Active]", "Epic", "Story A", "Task A1",
+		"[Waiting]", "Story B", "[Review]", "Task B1",
 	})
 }
 
@@ -271,8 +273,8 @@ func TestRebuildRows_ParentPreservedForMatchingDescendant(t *testing.T) {
 func TestRebuildRows_DefaultPerspectiveIsAll(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: -1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
-	if len(m.rows) != 7 {
-		t.Fatalf("default perspective should show 7 rows (1 header + 6 tasks), got %d", len(m.rows))
+	if len(m.rows) != 11 {
+		t.Fatalf("default perspective should show 11 rows (3 headers + 6 tasks + 2 separators), got %d", len(m.rows))
 	}
 	if !m.rows[0].IsSectionHeader {
 		t.Errorf("first row should be section header")

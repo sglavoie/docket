@@ -23,22 +23,19 @@ import (
 // (or TransactionErrorMsg), which the shell handles by reloading every touched
 // project, persisting fired rule-trigger counts, and refreshing the active view.
 //
-// The views supply no prior-state snapshot, so evaluation is stateless — exactly
-// what the legacy secondary-view save path did (it built its WorkflowSaveOptions
-// with a nil PrevStates). The primary views, which captured prior states, are
-// deliberately out of scope for this migration.
+// The application service captures the repository snapshot before every
+// mutation, so all views share contextual workflow semantics.
 type workflowOpsView interface {
 	getTaskRef() (task *models.Task, project *models.Project)
 	taskItemCoordinator() TaskItemCoordinator
 	workflowRules() []workflow.WorkflowRule
 }
 
-// wfOpts builds the stateless workflow options for a single-task mutation on the
+// wfOpts builds workflow options for a single-task mutation on the
 // cursor task, labeling the ledger entry with action and the task context.
 func wfOpts(v workflowOpsView, task *models.Task, action string) app.SingleTaskWorkflowOptions {
 	return app.SingleTaskWorkflowOptions{
 		Rules:       v.workflowRules(),
-		Contextual:  false,
 		UndoAction:  action,
 		UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
 	}

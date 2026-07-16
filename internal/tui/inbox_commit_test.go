@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // newInboxCommitEnv seeds a single project with one processable inbox task on
@@ -118,5 +119,44 @@ func TestInboxProcessorCommitFailureLeavesDiskUnchanged(t *testing.T) {
 
 	if got := reloadInboxProject(t, project).GetTaskByID("inbox-1"); got == nil || got.Priority != 3 {
 		t.Fatalf("disk priority = %v, want unchanged 3 after failed commit", got)
+	}
+}
+
+func TestInboxProcessorCompletingFinalNestedChildCascadesParentRule(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg, mgr, project := newInboxCommitEnv(t, dataDir)
+
+	story := &models.Task{ID: "story", ShortID: 1, Title: "Story", Type: models.TaskTypeStory, WorkflowState: models.StateReady}
+	doneChild := &models.Task{ID: "done-child", ShortID: 2, Title: "Already done", Type: models.TaskTypeTask, WorkflowState: models.StateDone, ParentID: &story.ID}
+	finalChild := &models.Task{ID: "final-child", ShortID: 3, Title: "Nested inbox", Type: models.TaskTypeTask, WorkflowState: models.StateInbox, ParentID: &story.ID}
+	project.Tasks = []*models.Task{story, doneChild, finalChild}
+	project.NextShortID = 4
+	project.BuildTaskTree()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("seed hierarchy: %v", err)
+	}
+	cfg.Automation().WorkflowRules = []workflow.WorkflowRule{{
+		ID: "story-done", Name: "Auto-complete Story", Enabled: true,
+		Triggers: []workflow.RuleTrigger{
+			{Field: workflow.FieldType, Operation: workflow.OpEquals, Value: "story"},
+			{Field: workflow.FieldAllChildrenDone, Operation: workflow.OpEquals, Value: "true"},
+		},
+		TriggerLogic: workflow.LogicAnd,
+		Actions:      []workflow.RuleAction{{ActionType: workflow.ActionSetStatus, Value: "done"}},
+	}}
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
+	m := NewInboxProcessorModel(project, mgr, runtime)
+	if len(m.inboxTasks) != 1 || m.inboxTasks[0].ID != finalChild.ID {
+		t.Fatalf("nested Inbox queue = %v, want final child", m.inboxTasks)
+	}
+	finalChild.ApplyStateTransition(models.StateDone)
+	saved, ok := m.saveCmd()().(InboxProjectSavedMsg)
+	if !ok || saved.Error != nil {
+		t.Fatalf("save result = %#v, want successful InboxProjectSavedMsg", saved)
+	}
+
+	fresh := reloadInboxProject(t, project)
+	if got := fresh.GetTaskByID(story.ID); got == nil || got.State() != models.StateDone {
+		t.Fatalf("story after final child completion = %v, want done", got)
 	}
 }

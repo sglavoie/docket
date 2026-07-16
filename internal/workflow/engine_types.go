@@ -50,11 +50,12 @@ type TaskChangeContext struct {
 
 // EvaluationContext provides all context needed for rule evaluation.
 type EvaluationContext struct {
-	Changes     []TaskChangeContext     // Tasks with change context
-	AllTasks    []*models.Task          // All tasks for hierarchical lookups
-	TaskMap     map[string]*models.Task // taskID -> task for dependency lookups
-	ProjectName string                  // Current project name (for scope matching)
-	ProjectID   string                  // Current project ID (for scope matching)
+	Changes         []TaskChangeContext     // Tasks with change context
+	AllTasks        []*models.Task          // All tasks for hierarchical lookups
+	TaskMap         map[string]*models.Task // taskID -> current task for dependency lookups
+	PreviousTaskMap map[string]*models.Task // taskID -> pre-mutation snapshot; nil for stateless evaluation
+	ProjectName     string                  // Current project name (for scope matching)
+	ProjectID       string                  // Current project ID (for scope matching)
 }
 
 // executionContext tracks rule applications to prevent infinite loops.

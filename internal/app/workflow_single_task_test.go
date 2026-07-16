@@ -9,9 +9,9 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// statelessTagRule fires on the task's CURRENT status (no prior state needed), so
-// it exercises the stateless evaluation branch (Contextual=false).
-func statelessTagRule() workflow.WorkflowRule {
+// stateBasedTagRule fires on the task's current status without requiring an
+// event transition.
+func stateBasedTagRule() workflow.WorkflowRule {
 	return workflow.WorkflowRule{
 		ID:      "r-status-tag",
 		Name:    "Tag done tasks",
@@ -33,15 +33,14 @@ func contextualTagRule() workflow.WorkflowRule {
 	}
 }
 
-func TestStateWithWorkflowStatelessEvaluationFiresRule(t *testing.T) {
+func TestStateWithWorkflowStateBasedRuleFires(t *testing.T) {
 	t1 := newTask("t1", 1, "deploy")
 	projA := newProject("proj-a", "Alpha", t1)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
 	res, err := svc.StateWithWorkflow("t1", models.StateDone, app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{statelessTagRule()},
-		Contextual: false,
+		Rules:      []workflow.WorkflowRule{stateBasedTagRule()},
 		UndoAction: "Complete Task",
 	})
 	if err != nil {
@@ -51,7 +50,7 @@ func TestStateWithWorkflowStatelessEvaluationFiresRule(t *testing.T) {
 		t.Errorf("state = %s, want done", t1.State())
 	}
 	if !t1.HasTag("shipped") {
-		t.Errorf("stateless rule did not apply tag; tags = %v", t1.Tags)
+		t.Errorf("state-based rule did not apply tag; tags = %v", t1.Tags)
 	}
 	if res.RuleTriggerCounts["r-status-tag"] != 1 {
 		t.Errorf("trigger count = %d, want 1", res.RuleTriggerCounts["r-status-tag"])
@@ -71,8 +70,7 @@ func TestStateWithWorkflowContextualEvaluationFiresChangeRule(t *testing.T) {
 	svc := newTestService(repo)
 
 	if _, err := svc.StateWithWorkflow("t1", models.StateDone, app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{contextualTagRule()},
-		Contextual: true,
+		Rules: []workflow.WorkflowRule{contextualTagRule()},
 	}); err != nil {
 		t.Fatalf("StateWithWorkflow: %v", err)
 	}
@@ -81,23 +79,21 @@ func TestStateWithWorkflowContextualEvaluationFiresChangeRule(t *testing.T) {
 	}
 }
 
-func TestStateWithWorkflowStatelessDoesNotFireChangeRule(t *testing.T) {
+func TestStateWithWorkflowAlwaysFiresContextualChangeRule(t *testing.T) {
 	t1 := newTask("t1", 1, "deploy")
 	projA := newProject("proj-a", "Alpha", t1)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	// A status-changed trigger needs the prior state; with Contextual=false no
-	// prior state is captured, so the rule must NOT fire — proving the seam honors
-	// the stateless/contextual distinction the legacy secondary-view path relied on.
+	// Every workflow-aware mutation captures prior state, so event rules behave
+	// consistently regardless of the caller.
 	if _, err := svc.StateWithWorkflow("t1", models.StateDone, app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{contextualTagRule()},
-		Contextual: false,
+		Rules: []workflow.WorkflowRule{contextualTagRule()},
 	}); err != nil {
 		t.Fatalf("StateWithWorkflow: %v", err)
 	}
-	if t1.HasTag("shipped") {
-		t.Errorf("status-changed rule fired under stateless evaluation; tags = %v", t1.Tags)
+	if !t1.HasTag("shipped") {
+		t.Errorf("status-changed rule did not fire; tags = %v", t1.Tags)
 	}
 }
 
@@ -171,7 +167,7 @@ func TestStateWithWorkflowGuardRejectionCommitsNothing(t *testing.T) {
 	// Completing a parent with an incomplete child must be rejected before any
 	// commit (the incomplete-children guard).
 	_, err := svc.StateWithWorkflow("p", models.StateDone, app.SingleTaskWorkflowOptions{
-		Rules: []workflow.WorkflowRule{statelessTagRule()},
+		Rules: []workflow.WorkflowRule{stateBasedTagRule()},
 	})
 	if err == nil {
 		t.Fatal("expected the completion to be rejected by the children guard")
@@ -230,6 +226,32 @@ func TestWithWorkflowNoRulesCommitsBareMutation(t *testing.T) {
 	}
 	if got := repo.commits[0][0].UndoAction; got != "Move to Section" {
 		t.Errorf("UndoAction = %q, want Move to Section", got)
+	}
+}
+
+func TestSetSectionWithWorkflowDoesNotAutoCompleteEligibleParent(t *testing.T) {
+	story := newTask("story", 1, "story")
+	story.Type = models.TaskTypeStory
+	child := newTask("child", 2, "child")
+	child.ApplyWorkflowState(models.StateDone)
+	child.ParentID = &story.ID
+	project := newProject("proj-a", "Alpha", story, child)
+	repo := newFakeRepo(project)
+	rule := workflow.WorkflowRule{
+		ID: "story-done", Name: "Auto-complete story", Enabled: true,
+		Triggers: []workflow.RuleTrigger{
+			{Field: workflow.FieldType, Operation: workflow.OpEquals, Value: "story"},
+			{Field: workflow.FieldAllChildrenDone, Operation: workflow.OpEquals, Value: "true"},
+		},
+		TriggerLogic: workflow.LogicAnd,
+		Actions:      []workflow.RuleAction{{ActionType: workflow.ActionSetStatus, Value: "done"}},
+	}
+
+	if _, err := newTestService(repo).SetSectionWithWorkflow(story.ID, models.SectionSomeday, app.SingleTaskWorkflowOptions{Rules: []workflow.WorkflowRule{rule}}); err != nil {
+		t.Fatalf("SetSectionWithWorkflow: %v", err)
+	}
+	if story.State() != models.StateSomeday {
+		t.Fatalf("story state = %s, want someday", story.State())
 	}
 }
 

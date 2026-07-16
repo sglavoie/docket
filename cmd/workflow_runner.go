@@ -52,14 +52,13 @@ func newCLIWorkflowRunner(workspace *CLIWorkspace) *cliWorkflowRunner {
 // options builds the common workflow options for one command mutation. The
 // task context is captured at the adapter edge to keep ledger entries readable;
 // creation APIs leave it empty and calculate the minted short ID themselves.
-func (r *cliWorkflowRunner) options(contextual bool, undoAction string, task *models.Task) app.SingleTaskWorkflowOptions {
+func (r *cliWorkflowRunner) options(_ bool, undoAction string, task *models.Task) app.SingleTaskWorkflowOptions {
 	undoContext := ""
 	if task != nil {
 		undoContext = fmt.Sprintf("#%d %s", task.ShortID, task.Title)
 	}
 	return app.SingleTaskWorkflowOptions{
 		Rules:                  append([]workflow.WorkflowRule(nil), r.rules...),
-		Contextual:             contextual,
 		UndoAction:             undoAction,
 		UndoContext:            undoContext,
 		FocusArtifacts:         cliWorkflowFocusArtifactBuilder(r.workspace),

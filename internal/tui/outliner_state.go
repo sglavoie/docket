@@ -23,8 +23,8 @@ func (m *OutlinerModel) setStatusMessage(msg string) {
 
 // commitWorkflowOpts constructs the project-scoped workflow options for the
 // application-layer commit, draining the pending undo context. Workflow rules come
-// from config (nil-guarded for isolated tests); a nil prevStates selects stateless
-// evaluation, a captured snapshot selects contextual evaluation.
+// from config (nil-guarded for isolated tests); callers may supply an already-
+// captured snapshot or let the service infer it from storage.
 func (m *OutlinerModel) commitWorkflowOpts(prevStates map[string]*models.Task) app.ProjectWorkflowOptions {
 	var rules []workflow.WorkflowRule
 	if m.runtime != nil {
@@ -38,6 +38,18 @@ func (m *OutlinerModel) commitWorkflowOpts(prevStates map[string]*models.Task) a
 		UndoAction:  action,
 		UndoContext: context,
 	}
+}
+
+func (m *OutlinerModel) singleWorkflowOpts(task *models.Task, action string) app.SingleTaskWorkflowOptions {
+	var rules []workflow.WorkflowRule
+	if m.runtime != nil {
+		rules = m.runtime.Automation().GetEnabledWorkflowRules()
+	}
+	context := ""
+	if task != nil {
+		context = fmt.Sprintf("#%d %s", task.ShortID, task.Title)
+	}
+	return app.SingleTaskWorkflowOptions{Rules: rules, UndoAction: action, UndoContext: context}
 }
 
 // singleTaskCoordinator exposes the application-layer single-task coordinator so

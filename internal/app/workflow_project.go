@@ -18,10 +18,9 @@ type ProjectWorkflowOptions struct {
 	// Rules, when non-empty, enables the workflow cascade after the mutation.
 	// Empty rules commit the bare mutation with no cascade.
 	Rules []workflow.WorkflowRule
-	// PrevStates (taskID -> pre-mutation snapshot) enables contextual, event-based
-	// rule evaluation. A caller that captured the project's task states before
-	// mutating supplies it; a nil map selects stateless evaluation, matching the
-	// legacy persistWithWorkflow behavior (nil PrevStates -> EvaluateRules).
+	// PrevStates may be supplied by a caller that captured the project before
+	// mutating it. When nil, the service derives the previous states from the
+	// repository snapshot's immutable base document.
 	PrevStates map[string]*models.Task
 	// UndoAction / UndoContext label the ledger entry. UndoAction defaults to
 	// "Task Modified" when empty, mirroring persistWithWorkflow's safety net.
@@ -36,9 +35,8 @@ type ProjectWorkflowOptions struct {
 }
 
 // CommitProjectWithWorkflow commits an already-mutated project through the
-// transactional repository, running the same workflow-rule cascade the legacy
-// persistWithWorkflow pipeline ran — event-based rule evaluation (contextual when
-// PrevStates is supplied, stateless otherwise), follow-up creation, deferred
+// transactional repository, running contextual event-based rule evaluation,
+// follow-up creation, deferred
 // cross-project moves, project status-icon rules, and rule-trigger counters — and
 // recording one grouped ledger entry across every touched project. The caller's
 // project pointer (mutated in memory by the view) is the source of truth for the
@@ -79,8 +77,16 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 				}},
 				sources: []*models.Project{project},
 			}
-			if opts.PrevStates != nil {
-				plan.previousStates = map[string]map[string]*models.Task{project.ID: opts.PrevStates}
+			if len(opts.Rules) > 0 {
+				previous := opts.PrevStates
+				if previous == nil {
+					if base := snap.Document(project.ID); base != nil {
+						previous = workflow.CaptureTaskStates(base.Tasks)
+					} else {
+						previous = map[string]*models.Task{}
+					}
+				}
+				plan.previousStates = map[string]map[string]*models.Task{project.ID: previous}
 			}
 			return plan, nil
 		},

@@ -30,14 +30,14 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	assertContains(t, plain, "@ Inbox", "Inbox section label")
 	assertContains(t, plain, "(1)", "Inbox section count")
 	assertContains(t, plain, "@ Next", "Next section label")
-	assertContains(t, plain, "(2)", "Next section count")
+	assertContains(t, plain, "@ Active", "Active section label")
 	assertContains(t, rendered, MutedStyle.Render("‹ Snoozed"), "styled previous perspective")
 	assertContains(t, rendered, GetViewModeStyleForSection("All").Render("@ All"), "styled current perspective")
 	assertContains(t, rendered, MutedStyle.Render("Active ›"), "styled next perspective")
 	assertContains(t, rendered, GetViewModeStyleForSection(models.SectionInbox).Bold(true).Render("@ Inbox"), "styled Inbox section")
 	assertContains(t, rendered, GetViewModeStyleForSection(models.SectionNext).Bold(true).Render("@ Next"), "styled Next section")
 	assertContains(t, rendered, MutedStyle.Render("(1)"), "styled Inbox count")
-	assertContains(t, rendered, MutedStyle.Render("(2)"), "styled Next count")
+	assertContains(t, rendered, MutedStyle.Render("(1)"), "styled per-section counts")
 	assertContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "styled Alpha project sub-header badge")
 	assertContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "styled Beta project sub-header badge")
 
@@ -107,16 +107,18 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 
 	parentLine := m.renderOutlinerTaskRow(m.rows[parentIdx], false, rowWidth, rowWidth, parentIdx, nil)
 	parentPlain := ansi.Strip(parentLine)
-	assertContains(t, parentPlain, connectorLastItem+IconExpanded, "expanded parent tree prefix")
+	assertContains(t, parentPlain, "└────", "section-local parent tree prefix")
+	assertNotContains(t, parentPlain, IconExpanded, "cross-section child does not create a fold indicator")
 	assertNotContains(t, parentPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 
 	childLine := m.renderOutlinerTaskRow(m.rows[childIdx], true, rowWidth, rowWidth, childIdx, nil)
 	childPlain := ansi.Strip(childLine)
-	assertContains(t, childPlain, connectorSpace+"└────", "leaf tree prefix substitute")
+	assertContains(t, childPlain, "└────", "promoted section-root prefix")
+	assertContains(t, childPlain, "Alpha parent", "promoted child ancestor breadcrumb")
 	assertNotContains(t, childPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 	assertContains(t, childPlain, "#42", "child short ID metadata")
 	assertNotContains(t, childPlain, "#ops #today", "dense rows no longer carry tag metadata inline")
-	assertContains(t, childPlain, "Selected child ca", "truncated child title prefix")
+	assertContains(t, childPlain, "Selected chi", "truncated child title prefix")
 	if strings.Contains(childPlain, selectedTask.Title) {
 		t.Fatalf("expected child title to be truncated at width %d, got full title in %q", rowWidth, childPlain)
 	}

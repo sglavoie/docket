@@ -5,7 +5,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // Standard status messages for outliner keybindings that need a task
@@ -90,7 +92,12 @@ func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (te
 	if task == nil {
 		return m, nil
 	}
-	return m, m.taskItem.SetSection(task.ID, section)
+	label := "Move to " + section
+	if section == "" {
+		label = "Move to Ready"
+	}
+	opts := m.singleWorkflowOpts(task, label)
+	return m, m.taskItem.SetSectionWorkflow(task.ID, section, opts, func(app.TaskResult) string { return label })
 }
 
 // sendTasksToSectionBulk moves all selected tasks to the specified section.
@@ -103,13 +110,10 @@ func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (te
 // transaction and lose updates); the coordinator migration for outliner bulk
 // section is deferred to the later bulk-owning child.
 func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.Cmd) {
-	count := 0
-	for id := range m.selectedTasks {
-		if m.project.MutateTask(id, func(t *models.Task) {
-			t.SetSection(section)
-		}) {
-			count++
-		}
+	target, ok := stateForSectionName(section)
+	if !ok {
+		m.setStatus("Unknown section: " + section)
+		return m, nil
 	}
 	label := "Move to " + section
 	if section == "" {
@@ -119,11 +123,22 @@ func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.C
 	for id := range m.selectedTasks {
 		selectedIDs = append(selectedIDs, id)
 	}
-	m.setUndoContext(label, fmt.Sprintf("%d tasks", count))
-	m.undo.TaskIDs = selectedIDs
 	m.clearMultiSelect()
-	m.rebuildRows()
-	return m, m.saveWithWorkflow()
+	var rules []workflow.WorkflowRule
+	if m.runtime != nil {
+		rules = m.runtime.Automation().GetEnabledWorkflowRules()
+	}
+	cmd := m.bulk.TransitionWithWorkflow(app.BulkTransitionRequest{
+		TaskIDs:     selectedIDs,
+		Target:      target,
+		Rules:       rules,
+		UndoAction:  label,
+		UndoContext: fmt.Sprintf("%d tasks", len(selectedIDs)),
+		SkipInvalid: true,
+	}, func(changed int) string {
+		return fmt.Sprintf("Moved %d task(s) to %s", changed, section)
+	})
+	return m, cmd
 }
 
 // moveTaskToPosition moves the cursor task to the top or bottom of its siblings.

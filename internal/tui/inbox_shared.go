@@ -121,9 +121,9 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 }
 
 func isProcessableInboxTask(task *models.Task) bool {
-	return task.InSection(models.SectionInbox) &&
-		task.IsRoot() &&
-		!task.IsComplete() &&
+	return task != nil &&
+		task.InSection(models.SectionInbox) &&
+		!task.IsTerminalState() &&
 		!task.IsSnoozed()
 }
 
@@ -145,6 +145,12 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 		titleWidth -= lipgloss.Width("  ↗ Triaged")
 	}
 	titleWidth = max(titleWidth, 1)
+	breadcrumb := compactAncestorBreadcrumb(taskAncestorBreadcrumb(task), max(titleWidth-4, 0))
+	breadcrumbRendered := ""
+	if breadcrumb != "" {
+		breadcrumbRendered = MutedStyle.Render(breadcrumb) + " "
+		titleWidth = max(titleWidth-lipgloss.Width(breadcrumbRendered), 1)
+	}
 	wrapped := lipgloss.NewStyle().Width(titleWidth).Render(task.Title)
 	rawLines := strings.Split(wrapped, "\n")
 	if len(rawLines) > 2 {
@@ -154,12 +160,12 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 	titleLines := make([]string, 2)
 	copy(titleLines, rawLines)
 	titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
-	firstLine := BoldStyle.Render(prefix) + titleStyle.Render(titleLines[0])
+	firstLine := BoldStyle.Render(prefix) + breadcrumbRendered + titleStyle.Render(titleLines[0])
 	if willLeave {
 		firstLine += "  " + TriagedBadgeStyle.Render("↗ Triaged")
 	}
 	b.WriteString(firstLine)
-	indent := strings.Repeat(" ", len(prefix))
+	indent := strings.Repeat(" ", len(prefix)+lipgloss.Width(breadcrumbRendered))
 	b.WriteString("\n")
 	b.WriteString(indent + titleStyle.Render(titleLines[1]))
 	b.WriteString("\n")

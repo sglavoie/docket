@@ -17,16 +17,18 @@ const (
 
 // outlinerRow represents a single flattened row for rendering.
 type outlinerRow struct {
-	task            *models.Task
-	priorityTask    *PriorityTask // Cached priority metadata for flat Priority-mode task rows.
-	prefix          string
-	IsSectionHeader bool   // True if this row is a section header (not a task)
-	IsProjectHeader bool   // True if this row is a synthetic, render-only project sub-header (not a task)
-	SectionName     string // Section name for header rows
-	SectionCount    int    // Number of tasks in this section
-	CollapseKey     string // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
-	ProjectID       string // Project that owns task/project-header rows; empty for shared section headers
-	IsSeparator     bool   // True if this row is a visual separator between projects
+	task               *models.Task
+	priorityTask       *PriorityTask // Cached priority metadata for flat Priority-mode task rows.
+	prefix             string
+	Breadcrumb         string // Ancestor path for tasks promoted across a section boundary.
+	hasVisibleChildren bool   // Children rendered in this row's section-local tree.
+	IsSectionHeader    bool   // True if this row is a section header (not a task)
+	IsProjectHeader    bool   // True if this row is a synthetic, render-only project sub-header (not a task)
+	SectionName        string // Section name for header rows
+	SectionCount       int    // Number of tasks in this section
+	CollapseKey        string // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
+	ProjectID          string // Project that owns task/project-header rows; empty for shared section headers
+	IsSeparator        bool   // True if this row is a visual separator between projects
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a
@@ -130,7 +132,7 @@ func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorI
 		if len(ancestorIsLast) > 0 || len(tasks) > 0 {
 			prefix = buildTreePrefix(ancestorIsLast, isLast)
 		}
-		*rows = append(*rows, outlinerRow{task: task, prefix: prefix})
+		*rows = append(*rows, outlinerRow{task: task, prefix: prefix, hasVisibleChildren: len(task.Children) > 0})
 
 		if len(task.Children) > 0 && m.isExpanded(task.ID) {
 			// Copy before appending to prevent slice aliasing.

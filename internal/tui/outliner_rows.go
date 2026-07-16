@@ -166,11 +166,11 @@ func (m *OutlinerModel) rebuildRows() {
 // buildRowsWithSectionHeaders groups tasks by GTD section and inserts
 // collapsible section headers for the All perspective.
 func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
-	tasksBySection := m.groupTasksBySection(tasks)
+	forests := buildSectionTaskForests(tasks)
 
 	for _, sectionName := range BuildSectionOrder(tasks) {
-		sectionTasks := tasksBySection[sectionName]
-		if len(sectionTasks) == 0 {
+		forest := forests[sectionName]
+		if forest == nil || forest.count == 0 {
 			continue
 		}
 
@@ -180,11 +180,11 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 		m.rows = append(m.rows, outlinerRow{
 			IsSectionHeader: true,
 			SectionName:     sectionName,
-			SectionCount:    m.countTasksRecursive(sectionTasks),
+			SectionCount:    forest.count,
 		})
 
 		if !m.collapsedSections[sectionName] {
-			m.flattenTaskTreeWithFolds(sectionTasks, nil, &m.rows)
+			m.flattenSectionForest(forest, "", &m.rows)
 		}
 	}
 }

@@ -13,22 +13,12 @@ import (
 // shared by every workflow-aware single-task mutation. It is the single-task
 // analog of BulkTransitionRequest's rule fields.
 //
-// The secondary TUI views (all-tasks, weekly/daily review, priority, due-date,
-// focus, focus-board, project-focus) historically ran the full workflow pipeline
-// after a single-task save: event-based rule evaluation, follow-up creation,
-// deferred cross-project moves, project status-icon rules, and rule-trigger
-// counters. This options struct plus mutateWithWorkflow preserves that behavior
-// while committing through the transactional repository and workspace ledger.
+// Every workflow-aware mutation captures its pre-mutation repository state so
+// event and hierarchy rules have consistent semantics across callers.
 type SingleTaskWorkflowOptions struct {
 	// Rules, when non-empty, enables the workflow cascade after the mutation.
 	// Empty rules commit the bare mutation with no cascade.
 	Rules []workflow.WorkflowRule
-	// Contextual selects contextual rule evaluation (pre-mutation task states
-	// captured as the event context) over stateless evaluation. The legacy
-	// secondary-view single-task save path evaluated statelessly (it supplied no
-	// prior state), so its callers leave this false; a caller that supplies a
-	// prior-state snapshot (the primary views) sets it true.
-	Contextual bool
 	// UndoAction / UndoContext label the ledger entry. UndoAction defaults to
 	// "Task Modified" when empty.
 	UndoAction  string
@@ -43,7 +33,7 @@ type SingleTaskWorkflowOptions struct {
 }
 
 // mutateWithWorkflow is the shared runner for a workflow-aware single-task
-// mutation. It resolves the task, optionally captures the pre-mutation task
+// mutation. It resolves the task, captures the pre-mutation task
 // states for contextual rule evaluation, applies mutate (which enforces domain
 // guards and may return a typed error), runs the same workflow-rule cascade the
 // bulk path runs — follow-up creation, deferred cross-project moves, project
@@ -110,10 +100,11 @@ func (s *Service) mutateWithWorkflowGuarded(
 					return nil
 				},
 			}
-			if opts.Contextual && len(opts.Rules) > 0 {
+			if len(opts.Rules) > 0 {
 				plan.previousStates = map[string]map[string]*models.Task{
 					ref.Project.ID: workflow.CaptureTaskStates(ref.Project.Tasks),
 				}
+				plan.forcedChanges = map[string][]string{ref.Project.ID: {ref.Task.ID}}
 			}
 			return plan, nil
 		},

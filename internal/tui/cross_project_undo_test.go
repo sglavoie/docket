@@ -127,8 +127,8 @@ func TestCrossProjectSingleTaskUndoOrchestration(t *testing.T) {
 	if !ok {
 		t.Fatal("crossHandleStateMutation returned ok=false in cross-project mode")
 	}
-	if res := runResult(t, cmd); res.Title != "Configure lint" {
-		t.Errorf("result title = %q, want %q", res.Title, "Configure lint")
+	if res := runBatchResult(t, cmd); len(res.TouchedProjectIDs) != 1 || res.TouchedProjectIDs[0] != env.projects[1].ID {
+		t.Errorf("touched projects = %v, want beta only", res.TouchedProjectIDs)
 	}
 
 	// The single-task transition committed to disk in the owning project only.

@@ -370,7 +370,7 @@ func TestCrossPriorityBlockedStatusMovesToWaitingGroup(t *testing.T) {
 	// The migrated handler commits the transition asynchronously through the
 	// single-task coordinator (blocked → waiting state); run the command to apply
 	// it against the shared in-memory pointers.
-	runResult(t, cmd)
+	runBatchResult(t, cmd)
 
 	task := beta.GetTaskByID(betaTaskID)
 	if task == nil {

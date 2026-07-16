@@ -26,8 +26,7 @@ func legacyMutationRule() workflow.WorkflowRule {
 
 func legacyMutationOptions() app.SingleTaskWorkflowOptions {
 	return app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{legacyMutationRule()},
-		Contextual: false,
+		Rules: []workflow.WorkflowRule{legacyMutationRule()},
 	}
 }
 

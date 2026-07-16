@@ -111,7 +111,7 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 				if action.Condition != nil && !matchesTriggerWithContext(task, prev, *action.Condition, evalCtx) {
 					continue
 				}
-				if shouldSkipAllChildrenDoneRecomplete(task, prev, rule, action) {
+				if shouldSkipAllChildrenDoneCompletion(task, prev, rule, action, evalCtx) {
 					continue
 				}
 				field := getFieldFromAction(action.ActionType)
@@ -214,7 +214,7 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 						continue
 					}
 				}
-				if shouldSkipAllChildrenDoneRecomplete(task, prev, rule, action) {
+				if shouldSkipAllChildrenDoneCompletion(task, prev, rule, action, evalCtx) {
 					continue
 				}
 				if applyActionWithContext(task, action, evalCtx, result) {
@@ -235,13 +235,18 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			if !containsTask(result.ModifiedTasks, task) {
 				result.ModifiedTasks = append(result.ModifiedTasks, task)
 			}
-			newChange := TaskChangeContext{Task: task, Previous: preActionSnapshot}
+			newChanges := []TaskChangeContext{{Task: task, Previous: preActionSnapshot}}
+			if task.IsTerminalState() != preActionSnapshot.IsTerminalState() {
+				seen := map[string]bool{task.ID: true}
+				appendAncestorChanges(task, evalCtx.TaskMap, evalCtx.PreviousTaskMap, seen, &newChanges)
+			}
 			newEvalCtx := &EvaluationContext{
-				Changes:     []TaskChangeContext{newChange},
-				AllTasks:    evalCtx.AllTasks,
-				TaskMap:     evalCtx.TaskMap,
-				ProjectName: evalCtx.ProjectName,
-				ProjectID:   evalCtx.ProjectID,
+				Changes:         newChanges,
+				AllTasks:        evalCtx.AllTasks,
+				TaskMap:         evalCtx.TaskMap,
+				PreviousTaskMap: evalCtx.PreviousTaskMap,
+				ProjectName:     evalCtx.ProjectName,
+				ProjectID:       evalCtx.ProjectID,
 			}
 			evaluateRulesWithContextRecursive(newEvalCtx, rules, ctx, result)
 		}
@@ -254,11 +259,8 @@ func containsTask(tasks []*models.Task, t *models.Task) bool {
 	return slices.Contains(tasks, t)
 }
 
-func shouldSkipAllChildrenDoneRecomplete(task, prev *models.Task, rule WorkflowRule, action RuleAction) bool {
-	if task == nil || prev == nil {
-		return false
-	}
-	if !prev.IsTerminalState() || task.IsTerminalState() {
+func shouldSkipAllChildrenDoneCompletion(task, prev *models.Task, rule WorkflowRule, action RuleAction, evalCtx *EvaluationContext) bool {
+	if task == nil {
 		return false
 	}
 	if action.ActionType != ActionSetStatus {
@@ -268,7 +270,42 @@ func shouldSkipAllChildrenDoneRecomplete(task, prev *models.Task, rule WorkflowR
 	if !target.IsValid() || !target.IsComplete() {
 		return false
 	}
-	return triggerGroupContainsField(rule.GetTriggerGroup(), FieldAllChildrenDone)
+	if !triggerGroupContainsField(rule.GetTriggerGroup(), FieldAllChildrenDone) {
+		return false
+	}
+	// Preserve the defensive behavior for manually assembled/legacy contextual
+	// contexts that carry only the changed task snapshot, not a full previous
+	// hierarchy map.
+	if evalCtx == nil || evalCtx.PreviousTaskMap == nil {
+		return prev != nil && prev.IsTerminalState() && !task.IsTerminalState()
+	}
+	// In contextual mutation evaluation, an all_children_done auto-completion is
+	// an event: it is eligible only when the direct-child aggregate changed from
+	// false to true. A section/priority/edit on a parent whose children were
+	// already terminal must never complete that parent.
+	return previousAllChildrenTerminal(task.ID, evalCtx.PreviousTaskMap) || !currentAllChildrenTerminal(task.ID, evalCtx.TaskMap)
+}
+
+func previousAllChildrenTerminal(parentID string, previous map[string]*models.Task) bool {
+	return allChildrenTerminal(parentID, previous)
+}
+
+func currentAllChildrenTerminal(parentID string, current map[string]*models.Task) bool {
+	return allChildrenTerminal(parentID, current)
+}
+
+func allChildrenTerminal(parentID string, tasks map[string]*models.Task) bool {
+	hasChildren := false
+	for _, task := range tasks {
+		if task == nil || task.ParentID == nil || *task.ParentID != parentID {
+			continue
+		}
+		hasChildren = true
+		if !task.IsTerminalState() {
+			return false
+		}
+	}
+	return hasChildren
 }
 
 func triggerGroupContainsField(group *TriggerGroup, field TriggerField) bool {

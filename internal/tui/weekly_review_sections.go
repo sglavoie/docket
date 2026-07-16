@@ -74,7 +74,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// Inbox count
-			if task.IsInState(models.StateInbox) && task.IsRoot() {
+			if isProcessableInboxTask(task) {
 				wp.InboxCount++
 			}
 

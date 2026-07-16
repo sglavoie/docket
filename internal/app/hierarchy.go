@@ -220,7 +220,6 @@ func (s *Service) ChangeTaskTypeWithWorkflow(taskID string, change TaskTypeChang
 	if !ok {
 		return BulkResult{}, invalidInput("type change", "unknown type change operation")
 	}
-	opts.Contextual = true
 	if opts.UndoAction == "" {
 		opts.UndoAction = undoAction
 	}

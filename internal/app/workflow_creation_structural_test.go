@@ -50,8 +50,7 @@ func TestAddTaskWithWorkflowUsesStatelessCreationAndOneSnapshot(t *testing.T) {
 		ProjectID: project.ID,
 		Title:     "Created through workflow",
 	}, app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{rule},
-		Contextual: true, // Creation remains stateless regardless of this generic option.
+		Rules: []workflow.WorkflowRule{rule},
 	})
 	if err != nil {
 		t.Fatalf("AddTaskWithWorkflow: %v", err)
@@ -149,8 +148,7 @@ func TestEditWithWorkflowAlwaysUsesTruePreviousType(t *testing.T) {
 		TaskID: task.ID,
 		Type:   &newType,
 	}, app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{rule},
-		Contextual: false,
+		Rules: []workflow.WorkflowRule{rule},
 	})
 	if err != nil {
 		t.Fatalf("EditWithWorkflow: %v", err)
@@ -170,8 +168,7 @@ func TestChangeTaskTypeWithWorkflowAlwaysUsesTruePreviousType(t *testing.T) {
 	rule := typeChangedRule("promote-transition", "task->story", "promoted")
 
 	result, err := newTestService(repo).ChangeTaskTypeWithWorkflow(task.ID, app.PromoteType, app.SingleTaskWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{rule},
-		Contextual: false,
+		Rules: []workflow.WorkflowRule{rule},
 	})
 	if err != nil {
 		t.Fatalf("ChangeTaskTypeWithWorkflow: %v", err)

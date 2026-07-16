@@ -133,7 +133,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 
 func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {
 	task := row.task
-	foldIndicator := m.renderTaskFoldIndicator(task)
+	foldIndicator := m.renderTaskFoldIndicator(row)
 	projBadge := m.renderTaskProjectBadge(row)
 	proj := m.resolveProjectForRow(row)
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
@@ -188,7 +188,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	if availableTitleWidth() < titleTarget {
 		typeIcon = ""
 	}
-	title := m.renderTaskTitle(task, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
+	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
 
 	line := fmt.Sprintf("%s%s%s%s%s%s%s %s %s%s%s",
 		cursorPrefix,
@@ -228,8 +228,9 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	return line
 }
 
-func (m *OutlinerModel) renderTaskFoldIndicator(task *models.Task) string {
-	if len(task.Children) == 0 {
+func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
+	task := row.task
+	if task == nil || !row.hasVisibleChildren {
 		return ""
 	}
 	if m.isExpanded(task.ID) {
@@ -404,19 +405,43 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) string {
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) string {
 	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
 	availableWidth := max(rowWidth-nonTitleWidth, 1)
-	truncatedTitle := truncateToVisualWidth(task.Title, availableWidth)
+	breadcrumb = compactAncestorBreadcrumb(breadcrumb, max(availableWidth-4, 0))
+	breadcrumbRendered := ""
+	if breadcrumb != "" {
+		breadcrumbRendered = MutedStyle.Render(breadcrumb) + " "
+	}
+	titleWidth := max(availableWidth-lipgloss.Width(breadcrumbRendered), 1)
+	truncatedTitle := truncateToVisualWidth(task.Title, titleWidth)
 	query := strings.TrimSpace(ExtractSearchTextQuery(m.SearchQuery()))
 	if query == "" {
-		return titleStyle.Render(truncatedTitle)
+		return breadcrumbRendered + titleStyle.Render(truncatedTitle)
 	}
 	_, positions := fuzzy.ScoreTermsWithPositions(truncatedTitle, query)
 	if len(positions) == 0 {
-		return titleStyle.Render(truncatedTitle)
+		return breadcrumbRendered + titleStyle.Render(truncatedTitle)
 	}
-	return HighlightText(truncatedTitle, positions, titleStyle)
+	return breadcrumbRendered + HighlightText(truncatedTitle, positions, titleStyle)
+}
+
+func compactAncestorBreadcrumb(breadcrumb string, maxWidth int) string {
+	if breadcrumb == "" || maxWidth < 3 {
+		return ""
+	}
+	if lipgloss.Width(breadcrumb) <= maxWidth {
+		return breadcrumb
+	}
+	parts := strings.Split(strings.TrimSuffix(breadcrumb, " ›"), " › ")
+	for len(parts) > 1 {
+		parts = parts[1:]
+		candidate := "… › " + strings.Join(parts, " › ") + " ›"
+		if lipgloss.Width(candidate) <= maxWidth {
+			return candidate
+		}
+	}
+	return truncateToVisualWidth("… › "+parts[0]+" ›", maxWidth)
 }
 
 func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) int {

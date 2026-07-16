@@ -139,7 +139,7 @@ func TestPipelineHubModel_CountsAppearInView(t *testing.T) {
 	}
 }
 
-func TestCountInbox_CountsProcessableRootTasksOnly(t *testing.T) {
+func TestCountInbox_CountsProcessableTasksAtEveryDepth(t *testing.T) {
 	future := time.Now().AddDate(0, 0, 1)
 	parentID := "root"
 
@@ -166,7 +166,7 @@ func TestCountInbox_CountsProcessableRootTasksOnly(t *testing.T) {
 		{
 			name: "child inbox task",
 			task: &models.Task{ParentID: &parentID, WorkflowState: models.StateInbox},
-			want: 0,
+			want: 1,
 		},
 		{
 			name: "root with inbox child",
@@ -175,7 +175,7 @@ func TestCountInbox_CountsProcessableRootTasksOnly(t *testing.T) {
 				WorkflowState: models.StateInbox,
 				Children:      []*models.Task{{ParentID: &parentID, WorkflowState: models.StateInbox}},
 			},
-			want: 1,
+			want: 2,
 		},
 	}
 

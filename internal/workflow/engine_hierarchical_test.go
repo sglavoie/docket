@@ -638,3 +638,62 @@ func TestMatchesRuleWithContext_HierarchicalTrigger_TriggerGroup_NilEvalCtx(t *t
 		t.Errorf("expected true (nil evalCtx, blocked=false, count=0), got false")
 	}
 }
+
+func TestEvaluateRulesWithContext_AllChildrenDoneRequiresAggregateTransition(t *testing.T) {
+	autoComplete := func(id string, taskType models.TaskType) WorkflowRule {
+		return WorkflowRule{
+			ID: id, Name: id, Enabled: true,
+			Triggers: []RuleTrigger{
+				{Field: FieldType, Operation: OpEquals, Value: string(taskType)},
+				{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+		}
+	}
+
+	t.Run("final child cascades from story to epic", func(t *testing.T) {
+		epic := &models.Task{ID: "epic", Type: models.TaskTypeEpic, WorkflowState: models.StateReady}
+		story := &models.Task{ID: "story", Type: models.TaskTypeStory, WorkflowState: models.StateReady, ParentID: &epic.ID}
+		epicSibling := &models.Task{ID: "epic-sibling", Type: models.TaskTypeStory, WorkflowState: models.StateDone, ParentID: &epic.ID}
+		childDone := &models.Task{ID: "child-done", Type: models.TaskTypeTask, WorkflowState: models.StateDone, ParentID: &story.ID}
+		finalChild := &models.Task{ID: "final-child", Type: models.TaskTypeTask, WorkflowState: models.StateReady, ParentID: &story.ID}
+		project := &models.Project{Tasks: []*models.Task{epic, story, childDone, finalChild, epicSibling}}
+		project.BuildTaskTree()
+		previous := CaptureTaskStates(project.Tasks)
+		finalChild.ApplyWorkflowState(models.StateCanceled)
+
+		result := EvaluateRulesWithContext(
+			BuildEvaluationContext(project.Tasks, previous, "Project", "project"),
+			[]WorkflowRule{autoComplete("story-done", models.TaskTypeStory), autoComplete("epic-done", models.TaskTypeEpic)},
+		)
+
+		if story.State() != models.StateDone || epic.State() != models.StateDone {
+			t.Fatalf("cascade states = story:%s epic:%s, want both done", story.State(), epic.State())
+		}
+		if result.RuleTriggerCounts["story-done"] != 1 || result.RuleTriggerCounts["epic-done"] != 1 {
+			t.Fatalf("trigger counts = %v, want one story and one epic completion", result.RuleTriggerCounts)
+		}
+	})
+
+	t.Run("unrelated parent edit does not complete", func(t *testing.T) {
+		story := &models.Task{ID: "story", Type: models.TaskTypeStory, WorkflowState: models.StateReady}
+		child := &models.Task{ID: "child", Type: models.TaskTypeTask, WorkflowState: models.StateDone, ParentID: &story.ID}
+		project := &models.Project{Tasks: []*models.Task{story, child}}
+		project.BuildTaskTree()
+		previous := CaptureTaskStates(project.Tasks)
+		story.ApplyWorkflowState(models.StateSomeday)
+
+		result := EvaluateRulesWithContext(
+			BuildEvaluationContext(project.Tasks, previous, "Project", "project"),
+			[]WorkflowRule{autoComplete("story-done", models.TaskTypeStory)},
+		)
+
+		if story.State() != models.StateSomeday {
+			t.Fatalf("story state = %s, want requested someday state", story.State())
+		}
+		if len(result.ModifiedTasks) != 0 {
+			t.Fatalf("workflow modified %d tasks after unrelated edit", len(result.ModifiedTasks))
+		}
+	})
+}

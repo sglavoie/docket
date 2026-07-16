@@ -24,19 +24,14 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 	// Bucket tasks by section within each project, preserving project identity.
 	type sectionGroup struct {
 		projectID string
-		tasks     []*models.Task
+		forest    *sectionTaskForest
 	}
 	sectionsPerProject := make(map[string][]sectionGroup)
 	for _, g := range groups {
-		bySection := make(map[string][]*models.Task)
-		for _, t := range g.tasks {
-			section := renderedHeaderSectionForTask(t)
-			bySection[section] = append(bySection[section], t)
-		}
-		for section, tasks := range bySection {
+		for section, forest := range buildSectionTaskForests(g.tasks) {
 			sectionsPerProject[section] = append(sectionsPerProject[section], sectionGroup{
 				projectID: g.projectID,
-				tasks:     tasks,
+				forest:    forest,
 			})
 		}
 	}
@@ -52,7 +47,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 		// shared section header; per-row project identity uses colored slug badges.
 		totalCount := 0
 		for _, pg := range projGroups {
-			totalCount += m.countTasksRecursive(pg.tasks)
+			totalCount += pg.forest.count
 		}
 		// "_xp:" is the authoritative sentinel prefix for All-perspective
 		// cross-project section headers. Because each section header is shared
@@ -84,7 +79,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 					IsProjectHeader: true,
 					ProjectID:       pg.projectID,
 				})
-				m.flattenTaskTreeWithFoldsAndProjectID(pg.tasks, nil, pg.projectID, &m.rows)
+				m.flattenSectionForest(pg.forest, pg.projectID, &m.rows)
 			}
 		}
 	}
@@ -122,9 +117,10 @@ func (m *OutlinerModel) flattenTaskTreeWithFoldsAndProjectID(
 			prefix = buildTreePrefix(ancestorIsLast, isLast)
 		}
 		*rows = append(*rows, outlinerRow{
-			task:      task,
-			prefix:    prefix,
-			ProjectID: projectID,
+			task:               task,
+			prefix:             prefix,
+			hasVisibleChildren: len(task.Children) > 0,
+			ProjectID:          projectID,
 		})
 
 		if len(task.Children) > 0 && m.isExpanded(task.ID) {

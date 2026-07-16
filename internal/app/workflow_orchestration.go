@@ -25,6 +25,7 @@ type workflowMutationPlan struct {
 	commits        []projectCommit
 	sources        []*models.Project
 	previousStates map[string]map[string]*models.Task
+	forcedChanges  map[string][]string
 	mutate         func(*WorkspaceResolver) error
 	skipCommit     bool
 	undoContext    string
@@ -137,7 +138,7 @@ func (s *Service) runWorkflowOrchestration(req workflowOrchestrationRequest) (wo
 				continue
 			}
 			previous := plan.previousStates[project.ID]
-			if cascadeErr := s.applyWorkflowCascade(snap, project, req.rules, previous, committed, &out); cascadeErr != nil {
+			if cascadeErr := s.applyWorkflowCascade(snap, project, req.rules, previous, plan.forcedChanges[project.ID], committed, &out); cascadeErr != nil {
 				return workflowOrchestrationOutcome{}, cascadeErr
 			}
 		}
@@ -201,12 +202,13 @@ func (s *Service) applyWorkflowCascade(
 	project *models.Project,
 	rules []workflow.WorkflowRule,
 	previous map[string]*models.Task,
+	forcedChanges []string,
 	committed map[string]bool,
 	out *workflowOrchestrationOutcome,
 ) error {
 	var evaluated *workflow.EvaluationResult
 	if previous != nil {
-		evalCtx := workflow.BuildEvaluationContext(project.Tasks, previous, project.Name, project.ID)
+		evalCtx := workflow.BuildEvaluationContext(project.Tasks, previous, project.Name, project.ID, forcedChanges...)
 		evaluated = workflow.EvaluateRulesWithContext(evalCtx, rules)
 	} else {
 		evaluated = workflow.EvaluateRules(project.Tasks, rules)

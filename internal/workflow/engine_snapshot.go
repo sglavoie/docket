@@ -8,7 +8,7 @@ import (
 
 // CopyTaskState creates a snapshot copy of the fields that event-based
 // triggers inspect (status, priority, section, tags, type, due date,
-// recurrence, dependencies). This is intentionally minimal — only fields
+// recurrence, dependencies, and parent identity). This is intentionally minimal — only fields
 // checked by matchesEventTrigger, matchesHierarchicalTrigger, and
 // TaskStateChanged are copied.
 //
@@ -17,7 +17,7 @@ import (
 // so that in-place mutations to the live task — including via slices.Delete
 // which reuses the underlying array — do not bleed into the snapshot.
 //
-// The Parent pointer and Children slice are deliberately NOT carried into
+// The live Parent pointer and Children slice are deliberately NOT carried into
 // the snapshot. The snapshot represents the task's intrinsic state at a
 // point in time, not its hierarchy. Keeping a live Parent reference would
 // allow a mutation to the parent (or an indexed rewrite of Children on the
@@ -47,7 +47,7 @@ func CopyTaskState(task *models.Task) *models.Task {
 		dueCopy = &d
 	}
 
-	return &models.Task{
+	snapshot := &models.Task{
 		ID: task.ID,
 		// The snapshot carries the canonical WorkflowState (not the retired
 		// Status/Section fields) so State() on the snapshot resolves identically
@@ -63,6 +63,11 @@ func CopyTaskState(task *models.Task) *models.Task {
 		Level:         task.Level,
 		DependsOn:     append([]string(nil), task.DependsOn...),
 	}
+	if task.ParentID != nil {
+		parentID := *task.ParentID
+		snapshot.ParentID = &parentID
+	}
+	return snapshot
 }
 
 // CaptureTaskStates creates a snapshot of task states for event trigger detection.
@@ -87,7 +92,12 @@ func TaskStateChanged(current, prev *models.Task) bool {
 	// single comparison covers both former Status and Section change checks.
 	if current.State() != prev.State() ||
 		current.Priority != prev.Priority ||
-		current.Type != prev.Type {
+		current.Type != prev.Type ||
+		current.Description != prev.Description {
+		return true
+	}
+	if (current.ParentID == nil) != (prev.ParentID == nil) ||
+		(current.ParentID != nil && *current.ParentID != *prev.ParentID) {
 		return true
 	}
 	// Detect due date changes (added, removed, or modified)
@@ -165,9 +175,14 @@ func recurrenceChanged(current, prev *models.RecurrencePattern) bool {
 // Only tasks that actually changed (or are new) are included in Changes
 // so that state-based rules don't re-fire on every operation.
 // AllTasks and TaskMap still contain all tasks for hierarchical trigger lookups.
-func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task, projectName, projectID string) *EvaluationContext {
+func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task, projectName, projectID string, forcedTaskIDs ...string) *EvaluationContext {
 	taskMap := make(map[string]*models.Task, len(tasks))
 	var changes []TaskChangeContext
+	changedIDs := make(map[string]bool)
+	forced := make(map[string]bool, len(forcedTaskIDs))
+	for _, taskID := range forcedTaskIDs {
+		forced[taskID] = true
+	}
 
 	for _, task := range tasks {
 		if task == nil {
@@ -175,19 +190,53 @@ func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 		}
 		taskMap[task.ID] = task
 		prev := prevStates[task.ID]
-		if prev == nil || TaskStateChanged(task, prev) {
+		if prev == nil || forced[task.ID] || TaskStateChanged(task, prev) {
 			changes = append(changes, TaskChangeContext{
 				Task:     task,
 				Previous: prev,
 			})
+			changedIDs[task.ID] = true
 		}
 	}
 
+	// A child's transition into or out of a terminal state changes the value of
+	// hierarchical aggregate triggers on every ancestor. Enqueue those ancestors
+	// even when none of their intrinsic fields changed. This also lets a rule that
+	// completes a Story recursively enqueue its Epic.
+	for _, change := range append([]TaskChangeContext(nil), changes...) {
+		if change.Task == nil || change.Previous == nil ||
+			change.Task.IsTerminalState() == change.Previous.IsTerminalState() {
+			continue
+		}
+		appendAncestorChanges(change.Task, taskMap, prevStates, changedIDs, &changes)
+	}
+
 	return &EvaluationContext{
-		Changes:     changes,
-		AllTasks:    tasks,
-		TaskMap:     taskMap,
-		ProjectName: projectName,
-		ProjectID:   projectID,
+		Changes:         changes,
+		AllTasks:        tasks,
+		TaskMap:         taskMap,
+		PreviousTaskMap: prevStates,
+		ProjectName:     projectName,
+		ProjectID:       projectID,
+	}
+}
+
+func appendAncestorChanges(task *models.Task, taskMap, prevStates map[string]*models.Task, seen map[string]bool, changes *[]TaskChangeContext) {
+	visited := make(map[string]bool)
+	for task != nil && task.ParentID != nil {
+		parentID := *task.ParentID
+		if visited[parentID] {
+			return
+		}
+		visited[parentID] = true
+		parent := taskMap[parentID]
+		if parent == nil {
+			return
+		}
+		if !seen[parent.ID] {
+			*changes = append(*changes, TaskChangeContext{Task: parent, Previous: prevStates[parent.ID]})
+			seen[parent.ID] = true
+		}
+		task = parent
 	}
 }

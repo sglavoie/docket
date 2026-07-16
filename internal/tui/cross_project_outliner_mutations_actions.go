@@ -34,7 +34,11 @@ func (m *OutlinerModel) crossSendTaskToSection(section string) (tea.Model, tea.C
 	if !valid {
 		return m, nil
 	}
-	return m, m.taskItem.SetSection(row.task.ID, section)
+	label := "Move to " + section
+	if section == "" {
+		label = "Move to Ready"
+	}
+	return m, m.taskItem.SetSectionWorkflow(row.task.ID, section, m.singleWorkflowOpts(row.task, label), nil)
 }
 
 // crossHandleTypeChange handles <, >, H, L type change keys in cross-project mode

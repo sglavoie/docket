@@ -73,10 +73,9 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 
 // EditWithWorkflow applies the same edit mutation as Edit, then evaluates rules
 // contextually against the true pre-edit task states captured from the shared
-// workflow snapshot. Contextual evaluation is mandatory for this API even when
-// opts.Contextual is false because edit rules may depend on field transitions.
+// workflow snapshot. Contextual evaluation is mandatory because edit rules may
+// depend on field transitions.
 func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	opts.Contextual = true
 	if opts.UndoAction == "" {
 		opts.UndoAction = "Edit Task"
 	}

@@ -51,7 +51,7 @@ func (m *ProjectTreeModel) handleSingleStateTransition(state models.WorkflowStat
 		}
 	}
 
-	cmd := m.taskItem.Transition(task.ID, state)
+	cmd := m.taskItem.TransitionWorkflow(task.ID, state, m.singleWorkflowOpts(task, StateVerb(state)+" Task"), nil)
 	msg := cmd()
 	if em, ok := msg.(TransactionErrorMsg); ok {
 		return true, func() tea.Msg { return ErrorMsg{Err: em.Err} }

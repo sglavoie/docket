@@ -42,9 +42,9 @@ func TestCommitProjectWithWorkflowBareMutationCommitsOnce(t *testing.T) {
 	}
 }
 
-// TestCommitProjectWithWorkflowStatelessRuleFires verifies a stateless rule fires
-// against the already-mutated project when no prior state is supplied.
-func TestCommitProjectWithWorkflowStatelessRuleFires(t *testing.T) {
+// TestCommitProjectWithWorkflowStateBasedRuleFires verifies a state-based rule
+// fires against the already-mutated project.
+func TestCommitProjectWithWorkflowStateBasedRuleFires(t *testing.T) {
 	t1 := newTask("t1", 1, "deploy")
 	projA := newProject("proj-a", "Alpha", t1)
 	repo := newFakeRepo(projA)
@@ -54,14 +54,14 @@ func TestCommitProjectWithWorkflowStatelessRuleFires(t *testing.T) {
 	t1.Complete()
 
 	res, err := svc.CommitProjectWithWorkflow(projA, app.ProjectWorkflowOptions{
-		Rules:      []workflow.WorkflowRule{statelessTagRule()},
+		Rules:      []workflow.WorkflowRule{stateBasedTagRule()},
 		UndoAction: "Complete Task",
 	})
 	if err != nil {
 		t.Fatalf("CommitProjectWithWorkflow: %v", err)
 	}
 	if !t1.HasTag("shipped") {
-		t.Errorf("stateless rule did not tag the completed task; tags = %v", t1.Tags)
+		t.Errorf("state-based rule did not tag the completed task; tags = %v", t1.Tags)
 	}
 	if res.RuleTriggerCounts["r-status-tag"] != 1 {
 		t.Errorf("trigger count = %d, want 1", res.RuleTriggerCounts["r-status-tag"])
@@ -90,10 +90,9 @@ func TestCommitProjectWithWorkflowContextualRuleFires(t *testing.T) {
 	}
 }
 
-// TestCommitProjectWithWorkflowStatelessDoesNotFireChangeRule proves the
-// stateless/contextual distinction: with no prior state a status-changed rule
-// must not fire.
-func TestCommitProjectWithWorkflowStatelessDoesNotFireChangeRule(t *testing.T) {
+// TestCommitProjectWithWorkflowInfersContext verifies that callers which mutate
+// an in-memory project do not have to supply their own previous-state map.
+func TestCommitProjectWithWorkflowInfersContext(t *testing.T) {
 	t1 := newTask("t1", 1, "deploy")
 	projA := newProject("proj-a", "Alpha", t1)
 	repo := newFakeRepo(projA)
@@ -105,8 +104,8 @@ func TestCommitProjectWithWorkflowStatelessDoesNotFireChangeRule(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CommitProjectWithWorkflow: %v", err)
 	}
-	if t1.HasTag("shipped") {
-		t.Errorf("status-changed rule fired under stateless evaluation; tags = %v", t1.Tags)
+	if !t1.HasTag("shipped") {
+		t.Errorf("status-changed rule did not fire with inferred context; tags = %v", t1.Tags)
 	}
 }
 
