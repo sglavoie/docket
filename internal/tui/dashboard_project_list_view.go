@@ -264,22 +264,22 @@ func (m *DashboardModel) projectRowStatusIndicator(p *models.Project, dueSoonDay
 
 	var parts []string
 	if inbox > 0 {
-		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s%d", icons.Get("inbox"), inbox)))
+		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s %d", icons.Get("inbox"), inbox)))
 	}
 	if overdue > 0 {
-		parts = append(parts, OverdueStyle.Render(fmt.Sprintf("%s%d", icons.Get("overdue"), overdue)))
+		parts = append(parts, OverdueStyle.Render(fmt.Sprintf("%s %d", icons.Get("overdue"), overdue)))
 	}
 	if dueSoon > 0 {
-		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s%d", icons.Get("due_today"), dueSoon)))
+		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s %d", icons.Get("due_today"), dueSoon)))
 	}
 	if blocked > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", icons.Get("blocked_dot"), blocked)))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s %d", icons.Get("blocked_dot"), blocked)))
 	}
 	if blockerCount > 0 {
-		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s%d", icons.Get("blockers"), blockerCount)))
+		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s %d", icons.Get("blockers"), blockerCount)))
 	}
 	if completedCount > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", IconChecklist(), completedCount)))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s %d", IconChecklist(), completedCount)))
 	}
 	return strings.Join(parts, " ")
 }
@@ -357,21 +357,21 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 	}
 
 	width := 0
-	addPart := func(emojiWidth, count int) {
+	addPart := func(icon string, count int) {
 		if count <= 0 {
 			return
 		}
 		if width > 0 {
 			width++
 		}
-		width += emojiWidth + len(fmt.Sprintf("%d", count))
+		width += lipgloss.Width(icon) + 1 + len(fmt.Sprintf("%d", count))
 	}
 
-	addPart(2, inbox)
-	addPart(2, overdue)
-	addPart(2, dueSoon)
-	addPart(2, blocked)
-	addPart(2, blockerCount)
-	addPart(2, completedCount)
+	addPart(icons.Get("inbox"), inbox)
+	addPart(icons.Get("overdue"), overdue)
+	addPart(icons.Get("due_today"), dueSoon)
+	addPart(icons.Get("blocked_dot"), blocked)
+	addPart(icons.Get("blockers"), blockerCount)
+	addPart(IconChecklist(), completedCount)
 	return width
 }

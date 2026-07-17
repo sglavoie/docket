@@ -1,14 +1,17 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TestProjectStatusWidthBlockedMatchesIndicator ensures the precomputed
@@ -36,6 +39,58 @@ func TestProjectStatusWidthBlockedMatchesIndicator(t *testing.T) {
 		t.Fatalf("projectStatusWidth = %d, rendered width = %d (indicator %q)", got, want, rendered)
 	}
 }
+
+// TestProjectRowStatusIndicatorSeparatesIconsAndCounts verifies each compact
+// dashboard status badge retains a readable space between its icon and count
+// in both Unicode and emoji modes, while keeping width prediction in sync.
+func TestProjectRowStatusIndicatorSeparatesIconsAndCounts(t *testing.T) {
+	now := time.Now()
+	project := &models.Project{
+		ID:   "p1",
+		Name: "Project",
+		Path: t.TempDir(),
+		Tasks: []*models.Task{
+			{ID: "inbox", Title: "Inbox", WorkflowState: models.StateInbox},
+			{ID: "overdue", Title: "Overdue", WorkflowState: models.StateReady, DueDate: dashboardTimePtr(now.AddDate(0, 0, -1))},
+			{ID: "due-soon", Title: "Due soon", WorkflowState: models.StateReady, DueDate: dashboardTimePtr(now)},
+			{ID: "blocked", Title: "Blocked", WorkflowState: models.StateWaiting},
+			{ID: "complete", Title: "Complete", WorkflowState: models.StateDone},
+		},
+	}
+	if err := storage.SaveBlockers(project, []*models.Blocker{models.NewBlocker("Waiting on review")}); err != nil {
+		t.Fatalf("SaveBlockers: %v", err)
+	}
+
+	for _, useEmoji := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unicode", true: "emoji"}[useEmoji], func(t *testing.T) {
+			icons.SetUseEmoji(useEmoji)
+			t.Cleanup(func() { icons.SetUseEmoji(false) })
+
+			m := &DashboardModel{}
+			rendered := m.projectRowStatusIndicator(project, 3)
+			plain := ansi.Strip(rendered)
+			for _, icon := range []string{
+				icons.Get("inbox"),
+				icons.Get("overdue"),
+				icons.Get("due_today"),
+				icons.Get("blocked_dot"),
+				icons.Get("blockers"),
+				IconChecklist(),
+			} {
+				want := fmt.Sprintf("%s 1", icon)
+				if !strings.Contains(plain, want) {
+					t.Fatalf("indicator %q does not contain spaced badge %q", plain, want)
+				}
+			}
+
+			if got, want := m.projectStatusWidth(project, 3), lipgloss.Width(rendered); got != want {
+				t.Fatalf("projectStatusWidth = %d, rendered width = %d (indicator %q)", got, want, plain)
+			}
+		})
+	}
+}
+
+func dashboardTimePtr(t time.Time) *time.Time { return &t }
 
 func TestDashboardProjectIconColumnAlignsBlankIconRows(t *testing.T) {
 	projects := []*models.Project{
