@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -277,7 +278,11 @@ func TestAskViewInvalidDirectoryAndPersistenceFailureDoNotInvokeRunner(t *testin
 
 func TestAskViewFailureReuseRestoresRequestWithoutSending(t *testing.T) {
 	runner := &fakeAskRunner{startErr: errors.New("codex unavailable")}
-	m := NewAskViewModelWithRunner(nil, "", config.EmptyRuntimeState(""), nil, runner)
+	runtime := config.EmptyRuntimeState("")
+	if err := runtime.Settings().AIConsent.GrantFor(aiharness.Claude, time.Now()); err != nil {
+		t.Fatalf("grant current Claude consent: %v", err)
+	}
+	m := NewAskViewModelWithRunner(nil, "", runtime, nil, runner)
 	m.SetSize(80, 24)
 	m.contextMode = external.TaskContextRedacted
 	m.textarea.SetValue("keep this exact request")
@@ -326,8 +331,38 @@ func TestAskViewDisplaysAvailabilityConsentAndConfigSources(t *testing.T) {
 		}
 	}
 	m.state = askStateConsent
-	if consent := m.View().Content; !strings.Contains(consent, "configured Codex CLI provider") {
-		t.Fatalf("provider-specific consent = %q", consent)
+	if consent := m.View().Content; !strings.Contains(consent, "configured Codex CLI provider") ||
+		!strings.Contains(consent, "all active projects") ||
+		!strings.Contains(consent, "read-only") ||
+		!strings.Contains(consent, "strict JSON action-plan") {
+		t.Fatalf("workspace-aware consent disclosure = %q", consent)
+	}
+}
+
+func TestAskViewEscapeExitsNonModalStates(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		state askState
+		draft string
+	}{
+		{name: "input with draft", state: askStateInput, draft: "unfinished request"},
+		{name: "saving preferences", state: askStateSavingPreferences},
+		{name: "result", state: askStateResult},
+		{name: "applying", state: askStateApplying},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewAskViewModelWithRunner(nil, "", nil, nil, &fakeAskRunner{})
+			m.state = tc.state
+			m.textarea.SetValue(tc.draft)
+
+			_, cmd := m.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+			if cmd == nil {
+				t.Fatal("Escape did not schedule navigation back")
+			}
+			if _, ok := cmd().(BackMsg); !ok {
+				t.Fatalf("Escape emitted %T, want BackMsg", cmd())
+			}
+		})
 	}
 }
 

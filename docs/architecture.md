@@ -211,14 +211,29 @@ not add end-to-end encryption around provider storage.
 
 AI is optional. Ask AI supports the Claude, Codex, and GitHub Copilot CLIs. `tt`
 sends task context only after an explicit disclosure and remembered consent
-stored in portable `settings.json`. Consent is tracked per harness; a legacy
-generic grant authorizes Claude only. Each request supports:
+stored in portable `settings.json`. Consent is tracked per harness and scope
+version. Full-workspace disclosure requires current provider-specific consent,
+so a generic, unversioned, or superseded grant is not sufficient and `tt`
+requests renewed consent. Older releases retain legacy Claude fields for
+compatibility, but no legacy grant authorizes the current disclosure scope. Each
+request supports:
 
-- full context;
+- full context, containing every active, non-archived project and its task
+  content;
 - redacted context, which sends only opaque stable project/task IDs and
   non-text metadata while omitting project names and slugs, qualified task
   references, titles, descriptions, and tags; or
 - no context.
+
+Only a consented full-context Codex request receives live workspace inspection
+capability. The Codex adapter keeps its fresh temporary launcher directory,
+uses `codex exec --cd <workspace>` with `TT_DATA_DIR` set to that exact
+workspace, and retains its ephemeral read-only sandbox. When fresh data is
+needed, its prompt permits only `tt project list --json` and `tt task list
+--project <project> --json`. The sandbox is the enforcement boundary: Codex
+cannot mutate the workspace directly. Redacted, no-context, and declined
+requests receive no workspace path or filesystem inspection capability;
+Claude and Copilot retain their existing adapter restrictions.
 
 The machine-local `machine.json` remembers the TUI's selected harness and
 per-harness explicit configuration directories. CLI `--harness` and
@@ -236,8 +251,8 @@ must obtain a fresh response and preview. Shell commands from provider output ar
 rejected.
 
 Consent controls what `tt` supplies; the provider's own CLI, account, and data
-retention policies still apply. Use `--no-context` when no workspace data should
-leave the machine.
+retention policies still apply. Redacted context does not expose the workspace
+directory, and `--no-context` sends no workspace data or access capability.
 
 ## Upgrade and migration expectations
 

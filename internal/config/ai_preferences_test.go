@@ -155,14 +155,19 @@ func TestManagerLoadDomainsRejectsInvalidPersistedAIPreferences(t *testing.T) {
 	}
 }
 
-func TestAIConsentLegacyAndProviderIsolation(t *testing.T) {
+func TestAIConsentScopeVersionAndProviderIsolation(t *testing.T) {
 	legacyTime := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
 	legacy := AIConsentSettings{Granted: true, GrantedAt: &legacyTime}
-	if !legacy.GrantedFor(aiharness.Claude) {
-		t.Fatal("legacy consent should authorize Claude")
+	for _, harness := range aiharness.Names() {
+		if legacy.GrantedFor(harness) {
+			t.Fatalf("legacy consent unexpectedly authorized %s", harness)
+		}
 	}
-	if legacy.GrantedFor(aiharness.Codex) || legacy.GrantedFor(aiharness.Copilot) {
-		t.Fatal("legacy consent must not authorize Codex or Copilot")
+	unversioned := AIConsentSettings{Providers: map[string]AIProviderConsent{
+		string(aiharness.Codex): {Granted: true, GrantedAt: &legacyTime},
+	}}
+	if unversioned.GrantedFor(aiharness.Codex) {
+		t.Fatal("unversioned provider consent unexpectedly authorized Codex")
 	}
 
 	localTime := time.Date(2026, 7, 16, 12, 0, 0, 0, time.FixedZone("test", -6*60*60))
@@ -172,6 +177,9 @@ func TestAIConsentLegacyAndProviderIsolation(t *testing.T) {
 	}
 	if !codex.GrantedFor(aiharness.Codex) || codex.GrantedFor(aiharness.Claude) || codex.Granted {
 		t.Fatalf("Codex grant leaked across providers: %+v", codex)
+	}
+	if got := codex.Providers["codex"].ScopeVersion; got != CurrentAIConsentScopeVersion {
+		t.Fatalf("Codex scope version = %d, want %d", got, CurrentAIConsentScopeVersion)
 	}
 	if got := codex.Providers["codex"].GrantedAt; got == nil || !got.Equal(localTime.UTC()) || got.Location() != time.UTC {
 		t.Fatalf("Codex grant time = %v, want %v UTC", got, localTime.UTC())
@@ -204,7 +212,7 @@ func TestAIHarnessPreferencesSerializeAndLegacyJSONDefaults(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"ai_consent":{"granted":true}}`), &legacySettings); err != nil {
 		t.Fatalf("unmarshal legacy settings: %v", err)
 	}
-	if !legacySettings.AIConsent.GrantedFor(aiharness.Claude) || legacySettings.AIConsent.GrantedFor(aiharness.Codex) {
+	if legacySettings.AIConsent.GrantedFor(aiharness.Claude) || legacySettings.AIConsent.GrantedFor(aiharness.Codex) {
 		t.Fatalf("legacy settings consent = %+v", legacySettings.AIConsent)
 	}
 

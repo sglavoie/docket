@@ -56,7 +56,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowAskMsg:
-		return m.showViewInit(ViewAsk, NewAskViewModelWithDeps(m.currentProject, m.cliReference, m.runtime, m.appService))
+		return m.showViewInit(ViewAsk, NewAskViewModelForWorkspace(m.cliReference, m.runtime, m.appService, m.persister))
 
 	case ShowMessageLogMsg:
 		m.showView(ViewMessageLog, NewMessageLogViewModel(m.messageLog.Entries()))

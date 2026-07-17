@@ -136,24 +136,53 @@ func loadRuntimeCurrentProject(workspace *CLIWorkspace) (*models.Project, error)
 	if project == nil {
 		return nil, NoCurrentProjectError()
 	}
-	Debugf("loading project: %s (%s)", project.Name, project.Path)
-	result, err := storage.LoadProjectWithWarnings(project)
+	projects, err := loadRuntimeProjects(workspace, []*models.Project{project})
 	if err != nil {
-		if errors.Is(err, tterrors.ErrParseError) {
-			return nil, fmt.Errorf("corrupted tasks file in %s: %w", project.Name, err)
-		}
-		return nil, fmt.Errorf("failed to load project: %w", err)
+		return nil, err
 	}
-	Debugf("loaded %d tasks", len(project.Tasks))
-	for _, warning := range result.Warnings {
-		switch warning.Type {
-		case format.WarningDataCorrection, format.WarningDeprecation:
-			fmt.Fprintf(os.Stderr, "warning: %s\n", warning.Message)
-		default:
-			Debugf("parser warning: %s", warning.Message)
+	return projects[0], nil
+}
+
+// loadRuntimeActiveProjects resolves and loads every non-archived,
+// non-sandbox, non-internal project from the command-start runtime snapshot.
+// Ask uses this instead of the machine-local current project so contextual
+// requests always describe the same active workspace scope as the TUI.
+func loadRuntimeActiveProjects(workspace *CLIWorkspace) ([]*models.Project, error) {
+	if workspace == nil || workspace.Runtime == nil {
+		return nil, fmt.Errorf("runtime state is unavailable")
+	}
+	return loadRuntimeProjects(workspace, workspace.Runtime.ActiveProjects())
+}
+
+// loadRuntimeProjects preserves the parser-warning behavior of the historic
+// current-project loader while loading a caller-selected catalog snapshot.
+func loadRuntimeProjects(workspace *CLIWorkspace, projects []*models.Project) ([]*models.Project, error) {
+	if workspace == nil || workspace.Runtime == nil {
+		return nil, fmt.Errorf("runtime state is unavailable")
+	}
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		Debugf("loading project: %s (%s)", project.Name, project.Path)
+		result, err := storage.LoadProjectWithWarnings(project)
+		if err != nil {
+			if errors.Is(err, tterrors.ErrParseError) {
+				return nil, fmt.Errorf("corrupted tasks file in %s: %w", project.Name, err)
+			}
+			return nil, fmt.Errorf("failed to load project %s: %w", project.Name, err)
+		}
+		Debugf("loaded %d tasks", len(project.Tasks))
+		for _, warning := range result.Warnings {
+			switch warning.Type {
+			case format.WarningDataCorrection, format.WarningDeprecation:
+				fmt.Fprintf(os.Stderr, "warning: %s\n", warning.Message)
+			default:
+				Debugf("parser warning: %s", warning.Message)
+			}
 		}
 	}
-	return project, nil
+	return projects, nil
 }
 
 // cloneCLIWorkspaceDomains returns a defensive copy of the command-start

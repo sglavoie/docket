@@ -38,13 +38,30 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.configDir = msg.ConfigDir
 		m.configDrafts = cloneAskConfigDrafts(msg.Drafts)
 		m.configInput.SetValue(msg.ConfigDir)
-		if m.project != nil && m.contextMode != external.TaskContextNone && !m.contextConsentGranted() {
+		if m.contextMode != external.TaskContextNone && !m.contextConsentGranted() {
 			m.consentSaveID = 0
 			m.state = askStateConsent
 			return m, nil
 		}
 		query := m.pendingQuery
 		return m, m.submitQuery(query)
+
+	case AskWorkspaceLoadedMsg:
+		if m.state != askStateLoading || msg.RequestID == 0 || msg.RequestID != m.requestID {
+			return m, nil
+		}
+		if msg.Err != nil {
+			m.state = askStateResult
+			m.response = renderAskError("Could not load all active projects for AI context; no AI request was sent", msg.Err)
+			m.failureQuery = m.requestQuery
+			m.failureContextMode = m.requestContextMode
+			m.reuseAvailable = m.requestQuery != ""
+			m.viewport.SetContent(m.renderResponse())
+			m.viewport.GotoTop()
+			return m, nil
+		}
+		taskContext := external.BuildWorkspaceTaskContextWithMode(msg.Projects, m.requestContextMode)
+		return m, m.startQuery(msg.RequestID, m.requestQuery, taskContext)
 
 	case AskStreamStartMsg:
 		if msg.RequestID != m.requestID {
@@ -209,9 +226,6 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case askStateInput:
 		switch msg.String() {
 		case "esc":
-			if strings.TrimSpace(m.textarea.Value()) != "" {
-				return m, nil
-			}
 			return m, func() tea.Msg { return BackMsg{} }
 		case "ctrl+s":
 			query := strings.TrimSpace(m.textarea.Value())
@@ -267,6 +281,9 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case askStateSavingPreferences:
+		if msg.String() == "esc" {
+			return m, func() tea.Msg { return BackMsg{} }
+		}
 		return m, nil
 
 	case askStateConsent:
@@ -379,6 +396,9 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case askStateApplying:
+		if msg.String() == "esc" {
+			return m, func() tea.Msg { return BackMsg{} }
+		}
 		return m, nil
 	}
 

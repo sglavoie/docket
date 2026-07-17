@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/ttenv"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -73,7 +74,7 @@ func init() {
 	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", config.DataDirEnvVar, defaultDataDirDisplay))
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "deprecated: isolate a workspace at this config file's directory")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
@@ -113,7 +114,7 @@ func GetDataDir() string {
 	if dd := viper.GetString("data-dir"); dd != "" {
 		return dd
 	}
-	return os.Getenv(config.DataDirEnvVar)
+	return os.Getenv(ttenv.DataDirEnvVar)
 }
 
 // resolveConfigPath derives the config path the manager should use, honoring the

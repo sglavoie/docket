@@ -250,3 +250,105 @@ func TestBuildTaskContext_RedactsTextAndMarksTaskContentUntrusted(t *testing.T) 
 		t.Fatalf("redacted context dropped stable task ID: %s", redacted)
 	}
 }
+
+func TestBuildWorkspaceTaskContextWithModeSerializesActiveProjects(t *testing.T) {
+	firstTask, err := models.NewTask("task-one", 7, models.TaskTypeBug, "first private task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstTask.Description = "first private description"
+	firstTask.Tags = []string{"first-private-tag"}
+	secondTask, err := models.NewTask("task-two", 3, models.TaskTypeTask, "second private task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondTask.Description = "second private description"
+	secondTask.Tags = []string{"second-private-tag"}
+	projects := []*models.Project{
+		nil,
+		{ID: "project-one", Slug: "first-private-project", Name: "First Private Project", Tasks: []*models.Task{firstTask, nil}},
+		{ID: "project-two", Slug: "second-private-project", Name: "Second Private Project", Tasks: []*models.Task{secondTask}},
+	}
+
+	full := BuildWorkspaceTaskContextWithMode(projects, TaskContextFull)
+	for _, want := range []string{
+		`"projects":[`,
+		`"id":"project-one"`,
+		`"id":"project-two"`,
+		`"ref":"first-private-project:#7"`,
+		`"ref":"second-private-project:#3"`,
+		"first private task",
+		"first private description",
+		"second private task",
+		"second private description",
+	} {
+		if !strings.Contains(full, want) {
+			t.Fatalf("full workspace context missing %q: %s", want, full)
+		}
+	}
+
+	redacted := BuildWorkspaceTaskContextWithMode(projects, TaskContextRedacted)
+	for _, secret := range []string{
+		"first-private-project",
+		"First Private Project",
+		"first private task",
+		"first private description",
+		"first-private-tag",
+		"second-private-project",
+		"Second Private Project",
+		"second private task",
+		"second private description",
+		"second-private-tag",
+	} {
+		if strings.Contains(redacted, secret) {
+			t.Fatalf("redacted workspace context leaked %q: %s", secret, redacted)
+		}
+	}
+	for _, want := range []string{
+		`"id":"project-one"`,
+		`"id":"project-two"`,
+		`"id":"task-one"`,
+		`"id":"task-two"`,
+		`"type":"bug"`,
+		`"priority":3`,
+	} {
+		if !strings.Contains(redacted, want) {
+			t.Fatalf("redacted workspace context missing %q: %s", want, redacted)
+		}
+	}
+	for _, forbidden := range []string{`"name"`, `"slug"`, `"ref"`, `"title"`, `"description"`, `"tags"`} {
+		if strings.Contains(redacted, forbidden) {
+			t.Fatalf("redacted workspace context included %s: %s", forbidden, redacted)
+		}
+	}
+
+	if got := BuildWorkspaceTaskContextWithMode(projects, TaskContextNone); got != "" {
+		t.Fatalf("no-context workspace payload = %q, want empty", got)
+	}
+}
+
+func TestBuildActionPlanPromptTreatsCommandOutputAsUntrusted(t *testing.T) {
+	prompt := BuildActionPlanPrompt("", "")
+	for _, want := range []string{"command output", "untrusted data", "strict JSON action-plan contract"} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("action-plan prompt missing %q: %q", want, prompt)
+		}
+	}
+}
+
+func TestBuildCodexWorkspaceActionPlanPromptRestrictsLiveInspection(t *testing.T) {
+	prompt := BuildCodexWorkspaceActionPlanPrompt("", "")
+	for _, want := range []string{
+		"tt project list --json",
+		"tt task list --project <project> --json",
+		"Do not run any other command",
+		"strict JSON action-plan contract",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("Codex workspace prompt missing %q: %q", want, prompt)
+		}
+	}
+	if strings.Contains(BuildActionPlanPrompt("", ""), "tt project list --json") {
+		t.Fatal("generic action-plan prompt unexpectedly granted live workspace inspection")
+	}
+}

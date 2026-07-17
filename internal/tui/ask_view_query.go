@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/aiharness"
 	"github.com/sglavoie/tt/internal/external"
 )
 
@@ -38,15 +39,39 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 	m.textarea.Blur()
 	m.configInput.Blur()
 
+	// Snapshot active projects on the UI event path before the asynchronous Tea
+	// command starts. The loader then performs only task-file I/O against these
+	// private, rehydrated models. Compatibility constructors retain their
+	// supplied single project for focused tests.
+	if m.workspaceLoader != nil && m.requestContextMode != external.TaskContextNone && m.contextConsentGranted() {
+		projects := m.runtime.ActiveProjects()
+		loader := m.workspaceLoader
+		loadCmd := func() tea.Msg {
+			loadedProjects, err := loader(projects)
+			return AskWorkspaceLoadedMsg{RequestID: requestID, Projects: loadedProjects, Err: err}
+		}
+		return tea.Batch(loadCmd, m.spinner.Tick())
+	}
+
 	var taskContext string
 	if m.project != nil && m.requestContextMode != external.TaskContextNone && m.contextConsentGranted() {
 		taskContext = external.BuildTaskContextWithMode(m.project, m.requestContextMode)
 	}
+	return m.startQuery(requestID, query, taskContext)
+}
+
+// startQuery crosses the provider boundary only after any required workspace
+// snapshot has been loaded successfully.
+func (m *AskViewModel) startQuery(requestID uint64, query, taskContext string) tea.Cmd {
 	var cliContext string
 	if m.cliReference != "" {
 		cliContext = external.BuildCLIContext(m.cliReference, query)
 	}
+	workspaceDir := m.requestWorkspaceDir()
 	systemPrompt := external.BuildActionPlanPrompt(taskContext, cliContext)
+	if m.harness == aiharness.Codex && workspaceDir != "" {
+		systemPrompt = external.BuildCodexWorkspaceActionPlanPrompt(taskContext, cliContext)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancelFn = cancel
@@ -54,6 +79,7 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 	request := external.Request{
 		Harness:      m.harness,
 		ConfigDir:    m.configDir,
+		WorkspaceDir: workspaceDir,
 		Query:        query,
 		SystemPrompt: systemPrompt,
 	}
@@ -69,6 +95,16 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 		return AskStreamStartMsg{RequestID: requestID, Stream: stream}
 	}
 	return tea.Batch(streamCmd, m.spinner.Tick())
+}
+
+// requestWorkspaceDir exposes filesystem inspection capability only to a
+// full-context request that has current provider-specific consent. Redacted,
+// no-context, and declined requests keep this field empty.
+func (m *AskViewModel) requestWorkspaceDir() string {
+	if m.requestContextMode != external.TaskContextFull || !m.contextConsentGranted() || m.runtime == nil {
+		return ""
+	}
+	return m.runtime.DataDir()
 }
 
 // cancelActiveRequest invalidates the current generation before canceling its

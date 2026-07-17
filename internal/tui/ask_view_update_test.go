@@ -472,8 +472,11 @@ func TestAskActionPlanApplyingSpinnerAndEscape(t *testing.T) {
 	}
 
 	_, escapeCmd := m.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if escapeCmd != nil || m.state != askStateApplying || m.applyID != operationID {
+	if escapeCmd == nil || m.state != askStateApplying || m.applyID != operationID {
 		t.Fatalf("applying escape = state %v id %d cmd %v", m.state, m.applyID, escapeCmd)
+	}
+	if _, ok := escapeCmd().(BackMsg); !ok {
+		t.Fatalf("applying escape emitted %T, want BackMsg", escapeCmd())
 	}
 	m.OnExit()
 	if m.state != askStateApplying || m.applyID != operationID {

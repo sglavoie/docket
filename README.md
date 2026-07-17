@@ -62,11 +62,22 @@ overrides and do not change the remembered TUI selection. Without an explicit
 directory, each CLI uses its provider environment variable or native default.
 
 Task context is opt-in: the first contextual request shows a disclosure and can
-remember consent in portable settings for that harness. Legacy consent applies
-only to Claude; Codex and Copilot ask independently. `--redact-context` sends only opaque
-stable project/task IDs and non-text metadata, omitting project names and slugs,
-qualified task references, titles, descriptions, and tags. `--no-context` sends
-none; the TUI cycles the same modes with `Ctrl+T`.
+remember consent in portable settings for that harness. Full context covers all
+active, non-archived projects. This broader scope requires current
+provider-specific consent; generic, unversioned, or superseded consent is
+renewed before `tt` discloses it. For a consented full-context Codex request,
+`tt` passes the exact workspace through Codex's read-only `--cd` and
+`TT_DATA_DIR` settings while retaining a fresh temporary launcher directory.
+When it needs fresher data, Codex may use only `tt project list --json` and `tt
+task list --project <project> --json`; its sandbox remains read-only and every
+proposed change still goes through the local action-plan preview and
+confirmation flow. Older releases retain legacy Claude fields for compatibility,
+but no legacy or unversioned grant authorizes disclosure. `--redact-context`
+sends only opaque stable
+project/task IDs and non-text metadata, omitting project names and slugs,
+qualified task references, titles, descriptions, and tags; it grants no live
+workspace access. `--no-context` sends none and grants no workspace access; the
+TUI cycles the same modes with `Ctrl+T`.
 The selected provider returns a versioned structured action plan, which tt validates and previews
 locally. Safe actions receive one batch confirmation, destructive actions require
 a separate approval, and every accepted plan commits as one undoable transaction.

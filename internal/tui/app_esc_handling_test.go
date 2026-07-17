@@ -102,6 +102,43 @@ func TestHandleEscKey_NopAtDashboard(t *testing.T) {
 	}
 }
 
+func TestAskEscapePopsPreviouslyTrappedStates(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		state askState
+		draft string
+	}{
+		{name: "input with draft", state: askStateInput, draft: "unfinished request"},
+		{name: "saving preferences", state: askStateSavingPreferences},
+		{name: "applying", state: askStateApplying},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := newTestAppModel()
+			ask := NewAskViewModel(nil, "")
+			ask.state = tc.state
+			ask.textarea.SetValue(tc.draft)
+			if tc.state == askStateApplying {
+				ask.applyID = nextAskOperationID()
+			}
+			app.showView(ViewAsk, ask)
+
+			model, cmd := app.Update(syntheticSpecialKey(tea.KeyEsc))
+			app = model.(*AppModel)
+			if cmd == nil {
+				t.Fatal("Escape did not schedule navigation back")
+			}
+			model, _ = app.Update(cmd())
+			app = model.(*AppModel)
+			if app.currentView() != ViewDashboard {
+				t.Fatalf("current view = %v, want dashboard", app.currentView())
+			}
+			if tc.state == askStateApplying && (ask.state != askStateApplying || ask.applyID == 0) {
+				t.Fatalf("leaving Ask invalidated in-flight apply: state=%v id=%d", ask.state, ask.applyID)
+			}
+		})
+	}
+}
+
 // TestHandleEscKey_DismissesPeekOverlay verifies that Esc clears peekActive and peekTask.
 func TestHandleEscKey_DismissesPeekOverlay(t *testing.T) {
 	app, project := newTestAppModelWithProject()

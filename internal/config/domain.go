@@ -410,22 +410,28 @@ type AIConsentSettings struct {
 	Providers map[string]AIProviderConsent `json:"providers,omitempty"`
 }
 
+// CurrentAIConsentScopeVersion is the disclosure scope that covers all active
+// project data and permits Codex to inspect the workspace read-only. Bumping it
+// deliberately requires each provider to receive fresh consent.
+const CurrentAIConsentScopeVersion = 1
+
 // AIProviderConsent records one provider-specific remembered consent grant.
 type AIProviderConsent struct {
-	Granted   bool       `json:"granted"`
-	GrantedAt *time.Time `json:"granted_at,omitempty"`
+	Granted      bool       `json:"granted"`
+	GrantedAt    *time.Time `json:"granted_at,omitempty"`
+	ScopeVersion int        `json:"scope_version,omitempty"`
 }
 
-// GrantedFor reports whether task-context consent covers the selected harness.
-// The pre-provider legacy grant intentionally authorizes Claude only.
+// GrantedFor reports whether the selected harness has granted consent for the
+// current disclosure scope. Legacy and unversioned grants are intentionally
+// insufficient because they did not disclose active-workspace context or
+// Codex's read-only workspace inspection capability.
 func (s AIConsentSettings) GrantedFor(name aiharness.Name) bool {
 	if !name.Valid() {
 		return false
 	}
-	if name == aiharness.Claude && s.Granted {
-		return true
-	}
-	return s.Providers[string(name)].Granted
+	grant := s.Providers[string(name)]
+	return grant.Granted && grant.ScopeVersion == CurrentAIConsentScopeVersion
 }
 
 // GrantFor remembers task-context consent for one harness at grantedAt.
@@ -442,7 +448,11 @@ func (s *AIConsentSettings) GrantFor(name aiharness.Name, grantedAt time.Time) e
 		s.Providers = make(map[string]AIProviderConsent)
 	}
 	timestamp := grantedAt
-	s.Providers[string(name)] = AIProviderConsent{Granted: true, GrantedAt: &timestamp}
+	s.Providers[string(name)] = AIProviderConsent{
+		Granted:      true,
+		GrantedAt:    &timestamp,
+		ScopeVersion: CurrentAIConsentScopeVersion,
+	}
 	if name == aiharness.Claude {
 		legacyTimestamp := grantedAt
 		s.Granted = true

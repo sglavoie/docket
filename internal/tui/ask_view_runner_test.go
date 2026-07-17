@@ -34,7 +34,7 @@ func TestAskViewRunnerUsesRememberedHarnessConfigAndConsent(t *testing.T) {
 	if err := domains.Settings.AIConsent.GrantFor(aiharness.Codex, time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	runtime := config.NewRuntimeState("", domains)
+	runtime := config.NewRuntimeState(t.TempDir(), domains)
 	stream := newScriptedAskStream([]byte(`{"version":1,"summary":"ok","actions":[]}`), 5, nil)
 	runner := &fakeAskRunner{streams: []external.Stream{stream}}
 	project := &models.Project{ID: "p1", Slug: "demo", Name: "Demo"}
@@ -55,6 +55,9 @@ func TestAskViewRunnerUsesRememberedHarnessConfigAndConsent(t *testing.T) {
 	}
 	if !strings.Contains(request.SystemPrompt, `"name":"Demo"`) {
 		t.Fatalf("consented task context missing from prompt: %q", request.SystemPrompt)
+	}
+	if request.WorkspaceDir != runtime.DataDir() || !strings.Contains(request.SystemPrompt, "tt project list --json") {
+		t.Fatalf("Codex full-context inspection capability was not wired: %+v", request)
 	}
 	if stream.ReadCalls() < 2 || stream.WaitCalls() != 1 {
 		t.Fatalf("stream lifecycle = %d reads %d waits, want chunked reads and one wait", stream.ReadCalls(), stream.WaitCalls())
@@ -93,8 +96,11 @@ func TestAskViewConsentIsSelectedHarnessSpecific(t *testing.T) {
 	if !runtime.Settings().AIConsent.GrantedFor(aiharness.Codex) {
 		t.Fatal("codex consent was not remembered")
 	}
-	if !runtime.Settings().AIConsent.GrantedFor(aiharness.Claude) {
-		t.Fatal("pre-existing legacy Claude consent was lost")
+	if !runtime.Settings().AIConsent.Granted || runtime.Settings().AIConsent.GrantedAt == nil {
+		t.Fatal("pre-existing legacy Claude consent was not retained for compatibility")
+	}
+	if runtime.Settings().AIConsent.GrantedFor(aiharness.Claude) {
+		t.Fatal("legacy Claude consent unexpectedly authorized the current disclosure scope")
 	}
 	if runtime.Settings().AIConsent.GrantedFor(aiharness.Copilot) {
 		t.Fatal("codex consent leaked to copilot")

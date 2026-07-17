@@ -53,7 +53,9 @@ func (m *AskViewModel) View() tea.View {
 
 	case askStateConsent:
 		b.WriteString(pad)
-		_, _ = fmt.Fprintf(&b, "tt can send the current project name and task content to the configured %s CLI provider.\n\n", m.harness.Label())
+		_, _ = fmt.Fprintf(&b, "tt can send names and task content from all active projects to the configured %s CLI provider.\n", m.harness.Label())
+		b.WriteString(pad)
+		b.WriteString("For a consented full-context request, Codex can inspect the active workspace directory read-only. It cannot modify tasks directly; every answer and action still uses the strict JSON action-plan review and confirmation flow.\n\n")
 		b.WriteString(pad)
 		b.WriteString("Remember consent and include task context? [y/N]")
 		b.WriteString("\n")

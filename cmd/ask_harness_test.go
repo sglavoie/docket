@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/aiharness"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -359,7 +360,10 @@ func TestRunAskProviderSpecificRedactedConsent(t *testing.T) {
 	if request.Harness != aiharness.Codex {
 		t.Fatalf("request harness = %q, want codex", request.Harness)
 	}
-	if !strings.Contains(out.String(), "configured Codex CLI provider") {
+	if !strings.Contains(out.String(), "configured Codex CLI provider") ||
+		!strings.Contains(out.String(), "all active projects") ||
+		!strings.Contains(out.String(), "read-only") ||
+		!strings.Contains(out.String(), "strict JSON action-plan") {
 		t.Fatalf("consent disclosure did not name Codex: %q", out.String())
 	}
 	if !strings.Contains(request.SystemPrompt, "<task_context_json>") || strings.Contains(request.SystemPrompt, project.Name) {
@@ -404,20 +408,60 @@ func TestRunAskContextModesAndActionPlansAreHarnessIndependent(t *testing.T) {
 				hasContext := strings.Contains(request.SystemPrompt, "<task_context_json>")
 				switch mode {
 				case external.TaskContextFull:
-					if !hasContext || !strings.Contains(request.SystemPrompt, project.Name) {
+					if !hasContext || !strings.Contains(request.SystemPrompt, project.Name) || request.WorkspaceDir != deps.Config.DataDir() {
 						t.Fatalf("full context missing from prompt: %q", request.SystemPrompt)
 					}
 				case external.TaskContextRedacted:
-					if !hasContext || strings.Contains(request.SystemPrompt, project.Name) {
+					if !hasContext || strings.Contains(request.SystemPrompt, project.Name) || request.WorkspaceDir != "" {
 						t.Fatalf("redacted context mismatch: %q", request.SystemPrompt)
 					}
 				case external.TaskContextNone:
-					if hasContext {
+					if hasContext || request.WorkspaceDir != "" {
 						t.Fatalf("no-context request included task context: %q", request.SystemPrompt)
 					}
 				}
+				containsCodexInspection := strings.Contains(request.SystemPrompt, "tt project list --json")
+				if wantCodexInspection := harness == aiharness.Codex && mode == external.TaskContextFull; containsCodexInspection != wantCodexInspection {
+					t.Fatalf("Codex live-inspection prompt = %t, want %t: %q", containsCodexInspection, wantCodexInspection, request.SystemPrompt)
+				}
 			})
 		}
+	}
+}
+
+func TestRunAskBuildsAllActiveProjectContextInsteadOfCurrentProject(t *testing.T) {
+	deps, current := setupStateTest(t)
+	other, err := models.NewProject("ask-other-active", "Other Active Project", "")
+	testutil.AssertNoError(t, err)
+	otherTask, err := models.NewTask("ask-other-task", 1, models.TaskTypeTask, "Other active task")
+	testutil.AssertNoError(t, err)
+	other.Tasks = []*models.Task{otherTask}
+	other.NextShortID = 2
+	deps.Repository.Projects[other.ID] = other
+	addTestProject(deps.Config, other)
+	settings := deps.Config.Settings()
+	testutil.AssertNoError(t, settings.AIConsent.GrantFor(aiharness.Claude, time.Now()))
+	deps.Config.SetSettingsInMemory(settings)
+	testutil.AssertNoError(t, saveTestRuntime(config.NewManager(deps.ConfigPath), deps.Config))
+
+	setAskTestFlags(t, false, false, false, "", "")
+	cmd, _ := newAskTestCommand("")
+	var request external.Request
+	runner := askRunnerFunc(func(_ context.Context, got external.Request) (string, error) {
+		request = got
+		return emptyAskPlan, nil
+	})
+
+	if err := runAskWithRunner(cmd, []string{"summarize active work"}, runner, false); err != nil {
+		t.Fatalf("runAskWithRunner: %v", err)
+	}
+	for _, want := range []string{current.Name, current.Tasks[0].Title, other.Name, otherTask.Title, `"projects":[`} {
+		if !strings.Contains(request.SystemPrompt, want) {
+			t.Fatalf("active workspace context missing %q: %q", want, request.SystemPrompt)
+		}
+	}
+	if request.WorkspaceDir != deps.Config.DataDir() {
+		t.Fatalf("workspace directory = %q, want %q", request.WorkspaceDir, deps.Config.DataDir())
 	}
 }
 

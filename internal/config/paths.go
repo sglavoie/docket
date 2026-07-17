@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/ttenv"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -37,12 +38,6 @@ const (
 	// directory; path-local ephemeral files use LocalRuntimeDirForDataDir.
 	runtimeDirName = "runtime"
 
-	// DataDirEnvVar is the environment variable that selects the workspace data
-	// directory when no explicit --data-dir flag is given. It sits between the
-	// flag and the machine-local active-workspace pointer in the resolution
-	// precedence (see ResolveWorkspaceDataDir).
-	DataDirEnvVar = "TT_DATA_DIR"
-
 	// activeWorkspacePointerName is the machine-local file that records which
 	// data directory this machine last opened. It lives under the local runtime
 	// root (never synced) at a fixed location so it can select the data dir
@@ -55,6 +50,10 @@ const (
 	// not lose its machine-local state and distinct identities never share it.
 	machineStateFileName = "machine.json"
 )
+
+// DataDirEnvVar is retained for configuration callers. The declaration lives
+// in ttenv so process adapters can use the same name without importing config.
+const DataDirEnvVar = ttenv.DataDirEnvVar
 
 // InternalDir returns the internal ".tt" directory inside a data directory. This
 // is where the synced decomposed-config files (workspace/planning/settings/

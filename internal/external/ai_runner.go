@@ -7,12 +7,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/sglavoie/tt/internal/actionplan"
 	"github.com/sglavoie/tt/internal/aiharness"
+	"github.com/sglavoie/tt/internal/ttenv"
 )
 
 const (
@@ -29,8 +31,13 @@ var ErrHarnessOutputLimit = errors.New("AI harness response exceeded the 1 MiB o
 // explicit one-request or persisted machine override; an empty value preserves
 // the provider's inherited environment and native behavior.
 type Request struct {
-	Harness      aiharness.Name
-	ConfigDir    string
+	Harness   aiharness.Name
+	ConfigDir string
+	// WorkspaceDir is the active workspace directory Codex may inspect. It is
+	// populated only for remembered-consent full-context requests. Codex is the
+	// only adapter that exposes it, using its read-only sandbox; other adapters
+	// intentionally retain their existing launcher contracts.
+	WorkspaceDir string
 	Query        string
 	SystemPrompt string
 }
@@ -129,6 +136,13 @@ func (r *harnessRunner) Start(ctx context.Context, request Request) (Stream, err
 			return nil, err
 		}
 	}
+	workspaceDir := ""
+	if request.Harness == aiharness.Codex && request.WorkspaceDir != "" {
+		workspaceDir, err = normalizeWorkspaceDir(request.WorkspaceDir)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	workDir, err := r.deps.makeTempDir()
 	if err != nil {
@@ -138,11 +152,14 @@ func (r *harnessRunner) Start(ctx context.Context, request Request) (Stream, err
 	processCtx, cancel := context.WithCancel(ctx)
 	stdout := newProcessOutput(MaxHarnessOutputBytes, cancel)
 	stderr := newLimitedBuffer(MaxHarnessStderrBytes)
-	cmd := exec.CommandContext(processCtx, executable, harnessArgs(request.Harness)...)
+	cmd := exec.CommandContext(processCtx, executable, harnessArgs(request.Harness, workspaceDir)...)
 	cmd.Dir = workDir
 	cmd.Env = r.deps.environ()
 	if configDir != "" {
 		cmd.Env = replaceEnvironmentValue(cmd.Env, info.ConfigEnvVar, configDir)
+	}
+	if workspaceDir != "" {
+		cmd.Env = replaceEnvironmentValue(cmd.Env, ttenv.DataDirEnvVar, workspaceDir)
 	}
 	cmd.Stdin = strings.NewReader(providerPrompt(request.Query, request.SystemPrompt))
 	cmd.Stdout = stdout
@@ -182,7 +199,7 @@ func (r *harnessRunner) Start(ctx context.Context, request Request) (Stream, err
 	return process, nil
 }
 
-func harnessArgs(harness aiharness.Name) []string {
+func harnessArgs(harness aiharness.Name, workspaceDir string) []string {
 	switch harness {
 	case aiharness.Claude:
 		return []string{
@@ -193,14 +210,19 @@ func harnessArgs(harness aiharness.Name) []string {
 			"--no-session-persistence",
 		}
 	case aiharness.Codex:
-		return []string{
+		args := []string{
 			"exec",
+		}
+		if workspaceDir != "" {
+			args = append(args, "--cd", workspaceDir)
+		}
+		return append(args,
 			"--ephemeral",
 			"--sandbox", "read-only",
 			"--skip-git-repo-check",
 			"--color", "never",
 			"-",
-		}
+		)
 	case aiharness.Copilot:
 		return []string{
 			"--silent",
@@ -213,6 +235,34 @@ func harnessArgs(harness aiharness.Name) []string {
 	default:
 		return nil
 	}
+}
+
+// normalizeWorkspaceDir verifies the one directory Codex may inspect. It
+// mirrors explicit harness-directory validation while deliberately avoiding
+// shell or environment expansion: the caller already holds the workspace path
+// selected by tt, and the normalized path is passed identically to --cd and
+// TT_DATA_DIR.
+func normalizeWorkspaceDir(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve AI workspace directory %q: %w", path, err)
+	}
+	absPath = filepath.Clean(absPath)
+	info, err := os.Stat(absPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("AI workspace directory does not exist: %q", absPath)
+		}
+		var pathErr *os.PathError
+		if errors.As(err, &pathErr) {
+			err = pathErr.Err
+		}
+		return "", fmt.Errorf("access AI workspace directory %q: %w", absPath, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("AI workspace path is not a directory: %q", absPath)
+	}
+	return absPath, nil
 }
 
 func replaceEnvironmentValue(environment []string, key, value string) []string {

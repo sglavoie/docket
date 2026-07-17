@@ -35,9 +35,11 @@ var askCmd = &cobra.Command{
 	Short: "Ask the AI assistant about your tasks",
 	Long: `Ask the AI assistant a question about your project and tasks.
 
-With explicit remembered consent, the assistant can receive context about the
-current project. Responses are strict structured action plans; --apply previews
-and confirms those actions before one transactional, undoable commit.
+With explicit remembered consent, the assistant can receive context about every
+active project. For a consented full-context request, Codex can inspect the
+active workspace directory read-only. Responses are strict structured action
+plans; --apply previews and confirms those actions before one transactional,
+undoable commit.
 Claude, Codex, and GitHub Copilot are supported. The TUI selection is the CLI
 default; --harness and --config-dir override one request without changing it.
 
@@ -222,6 +224,7 @@ func requestAskActionPlan(request askPlanRequest) (*app.PreparedActionPlan, erro
 			attemptErr = err
 		} else {
 			requestTaskContext := ""
+			workspaceDir := ""
 			if !request.noContext && !contextDeclined {
 				consented, consentErr := ensureAIContextConsent(request.cmd, request.workspace, request.reader, harness)
 				if consentErr != nil {
@@ -231,23 +234,31 @@ func requestAskActionPlan(request askPlanRequest) (*app.PreparedActionPlan, erro
 					contextDeclined = true
 				} else {
 					if !taskContextLoaded {
-						project, loadErr := loadRuntimeCurrentProject(request.workspace)
+						projects, loadErr := loadRuntimeActiveProjects(request.workspace)
 						if loadErr != nil {
 							safeLoadErr := actionplan.TerminalSafeDisplayText(loadErr.Error(), actionplan.DisplayTextSingleLine)
-							return nil, fmt.Errorf("failed to load the current project for AI context: %s; no AI request was sent; rerun with --no-context to continue without project context", safeLoadErr)
+							return nil, fmt.Errorf("failed to load all active projects for AI context: %s; no AI request was sent; rerun with --no-context to continue without workspace context", safeLoadErr)
 						}
-						taskContext = external.BuildTaskContextWithMode(project, request.contextMode)
+						taskContext = external.BuildWorkspaceTaskContextWithMode(projects, request.contextMode)
 						taskContextLoaded = true
 					}
 					requestTaskContext = taskContext
+					if request.contextMode == external.TaskContextFull && request.workspace != nil && request.workspace.Runtime != nil {
+						workspaceDir = request.workspace.Runtime.DataDir()
+					}
 				}
 			}
 
+			systemPrompt := external.BuildActionPlanPrompt(requestTaskContext, request.cliContext)
+			if harness == aiharness.Codex && workspaceDir != "" {
+				systemPrompt = external.BuildCodexWorkspaceActionPlanPrompt(requestTaskContext, request.cliContext)
+			}
 			response, runErr := request.runner.Run(request.ctx, external.Request{
 				Harness:      harness,
 				ConfigDir:    configDir,
+				WorkspaceDir: workspaceDir,
 				Query:        request.query,
-				SystemPrompt: external.BuildActionPlanPrompt(requestTaskContext, request.cliContext),
+				SystemPrompt: systemPrompt,
 			})
 			if runErr != nil {
 				attemptErr = fmt.Errorf("%s request failed: %w", harness.Label(), runErr)
@@ -525,7 +536,7 @@ func ensureAIContextConsent(cmd *cobra.Command, workspace *CLIWorkspace, reader 
 		return true, nil
 	}
 	out := cmd.OutOrStdout()
-	if _, writeErr := fmt.Fprintf(out, "AI context disclosure: tt can send the current project name and task content to the configured %s CLI provider.\n", harness.Label()); writeErr != nil {
+	if _, writeErr := fmt.Fprintf(out, "AI context disclosure: tt can send names and task content from all active projects to the configured %s CLI provider. For a consented full-context request, Codex can inspect the active workspace directory read-only. It cannot modify tasks directly; every answer and action still uses the strict JSON action-plan review and confirmation flow.\n", harness.Label()); writeErr != nil {
 		return false, fmt.Errorf("write AI context disclosure: %w", writeErr)
 	}
 	if _, writeErr := fmt.Fprint(out, "Remember consent and include task context? [y/N] "); writeErr != nil {

@@ -63,6 +63,7 @@ func TestHarnessRunner_AdaptersUseShellFreeStdinContract(t *testing.T) {
 		t.Run(test.harness.String(), func(t *testing.T) {
 			recordDir := t.TempDir()
 			configDir := t.TempDir()
+			workspaceDir := t.TempDir()
 			executable := writeFakeHarness(t, `
 printf 'cwd=%s\n' "$PWD" > "$RECORD_DIR/meta"
 if [ -z "$(ls -A .)" ]; then
@@ -73,6 +74,7 @@ fi
 printf 'CLAUDE_CONFIG_DIR=%s\n' "${CLAUDE_CONFIG_DIR-}" >> "$RECORD_DIR/meta"
 printf 'CODEX_HOME=%s\n' "${CODEX_HOME-}" >> "$RECORD_DIR/meta"
 printf 'COPILOT_HOME=%s\n' "${COPILOT_HOME-}" >> "$RECORD_DIR/meta"
+printf 'TT_DATA_DIR=%s\n' "${TT_DATA_DIR-}" >> "$RECORD_DIR/meta"
 for arg in "$@"; do
   printf 'arg=<%s>\n' "$arg" >> "$RECORD_DIR/meta"
 done
@@ -96,6 +98,7 @@ printf '{"version":1,"summary":"ok","actions":[]}'
 						"CLAUDE_CONFIG_DIR=inherited-claude",
 						"CODEX_HOME=inherited-codex",
 						"COPILOT_HOME=inherited-copilot",
+						"TT_DATA_DIR=inherited-tt-data",
 					}
 				},
 			})
@@ -103,6 +106,7 @@ printf '{"version":1,"summary":"ok","actions":[]}'
 			response, err := runner.Run(context.Background(), Request{
 				Harness:      test.harness,
 				ConfigDir:    configDir,
+				WorkspaceDir: workspaceDir,
 				Query:        "private query",
 				SystemPrompt: "private system prompt",
 			})
@@ -123,8 +127,12 @@ printf '{"version":1,"summary":"ok","actions":[]}'
 			if !strings.Contains(meta, "empty=yes\n") {
 				t.Fatalf("provider working directory was not fresh and empty: %s", meta)
 			}
-			if got := extractArgs(meta); !slices.Equal(got, test.args) {
-				t.Fatalf("provider argv = %#v, want %#v", got, test.args)
+			wantArgs := test.args
+			if test.harness == aiharness.Codex {
+				wantArgs = append([]string{"exec", "--cd", workspaceDir}, test.args[1:]...)
+			}
+			if got := extractArgs(meta); !slices.Equal(got, wantArgs) {
+				t.Fatalf("provider argv = %#v, want %#v", got, wantArgs)
 			}
 			if !strings.Contains(meta, test.envKey+"="+configDir+"\n") {
 				t.Fatalf("selected config environment was not overridden: %s", meta)
@@ -141,6 +149,13 @@ printf '{"version":1,"summary":"ok","actions":[]}'
 					t.Fatalf("unselected provider environment changed: %s", meta)
 				}
 			}
+			wantWorkspace := "inherited-tt-data"
+			if test.harness == aiharness.Codex {
+				wantWorkspace = workspaceDir
+			}
+			if !strings.Contains(meta, "TT_DATA_DIR="+wantWorkspace+"\n") {
+				t.Fatalf("TT_DATA_DIR = %q, want %q: %s", meta, wantWorkspace, meta)
+			}
 
 			stdin := readTestFile(t, filepath.Join(recordDir, "stdin"))
 			if stdin != providerPrompt("private query", "private system prompt") {
@@ -155,6 +170,10 @@ func TestHarnessRunner_EmptyConfigDirPreservesInheritedEnvironment(t *testing.T)
 	recordDir := t.TempDir()
 	executable := writeFakeHarness(t, `
 printf '%s' "${CODEX_HOME-}" > "$RECORD_DIR/config"
+printf '%s' "${TT_DATA_DIR-}" > "$RECORD_DIR/workspace"
+for arg in "$@"; do
+  printf 'arg=<%s>\n' "$arg" >> "$RECORD_DIR/args"
+done
 printf ok
 `)
 	var workDirs []string
@@ -162,7 +181,7 @@ printf ok
 		lookup:      func(aiharness.Name) (string, error) { return executable, nil },
 		makeTempDir: recordingTempDirFactory(t, &workDirs),
 		environ: func() []string {
-			return []string{"PATH=/bin:/usr/bin", "RECORD_DIR=" + recordDir, "CODEX_HOME=inherited"}
+			return []string{"PATH=/bin:/usr/bin", "RECORD_DIR=" + recordDir, "CODEX_HOME=inherited", "TT_DATA_DIR=inherited-workspace"}
 		},
 	})
 
@@ -175,6 +194,12 @@ printf ok
 	}
 	if got := readTestFile(t, filepath.Join(recordDir, "config")); got != "inherited" {
 		t.Fatalf("CODEX_HOME = %q, want inherited", got)
+	}
+	if got := readTestFile(t, filepath.Join(recordDir, "workspace")); got != "inherited-workspace" {
+		t.Fatalf("TT_DATA_DIR = %q, want inherited workspace", got)
+	}
+	if got := extractArgs(readTestFile(t, filepath.Join(recordDir, "args"))); !slices.Equal(got, []string{"exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "-"}) {
+		t.Fatalf("empty workspace Codex argv = %#v", got)
 	}
 	assertWorkDirsRemoved(t, workDirs)
 }
@@ -451,6 +476,35 @@ func TestHarnessRunner_InvalidConfigDirStopsBeforeInvocation(t *testing.T) {
 	}
 	if _, err := os.Stat(invoked); !os.IsNotExist(err) {
 		t.Fatalf("provider was invoked despite invalid config: %v", err)
+	}
+}
+
+func TestHarnessRunner_InvalidCodexWorkspaceDirStopsBeforeInvocation(t *testing.T) {
+	invoked := filepath.Join(t.TempDir(), "invoked")
+	executable := writeFakeHarness(t, `printf invoked > "$INVOKED"`)
+	tempDirCalled := false
+	runner := newHarnessRunner(runnerDeps{
+		lookup: func(aiharness.Name) (string, error) { return executable, nil },
+		makeTempDir: func() (string, error) {
+			tempDirCalled = true
+			return os.MkdirTemp(t.TempDir(), "run-")
+		},
+		environ: func() []string { return []string{"PATH=/bin:/usr/bin", "INVOKED=" + invoked} },
+	})
+
+	missing := filepath.Join(t.TempDir(), "missing")
+	if _, err := runner.Run(context.Background(), Request{
+		Harness:      aiharness.Codex,
+		WorkspaceDir: missing,
+		Query:        "query",
+	}); err == nil || !strings.Contains(err.Error(), "AI workspace directory does not exist") {
+		t.Fatalf("Run error = %v, want invalid Codex workspace directory", err)
+	}
+	if tempDirCalled {
+		t.Fatal("runner created a temporary directory for an invalid Codex workspace")
+	}
+	if _, err := os.Stat(invoked); !os.IsNotExist(err) {
+		t.Fatalf("provider was invoked despite invalid Codex workspace: %v", err)
 	}
 }
 

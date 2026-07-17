@@ -5,6 +5,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // AskPreferencesSavedMsg resumes submission only after the selected harness
@@ -41,6 +42,14 @@ type AskStreamDoneMsg struct {
 type AskConsentSavedMsg struct {
 	OperationID uint64
 	Err         error
+}
+
+// AskWorkspaceLoadedMsg carries the active-project task snapshot built after a
+// contextual query has cleared remembered-consent gating.
+type AskWorkspaceLoadedMsg struct {
+	RequestID uint64
+	Projects  []*models.Project
+	Err       error
 }
 
 // AskActionPlanAppliedMsg contains the one transaction produced by applying an
