@@ -209,8 +209,10 @@ not add end-to-end encryption around provider storage.
 
 ## AI privacy and consent
 
-AI is optional. `tt` sends task context only after an explicit disclosure and
-remembered consent stored in portable `settings.json`. Each request supports:
+AI is optional. Ask AI supports the Claude, Codex, and GitHub Copilot CLIs. `tt`
+sends task context only after an explicit disclosure and remembered consent
+stored in portable `settings.json`. Consent is tracked per harness; a legacy
+generic grant authorizes Claude only. Each request supports:
 
 - full context;
 - redacted context, which sends only opaque stable project/task IDs and
@@ -218,7 +220,12 @@ remembered consent stored in portable `settings.json`. Each request supports:
   references, titles, descriptions, and tags; or
 - no context.
 
-Prompts are sent to the configured provider over standard input, not process arguments.
+The machine-local `machine.json` remembers the TUI's selected harness and
+per-harness explicit configuration directories. CLI `--harness` and
+`--config-dir` values override one request without rewriting those defaults.
+Without an explicit directory, the provider environment variable
+(`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, or `COPILOT_HOME`) and then its native default
+apply. Prompts are sent to the configured provider over standard input, not process arguments.
 Provider output is treated as untrusted data and must match the
 versioned structured action schema. `tt` resolves targets and classifies risk
 locally, prepares one snapshot-bound preview, previews safe actions as one batch,
@@ -276,7 +283,8 @@ locking and atomic filesystem behavior are implemented for those platforms, and
 release builds target `darwin`/`linux` on `amd64`/`arm64`. Windows is not a
 supported release target.
 
-Claude, `fzf`, `glow`, editors, and other external integrations are optional.
+Claude, Codex, GitHub Copilot, `fzf`, `glow`, editors, and other external
+integrations are optional.
 Core CLI, TUI, local storage, transactions, and recovery do not require them.
 
 ## Release-candidate checks

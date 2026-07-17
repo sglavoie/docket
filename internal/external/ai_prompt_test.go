@@ -1,89 +1,132 @@
 package external
 
 import (
-	"context"
-	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TestClaudeAsk_CanceledContextReturnsCtxErr verifies that when the caller
-// cancels the context, ClaudeAsk surfaces ctx.Err() (context.Canceled)
-// instead of an opaque "claude exited with code -1: signal: killed" error
-// from cmd.Output(). Callers rely on errors.Is(err, context.Canceled) to
-// distinguish user-driven cancellation from a real claude failure.
-func TestClaudeAsk_CanceledContextReturnsCtxErr(t *testing.T) {
-	// Stage a fake claude that just sleeps so we can kill it via context.
-	dir := t.TempDir()
-	fakeClaude := filepath.Join(dir, "claude")
-	script := "#!/bin/sh\nsleep 5\n"
-	if err := os.WriteFile(fakeClaude, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake claude: %v", err)
-	}
-
-	origPath := os.Getenv("PATH")
-	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
-	if err := os.Setenv("PATH", dir); err != nil {
-		t.Fatalf("setenv PATH: %v", err)
-	}
-	claudeCache = cachedPath{}
-	t.Cleanup(func() { claudeCache = cachedPath{} })
-
-	ctx, cancel := context.WithCancel(context.Background())
-	// Cancel before invocation so the child is killed almost immediately.
-	cancel()
-
-	_, err := ClaudeAsk(ctx, "hi", "")
-	if err == nil {
-		t.Fatal("expected error from canceled context, got nil")
-	}
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("expected errors.Is(err, context.Canceled), got %v", err)
-	}
-	if strings.Contains(err.Error(), "claude exited with code") {
-		t.Errorf("regression: surfaced misleading exit-code error for cancellation: %v", err)
-	}
-}
-
-func TestClaudeAsk_UsesCachedAbsolutePath(t *testing.T) {
-	dir := t.TempDir()
-	fakeClaude := filepath.Join(dir, "claude")
-	script := "#!/bin/sh\necho cached claude\n"
-	if err := os.WriteFile(fakeClaude, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake claude: %v", err)
-	}
-
-	origPath := os.Getenv("PATH")
-	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
-	if err := os.Setenv("PATH", ""); err != nil {
-		t.Fatalf("setenv PATH: %v", err)
-	}
-
-	claudeCache = cachedPath{path: fakeClaude, checkedAt: time.Now()}
-	t.Cleanup(func() { claudeCache = cachedPath{} })
-
-	got, err := ClaudeAsk(context.Background(), "hi", "")
-	if err != nil {
-		t.Fatalf("ClaudeAsk returned error: %v", err)
-	}
-	if got != "cached claude\n" {
-		t.Fatalf("expected fake claude output, got %q", got)
-	}
-}
-
 func TestParseActionPlan_StrictStructuredOutput(t *testing.T) {
-	response := `{"version":1,"summary":"Create it","actions":[{"type":"create_task","project_id":"p1","title":"Hello"}]}`
+	response := " \r\n\t" + `{"version":1,"summary":"Create it","actions":[{"type":"create_task","project_id":"p1","title":"Hello"}]}` + "\n "
 	plan, err := ParseActionPlan(response)
 	if err != nil {
 		t.Fatalf("ParseActionPlan: %v", err)
 	}
 	if len(plan.Actions) != 1 || plan.Actions[0].Type != "create_task" {
 		t.Fatalf("unexpected plan: %#v", plan)
+	}
+}
+
+func TestParseActionPlan_AcceptsFencedOutput(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		wantSummary string
+	}{
+		{
+			name: "JSON fence with LF",
+			response: "```json\n{\n" +
+				`  "version": 1,` + "\n" +
+				`  "summary": "Create it",` + "\n" +
+				`  "actions": [{"type":"create_task","project_id":"p1","title":"Hello"}]` + "\n" +
+				"}\n```",
+			wantSummary: "Create it",
+		},
+		{
+			name:        "bare fence with LF",
+			response:    "```\n" + `{"version":1,"summary":"No changes","actions":[]}` + "\n```",
+			wantSummary: "No changes",
+		},
+		{
+			name:        "case-insensitive JSON fence",
+			response:    "```JsOn\n" + `{"version":1,"summary":"Mixed case","actions":[]}` + "\n```",
+			wantSummary: "Mixed case",
+		},
+		{
+			name:        "JSON fence with CRLF",
+			response:    "```json\r\n" + `{"version":1,"summary":"CRLF","actions":[]}` + "\r\n```",
+			wantSummary: "CRLF",
+		},
+		{
+			name:        "bare fence with CRLF and outer whitespace",
+			response:    " \r\n```\r\n" + `{"version":1,"summary":"Outer whitespace","actions":[]}` + "\r\n```\r\n\t",
+			wantSummary: "Outer whitespace",
+		},
+		{
+			name:        "fence-like text inside JSON string",
+			response:    "```json\n{\"version\":1,\"summary\":\"Keep ``` as data\",\"actions\":[]}\n```",
+			wantSummary: "Keep ``` as data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plan, err := ParseActionPlan(tt.response)
+			if err != nil {
+				t.Fatalf("ParseActionPlan: %v", err)
+			}
+			if plan.Summary != tt.wantSummary {
+				t.Fatalf("summary = %q, want %q", plan.Summary, tt.wantSummary)
+			}
+		})
+	}
+}
+
+func TestParseActionPlan_RejectsMalformedFences(t *testing.T) {
+	const plan = `{"version":1,"summary":"No changes","actions":[]}`
+	tests := []struct {
+		name        string
+		response    string
+		wantErrText string
+	}{
+		{
+			name:        "trailing prose",
+			response:    "```json\n" + plan + "\n```\nI also made the changes.",
+			wantErrText: "trailing prose",
+		},
+		{
+			name:        "missing closing fence",
+			response:    "```json\n" + plan,
+			wantErrText: "malformed code fence",
+		},
+		{
+			name:        "unsupported language tag",
+			response:    "```yaml\n" + plan + "\n```",
+			wantErrText: "unsupported code fence",
+		},
+		{
+			name:        "opening line prose",
+			response:    "```json generated output\n" + plan + "\n```",
+			wantErrText: "unsupported code fence",
+		},
+		{
+			name:        "opening line trailing whitespace",
+			response:    "```json \n" + plan + "\n```",
+			wantErrText: "unsupported code fence",
+		},
+		{
+			name:        "glued closing fence",
+			response:    "```json\n" + plan + "```",
+			wantErrText: "malformed code fence",
+		},
+		{
+			name:        "indented closing fence",
+			response:    "```json\n" + plan + "\n  ```",
+			wantErrText: "malformed code fence",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseActionPlan(tt.response)
+			if err == nil {
+				t.Fatal("ParseActionPlan unexpectedly succeeded")
+			}
+			if !strings.Contains(err.Error(), tt.wantErrText) {
+				t.Fatalf("error = %q, want it to contain %q", err, tt.wantErrText)
+			}
+		})
 	}
 }
 
@@ -205,38 +248,5 @@ func TestBuildTaskContext_RedactsTextAndMarksTaskContentUntrusted(t *testing.T) 
 	}
 	if !strings.Contains(redacted, `"id":"uid"`) {
 		t.Fatalf("redacted context dropped stable task ID: %s", redacted)
-	}
-}
-
-func TestClaudeAsk_SendsPromptsOnlyOnStdin(t *testing.T) {
-	dir := t.TempDir()
-	fakeClaude := filepath.Join(dir, "claude")
-	argsPath := filepath.Join(dir, "args")
-	stdinPath := filepath.Join(dir, "stdin")
-	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$ARGS_PATH\"\ncat > \"$STDIN_PATH\"\nprintf '{\"version\":1,\"summary\":\"ok\",\"actions\":[]}'\n"
-	if err := os.WriteFile(fakeClaude, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("ARGS_PATH", argsPath)
-	t.Setenv("STDIN_PATH", stdinPath)
-	claudeCache = cachedPath{path: fakeClaude, checkedAt: time.Now()}
-	t.Cleanup(func() { claudeCache = cachedPath{} })
-
-	if _, err := ClaudeAsk(context.Background(), "private query", "private system prompt"); err != nil {
-		t.Fatalf("ClaudeAsk: %v", err)
-	}
-	args, err := os.ReadFile(argsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(args) != "--print\n" {
-		t.Fatalf("provider argv = %q, want only --print", args)
-	}
-	stdin, err := os.ReadFile(stdinPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(stdin), "private query") || !strings.Contains(string(stdin), "private system prompt") {
-		t.Fatalf("stdin missing prompts: %q", stdin)
 	}
 }

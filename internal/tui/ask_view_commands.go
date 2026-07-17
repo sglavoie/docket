@@ -13,6 +13,7 @@ import (
 )
 
 func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive bool) tea.Cmd {
+	operationID := nextAskOperationID()
 	service := m.service
 	runtime := m.runtime
 	var pendingDomains *config.Domains
@@ -20,10 +21,11 @@ func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive b
 	if runtime != nil {
 		pendingDomains, runtimeErr = runtime.CloneDomains()
 	}
+	m.applyID = operationID
 	m.state = askStateApplying
-	return func() tea.Msg {
+	applyCmd := func() tea.Msg {
 		if service == nil {
-			return AskActionPlanAppliedMsg{Err: fmt.Errorf("application service is unavailable")}
+			return AskActionPlanAppliedMsg{OperationID: operationID, Err: fmt.Errorf("application service is unavailable")}
 		}
 		result, err := service.ApplyPreparedActionPlan(context.Background(), prepared, app.ApplyActionPlanOptions{
 			ConfirmSafe:        true,
@@ -49,10 +51,11 @@ func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive b
 			},
 		})
 		if err != nil {
-			return AskActionPlanAppliedMsg{Err: err}
+			return AskActionPlanAppliedMsg{OperationID: operationID, Err: err}
 		}
-		return AskActionPlanAppliedMsg{Result: result, PendingDomains: pendingDomains}
+		return AskActionPlanAppliedMsg{OperationID: operationID, Result: result, PendingDomains: pendingDomains}
 	}
+	return tea.Batch(applyCmd, m.spinner.Tick())
 }
 
 func repairAskActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []string, pendingDomains *config.Domains) error {

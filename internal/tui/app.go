@@ -425,6 +425,11 @@ type AppModel struct {
 	// Message log: ring buffer of recent status messages for the log overlay.
 	messageLog MessageLog
 
+	// Ask applies can complete after their originating view is covered or
+	// replaced. Retaining consumed process-wide IDs makes completion handling
+	// exactly-once even if a stale or duplicate message is delivered later.
+	handledAskApplyIDs map[uint64]struct{}
+
 	// Keyboard enhancements reported by the terminal (Kitty protocol).
 	keyboardEnhancements tea.KeyboardEnhancementsMsg
 

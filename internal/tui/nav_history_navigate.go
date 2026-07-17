@@ -79,6 +79,7 @@ func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
 	m.saveCurrentViewFilterState()
 
 	// Reset view stack and project stack
+	m.exitAskView()
 	m.projectStack = nil
 	m.viewStack = []ViewType{ViewDashboard}
 

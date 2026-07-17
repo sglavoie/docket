@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/sglavoie/tt/internal/aiharness"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/template"
@@ -404,8 +405,61 @@ func (p *PlanningState) RemoveProjectReferences(id, slug string) bool {
 // to the AI assistant. Consent is opt-in and must be explicit (context.md:
 // "AI receives task context only after explicit remembered consent").
 type AIConsentSettings struct {
+	Granted   bool                         `json:"granted"`
+	GrantedAt *time.Time                   `json:"granted_at,omitempty"`
+	Providers map[string]AIProviderConsent `json:"providers,omitempty"`
+}
+
+// AIProviderConsent records one provider-specific remembered consent grant.
+type AIProviderConsent struct {
 	Granted   bool       `json:"granted"`
 	GrantedAt *time.Time `json:"granted_at,omitempty"`
+}
+
+// GrantedFor reports whether task-context consent covers the selected harness.
+// The pre-provider legacy grant intentionally authorizes Claude only.
+func (s AIConsentSettings) GrantedFor(name aiharness.Name) bool {
+	if !name.Valid() {
+		return false
+	}
+	if name == aiharness.Claude && s.Granted {
+		return true
+	}
+	return s.Providers[string(name)].Granted
+}
+
+// GrantFor remembers task-context consent for one harness at grantedAt.
+// Claude also updates the legacy fields so older tt versions retain that grant.
+func (s *AIConsentSettings) GrantFor(name aiharness.Name, grantedAt time.Time) error {
+	if s == nil {
+		return fmt.Errorf("AI consent settings are required")
+	}
+	if !name.Valid() {
+		return fmt.Errorf("grant AI consent: %w %q", aiharness.ErrUnknownHarness, name)
+	}
+	grantedAt = grantedAt.UTC()
+	if s.Providers == nil {
+		s.Providers = make(map[string]AIProviderConsent)
+	}
+	timestamp := grantedAt
+	s.Providers[string(name)] = AIProviderConsent{Granted: true, GrantedAt: &timestamp}
+	if name == aiharness.Claude {
+		legacyTimestamp := grantedAt
+		s.Granted = true
+		s.GrantedAt = &legacyTimestamp
+	}
+	return nil
+}
+
+// Validate rejects provider-map keys that are not part of the supported
+// allowlist. It does not require grants for every provider.
+func (s AIConsentSettings) Validate() error {
+	for rawName := range s.Providers {
+		if _, err := aiharness.Parse(rawName); err != nil {
+			return fmt.Errorf("settings: ai_consent provider: %w", err)
+		}
+	}
+	return nil
 }
 
 // OnboardingProgress records the five durable first-run milestones. Each flag
@@ -548,6 +602,9 @@ func (s *Settings) Validate() error {
 	if s.UndoHistoryDepth != nil && *s.UndoHistoryDepth < 0 {
 		return fmt.Errorf("settings: undo_history_depth must be >= 0, got %d", *s.UndoHistoryDepth)
 	}
+	if err := s.AIConsent.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -602,10 +659,12 @@ func (a *AutomationConfig) RemoveProjectReferences(id, slug string) bool {
 // rather than the current data-directory path, selects its machine-local state.
 type MachineState struct {
 	// Editors and integrations.
-	Editor           string `json:"editor,omitempty"`
-	AttachmentEditor string `json:"attachment_editor,omitempty"`
-	CodeEditor       string `json:"code_editor,omitempty"`
-	ExternalEditor   string `json:"external_editor,omitempty"`
+	Editor           string            `json:"editor,omitempty"`
+	AttachmentEditor string            `json:"attachment_editor,omitempty"`
+	CodeEditor       string            `json:"code_editor,omitempty"`
+	ExternalEditor   string            `json:"external_editor,omitempty"`
+	AIHarness        string            `json:"ai_harness,omitempty"`
+	AIConfigDirs     map[string]string `json:"ai_config_dirs,omitempty"`
 
 	// Current navigation and active (non-saved) filter selections.
 	CurrentProject       string              `json:"current_project,omitempty"`
@@ -676,10 +735,28 @@ func NewMachineState() *MachineState {
 	}
 }
 
-// Validate reports problems with machine layout state.
+// Validate reports problems with machine-local preferences. Config-directory
+// existence is intentionally checked only when an explicit override is used,
+// so temporarily unavailable persisted directories remain loadable.
 func (m *MachineState) Validate() error {
 	if m.DashboardBottomLayout != nil && (*m.DashboardBottomLayout < 0 || *m.DashboardBottomLayout > 2) {
 		return fmt.Errorf("machine: dashboard_bottom_layout must be 0..2, got %d", *m.DashboardBottomLayout)
+	}
+	if m.AIHarness != "" {
+		if _, err := aiharness.Parse(m.AIHarness); err != nil {
+			return fmt.Errorf("machine: ai_harness: %w", err)
+		}
+	}
+	for rawName, path := range m.AIConfigDirs {
+		if _, err := aiharness.Parse(rawName); err != nil {
+			return fmt.Errorf("machine: ai_config_dirs: %w", err)
+		}
+		if path == "" {
+			return fmt.Errorf("machine: ai_config_dirs[%q] must contain an explicit path", rawName)
+		}
+		if !filepath.IsAbs(path) {
+			return fmt.Errorf("machine: ai_config_dirs[%q] must contain an absolute path", rawName)
+		}
 	}
 	return nil
 }

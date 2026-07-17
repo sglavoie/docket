@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/actionplan"
+	"github.com/sglavoie/tt/internal/aiharness"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
@@ -23,6 +26,8 @@ var (
 	askApply     bool
 	askNoContext bool
 	askRedact    bool
+	askHarness   string
+	askConfigDir string
 )
 
 var askCmd = &cobra.Command{
@@ -33,9 +38,13 @@ var askCmd = &cobra.Command{
 With explicit remembered consent, the assistant can receive context about the
 current project. Responses are strict structured action plans; --apply previews
 and confirms those actions before one transactional, undoable commit.
+Claude, Codex, and GitHub Copilot are supported. The TUI selection is the CLI
+default; --harness and --config-dir override one request without changing it.
 
 Examples:
   tt ask "what are my high priority tasks?"
+  tt ask --harness codex "turn this plan into tasks"
+  tt ask --harness copilot --config-dir ~/.copilot "what should I do next?"
   tt ask "create a bug for the login timeout issue" --apply
   tt ask --no-context "how do I use tt to manage dependencies?"`,
 	RunE: runAsk,
@@ -45,26 +54,54 @@ func init() {
 	rootCmd.AddCommand(askCmd)
 
 	askCmd.Flags().BoolVar(&askApply, "apply", false, "preview and apply accepted structured actions as one transaction")
+	askCmd.Flags().StringVar(&askHarness, "harness", "", "AI CLI harness: claude, codex, or copilot (default: remembered selection)")
+	askCmd.Flags().StringVar(&askConfigDir, "config-dir", "", "one-request configuration directory override for the selected harness")
 	askCmd.Flags().BoolVar(&askNoContext, "no-context", false, "skip project context in the prompt")
 	askCmd.Flags().BoolVar(&askRedact, "redact-context", false, "send task IDs and metadata but redact names and text")
+	_ = askCmd.RegisterFlagCompletionFunc("harness", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		return aiharness.AllowedValues(), cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 func runAsk(cmd *cobra.Command, args []string) error {
+	return runAskWithRunner(cmd, args, external.DefaultRunner, askInputIsInteractive(cmd.InOrStdin()))
+}
+
+type askRunner interface {
+	Run(context.Context, external.Request) (string, error)
+}
+
+// runAskWithRunner keeps the AI process boundary injectable without requiring
+// tests to replace package-global executables or the shared external runner.
+func runAskWithRunner(cmd *cobra.Command, args []string, runner askRunner, interactive bool) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("question")
 	}
-
-	if !external.ClaudeAvailable() {
-		return fmt.Errorf("claude CLI not found. Install it from https://claude.ai/cli")
-	}
 	if askNoContext && askRedact {
 		return fmt.Errorf("--no-context and --redact-context cannot be used together")
+	}
+	if runner == nil {
+		return fmt.Errorf("AI harness runner is unavailable")
 	}
 
 	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return err
 	}
+	harness, err := resolveAskHarness(workspace.Runtime.Machine(), askHarness)
+	if err != nil {
+		return err
+	}
+	initialHarness := harness
+	cliConfigDirSet := askConfigDir != "" || cmd.Flags().Changed("config-dir")
+	normalizedCLIConfigDir := askConfigDir
+	if cliConfigDirSet {
+		normalizedCLIConfigDir, err = aiharness.NormalizeExplicitConfigDir(askConfigDir)
+		if err != nil {
+			return fmt.Errorf("invalid --config-dir: %w", err)
+		}
+	}
+
 	reader := bufio.NewReader(cmd.InOrStdin())
 	out := cmd.OutOrStdout()
 
@@ -73,42 +110,37 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	if askRedact {
 		contextMode = external.TaskContextRedacted
 	}
-	var taskContext string
-
-	if !askNoContext {
-		consented, consentErr := ensureAIContextConsent(cmd, workspace, reader)
-		if consentErr != nil {
-			return consentErr
-		}
-		if consented {
-			project, loadErr := loadRuntimeCurrentProject(workspace)
-			if loadErr == nil {
-				taskContext = external.BuildTaskContextWithMode(project, contextMode)
-			}
-		}
-	}
-
 	var cliContext string
 	if CLIReference != "" {
 		cliContext = external.BuildCLIContext(CLIReference, query)
 	}
-	systemPrompt := external.BuildActionPlanPrompt(taskContext, cliContext)
 
-	ctx := context.Background()
-	response, err := external.ClaudeAsk(ctx, query, systemPrompt)
-	if err != nil {
-		return fmt.Errorf("failed to get response: %w", err)
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
 	}
-
-	plan, err := external.ParseActionPlan(response)
+	service := newWorkspaceAppService(workspace)
+	prepared, err := requestAskActionPlan(askPlanRequest{
+		cmd:          cmd,
+		workspace:    workspace,
+		runner:       runner,
+		reader:       reader,
+		out:          out,
+		service:      service,
+		ctx:          ctx,
+		query:        query,
+		cliContext:   cliContext,
+		contextMode:  contextMode,
+		initial:      initialHarness,
+		cliConfigDir: normalizedCLIConfigDir,
+		useCLIConfig: cliConfigDirSet,
+		noContext:    askNoContext,
+		interactive:  interactive,
+	})
 	if err != nil {
 		return err
 	}
-	service := newWorkspaceAppService(workspace)
-	prepared, err := service.PrepareActionPlan(plan)
-	if err != nil {
-		return translateAppError(err)
-	}
+
 	preview := prepared.Preview()
 	printActionPlanPreview(out, preview)
 	if !askApply || len(preview.Actions) == 0 {
@@ -146,6 +178,202 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+type askPlanRequest struct {
+	cmd          *cobra.Command
+	workspace    *CLIWorkspace
+	runner       askRunner
+	reader       *bufio.Reader
+	out          io.Writer
+	service      *app.Service
+	ctx          context.Context
+	query        string
+	cliContext   string
+	contextMode  external.TaskContextMode
+	initial      aiharness.Name
+	cliConfigDir string
+	useCLIConfig bool
+	noContext    bool
+	interactive  bool
+}
+
+func requestAskActionPlan(request askPlanRequest) (*app.PreparedActionPlan, error) {
+	harness := request.initial
+	tried := make(map[aiharness.Name]bool, len(aiharness.Names()))
+	contextDeclined := false
+	taskContextLoaded := false
+	var taskContext string
+
+	for {
+		configDir, err := resolveAskConfigDir(
+			request.workspace.Runtime.Machine(),
+			harness,
+			request.cliConfigDir,
+			request.useCLIConfig && harness == request.initial,
+		)
+		if err != nil && len(tried) == 0 {
+			return nil, err
+		}
+
+		tried[harness] = true
+		var attemptErr error
+		if err != nil {
+			attemptErr = err
+		} else {
+			requestTaskContext := ""
+			if !request.noContext && !contextDeclined {
+				consented, consentErr := ensureAIContextConsent(request.cmd, request.workspace, request.reader, harness)
+				if consentErr != nil {
+					return nil, consentErr
+				}
+				if !consented {
+					contextDeclined = true
+				} else {
+					if !taskContextLoaded {
+						project, loadErr := loadRuntimeCurrentProject(request.workspace)
+						if loadErr != nil {
+							safeLoadErr := actionplan.TerminalSafeDisplayText(loadErr.Error(), actionplan.DisplayTextSingleLine)
+							return nil, fmt.Errorf("failed to load the current project for AI context: %s; no AI request was sent; rerun with --no-context to continue without project context", safeLoadErr)
+						}
+						taskContext = external.BuildTaskContextWithMode(project, request.contextMode)
+						taskContextLoaded = true
+					}
+					requestTaskContext = taskContext
+				}
+			}
+
+			response, runErr := request.runner.Run(request.ctx, external.Request{
+				Harness:      harness,
+				ConfigDir:    configDir,
+				Query:        request.query,
+				SystemPrompt: external.BuildActionPlanPrompt(requestTaskContext, request.cliContext),
+			})
+			if runErr != nil {
+				attemptErr = fmt.Errorf("%s request failed: %w", harness.Label(), runErr)
+				if errors.Is(runErr, context.Canceled) || errors.Is(runErr, context.DeadlineExceeded) {
+					return nil, attemptErr
+				}
+			} else {
+				plan, parseErr := external.ParseActionPlan(response)
+				if parseErr != nil {
+					attemptErr = fmt.Errorf("%s returned an invalid action plan: %w", harness.Label(), parseErr)
+				} else {
+					prepared, prepareErr := request.service.PrepareActionPlan(plan)
+					if prepareErr == nil {
+						return prepared, nil
+					}
+					attemptErr = fmt.Errorf("%s action plan was rejected during preparation: %w", harness.Label(), translateAppError(prepareErr))
+				}
+			}
+		}
+
+		remaining := remainingAskHarnesses(tried)
+		if len(remaining) == 0 {
+			return nil, fmt.Errorf("%w; all supported AI harnesses were tried once", attemptErr)
+		}
+		if !request.interactive {
+			return nil, fmt.Errorf("%w; stdin is non-interactive, so retry is disabled; rerun with %s", attemptErr, askHarnessFlagGuidance(remaining))
+		}
+		next, retry, promptErr := promptAskRetry(request.reader, request.out, attemptErr, remaining)
+		if promptErr != nil {
+			return nil, promptErr
+		}
+		if !retry {
+			return nil, attemptErr
+		}
+		harness = next
+	}
+}
+
+func askInputIsInteractive(in io.Reader) bool {
+	file, ok := in.(*os.File)
+	if !ok {
+		return false
+	}
+	return isatty.IsTerminal(file.Fd()) || isatty.IsCygwinTerminal(file.Fd())
+}
+
+func resolveAskHarness(machine *config.MachineState, override string) (aiharness.Name, error) {
+	if override != "" {
+		name, err := aiharness.Parse(override)
+		if err != nil {
+			return "", fmt.Errorf("invalid --harness: %w", err)
+		}
+		return name, nil
+	}
+	return machine.GetAIHarness(), nil
+}
+
+// resolveAskConfigDir returns only an explicit directory override for the
+// process request. Environment and native-default sources intentionally remain
+// empty so the selected provider retains its inherited behavior. A one-request
+// CLI override belongs to the initial provider; interactive retries use each
+// alternative provider's remembered override instead of reusing another
+// provider's configuration directory.
+func resolveAskConfigDir(machine *config.MachineState, harness aiharness.Name, cliOverride string, useCLIOverride bool) (string, error) {
+	override := machine.GetAIConfigDir(harness)
+	if useCLIOverride {
+		override = cliOverride
+	}
+	resolved, err := aiharness.ResolveConfigDir(harness, override)
+	if err != nil {
+		return "", fmt.Errorf("resolve %s configuration directory: %w", harness.Label(), err)
+	}
+	if resolved.Source != aiharness.ConfigDirMachineOverride {
+		return "", nil
+	}
+	return resolved.Path, nil
+}
+
+func remainingAskHarnesses(tried map[aiharness.Name]bool) []aiharness.Name {
+	remaining := make([]aiharness.Name, 0, len(aiharness.Names()))
+	for _, name := range aiharness.Names() {
+		if !tried[name] {
+			remaining = append(remaining, name)
+		}
+	}
+	return remaining
+}
+
+func askHarnessFlagGuidance(harnesses []aiharness.Name) string {
+	flags := make([]string, len(harnesses))
+	for i, harness := range harnesses {
+		flags[i] = "--harness " + harness.String()
+	}
+	return strings.Join(flags, " or ")
+}
+
+func promptAskRetry(reader *bufio.Reader, out io.Writer, failure error, remaining []aiharness.Name) (aiharness.Name, bool, error) {
+	if _, err := fmt.Fprintf(out, "\nAI request failed before a valid preview: %s\n", actionplan.TerminalSafeDisplayText(failure.Error(), actionplan.DisplayTextSingleLine)); err != nil {
+		return "", false, fmt.Errorf("write AI retry failure: %w", err)
+	}
+	choices := make([]string, len(remaining))
+	allowed := make(map[aiharness.Name]bool, len(remaining))
+	for i, harness := range remaining {
+		choices[i] = harness.String()
+		allowed[harness] = true
+	}
+	for {
+		if _, err := fmt.Fprintf(out, "Retry with another harness? [%s/N] ", strings.Join(choices, "/")); err != nil {
+			return "", false, fmt.Errorf("write AI retry prompt: %w", err)
+		}
+		answer, err := reader.ReadString('\n')
+		if err != nil && answer == "" {
+			return "", false, fmt.Errorf("%w; failed to read retry choice: %w", failure, err)
+		}
+		answer = strings.TrimSpace(strings.ToLower(answer))
+		if answer == "" || answer == "n" || answer == "no" {
+			return "", false, nil
+		}
+		selected, parseErr := aiharness.Parse(answer)
+		if parseErr == nil && allowed[selected] {
+			return selected, true, nil
+		}
+		if _, writeErr := fmt.Fprintf(out, "Choose %s, or N to stop.\n", strings.Join(choices, ", ")); writeErr != nil {
+			return "", false, fmt.Errorf("write AI retry validation: %w", writeErr)
+		}
+	}
 }
 
 func selectCLIActionPlan(prepared *app.PreparedActionPlan, includeSafe, includeDestructive bool) *app.PreparedActionPlan {
@@ -292,12 +520,12 @@ func actionPlanTaskIDSet(ids []string) map[string]bool {
 	return set
 }
 
-func ensureAIContextConsent(cmd *cobra.Command, workspace *CLIWorkspace, reader *bufio.Reader) (bool, error) {
-	if workspace.Runtime.Settings().AIConsent.Granted {
+func ensureAIContextConsent(cmd *cobra.Command, workspace *CLIWorkspace, reader *bufio.Reader, harness aiharness.Name) (bool, error) {
+	if workspace.Runtime.Settings().AIConsent.GrantedFor(harness) {
 		return true, nil
 	}
 	out := cmd.OutOrStdout()
-	if _, writeErr := fmt.Fprintln(out, "AI context disclosure: tt can send the current project name and task content to the configured Claude CLI provider."); writeErr != nil {
+	if _, writeErr := fmt.Fprintf(out, "AI context disclosure: tt can send the current project name and task content to the configured %s CLI provider.\n", harness.Label()); writeErr != nil {
 		return false, fmt.Errorf("write AI context disclosure: %w", writeErr)
 	}
 	if _, writeErr := fmt.Fprint(out, "Remember consent and include task context? [y/N] "); writeErr != nil {
@@ -319,8 +547,9 @@ func ensureAIContextConsent(cmd *cobra.Command, workspace *CLIWorkspace, reader 
 		return false, err
 	}
 	now := time.Now().UTC()
-	domains.Settings.AIConsent.Granted = true
-	domains.Settings.AIConsent.GrantedAt = &now
+	if err := domains.Settings.AIConsent.GrantFor(harness, now); err != nil {
+		return false, err
+	}
 	if err := commitCLISettings(workspace, domains.Settings); err != nil {
 		return false, err
 	}

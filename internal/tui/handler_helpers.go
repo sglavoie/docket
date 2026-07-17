@@ -112,6 +112,30 @@ func (m *AppModel) setInfoStatus(msg string) {
 	m.messageLog.Append(msg, MessageLogLevelInfo)
 }
 
+// setWarningStatus sets a non-fatal warning while preserving the committed
+// operation's success semantics. Warnings use the neutral status surface and
+// retain their own severity in the message log.
+func (m *AppModel) setWarningStatus(msg string) {
+	m.statusMessage = msg
+	m.statusIsInfo = true
+	m.statusUpdatedAt = time.Now()
+	m.statusUndoCb = nil
+	m.statusExpiresAt = time.Time{}
+	m.messageLog.Append(msg, MessageLogLevelWarning)
+}
+
+// setBackgroundErrorStatus reports a background failure through the transient
+// status and message-log surfaces without replacing m.err, which may belong to
+// an unrelated operation that is still in flight.
+func (m *AppModel) setBackgroundErrorStatus(msg string) {
+	m.statusMessage = msg
+	m.statusIsInfo = true
+	m.statusUpdatedAt = time.Now()
+	m.statusUndoCb = nil
+	m.statusExpiresAt = time.Time{}
+	m.messageLog.Append(msg, MessageLogLevelError)
+}
+
 // UndoToastTimeout is how long a transient undo-available toast remains
 // dismissible by the inline `u` key before it auto-clears.
 const UndoToastTimeout = 6 * time.Second

@@ -6,43 +6,97 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/actionplan"
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 // Update implements tea.Model.
+//
+//nolint:gocyclo // Message-specific transitions form one explicit asynchronous state machine.
 func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
+	case AskPreferencesSavedMsg:
+		if m.state != askStateSavingPreferences || msg.OperationID == 0 || msg.OperationID != m.preferenceSaveID {
+			return m, nil
+		}
+		m.preferenceSaveID = 0
+		if msg.Err != nil {
+			m.state = askStateInput
+			m.pendingQuery = ""
+			m.inputError = renderAskError("Could not save AI harness preferences", msg.Err)
+			return m, m.focusAskField(askFocusQuery)
+		}
+		m.harness = msg.Harness
+		m.configDir = msg.ConfigDir
+		m.configDrafts = cloneAskConfigDrafts(msg.Drafts)
+		m.configInput.SetValue(msg.ConfigDir)
+		if m.project != nil && m.contextMode != external.TaskContextNone && !m.contextConsentGranted() {
+			m.consentSaveID = 0
+			m.state = askStateConsent
+			return m, nil
+		}
+		query := m.pendingQuery
+		return m, m.submitQuery(query)
+
 	case AskStreamStartMsg:
-		m.streamReader = msg.Reader
-		m.streamCmd = msg.Cmd
-		m.raw += msg.FirstText
-		m.response = m.raw
-		m.viewport.SetContent(m.renderResponse())
-		m.viewport.GotoBottom()
-		return m, m.readNextChunk()
+		if msg.RequestID != m.requestID {
+			if msg.Stream == nil {
+				return m, nil
+			}
+			msg.Stream.Cancel()
+			return m, waitForAskStreamCmd(msg.RequestID, msg.Stream, nil)
+		}
+		m.stream = msg.Stream
+		return m, m.readNextChunk(msg.RequestID, msg.Stream)
 
 	case AskStreamChunkMsg:
+		if msg.RequestID != m.requestID {
+			if msg.Stream == nil {
+				return m, nil
+			}
+			msg.Stream.Cancel()
+			return m, waitForAskStreamCmd(msg.RequestID, msg.Stream, msg.ReadErr)
+		}
+		if msg.Stream == nil {
+			return m, func() tea.Msg {
+				return AskStreamDoneMsg{RequestID: msg.RequestID, Err: errors.New("AI runner returned an empty stream")}
+			}
+		}
+		remaining := external.MaxHarnessOutputBytes - len(m.raw)
+		if remaining < 0 {
+			remaining = 0
+		}
+		if len(msg.Text) > remaining {
+			m.raw += msg.Text[:remaining]
+			m.response = actionplan.TerminalSafeDisplayText(m.raw, actionplan.DisplayTextMultiline)
+			m.viewport.SetContent(m.renderResponse())
+			m.viewport.GotoBottom()
+			msg.Stream.Cancel()
+			return m, waitForAskStreamCmd(msg.RequestID, msg.Stream, external.ErrHarnessOutputLimit)
+		}
 		m.raw += msg.Text
-		m.response = m.raw
+		m.response = actionplan.TerminalSafeDisplayText(m.raw, actionplan.DisplayTextMultiline)
 		m.viewport.SetContent(m.renderResponse())
 		m.viewport.GotoBottom()
-		return m, m.readNextChunk()
+		if msg.ReadErr != nil {
+			return m, waitForAskStreamCmd(msg.RequestID, msg.Stream, msg.ReadErr)
+		}
+		return m, m.readNextChunk(msg.RequestID, msg.Stream)
 
 	case AskStreamDoneMsg:
+		if msg.RequestID != m.requestID {
+			return m, nil
+		}
 		m.state = askStateResult
-		m.streamReader = nil
-		m.streamCmd = nil
+		m.stream = nil
 		// Release the context's child resources. Without this call the
 		// goroutine context.WithCancel spawns leaks until the parent is
 		// canceled — but the parent is context.Background(), which never is.
@@ -51,41 +105,55 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancelFn = nil
 		}
 		if msg.Err != nil {
-			m.response = fmt.Sprintf("Error: %v", msg.Err)
+			m.response = renderAskError("Error", msg.Err)
 		} else {
 			plan, parseErr := external.ParseActionPlan(m.raw)
 			if parseErr != nil {
-				m.response = fmt.Sprintf("Structured response rejected: %v", parseErr)
+				m.response = renderAskError("Structured response rejected", parseErr)
 			} else if m.service == nil {
 				m.response = "Structured response received, but the application service is unavailable."
 			} else {
 				prepared, prepareErr := m.service.PrepareActionPlan(plan)
 				if prepareErr != nil {
-					m.response = fmt.Sprintf("Action plan rejected: %v", prepareErr)
+					m.response = renderAskError("Action plan rejected", prepareErr)
 				} else {
 					m.prepared = prepared
 					m.response = renderActionPlanMarkdown(prepared.Preview())
 				}
 			}
 		}
+		if m.prepared == nil && m.requestQuery != "" {
+			m.failureQuery = m.requestQuery
+			m.failureContextMode = m.requestContextMode
+			m.reuseAvailable = true
+		}
 		m.viewport.SetContent(m.renderResponse())
 		m.viewport.GotoTop()
 		return m, nil
 
 	case AskConsentSavedMsg:
+		if m.state != askStateConsent || msg.OperationID == 0 || msg.OperationID != m.consentSaveID {
+			return m, nil
+		}
+		m.consentSaveID = 0
 		if msg.Err != nil {
 			m.state = askStateInput
-			m.response = fmt.Sprintf("Could not save AI context consent: %v", msg.Err)
-			m.textarea.Focus()
-			return m, textarea.Blink
+			m.pendingQuery = ""
+			m.inputError = renderAskError("Could not save AI context consent", msg.Err)
+			return m, m.focusAskField(askFocusQuery)
 		}
 		query := m.pendingQuery
 		m.pendingQuery = ""
 		return m, m.submitQuery(query)
 
 	case AskActionPlanAppliedMsg:
+		if m.state != askStateApplying || msg.OperationID == 0 || msg.OperationID != m.applyID {
+			return m, nil
+		}
+		m.applyID = 0
 		m.state = askStateResult
 		if msg.Err != nil {
+			safeErr := askErrorText(msg.Err)
 			switch {
 			case isStalePreparedActionPlanError(msg.Err):
 				m.prepared = nil
@@ -94,22 +162,18 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case shouldDiscardPreparedActionPlan(msg.Err):
 				m.prepared = nil
 				m.acceptedSafe = false
-				m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed, and this preview can no longer be applied. Request a fresh AI response: %v", msg.Err)
+				m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed, and this preview can no longer be applied. Request a fresh AI response: %s", safeErr)
 			default:
-				m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed: %v", msg.Err)
+				m.response += fmt.Sprintf("\n\nApply failed; no action plan was committed: %s", safeErr)
 			}
 		} else {
-			warning := repairAskActionPlanTaskRefs(m.runtime, msg.Result.DeletedTaskIDs, msg.PendingDomains)
 			// A successful plan is single-use. Clear executable state before
 			// returning to the result screen so the apply key and footer are disabled.
 			m.prepared = nil
 			m.acceptedSafe = false
 			m.response += fmt.Sprintf("\n\nApplied %d action(s).\n\nTransaction ID: `%s`  \nUndo ID: `%s`", len(msg.Result.Actions), msg.Result.TransactionID, msg.Result.UndoID)
-			if warning != nil {
-				m.response += fmt.Sprintf("\n\nWarning: the plan committed, but local reference repair was incomplete: %v", warning)
-			}
-			if m.project != nil {
-				_ = storage.LoadProject(m.project)
+			if msg.RepairWarning != nil {
+				m.response += fmt.Sprintf("\n\nWarning: the plan committed, but local reference repair was incomplete: %s", askErrorText(msg.RepairWarning))
 			}
 		}
 		m.viewport.SetContent(m.renderResponse())
@@ -123,6 +187,16 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.state == askStateLoading || m.state == askStateApplying {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+	}
+	if m.state == askStateInput {
+		var cmd tea.Cmd
+		switch m.focusIndex {
+		case askFocusQuery:
+			m.textarea, cmd = m.textarea.Update(msg)
+		case askFocusConfigDir:
+			m.configInput, cmd = m.configInput.Update(msg)
+		}
 		return m, cmd
 	}
 
@@ -144,57 +218,82 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			if query == "" {
 				return m, nil
 			}
-			if m.project != nil && m.contextMode != external.TaskContextNone && !m.contextConsentGranted() {
-				m.pendingQuery = query
-				m.state = askStateConsent
-				m.textarea.Blur()
-				return m, nil
-			}
-			return m, m.submitQuery(query)
+			return m, m.beginAskSubmission(query)
 		case "ctrl+t":
 			m.cycleContextMode()
 			return m, nil
+		case "tab":
+			return m, m.cycleAskFocus(1)
+		case "shift+tab":
+			return m, m.cycleAskFocus(-1)
+		case "left":
+			if m.focusIndex == askFocusHarness {
+				m.changeHarness(-1)
+				return m, nil
+			}
+		case "right":
+			if m.focusIndex == askFocusHarness {
+				m.changeHarness(1)
+				return m, nil
+			}
 		default:
+			switch m.focusIndex {
+			case askFocusQuery:
+				var cmd tea.Cmd
+				m.textarea, cmd = m.textarea.Update(msg)
+				return m, cmd
+			case askFocusConfigDir:
+				var cmd tea.Cmd
+				m.configInput, cmd = m.configInput.Update(msg)
+				m.syncConfigDraft()
+				m.inputError = ""
+				return m, cmd
+			default:
+				return m, nil
+			}
+		}
+		if m.focusIndex == askFocusQuery {
 			var cmd tea.Cmd
 			m.textarea, cmd = m.textarea.Update(msg)
 			return m, cmd
 		}
+		if m.focusIndex == askFocusConfigDir {
+			var cmd tea.Cmd
+			m.configInput, cmd = m.configInput.Update(msg)
+			m.syncConfigDraft()
+			m.inputError = ""
+			return m, cmd
+		}
+		return m, nil
+
+	case askStateSavingPreferences:
+		return m, nil
 
 	case askStateConsent:
 		switch strings.ToLower(msg.String()) {
 		case "y":
 			return m, m.saveContextConsent()
 		case "n":
+			m.consentSaveID = 0
 			m.contextMode = external.TaskContextNone
 			query := m.pendingQuery
 			m.pendingQuery = ""
 			return m, m.submitQuery(query)
 		case "esc":
+			m.consentSaveID = 0
 			m.state = askStateInput
 			m.pendingQuery = ""
-			m.textarea.Focus()
-			return m, textarea.Blink
+			return m, m.focusAskField(askFocusQuery)
 		}
 
 	case askStateLoading:
 		if msg.String() == "esc" {
-			if m.cancelFn != nil {
-				m.cancelFn()
-			}
-			// Close the reader pipe and reap the child process to prevent
-			// zombie processes. The context cancellation kills the subprocess,
-			// but Wait() is still needed to release OS resources.
-			if m.streamReader != nil {
-				_ = m.streamReader.Close()
-			}
-			if m.streamCmd != nil {
-				_ = m.streamCmd.Wait()
-			}
+			// Stream cancellation is non-blocking. The outstanding read command
+			// observes closure, waits for process cleanup, and returns a stale
+			// completion that the replacement request ID safely ignores.
+			m.cancelActiveRequest()
 			m.state = askStateInput
-			m.streamReader = nil
-			m.streamCmd = nil
-			m.textarea.Focus()
-			return m, textarea.Blink
+			return m, m.focusAskField(askFocusQuery)
 		}
 
 	case askStateResult:
@@ -202,6 +301,9 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return BackMsg{} }
 		case "a":
+			if m.prepared == nil {
+				return m, nil
+			}
 			preview := m.prepared.Preview()
 			if len(preview.Actions) > 0 {
 				m.acceptedSafe = false
@@ -215,12 +317,29 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "n":
 			m.state = askStateInput
 			m.textarea.Reset()
-			m.textarea.Focus()
+			m.inputError = ""
 			m.response = ""
 			m.raw = ""
 			m.prepared = nil
 			m.acceptedSafe = false
-			return m, textarea.Blink
+			m.failureQuery = ""
+			m.reuseAvailable = false
+			return m, m.focusAskField(askFocusQuery)
+		case "r":
+			if !m.reuseAvailable {
+				return m, nil
+			}
+			m.state = askStateInput
+			m.textarea.SetValue(m.failureQuery)
+			m.contextMode = m.failureContextMode
+			m.inputError = ""
+			m.response = ""
+			m.raw = ""
+			m.prepared = nil
+			m.acceptedSafe = false
+			m.failureQuery = ""
+			m.reuseAvailable = false
+			return m, m.focusAskField(askFocusQuery)
 		default:
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
@@ -278,23 +397,36 @@ func (m *AskViewModel) cycleContextMode() {
 }
 
 func (m *AskViewModel) saveContextConsent() tea.Cmd {
+	operationID := nextAskOperationID()
+	m.consentSaveID = operationID
 	runtime := m.runtime
+	harness := m.harness
 	return func() tea.Msg {
 		if runtime == nil {
-			return AskConsentSavedMsg{Err: fmt.Errorf("runtime state is unavailable")}
+			return AskConsentSavedMsg{OperationID: operationID, Err: fmt.Errorf("runtime state is unavailable")}
 		}
 		domains, err := runtime.CloneDomains()
 		if err != nil {
-			return AskConsentSavedMsg{Err: err}
+			return AskConsentSavedMsg{OperationID: operationID, Err: err}
 		}
 		now := time.Now().UTC()
-		domains.Settings.AIConsent = config.AIConsentSettings{Granted: true, GrantedAt: &now}
+		if err := domains.Settings.AIConsent.GrantFor(harness, now); err != nil {
+			return AskConsentSavedMsg{OperationID: operationID, Err: err}
+		}
 		if runtime.DataDir() == "" {
 			runtime.SetSettingsInMemory(domains.Settings)
-			return AskConsentSavedMsg{}
+			return AskConsentSavedMsg{OperationID: operationID}
 		}
-		return AskConsentSavedMsg{Err: runtime.CommitPortableSettings(domains.Settings)}
+		return AskConsentSavedMsg{OperationID: operationID, Err: runtime.CommitPortableSettings(domains.Settings)}
 	}
+}
+
+func renderAskError(prefix string, err error) string {
+	return fmt.Sprintf("%s: %s", prefix, askErrorText(err))
+}
+
+func askErrorText(err error) string {
+	return actionplan.TerminalSafeDisplayText(err.Error(), actionplan.DisplayTextMultiline)
 }
 
 func (m *AskViewModel) applyAcceptedPlan(includeDestructive bool) tea.Cmd {

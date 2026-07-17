@@ -262,8 +262,9 @@ layout so it remains an exhaustive cross-view reference.
 
 Press : to open the command palette, then type ask ai to launch
 the AI assistant. It can answer questions about your tasks,
-suggest next steps, and generate tt commands. Requires the
-claude CLI to be installed.`,
+suggest next steps, and propose structured task actions. Choose
+Claude, Codex, or GitHub Copilot in the input screen; the selected
+provider's CLI must be installed.`,
 		},
 		{
 			Title:    "Inbox Processing",

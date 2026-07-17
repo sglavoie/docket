@@ -20,6 +20,18 @@ func (m *AskViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("ctrl+t", "Cycle AI context (full/redacted/off)", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),
+		keymap.Bind("tab", "Focus next Ask AI field", "Navigate", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
+		keymap.Bind("shift+tab", "Focus previous Ask AI field", "Navigate", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
+		keymap.Bind("left", "Previous AI harness (selector)", "Navigate", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
+		keymap.Bind("right", "Next AI harness (selector)", "Navigate", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
 	)
 
 	// Result state keys
@@ -30,10 +42,13 @@ func (m *AskViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("n", "New query (result)", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),
+		keymap.Bind("r", "Reuse failed request without sending", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
 	)
 
 	return &keymap.KeyMap{
-		ViewName: "AI Assistant",
+		ViewName: "Ask AI",
 		Entries:  entries,
 	}
 }

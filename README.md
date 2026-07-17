@@ -48,17 +48,26 @@ If you prefer asking from the shell:
 
 ```bash
 tt ask "what should I work on next?"
+tt ask --harness codex "turn this plan into tasks"
+tt ask --harness copilot --config-dir ~/.copilot "what should I do next?"
 tt ask "create a bug for the login issue" --apply
 tt ask --redact-context "which task is most urgent?"
 tt ask --no-context "how do workflow states work?"
 ```
 
+Ask AI supports the Claude, Codex, and GitHub Copilot CLIs. The TUI remembers
+the selected harness and an optional configuration directory for each harness;
+the CLI consumes those defaults. `--harness` and `--config-dir` are one-request
+overrides and do not change the remembered TUI selection. Without an explicit
+directory, each CLI uses its provider environment variable or native default.
+
 Task context is opt-in: the first contextual request shows a disclosure and can
-remember consent in portable settings. `--redact-context` sends only opaque
+remember consent in portable settings for that harness. Legacy consent applies
+only to Claude; Codex and Copilot ask independently. `--redact-context` sends only opaque
 stable project/task IDs and non-text metadata, omitting project names and slugs,
 qualified task references, titles, descriptions, and tags. `--no-context` sends
 none; the TUI cycles the same modes with `Ctrl+T`.
-Claude returns a versioned structured action plan, which tt validates and previews
+The selected provider returns a versioned structured action plan, which tt validates and previews
 locally. Safe actions receive one batch confirmation, destructive actions require
 a separate approval, and every accepted plan commits as one undoable transaction.
 The preview and accepted risk selection stay bound to the exact workspace snapshot
@@ -225,7 +234,7 @@ tt doctor --fix
 
 tt can integrate with external tools when they are available:
 
-- Claude CLI for AI-assisted queries
+- Claude, Codex, or GitHub Copilot CLI for AI-assisted queries
 - glow for markdown rendering
 - fzf for enhanced selection flows
 - Configured editor (`editor`) for blocking task and note edits

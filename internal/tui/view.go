@@ -107,6 +107,12 @@ type ViewExitResetter interface {
 	OnExit()
 }
 
+// ViewResumeHandler is implemented by views that need to restart visible-only
+// work after a covering view is popped from the stack.
+type ViewResumeHandler interface {
+	OnResume() tea.Cmd
+}
+
 // ZenModeView is implemented by views that support a zen focus mode. When
 // IsZenMode returns true, the app shell suppresses transient status bar
 // overlays so the view is presented without any chrome.

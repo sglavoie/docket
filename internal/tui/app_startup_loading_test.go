@@ -145,8 +145,8 @@ func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
-	if err := os.WriteFile(catalogPath, []byte("{broken"), config.FilePermissions); err != nil {
-		t.Fatalf("corrupt catalog: %v", err)
+	if writeErr := os.WriteFile(catalogPath, []byte("{broken"), config.FilePermissions); writeErr != nil {
+		t.Fatalf("corrupt catalog: %v", writeErr)
 	}
 
 	previousLogOutput := log.Writer()
@@ -167,11 +167,11 @@ func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
 		t.Fatalf("runtime project = %+v, want unchanged ColorSlot 0 after failed commit", project)
 	}
 
-	if err := os.WriteFile(catalogPath, original, config.FilePermissions); err != nil {
-		t.Fatalf("restore catalog: %v", err)
+	if writeErr := os.WriteFile(catalogPath, original, config.FilePermissions); writeErr != nil {
+		t.Fatalf("restore catalog: %v", writeErr)
 	}
-	if err := app.ensureProjectColorSlots(); err != nil {
-		t.Fatalf("retry ensureProjectColorSlots: %v", err)
+	if repairErr := app.ensureProjectColorSlots(); repairErr != nil {
+		t.Fatalf("retry ensureProjectColorSlots: %v", repairErr)
 	}
 	project := app.projectByID("legacy")
 	if project == nil || project.ColorSlot == 0 {

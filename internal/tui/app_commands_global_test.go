@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestGlobalCommands_Help(t *testing.T) {
 	app := newTestAppModel()
@@ -86,6 +89,11 @@ func TestGlobalCommands_AskAI(t *testing.T) {
 	cmd := findCommand(cmds, "ask ai")
 	if cmd == nil {
 		t.Fatal("expected 'ask ai' command")
+	}
+	for _, alias := range []string{"claude", "codex", "copilot"} {
+		if !slices.Contains(cmd.Aliases, alias) {
+			t.Errorf("ask ai aliases = %v, missing %q", cmd.Aliases, alias)
+		}
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowAskMsg); !ok {

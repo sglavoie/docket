@@ -192,8 +192,8 @@ func TestDomainFileStore_LoadCatalogAllowsRepairableOutOfRangeColorSlots(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, raw, FilePermissions); err != nil {
-		t.Fatal(err)
+	if writeErr := os.WriteFile(path, raw, FilePermissions); writeErr != nil {
+		t.Fatal(writeErr)
 	}
 
 	loaded, rev, err := NewDomainFileStore(dataDir).LoadCatalogChecked()

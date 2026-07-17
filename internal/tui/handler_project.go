@@ -125,6 +125,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		m.pruneDeletedTaskRefs()
 		// Pop back to dashboard since the project no longer exists
+		m.exitAskView()
 		m.viewStack = m.viewStack[:1]
 		if m.dashboard != nil {
 			m.dashboard.Refresh()

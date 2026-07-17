@@ -15,6 +15,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			stack := debug.Stack()
 			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
 			m.err = fmt.Errorf("internal error: %v", r)
+			m.exitAskView()
 			if len(m.viewStack) == 0 || m.currentView() != ViewDashboard {
 				m.viewStack = []ViewType{ViewDashboard}
 			}
@@ -58,6 +59,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	}
 
 	if handled, cmd := m.handleGlobalMessage(msg); handled {
+		return m, cmd
+	}
+	if handled, cmd := m.handleAskMessage(msg); handled {
 		return m, cmd
 	}
 

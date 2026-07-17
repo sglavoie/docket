@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,6 +16,23 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+func askActionPlanAppliedMessage(t *testing.T, cmd tea.Cmd) AskActionPlanAppliedMsg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("nil apply command")
+	}
+	batch, ok := cmd().(tea.BatchMsg)
+	if !ok || len(batch) != 2 {
+		t.Fatalf("apply command = %#v, want completion plus spinner batch", batch)
+	}
+	raw := batch[0]()
+	msg, ok := raw.(AskActionPlanAppliedMsg)
+	if !ok {
+		t.Fatalf("apply completion = %T, want AskActionPlanAppliedMsg", raw)
+	}
+	return msg
+}
 
 // TestAskStreamDoneCallsCancelFn ensures that when streaming completes, the
 // context cancel function is invoked rather than just dropped. Dropping it
@@ -48,7 +66,9 @@ func TestAskViewRequiresFirstUseConsentAndOffersContextControls(t *testing.T) {
 	m := NewAskViewModelWithDeps(project, "", runtime, nil)
 	m.textarea.SetValue("what should I do?")
 
-	if _, cmd := m.handleKey(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}); cmd != nil {
+	if _, cmd := m.handleKey(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}); cmd == nil {
+		t.Fatal("first contextual submit should persist harness preferences before consent")
+	} else if next := driveAskPreferenceSave(t, m, cmd); next != nil {
 		t.Fatal("first contextual submit should pause for consent without starting provider command")
 	}
 	if m.state != askStateConsent {
@@ -124,11 +144,15 @@ func TestAskActionPlanSuccessClearsPlanAndPreventsSecondCreate(t *testing.T) {
 	if applyCmd == nil {
 		t.Fatal("safe confirmation did not produce an apply command")
 	}
-	msg := applyCmd()
-	if applied, ok := msg.(AskActionPlanAppliedMsg); !ok || applied.Err != nil {
+	msg := askActionPlanAppliedMessage(t, applyCmd)
+	if msg.Err != nil {
 		t.Fatalf("apply message = %#v", msg)
 	}
-	_, _ = m.Update(msg)
+	appModel := newTestAppModel()
+	setTestAppProjects(appModel, project)
+	appModel.views.Register(ViewAsk, m)
+	appModel.pushView(ViewAsk)
+	_, _ = appModel.Update(msg)
 
 	if m.prepared != nil {
 		t.Fatal("successful apply retained executable prepared state")
@@ -167,7 +191,8 @@ func TestAskActionPlanFailurePreservesPlanForRetry(t *testing.T) {
 	m.state = askStateApplying
 	m.prepared = prepared
 
-	_, _ = m.Update(AskActionPlanAppliedMsg{Err: errors.New("commit failed")})
+	m.applyID = nextAskOperationID()
+	_, _ = m.Update(AskActionPlanAppliedMsg{OperationID: m.applyID, Err: errors.New("commit failed")})
 	if m.prepared != prepared {
 		t.Fatal("retryable apply failure discarded prepared state")
 	}
@@ -197,8 +222,8 @@ func TestAskActionPlanRiskSelectionsPreserveOriginalIndexes(t *testing.T) {
 			if cmd == nil {
 				t.Fatal("accepted risk selection did not produce an apply command")
 			}
-			msg, ok := cmd().(AskActionPlanAppliedMsg)
-			if !ok || msg.Err != nil {
+			msg := askActionPlanAppliedMessage(t, cmd)
+			if msg.Err != nil {
 				t.Fatalf("apply message = %#v", msg)
 			}
 			if len(msg.Result.Actions) != len(tc.wantIndexes) {
@@ -247,8 +272,8 @@ func TestAskActionPlanDriftWhileConfirmationOpenClearsPreparedState(t *testing.T
 	if applyCmd == nil {
 		t.Fatal("safe confirmation did not produce an apply command")
 	}
-	msg := applyCmd()
-	if applied, ok := msg.(AskActionPlanAppliedMsg); !ok || !errors.Is(applied.Err, storage.ErrStaleRevision) {
+	msg := askActionPlanAppliedMessage(t, applyCmd)
+	if !errors.Is(msg.Err, storage.ErrStaleRevision) {
 		t.Fatalf("drift apply message = %#v, want stale revision", msg)
 	}
 	_, _ = m.Update(msg)
@@ -279,8 +304,9 @@ func TestAskActionPlanStaleProjectAndArtifactFailuresClearState(t *testing.T) {
 			m.prepared = prepared
 			m.acceptedSafe = true
 			m.response = renderActionPlanMarkdown(prepared.Preview())
+			m.applyID = nextAskOperationID()
 
-			_, _ = m.Update(AskActionPlanAppliedMsg{Err: tc.err})
+			_, _ = m.Update(AskActionPlanAppliedMsg{OperationID: m.applyID, Err: tc.err})
 			if m.prepared != nil || m.acceptedSafe {
 				t.Fatalf("stale %s failure retained executable state", tc.name)
 			}
@@ -296,8 +322,9 @@ func TestAskActionPlanNonRetryableFailureClearsPreparedState(t *testing.T) {
 	m := NewAskViewModelWithDeps(project, "", config.EmptyRuntimeState(""), service)
 	m.state = askStateApplying
 	m.prepared = prepared
+	m.applyID = nextAskOperationID()
 
-	_, _ = m.Update(AskActionPlanAppliedMsg{Err: app.ErrPreparedActionPlanConsumed})
+	_, _ = m.Update(AskActionPlanAppliedMsg{OperationID: m.applyID, Err: app.ErrPreparedActionPlanConsumed})
 	if m.prepared != nil {
 		t.Fatal("non-retryable prepared-plan failure retained executable state")
 	}
@@ -353,11 +380,16 @@ func TestAskActionPlanDeleteCleansPlanningAndMachineSubtreeRefs(t *testing.T) {
 	if applyCmd == nil {
 		t.Fatal("delete plan did not produce an apply command")
 	}
-	msg := applyCmd()
-	if applied, ok := msg.(AskActionPlanAppliedMsg); !ok || applied.Err != nil {
+	msg := askActionPlanAppliedMessage(t, applyCmd)
+	if msg.Err != nil {
 		t.Fatalf("delete apply message = %#v", msg)
 	}
-	_, _ = m.Update(msg)
+	appModel := newTestAppModel()
+	appModel.runtime = runtime
+	setTestAppProjects(appModel, project)
+	appModel.views.Register(ViewAsk, m)
+	appModel.pushView(ViewAsk)
+	_, _ = appModel.Update(msg)
 
 	if got := runtime.Planning(); len(got.FocusQueue) != 1 || got.FocusQueue[0].TaskID != survivor.ID ||
 		len(got.DailyPlan) != 1 || got.DailyPlan[0].TaskID != survivor.ID ||
@@ -373,6 +405,340 @@ func TestAskActionPlanDeleteCleansPlanningAndMachineSubtreeRefs(t *testing.T) {
 	if len(project.Tasks) != 1 || project.Tasks[0].ID != survivor.ID {
 		t.Fatalf("TUI AI delete removed outside the reviewed subtree: %#v", project.Tasks)
 	}
+}
+
+func TestAskActionPlanCompletionRequiresMatchingApplyIdentityAndState(t *testing.T) {
+	result := app.ActionPlanResult{
+		TransactionID: "tx-stale",
+		UndoID:        "undo-stale",
+		Actions:       []app.ActionPreview{{Index: 1}},
+	}
+
+	t.Run("wrong ID", func(t *testing.T) {
+		m := NewAskViewModel(nil, "")
+		m.state = askStateApplying
+		m.applyID = nextAskOperationID()
+		m.response = "reviewed preview"
+
+		_, cmd := m.Update(AskActionPlanAppliedMsg{OperationID: nextAskOperationID(), Result: result})
+		if cmd != nil || m.state != askStateApplying || m.applyID == 0 || m.response != "reviewed preview" {
+			t.Fatalf("wrong-ID completion mutated Ask: state=%v id=%d response=%q cmd=%v", m.state, m.applyID, m.response, cmd)
+		}
+	})
+
+	t.Run("wrong state", func(t *testing.T) {
+		m := NewAskViewModel(nil, "")
+		m.state = askStateInput
+		m.applyID = nextAskOperationID()
+		m.response = "new instance input"
+
+		_, cmd := m.Update(AskActionPlanAppliedMsg{OperationID: m.applyID, Result: result})
+		if cmd != nil || m.state != askStateInput || m.applyID == 0 || m.response != "new instance input" {
+			t.Fatalf("wrong-state completion mutated Ask: state=%v id=%d response=%q cmd=%v", m.state, m.applyID, m.response, cmd)
+		}
+	})
+
+	t.Run("zero ID", func(t *testing.T) {
+		m := NewAskViewModel(nil, "")
+		m.state = askStateApplying
+		m.applyID = nextAskOperationID()
+		m.response = "active"
+
+		_, _ = m.Update(AskActionPlanAppliedMsg{Result: result})
+		if m.state != askStateApplying || m.applyID == 0 || m.response != "active" {
+			t.Fatalf("zero-ID completion mutated Ask: state=%v id=%d response=%q", m.state, m.applyID, m.response)
+		}
+	})
+}
+
+func TestAskActionPlanApplyingSpinnerAndEscape(t *testing.T) {
+	m := NewAskViewModelWithDeps(nil, "", config.EmptyRuntimeState(""), nil)
+	cmd := m.applyPlan(nil, false)
+	if cmd == nil || m.state != askStateApplying || m.applyID == 0 {
+		t.Fatalf("apply start = state %v id %d cmd %v", m.state, m.applyID, cmd)
+	}
+	operationID := m.applyID
+	batch, ok := cmd().(tea.BatchMsg)
+	if !ok || len(batch) != 2 {
+		t.Fatalf("apply command = %#v, want completion plus fresh spinner tick", batch)
+	}
+	completion, ok := batch[0]().(AskActionPlanAppliedMsg)
+	if !ok || completion.OperationID != operationID || completion.Err == nil {
+		t.Fatalf("apply completion = %#v, want matching unavailable-service failure", completion)
+	}
+	spinnerTick := batch[1]()
+	if _, next := m.Update(spinnerTick); next == nil {
+		t.Fatal("fresh applying spinner tick did not continue the animation chain")
+	}
+
+	_, escapeCmd := m.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if escapeCmd != nil || m.state != askStateApplying || m.applyID != operationID {
+		t.Fatalf("applying escape = state %v id %d cmd %v", m.state, m.applyID, escapeCmd)
+	}
+	m.OnExit()
+	if m.state != askStateApplying || m.applyID != operationID {
+		t.Fatalf("applying exit invalidated transaction tracking: state=%v id=%d", m.state, m.applyID)
+	}
+}
+
+func TestAskActionPlanShellCompletionIsExactlyOnce(t *testing.T) {
+	appModel := newTestAppModel()
+	ask := NewAskViewModelWithDeps(nil, "", appModel.runtime, nil)
+	ask.state = askStateApplying
+	ask.applyID = nextAskOperationID()
+	ask.response = "reviewed preview"
+	appModel.views.Register(ViewAsk, ask)
+	appModel.pushView(ViewAsk)
+	msg := AskActionPlanAppliedMsg{
+		OperationID: ask.applyID,
+		Result: app.ActionPlanResult{
+			TransactionID: "tx-once",
+			UndoID:        "undo-once",
+			Actions:       []app.ActionPreview{{Index: 1}},
+		},
+	}
+
+	_, _ = appModel.Update(msg)
+	if ask.state != askStateResult || ask.applyID != 0 || strings.Count(ask.response, "Applied 1 action(s).") != 1 {
+		t.Fatalf("first completion = state %v id %d response %q", ask.state, ask.applyID, ask.response)
+	}
+	if appModel.statusMessage != "" || len(appModel.messageLog.Entries()) != 0 {
+		t.Fatalf("visible completion unexpectedly reported globally: status=%q log=%#v", appModel.statusMessage, appModel.messageLog.Entries())
+	}
+
+	_, _ = appModel.Update(msg)
+	if ask.state != askStateResult || strings.Count(ask.response, "Applied 1 action(s).") != 1 {
+		t.Fatalf("duplicate completion caused a second transition: state=%v response=%q", ask.state, ask.response)
+	}
+	if appModel.statusMessage != "" || len(appModel.messageLog.Entries()) != 0 || len(appModel.handledAskApplyIDs) != 1 {
+		t.Fatalf("duplicate completion escaped exactly-once gate: status=%q log=%#v handled=%d", appModel.statusMessage, appModel.messageLog.Entries(), len(appModel.handledAskApplyIDs))
+	}
+}
+
+func TestAskActionPlanShellReloadsEveryTouchedProjectAndInvalidatesCaches(t *testing.T) {
+	root := t.TempDir()
+	projects := make([]*models.Project, 0, 2)
+	for i, id := range []string{"ask-touched-alpha", "ask-touched-beta"} {
+		project, err := models.NewProject(id, id, "")
+		if err != nil {
+			t.Fatalf("NewProject(%s): %v", id, err)
+		}
+		project.Path = filepath.Join(root, "projects", project.Slug)
+		task, err := models.NewTask(id+"-task", i+1, models.TaskTypeTask, "Persisted "+id)
+		if err != nil {
+			t.Fatalf("NewTask(%s): %v", id, err)
+		}
+		project.Tasks = []*models.Task{task}
+		project.NextShortID = i + 2
+		project.BuildTaskTree()
+		if err := storage.SaveProject(project); err != nil {
+			t.Fatalf("SaveProject(%s): %v", id, err)
+		}
+		projects = append(projects, project)
+	}
+
+	appModel := newTestAppModel()
+	setTestAppProjects(appModel, projects...)
+	for _, project := range projects {
+		project.Tasks = nil
+	}
+	appModel.priorityViewFilterCache = map[string]*PriorityViewCache{"stale": {}}
+	appModel.allTasksFilterCache = &AllTasksCache{}
+	ask := NewAskViewModelWithDeps(nil, "", appModel.runtime, nil)
+	ask.state = askStateApplying
+	ask.applyID = nextAskOperationID()
+	appModel.views.Register(ViewAsk, ask)
+	appModel.pushView(ViewAsk)
+
+	_, _ = appModel.Update(AskActionPlanAppliedMsg{
+		OperationID: ask.applyID,
+		Result: app.ActionPlanResult{
+			TransactionID:   "tx-projects",
+			UndoID:          "undo-projects",
+			TouchedProjects: []string{projects[0].ID, projects[1].ID},
+			Actions:         []app.ActionPreview{{Index: 1}},
+		},
+	})
+
+	for _, project := range projects {
+		if len(project.Tasks) != 1 || !strings.Contains(project.Tasks[0].Title, project.ID) {
+			t.Fatalf("project %s was not reloaded from disk: %#v", project.ID, project.Tasks)
+		}
+	}
+	if len(appModel.priorityViewFilterCache) != 0 || appModel.allTasksFilterCache != nil {
+		t.Fatalf("task/filter caches were not invalidated: priority=%#v all=%#v", appModel.priorityViewFilterCache, appModel.allTasksFilterCache)
+	}
+}
+
+//nolint:gocyclo // The outcome matrix keeps covered and replaced completion behavior comparable in one regression.
+func TestAskActionPlanCoveredAndReplacedOutcomes(t *testing.T) {
+	outcomes := []struct {
+		name      string
+		err       error
+		warning   bool
+		retryable bool
+		discarded bool
+	}{
+		{name: "success"},
+		{name: "retryable failure", err: errors.New("commit unavailable"), retryable: true},
+		{name: "non-retryable failure", err: app.ErrPreparedActionPlanConsumed, discarded: true},
+		{name: "repair warning", warning: true},
+	}
+
+	for _, placement := range []string{"covered", "replaced"} {
+		for _, outcome := range outcomes {
+			t.Run(placement+"/"+outcome.name, func(t *testing.T) {
+				_, _, prepared := newAskMixedPreparedPlan(t, "ask-background-"+strings.ReplaceAll(placement+"-"+outcome.name, " ", "-"))
+				appModel := newTestAppModel()
+				unrelatedErr := errors.New("unrelated operation error")
+				appModel.isLoading = true
+				appModel.loadingMessage = "Unrelated operation in progress..."
+				appModel.err = unrelatedErr
+				if outcome.warning {
+					blockedPath := filepath.Join(t.TempDir(), "not-a-directory")
+					if err := os.WriteFile(blockedPath, []byte("block domain reload"), 0o600); err != nil {
+						t.Fatalf("WriteFile: %v", err)
+					}
+					appModel.runtime = config.NewRuntimeState(blockedPath, config.NewDomains())
+				}
+				origin := NewAskViewModelWithDeps(nil, "", appModel.runtime, nil)
+				origin.state = askStateApplying
+				origin.applyID = nextAskOperationID()
+				origin.prepared = prepared
+				origin.response = "reviewed preview"
+				appModel.views.Register(ViewAsk, origin)
+				appModel.pushView(ViewAsk)
+
+				var replacement *AskViewModel
+				switch placement {
+				case "covered":
+					appModel.showView(ViewMessageLog, NewMessageLogViewModel(nil))
+				case "replaced":
+					replacement = NewAskViewModelWithDeps(nil, "", appModel.runtime, nil)
+					replacement.response = "replacement input"
+					appModel.showView(ViewAsk, replacement)
+				}
+
+				result := app.ActionPlanResult{
+					TransactionID: "tx-background",
+					UndoID:        "undo-background",
+					Actions:       []app.ActionPreview{{Index: 1}},
+				}
+				if outcome.warning {
+					result.DeletedTaskIDs = []string{"deleted-task"}
+				}
+				_, _ = appModel.Update(AskActionPlanAppliedMsg{
+					OperationID:    origin.applyID,
+					Result:         result,
+					PendingDomains: config.NewDomains(),
+					Err:            outcome.err,
+				})
+
+				if placement == "covered" {
+					if appModel.currentView() != ViewMessageLog {
+						t.Fatalf("covered completion changed current view to %v", appModel.currentView())
+					}
+					if origin.state != askStateResult || origin.applyID != 0 {
+						t.Fatalf("covered Ask did not receive completion: state=%v id=%d", origin.state, origin.applyID)
+					}
+					if outcome.retryable && origin.prepared != prepared {
+						t.Fatal("covered retryable failure discarded prepared plan")
+					}
+					if (outcome.discarded || outcome.err == nil) && origin.prepared != nil {
+						t.Fatal("covered terminal outcome retained prepared plan")
+					}
+					if outcome.warning && !strings.Contains(origin.response, "Warning:") {
+						t.Fatalf("covered warning was not rendered in Ask result: %q", origin.response)
+					}
+				} else {
+					if replacement.state != askStateInput || replacement.applyID != 0 || replacement.response != "replacement input" {
+						t.Fatalf("replacement Ask was mutated: state=%v id=%d response=%q", replacement.state, replacement.applyID, replacement.response)
+					}
+					if origin.state != askStateApplying || origin.applyID == 0 {
+						t.Fatalf("unregistered origin was unexpectedly mutated: state=%v id=%d", origin.state, origin.applyID)
+					}
+				}
+
+				entries := appModel.messageLog.Entries()
+				if !appModel.isLoading || appModel.loadingMessage != "Unrelated operation in progress..." || !errors.Is(appModel.err, unrelatedErr) {
+					t.Fatalf("hidden outcome clobbered unrelated app state: loading=%v message=%q err=%v", appModel.isLoading, appModel.loadingMessage, appModel.err)
+				}
+				if outcome.err != nil {
+					if !strings.Contains(appModel.statusMessage, "AI action plan apply failed") || !messageLogHasLevel(entries, MessageLogLevelError) {
+						t.Fatalf("hidden failure was not reported globally: status=%q log=%#v", appModel.statusMessage, entries)
+					}
+				} else {
+					if !strings.Contains(appModel.statusMessage, "Applied 1 AI action(s)") ||
+						!strings.Contains(appModel.statusMessage, "undo undo-background") || !messageLogHasLevel(entries, MessageLogLevelSuccess) {
+						t.Fatalf("hidden success was not reported globally: status=%q log=%#v", appModel.statusMessage, entries)
+					}
+					if outcome.warning && (!strings.Contains(appModel.statusMessage, "warning:") || !messageLogHasLevel(entries, MessageLogLevelWarning)) {
+						t.Fatalf("repair warning was not reported as a warning: status=%q log=%#v", appModel.statusMessage, entries)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestAskActionPlanHiddenDeleteRepairsTaskReferences(t *testing.T) {
+	const (
+		deletedID  = "ask-hidden-deleted"
+		survivorID = "ask-hidden-survivor"
+	)
+	domains := config.NewDomains()
+	for _, taskID := range []string{deletedID, survivorID} {
+		domains.Planning.FocusQueue = append(domains.Planning.FocusQueue, config.FocusQueueItem{TaskID: taskID, ProjectID: "p1"})
+		domains.Planning.DailyPlan = append(domains.Planning.DailyPlan, config.DailyPlanItem{TaskID: taskID, ProjectID: "p1"})
+		domains.Planning.FocusDismissedIDs = append(domains.Planning.FocusDismissedIDs, taskID)
+		domains.Machine.RecentTaskVisits = append(domains.Machine.RecentTaskVisits, config.RecentTaskVisit{TaskID: taskID, ProjectID: "p1"})
+	}
+	runtime := config.NewRuntimeState("", domains)
+	pending, err := runtime.CloneDomains()
+	if err != nil {
+		t.Fatalf("CloneDomains: %v", err)
+	}
+	pending.Planning.RemoveDurableTaskRefs(map[string]bool{deletedID: true})
+
+	appModel := newTestAppModel()
+	appModel.runtime = runtime
+	replacement := NewAskViewModelWithDeps(nil, "", runtime, nil)
+	replacement.response = "replacement input"
+	appModel.views.Register(ViewAsk, replacement)
+	appModel.pushView(ViewAsk)
+	_, _ = appModel.Update(AskActionPlanAppliedMsg{
+		OperationID: nextAskOperationID(),
+		Result: app.ActionPlanResult{
+			TransactionID:  "tx-hidden-delete",
+			UndoID:         "undo-hidden-delete",
+			DeletedTaskIDs: []string{deletedID},
+			Actions:        []app.ActionPreview{{Index: 1}},
+		},
+		PendingDomains: pending,
+	})
+
+	if replacement.state != askStateInput || replacement.response != "replacement input" {
+		t.Fatalf("hidden delete mutated replacement Ask: state=%v response=%q", replacement.state, replacement.response)
+	}
+	planning := runtime.Planning()
+	if len(planning.FocusQueue) != 1 || planning.FocusQueue[0].TaskID != survivorID ||
+		len(planning.DailyPlan) != 1 || planning.DailyPlan[0].TaskID != survivorID ||
+		len(planning.FocusDismissedIDs) != 1 || planning.FocusDismissedIDs[0] != survivorID {
+		t.Fatalf("hidden delete left durable refs: focus=%#v daily=%#v dismissed=%#v", planning.FocusQueue, planning.DailyPlan, planning.FocusDismissedIDs)
+	}
+	visits := runtime.Machine().RecentTaskVisits
+	if len(visits) != 1 || visits[0].TaskID != survivorID {
+		t.Fatalf("hidden delete left machine refs: %#v", visits)
+	}
+}
+
+func messageLogHasLevel(entries []MessageLogEntry, level MessageLogLevel) bool {
+	for _, entry := range entries {
+		if entry.Level == level {
+			return true
+		}
+	}
+	return false
 }
 
 func newAskMixedPreparedPlan(t *testing.T, projectID string) (*models.Project, *app.Service, *app.PreparedActionPlan) {

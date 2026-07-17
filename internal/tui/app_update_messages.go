@@ -12,6 +12,72 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// handleAskMessage owns action-plan completion independently of whichever view
+// is currently visible. Transactions cannot be canceled once committing, so a
+// covered or replaced Ask still needs exactly-once reference repair, project
+// reloads, and cache/view refreshes after its command returns.
+func (m *AppModel) handleAskMessage(raw tea.Msg) (bool, tea.Cmd) {
+	msg, ok := raw.(AskActionPlanAppliedMsg)
+	if !ok {
+		return false, nil
+	}
+	if msg.OperationID == 0 {
+		return true, nil
+	}
+	if m.handledAskApplyIDs == nil {
+		m.handledAskApplyIDs = make(map[uint64]struct{})
+	}
+	if _, handled := m.handledAskApplyIDs[msg.OperationID]; handled {
+		return true, nil
+	}
+	m.handledAskApplyIDs[msg.OperationID] = struct{}{}
+
+	var cmds []tea.Cmd
+	if msg.Err == nil {
+		msg.RepairWarning = repairAskActionPlanTaskRefs(m.runtime, msg.Result.DeletedTaskIDs, msg.PendingDomains)
+		for _, projectID := range msg.Result.TouchedProjects {
+			m.reloadProjectByID(projectID)
+		}
+		m.clearToggleHistory()
+		m.observeLoadedProjectMilestones(msg.Result.TouchedProjects...)
+		if m.dashboard != nil {
+			m.dashboard.Refresh()
+		}
+		cmds = append(cmds, m.refreshTaskViewsAfterSave()...)
+	}
+
+	var matchingAsk *AskViewModel
+	if m.views != nil {
+		if ask, registered := m.views.Get(ViewAsk).(*AskViewModel); registered &&
+			ask.state == askStateApplying && ask.applyID == msg.OperationID {
+			matchingAsk = ask
+		}
+	}
+	matchingAskVisible := matchingAsk != nil && m.currentView() == ViewAsk
+	if matchingAsk != nil {
+		_, cmd := matchingAsk.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	if !matchingAskVisible {
+		if msg.Err != nil {
+			failure := fmt.Sprintf("AI action plan apply failed: %s", askErrorText(msg.Err))
+			m.setBackgroundErrorStatus(failure)
+			cmds = append(cmds, statusTimeout(5*time.Second))
+		} else {
+			success := fmt.Sprintf("Applied %d AI action(s) · transaction %s · undo %s", len(msg.Result.Actions), msg.Result.TransactionID, msg.Result.UndoID)
+			m.setSuccessStatus(success)
+			if msg.RepairWarning != nil {
+				warning := fmt.Sprintf("%s — warning: local reference repair incomplete: %s", success, askErrorText(msg.RepairWarning))
+				m.setWarningStatus(warning)
+			}
+			cmds = append(cmds, defaultStatusTimeout())
+		}
+	}
+
+	return true, tea.Batch(cmds...)
+}
+
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 	if handled, cmd := m.handleGlobalInputMessage(msg); handled {
 		return true, cmd

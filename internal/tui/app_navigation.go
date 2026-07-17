@@ -67,6 +67,7 @@ func (m *AppModel) validateCurrentProject() bool {
 	if m.projectByID(m.currentProject.ID) != nil {
 		return false
 	}
+	m.exitAskView()
 	m.currentProject = nil
 	m.viewStack = m.viewStack[:1]
 	m.setInfoStatus("Project was removed — returning to dashboard")
@@ -122,26 +123,35 @@ func (m *AppModel) pushView(view ViewType) {
 	}
 }
 
-// popView removes the top view from the stack. It returns a Cmd when popping
-// TO ViewCrossProjectOutliner so the outliner can trigger an eager reload.
+// popView removes the top view from the stack. It returns any commands needed
+// by the newly revealed view, including eager reload and resume hooks.
 func (m *AppModel) popView() tea.Cmd {
+	popped := false
 	if len(m.viewStack) > 1 {
+		if m.currentView() == ViewAsk {
+			m.exitAskView()
+		}
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
+		popped = true
 	}
 	cv := m.currentView()
 	// Re-evaluate alerts when returning to dashboard
 	if cv == ViewDashboard {
 		m.reevaluateAlerts()
 	}
-	// Update accent on the now-top view.
+	// Update accent and resume the now-top view.
+	var resumeCmd tea.Cmd
 	if v := m.views.Get(cv); v != nil {
 		m.setAccentOnView(v)
+		if handler, ok := v.(ViewResumeHandler); popped && ok {
+			resumeCmd = handler.OnResume()
+		}
 	}
 	// Notify the cross-project outliner that it has become visible again.
 	if cv == ViewCrossProjectOutliner {
-		return func() tea.Msg { return ViewDidAppearMsg{} }
+		return tea.Batch(func() tea.Msg { return ViewDidAppearMsg{} }, resumeCmd)
 	}
-	return nil
+	return resumeCmd
 }
 
 // handleEscKey handles the escape key for view navigation.
@@ -335,6 +345,9 @@ func (m *AppModel) popToAnchorView() tea.Cmd {
 			return nil
 		default:
 		}
+		if top == ViewAsk {
+			m.exitAskView()
+		}
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
 	}
 	// Stack has 1 entry — re-evaluate if it's the dashboard
@@ -433,6 +446,12 @@ func (m *AppModel) wireSecondaryCoordinators(view View) {
 }
 
 func (m *AppModel) showView(viewType ViewType, view View) {
+	// Ask stream messages are routed only to the current view. Cancel an Ask
+	// request before covering that model, or before replacing the registry's
+	// existing Ask instance, so its provider cannot outlive the view lifecycle.
+	if m.currentView() == ViewAsk || viewType == ViewAsk {
+		m.exitAskView()
+	}
 	// All views (including full-height ones) are sized to height-2. Register
 	// re-applies the registry's stored height-2, so a full-height SetSize here
 	// would be immediately clobbered anyway; this also matches handleWindowSize.
@@ -454,6 +473,9 @@ func (m *AppModel) showViewInit(viewType ViewType, view View) (bool, tea.Cmd) {
 // Used when switching between peer project views (ProjectTree, Outliner)
 // so the stack doesn't accumulate entries.
 func (m *AppModel) replaceView(viewType ViewType, view View) {
+	if m.currentView() == ViewAsk || viewType == ViewAsk {
+		m.exitAskView()
+	}
 	// See showView: all views are sized to height-2 here; Register re-applies
 	// the registry's stored height-2 regardless, matching handleWindowSize.
 	view.SetSize(m.width, m.height-2)
@@ -481,6 +503,15 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 		m.navHistory.Record(entry)
 	}
 	m.setAccentOnView(view)
+}
+
+func (m *AppModel) exitAskView() {
+	if m.views == nil {
+		return
+	}
+	if ask, ok := m.views.Get(ViewAsk).(*AskViewModel); ok {
+		ask.OnExit()
+	}
 }
 
 // isOnProjectView returns true if the current view is a peer project view.

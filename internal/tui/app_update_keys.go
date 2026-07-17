@@ -190,6 +190,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 
 	switch msg.String() {
 	case "ctrl+c":
+		m.exitAskView()
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
 		m.saveCrossOutlinerState()

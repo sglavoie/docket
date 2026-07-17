@@ -89,9 +89,9 @@ func (m *AppModel) globalCommands() []Command {
 		},
 		{
 			Name:        "ask ai",
-			Description: "Ask the AI assistant about your tasks",
+			Description: "Ask a configured AI CLI about your tasks",
 			Category:    CategoryNavigation,
-			Aliases:     []string{"ask", "ai", "claude"},
+			Aliases:     []string{"ask", "ai", "claude", "codex", "copilot"},
 			Handler: func() tea.Msg {
 				return ShowAskMsg{}
 			},

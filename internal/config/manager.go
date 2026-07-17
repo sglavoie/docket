@@ -177,6 +177,20 @@ func (m *Manager) LoadDomains() (*Domains, error) {
 }
 
 func loadDomainBundle(store *DomainFileStore) (*Domains, error) {
+	domains, err := loadDomainFiles(store)
+	if err != nil {
+		return nil, err
+	}
+	// Loading tolerates only repairable catalog color slots. Malformed persisted
+	// values in every other domain, including preferences from an unknown future
+	// harness, are rejected rather than silently discarded.
+	if err := validateDomainBundleForLoad(domains); err != nil {
+		return nil, err
+	}
+	return domains, nil
+}
+
+func loadDomainFiles(store *DomainFileStore) (*Domains, error) {
 	catalog, err := store.LoadCatalog()
 	if err != nil {
 		return nil, err
@@ -284,6 +298,14 @@ func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, d
 }
 
 func validateDomainBundle(domains *Domains) error {
+	return validateDomainBundleWithCatalogPolicy(domains, (*WorkspaceCatalog).Validate)
+}
+
+func validateDomainBundleForLoad(domains *Domains) error {
+	return validateDomainBundleWithCatalogPolicy(domains, (*WorkspaceCatalog).validateForLoad)
+}
+
+func validateDomainBundleWithCatalogPolicy(domains *Domains, validateCatalog func(*WorkspaceCatalog) error) error {
 	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Settings == nil || domains.Automation == nil || domains.Machine == nil {
 		return fmt.Errorf("all configuration domains are required")
 	}
@@ -291,7 +313,7 @@ func validateDomainBundle(domains *Domains) error {
 		name     string
 		validate func() error
 	}{
-		{name: "catalog", validate: domains.Catalog.Validate},
+		{name: "catalog", validate: func() error { return validateCatalog(domains.Catalog) }},
 		{name: "planning", validate: domains.Planning.Validate},
 		{name: "settings", validate: domains.Settings.Validate},
 		{name: "automation", validate: domains.Automation.Validate},

@@ -77,18 +77,23 @@ func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
 		}
 	}
 
-	c.revs[domainCatalog] = catRev
-	c.revs[domainPlanning] = planRev
-	c.revs[domainSettings] = setRev
-	c.revs[domainAutomation] = autoRev
-
-	return &Domains{
+	domains := &Domains{
 		Catalog:    catalog,
 		Planning:   planning,
 		Settings:   settings,
 		Automation: automation,
 		Machine:    machine,
-	}, nil
+	}
+	if err := validateDomainBundleForLoad(domains); err != nil {
+		return nil, err
+	}
+
+	c.revs[domainCatalog] = catRev
+	c.revs[domainPlanning] = planRev
+	c.revs[domainSettings] = setRev
+	c.revs[domainAutomation] = autoRev
+
+	return domains, nil
 }
 
 // CheckedDomainArtifacts renders the four explicit synced domains without

@@ -15,6 +15,7 @@ type MessageLogLevel int
 const (
 	MessageLogLevelSuccess MessageLogLevel = iota
 	MessageLogLevelInfo
+	MessageLogLevelWarning
 	MessageLogLevelError
 )
 
@@ -199,6 +200,8 @@ func (m *MessageLogViewModel) levelStyle(level MessageLogLevel) lipgloss.Style {
 	switch level {
 	case MessageLogLevelError:
 		return ErrorIconStyle
+	case MessageLogLevelWarning:
+		return WarningIconStyle
 	case MessageLogLevelSuccess:
 		return SuccessStyle
 	default:
