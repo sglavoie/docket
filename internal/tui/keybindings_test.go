@@ -17,6 +17,22 @@ func TestNewKeybindingRegistry(t *testing.T) {
 	}
 }
 
+func TestProjectViewToggle_KeybindingRegistryDescriptions(t *testing.T) {
+	registry := NewKeybindingRegistry()
+	const toggleDescription = "Toggle project tree/outliner"
+	const crossDescription = "Open highlighted project's tree"
+
+	assertHasHelpItem(t, registry.GetForView(ViewProjectTree), ViewProjectTree, "ctrl+p", toggleDescription)
+	assertHasHelpItem(t, registry.GetForView(ViewOutliner), ViewOutliner, "ctrl+p", toggleDescription)
+	assertHasHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", crossDescription)
+	assertLacksHelpItem(t, registry.GetForView(ViewProjectTree), ViewProjectTree, "ctrl+p", crossDescription)
+	assertLacksHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", toggleDescription)
+
+	explorerItems := registry.GetAllDeduplicated()
+	assertHasHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", toggleDescription)
+	assertHasHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", crossDescription)
+}
+
 func hasHelpItem(items []HelpItem, key, description string) bool {
 	for _, item := range items {
 		if item.Key == key && item.Description == description {

@@ -9,6 +9,49 @@ import (
 func (m *AppModel) viewCommands() []Command {
 	return []Command{
 		{
+			Name:        "toggle project tree/outliner",
+			Description: "Toggle project tree/outliner",
+			Shortcut:    "ctrl+p",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree, ViewOutliner},
+			Aliases: []string{
+				"project tree",
+				"project outliner",
+				"tree view",
+				"outliner view",
+				"toggle project view",
+				"switch project view",
+			},
+			Handler: func() tea.Msg {
+				switch m.nonPaletteOrigin() {
+				case ViewProjectTree:
+					if m.currentProject != nil {
+						return ShowOutlinerMsg{Project: m.currentProject}
+					}
+				case ViewOutliner:
+					if m.outliner != nil && m.outliner.project != nil {
+						return ShowProjectTreeMsg{Project: m.outliner.project}
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "project tree",
+			Description: "Open highlighted project's tree",
+			Shortcut:    "ctrl+p",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewCrossProjectOutliner},
+			Aliases:     []string{"tree view", "project tree view"},
+			Handler: func() tea.Msg {
+				project := m.paletteCursorProject()
+				if project == nil {
+					return StatusMsg(statusNoProjectUnderCursor)
+				}
+				return ShowProjectTreeMsg{Project: project}
+			},
+		},
+		{
 			Name:        "all tasks",
 			Description: "View all tasks across every project",
 			Shortcut:    ";a",

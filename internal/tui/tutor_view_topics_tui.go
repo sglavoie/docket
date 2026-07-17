@@ -398,6 +398,12 @@ Press Enter on a parent task to zoom into its children. Press
 Esc to zoom back out. The zoom stack remembers your position
 at each level.
 
+# Switching Project Views
+
+Ctrl+p toggles the current project's tree and outliner. From the
+cross-project outliner, Ctrl+p first opens the highlighted project's
+tree.
+
 # Perspectives
 
 Press 1-9 to switch between perspective presets that filter and

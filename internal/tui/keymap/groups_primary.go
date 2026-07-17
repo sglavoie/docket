@@ -3,8 +3,11 @@ package keymap
 // CommonPrimaryViewDeps holds action closures shared across primary views
 // (ProjectTree, Outliner, etc.).
 type CommonPrimaryViewDeps struct {
-	// OpenProjectTree opens or toggles the project tree view.
-	OpenProjectTree Action
+	// SwitchProjectView switches between peer project views or drills into one.
+	SwitchProjectView Action
+	// SwitchProjectViewDescription overrides the context-specific help label.
+	// The zero value describes the single-project tree/outliner toggle.
+	SwitchProjectViewDescription string
 	// OpenProjectCyclePicker opens the numbered project cycle picker.
 	OpenProjectCyclePicker Action
 	// PrevProject cycles to the previous project.
@@ -44,8 +47,12 @@ type CommonPrimaryViewDeps struct {
 // CommonPrimaryViewGroup returns top-level bindings shared across primary views.
 func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 	cat := "Views"
+	projectViewDescription := deps.SwitchProjectViewDescription
+	if projectViewDescription == "" {
+		projectViewDescription = "Toggle project tree/outliner"
+	}
 	entries := []Entry{
-		Bind("ctrl+p", "Open project tree view", cat, deps.OpenProjectTree),
+		Bind("ctrl+p", projectViewDescription, cat, deps.SwitchProjectView),
 		Bind("`", "Open project picker", "Project Cycling", deps.OpenProjectCyclePicker),
 		Bind("~", "Previous project in cycle", "Project Cycling", deps.PrevProject),
 		Bind("@", "Open cycle manager", "Project Cycling", deps.OpenCycleManager),

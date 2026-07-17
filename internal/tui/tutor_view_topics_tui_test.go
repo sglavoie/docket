@@ -38,6 +38,18 @@ func TestTutorBulkOperationsTopicDocumentsSelectedTaskFieldActions(t *testing.T)
 	}
 }
 
+func TestTutorOutlinerDocumentsProjectViewToggle(t *testing.T) {
+	topic := findTutorTUITopic(t, "Outliner")
+	for _, want := range []string{
+		"Ctrl+p toggles the current project's tree and outliner.",
+		"cross-project outliner, Ctrl+p first opens the highlighted project's\ntree.",
+	} {
+		if !strings.Contains(topic.Content, want) {
+			t.Fatalf("Outliner topic missing %q:\n%s", want, topic.Content)
+		}
+	}
+}
+
 func TestRetiredTaskStageTutorAndSettingsSurfacesStayRemoved(t *testing.T) {
 	forbiddenContent := []string{
 		"task stage",

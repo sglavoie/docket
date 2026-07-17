@@ -56,9 +56,13 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 
 func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 	m := b.model
+	projectViewDescription := ""
+	if m.project == nil {
+		projectViewDescription = "Open highlighted project's tree"
+	}
 
 	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
-		OpenProjectTree: func() (tea.Model, tea.Cmd) {
+		SwitchProjectView: func() (tea.Model, tea.Cmd) {
 			project := m.project
 			if project == nil {
 				project = m.cursorProject()
@@ -69,6 +73,7 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			}
 			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: project} }
 		},
+		SwitchProjectViewDescription: projectViewDescription,
 		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }
 		},

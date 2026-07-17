@@ -41,6 +41,87 @@ func TestViewCommands_AllTasks(t *testing.T) {
 	}
 }
 
+func TestProjectViewToggle_CommandMetadataAndScopes(t *testing.T) {
+	app, _ := newTestAppModelWithProject()
+	cmd := findCommand(app.viewCommands(), "toggle project tree/outliner")
+	if cmd == nil {
+		t.Fatal("expected 'toggle project tree/outliner' command")
+	}
+	if cmd.Description != "Toggle project tree/outliner" {
+		t.Fatalf("description = %q", cmd.Description)
+	}
+	if cmd.Shortcut != "ctrl+p" {
+		t.Fatalf("shortcut = %q, want ctrl+p", cmd.Shortcut)
+	}
+	if len(cmd.Views) != 2 || !containsView(cmd.Views, ViewProjectTree) || !containsView(cmd.Views, ViewOutliner) {
+		t.Fatalf("views = %v, want project tree and outliner", cmd.Views)
+	}
+	for _, alias := range []string{
+		"project tree",
+		"project outliner",
+		"tree view",
+		"outliner view",
+		"toggle project view",
+		"switch project view",
+	} {
+		if !commandHasAlias(cmd, alias) {
+			t.Errorf("aliases missing %q: %v", alias, cmd.Aliases)
+		}
+	}
+
+	registry := registerCommandGroupsForTest(t, app.viewCommands())
+	if findCommand(registry.GetForView(ViewProjectTree), cmd.Name) == nil {
+		t.Fatal("toggle command missing from project-tree scope")
+	}
+	if findCommand(registry.GetForView(ViewOutliner), cmd.Name) == nil {
+		t.Fatal("toggle command missing from single-project outliner scope")
+	}
+	if findCommand(registry.GetForView(ViewCrossProjectOutliner), cmd.Name) != nil {
+		t.Fatal("toggle command must not be exposed in cross-project outliner scope")
+	}
+
+	crossCmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "project tree")
+	if crossCmd == nil {
+		t.Fatal("cross-project outliner missing 'project tree' command")
+	}
+	if crossCmd.Description != "Open highlighted project's tree" || crossCmd.Shortcut != "ctrl+p" {
+		t.Fatalf("cross-project metadata = description %q shortcut %q", crossCmd.Description, crossCmd.Shortcut)
+	}
+	if findCommand(registry.GetForView(ViewProjectTree), "project tree") != nil ||
+		findCommand(registry.GetForView(ViewOutliner), "project tree") != nil {
+		t.Fatal("cross-project tree command leaked into a single-project scope")
+	}
+}
+
+func TestProjectViewToggle_CommandRoutesByNonPaletteOrigin(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	cmd := findCommand(app.viewCommands(), "toggle project tree/outliner")
+	if cmd == nil {
+		t.Fatal("expected 'toggle project tree/outliner' command")
+	}
+
+	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	msg := cmd.Handler()
+	showOutliner, ok := msg.(ShowOutlinerMsg)
+	if !ok {
+		t.Fatalf("tree origin returned %T, want ShowOutlinerMsg", msg)
+	}
+	if showOutliner.Project != project {
+		t.Fatalf("outliner project = %v, want %v", showOutliner.Project, project)
+	}
+
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	msg = cmd.Handler()
+	showTree, ok := msg.(ShowProjectTreeMsg)
+	if !ok {
+		t.Fatalf("outliner origin returned %T, want ShowProjectTreeMsg", msg)
+	}
+	if showTree.Project != project {
+		t.Fatalf("tree project = %v, want %v", showTree.Project, project)
+	}
+}
+
 func TestViewCommands_DashboardSemicolonRoutes(t *testing.T) {
 	app := newTestAppModel()
 	registry := registerCommandGroupsForTest(t, app.viewCommands())

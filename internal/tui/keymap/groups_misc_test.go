@@ -108,6 +108,42 @@ func TestCommonPrimaryViewGroup_AllOptional(t *testing.T) {
 	}
 }
 
+func TestCommonPrimaryViewGroup_ProjectViewDescription(t *testing.T) {
+	tests := []struct {
+		name string
+		deps CommonPrimaryViewDeps
+		want string
+	}{
+		{
+			name: "single-project default",
+			deps: CommonPrimaryViewDeps{},
+			want: "Toggle project tree/outliner",
+		},
+		{
+			name: "cross-project drill-in",
+			deps: CommonPrimaryViewDeps{
+				SwitchProjectViewDescription: "Open highlighted project's tree",
+			},
+			want: "Open highlighted project's tree",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entries := CommonPrimaryViewGroup(tt.deps)
+			for _, entry := range entries {
+				if entry.Binding != nil && entry.Binding.Key == "ctrl+p" {
+					if entry.Binding.Description != tt.want {
+						t.Fatalf("ctrl+p description = %q, want %q", entry.Binding.Description, tt.want)
+					}
+					return
+				}
+			}
+			t.Fatal("CommonPrimaryViewGroup missing ctrl+p")
+		})
+	}
+}
+
 func TestCommonPrimaryViewGroup_ProjectNotesShortcut(t *testing.T) {
 	entries := CommonPrimaryViewGroup(CommonPrimaryViewDeps{})
 	keys := directBindingKeys(entries)

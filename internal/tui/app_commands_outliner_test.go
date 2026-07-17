@@ -284,19 +284,13 @@ func TestOutlinerCommands_ScoreEditor(t *testing.T) {
 	}
 }
 
-func TestOutlinerCommands_ProjectTree(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
-
-	cmds := app.outlinerCommands()
-	cmd := findCommand(cmds, "project tree")
-	if cmd == nil {
-		t.Fatal("expected to find 'project tree' command")
+func TestOutlinerCommands_ProjectViewNavigationLivesInViewCommands(t *testing.T) {
+	app, _ := newTestAppModelWithProject()
+	if cmd := findCommand(app.outlinerCommands(), "project tree"); cmd != nil {
+		t.Fatalf("outlinerCommands should not contain project-view navigation: %+v", cmd)
 	}
-
-	result := cmd.Handler()
-	if _, ok := result.(ShowProjectTreeMsg); !ok {
-		t.Errorf("expected ShowProjectTreeMsg, got %T", result)
+	if cmd := findCommand(app.outlinerCommands(), "toggle project tree/outliner"); cmd != nil {
+		t.Fatalf("outlinerCommands should not contain project-view navigation: %+v", cmd)
 	}
 }
 

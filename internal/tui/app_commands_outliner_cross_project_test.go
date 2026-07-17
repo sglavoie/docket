@@ -189,19 +189,53 @@ func TestOutlinerCommands_Cross_ScoreEditor(t *testing.T) {
 	}
 }
 
-func TestOutlinerCommands_Cross_ProjectTreeUsesCursorProject(t *testing.T) {
+func TestViewCommands_Cross_ProjectTreeUsesCursorProject(t *testing.T) {
 	app, _, crossProj, _ := setupCrossPaletteApp(t)
 
-	cmd := findCommand(app.outlinerCommands(), "project tree")
+	cmd := findCommand(app.viewCommands(), "project tree")
 	if cmd == nil {
 		t.Fatal("expected to find 'project tree' command")
 	}
-	msg, ok := cmd.Handler().(ShowProjectTreeMsg)
+	result := cmd.Handler()
+	msg, ok := result.(ShowProjectTreeMsg)
 	if !ok {
-		t.Fatalf("expected ShowProjectTreeMsg, got %T", cmd.Handler())
+		t.Fatalf("expected ShowProjectTreeMsg, got %T", result)
 	}
 	if msg.Project != crossProj {
 		t.Errorf("Project: want cross project, got %v", msg.Project)
+	}
+}
+
+func TestViewCommands_Cross_ProjectTreeWithoutCursorProjectReturnsStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		rows   []outlinerRow
+		cursor int
+	}{
+		{name: "header", rows: []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox}}},
+		{name: "separator", rows: []outlinerRow{{IsSeparator: true}}},
+		{name: "empty"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, _, _, _ := setupCrossPaletteApp(t)
+			app.crossOutliner.rows = tt.rows
+			app.crossOutliner.cursor = tt.cursor
+
+			cmd := findCommand(app.viewCommands(), "project tree")
+			if cmd == nil {
+				t.Fatal("expected to find 'project tree' command")
+			}
+			result := cmd.Handler()
+			status, ok := result.(StatusMsg)
+			if !ok {
+				t.Fatalf("expected StatusMsg, got %T", result)
+			}
+			if string(status) != statusNoProjectUnderCursor {
+				t.Fatalf("status = %q, want %q", status, statusNoProjectUnderCursor)
+			}
+		})
 	}
 }
 

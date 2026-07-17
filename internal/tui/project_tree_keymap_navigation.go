@@ -11,8 +11,8 @@ func (b *projectTreeKeymapBuilder) primaryViewEntries() []keymap.Entry {
 	m := b.model
 
 	return keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
-		OpenProjectTree: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: m.getProject()} }
+		SwitchProjectView: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowOutlinerMsg{Project: m.getProject()} }
 		},
 		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }

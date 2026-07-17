@@ -302,28 +302,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			},
 		},
 		{
-			Name:        "project tree",
-			Description: "Switch to project tree view",
-			Shortcut:    "ctrl+p",
-			Category:    CategoryViews,
-			Views:       outlinerViews,
-			Aliases:     []string{"tree view", "project tree view"},
-			Handler: func() tea.Msg {
-				out := m.activeOutliner()
-				if out == nil {
-					return nil
-				}
-				project := out.project
-				if project == nil {
-					project = out.cursorProject()
-				}
-				if project == nil {
-					return nil
-				}
-				return ShowProjectTreeMsg{Project: project}
-			},
-		},
-		{
 			Name:        "multi-select mode",
 			Description: "Toggle multi-select mode",
 			Shortcut:    "v",
