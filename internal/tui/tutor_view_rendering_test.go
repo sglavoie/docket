@@ -23,7 +23,7 @@ func TestTutorColorRulesIncludeAllWorkflowStates(t *testing.T) {
 }
 
 func TestColorizeTutorLineHighlightsPaused(t *testing.T) {
-	input := "Tasks in paused stay out of the active queue."
+	input := "Tasks in paused stay out of the Focus Queue."
 	output := colorizeTutorLine(input)
 	if input == output {
 		t.Error("expected colorizeTutorLine to apply styling to 'paused', but output was unchanged")

@@ -456,9 +456,8 @@ func TestScoringFactors(t *testing.T) {
 	})
 
 	t.Run("focus queue bonus", func(t *testing.T) {
-		// 33.7.6.4: the retired Task.Active flag's scoring bonus is now driven by
-		// Focus Queue membership. Score the same task with and without membership
-		// to isolate the bonus.
+		// Focus Queue membership contributes an explicit planning bonus. Score the
+		// same task with and without membership to isolate it.
 		queued := baseTask()
 		domains := config.NewDomains()
 		domains.Planning.AddToFocusQueue(queued.ID, project.ID)

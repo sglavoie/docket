@@ -32,9 +32,8 @@ type TaskLine struct {
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
 	// Optional elements
-	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
+	Queued          bool          // show "q " queue indicator in accent color (else "  "); superseded by DailyPlanned
 	DailyPlanned    bool          // show "w " daily-plan indicator in accent color; takes precedence over Queued
-	Active          bool          // show * active marker in cursor prefix
 	Pinned          bool          // show · pinned marker in cursor prefix
 	Prefix          string        // after queue indicator (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
@@ -58,7 +57,7 @@ type CrossProjectTaskLineOpts struct {
 	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
 	ShowDescription bool          // show description-indicator icon when task has a non-empty description
 	MaxProjectLen   int           // project name truncation; 0 defaults to 12
-	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
+	Queued          bool          // show "q " queue indicator in accent color (else "  "); superseded by DailyPlanned
 	DailyPlanned    bool          // show "w " daily-plan indicator in accent color; takes precedence over Queued
 	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
 	StatusBadge     string        // pre-styled status badge override
@@ -148,7 +147,6 @@ func RenderCrossProjectTaskLine(
 		MaxTitle:        maxTitleLen,
 		Queued:          opts.Queued,
 		DailyPlanned:    opts.DailyPlanned,
-		Active:          TaskInFocusQueue(runtime.Planning(), task.ID),
 		Pinned:          task.Pinned,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
@@ -202,7 +200,7 @@ func MutationFlashLine(line string, width int, bg color.Color) string {
 
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
-	cursorPrefix := RenderCursorPrefix(tl.IsSelected, tl.Active, tl.Pinned, tl.Task.Dimmed)
+	cursorPrefix := RenderCursorPrefix(tl.IsSelected, tl.Pinned, tl.Task.Dimmed)
 	segments := tl.buildTaskLineSegments()
 	segments = tl.applyHeroDemotion(segments)
 

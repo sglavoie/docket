@@ -206,8 +206,7 @@ func deepCopyTaskForDryRun(task *models.Task) *models.Task {
 		// Status/Section clones are gone. It is seeded from State() (not the raw
 		// WorkflowState field, which is empty for schema-v1 tasks) so the copy's
 		// State() resolves identically to the original and stays coherent after the
-		// engine's lifecycle mutators sync it. The engine also does not read Active
-		// (ActionSetActive became a Focus Queue change in 33.7.6.1).
+		// engine's lifecycle mutators sync it.
 		WorkflowState: task.State(),
 		Priority:      task.Priority,
 		CreatedAt:     task.CreatedAt,

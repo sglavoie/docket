@@ -378,9 +378,7 @@ func outputSingleTaskJSON(task *models.Task) error {
 	return printJSON(taskToMutateJSONEntry(task))
 }
 
-// taskInFocusQueue reports Focus Queue membership. It is the config-aware
-// replacement for the retired Task.Active flag in CLI output: "active" is now
-// Focus Queue membership under the workflow-state model (session 33.7.6.3).
+// taskInFocusQueue reports Focus Queue membership for CLI JSON output.
 func taskInFocusQueue(items []config.FocusQueueItem, taskID string) bool {
 	for _, item := range items {
 		if item.TaskID == taskID {

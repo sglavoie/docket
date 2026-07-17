@@ -214,8 +214,8 @@ func (s *Service) UnparkWithWorkflow(taskID string, opts SingleTaskWorkflowOptio
 }
 
 // ToggleDimmed flips a task's dimmed flag, muting or restoring it in every view.
-// Dimming also clears the active/focus flag, since a dimmed task cannot be the
-// focus; that coupling lives in the model's ToggleDimmed.
+// Dimming is purely visual and leaves workflow state, section, and Focus Queue
+// membership unchanged.
 func (s *Service) ToggleDimmed(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Toggle Dim", "", func(ref TaskRef) error {
 		return toggleDimmedTask(ref.Task)

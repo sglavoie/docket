@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// ProjectFocusViewModel displays active-flagged tasks for a single project.
+// ProjectFocusViewModel displays queued tasks for a single project.
 type ProjectFocusViewModel struct {
 	BaseView
 	InteractiveViewState

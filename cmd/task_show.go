@@ -197,7 +197,7 @@ type taskShowJSONEntry struct {
 	RelatedTo       []string                  `json:"related_to"`
 	Pinned          bool                      `json:"pinned"`
 	PinnedAt        *time.Time                `json:"pinned_at,omitempty"`
-	Active          bool                      `json:"active"`
+	Queued          bool                      `json:"queued"`
 	Dimmed          bool                      `json:"dimmed"`
 	SnoozedUntil    *time.Time                `json:"snoozed_until"`
 	Stage           string                    `json:"stage,omitempty"`
@@ -217,7 +217,7 @@ type taskShowJSONEntry struct {
 	EpicAttrs       *models.EpicAttrs         `json:"epic_attrs,omitempty"`
 }
 
-func displayTaskShowJSON(task *models.Task, active bool) error {
+func displayTaskShowJSON(task *models.Task, queued bool) error {
 	tags := task.Tags
 	if tags == nil {
 		tags = []string{}
@@ -280,7 +280,7 @@ func displayTaskShowJSON(task *models.Task, active bool) error {
 		RelatedTo:       relatedTo,
 		Pinned:          task.Pinned,
 		PinnedAt:        task.PinnedAt,
-		Active:          active,
+		Queued:          queued,
 		Dimmed:          task.Dimmed,
 		SnoozedUntil:    task.SnoozedUntil,
 		Source:          task.Source,

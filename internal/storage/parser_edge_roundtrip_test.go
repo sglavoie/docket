@@ -285,9 +285,9 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if p.PinnedAt == nil {
 		t.Error("PinnedAt should not be nil")
 	}
-	// active and stage are retired by the v2 model: active migrates to the
-	// Focus Queue, custom stages are dropped. Both fields no longer exist on
-	// Task, so there is nothing to assert here.
+	// Legacy active metadata and stage are retired by the v2 model: active is
+	// discarded and custom stages are dropped. Neither field exists on Task, so
+	// there is nothing to assert here.
 	if !p.Dimmed {
 		t.Error("Dimmed should be true")
 	}

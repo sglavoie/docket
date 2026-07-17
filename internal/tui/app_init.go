@@ -86,7 +86,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	appService := newTUIAppService(dataDir, runtimeDeps, ledger)
 	app.appService = appService
 	app.features = newFeatureCoordinators(appService, appService)
-	app.secondaryFeatures = newSecondaryCoordinators(appService, manager, workflowFocusArtifactBuilder(manager))
+	app.secondaryFeatures = newSecondaryCoordinators(appService, manager)
 
 	// Assemble the domain-native dependency bundle shared by the shell and views.
 	app.deps = newShellDeps(runtime, appService, manager, ledger)

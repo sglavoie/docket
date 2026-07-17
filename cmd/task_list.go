@@ -186,7 +186,7 @@ type taskJSONEntry struct {
 	Tags         []string   `json:"tags"`
 	Section      string     `json:"section"`
 	Pinned       bool       `json:"pinned"`
-	Active       bool       `json:"active"`
+	Queued       bool       `json:"queued"`
 	Dimmed       bool       `json:"dimmed"`
 	Stage        string     `json:"stage,omitempty"`
 	SnoozedUntil *time.Time `json:"snoozed_until,omitempty"`
@@ -200,8 +200,7 @@ type taskJSONEntry struct {
 }
 
 // taskListJSONEntries builds the --json list rows. Status/Section derive from
-// State() and Active reports Focus Queue membership (the config-aware successor
-// to the retired Task.Active flag); the retired Stage concept has no state
+// State() and Queued reports Focus Queue membership; the retired Stage concept has no state
 // equivalent, so it is no longer emitted (session 33.7.6.3).
 func taskListJSONEntries(focusQueue []config.FocusQueueItem, tasks []*models.Task) []taskJSONEntry {
 	entries := make([]taskJSONEntry, len(tasks))
@@ -222,7 +221,7 @@ func taskListJSONEntries(focusQueue []config.FocusQueueItem, tasks []*models.Tas
 			Tags:         tags,
 			Section:      models.SectionForState(t.State()),
 			Pinned:       t.Pinned,
-			Active:       taskInFocusQueue(focusQueue, t.ID),
+			Queued:       taskInFocusQueue(focusQueue, t.ID),
 			Dimmed:       t.Dimmed,
 			SnoozedUntil: t.SnoozedUntil,
 			Parked:       t.IsParked(),

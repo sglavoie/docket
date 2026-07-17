@@ -362,22 +362,13 @@ func GetViewModeStyleForSection(section string) lipgloss.Style {
 }
 
 // RenderCursorPrefix returns the 3-character cursor prefix string based on row state.
-func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
-	activeMarker := ActiveStyle.Bold(true).Render("*")
+func RenderCursorPrefix(selected, pinned, dimmed bool) string {
 	var prefix string
 	switch {
-	case selected && active && pinned:
-		prefix = " " + activeMarker + PinnedMarker
-	case selected && active:
-		prefix = " " + activeMarker + " "
 	case selected && pinned:
 		prefix = "  " + PinnedMarker
 	case selected:
 		prefix = "   "
-	case active && pinned:
-		prefix = " " + activeMarker + PinnedMarker
-	case active:
-		prefix = " " + activeMarker + " "
 	case pinned:
 		prefix = "  " + PinnedMarker
 	default:
@@ -391,9 +382,9 @@ func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
 
 // RenderSelectableRow renders a row with cursor prefix and optional full-width selection highlight.
 // overdue and blocked apply a subtle background tint when the row is not selected or dimmed.
-func RenderSelectableRow(selected, active, pinned, flash, overdue, blocked bool, content string, width int, dimmed ...bool) string {
+func RenderSelectableRow(selected, pinned, flash, overdue, blocked bool, content string, width int, dimmed ...bool) string {
 	isDimmed := len(dimmed) > 0 && dimmed[0]
-	row := RenderCursorPrefix(selected, active, pinned, isDimmed) + content
+	row := RenderCursorPrefix(selected, pinned, isDimmed) + content
 	// Truncate to prevent terminal wrapping.
 	if width > 0 {
 		row = truncateToVisualWidth(row, width)

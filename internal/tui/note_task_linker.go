@@ -242,7 +242,7 @@ func (m *NoteTaskLinkerModel) View() tea.View {
 				display = PurpleStyle.Render(display + " ✓")
 			}
 
-			line := RenderSelectableRow(selected, false, false, false, false, false, display, 55)
+			line := RenderSelectableRow(selected, false, false, false, false, display, 55)
 			content.WriteString(line)
 			content.WriteString("\n")
 		}

@@ -197,7 +197,6 @@ func (a RuleAction) Validate() error {
 		ActionRemoveTag:        true,
 		ActionSetDueRelative:   true,
 		ActionClearDue:         true,
-		ActionSetActive:        true,
 		ActionSetPinned:        true,
 		ActionAddComment:       true,
 		ActionSetType:          true,
@@ -227,7 +226,7 @@ func (a RuleAction) Validate() error {
 	}
 
 	switch a.ActionType { //nolint:exhaustive
-	case ActionSetActive, ActionSetPinned:
+	case ActionSetPinned:
 		if a.Value != "true" && a.Value != "false" {
 			return fmt.Errorf("%s value must be 'true' or 'false'", a.ActionType)
 		}
@@ -335,7 +334,7 @@ func ValidActionTypes() []ActionType {
 		ActionSetStatus, ActionSetPriority, ActionSetSection,
 		ActionAddTag, ActionRemoveTag,
 		ActionSetDueRelative, ActionClearDue,
-		ActionSetActive, ActionSetPinned,
+		ActionSetPinned,
 		ActionAddComment, ActionSetType,
 		ActionCompleteParent, ActionBlockParent, ActionCascadeTag,
 		ActionInheritTag, ActionNotifyParent,

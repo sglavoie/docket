@@ -21,15 +21,12 @@ var focusCmd = &cobra.Command{
 	Long: `Show all actionable tasks across active projects, sorted by priority.
 
 By default, lists all non-completed, non-snoozed, non-blocked tasks.
-Use --active to show only active-flagged tasks (legacy behavior).
 
 Examples:
-  tt focus            # all actionable tasks
-  tt focus --active   # only active-flagged tasks`,
+  tt focus            # all actionable tasks`,
 	RunE: runFocus,
 }
 
-var focusActiveOnly bool
 var focusSuggestLimit int
 
 var focusSuggestCmd = &cobra.Command{
@@ -51,8 +48,9 @@ var focusQueueCmd = &cobra.Command{
 	Short: "Show the persisted focus work queue",
 	Long: `Show tasks that have been accepted into the focus work queue.
 
-The queue is managed through the TUI's focus view (press 'a' to accept
-suggestions, 'x' to remove, J/K to reorder).
+The queue is managed through the TUI's focus view: press 'a' to accept a
+suggestion, 'q' to toggle Queue membership, and J/K to reorder. Pressing 'x'
+dismisses a suggestion without changing existing Queue items.
 
 Examples:
   tt focus queue`,
@@ -74,7 +72,6 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(focusCmd)
-	focusCmd.Flags().BoolVar(&focusActiveOnly, "active", false, "Show only active-flagged tasks")
 
 	focusCmd.AddCommand(focusSuggestCmd)
 	focusSuggestCmd.Flags().IntVarP(&focusSuggestLimit, "number", "n", 10, "Number of suggestions to show")
@@ -137,17 +134,7 @@ func runFocus(cmd *cobra.Command, args []string) error {
 
 	// Load and collect tasks from all active projects
 	projects := loadActiveProjects(workspace.Runtime.ActiveProjects())
-	var tasks []focus.FocusTask
-
-	if focusActiveOnly {
-		// Legacy flag: now backed by Focus Queue membership (the planning
-		// collection that replaced the per-task Active flag).
-		fmt.Fprintf(os.Stderr, "warning: --active is deprecated; run 'tt focus' without flags to see all actionable tasks, or 'tt focus queue' for the focus queue\n")
-		planning := workspace.Runtime.Planning()
-		tasks = collectFocusQueueTasks(planning.FocusQueue, projects)
-	} else {
-		tasks = focus.CollectActionableTasks(projects)
-	}
+	tasks := focus.CollectActionableTasks(projects)
 
 	sortFocusTasks(tasks)
 
@@ -160,13 +147,8 @@ func runFocus(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(tasks) == 0 {
-		if focusActiveOnly {
-			fmt.Println("No tasks in focus.")
-			fmt.Println("Accept suggestions in the TUI focus view (press 'a') to build your queue.")
-		} else {
-			fmt.Println("No actionable tasks found.")
-			fmt.Println("Tasks appear here from all active projects (excluding completed, snoozed, and blocked).")
-		}
+		fmt.Println("No actionable tasks found.")
+		fmt.Println("Tasks appear here from all active projects (excluding completed, snoozed, and blocked).")
 		return nil
 	}
 
@@ -195,41 +177,7 @@ func displayFocusTable(tasks []focus.FocusTask) {
 	}
 
 	fmt.Println(t.Render())
-	if focusActiveOnly {
-		fmt.Printf("\n%s in focus\n", Pluralize(len(tasks), "task", "tasks"))
-	} else {
-		fmt.Printf("\n%s\n", Pluralize(len(tasks), "actionable task", "actionable tasks"))
-	}
-}
-
-// collectFocusQueueTasks returns non-terminal tasks that are members of the
-// persisted Focus Queue planning collection. It backs the deprecated
-// `tt focus --active` flag, which historically read the per-task Active flag;
-// Focus Queue membership is that flag's canonical replacement. The queue is read
-// from the planning domain by the caller and passed in. Nil projects and nil
-// tasks are skipped so callers can pass loosely-assembled slices without
-// crashing on stray nil entries.
-func collectFocusQueueTasks(queue []config.FocusQueueItem, projects []*models.Project) []focus.FocusTask {
-	queued := make(map[string]bool)
-	for _, item := range queue {
-		queued[item.TaskID] = true
-	}
-	var tasks []focus.FocusTask
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			if task.IsTerminalState() || !queued[task.ID] {
-				continue
-			}
-			tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
-		}
-	}
-	return tasks
+	fmt.Printf("\n%s\n", Pluralize(len(tasks), "actionable task", "actionable tasks"))
 }
 
 // sortFocusTasks sorts tasks by priority ascending (1=highest), then by
@@ -461,7 +409,7 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
 
-	var activeItems []config.FocusQueueItem
+	var queuedItems []config.FocusQueueItem
 	for _, item := range queueItems {
 		project, ok := projectMap[item.ProjectID]
 		if !ok {
@@ -472,11 +420,11 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		activeItems = append(activeItems, item)
+		queuedItems = append(queuedItems, item)
 		dueStr := focus.FormatRelativeDue(task.DueDate)
 
 		t.AppendRow(table.Row{
-			len(activeItems),
+			len(queuedItems),
 			util.Truncate(project.Name, 15),
 			task.ShortID,
 			task.Type.Icon(),
@@ -488,23 +436,23 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 	}
 
 	// Prune stale entries from the planning domain if any were skipped
-	if len(activeItems) < len(queueItems) {
+	if len(queuedItems) < len(queueItems) {
 		domains, cloneErr := cloneCLIWorkspaceDomains(workspace)
 		if cloneErr != nil {
 			return cloneErr
 		}
-		domains.Planning.FocusQueue = activeItems
+		domains.Planning.FocusQueue = queuedItems
 		if err := commitCLIPlanning(workspace, domains.Planning); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
 		}
 	}
 
-	if len(activeItems) == 0 {
+	if len(queuedItems) == 0 {
 		fmt.Println("Focus queue is empty (all queued tasks have been completed).")
 		return nil
 	}
 
 	fmt.Println(t.Render())
-	fmt.Printf("\n%s in queue\n", Pluralize(len(activeItems), "task", "tasks"))
+	fmt.Printf("\n%s in queue\n", Pluralize(len(queuedItems), "task", "tasks"))
 	return nil
 }

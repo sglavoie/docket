@@ -37,7 +37,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	if len(m.tasks) == 0 {
 		b.WriteString(renderEmptyState("No tasks from this project are in the Focus Queue.", "Press q on a task in the project tree to add it."))
 		b.WriteString("\n")
-		left := HelpStyle.Render("q return")
+		left := HelpStyle.Render("Esc return")
 		b.WriteString(renderStatusBarFooter(left, "", m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
@@ -103,7 +103,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
-	footerParts := "j/k nav · * remove from queue · ,s/d/b/x status · 1-5 priority · dt/dm due"
+	footerParts := "j/k nav · ,s/d/b/x status · 1-5 priority · dt/dm due"
 	if len(m.subTabNames) > 1 {
 		footerParts += " · Tab sections"
 	}
@@ -178,7 +178,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		Task:       task,
 		Project:    m.project,
 		IsSelected: isSelected,
-		Active:     TaskInFocusQueue(m.runtime.Planning(), task.ID),
+		Queued:     true,
 		Pinned:     task.Pinned,
 		MaxTitle:   maxTitleLen,
 		PostTitle:  postTitle,

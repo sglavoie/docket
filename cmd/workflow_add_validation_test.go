@@ -52,7 +52,6 @@ func TestWorkflowAdd_TriggerOperationValidation(t *testing.T) {
 func TestWorkflowAdd_ActionTypeValidation(t *testing.T) {
 	// Provide format-appropriate values for actions that validate their value.
 	specialValues := map[workflow.ActionType]string{
-		workflow.ActionSetActive:        "true",
 		workflow.ActionSetPinned:        "true",
 		workflow.ActionSetDueRelative:   "+3d",
 		workflow.ActionSetSnooze:        "+1d",

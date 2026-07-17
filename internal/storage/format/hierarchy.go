@@ -86,8 +86,8 @@ type ParsedTask struct {
 	Task       *models.Task
 	Level      int    // Heading level (2 for ##, 3 for ###, etc.)
 	RawContent string // The description content between this task and the next
-	// Legacy holds the retired schema-v1 lifecycle values this task's metadata
-	// carried, captured for the loader-level migration audit. Zero-value
+	// Legacy holds the retained retired schema-v1 lifecycle values this task's
+	// metadata carried, captured for the loader-level migration audit. Zero-value
 	// (Present false) for a schema-v2 task.
 	Legacy LegacyLifecycle
 }

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -21,7 +20,6 @@ type ParsedSearchQuery struct {
 	Types         []models.TaskType   // Empty = all types
 	DueDateFilter string              // "today", "tomorrow", "week", "overdue", "none", ""
 	Section       string              // Empty = all sections
-	ActiveOnly    bool                // Only show active tasks
 	HasPresence   []string            // has:X filters (normalized names)
 	NoPresence    []string            // no:X filters (negation of has:)
 	IsState       []string            // is:X filters
@@ -36,7 +34,6 @@ func (p *ParsedSearchQuery) HasFilters() bool {
 		len(p.Types) > 0 ||
 		p.DueDateFilter != "" ||
 		p.Section != "" ||
-		p.ActiveOnly ||
 		len(p.HasPresence) > 0 ||
 		len(p.NoPresence) > 0 ||
 		len(p.IsState) > 0 ||
@@ -50,8 +47,7 @@ func (p *ParsedSearchQuery) HasTaskOnlyFilters() bool {
 		len(p.Statuses) > 0 ||
 		len(p.Types) > 0 ||
 		p.DueDateFilter != "" ||
-		p.Section != "" ||
-		p.ActiveOnly
+		p.Section != ""
 }
 
 // ParseSearchQuery extracts structured filters from a search query string.
@@ -62,7 +58,6 @@ func (p *ParsedSearchQuery) HasTaskOnlyFilters() bool {
 //   - $status for status (todo, in_progress, review, standby, maybe, done, blocked, canceled)
 //   - ^type for task type (epic, story, task, bug, idea, note)
 //   - /section for section filter
-//   - * for active tasks only
 func ParseSearchQuery(input string) *ParsedSearchQuery {
 	result := &ParsedSearchQuery{}
 
@@ -161,8 +156,8 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	}
 	input = noRe.ReplaceAllString(input, " ")
 
-	// Extract is: filters
-	isRe := regexp.MustCompile(`(?i)\bis:(\w+)`)
+	// Extract supported is: filters. Unsupported values remain text queries.
+	isRe := regexp.MustCompile(`(?i)\bis:(note|pinned|dimmed|blocked|overdue|snoozed|recurring|leaf|root)\b`)
 	for _, match := range isRe.FindAllStringSubmatch(input, -1) {
 		if len(match) == 2 {
 			result.IsState = append(result.IsState, strings.ToLower(match[1]))
@@ -177,13 +172,6 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	}
 	input = projectRe.ReplaceAllString(input, " ")
 
-	// Extract active flag: *
-	activeRe := regexp.MustCompile(`\s*\*\s*`)
-	if activeRe.MatchString(input) {
-		result.ActiveOnly = true
-	}
-	input = activeRe.ReplaceAllString(input, " ")
-
 	// Clean up remaining text query
 	result.TextQuery = strings.TrimSpace(input)
 	result.TextQuery = regexp.MustCompile(`\s+`).ReplaceAllString(result.TextQuery, " ")
@@ -191,10 +179,8 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	return result
 }
 
-// TaskMatchesFilters checks if a task matches all the specified filters. The
-// config resolves Focus Queue membership for the active filters (the successor
-// of the deprecated Task.Active flag); a nil config matches no task as active.
-func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, planning *config.PlanningState) bool {
+// TaskMatchesFilters checks if a task matches all the specified filters.
+func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 	if filters == nil {
 		return true
 	}
@@ -246,14 +232,14 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, planning 
 
 	// Section filter (case-insensitive, against the state's section bucket)
 	if filters.Section != "" {
-		if !strings.EqualFold(taskSectionBucket(task), filters.Section) {
+		section := taskSectionBucket(task)
+		matchesSection := strings.EqualFold(section, filters.Section)
+		if strings.EqualFold(filters.Section, "Active") {
+			matchesSection = section == ""
+		}
+		if !matchesSection {
 			return false
 		}
-	}
-
-	// Active filter (Focus Queue membership)
-	if filters.ActiveOnly && !TaskInFocusQueue(planning, task.ID) {
-		return false
 	}
 
 	// has: filters (must have the property)
@@ -272,7 +258,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery, planning 
 
 	// is: filters (must match the state)
 	for _, f := range filters.IsState {
-		if !matchesIsFilter(task, f, planning) {
+		if !matchesIsFilter(task, f) {
 			return false
 		}
 	}
@@ -374,14 +360,12 @@ func matchesHasFilter(task *models.Task, filter string) bool {
 }
 
 // matchesIsFilter returns true if the task matches the specified state.
-func matchesIsFilter(task *models.Task, filter string, planning *config.PlanningState) bool {
+func matchesIsFilter(task *models.Task, filter string) bool {
 	switch filter {
 	case "note":
 		return false
 	case "pinned":
 		return task.Pinned
-	case "active":
-		return TaskInFocusQueue(planning, task.ID)
 	case "dimmed":
 		return task.Dimmed
 	case "blocked":

@@ -154,7 +154,7 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 		reasons = append(reasons, "in progress")
 	}
 
-	// Focus Queue membership (successor of the legacy Active flag)
+	// Explicit Focus Queue membership
 	if m.queueIDs[task.ID] {
 		reasons = append(reasons, "in focus queue")
 	}

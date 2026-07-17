@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"bytes"
 	"errors"
 	"testing"
 
@@ -30,7 +29,6 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 	source := newProject("proj-a", "Alpha", task)
 	destination := newProject("proj-b", "Beta")
 	repo := newFakeRepo(source, destination)
-	focus := &focusArtifactRecorder{}
 	projectStatus := &projectStatusArtifactRecorder{}
 
 	taskRule := workflow.WorkflowRule{
@@ -40,7 +38,6 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: string(models.StatusInProgress)},
 		Actions: []workflow.RuleAction{
 			{ActionType: workflow.ActionCreateFollowup, Value: "verify {task}"},
-			{ActionType: workflow.ActionSetActive, Value: "true"},
 			{ActionType: workflow.ActionMoveToProject, Value: destination.Name},
 		},
 	}
@@ -56,7 +53,6 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 
 	result, err := newTestService(repo).StateWithWorkflow(task.ID, models.StateInProgress, app.SingleTaskWorkflowOptions{
 		Rules:                  []workflow.WorkflowRule{taskRule, projectRule},
-		FocusArtifacts:         focus.build,
 		ProjectStatusArtifacts: projectStatus.build,
 	})
 	if err != nil {
@@ -80,9 +76,6 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 	if len(result.ProjectStatusChanges) != 1 || result.ProjectStatusChanges[0].ProjectID != source.ID {
 		t.Fatalf("project status changes = %+v, want source project", result.ProjectStatusChanges)
 	}
-	if len(result.FocusChanges) != 1 || result.FocusChanges[0].ProjectID != destination.ID {
-		t.Fatalf("focus changes = %+v, want final destination ownership", result.FocusChanges)
-	}
 	if result.RuleTriggerCounts[taskRule.ID] != 1 || result.RuleTriggerCounts[projectRule.ID] != 1 {
 		t.Fatalf("trigger counts = %v, want both task and project rules once", result.RuleTriggerCounts)
 	}
@@ -90,8 +83,8 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 		t.Fatalf("project status builder calls = %#v, want one status change", projectStatus.calls)
 	}
 	artifacts := repo.commits[0][0].Artifacts
-	if len(artifacts) != 2 || artifacts[0].Path != "/tmp/planning.json" || artifacts[1].Path != "/tmp/workspace.json" {
-		t.Fatalf("artifacts = %#v, want checked planning and catalog artifacts", artifacts)
+	if len(artifacts) != 1 || artifacts[0].Path != "/tmp/workspace.json" {
+		t.Fatalf("artifacts = %#v, want checked catalog artifact", artifacts)
 	}
 	for _, artifact := range artifacts {
 		if artifact.ExpectedRevision == nil {
@@ -206,46 +199,5 @@ func TestWorkflowRulesSeeLegacyPreEvaluationReconciliation(t *testing.T) {
 	}
 	if parent.State() != models.StateInProgress || !parent.HasTag("reconciled") {
 		t.Fatalf("parent state/tags = %s/%v, want pre-rule reconcile then rule tag", parent.State(), parent.Tags)
-	}
-}
-
-func TestWorkflowStaleFocusArtifactLeavesDurableCascadeUnchanged(t *testing.T) {
-	task := newTask("task-1", 1, "atomic")
-	source := newProject("proj-a", "Alpha", task)
-	destination := newProject("proj-b", "Beta")
-	repo := newFakeRepo(source, destination)
-	repo.validateChangeArtifacts = true
-	path := "/tmp/planning.json"
-	repo.files[path] = []byte(`{"focus_queue":"newer"}`)
-	beforeArtifact := append([]byte(nil), repo.files[path]...)
-	beforeSourceRevision := repo.documents[source.ID].Revision
-	beforeDestinationRevision := repo.documents[destination.ID].Revision
-
-	rule := focusOnInProgressRule()
-	rule.Actions = append(rule.Actions, workflow.RuleAction{ActionType: workflow.ActionMoveToProject, Value: destination.Name})
-	staleBuilder := func([]app.WorkflowFocusChange) ([]storage.ArtifactChange, error) {
-		expected := "stale-planning-revision"
-		return []storage.ArtifactChange{{
-			Path:             path,
-			Data:             []byte(`{"focus_queue":"ours"}`),
-			ExpectedRevision: &expected,
-		}}, nil
-	}
-
-	_, err := newTestService(repo).StateWithWorkflow(task.ID, models.StateInProgress, app.SingleTaskWorkflowOptions{
-		Rules:          []workflow.WorkflowRule{rule},
-		FocusArtifacts: staleBuilder,
-	})
-	if !errors.Is(err, storage.ErrStaleArtifact) {
-		t.Fatalf("err = %v, want ErrStaleArtifact", err)
-	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("commits = %d, want no accepted transaction", len(repo.commits))
-	}
-	if repo.documents[source.ID].Revision != beforeSourceRevision || repo.documents[destination.ID].Revision != beforeDestinationRevision {
-		t.Fatalf("project revisions changed after rejected artifact: source=%q destination=%q", repo.documents[source.ID].Revision, repo.documents[destination.ID].Revision)
-	}
-	if !bytes.Equal(repo.files[path], beforeArtifact) {
-		t.Fatalf("planning artifact = %q, want unchanged %q", repo.files[path], beforeArtifact)
 	}
 }

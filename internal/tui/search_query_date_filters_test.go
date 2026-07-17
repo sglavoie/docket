@@ -20,7 +20,7 @@ func TestMatchesIsFilter_OverdueUsesStartOfDay(t *testing.T) {
 	}
 
 	filters := &ParsedSearchQuery{IsState: []string{"overdue"}}
-	if TaskMatchesFilters(task, filters, nil) {
+	if TaskMatchesFilters(task, filters) {
 		t.Error("task due today should NOT match is:overdue")
 	}
 
@@ -30,7 +30,7 @@ func TestMatchesIsFilter_OverdueUsesStartOfDay(t *testing.T) {
 		WorkflowState: models.StateReady,
 		DueDate:       &yesterday,
 	}
-	if !TaskMatchesFilters(task2, filters, nil) {
+	if !TaskMatchesFilters(task2, filters) {
 		t.Error("task due yesterday should match is:overdue")
 	}
 
@@ -39,7 +39,7 @@ func TestMatchesIsFilter_OverdueUsesStartOfDay(t *testing.T) {
 		WorkflowState: models.StateDone,
 		DueDate:       &yesterday,
 	}
-	if TaskMatchesFilters(task3, filters, nil) {
+	if TaskMatchesFilters(task3, filters) {
 		t.Error("completed task should NOT match is:overdue")
 	}
 }
@@ -56,7 +56,7 @@ func TestMatchesIsFilter_SnoozedUsesStartOfDay(t *testing.T) {
 	}
 
 	filters := &ParsedSearchQuery{IsState: []string{"snoozed"}}
-	if TaskMatchesFilters(task, filters, nil) {
+	if TaskMatchesFilters(task, filters) {
 		t.Error("task snoozed until today should NOT match is:snoozed")
 	}
 
@@ -65,13 +65,13 @@ func TestMatchesIsFilter_SnoozedUsesStartOfDay(t *testing.T) {
 	task2 := &models.Task{
 		SnoozedUntil: &tomorrow,
 	}
-	if !TaskMatchesFilters(task2, filters, nil) {
+	if !TaskMatchesFilters(task2, filters) {
 		t.Error("task snoozed until tomorrow should match is:snoozed")
 	}
 
 	// A task with no snooze should not be snoozed.
 	task3 := &models.Task{}
-	if TaskMatchesFilters(task3, filters, nil) {
+	if TaskMatchesFilters(task3, filters) {
 		t.Error("task with no snooze should NOT match is:snoozed")
 	}
 }
@@ -99,8 +99,8 @@ func TestIsOverdueConsistentWithDueDateFilter(t *testing.T) {
 			isFilter := &ParsedSearchQuery{IsState: []string{"overdue"}}
 			dueDateFilter := &ParsedSearchQuery{DueDateFilter: "overdue"}
 
-			isResult := TaskMatchesFilters(tt.task, isFilter, nil)
-			dueDateResult := TaskMatchesFilters(tt.task, dueDateFilter, nil)
+			isResult := TaskMatchesFilters(tt.task, isFilter)
+			dueDateResult := TaskMatchesFilters(tt.task, dueDateFilter)
 
 			if isResult != dueDateResult {
 				t.Errorf("is:overdue=%v but @overdue=%v — these should agree", isResult, dueDateResult)

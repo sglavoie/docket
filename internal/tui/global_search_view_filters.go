@@ -44,10 +44,6 @@ func (m *GlobalSearchModel) renderFilterBadges() string {
 		badges = append(badges, "/"+m.parsedFilters.Section)
 	}
 
-	if m.parsedFilters.ActiveOnly {
-		badges = append(badges, "*active")
-	}
-
 	for _, filter := range m.parsedFilters.HasPresence {
 		badges = append(badges, "has:"+filter)
 	}
@@ -108,7 +104,7 @@ func (m *GlobalSearchModel) renderSearchHelp() string {
 	b.WriteString(muted.Render("  Task matches this state"))
 	b.WriteString("\n")
 	isValues := []string{
-		"pinned", "active", "dimmed", "blocked",
+		"pinned", "dimmed", "blocked",
 		"overdue", "snoozed", "recurring", "leaf", "root",
 	}
 	b.WriteString(muted.Render("  " + wrapValues(isValues, m.previewWidth-4)))

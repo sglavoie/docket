@@ -372,26 +372,8 @@ func TestApplyAction_SetSectionSilentValidationFailure(t *testing.T) {
 // TestApplyAction_BooleanActionsRejectInvalidValues verifies that boolean
 // actions do not interpret every non-"true" value as false. Rules are normally
 // validated before execution, but the engine should still be defensive when
-// handed unvalidated input: an invalid set_active/set_pinned value must not
-// deactivate or unpin a task.
+// handed unvalidated input: an invalid set_pinned value must not unpin a task.
 func TestApplyAction_BooleanActionsRejectInvalidValues(t *testing.T) {
-	t.Run("set_active invalid value is no-op", func(t *testing.T) {
-		task := &models.Task{ID: "t1"}
-		result := &EvaluationResult{}
-
-		// set_active is routed through the context-aware path so it can record a
-		// deferred Focus Queue change; an invalid value must record nothing (no
-		// Focus Queue membership change).
-		modified := applyActionWithContext(task, RuleAction{ActionType: ActionSetActive, Value: "maybe"}, nil, result)
-
-		if modified {
-			t.Fatal("expected modified=false for invalid set_active value")
-		}
-		if len(result.FocusChanges) != 0 {
-			t.Errorf("expected no focus change, got %+v", result.FocusChanges)
-		}
-	})
-
 	t.Run("set_pinned invalid value is no-op", func(t *testing.T) {
 		now := time.Now()
 		task := &models.Task{ID: "t1", Pinned: true, PinnedAt: &now}
@@ -726,7 +708,7 @@ func TestEvaluateRules_DeferredMovesDedupedPerTask(t *testing.T) {
 // try to ActionSetType to different values on the same task, the engine
 // surfaces it as a RuleConflict. Without conflict detection for set_type, the
 // two rules silently both fire (last write wins) and the user gets no warning.
-// Other fully-overwriting actions (set_active, set_pinned, set_recurrence,
+// Other fully-overwriting actions (set_pinned, set_recurrence,
 // set_snooze, set_due_relative, clear_due, set_project_status) share the same
 // gap; this test pins down set_type, which is the highest-impact case.
 func TestEvaluateRules_ConflictDetected_SetType(t *testing.T) {

@@ -13,7 +13,6 @@ import (
 // callback that the runner invokes before reconciliation and rule evaluation.
 type workflowOrchestrationRequest struct {
 	rules                  []workflow.WorkflowRule
-	focusArtifacts         WorkflowFocusArtifactBuilder
 	projectStatusArtifacts WorkflowProjectStatusArtifactBuilder
 	undoAction             string
 	undoContext            string
@@ -42,7 +41,6 @@ type workflowOrchestrationOutcome struct {
 	followupTaskIDs      []string
 	moves                []WorkflowMove
 	conflicts            []WorkflowConflict
-	focusChanges         []WorkflowFocusChange
 	projectStatusChanges []WorkflowProjectStatusChange
 	ruleTriggerCounts    map[string]int
 	recurringByProjectID map[string]int
@@ -54,7 +52,6 @@ type workflowOrchestrationOutcome struct {
 func bulkResultFromWorkflow(out workflowOrchestrationOutcome) BulkResult {
 	result := BulkResult{
 		RuleTriggerCounts:    out.ruleTriggerCounts,
-		FocusChanges:         out.focusChanges,
 		Conflicts:            out.conflicts,
 		ProjectStatusChanges: out.projectStatusChanges,
 	}
@@ -144,11 +141,6 @@ func (s *Service) runWorkflowOrchestration(req workflowOrchestrationRequest) (wo
 		}
 	}
 
-	resolvedFocus, err := attachWorkflowFocusArtifacts(out.commits, out.focusChanges, req.focusArtifacts)
-	if err != nil {
-		return workflowOrchestrationOutcome{}, err
-	}
-	out.focusChanges = resolvedFocus
 	resolvedProjectStatus, err := attachWorkflowProjectStatusArtifacts(out.commits, out.projectStatusChanges, req.projectStatusArtifacts)
 	if err != nil {
 		return workflowOrchestrationOutcome{}, err
@@ -241,11 +233,6 @@ func (s *Service) applyWorkflowCascade(
 		}
 		out.ruleTriggerCounts[ruleID] += count
 	}
-	out.focusChanges = appendWorkflowFocusChanges(out.focusChanges, project.ID, evaluated.FocusChanges)
-	if len(evaluated.FocusChanges) > 0 {
-		out.changedByWorkflow = true
-	}
-
 	for _, move := range evaluated.DeferredMoves {
 		task := project.GetTaskByID(move.TaskID)
 		if task == nil {

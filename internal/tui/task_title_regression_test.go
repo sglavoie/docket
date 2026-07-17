@@ -18,25 +18,25 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	t.Run("active P1 and P2 titles keep priority style", func(t *testing.T) {
+	t.Run("queued P1 and P2 titles keep priority style", func(t *testing.T) {
 		for _, priority := range []int{1, 2} {
-			task := newTaskTitleRegressionTask(t, fmt.Sprintf("active-p%d", priority), priority, fmt.Sprintf("Active P%d title", priority))
+			task := newTaskTitleRegressionTask(t, fmt.Sprintf("queued-p%d", priority), priority, fmt.Sprintf("Queued P%d title", priority))
 			line := TaskLine{
 				Task:      task,
-				Active:    true,
+				Queued:    true,
 				MaxTitle:  80,
 				ViewWidth: 120,
 			}.Render()
 
 			want := GetTitlePriorityStyle(priority).Render(task.Title)
 			if !strings.Contains(line, want) {
-				t.Fatalf("expected active P%d title to use priority style in:\n%s", priority, ansi.Strip(line))
+				t.Fatalf("expected queued P%d title to use priority style in:\n%s", priority, ansi.Strip(line))
 			}
 			if activeTitle := ActiveStyle.Render(task.Title); activeTitle != want && strings.Contains(line, activeTitle) {
-				t.Fatalf("active P%d title should not use ActiveStyle override in:\n%s", priority, ansi.Strip(line))
+				t.Fatalf("queued P%d title should not use ActiveStyle override in:\n%s", priority, ansi.Strip(line))
 			}
-			if !strings.Contains(ansi.Strip(line), "*") {
-				t.Fatalf("expected active marker in:\n%s", ansi.Strip(line))
+			if strings.Contains(ansi.Strip(line), "*") {
+				t.Fatalf("queued task should not render an active marker in:\n%s", ansi.Strip(line))
 			}
 		}
 	})

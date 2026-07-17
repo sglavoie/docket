@@ -317,15 +317,10 @@ func (m *FocusViewModel) focusDirectEntries() []keymap.Entry {
 		keymap.Bind("K", "Move item up in queue", "Queue", func() (tea.Model, tea.Cmd) {
 			return m.handleQueueReorder(-1)
 		}),
-		keymap.Bind("x", "Dismiss or remove from queue", "Actions", func() (tea.Model, tea.Cmd) {
-			switch m.tabs.Active {
-			case focusTabQueue:
-				m.removeFromQueue()
-			case focusTabSuggested:
-				m.toggleDismiss()
-			}
+		keymap.Bind("x", "Dismiss suggestion", "Actions", func() (tea.Model, tea.Cmd) {
+			m.toggleDismiss()
 			return m, nil
-		}),
+		}, keymap.WithGate(func() bool { return m.tabs.Active == focusTabSuggested })),
 		keymap.Bind("r", "Refresh", "View", func() (tea.Model, tea.Cmd) {
 			m.refreshViewState()
 			return m, nil

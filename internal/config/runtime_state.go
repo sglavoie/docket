@@ -88,13 +88,24 @@ func (m *Manager) LoadRuntimeState() (*RuntimeState, error) {
 
 // Reload re-reads every domain from disk through the coordinator, refreshing both
 // the in-memory domain snapshot the accessors return and the raw-revision
-// baseline CheckedArtifacts stamps. It performs exactly one disk read per domain
-// and is the only place the snapshot touches disk, so render/update helpers stay
-// disk-free by reading the cached accessors instead.
+// baseline CheckedArtifacts stamps. It is the only place the snapshot touches
+// disk, so render/update helpers stay disk-free by reading the cached accessors
+// instead. A retired-action migration may perform one additional load after its
+// checked automation write so every consumer receives the persisted snapshot.
 func (rs *RuntimeState) Reload() error {
 	domains, err := rs.coord.LoadDomains()
 	if err != nil {
 		return err
+	}
+	if domains.Automation.SanitizeRetiredWorkflowActions() {
+		// The domain coordinator retained the revision that produced this
+		// snapshot. Saving with that exact baseline refuses a concurrent writer
+		// instead of silently overwriting automation changes made after load.
+		loadedRevision := rs.coord.revs[domainAutomation]
+		if err := rs.coord.store.SaveAutomationChecked(domains.Automation, loadedRevision); err != nil {
+			return err
+		}
+		return rs.Reload()
 	}
 	rs.domains = domains
 	rs.revs = make(map[domainKind]string, len(rs.coord.revs))

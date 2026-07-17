@@ -182,7 +182,6 @@ func searchHasSuggestions(partial string) []ACSuggestion {
 func searchIsSuggestions(partial string) []ACSuggestion {
 	states := []struct{ name, desc string }{
 		{"pinned", "pinned tasks"},
-		{"active", "active tasks"},
 		{"dimmed", "dimmed tasks"},
 		{"blocked", "status = blocked"},
 		{"overdue", "past due + incomplete"},

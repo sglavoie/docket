@@ -9,16 +9,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestProjectTreeActivePriorityTitlesUsePriorityStyle(t *testing.T) {
+func TestProjectTreeQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	tasks := []*models.Task{
-		newPrimaryRowStyleTask(t, "tree-p1", 1, "Project tree active P1", 1),
-		newPrimaryRowStyleTask(t, "tree-p2", 2, "Project tree active P2", 2),
+		newPrimaryRowStyleTask(t, "tree-p1", 1, "Project tree queued P1", 1),
+		newPrimaryRowStyleTask(t, "tree-p2", 2, "Project tree queued P2", 2),
 	}
 	m := NewProjectTreeModel(newPrimaryRowStyleProject(t, "tree-project", tasks), nil, nil)
-	// Queue membership replaces the deprecated Active flag for the row marker.
 	m.queueIDs = map[string]bool{}
 	for _, task := range tasks {
 		m.queueIDs[task.ID] = true
@@ -26,22 +25,20 @@ func TestProjectTreeActivePriorityTitlesUsePriorityStyle(t *testing.T) {
 	for _, task := range tasks {
 		line := m.renderNodeWithWidth(m.findNodeByTaskID(task.ID), false, false, 120)
 		assertPrimaryRowTitleStyle(t, line, task)
-		assertActiveMarkerVisible(t, line)
+		assertQueueIndicatorOnly(t, line)
 	}
 }
 
-func TestOutlinerActivePriorityTitlesUsePriorityStyle(t *testing.T) {
+func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	tasks := []*models.Task{
-		newPrimaryRowStyleTask(t, "outliner-p1", 1, "Outliner active P1", 1),
-		newPrimaryRowStyleTask(t, "outliner-p2", 2, "Outliner active P2", 2),
+		newPrimaryRowStyleTask(t, "outliner-p1", 1, "Outliner queued P1", 1),
+		newPrimaryRowStyleTask(t, "outliner-p2", 2, "Outliner queued P2", 2),
 	}
 
 	m := NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), nil, nil)
-	// The active marker now reflects Focus Queue membership, not the legacy
-	// Active flag.
 	m.queueIDs = map[string]bool{}
 	for _, task := range tasks {
 		m.queueIDs[task.ID] = true
@@ -53,7 +50,7 @@ func TestOutlinerActivePriorityTitlesUsePriorityStyle(t *testing.T) {
 		rowIndex := findPrimaryRowStyleOutlinerRow(t, m.rows, task.ID)
 		line := m.renderOutlinerTaskRow(m.rows[rowIndex], false, 120, 120, rowIndex, nil)
 		assertPrimaryRowTitleStyle(t, line, task)
-		assertActiveMarkerVisible(t, line)
+		assertQueueIndicatorOnly(t, line)
 	}
 }
 
@@ -106,10 +103,14 @@ func assertPrimaryRowTitleStyle(t *testing.T, line string, task *models.Task) {
 	}
 }
 
-func assertActiveMarkerVisible(t *testing.T, line string) {
+func assertQueueIndicatorOnly(t *testing.T, line string) {
 	t.Helper()
 
-	if !strings.Contains(ansi.Strip(line), "*") {
-		t.Fatalf("expected active marker in:\n%s", ansi.Strip(line))
+	plain := ansi.Strip(line)
+	if !strings.Contains(plain, "q ") {
+		t.Fatalf("expected queue indicator in:\n%s", plain)
+	}
+	if strings.Contains(plain, "*") {
+		t.Fatalf("queue indicator should not be accompanied by an active marker in:\n%s", plain)
 	}
 }

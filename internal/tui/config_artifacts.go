@@ -8,54 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// workflowFocusArtifactBuilder loads the current planning domain at workflow
-// execution time, applies every accumulated set_active side effect, and renders
-// one optimistic-concurrency-checked planning artifact. The app service folds
-// that artifact into the task ChangeSet, so a concurrent planning writer aborts
-// the whole workflow mutation instead of being overwritten.
-func workflowFocusArtifactBuilder(mgr *config.Manager) app.WorkflowFocusArtifactBuilder {
-	if mgr == nil {
-		return nil
-	}
-	return func(changes []app.WorkflowFocusChange) ([]storage.ArtifactChange, error) {
-		coord := mgr.DomainCoordinator()
-		planning, err := coord.LoadPlanning()
-		if err != nil {
-			return nil, err
-		}
-		changed := false
-		for _, change := range changes {
-			if change.Add {
-				found := false
-				for i := range planning.FocusQueue {
-					if planning.FocusQueue[i].TaskID != change.TaskID {
-						continue
-					}
-					found = true
-					if planning.FocusQueue[i].ProjectID != change.ProjectID {
-						planning.FocusQueue[i].ProjectID = change.ProjectID
-						changed = true
-					}
-					break
-				}
-				if !found {
-					changed = planning.AddToFocusQueue(change.TaskID, change.ProjectID) || changed
-				}
-			} else {
-				changed = planning.RemoveFromFocusQueue(change.TaskID) || changed
-			}
-		}
-		if !changed {
-			return nil, nil
-		}
-		artifact, err := coord.CheckedPlanningArtifact(planning)
-		if err != nil {
-			return nil, err
-		}
-		return []storage.ArtifactChange{artifact.StorageChange()}, nil
-	}
-}
-
 // workflowProjectStatusArtifactBuilder applies project-rule status changes to
 // the catalog domain and renders one optimistic-concurrency-checked artifact.
 // The app service groups it with every task, destination-project, and planning

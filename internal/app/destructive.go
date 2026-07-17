@@ -159,9 +159,6 @@ type BulkResult struct {
 	// RuleTriggerCounts accumulates fired workflow-rule IDs when the request
 	// carried rules; the adapter persists them to its config store best-effort.
 	RuleTriggerCounts map[string]int
-	// FocusChanges reports the Focus Queue membership changes that were applied
-	// through a revision-checked planning artifact in this same transaction.
-	FocusChanges []WorkflowFocusChange
 	// Conflicts reports workflow rules that competed to set the same task field.
 	// The field is left unchanged; adapters may warn while existing TUI callers
 	// can continue ignoring the presentation-neutral details.

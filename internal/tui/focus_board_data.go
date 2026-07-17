@@ -70,9 +70,9 @@ func (m *FocusBoardModel) loadItems() {
 				m.nextRows = append(m.nextRows, row)
 			}
 
-			isActive := m.queueIDs[task.ID]
+			isQueued := m.queueIDs[task.ID]
 			isDueSoon := task.DueDate != nil && util.StartOfDay(*task.DueDate).Before(today.AddDate(0, 0, 1))
-			if isActive || isDueSoon {
+			if isQueued || isDueSoon {
 				m.rows = append(m.rows, row)
 			}
 		}

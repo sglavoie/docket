@@ -151,7 +151,7 @@ func (m *GlobalSearchModel) renderHelpText() string {
 
 func (m *GlobalSearchModel) renderSyntaxHint() string {
 	hints := []string{
-		"!priority  #tag  @due  $status  ^type  /section  *active  has:  is:  no:  p:  ?: help",
+		"!priority  #tag  @due  $status  ^type  /section  has:  is:  no:  p:  ?: help",
 		"!priority #tag @due $status ^type /section ?: help",
 		"!priority #tag @due $status ?: help",
 		"Search filters: #tag @due $status",

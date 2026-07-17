@@ -247,6 +247,11 @@ func TestGetIsSuggestions(t *testing.T) {
 	if len(all) == 0 {
 		t.Fatal("expected suggestions for empty partial")
 	}
+	for _, suggestion := range all {
+		if suggestion.Value == "active" {
+			t.Fatal("is:active should not be suggested")
+		}
+	}
 
 	// "pin" should match "pinned"
 	filtered := m.getIsSuggestions("pin")
@@ -284,5 +289,13 @@ func TestSearchKeywordSuggestionsIncludeIssue(t *testing.T) {
 	noIssue := searchNoSuggestions("iss")
 	if len(noIssue) != 1 || noIssue[0].Value != "issue" {
 		t.Errorf("searchNoSuggestions(iss) = %v, want issue", noIssue)
+	}
+}
+
+func TestSearchIsSuggestionsExcludeActive(t *testing.T) {
+	for _, suggestion := range searchIsSuggestions("") {
+		if suggestion.Value == "active" {
+			t.Fatal("is:active should not be suggested")
+		}
 	}
 }

@@ -17,10 +17,10 @@ Rules for these fixtures:
 - These stay authored in the **v1** schema on purpose: they are the pre-migration
   *input*. As of session 33.7.6.2 the storage layer writes **v2** unconditionally,
   so saving any of these tasks re-serializes them as a single `state:` field and
-  drops the retired `section`/`stage`/`active` keys (`active` migrates to the
-  Focus Queue; custom stages are dropped). The loader still fills the legacy
-  `Status`/`Section`/`Stage`/`Active` shims on parse, which is what
-  `legacy_fixtures_test.go` and the migration-audit capture rely on — so the
+  drops the retired `section`/`stage`/`active` keys. The loader recognizes
+  `active` only as a legacy metadata boundary and discards its value; it never
+  changes Focus Queue membership. `legacy_fixtures_test.go` and the
+  migration-audit capture rely on the remaining legacy parsing behavior, so the
   fixture files themselves are unchanged even though their round-trip output is
   now v2.
 
@@ -39,5 +39,5 @@ Rules for these fixtures:
 | Someday backlog       | `status: maybe`                   | `someday`              |
 | Fresh capture         | `section: Inbox`                  | `inbox`                |
 | Planned for today     | `section: Next`                   | `next`                 |
-| Flagged active task   | `active: true`                    | `ready` + Focus Queue  |
+| Flagged active task   | `active: true`                    | `ready` (metadata ignored) |
 | Custom staged idea    | `stage: Brainstorm` (custom stage)| `ready` (stage dropped)|

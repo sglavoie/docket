@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo verifies the migrated
@@ -85,68 +84,6 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 		t.Fatal("dest should contain task after redo")
 	}
 	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, false)
-}
-
-// TestTUIWorkflowFocusChangeSharesTaskTransactionAndLedgerUndo proves an
-// interactive set_active rule updates planning.json inside the same workspace
-// transaction as its task mutation. One global undo/redo therefore restores
-// both the workflow state and Focus Queue membership together.
-func TestTUIWorkflowFocusChangeSharesTaskTransactionAndLedgerUndo(t *testing.T) {
-	env := newMoveHandlerEnv(t, "workflow-focus-task", "Focus me")
-	task := env.source.GetTaskByID("workflow-focus-task")
-	if err := saveTestRuntime(env.mgr, env.cfg); err != nil {
-		t.Fatalf("save config: %v", err)
-	}
-
-	rule := workflow.WorkflowRule{
-		ID:      "focus-started",
-		Name:    "Focus started tasks",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{
-			Field:     workflow.FieldStatus,
-			Operation: workflow.OpEquals,
-			Value:     string(models.StatusInProgress),
-		},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetActive, Value: "true"}},
-	}
-	coords := newSecondaryCoordinators(env.svc, env.mgr, workflowFocusArtifactBuilder(env.mgr))
-	cmd := coords.TaskItem.TransitionWorkflow(task.ID, models.StateInProgress, app.SingleTaskWorkflowOptions{
-		Rules:       []workflow.WorkflowRule{rule},
-		UndoAction:  "Start Task",
-		UndoContext: task.Title,
-	}, nil)
-	if msg, ok := cmd().(BatchTransactionResultMsg); !ok {
-		t.Fatalf("workflow command result = %T, want BatchTransactionResultMsg", msg)
-	}
-
-	assertWorkflowFocusState := func(wantState models.WorkflowState, wantFocused bool) {
-		t.Helper()
-		if got := env.reloadProject(t, env.source).GetTaskByID(task.ID).State(); got != wantState {
-			t.Fatalf("task state = %s, want %s", got, wantState)
-		}
-		runtime, err := env.mgr.LoadRuntimeState()
-		if err != nil {
-			t.Fatalf("load runtime state: %v", err)
-		}
-		queue := runtime.Planning().GetFocusQueue()
-		if wantFocused {
-			if len(queue) != 1 || queue[0].TaskID != task.ID || queue[0].ProjectID != env.source.ID {
-				t.Fatalf("FocusQueue = %+v, want task in source project", queue)
-			}
-		} else if len(queue) != 0 {
-			t.Fatalf("FocusQueue = %+v, want empty", queue)
-		}
-	}
-
-	assertWorkflowFocusState(models.StateInProgress, true)
-	if _, err := env.ledger.Undo(storage.GlobalScope()); err != nil {
-		t.Fatalf("ledger undo: %v", err)
-	}
-	assertWorkflowFocusState(models.StateReady, false)
-	if _, err := env.ledger.Redo(storage.GlobalScope()); err != nil {
-		t.Fatalf("ledger redo: %v", err)
-	}
-	assertWorkflowFocusState(models.StateInProgress, true)
 }
 
 // TestTUITaskMoveAppliesDestSectionAndCanonicalTask verifies the migrated move

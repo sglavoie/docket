@@ -43,12 +43,11 @@ type metadataParseState struct {
 		originalDay int
 		hasAny      bool
 	}
-	// legacy accumulates the schema-v1 lifecycle fields (status/section/stage/
-	// active) during parse. The v2 writer no longer emits these keys, but the
-	// parse-only codecs keep populating this accumulator so finalizeParsedMetadata
-	// can write the values back onto the Task (keeping the legacy shims and the
-	// migration audit's read of task.Active working) and derive the canonical
-	// WorkflowState when a schema-v1 document carries no `state:` field.
+	// legacy accumulates the schema-v1 lifecycle fields (status/section/stage)
+	// during parse. The v2 writer no longer emits these keys, but the parse-only
+	// codecs retain enough information to derive the canonical WorkflowState when
+	// a schema-v1 document carries no `state:` field. The retired `active` key is
+	// recognized and discarded so old metadata continues to parse safely.
 	legacy struct {
 		status      models.TaskStatus
 		statusSeen  bool
@@ -56,8 +55,6 @@ type metadataParseState struct {
 		sectionSeen bool
 		stage       string
 		stageSeen   bool
-		active      bool
-		activeSeen  bool
 	}
 	// stateSeen records whether a canonical schema-v2 `state:` field was parsed.
 	// When true, finalizeParsedMetadata trusts the state the codec already

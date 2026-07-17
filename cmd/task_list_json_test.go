@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -34,7 +35,7 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		Tags:       tags,
 		Section:    models.SectionForState(task.State()),
 		Pinned:     task.Pinned,
-		Active:     true,
+		Queued:     true,
 		Dimmed:     task.Dimmed,
 		Parked:     task.IsParked(),
 		ParkedNote: task.ParkedNote,
@@ -57,8 +58,11 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	if v, ok := parsed["pinned"]; !ok || v != true {
 		t.Errorf("expected pinned=true in JSON, got %v", v)
 	}
-	if v, ok := parsed["active"]; !ok || v != true {
-		t.Errorf("expected active=true in JSON, got %v", v)
+	if v, ok := parsed["queued"]; !ok || v != true {
+		t.Errorf("expected queued=true in JSON, got %v", v)
+	}
+	if _, ok := parsed["active"]; ok {
+		t.Error("did not expect legacy active field in JSON")
 	}
 	if v, ok := parsed["dimmed"]; !ok || v != true {
 		t.Errorf("expected dimmed=true in JSON, got %v", v)
@@ -223,5 +227,17 @@ func TestTaskListJSONEntries_IncludesParkedMetadata(t *testing.T) {
 	}
 	if entries[1].ParkedAt != nil {
 		t.Errorf("plain task ParkedAt = %v, want nil", entries[1].ParkedAt)
+	}
+}
+
+func TestTaskListJSONEntriesReportsQueueMembershipAsQueued(t *testing.T) {
+	task := testutil.NewTestTask("Queued task", models.TaskTypeTask)
+	entries := taskListJSONEntries([]config.FocusQueueItem{{TaskID: task.ID}}, []*models.Task{task})
+
+	if len(entries) != 1 {
+		t.Fatalf("got %d entries, want 1", len(entries))
+	}
+	if !entries[0].Queued {
+		t.Error("queued task JSON entry should have queued=true")
 	}
 }

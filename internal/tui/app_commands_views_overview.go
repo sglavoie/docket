@@ -9,17 +9,6 @@ import (
 func (m *AppModel) focusViewCommands() []Command {
 	return []Command{
 		{
-			Name:        "remove from focus",
-			Description: "Remove active flag from task",
-			Shortcut:    "*",
-			Category:    CategoryActions,
-			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
-			Aliases:     []string{"unflag task", "unstar task", "deactivate"},
-			Handler: func() tea.Msg {
-				return syntheticKey('*')
-			},
-		},
-		{
 			Name:        "go to task in project",
 			Description: "Navigate to task in project tree",
 			Shortcut:    "gp",

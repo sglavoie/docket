@@ -30,8 +30,8 @@ type WorkflowMove struct {
 // created, which cross-project moves they triggered, any field conflicts, and the
 // new revision of every project the transaction touched.
 //
-// FocusChanges and ProjectStatusChanges report effects already committed via
-// revision-checked planning and catalog artifacts in the same transaction.
+// ProjectStatusChanges reports catalog effects already committed through a
+// revision-checked artifact in the same transaction.
 // RuleTriggerCounts remain surfaced for the adapter's best-effort automation
 // counter update.
 type WorkflowResult struct {
@@ -41,13 +41,12 @@ type WorkflowResult struct {
 	Moves                []WorkflowMove
 	Conflicts            []WorkflowConflict
 	Revisions            map[string]string
-	FocusChanges         []WorkflowFocusChange
 	ProjectStatusChanges []WorkflowProjectStatusChange
 	RuleTriggerCounts    map[string]int
 }
 
 // ApplyWorkflows evaluates task- and project-level workflow rules and executes
-// the resulting cascade — field mutations, follow-ups, focus/catalog changes,
+// the resulting cascade — field mutations, follow-ups, catalog changes,
 // and cross-project moves — as ONE transaction. Rule evaluation itself never
 // touches storage: the engine produces proposed actions which this use case turns
 // into project ChangeSets and checked artifacts committed together.
@@ -59,18 +58,12 @@ func (s *Service) ApplyWorkflows(
 	projectID string,
 	rules []workflow.WorkflowRule,
 	prevStates map[string]*models.Task,
-	focusBuilders ...WorkflowFocusArtifactBuilder,
 ) (WorkflowResult, error) {
-	builders := WorkflowArtifactBuilders{}
-	if len(focusBuilders) > 0 {
-		builders.Focus = focusBuilders[0]
-	}
-	return s.ApplyWorkflowsWithArtifacts(projectID, rules, prevStates, builders)
+	return s.ApplyWorkflowsWithArtifacts(projectID, rules, prevStates, WorkflowArtifactBuilders{})
 }
 
-// ApplyWorkflowsWithArtifacts is ApplyWorkflows with both checked configuration
-// artifact builders available, allowing task, focus, and project-status effects
-// to share the same transaction.
+// ApplyWorkflowsWithArtifacts is ApplyWorkflows with a checked catalog-artifact
+// builder available so task and project-status effects share one transaction.
 func (s *Service) ApplyWorkflowsWithArtifacts(
 	projectID string,
 	rules []workflow.WorkflowRule,
@@ -80,7 +73,6 @@ func (s *Service) ApplyWorkflowsWithArtifacts(
 	var project *models.Project
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  rules,
-		focusArtifacts:         builders.Focus,
 		projectStatusArtifacts: builders.ProjectStatus,
 		undoAction:             "Apply Workflow Rules",
 		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
@@ -114,7 +106,6 @@ func (s *Service) ApplyWorkflowsWithArtifacts(
 		Moves:                orchestrated.moves,
 		Conflicts:            orchestrated.conflicts,
 		Revisions:            make(map[string]string, len(orchestrated.commits)),
-		FocusChanges:         orchestrated.focusChanges,
 		ProjectStatusChanges: orchestrated.projectStatusChanges,
 		RuleTriggerCounts:    orchestrated.ruleTriggerCounts,
 	}

@@ -153,7 +153,7 @@ func (m *AppModel) otherCommands() []Command {
 			Shortcut:    "alt+f",
 			Category:    CategoryViews,
 			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"project focus", "project queue", "project active tasks"},
+			Aliases:     []string{"project focus", "project queue"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowProjectFocusViewMsg{Project: m.currentProject}

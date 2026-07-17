@@ -26,9 +26,6 @@ type ProjectWorkflowOptions struct {
 	// "Task Modified" when empty, mirroring persistWithWorkflow's safety net.
 	UndoAction  string
 	UndoContext string
-	// FocusArtifacts applies set_active side effects to a revision-checked
-	// planning artifact committed with this project mutation.
-	FocusArtifacts WorkflowFocusArtifactBuilder
 	// ProjectStatusArtifacts applies project-rule status effects to a checked
 	// workspace-catalog artifact committed with this project mutation.
 	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
@@ -60,7 +57,6 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  opts.Rules,
-		focusArtifacts:         opts.FocusArtifacts,
 		projectStatusArtifacts: opts.ProjectStatusArtifacts,
 		undoAction:             undoAction,
 		undoContext:            opts.UndoContext,
@@ -97,7 +93,6 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 
 	out := BulkResult{
 		RuleTriggerCounts:    orchestrated.ruleTriggerCounts,
-		FocusChanges:         orchestrated.focusChanges,
 		Conflicts:            orchestrated.conflicts,
 		ProjectStatusChanges: orchestrated.projectStatusChanges,
 	}

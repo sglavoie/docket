@@ -96,6 +96,82 @@ func TestRetiredTaskStageTutorAndSettingsSurfacesStayRemoved(t *testing.T) {
 	}
 }
 
+func TestTutorDistinguishesActiveSectionFromFocusQueue(t *testing.T) {
+	cli := findTutorTopicByTitle(t, "Focus")
+	for _, want := range []string{
+		"next in the\npipeline",
+		"does not mark\nthe task Active",
+		"leaves existing queue items alone",
+	} {
+		if !strings.Contains(cli.Content, want) {
+			t.Errorf("CLI Focus topic missing %q:\n%s", want, cli.Content)
+		}
+	}
+
+	concepts := findTutorTopicByTitle(t, "Focus & Suggestions")
+	for _, want := range []string{
+		"separate from the Active section",
+		"q to\ntoggle queue membership",
+		"without changing existing queue items",
+	} {
+		if !strings.Contains(concepts.Content, want) {
+			t.Errorf("Focus & Suggestions topic missing %q:\n%s", want, concepts.Content)
+		}
+	}
+
+	planning := findTutorTopicByTitle(t, "Sections (GTD)")
+	for _, want := range []string{
+		"# Active And Queue",
+		"independent, ordered planning list",
+		"Queue\nand Today are mutually exclusive",
+	} {
+		if !strings.Contains(planning.Content, want) {
+			t.Errorf("Sections topic missing %q:\n%s", want, planning.Content)
+		}
+	}
+}
+
+func TestTutorCLIExamplesUseSupportedSectionAndStateSyntax(t *testing.T) {
+	quickCapture := findTutorTopicByTitle(t, "Quick Capture")
+	for _, want := range []string{
+		"The tt add command accepts inline modifiers.",
+		`tt add "Fix login bug !1 #backend"`,
+		`tt add "Research caching #perf"`,
+		"# Sections in TUI Quick Capture",
+		"This sigil is not parsed by the tt add command.",
+		"Fix login bug !1 #backend /inbox",
+		"Research caching #perf /next",
+		"Deploy service #ops #urgent /review",
+		`tt task add "Deploy service" --tag ops --tag urgent --section Next`,
+	} {
+		if !strings.Contains(quickCapture.Content, want) {
+			t.Errorf("Quick Capture topic missing supported syntax %q:\n%s", want, quickCapture.Content)
+		}
+	}
+	for _, stale := range []string{
+		"section assignment with @",
+		"@active",
+		"@next",
+		`tt add "Fix login bug !1 #backend /`,
+		`tt add "Research caching #perf /`,
+		`tt add "Deploy service #ops #urgent /`,
+	} {
+		if strings.Contains(quickCapture.Content, stale) {
+			t.Errorf("Quick Capture topic still contains stale syntax %q:\n%s", stale, quickCapture.Content)
+		}
+	}
+
+	taskManagement := findTutorTopicByTitle(t, "Task Management")
+	for _, want := range []string{"tt task state ready <id>", "tt task state next <id>"} {
+		if !strings.Contains(taskManagement.Content, want) {
+			t.Errorf("Task Management topic missing supported command %q:\n%s", want, taskManagement.Content)
+		}
+	}
+	if strings.Contains(taskManagement.Content, "tt task section") {
+		t.Errorf("Task Management topic still contains retired task-section command:\n%s", taskManagement.Content)
+	}
+}
+
 func TestTutorUndoTopicDocumentsRetainedUndoWithoutHistoryViewer(t *testing.T) {
 	topic := findTutorTUITopic(t, "Undo")
 

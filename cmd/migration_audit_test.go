@@ -1,18 +1,20 @@
 package cmd
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// TestActiveMarkerRoundTripsIntoFocusQueue proves the migration prerequisite: a
-// v1 task parsed with active:true is surfaced by the loader-level migration
-// audit and, at the config-aware boundary, added to the Focus Queue — so the
-// active marker is not silently lost once the v2 writer stops persisting it.
-func TestActiveMarkerRoundTripsIntoFocusQueue(t *testing.T) {
+// TestLegacyActiveMarkerIsDiscardedWithoutChangingFocusQueue proves that a v1
+// task containing active:true remains parseable while the retired marker never
+// changes existing queue membership.
+func TestLegacyActiveMarkerIsDiscardedWithoutChangingFocusQueue(t *testing.T) {
 	content := `# Project: Legacy
 
 ## Task: Flagged active task
@@ -29,27 +31,111 @@ Marked active under the deprecated focus flag.
 		t.Fatalf("parse: %v", err)
 	}
 
-	// The parser captures the retired active flag into the migration audit even
-	// though the Task field is gone.
+	// The parser recognizes the retired active flag but deliberately omits it
+	// from the migration audit and does not create any queue membership.
 	audit := storage.NewMigrationAudit("proj-legacy", parsed.MigrationAudit)
-	if ids := audit.ActiveTaskIDs(); len(ids) != 1 || ids[0] != "legacy-active-1" {
-		t.Fatalf("expected audit to surface [legacy-active-1], got %v", ids)
+	if len(audit.Entries) != 2 || audit.Entries[0].TaskID != "legacy-active-1" {
+		t.Fatalf("expected both legacy tasks in audit, got %+v", audit.Entries)
 	}
 
 	planning := config.NewPlanningState()
-	added := MigrateLegacyActiveToFocusQueue(planning, audit)
-	if added != 1 {
-		t.Fatalf("expected 1 task migrated, got %d", added)
-	}
-
+	planning.AddToFocusQueue("already-queued", "proj-legacy")
 	q := planning.GetFocusQueue()
-	if len(q) != 1 || q[0].TaskID != "legacy-active-1" || q[0].ProjectID != "proj-legacy" {
-		t.Fatalf("expected legacy-active-1 in focus queue for proj-legacy, got %v", q)
+	if len(q) != 1 || q[0].TaskID != "already-queued" {
+		t.Fatalf("legacy active marker changed focus queue: %v", q)
+	}
+}
+
+// TestQueueStaysIndependentAcrossLegacyInputs covers the final Queue/Active
+// boundary: Queue retains both currently worked-on and non-Active section tasks
+// while legacy task metadata and automation rules cannot create or remove Queue
+// membership.
+func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
+	deps, project := setupTestDepsWithProject(t, "Queue independence")
+
+	activeSectionTask, err := models.NewTask("active-section", 10, models.TaskTypeTask, "Current work")
+	if err != nil {
+		t.Fatalf("new Active-section task: %v", err)
+	}
+	activeSectionTask.ApplyWorkflowState(models.StateReady)
+	if got := models.SectionForState(activeSectionTask.State()); got != "" {
+		t.Fatalf("Active-section task bucket = %q, want empty Active bucket", got)
 	}
 
-	// Re-running the migration is idempotent (already-present membership).
-	if again := MigrateLegacyActiveToFocusQueue(planning, audit); again != 0 {
-		t.Errorf("expected re-migration to add nothing, got %d", again)
+	nonActiveTask, err := models.NewTask("next-section", 11, models.TaskTypeTask, "Pipeline work")
+	if err != nil {
+		t.Fatalf("new non-Active task: %v", err)
+	}
+	nonActiveTask.ApplyWorkflowState(models.StateNext)
+	if got := models.SectionForState(nonActiveTask.State()); got != models.SectionNext {
+		t.Fatalf("non-Active task bucket = %q, want %q", got, models.SectionNext)
+	}
+
+	planning := deps.Config.Planning()
+	planning.AddToFocusQueue(activeSectionTask.ID, project.ID)
+	planning.AddToFocusQueue(nonActiveTask.ID, project.ID)
+
+	automation := deps.Config.Automation()
+	automation.WorkflowRules = []workflow.WorkflowRule{
+		{
+			ID:      "legacy-mixed",
+			Name:    "Legacy queue mutation",
+			Enabled: true,
+			Actions: []workflow.RuleAction{
+				{ActionType: workflow.ActionType("set_active"), Value: "true"},
+				{ActionType: workflow.ActionAddTag, Value: "retained"},
+			},
+		},
+	}
+	if err := saveTestRuntime(config.NewManager(deps.ConfigPath), deps.Config); err != nil {
+		t.Fatalf("seed legacy workspace: %v", err)
+	}
+
+	legacyAutomation, err := os.ReadFile(config.AutomationPath(deps.DataDir))
+	if err != nil {
+		t.Fatalf("read legacy automation file: %v", err)
+	}
+	if !strings.Contains(string(legacyAutomation), "set_active") {
+		t.Fatalf("automation fixture must contain the retired action:\n%s", legacyAutomation)
+	}
+
+	legacyTaskFile := `# Project: Legacy
+
+## Task: Legacy active metadata
+<!-- id: legacy-active, status: todo, priority: 1, active: true -->
+`
+	parsed, err := storage.ParseTasksMarkdownWithSections(legacyTaskFile)
+	if err != nil {
+		t.Fatalf("parse legacy task metadata: %v", err)
+	}
+	if len(parsed.Tasks) != 1 || parsed.Tasks[0].State() != models.StateReady {
+		t.Fatalf("legacy task = %+v, want one ready task", parsed.Tasks)
+	}
+
+	reloaded, err := config.NewManager(deps.ConfigPath).LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("reload legacy workspace: %v", err)
+	}
+
+	queued := map[string]bool{}
+	for _, item := range reloaded.Planning().GetFocusQueue() {
+		queued[item.TaskID] = true
+	}
+	for _, task := range []*models.Task{activeSectionTask, nonActiveTask} {
+		if !queued[task.ID] {
+			t.Errorf("queued %s task %q was removed", models.SectionForState(task.State()), task.ID)
+		}
+	}
+	if queued[parsed.Tasks[0].ID] {
+		t.Errorf("legacy active metadata unexpectedly added %q to Queue", parsed.Tasks[0].ID)
+	}
+	if len(queued) != 2 {
+		t.Errorf("Queue = %+v, want exactly the two explicitly queued tasks", reloaded.Planning().GetFocusQueue())
+	}
+
+	rules := reloaded.Automation().WorkflowRules
+	if len(rules) != 1 || len(rules[0].Actions) != 1 || rules[0].Actions[0].ActionType != workflow.ActionAddTag {
+		t.Errorf("sanitized legacy automation = %+v, want only retained add_tag action", rules)
 	}
 }
 

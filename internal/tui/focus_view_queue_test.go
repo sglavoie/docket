@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 func TestStaleQueuePruning(t *testing.T) {
@@ -137,4 +141,38 @@ func TestQueuePointerReconciliation(t *testing.T) {
 			t.Error("completed task should be removed from queueIDs")
 		}
 	})
+}
+
+func TestQueueTabRetainsQueueOrderAndUsesOnlyQueueIndicator(t *testing.T) {
+	project := newTestFocusProject(t, "Test")
+	first := newTestFocusTask(t, "First task", 1, false)
+	second := newTestFocusTask(t, "Second task", 2, false)
+	cfg := newTestFocusConfig([]*models.Project{project})
+	m := newTestFocusViewModel(cfg)
+	m.SetSize(100, 24)
+
+	*m.queue = []FocusTask{
+		{Task: second, Project: project},
+		{Task: first, Project: project},
+	}
+	m.queueIDs[second.ID] = true
+	m.queueIDs[first.ID] = true
+	m.tabs.Active = focusTabQueue
+	m.applyFilter()
+	m.Dispatcher = keymap.NewDispatcher(m.buildKeyMap())
+
+	if len(m.filtered) != 2 || m.filtered[0].Task.ID != second.ID || m.filtered[1].Task.ID != first.ID {
+		t.Fatalf("queue tab must preserve queue order, got %+v", m.filtered)
+	}
+	if _, _, handled := m.Dispatcher.Dispatch(syntheticKey('x')); handled {
+		t.Fatal("x should be reserved for suggestion dismissal, not queue removal")
+	}
+
+	rendered := ansi.Strip(m.View().Content)
+	if !strings.Contains(rendered, "q ") {
+		t.Fatalf("queue tab should render q indicators, got %q", rendered)
+	}
+	if strings.Contains(rendered, "*") || strings.Contains(rendered, "x remove") {
+		t.Fatalf("queue tab should not expose a legacy active marker or removal hint, got %q", rendered)
+	}
 }

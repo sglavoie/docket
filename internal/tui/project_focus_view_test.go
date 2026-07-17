@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -58,15 +60,30 @@ func TestProjectFocusViewModel_RenderWithDueDate_NoPanic(t *testing.T) {
 	_ = m.View()
 }
 
+func TestProjectFocusViewModel_RendersQueueIndicatorWithoutActiveMarker(t *testing.T) {
+	m, _ := newTestProjectFocusView(t)
+	if len(m.tasks) != 1 {
+		t.Fatalf("expected one queued task, got %d", len(m.tasks))
+	}
+
+	line := ansi.Strip(m.renderTaskLine(m.tasks[0], false, 40, nil, 0))
+	if !strings.Contains(line, "q ") {
+		t.Fatalf("project Focus Queue row should render q, got %q", line)
+	}
+	if strings.Contains(line, "*") {
+		t.Fatalf("project Focus Queue row should not render an active marker, got %q", line)
+	}
+}
+
 func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	cfg := newTestConfig()
 	project := testutil.NewTestProject("filter-test")
 
-	active := mustNewTestTask(project, "Active")
-	project.Tasks = append(project.Tasks, active)
+	queued := mustNewTestTask(project, "Queued")
+	project.Tasks = append(project.Tasks, queued)
 
-	inactive := mustNewTestTask(project, "Inactive")
-	project.Tasks = append(project.Tasks, inactive)
+	notQueued := mustNewTestTask(project, "Not queued")
+	project.Tasks = append(project.Tasks, notQueued)
 
 	completed := mustNewTestTask(project, "Completed")
 	completed.WorkflowState = models.StateDone
@@ -78,10 +95,9 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	project.Tasks = append(project.Tasks, snoozed)
 
 	project.BuildTaskTree()
-	// Queue membership replaces the deprecated Active flag: the inactive task
-	// stays out of the queue, the completed/snoozed members are filtered out.
+	// Only queue members are included; completed and snoozed members are filtered out.
 	cfg.Planning().SetFocusQueue([]config.FocusQueueItem{
-		{TaskID: active.ID, ProjectID: project.ID},
+		{TaskID: queued.ID, ProjectID: project.ID},
 		{TaskID: completed.ID, ProjectID: project.ID},
 		{TaskID: snoozed.ID, ProjectID: project.ID},
 	})
@@ -89,10 +105,10 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if len(m.tasks) != 1 {
-		t.Errorf("expected 1 active non-complete non-snoozed task, got %d", len(m.tasks))
+		t.Errorf("expected 1 queued non-complete non-snoozed task, got %d", len(m.tasks))
 	}
-	if len(m.tasks) > 0 && m.tasks[0].Title != "Active" {
-		t.Errorf("expected task title 'Active', got %q", m.tasks[0].Title)
+	if len(m.tasks) > 0 && m.tasks[0].Title != "Queued" {
+		t.Errorf("expected task title 'Queued', got %q", m.tasks[0].Title)
 	}
 }
 

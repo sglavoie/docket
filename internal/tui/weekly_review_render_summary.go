@@ -91,7 +91,6 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 			{"due_date", "Due date changes"},
 			{"move", "Section moves"},
 			{"delete", "Deletions"},
-			{"active", "Active flag toggles"},
 			{"tag", "Tag changes"},
 			{"snooze", "Snoozes"},
 		}

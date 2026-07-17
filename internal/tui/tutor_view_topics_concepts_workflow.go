@@ -35,9 +35,13 @@ activity recency, unblocking potential, and scoring profiles.
 
 # Focus Queue
 
-The focus queue is a persistent, ordered list of tasks you have
-accepted from suggestions. Manage it in the TUI focus view: press
-a to accept a suggestion, x to remove, J/K to reorder.
+The focus queue is a persistent, ordered list of tasks to take next in
+the pipeline. It is separate from the Active section, which identifies
+work currently being worked on. A task may be queued from any section;
+queue membership does not move it or change its workflow state. Manage
+the queue in the TUI focus view: press a to accept a suggestion, q to
+toggle queue membership from a task view, and J/K to reorder. Pressing x
+dismisses a suggestion without changing existing queue items.
 
 # Actionable Tasks
 

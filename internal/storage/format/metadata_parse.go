@@ -297,8 +297,7 @@ type LegacyLifecycle struct {
 	Status  models.TaskStatus
 	Section string
 	Stage   string
-	Active  bool
-	Present bool // any legacy lifecycle key (status/section/stage/active) was seen
+	Present bool // any retained lifecycle key (status/section/stage) was seen
 }
 
 func legacyLifecycleFrom(state *metadataParseState) LegacyLifecycle {
@@ -306,9 +305,8 @@ func legacyLifecycleFrom(state *metadataParseState) LegacyLifecycle {
 		Status:  state.legacy.status,
 		Section: state.legacy.section,
 		Stage:   state.legacy.stage,
-		Active:  state.legacy.active,
 		Present: state.legacy.statusSeen || state.legacy.sectionSeen ||
-			state.legacy.stageSeen || state.legacy.activeSeen,
+			state.legacy.stageSeen,
 	}
 }
 

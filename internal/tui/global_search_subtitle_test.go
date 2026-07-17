@@ -57,6 +57,14 @@ func TestGlobalSearchSyntaxHintRespectsNarrowWidth(t *testing.T) {
 	}
 }
 
+func TestGlobalSearchSyntaxHintExcludesRetiredQueueMembershipFilter(t *testing.T) {
+	m := &GlobalSearchModel{}
+	m.BaseView.SetSize(120, 18)
+	if hint := m.renderSyntaxHint(); strings.Contains(hint, "*active") {
+		t.Errorf("syntax hint includes retired queue-membership filter: %q", hint)
+	}
+}
+
 func TestGlobalSearchHelpTextRespectsNarrowWidth(t *testing.T) {
 	m := &GlobalSearchModel{
 		filtered: []filteredSearchResult{{}, {}, {}},

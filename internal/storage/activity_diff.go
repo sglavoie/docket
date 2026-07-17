@@ -75,8 +75,8 @@ func diffTask(old, new *models.Task) {
 	recordIfDiff("due", formatDuePtr(old.DueDate, old.HasTime), formatDuePtr(new.DueDate, new.HasTime))
 	recordIfDiff("snoozed", formatTimePtr(old.SnoozedUntil), formatTimePtr(new.SnoozedUntil))
 
-	// Boolean fields. The legacy Active flag is intentionally not diffed: it
-	// maps to Focus Queue membership (a planning collection), not task state.
+	// Boolean fields. The retired legacy Active flag has no task-level meaning,
+	// so it is intentionally not part of the diff surface.
 	recordIfDiff("pinned", fmt.Sprintf("%v", old.Pinned), fmt.Sprintf("%v", new.Pinned))
 	recordIfDiff("dimmed", fmt.Sprintf("%v", old.Dimmed), fmt.Sprintf("%v", new.Dimmed))
 

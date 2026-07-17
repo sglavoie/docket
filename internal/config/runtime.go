@@ -28,8 +28,8 @@ type DomainStore interface {
 //
 // It is the seam the remaining Config-facade migration children route callers
 // through: today a caller that needs the Focus Queue reads it via the Planning
-// dependency (see FocusQueue) instead of dereferencing config.Config or the
-// retired per-task Active flag.
+// dependency (see FocusQueue) rather than treating Queue membership as task
+// state.
 type RuntimeDependencies struct {
 	Catalog    WorkspaceCatalogStore
 	Planning   PlanningStore
@@ -65,9 +65,8 @@ func (m *Manager) RuntimeDependencies() *RuntimeDependencies {
 }
 
 // FocusQueue returns the persisted Focus Queue via the Planning dependency. It
-// is the domain-backed replacement for reading config.Config.FocusQueue or the
-// retired per-task Active compatibility field: Focus Queue membership is loaded
-// from the owning planning domain, not derived from task state.
+// is loaded from the owning planning domain, not derived from task state or the
+// Active section.
 func (r *RuntimeDependencies) FocusQueue() ([]FocusQueueItem, error) {
 	if r == nil || r.Planning == nil {
 		return nil, nil

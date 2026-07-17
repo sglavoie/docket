@@ -46,11 +46,6 @@ func (a RuleAction) String() string {
 		return fmt.Sprintf("set due date %s", a.Value)
 	case ActionClearDue:
 		return "clear due date"
-	case ActionSetActive:
-		if a.Value == "true" {
-			return "set active"
-		}
-		return "clear active"
 	case ActionSetPinned:
 		if a.Value == "true" {
 			return "pin task"

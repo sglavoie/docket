@@ -22,7 +22,6 @@ type WorkflowProjectStatusArtifactBuilder func([]WorkflowProjectStatusChange) ([
 // WorkflowArtifactBuilders groups the durable configuration artifacts a
 // standalone workflow evaluation may need.
 type WorkflowArtifactBuilders struct {
-	Focus         WorkflowFocusArtifactBuilder
 	ProjectStatus WorkflowProjectStatusArtifactBuilder
 }
 

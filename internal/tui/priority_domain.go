@@ -55,8 +55,8 @@ func CategorizeByDueDate(task *models.Task) PriorityGroup {
 
 // ComputeUrgencyScore calculates the urgency score for a task. Higher scores
 // are more urgent. The scoring is shared between single-project and
-// cross-project priority modes. inFocusQueue is the task's Focus Queue
-// membership (the successor of the deprecated Active flag).
+// cross-project priority modes. inFocusQueue is the task's explicit Focus Queue
+// membership.
 func ComputeUrgencyScore(task *models.Task, inFocusQueue bool) int {
 	score := (6 - task.Priority) * 1000
 

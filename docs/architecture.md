@@ -29,9 +29,12 @@ Any nonterminal state may move to another nonterminal state. `done` and
 `CompletedAt` is populated only for terminal tasks.
 
 Dependency blocking is derived from unresolved dependencies and appears as a
-badge/filter. It is not a workflow state. Focus Queue and Daily Plan are also
-planning collections, not states, so adding a task to Today does not rewrite its
-lifecycle.
+badge/filter. It is not a workflow state. The Active section identifies work
+currently being worked on. Focus Queue is a separate ordered planning
+collection for the next tasks in the pipeline, and Daily Plan is another
+planning collection; neither changes a task's workflow state or section.
+Queue and Daily Plan membership are mutually exclusive, so adding a task to
+Today removes it from Queue without rewriting its lifecycle.
 
 Use `tt task state <ref> <state>` for the complete state surface. Convenience
 commands include `ready`, `next`, `start`, `wait`, `pause`, `review`, `someday`,
@@ -259,9 +262,10 @@ directory, and `--no-context` sends no workspace data or access capability.
 Schema-v1 task Markdown is read through a deterministic migration mapping:
 canceled; done/completed; review; in progress; blocked/waiting; standby/paused;
 maybe/someday; inbox; next; then ready. Nonterminal tasks from the legacy Action
-Inbox become `inbox`, and legacy `Active=true` membership is captured in Focus
-Queue. The migration audit records original status, section, stage, Active, and
-custom-stage configuration before schema-v2 becomes canonical.
+Inbox become `inbox`. A legacy `active` metadata key is accepted only to parse
+old task files safely, then discarded; it never adds a task to Focus Queue. The
+migration audit records original status, section, stage, and custom-stage
+configuration before schema-v2 becomes canonical.
 
 Workspace-domain migration and location moves use staged writes and validation.
 Keep the pre-migration copy until the audit and acceptance checks pass. Do not

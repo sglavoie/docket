@@ -112,20 +112,11 @@ func TestRuleValidation_NewActions(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid set_active true",
+			name: "retired set_active action",
 			rule: WorkflowRule{
 				Name:    "Test",
 				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
-				Actions: []RuleAction{{ActionType: ActionSetActive, Value: "true"}},
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid set_active value",
-			rule: WorkflowRule{
-				Name:    "Test",
-				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
-				Actions: []RuleAction{{ActionType: ActionSetActive, Value: "yes"}},
+				Actions: []RuleAction{{ActionType: ActionType("set_active"), Value: "true"}},
 			},
 			wantErr: true,
 		},

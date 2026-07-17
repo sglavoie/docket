@@ -69,8 +69,8 @@ type AddTaskRequest struct {
 	URL           string
 	Source        string
 	// Pinned and Dimmed carry the form's flag state. Pinned also records PinnedAt.
-	// The retired Active flag is gone; focus membership is a Focus Queue concern
-	// handled at the config-aware layer, not a task field set here.
+	// Focus Queue membership is independent planning state handled at the
+	// config-aware layer, not a task field set here.
 	Pinned bool
 	Dimmed bool
 	// InsertBeforeDimmed positions a new ROOT task before the first dimmed root
@@ -124,7 +124,7 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 
 // AddTaskWithWorkflow creates a fully-specified task and runs a stateless
 // workflow cascade over the resulting project, committing the new task, any
-// caller-supplied artifacts, follow-ups, focus/catalog effects, and deferred
+// caller-supplied artifacts, follow-ups, catalog effects, and deferred
 // cross-project moves as one grouped transaction. Creation deliberately has no
 // previous-state map: event-only rules must not treat a newly created task as a
 // transition from a fabricated prior state.
@@ -141,7 +141,6 @@ func (s *Service) AddTaskWithWorkflow(req AddTaskRequest, opts SingleTaskWorkflo
 	var ref TaskRef
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  opts.Rules,
-		focusArtifacts:         opts.FocusArtifacts,
 		projectStatusArtifacts: opts.ProjectStatusArtifacts,
 		undoAction:             undoAction,
 		undoContext:            opts.UndoContext,

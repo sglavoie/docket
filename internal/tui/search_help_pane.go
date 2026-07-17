@@ -48,14 +48,13 @@ func renderSearchHelpPane(width, height int) string {
 	b.WriteString(prefix.Render("is:X") + muted.Render("  Task matches state"))
 	b.WriteString("\n")
 	b.WriteString(muted.Render("  " + wrapValues([]string{
-		"pinned", "active", "dimmed", "blocked",
+		"pinned", "dimmed", "blocked",
 		"overdue", "snoozed", "recurring", "leaf", "root",
 	}, wrapWidth)))
 	b.WriteString("\n")
 	b.WriteString(prefix.Render("p:slug") + muted.Render("  Project filter"))
 	b.WriteString("\n")
-	b.WriteString(prefix.Render("*") + muted.Render("  Active tasks only"))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 	b.WriteString(muted.Render("Press ? to close"))
 
 	cfg := DefaultCardConfig()

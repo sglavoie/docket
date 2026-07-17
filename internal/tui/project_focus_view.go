@@ -2,7 +2,7 @@
 //
 // Project Focus View
 // ==================
-// The project focus view displays active-flagged tasks for a single project.
+// The project focus view displays queued tasks for a single project.
 // It is split across multiple files:
 //
 //   - project_focus_types.go: Model struct, message types, and interface implementations

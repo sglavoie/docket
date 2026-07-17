@@ -76,12 +76,11 @@ func TestAddTaskWithWorkflowUsesStatelessCreationAndOneSnapshot(t *testing.T) {
 	}
 }
 
-func TestApplyTemplateWithWorkflowGroupsAutomationFocusAndCrossProjectEffects(t *testing.T) {
+func TestApplyTemplateWithWorkflowGroupsAutomationAndCrossProjectEffects(t *testing.T) {
 	source := newProject("proj-a", "Alpha")
 	destination := newProject("proj-b", "Beta")
 	repo := newFakeRepo(source, destination)
 	svc := newTestService(repo)
-	focus := &focusArtifactRecorder{}
 	automationRevision := "automation-revision"
 	automationArtifact := storage.ArtifactChange{
 		Path:             "/tmp/automation.json",
@@ -90,7 +89,6 @@ func TestApplyTemplateWithWorkflowGroupsAutomationFocusAndCrossProjectEffects(t 
 	}
 	rule := typeRule("epic-template-cascade", models.TaskTypeEpic,
 		workflow.RuleAction{ActionType: workflow.ActionCreateFollowup, Value: "Verify template"},
-		workflow.RuleAction{ActionType: workflow.ActionSetActive, Value: "true"},
 		workflow.RuleAction{ActionType: workflow.ActionMoveToProject, Value: destination.Name},
 	)
 
@@ -104,8 +102,7 @@ func TestApplyTemplateWithWorkflowGroupsAutomationFocusAndCrossProjectEffects(t 
 		TemplateName: "Release",
 		Children:     []app.TemplateChildSpec{{Title: "Ship it"}},
 	}, app.SingleTaskWorkflowOptions{
-		Rules:          []workflow.WorkflowRule{rule},
-		FocusArtifacts: focus.build,
+		Rules: []workflow.WorkflowRule{rule},
 	})
 	if err != nil {
 		t.Fatalf("ApplyTemplateWithWorkflow: %v", err)
@@ -117,8 +114,8 @@ func TestApplyTemplateWithWorkflowGroupsAutomationFocusAndCrossProjectEffects(t 
 		t.Fatalf("commits = %#v, want one source+destination transaction", repo.commits)
 	}
 	artifacts := repo.commits[0][0].Artifacts
-	if len(artifacts) != 2 || artifacts[0].Path != "/tmp/automation.json" || artifacts[1].Path != "/tmp/planning.json" {
-		t.Fatalf("artifacts = %#v, want distinct automation and planning targets", artifacts)
+	if len(artifacts) != 1 || artifacts[0].Path != "/tmp/automation.json" {
+		t.Fatalf("artifacts = %#v, want automation artifact", artifacts)
 	}
 	if result.Template.SubtasksCreated != 1 {
 		t.Fatalf("template result = %+v, want one child", result.Template)
@@ -128,9 +125,6 @@ func TestApplyTemplateWithWorkflowGroupsAutomationFocusAndCrossProjectEffects(t 
 	}
 	if destination.GetTaskByID(result.Template.Task.TaskID) == nil {
 		t.Fatal("template root did not move to the destination")
-	}
-	if len(focus.calls) != 1 || len(focus.calls[0]) != 1 || focus.calls[0][0].ProjectID != destination.ID {
-		t.Fatalf("focus calls = %+v, want final destination ownership", focus.calls)
 	}
 	if len(source.Tasks) != 1 || !source.Tasks[0].HasTag("followup") {
 		t.Fatalf("source tasks = %+v, want the workflow follow-up", source.Tasks)

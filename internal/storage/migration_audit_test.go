@@ -35,27 +35,8 @@ func TestParseMigrationAudit_RecordsRetiredFields(t *testing.T) {
 
 	// The retired values are recorded verbatim from the schema-v1 metadata.
 	got := audit.Entries[0]
-	want := MigrationAuditEntry{TaskID: "a", ShortID: 1, Status: models.StatusInProgress, Section: models.SectionNext, Stage: "Design", Active: true}
+	want := MigrationAuditEntry{TaskID: "a", ShortID: 1, Status: models.StatusInProgress, Section: models.SectionNext, Stage: "Design"}
 	if got != want {
 		t.Errorf("entry[0] = %+v, want %+v", got, want)
-	}
-}
-
-func TestMigrationAudit_ActiveTaskIDs(t *testing.T) {
-	audit := NewMigrationAudit("proj-1", []MigrationAuditEntry{
-		{TaskID: "a", Active: true},
-		{TaskID: "b", Active: false},
-		{TaskID: "c", Active: true},
-	})
-
-	ids := audit.ActiveTaskIDs()
-	if len(ids) != 2 || ids[0] != "a" || ids[1] != "c" {
-		t.Errorf("ActiveTaskIDs() = %v, want [a c]", ids)
-	}
-
-	// nil audit is safe.
-	var nilAudit *MigrationAudit
-	if got := nilAudit.ActiveTaskIDs(); got != nil {
-		t.Errorf("nil audit ActiveTaskIDs() = %v, want nil", got)
 	}
 }

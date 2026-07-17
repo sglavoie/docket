@@ -33,8 +33,8 @@ type ProjectLoadResult struct {
 	// revision. Callers that persist load-time normalization must carry this
 	// revision into the checked maintenance commit rather than re-reading later.
 	RawRevision *string
-	// MigrationAudit records the retired schema-v1 lifecycle values the loaded
-	// tasks carried, for the Active -> Focus Queue migration and migration report.
+	// MigrationAudit records the retained retired schema-v1 lifecycle values the
+	// loaded tasks carried for migration reporting.
 	// Nil when the project was not loaded through the markdown parser (e.g. an
 	// in-memory test repository) or the tasks file did not exist.
 	MigrationAudit *MigrationAudit

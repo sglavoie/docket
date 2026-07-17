@@ -315,7 +315,7 @@ func (m *WorkflowWizardModel) actionValueInputHint() string {
 		return "tag name (e.g. urgent, feature)"
 	case workflow.ActionSetDueRelative, workflow.ActionSetSnooze:
 		return "relative duration (e.g. +3d, +1w, +2m)"
-	case workflow.ActionSetActive, workflow.ActionSetPinned:
+	case workflow.ActionSetPinned:
 		return "true or false"
 	case workflow.ActionAddComment, workflow.ActionNotifyParent, workflow.ActionCreateFollowup:
 		return "text content"

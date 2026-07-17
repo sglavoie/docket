@@ -65,6 +65,24 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 	}
 }
 
+func TestTaskShowJSONUsesQueuedField(t *testing.T) {
+	data, err := json.Marshal(taskShowJSONEntry{Queued: true})
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	if value, ok := raw["queued"]; !ok || value != true {
+		t.Errorf("expected queued=true in JSON, got %v", value)
+	}
+	if _, ok := raw["active"]; ok {
+		t.Error("did not expect legacy active field in JSON")
+	}
+}
+
 func TestTaskShowJSONIncludesActivity(t *testing.T) {
 	task := &models.Task{
 		ID:            "test-id",

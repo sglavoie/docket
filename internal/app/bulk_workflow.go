@@ -28,10 +28,6 @@ type BulkTransitionRequest struct {
 	UndoAction string
 	// UndoContext describes the batch; empty defaults to the target state.
 	UndoContext string
-	// FocusArtifacts applies set_active side effects to the planning domain and
-	// renders its revision-checked artifact. It is required when a rule requests
-	// any Focus Queue change so that planning and task writes share one commit.
-	FocusArtifacts WorkflowFocusArtifactBuilder
 	// ProjectStatusArtifacts applies project-rule status effects to a checked
 	// workspace-catalog artifact in the same transaction.
 	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
@@ -82,7 +78,6 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 	var projectIndexes map[string]int
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  req.Rules,
-		focusArtifacts:         req.FocusArtifacts,
 		projectStatusArtifacts: req.ProjectStatusArtifacts,
 		undoAction:             undoAction,
 		undoContext:            undoContext,
@@ -147,7 +142,6 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 
 	out := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
 	out.RuleTriggerCounts = orchestrated.ruleTriggerCounts
-	out.FocusChanges = orchestrated.focusChanges
 	out.Conflicts = orchestrated.conflicts
 	out.ProjectStatusChanges = orchestrated.projectStatusChanges
 	for _, ref := range refs {

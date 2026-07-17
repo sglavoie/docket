@@ -170,7 +170,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	var helpParts []string
 	switch m.tabs.Active {
 	case focusTabQueue:
-		helpParts = []string{"x remove", "J/K reorder", "r refresh"}
+		helpParts = []string{"J/K reorder", "r refresh"}
 	case focusTabSuggested:
 		if m.showDismissed {
 			xLabel := "x dismiss"

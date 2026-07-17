@@ -95,7 +95,7 @@ Use tt select to switch between projects and contexts.
 			Content: `# Actionable Tasks Across Projects
 
   tt focus                # All actionable tasks
-  tt focus --active       # Only active-flagged tasks (deprecated)
+  tt focus queue          # Show the focus work queue
 
 # Ranked Suggestions
 
@@ -107,7 +107,10 @@ status, activity recency, unblocking potential, and scoring profiles.
 
 # Focus Queue
 
-The queue holds tasks accepted from suggestions in the TUI.
+The queue is an explicit, ordered list of tasks to take next in the
+pipeline. It can include a task from any section; adding it does not mark
+the task Active or change its workflow state. Suggestions can add tasks to
+the queue, while dismissing a suggestion leaves existing queue items alone.
 
   tt focus queue`,
 		},
@@ -156,12 +159,20 @@ dashboard. Archive completed projects to keep things tidy.
 			Category: "CLI",
 			Content: `# Inline Syntax
 
-Add tasks quickly with inline modifiers. Priority is set with !,
-tags with #, and section assignment with @.
+The tt add command accepts inline modifiers. Priority is set with !
+and tags with #.
 
-  tt add "Fix login bug !1 #backend @active"
+  tt add "Fix login bug !1 #backend"
   tt add "Update docs !3 #frontend"
-  tt add "Research caching #perf @next"
+  tt add "Research caching #perf"
+
+# Sections in TUI Quick Capture
+
+Inside the TUI Quick Capture input, use / followed by a GTD section.
+This sigil is not parsed by the tt add command.
+
+  Fix login bug !1 #backend /inbox
+  Research caching #perf /next
 
 # Priority Shorthand
 
@@ -174,9 +185,11 @@ the number anywhere in the task title.
 # Tags and Sections
 
 Tags help you categorize tasks across projects. Sections follow
-GTD methodology for workflow organization.
+GTD methodology for workflow organization. In the CLI, set a section
+with tt task add --section.
 
-  tt add "Deploy service #ops #urgent @active"`,
+  Deploy service #ops #urgent /review
+  tt task add "Deploy service" --tag ops --tag urgent --section Next`,
 		},
 		{
 			Title:    "Scoring",
@@ -255,11 +268,11 @@ Add tasks with type and parent options for hierarchy.
   tt task cancel <id>
   tt task block <id>
 
-# Priority and Sections
+# Priority and Workflow State
 
   tt task priority <id> 2
-  tt task section <id> active
-  tt task section <id> next
+  tt task state ready <id>
+  tt task state next <id>
 
 # Dependencies
 

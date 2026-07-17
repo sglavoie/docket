@@ -14,7 +14,7 @@ import (
 const legacyFixtureFile = "testdata/legacy_workspace/project-alpha.tasks.md"
 
 // TestLegacyWorkspaceFixtureParsesLegacyFields pins the legacy schema signals
-// (status, section, stage, active) that later sessions migrate to a single
+// (status, section, stage) that later sessions migrate to a single
 // WorkflowState. If the legacy parser stops round-tripping these fields, the
 // migration mapping loses its documented inputs and this baseline fails loudly.
 func TestLegacyWorkspaceFixtureParsesLegacyFields(t *testing.T) {
@@ -37,7 +37,7 @@ func TestLegacyWorkspaceFixtureParsesLegacyFields(t *testing.T) {
 		byID[task.ID] = task
 	}
 
-	// The retired legacy lifecycle fields (status/section/stage/active) are no
+	// The retained legacy lifecycle fields (status/section/stage) are no
 	// longer stored on the task: the parser derives a single canonical
 	// WorkflowState and captures the raw legacy values in the migration audit.
 	auditByID := make(map[string]MigrationAuditEntry, len(result.MigrationAudit))
@@ -47,7 +47,7 @@ func TestLegacyWorkspaceFixtureParsesLegacyFields(t *testing.T) {
 
 	// Each expectation corresponds to one branch of the legacy -> WorkflowState
 	// migration precedence documented in the fixture README: state is the derived
-	// canonical WorkflowState, and status/section/stage/active are the raw legacy
+	// canonical WorkflowState, and status/section/stage are the retained legacy
 	// signals captured in the migration audit.
 	cases := []struct {
 		id      string
@@ -55,21 +55,20 @@ func TestLegacyWorkspaceFixtureParsesLegacyFields(t *testing.T) {
 		status  models.TaskStatus
 		section string
 		stage   string
-		active  bool
 	}{
-		{"legacy-cancel-1", models.StateCanceled, models.StatusCanceled, "", "", false},
-		{"legacy-done-1", models.StateDone, models.StatusDone, "", "", false},
-		{"legacy-done-2", models.StateDone, models.StatusTodo, models.SectionCompleted, "", false},
-		{"legacy-review-1", models.StateReview, models.StatusReview, "", "", false},
-		{"legacy-inprogress-1", models.StateInProgress, models.StatusInProgress, "", "", false},
-		{"legacy-blocked-1", models.StateWaiting, models.StatusBlocked, "", "", false},
-		{"legacy-waiting-1", models.StateWaiting, models.StatusTodo, models.SectionWaiting, "", false},
-		{"legacy-standby-1", models.StatePaused, models.StatusStandby, models.SectionStandby, "", false},
-		{"legacy-maybe-1", models.StateSomeday, models.StatusMaybe, models.SectionSomeday, "", false},
-		{"legacy-inbox-1", models.StateInbox, models.StatusTodo, models.SectionInbox, "", false},
-		{"legacy-next-1", models.StateNext, models.StatusTodo, models.SectionNext, "", false},
-		{"legacy-active-1", models.StateReady, models.StatusTodo, "", "", true},
-		{"legacy-stage-1", models.StateReady, models.StatusTodo, "", "Brainstorm", false},
+		{"legacy-cancel-1", models.StateCanceled, models.StatusCanceled, "", ""},
+		{"legacy-done-1", models.StateDone, models.StatusDone, "", ""},
+		{"legacy-done-2", models.StateDone, models.StatusTodo, models.SectionCompleted, ""},
+		{"legacy-review-1", models.StateReview, models.StatusReview, "", ""},
+		{"legacy-inprogress-1", models.StateInProgress, models.StatusInProgress, "", ""},
+		{"legacy-blocked-1", models.StateWaiting, models.StatusBlocked, "", ""},
+		{"legacy-waiting-1", models.StateWaiting, models.StatusTodo, models.SectionWaiting, ""},
+		{"legacy-standby-1", models.StatePaused, models.StatusStandby, models.SectionStandby, ""},
+		{"legacy-maybe-1", models.StateSomeday, models.StatusMaybe, models.SectionSomeday, ""},
+		{"legacy-inbox-1", models.StateInbox, models.StatusTodo, models.SectionInbox, ""},
+		{"legacy-next-1", models.StateNext, models.StatusTodo, models.SectionNext, ""},
+		{"legacy-active-1", models.StateReady, models.StatusTodo, "", ""},
+		{"legacy-stage-1", models.StateReady, models.StatusTodo, "", "Brainstorm"},
 	}
 
 	if len(cases) != len(tasks) {
@@ -99,9 +98,6 @@ func TestLegacyWorkspaceFixtureParsesLegacyFields(t *testing.T) {
 		}
 		if entry.Stage != tc.stage {
 			t.Errorf("%s: audit stage = %q, want %q", tc.id, entry.Stage, tc.stage)
-		}
-		if entry.Active != tc.active {
-			t.Errorf("%s: audit active = %v, want %v", tc.id, entry.Active, tc.active)
 		}
 	}
 }

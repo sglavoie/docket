@@ -54,11 +54,9 @@ type ParseResult struct {
 	PinnedTags    []string
 	SectionColors map[string]string
 	Warnings      []ParseWarning // Non-fatal issues found during parsing
-	// MigrationAudit records the retired schema-v1 lifecycle values every task
-	// carried at parse time (one entry per task, in load order). The loader wraps
-	// it in a *MigrationAudit with the project ID so a config-aware caller can
-	// drive the Active -> Focus Queue migration before the v2 writer stops
-	// persisting the legacy keys. ProjectID is left empty here.
+	// MigrationAudit records retained retired schema-v1 lifecycle values every
+	// task carried at parse time (one entry per task, in load order). ProjectID is
+	// left empty here and added by the project loader.
 	MigrationAudit []MigrationAuditEntry
 }
 
@@ -239,7 +237,6 @@ func buildMigrationAuditEntries(parsedTasks []*format.ParsedTask, tasks []*model
 			Status:  legacy.Status,
 			Section: legacy.Section,
 			Stage:   legacy.Stage,
-			Active:  legacy.Active,
 		})
 	}
 	return entries

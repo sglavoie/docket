@@ -88,8 +88,8 @@ func TestWriteMetadataV2(t *testing.T) {
 			want: "<!-- id: task-3, state: waiting, priority: 2, depends: task-1;task-2 -->",
 		},
 		{
-			// `active` is retired (migrated to Focus Queue), so only `pinned`
-			// survives among the boolean flags.
+			// `active` is retired and discarded, so only `pinned` survives among
+			// the boolean flags.
 			name: "task with boolean flags",
 			task: &models.Task{
 				ID:            "task-4",

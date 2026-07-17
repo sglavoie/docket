@@ -22,7 +22,7 @@ func NewProjectFocusViewModel(project *models.Project, runtime *config.RuntimeSt
 	return m
 }
 
-// loadTasks collects active-flagged tasks from the project.
+// loadTasks collects queued tasks from the project.
 func (m *ProjectFocusViewModel) loadTasks() {
 	m.resetViewScrollOffset()
 	m.tasks = nil

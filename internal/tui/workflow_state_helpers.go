@@ -61,11 +61,9 @@ func taskSectionBucket(t *models.Task) string {
 }
 
 // TaskInFocusQueue reports whether the task is a member of the persisted
-// Focus Queue. It replaces reads of the deprecated Task.Active flag:
-// focus-queue membership is the canonical "active" signal under the workflow
-// state model (the Active field is deleted with the other legacy fields in
-// session 33.7). The queue is small, so a linear scan avoids allocating a
-// membership set at per-row render sites.
+// Focus Queue. Queue membership is planning state and is independent of the
+// workflow's Active section. The queue is small, so a linear scan avoids
+// allocating a membership set at per-row render sites.
 func TaskInFocusQueue(planning *config.PlanningState, taskID string) bool {
 	if planning == nil {
 		return false

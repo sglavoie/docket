@@ -103,8 +103,8 @@ func buildTreePrefix(ancestorIsLast []bool, isLast bool) string {
 
 // matchesSearch parses structured filters from the query and fuzzy-matches
 // the remaining text against the task's title, tags, description, and comments.
-func matchesSearch(task *models.Task, query string, planning *config.PlanningState) bool {
-	return TaskMatchesStructuredSearch(task, query, planning)
+func matchesSearch(task *models.Task, query string, _ *config.PlanningState) bool {
+	return TaskMatchesStructuredSearch(task, query)
 }
 
 // flattenTaskTreeWithFolds recursively walks the task tree and produces a flat

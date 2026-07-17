@@ -199,7 +199,7 @@ func (m *DashboardModel) renderProjectRow(p *models.Project, selected, narrowMod
 
 	if narrowMode {
 		line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
-		line1 := RenderSelectableRow(selected, false, false, m.cursorFlash, false, false, line1Content, rowWidth)
+		line1 := RenderSelectableRow(selected, false, m.cursorFlash, false, false, line1Content, rowWidth)
 
 		statsLine := fmt.Sprintf("      %s  %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)), bar)
 		statsLine = appendProjectRowBadge(statsLine, rowWidth, noteCount, scoreCoverageBadge, statusIndicator)
@@ -210,7 +210,7 @@ func (m *DashboardModel) renderProjectRow(p *models.Project, selected, narrowMod
 	totalStr := MutedStyle.Render(fmt.Sprintf("%6d", total))
 	content := fmt.Sprintf("%s%s %s %s %s  %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr, bar)
 	content = appendProjectRowBadge(content, maxContentWidth, noteCount, scoreCoverageBadge, statusIndicator)
-	return RenderSelectableRow(selected, false, false, m.cursorFlash, false, false, content, rowWidth)
+	return RenderSelectableRow(selected, false, m.cursorFlash, false, false, content, rowWidth)
 }
 
 func (m *DashboardModel) renderProjectRowName(p *models.Project, style lipgloss.Style, maxNameWidth, iconColWidth int) string {

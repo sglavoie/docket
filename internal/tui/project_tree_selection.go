@@ -113,14 +113,6 @@ func (m *ProjectTreeModel) sortNodeSlice(nodes []*TreeNode) {
 
 // compareNodes compares two nodes based on the current sort field and direction.
 func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
-	// In Active view, float Focus Queue members to the top (matching the
-	// queue grouping that reordering in project_tree_movement.go enforces).
-	if m.viewMode == ViewModeActive {
-		if aQueued, bQueued := m.queueIDs[a.Task.ID], m.queueIDs[b.Task.ID]; aQueued != bQueued {
-			return aQueued
-		}
-	}
-
 	// Handle snoozed view default sort specially
 	if m.sort.Field == SortByDefault && m.viewMode == ViewModeSnoozed {
 		var less bool

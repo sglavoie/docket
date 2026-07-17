@@ -82,7 +82,6 @@ const (
 	ActionRemoveTag      ActionType = "remove_tag"
 	ActionSetDueRelative ActionType = "set_due_relative"
 	ActionClearDue       ActionType = "clear_due"
-	ActionSetActive      ActionType = "set_active"
 	ActionSetPinned      ActionType = "set_pinned"
 	ActionAddComment     ActionType = "add_comment"
 	ActionSetType        ActionType = "set_type"

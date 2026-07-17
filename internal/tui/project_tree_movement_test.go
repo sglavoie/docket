@@ -169,6 +169,25 @@ func TestHandleMovementKeys_J_DefaultSortNotBlocked(t *testing.T) {
 	}
 }
 
+func TestProjectTreeQueueMembershipDoesNotRestrictOrdering(t *testing.T) {
+	m, visible := newSortedProjectTreeModel(t)
+	m.sort = SortState{Field: SortByDefault, Ascending: true}
+	m.viewMode = ViewModeActive
+	m.queueIDs = map[string]bool{visible[1].Task.ID: true}
+	m.cursor = 1
+
+	handled, _ := m.handleMovementKeys("K", visible)
+	if !handled {
+		t.Fatal("K should be handled")
+	}
+	if m.project.Tasks[0].ID != "t2" || m.project.Tasks[1].ID != "t1" {
+		t.Fatalf("queue membership should not prevent a sibling reorder, got %s,%s", m.project.Tasks[0].ID, m.project.Tasks[1].ID)
+	}
+	if m.compareNodes(visible[1], visible[0]) {
+		t.Fatal("queue membership should not change Active-section ordering")
+	}
+}
+
 func TestProjectTreeArrowNavigationMatchesJK(t *testing.T) {
 	tests := []struct {
 		name     string

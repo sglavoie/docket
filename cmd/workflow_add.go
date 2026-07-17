@@ -49,7 +49,7 @@ TRIGGER OPERATIONS:
 
 ACTION TYPES:
   set_status, set_priority, set_section, add_tag, remove_tag
-  set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
+  set_due_relative, clear_due, set_pinned, add_comment, set_type
   complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
   set_snooze, create_followup, move_to_project, set_recurrence
   set_project_status (project-level only)

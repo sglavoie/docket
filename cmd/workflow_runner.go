@@ -61,7 +61,6 @@ func (r *cliWorkflowRunner) options(_ bool, undoAction string, task *models.Task
 		Rules:                  append([]workflow.WorkflowRule(nil), r.rules...),
 		UndoAction:             undoAction,
 		UndoContext:            undoContext,
-		FocusArtifacts:         cliWorkflowFocusArtifactBuilder(r.workspace),
 		ProjectStatusArtifacts: cliWorkflowProjectStatusArtifactBuilder(r.workspace),
 	}
 }
@@ -133,53 +132,6 @@ func workflowResultTask(result app.BulkResult) app.TaskResult {
 
 func workflowResultCommitted(result app.BulkResult) bool {
 	return len(result.TouchedProjectIDs) > 0
-}
-
-// cliWorkflowFocusArtifactBuilder loads the planning domain at workflow
-// execution time. This is deliberately fresher than the command-start runtime:
-// every retry gets a current revision baseline, and the checked planning write
-// joins the initiating task transaction atomically.
-func cliWorkflowFocusArtifactBuilder(workspace *CLIWorkspace) app.WorkflowFocusArtifactBuilder {
-	if workspace == nil || workspace.Manager == nil {
-		return nil
-	}
-	return func(changes []app.WorkflowFocusChange) ([]storage.ArtifactChange, error) {
-		coord := workspace.Manager.DomainCoordinator()
-		planning, err := coord.LoadPlanning()
-		if err != nil {
-			return nil, err
-		}
-		changed := false
-		for _, change := range changes {
-			if change.Add {
-				found := false
-				for i := range planning.FocusQueue {
-					if planning.FocusQueue[i].TaskID != change.TaskID {
-						continue
-					}
-					found = true
-					if planning.FocusQueue[i].ProjectID != change.ProjectID {
-						planning.FocusQueue[i].ProjectID = change.ProjectID
-						changed = true
-					}
-					break
-				}
-				if !found {
-					changed = planning.AddToFocusQueue(change.TaskID, change.ProjectID) || changed
-				}
-			} else {
-				changed = planning.RemoveFromFocusQueue(change.TaskID) || changed
-			}
-		}
-		if !changed {
-			return nil, nil
-		}
-		artifact, err := coord.CheckedPlanningArtifact(planning)
-		if err != nil {
-			return nil, err
-		}
-		return []storage.ArtifactChange{artifact.StorageChange()}, nil
-	}
 }
 
 // cliWorkflowProjectStatusArtifactBuilder applies project-level status rules to

@@ -14,6 +14,11 @@ func TestOtherCommands_ProjectFocus(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected to find 'project focus queue' command")
 	}
+	for _, alias := range cmd.Aliases {
+		if alias == "project active tasks" {
+			t.Fatal("project Focus Queue command should not describe queued work as active")
+		}
+	}
 
 	result := cmd.Handler()
 	if _, ok := result.(ShowProjectFocusViewMsg); !ok {
@@ -34,6 +39,22 @@ func TestOtherCommands_ProjectFocus_NilProject(t *testing.T) {
 	result := cmd.Handler()
 	if result != nil {
 		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestFocusQueuePaletteHasNoLegacyRemovalCommand(t *testing.T) {
+	app, _ := newTestAppModelWithProject()
+	registry := NewCommandRegistry()
+	for i, group := range app.commandGroups() {
+		if err := registry.RegisterBatch(group); err != nil {
+			t.Fatalf("RegisterBatch[%d] failed: %v", i, err)
+		}
+	}
+
+	for _, view := range []ViewType{ViewFocusView, ViewProjectFocusView} {
+		if cmd := findCommand(registry.GetForView(view), "remove from focus"); cmd != nil {
+			t.Fatalf("%s palette should not expose legacy queue removal: %+v", view, cmd)
+		}
 	}
 }
 

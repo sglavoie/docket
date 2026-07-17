@@ -74,8 +74,8 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg sc
 		score += 250
 	}
 
-	// Focus Queue bonus: the config-aware successor to the retired Task.Active
-	// flag. A nil cfg (callers scoring without config) yields no bonus.
+	// Focus Queue bonus: Queue membership is an explicit planning signal. A nil
+	// cfg (callers scoring without config) yields no bonus.
 	if taskInFocusQueue(task, cfg) {
 		score += 200
 	}
@@ -282,9 +282,8 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 }
 
 // taskInFocusQueue reports whether the task is a member of the persisted Focus
-// Queue — the config-aware successor to the retired Task.Active flag under the
-// workflow-state model. A nil task or nil cfg (callers scoring without config,
-// e.g. previews) yields false.
+// Queue. A nil task or nil cfg (callers scoring without config, e.g. previews)
+// yields false.
 func taskInFocusQueue(task *models.Task, cfg scoringConfig) bool {
 	if task == nil || cfg == nil {
 		return false

@@ -92,15 +92,12 @@ func legacyStageFieldCodec() metadataFieldCodec {
 	)
 }
 
-// legacyActiveFieldCodec parses the schema-v1 `active` flag into the parse
-// accumulator so the migration audit can still read task.Active post-load. No-op
-// writer: v2 migrates the flag to Focus Queue membership, not the task file.
+// legacyActiveFieldCodec recognizes the schema-v1 `active` flag and discards its
+// value. Keeping the no-op codec registered preserves metadata boundaries for
+// old task files without reintroducing a queue migration or task-level meaning.
 func legacyActiveFieldCodec() metadataFieldCodec {
 	return metadataField("active",
-		func(_ *models.Task, value string, state *metadataParseState, _ *[]ParseWarning) {
-			state.legacy.active = value == "true"
-			state.legacy.activeSeen = true
-		},
+		func(_ *models.Task, _ string, _ *metadataParseState, _ *[]ParseWarning) {},
 		noopMetadataWriter,
 	)
 }

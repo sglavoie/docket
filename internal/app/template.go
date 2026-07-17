@@ -97,7 +97,6 @@ func (s *Service) ApplyTemplateWithWorkflow(req ApplyTemplateRequest, opts Singl
 	created := 0
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  opts.Rules,
-		focusArtifacts:         opts.FocusArtifacts,
 		projectStatusArtifacts: opts.ProjectStatusArtifacts,
 		undoAction:             undoAction,
 		undoContext:            opts.UndoContext,

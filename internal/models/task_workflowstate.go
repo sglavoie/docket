@@ -33,8 +33,9 @@ import "strings"
 //  9. Next section                            -> next
 //  10. Everything else                        -> ready
 //
-// The legacy Active flag intentionally does not participate: it maps to Focus
-// Queue membership at migration time, not to a workflow state.
+// The legacy Active flag intentionally does not participate: it is discarded
+// when old metadata is parsed and does not affect workflow state or Focus Queue
+// membership.
 func DeriveWorkflowState(status TaskStatus, section, stage string) WorkflowState {
 	switch {
 	case status == StatusCanceled:

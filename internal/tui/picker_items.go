@@ -267,7 +267,6 @@ var ActionTypeDescriptions = map[workflow.ActionType]string{
 	workflow.ActionRemoveTag:      "Remove tag from task",
 	workflow.ActionSetDueRelative: "Set due date relative to now (+3d, +1w)",
 	workflow.ActionClearDue:       "Clear due date",
-	workflow.ActionSetActive:      "Set/clear active flag",
 	workflow.ActionSetPinned:      "Pin/unpin task",
 	workflow.ActionAddComment:     "Add comment to task",
 	workflow.ActionSetType:        "Change task type",

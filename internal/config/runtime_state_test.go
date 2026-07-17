@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // TestRuntimeState_LoadCapturesDomains confirms that a startup-loaded snapshot
@@ -21,6 +24,78 @@ func TestRuntimeState_LoadCapturesDomains(t *testing.T) {
 	}
 	if rs.DataDir() == "" {
 		t.Fatalf("DataDir must be populated from the workspace root")
+	}
+}
+
+func TestRuntimeState_ReloadSanitizesRetiredSetActiveActions(t *testing.T) {
+	manager, _ := seededManager(t)
+	seed, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("LoadRuntimeState seed: %v", err)
+	}
+	planning := seed.Planning()
+	planning.AddToFocusQueue("already-queued", "project-1")
+	if err := seed.CommitPlanning(planning); err != nil {
+		t.Fatalf("CommitPlanning: %v", err)
+	}
+
+	automation := NewAutomationConfig()
+	automation.WorkflowRules = []workflow.WorkflowRule{
+		{
+			ID:      "mixed",
+			Name:    "Keep remaining action",
+			Enabled: true,
+			Actions: []workflow.RuleAction{
+				{ActionType: workflow.ActionType("set_active"), Value: "true"},
+				{ActionType: workflow.ActionAddTag, Value: "retained"},
+			},
+		},
+		{
+			ID:      "retired-only",
+			Name:    "Remove actionless rule",
+			Enabled: true,
+			Actions: []workflow.RuleAction{{ActionType: workflow.ActionType("set_active"), Value: "false"}},
+		},
+		{
+			ID:      "unchanged",
+			Name:    "Keep untouched rule",
+			Enabled: true,
+			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPinned, Value: "true"}},
+		},
+	}
+	if err := manager.CommitAutomation(automation); err != nil {
+		t.Fatalf("CommitAutomation: %v", err)
+	}
+
+	rs, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("LoadRuntimeState migration: %v", err)
+	}
+	rules := rs.Automation().WorkflowRules
+	if len(rules) != 2 || rules[0].ID != "mixed" || rules[1].ID != "unchanged" {
+		t.Fatalf("sanitized rules = %+v, want mixed and unchanged", rules)
+	}
+	if got := rules[0].Actions; len(got) != 1 || got[0].ActionType != workflow.ActionAddTag {
+		t.Fatalf("mixed actions = %+v, want retained add_tag", got)
+	}
+	if queue := rs.Planning().GetFocusQueue(); len(queue) != 1 || queue[0].TaskID != "already-queued" {
+		t.Fatalf("sanitizer changed focus queue: %+v", queue)
+	}
+
+	automationPath := AutomationPath(rs.DataDir())
+	first, err := os.ReadFile(automationPath)
+	if err != nil {
+		t.Fatalf("read sanitized automation: %v", err)
+	}
+	if err := rs.Reload(); err != nil {
+		t.Fatalf("idempotent Reload: %v", err)
+	}
+	second, err := os.ReadFile(automationPath)
+	if err != nil {
+		t.Fatalf("read reloaded automation: %v", err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Fatal("idempotent sanitizer rewrote automation on a second reload")
 	}
 }
 

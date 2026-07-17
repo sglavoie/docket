@@ -24,9 +24,9 @@ func newTestFocusProject(t *testing.T, name string) *models.Project {
 	return project
 }
 
-// newTestFocusTask creates a task. The active flag is retired (membership is now
-// derived from the Focus Queue), so it is accepted for call-site compatibility
-// but no longer applied to the task.
+// newTestFocusTask keeps the retired boolean parameter for call-site
+// compatibility. Queue membership is planning state, so the parameter is
+// deliberately ignored.
 func newTestFocusTask(t *testing.T, title string, priority int, _ bool) *models.Task {
 	t.Helper()
 	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)

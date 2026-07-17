@@ -137,7 +137,8 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	// v2 is the sole writer: it serializes the derived `state` and drops the
 	// legacy section/stage/active keys, so a round-trip is an identity only when
 	// the lifecycle fields are the canonical representative of their state (empty
-	// stage, active migrated out). The epic is in_progress (canonical section "").
+	// stage, legacy active metadata discarded). The epic is in_progress (canonical
+	// section "").
 	epic.WorkflowState = models.StateInProgress
 	epic.Priority = 1
 	epic.Tags = []string{"storage", "roundtrip"}
@@ -187,9 +188,8 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	task.RelatedTo = []string{"epic-fixed", peerSlug + ":peer-related"}
 	task.Pinned = true
 	task.PinnedAt = timePtr(base.Add(6 * time.Hour))
-	// Active (Focus Queue membership) and Stage (custom stages) are retired: they
-	// no longer exist on the task and are not serialized, so this stays a fixed
-	// point without them.
+	// Legacy Active metadata and custom stages are retired: neither is stored on
+	// the task or serialized, so this stays a fixed point without them.
 	task.Dimmed = true
 	task.SnoozedUntil = &snoozedUntil
 	task.Source = "cli"
@@ -365,8 +365,8 @@ func assertTaskRelationshipFields(t *testing.T, got, want *models.Task) {
 
 	assertTaskDeepEqualField(t, want.ID, "DependsOn", got.DependsOn, want.DependsOn)
 	assertTaskDeepEqualField(t, want.ID, "RelatedTo", got.RelatedTo, want.RelatedTo)
-	// Active and Stage are retired fields (Focus Queue membership / custom stages)
-	// that are not serialized, so there is nothing to round-trip here.
+	// Legacy Active metadata and Stage are retired and not serialized, so there
+	// is nothing to round-trip here.
 	assertTaskComparableField(t, want.ID, "Dimmed", got.Dimmed, want.Dimmed)
 	assertTaskComparableField(t, want.ID, "Source", got.Source, want.Source)
 	assertTaskComparableField(t, want.ID, "URL", got.URL, want.URL)

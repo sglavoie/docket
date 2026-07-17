@@ -61,3 +61,30 @@ func TestREADMEPointsToArchitectureAndLocalFirstStorage(t *testing.T) {
 		}
 	}
 }
+
+func TestQueueAndActiveDocumentationStayDistinct(t *testing.T) {
+	for _, path := range []string{"README.md", "docs/architecture.md"} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		content := string(data)
+		for _, want := range []string{
+			"Active section",
+			"Focus Queue",
+			"next tasks in the pipeline",
+		} {
+			if !strings.Contains(content, want) {
+				t.Errorf("%s missing Queue/Active distinction %q", path, want)
+			}
+		}
+	}
+
+	architecture, err := os.ReadFile("docs/architecture.md")
+	if err != nil {
+		t.Fatalf("read architecture documentation: %v", err)
+	}
+	if strings.Contains(string(architecture), "legacy `Active=true` membership is captured in Focus\nQueue") {
+		t.Fatal("architecture documentation still claims legacy active metadata populates Queue")
+	}
+}

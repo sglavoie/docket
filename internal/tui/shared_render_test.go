@@ -99,6 +99,28 @@ func TestRenderCrossProjectTaskLineNoLongerRendersStageBadge(t *testing.T) {
 	}
 }
 
+func TestTaskLineQueueIndicatorIsTheOnlyQueueMarker(t *testing.T) {
+	task := &models.Task{
+		ID:            "queued",
+		Title:         "queued task",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateReady,
+	}
+
+	queued := ansi.Strip(TaskLine{Task: task, Queued: true, MaxTitle: 40, ViewWidth: 80}.Render())
+	if !strings.Contains(queued, "q ") {
+		t.Fatalf("queued task should render the q indicator, got %q", queued)
+	}
+	if strings.Contains(queued, "*") {
+		t.Fatalf("queued task should not render an active marker, got %q", queued)
+	}
+
+	today := ansi.Strip(TaskLine{Task: task, Queued: true, DailyPlanned: true, MaxTitle: 40, ViewWidth: 80}.Render())
+	if !strings.Contains(today, "w ") || strings.Contains(today, "q ") {
+		t.Fatalf("today indicator must take precedence over queue, got %q", today)
+	}
+}
+
 func TestRenderCrossProjectTaskLineUsesProjectColorWithoutChangingLayout(t *testing.T) {
 	previousTheme := activeThemeName
 	defer func() { activeThemeName = previousTheme }()

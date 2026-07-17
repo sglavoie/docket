@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -16,6 +15,17 @@ func TestFormatRelativeDueCLI_NilDate(t *testing.T) {
 	result := focus.FormatRelativeDue(nil)
 	if result != "" {
 		t.Errorf("expected empty string for nil date, got %q", result)
+	}
+}
+
+func TestFocusCommandRetiresActiveFlagAndKeepsQueue(t *testing.T) {
+	if flag := focusCmd.Flags().Lookup("active"); flag != nil {
+		t.Fatalf("tt focus still exposes retired --active flag: %+v", flag)
+	}
+
+	queue, _, err := focusCmd.Find([]string{"queue"})
+	if err != nil || queue != focusQueueCmd {
+		t.Fatalf("tt focus queue command is unavailable: command=%v err=%v", queue, err)
 	}
 }
 
@@ -246,9 +256,9 @@ func TestFocusSorting_CombinedPriorityAndUpdatedAt(t *testing.T) {
 
 // collectFilteredFocusTasks replicates the focus filter the CLI applies to a
 // queue's tasks: skip tasks in a terminal (done/canceled) state. The retired
-// per-task Active flag is now modeled as queue membership and covered directly
-// by the collectFocusQueueTasks tests below, so callers pass only the tasks
-// already known to be queued.
+// Queue membership is planning state and is covered directly by the
+// collectFocusQueueTasks tests below, so callers pass only tasks already known
+// to be queued.
 func collectFilteredFocusTasks(project *models.Project) []focus.FocusTask {
 	var tasks []focus.FocusTask
 	for _, task := range project.Tasks {
@@ -358,55 +368,6 @@ func containsSubstringFocus(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-// TestCollectFocusQueueTasks_SkipsNilTasks guards the legacy --active path
-// (now backed by Focus Queue membership): when a project's Tasks slice contains
-// a stray nil entry, the loop must skip it instead of panicking on field access.
-func TestCollectFocusQueueTasks_SkipsNilTasks(t *testing.T) {
-	project := testutil.NewTestProject("Test")
-
-	queued := testutil.NewTestTask("Queued task", models.TaskTypeTask)
-
-	// Inject a nil between real tasks to simulate corrupted in-memory state.
-	project.Tasks = []*models.Task{queued, nil}
-
-	queue := []config.FocusQueueItem{{TaskID: queued.ID, ProjectID: project.ID}}
-
-	tasks := collectFocusQueueTasks(queue, []*models.Project{project, nil})
-
-	if len(tasks) != 1 {
-		t.Fatalf("expected 1 task (nil and nil project skipped), got %d", len(tasks))
-	}
-	if tasks[0].Task.Title != "Queued task" {
-		t.Errorf("unexpected task: %q", tasks[0].Task.Title)
-	}
-}
-
-// TestCollectFocusQueueTasks_ExcludesTerminalAndUnqueued asserts the queue
-// membership + nonterminal-state filter that replaced the Active-flag read.
-func TestCollectFocusQueueTasks_ExcludesTerminalAndUnqueued(t *testing.T) {
-	project := testutil.NewTestProject("Test")
-
-	queued := testutil.NewTestTask("Queued task", models.TaskTypeTask)
-	unqueued := testutil.NewTestTask("Unqueued task", models.TaskTypeTask)
-	done := testutil.NewTestTask("Done task", models.TaskTypeTask)
-	done.Complete()
-	project.Tasks = []*models.Task{queued, unqueued, done}
-
-	queue := []config.FocusQueueItem{
-		{TaskID: queued.ID, ProjectID: project.ID},
-		{TaskID: done.ID, ProjectID: project.ID},
-	}
-
-	tasks := collectFocusQueueTasks(queue, []*models.Project{project})
-
-	if len(tasks) != 1 {
-		t.Fatalf("expected only the queued nonterminal task, got %d", len(tasks))
-	}
-	if tasks[0].Task.Title != "Queued task" {
-		t.Errorf("unexpected task: %q", tasks[0].Task.Title)
-	}
 }
 
 // TestBuildProjectAndTaskMaps_SkipsNilTasks guards `tt focus today` and

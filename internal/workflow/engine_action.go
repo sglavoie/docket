@@ -21,38 +21,10 @@ func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *Evalu
 		return applyCreateFollowup(task, action, result)
 	case ActionMoveToProject:
 		return applyMoveToProject(task, action, evalCtx, result)
-	case ActionSetActive:
-		return applySetActive(task, action, result)
 	default:
 	}
 
 	return applyAction(task, action)
-}
-
-// applySetActive records a deferred Focus Queue membership change instead of
-// mutating the retired task.Active flag. The engine has no config/focus-queue
-// access, so — like applyMoveToProject — it only records the request; a
-// config-aware caller consumes result.FocusChanges to add/remove membership.
-// An invalid value is a no-op. A second focus change queued for the same task
-// is skipped so a rule cascade cannot record conflicting add/remove requests
-// the caller would have to arbitrate silently (mirrors applyMoveToProject).
-func applySetActive(task *models.Task, action RuleAction, result *EvaluationResult) bool {
-	if action.Value != "true" && action.Value != "false" {
-		return false
-	}
-	if result == nil {
-		return false
-	}
-	for _, existing := range result.FocusChanges {
-		if existing.TaskID == task.ID {
-			return false
-		}
-	}
-	result.FocusChanges = append(result.FocusChanges, FocusChange{
-		TaskID: task.ID,
-		Add:    action.Value == "true",
-	})
-	return true
 }
 
 // applyHierarchicalAction applies actions that operate on parent/children.

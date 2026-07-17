@@ -41,14 +41,15 @@ CI enforces the floor via `go test -race -coverprofile=coverage.out ./...`
 followed by the threshold check in `.github/workflows/ci.yml`. The floor must not
 regress across the program.
 
-## Task Markdown schema (pre-migration)
+## Task Markdown schema (historical pre-migration baseline)
 
-Current canonical schema (v1): tasks live in per-project `tasks.md` files with a
+The historical v1 schema stored tasks in per-project `tasks.md` files with a
 `# Project: <name>` heading, `## <Type>: <title>` task headings, and one HTML
 metadata comment per task carrying `id, status, priority, tags, section, stage,
 active`, dates, `depends`, and related fields. `status`, `section`, `stage`, and
-`active` are the legacy signals that later sessions collapse into a single
-`WorkflowState`. A sanitized capture of this schema lives in
+`active` are legacy signals. Status, section, and stage now derive a single
+`WorkflowState`; the legacy `active` key is parsed and discarded. A sanitized
+capture of this schema lives in
 `internal/storage/testdata/legacy_workspace/` and is pinned by
 `TestLegacyWorkspaceFixtureParsesLegacyFields`.
 

@@ -10,8 +10,8 @@ import (
 // cross-project single-task raw-save migration (session 33.7.3.4.4.1):
 // SetSection and MoveTaskToTop/MoveTaskToBottom. They are thin
 // ledger-committed operations. The retired ToggleActive seam was removed in
-// session 33.7.6.3: the Active field is no longer a task concept, and focus
-// membership is owned by the config-aware Focus Queue. The SetStage seam was
+// session 33.7.6.3: the Active field is no longer a task concept; Focus Queue
+// membership is independent planning state. The SetStage seam was
 // removed with the Stage field (workflow state is now the single source of
 // truth).
 

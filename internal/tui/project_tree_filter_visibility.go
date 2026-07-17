@@ -203,7 +203,7 @@ func (m *ProjectTreeModel) markAncestorsAsContext(node *TreeNode, intrinsicVisib
 }
 
 func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
-	return TaskMatchesStructuredSearch(task, m.SearchQuery(), m.runtime.Planning())
+	return TaskMatchesStructuredSearch(task, m.SearchQuery())
 }
 
 // getSearchMatchPositions returns match positions for the title if there's a search query.

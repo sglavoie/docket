@@ -15,6 +15,42 @@ type WorkflowEvalState struct {
 	RulesHash    string    `json:"rules_hash,omitempty"`
 }
 
+// SanitizeRetiredWorkflowActions removes persisted actions that no longer have
+// runtime semantics. A rule that loses every action is removed entirely; rules
+// with remaining actions retain their original ordering and metadata. It reports
+// whether the Automation domain changed so callers can persist the migration.
+func (a *AutomationConfig) SanitizeRetiredWorkflowActions() bool {
+	if a == nil || len(a.WorkflowRules) == 0 {
+		return false
+	}
+
+	changed := false
+	keptRules := make([]workflow.WorkflowRule, 0, len(a.WorkflowRules))
+	for _, rule := range a.WorkflowRules {
+		keptActions := rule.Actions[:0]
+		removedRetiredAction := false
+		for _, action := range rule.Actions {
+			if action.ActionType == workflow.ActionType("set_active") {
+				changed = true
+				removedRetiredAction = true
+				continue
+			}
+			keptActions = append(keptActions, action)
+		}
+		if removedRetiredAction && len(keptActions) == 0 {
+			continue
+		}
+		if len(keptActions) != len(rule.Actions) {
+			rule.Actions = keptActions
+		}
+		keptRules = append(keptRules, rule)
+	}
+	if changed {
+		a.WorkflowRules = keptRules
+	}
+	return changed
+}
+
 func partitionAndSortWorkflowRules(all []workflow.WorkflowRule) (defaultRules, customRules []workflow.WorkflowRule) {
 	for _, rule := range all {
 		if rule.Source == "default" {

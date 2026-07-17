@@ -231,7 +231,6 @@ func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Man
 	ledger := workspaceLedgerFromConfig(runtime)
 	svc := newTUIAppService(runtime.DataDir(), manager.RuntimeDependencies(), ledger)
 	wr, err := svc.ApplyWorkflowsWithArtifacts(project.ID, rules, nil, app.WorkflowArtifactBuilders{
-		Focus:         workflowFocusArtifactBuilder(manager),
 		ProjectStatus: workflowProjectStatusArtifactBuilder(manager),
 	})
 	if err != nil {
@@ -243,9 +242,9 @@ func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Man
 	result.ModifiedTasks = len(wr.ModifiedTaskIDs)
 	result.RulesApplied = len(wr.RuleTriggerCounts)
 
-	if len(wr.FocusChanges) > 0 || len(wr.ProjectStatusChanges) > 0 {
-		// ApplyWorkflows committed planning/catalog artifacts with the task
-		// cascade; reload the runtime snapshot so startup consumers observe them.
+	if len(wr.ProjectStatusChanges) > 0 {
+		// ApplyWorkflows committed catalog artifacts with the task cascade; reload
+		// the runtime snapshot so startup consumers observe them.
 		if err := runtime.RefreshAfterCommit(); err != nil {
 			logging.Warn("failed to refresh startup workflow domain changes: %v", err)
 		}

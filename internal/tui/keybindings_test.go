@@ -146,6 +146,19 @@ func TestGetForView_TaskCapableViewsIncludeScopedTaskGlobals(t *testing.T) {
 	assertLacksHelpItem(t, items, ViewOutliner, "w", "Add to today's plan")
 }
 
+func TestQueueToggleIsAppLevelForEveryTaskReferenceView(t *testing.T) {
+	r := NewKeybindingRegistry()
+	for _, view := range taskReferenceViews() {
+		assertHasHelpItem(t, r.GetAppLevelForView(view), view, "q", "Toggle queue")
+	}
+
+	for _, binding := range r.bindings {
+		if binding.Key == "q" && binding.Description == "Toggle queue" && !binding.AppLevel {
+			t.Fatalf("queue toggle must be handled only by the app-level dispatcher: %+v", binding)
+		}
+	}
+}
+
 func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 

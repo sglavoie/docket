@@ -23,10 +23,6 @@ type SingleTaskWorkflowOptions struct {
 	// "Task Modified" when empty.
 	UndoAction  string
 	UndoContext string
-	// FocusArtifacts applies set_active side effects to a revision-checked
-	// planning artifact that is committed with the task changes. It is required
-	// only when the evaluated rules request Focus Queue changes.
-	FocusArtifacts WorkflowFocusArtifactBuilder
 	// ProjectStatusArtifacts applies project-rule status effects to a checked
 	// workspace-catalog artifact committed with the project changes.
 	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
@@ -68,7 +64,6 @@ func (s *Service) mutateWithWorkflowGuarded(
 	var ref TaskRef
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  opts.Rules,
-		focusArtifacts:         opts.FocusArtifacts,
 		projectStatusArtifacts: opts.ProjectStatusArtifacts,
 		undoAction:             undoAction,
 		undoContext:            opts.UndoContext,

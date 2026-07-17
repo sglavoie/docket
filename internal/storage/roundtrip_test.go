@@ -236,8 +236,8 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	if !gotTask1.Pinned {
 		t.Errorf("task1 pinned: got false, want true")
 	}
-	// The legacy Active flag is retired (Focus Queue membership lives outside the
-	// task and is not serialized), so there is nothing to assert on load.
+	// The legacy Active flag is retired and not serialized, so there is nothing
+	// to assert on load.
 
 	// Comments preserved
 	gotTask2 := byID(loaded.Tasks, task2.ID)

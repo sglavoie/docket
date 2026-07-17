@@ -33,7 +33,6 @@ func commitInboxProject(dataDir string, deps *config.RuntimeDependencies, ledger
 	if _, err := service.CommitProjectWithWorkflow(project, app.ProjectWorkflowOptions{
 		Rules:                  rules,
 		UndoAction:             inboxTriageUndoAction,
-		FocusArtifacts:         workflowFocusArtifactBuilder(manager),
 		ProjectStatusArtifacts: workflowProjectStatusArtifactBuilder(manager),
 	}); err != nil {
 		return err

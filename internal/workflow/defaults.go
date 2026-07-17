@@ -2,7 +2,6 @@ package workflow
 
 // GetDefaultRules returns the built-in default workflow rules.
 // Most default rules are created disabled so users can review and enable selectively.
-// Some rules (like Active section sync) are enabled by default for expected UX.
 func GetDefaultRules() []WorkflowRule {
 	return []WorkflowRule{
 		{
@@ -59,36 +58,6 @@ func GetDefaultRules() []WorkflowRule {
 			},
 			Actions: []RuleAction{
 				{ActionType: ActionSetSection, Value: "Completed"},
-			},
-		},
-		// Activate on Active Section: sync active flag with Active section
-		{
-			ID:      "def-activate-on-active",
-			Name:    "Activate on Active Section",
-			Enabled: true,
-			Source:  "default",
-			Trigger: RuleTrigger{
-				Field:     FieldSectionChanged,
-				Operation: OpEquals,
-				Value:     "*->",
-			},
-			Actions: []RuleAction{
-				{ActionType: ActionSetActive, Value: "true"},
-			},
-		},
-		// Deactivate on Leave Active: clear active flag when leaving Active section
-		{
-			ID:      "def-deactivate-on-leave",
-			Name:    "Deactivate on Leave Active",
-			Enabled: true,
-			Source:  "default",
-			Trigger: RuleTrigger{
-				Field:     FieldSectionChanged,
-				Operation: OpEquals,
-				Value:     "->*",
-			},
-			Actions: []RuleAction{
-				{ActionType: ActionSetActive, Value: "false"},
 			},
 		},
 		// Auto-complete Story: same logic as epic completion

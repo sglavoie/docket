@@ -280,7 +280,7 @@ func (m *FocusBoardModel) renderBoardSelectableLine(row boardRow, content string
 	isOverdue := task.IsOverdue()
 	isBlocked := task.IsInState(models.StateWaiting) || row.Project.HasIncompleteDependencies(task)
 
-	line := RenderSelectableRow(isSelected, m.queueIDs[task.ID], task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
+	line := RenderSelectableRow(isSelected, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
 	if isSelected && m.mutationFlash {
 		line = MutationFlashLine(line, m.width-2, m.mutationFlashBg)
 	}

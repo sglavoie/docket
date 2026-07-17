@@ -166,39 +166,6 @@ func TestCLIWorkflowCrossProjectMove(t *testing.T) {
 	}
 }
 
-func TestCLIWorkflowFocusChangeIsAtomic(t *testing.T) {
-	root := t.TempDir()
-	project := newFileBackedProject(t, root, "project-focus", "Focus Project")
-	rule := enabledTaskRule(
-		"focus-new-task",
-		workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
-		workflow.RuleAction{ActionType: workflow.ActionSetActive, Value: "true"},
-	)
-	configPath := setupFileBackedWorkflowCLI(t, root, project, []*models.Project{project}, []workflow.WorkflowRule{rule}, nil)
-	resetQuickAddVars()
-	t.Cleanup(resetQuickAddVars)
-	_ = addCmd.Flags().Set("project", "")
-
-	if err := runQuickAdd(addCmd, []string{"Focus atomically"}); err != nil {
-		t.Fatalf("runQuickAdd: %v", err)
-	}
-	reloadWorkflowProject(t, project)
-	runtime := reloadWorkflowRuntime(t, configPath)
-	if len(project.Tasks) != 1 || len(runtime.Planning().FocusQueue) != 1 || runtime.Planning().FocusQueue[0].TaskID != project.Tasks[0].ID {
-		t.Fatalf("task/focus after add = %d/%+v", len(project.Tasks), runtime.Planning().FocusQueue)
-	}
-
-	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(root), 10, []string{root})
-	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
-		t.Fatalf("undo grouped add/focus transaction: %v", err)
-	}
-	reloadWorkflowProject(t, project)
-	runtime = reloadWorkflowRuntime(t, configPath)
-	if len(project.Tasks) != 0 || len(runtime.Planning().FocusQueue) != 0 {
-		t.Fatalf("undo left task/focus = %d/%+v", len(project.Tasks), runtime.Planning().FocusQueue)
-	}
-}
-
 func TestCLIWorkflowProjectStatusRule(t *testing.T) {
 	root := t.TempDir()
 	project := newFileBackedProject(t, root, "project-status", "Status Project")
@@ -224,13 +191,12 @@ func TestCLIWorkflowProjectStatusRule(t *testing.T) {
 	}
 }
 
-func TestCLITemplateWorkflowPersistsUseFocusAndCounts(t *testing.T) {
+func TestCLITemplateWorkflowPersistsUseAndCounts(t *testing.T) {
 	root := t.TempDir()
 	project := newFileBackedProject(t, root, "project-template", "Template Project")
 	rule := enabledTaskRule(
 		"template-workflow",
 		workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
-		workflow.RuleAction{ActionType: workflow.ActionSetActive, Value: "true"},
 		workflow.RuleAction{ActionType: workflow.ActionAddTag, Value: "from-workflow"},
 	)
 	tmpl := tttemplate.TaskTemplate{ID: "workflow-template", Name: "Workflow Template", Enabled: true, Type: models.TaskTypeTask}
@@ -253,9 +219,6 @@ func TestCLITemplateWorkflowPersistsUseFocusAndCounts(t *testing.T) {
 	}
 	if storedRule == nil || storedRule.TriggerCount != 1 {
 		t.Fatalf("stored rule = %+v, want trigger count 1", storedRule)
-	}
-	if len(runtime.Planning().FocusQueue) != 1 || runtime.Planning().FocusQueue[0].TaskID != project.Tasks[0].ID {
-		t.Fatalf("focus queue = %+v", runtime.Planning().FocusQueue)
 	}
 }
 
