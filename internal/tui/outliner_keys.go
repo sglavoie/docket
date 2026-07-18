@@ -34,9 +34,18 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	// Sidebar-focused key handling (before prefix/action keys)
 	if m.sidebar.IsFocused() {
+		wasEnabled := m.sidebar.IsEnabled()
 		_, cmd := m.sidebar.HandleKeys(m, msg)
+		projectID := ""
+		if m.project != nil {
+			projectID = m.project.ID
+		}
+		stateCmd := projectSidebarStateChangedCmd(projectID, wasEnabled, m.sidebar.IsEnabled())
 		// When sidebar is focused, consume all keys to prevent tree navigation
-		return m, cmd
+		if stateCmd == nil {
+			return m, cmd
+		}
+		return m, tea.Batch(cmd, stateCmd)
 	}
 
 	// Dispatcher handles prefix keys and registered key actions.

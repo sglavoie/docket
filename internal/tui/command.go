@@ -41,6 +41,7 @@ type Command struct {
 	Category    CommandCategory // Logical grouping for organization
 	Views       []ViewType      // Views where this command is available (empty = global/all views)
 	Aliases     []string        // Alternative names for discoverability (e.g., "create task", "add task")
+	Available   func() bool     // Optional dynamic availability predicate (nil = always available)
 	Handler     func() tea.Msg  // Execution closure returning a BubbleTea message
 }
 

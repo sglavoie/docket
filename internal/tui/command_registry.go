@@ -71,7 +71,7 @@ func (r *CommandRegistry) RegisterBatch(cmds []Command) error {
 	return nil
 }
 
-// GetAll returns all registered commands as a slice, deduplicated by name.
+// GetAll returns all currently available commands as a slice, deduplicated by name.
 // When multiple entries share a name, the global one (empty Views) is preferred;
 // otherwise the first entry is returned.
 // Returns an empty slice if no commands are registered.
@@ -81,19 +81,7 @@ func (r *CommandRegistry) GetAll() []Command {
 	}
 	result := make([]Command, 0, len(r.commands))
 	for _, entries := range r.commands {
-		result = append(result, pickPreferred(entries))
-	}
-	sortCommands(result)
-	return result
-}
-
-// GetByCategory returns all commands matching the specified category, deduplicated by name.
-// Returns an empty slice if no commands match the category.
-func (r *CommandRegistry) GetByCategory(category CommandCategory) []Command {
-	result := []Command{}
-	for _, entries := range r.commands {
-		cmd := pickPreferred(entries)
-		if cmd.Category == category {
+		if cmd, ok := pickPreferred(entries); ok {
 			result = append(result, cmd)
 		}
 	}
@@ -101,14 +89,29 @@ func (r *CommandRegistry) GetByCategory(category CommandCategory) []Command {
 	return result
 }
 
-// GetByName returns a command by name using case-insensitive lookup.
+// GetByCategory returns all currently available commands matching the specified
+// category, deduplicated by name.
+// Returns an empty slice if no commands match the category.
+func (r *CommandRegistry) GetByCategory(category CommandCategory) []Command {
+	result := []Command{}
+	for _, entries := range r.commands {
+		cmd, ok := pickPreferred(entries)
+		if ok && cmd.Category == category {
+			result = append(result, cmd)
+		}
+	}
+	sortCommands(result)
+	return result
+}
+
+// GetByName returns a currently available command by name using case-insensitive lookup.
 // Returns the command and true if found, or a zero Command and false if not found.
 // When multiple entries share a name, the global one (empty Views) is preferred.
 func (r *CommandRegistry) GetByName(name string) (Command, bool) {
 	nameLower := strings.ToLower(name)
 	for cmdName, entries := range r.commands {
 		if strings.ToLower(cmdName) == nameLower {
-			return pickPreferred(entries), true
+			return pickPreferred(entries)
 		}
 	}
 	return Command{}, false
@@ -125,6 +128,9 @@ func (r *CommandRegistry) GetForView(view ViewType) []Command {
 		var globalCmd *Command
 		var viewCmd *Command
 		for i := range entries {
+			if !commandAvailable(entries[i]) {
+				continue
+			}
 			if len(entries[i].Views) == 0 {
 				globalCmd = &entries[i]
 			} else {
@@ -144,6 +150,10 @@ func (r *CommandRegistry) GetForView(view ViewType) []Command {
 	return result
 }
 
+func commandAvailable(cmd Command) bool {
+	return cmd.Available == nil || cmd.Available()
+}
+
 func sortCommands(commands []Command) {
 	sort.SliceStable(commands, func(i, j int) bool {
 		left := strings.ToLower(commands[i].Name)
@@ -158,13 +168,24 @@ func sortCommands(commands []Command) {
 	})
 }
 
-// pickPreferred returns the preferred command from a list of same-named entries.
-// Global commands (empty Views) are preferred; otherwise the first entry is returned.
-func pickPreferred(entries []Command) Command {
-	for _, e := range entries {
-		if len(e.Views) == 0 {
-			return e
+// pickPreferred returns the preferred currently available command from a list
+// of same-named entries. Global commands (empty Views) are preferred; otherwise
+// the first available entry is returned.
+func pickPreferred(entries []Command) (Command, bool) {
+	var firstAvailable *Command
+	for i := range entries {
+		if !commandAvailable(entries[i]) {
+			continue
+		}
+		if len(entries[i].Views) == 0 {
+			return entries[i], true
+		}
+		if firstAvailable == nil {
+			firstAvailable = &entries[i]
 		}
 	}
-	return entries[0]
+	if firstAvailable != nil {
+		return *firstAvailable, true
+	}
+	return Command{}, false
 }

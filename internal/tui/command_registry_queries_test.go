@@ -346,3 +346,56 @@ func TestGetByNamePreservesOriginalCommandData(t *testing.T) {
 		t.Errorf("expected Category '%s', got '%s'", original.Category, cmd.Category)
 	}
 }
+
+func TestCommandRegistryQueriesOmitUnavailableCommands(t *testing.T) {
+	registry := NewCommandRegistry()
+	dynamicAvailable := true
+	commands := []Command{
+		{Name: "Always", Category: CategoryTasks},
+		{Name: "Dynamic", Category: CategoryTasks, Available: func() bool { return dynamicAvailable }},
+		{Name: "Never", Category: CategoryTasks, Available: func() bool { return false }},
+	}
+	for _, cmd := range commands {
+		if err := registry.Register(cmd); err != nil {
+			t.Fatalf("Register(%q): %v", cmd.Name, err)
+		}
+	}
+
+	assertNames := func(label string, commands []Command, want ...string) {
+		t.Helper()
+		if len(commands) != len(want) {
+			t.Fatalf("%s names = %v, want %v", label, commandNames(commands), want)
+		}
+		for i := range want {
+			if commands[i].Name != want[i] {
+				t.Fatalf("%s names = %v, want %v", label, commandNames(commands), want)
+			}
+		}
+	}
+
+	assertNames("GetAll", registry.GetAll(), "Always", "Dynamic")
+	assertNames("GetByCategory", registry.GetByCategory(CategoryTasks), "Always", "Dynamic")
+	assertNames("GetForView", registry.GetForView(ViewDashboard), "Always", "Dynamic")
+	if _, ok := registry.GetByName("Never"); ok {
+		t.Fatal("GetByName returned an unavailable command")
+	}
+	if cmd, ok := registry.GetByName("Dynamic"); !ok || cmd.Name != "Dynamic" {
+		t.Fatalf("GetByName(Dynamic) = (%q, %v), want available command", cmd.Name, ok)
+	}
+
+	dynamicAvailable = false
+	assertNames("GetAll after predicate change", registry.GetAll(), "Always")
+	assertNames("GetByCategory after predicate change", registry.GetByCategory(CategoryTasks), "Always")
+	assertNames("GetForView after predicate change", registry.GetForView(ViewDashboard), "Always")
+	if _, ok := registry.GetByName("Dynamic"); ok {
+		t.Fatal("GetByName did not re-evaluate the availability predicate")
+	}
+}
+
+func commandNames(commands []Command) []string {
+	names := make([]string, 0, len(commands))
+	for _, cmd := range commands {
+		names = append(names, cmd.Name)
+	}
+	return names
+}

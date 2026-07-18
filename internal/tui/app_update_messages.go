@@ -160,6 +160,9 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case outlinerFilterStateChangedMsg:
 		m.persistOutlinerFilterState()
 		return true, nil
+	case projectSidebarStateChangedMsg:
+		m.setProjectSidebarEnabled(msg.ProjectID, msg.Enabled)
+		return true, nil
 	case SaveStartMsg:
 		m.isLoading = true
 		m.loadingMessage = msg.Message

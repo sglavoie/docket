@@ -2,9 +2,6 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 )
 
 func (m *AppModel) globalTagManagerCommands() []Command {
@@ -164,22 +161,11 @@ func (m *AppModel) sidebarCommands() []Command {
 			Category:    CategoryView,
 			Views:       []ViewType{},
 			Aliases:     []string{"sidebar on all", "show sidebar all"},
+			Available: func() bool {
+				return !m.determiningProjectSidebarEnabled()
+			},
 			Handler: func() tea.Msg {
-				if err := m.commitMachineMutation(func(machine *config.MachineState) {
-					for _, p := range m.runtime.ActiveProjects() {
-						state, _ := machine.GetProjectViewState(p.ID)
-						state.SidebarEnabled = true
-						machine.SetProjectViewState(p.ID, state)
-					}
-				}); err != nil {
-					logging.Warn("failed to save config: %v", err)
-				}
-				if m.projectTree != nil {
-					m.projectTree.sidebar.SetEnabled(true)
-				}
-				if m.outliner != nil {
-					m.outliner.sidebar.SetEnabled(true)
-				}
+				m.setAllProjectSidebarsEnabled(true)
 				return nil
 			},
 		},
@@ -189,24 +175,11 @@ func (m *AppModel) sidebarCommands() []Command {
 			Category:    CategoryView,
 			Views:       []ViewType{},
 			Aliases:     []string{"sidebar off all", "hide sidebar all"},
+			Available: func() bool {
+				return m.determiningProjectSidebarEnabled()
+			},
 			Handler: func() tea.Msg {
-				if err := m.commitMachineMutation(func(machine *config.MachineState) {
-					for _, p := range m.runtime.ActiveProjects() {
-						state, _ := machine.GetProjectViewState(p.ID)
-						state.SidebarEnabled = false
-						machine.SetProjectViewState(p.ID, state)
-					}
-				}); err != nil {
-					logging.Warn("failed to save config: %v", err)
-				}
-				if m.projectTree != nil {
-					m.projectTree.sidebar.SetEnabled(false)
-					m.projectTree.sidebar.Blur()
-				}
-				if m.outliner != nil {
-					m.outliner.sidebar.SetEnabled(false)
-					m.outliner.sidebar.Blur()
-				}
+				m.setAllProjectSidebarsEnabled(false)
 				return nil
 			},
 		},

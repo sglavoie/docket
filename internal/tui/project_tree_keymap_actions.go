@@ -48,6 +48,7 @@ func (b *projectTreeKeymapBuilder) selectionEntries() []keymap.Entry {
 		}),
 		keymap.Bind("tab", "Cycle sidebar state", "Navigation", func() (tea.Model, tea.Cmd) {
 			task := b.cursorTask()
+			wasEnabled := m.sidebar.IsEnabled()
 			m.sidebar.CycleState(task)
 			if m.sidebar.IsFocused() && task != nil {
 				sections := sidebarGetAvailableSections(m.project, task)
@@ -56,7 +57,11 @@ func (b *projectTreeKeymapBuilder) selectionEntries() []keymap.Entry {
 				}
 			}
 
-			return m, nil
+			projectID := ""
+			if m.project != nil {
+				projectID = m.project.ID
+			}
+			return m, projectSidebarStateChangedCmd(projectID, wasEnabled, m.sidebar.IsEnabled())
 		}),
 		keymap.Bind("v", "Enter multi-select mode", "Multi-select", func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode {

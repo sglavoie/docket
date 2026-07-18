@@ -211,6 +211,57 @@ func TestGetAllDeduplicatesSameNameCommands(t *testing.T) {
 	}
 }
 
+func TestPreferredVariantSelectionSkipsUnavailableCommands(t *testing.T) {
+	registry := NewCommandRegistry()
+	treeAvailable := false
+	outlinerAvailable := true
+	if err := registry.Register(Command{
+		Name: "Scoped", Shortcut: "tree", Category: CategoryTasks,
+		Views: []ViewType{ViewProjectTree}, Available: func() bool { return treeAvailable },
+	}); err != nil {
+		t.Fatalf("Register tree variant: %v", err)
+	}
+	if err := registry.Register(Command{
+		Name: "Scoped", Shortcut: "outliner", Category: CategoryTasks,
+		Views: []ViewType{ViewOutliner}, Available: func() bool { return outlinerAvailable },
+	}); err != nil {
+		t.Fatalf("Register outliner variant: %v", err)
+	}
+
+	assertPreferred := func(label string, cmd Command, ok bool, wantShortcut string) {
+		t.Helper()
+		if !ok || cmd.Shortcut != wantShortcut {
+			t.Fatalf("%s = (%q, %v), want shortcut %q", label, cmd.Shortcut, ok, wantShortcut)
+		}
+	}
+
+	all := registry.GetAll()
+	if len(all) != 1 {
+		t.Fatalf("GetAll = %v, want one available variant", commandNames(all))
+	}
+	assertPreferred("GetAll", all[0], true, "outliner")
+	byCategory := registry.GetByCategory(CategoryTasks)
+	if len(byCategory) != 1 {
+		t.Fatalf("GetByCategory = %v, want one available variant", commandNames(byCategory))
+	}
+	assertPreferred("GetByCategory", byCategory[0], true, "outliner")
+	cmd, ok := registry.GetByName("scoped")
+	assertPreferred("GetByName", cmd, ok, "outliner")
+	if commands := registry.GetForView(ViewProjectTree); len(commands) != 0 {
+		t.Fatalf("GetForView(ProjectTree) = %v, want unavailable variant omitted", commandNames(commands))
+	}
+	commands := registry.GetForView(ViewOutliner)
+	if len(commands) != 1 {
+		t.Fatalf("GetForView(Outliner) = %v, want one command", commandNames(commands))
+	}
+	assertPreferred("GetForView(Outliner)", commands[0], true, "outliner")
+
+	treeAvailable = true
+	outlinerAvailable = false
+	cmd, ok = registry.GetByName("Scoped")
+	assertPreferred("GetByName after predicate change", cmd, ok, "tree")
+}
+
 func TestViewsOverlap(t *testing.T) {
 	if !viewsOverlap(nil, nil) {
 		t.Error("expected two global (empty) view lists to overlap")

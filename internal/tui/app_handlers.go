@@ -167,6 +167,7 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 		state.OutlinerSortAscending = o.sort.Ascending
 		state.OutlinerActivePerspective = o.activePerspective
 		state.OutlinerFilterBarEnabled = o.filterBar.IsEnabled()
+		state.SidebarEnabled = o.sidebar.IsEnabled()
 		state.PinnedTagTab = o.activePinnedTagFilter()
 
 		machine.SetProjectViewState(o.project.ID, state)

@@ -79,8 +79,16 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyPressMsg, _ []*TreeNode) (tea.Model, tea.Cmd) {
 	// Sidebar keys have priority when sidebar is focused
 	if m.sidebar.IsFocused() {
+		wasEnabled := m.sidebar.IsEnabled()
 		_, cmd := m.sidebar.HandleKeys(m, msg)
-		return m, cmd
+		if m.project == nil {
+			return m, cmd
+		}
+		stateCmd := projectSidebarStateChangedCmd(m.project.ID, wasEnabled, m.sidebar.IsEnabled())
+		if stateCmd == nil {
+			return m, cmd
+		}
+		return m, tea.Batch(cmd, stateCmd)
 	}
 
 	// Dispatcher handles all remaining keys

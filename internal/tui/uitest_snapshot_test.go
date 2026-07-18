@@ -238,3 +238,62 @@ func TestUITestAvailableCommandsFields(t *testing.T) {
 		t.Errorf("aliases = %v", c.Aliases)
 	}
 }
+
+func TestUITestAvailableCommandsOmitsUnavailableCommands(t *testing.T) {
+	app := newUITestApp()
+	app.commandRegistry = NewCommandRegistry()
+	dynamicAvailable := true
+	for _, cmd := range []Command{
+		{Name: "Always", Category: CategoryTasks},
+		{Name: "Dynamic", Category: CategoryTasks, Available: func() bool { return dynamicAvailable }},
+		{Name: "Never", Category: CategoryTasks, Available: func() bool { return false }},
+	} {
+		if err := app.commandRegistry.Register(cmd); err != nil {
+			t.Fatalf("Register(%q): %v", cmd.Name, err)
+		}
+	}
+	driver := NewUITestDriver(app, 100, 30)
+
+	commandNames := func(commands []UITestCommand) []string {
+		names := make([]string, 0, len(commands))
+		for _, cmd := range commands {
+			names = append(names, cmd.Name)
+		}
+		return names
+	}
+	if got := commandNames(driver.availableCommands()); len(got) != 2 || got[0] != "Always" || got[1] != "Dynamic" {
+		t.Fatalf("available commands = %v, want [Always Dynamic]", got)
+	}
+
+	dynamicAvailable = false
+	if got := commandNames(driver.availableCommands()); len(got) != 1 || got[0] != "Always" {
+		t.Fatalf("available commands after predicate change = %v, want [Always]", got)
+	}
+}
+
+func TestCommandPaletteOmitsUnavailableCommands(t *testing.T) {
+	runtime := newTestConfig()
+	registry := NewCommandRegistry()
+	for _, cmd := range []Command{
+		{Name: "Always", Category: CategoryTasks},
+		{Name: "Never", Category: CategoryTasks, Available: func() bool { return false }},
+	} {
+		if err := registry.Register(cmd); err != nil {
+			t.Fatalf("Register(%q): %v", cmd.Name, err)
+		}
+	}
+
+	palette := NewCommandPaletteModel(runtime, registry, ViewDashboard, nil)
+	found := make(map[string]bool)
+	for _, item := range palette.allItems {
+		if item.Command != nil {
+			found[item.Command.Name] = true
+		}
+	}
+	if !found["Always"] {
+		t.Fatal("palette omitted an available command")
+	}
+	if found["Never"] {
+		t.Fatal("palette included an unavailable command")
+	}
+}

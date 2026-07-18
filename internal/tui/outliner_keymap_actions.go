@@ -79,6 +79,7 @@ func (b *outlinerKeymapBuilder) actionEntries() []keymap.Entry {
 		}),
 		keymap.Bind("tab", "Cycle sidebar state", "Sidebar", func() (tea.Model, tea.Cmd) {
 			task := m.SidebarSelectedTask()
+			wasEnabled := m.sidebar.IsEnabled()
 			m.sidebar.CycleState(task)
 			if m.sidebar.IsFocused() && task != nil {
 				if proj := m.SidebarProject(); proj != nil {
@@ -88,7 +89,11 @@ func (b *outlinerKeymapBuilder) actionEntries() []keymap.Entry {
 					}
 				}
 			}
-			return m, nil
+			projectID := ""
+			if m.project != nil {
+				projectID = m.project.ID
+			}
+			return m, projectSidebarStateChangedCmd(projectID, wasEnabled, m.sidebar.IsEnabled())
 		}),
 	}
 }
