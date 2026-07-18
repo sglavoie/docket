@@ -247,7 +247,7 @@ most relevant actions show first. The canonical order is:
   Task & Blockers
   View Controls
   Navigate
-  Jump to View    Cross-view jumps (;x, :, ctrl+X, …)
+  Jump to View    Cross-view jumps (;x, :, ctrl+x, …)
   Other
 
 In triage-style views (inbox processors) the leading "Triage"

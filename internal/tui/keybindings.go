@@ -317,7 +317,7 @@ func clipboardBindings(views []ViewType) []Keybinding {
 	return []Keybinding{
 		scopedAppBinding("y", "Copy title", "Clipboard", views),
 		scopedAppBinding("Y", "Copy description", "Clipboard", views),
-		scopedAppBinding("ctrl+Y", "Copy title and description", "Clipboard", views),
+		scopedAppBinding("ctrl+y", "Copy title and description", "Clipboard", views),
 	}
 }
 
@@ -355,7 +355,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";tm", Description: "Global Task Move", Category: "Navigation"},
 		Keybinding{Key: ";ts", Description: "Global Section Change", Category: "Navigation"},
 		Keybinding{Key: ";tN", Description: "Global Template Task Create", Category: "Navigation"},
-		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
+		Keybinding{Key: "ctrl+x", Description: "Switch project", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 		Keybinding{Key: "alt+l", Description: "Open Message Log", Category: "Navigation"},

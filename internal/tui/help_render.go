@@ -84,7 +84,7 @@ var helpCrossViewJumpKeys = map[string]bool{
 	"ctrl+,":   true,
 	"ctrl+/":   true,
 	"ctrl+i":   true,
-	"ctrl+X":   true,
+	"ctrl+x":   true,
 	"alt+o":    true,
 	"alt+i":    true,
 	"alt+l":    true,

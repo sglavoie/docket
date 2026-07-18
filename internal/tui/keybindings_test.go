@@ -123,7 +123,7 @@ func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
 		{Key: ".", Description: "Repeat last action"},
 		{Key: "y", Description: "Copy title"},
 		{Key: "Y", Description: "Copy description"},
-		{Key: "ctrl+Y", Description: "Copy title and description"},
+		{Key: "ctrl+y", Description: "Copy title and description"},
 	}
 	for _, binding := range taskOnlyBindings {
 		assertLacksHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
@@ -154,7 +154,7 @@ func TestGetForView_TaskCapableViewsIncludeScopedTaskGlobals(t *testing.T) {
 		{Key: ".", Description: "Repeat last action"},
 		{Key: "y", Description: "Copy title"},
 		{Key: "Y", Description: "Copy description"},
-		{Key: "ctrl+Y", Description: "Copy title and description"},
+		{Key: "ctrl+y", Description: "Copy title and description"},
 	}
 	for _, binding := range scopedBindings {
 		assertHasHelpItem(t, items, ViewOutliner, binding.Key, binding.Description)
@@ -277,7 +277,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
 		"ctrl+o", "ctrl+n",
-		"y", "Y", "ctrl+Y",
+		"y", "Y", "ctrl+y",
 	} {
 		for _, item := range items {
 			if item.Key == key {

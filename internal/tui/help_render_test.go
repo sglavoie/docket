@@ -82,7 +82,7 @@ func TestIntentForItem_CrossViewJumpsDemoted(t *testing.T) {
 	keys := []string{
 		";d", ";r", ";a", ";o", ";w",
 		":", "|", "#",
-		"ctrl+,", "ctrl+/", "ctrl+i", "ctrl+X",
+		"ctrl+,", "ctrl+/", "ctrl+i", "ctrl+x",
 		"alt+o", "alt+i", "alt+l",
 		"ctrl+6", "ctrl+esc",
 	}
