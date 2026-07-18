@@ -106,14 +106,28 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	}
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
-	// Navigate cursor to the newly created task
-	if msg.Task != nil && m.currentProject != nil {
-		if fresh := m.currentProject.GetTaskByID(msg.Task.ID); fresh != nil {
-			if m.projectTree != nil {
+	// Navigate every matching project view using the task pointer owned by that
+	// view's freshly reloaded project. Temporary outliners use a separate project
+	// object from m.currentProject, so routing only through m.outliner leaves their
+	// Inbox collapsed and their cursor on the pre-capture task.
+	if msg.Task != nil {
+		projectID := ""
+		if msg.Project != nil {
+			projectID = msg.Project.ID
+		} else if msg.Result != nil {
+			projectID = msg.Result.ProjectID
+		}
+		if m.currentProject != nil && (projectID == "" || m.currentProject.ID == projectID) {
+			if fresh := m.currentProject.GetTaskByID(msg.Task.ID); fresh != nil && m.projectTree != nil {
 				m.projectTree.NavigateToTask(fresh)
 			}
-			if m.outliner != nil {
-				m.outliner.NavigateToSidebarTask(fresh)
+		}
+		for _, outliner := range m.registeredProjectOutliners() {
+			if projectID != "" && outliner.project.ID != projectID {
+				continue
+			}
+			if fresh := outliner.project.GetTaskByID(msg.Task.ID); fresh != nil {
+				outliner.NavigateToSidebarTask(fresh)
 			}
 		}
 	}

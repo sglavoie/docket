@@ -380,13 +380,8 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 		m.allTasksView.loadAllTasks()
 		m.allTasksView.clampCursor()
 	}
-	if m.outliner != nil && m.outliner.project != nil {
-		if err := storage.LoadProject(m.outliner.project); err != nil {
-			logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
-		}
-		m.outliner.rebuildRows()
-		m.outliner.clampCursor()
-	}
+	m.reloadRegisteredProjectOutliners(storage.LoadProject)
+	m.rebuildRegisteredProjectOutliners()
 	var saveCmds []tea.Cmd
 	if m.crossOutliner != nil {
 		saveCmds = append(saveCmds, m.crossOutliner.reloadCrossProjects())

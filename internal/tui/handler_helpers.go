@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // activeCrossProjectOutliner returns the OutlinerModel currently displaying
@@ -24,15 +25,81 @@ func (m *AppModel) activeCrossProjectOutliner() *OutlinerModel {
 	return nil
 }
 
+// registeredProjectOutliners returns every distinct single-project outliner
+// owned by the app. Temporary drill-down outliners live only in the view
+// registry, so consulting m.outliner alone leaves their project copy and rows
+// stale after mutations committed through the application layer.
+func (m *AppModel) registeredProjectOutliners() []*OutlinerModel {
+	if m == nil {
+		return nil
+	}
+
+	candidates := []*OutlinerModel{m.outliner}
+	if m.views != nil {
+		if temporary, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
+			candidates = append(candidates, temporary)
+		}
+	}
+
+	outliners := make([]*OutlinerModel, 0, len(candidates))
+	seen := make(map[*OutlinerModel]struct{}, len(candidates))
+	for _, outliner := range candidates {
+		if outliner == nil || outliner.project == nil {
+			continue
+		}
+		if _, exists := seen[outliner]; exists {
+			continue
+		}
+		seen[outliner] = struct{}{}
+		outliners = append(outliners, outliner)
+	}
+	return outliners
+}
+
+// reloadRegisteredProjectOutliners reloads the project object owned by each
+// single-project outliner. Project pointers, rather than project IDs, are
+// deduplicated because a temporary drill-down intentionally owns a different
+// project object from the app's canonical project cache.
+func (m *AppModel) reloadRegisteredProjectOutliners(
+	loader func(*models.Project) error,
+	alreadyLoaded ...*models.Project,
+) {
+	if loader == nil {
+		return
+	}
+
+	loaded := make(map[*models.Project]struct{}, len(alreadyLoaded))
+	for _, project := range alreadyLoaded {
+		if project != nil {
+			loaded[project] = struct{}{}
+		}
+	}
+	for _, outliner := range m.registeredProjectOutliners() {
+		project := outliner.project
+		if _, exists := loaded[project]; exists {
+			continue
+		}
+		loaded[project] = struct{}{}
+		if err := loader(project); err != nil {
+			logging.Warn("failed to load project %s: %v", project.Name, err)
+		}
+	}
+}
+
+func (m *AppModel) rebuildRegisteredProjectOutliners() {
+	for _, outliner := range m.registeredProjectOutliners() {
+		outliner.rebuildRows()
+		outliner.clampCursor()
+	}
+}
+
 // refreshAllViews rebuilds in-memory rows for the project tree and any active
 // outliner (single-project and cross-project). It never reloads from disk;
 // disk-backed reloads belong in refreshTaskViewsAfterSave and handleWithRefresh.
 func (m *AppModel) refreshAllViews() {
 	m.refreshProjectTree()
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
-	if cross := m.activeCrossProjectOutliner(); cross != nil && cross != m.outliner {
+	m.rebuildRegisteredProjectOutliners()
+	if cross := m.activeCrossProjectOutliner(); cross != nil {
 		cross.rebuildRows()
 		cross.clampCursor()
 	}
@@ -52,8 +119,13 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	if popView {
 		popCmd = m.popView()
 	}
-	if reload && m.currentProject != nil {
-		_ = m.persister.Load(m.currentProject)
+	if reload {
+		var currentProject *models.Project
+		if m.currentProject != nil {
+			currentProject = m.currentProject
+			_ = m.persister.Load(currentProject)
+		}
+		m.reloadRegisteredProjectOutliners(m.persister.Load, currentProject)
 		m.invalidateFilterCaches()
 	}
 	// Cross-project outliner has its own loadedProjects cache that bypasses
