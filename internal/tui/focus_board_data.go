@@ -230,6 +230,23 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	return scoring.ScorePercent(score, profile)
 }
 
+// rebuildTodayTree re-flattens the Today tree in-memory (no disk reload) after a
+// fold-depth change. It recovers the base rows (ParentID == "") from the current
+// todayRows, resets todayRows to that base, re-expands children under the current
+// childDepthLimit, then reapplies the active filter and clamps the cursor.
+func (m *FocusBoardModel) rebuildTodayTree() {
+	var base []boardRow
+	for _, r := range m.todayRows {
+		if r.ParentID == "" {
+			base = append(base, r)
+		}
+	}
+	m.todayRows = base
+	m.expandTodayChildren()
+	m.applyFilter()
+	m.clampCursor()
+}
+
 // expandTodayChildren inserts descendants of explicitly planned items into todayRows.
 func (m *FocusBoardModel) expandTodayChildren() {
 	seen := make(map[string]bool, len(m.todayRows))
@@ -282,7 +299,10 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 
 // isParentExpanded reports whether a parent task at the given depth should
 // have its children rendered in the Today tab.
-func (m *FocusBoardModel) isParentExpanded(_ string, depth int) bool {
+func (m *FocusBoardModel) isParentExpanded(id string, depth int) bool {
+	if v, ok := m.foldOverrides[id]; ok {
+		return !v
+	}
 	if m.childDepthLimit < 0 {
 		return true
 	}

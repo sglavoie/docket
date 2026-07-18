@@ -137,8 +137,12 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		ResetSort:      m.focusBoardSortAction("0"),
 	})...)
 
-	entries = append(entries, keymap.Prefix("f", "Preview", "View", []keymap.Entry{
+	entries = append(entries, keymap.Prefix("f", "Folds", "View", []keymap.Entry{
 		keymap.Bind("p", "Toggle inline preview", "View", m.focusBoardTogglePreview),
+		keymap.Bind("a", "Toggle fold", "View", m.focusBoardToggleFold),
+		keymap.Bind("1", "Collapse to depth 1", "View", m.focusBoardCollapseToDepthAction(0)),
+		keymap.Bind("2", "Collapse to depth 2", "View", m.focusBoardCollapseToDepthAction(1)),
+		keymap.Bind("3", "Collapse to depth 3", "View", m.focusBoardCollapseToDepthAction(2)),
 	}))
 
 	// --- Shared filter group: "F" prefix ---
@@ -220,6 +224,55 @@ func (m *FocusBoardModel) focusBoardSortAction(key string) keymap.Action {
 		handleSortKey(key, &m.sort, refresh, func(SortField) { refresh() })
 		return m, nil
 	}
+}
+
+// focusBoardCollapseToDepthAction returns an action that collapses the Today tree
+// to the given child-depth limit. It no-ops unless the Today tab is active, since
+// the auto-expanded tree exists only there.
+func (m *FocusBoardModel) focusBoardCollapseToDepthAction(limit int) keymap.Action {
+	return func() (tea.Model, tea.Cmd) {
+		if m.tabs.Active != boardTabToday {
+			return m, nil
+		}
+		m.childDepthLimit = limit
+		// Depth commands are a uniform reset: drop any per-node overrides so the
+		// whole tree follows childDepthLimit again.
+		m.foldOverrides = make(map[string]bool)
+		m.rebuildTodayTree()
+		return m, nil
+	}
+}
+
+// focusBoardToggleFold toggles the fold state of the subtree under the cursor on
+// the Today tab. It records a per-node override keyed by the stable task ID so the
+// fold survives in-memory reloads and beats the depth limit. No-op unless the Today
+// tab is active, the cursor is on a task, and that task has children.
+func (m *FocusBoardModel) focusBoardToggleFold() (tea.Model, tea.Cmd) {
+	if m.tabs.Active != boardTabToday {
+		return m, nil
+	}
+	row := m.getRowAtCursor()
+	if row == nil || row.Task == nil || len(row.Task.Children) == 0 {
+		return m, nil
+	}
+	task := row.Task
+	if m.foldOverrides == nil {
+		m.foldOverrides = make(map[string]bool)
+	}
+	// Record the currently-expanded state as the override so open folds and
+	// re-expands re-expand: collapse if open, re-expand if folded.
+	expanded := m.isParentExpanded(task.ID, row.Depth)
+	m.foldOverrides[task.ID] = expanded
+	m.rebuildTodayTree()
+	if idx := restoreCursorByID(task.ID, m.filtered, func(r boardRow) string {
+		if r.Task != nil {
+			return r.Task.ID
+		}
+		return ""
+	}); idx >= 0 {
+		m.cursor = idx
+	}
+	return m, nil
 }
 
 func (m *FocusBoardModel) focusBoardTogglePreview() (tea.Model, tea.Cmd) {

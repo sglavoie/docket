@@ -213,7 +213,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"tab", "shift+tab", "shift+left", "shift+right",
 		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
 		"g", "gg", "gp", "n", "N",
-		"f", "fp",
+		"f", "fp", "fa",
 		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS",
 		"1", "2", "3", "4", "5", "0",
 		",", ",d", "!", "!1", "d", "dd", "z", "zd", "m", "mn", "c", "cb", "t", "tn", "tN", "tD",
@@ -227,7 +227,6 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	for _, key := range []string{
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r",
-		"fa",
 		"P0",
 		".",
 	} {
@@ -263,6 +262,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: "5", Description: "Sort within groups: score"},
 		{Key: "0", Description: "Reset group sort"},
 		{Key: "fp", Description: "Toggle inline preview"},
+		{Key: "fa", Description: "Toggle fold"},
 		{Key: ":", Description: "Command palette"},
 		{Key: "esc", Description: "Back / close"},
 		{Key: "u", Description: "Undo last task action"},
@@ -273,7 +273,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	for _, key := range []string{
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r",
-		"g", "f", "fa",
+		"g", "f",
 		"P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
 		"ctrl+o", "ctrl+n",

@@ -94,7 +94,11 @@ type FocusBoardModel struct {
 	previewMode     bool
 	focusMode       int // 0=list, 1=tunnel, 2=zen
 	childDepthLimit int // -1 = unlimited (default), 0/1/2 = max child depth in Today tab
-	initialTabSet   bool
+	// foldOverrides is a per-node fold override keyed by stable task ID
+	// (true=collapsed, false=force-expanded, absent=follow childDepthLimit).
+	// Consulted before childDepthLimit in isParentExpanded; cleared by depth commands.
+	foldOverrides map[string]bool
+	initialTabSet bool
 
 	// Perspective lens. PerspectiveInactive (-1) means no lens is applied;
 	// 0..9 selects a preset from PerspectivePresets() and AND-composes with
@@ -165,6 +169,7 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 		editInput:         ei,
 		focusMode:         initialFocusMode,
 		childDepthLimit:   -1,
+		foldOverrides:     make(map[string]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
 		sort:              NewSortState(),
 		tabs:              TabState{Names: focusBoardTabNames},
