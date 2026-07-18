@@ -229,6 +229,29 @@ func renderTutorContent(topic TutorTopic, width int, searchQuery string) string 
 		return s
 	}
 
+	// renderProse wraps text to width, colorizes each wrapped line, and styles
+	// the block as prose. Used by the escape and default branches.
+	renderProse := func(text string) string {
+		wrapped := wrapTutorText(text, width)
+		colorized := make([]string, 0)
+		for wl := range strings.SplitSeq(wrapped, "\n") {
+			colorized = append(colorized, colorizeTutorLine(wl))
+		}
+		return hl(proseStyle.Render(strings.Join(colorized, "\n")))
+	}
+
+	// renderIndentedProse reflows body to the space remaining after the indent,
+	// then re-applies the indent to every wrapped line so the indent stays
+	// visible without overflowing narrow panes.
+	renderIndentedProse := func(indent, body string) string {
+		wrapped := wrapTutorText(body, width-len(indent))
+		colorized := make([]string, 0)
+		for wl := range strings.SplitSeq(wrapped, "\n") {
+			colorized = append(colorized, indent+colorizeTutorLine(wl))
+		}
+		return hl(proseStyle.Render(strings.Join(colorized, "\n")))
+	}
+
 	var b strings.Builder
 	b.WriteString(hl(titleStyle.Render(colorizeTutorLine(topic.Title))))
 	b.WriteString("\n")
@@ -237,25 +260,106 @@ func renderTutorContent(topic TutorTopic, width int, searchQuery string) string 
 
 	for line := range strings.SplitSeq(topic.Content, "\n") {
 		trimmed := strings.TrimSpace(line)
+		indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+		body := line[len(indent):]
+		isCommand := strings.HasPrefix(trimmed, "tt ") || strings.HasPrefix(trimmed, "$ ")
 		switch {
-		case strings.HasPrefix(trimmed, "# "):
-			b.WriteString(hl(headingStyle.Render(colorizeTutorLine(trimmed[2:]))))
-		case strings.HasPrefix(line, "  ") && (strings.HasPrefix(trimmed, "tt ") || strings.HasPrefix(trimmed, "$ ")):
-			b.WriteString("  " + codeStyle.Render(colorizeTutorLine(trimmed)))
 		case trimmed == "":
 			// blank line
-		default:
-			wrapped := wrapTutorText(trimmed, width)
-			colorized := make([]string, 0)
-			for wl := range strings.SplitSeq(wrapped, "\n") {
-				colorized = append(colorized, colorizeTutorLine(wl))
+		case strings.HasPrefix(line, "  ") && (isCommand || strings.Contains(trimmed, "  ")):
+			// Aligned / preformatted: keep the leading whitespace and internal
+			// column alignment verbatim when the row fits the pane. Rows wider
+			// than the pane wrap with a hanging indent at the description column
+			// so no content is clipped by the viewport while alignment survives.
+			segs := splitAlignedRow(indent, body, width)
+			parts := make([]string, len(segs))
+			for i, seg := range segs {
+				if isCommand {
+					parts[i] = seg.lead + codeStyle.Render(colorizeTutorLine(seg.content))
+				} else {
+					parts[i] = hl(seg.lead + proseStyle.Render(colorizeTutorLine(seg.content)))
+				}
 			}
-			b.WriteString(hl(proseStyle.Render(strings.Join(colorized, "\n"))))
+			b.WriteString(strings.Join(parts, "\n"))
+		case strings.HasPrefix(line, "  "):
+			// Indented prose: reflow to the pane but keep the indent.
+			b.WriteString(renderIndentedProse(indent, body))
+		case strings.HasPrefix(trimmed, "\\"):
+			// Escape: strip exactly one leading backslash, render the remainder
+			// as prose. Sits above the heading case so escaped column-0 markup
+			// (e.g. "\# ...") renders literally instead of as a heading.
+			b.WriteString(renderProse(trimmed[1:]))
+		case strings.HasPrefix(trimmed, "# "):
+			b.WriteString(hl(headingStyle.Render(colorizeTutorLine(trimmed[2:]))))
+		default:
+			b.WriteString(renderProse(trimmed))
 		}
 		b.WriteString("\n")
 	}
 
 	return b.String()
+}
+
+// alignedSegment is one physical line of a (possibly wrapped) aligned row:
+// lead is the verbatim leading whitespace and content is the styleable text.
+type alignedSegment struct {
+	lead    string
+	content string
+}
+
+// minAlignedDesc is the smallest description column width worth preserving when
+// wrapping a wide aligned row. If honoring the description column would leave
+// fewer than this many columns, the row falls back to wrapping at the base
+// indent so the text stays readable instead of dribbling down a narrow gutter.
+const minAlignedDesc = 16
+
+// splitAlignedRow returns the physical lines for one aligned row. Rows that fit
+// the pane are returned verbatim (single segment) so narrow tables keep their
+// exact column alignment. Wider rows wrap at word boundaries: the label stays on
+// the first line and the description reflows under a hanging indent aligned to
+// the description column, so nothing is clipped by the viewport.
+func splitAlignedRow(indent, body string, width int) []alignedSegment {
+	if width <= 0 || lipgloss.Width(indent+body) <= width {
+		return []alignedSegment{{lead: indent, content: body}}
+	}
+
+	baseAvail := max(width-len(indent), 1)
+
+	// Locate the description column: the first run of 2+ spaces separating a
+	// label from its description.
+	hangCol := -1
+	var label, desc string
+	if gap := strings.Index(body, "  "); gap > 0 {
+		gapEnd := gap
+		for gapEnd < len(body) && body[gapEnd] == ' ' {
+			gapEnd++
+		}
+		if gapEnd < len(body) { // there is text after the gap
+			if hc := len(indent) + gapEnd; width-hc >= minAlignedDesc {
+				hangCol = hc
+				label = body[:gapEnd] // label plus its trailing gap
+				desc = body[gapEnd:]
+			}
+		}
+	}
+
+	if hangCol < 0 {
+		// No usable description column: wrap the whole body at the base indent.
+		var segs []alignedSegment
+		for wl := range strings.SplitSeq(wrapTutorText(body, baseAvail), "\n") {
+			segs = append(segs, alignedSegment{lead: indent, content: wl})
+		}
+		return segs
+	}
+
+	descLines := strings.Split(wrapTutorText(desc, width-hangCol), "\n")
+	segs := make([]alignedSegment, 0, len(descLines))
+	segs = append(segs, alignedSegment{lead: indent, content: label + descLines[0]})
+	hang := strings.Repeat(" ", hangCol)
+	for _, dl := range descLines[1:] {
+		segs = append(segs, alignedSegment{lead: hang, content: dl})
+	}
+	return segs
 }
 
 // wrapTutorText wraps text to the given width.

@@ -17,7 +17,7 @@ Quick Capture accepts natural-language input:
 
   Buy groceries @tomorrow #errands !2
 
-# is for tags, ! sets priority (1=high), @ sets the due date,
+\# is for tags, ! sets priority (1=high), @ sets the due date,
 ~ sets recurrence, / sets the section. The live preview
 organizes your input into labeled rows (Task / Route /
 Schedule / Metadata / Aliases) so you can see exactly which

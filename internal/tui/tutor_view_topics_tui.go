@@ -72,8 +72,7 @@ When you are inside an inbox processor, the palette exposes the
 full triage vocabulary by name so you can search instead of
 memorizing chords:
 
-  triage inbox               (dashboard: open per-project
-                             inbox processor, Shortcut O)
+  triage inbox               (dashboard O: per-project inbox)
   skip task                  (n)
   mark task done             (D)
   edit inbox task            (e)
@@ -124,16 +123,14 @@ The dashboard surfaces "what needs triage" through three
 layered signals so you can answer "what should I look at?"
 without scanning competing badges:
 
-  1. Lead alerts line   "📥 N to triage" appears at the top
-                        of the alerts list whenever any
-                        project has processable inbox tasks.
-  2. Per-row indicator  Each project row's status column
-                        leads with the inbox segment, ahead
-                        of overdue / due soon / blocked /
-                        blockers / completed.
-  3. Pipeline card      The first stage in the pipeline card
-                        is "Triage" — the count of inbox
-                        tasks waiting to be processed.
+  1. Lead alerts line — "📥 N to triage" leads the alerts
+     list whenever any project has processable inbox tasks.
+  2. Per-row indicator — each project row's status column
+     leads with the inbox segment, ahead of overdue, due
+     soon, blocked, blockers, and completed.
+  3. Pipeline card — the first pipeline-card stage is
+     "Triage", the count of inbox tasks waiting to be
+     processed.
 
 Per-project inbox counts already live on every project row,
 so the alerts panel no longer carries a separate "Inbox
