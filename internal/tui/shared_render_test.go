@@ -345,32 +345,6 @@ func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
 				return m.View().Content
 			},
 		},
-		{
-			name: "due date overview",
-			view: func() string {
-				m := NewDueDateOverviewModel(testRuntimeAt("", cfg), nil)
-				m.SetSize(118, 18)
-				m.today = []CrossProjectTask{{Task: task, Project: proj}}
-				m.recalcTotalTasks()
-				m.cursor = 0
-				return m.View().Content
-			},
-		},
-		{
-			name: "focus view",
-			view: func() string {
-				queue := []FocusTask{}
-				m := NewFocusViewModel(nil, nil, &queue, map[string]bool{}, map[string]bool{}, map[string]bool{})
-				m.SetSize(118, 18)
-				m.tabs.Active = focusTabByProject
-				ft := FocusTask{Task: task, Project: proj}
-				m.tasks = []FocusTask{ft}
-				m.filtered = []FocusTask{ft}
-				m.computeSubTabs()
-				m.cursor = 0
-				return m.View().Content
-			},
-		},
 	}
 
 	for _, tt := range tests {

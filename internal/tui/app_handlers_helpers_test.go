@@ -20,19 +20,18 @@ func newTestAppModel() *AppModel {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	return &AppModel{
-		configManager:            manager,
-		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager, nil),
-		projects:                 make(map[string]*models.Project),
-		persister:                NewProjectService(),
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		viewStack:                []ViewType{ViewDashboard},
-		width:                    80,
-		height:                   24,
-		views:                    NewViewRegistry(),
-		navHistory:               NewNavHistory(),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, nil, manager, nil),
+		projects:             make(map[string]*models.Project),
+		persister:            NewProjectService(),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		navHistory:           NewNavHistory(),
 	}
 }
 
@@ -51,20 +50,19 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	app := &AppModel{
-		configManager:            manager,
-		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager, nil),
-		projects:                 map[string]*models.Project{project.ID: project},
-		persister:                NewProjectService(),
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		viewStack:                []ViewType{ViewDashboard},
-		width:                    80,
-		height:                   24,
-		views:                    NewViewRegistry(),
-		currentProject:           project,
-		navHistory:               NewNavHistory(),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, nil, manager, nil),
+		projects:             map[string]*models.Project{project.ID: project},
+		persister:            NewProjectService(),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		currentProject:       project,
+		navHistory:           NewNavHistory(),
 	}
 
 	return app, project

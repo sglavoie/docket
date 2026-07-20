@@ -26,7 +26,7 @@ func TestDeletedProjectTagAfterReloadIsAbsentFromTagSurfaces(t *testing.T) {
 	selector := NewTagFilterSelectorModel(ShowTagFilterMsg{
 		Tags:     tagList,
 		Selected: map[string]bool{"backend": true, "frontend": true},
-		Source:   ViewProjectTree,
+		Source:   ViewOutliner,
 	})
 	if slices.ContainsFunc(selector.Items, func(tag TagInfo) bool { return tag.Name == "backend" }) {
 		t.Fatalf("tag filter selector items = %#v, want deleted tag omitted", selector.Items)
@@ -36,15 +36,10 @@ func TestDeletedProjectTagAfterReloadIsAbsentFromTagSurfaces(t *testing.T) {
 	setTestAppProjects(app, project)
 	setTestCurrentProject(app, project.ID)
 	app.currentProject = project
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
 	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 
-	app.projectTree.filter.Tags = map[string]bool{"backend": true, "frontend": true}
 	app.outliner.filter.Tags = map[string]bool{"backend": true, "frontend": true}
 	app.refreshAfterProjectTagChange("backend", "")
-	if app.projectTree.filter.Tags["backend"] || !app.projectTree.filter.Tags["frontend"] {
-		t.Fatalf("project tree tags after refresh = %v, want frontend only", app.projectTree.filter.Tags)
-	}
 	if app.outliner.filter.Tags["backend"] || !app.outliner.filter.Tags["frontend"] {
 		t.Fatalf("outliner tags after refresh = %v, want frontend only", app.outliner.filter.Tags)
 	}
@@ -55,14 +50,6 @@ func TestDeletedProjectTagAfterReloadIsAbsentFromTagSurfaces(t *testing.T) {
 		FilterTags:   []string{"backend", "frontend"},
 		PinnedTagTab: "backend",
 	}
-	app.applySavedFilterToTree(staleFilter)
-	if app.projectTree.filter.Tags["backend"] || !app.projectTree.filter.Tags["frontend"] {
-		t.Fatalf("project tree saved filter tags = %v, want frontend only", app.projectTree.filter.Tags)
-	}
-	if got := app.projectTree.activePinnedTagFilter(); got != "" {
-		t.Fatalf("project tree activePinnedTagFilter() = %q, want empty", got)
-	}
-
 	app.applySavedFilterToOutliner(staleFilter)
 	if app.outliner.filter.Tags["backend"] || !app.outliner.filter.Tags["frontend"] {
 		t.Fatalf("outliner saved filter tags = %v, want frontend only", app.outliner.filter.Tags)

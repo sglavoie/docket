@@ -16,9 +16,7 @@ import (
 func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowTagManagerMsg:
-		if msg.ProjectTree != nil {
-			m.showView(ViewTagManager, NewTagManagerModel(msg.ProjectTree, m.secondaryFeatures.Tag))
-		} else if msg.Project != nil {
+		if msg.Project != nil {
 			m.showView(ViewTagManager, NewTagManagerModelForProject(msg.Project, m.secondaryFeatures.Tag))
 		}
 		return true, nil
@@ -41,7 +39,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, nil
 		}
 		// Check if we came from project tree, outliner, or cross-project outliner - apply tags directly
-		if (m.currentView() == ViewProjectTree || m.currentView() == ViewOutliner || m.currentView() == ViewCrossProjectOutliner) && msg.Task != nil {
+		if (m.currentView() == ViewOutliner || m.currentView() == ViewCrossProjectOutliner) && msg.Task != nil {
 			return true, m.applyTagsToTask(msg.Task, msg.Project, msg.SelectedTags)
 		}
 		// Otherwise forward to current view (inbox processor, task editor, etc.)
@@ -111,6 +109,13 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, cmd
 		}
 		m.reloadAndRefreshProjectTree()
+		return true, nil
+
+	case TagManagerFilterMsg:
+		m.popView()
+		if msg.Tag != "" {
+			m.applyTagFilterToView(ViewOutliner, map[string]bool{msg.Tag: true})
+		}
 		return true, nil
 
 	case TagManagerErrorMsg:
@@ -232,30 +237,17 @@ func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string)
 	m.switchToProject(project, false) // Don't restore state - apply specific tag filter.
 	tags := map[string]bool{tag: true}
 
-	switch defaultProjectViewType(m.runtime.Settings()) {
-	case ViewProjectTree:
-		m.projectTree.filter.Tags = tags
-		m.projectTree.updateVisibility()
-		m.showView(ViewProjectTree, m.projectTree)
-	default:
-		m.saveOutlinerToggleState()
-		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-		m.outliner.queueIDs = m.focusQueueIDs
-		m.outliner.dailyPlanIDs = m.dailyPlanIDs
-		m.restoreOutlinerToggleState()
-		m.outliner.filter.Tags = tags
-		m.outliner.rebuildRows()
-		m.showView(ViewOutliner, m.outliner)
-	}
+	m.saveOutlinerToggleState()
+	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
+	m.outliner.queueIDs = m.focusQueueIDs
+	m.outliner.dailyPlanIDs = m.dailyPlanIDs
+	m.restoreOutlinerToggleState()
+	m.outliner.filter.Tags = tags
+	m.outliner.rebuildRows()
+	m.showView(ViewOutliner, m.outliner)
 }
 
 func (m *AppModel) refreshAfterProjectTagChange(oldName, newName string) {
-	if m.projectTree != nil {
-		updateTagFilterAfterCatalogChange(m.projectTree.filter.Tags, oldName, newName)
-		m.projectTree.buildTree()
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
-	}
 	if m.outliner != nil {
 		updateTagFilterAfterCatalogChange(m.outliner.filter.Tags, oldName, newName)
 		m.outliner.rebuildRows()
@@ -287,7 +279,7 @@ func updateTagFilterAfterCatalogChange(tags map[string]bool, oldName, newName st
 func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
 	// Views that implement commonFilterView can be handled generically.
 	standardViews := []ViewType{
-		ViewFocusView, ViewFocusBoard, ViewProjectFocusView, ViewDueDateOverview,
+		ViewFocusBoard, ViewProjectFocusView,
 		ViewDailyReview, ViewRecentActivity, ViewPriorityView,
 		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,
 	}
@@ -305,12 +297,6 @@ func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
 	}
 
 	switch source {
-	case ViewProjectTree:
-		if m.projectTree != nil {
-			m.projectTree.filter.Tags = tags
-			m.projectTree.updateVisibility()
-			m.projectTree.clampCursor()
-		}
 	case ViewOutliner:
 		target := m.outliner
 		if target == nil {
@@ -345,10 +331,6 @@ func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
 // applyColumnToggles applies the column toggle changes from the picker to the
 // appropriate view and persists them to config.
 func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) {
-	projectID := ""
-	if m.currentProject != nil {
-		projectID = m.currentProject.ID
-	}
 	machine := m.runtime.Machine()
 
 	// mutate captures the machine-local persistence for the affected view; the
@@ -357,18 +339,6 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 	var mutate func(*config.MachineState)
 
 	switch source {
-	case ViewProjectTree:
-		priorityMode := resolvePriorityMode(projectID, machine, "tree")
-		if m.projectTree != nil {
-			m.projectTree.columnConfig = NewColumnConfig(toggles, machine.TreeDefaultColumns, DefaultTreeColumns, priorityMode)
-		}
-		if projectID != "" {
-			mutate = func(mach *config.MachineState) {
-				state, _ := mach.GetProjectViewState(projectID)
-				state.TreeColumnToggles = toggles
-				mach.SetProjectViewState(projectID, state)
-			}
-		}
 	case ViewOutliner:
 		target := m.outliner
 		if m.currentView() == ViewTemporaryOutliner {

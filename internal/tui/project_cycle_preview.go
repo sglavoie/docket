@@ -1,6 +1,6 @@
 package tui
 
-// renderCyclePreviewBackground renders a dimmed task tree of the highlighted
+// renderCyclePreviewBackground renders a dimmed task outliner of the highlighted
 // project as background content behind the cycle overlay popup.
 func (m *AppModel) renderCyclePreviewBackground(visibleRows ...int) string {
 	if !m.showProjectCycle || len(m.projectCycleItems) == 0 {
@@ -22,11 +22,10 @@ func (m *AppModel) renderCyclePreviewBackground(visibleRows ...int) string {
 	previewRows = max(previewRows, 1)
 
 	if m.projectCyclePreviewID != proj.ID || m.projectCyclePreview == nil {
-		m.projectCyclePreview = NewProjectTreeModel(proj, m.configManager, m.runtime)
+		m.projectCyclePreview = NewOutlinerModel(proj, m.configManager, m.runtime)
 		m.projectCyclePreviewID = proj.ID
 	}
 	m.projectCyclePreview.SetSize(m.width, previewRows)
-	m.projectCyclePreview.fillTreeCardToViewHeight = true
 
 	content := m.projectCyclePreview.View().Content
 
@@ -34,7 +33,7 @@ func (m *AppModel) renderCyclePreviewBackground(visibleRows ...int) string {
 	return DimContent(content)
 }
 
-// invalidateCyclePreview clears the cached preview tree.
+// invalidateCyclePreview clears the cached preview outliner.
 func (m *AppModel) invalidateCyclePreview() {
 	m.projectCyclePreview = nil
 	m.projectCyclePreviewID = ""

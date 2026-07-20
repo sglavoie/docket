@@ -73,7 +73,7 @@ func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
 	m.navHistory.Lock()
 	defer m.navHistory.Unlock()
 
-	m.saveProjectTreeState()
+	m.saveProjectViewState()
 	m.saveOutlinerToggleState()
 	m.saveOutlinerFilterState()
 	m.saveCurrentViewFilterState()
@@ -116,13 +116,6 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		wr.queueIDs = m.focusQueueIDs
 		wr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewWeeklyReview, wr)
-	case ViewFocusView:
-		m.showView(ViewFocusView, NewFocusViewModel(m.runtime, m.configManager, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.focusDismissedIDs))
-	case ViewDueDateOverview:
-		ddo := NewDueDateOverviewModel(m.runtime, m.configManager)
-		ddo.queueIDs = m.focusQueueIDs
-		ddo.dailyPlanIDs = m.dailyPlanIDs
-		m.showView(ViewDueDateOverview, ddo)
 	case ViewRecentActivity:
 		ra := NewRecentActivityModel(m.runtime, m.configManager)
 		ra.queueIDs = m.focusQueueIDs
@@ -180,7 +173,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
 		return m.crossOutliner.Init()
 	case ViewFocusBoard:
-		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
+		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
 		m.showView(ViewFocusBoard, fb)
 	case ViewAllTasks:
 		atv := NewAllTasksViewModel(m.runtime, m.configManager)
@@ -207,13 +200,19 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	}
 
 	m.switchToProject(project, true)
-	m.pushView(ViewProjectTree)
+	m.pushView(ViewOutliner)
 
-	if entry.ViewType == ViewProjectTree {
+	// switchToProject + pushView above already establish the Outliner as the
+	// base project view (created, state-restored, registered, and pushed). When
+	// the history target IS the Outliner, there is nothing further to push — an
+	// extra showView here would duplicate the stack entry and make the first
+	// Escape appear ineffective (FR-010-003). Only stack a distinct target view
+	// on top of the base Outliner.
+	if entry.ViewType == ViewOutliner {
 		return nil
 	}
 
-	// Push the target view on top of the project tree
+	// Push the target view on top of the project view
 	switch entry.ViewType {
 	case ViewPriorityView:
 		pv := NewPriorityViewModel(project, m.runtime, m.configManager)
@@ -233,15 +232,6 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		processor := NewInboxProcessorModel(project, m.configManager, m.runtime)
 		m.inboxProcessor = processor
 		m.showView(ViewInboxProcessor, processor)
-	case ViewOutliner:
-		m.saveOutlinerToggleState()
-		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-		m.outliner.queueIDs = m.focusQueueIDs
-		m.outliner.dailyPlanIDs = m.dailyPlanIDs
-		m.restoreOutlinerToggleState()
-		m.restoreOutlinerFilterState()
-		m.showView(ViewOutliner, m.outliner)
 	case ViewProjectFocusView:
 		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project, m.runtime))
 	case ViewMetricsDashboard:
@@ -282,7 +272,7 @@ func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
 	}
 
 	m.switchToProject(project, true)
-	m.pushView(ViewProjectTree)
+	m.pushView(ViewOutliner)
 
 	task := project.GetTaskByID(entry.TaskID)
 	if task == nil {

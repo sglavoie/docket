@@ -335,7 +335,11 @@ func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 }
 
 func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int) outlinerViewport {
-	visibleRows := m.contentHeight() - extraFooterLines
+	// Clamp to at least one row: at pathologically small heights (e.g. the
+	// dimmed project-cycle/pinned preview backgrounds sized to a couple of
+	// lines) contentHeight()-extraFooterLines can go non-positive, which would
+	// drive a negative window slice.
+	visibleRows := max(m.contentHeight()-extraFooterLines, 1)
 
 	if m.ac.IsActive() {
 		acLines := min(len(m.ac.Items), acVisibleCount)

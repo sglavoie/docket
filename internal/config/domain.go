@@ -339,6 +339,8 @@ func (w *WorkspaceCatalog) UpsertProject(p *models.Project) {
 // completion, dismissals, and saved task views/filters. It maps to
 // <data>/.tt/planning.json.
 type PlanningState struct {
+	// FocusQueue is the Next order index: it records the preferred ordering of
+	// StateNext tasks, not membership (which is derived from State()==StateNext).
 	FocusQueue         []FocusQueueItem `json:"focus_queue,omitempty"`
 	DailyPlan          []DailyPlanItem  `json:"daily_plan,omitempty"`
 	FocusDismissedIDs  []string         `json:"focus_dismissed_ids,omitempty"`

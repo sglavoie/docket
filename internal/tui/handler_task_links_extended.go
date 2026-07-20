@@ -72,8 +72,8 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 	m.setSuccessStatus(fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID))
 
 	// Jump to new task if configured
-	if m.runtime.Settings().GetLinkedTaskJumpToNew() && m.projectTree != nil && msg.NewTask != nil {
-		m.projectTree.JumpToTask(msg.NewTask)
+	if m.runtime.Settings().GetLinkedTaskJumpToNew() && m.outliner != nil && msg.NewTask != nil {
+		m.outliner.NavigateToTaskInProject(msg.NewTask, m.outliner.project)
 	}
 
 	if msg.NewTask != nil && (msg.OpenContent || msg.OpenDetail) {
@@ -173,12 +173,11 @@ func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 	if m.currentProject != nil {
 		task := m.currentProject.GetTaskByID(sourceTaskID)
 		if task != nil {
-			if m.projectTree != nil {
-				m.projectTree.JumpToTask(task)
-				sidebarAdjustAfterLinkRemoval(m.currentProject, m.projectTree.sidebar, task)
-			}
-			if m.outliner != nil && m.outliner.sidebar != nil {
-				sidebarAdjustAfterLinkRemoval(m.currentProject, m.outliner.sidebar, task)
+			if m.outliner != nil {
+				m.outliner.NavigateToTaskInProject(task, m.outliner.project)
+				if m.outliner.sidebar != nil {
+					sidebarAdjustAfterLinkRemoval(m.currentProject, m.outliner.sidebar, task)
+				}
 			}
 		}
 	}

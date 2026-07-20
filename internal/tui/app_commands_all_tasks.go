@@ -8,11 +8,11 @@ func (m *AppModel) allTasksCommands() []Command {
 	return []Command{
 		{
 			Name:        "go to task in project",
-			Description: "Navigate to task in project tree",
+			Description: "Navigate to task in outliner",
 			Shortcut:    "gp",
 			Category:    CategoryNavigation,
 			Views:       []ViewType{ViewAllTasks},
-			Aliases:     []string{"open in project", "show in tree"},
+			Aliases:     []string{"open in project", "show in outliner"},
 			Handler: func() tea.Msg {
 				return syntheticKey('g')
 			},

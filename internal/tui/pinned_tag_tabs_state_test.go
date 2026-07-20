@@ -7,33 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestSaveProjectTreeStatePersistsPinnedTagTab(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	project.PinnedTags = []string{"backend"}
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.pinnedTagTab = 1
-
-	app.saveProjectTreeState()
-
-	state := app.runtime.Machine().ProjectViewStates[project.ID]
-	if got := state.PinnedTagTab; got != "backend" {
-		t.Fatalf("PinnedTagTab = %q, want backend", got)
-	}
-}
-
-func TestRestoreProjectTreeStateRestoresPinnedTagTab(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	project.PinnedTags = []string{"backend"}
-	app.runtime.Machine().SetProjectViewState(project.ID, config.ProjectViewState{PinnedTagTab: "backend"})
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-
-	app.restoreProjectTreeState()
-
-	if got := app.projectTree.activePinnedTagFilter(); got != "backend" {
-		t.Fatalf("activePinnedTagFilter() = %q, want backend", got)
-	}
-}
-
 func TestSaveOutlinerFilterStatePersistsPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.PinnedTags = []string{"backend"}

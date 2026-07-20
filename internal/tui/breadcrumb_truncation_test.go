@@ -19,8 +19,10 @@ func TestBreadcrumbLabelTruncationIsUTF8Safe(t *testing.T) {
 		ID:   "p1",
 		Name: "日本語プロジェクトéàü",
 	}
+	app.outliner = NewOutlinerModel(app.currentProject, app.configManager, app.runtime)
+	app.views.Register(ViewOutliner, app.outliner)
 
-	label := app.breadcrumbLabel(ViewProjectTree, 10)
+	label := app.breadcrumbLabel(ViewOutliner, 10)
 	if !utf8.ValidString(label) {
 		t.Fatalf("breadcrumbLabel produced invalid UTF-8: %q", label)
 	}
@@ -40,7 +42,9 @@ func TestBuildBreadcrumbTruncationIsUTF8Safe(t *testing.T) {
 		ID:   "p1",
 		Name: "日本語プロジェクトéàü",
 	}
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree}
+	app.outliner = NewOutlinerModel(app.currentProject, app.configManager, app.runtime)
+	app.views.Register(ViewOutliner, app.outliner)
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
 
 	crumb := app.buildBreadcrumb()
 	if !utf8.ValidString(crumb) {

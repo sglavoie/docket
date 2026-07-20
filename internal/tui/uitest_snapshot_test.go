@@ -72,7 +72,8 @@ func TestUITestSnapshotDashboard(t *testing.T) {
 func TestUITestSnapshotFocusBoard(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
 	dailyPlan := []FocusTask{}
-	m := NewFocusBoardModel(nil, ws.Manager, &dailyPlan,
+	focusQueue := []FocusTask{}
+	m := NewFocusBoardModel(nil, ws.Manager, &dailyPlan, &focusQueue,
 		map[string]bool{}, map[string]bool{}, map[string]bool{})
 
 	snap := m.UITestSnapshot()

@@ -25,6 +25,7 @@ const (
 var rawProjectSaveAllowlist = map[string]string{
 	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":                 rawSaveAppTestRepo,
 	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":                           rawSaveDoctorRepair,
+	"cmd/doctor.go:fixFocusQueueNotNext:storage.SaveProjectLocked(project)":                      rawSaveDoctorRepair,
 	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                 rawSaveDoctorRepair,
 	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)":              rawSaveDoctorRepair,
 	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":                         rawSaveRestoreResult,

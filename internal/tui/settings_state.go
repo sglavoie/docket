@@ -20,11 +20,10 @@ const (
 	tabReview        = 2
 	tabBehavior      = 3
 	tabAttachments   = 4
-	tabProjectTree   = 5
-	tabOutliner      = 6
-	tabKanban        = 7
-	tabNotifications = 8
-	tabAppearance    = 9
+	tabOutliner      = 5
+	tabKanban        = 6
+	tabNotifications = 7
+	tabAppearance    = 8
 )
 
 // settingsVisualTabNames are the 5 consolidated tab names shown in the tab bar.
@@ -63,9 +62,8 @@ var visualTabSubTabs = [][]visualSubTabRef{
 		{"Priorities", tabPalette, 2},
 		{"Appearance", tabAppearance, 0},
 	},
-	// vtab 2: Views = old Project Tree + old Outliner sub-sections + old Kanban
+	// vtab 2: Views = old Outliner sub-sections + old Kanban
 	{
-		{"Project Tree", tabProjectTree, 0},
 		{"Sidebar", tabOutliner, 0},
 		{"Section State", tabOutliner, 1},
 		{"Column Visibility", tabOutliner, 2},
@@ -101,10 +99,10 @@ func visualSubTabNamesForVTab(vt int) []string {
 }
 
 var (
-	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Appearance"}
+	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Outliner", "Kanban", "Notifications", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 5, 20, 2, 15, 24, 9, 15, 5}
+	tabFieldCount = []int{4, 18, 5, 20, 2, 24, 9, 15, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -120,11 +118,10 @@ var (
 		nil, // 2: Review
 		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}, {"Today", 1}, {"Dashboard", 4}}, // 3: Behavior
 		nil, // 4: Attachments
-		nil, // 5: Project Tree
-		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 6: Outliner
-		nil, // 7: Kanban
-		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}}, // 8: Notifications
-		nil, // 9: Appearance
+		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 5: Outliner
+		nil, // 6: Kanban
+		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}}, // 7: Notifications
+		nil, // 8: Appearance
 	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
@@ -136,12 +133,6 @@ var (
 
 	// outlinerSectionLabels are the display labels for each toggle.
 	outlinerSectionLabels = []string{"Active", "Inbox", "Next", "Waiting", "Review", "Standby", "Someday"}
-
-	// defaultProjectViewOptions lists the display labels for the default project view selector.
-	defaultProjectViewOptions = []string{"Outliner", "Project Tree"}
-
-	// defaultProjectViewValues maps cursor index to config string value.
-	defaultProjectViewValues = []string{"outliner", "project_tree"}
 
 	// priorityModeOptions lists the display labels for priority display mode.
 	priorityModeOptions = []string{"All", "Conditional", "Hidden"}
@@ -316,11 +307,8 @@ type SettingsModel struct {
 	popupTimeoutInput        textinput.Model
 	attachmentEditorInput    textinput.Model
 	codeEditorInput          textinput.Model
-	defaultViewCursor        int      // Index into defaultProjectViewOptions
 	outlinerCollapsed        [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
-	treeColumnDefaults       [15]bool // Global default column visibility for tree view
 	outlinerColumnDefaults   [15]bool // Global default column visibility for outliner view (full AllColumns)
-	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
 	crossOutlinerCycleOnly   bool     // Restrict cross-project outliner to cycle projects only

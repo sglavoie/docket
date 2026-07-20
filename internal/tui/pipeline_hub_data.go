@@ -21,10 +21,13 @@ type pipelineCounts struct {
 
 // loadPipelineCounts aggregates counts from all active projects and returns
 // the loaded project slice so callers (e.g., the Next Action engine) can
-// reuse it without a second I/O pass.
+// reuse it without a second I/O pass. Next (queue) count is the number of
+// StateNext tasks — membership is the workflow state, not the Focus Queue order
+// index — while Today (daily plan) count remains the config-owned list length.
+// queueIDs is retained for signature stability; it no longer drives the count.
 func loadPipelineCounts(runtime *config.RuntimeState, queueIDs, dailyPlanIDs map[string]bool) (pipelineCounts, []*models.Project) {
+	_ = queueIDs
 	counts := pipelineCounts{
-		queueLen:     len(queueIDs),
 		dailyPlanLen: len(dailyPlanIDs),
 	}
 
@@ -51,6 +54,7 @@ func loadPipelineCounts(runtime *config.RuntimeState, queueIDs, dailyPlanIDs map
 			counts.overdueCount += countOverdue(task)
 			counts.inProgressCount += countInProgress(task)
 			counts.completedTodayCount += countCompletedToday(task, startOfDay)
+			counts.queueLen += countNext(task)
 		}
 	}
 
@@ -75,6 +79,20 @@ func countOverdue(task *models.Task) int {
 	}
 	for _, child := range task.Children {
 		n += countOverdue(child)
+	}
+	return n
+}
+
+// countNext counts StateNext tasks in the subtree. Next membership is the
+// workflow state, so the Pipeline/dashboard "Plan" count matches every other
+// state-driven consumer rather than the Focus Queue order-index length.
+func countNext(task *models.Task) int {
+	n := 0
+	if task.State() == models.StateNext {
+		n++
+	}
+	for _, child := range task.Children {
+		n += countNext(child)
 	}
 	return n
 }

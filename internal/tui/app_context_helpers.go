@@ -15,10 +15,6 @@ func (m *AppModel) contextualProject() *models.Project {
 				return p
 			}
 		}
-	case ViewProjectTree:
-		if m.projectTree != nil {
-			return m.projectTree.project
-		}
 	case ViewOutliner:
 		if m.outliner != nil && m.outliner.project != nil {
 			return m.outliner.project

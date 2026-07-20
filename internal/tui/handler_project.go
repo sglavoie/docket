@@ -163,7 +163,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if m.dashboard != nil {
 			m.dashboard.Refresh()
 		}
-		m.refreshProjectTree()
+		m.refreshProjectView()
 		return true, nil
 
 	case ToggleInfoPanelMsg:
@@ -300,7 +300,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				m.restoreOutlinerFilterState()
 				m.showView(ViewOutliner, m.outliner)
 			default:
-				m.pushView(ViewProjectTree)
+				m.pushView(ViewOutliner)
 			}
 		}
 		return true, nil
@@ -339,7 +339,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.setSuccessStatus(fmt.Sprintf("Cleared %d item(s) from sandbox", msg.Result.Cleared.Total()))
 		// Refresh views if sandbox is currently displayed
 		if m.currentProject != nil && m.currentProject.ID == msg.Result.ProjectID {
-			m.refreshProjectTree()
+			m.refreshProjectView()
 		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh()
@@ -363,20 +363,14 @@ func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
 	}
 	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
-	targetView := m.getProjectLastView(project.ID)
-	switch targetView {
-	case ViewProjectTree:
-		m.showView(ViewProjectTree, m.projectTree)
-	default:
-		m.saveOutlinerToggleState()
-		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-		m.outliner.queueIDs = m.focusQueueIDs
-		m.outliner.dailyPlanIDs = m.dailyPlanIDs
-		m.restoreOutlinerToggleState()
-		m.restoreOutlinerFilterState()
-		m.showView(ViewOutliner, m.outliner)
-	}
+	m.saveOutlinerToggleState()
+	m.saveOutlinerFilterState()
+	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
+	m.outliner.queueIDs = m.focusQueueIDs
+	m.outliner.dailyPlanIDs = m.dailyPlanIDs
+	m.restoreOutlinerToggleState()
+	m.restoreOutlinerFilterState()
+	m.showView(ViewOutliner, m.outliner)
 	return nil
 }
 

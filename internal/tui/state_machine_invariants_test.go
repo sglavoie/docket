@@ -1,16 +1,22 @@
 package tui
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 type invariantQueueView struct {
 	BaseView
-	task    *models.Task
+	taskID  string
 	project *models.Project
 }
 
@@ -22,14 +28,21 @@ func (v *invariantQueueView) Update(tea.Msg) (tea.Model, tea.Cmd) {
 
 func (v *invariantQueueView) View() tea.View { return tea.NewView("") }
 
+// getTaskRef re-resolves the task from the project so it returns the live
+// pointer after a ledger-backed queue toggle reloads the project from disk.
 func (v *invariantQueueView) getTaskRef() (*models.Task, *models.Project) {
-	return v.task, v.project
+	if v.project != nil {
+		if fresh := v.project.GetTaskByID(v.taskID); fresh != nil {
+			return fresh, v.project
+		}
+	}
+	return nil, v.project
 }
 
 func TestTUIStateMachine_ViewStackAnchorsAndNoUnderflow(t *testing.T) {
 	t.Run("project anchor", func(t *testing.T) {
 		app := newTestAppModel()
-		app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewTaskDetail, ViewFocusBoard}
+		app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewTaskDetail, ViewFocusBoard}
 
 		steps := []struct {
 			name        string
@@ -37,7 +50,7 @@ func TestTUIStateMachine_ViewStackAnchorsAndNoUnderflow(t *testing.T) {
 			wantView    ViewType
 			wantLen     int
 		}{
-			{name: "overlay pops to anchor", wantHandled: true, wantView: ViewProjectTree, wantLen: 2},
+			{name: "overlay pops to anchor", wantHandled: true, wantView: ViewOutliner, wantLen: 2},
 			{name: "anchor pops to dashboard", wantHandled: true, wantView: ViewDashboard, wantLen: 1},
 			{name: "dashboard does not underflow", wantHandled: false, wantView: ViewDashboard, wantLen: 1},
 		}
@@ -151,36 +164,203 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 }
 
 func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
+	// The Planner (ViewFocusBoard) is the sole planning surface after the Focus
+	// View retirement. On the Planner the global q/w/u/ctrl+r keys are owned by
+	// the Today simple grammar (currentViewUsesTodaySimpleGrammar), so this test
+	// drives the app-level toggle + undo/redo methods directly — the exact code
+	// the Planner's key handling routes into via handleUndoToggle/handleRedoToggle.
 	t.Run("queue to daily plan", func(t *testing.T) {
 		app, task := newFocusToggleTestApp(t)
 
-		app = sendAppKey(app, syntheticKey('q'))
+		_ = app.toggleQueue()
 		assertExclusiveMembership(t, app, task.ID, true, false)
 
-		app = sendAppKey(app, syntheticKey('w'))
+		_ = app.toggleDailyPlan()
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
-		app = sendAppKey(app, syntheticKey('u'))
+		_ = app.handleUndoToggle()
 		assertExclusiveMembership(t, app, task.ID, true, false)
 
-		app = sendAppKey(app, syntheticCtrlKey('r'))
+		_ = app.handleRedoToggle()
 		assertExclusiveMembership(t, app, task.ID, false, true)
 	})
 
 	t.Run("daily plan to queue", func(t *testing.T) {
 		app, task := newFocusToggleTestApp(t)
 
-		app = sendAppKey(app, syntheticKey('w'))
+		_ = app.toggleDailyPlan()
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
-		app = sendAppKey(app, syntheticKey('q'))
+		_ = app.toggleQueue()
 		assertExclusiveMembership(t, app, task.ID, true, false)
 
-		app = sendAppKey(app, syntheticKey('u'))
+		_ = app.handleUndoToggle()
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
-		app = sendAppKey(app, syntheticCtrlKey('r'))
+		_ = app.handleRedoToggle()
 		assertExclusiveMembership(t, app, task.ID, true, false)
+	})
+}
+
+// TestNextMembershipDerivesFromWorkflowState locks the FR-007-003 invariant:
+// Next (queue) membership is Task.State() == StateNext, not the persisted Focus
+// Queue order index. An unindexed StateNext task behaves as a member (q leaves
+// Next, adding it to Today removes it from Next), a stale indexed non-Next task
+// does not, and the ranking signal follows the state rather than the list.
+func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
+	t.Run("q on unindexed StateNext leaves Next", func(t *testing.T) {
+		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewOutliner)
+		if app.focusQueueIDs[task.ID] {
+			t.Fatal("precondition: StateNext task must start unindexed in the order list")
+		}
+
+		_ = app.toggleQueue()
+
+		fresh := app.currentProject.GetTaskByID(task.ID)
+		if fresh == nil {
+			t.Fatal("task missing after toggle")
+		}
+		if fresh.State() == models.StateNext {
+			t.Fatalf("q on an unindexed StateNext task must leave Next, still %v", fresh.State())
+		}
+		if app.focusQueueIDs[task.ID] {
+			t.Fatal("removed task must not retain an order-index entry")
+		}
+	})
+
+	t.Run("adding unindexed StateNext task to Today removes it from Next", func(t *testing.T) {
+		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewOutliner)
+		if app.focusQueueIDs[task.ID] {
+			t.Fatal("precondition: StateNext task must start unindexed in the order list")
+		}
+
+		_ = app.toggleDailyPlan()
+
+		if !app.dailyPlanIDs[task.ID] {
+			t.Fatal("task should be planned for Today")
+		}
+		fresh := app.currentProject.GetTaskByID(task.ID)
+		if fresh == nil {
+			t.Fatal("task missing after toggle")
+		}
+		if fresh.State() == models.StateNext {
+			t.Fatalf("Today and Next are exclusive: task must leave Next, still %v", fresh.State())
+		}
+		if app.focusQueueIDs[task.ID] {
+			t.Fatal("task must not retain an order-index entry after moving to Today")
+		}
+	})
+
+	t.Run("ranking signal follows state not the persisted list", func(t *testing.T) {
+		project, err := models.NewProject("rank-proj", "rank", "")
+		if err != nil {
+			t.Fatalf("NewProject: %v", err)
+		}
+		nextTask := seedTask(t, 1, "On deck", models.StateNext)
+		staleTask := seedTask(t, 2, "Left Next", models.StateReady)
+		project.Tasks = []*models.Task{nextTask, staleTask}
+		project.BuildTaskTree()
+
+		// The persisted Focus Queue still lists the non-Next task (a stale index
+		// entry). Membership must ignore it and follow the workflow state.
+		domains := config.NewDomains()
+		domains.Planning.AddToFocusQueue(staleTask.ID, project.ID)
+		cfg := config.NewRuntimeState("", domains)
+
+		ranked := focus.RankCrossProjectTasks([]focus.FocusTask{
+			{Task: nextTask, Project: project},
+			{Task: staleTask, Project: project},
+		}, nil, cfg)
+
+		reasons := make(map[string]string, len(ranked))
+		for _, sft := range ranked {
+			reasons[sft.Task.ID] = sft.Reason
+		}
+		if !strings.Contains(reasons[nextTask.ID], "focus queue") {
+			t.Fatalf("unindexed StateNext task should carry the Next signal, reason=%q", reasons[nextTask.ID])
+		}
+		if strings.Contains(reasons[staleTask.ID], "focus queue") {
+			t.Fatalf("stale indexed non-Next task must not carry the Next signal, reason=%q", reasons[staleTask.ID])
+		}
+	})
+}
+
+// TestNextMembershipConsumersUseWorkflowState locks FR-008-002 for the live TUI
+// readers: Project Focus membership, the Pipeline "Plan" count, and the Priority
+// urgency signal all derive Next membership from Task.State()==StateNext rather
+// than the Focus Queue order index. An unindexed StateNext task counts as a
+// member; a stale indexed non-Next task does not.
+func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
+	project, err := models.NewProject("next-consumers", "next", "")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	indexedNext := seedTask(t, 1, "Indexed on deck", models.StateNext)
+	unindexedNext := seedTask(t, 2, "Unindexed on deck", models.StateNext)
+	stale := seedTask(t, 3, "Left Next", models.StateReady)
+	project.Tasks = []*models.Task{indexedNext, unindexedNext, stale}
+	project.BuildTaskTree()
+
+	// The persisted order index lists the indexed StateNext task and the stale
+	// non-Next task. Membership must ignore the stale entry and include the
+	// unindexed StateNext task absent from the list.
+	domains := config.NewDomains()
+	domains.Planning.AddToFocusQueue(indexedNext.ID, project.ID)
+	domains.Planning.AddToFocusQueue(stale.ID, project.ID)
+	runtime := config.NewRuntimeState("", domains)
+	setTestProjects(runtime, []*models.Project{project})
+
+	t.Run("project focus includes unindexed StateNext and excludes stale index", func(t *testing.T) {
+		pf := NewProjectFocusViewModel(project, runtime)
+
+		ids := make([]string, len(pf.tasks))
+		for i, task := range pf.tasks {
+			ids[i] = task.ID
+		}
+		if len(pf.tasks) != 2 {
+			t.Fatalf("project focus tasks = %v, want 2 StateNext tasks", ids)
+		}
+		// Indexed member first, unindexed StateNext after it.
+		if pf.tasks[0].ID != indexedNext.ID {
+			t.Errorf("first task = %q, want indexed member %q", pf.tasks[0].ID, indexedNext.ID)
+		}
+		if pf.tasks[1].ID != unindexedNext.ID {
+			t.Errorf("second task = %q, want unindexed StateNext %q", pf.tasks[1].ID, unindexedNext.ID)
+		}
+		for _, task := range pf.tasks {
+			if task.ID == stale.ID {
+				t.Fatal("stale indexed non-Next task must not appear in Project Focus")
+			}
+		}
+	})
+
+	t.Run("pipeline plan count is the StateNext count", func(t *testing.T) {
+		total := 0
+		for _, task := range project.GetRootTasks() {
+			total += countNext(task)
+		}
+		if total != 2 {
+			t.Fatalf("countNext total = %d, want 2 (both StateNext tasks, stale index ignored)", total)
+		}
+	})
+
+	t.Run("priority urgency signal follows state not the order index", func(t *testing.T) {
+		if !taskIsNext(unindexedNext) {
+			t.Fatal("unindexed StateNext task must be a Next member")
+		}
+		if taskIsNext(stale) {
+			t.Fatal("stale indexed non-Next task must not be a Next member")
+		}
+		// The urgency bonus is driven by taskIsNext, so the unindexed StateNext
+		// task carries the +200 Next bonus while the stale indexed task does not.
+		withNext := ComputeUrgencyScore(unindexedNext, taskIsNext(unindexedNext))
+		withoutNext := ComputeUrgencyScore(unindexedNext, false)
+		if withNext-withoutNext != 200 {
+			t.Fatalf("Next bonus = %d, want 200", withNext-withoutNext)
+		}
+		if got := ComputeUrgencyScore(stale, taskIsNext(stale)); got != ComputeUrgencyScore(stale, false) {
+			t.Fatal("stale indexed non-Next task must not receive the Next urgency bonus")
+		}
 	})
 }
 
@@ -293,15 +473,67 @@ func sendAppKey(app *AppModel, key tea.KeyPressMsg) *AppModel {
 
 func newFocusToggleTestApp(t *testing.T) (*AppModel, *models.Task) {
 	t.Helper()
+	return newFocusToggleTestAppState(t, models.StateReady, ViewFocusBoard)
+}
 
-	app, project := newTestAppModelWithProject()
-	app.focusQueueIDs = make(map[string]bool)
-	app.dailyPlanIDs = make(map[string]bool)
-	app.showView(ViewFocusView, &invariantQueueView{
-		task:    project.Tasks[0],
+// newFocusToggleTestAppState builds a ledger-backed AppModel whose single task
+// starts in the given workflow state, hosted under hostView (so key-flow tests
+// can drive q/w/u/ctrl+r from a real non-Planner task view). The hosted view is
+// a QueueToggleable that re-resolves the live task after each reload.
+func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostView ViewType) (*AppModel, *models.Task) {
+	t.Helper()
+
+	dataDir := t.TempDir()
+	task := seedTask(t, 1, "Toggle target", state)
+
+	project, err := models.NewProject("focus-toggle-proj", "focus-toggle", "")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	project.Slug = "focus-toggle"
+	project.Path = filepath.Join(dataDir, "projects", "focus-toggle")
+	project.Tasks = []*models.Task{task}
+	project.NextShortID = 2
+	project.EnsureDefaultSections()
+	project.BuildTaskTree()
+
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	repo := newScenarioRepo(commitSvc, project)
+	repo.seed(t)
+	svc := app.NewService(repo, nil, nil)
+
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
+	manager := config.NewManager(filepath.Join(dataDir, "tt.json"))
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
+
+	appModel := &AppModel{
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, svc, manager, ledger),
+		projects:             map[string]*models.Project{project.ID: project},
+		persister:            NewProjectService(),
+		appService:           svc,
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		currentProject:       project,
+		navHistory:           NewNavHistory(),
+		focusQueue:           []FocusTask{},
+		focusQueueIDs:        make(map[string]bool),
+		dailyPlan:            []FocusTask{},
+		dailyPlanIDs:         make(map[string]bool),
+	}
+	appModel.showView(hostView, &invariantQueueView{
+		taskID:  task.ID,
 		project: project,
 	})
-	return app, project.Tasks[0]
+	return appModel, task
 }
 
 func assertExclusiveMembership(t *testing.T, app *AppModel, taskID string, inQueue, inDaily bool) {

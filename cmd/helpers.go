@@ -378,16 +378,6 @@ func outputSingleTaskJSON(task *models.Task) error {
 	return printJSON(taskToMutateJSONEntry(task))
 }
 
-// taskInFocusQueue reports Focus Queue membership for CLI JSON output.
-func taskInFocusQueue(items []config.FocusQueueItem, taskID string) bool {
-	for _, item := range items {
-		if item.TaskID == taskID {
-			return true
-		}
-	}
-	return false
-}
-
 // outputBlockerJSON marshals a blocker to indented JSON and prints it.
 func outputBlockerJSON(blocker *models.Blocker) error {
 	entry := struct {

@@ -144,9 +144,9 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.AsHidden()),
 	)
 
-	// Enter: close and return to project tree
+	// Enter: close and return to outliner
 	entries = append(entries,
-		keymap.Bind("enter", "Close and return to project tree", "Navigation", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("enter", "Close and return to outliner", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return CloseProjectFocusViewMsg{} }
 		}),
 	)

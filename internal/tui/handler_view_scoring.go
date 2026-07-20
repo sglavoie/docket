@@ -90,9 +90,6 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if msg.Project != nil {
 				m.reloadProjectByID(msg.Project.ID)
 			}
-			if m.projectTree != nil {
-				m.projectTree.buildTree()
-			}
 			if m.allTasksView != nil {
 				m.allTasksView.loadAllTasks()
 			}

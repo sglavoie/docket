@@ -22,20 +22,27 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if msg.Canceled {
 			return true, nil
 		}
+		selected := make(map[string]bool, len(msg.SelectedProjectIDs))
+		for _, id := range msg.SelectedProjectIDs {
+			selected[id] = true
+		}
+		// Route the selection to whichever view opened the picker. The Planner
+		// Backlog uses it as the "By Project" quick filter; the cross-project
+		// outliner uses it as its project scope.
+		if fb := m.focusBoardForProjectFilter(); fb != nil {
+			fb.backlogProjectFilter = selected
+			fb.applyFilter()
+			fb.clampCursor()
+			return true, nil
+		}
 		if m.crossOutliner != nil {
-			selected := make(map[string]bool, len(msg.SelectedProjectIDs))
-			for _, id := range msg.SelectedProjectIDs {
-				selected[id] = true
-			}
 			m.crossOutliner.filterProjects = selected
 			m.crossOutliner.crossForceRebuild = true
 		}
 		return true, nil
 
 	case ShowSectionFilterSelectorMsg:
-		if msg.ProjectTree != nil {
-			m.showView(ViewSectionFilterSelector, NewSectionFilterSelectorModel(msg.ProjectTree))
-		} else if msg.Project != nil {
+		if msg.Project != nil {
 			m.showView(ViewSectionFilterSelector, NewSectionFilterSelectorModelForProject(msg.Project))
 		}
 		return true, nil
@@ -49,11 +56,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		for _, section := range msg.SelectedSections {
 			sections[section] = true
 		}
-		if m.projectTree != nil && m.currentView() == ViewProjectTree {
-			m.projectTree.filter.Sections = sections
-			m.projectTree.updateVisibility()
-			m.projectTree.clampCursor()
-		} else if m.outliner != nil && m.currentView() == ViewOutliner {
+		if m.outliner != nil && m.currentView() == ViewOutliner {
 			m.outliner.filter.Sections = sections
 			m.outliner.rebuildRows()
 		}
@@ -164,6 +167,10 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				Rules:       m.runtime.Automation().GetEnabledWorkflowRules(),
 				UndoAction:  "Move to Section",
 				UndoContext: fmt.Sprintf("%d tasks", count),
+				// The section move changed each task's derived workflow state, so
+				// reconcile Today/Next exclusivity for exactly those tasks in the same
+				// transaction (enter Next drops Today, leave Next drops the stale order).
+				PlanningTaskIDs: clearIDs,
 			}
 			cmd := m.secondaryFeatures.TaskItem.CommitProjectWorkflow(project, opts, successMsg)
 			return true, finalizeBatchResult(cmd, clearIDs, "")
@@ -199,10 +206,8 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case ShowSectionManagerMsg:
-		if msg.ProjectTree != nil {
-			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, nil, m.runtime, msg.StartAddMode))
-		} else if msg.Project != nil {
-			m.showView(ViewSectionManager, NewSectionManagerModel(nil, msg.Project, m.runtime, msg.StartAddMode))
+		if msg.Project != nil {
+			m.showView(ViewSectionManager, NewSectionManagerModel(msg.Project, m.runtime, msg.StartAddMode))
 		}
 		return true, nil
 
@@ -213,11 +218,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case GoToSectionMsg:
 		m.popView()
-		if m.projectTree != nil {
-			m.projectTree.pinnedTagTab = 0
-			m.projectTree.filter.Sections = map[string]bool{msg.SectionName: true}
-			m.projectTree.updateVisibility()
-			m.projectTree.clampCursor()
+		if m.outliner != nil {
+			m.outliner.filter.Sections = map[string]bool{msg.SectionName: true}
+			m.outliner.rebuildRows()
 		}
 		return true, nil
 
@@ -251,12 +254,28 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case CommandPaletteSectionSelectMsg:
 		m.popView()
 		m.switchToProject(msg.Project, false) // Don't restore state - apply specific section filter
-		m.projectTree.filter.Sections = map[string]bool{msg.Section: true}
-		m.projectTree.updateVisibility()
-		m.showView(ViewProjectTree, m.projectTree)
+		m.outliner.filter.Sections = map[string]bool{msg.Section: true}
+		m.outliner.rebuildRows()
+		m.showView(ViewOutliner, m.outliner)
 		return true, nil
 	}
 	return false, nil
+}
+
+// focusBoardForProjectFilter returns the live Planner (Focus Board) model when
+// it is the view that opened the project filter selector (i.e. the current view
+// after the picker pops). Returns nil otherwise so the selection routes to the
+// cross-project outliner instead.
+func (m *AppModel) focusBoardForProjectFilter() *FocusBoardModel {
+	if m.currentView() != ViewFocusBoard {
+		return nil
+	}
+	if v := m.views.Get(ViewFocusBoard); v != nil {
+		if fb, ok := v.(*FocusBoardModel); ok {
+			return fb
+		}
+	}
+	return nil
 }
 
 // applySectionColorToLoadedProjects updates every live project pointer owned by

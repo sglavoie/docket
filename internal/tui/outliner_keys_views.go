@@ -213,11 +213,11 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 				return m, nil, true
 			}
 			return m, func() tea.Msg {
-				return ShowSectionManagerMsg{ProjectTree: nil, Project: project}
+				return ShowSectionManagerMsg{Project: project}
 			}, true
 		}
 		return m, func() tea.Msg {
-			return ShowSectionManagerMsg{ProjectTree: nil, Project: m.project}
+			return ShowSectionManagerMsg{Project: m.project}
 		}, true
 
 	case "ctrl+v":

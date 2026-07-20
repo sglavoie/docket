@@ -225,7 +225,7 @@ func TestFocusBoardCompletedAndCanceledRowsAreQuiet(t *testing.T) {
 	m := newDenseRowFocusBoard(t)
 	// Use the Closed tab so the row is not dimmed solely because Today dims
 	// closed tasks.
-	m.tabs = TabState{Active: boardTabClosed, Names: focusBoardTabNames}
+	m.tabs = TabState{Active: boardTabDone, Names: focusBoardTabNames}
 
 	for _, task := range []*models.Task{done, canceled, doneToday, canceledToday} {
 		row := boardRow{Task: task, Project: project, Source: project.Name}

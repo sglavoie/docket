@@ -29,6 +29,9 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 	project := testutil.NewTestProject("Recovered Project")
 	project.Path = filepath.Join(dataDir, "projects", project.Slug)
 	task := testutil.NewTestTask("Recovered task", models.TaskTypeTask)
+	// Queue membership is the StateNext workflow state, so a hydrated member must
+	// be StateNext to survive prune-on-load.
+	task.WorkflowState = models.StateNext
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID = 2
 	if saveErr := storage.SaveProject(project); saveErr != nil {

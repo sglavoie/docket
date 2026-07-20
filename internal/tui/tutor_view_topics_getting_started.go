@@ -70,8 +70,8 @@ No task sneaks from Capture straight to Done.
   ;i      Capture   — Quick Capture view
   ctrl+i  Triage    — Global inbox processor
   ;a      Triage    — All Tasks inbox triage
-  ;q      Plan      — Backlog (ranked focus queue)
-  ;w      Work      — Today cockpit
+  ;q      Plan      — Planner / Next (on-deck shortlist)
+  ;w      Work      — Planner / Today cockpit
   ;r      Review    — Weekly Review
   ;B      Support   — Global blockers
 
@@ -94,8 +94,9 @@ and lean on Support for blockers, notes, and rules.`,
 Morning (5 min): plan your day
   tt opens on Today by default. The Next Action strip
   tells you what to do next. Press w on any task to add
-  it to today's list, or ;q to scan the ranked backlog
-  and queue 1-3 tasks.
+  it to today's list, or ;q to open the Next shortlist
+  and pull 1-3 on-deck tasks into Today. Switch to the
+  Planner's Backlog tab to scan the full ranked list.
 
 During the day: stay in Today
   ;w returns to Today from anywhere. The Next Action

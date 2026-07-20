@@ -85,12 +85,6 @@ func (m *SettingsModel) handleSpaceKey() {
 		case 16:
 			m.dashboardLayoutCursor = (m.dashboardLayoutCursor + 1) % len(dashboardLayoutOptions)
 		}
-	case tabProjectTree:
-		if local == 1 {
-			m.treePriorityMode = (m.treePriorityMode + 1) % 3
-		} else {
-			m.treeColumnDefaults[local] = !m.treeColumnDefaults[local]
-		}
 	case tabOutliner:
 		columnsBase := subTabFieldStart(tabOutliner, 2) - tabFieldStart[tabOutliner]
 		columnsEnd := columnsBase + len(AllColumns) - 1
@@ -161,8 +155,6 @@ func (m *SettingsModel) handleLeftKey() {
 		m.handleLeftPaletteKey(local)
 	case tabBehavior:
 		m.handleLeftBehaviorKey(local)
-	case tabProjectTree:
-		m.handleLeftProjectTreeKey(local)
 	case tabOutliner:
 		m.handleLeftOutlinerKey(local)
 	case tabKanban:
@@ -185,8 +177,6 @@ func (m *SettingsModel) handleRightKey() {
 		m.handleRightPaletteKey(local)
 	case tabBehavior:
 		m.handleRightBehaviorKey(local)
-	case tabProjectTree:
-		m.handleRightProjectTreeKey(local)
 	case tabOutliner:
 		m.handleRightOutlinerKey(local)
 	case tabKanban:
@@ -199,11 +189,8 @@ func (m *SettingsModel) handleRightKey() {
 }
 
 func (m *SettingsModel) handleLeftGeneralKey(local int) {
-	switch local {
-	case 2:
+	if local == 2 {
 		m.stepContextCursorLeft()
-	case 4:
-		stepBoundedCursor(&m.defaultViewCursor, -1, len(defaultProjectViewOptions)-1)
 	}
 }
 
@@ -221,12 +208,6 @@ func (m *SettingsModel) handleLeftBehaviorKey(local int) {
 		stepBoundedCursor(&m.focusBoardModeCursor, -1, len(focusBoardModeOptions)-1)
 	case 16:
 		stepBoundedCursor(&m.dashboardLayoutCursor, -1, len(dashboardLayoutOptions)-1)
-	}
-}
-
-func (m *SettingsModel) handleLeftProjectTreeKey(local int) {
-	if local == 1 {
-		stepBoundedCursor(&m.treePriorityMode, -1, 2)
 	}
 }
 
@@ -261,11 +242,8 @@ func (m *SettingsModel) handleLeftAppearanceKey(local int) {
 }
 
 func (m *SettingsModel) handleRightGeneralKey(local int) {
-	switch local {
-	case 2:
+	if local == 2 {
 		m.stepContextCursorRight()
-	case 4:
-		stepBoundedCursor(&m.defaultViewCursor, 1, len(defaultProjectViewOptions)-1)
 	}
 }
 
@@ -283,12 +261,6 @@ func (m *SettingsModel) handleRightBehaviorKey(local int) {
 		stepBoundedCursor(&m.focusBoardModeCursor, 1, len(focusBoardModeOptions)-1)
 	case 16:
 		stepBoundedCursor(&m.dashboardLayoutCursor, 1, len(dashboardLayoutOptions)-1)
-	}
-}
-
-func (m *SettingsModel) handleRightProjectTreeKey(local int) {
-	if local == 1 {
-		stepBoundedCursor(&m.treePriorityMode, 1, 2)
 	}
 }
 
@@ -382,9 +354,6 @@ func (m *SettingsModel) handleResetToDefault() {
 			resetDone = true
 		case 3:
 			m.undoDepthInput.SetValue("50")
-			resetDone = true
-		case 4:
-			m.defaultViewCursor = 0
 			resetDone = true
 		}
 	case tabReview:

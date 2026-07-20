@@ -1,13 +1,16 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/appearance"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -41,31 +44,30 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	resetSessionMutations()
 
 	app := &AppModel{
-		configManager:            manager,
-		runtime:                  runtime,
-		projects:                 make(map[string]*models.Project),
-		appearanceDetector:       appearance.NewDetector(),
-		persister:                NewProjectService(),
-		viewStack:                []ViewType{ViewDashboard},
-		sessionStats:             sessionStats{sessionStart: time.Now()},
-		width:                    80,
-		height:                   24,
-		views:                    NewViewRegistry(),
-		commandRegistry:          NewCommandRegistry(),
-		spinner:                  NewSpinner(),
-		navHistory:               NewNavHistory(),
-		lastProjectView:          defaultProjectViewType(runtime.Settings()),
-		projectLastView:          make(map[string]ViewType),
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
-		priorityViewFilterCache:  make(map[string]*PriorityViewCache),
-		kanbanViewCache:          make(map[string]*KanbanViewCache),
-		focusQueue:               []FocusTask{},
-		focusQueueIDs:            make(map[string]bool),
-		focusDismissedIDs:        make(map[string]bool),
-		dailyPlan:                []FocusTask{},
-		dailyPlanIDs:             make(map[string]bool),
-		dailyPlanCarriedIDs:      make(map[string]bool),
+		configManager:           manager,
+		runtime:                 runtime,
+		projects:                make(map[string]*models.Project),
+		appearanceDetector:      appearance.NewDetector(),
+		persister:               NewProjectService(),
+		viewStack:               []ViewType{ViewDashboard},
+		sessionStats:            sessionStats{sessionStart: time.Now()},
+		width:                   80,
+		height:                  24,
+		views:                   NewViewRegistry(),
+		commandRegistry:         NewCommandRegistry(),
+		spinner:                 NewSpinner(),
+		navHistory:              NewNavHistory(),
+		lastProjectView:         defaultProjectViewType(runtime.Settings()),
+		projectLastView:         make(map[string]ViewType),
+		outlinerToggleStates:    make(map[string]*OutlinerToggleState),
+		priorityViewFilterCache: make(map[string]*PriorityViewCache),
+		kanbanViewCache:         make(map[string]*KanbanViewCache),
+		focusQueue:              []FocusTask{},
+		focusQueueIDs:           make(map[string]bool),
+		focusDismissedIDs:       make(map[string]bool),
+		dailyPlan:               []FocusTask{},
+		dailyPlanIDs:            make(map[string]bool),
+		dailyPlanCarriedIDs:     make(map[string]bool),
 	}
 
 	// Apply functional options
@@ -84,6 +86,11 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	depth := effectiveUndoHistoryDepth(runtime.Settings())
 	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), depth, []string{dataDir})
 	appService := newTUIAppService(dataDir, runtimeDeps, ledger)
+	// Fold Today/Next exclusivity into every workflow-state transition committed
+	// through this service (global state pickers, palette actions, pinned/quick-
+	// switch state changes), so exclusivity holds regardless of the initiating
+	// adapter, matching the coordinator-driven view-local pickers.
+	appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 	app.appService = appService
 	app.features = newFeatureCoordinators(appService, appService)
 	app.secondaryFeatures = newSecondaryCoordinators(appService, manager)
@@ -117,7 +124,17 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 			app.currentProject = current
 		}
 	}
-	app.hydrateFocusQueue(activeProjects, startupLoads)
+	// Migrate legacy (pre-state-driven) Focus Queue members to StateNext BEFORE
+	// hydration prunes non-StateNext entries, so first launch converts every
+	// eligible legacy member instead of silently discarding the owner's shortlist.
+	// The migration commits through a bare application service (no default planning
+	// builder) rooted at the same ledger, so the backfill is one journaled, undoable
+	// workspace transaction rather than raw per-project saves.
+	migrationErr := app.migrateLegacyFocusQueue(newTUIAppService(dataDir, runtimeDeps, ledger), activeProjects, startupLoads)
+	if migrationErr != nil {
+		logging.Warn("failed to migrate legacy focus queue: %v", migrationErr)
+	}
+	app.hydrateFocusQueue(activeProjects, startupLoads, migrationErr == nil)
 	app.hydrateDailyPlan(activeProjects, startupLoads)
 	app.hydrateRecentVisits(activeProjects, startupLoads)
 
@@ -189,7 +206,84 @@ func (app *AppModel) loadStartupProject(project *models.Project, loaded map[stri
 	return err
 }
 
-func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startupLoads map[string]error) {
+// migrateLegacyFocusQueue backfills StateNext onto Focus Queue members that
+// predate the state-driven Next invariant, running before hydrateFocusQueue's
+// prune interprets them as stale. It loads each referenced project's task tree,
+// then commits the StateNext backfill for every non-terminal, not-yet-StateNext
+// member through the application service's BulkTransition — so every changed
+// project lands in ONE revision-checked workspace transaction with a durable
+// ledger entry, the same journaled and undoable boundary as any startup mutation,
+// instead of raw per-project saves. The batch is all-or-nothing: on a commit
+// failure nothing is written, so every project state and the FocusQueue index stay
+// at their pre-migration values. The service is bare (no default planning-artifact
+// builder), keeping the migration a pure state backfill that matches `tt doctor`'s
+// repair semantics. Every referenced project must load before the transaction and
+// every touched project must reload afterward; any failure is returned so startup
+// can preserve the durable legacy order index for a later retry.
+func (m *AppModel) migrateLegacyFocusQueue(svc *app.Service, activeProjects []*models.Project, startupLoads map[string]error) error {
+	queue := m.runtime.Planning().GetFocusQueue()
+	if len(queue) == 0 {
+		return nil
+	}
+	projectsByID := make(map[string]*models.Project, len(activeProjects))
+	for _, p := range activeProjects {
+		if p != nil {
+			projectsByID[p.ID] = p
+		}
+	}
+	loadedProjects := make(map[string]bool, len(queue))
+	var loadErrs []error
+	for _, item := range queue {
+		p := projectsByID[item.ProjectID]
+		if p == nil || loadedProjects[p.ID] {
+			continue
+		}
+		loadedProjects[p.ID] = true
+		if err := m.loadStartupProject(p, startupLoads); err != nil {
+			loadErrs = append(loadErrs, fmt.Errorf("load queue project %s: %w", p.Name, err))
+		}
+	}
+	if err := errors.Join(loadErrs...); err != nil {
+		return err
+	}
+	ids := focus.LegacyNextQueueMemberIDs(queue, activeProjects)
+	if len(ids) == 0 {
+		return nil
+	}
+	res, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
+		TaskIDs:    ids,
+		Target:     models.StateNext,
+		UndoAction: "Migrate legacy Next queue",
+	})
+	if err != nil {
+		return err
+	}
+	touched := make(map[string]bool, len(res.TouchedProjectIDs))
+	for _, id := range res.TouchedProjectIDs {
+		touched[id] = true
+	}
+	var reloadErrs []error
+	for _, p := range activeProjects {
+		if p == nil || !touched[p.ID] {
+			continue
+		}
+		if err := m.persister.Load(p); err != nil {
+			reloadErrs = append(reloadErrs, fmt.Errorf("reload migrated project %s: %w", p.Name, err))
+		}
+	}
+	return errors.Join(reloadErrs...)
+}
+
+// hydrateFocusQueue rebuilds the in-memory Next order index from the planning
+// snapshot. Queue membership is now the StateNext workflow state, so it keeps a
+// member only while its task is still StateNext and drops entries whose task is
+// missing, terminal, or has left StateNext (prune-on-load, mirroring the
+// applyQueueFilter prune). Legacy members that predate the state-driven queue are
+// backfilled to StateNext by the `tt doctor` migration, which runs before the
+// invariant is enforced on first launch. When migration could not be fully
+// confirmed, hydration still exposes cached StateNext tasks but must not rewrite
+// the durable index: an unconfirmed entry may be legacy rather than stale.
+func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startupLoads map[string]error, allowPrune bool) {
 	queueChanged := false
 	var updatedQueue []config.FocusQueueItem
 	for _, item := range app.runtime.Planning().GetFocusQueue() {
@@ -201,7 +295,7 @@ func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startup
 			if err := app.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
-			if task := p.GetTaskByID(item.TaskID); task != nil && !task.IsComplete() {
+			if task := p.GetTaskByID(item.TaskID); task != nil && task.IsInState(models.StateNext) {
 				app.focusQueue = append(app.focusQueue, FocusTask{Task: task, Project: p})
 				app.focusQueueIDs[task.ID] = true
 				updatedQueue = append(updatedQueue, item)
@@ -213,7 +307,7 @@ func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startup
 			queueChanged = true
 		}
 	}
-	if queueChanged {
+	if allowPrune && queueChanged {
 		if updatedQueue == nil {
 			updatedQueue = []config.FocusQueueItem{}
 		}
@@ -318,24 +412,23 @@ func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, start
 // makePriorityHandler creates a command handler that sets task priority.
 func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
 	return func() tea.Msg {
-		if m.projectTree == nil {
+		if m.outliner == nil {
 			return nil
 		}
-		visible := m.projectTree.visibleNodes()
-		if m.projectTree.multiSelectMode && len(m.projectTree.selectedTasks) > 0 {
-			taskIDs := sortedSelectedTaskIDs(m.projectTree.selectedTasks)
-			for id := range m.projectTree.selectedTasks {
-				m.projectTree.project.MutateTask(id, func(t *models.Task) {
+		if m.outliner.multiSelectMode && len(m.outliner.selectedTasks) > 0 {
+			selected := m.outliner.getSelectedTasks()
+			taskIDs := make([]string, 0, len(selected))
+			for _, task := range selected {
+				taskIDs = append(taskIDs, task.ID)
+				m.outliner.project.MutateTask(task.ID, func(t *models.Task) {
 					t.Priority = priority
 				})
 			}
-			m.projectTree.clearSelection()
-			m.projectTree.buildTree()
+			m.outliner.rebuildRows()
 			return bulkTaskPropertyChangedWithUndo("Set Priority", fmt.Sprintf("P%d: %d tasks", priority, len(taskIDs)), taskIDs)
 		}
-		if CursorInBounds(m.projectTree.cursor, len(visible)) {
-			task := visible[m.projectTree.cursor].Task
-			m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+		if task := m.outliner.getCursorTask(); task != nil {
+			m.outliner.project.MutateTask(task.ID, func(t *models.Task) {
 				t.Priority = priority
 			})
 			return taskPropertyChangedWithUndo(task, "Set Priority")
@@ -357,18 +450,9 @@ func (m *AppModel) commandGroups() [][]Command {
 		m.projectCommands(),
 		m.taskActionCommands(),
 		m.viewModeCommands(),
-		m.statusCommands(),
-		m.dueDateCommands(),
 		m.notesCommands(),
 		m.otherCommands(),
-		m.priorityCommands(),
-		m.sortCommands(),
 		m.structureCommands(),
-		m.sectionSendCommands(),
-		m.linkedTaskCommands(),
-		m.multiSelectCommands(),
-		m.foldCommands(),
-		m.filterBarCommands(),
 		m.notesViewCommands(),
 		m.blockersCommands(),
 		m.taskCommentsCommands(),
@@ -379,7 +463,6 @@ func (m *AppModel) commandGroups() [][]Command {
 		m.dailyReviewCommands(),
 		m.priorityViewCommands(),
 		m.inboxProcessorCommands(),
-		m.dueDateOverviewCommands(),
 		m.workflowRulesCommands(),
 		m.sidebarCommands(),
 		m.scoringCommands(),
@@ -433,12 +516,36 @@ func (m *AppModel) Init() tea.Cmd {
 			return systemAppearanceCheckMsg{}
 		}))
 	}
-	if vt, ok := resolveStartupNavigation(m.runtime.Machine().GetStartView()); ok {
+	if msg, ok := startupNavigationMsg(m.runtime.Machine().GetStartView()); ok {
 		cmds = append(cmds, func() tea.Msg {
-			return NavigateToViewMsg{ViewType: vt}
+			return msg
 		})
 	}
 	return tea.Batch(cmds...)
+}
+
+// startupNavigationMsg resolves a start-view config string to the concrete
+// navigation message AppModel.Init should dispatch. Aliases that fold onto a
+// shared view with a specific subview carry that subview directly so the
+// persisted meaning survives startup: "backlog" opens the Planner Backlog tab
+// (ShowFocusBoardMsg.SetTab) and "due-dates" opens All Tasks grouped by due
+// date (ShowAllTasksMsg.SetGroup), suppressing each view's auto-default. Every
+// other start view routes through NavigateToViewMsg. Returns false for
+// "dashboard" (already at the bottom of the boot stack) so Init issues no
+// redundant push.
+func startupNavigationMsg(sv string) (tea.Msg, bool) {
+	vt, ok := resolveStartupNavigation(sv)
+	if !ok {
+		return nil, false
+	}
+	switch sv {
+	case "backlog":
+		return ShowFocusBoardMsg{Tab: boardTabBacklog, SetTab: true}, true
+	case "due-dates":
+		return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true}, true
+	default:
+		return NavigateToViewMsg{ViewType: vt}, true
+	}
 }
 
 // resolveStartupNavigation decides whether AppModel.Init should push a
@@ -465,11 +572,17 @@ func startViewTypeFromString(sv string) ViewType {
 	case "daily-review":
 		return ViewDailyReview
 	case "backlog":
-		return ViewFocusView
+		// The standalone Focus View is retired; the "backlog" start-view now
+		// lands on the Planner (Focus Board). startupNavigationMsg opens it on
+		// the Backlog tab so the persisted meaning survives.
+		return ViewFocusBoard
 	case "priority":
 		return ViewPriorityView
 	case "due-dates":
-		return ViewDueDateOverview
+		// The standalone Due Date Overview is retired; the "due-dates"
+		// start-view now lands on All Tasks. startupNavigationMsg opens it
+		// grouped by due date so the persisted meaning survives.
+		return ViewAllTasks
 	default:
 		return ViewDashboard
 	}

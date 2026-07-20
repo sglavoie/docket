@@ -58,7 +58,6 @@ package tui
 //   - SelectProjectMsg: Switch to project in dashboard
 //   - GlobalSearchSelectMsg: Navigate to search result
 //   - TaskJumperSelectMsg: Jump to task in tree
-//   - DueDateOverviewSelectMsg: Navigate to task with due date
 //
 // # Action Pattern (Command Execution)
 //

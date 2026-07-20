@@ -305,10 +305,12 @@ func TestBaselineFocusBoardTodayRendersAcrossSizes(t *testing.T) {
 	for _, sz := range sizes {
 		t.Run(sz.label, func(t *testing.T) {
 			dailyPlan := []FocusTask{}
+			focusQueue := []FocusTask{}
 			m := NewFocusBoardModel(
 				nil, nil,
 
 				&dailyPlan,
+				&focusQueue,
 				map[string]bool{},
 				map[string]bool{},
 				map[string]bool{})

@@ -42,19 +42,15 @@ func reloadProjectSidebarEnabled(t *testing.T, app *AppModel, projectID string) 
 
 func TestProjectSidebarVisibilityPersistsAndSynchronizesLiveViews(t *testing.T) {
 	app, project := newMachineLayoutTestApp(t)
-	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	temporary := NewOutlinerModel(project, app.configManager, app.runtime)
-	app.projectTree = tree
 	app.outliner = outliner
-	app.views.Register(ViewProjectTree, tree)
 	app.views.Register(ViewOutliner, outliner)
 	app.views.Register(ViewTemporaryOutliner, temporary)
 
 	// The focused-sidebar tab path hides the initiating Outliner. Peers are
 	// deliberately focused too so the synchronization assertion also proves
 	// disabling blurs every matching live sidebar.
-	tree.sidebar.Focus()
 	outliner.sidebar.Focus()
 	temporary.sidebar.Focus()
 	_, cmd := outliner.Update(syntheticSpecialKey(tea.KeyTab))
@@ -66,7 +62,6 @@ func TestProjectSidebarVisibilityPersistsAndSynchronizesLiveViews(t *testing.T) 
 		t.Fatal("project sidebar state message was not handled")
 	}
 
-	assertSidebarState(t, "tree", tree.sidebar, false, false)
 	assertSidebarState(t, "outliner", outliner.sidebar, false, false)
 	assertSidebarState(t, "temporary outliner", temporary.sidebar, false, false)
 	if enabled := reloadProjectSidebarEnabled(t, app, project.ID); enabled {
@@ -79,7 +74,7 @@ func TestProjectSidebarVisibilityPersistsAndSynchronizesLiveViews(t *testing.T) 
 
 	// Saving each live peer after the immediate commit must not reverse it with
 	// stale model state.
-	app.saveProjectTreeState()
+	app.saveProjectViewState()
 	app.saveOutlinerFilterState()
 	app.saveOutlinerFilterStateFrom(temporary)
 	if enabled := reloadProjectSidebarEnabled(t, app, project.ID); enabled {
@@ -94,7 +89,6 @@ func TestProjectSidebarVisibilityPersistsAndSynchronizesLiveViews(t *testing.T) 
 		t.Fatalf("sidebar message = %+v, want project %q enabled", msg, project.ID)
 	}
 	app.handleGlobalSaveMessage(msg)
-	assertSidebarState(t, "tree", tree.sidebar, true, false)
 	assertSidebarState(t, "outliner", outliner.sidebar, true, false)
 	assertSidebarState(t, "temporary outliner", temporary.sidebar, true, false)
 	if enabled := reloadProjectSidebarEnabled(t, app, project.ID); !enabled {
@@ -123,22 +117,6 @@ func TestSidebarFocusOnlyCycleDoesNotEmitPersistenceMessage(t *testing.T) {
 	app, project := newMachineLayoutTestApp(t)
 	app.setProjectSidebarEnabled(project.ID, true)
 
-	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
-	if _, cmd := tree.Update(syntheticSpecialKey(tea.KeyTab)); cmd != nil {
-		t.Fatal("project tree focus-only sidebar cycle emitted a command")
-	}
-	assertSidebarState(t, "tree", tree.sidebar, true, true)
-	_, treeHideCmd := tree.Update(syntheticSpecialKey(tea.KeyTab))
-	treeHideMsg := requireProjectSidebarStateMsg(t, treeHideCmd)
-	if treeHideMsg.ProjectID != project.ID || treeHideMsg.Enabled {
-		t.Fatalf("project tree hide message = %+v, want project %q disabled", treeHideMsg, project.ID)
-	}
-	_, treeShowCmd := tree.Update(syntheticSpecialKey(tea.KeyTab))
-	treeShowMsg := requireProjectSidebarStateMsg(t, treeShowCmd)
-	if treeShowMsg.ProjectID != project.ID || !treeShowMsg.Enabled {
-		t.Fatalf("project tree show message = %+v, want project %q enabled", treeShowMsg, project.ID)
-	}
-
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	if _, cmd := outliner.Update(syntheticSpecialKey(tea.KeyTab)); cmd != nil {
 		t.Fatal("outliner focus-only sidebar cycle emitted a command")
@@ -154,30 +132,6 @@ func TestSidebarFocusOnlyCycleDoesNotEmitPersistenceMessage(t *testing.T) {
 	crossOutliner.sidebar.SetEnabled(false)
 	if _, cmd := crossOutliner.Update(syntheticSpecialKey(tea.KeyTab)); cmd != nil {
 		t.Fatal("cross-project outliner emitted a per-project sidebar command")
-	}
-}
-
-func TestProjectTreeSidebarTabHandlesNilProject(t *testing.T) {
-	app, project := newMachineLayoutTestApp(t)
-	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
-	tree.project = nil
-	tree.nodes = nil
-	tree.sidebar.SetEnabled(false)
-
-	wantStates := []struct {
-		enabled bool
-		focused bool
-	}{
-		{enabled: true, focused: false},
-		{enabled: true, focused: true},
-		{enabled: false, focused: false},
-	}
-
-	for i, want := range wantStates {
-		if _, cmd := tree.Update(syntheticSpecialKey(tea.KeyTab)); cmd != nil {
-			t.Fatalf("tab cycle %d emitted a per-project command for a nil project", i+1)
-		}
-		assertSidebarState(t, "nil-project tree", tree.sidebar, want.enabled, want.focused)
 	}
 }
 

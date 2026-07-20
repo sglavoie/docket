@@ -40,7 +40,7 @@ func (m *AppModel) focusBoardCommands() []Command {
 		},
 		{
 			Name:        "today plan backlog",
-			Description: "Open Backlog to plan more work for Today",
+			Description: "Open Planner — Backlog to plan more work for Today",
 			Shortcut:    "p",
 			Category:    CategoryActions,
 			Views:       focusBoardViews,

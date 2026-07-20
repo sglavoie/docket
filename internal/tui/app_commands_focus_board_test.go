@@ -112,8 +112,12 @@ func TestFocusBoardCommandsUseCockpitActionHandlers(t *testing.T) {
 	if !ok {
 		t.Fatalf("today plan backlog should return PaletteCommandResultMsg, got %T", cmd.Handler())
 	}
-	if _, ok := result.Cmd().(ShowFocusViewMsg); !ok {
-		t.Fatalf("today plan backlog should open Backlog, got %T", result.Cmd())
+	planMsg, ok := result.Cmd().(ShowFocusBoardMsg)
+	if !ok {
+		t.Fatalf("today plan backlog should open the Planner, got %T", result.Cmd())
+	}
+	if !planMsg.SetTab || planMsg.Tab != boardTabBacklog {
+		t.Fatalf("today plan backlog should open the Backlog tab, got tab %d (SetTab=%v)", planMsg.Tab, planMsg.SetTab)
 	}
 }
 
@@ -199,7 +203,7 @@ func TestViewCommandsTodayUsesCockpitLanguage(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("today command missing")
 	}
-	if cmd.Description != "Today cockpit for daily execution" {
+	if cmd.Description != "Planner — Today cockpit for daily execution" {
 		t.Fatalf("today command description = %q, want cockpit wording", cmd.Description)
 	}
 	if slices.Contains(cmd.Aliases, "focus board") {

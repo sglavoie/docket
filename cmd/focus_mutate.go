@@ -8,8 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -154,21 +157,44 @@ func runFocusQueueAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Queue membership is the StateNext workflow state. When the task is not yet
+	// Next this is a Today->Next move: transition to StateNext and fold the
+	// exclusivity drop (leave Today) plus the Next order append into one ledger
+	// transaction, so state and planning commit and undo atomically.
+	if task.State() != models.StateNext {
+		projectID := project.ID
+		if err := setFocusQueueState(workspace, task, models.StateNext, "Move to Next", func(p *config.PlanningState) {
+			if !focusQueueContains(p, task.ID) {
+				p.SetFocusQueue(append(p.GetFocusQueue(), config.FocusQueueItem{TaskID: task.ID, ProjectID: projectID}))
+			}
+		}); err != nil {
+			return err
+		}
+		return emitFocusMutation(out, "queued", task, project, len(workspace.Runtime.Planning().FocusQueue))
+	}
+
+	// Already Next: no state move to be atomic with — record ordering (and any
+	// stale Today drop) through a standalone planning commit.
 	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
 	planning := domains.Planning
-	for _, item := range planning.FocusQueue {
-		if item.TaskID == task.ID {
-			return emitFocusMutation(out, "already queued", task, project, len(planning.FocusQueue))
+	dropped := planning.RemoveFromDailyPlan(task.ID)
+	alreadyQueued := focusQueueContains(planning, task.ID)
+	if !alreadyQueued {
+		planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
+	}
+	if !alreadyQueued || dropped {
+		if err := commitCLIPlanning(workspace, planning); err != nil {
+			return err
 		}
 	}
-	planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
-	if err := commitCLIPlanning(workspace, planning); err != nil {
-		return err
+	action := "queued"
+	if alreadyQueued {
+		action = "already queued"
 	}
-	return emitFocusMutation(out, "queued", task, project, len(planning.FocusQueue))
+	return emitFocusMutation(out, action, task, project, len(planning.FocusQueue))
 }
 
 func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
@@ -185,28 +211,102 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	wasNext := task.State() == models.StateNext
+	inQueue := focusQueueContains(workspace.Runtime.Planning(), task.ID)
+	if !inQueue && !wasNext {
+		return emitFocusMutation(out, "not in queue", task, project, len(workspace.Runtime.Planning().FocusQueue))
+	}
+
+	// Leaving Next is a Next->none move: transition to StateReady and fold the
+	// order-entry drop (Today/Next exclusivity for the non-Next result) into the
+	// same ledger transaction.
+	if wasNext {
+		if err := setFocusQueueState(workspace, task, models.StateReady, "Leave Next", nil); err != nil {
+			return err
+		}
+		return emitFocusMutation(out, "dequeued", task, project, len(workspace.Runtime.Planning().FocusQueue))
+	}
+
+	// Not Next but has a stale order entry: pure planning cleanup.
 	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
 	planning := domains.Planning
-	filtered := make([]config.FocusQueueItem, 0, len(planning.FocusQueue))
-	removed := false
-	for _, item := range planning.FocusQueue {
-		if item.TaskID == task.ID {
-			removed = true
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	if !removed {
-		return emitFocusMutation(out, "not in queue", task, project, len(planning.FocusQueue))
-	}
-	planning.FocusQueue = filtered
+	planning.RemoveFromFocusQueue(task.ID)
 	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
-	return emitFocusMutation(out, "dequeued", task, project, len(filtered))
+	return emitFocusMutation(out, "dequeued", task, project, len(planning.FocusQueue))
+}
+
+// setFocusQueueState moves a task to target through the workflow-aware
+// application transaction (one ledger-undoable ChangeSet), folding the planning
+// change the move implies (Today/Next exclusivity plus the caller's additive
+// order/plan edit) into the same transaction so state and planning commit — and
+// undo — together. It refreshes the workspace runtime so callers read
+// post-mutation planning state. A nil planningMutate folds only the exclusivity
+// reconciliation.
+func setFocusQueueState(workspace *CLIWorkspace, task *models.Task, target models.WorkflowState, undoAction string, planningMutate func(*config.PlanningState)) error {
+	workflows := newCLIWorkflowRunner(workspace)
+	defer workflows.flush()
+	opts := workflows.options(true, undoAction, task)
+	opts.PlanningArtifacts = focusPlanningArtifactBuilder(workspace, planningMutate)
+	cascade, err := withResultRetry(func() (app.BulkResult, error) {
+		return workflows.service.StateWithWorkflow(task.ID, target, opts)
+	})
+	if err != nil {
+		return translateAppError(err)
+	}
+	workflows.observe(cascade)
+	return nil
+}
+
+// focusPlanningArtifactBuilder renders the planning.json artifact that rides a
+// focus-command state move: it loads the current planning, applies Today/Next
+// exclusivity for the transitioned task, then applies the caller's additive edit
+// (append a Next order entry, add a Daily Plan entry) on top, and returns one
+// revision-checked artifact for the transition's transaction.
+func focusPlanningArtifactBuilder(workspace *CLIWorkspace, extra func(*config.PlanningState)) app.PlanningArtifactBuilder {
+	if workspace == nil || workspace.Manager == nil {
+		return nil
+	}
+	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
+		coord := workspace.Manager.DomainCoordinator()
+		planning, err := coord.LoadPlanning()
+		if err != nil {
+			return nil, err
+		}
+		reconcilePlanningExclusivity(planning, targets)
+		if extra != nil {
+			extra(planning)
+		}
+		artifact, err := coord.CheckedPlanningArtifact(planning)
+		if err != nil {
+			return nil, err
+		}
+		return []storage.ArtifactChange{artifact.StorageChange()}, nil
+	}
+}
+
+// focusQueueContains reports whether the Next order index already lists taskID.
+func focusQueueContains(planning *config.PlanningState, taskID string) bool {
+	for _, item := range planning.FocusQueue {
+		if item.TaskID == taskID {
+			return true
+		}
+	}
+	return false
+}
+
+// dailyPlanContains reports whether the Daily Plan already lists taskID.
+func dailyPlanContains(planning *config.PlanningState, taskID string) bool {
+	for _, item := range planning.DailyPlan {
+		if item.TaskID == taskID {
+			return true
+		}
+	}
+	return false
 }
 
 func runFocusQueueMove(cmd *cobra.Command, args []string) error {
@@ -227,40 +327,65 @@ func runFocusQueueMove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Next membership is the StateNext workflow state; the canonical order is the
+	// shortlist nextTasks() produces (indexed members first, then unindexed
+	// StateNext tasks). Reorder that shortlist rather than the raw order index, so
+	// an unindexed StateNext task can be moved and a non-Next task cannot be moved
+	// merely because a stale index entry lingers. Migrate legacy queue members to
+	// StateNext before reading membership so a reorder never prunes an unmigrated
+	// legacy queue (mirrors the `tt focus queue` listing path). The migration
+	// commits its own workspace transaction, so clone the planning domain AFTER it
+	// runs to build the reorder on the post-migration state.
+	projects := loadActiveProjects(workspace.Runtime.ActiveProjects())
+	if err := migrateLegacyFocusQueueMembers(workspace, workspace.Runtime.Planning().GetFocusQueue(), projects); err != nil {
+		return err
+	}
+
 	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
 	planning := domains.Planning
-	queue := planning.FocusQueue
+	ordered := nextTasks(projects, planning.GetFocusQueue())
+
 	idx := -1
-	for i, item := range queue {
-		if item.TaskID == task.ID {
+	for i, ft := range ordered {
+		if ft.Task.ID == task.ID {
 			idx = i
 			break
 		}
 	}
 	if idx == -1 {
-		return emitFocusMutation(out, "not in queue", task, project, len(queue))
+		// The task is not StateNext (a stale index entry does not qualify it), so
+		// there is nothing to reorder. The size reflects the StateNext shortlist.
+		return emitFocusMutation(out, "not in queue", task, project, len(ordered))
 	}
 
-	// Clamp the requested 1-based position to the queue bounds.
+	// Clamp the requested 1-based position to the shortlist bounds.
 	target := position - 1
 	if target < 0 {
 		target = 0
 	}
-	if target > len(queue)-1 {
-		target = len(queue) - 1
+	if target > len(ordered)-1 {
+		target = len(ordered) - 1
 	}
 
-	moved := queue[idx]
-	queue = append(queue[:idx], queue[idx+1:]...)
-	queue = append(queue[:target], append([]config.FocusQueueItem{moved}, queue[target:]...)...)
-	planning.FocusQueue = queue
+	// Reorder the canonical shortlist and persist it as the full order index, so
+	// every StateNext task gains an explicit entry (previously-unindexed members
+	// included) at its canonical position and stale non-Next entries are pruned.
+	moved := ordered[idx]
+	ordered = append(ordered[:idx], ordered[idx+1:]...)
+	ordered = append(ordered[:target], append([]focus.FocusTask{moved}, ordered[target:]...)...)
+
+	rebuilt := make([]config.FocusQueueItem, 0, len(ordered))
+	for _, ft := range ordered {
+		rebuilt = append(rebuilt, config.FocusQueueItem{TaskID: ft.Task.ID, ProjectID: ft.Project.ID})
+	}
+	planning.SetFocusQueue(rebuilt)
 	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
-	return emitFocusMutation(out, fmt.Sprintf("moved to position %d", target+1), task, project, len(queue))
+	return emitFocusMutation(out, fmt.Sprintf("moved to position %d", target+1), task, project, len(ordered))
 }
 
 func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
@@ -277,21 +402,40 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Mutual exclusivity: Today and Next are exclusive horizons, so a task planned
+	// for Today must leave Next. When the task is StateNext this is a Next->Today
+	// move: transition out through the ledger and fold both the order-entry drop
+	// (exclusivity for the non-Next result) and the Daily Plan add into one
+	// transaction so state and planning commit and undo atomically.
+	wasNext := task.State() == models.StateNext
+	plannedDate := time.Now().Format("2006-01-02")
+	projectID := project.ID
+	addPlan := func(p *config.PlanningState) {
+		if !dailyPlanContains(p, task.ID) {
+			p.SetDailyPlan(append(p.GetDailyPlan(), config.DailyPlanItem{
+				TaskID:      task.ID,
+				ProjectID:   projectID,
+				PlannedDate: plannedDate,
+			}))
+		}
+	}
+	if wasNext {
+		if err := setFocusQueueState(workspace, task, models.StateReady, "Plan for Today", addPlan); err != nil {
+			return err
+		}
+		return emitFocusMutation(out, "planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
+	}
+
+	// Not Next: pure planning add (no state move to be atomic with).
+	if dailyPlanContains(workspace.Runtime.Planning(), task.ID) {
+		return emitFocusMutation(out, "already planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
+	}
 	domains, err := cloneCLIWorkspaceDomains(workspace)
 	if err != nil {
 		return err
 	}
 	planning := domains.Planning
-	for _, item := range planning.DailyPlan {
-		if item.TaskID == task.ID {
-			return emitFocusMutation(out, "already planned", task, project, len(planning.DailyPlan))
-		}
-	}
-	planning.DailyPlan = append(planning.DailyPlan, config.DailyPlanItem{
-		TaskID:      task.ID,
-		ProjectID:   project.ID,
-		PlannedDate: time.Now().Format("2006-01-02"),
-	})
+	addPlan(planning)
 	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}

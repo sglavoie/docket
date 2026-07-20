@@ -104,10 +104,10 @@ func TestCurrentRouteBinding(t *testing.T) {
 	app.lastNavigatedTaskID = "t1"
 
 	// Project-scoped view carries the project, no task.
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
 	r := app.CurrentRoute()
-	if r.ID() != ViewProjectTree || r.Params.ProjectID != "p1" || r.Params.TaskID != "" {
-		t.Errorf("ProjectTree route = %+v, want project p1 / no task", r.Params)
+	if r.ID() != ViewOutliner || r.Params.ProjectID != "p1" || r.Params.TaskID != "" {
+		t.Errorf("Outliner route = %+v, want project p1 / no task", r.Params)
 	}
 
 	// Task-scoped view carries both.

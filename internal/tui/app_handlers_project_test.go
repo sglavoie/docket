@@ -59,7 +59,7 @@ func TestHandleProjectMessagesProjectCreated(t *testing.T) {
 
 func TestHandleProjectMessagesProjectArchived(t *testing.T) {
 	app := newTestAppModel()
-	app.pushView(ViewProjectTree)
+	app.pushView(ViewOutliner)
 
 	msg := ProjectArchivedMsg{}
 	handled, _ := app.handleProjectMessages(msg)
@@ -298,38 +298,25 @@ func TestHandleProjectMessagesProjectArchiveConfirmedUnarchivesAndSetsStatus(t *
 
 func TestProjectArchiveCommandsReturnRequestsWithoutMutation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
 
-	result := tree.archiveProject()()
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
+	result := outliner.archiveProject()()
 	msg, ok := result.(ProjectArchiveRequestMsg)
 	if !ok {
-		t.Fatalf("archiveProject returned %T, want ProjectArchiveRequestMsg", result)
+		t.Fatalf("outliner archiveProject returned %T, want ProjectArchiveRequestMsg", result)
 	}
 	if !msg.Archive {
-		t.Fatal("archiveProject request should ask to archive")
+		t.Fatal("outliner archiveProject should request archive for active project")
 	}
 	if project.Archived {
-		t.Fatal("archiveProject should not mutate before confirmation")
+		t.Fatal("outliner archiveProject should not mutate before confirmation")
 	}
 
 	project.Archive()
-	result = tree.unarchiveProject()()
-	msg, ok = result.(ProjectArchiveRequestMsg)
-	if !ok {
-		t.Fatalf("unarchiveProject returned %T, want ProjectArchiveRequestMsg", result)
-	}
-	if msg.Archive {
-		t.Fatal("unarchiveProject request should ask to unarchive")
-	}
-	if !project.Archived {
-		t.Fatal("unarchiveProject should not mutate before confirmation")
-	}
-
-	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	result = outliner.archiveProject()()
 	msg, ok = result.(ProjectArchiveRequestMsg)
 	if !ok {
-		t.Fatalf("outliner archiveProject returned %T, want ProjectArchiveRequestMsg", result)
+		t.Fatalf("outliner archiveProject returned %T for archived project, want ProjectArchiveRequestMsg", result)
 	}
 	if msg.Archive {
 		t.Fatal("outliner archiveProject should request unarchive for archived project")
@@ -461,7 +448,7 @@ func TestHandleProjectMessagesProjectPinnedToggled(t *testing.T) {
 
 func TestHandleProjectMessagesProjectDeleted(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.pushView(ViewProjectTree)
+	app.pushView(ViewOutliner)
 
 	msg := ProjectDeletedMsg{Project: project}
 	handled, _ := app.handleProjectMessages(msg)

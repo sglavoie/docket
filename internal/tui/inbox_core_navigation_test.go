@@ -39,14 +39,15 @@ func (s *stubInboxBackend) findTaskByID(taskID, _ string) (*models.Task, *models
 	}
 	return nil, nil
 }
-func (s *stubInboxBackend) showProjectInHeader() bool   { return false }
-func (s *stubInboxBackend) headerTitle() string         { return "" }
-func (s *stubInboxBackend) headerSubtitleExtra() string { return "" }
-func (s *stubInboxBackend) emptyStateText() string      { return "" }
-func (s *stubInboxBackend) emptyInboxText() string      { return "" }
-func (s *stubInboxBackend) returnHint() string          { return "" }
-func (s *stubInboxBackend) viewType() ViewType          { return ViewInboxProcessor }
-func (s *stubInboxBackend) helpViewName() string        { return "" }
+func (s *stubInboxBackend) projectByID(string) *models.Project { return nil }
+func (s *stubInboxBackend) showProjectInHeader() bool          { return false }
+func (s *stubInboxBackend) headerTitle() string                { return "" }
+func (s *stubInboxBackend) headerSubtitleExtra() string        { return "" }
+func (s *stubInboxBackend) emptyStateText() string             { return "" }
+func (s *stubInboxBackend) emptyInboxText() string             { return "" }
+func (s *stubInboxBackend) returnHint() string                 { return "" }
+func (s *stubInboxBackend) viewType() ViewType                 { return ViewInboxProcessor }
+func (s *stubInboxBackend) helpViewName() string               { return "" }
 
 // newTestInboxCore builds an inboxCore wired to the given stub, ready for
 // navigation tests without requiring a full config or model.

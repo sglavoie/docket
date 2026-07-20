@@ -19,7 +19,6 @@ type ViewType int
 const (
 	ViewDashboard ViewType = iota
 	ViewProjectList
-	ViewProjectTree
 	ViewProjectCreator
 	ViewProjectEditor
 	ViewSettings
@@ -30,7 +29,6 @@ const (
 	ViewFilter
 	ViewTaskJumper
 	ViewProjectPreview
-	ViewDueDateOverview
 	ViewTagManager
 	ViewGlobalTagManager
 	ViewTagFilterSelector
@@ -62,7 +60,6 @@ const (
 	ViewRecurrenceEditor
 	ViewTextEditor
 	ViewGlobalInboxProcessor
-	ViewFocusView
 	ViewProjectFocusView
 	ViewBlockers
 	ViewTaskAttachments
@@ -120,13 +117,6 @@ const (
 	ViewAttrFilterPicker
 	ViewConflictResolution
 )
-
-// ProjectTreeSpatialState captures cursor position and fold state for a project tree
-// so it can survive view recreation within the same TUI session.
-type ProjectTreeSpatialState struct {
-	CursorTaskID string
-	FoldState    map[string]bool // collapsed node IDs (Expanded == false)
-}
 
 // PriorityViewCache stores session-only filter + tab state for PriorityView.
 type PriorityViewCache struct {
@@ -217,7 +207,6 @@ type AppModel struct {
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	dashboard            *DashboardModel
-	projectTree          *ProjectTreeModel
 	helpView             *HelpViewModel
 	taskJumper           *TaskJumperModel
 	globalSearch         *GlobalSearchModel
@@ -232,10 +221,6 @@ type AppModel struct {
 	// Per-project outliner toggle state (section collapse + node fold),
 	// keyed by project ID. Survives outliner recreation within a session.
 	outlinerToggleStates map[string]*OutlinerToggleState
-
-	// Per-project spatial state caches (cursor + fold), keyed by project ID.
-	// Survive view recreation within a session (in-memory only for cursor).
-	projectTreeSpatialStates map[string]*ProjectTreeSpatialState
 
 	// Session-only filter caches for views reconstructed during history navigation.
 	priorityViewFilterCache map[string]*PriorityViewCache // keyed by projectID
@@ -279,7 +264,7 @@ type AppModel struct {
 	// Current project context
 	currentProject *models.Project
 
-	// Project stack tracks project IDs for stacked ViewProjectTree entries.
+	// Project stack tracks project IDs for stacked project view entries.
 	// When the project picker pushes a new project tree, the previous project ID
 	// is saved so it can be restored when navigating back.
 	projectStack []string
@@ -390,11 +375,11 @@ type AppModel struct {
 	pinnedLastUnpinned   *pinnedTaskInfo
 	pinnedPopupFiltering bool
 	pinnedPopupFilter    string
-	pinnedPopupFiltered  []int             // indices into pinnedPopupItems
-	pinnedPopupTitlePos  [][]int           // parallel to pinnedPopupFiltered: fuzzy match positions
-	pinnedPreview        *ProjectTreeModel // cached preview tree for highlighted pinned task's project
-	pinnedPreviewID      string            // project ID the preview was built for
-	pinnedPreviewTaskID  string            // task ID the preview cursor was set for
+	pinnedPopupFiltered  []int          // indices into pinnedPopupItems
+	pinnedPopupTitlePos  [][]int        // parallel to pinnedPopupFiltered: fuzzy match positions
+	pinnedPreview        *OutlinerModel // cached preview outliner for highlighted pinned task's project
+	pinnedPreviewID      string         // project ID the preview was built for
+	pinnedPreviewTaskID  string         // task ID the preview cursor was set for
 
 	// Project cycle popup state
 	showProjectCyclePicker bool
@@ -404,10 +389,10 @@ type AppModel struct {
 	projectCycleAllItems   []ProjectInfo
 	projectCycleItems      []ProjectInfo
 	projectCycleSearch     BaseSearchableView
-	projectCyclePreview    *ProjectTreeModel // cached preview tree for highlighted project
-	projectCyclePreviewID  string            // project ID the preview was built for
+	projectCyclePreview    *OutlinerModel // cached preview outliner for highlighted project
+	projectCyclePreviewID  string         // project ID the preview was built for
 
-	// Last project-level view used (ProjectTree, Outliner) for cycle preservation
+	// Last project-level view used (Outliner) for cycle preservation
 	lastProjectView ViewType
 
 	// Per-project last view memory: remembers which project-level view was active

@@ -253,32 +253,6 @@ func TestGlobalTagNavigateRespectsDefaultOutlinerView(t *testing.T) {
 	}
 }
 
-func TestGlobalTagNavigateCanStillOpenProjectTreeWhenDefault(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.runtime.Settings().DefaultProjectView = "project_tree"
-	syncTestRuntime(app)
-	project.Tags = []string{"catalog-only"}
-	mockPersister := NewMockPersister()
-	mockPersister.Projects[project.ID] = project
-	app.persister = mockPersister
-	app.pushView(ViewGlobalTagManager)
-
-	handled, _ := app.handleTagMessages(GlobalTagNavigateMsg{Project: project, Tag: "catalog-only"})
-
-	if !handled {
-		t.Fatal("GlobalTagNavigateMsg should be handled")
-	}
-	if app.currentView() != ViewProjectTree {
-		t.Fatalf("current view = %s, want %s", app.currentView(), ViewProjectTree)
-	}
-	if app.projectTree == nil {
-		t.Fatal("project tree should be initialized")
-	}
-	if !app.projectTree.filter.Tags["catalog-only"] {
-		t.Fatalf("project tree tag filter = %v, want catalog-only", app.projectTree.filter.Tags)
-	}
-}
-
 // TestGlobalTagRenameCommitsWorkspaceWideAndUndoes drives the migrated global
 // tag rename through the coordinator/app.Service seam over the real
 // transactional storage stack with a workspace undo ledger. It proves the rename

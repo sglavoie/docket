@@ -81,14 +81,6 @@ func (m *SettingsModel) renderGeneralTab() string {
 	b.WriteString(renderFormFieldDesc("Number of undo steps to keep in history", indent, m.focusIndex == base+3))
 
 	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Default View: ", labelWidth, m.focusIndex == base+4))
-	b.WriteString(renderEnumSelector(defaultProjectViewOptions, m.defaultViewCursor, m.focusIndex == base+4, m.width-indent))
-	b.WriteString(renderDefaultHint(defaultProjectViewOptions[m.defaultViewCursor], "Outliner"))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("View shown when opening a project", indent, m.focusIndex == base+4))
-
-	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
 	b.WriteString("\n\n")
 	b.WriteString(SubtitleStyle.Render("Workspace"))
@@ -209,15 +201,6 @@ func (m *SettingsModel) renderAttachmentsTab() string {
 	b.WriteString(MutedStyle.Render("  They open in your code editor at the specified line."))
 	b.WriteString("\n")
 
-	return b.String()
-}
-
-func (m *SettingsModel) renderProjectTreeTab() string {
-	var b strings.Builder
-	const labelWidth = 18
-	b.WriteString(SubtitleStyle.Render("Default Column Visibility"))
-	b.WriteString("\n\n")
-	m.renderTreeColumnToggles(&b, m.treeColumnDefaults, tabFieldStart[tabProjectTree], labelWidth, m.treePriorityMode)
 	return b.String()
 }
 

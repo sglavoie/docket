@@ -19,17 +19,14 @@ func TestNotesCommands_CtrlNShowNotes(t *testing.T) {
 		t.Fatalf("show notes shortcut = %q, want ctrl+n", cmd.Shortcut)
 	}
 	expectedViews := []ViewType{
-		ViewProjectTree,
 		ViewOutliner,
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
 		ViewAllTasks,
 		ViewDailyReview,
 		ViewWeeklyReview,
-		ViewFocusView,
 		ViewProjectFocusView,
 		ViewPriorityView,
-		ViewDueDateOverview,
 		ViewKanban,
 		ViewCrossProjectKanban,
 		ViewRecentActivity,
@@ -90,7 +87,7 @@ func TestNotesCommands_ShowNotes_UsesSelectedTaskProjectFromCrossProjectOrigin(t
 
 func TestNotesCommands_ShowNotes_FallsBackToCurrentProject(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmds := app.notesCommands()
 	cmd := findCommand(cmds, "show notes")
@@ -139,31 +136,6 @@ func TestNotesCommands_CreateNote(t *testing.T) {
 	result := cmd.Handler()
 	if _, ok := result.(ShowNoteCreatorMsg); !ok {
 		t.Errorf("expected ShowNoteCreatorMsg, got %T", result)
-	}
-}
-
-func TestProjectTreeCtrlNDispatchesShowNotes(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	tree := NewProjectTreeModel(project, nil, app.runtime)
-
-	_, cmd, handled := tree.Dispatcher.Dispatch(syntheticCtrlKey('n'))
-	if !handled {
-		t.Fatal("expected ctrl+n to be handled")
-	}
-	if cmd == nil {
-		t.Fatal("expected ctrl+n to return a command")
-	}
-	msg := cmd()
-	showNotes, ok := msg.(ShowNotesMsg)
-	if !ok {
-		t.Fatalf("expected ShowNotesMsg, got %T", msg)
-	}
-	if showNotes.Project != project {
-		t.Fatal("ShowNotesMsg should target the current project")
-	}
-
-	if _, _, handled := tree.Dispatcher.Dispatch(syntheticCtrlKey('o')); handled {
-		t.Fatal("project tree should not bind ctrl+o locally")
 	}
 }
 

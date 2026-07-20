@@ -250,10 +250,10 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	o.rebuildRows()
 }
 
-// reloadAndRefreshProjectTree reloads project from storage and refreshes the tree.
-// Preserves filter/sort state across the reload.
+// reloadAndRefreshProjectTree reloads the project from storage and refreshes the
+// per-project outliner view. Preserves filter/sort state across the reload.
 func (m *AppModel) reloadAndRefreshProjectTree() {
-	if m.projectTree != nil && m.currentProject != nil {
+	if m.outliner != nil && m.currentProject != nil {
 		m.switchToProject(m.currentProject, true)
 	}
 }
@@ -290,7 +290,7 @@ func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []str
 func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
 	// Handle QuitMsg directly since it's not in the handler chains
 	if _, ok := msg.(QuitMsg); ok {
-		m.saveProjectTreeState()
+		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		m.saveCrossOutlinerState()
 		m.quitting = true

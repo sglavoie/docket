@@ -56,23 +56,27 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 
 func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 	m := b.model
+
+	// ctrl+p only exists on the cross-project outliner, where it drills into the
+	// highlighted project's outliner. On the single-project outliner there is no
+	// second per-project view (ProjectTree was retired), so switchProjectView is
+	// left nil and CommonPrimaryViewGroup omits the binding entirely.
+	var switchProjectView keymap.Action
 	projectViewDescription := ""
 	if m.project == nil {
-		projectViewDescription = "Open highlighted project's tree"
+		projectViewDescription = "Open highlighted project's outliner"
+		switchProjectView = func() (tea.Model, tea.Cmd) {
+			project := m.cursorProject()
+			if project == nil {
+				m.setNoProjectStatus()
+				return m, nil
+			}
+			return m, func() tea.Msg { return ShowOutlinerMsg{Project: project} }
+		}
 	}
 
 	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
-		SwitchProjectView: func() (tea.Model, tea.Cmd) {
-			project := m.project
-			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
-			}
-			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: project} }
-		},
+		SwitchProjectView:            switchProjectView,
 		SwitchProjectViewDescription: projectViewDescription,
 		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }

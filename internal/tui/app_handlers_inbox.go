@@ -28,14 +28,14 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.currentProject != nil {
 			_ = m.persister.Load(m.currentProject)
 		}
-		m.refreshProjectTree()
+		m.refreshProjectView()
 		if msg.ProcessedCount > 0 {
 			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
-			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Backlog",
+			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Next",
 				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		} else if msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Inbox paused: %d skipped. Next: ;q Backlog",
+			m.setSuccessStatus(fmt.Sprintf("Inbox paused: %d skipped. Next: ;q Next",
 				msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
@@ -59,11 +59,11 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if msg.ProcessedCount > 0 {
 			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
-			m.setSuccessStatus(fmt.Sprintf("Global inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Backlog",
+			m.setSuccessStatus(fmt.Sprintf("Global inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Next",
 				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		} else if msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Global inbox paused: %d skipped. Next: ;q Backlog",
+			m.setSuccessStatus(fmt.Sprintf("Global inbox paused: %d skipped. Next: ;q Next",
 				msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}

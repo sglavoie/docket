@@ -191,7 +191,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	switch msg.String() {
 	case "ctrl+c":
 		m.exitAskView()
-		m.saveProjectTreeState()
+		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		m.saveCrossOutlinerState()
 		m.quitting = true
@@ -230,9 +230,11 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, cmd
 		}
 	case "q":
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
+		// q/w are no longer suppressed on the Planner: they are the replacement
+		// planning action that promotes the selected Backlog row into Next (q) or
+		// Today (w) without leaving the consolidated planning surface. The toggle
+		// routes through the same undoable boundary (toggleQueue/toggleDailyPlan)
+		// as the other task views, so exclusivity and undo behave identically.
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
@@ -241,9 +243,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 		return true, nil
 	case "w":
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 			break
 		}
@@ -276,14 +275,17 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, nil
 		}
 	case "ctrl+r":
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
+		// Mirror the u case: the atomic planning redo fires wherever a q/w toggle
+		// is reachable — including the Planner, now that it owns q/w — before the
+		// simple-grammar guard swallows the key for the Planner.
 		if cmd := m.handleRedoToggle(); cmd != nil {
 			return true, cmd
+		}
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
 		}
 		if cmd := m.handleGlobalTaskRedo(); cmd != nil {
 			return true, cmd
@@ -426,6 +428,14 @@ func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
 	if project == nil {
 		return nil
 	}
+	// Application-service mutations commit to the durable workspace ledger, while a
+	// few remaining paths (task archive) still record legacy per-project snapshots.
+	// Restore through whichever backend holds the newer transaction so a committed
+	// application mutation is always reachable and a stale legacy entry never
+	// shadows it.
+	if m.workspaceLedgerRestoreIsNewest(project, redo) {
+		return m.handleLedgerTaskUndoRedo(redo)
+	}
 	if redo {
 		return performRedoForProjectsCmd(m.persister, project, activeUndoProjectsFromRuntime(m.runtime), m.repairTaskProjectRefsAfterRestore)
 	}
@@ -435,16 +445,22 @@ func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
 func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
 	switch m.currentView() { //nolint:exhaustive
 	case ViewPriorityView,
-		ViewDueDateOverview,
 		ViewDailyReview,
 		ViewWeeklyReview,
-		ViewFocusView,
 		ViewProjectFocusView,
 		ViewAllTasks,
 		ViewRecentActivity,
 		ViewFocusBoard,
 		ViewKanban,
-		ViewCrossProjectKanban:
+		ViewCrossProjectKanban,
+		// The single-project Outliner and Task Detail commit their mutations
+		// through the same workspace ledger as the views above, so their u/ctrl+r
+		// must select and restore that durable transaction (with the legacy
+		// per-project fallback retained only when it is genuinely newer). The
+		// cross-project Outliner keeps its own crossHandleUndo path and is
+		// intentionally excluded here.
+		ViewOutliner,
+		ViewTaskDetail:
 		return true
 	default:
 		return false
@@ -608,15 +624,15 @@ func (m *AppModel) handlePendingSemicolonPrefix(msg tea.KeyPressMsg) (bool, tea.
 	case "N":
 		return true, func() tea.Msg { return ShowGlobalNotesMsg{} }
 	case "q":
-		return true, func() tea.Msg { return ShowFocusViewMsg{} }
+		return true, func() tea.Msg { return ShowFocusBoardMsg{Tab: boardTabNext, SetTab: true} }
 	case "w":
-		return true, func() tea.Msg { return ShowFocusBoardMsg{} }
+		return true, func() tea.Msg { return ShowFocusBoardMsg{Tab: boardTabToday, SetTab: true} }
 	case "l":
 		return true, func() tea.Msg { return ShowRecentActivityMsg{} }
 	case "B":
 		return true, func() tea.Msg { return ShowGlobalBlockersMsg{} }
 	case "D":
-		return true, func() tea.Msg { return ShowDueDateOverviewMsg{} }
+		return true, func() tea.Msg { return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true} }
 	case "m":
 		return true, func() tea.Msg { return ShowMetricsDashboardMsg{} }
 	case "a":

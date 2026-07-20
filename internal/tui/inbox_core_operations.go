@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -21,6 +22,9 @@ func (c *inboxCore) recordAction(actionType string, snapshot *inboxSnapshot) {
 	if project != nil {
 		projectID = project.ID
 	}
+	// A newly recorded action invalidates any pending redo, matching the linear
+	// undo/redo contract the workspace ledger enforces for stateful actions.
+	c.redoHistory = nil
 	c.processingHistory = append(c.processingHistory, processingAction{
 		taskID:       task.ID,
 		projectID:    projectID,
@@ -30,47 +34,145 @@ func (c *inboxCore) recordAction(actionType string, snapshot *inboxSnapshot) {
 	})
 }
 
+// undoLastAction reverses the most recent inbox action. Skip actions are pure
+// in-session queue bookkeeping (no disk write), so they undo locally. Stateful
+// triage (state change, section move, priority, due date, snooze, …) committed a
+// durable workspace-ledger transaction, so it undoes through the ledger — which
+// restores the task's exact workflow state AND any Today/Next planning artifact
+// captured in the same transaction, and survives a restart because it reads the
+// durable ledger rather than the in-memory processingHistory.
 func (c *inboxCore) undoLastAction() tea.Cmd {
-	if len(c.processingHistory) == 0 {
-		c.statusMessage = "Nothing to undo"
-		return nil
-	}
+	n := len(c.processingHistory)
 
-	action := c.processingHistory[len(c.processingHistory)-1]
-	c.processingHistory = c.processingHistory[:len(c.processingHistory)-1]
-
-	// Drop the action's task from processed/skipped first so the task
-	// re-enters the remaining queue regardless of whether a snapshot exists.
-	delete(c.processedIDs, action.taskID)
-	delete(c.skippedIDs, action.taskID)
-
-	// Refocus the cursor onto the restored task once the next rebuild lands
-	// (saves trigger rebuildTasks, which reorders the queue).
-	c.pendingFocusID = action.taskID
-
-	if action.prevSnapshot == nil {
-		// Skip undo: nothing to restore on disk. Realign now since no rebuild
-		// will fire and surface a clear status line.
+	// A skip on top of the in-session history undoes locally: re-enqueue the task
+	// and refocus. Skips never reach disk, so there is nothing to restore and no
+	// ledger entry to consume.
+	if n > 0 && c.processingHistory[n-1].prevSnapshot == nil {
+		action := c.processingHistory[n-1]
+		c.processingHistory = c.processingHistory[:n-1]
+		c.redoHistory = append(c.redoHistory, action)
+		delete(c.processedIDs, action.taskID)
+		delete(c.skippedIDs, action.taskID)
+		c.pendingFocusID = action.taskID
 		c.realignCurrentIndex()
 		c.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
 		return nil
 	}
 
+	// Stateful triage (or a post-restart empty history): prefer the durable
+	// workspace ledger so the undo restores exact task state AND the Today/Next
+	// planning artifact captured in the same transaction, and survives a restart.
+	// The matching in-session action, when present, moves to the redo stack for a
+	// subsequent ctrl+r; after a restart the ledger alone drives redo.
+	if desc, ok := c.ledgerRestore(false); ok {
+		if n > 0 {
+			action := c.processingHistory[n-1]
+			c.processingHistory = c.processingHistory[:n-1]
+			c.redoHistory = append(c.redoHistory, action)
+			delete(c.processedIDs, action.taskID)
+			delete(c.skippedIDs, action.taskID)
+			c.pendingFocusID = action.taskID
+		}
+		c.realignCurrentIndex()
+		c.statusMessage = fmt.Sprintf("Undone: %s", desc)
+		return nil
+	}
+
+	// No durable ledger transaction is available (e.g. an isolated harness with no
+	// workspace). Fall back to the in-memory task snapshot so the last stateful
+	// action is still reversible in-session.
+	if n == 0 {
+		c.statusMessage = "Nothing to undo"
+		return nil
+	}
+	action := c.processingHistory[n-1]
+	c.processingHistory = c.processingHistory[:n-1]
+	delete(c.processedIDs, action.taskID)
+	delete(c.skippedIDs, action.taskID)
+	c.pendingFocusID = action.taskID
+
 	task, project := c.backend.findTaskByID(action.taskID, action.projectID)
 	if task == nil || project == nil {
-		// The action's task is no longer reachable (e.g., the project file
-		// was removed). The history pop already happened so a second u steps
-		// back further.
 		c.err = fmt.Errorf("cannot undo: task not found")
 		c.pendingFocusID = ""
 		return nil
 	}
 	restoreInboxSnapshot(task, action.prevSnapshot)
-
 	c.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
-	// Save the action's project (not the current cursor's project — those may
-	// differ in the global processor after auto-advance).
 	return c.backend.saveProjectCmd(project)
+}
+
+// redoLastAction replays the most recently undone action. Skip actions re-skip
+// locally; stateful actions replay through the ledger so the redo restores exact
+// task state and Today/Next planning artifacts.
+func (c *inboxCore) redoLastAction() tea.Cmd {
+	if n := len(c.redoHistory); n > 0 && c.redoHistory[n-1].prevSnapshot == nil {
+		action := c.redoHistory[n-1]
+		c.redoHistory = c.redoHistory[:n-1]
+		c.processingHistory = append(c.processingHistory, action)
+		c.skippedIDs[action.taskID] = true
+		delete(c.processedIDs, action.taskID)
+		c.pendingFocusID = action.taskID
+		c.realignCurrentIndex()
+		c.statusMessage = fmt.Sprintf("Redone: %s", action.actionType)
+		return nil
+	}
+
+	desc, ok := c.ledgerRestore(true)
+	if !ok {
+		c.statusMessage = "Nothing to redo"
+		return nil
+	}
+	if n := len(c.redoHistory); n > 0 {
+		action := c.redoHistory[n-1]
+		c.redoHistory = c.redoHistory[:n-1]
+		c.processingHistory = append(c.processingHistory, action)
+		c.pendingFocusID = action.taskID
+		// If the replayed action moved the task out of the inbox (done, section
+		// change), re-mark it processed so it does not reappear in the queue.
+		if task, project := c.backend.findTaskByID(action.taskID, action.projectID); task != nil && project != nil && willLeaveInbox(task) {
+			c.processedIDs[action.taskID] = true
+			c.pendingFocusID = ""
+		}
+	}
+	c.realignCurrentIndex()
+	c.statusMessage = fmt.Sprintf("Redone: %s", desc)
+	return nil
+}
+
+// ledgerRestore reverses (undo) or replays (redo) the newest workspace-ledger
+// transaction, reloads every project the transaction touched, and refreshes the
+// runtime so restored planning artifacts are observed. It returns the restore
+// description and whether an entry was applied; an exhausted ledger returns
+// ("", false) quietly so callers surface a plain "Nothing to …" status.
+func (c *inboxCore) ledgerRestore(redo bool) (string, bool) {
+	// Without a rooted workspace there is no durable ledger to consult; report no
+	// entry so the caller falls back to the in-memory snapshot path.
+	if c.runtime == nil || c.runtime.DataDir() == "" {
+		return "", false
+	}
+	ledger := workspaceLedgerFromConfig(c.runtime)
+	restore := ledger.UndoWithEntry
+	if redo {
+		restore = ledger.RedoWithEntry
+	}
+	entry, desc, err := restore(storage.GlobalScope())
+	if err != nil {
+		if !strings.Contains(err.Error(), "history available") {
+			c.err = fmt.Errorf("inbox restore: %w", err)
+		}
+		return "", false
+	}
+	for _, id := range entry.ProjectIDs {
+		if p := c.backend.projectByID(id); p != nil {
+			_ = storage.LoadProject(p)
+		}
+	}
+	if c.runtime != nil {
+		_ = c.runtime.Reload()
+	}
+	c.backend.rebuildTasks()
+	return desc, true
 }
 
 func (c *inboxCore) setPriorityQuick(key string) tea.Cmd {

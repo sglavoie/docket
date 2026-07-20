@@ -62,12 +62,16 @@ for example when more urgent work arrived. Someday captures
 tasks you might do eventually. Review holds tasks awaiting
 code review, QA, or approval.
 
-# Active And Queue
+# Active And Next
 
-Active is the section for work currently being worked on. Focus Queue is
-an independent, ordered planning list for the next tasks in your pipeline.
-Queue a task with q without changing its section or workflow state; Queue
-and Today are mutually exclusive planning collections.
+Active is the section for work you are working on right now.
+A task is on Next exactly when its workflow state is StateNext,
+so pressing q to queue it moves the task into StateNext. The
+persisted order index is ordering-only and never decides
+membership. Manage Next from the Planner.
+
+Next and Today are mutually exclusive planning horizons, and
+both are distinct from the ranked Backlog.
 
 Tasks in Someday are excluded from stale notifications — they
 will not appear in the notification center for being inactive.

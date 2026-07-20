@@ -37,13 +37,9 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case DependencyViewerSelectMsg:
 		m.popView()
-		if msg.Task != nil && m.projectTree != nil {
-			// If the task is completed, switch to Completed view so it's visible
-			if msg.Task.IsComplete() && m.projectTree.viewMode != ViewModeCompleted {
-				m.projectTree.viewMode = ViewModeCompleted
-				m.projectTree.updateVisibility()
-			}
-			return true, m.projectTree.NavigateToTask(msg.Task)
+		if msg.Task != nil && m.outliner != nil {
+			m.outliner.NavigateToTaskInProject(msg.Task, m.outliner.project)
+			return true, nil
 		}
 		return true, nil
 

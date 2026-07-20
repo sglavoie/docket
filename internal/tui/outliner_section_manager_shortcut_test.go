@@ -32,9 +32,6 @@ func TestOutlinerCtrlS_CrossProjectTaskRowTargetsOwningProject(t *testing.T) {
 	if msg.Project != project {
 		t.Fatalf("section manager project = %v, want %v", msg.Project, project)
 	}
-	if msg.ProjectTree != nil {
-		t.Fatalf("section manager ProjectTree = %v, want nil", msg.ProjectTree)
-	}
 }
 
 func TestOutlinerCtrlS_CrossProjectNonTaskTargetsDoNotOpenManager(t *testing.T) {

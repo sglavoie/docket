@@ -60,8 +60,12 @@ func TestFocusBoardActionSemanticsPlanOrPrioritizeByContext(t *testing.T) {
 		m := cockpitModel(nil, []boardRow{cockpitBoardRow(task, project)}, nil, nil, OpenLoops{HasTasks: true}, boardTabToday)
 
 		_, cmd := m.executeCockpitAction(m.resolveCockpitActionForKey("p"))
-		if _, ok := cmd().(ShowFocusViewMsg); !ok {
-			t.Fatalf("p on backlog-ready cockpit emitted %T, want ShowFocusViewMsg", cmd())
+		msg, ok := cmd().(ShowFocusBoardMsg)
+		if !ok {
+			t.Fatalf("p on backlog-ready cockpit emitted %T, want ShowFocusBoardMsg", cmd())
+		}
+		if !msg.SetTab || msg.Tab != boardTabBacklog {
+			t.Fatalf("p on backlog-ready cockpit opened tab %d (SetTab=%v), want Backlog tab", msg.Tab, msg.SetTab)
 		}
 	})
 

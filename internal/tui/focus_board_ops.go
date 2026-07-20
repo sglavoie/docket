@@ -201,6 +201,9 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	if m.tabs.Active != boardTabToday {
 		return m, nil
 	}
+	if m.reorderBlockedBySecondarySort("Today order") {
+		return m, nil
+	}
 	to := m.cursor + delta
 	if m.cursor < 0 || m.cursor >= len(m.filtered) || to < 0 || to >= len(m.filtered) {
 		return m, nil
@@ -208,6 +211,9 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 
 	curRow := m.filtered[m.cursor]
 	targetRow := m.filtered[to]
+	if curRow.Task == nil || targetRow.Task == nil || m.dailyPlan == nil {
+		return m, nil
+	}
 
 	// Auto-expanded children cannot be reordered — they follow their parent.
 	if curRow.TreePrefix != "" || targetRow.TreePrefix != "" {
@@ -219,8 +225,9 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 		return m, nil
 	}
 
-	// Swap in the canonical dailyPlan slice.
-	dp := *m.dailyPlan
+	// Build a detached candidate so a failed checked commit cannot mutate the
+	// shared Daily Plan through its aliased slice backing array.
+	dp := append([]FocusTask(nil), (*m.dailyPlan)...)
 	curIdx, targetIdx := -1, -1
 	for i, ft := range dp {
 		switch ft.Task.ID {
@@ -235,9 +242,13 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	}
 	dp[curIdx], dp[targetIdx] = dp[targetIdx], dp[curIdx]
 
-	m.persistDailyPlan()
+	if err := m.persistDailyPlan(dp); err != nil {
+		m.setStatus("Failed to save: " + err.Error())
+		return m, nil
+	}
+	*m.dailyPlan = dp
 
-	// Swap in display slices and move cursor.
+	// Publish the display changes only after the candidate is durable.
 	m.filtered[m.cursor], m.filtered[to] = m.filtered[to], m.filtered[m.cursor]
 
 	// todayRows may differ from filtered when search/filters are active,
@@ -259,12 +270,11 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-// persistDailyPlan saves the current daily plan order through a checked planning
-// commit. The Daily Plan is planning-domain state, committed to planning.json
-// alone rather than through a whole-config save.
-func (m *FocusBoardModel) persistDailyPlan() {
+// persistDailyPlan saves a candidate daily plan order through a checked planning
+// commit. It does not publish the candidate to the shared Daily Plan; the caller
+// does that only after this helper succeeds.
+func (m *FocusBoardModel) persistDailyPlan(dp []FocusTask) error {
 	today := time.Now().Format("2006-01-02")
-	dp := *m.dailyPlan
 	items := make([]config.DailyPlanItem, len(dp))
 	for i, ft := range dp {
 		items[i] = config.DailyPlanItem{
@@ -273,11 +283,9 @@ func (m *FocusBoardModel) persistDailyPlan() {
 			PlannedDate: today,
 		}
 	}
-	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+	return m.commitPlanning(func(p *config.PlanningState) {
 		p.SetDailyPlan(items)
-	}); err != nil {
-		m.setStatus("Failed to save: " + err.Error())
-	}
+	})
 }
 
 // openBrowserCmd opens a URL in the default browser.

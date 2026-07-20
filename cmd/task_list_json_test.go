@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -205,7 +204,7 @@ func TestTaskListJSONEntries_IncludesParkedMetadata(t *testing.T) {
 	parked.ParkedAt = &parkedAt
 	plain := testutil.NewTestTask("Plain task", models.TaskTypeTask)
 
-	entries := taskListJSONEntries(nil, []*models.Task{parked, plain})
+	entries := taskListJSONEntries([]*models.Task{parked, plain})
 
 	if len(entries) != 2 {
 		t.Fatalf("got %d entries, want 2", len(entries))
@@ -230,14 +229,25 @@ func TestTaskListJSONEntries_IncludesParkedMetadata(t *testing.T) {
 	}
 }
 
-func TestTaskListJSONEntriesReportsQueueMembershipAsQueued(t *testing.T) {
-	task := testutil.NewTestTask("Queued task", models.TaskTypeTask)
-	entries := taskListJSONEntries([]config.FocusQueueItem{{TaskID: task.ID}}, []*models.Task{task})
+// TestTaskJSONQueuedUsesWorkflowState locks FR-008-002 for the CLI task JSON:
+// the queued flag is StateNext membership, not presence in the Focus Queue
+// order index. An unindexed StateNext task reports queued=true; a stale indexed
+// non-Next task reports queued=false.
+func TestTaskJSONQueuedUsesWorkflowState(t *testing.T) {
+	next := testutil.NewTestTask("On deck", models.TaskTypeTask)
+	next.ApplyWorkflowState(models.StateNext)
+	stale := testutil.NewTestTask("Left Next", models.TaskTypeTask)
+	stale.ApplyWorkflowState(models.StateReady)
 
-	if len(entries) != 1 {
-		t.Fatalf("got %d entries, want 1", len(entries))
+	entries := taskListJSONEntries([]*models.Task{next, stale})
+
+	if len(entries) != 2 {
+		t.Fatalf("got %d entries, want 2", len(entries))
 	}
 	if !entries[0].Queued {
-		t.Error("queued task JSON entry should have queued=true")
+		t.Error("unindexed StateNext task should report queued=true")
+	}
+	if entries[1].Queued {
+		t.Error("stale non-Next task should report queued=false even if it lingers in the order index")
 	}
 }

@@ -79,7 +79,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(task, taskInFocusQueue(workspace.Runtime.Planning().GetFocusQueue(), task.ID))
+		return displayTaskShowJSON(task, task.State() == models.StateNext)
 	}
 
 	if out.Quiet {

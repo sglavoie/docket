@@ -48,8 +48,8 @@ func TestMaybePromptParkEscSkipsAndDoesNotReprompt(t *testing.T) {
 	if continued != 1 {
 		t.Fatalf("continuation calls = %d, want 1", continued)
 	}
-	if app.currentView() != ViewProjectTree {
-		t.Fatalf("currentView after skip = %v, want ViewProjectTree", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Fatalf("currentView after skip = %v, want ViewOutliner", app.currentView())
 	}
 	if !wasParkPrompted(source.ID) {
 		t.Fatal("Esc skip should mark the task prompted")
@@ -206,10 +206,10 @@ func TestNavigateToTaskPromptsThenEscLandsOnTarget(t *testing.T) {
 		t.Fatal("ParkNoteDoneMsg should be handled")
 	}
 
-	if app.currentView() != ViewProjectTree {
-		t.Fatalf("currentView after skip = %v, want ViewProjectTree", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Fatalf("currentView after skip = %v, want ViewOutliner", app.currentView())
 	}
-	selected := app.projectTree.getSelectedTask()
+	selected := app.outliner.getCursorTask()
 	if selected == nil || selected.ID != target.ID {
 		t.Fatalf("selected task = %v, want target %q", selected, target.ID)
 	}
@@ -259,12 +259,12 @@ func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 
 	setTestCurrentProject(app, project.ID)
 	app.currentProject = project
-	app.lastProjectView = ViewProjectTree
-	app.projectLastView[project.ID] = ViewProjectTree
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.SetSize(app.width, app.height-2)
-	app.views.Register(ViewProjectTree, app.projectTree)
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree}
+	app.lastProjectView = ViewOutliner
+	app.projectLastView[project.ID] = ViewOutliner
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.outliner.SetSize(app.width, app.height-2)
+	app.views.Register(ViewOutliner, app.outliner)
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
 
 	return app, project, source, target
 }

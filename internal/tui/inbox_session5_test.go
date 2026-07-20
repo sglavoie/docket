@@ -139,7 +139,8 @@ func TestComputeGlobalAlertLinesOrdersTriageBeforeOverdue(t *testing.T) {
 // TestCloseInboxProcessorMessageOffersNextActions verifies the local close-
 // message copy: when at least one task was triaged, the status bar must
 // include the triaged count, the skipped count, and both next-action hints
-// (;w Today and ;q Backlog). Pipeline Hub establishes this vocabulary.
+// (;w Today and ;q Next). Pipeline Hub establishes this vocabulary, and ;q
+// opens the Planner Next tab (not Backlog).
 func TestCloseInboxProcessorMessageOffersNextActions(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewInboxProcessor)
@@ -160,15 +161,15 @@ func TestCloseInboxProcessorMessageOffersNextActions(t *testing.T) {
 	if !strings.Contains(got, ";w Today") {
 		t.Errorf("expected ;w Today next-action in status, got %q", got)
 	}
-	if !strings.Contains(got, ";q Backlog") {
-		t.Errorf("expected ;q Backlog next-action in status, got %q", got)
+	if !strings.Contains(got, ";q Next") {
+		t.Errorf("expected ;q Next next-action in status, got %q", got)
 	}
 }
 
-// TestCloseInboxProcessorSkippedOnlyOffersBacklog verifies the skipped-only
-// close path mentions ;q Backlog so the user has a way to revisit the
-// deferred items.
-func TestCloseInboxProcessorSkippedOnlyOffersBacklog(t *testing.T) {
+// TestCloseInboxProcessorSkippedOnlyOffersNext verifies the skipped-only
+// close path mentions ;q Next so the user has a way to revisit the
+// deferred items via the Planner Next shortlist.
+func TestCloseInboxProcessorSkippedOnlyOffersNext(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewInboxProcessor)
 	app.views.Register(ViewInboxProcessor, &InboxProcessorModel{})
@@ -182,14 +183,14 @@ func TestCloseInboxProcessorSkippedOnlyOffersBacklog(t *testing.T) {
 	if !strings.Contains(got, "2 skipped") {
 		t.Errorf("expected skipped count in status, got %q", got)
 	}
-	if !strings.Contains(got, ";q Backlog") {
-		t.Errorf("expected ;q Backlog next-action in status, got %q", got)
+	if !strings.Contains(got, ";q Next") {
+		t.Errorf("expected ;q Next next-action in status, got %q", got)
 	}
 }
 
 // TestCloseGlobalInboxProcessorMessageOffersNextActions verifies the global
 // close-message copy mirrors the local processor: triaged + skipped counts and
-// both ;w Today and ;q Backlog hints.
+// both ;w Today and ;q Next hints.
 func TestCloseGlobalInboxProcessorMessageOffersNextActions(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewGlobalInboxProcessor)
@@ -209,14 +210,14 @@ func TestCloseGlobalInboxProcessorMessageOffersNextActions(t *testing.T) {
 	if !strings.Contains(got, ";w Today") {
 		t.Errorf("expected ;w Today next-action in status, got %q", got)
 	}
-	if !strings.Contains(got, ";q Backlog") {
-		t.Errorf("expected ;q Backlog next-action in status, got %q", got)
+	if !strings.Contains(got, ";q Next") {
+		t.Errorf("expected ;q Next next-action in status, got %q", got)
 	}
 }
 
-// TestCloseGlobalInboxProcessorSkippedOnlyOffersBacklog verifies the skipped-
-// only global close path also surfaces ;q Backlog.
-func TestCloseGlobalInboxProcessorSkippedOnlyOffersBacklog(t *testing.T) {
+// TestCloseGlobalInboxProcessorSkippedOnlyOffersNext verifies the skipped-
+// only global close path also surfaces ;q Next.
+func TestCloseGlobalInboxProcessorSkippedOnlyOffersNext(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewGlobalInboxProcessor)
 
@@ -229,7 +230,7 @@ func TestCloseGlobalInboxProcessorSkippedOnlyOffersBacklog(t *testing.T) {
 	if !strings.Contains(got, "3 skipped") {
 		t.Errorf("expected skipped count in status, got %q", got)
 	}
-	if !strings.Contains(got, ";q Backlog") {
-		t.Errorf("expected ;q Backlog next-action in status, got %q", got)
+	if !strings.Contains(got, ";q Next") {
+		t.Errorf("expected ;q Next next-action in status, got %q", got)
 	}
 }

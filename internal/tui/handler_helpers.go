@@ -97,7 +97,7 @@ func (m *AppModel) rebuildRegisteredProjectOutliners() {
 // outliner (single-project and cross-project). It never reloads from disk;
 // disk-backed reloads belong in refreshTaskViewsAfterSave and handleWithRefresh.
 func (m *AppModel) refreshAllViews() {
-	m.refreshProjectTree()
+	m.refreshProjectView()
 	m.rebuildRegisteredProjectOutliners()
 	if cross := m.activeCrossProjectOutliner(); cross != nil {
 		cross.rebuildRows()
@@ -357,16 +357,19 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 // narrow accessors observe the committed domains without a render-time disk load.
 // It is the sole runtime-state refresh path and is deliberately tolerant of a
 // reload failure: a stale-but-usable snapshot is preferable to failing an already
-// committed mutation. A nil snapshot (never loaded) is a no-op.
-func (m *AppModel) refreshRuntime() {
+// committed mutation. It reports whether the snapshot advanced so callers that
+// derive caches from it can avoid rebuilding from known-stale state. A nil
+// snapshot (never loaded) is a no-op.
+func (m *AppModel) refreshRuntime() bool {
 	if m.runtime == nil || m.runtime.DataDir() == "" {
-		return
+		return false
 	}
 	if err := m.runtime.RefreshAfterCommit(); err != nil {
 		logging.Warn("failed to refresh runtime domain snapshot: %v", err)
-		return
+		return false
 	}
 	m.syncProjectCache()
+	return true
 }
 
 // syncInboxProcessor updates the typed inboxProcessor pointer after view updates.

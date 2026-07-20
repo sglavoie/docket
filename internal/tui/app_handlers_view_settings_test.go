@@ -121,9 +121,9 @@ func TestHandleViewMessagesWorkflowRuleEdited(t *testing.T) {
 
 func TestHandleViewMessagesShowFilter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
-	msg := ShowFilterMsg{ProjectTree: app.projectTree}
+	msg := ShowFilterMsg{CommonFilter: &app.outliner.filter.CommonFilterState, Project: project}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {

@@ -100,14 +100,14 @@ func invokeGotoChild(t *testing.T, m *OutlinerModel, childKey string) tea.Msg {
 	return runEntryAction(t, findPrefixChildBinding(t, entries, "g", childKey))
 }
 
-func TestPrimaryViewKey_OpenProjectTree_CrossUsesCursorProject(t *testing.T) {
+func TestPrimaryViewKey_OpenOutliner_CrossUsesCursorProject(t *testing.T) {
 	m, projA, projB, _, _ := crossOutlinerWithTwoProjects(t)
 
 	m.cursor = 1 // task in projA
 	msg := invokePrimaryViewKey(t, m, "ctrl+p")
-	show, ok := msg.(ShowProjectTreeMsg)
+	show, ok := msg.(ShowOutlinerMsg)
 	if !ok {
-		t.Fatalf("expected ShowProjectTreeMsg, got %T", msg)
+		t.Fatalf("expected ShowOutlinerMsg, got %T", msg)
 	}
 	if show.Project != projA {
 		t.Fatalf("Project = %v, want %v", show.Project, projA)
@@ -115,16 +115,16 @@ func TestPrimaryViewKey_OpenProjectTree_CrossUsesCursorProject(t *testing.T) {
 
 	m.cursor = 4 // task in projB
 	msg = invokePrimaryViewKey(t, m, "ctrl+p")
-	show, ok = msg.(ShowProjectTreeMsg)
+	show, ok = msg.(ShowOutlinerMsg)
 	if !ok {
-		t.Fatalf("expected ShowProjectTreeMsg, got %T", msg)
+		t.Fatalf("expected ShowOutlinerMsg, got %T", msg)
 	}
 	if show.Project != projB {
 		t.Fatalf("Project = %v, want %v", show.Project, projB)
 	}
 }
 
-func TestPrimaryViewKey_OpenProjectTree_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestPrimaryViewKey_OpenOutliner_CrossOnHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0 // header row
 
@@ -136,20 +136,21 @@ func TestPrimaryViewKey_OpenProjectTree_CrossOnHeaderSetsStatus(t *testing.T) {
 	}
 }
 
-func TestPrimaryViewKey_OpenProjectTree_SingleProjectUnchanged(t *testing.T) {
+func TestPrimaryViewKey_OpenOutliner_SingleProjectHasNoCtrlP(t *testing.T) {
+	// ProjectTree was retired: the single-project outliner is the only per-project
+	// view, so it no longer binds a no-op ctrl+p "toggle". The binding survives
+	// only on the cross-project outliner as a meaningful drill-down.
 	proj := &models.Project{ID: "p", Name: "P"}
 	m := minimalOutliner()
 	m.project = proj
 	m.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox}}
-	m.cursor = 0 // header, but single-project mode keeps m.project routing
+	m.cursor = 0
 
-	msg := invokePrimaryViewKey(t, m, "ctrl+p")
-	show, ok := msg.(ShowProjectTreeMsg)
-	if !ok {
-		t.Fatalf("expected ShowProjectTreeMsg, got %T", msg)
-	}
-	if show.Project != proj {
-		t.Fatalf("Project = %v, want %v", show.Project, proj)
+	entries := newOutlinerKeymapBuilder(m).primaryViewEntries()
+	for _, e := range entries {
+		if e.Binding != nil && e.Binding.Key == "ctrl+p" {
+			t.Fatalf("single-project outliner should not bind ctrl+p, got %q", e.Binding.Description)
+		}
 	}
 }
 

@@ -56,15 +56,6 @@ type ColumnPickerModel struct {
 // NewColumnPickerModel creates a column picker pre-selecting currently visible columns.
 func NewColumnPickerModel(msg ShowColumnPickerMsg) *ColumnPickerModel {
 	cols := AllColumns
-	if msg.Source == ViewProjectTree {
-		cols = make([]ColumnInfo, 0, len(AllColumns))
-		for _, col := range AllColumns {
-			if col.OutlinerOnly {
-				continue
-			}
-			cols = append(cols, col)
-		}
-	}
 
 	picker := NewBasePicker(cols, PickerConfig{
 		Title:          "Display Columns",

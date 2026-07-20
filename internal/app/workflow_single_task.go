@@ -26,6 +26,10 @@ type SingleTaskWorkflowOptions struct {
 	// ProjectStatusArtifacts applies project-rule status effects to a checked
 	// workspace-catalog artifact committed with the project changes.
 	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
+	// PlanningArtifacts folds durable Today/Next reconciliation for the mutation's
+	// final post-cascade state into the same ledger transaction. Nil uses the
+	// service default when configured.
+	PlanningArtifacts PlanningArtifactBuilder
 }
 
 // mutateWithWorkflow is the shared runner for a workflow-aware single-task
@@ -65,6 +69,7 @@ func (s *Service) mutateWithWorkflowGuarded(
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  opts.Rules,
 		projectStatusArtifacts: opts.ProjectStatusArtifacts,
+		planningArtifacts:      opts.PlanningArtifacts,
 		undoAction:             undoAction,
 		undoContext:            opts.UndoContext,
 		forceCommit:            true,
@@ -86,7 +91,8 @@ func (s *Service) mutateWithWorkflowGuarded(
 					expectedRevision: snap.Revision(ref.Project.ID),
 					base:             ref.Base,
 				}},
-				sources: []*models.Project{ref.Project},
+				sources:         []*models.Project{ref.Project},
+				planningTaskIDs: []string{ref.Task.ID},
 				mutate: func(resolver *WorkspaceResolver) error {
 					if err := mutate(ref, resolver); err != nil {
 						return err
@@ -129,6 +135,10 @@ func (s *Service) StateWithWorkflow(taskID string, target models.WorkflowState, 
 	if !target.IsValid() {
 		return BulkResult{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", target))
 	}
+	// Retain direct-state defaulting for callers that depend on this public seam;
+	// runWorkflowOrchestration also defaults as the backstop for rule cascades
+	// initiated by mutations that do not directly change workflow state.
+	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
 	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, resolver *WorkspaceResolver) error {
 		from := ref.Task.State()
 		if reason := models.CanTransitionState(from, target); reason != "" {
@@ -203,6 +213,11 @@ func (s *Service) GuardedSnoozeWithWorkflow(taskID string, until *time.Time, opt
 // non-empty section is ensured on the project, matching the legacy
 // applySectionChange behavior.
 func (s *Service) SetSectionWithWorkflow(taskID, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	// A section move changes the derived workflow state, so fold the same
+	// Today/Next exclusivity reconciliation state transitions use into the same
+	// transaction. This explicit default remains alongside the orchestration-level
+	// backstop used when a later workflow rule changes state.
+	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
 	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
 		ref.Task.SetSection(section)
 		if section != "" {

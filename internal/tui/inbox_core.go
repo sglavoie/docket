@@ -44,6 +44,12 @@ type inboxBackend interface {
 	// local processor ignores it because it only owns a single project.
 	findTaskByID(taskID, projectID string) (task *models.Task, project *models.Project)
 
+	// projectByID returns the in-memory project pointer for a logical id so a
+	// ledger-backed undo/redo can reload exactly the projects the restored
+	// transaction touched. Returns nil when the processor does not own that
+	// project.
+	projectByID(projectID string) *models.Project
+
 	// Rendering
 	showProjectInHeader() bool
 	headerTitle() string
@@ -69,6 +75,11 @@ type inboxCore struct {
 	processedIDs      map[string]bool
 	skippedIDs        map[string]bool
 	processingHistory []processingAction
+	// redoHistory holds actions popped by undo so a subsequent ctrl+r can replay
+	// them. Any newly recorded action clears it, matching the linear Vim-style
+	// contract the workspace ledger also enforces. Skip actions redo locally;
+	// stateful actions redo through the ledger.
+	redoHistory []processingAction
 
 	// pendingFocusID, when non-empty, names the task the cursor should land on
 	// after the next rebuildTasks. advanceToNext sets it to the new current
@@ -99,6 +110,7 @@ func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, manager *con
 	c.processedIDs = make(map[string]bool)
 	c.skippedIDs = make(map[string]bool)
 	c.processingHistory = []processingAction{}
+	c.redoHistory = []processingAction{}
 	c.backend = backend
 	c.model = model
 

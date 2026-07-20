@@ -31,12 +31,19 @@ func (m *OutlinerModel) commitWorkflowOpts(prevStates map[string]*models.Task) a
 		rules = m.runtime.Automation().GetEnabledWorkflowRules()
 	}
 	action, context := m.undo.Action, m.undo.Context
+	// The pending undo TaskIDs name the tasks this mutation targeted; forward them
+	// as the planning-reconcile set so a whole-project commit that changed a task's
+	// workflow state (quick edit, section move, paste) folds Today/Next exclusivity
+	// into the same transaction. A task whose state did not change reconciles to no
+	// planning artifact, so this is harmless for structural-only mutations.
+	planningTaskIDs := append([]string(nil), m.undo.TaskIDs...)
 	m.undo.Clear()
 	return app.ProjectWorkflowOptions{
-		Rules:       rules,
-		PrevStates:  prevStates,
-		UndoAction:  action,
-		UndoContext: context,
+		Rules:           rules,
+		PrevStates:      prevStates,
+		UndoAction:      action,
+		UndoContext:     context,
+		PlanningTaskIDs: planningTaskIDs,
 	}
 }
 

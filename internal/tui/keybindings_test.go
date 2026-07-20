@@ -19,18 +19,22 @@ func TestNewKeybindingRegistry(t *testing.T) {
 
 func TestProjectViewToggle_KeybindingRegistryDescriptions(t *testing.T) {
 	registry := NewKeybindingRegistry()
-	const toggleDescription = "Toggle project tree/outliner"
-	const crossDescription = "Open highlighted project's tree"
+	// ProjectTree was retired: the single-project outliner has no second view to
+	// switch to, so it no longer advertises any ctrl+p binding. ctrl+p survives
+	// only on the cross-project outliner as a meaningful drill-down.
+	const crossDescription = "Open highlighted project's outliner"
 
-	assertHasHelpItem(t, registry.GetForView(ViewProjectTree), ViewProjectTree, "ctrl+p", toggleDescription)
-	assertHasHelpItem(t, registry.GetForView(ViewOutliner), ViewOutliner, "ctrl+p", toggleDescription)
+	for _, item := range registry.GetForView(ViewOutliner) {
+		if item.Key == "ctrl+p" {
+			t.Fatalf("single-project outliner should not advertise a ctrl+p binding, got %q", item.Description)
+		}
+	}
 	assertHasHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", crossDescription)
-	assertLacksHelpItem(t, registry.GetForView(ViewProjectTree), ViewProjectTree, "ctrl+p", crossDescription)
-	assertLacksHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", toggleDescription)
+	assertLacksHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", "Toggle project tree/outliner")
 
 	explorerItems := registry.GetAllDeduplicated()
-	assertHasHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", toggleDescription)
 	assertHasHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", crossDescription)
+	assertLacksHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", "Toggle project tree/outliner")
 }
 
 func hasHelpItem(items []HelpItem, key, description string) bool {
@@ -178,14 +182,14 @@ func TestQueueToggleIsAppLevelForEveryTaskReferenceView(t *testing.T) {
 func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
-	treeItems := tree.GetHelpItems()
-	assertHasHelpItem(t, treeItems, ViewProjectTree, "w", "Toggle today's plan")
-	assertHasHelpItem(t, treeItems, ViewProjectTree, "ctrl+o", "Open task reference copy")
-	assertHasHelpItem(t, treeItems, ViewProjectTree, "ctrl+n", "Open project Notes")
-	assertLacksHelpItem(t, treeItems, ViewProjectTree, "w", "Add to today's plan")
-	if count := countHelpItem(treeItems, "ctrl+n", "Open project Notes"); count != 1 {
-		t.Fatalf("ProjectTree help has %d ctrl+n Open project Notes rows, want 1", count)
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
+	outlinerItems := outliner.GetHelpItems()
+	assertHasHelpItem(t, outlinerItems, ViewOutliner, "w", "Toggle today's plan")
+	assertHasHelpItem(t, outlinerItems, ViewOutliner, "ctrl+o", "Open task reference copy")
+	assertHasHelpItem(t, outlinerItems, ViewOutliner, "ctrl+n", "Open project Notes")
+	assertLacksHelpItem(t, outlinerItems, ViewOutliner, "w", "Add to today's plan")
+	if count := countHelpItem(outlinerItems, "ctrl+n", "Open project Notes"); count != 1 {
+		t.Fatalf("Outliner help has %d ctrl+n Open project Notes rows, want 1", count)
 	}
 
 	allTasksItems := (&AllTasksViewModel{}).GetHelpItems()
@@ -209,7 +213,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	keys := m.HandledKeys()
 
 	for _, key := range []string{
-		"a", "x", "p", "P", "/", "?", "enter",
+		"a", "x", "p", "P", "J", "K", "/", "?", "enter",
 		"tab", "shift+tab", "shift+left", "shift+right",
 		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
 		"g", "gg", "gp", "n", "N",
@@ -225,7 +229,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	}
 
 	for _, key := range []string{
-		"q", "w", "X", "E", "v", "space", "A", "J", "K",
+		"q", "w", "X", "E", "v", "space", "A",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r",
 		"P0",
 		".",
@@ -241,6 +245,8 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: "x", Description: "Complete or dismiss item"},
 		{Key: "p", Description: "Plan or set priority"},
 		{Key: "P", Description: "Park task"},
+		{Key: "J", Description: "Reorder down (Today/Next)"},
+		{Key: "K", Description: "Reorder up (Today/Next)"},
 		{Key: "/", Description: "Search"},
 		{Key: "?", Description: "Toggle help"},
 		{Key: "enter", Description: "View task details"},
@@ -267,11 +273,17 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: "esc", Description: "Back / close"},
 		{Key: "u", Description: "Undo last task action"},
 		{Key: "Fh", Description: "Toggle hide-dimmed filter"},
+		// q/w are the Planner's replacement planning action (promote a selected
+		// Backlog row into Next / Today). They are app-level bindings scoped to
+		// the Planner, so they advertise in help but stay out of view-local
+		// HandledKeys (asserted absent above).
+		{Key: "q", Description: "Toggle queue"},
+		{Key: "w", Description: "Toggle today's plan"},
 	} {
 		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
 	}
 	for _, key := range []string{
-		"q", "w", "X", "E", "v", "space", "A", "J", "K",
+		"X", "E", "v", "space", "A",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r",
 		"g", "f",
 		"P0",
@@ -307,12 +319,13 @@ func TestGetForView_FocusBoardIncludesTodayUngatedParity(t *testing.T) {
 		{Key: "fp", Description: "Toggle inline preview"},
 		{Key: "ctrl+b", Description: "Move task to project"},
 		{Key: "ctrl+.", Description: "Quick note on task"},
+		{Key: "q", Description: "Toggle queue"},
+		{Key: "w", Description: "Toggle today's plan"},
 	} {
 		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
 	}
 
 	for _, removed := range []HelpItem{
-		{Key: "w", Description: "Toggle today's plan"},
 		{Key: "ctrl+o", Description: "Open task reference copy"},
 		{Key: "ctrl+n", Description: "Open project Notes"},
 		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
@@ -356,12 +369,14 @@ func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {
 	app.focusQueueIDs = map[string]bool{}
 	app.dailyPlanIDs = map[string]bool{}
 
+	// q/w are no longer removed aliases on the Planner: they are its replacement
+	// planning action (promote a Backlog row into Next / Today). Their handled
+	// path is covered by TestFocusBoardBacklogPromotionFlow. ctrl+r still falls
+	// through here because there is no pending planning redo to replay.
 	removed := []struct {
 		name string
 		key  tea.KeyPressMsg
 	}{
-		{"queue", syntheticKey('q')},
-		{"plan", syntheticKey('w')},
 		{"redo", syntheticCtrlKey('r')},
 		{"reference", syntheticCtrlKey('o')},
 		{"notes", syntheticCtrlKey('n')},
@@ -396,44 +411,6 @@ func TestGetGlobalBindings_IncludesHandledSemicolonShortcuts(t *testing.T) {
 	}
 	for _, binding := range globalSemicolonBindings {
 		assertHasHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
-	}
-}
-
-func TestGetForView_ProjectTree(t *testing.T) {
-	// ProjectTree is migrated to declarative keymap; verify via buildKeyMap().
-	m := &ProjectTreeModel{}
-	keys := m.buildKeyMap().HandledKeys()
-	if len(keys) == 0 {
-		t.Fatal("No keys returned from ProjectTreeModel.buildKeyMap()")
-	}
-
-	foundFold := false
-	foundStatus := false
-	for _, k := range keys {
-		if k == "fa" || k == "fo" || k == "fc" {
-			foundFold = true
-		}
-		if k == ",s" {
-			foundStatus = true
-		}
-	}
-	if !foundFold {
-		t.Error("Expected fold keys (fa/fo/fc) in ProjectTree keymap")
-	}
-	if !foundStatus {
-		t.Error("Expected status change key ',s' in ProjectTree keymap")
-	}
-	for _, key := range []string{"fs", "fS"} {
-		if slices.Contains(keys, key) {
-			t.Errorf("ProjectTree keymap should not expose section fold key %s", key)
-		}
-	}
-
-	r := NewKeybindingRegistry()
-	for _, item := range r.GetForView(ViewProjectTree) {
-		if item.Key == "fs" || item.Key == "fS" {
-			t.Fatalf("ProjectTree registry should not advertise section fold key %s: %+v", item.Key, item)
-		}
 	}
 }
 
@@ -506,10 +483,10 @@ func TestGetForView_OutlinerSectionManagerScope(t *testing.T) {
 	}
 }
 
-func TestGetForView_ProjectTreeAndOutlinerUseCtrlNForProjectNotes(t *testing.T) {
+func TestGetForView_OutlinerUsesCtrlNForProjectNotes(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	for _, view := range []ViewType{ViewProjectTree, ViewOutliner} {
+	for _, view := range []ViewType{ViewOutliner} {
 		items := r.GetForView(view)
 		foundCtrlN := false
 		for _, item := range items {
@@ -576,7 +553,7 @@ func TestListNavigationGroupConsumersExposeArrowKeys(t *testing.T) {
 		keys []string
 	}{
 		{name: "All Tasks", keys: (&AllTasksViewModel{}).HandledKeys()},
-		{name: "Focus", keys: (&FocusViewModel{}).HandledKeys()},
+		{name: "Planner", keys: (&FocusBoardModel{}).HandledKeys()},
 		{name: "Priority", keys: (&PriorityViewModel{}).HandledKeys()},
 		{name: "Recent Activity", keys: (&RecentActivityModel{}).HandledKeys()},
 	}
@@ -651,7 +628,7 @@ func TestSharedTriagePrimaryVocabulary(t *testing.T) {
 func TestGetForView_IncludesGlobalBindings(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	for _, view := range []ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView, ViewInboxProcessor} {
+	for _, view := range []ViewType{ViewDashboard, ViewOutliner, ViewPriorityView, ViewInboxProcessor} {
 		items := r.GetForView(view)
 		foundQuit := false
 		foundHelp := false
@@ -715,10 +692,10 @@ func TestContainsView(t *testing.T) {
 		target   ViewType
 		expected bool
 	}{
-		{[]ViewType{ViewDashboard, ViewProjectTree}, ViewDashboard, true},
-		{[]ViewType{ViewDashboard, ViewProjectTree}, ViewPriorityView, false},
+		{[]ViewType{ViewDashboard, ViewOutliner}, ViewDashboard, true},
+		{[]ViewType{ViewDashboard, ViewOutliner}, ViewPriorityView, false},
 		{[]ViewType{}, ViewDashboard, false},
-		{[]ViewType{ViewProjectTree}, ViewProjectTree, true},
+		{[]ViewType{ViewOutliner}, ViewOutliner, true},
 	}
 
 	for _, tc := range tests {
@@ -788,59 +765,15 @@ func TestScopeText(t *testing.T) {
 		{nil, "Global"},
 		{[]ViewType{}, "Global"},
 		{[]ViewType{ViewDashboard}, "Dashboard"},
-		{[]ViewType{ViewDashboard, ViewProjectTree}, "Dashboard, ProjectTree"},
-		{[]ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView}, "Dashboard, ProjectTree, PriorityView"},
-		{[]ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView, ViewFocusView}, "4 views"},
-		{[]ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView, ViewFocusView, ViewOutliner}, "5 views"},
+		{[]ViewType{ViewDashboard, ViewKanban}, "Dashboard, Kanban"},
+		{[]ViewType{ViewDashboard, ViewKanban, ViewPriorityView}, "Dashboard, Kanban, PriorityView"},
+		{[]ViewType{ViewDashboard, ViewKanban, ViewPriorityView, ViewAllTasks}, "4 views"},
+		{[]ViewType{ViewDashboard, ViewKanban, ViewPriorityView, ViewAllTasks, ViewOutliner}, "5 views"},
 	}
 	for _, tc := range tests {
 		got := scopeText(tc.views)
 		if got != tc.want {
 			t.Errorf("scopeText(%v) = %q, want %q", tc.views, got, tc.want)
-		}
-	}
-}
-
-func TestKeybindingCategories(t *testing.T) {
-	// ProjectTree is migrated to declarative keymap; verify via buildKeyMap().
-	m := &ProjectTreeModel{}
-	keys := m.buildKeyMap().HandledKeys()
-	if len(keys) == 0 {
-		t.Fatal("No keys from ProjectTreeModel.buildKeyMap()")
-	}
-
-	// Spot-check that the keymap includes keys from the expected categories.
-	hasNav := false
-	hasFold := false
-	hasStatus := false
-	hasFilter := false
-	for _, k := range keys {
-		switch k {
-		case "j", "k", "G":
-			hasNav = true
-		case "fa", "fo":
-			hasFold = true
-		case ",s", ",d":
-			hasStatus = true
-		case "F", "Fp", "Fx":
-			hasFilter = true
-		}
-	}
-	if !hasNav {
-		t.Error("Expected navigation keys in ProjectTree keymap")
-	}
-	if !hasFold {
-		t.Error("Expected fold keys in ProjectTree keymap")
-	}
-	if !hasStatus {
-		t.Error("Expected status keys in ProjectTree keymap")
-	}
-	if !hasFilter {
-		t.Error("Expected filter keys in ProjectTree keymap")
-	}
-	for _, key := range []string{"fs", "fS"} {
-		if slices.Contains(keys, key) {
-			t.Errorf("ProjectTree keymap should not categorize unsupported section fold key %s", key)
 		}
 	}
 }

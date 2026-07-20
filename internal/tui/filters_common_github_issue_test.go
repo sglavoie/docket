@@ -97,27 +97,6 @@ func TestCommonFilterPrefixHintsGitHubIssue(t *testing.T) {
 	}
 }
 
-func TestProjectTreeFilterPrefixHintsGitHubIssue(t *testing.T) {
-	tree := &ProjectTreeModel{filter: NewFilterState()}
-
-	hint, ok := findPrefixHint(tree.buildFilterPrefixHints(), "i")
-	if !ok {
-		t.Fatal("expected project tree filter hints to include Fi")
-	}
-	if hint.Description != "issues" || hint.Detail != "off" || hint.Active {
-		t.Fatalf("inactive project tree Fi hint = %+v, want issues/off/inactive", hint)
-	}
-
-	tree.filter.GitHubIssue = true
-	hint, ok = findPrefixHint(tree.buildFilterPrefixHints(), "i")
-	if !ok {
-		t.Fatal("expected project tree filter hints to include Fi when active")
-	}
-	if hint.Description != "issues" || hint.Detail != "on" || !hint.Active {
-		t.Fatalf("active project tree Fi hint = %+v, want issues/on/active", hint)
-	}
-}
-
 func mustCommonFilterTask(t *testing.T, id string) *models.Task {
 	t.Helper()
 	task, err := models.NewTask(id, 1, models.TaskTypeTask, "Task "+id)

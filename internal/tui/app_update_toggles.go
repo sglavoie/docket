@@ -41,46 +41,72 @@ func (m *AppModel) handlePinnedPopupToggle() tea.Cmd {
 	return nil
 }
 
+// handleUndoToggle reverses the most recent q/w planning toggle as one logical
+// action (workflow state + Next order index / Daily Plan entry). It fires
+// wherever a toggle was just recorded — the same task views where q/w work — so
+// an immediate u undoes the toggle atomically instead of falling through to
+// ordinary project-history undo (which would restore the state but leave the
+// planning order/list stale). The localToggleUndoIsNewest guard still yields to
+// a newer persistent mutation.
 func (m *AppModel) handleUndoToggle() tea.Cmd {
-	switch m.currentView() { //nolint:exhaustive
-	case ViewFocusView, ViewFocusBoard:
-		if !m.localToggleUndoIsNewest() {
-			return nil
-		}
-		var cmd tea.Cmd
-		switch m.lastToggleUndoKind {
-		case toggleUndoNone:
-		case toggleUndoDailyPlan:
-			cmd = m.undoDailyPlanToggle()
-		case toggleUndoQueue:
-			cmd = m.undoQueueToggle()
-		}
-		if cmd != nil {
-			return m.batchWithFocusRefresh(cmd)
-		}
+	if m.lastToggleUndoKind == toggleUndoNone {
+		return nil
+	}
+	if !m.currentViewOwnsPlanningToggle() {
+		return nil
+	}
+	if !m.localToggleUndoIsNewest() {
+		return nil
+	}
+	var cmd tea.Cmd
+	switch m.lastToggleUndoKind {
+	case toggleUndoNone:
+	case toggleUndoDailyPlan:
+		cmd = m.undoDailyPlanToggle()
+	case toggleUndoQueue:
+		cmd = m.undoQueueToggle()
+	}
+	if cmd != nil {
+		return m.batchWithFocusRefresh(cmd)
 	}
 	return nil
 }
 
+// handleRedoToggle replays the most recently undone q/w planning toggle, mirror
+// of handleUndoToggle. Reachable from every view where the toggle is reachable,
+// so ctrl+r replays both sides of the logical action without navigating away.
 func (m *AppModel) handleRedoToggle() tea.Cmd {
-	switch m.currentView() { //nolint:exhaustive
-	case ViewFocusView, ViewFocusBoard:
-		if !m.localToggleRedoIsNewest() {
-			return nil
-		}
-		var cmd tea.Cmd
-		switch m.lastToggleRedoKind {
-		case toggleUndoNone:
-		case toggleUndoDailyPlan:
-			cmd = m.redoDailyPlanToggle()
-		case toggleUndoQueue:
-			cmd = m.redoQueueToggle()
-		}
-		if cmd != nil {
-			return m.batchWithFocusRefresh(cmd)
-		}
+	if m.lastToggleRedoKind == toggleUndoNone {
+		return nil
+	}
+	if !m.currentViewOwnsPlanningToggle() {
+		return nil
+	}
+	if !m.localToggleRedoIsNewest() {
+		return nil
+	}
+	var cmd tea.Cmd
+	switch m.lastToggleRedoKind {
+	case toggleUndoNone:
+	case toggleUndoDailyPlan:
+		cmd = m.redoDailyPlanToggle()
+	case toggleUndoQueue:
+		cmd = m.redoQueueToggle()
+	}
+	if cmd != nil {
+		return m.batchWithFocusRefresh(cmd)
 	}
 	return nil
+}
+
+// currentViewOwnsPlanningToggle reports whether the current view is one where a
+// q/w planning toggle is reachable (a QueueToggleable task view, including the
+// Planner cockpit). The bespoke atomic toggle undo/redo only fires from such a
+// view so pressing u/ctrl+r elsewhere (e.g. the dashboard) does not silently
+// reverse a planning action taken in another view.
+func (m *AppModel) currentViewOwnsPlanningToggle() bool {
+	_, ok := m.currentViewAsModel().(QueueToggleable)
+	return ok
 }
 
 func (m *AppModel) localToggleUndoIsNewest() bool {

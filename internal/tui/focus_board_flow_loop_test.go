@@ -84,7 +84,8 @@ func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusB
 		t.Fatalf("SaveProject: %v", err)
 	}
 
-	m := NewFocusBoardModel(testRuntimeAt(cfg.DataDir(), cfg), nil, &dailyPlan, map[string]bool{}, dailyPlanIDs, map[string]bool{})
+	focusQueue := []FocusTask{}
+	m := NewFocusBoardModel(testRuntimeAt(cfg.DataDir(), cfg), nil, &dailyPlan, &focusQueue, map[string]bool{}, dailyPlanIDs, map[string]bool{})
 	m.tabs.Active = boardTabToday
 
 	// Wire the single-task coordinator over the real transactional stack rooted at

@@ -118,7 +118,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		s.ThemeLightName = m.inactivePresetName
 	}
 	s.ActiveTheme = m.activeTheme
-	s.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
 	s.ReviewDueSoonDays = &dueSoon
 	s.ReviewFutureDays = &futureDays
 	s.ReviewOldDays = &oldDays
@@ -152,14 +151,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	mach.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	mach.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 	mach.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())
-	mach.TreeDefaultColumns = treeColumnDefaultsToMap(m.treeColumnDefaults)
 	mach.OutlinerDefaultColumns = outlinerColumnDefaultsToMap(m.outlinerColumnDefaults)
 
-	mach.TreePriorityMode = priorityModeValues[m.treePriorityMode]
 	mach.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
-	if mach.TreePriorityMode == PriorityModeConditional {
-		mach.TreePriorityMode = ""
-	}
 	if mach.OutlinerPriorityMode == PriorityModeConditional {
 		mach.OutlinerPriorityMode = ""
 	}
@@ -267,29 +261,6 @@ func priorityModeToCursor(mode string) int {
 	}
 }
 
-// initTreeColumnDefaults converts a config map to a [15]bool array indexed by
-// the Project Tree column slice (AllColumns filtered to exclude OutlinerOnly).
-// nil map or missing keys default to true (visible).
-func initTreeColumnDefaults(cfgMap map[string]bool) [15]bool {
-	var result [15]bool
-	idx := 0
-	for _, col := range AllColumns {
-		if col.OutlinerOnly {
-			continue
-		}
-		if cfgMap != nil {
-			if v, ok := cfgMap[col.ID]; ok {
-				result[idx] = v
-				idx++
-				continue
-			}
-		}
-		result[idx] = true
-		idx++
-	}
-	return result
-}
-
 // initOutlinerColumnDefaults converts a config map to a [15]bool array indexed
 // by the full AllColumns slice. nil map or missing keys default to true.
 func initOutlinerColumnDefaults(cfgMap map[string]bool) [15]bool {
@@ -304,31 +275,6 @@ func initOutlinerColumnDefaults(cfgMap map[string]bool) [15]bool {
 		result[i] = true
 	}
 	return result
-}
-
-// treeColumnDefaultsToMap converts a [15]bool array (filtered AllColumns) back
-// to a config map. Returns nil when every column is visible.
-func treeColumnDefaultsToMap(defaults [15]bool) map[string]bool {
-	allTrue := true
-	for _, v := range defaults {
-		if !v {
-			allTrue = false
-			break
-		}
-	}
-	if allTrue {
-		return nil
-	}
-	m := make(map[string]bool, 15)
-	idx := 0
-	for _, col := range AllColumns {
-		if col.OutlinerOnly {
-			continue
-		}
-		m[col.ID] = defaults[idx]
-		idx++
-	}
-	return m
 }
 
 // outlinerColumnDefaultsToMap converts a [15]bool array (full AllColumns) back

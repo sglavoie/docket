@@ -15,6 +15,10 @@ import (
 // When a sidebar component is provided, applies and clamps its scroll offset.
 // Attaches a scrollbar when content overflows.
 func padSidebarToHeight(content string, sidebar *SidebarComponent, width, height int) string {
+	// Guard against non-positive heights (e.g. the dimmed project-cycle/pinned
+	// preview backgrounds sized to a couple of lines): a negative height would
+	// drive a negative slice bound below.
+	height = max(height, 0)
 	lines := strings.Split(content, "\n")
 	totalLines := len(lines)
 

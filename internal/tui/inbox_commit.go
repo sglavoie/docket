@@ -34,8 +34,27 @@ func commitInboxProject(dataDir string, deps *config.RuntimeDependencies, ledger
 		Rules:                  rules,
 		UndoAction:             inboxTriageUndoAction,
 		ProjectStatusArtifacts: workflowProjectStatusArtifactBuilder(manager),
+		// Inbox state and section triage changes a task's derived workflow state, so
+		// fold Today/Next exclusivity into the same transaction. Naming every task in
+		// the committed project guarantees the triaged task is reconciled; a task
+		// whose state did not change reconciles to no planning artifact.
+		PlanningArtifacts: planningReconcileArtifactBuilder(manager),
+		PlanningTaskIDs:   inboxProjectTaskIDs(project),
 	}); err != nil {
 		return err
 	}
 	return storage.LoadProject(project)
+}
+
+// inboxProjectTaskIDs returns every task ID in the inbox project so the planning
+// reconciler enforces Today/Next exclusivity for the triaged task regardless of
+// which task in the whole-project commit changed state.
+func inboxProjectTaskIDs(project *models.Project) []string {
+	ids := make([]string, 0, len(project.Tasks))
+	for _, t := range project.Tasks {
+		if t != nil {
+			ids = append(ids, t.ID)
+		}
+	}
+	return ids
 }

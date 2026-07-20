@@ -91,40 +91,57 @@ func TestTypeChangeGroup(t *testing.T) {
 func TestCommonPrimaryViewGroup_Base(t *testing.T) {
 	deps := CommonPrimaryViewDeps{}
 	entries := CommonPrimaryViewGroup(deps)
-	// 17 base entries (EditLastModified and MoveReparent nil)
-	if len(entries) != 17 {
-		t.Errorf("CommonPrimaryViewGroup (base): want 17 entries, got %d", len(entries))
+	// 16 base entries: EditLastModified and MoveReparent nil, and ctrl+p omitted
+	// because SwitchProjectView is nil (single-project outliner has no view toggle).
+	if len(entries) != 16 {
+		t.Errorf("CommonPrimaryViewGroup (base): want 16 entries, got %d", len(entries))
 	}
 }
 
 func TestCommonPrimaryViewGroup_AllOptional(t *testing.T) {
 	deps := CommonPrimaryViewDeps{
-		EditLastModified: actFn(),
-		MoveReparent:     actFn(),
+		SwitchProjectView: actFn(),
+		EditLastModified:  actFn(),
+		MoveReparent:      actFn(),
 	}
 	entries := CommonPrimaryViewGroup(deps)
+	// 16 base + ctrl+p (SwitchProjectView set) + EditLastModified + MoveReparent.
 	if len(entries) != 19 {
 		t.Errorf("CommonPrimaryViewGroup (full): want 19 entries, got %d", len(entries))
 	}
 }
 
 func TestCommonPrimaryViewGroup_ProjectViewDescription(t *testing.T) {
+	// Single-project (SwitchProjectView nil): ctrl+p is omitted entirely — the
+	// Outliner is the sole per-project view, so there is nothing to toggle.
+	t.Run("single-project omits ctrl+p", func(t *testing.T) {
+		entries := CommonPrimaryViewGroup(CommonPrimaryViewDeps{})
+		for _, entry := range entries {
+			if entry.Binding != nil && entry.Binding.Key == "ctrl+p" {
+				t.Fatalf("single-project should omit ctrl+p, got %q", entry.Binding.Description)
+			}
+		}
+	})
+
+	// Cross-project (SwitchProjectView set): ctrl+p drills into the highlighted
+	// project's outliner, defaulting to an accurate label.
 	tests := []struct {
 		name string
 		deps CommonPrimaryViewDeps
 		want string
 	}{
 		{
-			name: "single-project default",
-			deps: CommonPrimaryViewDeps{},
-			want: "Toggle project tree/outliner",
+			name: "cross-project default label",
+			deps: CommonPrimaryViewDeps{SwitchProjectView: actFn()},
+			want: "Open highlighted project's outliner",
 		},
 		{
-			name: "cross-project drill-in",
+			name: "cross-project explicit label",
 			deps: CommonPrimaryViewDeps{
-				SwitchProjectViewDescription: "Open highlighted project's tree",
+				SwitchProjectView:            actFn(),
+				SwitchProjectViewDescription: "Open highlighted project's outliner",
 			},
-			want: "Open highlighted project's tree",
+			want: "Open highlighted project's outliner",
 		},
 	}
 

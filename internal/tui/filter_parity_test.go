@@ -43,17 +43,14 @@ type filterParityCase struct {
 func sharedFilterViewCases() []filterParityCase {
 	return []filterParityCase{
 		{ViewFocusBoard, "FocusBoard", (&FocusBoardModel{}).buildKeyMap()},
-		{ViewFocusView, "FocusView", (&FocusViewModel{}).buildKeyMap()},
 		{ViewProjectFocusView, "ProjectFocus", (&ProjectFocusViewModel{}).buildKeyMap()},
 		{ViewAllTasks, "AllTasks", (&AllTasksViewModel{}).buildKeyMap()},
-		{ViewProjectTree, "ProjectTree", (&ProjectTreeModel{}).buildKeyMap()},
 		{ViewOutliner, "Outliner", (&OutlinerModel{project: &models.Project{}}).buildKeyMap()},
 		{ViewCrossProjectOutliner, "CrossProjectOutliner", (&OutlinerModel{}).buildKeyMap()},
 		{ViewKanban, "Kanban", (&KanbanModel{}).buildKeyMap()},
 		{ViewPriorityView, "PriorityView", (&PriorityViewModel{}).buildKeyMap()},
 		{ViewDailyReview, "DailyReview", (&DailyReviewModel{}).buildKeyMap()},
 		{ViewWeeklyReview, "WeeklyReview", (&WeeklyReviewModel{}).buildKeyMap()},
-		{ViewDueDateOverview, "DueDateOverview", (&DueDateOverviewModel{}).buildKeyMap()},
 		{ViewRecentActivity, "RecentActivity", (&RecentActivityModel{}).buildKeyMap()},
 	}
 }
@@ -191,25 +188,12 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		m := &FocusBoardModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
-	case "FocusView":
-		m := &FocusViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
 	case "ProjectFocus":
 		m := &ProjectFocusViewModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "AllTasks":
 		m := &AllTasksViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin(), projectFilter: make(map[string]bool)}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
-	case "ProjectTree":
-		m := &ProjectTreeModel{
-			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
-			project:           &models.Project{ID: "p1", Name: "Project"},
-			filter:            NewFilterState(),
-			sort:              NewSortState(),
-		}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	case "Outliner":
@@ -248,10 +232,6 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		m := &WeeklyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.pendingPrefix = "F"
 		return m.GetPrefixPopupInfo()
-	case "DueDateOverview":
-		m := &DueDateOverviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
 	case "RecentActivity":
 		m := &RecentActivityModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
@@ -267,27 +247,24 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 // sessions 2-4 can diff against them when they touch wiring.
 func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	wants := map[string][]string{
-		// Focus Board: full shared wiring including Fd due date.
-		"FocusBoard": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		// Full shared wiring including Fd due date.
-		"FocusView":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		// Focus Board: full shared wiring including Fd due date, plus the FP
+		// "by project" Backlog quick filter (analogous to All Tasks' FP).
+		"FocusBoard":   {"#", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		"ProjectFocus": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// All Tasks: Fd is a direct cycle-binding (not a sub-prefix), and P is
 		// a view-specific direct project filter toggle.
 		"AllTasks": {"#", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		// Project Tree and Outliner append view-specific filters for
+		// The Outliner appends view-specific filters for
 		// completed/actionable/section/columns plus Fv saved filters.
-		"ProjectTree":          {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
 		"Outliner":             {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
 		"CrossProjectOutliner": {"#", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
 		"Kanban":               {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// Priority view appends a view-specific direct binding `r` (toggle
 		// actionable filter) under the F prefix.
-		"PriorityView":    {"#", "S", "a", "d", "h", "i", "k", "p", "r", "s", "t", "x"},
-		"DailyReview":     {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"WeeklyReview":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"DueDateOverview": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"RecentActivity":  {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"PriorityView":   {"#", "S", "a", "d", "h", "i", "k", "p", "r", "s", "t", "x"},
+		"DailyReview":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"WeeklyReview":   {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"RecentActivity": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 	}
 
 	for _, tc := range sharedFilterViewCases() {
@@ -425,7 +402,6 @@ func TestFilterParity_SharedFilterViews_AdvertiseFk(t *testing.T) {
 // stay in lockstep.
 func TestFilterParity_ScoreSubPrefix_CapabilityGated(t *testing.T) {
 	supportsCustomInput := map[string]bool{
-		"ProjectTree":          true,
 		"Outliner":             true,
 		"CrossProjectOutliner": true,
 	}
@@ -611,7 +587,6 @@ func TestScoreSubPrefix_AllSharedViewsAdvertiseFullLadder(t *testing.T) {
 	wantNoCustomInput := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "c"}
 	wantWithCustomInput := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "c"}
 	supportsCustomInput := map[string]bool{
-		"ProjectTree":          true,
 		"Outliner":             true,
 		"CrossProjectOutliner": true,
 	}

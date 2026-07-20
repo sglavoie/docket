@@ -20,7 +20,7 @@ just tidy        # Clean up go.mod and go.sum
 just clean       # Remove build artifacts
 ```
 
-Run a single test file: `go test ./internal/models/task_test.go`
+Run a single test file: `go test ./internal/models/task_basic_test.go`
 Run tests with verbose output: `go test -v ./...`
 
 ## Architecture Overview
@@ -37,7 +37,7 @@ The `internal/storage/` package handles persistence. Tasks are stored in human-r
 
 The `internal/config/` package manages the JSON config file (`~/.tt/.tt.json` by default, or the `tt` folder in iCloud Drive when available). It stores project metadata, current project selection, and tool preferences (fzf, glow). The Config struct holds project references; actual task data lives in markdown files. Default data-root and config-path decisions route through the helpers in `internal/config/paths.go`.
 
-The `internal/tui/` package implements the BubbleTea interface. The `AppModel` in `app.go` manages a view stack for navigation. Each view (dashboard, project tree, task detail, project creator) is a separate model that receives delegated Update/View calls.
+The `internal/tui/` package implements the BubbleTea interface. The `AppModel` in `app.go` manages a view stack for navigation. Each view (dashboard, outliner, task detail, project creator) is a separate model that receives delegated Update/View calls.
 
 The `internal/external/` package wraps optional tool integrations (fzf for fuzzy selection, glow for markdown rendering, VS Code for editing).
 
@@ -67,7 +67,7 @@ Description here.
 
 ### TUI Navigation Model
 
-The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`. Pressing Enter on a task opens glow for viewing. Pressing Esc pops views until reaching dashboard.
+The TUI uses a view stack pattern. Selecting a project pushes `ViewOutliner` (the ProjectTree view was retired; the Outliner is the surviving per-project surface). Pressing Enter on a task opens glow for viewing. Pressing Esc pops views until reaching dashboard.
 
 ### TUI Keybinding Constraints
 
@@ -120,8 +120,8 @@ List-row renderers (Focus Board, Kanban, Outliner, All-Tasks, Daily/Weekly revie
 The three primary flows covered by smoke tests in `internal/tui/primary_flows_test.go`:
 
 1. **Capture → Inbox** (`TestCaptureCreatesInboxTask`): `parseQuickCapture` with no `/section` sigil sets `result.section = ""`, which `createTask` routes to `SectionInbox`.
-2. **Inbox → Today** (`TestMoveToTodayUpdatesStatus`): `task.SetSection(models.SectionNext)` moves a task from Inbox to the Next (today) queue without touching its status.
-3. **Today → Complete** (`TestCompleteTodayTaskUpdatesProgress`): `task.Complete()` on a SectionNext task sets `StatusDone`, moves to `SectionCompleted`, and records `CompletedAt`.
+2. **Inbox → Next** (`TestMoveToNextUpdatesStatus`): `task.SetSection(models.SectionNext)` moves a task from Inbox to the Next (on-deck) section without touching its status. `SectionNext` is the on-deck shortlist (reachable via `;q`), distinct from Today — the Daily Plan config list reachable via `;w`.
+3. **Next → Complete** (`TestCompleteNextTaskUpdatesProgress`): `task.Complete()` on a `SectionNext` task sets `StatusDone`, moves to `SectionCompleted`, and records `CompletedAt`.
 
 ### Risky Config Flags
 

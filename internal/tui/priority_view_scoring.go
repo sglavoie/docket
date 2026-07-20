@@ -1,85 +1,19 @@
 package tui
 
 import (
-	"fmt"
-	"strings"
-	"time"
-
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/util"
 )
 
-// computeSuggestionScore calculates the suggestion score for a task.
-// Builds on the shared urgency score with additional factors for
-// actionability. Higher scores = more recommended as the suggested next task.
-func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
-	score := ComputeUrgencyScore(task, m.queueIDs[task.ID])
-
-	// Leaf task bonus: prefer actionable leaf tasks over containers
-	if task.IsLeaf() {
-		score += 800
-	}
-
-	// Container penalty: penalize tasks with incomplete children
-	if len(task.Children) > 0 && !m.allChildrenComplete(task) {
-		score -= 1000
-	}
-
-	// Task age: older tasks get a small boost to avoid stagnation
-	daysSinceCreated := util.DaysBetween(task.CreatedAt, time.Now())
-	ageBonus := min(
-		// 30 points per week
-		daysSinceCreated/7,
-		// Cap at 300 points
-		10)
-	score += ageBonus * 30
-
-	// Recent momentum: boost tasks with recent activity
-	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, time.Now())
-	if daysSinceUpdated == 0 {
-		score += 400 // Updated today
-	} else if daysSinceUpdated <= 3 {
-		score += 200 // Updated within 3 days
-	}
-
-	// Unblocking bonus: prefer tasks that unblock others
-	blockedByThisCount := len(m.project.GetBlockedByTasks(task))
-	unblockingBonus := min(blockedByThisCount,
-		// Cap at 3
-		3)
-	score += unblockingBonus * 150
-
-	// State-bucket scoring: Next is boosted, Waiting/Review/Standby/Someday penalized
-	switch taskSectionBucket(task) {
-	case models.SectionNext:
-		score += 100
-	case models.SectionWaiting:
-		score -= 100
-	case models.SectionReview:
-		score -= 100
-	case models.SectionStandby:
-		score -= 200
-	case models.SectionSomeday:
-		score -= 300
-	}
-
-	return score
-}
-
-// allChildrenComplete returns true if all children of the task are complete.
-func (m *PriorityViewModel) allChildrenComplete(task *models.Task) bool {
-	for _, child := range task.Children {
-		if !child.IsTerminalState() {
-			return false
-		}
-	}
-	return true
-}
-
-// computeSuggestion finds the highest-scoring non-dismissed actionable task.
+// computeSuggestion selects the smart suggestion as the first non-dismissed
+// task of the shared cross-project focus ranking. Using
+// focus.RankCrossProjectTasks (the same engine that backs the Planner Backlog
+// and the By-Score tab) guarantees the Priority suggestion recommends the same
+// task the shared ordering ranks first — there is no second scoring or reason
+// heuristic in the TUI package. The candidate set is the actionable groups
+// (overdue, today, this week, later, backlog), excluding blocked/waiting tasks.
 func (m *PriorityViewModel) computeSuggestion() {
 	m.suggestion = nil
 
@@ -95,115 +29,28 @@ func (m *PriorityViewModel) computeSuggestion() {
 		return
 	}
 
-	// Find highest-scoring non-dismissed task
-	var best *PriorityTask
-	bestScore := -999999
-
+	byID := make(map[string]*PriorityTask, len(candidates))
+	focusTasks := make([]focus.FocusTask, 0, len(candidates))
 	for _, pt := range candidates {
-		if m.dismissedIDs[pt.Task.ID] {
+		byID[pt.Task.ID] = pt
+		focusTasks = append(focusTasks, focus.FocusTask{Task: pt.Task, Project: m.project})
+	}
+
+	// RankCrossProjectTasks drops dismissed IDs and sorts by the shared score;
+	// the first survivor whose task is in our candidate set is the suggestion.
+	ranked := focus.RankCrossProjectTasks(focusTasks, m.dismissedIDs, m.runtime)
+	for _, sft := range ranked {
+		pt := byID[sft.Task.ID]
+		if pt == nil {
 			continue
 		}
-
-		suggestionScore := m.computeSuggestionScore(pt.Task)
-		if suggestionScore > bestScore {
-			bestScore = suggestionScore
-			best = pt
+		m.suggestion = &SuggestedTask{
+			Task:   pt,
+			Score:  sft.Score,
+			Reason: sft.Reason,
 		}
-	}
-
-	if best == nil {
 		return
 	}
-
-	m.suggestion = &SuggestedTask{
-		Task:   best,
-		Score:  bestScore,
-		Reason: m.getSuggestionReason(best.Task),
-	}
-}
-
-// getSuggestionReason generates a human-readable explanation for why a task is suggested.
-func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
-	var reasons []string
-
-	// Priority
-	switch task.Priority {
-	case 1:
-		reasons = append(reasons, "critical priority")
-	case 2:
-		reasons = append(reasons, "high priority")
-	}
-
-	// Due date status
-	if task.DueDate != nil {
-		now := time.Now()
-		today := util.StartOfDay(now)
-		dueDay := util.StartOfDay(*task.DueDate)
-
-		if dueDay.Before(today) {
-			reasons = append(reasons, "overdue")
-		} else if dueDay.Equal(today) {
-			reasons = append(reasons, "due today")
-		} else if dueDay.Before(today.AddDate(0, 0, 7)) {
-			reasons = append(reasons, "due this week")
-		}
-	}
-
-	// In-progress state
-	if task.IsInState(models.StateInProgress) {
-		reasons = append(reasons, "in progress")
-	}
-
-	// Explicit Focus Queue membership
-	if m.queueIDs[task.ID] {
-		reasons = append(reasons, "in focus queue")
-	}
-
-	// Unblocking count
-	blockedByThisCount := len(m.project.GetBlockedByTasks(task))
-	if blockedByThisCount > 0 {
-		if blockedByThisCount == 1 {
-			reasons = append(reasons, "unblocks 1 task")
-		} else {
-			reasons = append(reasons, fmt.Sprintf("unblocks %d tasks", blockedByThisCount))
-		}
-	}
-
-	// Momentum
-	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, time.Now())
-	if daysSinceUpdated == 0 && !task.IsInState(models.StateInProgress) {
-		reasons = append(reasons, "recent activity")
-	}
-
-	// Composite score from scoring profile
-	if m.runtime != nil {
-		if profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID); profile != nil {
-			pct := scoring.NormalizedScore(task, profile)
-			if int(pct) > 0 {
-				reasons = append(reasons, fmt.Sprintf("composite score %d/%d", int(pct), scoring.MaxNormalizedScore(profile)))
-			}
-		}
-	}
-
-	// If no specific reasons, provide a generic one
-	if len(reasons) == 0 {
-		return "Ready to work on"
-	}
-
-	// Join reasons with " + "
-	var result strings.Builder
-	for i, r := range reasons {
-		if i > 0 {
-			result.WriteString(" + ")
-		}
-		// Capitalize first reason
-		if i == 0 {
-			result.WriteString(strings.ToUpper(r[:1]) + r[1:])
-		} else {
-			result.WriteString(r)
-		}
-	}
-	return result.String()
 }
 
 // dismissSuggestion adds the current suggestion to the dismissed set.

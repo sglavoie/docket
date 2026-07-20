@@ -268,7 +268,7 @@ func TestRenderTutorContentSampledAlignedRows(t *testing.T) {
 		{"Quick Capture Grammar", "    @date       Due date: @tomorrow @friday @+3d"},
 		{"Quick Capture Grammar", "    ^type       Task type: ^epic ^story ^task ^bug ^idea"},
 		{"Bulk Operations", "  ,s  Start all selected"},
-		{"Pipeline Views", "  Plan:     ;q backlog, ;D due dates, ;d daily review, ;R roadmap"},
+		{"Pipeline Views", "  Plan:     ;q next, ;D due dates, ;d daily review, ;R roadmap"},
 		{"The Task Pipeline", "  Capture   Get ideas and tasks in quickly"},
 		{"Attachments", "  tt attach 5 src/main.go:42      # Code reference (opens in IDE)"},
 	}

@@ -9,26 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestProjectTreeQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
-
-	tasks := []*models.Task{
-		newPrimaryRowStyleTask(t, "tree-p1", 1, "Project tree queued P1", 1),
-		newPrimaryRowStyleTask(t, "tree-p2", 2, "Project tree queued P2", 2),
-	}
-	m := NewProjectTreeModel(newPrimaryRowStyleProject(t, "tree-project", tasks), nil, nil)
-	m.queueIDs = map[string]bool{}
-	for _, task := range tasks {
-		m.queueIDs[task.ID] = true
-	}
-	for _, task := range tasks {
-		line := m.renderNodeWithWidth(m.findNodeByTaskID(task.ID), false, false, 120)
-		assertPrimaryRowTitleStyle(t, line, task)
-		assertQueueIndicatorOnly(t, line)
-	}
-}
-
 func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
@@ -39,10 +19,6 @@ func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 	}
 
 	m := NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), nil, nil)
-	m.queueIDs = map[string]bool{}
-	for _, task := range tasks {
-		m.queueIDs[task.ID] = true
-	}
 	m.SetSize(120, 20)
 	m.rebuildRows()
 
@@ -62,6 +38,10 @@ func newPrimaryRowStyleTask(t *testing.T, id string, shortID int, title string, 
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}
 	task.Priority = priority
+	// Queue membership is the StateNext workflow state, so the "q" indicator
+	// renders for StateNext tasks (the persisted order index is no longer the
+	// source of badge membership).
+	task.WorkflowState = models.StateNext
 	return task
 }
 

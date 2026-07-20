@@ -38,13 +38,12 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 		})
 	}
 
-	// Tab 0: General (5 fields)
+	// Tab 0: General (4 fields)
 	base := tabFieldStart[tabGeneral]
 	add(base+0, tabGeneral, 0, "General", "Editor", "editor command open tasks", "code")
 	add(base+1, tabGeneral, 0, "General", "External editor", "external editor ctrl o reference preview gui", "code")
 	add(base+2, tabGeneral, 0, "General", "Default Context", "context project personal", "personal")
 	add(base+3, tabGeneral, 0, "General", "Undo History Depth", "undo history depth", strconv.Itoa(config.DefaultUndoHistoryDepth))
-	add(base+4, tabGeneral, 0, "General", "Default View", "default view project outliner tree", "Outliner")
 
 	// Tab 1: Palette (18 fields)
 	base = tabFieldStart[tabPalette]
@@ -122,22 +121,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+0, tabAttachments, 0, "General > Attachments", "Attachment Editor", "attachment editor file open default", "")
 	add(base+1, tabAttachments, 0, "General > Attachments", "Code Editor", "code editor reference open", "code")
 
-	// Tab 5: Project Tree (15 column fields)
-	base = tabFieldStart[tabProjectTree]
-	treeIdx := 0
-	for _, col := range AllColumns {
-		if col.OutlinerOnly {
-			continue
-		}
-		label := col.Label
-		if col.ID == ColPriority {
-			label += " Mode"
-		}
-		add(base+treeIdx, tabProjectTree, 0, "Views > Project Tree", label, "project tree column visible hidden", "Visible")
-		treeIdx++
-	}
-
-	// Tab 6: Outliner (23 fields across 3 sub-tabs)
+	// Tab 5: Outliner (24 fields across 3 sub-tabs)
 	// subTab 0: Sidebar
 	base = subTabFieldStart(tabOutliner, 0)
 	add(base+0, tabOutliner, 0, "Views > Sidebar", "Cross-Project Sidebar", "cross project sidebar outliner enabled", "Enabled")
@@ -157,7 +141,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 		add(base+i, tabOutliner, 2, "Views > Column Visibility", label, "outliner column visible hidden", "Visible")
 	}
 
-	// Tab 7: Kanban (9 fields)
+	// Tab 6: Kanban (9 fields)
 	base = tabFieldStart[tabKanban]
 	add(base+0, tabKanban, 0, "Views > Kanban", "Default Mode", "kanban mode section status priority", "Section (GTD)")
 	add(base+1, tabKanban, 0, "Views > Kanban", "Default Start Column", "kanban start column inbox", "inbox")
@@ -168,7 +152,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 		add(base+5+i, tabKanban, 0, "Views > Kanban", label+" Enabled", "kanban mode enable disable toggle", "")
 	}
 
-	// Tab 8: Notifications (15 fields across 3 sub-tabs)
+	// Tab 7: Notifications (15 fields across 3 sub-tabs)
 	// subTab 0: Reviews (4 fields)
 	base = subTabFieldStart(tabNotifications, 0)
 	add(base+0, tabNotifications, 0, "Notifications > Reviews", "Daily Review Alert", "daily review notification alert enabled", "Enabled")
@@ -191,7 +175,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+0, tabNotifications, 2, "Notifications > Projects", "Project Health Alert", "project health notification stale", "Enabled")
 	add(base+1, tabNotifications, 2, "Notifications > Projects", "Project Stale Days", "project stale days notification threshold", strconv.Itoa(config.DefaultAlertProjectStaleDays))
 
-	// Tab 10: Appearance (5 fields)
+	// Tab 8: Appearance (5 fields)
 	base = tabFieldStart[tabAppearance]
 	add(base+0, tabAppearance, 0, "Appearance", "Zebra Striping", "zebra striping rows alternating background", "Disabled")
 	add(base+1, tabAppearance, 0, "Appearance", "Week-End Day", "week end day friday saturday sunday eow", "Sunday")

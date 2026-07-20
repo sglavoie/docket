@@ -8,7 +8,7 @@ func pipelineStage(vt ViewType) string {
 		return "Capture"
 	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
 		return "Triage"
-	case ViewFocusView, ViewDueDateOverview, ViewDailyReview, ViewRoadmap:
+	case ViewDailyReview, ViewRoadmap:
 		return "Plan"
 	case ViewFocusBoard:
 		return "Work"
@@ -44,21 +44,19 @@ func pipelineNextHintOnboarding(vt ViewType) string {
 func pipelineNextHint(vt ViewType) string {
 	switch vt {
 	case ViewQuickCapture, ViewBulkCapture:
-		return "Next: ctrl+i inbox | ;q backlog"
+		return "Next: ctrl+i inbox | ;q next"
 	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
-		return "Next: ;q backlog | ;w today"
-	case ViewFocusView:
-		return "ctrl+t today | ctrl+f weekly | Next: ;w today"
-	case ViewDueDateOverview, ViewRoadmap:
+		return "Next: ;q next | ;w today"
+	case ViewRoadmap:
 		return "Next: ;w today | Enter project"
 	case ViewDailyReview:
 		return "ctrl+f weekly | Next: ;w today"
 	case ViewFocusBoard:
 		return "ctrl+t backlog | Next: ;r review | ;; hub"
 	case ViewWeeklyReview:
-		return "ctrl+f daily | Next: ;i capture | ;q backlog"
+		return "ctrl+f daily | Next: ;i capture | ;q next"
 	case ViewMetricsDashboard, ViewRecentActivity:
-		return "Next: ;i capture | ;q backlog"
+		return "Next: ;i capture | ;q next"
 	default:
 	}
 	return ""

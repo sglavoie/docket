@@ -132,6 +132,13 @@ func (m *InboxProcessorModel) findTaskByID(taskID, _ string) (*models.Task, *mod
 	return nil, nil
 }
 
+func (m *InboxProcessorModel) projectByID(projectID string) *models.Project {
+	if m.project != nil && m.project.ID == projectID {
+		return m.project
+	}
+	return nil
+}
+
 func (m *InboxProcessorModel) showProjectInHeader() bool   { return false }
 func (m *InboxProcessorModel) headerTitle() string         { return "Inbox" }
 func (m *InboxProcessorModel) headerSubtitleExtra() string { return "" }
@@ -141,7 +148,7 @@ func (m *InboxProcessorModel) emptyStateText() string {
 func (m *InboxProcessorModel) emptyInboxText() string {
 	return icons.Get("success") + " Inbox is empty! All tasks have been triaged."
 }
-func (m *InboxProcessorModel) returnHint() string   { return "return to project tree" }
+func (m *InboxProcessorModel) returnHint() string   { return "return to outliner" }
 func (m *InboxProcessorModel) viewType() ViewType   { return ViewInboxProcessor }
 func (m *InboxProcessorModel) helpViewName() string { return "Inbox Processor" }
 

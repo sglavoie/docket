@@ -235,19 +235,18 @@ func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *move
 
 func (e *moveHandlerEnv) appModel() *AppModel {
 	return &AppModel{
-		configManager:            e.mgr,
-		runtime:                  testRuntimeAt(e.cfg.DataDir(), e.cfg),
-		projects:                 map[string]*models.Project{e.source.ID: e.source, e.dest.ID: e.dest},
-		persister:                NewProjectService(),
-		appService:               e.svc,
-		views:                    NewViewRegistry(),
-		viewStack:                []ViewType{ViewDashboard},
-		width:                    80,
-		height:                   24,
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		navHistory:               NewNavHistory(),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        e.mgr,
+		runtime:              testRuntimeAt(e.cfg.DataDir(), e.cfg),
+		projects:             map[string]*models.Project{e.source.ID: e.source, e.dest.ID: e.dest},
+		persister:            NewProjectService(),
+		appService:           e.svc,
+		views:                NewViewRegistry(),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		navHistory:           NewNavHistory(),
 	}
 }
 

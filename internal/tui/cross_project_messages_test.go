@@ -22,7 +22,7 @@ func TestCloseCrossOutlinerMsgPreservesOutliner(t *testing.T) {
 
 	current := app.currentView()
 	switch current {
-	case ViewDashboard, ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
+	case ViewDashboard, ViewOutliner, ViewCrossProjectOutliner:
 	default:
 		t.Errorf("view stack should be at an anchor view after CloseCrossOutlinerMsg, got %v", current)
 	}

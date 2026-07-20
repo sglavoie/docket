@@ -30,13 +30,6 @@ func TestAllTasksFocusDueDateDailyReviewWeeklyReviewTaskRowsUseProjectColor(t *t
 	allTasks := NewAllTasksViewModel(runtime, nil)
 	allTasks.SetSize(120, 24)
 
-	queue := []FocusTask{}
-	focus := NewFocusViewModel(runtime, nil, &queue, map[string]bool{}, map[string]bool{}, map[string]bool{})
-	focus.SetSize(120, 24)
-
-	dueDates := NewDueDateOverviewModel(runtime, nil)
-	dueDates.SetSize(120, 24)
-
 	dailyReview := NewDailyReviewModel(runtime, nil)
 	dailyReview.SetSize(120, 24)
 
@@ -51,18 +44,6 @@ func TestAllTasksFocusDueDateDailyReviewWeeklyReviewTaskRowsUseProjectColor(t *t
 			name: "All Tasks",
 			render: func() string {
 				return allTasks.renderTaskLine(item, false, false, 60, 0, 120, nil)
-			},
-		},
-		{
-			name: "Focus list",
-			render: func() string {
-				return focus.renderTaskLineWithPrefix(FocusTask{Task: task, Project: project}, false, 60, "", false, false, nil, 0)
-			},
-		},
-		{
-			name: "Due Dates",
-			render: func() string {
-				return dueDates.renderTaskLine(item, false, 60, nil, 0)
 			},
 		},
 		{

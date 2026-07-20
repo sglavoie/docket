@@ -55,11 +55,6 @@ type ProjectPinnedToggledMsg struct{ Project *models.Project }
 // Project Tree Messages
 // =============================================================================
 
-// ShowProjectTreeMsg opens the project tree view for a project.
-type ShowProjectTreeMsg struct {
-	Project *models.Project
-}
-
 // =============================================================================
 // Project Cycling Messages
 // =============================================================================

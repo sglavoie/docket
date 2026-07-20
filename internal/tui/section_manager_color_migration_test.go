@@ -47,7 +47,7 @@ func TestSetSectionColorIsSettingsDomainOnly(t *testing.T) {
 	}
 	rs := testRuntimeAt(dir, cfg)
 
-	m := NewSectionManagerModel(nil, project, rs, false)
+	m := NewSectionManagerModel(project, rs, false)
 	crossLoaded, err := models.NewProject("cross-loaded", "Cross Loaded", "")
 	if err != nil {
 		t.Fatalf("NewProject(cross-loaded): %v", err)
@@ -148,7 +148,7 @@ func TestSetSectionColorFailedCommitLeavesSettingsAndProjectCachesUnchanged(t *t
 	}
 	other.SetSectionColor(models.SectionNext, "yellow")
 
-	m := NewSectionManagerModel(nil, selected, runtime, false)
+	m := NewSectionManagerModel(selected, runtime, false)
 	msg := m.setSectionColor(models.SectionNext, "green")()
 	if _, ok := msg.(ErrorMsg); !ok {
 		t.Fatalf("failed commit resolved to %T, want ErrorMsg", msg)

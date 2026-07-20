@@ -8,6 +8,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
@@ -45,12 +46,19 @@ Examples:
 
 var focusQueueCmd = &cobra.Command{
 	Use:   "queue",
-	Short: "Show the persisted focus work queue",
-	Long: `Show tasks that have been accepted into the focus work queue.
+	Short: "Show the Planner's Next shortlist (StateNext tasks)",
+	Long: `Show the Planner's "Next" on-deck shortlist across projects.
 
-The queue is managed through the TUI's focus view: press 'a' to accept a
-suggestion, 'q' to toggle Queue membership, and J/K to reorder. Pressing 'x'
-dismisses a suggestion without changing existing Queue items.
+Next membership is the workflow state: a task is in Next exactly when its
+state is "next" (StateNext). The persisted focus queue list is ordering-only
+— it just orders the StateNext tasks (indexed members first, then any
+unindexed StateNext task). Today (the Daily Plan) is a mutually exclusive
+planning horizon, so a task is never in both Next and Today.
+
+Promote a Backlog task from the Planner (';q' opens Planner/Next, ';w' opens
+Planner/Today): press 'q' to move it to Next or 'w' to move it to Today. From
+the CLI use 'tt focus queue add' (Next) or 'tt focus today add' (Today), and
+reorder Next with 'tt focus queue move'.
 
 Examples:
   tt focus queue`,
@@ -369,90 +377,169 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// nextTasks gathers every StateNext task across the given projects, ordered by
+// the Focus Queue index: indexed members first in queue order, then unindexed
+// StateNext tasks (deterministically by priority then short ID). Membership is
+// the workflow state, so unindexed StateNext tasks are included and stale
+// indexed non-Next entries are excluded.
+func nextTasks(projects []*models.Project, queue []config.FocusQueueItem) []focus.FocusTask {
+	var tasks []focus.FocusTask
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil || task.State() != models.StateNext {
+				continue
+			}
+			tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
+		}
+	}
+	rank := focus.FocusQueueRank(queue)
+	sort.SliceStable(tasks, func(i, j int) bool {
+		ri := focus.RankOrUnindexed(rank, tasks[i].Task.ID)
+		rj := focus.RankOrUnindexed(rank, tasks[j].Task.ID)
+		if ri != rj {
+			return ri < rj
+		}
+		if tasks[i].Task.Priority != tasks[j].Task.Priority {
+			return tasks[i].Task.Priority < tasks[j].Task.Priority
+		}
+		return tasks[i].Task.ShortID < tasks[j].Task.ShortID
+	})
+	return tasks
+}
+
+// migrateLegacyFocusQueueMembers backfills StateNext onto Focus Queue members
+// that predate the state-driven queue before the ordering-only list is pruned, so
+// the first `tt focus queue` invocation cannot delete an unmigrated legacy queue.
+//
+// The backfill commits through the application layer's BulkTransition, so every
+// changed project lands in ONE revision-checked workspace transaction with a
+// durable ledger entry — the same journaled, undoable boundary as an ordinary
+// state change — rather than raw per-project SaveProjectLocked writes. The batch is
+// all-or-nothing: on a commit failure nothing is written, so every project state
+// and the FocusQueue index stay at their pre-migration values and the caller skips
+// pruning (leaving the unmigrated queue intact for a later retry). On success the
+// service committed against its own fresh snapshot, so the caller's in-memory
+// projects are reloaded here to observe the migrated StateNext membership. Returns
+// an error only when the transaction itself fails; a queue with no legacy members
+// is a no-op.
+func migrateLegacyFocusQueueMembers(workspace *CLIWorkspace, queue []config.FocusQueueItem, projects []*models.Project) error {
+	ids := focus.LegacyNextQueueMemberIDs(queue, projects)
+	if len(ids) == 0 {
+		return nil
+	}
+	// A bare application service (no default planning-artifact builder) keeps the
+	// migration a pure state backfill, matching `tt doctor`'s repair semantics: it
+	// journals the StateNext transition without folding Today/Next reconciliation.
+	svc := newAppService(workspace.Manager)
+	if _, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
+		TaskIDs:    ids,
+		Target:     models.StateNext,
+		UndoAction: "Migrate legacy Next queue",
+	}); err != nil {
+		return translateAppError(err)
+	}
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		if err := storage.LoadProject(project); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to reload project %s after focus queue migration: %v\n", project.Name, err)
+		}
+	}
+	return nil
+}
+
+// pruneStaleFocusQueue drops order-index entries whose task has left Next so the
+// ordering-only list stays aligned with the state-driven membership. It is
+// best-effort maintenance: a save failure is a warning, not a command failure.
+func pruneStaleFocusQueue(workspace *CLIWorkspace, queue []config.FocusQueueItem, ordered []focus.FocusTask) {
+	nextIDs := make(map[string]bool, len(ordered))
+	for _, ft := range ordered {
+		nextIDs[ft.Task.ID] = true
+	}
+	pruned := make([]config.FocusQueueItem, 0, len(queue))
+	for _, item := range queue {
+		if nextIDs[item.TaskID] {
+			pruned = append(pruned, item)
+		}
+	}
+	if len(pruned) == len(queue) {
+		return
+	}
+	domains, err := cloneCLIWorkspaceDomains(workspace)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to prune focus queue: %v\n", err)
+		return
+	}
+	domains.Planning.SetFocusQueue(pruned)
+	if err := commitCLIPlanning(workspace, domains.Planning); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
+	}
+}
+
 func runFocusQueue(cmd *cobra.Command, args []string) error {
 	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
 		return err
 	}
 
-	planning := workspace.Runtime.Planning()
-	queueItems := planning.FocusQueue
 	wantJSON := jsonRequested(cmd)
-	if len(queueItems) == 0 {
-		if wantJSON {
-			return printJSON([]focusTaskJSON{})
-		}
-		fmt.Println("Focus queue is empty.")
-		fmt.Println("Accept suggestions in the TUI focus view (press 'a') to build your queue.")
-		return nil
+	queue := workspace.Runtime.Planning().GetFocusQueue()
+	projects := loadActiveProjects(workspace.Runtime.ActiveProjects())
+
+	// Migrate legacy (pre-state-driven) queue members to StateNext BEFORE pruning,
+	// so a first listing can never delete an unmigrated queue that is the only
+	// evidence of its members.
+	migrationErr := migrateLegacyFocusQueueMembers(workspace, queue, projects)
+	if migrationErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to migrate legacy focus queue members: %v\n", migrationErr)
+	}
+	ordered := nextTasks(projects, queue)
+
+	// Keep the ordering-only index aligned with state-driven membership — but only
+	// after a successful migration. A failed migration must leave the index at its
+	// pre-migration value; pruning here would drop the still-legacy members (they
+	// read as non-Next) exactly when their only evidence is the queue entry.
+	if migrationErr == nil {
+		pruneStaleFocusQueue(workspace, queue, ordered)
 	}
 
-	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(workspace.Runtime.ActiveProjects()))
-
 	if wantJSON {
-		entries := make([]focusTaskJSON, 0, len(queueItems))
-		for _, item := range queueItems {
-			project, ok := projectMap[item.ProjectID]
-			if !ok {
-				continue
-			}
-			task, ok := taskMap[item.TaskID]
-			if !ok || task.IsTerminalState() {
-				continue
-			}
-			entries = append(entries, focusTaskToJSON(task, project))
+		entries := make([]focusTaskJSON, 0, len(ordered))
+		for _, ft := range ordered {
+			entries = append(entries, focusTaskToJSON(ft.Task, ft.Project))
 		}
 		return printJSON(entries)
+	}
+
+	if len(ordered) == 0 {
+		fmt.Println("Focus queue is empty.")
+		fmt.Println("Move a task to Next (press 'q' in the TUI, or `tt focus queue add`) to build your queue.")
+		return nil
 	}
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
 
-	var queuedItems []config.FocusQueueItem
-	for _, item := range queueItems {
-		project, ok := projectMap[item.ProjectID]
-		if !ok {
-			continue
-		}
-		task, ok := taskMap[item.TaskID]
-		if !ok || task.IsTerminalState() {
-			continue
-		}
-
-		queuedItems = append(queuedItems, item)
-		dueStr := focus.FormatRelativeDue(task.DueDate)
-
+	for i, ft := range ordered {
+		task := ft.Task
 		t.AppendRow(table.Row{
-			len(queuedItems),
-			util.Truncate(project.Name, 15),
+			i + 1,
+			util.Truncate(ft.Project.Name, 15),
 			task.ShortID,
 			task.Type.Icon(),
 			task.State().Icon(),
 			task.Priority,
 			util.Truncate(task.Title, 40),
-			dueStr,
+			focus.FormatRelativeDue(task.DueDate),
 		})
 	}
 
-	// Prune stale entries from the planning domain if any were skipped
-	if len(queuedItems) < len(queueItems) {
-		domains, cloneErr := cloneCLIWorkspaceDomains(workspace)
-		if cloneErr != nil {
-			return cloneErr
-		}
-		domains.Planning.FocusQueue = queuedItems
-		if err := commitCLIPlanning(workspace, domains.Planning); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
-		}
-	}
-
-	if len(queuedItems) == 0 {
-		fmt.Println("Focus queue is empty (all queued tasks have been completed).")
-		return nil
-	}
-
 	fmt.Println(t.Render())
-	fmt.Printf("\n%s in queue\n", Pluralize(len(queuedItems), "task", "tasks"))
+	fmt.Printf("\n%s in queue\n", Pluralize(len(ordered), "task", "tasks"))
 	return nil
 }

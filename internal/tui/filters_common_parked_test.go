@@ -115,24 +115,3 @@ func TestCommonFilterPrefixHintsParked(t *testing.T) {
 		t.Fatalf("active Fk hint = %+v, want parked/on/active", hint)
 	}
 }
-
-func TestProjectTreeFilterPrefixHintsParked(t *testing.T) {
-	tree := &ProjectTreeModel{filter: NewFilterState()}
-
-	hint, ok := findPrefixHint(tree.buildFilterPrefixHints(), "k")
-	if !ok {
-		t.Fatal("expected project tree filter hints to include Fk")
-	}
-	if hint.Description != "parked" || hint.Detail != "off" || hint.Active {
-		t.Fatalf("inactive project tree Fk hint = %+v, want parked/off/inactive", hint)
-	}
-
-	tree.filter.Parked = true
-	hint, ok = findPrefixHint(tree.buildFilterPrefixHints(), "k")
-	if !ok {
-		t.Fatal("expected project tree filter hints to include Fk when active")
-	}
-	if hint.Description != "parked" || hint.Detail != "on" || !hint.Active {
-		t.Fatalf("active project tree Fk hint = %+v, want parked/on/active", hint)
-	}
-}

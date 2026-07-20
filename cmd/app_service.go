@@ -415,13 +415,18 @@ func newAppService(mgr *config.Manager) *app.Service {
 // composition object for lifecycle snapshots and settings instead of rebuilding
 // the domain service graph at each mutation boundary.
 func newWorkspaceAppService(workspace *CLIWorkspace) *app.Service {
-	return app.NewServiceWithArtifacts(
+	svc := app.NewServiceWithArtifacts(
 		newCLIRepository(workspace.Manager, workspace.Dependencies),
 		nil,
 		nil,
 		app.NewStorageWorkspaceNotePort(workspace.Runtime.DataDir()),
 		nil,
 	)
+	// Fold Today/Next exclusivity into every workflow-state transition committed
+	// through the CLI service, so exclusivity holds for `tt task next/state` and
+	// every convenience state command. Focus commands override this with an
+	// additive builder for the horizon they populate.
+	return svc.WithPlanningArtifacts(cliPlanningReconcileArtifactBuilder(workspace))
 }
 
 // resolveAppTaskID applies the strict qualified-reference rules at the adapter

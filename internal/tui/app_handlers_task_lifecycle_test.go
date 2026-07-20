@@ -64,7 +64,7 @@ func TestHandleTaskMessagesTaskCreated(t *testing.T) {
 
 func TestHandleTaskMessagesTaskDeleted(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
 	msg := TaskDeletedMsg{Task: project.Tasks[0]}
 	handled, _ := app.handleTaskMessages(msg)
@@ -93,7 +93,7 @@ func TestHandleTaskMessagesTasksArchived(t *testing.T) {
 
 func TestHandleTaskMessagesTaskStatusChanged(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
 	msg := TaskStatusChangedMsg{Task: project.Tasks[0]}
 	handled, _ := app.handleTaskMessages(msg)

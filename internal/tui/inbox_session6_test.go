@@ -53,7 +53,7 @@ func TestSession6_NewPaletteCommandsCarryTriageAliases(t *testing.T) {
 		aliases []string
 	}{
 		{"plan today", []string{"toggle daily plan", "add to today"}},
-		{"send to next", []string{"plan for today", "send to today", "triage next"}},
+		{"send to next", []string{"move to next", "on deck", "triage next"}},
 		{"set due date today", []string{"due today"}},
 		{"snooze inbox task", []string{"snooze task", "defer until"}},
 	}

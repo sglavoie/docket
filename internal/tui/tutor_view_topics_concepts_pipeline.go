@@ -38,11 +38,13 @@ and tags. Use cross-project views to see everything at once.
 
 # Plan
 
-Decide what to work on. The backlog ranks tasks by priority
-and urgency.
+Decide what to work on. The Planner holds Today, Next, and a
+ranked Backlog. Next membership is the workflow state (StateNext);
+the persisted queue only orders those tasks. Promote a Backlog
+task with q (→ Next) or w (→ Today).
 
-  ;q  Backlog (suggestion-ranked focus queue)
-  ;D  Due date overview
+  ;q  Planner — Next (on-deck shortlist)
+  ;D  All Tasks grouped by due date
   ;d  Daily review
   ;R  Roadmap
 
@@ -51,8 +53,8 @@ and urgency.
 Your execution surface. Track today's commitments and dive
 into individual projects to move tasks forward.
 
-  ;w                    Today cockpit
-  Enter on a project    Open project tree, outliner, kanban
+  ;w                    Planner — Today (daily cockpit)
+  Enter on a project    Open the project outliner
 
 # Review
 

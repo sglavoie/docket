@@ -1,12 +1,13 @@
 package keymap
 
 // CommonPrimaryViewDeps holds action closures shared across primary views
-// (ProjectTree, Outliner, etc.).
+// (the Outliner and its cross-project variant).
 type CommonPrimaryViewDeps struct {
-	// SwitchProjectView switches between peer project views or drills into one.
+	// SwitchProjectView drills from the cross-project outliner into the
+	// highlighted project's outliner. Leave nil to omit the ctrl+p binding
+	// entirely (the single-project outliner has no second view to switch to).
 	SwitchProjectView Action
 	// SwitchProjectViewDescription overrides the context-specific help label.
-	// The zero value describes the single-project tree/outliner toggle.
 	SwitchProjectViewDescription string
 	// OpenProjectCyclePicker opens the numbered project cycle picker.
 	OpenProjectCyclePicker Action
@@ -47,12 +48,19 @@ type CommonPrimaryViewDeps struct {
 // CommonPrimaryViewGroup returns top-level bindings shared across primary views.
 func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 	cat := "Views"
-	projectViewDescription := deps.SwitchProjectViewDescription
-	if projectViewDescription == "" {
-		projectViewDescription = "Toggle project tree/outliner"
+	var entries []Entry
+	// ctrl+p is only meaningful from the cross-project outliner, where it drills
+	// into the highlighted project's outliner. The single-project outliner has no
+	// second view to switch to, so callers leave SwitchProjectView nil there and
+	// the binding is omitted (no ghost no-op key).
+	if deps.SwitchProjectView != nil {
+		projectViewDescription := deps.SwitchProjectViewDescription
+		if projectViewDescription == "" {
+			projectViewDescription = "Open highlighted project's outliner"
+		}
+		entries = append(entries, Bind("ctrl+p", projectViewDescription, cat, deps.SwitchProjectView))
 	}
-	entries := []Entry{
-		Bind("ctrl+p", projectViewDescription, cat, deps.SwitchProjectView),
+	entries = append(entries,
 		Bind("`", "Open project picker", "Project Cycling", deps.OpenProjectCyclePicker),
 		Bind("~", "Previous project in cycle", "Project Cycling", deps.PrevProject),
 		Bind("@", "Open cycle manager", "Project Cycling", deps.OpenCycleManager),
@@ -69,7 +77,7 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 		Bind("R", "Reload from disk", "Other", deps.ReloadFromDisk),
 		Bind("ctrl+r", "Redo", "Other", deps.Redo),
 		Bind("u", "Undo last change", "Other", deps.Undo),
-	}
+	)
 	if deps.EditLastModified != nil {
 		entries = append(entries, Bind("ctrl+l", "Edit last modified task", "Task Operations", deps.EditLastModified))
 	}

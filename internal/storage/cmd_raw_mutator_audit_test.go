@@ -26,6 +26,7 @@ const cmdSaveInfra = "infra: privileged repair/restore or test-repository adapte
 var cmdLegacySaveAllowlist = map[string]string{
 	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":    cmdSaveInfra,
 	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":              cmdSaveInfra,
+	"cmd/doctor.go:fixFocusQueueNotNext:storage.SaveProjectLocked(project)":         cmdSaveInfra,
 	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                    cmdSaveInfra,
 	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)": cmdSaveInfra,
 	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":            cmdSaveInfra,

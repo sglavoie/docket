@@ -108,7 +108,7 @@ func TestHandleTaskUpdatedMsgUsesPersister(t *testing.T) {
 func TestHandleTaskPropertyChangedMsg(t *testing.T) {
 	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	// Push project tree so we're not on dashboard (simulates in-place operation)
-	app.pushView(ViewProjectTree)
+	app.pushView(ViewOutliner)
 	initialStackLen := len(app.viewStack)
 
 	task := &models.Task{ID: "test-task", Title: "Test Task"}

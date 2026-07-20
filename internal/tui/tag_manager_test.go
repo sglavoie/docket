@@ -268,6 +268,72 @@ func TestTagManagerRenameTaskUsedTagPersistsAndDedupes(t *testing.T) {
 	}
 }
 
+func TestTagManagerEnterAppliesOutlinerFilter(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Tags = []string{"backend", "frontend"}
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.pushView(ViewOutliner)
+
+	mgr := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
+	app.showView(ViewTagManager, mgr)
+	mgr.selectTag("frontend")
+
+	// Enter emits a filter request carrying exactly the selected tag.
+	_, cmd := mgr.Update(syntheticSpecialKey(tea.KeyEnter))
+	if cmd == nil {
+		t.Fatal("enter returned nil command, want filter request")
+	}
+	msg := cmd()
+	filterMsg, ok := msg.(TagManagerFilterMsg)
+	if !ok {
+		t.Fatalf("enter message = %T, want TagManagerFilterMsg (%v)", msg, msg)
+	}
+	if filterMsg.Tag != "frontend" {
+		t.Fatalf("TagManagerFilterMsg.Tag = %q, want frontend", filterMsg.Tag)
+	}
+
+	// The app handler closes the manager and applies the tag to the outliner.
+	handled, _ := app.handleTagMessages(filterMsg)
+	if !handled {
+		t.Fatal("TagManagerFilterMsg was not handled")
+	}
+	if app.currentView() != ViewOutliner {
+		t.Fatalf("current view = %v, want ViewOutliner (manager should be closed)", app.currentView())
+	}
+	if got := app.outliner.filter.Tags; len(got) != 1 || !got["frontend"] {
+		t.Fatalf("outliner filter tags = %v, want exactly {frontend}", got)
+	}
+}
+
+func TestTagManagerEscLeavesOutlinerFilterUnchanged(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Tags = []string{"backend", "frontend"}
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.outliner.filter.Tags = map[string]bool{"backend": true}
+	app.pushView(ViewOutliner)
+
+	mgr := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
+	app.showView(ViewTagManager, mgr)
+	mgr.selectTag("frontend")
+
+	// Esc cancels without touching the originating filter.
+	_, cmd := mgr.Update(syntheticSpecialKey(tea.KeyEsc))
+	if cmd == nil {
+		t.Fatal("esc returned nil command, want close")
+	}
+	if msg := cmd(); !isCloseTagManager(msg) {
+		t.Fatalf("esc message = %T, want CloseTagManagerMsg", msg)
+	}
+	if got := app.outliner.filter.Tags; len(got) != 1 || !got["backend"] {
+		t.Fatalf("outliner filter tags = %v, want unchanged {backend}", got)
+	}
+}
+
+func isCloseTagManager(msg tea.Msg) bool {
+	_, ok := msg.(CloseTagManagerMsg)
+	return ok
+}
+
 func newTagManagerTestProject(t *testing.T) *models.Project {
 	t.Helper()
 	project, err := models.NewProject("test", "Test", t.TempDir())

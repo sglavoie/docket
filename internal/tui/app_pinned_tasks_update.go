@@ -108,28 +108,13 @@ func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyPressMsg) (*AppModel, t
 	case "K":
 		return m.reorderPinnedTask(-1)
 	case "ctrl+j":
-		if m.pinnedPreview != nil {
-			visible := m.pinnedPreview.visibleNodes()
-			if m.pinnedPreview.cursor < len(visible)-1 {
-				m.pinnedPreview.cursor++
-			}
+		if m.pinnedPreview != nil && m.pinnedPreview.cursor < len(m.pinnedPreview.rows)-1 {
+			m.pinnedPreview.cursor++
 		}
 		return m, nil
 	case "ctrl+k":
-		if m.pinnedPreview != nil {
-			if m.pinnedPreview.cursor > 0 {
-				m.pinnedPreview.cursor--
-			}
-		}
-		return m, nil
-	case "ctrl+h":
-		if m.pinnedPreview != nil {
-			m.pinnedPreview.cycleViewMode(-1)
-		}
-		return m, nil
-	case "ctrl+l":
-		if m.pinnedPreview != nil {
-			m.pinnedPreview.cycleViewMode(1)
+		if m.pinnedPreview != nil && m.pinnedPreview.cursor > 0 {
+			m.pinnedPreview.cursor--
 		}
 		return m, nil
 	case "esc":

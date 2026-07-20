@@ -62,7 +62,7 @@ func TestHandleWithRefreshBatchesPopCmdWithStatus(t *testing.T) {
 // and no status is set, the returned cmd is nil (not an empty Batch).
 func TestHandleWithRefreshNoPopReturnsNilWhenNoStatus(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
 
 	cmd := app.handleWithRefresh(false, false, "")
 	if cmd != nil {

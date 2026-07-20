@@ -164,7 +164,7 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 	var left string
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("enter save · Esc cancel")
-	} else if m.tabs.Active == boardTabClosed {
+	} else if m.tabs.Active == boardTabDone {
 		left = composeFullHeightFooterLeft(",o reopen · enter/o details · tD delete")
 	} else if m.tabs.Active == boardTabToday && stats.completedToday == stats.plannedTotal && stats.plannedTotal > 0 {
 		left = composeFullHeightFooterLeft(cockpitActionsHint(actionPlanMore(), actionQuickCapture(), actionCloseView()))
@@ -188,8 +188,15 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
 	switch m.tabs.Active {
-	case boardTabClosed:
+	case boardTabDone:
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
+	case boardTabBacklog:
+		total := len(m.backlogRows)
+		visible := min(len(m.filtered), total)
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d ranked", visible, total))
+		if est := sumEstimatesForRows(m.filtered); est > 0 {
+			rightParts = append(rightParts, formatEstimateDays(est)+" est")
+		}
 	case boardTabToday:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", stats.completedToday, stats.plannedTotal))
 		if m.childDepthLimit >= 0 {
@@ -235,7 +242,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 func (m *FocusBoardModel) buildBoardRowSegments(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool, colLayout *ColumnLayout) focusBoardRowSegments {
 	task := row.Task
 	segments := focusBoardRowSegments{
-		queueIndicator:  m.renderBoardQueueIndicator(task.ID),
+		queueIndicator:  m.renderBoardQueueIndicator(task),
 		indent:          MutedStyle.Render(row.TreePrefix),
 		prefix:          renderBoardRowPrefix(rowNum, isFirstPlanItem),
 		statusIcon:      renderBoardStatusIcon(task, colLayout),
@@ -290,11 +297,11 @@ func (m *FocusBoardModel) renderBoardSelectableLine(row boardRow, content string
 	return line
 }
 
-func (m *FocusBoardModel) renderBoardQueueIndicator(taskID string) string {
+func (m *FocusBoardModel) renderBoardQueueIndicator(task *models.Task) string {
 	switch {
-	case m.dailyPlanIDs[taskID]:
+	case task != nil && m.dailyPlanIDs[task.ID]:
 		return ActiveStyle.Render("w") + " "
-	case m.queueIDs[taskID]:
+	case taskIsNext(task):
 		return ActiveStyle.Render("q") + " "
 	default:
 		return "  "

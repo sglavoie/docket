@@ -20,10 +20,16 @@ type PipelineHubCaptureMsg struct{ Purpose PickerPurpose }
 
 // pipelineEntry is a single row within a pipeline column.
 type pipelineEntry struct {
-	key      string   // display shortcut key
-	label    string   // short description
-	count    int      // 0 = no count displayed
-	viewType ViewType // which view to open (0 = no view)
+	key        string   // display shortcut key
+	label      string   // short description
+	count      int      // 0 = no count displayed
+	viewType   ViewType // which view to open (0 = no view)
+	plannerTab int      // Planner tab to open when viewType == ViewFocusBoard
+
+	// allTasksGroup selects the initial grouping when viewType == ViewAllTasks
+	// and setAllTasksGroup is true (e.g. the ;D Due Dates tile).
+	allTasksGroup    AllTasksGroupBy
+	setAllTasksGroup bool
 }
 
 // pipelineColumn represents one stage in the Pipeline Hub.
@@ -94,10 +100,12 @@ func (m *PipelineHubModel) buildColumns() {
 		{key: ";w", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
 	}
 	if m.currentProject != nil {
+		// The current-project entry (Enter → SelectProjectMsg) is the sole route
+		// to this project's Outliner; a separate "Outliner" tile would duplicate
+		// it since the retired ProjectTree left the Outliner as the only
+		// per-project surface.
 		workEntries = append(workEntries,
-			pipelineEntry{key: "Enter", label: m.currentProject.Name, viewType: ViewProjectTree},
-			pipelineEntry{key: "→", label: "Project Tree", viewType: ViewProjectTree},
-			pipelineEntry{key: "→", label: "Outliner", viewType: ViewOutliner},
+			pipelineEntry{key: "Enter", label: m.currentProject.Name, viewType: ViewOutliner},
 			pipelineEntry{key: "→", label: "Kanban", viewType: ViewKanban},
 		)
 	} else {
@@ -129,8 +137,8 @@ func (m *PipelineHubModel) buildColumns() {
 			name:   "Plan",
 			accent: AccentPlan,
 			entries: []pipelineEntry{
-				{key: ";q", label: "Backlog", count: m.counts.queueLen, viewType: ViewFocusView},
-				{key: ";D", label: "Due Dates", count: m.counts.overdueCount, viewType: ViewDueDateOverview},
+				{key: ";q", label: "Next", count: m.counts.queueLen, viewType: ViewFocusBoard, plannerTab: boardTabNext},
+				{key: ";D", label: "Due Dates", count: m.counts.overdueCount, viewType: ViewAllTasks, allTasksGroup: ATGroupByDueDate, setAllTasksGroup: true},
 				{key: ";d", label: "Daily Review", viewType: ViewDailyReview},
 				{key: ";R", label: "Roadmap", viewType: ViewRoadmap},
 			},
@@ -214,22 +222,27 @@ func (m *PipelineHubModel) openSelectedEntry() tea.Cmd {
 			return cmd
 		}
 	}
+	if entry.viewType == ViewFocusBoard {
+		return func() tea.Msg { return ShowFocusBoardMsg{Tab: entry.plannerTab, SetTab: true} }
+	}
+	if entry.viewType == ViewAllTasks && entry.setAllTasksGroup {
+		group := entry.allTasksGroup
+		return func() tea.Msg { return ShowAllTasksMsg{Group: group, SetGroup: true} }
+	}
 	return pipelineEntryCmd(entry.viewType)
 }
 
 // workProjectEntryCmd returns a tea.Cmd for the project-specific entries that
-// live inside the Work column (Open project, Project Tree, Outliner, Kanban).
+// live inside the Work column (Open project, Outliner, Kanban).
 // Returns nil when the entry is the shared Today shortcut so the caller falls
 // back to the global pipelineEntryCmd dispatcher.
 func (m *PipelineHubModel) workProjectEntryCmd(entry pipelineEntry) tea.Cmd {
 	p := m.currentProject
 	switch entry.viewType {
-	case ViewProjectTree:
+	case ViewOutliner:
 		if entry.key == "Enter" {
 			return func() tea.Msg { return SelectProjectMsg{Project: p} }
 		}
-		return func() tea.Msg { return ShowProjectTreeMsg{Project: p} }
-	case ViewOutliner:
 		return func() tea.Msg { return ShowOutlinerMsg{Project: p} }
 	case ViewKanban:
 		return func() tea.Msg { return ShowKanbanMsg{Project: p} }
@@ -249,12 +262,8 @@ func pipelineEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return ShowGlobalOutlinerMsg{} }
 	case ViewCrossProjectKanban:
 		return func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
-	case ViewFocusView:
-		return func() tea.Msg { return ShowFocusViewMsg{} }
 	case ViewFocusBoard:
 		return func() tea.Msg { return ShowFocusBoardMsg{} }
-	case ViewDueDateOverview:
-		return func() tea.Msg { return ShowDueDateOverviewMsg{} }
 	case ViewDailyReview:
 		return func() tea.Msg { return ShowDailyReviewMsg{} }
 	case ViewWeeklyReview:

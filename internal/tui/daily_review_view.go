@@ -312,7 +312,7 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 	}
 
 	line := RenderCrossProjectTaskLine(task, dt.Project, m.runtime, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
-		Queued:          m.queueIDs[task.ID],
+		Queued:          taskIsNext(task),
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		StatusBadge:     statusBadge,
 		HideLowPriority: true,

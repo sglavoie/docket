@@ -31,10 +31,11 @@ func TestCaptureCreatesInboxTask(t *testing.T) {
 	}
 }
 
-// TestMoveToTodayUpdatesStatus verifies the inbox→today flow: moving a task
-// from the Inbox section to the Next section (the "today" queue in GTD terms)
-// updates its section without touching its status.
-func TestMoveToTodayUpdatesStatus(t *testing.T) {
+// TestMoveToNextUpdatesStatus verifies the inbox→next flow: moving a task
+// from the Inbox section to the Next section (the on-deck shortlist, reached
+// via ;q) updates its section without touching its status. Next is distinct
+// from Today (the Daily Plan, reached via ;w).
+func TestMoveToNextUpdatesStatus(t *testing.T) {
 	task, err := models.NewTask("t1", 1, models.TaskTypeTask, "Finish report")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
@@ -54,10 +55,10 @@ func TestMoveToTodayUpdatesStatus(t *testing.T) {
 	}
 }
 
-// TestCompleteTodayTaskUpdatesProgress verifies the today→complete flow:
-// completing a task that lives in the Next (today) section sets it to Done,
+// TestCompleteNextTaskUpdatesProgress verifies the next→complete flow:
+// completing a task that lives in the Next (on-deck) section sets it to Done,
 // moves it to the Completed section, and records the completion time.
-func TestCompleteTodayTaskUpdatesProgress(t *testing.T) {
+func TestCompleteNextTaskUpdatesProgress(t *testing.T) {
 	task, err := models.NewTask("t2", 2, models.TaskTypeTask, "Ship feature")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
@@ -74,72 +75,6 @@ func TestCompleteTodayTaskUpdatesProgress(t *testing.T) {
 	}
 	if task.CompletedAt == nil {
 		t.Error("CompletedAt: expected non-nil after Complete()")
-	}
-}
-
-// newParentChildProject builds a project with a Story parent (in_progress) and a
-// single Task child, wiring up the tree so HasIncompleteChildren works. The
-// child status is caller-controlled. Returns the project and the parent task.
-func newParentChildProject(t *testing.T, childState models.WorkflowState) (*models.Project, *models.Task) {
-	t.Helper()
-	project := testutil.NewTestProject("bulk")
-
-	parent, err := models.NewTask("parent-1", 1, models.TaskTypeStory, "Parent Story")
-	if err != nil {
-		t.Fatalf("NewTask parent: %v", err)
-	}
-	parent.WorkflowState = models.StateInProgress
-	parent.Priority = 3
-
-	child, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child")
-	if err != nil {
-		t.Fatalf("NewTask child: %v", err)
-	}
-	child.ParentID = &parent.ID
-	child.WorkflowState = childState
-
-	project.Tasks = []*models.Task{parent, child}
-	project.BuildTaskTree()
-	return project, project.GetTaskByID(parent.ID)
-}
-
-// TestBulkEditSkipsParentCompletionButAppliesOtherFields verifies the bulk-edit
-// path: a status→done change is skipped for a parent with an incomplete child,
-// but other pending fields (priority, tag) still apply on the same pass.
-func TestBulkEditSkipsParentCompletionButAppliesOtherFields(t *testing.T) {
-	project, parent := newParentChildProject(t, models.StateReady)
-	m := NewProjectTreeModel(project, nil, nil)
-
-	done := models.StatusDone
-	newPriority := 1
-	m.applyBulkChanges(PendingChanges{
-		SetStatus:   &done,
-		SetPriority: &newPriority,
-		AddTags:     []string{"urgent"},
-	}, []*models.Task{parent})
-
-	if parent.State() != models.StateInProgress {
-		t.Errorf("state: got %q, want %q (completion must be skipped for parent with incomplete child)", parent.State(), models.StateInProgress)
-	}
-	if parent.Priority != newPriority {
-		t.Errorf("priority: got %d, want %d (other fields must still apply)", parent.Priority, newPriority)
-	}
-	if !parent.HasTag("urgent") {
-		t.Error("tag: expected 'urgent' to be applied despite skipped status change")
-	}
-}
-
-// TestBulkEditCompletesParentWhenChildrenDone is the positive control: with all
-// children complete, the same status→done bulk edit is applied to the parent.
-func TestBulkEditCompletesParentWhenChildrenDone(t *testing.T) {
-	project, parent := newParentChildProject(t, models.StateDone)
-	m := NewProjectTreeModel(project, nil, nil)
-
-	done := models.StatusDone
-	m.applyBulkChanges(PendingChanges{SetStatus: &done}, []*models.Task{parent})
-
-	if parent.State() != models.StateDone {
-		t.Errorf("state: got %q, want %q (parent should complete when all children done)", parent.State(), models.StateDone)
 	}
 }
 
@@ -226,13 +161,6 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	}
 	if story.State() != models.StateInProgress {
 		t.Errorf("story state = %q, want in_progress after outdent", story.State())
-	}
-
-	// In the default active view a completed task is hidden; an in_progress
-	// Story stays visible, which is the whole point of the fix.
-	m := &ProjectTreeModel{project: project, viewMode: ViewModeActive}
-	if !m.passesFilters(&TreeNode{Task: story, Visible: true}) {
-		t.Error("story should remain visible in the active view after outdent")
 	}
 }
 

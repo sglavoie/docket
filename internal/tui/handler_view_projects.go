@@ -18,10 +18,6 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 
 			replacing := m.isOnProjectView()
-			var shared *sharedViewState
-			if replacing && m.projectTree != nil {
-				shared = m.extractSharedStateFromTree()
-			}
 
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
@@ -29,14 +25,9 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.outliner.queueIDs = m.focusQueueIDs
 			m.outliner.dailyPlanIDs = m.dailyPlanIDs
 			m.restoreOutlinerToggleState()
-			if shared != nil {
-				m.applySharedStateToOutliner(shared)
-			} else {
-				m.restoreOutlinerFilterState()
-			}
+			m.restoreOutlinerFilterState()
 			// Persist the applied state so config stays in sync with the
-			// in-memory filter state (guards against refreshProjectTree
-			// restoring stale config values).
+			// in-memory filter state.
 			m.saveOutlinerFilterState()
 
 			if replacing {
@@ -57,7 +48,6 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowGlobalOutlinerMsg:
 		// Save current view state so it persists if a different project's
 		// view is later created from inside the cross-outliner.
-		m.saveProjectTreeState()
 		if m.outliner != nil {
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
@@ -82,38 +72,6 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseCrossOutlinerMsg:
 		m.saveCrossOutlinerState()
 		return true, m.popToAnchorView()
-
-	case ShowProjectTreeMsg:
-		if msg.Project != nil {
-			replacing := m.isOnProjectView()
-			if replacing {
-				var shared *sharedViewState
-				if m.outliner != nil {
-					shared = m.extractSharedStateFromOutliner()
-				}
-
-				m.saveOutlinerToggleState()
-				m.saveOutlinerFilterState()
-				m.refreshProjectTree()
-				if shared != nil {
-					m.applySharedStateToTree(shared)
-					// Persist the applied shared state so config stays in
-					// sync (guards against SaveCompleteMsg/RefreshMsg calling
-					// refreshProjectTree and restoring stale tree filters).
-					m.saveProjectTreeState()
-				}
-				m.replaceView(ViewProjectTree, m.projectTree)
-			} else {
-				if m.projectTree == nil || m.currentProject == nil || msg.Project.ID != m.currentProject.ID {
-					m.switchToProject(msg.Project, true)
-				} else {
-					m.currentProject = msg.Project
-					m.refreshProjectTree()
-				}
-				m.showView(ViewProjectTree, m.projectTree)
-			}
-		}
-		return true, nil
 	}
 
 	return false, nil

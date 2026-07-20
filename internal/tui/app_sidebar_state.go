@@ -55,15 +55,6 @@ func (m *AppModel) liveProjectSidebarEnabled() (bool, bool) {
 	}
 
 	switch view {
-	case ViewProjectTree:
-		if m.views != nil {
-			if tree, ok := m.views.Get(ViewProjectTree).(*ProjectTreeModel); ok && tree.project != nil {
-				return tree.sidebar.IsEnabled(), true
-			}
-		}
-		if m.projectTree != nil && m.projectTree.project != nil {
-			return m.projectTree.sidebar.IsEnabled(), true
-		}
 	case ViewOutliner:
 		if m.views != nil {
 			if outliner, ok := m.views.Get(ViewOutliner).(*OutlinerModel); ok && outliner.project != nil {
@@ -115,15 +106,6 @@ func (m *AppModel) setAllProjectSidebarsEnabled(enabled bool) {
 }
 
 func (m *AppModel) syncProjectSidebarEnabled(projectID string, enabled bool) {
-	setTree := func(tree *ProjectTreeModel) {
-		if tree == nil || tree.project == nil || tree.project.ID != projectID {
-			return
-		}
-		tree.sidebar.SetEnabled(enabled)
-		if !enabled {
-			tree.sidebar.Blur()
-		}
-	}
 	setOutliner := func(outliner *OutlinerModel) {
 		if outliner == nil || outliner.project == nil || outliner.project.ID != projectID {
 			return
@@ -134,17 +116,13 @@ func (m *AppModel) syncProjectSidebarEnabled(projectID string, enabled bool) {
 		}
 	}
 
-	// The typed pointers are the normal primary-view references. Applying to
-	// them also keeps isolated AppModel tests and models between registration
+	// The typed pointer is the normal primary-view reference. Applying to it
+	// also keeps isolated AppModel tests and models between registration
 	// transitions consistent.
-	setTree(m.projectTree)
 	setOutliner(m.outliner)
 
 	if m.views == nil {
 		return
-	}
-	if tree, ok := m.views.Get(ViewProjectTree).(*ProjectTreeModel); ok {
-		setTree(tree)
 	}
 	for _, viewType := range []ViewType{ViewOutliner, ViewTemporaryOutliner} {
 		if outliner, ok := m.views.Get(viewType).(*OutlinerModel); ok {

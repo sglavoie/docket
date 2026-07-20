@@ -11,7 +11,7 @@ import (
 
 func TestHandleViewMessagesBack(t *testing.T) {
 	app := newTestAppModel()
-	app.pushView(ViewProjectTree)
+	app.pushView(ViewOutliner)
 	app.pushView(ViewTaskForm)
 
 	msg := BackMsg{}
@@ -20,8 +20,8 @@ func TestHandleViewMessagesBack(t *testing.T) {
 	if !handled {
 		t.Error("BackMsg should be handled")
 	}
-	if app.currentView() != ViewProjectTree {
-		t.Errorf("currentView should be ProjectTree after back, got %v", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Errorf("currentView should be Outliner after back, got %v", app.currentView())
 	}
 }
 

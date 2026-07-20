@@ -40,11 +40,10 @@ func (m *AppModel) currentViewCapabilities() ViewCapabilities {
 	return nil
 }
 
-// batchWithFocusRefresh batches a command with refresh messages for both focus views.
+// batchWithFocusRefresh batches a command with a refresh message for the Planner.
 func (m *AppModel) batchWithFocusRefresh(cmd tea.Cmd) tea.Cmd {
 	return tea.Batch(
 		cmd,
-		func() tea.Msg { return FocusViewRefreshMsg{} },
 		func() tea.Msg { return FocusBoardRefreshMsg{} },
 	)
 }

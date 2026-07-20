@@ -12,7 +12,7 @@ func TestRegisterSameNameDifferentViewsSucceeds(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewProjectTree},
+		Views:    []ViewType{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
@@ -36,7 +36,7 @@ func TestRegisterSameNameOverlappingViewsFails(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewProjectTree, ViewOutliner},
+		Views:    []ViewType{ViewTaskDetail, ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
@@ -67,7 +67,7 @@ func TestRegisterSameNameGlobalConflicts(t *testing.T) {
 	viewCmd := Command{
 		Name:     "Help",
 		Category: CategoryHelp,
-		Views:    []ViewType{ViewProjectTree},
+		Views:    []ViewType{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 
@@ -89,7 +89,7 @@ func TestGetForViewReturnsCorrectVariant(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewProjectTree},
+		Views:    []ViewType{ViewTaskDetail},
 		Handler:  func() tea.Msg { return resultMsg{"tree"} },
 	}
 	cmd2 := Command{
@@ -102,7 +102,7 @@ func TestGetForViewReturnsCorrectVariant(t *testing.T) {
 	_ = registry.Register(cmd1)
 	_ = registry.Register(cmd2)
 
-	treeCommands := registry.GetForView(ViewProjectTree)
+	treeCommands := registry.GetForView(ViewTaskDetail)
 	found := false
 	for _, cmd := range treeCommands {
 		if cmd.Name == "Start Task" {
@@ -139,7 +139,7 @@ func TestGetForViewNoDuplicates(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewProjectTree},
+		Views:    []ViewType{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
@@ -158,7 +158,7 @@ func TestGetForViewNoDuplicates(t *testing.T) {
 	_ = registry.Register(cmd2)
 	_ = registry.Register(global)
 
-	treeCommands := registry.GetForView(ViewProjectTree)
+	treeCommands := registry.GetForView(ViewTaskDetail)
 	nameCount := make(map[string]int)
 	for _, cmd := range treeCommands {
 		nameCount[cmd.Name]++
@@ -176,7 +176,7 @@ func TestGetAllDeduplicatesSameNameCommands(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewProjectTree},
+		Views:    []ViewType{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
@@ -217,7 +217,7 @@ func TestPreferredVariantSelectionSkipsUnavailableCommands(t *testing.T) {
 	outlinerAvailable := true
 	if err := registry.Register(Command{
 		Name: "Scoped", Shortcut: "tree", Category: CategoryTasks,
-		Views: []ViewType{ViewProjectTree}, Available: func() bool { return treeAvailable },
+		Views: []ViewType{ViewTaskDetail}, Available: func() bool { return treeAvailable },
 	}); err != nil {
 		t.Fatalf("Register tree variant: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestPreferredVariantSelectionSkipsUnavailableCommands(t *testing.T) {
 	assertPreferred("GetByCategory", byCategory[0], true, "outliner")
 	cmd, ok := registry.GetByName("scoped")
 	assertPreferred("GetByName", cmd, ok, "outliner")
-	if commands := registry.GetForView(ViewProjectTree); len(commands) != 0 {
+	if commands := registry.GetForView(ViewTaskDetail); len(commands) != 0 {
 		t.Fatalf("GetForView(ProjectTree) = %v, want unavailable variant omitted", commandNames(commands))
 	}
 	commands := registry.GetForView(ViewOutliner)
@@ -267,15 +267,15 @@ func TestViewsOverlap(t *testing.T) {
 		t.Error("expected two global (empty) view lists to overlap")
 	}
 
-	if !viewsOverlap(nil, []ViewType{ViewProjectTree}) {
+	if !viewsOverlap(nil, []ViewType{ViewTaskDetail}) {
 		t.Error("expected global to overlap with specific view")
 	}
 
-	if !viewsOverlap([]ViewType{ViewProjectTree, ViewOutliner}, []ViewType{ViewOutliner, ViewDashboard}) {
+	if !viewsOverlap([]ViewType{ViewTaskDetail, ViewOutliner}, []ViewType{ViewOutliner, ViewDashboard}) {
 		t.Error("expected overlapping view lists to overlap")
 	}
 
-	if viewsOverlap([]ViewType{ViewProjectTree}, []ViewType{ViewDashboard}) {
+	if viewsOverlap([]ViewType{ViewTaskDetail}, []ViewType{ViewDashboard}) {
 		t.Error("expected disjoint view lists to not overlap")
 	}
 }

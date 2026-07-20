@@ -35,7 +35,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	b.WriteString("\n\n")
 
 	if len(m.tasks) == 0 {
-		b.WriteString(renderEmptyState("No tasks from this project are in the Focus Queue.", "Press q on a task in the project tree to add it."))
+		b.WriteString(renderEmptyState("No tasks from this project are in the Focus Queue.", "Press q on a task in the outliner to add it."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("Esc return")
 		b.WriteString(renderStatusBarFooter(left, "", m.Width(), m.AccentColor()))

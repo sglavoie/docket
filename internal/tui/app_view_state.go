@@ -60,10 +60,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 		if v := m.views.Get(ViewDashboard); v != nil {
 			m.dashboard = v.(*DashboardModel)
 		}
-	case ViewProjectTree:
-		if v := m.views.Get(ViewProjectTree); v != nil {
-			m.projectTree = v.(*ProjectTreeModel)
-		}
 	case ViewHelp:
 		if v := m.views.Get(ViewHelp); v != nil {
 			m.helpView = v.(*HelpViewModel)
@@ -115,10 +111,6 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 // or nil if no task is selected or the current view is not a primary project view.
 func (m *AppModel) getCurrentCursorTask() *models.Task {
 	switch m.currentView() {
-	case ViewProjectTree:
-		if m.projectTree != nil {
-			return m.projectTree.getCursorTask()
-		}
 	case ViewOutliner:
 		if m.outliner != nil {
 			return m.outliner.getCursorTask()

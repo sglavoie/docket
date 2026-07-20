@@ -14,6 +14,7 @@ import (
 type workflowOrchestrationRequest struct {
 	rules                  []workflow.WorkflowRule
 	projectStatusArtifacts WorkflowProjectStatusArtifactBuilder
+	planningArtifacts      PlanningArtifactBuilder
 	undoAction             string
 	undoContext            string
 	forceCommit            bool
@@ -25,9 +26,13 @@ type workflowMutationPlan struct {
 	sources        []*models.Project
 	previousStates map[string]map[string]*models.Task
 	forcedChanges  map[string][]string
-	mutate         func(*WorkspaceResolver) error
-	skipCommit     bool
-	undoContext    string
+	// planningTaskIDs are the tasks this mutation directly transitions, so the
+	// planning-artifact builder reconciles Today/Next exclusivity for exactly the
+	// touched tasks (plus any the cascade modified) after the final state settles.
+	planningTaskIDs []string
+	mutate          func(*WorkspaceResolver) error
+	skipCommit      bool
+	undoContext     string
 }
 
 // workflowOrchestrationOutcome carries every presentation-neutral effect of the
@@ -146,6 +151,17 @@ func (s *Service) runWorkflowOrchestration(req workflowOrchestrationRequest) (wo
 		return workflowOrchestrationOutcome{}, err
 	}
 	out.projectStatusChanges = resolvedProjectStatus
+
+	// Fold the planning reconciliation (Today/Next exclusivity) implied by this
+	// transaction into the same changeset. The reconciled set is the directly
+	// transitioned tasks plus any the rule cascade modified, so a rule that moves
+	// a Daily Plan task to StateNext also drops it from Today atomically.
+	planningIDs := append(append([]string(nil), plan.planningTaskIDs...), out.modifiedTaskIDs...)
+	planningArtifacts := s.defaultedPlanningArtifacts(req.planningArtifacts)
+	if attachErr := attachPlanningArtifacts(out.commits, collectPlanningReconcileTargets(out.commits, planningIDs), planningArtifacts); attachErr != nil {
+		return workflowOrchestrationOutcome{}, attachErr
+	}
+
 	if plan.skipCommit {
 		return out, nil
 	}

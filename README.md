@@ -93,10 +93,11 @@ confirmation instead of applying stale advice.
 - Workflow state records a task's lifecycle: Inbox, Ready, Next, In Progress,
   Waiting, Paused, Review, Someday, Done, or Canceled.
 - Dependency blocking is a derived badge and filter, not another workflow
-  state. The Active section represents work currently being worked on; Focus
-  Queue is a separate, ordered list of the next tasks in the pipeline. Queue
-  membership does not change a task's section or workflow state. Daily Plan is
-  another planning collection and is mutually exclusive with Queue.
+  state. The Active section represents work currently being worked on.
+- Next membership is exactly the workflow state `StateNext`. Focus Queue is an
+  ordering-only index for those tasks; it does not confer Next membership.
+- Today is a separate, config-backed Daily Plan. Today and Next membership are
+  mutually exclusive.
 - Tags are flexible labels for grouping work across sections.
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
 - Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the dashboard Resume card.

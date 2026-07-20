@@ -14,17 +14,14 @@ func session2SyncViews() []syncTestCase {
 	return []syncTestCase{
 		{ViewDailyReview, &DailyReviewModel{}},
 		{ViewWeeklyReview, &WeeklyReviewModel{}},
-		{ViewDueDateOverview, &DueDateOverviewModel{}},
 		{ViewPriorityView, &PriorityViewModel{}},
 		{ViewFocusBoard, &FocusBoardModel{}},
 		{ViewAllTasks, &AllTasksViewModel{}},
-		{ViewFocusView, &FocusViewModel{}},
 		{ViewProjectFocusView, &ProjectFocusViewModel{}},
 		{ViewRecentActivity, &RecentActivityModel{}},
 		{ViewProjectRecentActivity, &RecentActivityModel{}},
 		{ViewInboxProcessor, &InboxProcessorModel{}},
 		{ViewGlobalInboxProcessor, &GlobalInboxProcessorModel{}},
-		{ViewProjectTree, &ProjectTreeModel{}},
 		{ViewOutliner, &OutlinerModel{}},
 	}
 }
@@ -181,17 +178,14 @@ func TestViewTypeString(t *testing.T) {
 		// Session 2
 		ViewDailyReview:           "DailyReview",
 		ViewWeeklyReview:          "WeeklyReview",
-		ViewDueDateOverview:       "DueDateOverview",
 		ViewPriorityView:          "PriorityView",
 		ViewFocusBoard:            "Today",
 		ViewAllTasks:              "AllTasks",
-		ViewFocusView:             "FocusView",
 		ViewProjectFocusView:      "ProjectFocusView",
 		ViewRecentActivity:        "RecentActivity",
 		ViewProjectRecentActivity: "ProjectRecentActivity",
 		ViewInboxProcessor:        "InboxProcessor",
 		ViewGlobalInboxProcessor:  "GlobalInboxProcessor",
-		ViewProjectTree:           "ProjectTree",
 		ViewOutliner:              "Outliner",
 		// Session 4
 		ViewKanban:             "Kanban",

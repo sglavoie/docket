@@ -9,46 +9,18 @@ import (
 func (m *AppModel) viewCommands() []Command {
 	return []Command{
 		{
-			Name:        "toggle project tree/outliner",
-			Description: "Toggle project tree/outliner",
-			Shortcut:    "ctrl+p",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner},
-			Aliases: []string{
-				"project tree",
-				"project outliner",
-				"tree view",
-				"outliner view",
-				"toggle project view",
-				"switch project view",
-			},
-			Handler: func() tea.Msg {
-				switch m.nonPaletteOrigin() {
-				case ViewProjectTree:
-					if m.currentProject != nil {
-						return ShowOutlinerMsg{Project: m.currentProject}
-					}
-				case ViewOutliner:
-					if m.outliner != nil && m.outliner.project != nil {
-						return ShowProjectTreeMsg{Project: m.outliner.project}
-					}
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "project tree",
-			Description: "Open highlighted project's tree",
+			Name:        "open project outliner",
+			Description: "Open highlighted project's outliner",
 			Shortcut:    "ctrl+p",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewCrossProjectOutliner},
-			Aliases:     []string{"tree view", "project tree view"},
+			Aliases:     []string{"project outliner", "drill into project", "open project view"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
 				if project == nil {
 					return StatusMsg(statusNoProjectUnderCursor)
 				}
-				return ShowProjectTreeMsg{Project: project}
+				return ShowOutlinerMsg{Project: project}
 			},
 		},
 		{
@@ -56,7 +28,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View all tasks across every project",
 			Shortcut:    ";a",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
 				return ShowAllTasksMsg{}
@@ -85,13 +57,14 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "due date overview",
-			Description: "View tasks by due date",
+			Name:        "all tasks by due date",
+			Description: "View all tasks grouped by due date",
 			Shortcut:    ";D",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewDashboard, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewOutliner},
+			Aliases:     []string{"due dates", "by due date", "tasks by due date", "due date overview"},
 			Handler: func() tea.Msg {
-				return ShowDueDateOverviewMsg{}
+				return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true}
 			},
 		},
 		{
@@ -125,23 +98,32 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "backlog",
-			Description: "Cross-project task suggestions and backlog",
+			Name:        "planner next",
+			Description: "Planner — Next (on-deck shortlist, StateNext ordered)",
 			Shortcut:    ";q",
 			Category:    CategoryViews,
-			Aliases:     []string{"active tasks", "focus", "today tasks", "focus view", "suggestions", "what's next"},
+			Aliases:     []string{"next", "planner on-deck", "queue", "on deck", "shortlist", "what's next"},
 			Handler: func() tea.Msg {
-				return ShowFocusViewMsg{}
+				return ShowFocusBoardMsg{Tab: boardTabNext, SetTab: true}
 			},
 		},
 		{
 			Name:        "today",
-			Description: "Today cockpit for daily execution",
+			Description: "Planner — Today cockpit for daily execution",
 			Shortcut:    ";w",
 			Category:    CategoryViews,
-			Aliases:     []string{"daily", "cockpit", "today cockpit", "command center", "external items"},
+			Aliases:     []string{"planner today", "daily", "cockpit", "today cockpit", "command center", "external items"},
 			Handler: func() tea.Msg {
-				return ShowFocusBoardMsg{}
+				return ShowFocusBoardMsg{Tab: boardTabToday, SetTab: true}
+			},
+		},
+		{
+			Name:        "planner backlog",
+			Description: "Planner — Backlog (ranked actionable work behind Today/Next)",
+			Category:    CategoryViews,
+			Aliases:     []string{"backlog ranked", "ranked backlog", "suggestions", "what to work on"},
+			Handler: func() tea.Msg {
+				return ShowFocusBoardMsg{Tab: boardTabBacklog, SetTab: true}
 			},
 		},
 		{
@@ -149,7 +131,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View tasks by priority (toggles cross-project Priority mode in the cross-outliner)",
 			Shortcut:    "p",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"priority mode", "toggle priority mode", "cross-project priority"},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
@@ -167,7 +149,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "Triage inbox items for this project one by one",
 			Shortcut:    "W",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"triage inbox", "triage project inbox", "process inbox", "inbox triage"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -257,19 +239,6 @@ func (m *AppModel) viewCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowMetricsDashboardMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "filter popup",
-			Description: "Open the filter popup",
-			Shortcut:    "F",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.pendingPrefix = "F"
 				}
 				return nil
 			},

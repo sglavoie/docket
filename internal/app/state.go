@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // StateRequest asks to move a task to a target workflow state.
@@ -12,6 +13,11 @@ type StateRequest struct {
 	TaskID string
 	// Target is the destination workflow state.
 	Target models.WorkflowState
+	// PlanningArtifacts, when set, folds the durable planning reconciliation the
+	// transition implies (Today/Next exclusivity) into the same ledger
+	// transaction as the task write, so undo restores task state and planning
+	// membership together. Nil keeps the bare transition.
+	PlanningArtifacts PlanningArtifactBuilder
 }
 
 // Transition moves a task to a target workflow state, enforcing the canonical
@@ -43,7 +49,36 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	}
 	applyState(ref.Task, target)
 	ref.Task.UpdatedAt = s.clock.Now()
-	return s.commitProject(ref, revision, "Change State", string(target))
+	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	if err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Change State", string(target))
+}
+
+// transitionPlanningArtifacts renders the planning reconciliation a single-task
+// transition implies through the caller-supplied builder, returning the checked
+// artifacts to fold into the transition's changeset. A nil builder or an empty
+// build yields no artifacts, leaving the commit a bare task write.
+func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {
+	if builder == nil {
+		return nil, nil
+	}
+	targets := []PlanningReconcileTarget{{
+		TaskID:    ref.Task.ID,
+		ProjectID: ref.Project.ID,
+		State:     ref.Task.State(),
+	}}
+	artifacts, err := builder(targets)
+	if err != nil {
+		return nil, err
+	}
+	for _, artifact := range artifacts {
+		if artifact.ExpectedRevision == nil {
+			return nil, fmt.Errorf("app: planning artifact %q has no expected revision", artifact.Path)
+		}
+	}
+	return artifacts, nil
 }
 
 // Complete is the completion convenience over Transition: it moves a task to the

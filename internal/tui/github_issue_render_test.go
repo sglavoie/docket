@@ -40,18 +40,6 @@ func TestGitHubIssueMetadataPreservesAttachmentCount(t *testing.T) {
 	wantIssue := ansi.Strip(renderGitHubIssueIndicator(task))
 	wantAttachments := ansi.Strip(renderAttachmentIndicator(task))
 
-	tree := &ProjectTreeModel{
-		sidebar:      NewSidebarComponent(),
-		columnConfig: NewColumnConfig(map[string]bool{ColAttachments: true}, nil, DefaultTreeColumns, ""),
-	}
-	treeContent := ansi.Strip(tree.nodeContentGroup(task))
-	if !strings.Contains(treeContent, wantIssue) {
-		t.Fatalf("project tree content missing GitHub issue indicator %q: %q", wantIssue, treeContent)
-	}
-	if !strings.Contains(treeContent, wantAttachments) {
-		t.Fatalf("project tree content missing generic attachment count %q: %q", wantAttachments, treeContent)
-	}
-
 	outliner := &OutlinerModel{
 		columnConfig: NewColumnConfig(map[string]bool{ColAttachments: true}, nil, DefaultOutlinerColumns, ""),
 	}

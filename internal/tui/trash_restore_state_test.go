@@ -52,20 +52,19 @@ func newTrashRestoreTestApp(
 	ledger := workspaceLedgerFromConfig(runtime)
 	service := newTUIAppService(dataDir, manager.RuntimeDependencies(), ledger)
 	app := &AppModel{
-		configManager:            manager,
-		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, service, manager, ledger),
-		appService:               service,
-		projects:                 make(map[string]*models.Project),
-		persister:                NewProjectService(),
-		viewStack:                []ViewType{ViewDashboard, ViewTrashedProjects},
-		views:                    NewViewRegistry(),
-		width:                    80,
-		height:                   24,
-		dailyPlanIDs:             make(map[string]bool),
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, service, manager, ledger),
+		appService:           service,
+		projects:             make(map[string]*models.Project),
+		persister:            NewProjectService(),
+		viewStack:            []ViewType{ViewDashboard, ViewTrashedProjects},
+		views:                NewViewRegistry(),
+		width:                80,
+		height:               24,
+		dailyPlanIDs:         make(map[string]bool),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
 	}
 	return app, project, entryID
 }

@@ -27,23 +27,6 @@ const (
 	ColDescription  = "description"
 )
 
-// DefaultTreeColumns defines which columns are visible by default in the tree view.
-var DefaultTreeColumns = map[string]bool{
-	ColPriority:     true,
-	ColDueDate:      true,
-	ColTags:         true,
-	ColScore:        true,
-	ColDependencies: true,
-	ColComments:     true,
-	ColAttachments:  true,
-	ColChecklist:    true,
-	ColProgress:     true,
-	ColRecurrence:   true,
-	ColSnooze:       true,
-	ColDecisions:    true,
-	ColShortID:      true,
-}
-
 // DefaultOutlinerColumns defines which columns are visible by default in the outliner view.
 var DefaultOutlinerColumns = map[string]bool{
 	ColPriority:     true,
@@ -119,32 +102,19 @@ func (c *ColumnConfig) PriorityMode() string {
 
 // resolvePriorityMode resolves the priority mode for a view, checking per-project
 // machine-local state first, then falling back to the machine-local default.
-// viewName must be "tree" or "outliner".
+// viewName must be "outliner" (the sole surviving per-project view).
 func resolvePriorityMode(projectID string, machine *config.MachineState, viewName string) string {
-	if machine == nil {
+	if machine == nil || viewName != "outliner" {
 		return ""
 	}
 	if projectID != "" {
 		if vs, ok := machine.ProjectViewStates[projectID]; ok {
-			var mode string
-			switch viewName {
-			case "tree":
-				mode = vs.TreePriorityMode
-			case "outliner":
-				mode = vs.OutlinerPriorityMode
-			}
-			if mode != "" {
-				return mode
+			if vs.OutlinerPriorityMode != "" {
+				return vs.OutlinerPriorityMode
 			}
 		}
 	}
-	switch viewName {
-	case "tree":
-		return machine.TreePriorityMode
-	case "outliner":
-		return machine.OutlinerPriorityMode
-	}
-	return ""
+	return machine.OutlinerPriorityMode
 }
 
 // IsVisible returns whether the named column should be rendered.

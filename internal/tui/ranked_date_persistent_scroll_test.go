@@ -64,45 +64,6 @@ func TestPriorityViewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
 	}
 }
 
-func TestDueDateOverviewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
-	cfg := newTestConfig()
-	project := testutil.NewTestProject("Due Dates")
-	m := &DueDateOverviewModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
-		tabs:              TabState{Names: dueDateTabNames},
-	}
-	m.SetSize(100, 11)
-
-	now := time.Now()
-	for i := range 4 {
-		task := newRankedDateScrollTask(t, fmt.Sprintf("due-overdue-%d", i), i+1, fmt.Sprintf("Overdue %02d", i))
-		due := now.AddDate(0, 0, -1)
-		task.DueDate = &due
-		m.overdue = append(m.overdue, CrossProjectTask{Task: task, Project: project})
-	}
-	for i := range 4 {
-		task := newRankedDateScrollTask(t, fmt.Sprintf("due-today-%d", i), i+5, fmt.Sprintf("Today %02d", i))
-		due := now
-		task.DueDate = &due
-		m.today = append(m.today, CrossProjectTask{Task: task, Project: project})
-	}
-	m.recalcTotalTasks()
-	m.viewScrollOffset = 0
-
-	m.cursor = 5
-	_ = m.View()
-	start := m.viewScrollOffset
-	if start == 0 {
-		t.Fatalf("expected grouped due-date view to scroll down, offset stayed at 0")
-	}
-
-	m.cursor = 4
-	_ = m.View()
-	if m.viewScrollOffset != start {
-		t.Fatalf("moving up inside viewport changed first rendered row: offset=%d want %d", m.viewScrollOffset, start)
-	}
-}
-
 func TestRecentActivityPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	cfg := newTestConfig()
 	project := testutil.NewTestProject("Recent")

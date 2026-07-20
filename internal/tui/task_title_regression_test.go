@@ -153,7 +153,6 @@ func TestLinkedTaskReferenceRowsUsePriorityTitleStyle(t *testing.T) {
 func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T) {
 	files := []string{
 		"shared_render.go",
-		"project_tree_view_node.go",
 		"outliner_render_rows.go",
 		"priority_view_render.go",
 		"focus_board_render_helpers.go",

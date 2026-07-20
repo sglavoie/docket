@@ -36,7 +36,7 @@ func (m *OutlinerModel) buildCrossPriorityRows(groups []projectTasksGroup) {
 				if predicate(task) {
 					pt := &PriorityTask{
 						Task:         task,
-						UrgencyScore: ComputeUrgencyScore(task, m.queueIDs[task.ID]),
+						UrgencyScore: ComputeUrgencyScore(task, taskIsNext(task)),
 						RelativeDue:  FormatRelativeDue(task.DueDate, false),
 					}
 					if task.ParentID != nil {

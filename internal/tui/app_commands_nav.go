@@ -18,7 +18,7 @@ func (m *AppModel) navCommands() []Command {
 			Description: "Configure project cycle, jump to project",
 			Shortcut:    "@",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Handler: func() tea.Msg {
 				return ShowProjectCycleManagerMsg{}
 			},
@@ -28,7 +28,7 @@ func (m *AppModel) navCommands() []Command {
 			Description: "Open project cycle picker",
 			Shortcut:    "`",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Handler: func() tea.Msg {
 				return ShowProjectCyclePickerMsg{}
 			},
@@ -38,7 +38,7 @@ func (m *AppModel) navCommands() []Command {
 			Description: "Switch to previous project in cycle",
 			Shortcut:    "~",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Handler: func() tea.Msg {
 				return CycleProjectMsg{Forward: false}
 			},

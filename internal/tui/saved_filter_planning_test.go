@@ -22,18 +22,17 @@ func newSavedFilterTestApp(t *testing.T) *AppModel {
 	runtime := testRuntimeAt(dataDir, cfg)
 
 	return &AppModel{
-		configManager:            manager,
-		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager, nil),
-		persister:                NewProjectService(),
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		viewStack:                []ViewType{ViewDashboard},
-		width:                    80,
-		height:                   24,
-		views:                    NewViewRegistry(),
-		navHistory:               NewNavHistory(),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, nil, manager, nil),
+		persister:            NewProjectService(),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		navHistory:           NewNavHistory(),
 	}
 }
 

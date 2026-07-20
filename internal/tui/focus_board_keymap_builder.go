@@ -123,6 +123,12 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return ShowParkInputMsg{Task: task, Project: project} }
 		}),
+		keymap.Bind("J", "Reorder down (Today/Next)", "Actions", func() (tea.Model, tea.Cmd) {
+			return m.handleFocusBoardReorder(1)
+		}),
+		keymap.Bind("K", "Reorder up (Today/Next)", "Actions", func() (tea.Model, tea.Cmd) {
+			return m.handleFocusBoardReorder(-1)
+		}),
 	)
 
 	entries = append(entries, buildStandardTaskActionEntries(m.focusBoardTaskKeymapDeps())...)
@@ -162,6 +168,7 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		DueDateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fd", key) }
 		},
+		FilterByProject: m.focusBoardFilterByProject,
 		AttrDirectKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fa", key) }
 		},

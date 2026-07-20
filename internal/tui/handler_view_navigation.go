@@ -20,12 +20,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowFocusBoardMsg{})
 	case ViewCrossProjectOutliner:
 		return m.handleViewMessages(ShowGlobalOutlinerMsg{})
-	case ViewFocusView:
-		return m.handleViewMessages(ShowFocusViewMsg{})
 	case ViewAllTasks:
 		return m.handleViewMessages(ShowAllTasksMsg{})
-	case ViewDueDateOverview:
-		return m.handleViewMessages(ShowDueDateOverviewMsg{})
 	case ViewMetricsDashboard:
 		return m.handleViewMessages(ShowMetricsDashboardMsg{})
 	case ViewRoadmap:

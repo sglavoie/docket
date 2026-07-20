@@ -30,11 +30,16 @@ Any nonterminal state may move to another nonterminal state. `done` and
 
 Dependency blocking is derived from unresolved dependencies and appears as a
 badge/filter. It is not a workflow state. The Active section identifies work
-currently being worked on. Focus Queue is a separate ordered planning
-collection for the next tasks in the pipeline, and Daily Plan is another
-planning collection; neither changes a task's workflow state or section.
-Queue and Daily Plan membership are mutually exclusive, so adding a task to
-Today removes it from Queue without rewriting its lifecycle.
+currently being worked on. Next (the Planner's on-deck shortlist) is not a
+separate membership collection: a task is in Next exactly when its workflow
+state is `next` (`StateNext`). The persisted Focus Queue list is ordering-only
+— it orders the StateNext tasks (the next tasks in the pipeline) and never
+confers membership, so unindexed StateNext tasks still belong to Next and
+stale indexed non-Next tasks do not.
+Daily Plan (Today) is a separate, config-backed planning collection. Next and
+Today membership are mutually exclusive. Moving a task from Next to Today
+atomically transitions it from `StateNext` to `StateReady` and adds it to Daily
+Plan. Entering Next atomically removes any Today membership.
 
 Use `tt task state <ref> <state>` for the complete state surface. Convenience
 commands include `ready`, `next`, `start`, `wait`, `pause`, `review`, `someday`,

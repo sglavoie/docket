@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
@@ -22,13 +23,15 @@ func NewProjectFocusViewModel(project *models.Project, runtime *config.RuntimeSt
 	return m
 }
 
-// loadTasks collects queued tasks from the project.
+// loadTasks collects Next (queued) tasks from the project. Membership is the
+// StateNext workflow state, not presence in the Focus Queue order index, so an
+// unindexed StateNext task appears and a stale indexed non-Next task does not.
 func (m *ProjectFocusViewModel) loadTasks() {
 	m.resetViewScrollOffset()
 	m.tasks = nil
 
 	for _, task := range m.project.Tasks {
-		if !TaskInFocusQueue(m.runtime.Planning(), task.ID) {
+		if !taskIsNext(task) {
 			continue
 		}
 		// Skip completed tasks
@@ -42,8 +45,16 @@ func (m *ProjectFocusViewModel) loadTasks() {
 		m.tasks = append(m.tasks, task)
 	}
 
-	// Sort by priority (ascending, 1=highest), then by UpdatedAt (most recent first)
-	sort.Slice(m.tasks, func(i, j int) bool {
+	// Order indexed members first (in Focus Queue order), then unindexed
+	// StateNext tasks by priority (ascending, 1=highest) then most recently
+	// updated. The order index is ordering-only; it never decides membership.
+	rank := focus.FocusQueueRank(m.runtime.Planning().GetFocusQueue())
+	sort.SliceStable(m.tasks, func(i, j int) bool {
+		ri := focus.RankOrUnindexed(rank, m.tasks[i].ID)
+		rj := focus.RankOrUnindexed(rank, m.tasks[j].ID)
+		if ri != rj {
+			return ri < rj
+		}
 		if m.tasks[i].Priority != m.tasks[j].Priority {
 			return m.tasks[i].Priority < m.tasks[j].Priority
 		}

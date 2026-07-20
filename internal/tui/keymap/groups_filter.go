@@ -20,6 +20,10 @@ type FilterDeps struct {
 	// DueDateKey returns an Action for a Fd sub-key (o, t, w, n, 0).
 	// Nil disables the due-date sub-prefix.
 	DueDateKey func(key string) Action
+	// FilterByProject opens the project filter selector (FP). Nil disables the
+	// project quick filter — only views that maintain a project-scoped filter
+	// (e.g. the Planner Backlog) set it.
+	FilterByProject Action
 	// AttrDirectKey returns an Action for direct Fa keys (V, 0).
 	// Deprecated: kept for backward compatibility; use OpenAttrPicker instead.
 	AttrDirectKey func(key string) Action
@@ -120,6 +124,11 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("a", "Filter by attribute (picker)", cat, deps.OpenAttrPicker),
 		Prefix("S", "Score threshold filter", cat, fsScoreChildren),
 	)
+	if deps.FilterByProject != nil {
+		fChildren = append(fChildren,
+			Bind("P", "Filter by project (picker)", cat, deps.FilterByProject),
+		)
+	}
 	fChildren = append(fChildren,
 		Bind("#", "Filter by tags", cat, deps.FilterByTags),
 		Bind("p", "Toggle priority filter", cat, deps.TogglePriority),

@@ -67,7 +67,7 @@ func TestCommandRegistry_CrossProjectOutlinerPaletteParity(t *testing.T) {
 		{"edit task", "e"},
 		{"rename task", "tr"},
 		{"edit content", "to"},
-		{"project tree", "ctrl+p"},
+		{"open project outliner", "ctrl+p"},
 		// Session 2 task creation parity.
 		{"new task (no template)", "tn"},
 		{"new task (with template picker)", "tN"},

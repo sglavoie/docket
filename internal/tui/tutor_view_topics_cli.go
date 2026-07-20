@@ -105,14 +105,20 @@ status, activity recency, unblocking potential, and scoring profiles.
   tt focus suggest        # Top 10 suggestions
   tt focus suggest -n 5   # Top 5 suggestions
 
-# Focus Queue
+# Next (the on-deck shortlist)
 
-The queue is an explicit, ordered list of tasks to take next in the
-pipeline. It can include a task from any section; adding it does not mark
-the task Active or change its workflow state. Suggestions can add tasks to
-the queue, while dismissing a suggestion leaves existing queue items alone.
+Next is your standing, ordered shortlist of what to work on next.
+A task is on Next exactly when its workflow state is StateNext, so
+queueing a task moves it into that state rather than setting a
+separate flag. The persisted order index is ordering-only: it
+records the sequence of Next tasks and never decides membership.
 
-  tt focus queue`,
+  tt focus queue          # List the ordered Next shortlist
+  tt task next <id>       # Put a task on Next (StateNext)
+
+Next is distinct from Today (the daily plan) and from the
+ranked Backlog; a task is in at most one of Today or Next.
+Manage Next from the Planner (;q).`,
 		},
 		{
 			Title:    "Notes",

@@ -9,7 +9,7 @@ func (m *AppModel) exportCommands() []Command {
 		Shortcut:    "ctrl+e",
 		Category:    CategoryProjects,
 		Views: []ViewType{
-			ViewDashboard, ViewProjectTree, ViewOutliner,
+			ViewDashboard, ViewOutliner,
 			ViewCrossProjectOutliner, ViewAllTasks,
 		},
 		Aliases: []string{"export markdown", "save markdown"},

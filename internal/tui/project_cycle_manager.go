@@ -171,8 +171,8 @@ func (m *AppModel) closeProjectCyclePopup() tea.Cmd {
 	m.projectCycleAllItems = nil
 	m.projectCycleItems = nil
 	m.invalidateCyclePreview()
-	if m.projectTree != nil {
-		m.projectTree.buildTree()
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
 	}
 	var dash *DashboardModel
 	if v := m.views.Get(ViewDashboard); v != nil {
@@ -317,32 +317,15 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 
 	case "ctrl+j":
 		// Scroll preview background down
-		if m.projectCyclePreview != nil {
-			visible := m.projectCyclePreview.visibleNodes()
-			if m.projectCyclePreview.cursor < len(visible)-1 {
-				m.projectCyclePreview.cursor++
-			}
+		if m.projectCyclePreview != nil && m.projectCyclePreview.cursor < len(m.projectCyclePreview.rows)-1 {
+			m.projectCyclePreview.cursor++
 		}
 		return m, nil
 
 	case "ctrl+k":
 		// Scroll preview background up
-		if m.projectCyclePreview != nil {
-			if m.projectCyclePreview.cursor > 0 {
-				m.projectCyclePreview.cursor--
-			}
-		}
-		return m, nil
-
-	case "ctrl+h":
-		if m.projectCyclePreview != nil {
-			m.projectCyclePreview.cycleViewMode(-1)
-		}
-		return m, nil
-
-	case "ctrl+l":
-		if m.projectCyclePreview != nil {
-			m.projectCyclePreview.cycleViewMode(1)
+		if m.projectCyclePreview != nil && m.projectCyclePreview.cursor > 0 {
+			m.projectCyclePreview.cursor--
 		}
 		return m, nil
 

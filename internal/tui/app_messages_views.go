@@ -74,22 +74,6 @@ type ResetDailyReviewMsg struct{}
 type ResetWeeklyReviewMsg struct{}
 
 // =============================================================================
-// Focus View Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowFocusViewMsg opens the focus view.
-type ShowFocusViewMsg struct{}
-
-// FocusViewRefreshMsg requests a refresh of the focus view data.
-type FocusViewRefreshMsg struct{}
-
-// FocusViewSelectMsg navigates to a task from focus view.
-type FocusViewSelectMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// =============================================================================
 // Recent Activity Messages (Show/Close Pattern)
 // =============================================================================
 
@@ -148,8 +132,13 @@ type TutorDismissedMsg struct{}
 // Today Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowFocusBoardMsg opens the Today view.
-type ShowFocusBoardMsg struct{}
+// ShowFocusBoardMsg opens the Planner. When SetTab is true the Planner opens
+// on Tab (boardTabToday/boardTabNext/...), overriding the empty-plan → Next
+// auto-default. The zero value opens the Planner with that auto-default intact.
+type ShowFocusBoardMsg struct {
+	Tab    int
+	SetTab bool
+}
 
 // CloseFocusBoardMsg closes the Today view.
 type CloseFocusBoardMsg struct{ PopToAnchorMsg }

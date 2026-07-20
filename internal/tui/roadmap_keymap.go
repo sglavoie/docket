@@ -51,7 +51,7 @@ func (m *RoadmapModel) buildKeyMap() *keymap.KeyMap {
 
 	// Actions
 	entries = append(entries,
-		keymap.Bind("enter", "Go to task in project tree", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
+		keymap.Bind("enter", "Go to task in outliner", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("o", "Open task detail", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("r", "Refresh roadmap data", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("?", "Toggle help", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }),

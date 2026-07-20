@@ -18,8 +18,10 @@ func newTestProjectFocusView(t *testing.T) (*ProjectFocusViewModel, *models.Proj
 	cfg := newTestConfig()
 	project := testutil.NewTestProject("focus-test")
 
-	// Add a Focus Queue task with a due date.
+	// Add a Next (StateNext) task with a due date. Membership is the workflow
+	// state; the order-index entry only records ordering.
 	task := mustNewTestTask(project, "Active task with due")
+	task.ApplyWorkflowState(models.StateNext)
 	due := time.Now().Add(24 * time.Hour)
 	task.DueDate = &due
 	project.Tasks = append(project.Tasks, task)
@@ -80,22 +82,26 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	project := testutil.NewTestProject("filter-test")
 
 	queued := mustNewTestTask(project, "Queued")
+	queued.ApplyWorkflowState(models.StateNext)
 	project.Tasks = append(project.Tasks, queued)
 
 	notQueued := mustNewTestTask(project, "Not queued")
 	project.Tasks = append(project.Tasks, notQueued)
 
+	// A StateDone task is never a Next member, so it is excluded by membership.
 	completed := mustNewTestTask(project, "Completed")
 	completed.WorkflowState = models.StateDone
 	project.Tasks = append(project.Tasks, completed)
 
+	// A StateNext but snoozed task is a member excluded by the snooze filter.
 	snoozed := mustNewTestTask(project, "Snoozed")
+	snoozed.ApplyWorkflowState(models.StateNext)
 	snoozeDate := time.Now().Add(48 * time.Hour)
 	snoozed.SnoozedUntil = &snoozeDate
 	project.Tasks = append(project.Tasks, snoozed)
 
 	project.BuildTaskTree()
-	// Only queue members are included; completed and snoozed members are filtered out.
+	// Membership is StateNext; the order index only records ordering.
 	cfg.Planning().SetFocusQueue([]config.FocusQueueItem{
 		{TaskID: queued.ID, ProjectID: project.ID},
 		{TaskID: completed.ID, ProjectID: project.ID},
@@ -105,7 +111,7 @@ func TestProjectFocusViewModel_LoadTasks_FiltersCorrectly(t *testing.T) {
 	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
 
 	if len(m.tasks) != 1 {
-		t.Errorf("expected 1 queued non-complete non-snoozed task, got %d", len(m.tasks))
+		t.Errorf("expected 1 Next non-complete non-snoozed task, got %d", len(m.tasks))
 	}
 	if len(m.tasks) > 0 && m.tasks[0].Title != "Queued" {
 		t.Errorf("expected task title 'Queued', got %q", m.tasks[0].Title)
@@ -167,8 +173,11 @@ func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
 	project.Tasks = append(project.Tasks, staged)
 
 	project.BuildTaskTree()
+	// Membership is StateNext; put every task on deck so the filter assertions
+	// operate on the full set.
 	queue := make([]config.FocusQueueItem, 0, len(project.Tasks))
 	for _, task := range project.Tasks {
+		task.ApplyWorkflowState(models.StateNext)
 		queue = append(queue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
 	}
 	cfg.Planning().SetFocusQueue(queue)
@@ -225,9 +234,11 @@ func TestProjectFocusViewModel_FilterHandlers_DispatchThroughKeymap(t *testing.T
 	project := testutil.NewTestProject("filter-dispatch")
 
 	plain := mustNewTestTask(project, "Plain")
+	plain.ApplyWorkflowState(models.StateNext)
 	project.Tasks = append(project.Tasks, plain)
 
 	dimmed := mustNewTestTask(project, "Dimmed")
+	dimmed.ApplyWorkflowState(models.StateNext)
 	dimmed.Dimmed = true
 	project.Tasks = append(project.Tasks, dimmed)
 

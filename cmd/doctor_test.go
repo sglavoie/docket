@@ -335,6 +335,63 @@ func TestFixIssues_CleansDeadRelatedTo(t *testing.T) {
 	}
 }
 
+func TestFocusQueueNotNextMigration(t *testing.T) {
+	tmpDir := t.TempDir()
+	project, err := models.NewProject("proj-migrate", "Migrate", "")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	project.Slug = "migrate"
+	project.Path = filepath.Join(tmpDir, "projects", "migrate")
+
+	queued := testutil.NewTestTask("Legacy queued", models.TaskTypeTask)
+	queued.ShortID = 1
+	queued.WorkflowState = models.StateReady // legacy: queued but not yet StateNext
+	unqueued := testutil.NewTestTask("Unrelated", models.TaskTypeTask)
+	unqueued.ShortID = 2
+	unqueued.WorkflowState = models.StateReady
+	project.Tasks = []*models.Task{queued, unqueued}
+	project.NextShortID = 3
+	project.BuildTaskTree()
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	defer func() { storage.DefaultRepository = oldRepo }()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
+
+	planning := &config.PlanningState{
+		FocusQueue: []config.FocusQueueItem{{TaskID: queued.ID, ProjectID: project.ID}},
+	}
+
+	results := &doctorResults{}
+	checkFocusQueueNotNext(planning, []*models.Project{project}, results)
+	if len(results.focusQueueNotNext) != 1 || results.focusQueueNotNext[0].task != queued.ID {
+		t.Fatalf("expected exactly the legacy queued task flagged, got %+v", results.focusQueueNotNext)
+	}
+
+	fixFocusQueueNotNext(results.focusQueueNotNext, []*models.Project{project})
+
+	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
+	if err := storage.LoadProject(fresh); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if got := fresh.GetTaskByID(queued.ID); got == nil || got.State() != models.StateNext {
+		t.Fatalf("queued task after migration = %v, want StateNext", got.State())
+	}
+	if got := fresh.GetTaskByID(unqueued.ID); got == nil || got.State() != models.StateReady {
+		t.Fatalf("non-queue task should be untouched, got %v", got.State())
+	}
+
+	// The migration is idempotent: a second scan finds nothing to fix.
+	rescanned := &doctorResults{}
+	checkFocusQueueNotNext(planning, []*models.Project{fresh}, rescanned)
+	if len(rescanned.focusQueueNotNext) != 0 {
+		t.Fatalf("expected no issues after migration, got %+v", rescanned.focusQueueNotNext)
+	}
+}
+
 func TestCheckMissingDescriptionMarkers(t *testing.T) {
 	t.Run("flags project with old-format descriptions", func(t *testing.T) {
 		dir := t.TempDir()

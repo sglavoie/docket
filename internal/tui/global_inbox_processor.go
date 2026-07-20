@@ -168,6 +168,10 @@ func (m *GlobalInboxProcessorModel) findTaskByID(taskID, projectID string) (*mod
 	return nil, nil
 }
 
+func (m *GlobalInboxProcessorModel) projectByID(projectID string) *models.Project {
+	return m.projectCache[projectID]
+}
+
 func (m *GlobalInboxProcessorModel) showProjectInHeader() bool { return true }
 func (m *GlobalInboxProcessorModel) headerTitle() string       { return "Global Inbox" }
 func (m *GlobalInboxProcessorModel) headerSubtitleExtra() string {

@@ -10,11 +10,11 @@ func (m *AppModel) focusViewCommands() []Command {
 	return []Command{
 		{
 			Name:        "go to task in project",
-			Description: "Navigate to task in project tree",
+			Description: "Navigate to task in outliner",
 			Shortcut:    "gp",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
-			Aliases:     []string{"open in project", "show in tree"},
+			Views:       []ViewType{ViewProjectFocusView},
+			Aliases:     []string{"open in project", "show in outliner"},
 			Handler: func() tea.Msg {
 				return syntheticKey('g')
 			},
@@ -24,7 +24,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Copy task title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Views:       []ViewType{ViewProjectFocusView},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
 				return syntheticKey('y')
@@ -35,7 +35,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Copy task with details to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Views:       []ViewType{ViewProjectFocusView},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
 				return syntheticKey('Y')
@@ -46,7 +46,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Copy task title and description",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Views:       []ViewType{ViewProjectFocusView},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
 				return syntheticCtrlKey('y')
@@ -217,12 +217,12 @@ func (m *AppModel) priorityViewCommands() []Command {
 			},
 		},
 		{
-			Name:        "go to task in tree",
-			Description: "Navigate to task in project tree",
+			Name:        "go to task in outliner",
+			Description: "Navigate to task in outliner",
 			Shortcut:    "gt",
 			Category:    CategoryNavigation,
 			Views:       []ViewType{ViewPriorityView},
-			Aliases:     []string{"open in tree", "show in tree"},
+			Aliases:     []string{"open in outliner", "show in outliner"},
 			Handler: func() tea.Msg {
 				return syntheticKey('g')
 			},
@@ -442,11 +442,11 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 		},
 		{
 			Name:        "send to next",
-			Description: "Route the current task to the Next (today) section",
+			Description: "Route the current task to the Next (on-deck) section",
 			Shortcut:    "mn",
 			Category:    CategoryActions,
 			Views:       bothViews,
-			Aliases:     []string{"plan for today", "schedule next", "move to next", "send to today", "triage next"},
+			Aliases:     []string{"schedule next", "move to next", "on deck", "triage next"},
 			Handler: func() tea.Msg {
 				return runInboxResultCmd(func(c *inboxCore) tea.Cmd {
 					return c.moveToSection(models.SectionNext)
@@ -550,66 +550,6 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 				}
 				inboxDeletePrompt(c, confirm)
 				return nil
-			},
-		},
-	}
-}
-
-func (m *AppModel) dueDateOverviewCommands() []Command {
-	return []Command{
-		{
-			Name:        "refresh due dates",
-			Description: "Refresh due date overview data",
-			Shortcut:    "r",
-			Category:    CategoryActions,
-			Views:       []ViewType{ViewDueDateOverview},
-			Aliases:     []string{"reload due dates"},
-			Handler: func() tea.Msg {
-				return syntheticKey('r')
-			},
-		},
-		{
-			Name:        "go to task project",
-			Description: "Navigate to task in project tree",
-			Shortcut:    "gp",
-			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDueDateOverview},
-			Aliases:     []string{"open in project", "show in tree"},
-			Handler: func() tea.Msg {
-				return syntheticKey('g')
-			},
-		},
-		{
-			Name:        "copy task title",
-			Description: "Copy task title to clipboard",
-			Shortcut:    "y",
-			Category:    CategoryActions,
-			Views:       []ViewType{ViewDueDateOverview},
-			Aliases:     []string{"yank title"},
-			Handler: func() tea.Msg {
-				return syntheticKey('y')
-			},
-		},
-		{
-			Name:        "copy task details",
-			Description: "Copy task with details to clipboard",
-			Shortcut:    "Y",
-			Category:    CategoryActions,
-			Views:       []ViewType{ViewDueDateOverview},
-			Aliases:     []string{"yank details"},
-			Handler: func() tea.Msg {
-				return syntheticKey('Y')
-			},
-		},
-		{
-			Name:        "copy task with description",
-			Description: "Copy task title and description",
-			Shortcut:    "ctrl+y",
-			Category:    CategoryActions,
-			Views:       []ViewType{ViewDueDateOverview},
-			Aliases:     []string{"yank description"},
-			Handler: func() tea.Msg {
-				return syntheticCtrlKey('y')
 			},
 		},
 	}

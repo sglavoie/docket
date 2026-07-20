@@ -71,7 +71,19 @@ func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, boo
 // and toasts. The onUndo callback is retired in cross mode — the ledger owns undo.
 func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	proj := m.project
-	saveFn := m.saveWithWorkflow
+	// Name the quick-edited task as the planning-reconcile target so a single-project
+	// quick edit that changes the task's section (and therefore its workflow state)
+	// folds Today/Next exclusivity into the same whole-project workflow transaction.
+	var editTaskID string
+	if t := m.quickEdit.GetTask(); t != nil {
+		editTaskID = t.ID
+	}
+	saveFn := func() tea.Cmd {
+		if editTaskID != "" {
+			m.undo.TaskIDs = []string{editTaskID}
+		}
+		return m.saveWithWorkflow()
+	}
 	undoFn := m.setUndoContext
 	if proj == nil && m.crossQuickEditProject != nil {
 		proj = m.crossQuickEditProject

@@ -181,7 +181,7 @@ func (m *AppModel) buildBreadcrumb() string {
 	const sep = " > "
 
 	// Build a deduplicated view stack, keeping the LAST occurrence of each
-	// view type (e.g. for stacked ViewProjectTree the deepest project wins).
+	// view type (e.g. for stacked project views the deepest project wins).
 	lastIdx := make(map[ViewType]int)
 	for i, vt := range m.viewStack {
 		lastIdx[vt] = i
@@ -259,16 +259,6 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 	// Fallback labels for views that don't implement StatusBarLabeler.
 	if label == "" {
 		switch vt {
-		case ViewProjectTree:
-			if m.currentProject != nil {
-				name := m.currentProject.Name
-				if lipgloss.Width(name) > maxProjectLen {
-					name = truncateToVisualWidth(name, maxProjectLen)
-				}
-				label = name
-			} else {
-				label = "Project"
-			}
 		case ViewFilter:
 			label = "Filter"
 		case ViewDailyReview:

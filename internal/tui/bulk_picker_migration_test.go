@@ -102,20 +102,19 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 		projects[project.ID] = project
 	}
 	return &AppModel{
-		configManager:            e.mgr,
-		runtime:                  testRuntimeAt(e.cfg.DataDir(), e.cfg),
-		projects:                 projects,
-		persister:                NewProjectService(),
-		appService:               e.svc,
-		secondaryFeatures:        e.features,
-		views:                    NewViewRegistry(),
-		viewStack:                []ViewType{ViewDashboard},
-		width:                    80,
-		height:                   24,
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		navHistory:               NewNavHistory(),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        e.mgr,
+		runtime:              testRuntimeAt(e.cfg.DataDir(), e.cfg),
+		projects:             projects,
+		persister:            NewProjectService(),
+		appService:           e.svc,
+		secondaryFeatures:    e.features,
+		views:                NewViewRegistry(),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		navHistory:           NewNavHistory(),
 	}
 }
 

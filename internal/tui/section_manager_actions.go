@@ -8,16 +8,12 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// filterBySection sets the project tree filter and closes the section manager.
-// When opened from outliner view (no projectTree), it just closes without filtering.
+// filterBySection closes the section manager and applies the chosen section as
+// the outliner's section filter via GoToSectionMsg (the AppModel owns the
+// outliner and applies the filter there).
 func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
-	if m.projectTree != nil {
-		m.projectTree.filter.Sections = map[string]bool{sectionName: true}
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
-	}
 	return func() tea.Msg {
-		return CloseSectionManagerMsg{}
+		return GoToSectionMsg{SectionName: sectionName}
 	}
 }
 

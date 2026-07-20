@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/storage/format"
@@ -42,6 +43,7 @@ type doctorResults struct {
 	emptyProjects      []doctorIssue
 	missingDescMarkers []doctorIssue
 	archiveIndexIssues []doctorIssue
+	focusQueueNotNext  []doctorIssue
 	autoRepaired       []doctorIssue
 }
 
@@ -81,7 +83,7 @@ func (r projectResolver) GetProject(idOrSlug string) *models.Project {
 func (r *doctorResults) totalIssues() int {
 	return len(r.loadFailures) + len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs) +
-		len(r.missingDescMarkers) + len(r.archiveIndexIssues) + len(r.autoRepaired)
+		len(r.missingDescMarkers) + len(r.archiveIndexIssues) + len(r.focusQueueNotNext) + len(r.autoRepaired)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -133,12 +135,14 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkOrphanedCrossRefs(loadedProjects, resolver, results)
 	checkMissingDescriptionMarkers(loadedProjects, results)
 	checkArchiveIndexIssues(everyProject, results)
+	checkFocusQueueNotNext(workspace.Runtime.Planning(), loadedProjects, results)
 
 	if fix {
 		fixAutoRepaired(results.autoRepaired, loadedProjects)
 		fixIssues(loadedProjects, resolver)
 		fixMissingDescriptionMarkers(results.missingDescMarkers, loadedProjects)
 		fixArchiveIndexIssues(results.archiveIndexIssues, everyProject)
+		fixFocusQueueNotNext(results.focusQueueNotNext, loadedProjects)
 	}
 
 	printResults(results)
@@ -579,7 +583,62 @@ func printResults(results *doctorResults) {
 	printSection("Orphaned cross-project refs", results.orphanedCrossRefs)
 	printSection("Missing description markers", results.missingDescMarkers)
 	printSection("Archive index issues", results.archiveIndexIssues)
+	printSection("Focus-queue tasks not in Next", results.focusQueueNotNext)
 	printInfoSection("Empty projects", results.emptyProjects)
+}
+
+// checkFocusQueueNotNext reports focus-queue members whose workflow state is not
+// StateNext. Queue membership is now the StateNext state, so this is the one-time
+// migration surface: a member that predates the state-driven queue still needs
+// its state backfilled for the "queued iff StateNext" invariant to hold. Missing
+// and terminal members are intentionally skipped — they are dropped by the
+// prune-on-load path, not migrated.
+func checkFocusQueueNotNext(planning *config.PlanningState, projects []*models.Project, results *doctorResults) {
+	if planning == nil {
+		return
+	}
+	for _, item := range planning.GetFocusQueue() {
+		for _, project := range projects {
+			task := project.GetTaskByID(item.TaskID)
+			if task == nil {
+				continue
+			}
+			if !task.IsTerminalState() && task.State() != models.StateNext {
+				results.focusQueueNotNext = append(results.focusQueueNotNext, doctorIssue{
+					project: project.Name,
+					task:    task.ID,
+					detail:  fmt.Sprintf("task #%d %q is %s, not next", task.ShortID, task.Title, task.State()),
+				})
+			}
+			break
+		}
+	}
+}
+
+// fixFocusQueueNotNext backfills StateNext onto every reported focus-queue member
+// so the state-driven queue invariant holds on first launch.
+func fixFocusQueueNotNext(issues []doctorIssue, projects []*models.Project) {
+	if len(issues) == 0 {
+		return
+	}
+	dirty := make(map[string]*models.Project)
+	for _, issue := range issues {
+		for _, project := range projects {
+			task := project.GetTaskByID(issue.task)
+			if task == nil {
+				continue
+			}
+			task.ApplyWorkflowState(models.StateNext)
+			fmt.Printf("  Fixed: set focus-queue task #%d %q to Next in %s\n", task.ShortID, task.Title, project.Name)
+			dirty[project.ID] = project
+			break
+		}
+	}
+	for _, project := range dirty {
+		if err := storage.SaveProjectLocked(project); err != nil {
+			fmt.Fprintf(os.Stderr, "error: failed to save project %s: %v\n", project.Name, err)
+		}
+	}
 }
 
 func printSection(name string, issues []doctorIssue) {

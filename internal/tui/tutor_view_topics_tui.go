@@ -44,9 +44,9 @@ unless a bulk picker or bulk action is explicitly opened.
 
 # Where It Works
 
-Task multi-select field actions are available in project tree,
-outliner, cross-project outliner, all tasks, focus views, focus
-board, priority, due date, daily/weekly review, and Kanban views.
+Task multi-select field actions are available in the outliner,
+cross-project outliner, all tasks, focus views, focus board,
+priority, due date, daily/weekly review, and Kanban views.
 
 Press Esc to exit multi-select mode and clear selections.`,
 		},
@@ -94,7 +94,7 @@ The palette's "Suggested" section is context-aware inside the
 inbox processors: it leads with the triage-momentum vocabulary
 ("plan today", "send to next", "set due date today", "snooze
 inbox task") so a brand-new user lands on the close-message
-next actions (;w Today · ;q Backlog) without memorizing chords
+next actions (;w Today · ;q Next) without memorizing chords
 first.`,
 		},
 		{
@@ -345,12 +345,12 @@ the per-project processor for the currently selected project.
 When the inbox empties the close message hands you the next
 moves verbatim:
 
-  Inbox clear! X triaged, Y skipped. Next: ;w Today · ;q Backlog
-  Inbox paused: Y skipped. Next: ;q Backlog
+  Inbox clear! X triaged, Y skipped. Next: ;w Today · ;q Next
+  Inbox paused: Y skipped. Next: ;q Next
 
 The Global Inbox Processor uses the matching "Global inbox
 clear!" / "Global inbox paused:" prefixes. The ;w Today and
-;q Backlog hints route into the Pipeline Hub so the vocabulary
+;q Next hints route into the Pipeline Hub so the vocabulary
 stays consistent between triage and review.
 
 # Both Processors Share One Model
@@ -386,8 +386,8 @@ screen. Help is context-sensitive and shows only relevant actions.`,
 			Content: `# What Is the Outliner
 
 The outliner is a column-based flat view that shows tasks organized
-by sections. Unlike the project tree which shows the full hierarchy,
-the outliner focuses on one level at a time with zoom navigation.
+by sections. It is the sole per-project surface and focuses on one
+level at a time with zoom navigation.
 
 # Zooming
 
@@ -395,17 +395,16 @@ Press Enter on a parent task to zoom into its children. Press
 Esc to zoom back out. The zoom stack remembers your position
 at each level.
 
-# Switching Project Views
+# Drilling In From the Cross-Project Outliner
 
-Ctrl+p toggles the current project's tree and outliner. From the
-cross-project outliner, Ctrl+p first opens the highlighted project's
-tree.
+The single-project outliner has no view toggle — it is the only
+per-project view. From the cross-project outliner, press Ctrl+p to
+open the highlighted project's own outliner.
 
 # Perspectives
 
 Press 1-9 to switch between perspective presets that filter and
-group tasks differently. The outliner supports the same sort
-modes and filters as the project tree.`,
+group tasks differently.`,
 		},
 		{
 			Title:    "Pipeline Views",
@@ -446,7 +445,7 @@ plus the escape-hatch cluster ";; hub · : cmd · ? help".
 
   Capture:  ;i quick capture, ;I bulk capture
   Triage:   ctrl+i inbox, ;a all tasks, ;o outliner, ;k kanban
-  Plan:     ;q backlog, ;D due dates, ;d daily review, ;R roadmap
+  Plan:     ;q next, ;D due dates, ;d daily review, ;R roadmap
   Work:     ;w today, Enter a project from Dashboard or Hub
   Review:   ;r weekly review, ;m metrics, ;l activity log
   Support:  ;B blockers, ;N notes, ;W workflow rules, ;n notifications`,
@@ -562,9 +561,8 @@ created.
 
 # Clipboard Paste (Ctrl+V)
 
-In any navigation view (project tree, outliner, quick capture
-nav mode) press Ctrl+V to create a task directly from the
-clipboard:
+In any navigation view (outliner, quick capture nav mode) press
+Ctrl+V to create a task directly from the clipboard:
 
   - Plain text → task title
   - URL line   → title set to URL, URL attached to task
@@ -618,7 +616,7 @@ This lets you set dimension values for the task interactively.
 
 # Sort by Score
 
-Press 5 in the project tree to sort tasks by their computed score.
+Press 5 in the outliner to sort tasks by their computed score.
 Higher scores appear first. Tasks without scores appear at the end.
 
 # Score Badge
@@ -639,7 +637,7 @@ the computed total when a scored task is selected.
 Use the FS prefix to filter tasks by minimum normalized score (0-300).
 Press F then S to open the score filter popup. Keys 1 through 9 set
 thresholds at 30, 60, 90, ..., 270 respectively. Press 0 to clear the
-filter. Works in both project tree and outliner views.`,
+filter. Works in the outliner view.`,
 		},
 		{
 			Title:    "Snooze",

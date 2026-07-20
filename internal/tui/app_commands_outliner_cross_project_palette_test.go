@@ -133,7 +133,7 @@ func TestCrossPalette_QuickCapture_NoProjectUnderCursor(t *testing.T) {
 
 func TestCrossPalette_QuickCaptureFromProjectTreeUsesSharedCapture(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.taskCommands(), "quick capture")
 	if cmd == nil {
@@ -337,7 +337,7 @@ func TestCrossPalette_RegistryExposesReadViewCaptureCommandsInCrossOutliner(t *t
 		{"task activity", "gh"},
 		{"park task", "tP"},
 		{"project recent activity", "gl"},
-		{"project tree", "ctrl+p"},
+		{"open project outliner", "ctrl+p"},
 	}
 
 	for _, tc := range cases {
@@ -366,7 +366,7 @@ func TestCrossPalette_RegistryExposesReadViewCaptureCommandsInCrossOutliner(t *t
 // to target m.currentProject.
 func TestCrossPalette_BlockersView_FallsBackToCurrentProject(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.otherCommands(), "blockers view")
 	if cmd == nil {
@@ -381,19 +381,20 @@ func TestCrossPalette_BlockersView_FallsBackToCurrentProject(t *testing.T) {
 	}
 }
 
-// TestCrossPalette_TaskActivity_FromProjectTreeUsesSelectedTask exercises the
-// non-cross branch of paletteTaskTarget so the project-tree origin keeps the
-// `selectedTreeTask()` + currentProject behavior intact.
-func TestCrossPalette_TaskActivity_FromProjectTreeUsesSelectedTask(t *testing.T) {
+// TestCrossPalette_TaskActivity_FromOutlinerUsesSelectedTask exercises the
+// non-cross branch of paletteTaskTarget so the single-outliner origin keeps the
+// cursor task + owning project behavior intact.
+func TestCrossPalette_TaskActivity_FromOutlinerUsesSelectedTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	visible := app.projectTree.visibleNodes()
-	if len(visible) == 0 {
-		t.Fatal("expected project tree to have visible nodes")
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.outliner.rebuildRows()
+	advanceCursorToTask(app.outliner)
+	app.views.Register(ViewOutliner, app.outliner)
+	expectedTask := app.outliner.getCursorTask()
+	if expectedTask == nil {
+		t.Fatal("expected outliner to have a task under the cursor")
 	}
-	app.projectTree.cursor = 0
-	expectedTask := visible[0].Task
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.taskActionCommands(), "task activity")
 	if cmd == nil {
@@ -486,7 +487,7 @@ func TestCrossPalette_ArchiveCompletedTasks_NoProjectUnderCursor(t *testing.T) {
 
 func TestCrossPalette_ArchiveCompletedTasks_FallsBackToCurrentProject(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.taskCommands(), "archive completed tasks")
 	if cmd == nil {
@@ -663,7 +664,7 @@ func TestCrossPalette_RegistryExposesMutationProjectOpCommandsInCrossOutliner(t 
 // continues to target m.currentProject.
 func TestCrossPalette_ArchiveProject_FallsBackToCurrentProject(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.otherCommands(), "archive project")
 	if cmd == nil {

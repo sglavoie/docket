@@ -38,31 +38,6 @@ func TestHandleViewMessagesCloseProjectPreview(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowDueDateOverview(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := ShowDueDateOverviewMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowDueDateOverviewMsg should be handled")
-	}
-	if app.currentView() != ViewDueDateOverview {
-		t.Errorf("currentView should be DueDateOverview, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesCloseDueDateOverview(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewDueDateOverview)
-
-	app.Update(CloseDueDateOverviewMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing overview, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesShowDailyReview(t *testing.T) {
 	app := newTestAppModel()
 
@@ -85,20 +60,6 @@ func TestHandleViewMessagesCloseDailyReview(t *testing.T) {
 
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing review, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesShowFocusView(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := ShowFocusViewMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowFocusViewMsg should be handled")
-	}
-	if app.currentView() != ViewFocusView {
-		t.Errorf("currentView should be FocusView, got %v", app.currentView())
 	}
 }
 

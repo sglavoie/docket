@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"maps"
 	"strings"
 
@@ -27,16 +28,17 @@ func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
 
 // HasActiveFilters returns true if any filter is currently active.
 func (m *FocusBoardModel) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&m.filter) || m.searchQuery != ""
+	return hasActiveCommonFilters(&m.filter) || m.searchQuery != "" || len(m.backlogProjectFilter) > 0
 }
 
 // ActiveFilterCount returns the number of active filters. Overrides FilterMixin
-// to include the search query in the count.
+// to include the search query and the Backlog project filter in the count.
 func (m *FocusBoardModel) ActiveFilterCount() int {
 	count := m.FilterMixin.ActiveFilterCount()
 	if m.searchQuery != "" {
 		count++
 	}
+	count += len(m.backlogProjectFilter)
 	return count
 }
 
@@ -44,6 +46,7 @@ func (m *FocusBoardModel) ActiveFilterCount() int {
 func (m *FocusBoardModel) ClearAllFilters() {
 	clearCommonFilters(&m.filter)
 	m.searchQuery = ""
+	m.backlogProjectFilter = make(map[string]bool)
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
@@ -52,7 +55,24 @@ func (m *FocusBoardModel) renderActiveFilterIndicator() string {
 	if m.searchQuery != "" {
 		parts = append(parts, "search:"+m.searchQuery)
 	}
+	if n := len(m.backlogProjectFilter); n > 0 {
+		parts = append(parts, fmt.Sprintf("proj:%d", n))
+	}
 	return renderFilterBadge(parts)
+}
+
+// focusBoardFilterByProject opens the shared project filter selector so the user
+// can narrow the Backlog to specific projects (the "By Project" quick filter).
+// It is a no-op when the Backlog has no ranked rows.
+func (m *FocusBoardModel) focusBoardFilterByProject() (tea.Model, tea.Cmd) {
+	projects := projectsFromBoardRows(m.backlogRows)
+	if len(projects) == 0 {
+		return m, nil
+	}
+	selected := m.backlogProjectFilter
+	return m, func() tea.Msg {
+		return ShowProjectFilterSelectorMsg{Projects: projects, Selected: selected}
+	}
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -63,6 +83,17 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	prefix := m.Dispatcher.PendingPrefix()
 	hints := PrefixHints{}
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
+	// The Planner adds an FP "by project" quick filter (Backlog tab). Mirror it
+	// in the popup so the which-key overlay matches the keymap; the shared hint
+	// builder has no project category.
+	if fHints, ok := hints["F"]; ok {
+		projectDetail := "(all)"
+		if n := len(m.backlogProjectFilter); n > 0 {
+			projectDetail = fmt.Sprintf("%d projects", n)
+		}
+		projectHint := PrefixHint{Key: "P", Description: "projects", Detail: projectDetail, Active: len(m.backlogProjectFilter) > 0}
+		hints["F"] = append(fHints[:len(fHints)-1], projectHint, fHints[len(fHints)-1])
+	}
 	if _, ok := hints[prefix]; !ok {
 		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
 		for _, h := range m.Dispatcher.PrefixHints() {

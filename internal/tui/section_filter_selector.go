@@ -19,41 +19,17 @@ type SectionInfo struct {
 // SectionFilterSelectorModel allows selecting multiple sections to filter by.
 type SectionFilterSelectorModel struct {
 	*BasePicker[SectionInfo]
-	projectTree *ProjectTreeModel
 }
 
 // ShowSectionFilterSelectorMsg is sent to open the section filter selector.
 type ShowSectionFilterSelectorMsg struct {
-	ProjectTree *ProjectTreeModel
-	Project     *models.Project // Used when ProjectTree is nil (e.g., from outliner)
+	Project *models.Project
 }
 
 // SectionFilterSelectorDoneMsg is sent when the section filter selector is done.
 type SectionFilterSelectorDoneMsg struct {
 	SelectedSections []string
 	Canceled         bool
-}
-
-// NewSectionFilterSelectorModel creates a new section filter selector.
-func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorModel {
-	sections := buildSectionList(pt.project)
-
-	picker := NewBasePicker(sections, PickerConfig{
-		Title:          "Filter by Sections",
-		EmptyMessage:   "No sections in project.",
-		NoMatchMessage: "No matching sections.",
-		MultiSelect:    true,
-		ShowCounts:     true,
-	})
-
-	for section := range pt.filter.Sections {
-		picker.PreSelectByID(section)
-	}
-
-	return &SectionFilterSelectorModel{
-		BasePicker:  picker,
-		projectTree: pt,
-	}
 }
 
 // NewSectionFilterSelectorModelForProject creates a section filter selector

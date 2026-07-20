@@ -46,38 +46,9 @@ func tagPartFromCommonFilterParts(parts []string) string {
 	return ""
 }
 
-// TestProjectTreeActiveFilterParts_SectionsDeterministicOrder guards against
-// the same map-iteration nondeterminism bug for the per-view Sections filter
-// in ProjectTreeModel.activeFilterParts().
-func TestProjectTreeActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	pt := NewProjectTreeModel(project, nil, app.runtime)
-	pt.filter.Sections = map[string]bool{
-		"Zeta":   true,
-		"Alpha":  true,
-		"Middle": true,
-		"Beta":   true,
-	}
-
-	first := sectionPartFromParts(pt.activeFilterParts())
-	if first == "" {
-		t.Fatalf("expected a section part in activeFilterParts output, got none")
-	}
-	wantSecPart := "@Alpha @Beta @Middle @Zeta"
-	if first != wantSecPart {
-		t.Errorf("section part not in deterministic sorted order: got %q, want %q", first, wantSecPart)
-	}
-
-	for i := range 50 {
-		got := sectionPartFromParts(pt.activeFilterParts())
-		if got != first {
-			t.Fatalf("iteration %d: section part changed across calls: got %q, want %q", i, got, first)
-		}
-	}
-}
-
-// TestOutlinerActiveFilterParts_SectionsDeterministicOrder is the outliner
-// counterpart of the project-tree section ordering test.
+// TestOutlinerActiveFilterParts_SectionsDeterministicOrder guards against
+// map-iteration nondeterminism bug for the per-view Sections filter in
+// OutlinerModel.activeFilterParts().
 func TestOutlinerActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	ol := NewOutlinerModel(project, app.configManager, app.runtime)

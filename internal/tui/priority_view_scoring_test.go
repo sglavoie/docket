@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -157,45 +158,83 @@ func TestComputeUrgencyScore(t *testing.T) {
 	}
 }
 
-func TestComputeSuggestionScore_SectionOrdering(t *testing.T) {
-	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
+// suggestionCandidates mirrors computeSuggestion's candidate set (the
+// actionable groups, excluding blocked/waiting) as FocusTasks so a test can
+// independently rank them with the shared engine.
+func suggestionCandidates(m *PriorityViewModel) []focus.FocusTask {
+	var pts []*PriorityTask
+	pts = append(pts, m.overdue...)
+	pts = append(pts, m.today...)
+	pts = append(pts, m.thisWeek...)
+	pts = append(pts, m.later...)
+	pts = append(pts, m.backlog...)
 
-	makeTask := func(section string) *models.Task {
-		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	fts := make([]focus.FocusTask, 0, len(pts))
+	for _, pt := range pts {
+		fts = append(fts, focus.FocusTask{Task: pt.Task, Project: m.project})
+	}
+	return fts
+}
+
+// TestPrioritySuggestionUsesSharedFocusRanking proves the Priority smart
+// suggestion is the first non-dismissed task of the shared cross-project focus
+// ranking (focus.RankCrossProjectTasks) rather than a divergent second
+// heuristic — score and reason included — before and after a dismissal.
+func TestPrioritySuggestionUsesSharedFocusRanking(t *testing.T) {
+	project := newTestPriorityProject(t)
+
+	mkTask := func(id string, priority int, taskType models.TaskType, title string) *models.Task {
+		task, err := models.NewTask(id, priority, taskType, title)
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.Priority = 3
-		task.CreatedAt = time.Now().Add(-48 * time.Hour)
-		task.UpdatedAt = time.Now().Add(-48 * time.Hour)
-		task.SetSection(section)
+		task.Priority = priority
 		return task
 	}
 
-	nextScore := m.computeSuggestionScore(makeTask(models.SectionNext))
-	inboxScore := m.computeSuggestionScore(makeTask(models.SectionInbox))
-	waitingScore := m.computeSuggestionScore(makeTask(models.SectionWaiting))
-	reviewScore := m.computeSuggestionScore(makeTask(models.SectionReview))
-	standbyScore := m.computeSuggestionScore(makeTask(models.SectionStandby))
-	somedayScore := m.computeSuggestionScore(makeTask(models.SectionSomeday))
+	// A spread of eligible tasks with different priorities/types so the shared
+	// ranker yields a strict ordering.
+	high := mkTask("1", 1, models.TaskTypeBug, "Critical bug")
+	mid := mkTask("2", 3, models.TaskTypeTask, "Medium task")
+	low := mkTask("3", 5, models.TaskTypeTask, "Low task")
 
-	if nextScore <= inboxScore {
-		t.Errorf("Next score (%d) should be > Inbox score (%d)", nextScore, inboxScore)
+	project.Tasks = []*models.Task{low, mid, high}
+
+	runtime := config.EmptyRuntimeState("")
+	m := NewPriorityViewModel(project, runtime, nil)
+
+	// Independently rank the same candidate set with the shared engine.
+	ranked := focus.RankCrossProjectTasks(suggestionCandidates(m), nil, runtime)
+	if len(ranked) == 0 {
+		t.Fatal("expected the shared ranker to return candidates")
 	}
-	if inboxScore <= waitingScore {
-		t.Errorf("Inbox score (%d) should be > Waiting score (%d)", inboxScore, waitingScore)
+	if m.suggestion == nil {
+		t.Fatal("expected a smart suggestion")
 	}
-	// A Review-section task derives the review state, which carries the +250
-	// review urgency bonus on top of the same -100 holding-bucket penalty.
-	if reviewScore != waitingScore+250 {
-		t.Errorf("Review score (%d) should equal Waiting score (%d) + 250", reviewScore, waitingScore)
+	if m.suggestion.Task.Task.ID != ranked[0].Task.ID {
+		t.Errorf("suggestion task %q != first shared-ranked task %q",
+			m.suggestion.Task.Task.ID, ranked[0].Task.ID)
 	}
-	if waitingScore <= standbyScore {
-		t.Errorf("Waiting score (%d) should be > Standby score (%d)", waitingScore, standbyScore)
+	if m.suggestion.Score != ranked[0].Score {
+		t.Errorf("suggestion score %d != shared score %d", m.suggestion.Score, ranked[0].Score)
 	}
-	if standbyScore <= somedayScore {
-		t.Errorf("Standby score (%d) should be > Someday score (%d)", standbyScore, somedayScore)
+	if m.suggestion.Reason != ranked[0].Reason {
+		t.Errorf("suggestion reason %q != shared reason %q", m.suggestion.Reason, ranked[0].Reason)
+	}
+
+	// Dismissing the current suggestion must advance to the next non-dismissed
+	// shared-ranked candidate.
+	m.dismissSuggestion()
+	rankedAfter := focus.RankCrossProjectTasks(suggestionCandidates(m), m.dismissedIDs, runtime)
+	if len(rankedAfter) == 0 {
+		t.Fatal("expected remaining candidates after dismiss")
+	}
+	if m.suggestion == nil {
+		t.Fatal("expected a suggestion after dismiss")
+	}
+	if m.suggestion.Task.Task.ID != rankedAfter[0].Task.ID {
+		t.Errorf("after dismiss, suggestion %q != first non-dismissed shared-ranked %q",
+			m.suggestion.Task.Task.ID, rankedAfter[0].Task.ID)
 	}
 }
 

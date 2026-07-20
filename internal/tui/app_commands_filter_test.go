@@ -7,22 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestFilterCommands_FilterByTag_WithProjectTree(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
-
-	cmds := app.filterCommands()
-	cmd := findCommand(cmds, "filter by tag")
-	if cmd == nil {
-		t.Fatal("expected 'filter by tag' command")
-	}
-	msg := cmd.Handler()
-	if _, ok := msg.(ShowTagFilterMsg); !ok {
-		t.Errorf("expected ShowTagFilterMsg, got %T", msg)
-	}
-}
-
 func TestFilterCommands_FilterByTag_WithOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
@@ -98,8 +82,8 @@ func TestFilterCommands_FilterByTag_WithCrossProjectOutlinerCatalogTags(t *testi
 
 func TestFilterCommands_FilterBySection(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.pushView(ViewOutliner)
 
 	cmds := app.filterCommands()
 	cmd := findCommand(cmds, "filter by section")
@@ -109,25 +93,6 @@ func TestFilterCommands_FilterBySection(t *testing.T) {
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowSectionFilterSelectorMsg); !ok {
 		t.Errorf("expected ShowSectionFilterSelectorMsg, got %T", msg)
-	}
-}
-
-func TestFilterCommands_ClearFilters_ProjectTree(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
-
-	app.projectTree.filter.Priority = 1
-
-	cmds := app.filterCommands()
-	cmd := findCommand(cmds, "clear filters")
-	if cmd == nil {
-		t.Fatal("expected 'clear filters' command")
-	}
-	cmd.Handler()
-
-	if app.projectTree.filter.Priority != 0 {
-		t.Errorf("expected Priority to be reset to 0, got %d", app.projectTree.filter.Priority)
 	}
 }
 
@@ -180,8 +145,8 @@ func TestFilterCommands_JumpToTask_NilProject(t *testing.T) {
 
 func TestFilterCommands_TagManager(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.pushView(ViewOutliner)
 
 	cmds := app.filterCommands()
 	cmd := findCommand(cmds, "tag manager")
@@ -233,8 +198,8 @@ func TestFilterCommands_GlobalTagManagerAvailableInCrossProjectOutliner(t *testi
 
 func TestFilterCommands_SectionManager(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.pushView(ViewOutliner)
 
 	cmds := app.filterCommands()
 	cmd := findCommand(cmds, "section manager")
@@ -303,9 +268,6 @@ func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *
 	if msg.Project != crossProject {
 		t.Fatalf("section manager project = %v, want %v", msg.Project, crossProject)
 	}
-	if msg.ProjectTree != nil {
-		t.Fatalf("section manager ProjectTree = %v, want nil", msg.ProjectTree)
-	}
 }
 
 func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
@@ -354,7 +316,7 @@ func TestFilterCommands_OpenDataFolder(t *testing.T) {
 
 func TestFilterCommands_OpenProjectFolder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.pushView(ViewProjectTree)
+	app.pushView(ViewOutliner)
 
 	cmds := app.filterCommands()
 	cmd := findCommand(cmds, "open project folder")

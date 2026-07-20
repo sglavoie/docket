@@ -148,7 +148,7 @@ func ctrlEscKeyPress() tea.KeyPressMsg {
 
 func TestHandleGlobalKeyPress_CtrlEscJumpsToDashboard(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewTaskForm}
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewTaskForm}
 	app.pendingSemicolonPrefix = true
 	app.pendingSandboxReset = true
 	app.showQuickSwitch = true
@@ -428,15 +428,6 @@ func TestHandleGlobalKeyPress_CtrlOOpensTaskReferenceFromPrimaryViews(t *testing
 		setupView func(*AppModel, *models.Project) View
 	}{
 		{
-			name:     "project tree",
-			viewType: ViewProjectTree,
-			setupView: func(app *AppModel, project *models.Project) View {
-				tree := NewProjectTreeModel(project, app.configManager, app.runtime)
-				app.projectTree = tree
-				return tree
-			},
-		},
-		{
 			name:     "outliner",
 			viewType: ViewOutliner,
 			setupView: func(app *AppModel, project *models.Project) View {
@@ -673,9 +664,16 @@ func TestHandleGlobalKeyPress_UndoRedoPreservesProtectedLocalViews(t *testing.T)
 		viewType ViewType
 		key      tea.KeyPressMsg
 	}{
+		// The Inbox keeps its own local u/ctrl+r (skip-undo is local; stateful
+		// undo/redo runs through the ledger from the processor itself), so the
+		// global handler must not intercept them. Task Attachments has no task
+		// undo and is likewise protected. The single-project Outliner and Task
+		// Detail were deliberately promoted to global ledger undo (see
+		// TestTUIWorkspaceLedgerUndoRedoAcrossPrimaryTaskSurfaces) and are no
+		// longer protected local views.
 		{name: "inbox undo", viewType: ViewInboxProcessor, key: syntheticKey('u')},
+		{name: "inbox redo", viewType: ViewInboxProcessor, key: tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}},
 		{name: "attachments redo", viewType: ViewTaskAttachments, key: tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}},
-		{name: "primary undo", viewType: ViewProjectTree, key: syntheticKey('u')},
 	}
 
 	for _, tt := range tests {
@@ -715,8 +713,8 @@ func TestHandleGlobalKeyPress_PersistentUndoWinsOverOlderFocusToggle(t *testing.
 	}
 
 	view := &undoRedoRecorderTaskRefView{task: task, project: project}
-	app.views.Register(ViewFocusView, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewFocusView}
+	app.views.Register(ViewFocusBoard, view)
+	app.viewStack = []ViewType{ViewDashboard, ViewFocusBoard}
 
 	handled, cmd := app.handleGlobalKeyPress(syntheticKey('u'))
 	if !handled {

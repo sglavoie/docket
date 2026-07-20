@@ -300,7 +300,7 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 // AllTasksNavigationPrefixHints contains "g" prefix hints for all tasks view.
 var AllTasksNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first", Detail: "Jump to first item"},
-	{Key: "p", Description: "go to project", Detail: "Navigate to task in project tree"},
+	{Key: "p", Description: "go to project", Detail: "Navigate to task in outliner"},
 }
 
 // renderGroupHeader renders a group header with task count and collapse indicator.
@@ -328,7 +328,7 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 	}
 
 	line := RenderCrossProjectTaskLine(task, item.Project, m.runtime, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
-		Queued:          m.queueIDs[task.ID],
+		Queued:          taskIsNext(task),
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		ShowTags:        true,
 		ShowScore:       true,

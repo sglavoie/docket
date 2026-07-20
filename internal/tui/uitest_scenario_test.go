@@ -566,7 +566,7 @@ func TestUITestScenarioMinimumTerminalEmptyStatesNoOverflow(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"backlog queue empty state", "backlog", "FocusView"},
+		{"backlog queue empty state", "planner next", "Today"},
 		{"workflow rules empty state", "workflow rules", "WorkflowRules"},
 		{"task templates empty state", "task templates", "TaskTemplates"},
 	}

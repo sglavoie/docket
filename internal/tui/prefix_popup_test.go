@@ -348,7 +348,7 @@ func TestRenderPrefixPopup_SemicolonUsesAvailableWidth(t *testing.T) {
 	}{
 		{"pipeline hub", "Overview of all pipeline stages"},
 		{"bulk capture", "Bulk task capture in a project"},
-		{"backlog", "Cross-project task suggestions"},
+		{"Planner Next", "On-deck shortlist (StateNext)"},
 		{"metrics", "Completion rates and throughput"},
 		{"roadmap", "Gantt chart and critical path"},
 		{"priority", "Change task priority globally"},

@@ -74,7 +74,7 @@ func (m *AppModel) projectCommands() []Command {
 			Name:        "rename project",
 			Description: "Rename the selected project",
 			Category:    CategoryProjects,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Aliases:     []string{"edit project", "rename"},
 			Handler: func() tea.Msg {
 				if m.currentView() == ViewDashboard {

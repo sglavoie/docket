@@ -121,7 +121,7 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case QuitMsg:
-		m.saveProjectTreeState()
+		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		m.saveCrossOutlinerState()
 		m.quitting = true
@@ -152,7 +152,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case periodicSaveMsg:
-		m.saveProjectTreeState()
+		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		return true, tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
@@ -255,8 +255,11 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 		}
 	}
 	// The checked planning artifact folded into this batch is now committed.
-	// Refresh the shared snapshot before rebuilding a domain-backed dashboard.
-	m.refreshRuntime()
+	// Rebuild the shared planning caches only after the runtime snapshot advances:
+	// registered views refresh below and must never render a known-stale snapshot.
+	if m.refreshRuntime() {
+		m.rebuildPlanningFromRuntime()
+	}
 	m.observeLoadedProjectMilestones(msg.TouchedProjectIDs...)
 	if m.dashboard != nil {
 		m.dashboard.Refresh()
@@ -375,7 +378,7 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 	m.invalidateFilterCaches()
 	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
 	m.refreshNotesSearchState()
-	m.refreshProjectTreeAfterTaskMutation(persistProjectTreeState)
+	m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
 	if m.allTasksView != nil {
 		m.allTasksView.loadAllTasks()
 		m.allTasksView.clampCursor()
@@ -393,12 +396,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 				pv.clampCursor()
 			}
 		}
-		if v := m.views.Get(ViewDueDateOverview); v != nil {
-			if dv, ok := v.(*DueDateOverviewModel); ok {
-				dv.reloadData()
-				dv.clampCursor()
-			}
-		}
 		if v := m.views.Get(ViewDailyReview); v != nil {
 			if dr, ok := v.(*DailyReviewModel); ok {
 				dr.reloadData()
@@ -409,12 +406,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 			if wr, ok := v.(*WeeklyReviewModel); ok {
 				wr.reloadData()
 				wr.clampCursor()
-			}
-		}
-		if v := m.views.Get(ViewFocusView); v != nil {
-			if fv, ok := v.(*FocusViewModel); ok {
-				fv.loadTasks()
-				fv.clampCursor()
 			}
 		}
 		if v := m.views.Get(ViewFocusBoard); v != nil {
@@ -453,11 +444,11 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 	return saveCmds
 }
 
-func (m *AppModel) refreshProjectTreeAfterTaskMutation(persistProjectTreeState bool) {
+func (m *AppModel) refreshProjectViewAfterTaskMutation(persistProjectTreeState bool) {
 	if persistProjectTreeState {
-		m.refreshProjectTree()
+		m.refreshProjectView()
 	} else {
-		m.refreshProjectTreeInMemory()
+		m.refreshProjectViewInMemory()
 	}
 }
 

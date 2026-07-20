@@ -192,14 +192,14 @@ func TestOutlinerCommands_Cross_ScoreEditor(t *testing.T) {
 func TestViewCommands_Cross_ProjectTreeUsesCursorProject(t *testing.T) {
 	app, _, crossProj, _ := setupCrossPaletteApp(t)
 
-	cmd := findCommand(app.viewCommands(), "project tree")
+	cmd := findCommand(app.viewCommands(), "open project outliner")
 	if cmd == nil {
-		t.Fatal("expected to find 'project tree' command")
+		t.Fatal("expected to find 'open project outliner' command")
 	}
 	result := cmd.Handler()
-	msg, ok := result.(ShowProjectTreeMsg)
+	msg, ok := result.(ShowOutlinerMsg)
 	if !ok {
-		t.Fatalf("expected ShowProjectTreeMsg, got %T", result)
+		t.Fatalf("expected ShowOutlinerMsg, got %T", result)
 	}
 	if msg.Project != crossProj {
 		t.Errorf("Project: want cross project, got %v", msg.Project)
@@ -223,9 +223,9 @@ func TestViewCommands_Cross_ProjectTreeWithoutCursorProjectReturnsStatus(t *test
 			app.crossOutliner.rows = tt.rows
 			app.crossOutliner.cursor = tt.cursor
 
-			cmd := findCommand(app.viewCommands(), "project tree")
+			cmd := findCommand(app.viewCommands(), "open project outliner")
 			if cmd == nil {
-				t.Fatal("expected to find 'project tree' command")
+				t.Fatal("expected to find 'open project outliner' command")
 			}
 			result := cmd.Handler()
 			status, ok := result.(StatusMsg)

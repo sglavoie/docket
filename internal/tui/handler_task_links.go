@@ -39,10 +39,10 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 
 // handleLinkedTaskNavigation navigates to a linked task, switching projects if needed.
 func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models.Project) (bool, tea.Cmd) {
-	// If we're in the project tree for this project, just jump to the task
-	if m.currentView() == ViewProjectTree && m.currentProject != nil && m.currentProject.ID == project.ID {
-		if m.projectTree != nil {
-			m.projectTree.JumpToTask(task)
+	// If we're already in the outliner for this project, just jump to the task
+	if m.currentView() == ViewOutliner && m.currentProject != nil && m.currentProject.ID == project.ID {
+		if m.outliner != nil {
+			m.outliner.NavigateToTaskInProject(task, m.outliner.project)
 			m.setSuccessStatus(fmt.Sprintf("Jumped to #%d", task.ShortID))
 		}
 		return true, defaultStatusTimeout()
@@ -50,9 +50,9 @@ func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models
 
 	// Otherwise, switch to the project and jump
 	m.switchToProject(project, true)
-	m.pushView(ViewProjectTree)
-	if m.projectTree != nil {
-		m.projectTree.JumpToTask(task)
+	m.pushView(ViewOutliner)
+	if m.outliner != nil {
+		m.outliner.NavigateToTaskInProject(task, m.outliner.project)
 		m.setSuccessStatus(fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name))
 	}
 	return true, defaultStatusTimeout()

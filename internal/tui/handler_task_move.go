@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -41,11 +42,27 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	msg.SourceProject.BuildTaskTree()
 	movedSet := collectDescendantIDs(msg.SourceProject.Tasks, map[string]bool{sourceTask.ID: true})
 
+	// When the move flow picks a destination section, that section changes the moved
+	// root's workflow state, so compute the state it will hold AFTER the move to
+	// reconcile Today/Next against the true final state rather than the pre-move
+	// state. A section-preserving move (no section chosen) changes no state and skips
+	// the exclusivity reconciliation, leaving the reassignment behavior untouched.
+	var finalState *models.WorkflowState
+	if msg.DestSection != nil {
+		probe := *sourceTask
+		probe.SetSection(*msg.DestSection)
+		st := probe.State()
+		finalState = &st
+	}
+
 	// Fold the durable planning refs (Focus Queue, Daily Plan) reassigned to the
 	// destination into the move transaction as a config artifact, so a partial move
-	// can never leave planning refs pointing at the old project. Recent visits are
-	// excluded here and repaired separately after the commit.
-	artifacts, err := m.moveConfigArtifacts(movedSet, destProject.ID)
+	// can never leave planning refs pointing at the old project. When a destination
+	// section was chosen, the same artifact reconciles Today/Next exclusivity for the
+	// moved root against its destination final state, so a move that lands the root in
+	// Next drops any stale Today entry and a move out of Next drops any stale order
+	// entry. Recent visits are excluded here and repaired separately after the commit.
+	artifacts, err := m.moveConfigArtifacts(movedSet, destProject.ID, sourceTask.ID, finalState)
 	if err != nil {
 		return true, errorCmd("failed to prepare move: %w", err)
 	}
@@ -107,15 +124,26 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 }
 
 // moveConfigArtifacts reassigns the durable planning refs (Focus Queue, Daily
-// Plan) for the moved subtree to the destination project and encodes the updated
-// config as a single ArtifactChange folded into the move transaction, mirroring
-// the CLI cross-project move. Returns nil when nothing changed.
-func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, destProjectID string) ([]storage.ArtifactChange, error) {
+// Plan) for the moved subtree to the destination project AND reconciles Today/Next
+// exclusivity for the moved root against its destination final state, encoding the
+// updated config as a single ArtifactChange folded into the move transaction,
+// mirroring the CLI cross-project move. Reconciling in the same artifact as the
+// reassignment keeps both planning deltas atomic with the task write. Returns nil
+// when neither the reassignment nor the reconciliation changed anything.
+func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, destProjectID, rootID string, finalState *models.WorkflowState) ([]storage.ArtifactChange, error) {
 	if m.runtime == nil || m.configManager == nil {
 		return nil, nil
 	}
 	planning := clonePlanningState(m.runtime.Planning())
-	if planning.ReassignDurablePlanningProject(movedSet, destProjectID) == 0 {
+	changed := planning.ReassignDurablePlanningProject(movedSet, destProjectID) > 0
+	if finalState != nil && reconcilePlanningExclusivity(planning, []app.PlanningReconcileTarget{{
+		TaskID:    rootID,
+		ProjectID: destProjectID,
+		State:     *finalState,
+	}}) {
+		changed = true
+	}
+	if !changed {
 		return nil, nil
 	}
 	return planningDomainArtifact(m.configManager, planning)

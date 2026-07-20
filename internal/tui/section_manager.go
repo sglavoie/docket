@@ -7,8 +7,7 @@ import (
 
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
-	projectTree *ProjectTreeModel
-	project     *models.Project // Used directly when projectTree is nil
+	project *models.Project
 	// runtime backs the domain-native global section-color commit (Settings).
 	runtime       *config.RuntimeState
 	sections      []SectionInfo
@@ -22,9 +21,8 @@ type SectionManagerModel struct {
 
 // ShowSectionManagerMsg is sent to open the section manager view.
 type ShowSectionManagerMsg struct {
-	ProjectTree  *ProjectTreeModel
-	Project      *models.Project // Used when ProjectTree is nil (e.g., from outliner view)
-	StartAddMode bool            // Deprecated: section creation is no longer supported.
+	Project      *models.Project
+	StartAddMode bool // Deprecated: section creation is no longer supported.
 }
 
 // CloseSectionManagerMsg is sent when the section manager should close.
@@ -57,24 +55,19 @@ type SectionColorChangedMsg struct {
 	ColorName   string
 }
 
-// NewSectionManagerModel creates a new section manager model.
-// Either pt or proj must be provided. If pt is provided, proj is ignored.
-func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, runtime *config.RuntimeState, _ bool) *SectionManagerModel {
+// NewSectionManagerModel creates a new section manager model for a project.
+func NewSectionManagerModel(proj *models.Project, runtime *config.RuntimeState, _ bool) *SectionManagerModel {
 	m := &SectionManagerModel{
-		projectTree: pt,
-		project:     proj,
-		runtime:     runtime,
-		cursor:      0,
+		project: proj,
+		runtime: runtime,
+		cursor:  0,
 	}
 	m.buildSectionList()
 	return m
 }
 
-// getProject returns the project from projectTree if available, otherwise returns the direct project.
+// getProject returns the section manager's backing project.
 func (m *SectionManagerModel) getProject() *models.Project {
-	if m.projectTree != nil {
-		return m.projectTree.project
-	}
 	return m.project
 }
 

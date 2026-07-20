@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -18,12 +19,19 @@ func newProjectCyclePreviewTestApp(t *testing.T, width, height, taskCount int) (
 	titles := make([]string, 0, taskCount)
 	for i := 1; i <= taskCount; i++ {
 		title := fmt.Sprintf("Preview task %02d", i)
-		task := newTestProjectTreeTask(t, title)
+		task, err := models.NewTask(uuid.New().String(), i, models.TaskTypeTask, title)
+		if err != nil {
+			t.Fatal(err)
+		}
 		tasks = append(tasks, task)
 		titles = append(titles, title)
 	}
 
-	project := newTestProjectTreeProject(t, "Preview Project", tasks)
+	project, err := models.NewProject(uuid.New().String(), "Preview Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = tasks
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
 	setTestCurrentProject(app, project.ID)

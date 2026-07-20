@@ -7,16 +7,25 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-var focusBoardTabNames = []string{"Today", "Next", "Closed"}
+// FocusTask is an alias for focus.FocusTask — the cross-project ordered task the
+// Planner's daily plan / Next order index are built from.
+type FocusTask = focus.FocusTask
+
+// ScoredFocusTask is an alias for focus.ScoredFocusTask.
+type ScoredFocusTask = focus.ScoredFocusTask
+
+var focusBoardTabNames = []string{"Today", "Next", "Backlog", "Done"}
 
 const (
-	boardTabToday  = 0
-	boardTabNext   = 1
-	boardTabClosed = 2
+	boardTabToday   = 0
+	boardTabNext    = 1
+	boardTabBacklog = 2
+	boardTabDone    = 3
 )
 
 const (
@@ -48,6 +57,7 @@ type FocusBoardModel struct {
 
 	configManager  *config.Manager
 	runtime        *config.RuntimeState
+	planningCommit func(*config.RuntimeState, func(*config.PlanningState)) error
 	projectService *ProjectService
 	capture        CaptureCoordinator
 	taskItem       TaskItemCoordinator
@@ -56,6 +66,9 @@ type FocusBoardModel struct {
 	queueIDs     map[string]bool
 	dailyPlanIDs map[string]bool
 	dailyPlan    *[]FocusTask // shared with AppModel for reordering
+	// focusQueue is the shared, ordered Next order index (StateNext ordering
+	// only; may not contain every StateNext task). Used to sort the Next tab.
+	focusQueue *[]FocusTask
 
 	// Data
 	rows           []boardRow
@@ -63,8 +76,14 @@ type FocusBoardModel struct {
 	nextRows       []boardRow
 	closedRows     []boardRow
 	todayRows      []boardRow
+	backlogRows    []boardRow // ranked actionable tasks excluding Today/Next (Backlog tab)
 	filtered       []boardRow
 	carriedOverIDs map[string]bool
+
+	// backlogProjectFilter narrows the Backlog tab to the selected project IDs
+	// (empty = all). Populated on demand via the "By Project" quick filter
+	// (FP), mirroring the AllTasks/Outliner project-filter pattern.
+	backlogProjectFilter map[string]bool
 
 	// Tabs
 	tabs TabState
@@ -129,7 +148,7 @@ func (m *FocusBoardModel) SetSize(width, height int) {
 }
 
 // NewFocusBoardModel creates a new focus board model.
-func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
+func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, dailyPlan, focusQueue *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
 	ti := textinput.New()
 	ti.Placeholder = "Task title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
@@ -158,22 +177,25 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 	}
 
 	m := &FocusBoardModel{
-		configManager:     manager,
-		runtime:           runtime,
-		projectService:    NewProjectService(),
-		queueIDs:          queueIDs,
-		dailyPlan:         dailyPlan,
-		dailyPlanIDs:      dailyPlanIDs,
-		carriedOverIDs:    carriedOverIDs,
-		addInput:          ti,
-		editInput:         ei,
-		focusMode:         initialFocusMode,
-		childDepthLimit:   -1,
-		foldOverrides:     make(map[string]bool),
-		FilterMixin:       FilterMixin{filter: newFilterState()},
-		sort:              NewSortState(),
-		tabs:              TabState{Names: focusBoardTabNames},
-		activePerspective: PerspectiveInactive,
+		configManager:        manager,
+		runtime:              runtime,
+		planningCommit:       commitPlanningToRuntime,
+		projectService:       NewProjectService(),
+		queueIDs:             queueIDs,
+		dailyPlan:            dailyPlan,
+		focusQueue:           focusQueue,
+		dailyPlanIDs:         dailyPlanIDs,
+		carriedOverIDs:       carriedOverIDs,
+		backlogProjectFilter: make(map[string]bool),
+		addInput:             ti,
+		editInput:            ei,
+		focusMode:            initialFocusMode,
+		childDepthLimit:      -1,
+		foldOverrides:        make(map[string]bool),
+		FilterMixin:          FilterMixin{filter: newFilterState()},
+		sort:                 NewSortState(),
+		tabs:                 TabState{Names: focusBoardTabNames},
+		activePerspective:    PerspectiveInactive,
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
@@ -196,6 +218,27 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 	m.InitSearchInput("Search...", 100, 40)
 	m.loadItems()
 	return m
+}
+
+// commitPlanning applies a planning mutation through the model's injectable
+// commit seam. Directly-constructed test models retain the production default.
+func (m *FocusBoardModel) commitPlanning(mutate func(*config.PlanningState)) error {
+	commit := m.planningCommit
+	if commit == nil {
+		commit = commitPlanningToRuntime
+	}
+	return commit(m.runtime, mutate)
+}
+
+// reorderBlockedBySecondarySort rejects J/K reordering when the visible rows
+// are not in the active horizon's canonical order.
+func (m *FocusBoardModel) reorderBlockedBySecondarySort(canonicalOrder string) bool {
+	if m.sort.Field == SortByDefault {
+		return false
+	}
+	m.setStatus("Reorder unavailable while sorted by " + m.sort.Field.String() +
+		" — press 0 to reset to " + canonicalOrder + " first")
+	return true
 }
 
 func (m *FocusBoardModel) Init() tea.Cmd {

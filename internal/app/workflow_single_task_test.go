@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -205,6 +207,185 @@ func TestSetPriorityWithWorkflowFiresRuleAndCommits(t *testing.T) {
 	}
 	if len(repo.commits) != 1 {
 		t.Errorf("Commit called %d times, want 1", len(repo.commits))
+	}
+}
+
+// TestNonStateWorkflowCascadePreservesPlanningExclusivity locks the
+// orchestration-level planning default: a priority mutation supplies no per-call
+// builder, yet a rule-driven state change reconciles planning in the same durable
+// transaction and one workspace-ledger undo restores both task and planning data.
+func TestNonStateWorkflowCascadePreservesPlanningExclusivity(t *testing.T) {
+	t.Run("priority rule enters Next and removes Today", func(t *testing.T) {
+		dataDir := t.TempDir()
+		project := realTestProject(t, dataDir, "cascade-into-next", "Today task")
+		task := project.Tasks[0]
+		task.Priority = models.PriorityDefault
+		task.ApplyWorkflowState(models.StateReady)
+		wantToday := config.DailyPlanItem{
+			TaskID:      task.ID,
+			ProjectID:   project.ID,
+			PlannedDate: "2026-07-20",
+		}
+
+		manager := seedWorkflowPlanningDomain(t, dataDir, func(planning *config.PlanningState) {
+			planning.SetDailyPlan([]config.DailyPlanItem{wantToday})
+		})
+		ledger, service := newWorkflowPlanningService(t, dataDir, project, manager)
+		rule := priorityCascadeRule("enter-next", models.SectionNext)
+
+		if _, err := service.SetPriorityWithWorkflow(task.ID, 1, app.SingleTaskWorkflowOptions{
+			Rules:      []workflow.WorkflowRule{rule},
+			UndoAction: "Prioritize into Next",
+		}); err != nil {
+			t.Fatalf("SetPriorityWithWorkflow: %v", err)
+		}
+		assertWorkflowPlanningTask(t, project, task.ID, 1, models.StateNext)
+		if got := loadWorkflowPlanning(t, manager).GetDailyPlan(); len(got) != 0 {
+			t.Fatalf("daily plan after cascade = %+v, want empty", got)
+		}
+
+		if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+			t.Fatalf("Undo: %v", err)
+		}
+		assertWorkflowPlanningTask(t, project, task.ID, models.PriorityDefault, models.StateReady)
+		gotToday := loadWorkflowPlanning(t, manager).GetDailyPlan()
+		if len(gotToday) != 1 || gotToday[0] != wantToday {
+			t.Fatalf("daily plan after undo = %+v, want exact entry %+v", gotToday, wantToday)
+		}
+	})
+
+	t.Run("priority rule leaves Next and removes stale order", func(t *testing.T) {
+		dataDir := t.TempDir()
+		project := realTestProject(t, dataDir, "cascade-out-of-next", "Next task")
+		task := project.Tasks[0]
+		task.Priority = models.PriorityDefault
+		task.ApplyWorkflowState(models.StateNext)
+		wantOrder := config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID}
+
+		manager := seedWorkflowPlanningDomain(t, dataDir, func(planning *config.PlanningState) {
+			planning.SetFocusQueue([]config.FocusQueueItem{wantOrder})
+		})
+		ledger, service := newWorkflowPlanningService(t, dataDir, project, manager)
+		rule := priorityCascadeRule("leave-next", models.SectionWaiting)
+
+		if _, err := service.SetPriorityWithWorkflow(task.ID, 1, app.SingleTaskWorkflowOptions{
+			Rules:      []workflow.WorkflowRule{rule},
+			UndoAction: "Prioritize out of Next",
+		}); err != nil {
+			t.Fatalf("SetPriorityWithWorkflow: %v", err)
+		}
+		assertWorkflowPlanningTask(t, project, task.ID, 1, models.StateWaiting)
+		if got := loadWorkflowPlanning(t, manager).GetFocusQueue(); len(got) != 0 {
+			t.Fatalf("Next order after cascade = %+v, want empty", got)
+		}
+
+		if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
+			t.Fatalf("Undo: %v", err)
+		}
+		assertWorkflowPlanningTask(t, project, task.ID, models.PriorityDefault, models.StateNext)
+		gotOrder := loadWorkflowPlanning(t, manager).GetFocusQueue()
+		if len(gotOrder) != 1 || gotOrder[0] != wantOrder {
+			t.Fatalf("Next order after undo = %+v, want exact entry %+v", gotOrder, wantOrder)
+		}
+	})
+}
+
+func priorityCascadeRule(id, section string) workflow.WorkflowRule {
+	return workflow.WorkflowRule{
+		ID:      id,
+		Name:    id,
+		Enabled: true,
+		Trigger: workflow.RuleTrigger{
+			Field:     workflow.FieldPriorityChanged,
+			Operation: workflow.OpEquals,
+			Value:     "3->1",
+		},
+		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetSection, Value: section}},
+	}
+}
+
+func seedWorkflowPlanningDomain(t *testing.T, dataDir string, seed func(*config.PlanningState)) *config.Manager {
+	t.Helper()
+	manager := config.NewManager(config.ConfigPathForDataDir(dataDir))
+	if err := manager.CommitCatalog(config.NewWorkspaceCatalog()); err != nil {
+		t.Fatalf("seed workspace catalog: %v", err)
+	}
+	planning := config.NewPlanningState()
+	seed(planning)
+	if err := manager.CommitPlanning(planning); err != nil {
+		t.Fatalf("seed planning: %v", err)
+	}
+	return manager
+}
+
+func newWorkflowPlanningService(
+	t *testing.T,
+	dataDir string,
+	project *models.Project,
+	manager *config.Manager,
+) (*storage.WorkspaceLedger, *app.Service) {
+	t.Helper()
+	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), testWorkspaceLedgerDepth, []string{dataDir})
+	commitService := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger)
+	repo := newStorageRepo(commitService, project)
+	repo.seed(t)
+	service := app.NewService(repo, nil, nil).WithPlanningArtifacts(durablePlanningExclusivityBuilder(manager))
+	return ledger, service
+}
+
+func durablePlanningExclusivityBuilder(manager *config.Manager) app.PlanningArtifactBuilder {
+	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
+		coordinator := manager.DomainCoordinator()
+		planning, err := coordinator.LoadPlanning()
+		if err != nil {
+			return nil, err
+		}
+		changed := false
+		for _, target := range targets {
+			if target.State == models.StateNext {
+				changed = planning.RemoveFromDailyPlan(target.TaskID) || changed
+				continue
+			}
+			changed = planning.RemoveFromFocusQueue(target.TaskID) || changed
+		}
+		if !changed {
+			return nil, nil
+		}
+		artifact, err := coordinator.CheckedPlanningArtifact(planning)
+		if err != nil {
+			return nil, err
+		}
+		return []storage.ArtifactChange{artifact.StorageChange()}, nil
+	}
+}
+
+func loadWorkflowPlanning(t *testing.T, manager *config.Manager) *config.PlanningState {
+	t.Helper()
+	planning, err := manager.DomainCoordinator().LoadPlanning()
+	if err != nil {
+		t.Fatalf("load planning: %v", err)
+	}
+	return planning
+}
+
+func assertWorkflowPlanningTask(
+	t *testing.T,
+	project *models.Project,
+	taskID string,
+	wantPriority int,
+	wantState models.WorkflowState,
+) {
+	t.Helper()
+	reloaded := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
+	if err := storage.LoadProject(reloaded); err != nil {
+		t.Fatalf("reload project: %v", err)
+	}
+	task := reloaded.GetTaskByID(taskID)
+	if task == nil {
+		t.Fatalf("reloaded task %q is missing", taskID)
+	}
+	if task.Priority != wantPriority || task.State() != wantState {
+		t.Fatalf("reloaded task priority/state = %d/%s, want %d/%s", task.Priority, task.State(), wantPriority, wantState)
 	}
 }
 

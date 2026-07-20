@@ -1,0 +1,329 @@
+package tui
+
+import (
+	"fmt"
+	"path/filepath"
+	"testing"
+
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// failableScenarioRepo wraps the storage-backed scenarioRepo so a test can make
+// the next Commit fail atomically (no partial write) and inspect the exact
+// changesets a mutation attempted, proving the task write and the planning
+// artifact rode ONE transaction.
+type failableScenarioRepo struct {
+	*scenarioRepo
+	fail        bool
+	lastAttempt []storage.ChangeSet
+}
+
+func (r *failableScenarioRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
+	r.lastAttempt = append([]storage.ChangeSet(nil), changesets...)
+	if r.fail {
+		return nil, fmt.Errorf("injected commit failure")
+	}
+	return r.scenarioRepo.Commit(changesets...)
+}
+
+// newPlanningLedgerApp builds a ledger-backed AppModel composed with the SAME
+// default planning-artifact builder NewAppModel installs, plus the secondary
+// coordinators, so section and Today/Next moves fold their planning
+// reconciliation into the durable workspace-ledger transaction exactly as
+// production does. The single task starts in state, hosted under the Outliner via
+// a QueueToggleable so the q/w handlers can resolve it. It returns the model, the
+// wrapping repo (for failure injection), the task, and the data dir for on-disk
+// assertions.
+func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, *failableScenarioRepo, *models.Task, string) {
+	t.Helper()
+
+	dataDir := t.TempDir()
+	task := seedTask(t, 1, "Move target", state)
+
+	project, err := models.NewProject("planning-txn-proj", "planning-txn", "")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	project.Slug = "planning-txn"
+	project.Path = filepath.Join(dataDir, "projects", "planning-txn")
+	project.Tasks = []*models.Task{task}
+	project.NextShortID = 2
+	project.EnsureDefaultSections()
+	project.BuildTaskTree()
+
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	repo := &failableScenarioRepo{scenarioRepo: newScenarioRepo(commitSvc, project)}
+	repo.seed(t)
+
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, []*models.Project{project})
+	cfg.Machine().CurrentProject = project.ID
+	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
+	runtime := testRuntimeAt(cfg.DataDir(), cfg)
+
+	svc := app.NewService(repo, nil, nil).
+		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
+
+	appModel := &AppModel{
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, svc, manager, ledger),
+		projects:             map[string]*models.Project{project.ID: project},
+		persister:            NewProjectService(),
+		appService:           svc,
+		secondaryFeatures:    newSecondaryCoordinators(svc, manager),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		currentProject:       project,
+		navHistory:           NewNavHistory(),
+		focusQueue:           []FocusTask{},
+		focusQueueIDs:        make(map[string]bool),
+		dailyPlan:            []FocusTask{},
+		dailyPlanIDs:         make(map[string]bool),
+	}
+	appModel.showView(ViewOutliner, &invariantQueueView{taskID: task.ID, project: project})
+	return appModel, repo, task, dataDir
+}
+
+func (m *AppModel) seedDiskFocusQueue(t *testing.T, taskID, projectID string) {
+	t.Helper()
+	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+		p.SetFocusQueue([]config.FocusQueueItem{{TaskID: taskID, ProjectID: projectID}})
+	}); err != nil {
+		t.Fatalf("seed focus queue: %v", err)
+	}
+}
+
+func (m *AppModel) seedDiskDailyPlan(t *testing.T, taskID, projectID string) {
+	t.Helper()
+	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+		p.SetDailyPlan([]config.DailyPlanItem{{TaskID: taskID, ProjectID: projectID, PlannedDate: "2026-07-19"}})
+	}); err != nil {
+		t.Fatalf("seed daily plan: %v", err)
+	}
+}
+
+// TestPlanningNextToTodayIsAtomicAndDurable locks FR-010-001: the TUI w move from
+// Next to Today commits the workflow-state change, the Next order removal, and the
+// Today insertion as ONE workspace-ledger transaction, so the move is durable
+// (survives a restart), reversible in exact order, and atomic under an injected
+// failure.
+func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
+	t.Run("w move folds state, Next removal, and Today insertion into one durable transaction", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		// Precondition: the task holds a Next order entry, so the move must prove the
+		// order drop rides the same transaction as the state change and Today add.
+		m.seedDiskFocusQueue(t, task.ID, m.currentProject.ID)
+		if got := diskFocusQueueLen(t, dataDir); got != 1 {
+			t.Fatalf("precondition Next order entries = %d, want 1", got)
+		}
+
+		if cmd := m.toggleDailyPlan(); cmd == nil {
+			t.Fatal("toggleDailyPlan returned nil")
+		}
+
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateReady {
+			t.Fatalf("state after move = %s, want ready", st)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 0 {
+			t.Fatalf("Next order after move = %d, want 0 (dropped in same txn)", got)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 1 {
+			t.Fatalf("Daily Plan after move = %d, want 1 (Today added in same txn)", got)
+		}
+
+		// Durability: a fresh ledger over the same data dir (a restart) undoes the
+		// whole move, restoring the exact workflow state, Next ordering, and Today.
+		fresh := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+		if _, _, err := fresh.UndoWithEntry(storage.GlobalScope()); err != nil {
+			t.Fatalf("durable undo from fresh ledger: %v", err)
+		}
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
+			t.Fatalf("state after durable undo = %s, want next", st)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 1 {
+			t.Fatalf("Next order after durable undo = %d, want 1 (restored)", got)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+			t.Fatalf("Daily Plan after durable undo = %d, want 0 (Today removed)", got)
+		}
+
+		if _, _, err := fresh.RedoWithEntry(storage.GlobalScope()); err != nil {
+			t.Fatalf("durable redo from fresh ledger: %v", err)
+		}
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateReady {
+			t.Fatalf("state after durable redo = %s, want ready", st)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 0 {
+			t.Fatalf("Next order after durable redo = %d, want 0", got)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 1 {
+			t.Fatalf("Daily Plan after durable redo = %d, want 1", got)
+		}
+	})
+
+	t.Run("in-session undo and redo restore the exact horizons without an artifact conflict", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m.seedDiskFocusQueue(t, task.ID, m.currentProject.ID)
+
+		_ = m.toggleDailyPlan()
+		assertExclusiveMembership(t, m, task.ID, false, true)
+
+		if cmd := m.handleUndoToggle(); cmd == nil {
+			t.Fatal("handleUndoToggle returned nil (undo did not fire)")
+		}
+		assertExclusiveMembership(t, m, task.ID, true, false)
+		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+			t.Fatalf("Daily Plan after undo = %d, want 0", got)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 1 {
+			t.Fatalf("Next order after undo = %d, want 1", got)
+		}
+
+		if cmd := m.handleRedoToggle(); cmd == nil {
+			t.Fatal("handleRedoToggle returned nil (redo did not fire)")
+		}
+		assertExclusiveMembership(t, m, task.ID, false, true)
+		if got := diskDailyPlanLen(t, dataDir); got != 1 {
+			t.Fatalf("Daily Plan after redo = %d, want 1", got)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 0 {
+			t.Fatalf("Next order after redo = %d, want 0", got)
+		}
+	})
+
+	t.Run("an injected commit failure leaves project and planning at pre-mutation values", func(t *testing.T) {
+		m, repo, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m.seedDiskFocusQueue(t, task.ID, m.currentProject.ID)
+
+		repo.fail = true
+		if cmd := m.toggleDailyPlan(); cmd == nil {
+			t.Fatal("expected an error command from the failed move")
+		}
+
+		// The attempted transaction folded the tasks.md write and the planning.json
+		// artifact into ONE changeset, so a failure cannot land a partial move.
+		if len(repo.lastAttempt) != 1 {
+			t.Fatalf("attempted changesets = %d, want 1 (atomic fold)", len(repo.lastAttempt))
+		}
+		cs := repo.lastAttempt[0]
+		if cs.Project == nil {
+			t.Fatal("attempted changeset carried no tasks.md write")
+		}
+		if !changeSetHasPlanningArtifact(cs) {
+			t.Fatalf("attempted changeset carried no planning.json artifact, paths=%v", artifactPaths(cs))
+		}
+
+		// Disk is untouched: state, Next ordering, and Today all at pre-mutation.
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
+			t.Fatalf("state after failed move = %s, want next (unchanged)", st)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 1 {
+			t.Fatalf("Next order after failed move = %d, want 1 (unchanged)", got)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+			t.Fatalf("Daily Plan after failed move = %d, want 0 (unchanged)", got)
+		}
+	})
+}
+
+// TestSectionMovesPreservePlanningExclusivity locks FR-010-002 for the TUI seams:
+// a section move that enters StateNext drops Today, and a section move that leaves
+// StateNext drops the stale Next order entry, within the same durable transaction,
+// across the generic (SetSection), workflow-aware (SetSectionWorkflow), and bulk
+// (CommitProjectWorkflow) coordinator paths.
+func TestSectionMovesPreservePlanningExclusivity(t *testing.T) {
+	t.Run("generic SetSection into Next drops Today", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
+		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
+
+		if _, err := m.appService.SetSection(task.ID, models.SectionNext); err != nil {
+			t.Fatalf("SetSection: %v", err)
+		}
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
+			t.Fatalf("state = %s, want next", st)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+			t.Fatalf("Daily Plan after entering Next = %d, want 0", got)
+		}
+	})
+
+	t.Run("generic SetSection out of Next drops the stale order entry", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m.seedDiskFocusQueue(t, task.ID, m.currentProject.ID)
+
+		if _, err := m.appService.SetSection(task.ID, models.SectionWaiting); err != nil {
+			t.Fatalf("SetSection: %v", err)
+		}
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {
+			t.Fatalf("state = %s, want waiting", st)
+		}
+		if got := diskFocusQueueLen(t, dataDir); got != 0 {
+			t.Fatalf("Next order after leaving Next = %d, want 0", got)
+		}
+	})
+
+	t.Run("workflow-aware SetSectionWorkflow into Next drops Today", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
+		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
+
+		cmd := m.secondaryFeatures.TaskItem.SetSectionWorkflow(task.ID, models.SectionNext,
+			app.SingleTaskWorkflowOptions{}, func(app.TaskResult) string { return "" })
+		assertNotTransactionError(t, cmd())
+
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
+			t.Fatalf("state = %s, want next", st)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+			t.Fatalf("Daily Plan after workflow section move = %d, want 0", got)
+		}
+	})
+
+	t.Run("bulk CommitProjectWorkflow section move into Next drops Today", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
+		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
+
+		// Mirror the shell bulk-section handler: mutate the project in memory, then
+		// commit through the workflow coordinator naming the changed tasks.
+		m.currentProject.MutateTask(task.ID, func(tk *models.Task) {
+			tk.SetSection(models.SectionNext)
+		})
+		cmd := m.secondaryFeatures.TaskItem.CommitProjectWorkflow(m.currentProject,
+			app.ProjectWorkflowOptions{UndoAction: "Move to Section", PlanningTaskIDs: []string{task.ID}}, "moved")
+		assertNotTransactionError(t, cmd())
+
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
+			t.Fatalf("state = %s, want next", st)
+		}
+		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+			t.Fatalf("Daily Plan after bulk section move = %d, want 0", got)
+		}
+	})
+}
+
+// changeSetHasPlanningArtifact reports whether a changeset carries the planning.json
+// domain artifact.
+func changeSetHasPlanningArtifact(cs storage.ChangeSet) bool {
+	for _, art := range cs.Artifacts {
+		if filepath.Base(art.Path) == "planning.json" {
+			return true
+		}
+	}
+	return false
+}
+
+func artifactPaths(cs storage.ChangeSet) []string {
+	paths := make([]string, 0, len(cs.Artifacts))
+	for _, art := range cs.Artifacts {
+		paths = append(paths, art.Path)
+	}
+	return paths
+}

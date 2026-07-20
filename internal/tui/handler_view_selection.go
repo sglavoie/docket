@@ -12,9 +12,7 @@ import (
 func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowFilterMsg:
-		if msg.ProjectTree != nil {
-			m.showView(ViewFilter, NewFilterViewModel(msg.ProjectTree))
-		} else if msg.CommonFilter != nil {
+		if msg.CommonFilter != nil {
 			m.showView(ViewFilter, NewFilterViewModelForOutliner(msg.CommonFilter, msg.Project))
 		}
 		return true, nil
@@ -43,10 +41,6 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			case ViewOutliner:
 				if m.outliner != nil {
 					m.outliner.NavigateToSidebarTask(msg.Task)
-				}
-			default:
-				if m.projectTree != nil {
-					return true, m.projectTree.NavigateToTask(msg.Task)
 				}
 			}
 		}

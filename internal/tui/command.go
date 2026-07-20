@@ -45,8 +45,9 @@ type Command struct {
 	Handler     func() tea.Msg  // Execution closure returning a BubbleTea message
 }
 
-// projectTreeAndOutlinerViews returns the Views slice for commands that work
-// in both the project tree and outliner views.
+// projectTreeAndOutlinerViews returns the Views slice for per-project primary
+// commands. The project tree was retired, so this is now the Outliner alone;
+// the name is retained to avoid churning its call sites.
 func projectTreeAndOutlinerViews() []ViewType {
-	return []ViewType{ViewProjectTree, ViewOutliner}
+	return []ViewType{ViewOutliner}
 }

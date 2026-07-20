@@ -97,12 +97,9 @@ func (d RouteDescriptor) Tracked() bool { return d.History == HistoryTracked }
 // editors, creators, modals, and overlays are intentionally excluded.
 var trackedRoutes = []ViewType{
 	ViewDashboard,
-	ViewProjectTree,
 	ViewDailyReview,
 	ViewWeeklyReview,
-	ViewFocusView,
 	ViewProjectFocusView,
-	ViewDueDateOverview,
 	ViewPriorityView,
 	ViewRecentActivity,
 	ViewGlobalSearch,
@@ -139,8 +136,6 @@ var trackedRoutes = []ViewType{
 var globalNavRoutes = []ViewType{
 	ViewDailyReview,
 	ViewWeeklyReview,
-	ViewFocusView,
-	ViewDueDateOverview,
 	ViewRecentActivity,
 	ViewGlobalSearch,
 	ViewGlobalBlockers,
@@ -173,7 +168,6 @@ var taskScopedRoutes = []ViewType{
 // prefix. These can be opened from any context and return to an anchor view
 // when closed.
 var globalOverlayRoutes = []ViewType{
-	ViewFocusView,
 	ViewFocusBoard,
 	ViewGlobalInboxProcessor,
 	ViewGlobalNotes,
@@ -204,9 +198,7 @@ var routeAccentCategories = map[ViewType]AccentCategory{
 	ViewCrossProjectKanban:   AccentCatTriage,
 
 	// Plan stage (green)
-	ViewFocusView:        AccentCatPlan,
 	ViewProjectFocusView: AccentCatPlan,
-	ViewDueDateOverview:  AccentCatPlan,
 	ViewDailyReview:      AccentCatPlan,
 	ViewPriorityView:     AccentCatPlan,
 	ViewRoadmap:          AccentCatPlan,
@@ -215,7 +207,6 @@ var routeAccentCategories = map[ViewType]AccentCategory{
 	ViewFocusBoard: AccentCatWork,
 
 	// Legacy Execute accent (teal) for project work views
-	ViewProjectTree:       AccentCatExecute,
 	ViewOutliner:          AccentCatExecute,
 	ViewTemporaryOutliner: AccentCatExecute,
 	ViewKanban:            AccentCatExecute,
@@ -392,7 +383,6 @@ func allViewTypes() []ViewType {
 	return []ViewType{
 		ViewDashboard,
 		ViewProjectList,
-		ViewProjectTree,
 		ViewProjectCreator,
 		ViewProjectEditor,
 		ViewSettings,
@@ -403,7 +393,6 @@ func allViewTypes() []ViewType {
 		ViewFilter,
 		ViewTaskJumper,
 		ViewProjectPreview,
-		ViewDueDateOverview,
 		ViewTagManager,
 		ViewGlobalTagManager,
 		ViewTagFilterSelector,
@@ -435,7 +424,6 @@ func allViewTypes() []ViewType {
 		ViewRecurrenceEditor,
 		ViewTextEditor,
 		ViewGlobalInboxProcessor,
-		ViewFocusView,
 		ViewProjectFocusView,
 		ViewBlockers,
 		ViewTaskAttachments,

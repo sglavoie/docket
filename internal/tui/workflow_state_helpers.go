@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -60,18 +59,6 @@ func taskSectionBucket(t *models.Task) string {
 	return models.SectionForState(t.State())
 }
 
-// TaskInFocusQueue reports whether the task is a member of the persisted
-// Focus Queue. Queue membership is planning state and is independent of the
-// workflow's Active section. The queue is small, so a linear scan avoids
-// allocating a membership set at per-row render sites.
-func TaskInFocusQueue(planning *config.PlanningState, taskID string) bool {
-	if planning == nil {
-		return false
-	}
-	for _, item := range planning.GetFocusQueue() {
-		if item.TaskID == taskID {
-			return true
-		}
-	}
-	return false
-}
+// Next (queue) membership derives from taskIsNext (Task.State()==StateNext); the
+// Focus Queue order index is consulted only to order qualifying tasks (see
+// focus.FocusQueueRank). There is no membership helper keyed on the order index.

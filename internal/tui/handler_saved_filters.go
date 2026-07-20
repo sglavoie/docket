@@ -33,8 +33,6 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 			m.crossOutliner.activeSavedFilter = msg.Name
 		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.outliner.activeSavedFilter = msg.Name
-		} else if m.projectTree != nil {
-			m.projectTree.activeSavedFilter = msg.Name
 		}
 		// Refresh the command palette if it's still showing
 		m.refreshCommandPaletteItems()
@@ -45,8 +43,6 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 			m.applySavedFilterToCrossOutliner(msg.Filter)
 		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.applySavedFilterToOutliner(msg.Filter)
-		} else if m.projectTree != nil {
-			m.applySavedFilterToTree(msg.Filter)
 		}
 		return true, nil
 
@@ -80,9 +76,6 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.outliner.activeSavedFilter = ""
 			m.outliner.activeCriteriaFilter = nil
-		} else if m.projectTree != nil {
-			m.projectTree.activeSavedFilter = ""
-			m.projectTree.activeCriteriaFilter = nil
 		}
 		// Rebuild AllTasks tab entries if on the stack
 		m.refreshAllTasksTabs()
@@ -127,62 +120,13 @@ func (m *AppModel) captureCurrentFilter(name string) config.SavedFilter {
 		id = existing.ID
 	}
 
-	switch m.baseProjectView() { //nolint:exhaustive // saved filters are captured from project tree and outliner base views.
+	switch m.baseProjectView() { //nolint:exhaustive // saved filters are captured from the outliner base views.
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
 			return m.captureOutlinerFilterFrom(name, id, m.crossOutliner)
 		}
-	case ViewOutliner:
-		if m.outliner != nil {
-			return m.captureOutlinerFilter(name, id)
-		}
 	}
-	return m.captureProjectTreeFilter(name, id)
-}
-
-// captureProjectTreeFilter creates a SavedFilter from the project tree state.
-func (m *AppModel) captureProjectTreeFilter(name, id string) config.SavedFilter {
-	sf := config.SavedFilter{
-		ID:   id,
-		Name: name,
-		Mode: "snapshot",
-	}
-	if m.projectTree == nil {
-		return sf
-	}
-
-	pt := m.projectTree
-	sf.ViewMode = int(pt.viewMode)
-	sf.FilterType = string(pt.filter.Type)
-	sf.FilterStatus = string(pt.filter.Status)
-	sf.FilterPriority = pt.filter.Priority
-	sf.FilterDueDate = int(pt.filter.DueDate)
-	sf.FilterActionable = pt.filter.Actionable
-	sf.FilterHideDimmed = pt.filter.HideDimmed
-	sf.FilterGitHubIssue = pt.filter.GitHubIssue
-	sf.FilterParked = pt.filter.Parked
-	sf.FilterScoreMin = pt.filter.ScoreMin
-	sf.SortField = int(pt.sort.Field)
-	sf.SortAscending = pt.sort.Ascending
-
-	if len(pt.filter.Tags) > 0 {
-		for tag := range pt.filter.Tags {
-			sf.FilterTags = append(sf.FilterTags, tag)
-		}
-	}
-	if len(pt.filter.Sections) > 0 {
-		for sec := range pt.filter.Sections {
-			sf.FilterSections = append(sf.FilterSections, sec)
-		}
-	}
-	if len(pt.filter.Attrs) > 0 {
-		sf.FilterAttrs = make(map[string]string)
-		maps.Copy(sf.FilterAttrs, pt.filter.Attrs)
-	}
-
-	sf.PinnedTagTab = pt.activePinnedTagFilter()
-
-	return sf
+	return m.captureOutlinerFilter(name, id)
 }
 
 // captureOutlinerFilter creates a SavedFilter from the outliner state.
@@ -231,67 +175,6 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	sf.PinnedTagTab = ol.activePinnedTagFilter()
 
 	return sf
-}
-
-// applySavedFilterToTree applies a saved filter's state to the project tree.
-func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
-	pt := m.projectTree
-	if pt == nil {
-		return
-	}
-
-	if sf.Mode == "criteria" {
-		// Criteria-mode: apply per-task criteria matching, clear snapshot filters
-		pt.activeCriteriaFilter = &sf
-	} else {
-		// Snapshot-mode: restore all flat filter/sort state
-		pt.activeCriteriaFilter = nil
-		pt.viewMode = ViewMode(sf.ViewMode)
-		pt.filter.Type = models.TaskType(sf.FilterType)
-		pt.filter.Status = models.TaskStatus(sf.FilterStatus)
-		pt.filter.Priority = sf.FilterPriority
-		pt.filter.DueDate = DueDateFilter(sf.FilterDueDate)
-		pt.filter.Actionable = sf.FilterActionable
-		pt.filter.HideDimmed = sf.FilterHideDimmed
-		pt.filter.GitHubIssue = sf.FilterGitHubIssue
-		pt.filter.Parked = sf.FilterParked
-		pt.filter.ScoreMin = sf.FilterScoreMin
-		pt.sort.Field = SortField(sf.SortField)
-		pt.sort.Ascending = sf.SortAscending
-
-		// Restore tags — validate against current project
-		pt.filter.Tags = validateSavedStringSet(sf.FilterTags, pt.getAllTags())
-
-		// Restore sections — validate against current project
-		pt.filter.Sections = make(map[string]bool)
-		if pt.project != nil {
-			existingSections := gtdSections(pt.project.GetSections())
-			sectionSet := make(map[string]bool)
-			for _, s := range existingSections {
-				sectionSet[s] = true
-			}
-			for _, section := range sf.FilterSections {
-				if sectionSet[section] {
-					pt.filter.Sections[section] = true
-				}
-			}
-		}
-
-		// Restore attributes
-		pt.filter.Attrs = make(map[string]string)
-		maps.Copy(pt.filter.Attrs, sf.FilterAttrs)
-
-		pt.selectPinnedTagTab(sf.PinnedTagTab)
-	}
-
-	// Set active indicator
-	pt.activeSavedFilter = sf.Name
-
-	// Rebuild tree with new sort/filter
-	pt.sortNodes()
-	pt.updateVisibility()
-	pt.pruneInvisibleSelections()
-	pt.clampCursor()
 }
 
 // applySavedFilterToOutliner applies a saved filter's state to the outliner.
@@ -359,42 +242,8 @@ func (m *AppModel) buildCurrentViewSummary() string {
 	case ViewOutliner:
 		return m.buildOutlinerViewSummary()
 	default:
-		return m.buildProjectTreeViewSummary()
+		return m.buildOutlinerViewSummary()
 	}
-}
-
-// buildProjectTreeViewSummary returns a summary of the project tree's filter state.
-func (m *AppModel) buildProjectTreeViewSummary() string {
-	if m.projectTree == nil {
-		return ""
-	}
-	pt := m.projectTree
-
-	var tags []string
-	for tag := range pt.filter.Tags {
-		tags = append(tags, tag)
-	}
-	var sections []string
-	for sec := range pt.filter.Sections {
-		sections = append(sections, sec)
-	}
-
-	return describeSnapshotFilters(
-		string(pt.filter.Type),
-		string(pt.filter.Status),
-		pt.filter.Priority,
-		tags,
-		sections,
-		int(pt.filter.DueDate),
-		pt.filter.Actionable,
-		pt.filter.HideDimmed,
-		pt.filter.GitHubIssue,
-		pt.filter.Parked,
-		pt.filter.Attrs,
-		pt.filter.ScoreMin,
-		int(pt.sort.Field),
-		int(pt.viewMode),
-	)
 }
 
 // buildOutlinerViewSummary returns a summary of the outliner's filter state.

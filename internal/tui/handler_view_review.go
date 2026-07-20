@@ -13,13 +13,6 @@ import (
 // handleViewReviewMessages handles overview, review, focus, and activity views.
 func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case ShowDueDateOverviewMsg:
-		ddo := NewDueDateOverviewModel(m.runtime, m.configManager)
-		ddo.queueIDs = m.focusQueueIDs
-		ddo.dailyPlanIDs = m.dailyPlanIDs
-		m.showView(ViewDueDateOverview, ddo)
-		return true, nil
-
 	case ShowMetricsDashboardMsg:
 		if msg.Project != nil {
 			m.metricsDashboard = NewMetricsDashboardModelForProject(m.configManager, msg.Project)
@@ -100,7 +93,11 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowAllTasksMsg:
-		atv := NewAllTasksViewModel(m.runtime, m.configManager)
+		var opts []AllTasksOption
+		if msg.SetGroup {
+			opts = append(opts, WithInitialGrouping(msg.Group))
+		}
+		atv := NewAllTasksViewModel(m.runtime, m.configManager, opts...)
 		atv.bulk = m.secondaryFeatures.Bulk
 		atv.queueIDs = m.focusQueueIDs
 		atv.dailyPlanIDs = m.dailyPlanIDs
@@ -112,7 +109,13 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowFocusBoardMsg:
 		m.reevaluateAlerts()
-		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
+		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
+		if msg.SetTab {
+			fb.tabs.Active = msg.Tab
+			fb.initialTabSet = true
+			fb.applyFilter()
+			fb.clampCursor()
+		}
 		if m.dailyPlanCarried > 0 && !m.dailyPlanCarriedShown {
 			fb.setStatus(fmt.Sprintf("%d item(s) carried over from yesterday", m.dailyPlanCarried))
 			m.dailyPlanCarriedShown = true
@@ -143,13 +146,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		}
 		return true, nil
 
-	case ShowFocusViewMsg:
-		m.showView(ViewFocusView, NewFocusViewModel(m.runtime, m.configManager, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.focusDismissedIDs))
-		return true, nil
-
-	case FocusViewSelectMsg:
-		return m.popAndNavigateToTask(msg.Task, msg.Project)
-
 	case ShowRecentActivityMsg:
 		ra := NewRecentActivityModel(m.runtime, m.configManager)
 		ra.queueIDs = m.focusQueueIDs
@@ -177,16 +173,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowProjectFocusViewMsg:
 		if msg.Project != nil {
 			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project, m.runtime))
-		}
-		return true, nil
-
-	case DueDateOverviewSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			m.currentProject = msg.Project
-			return true, func() tea.Msg {
-				return GlowViewMsg{Task: msg.Task}
-			}
 		}
 		return true, nil
 

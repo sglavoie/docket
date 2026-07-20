@@ -29,6 +29,15 @@ type ProjectWorkflowOptions struct {
 	// ProjectStatusArtifacts applies project-rule status effects to a checked
 	// workspace-catalog artifact committed with this project mutation.
 	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
+	// PlanningArtifacts folds the durable planning reconciliation (Today/Next
+	// exclusivity) implied by PlanningTaskIDs into the same transaction. It is
+	// how a whole-project mutation that changed workflow state for specific tasks
+	// (e.g. a bulk section move) keeps Today/Next exclusive.
+	PlanningArtifacts PlanningArtifactBuilder
+	// PlanningTaskIDs names the tasks whose workflow state this mutation changed,
+	// so the planning builder reconciles exclusivity for exactly those tasks.
+	// Empty leaves the commit a bare project write with no planning reconciliation.
+	PlanningTaskIDs []string
 }
 
 // CommitProjectWithWorkflow commits an already-mutated project through the
@@ -58,6 +67,7 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  opts.Rules,
 		projectStatusArtifacts: opts.ProjectStatusArtifacts,
+		planningArtifacts:      s.defaultedPlanningArtifacts(opts.PlanningArtifacts),
 		undoAction:             undoAction,
 		undoContext:            opts.UndoContext,
 		forceCommit:            true,
@@ -71,7 +81,8 @@ func (s *Service) CommitProjectWithWorkflow(project *models.Project, opts Projec
 					expectedRevision: snap.Revision(project.ID),
 					base:             snap.Document(project.ID),
 				}},
-				sources: []*models.Project{project},
+				sources:         []*models.Project{project},
+				planningTaskIDs: opts.PlanningTaskIDs,
 			}
 			if len(opts.Rules) > 0 {
 				previous := opts.PrevStates

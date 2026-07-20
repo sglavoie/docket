@@ -20,6 +20,30 @@ type Service struct {
 	ids      IDGenerator
 	notes    WorkspaceNotePort
 	blockers ProjectBlockerPort
+	// planning is the default planning-artifact builder consulted by direct state
+	// changes and every workflow cascade when a call does not supply its own. It
+	// folds Today/Next exclusivity into the same ledger transaction as the task
+	// write for every adapter, so rule-driven state changes cannot bypass durable
+	// reconciliation. Nil disables it.
+	planning PlanningArtifactBuilder
+}
+
+// WithPlanningArtifacts sets the default planning-artifact builder used by the
+// service's direct state changes and workflow cascades. It returns the service
+// for chaining at construction. A per-call PlanningArtifacts still overrides
+// this default.
+func (s *Service) WithPlanningArtifacts(builder PlanningArtifactBuilder) *Service {
+	s.planning = builder
+	return s
+}
+
+// defaultedPlanningArtifacts returns the per-call builder when set, otherwise the
+// service default.
+func (s *Service) defaultedPlanningArtifacts(builder PlanningArtifactBuilder) PlanningArtifactBuilder {
+	if builder != nil {
+		return builder
+	}
+	return s.planning
 }
 
 // NewService constructs a Service backed by the storage note/blocker artifact

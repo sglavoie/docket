@@ -3,7 +3,6 @@ package tui
 var viewTypeNames = map[ViewType]string{
 	ViewDashboard:             "Dashboard",
 	ViewProjectList:           "ProjectList",
-	ViewProjectTree:           "ProjectTree",
 	ViewProjectCreator:        "ProjectCreator",
 	ViewProjectEditor:         "ProjectEditor",
 	ViewSettings:              "Settings",
@@ -14,7 +13,6 @@ var viewTypeNames = map[ViewType]string{
 	ViewFilter:                "Filter",
 	ViewTaskJumper:            "TaskJumper",
 	ViewProjectPreview:        "ProjectPreview",
-	ViewDueDateOverview:       "DueDateOverview",
 	ViewTagManager:            "TagManager",
 	ViewGlobalTagManager:      "GlobalTagManager",
 	ViewTagFilterSelector:     "TagFilterSelector",
@@ -46,7 +44,6 @@ var viewTypeNames = map[ViewType]string{
 	ViewRecurrenceEditor:      "RecurrenceEditor",
 	ViewTextEditor:            "TextEditor",
 	ViewGlobalInboxProcessor:  "GlobalInboxProcessor",
-	ViewFocusView:             "FocusView",
 	ViewProjectFocusView:      "ProjectFocusView",
 	ViewBlockers:              "Blockers",
 	ViewTaskAttachments:       "TaskAttachments",

@@ -13,12 +13,9 @@ import (
 func legacyIsTrackedView(vt ViewType) bool {
 	switch vt {
 	case ViewDashboard,
-		ViewProjectTree,
 		ViewDailyReview,
 		ViewWeeklyReview,
-		ViewFocusView,
 		ViewProjectFocusView,
-		ViewDueDateOverview,
 		ViewPriorityView,
 		ViewRecentActivity,
 		ViewGlobalSearch,
@@ -58,8 +55,6 @@ func legacyIsGlobalNavView(vt ViewType) bool {
 	switch vt {
 	case ViewDailyReview,
 		ViewWeeklyReview,
-		ViewFocusView,
-		ViewDueDateOverview,
 		ViewRecentActivity,
 		ViewGlobalSearch,
 		ViewGlobalBlockers,
@@ -93,7 +88,7 @@ func legacyIsTaskScopedView(vt ViewType) bool {
 
 func legacyIsGlobalOverlayView(v ViewType) bool {
 	switch v {
-	case ViewFocusView, ViewFocusBoard, ViewGlobalInboxProcessor,
+	case ViewFocusBoard, ViewGlobalInboxProcessor,
 		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
 		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules,
 		ViewPipelineHub, ViewRoadmap:
@@ -113,13 +108,10 @@ func legacyAccentMap() map[ViewType]color.Color {
 		ViewInboxProcessor:       AccentTriage,
 		ViewCrossProjectOutliner: AccentTriage,
 		ViewCrossProjectKanban:   AccentTriage,
-		ViewFocusView:            AccentPlan,
 		ViewProjectFocusView:     AccentPlan,
 		ViewFocusBoard:           AccentWork,
-		ViewDueDateOverview:      AccentPlan,
 		ViewDailyReview:          AccentPlan,
 		ViewPriorityView:         AccentPlan,
-		ViewProjectTree:          AccentExecute,
 		ViewOutliner:             AccentExecute,
 		ViewTemporaryOutliner:    AccentExecute,
 		ViewKanban:               AccentExecute,

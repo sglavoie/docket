@@ -41,12 +41,16 @@ func TestTutorBulkOperationsTopicDocumentsSelectedTaskFieldActions(t *testing.T)
 func TestTutorOutlinerDocumentsProjectViewToggle(t *testing.T) {
 	topic := findTutorTUITopic(t, "Outliner")
 	for _, want := range []string{
-		"Ctrl+p toggles the current project's tree and outliner.",
-		"cross-project outliner, Ctrl+p first opens the highlighted project's\ntree.",
+		"The single-project outliner has no view toggle",
+		"cross-project outliner, press Ctrl+p to\nopen the highlighted project's own outliner.",
 	} {
 		if !strings.Contains(topic.Content, want) {
 			t.Fatalf("Outliner topic missing %q:\n%s", want, topic.Content)
 		}
+	}
+	// The retired ProjectTree must not resurface as a promised per-project view.
+	if strings.Contains(strings.ToLower(topic.Content), "project tree") {
+		t.Fatalf("Outliner topic still promises the retired project tree:\n%s", topic.Content)
 	}
 }
 
@@ -111,9 +115,11 @@ func TestRetiredTaskStageTutorAndSettingsSurfacesStayRemoved(t *testing.T) {
 func TestTutorDistinguishesActiveSectionFromFocusQueue(t *testing.T) {
 	cli := findTutorTopicByTitle(t, "Focus")
 	for _, want := range []string{
-		"next in the\npipeline",
-		"does not mark\nthe task Active",
-		"leaves existing queue items alone",
+		"on Next exactly when its workflow state is StateNext",
+		"order index is ordering-only",
+		"Manage Next from the Planner",
+		"distinct from Today",
+		"ranked Backlog",
 	} {
 		if !strings.Contains(cli.Content, want) {
 			t.Errorf("CLI Focus topic missing %q:\n%s", want, cli.Content)
@@ -122,20 +128,25 @@ func TestTutorDistinguishesActiveSectionFromFocusQueue(t *testing.T) {
 
 	concepts := findTutorTopicByTitle(t, "Focus & Suggestions")
 	for _, want := range []string{
-		"separate from the Active section",
-		"q to\ntoggle queue membership",
-		"without changing existing queue items",
+		"on Next exactly when its workflow state is StateNext",
+		"order index is\nordering-only",
+		"Manage Next from the Planner",
+		"q on a task to\ntoggle StateNext membership",
 	} {
 		if !strings.Contains(concepts.Content, want) {
 			t.Errorf("Focus & Suggestions topic missing %q:\n%s", want, concepts.Content)
 		}
 	}
+	// The maintained Focus tutorial must not resurrect the deleted Focus View.
+	if strings.Contains(strings.ToLower(concepts.Content), "focus view") {
+		t.Errorf("Focus & Suggestions topic still references the retired Focus View:\n%s", concepts.Content)
+	}
 
 	planning := findTutorTopicByTitle(t, "Sections (GTD)")
 	for _, want := range []string{
-		"# Active And Queue",
-		"independent, ordered planning list",
-		"Queue\nand Today are mutually exclusive",
+		"# Active And Next",
+		"on Next exactly when its workflow state is StateNext",
+		"Next and Today are mutually exclusive",
 	} {
 		if !strings.Contains(planning.Content, want) {
 			t.Errorf("Sections topic missing %q:\n%s", want, planning.Content)
@@ -631,7 +642,7 @@ func TestTutorPipelineViewsTopicTeachesSixColumnHub(t *testing.T) {
 		": cmd",
 		"? help",
 		"Triage:   ctrl+i inbox, ;a all tasks",
-		"Plan:     ;q backlog",
+		"Plan:     ;q next",
 		"Work:     ;w today",
 		"Support:  ;B blockers",
 	}

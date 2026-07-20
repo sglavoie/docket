@@ -19,11 +19,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 					tags := BuildProjectTagList(m.outliner.project, false)
 					return ShowTagFilterMsg{Tags: tags, Selected: m.outliner.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
 				}
-				if m.projectTree == nil {
-					return nil
-				}
-				tags := BuildProjectTagList(m.projectTree.project, false)
-				return ShowTagFilterMsg{Tags: tags, Selected: m.projectTree.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
+				return nil
 			},
 		},
 		{
@@ -36,7 +32,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					return ShowSectionFilterSelectorMsg{Project: m.outliner.project}
 				}
-				return ShowSectionFilterSelectorMsg{ProjectTree: m.projectTree}
+				return nil
 			},
 		},
 		{
@@ -53,10 +49,6 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 					}
 					m.outliner.rebuildRows()
 					return nil
-				}
-				if m.projectTree != nil {
-					m.projectTree.viewMode = ViewModeCompleted
-					m.projectTree.updateVisibility()
 				}
 				return nil
 			},
@@ -75,14 +67,6 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 					}
 					m.outliner.rebuildRows()
 					return nil
-				}
-				if m.projectTree != nil {
-					if m.projectTree.filter.Priority == 0 {
-						m.projectTree.filter.Priority = 1
-					} else {
-						m.projectTree.filter.Priority = 0
-					}
-					m.projectTree.updateVisibility()
 				}
 				return nil
 			},
@@ -103,12 +87,6 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 					m.outliner.rebuildRows()
 					return nil
 				}
-				if m.projectTree != nil {
-					clearCommonFilters(&m.projectTree.filter.CommonFilterState)
-					m.projectTree.filter.Sections = make(map[string]bool)
-					m.projectTree.filter.Actionable = false
-					m.projectTree.updateVisibility()
-				}
 				return nil
 			},
 		},
@@ -117,7 +95,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Jump to task by ID or name",
 			Shortcut:    "\\",
 			Category:    CategorySearch,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
 					return ShowTaskJumperMsg{Projects: m.crossOutliner.loadedProjects, CrossProject: true}
@@ -138,7 +116,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					return ShowTagManagerMsg{Project: m.outliner.project}
 				}
-				return ShowTagManagerMsg{ProjectTree: m.projectTree}
+				return nil
 			},
 		},
 		{
@@ -156,7 +134,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Browse built-in GTD sections",
 			Shortcut:    "ctrl+s",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner {
 					if m.crossOutliner == nil {
@@ -171,7 +149,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					return ShowSectionManagerMsg{Project: m.outliner.project}
 				}
-				return ShowSectionManagerMsg{ProjectTree: m.projectTree}
+				return nil
 			},
 		},
 		{

@@ -159,12 +159,14 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			emptyContent = renderEmptyState("  "+EmptyStateFiltered, "  Press Fx to clear filters, or Esc to dismiss.")
 		} else if m.tabs.Active == boardTabToday {
 			emptyContent = m.renderTodayEmptyStateBody()
-		} else if m.tabs.Active == boardTabClosed {
+		} else if m.tabs.Active == boardTabDone {
 			emptyContent = MutedStyle.Render("  " + EmptyStateClosed)
+		} else if m.tabs.Active == boardTabBacklog {
+			emptyContent = MutedStyle.Render("  Backlog clear — nothing ranked behind Today and Next.")
 		} else if len(m.rows) == 0 {
 			if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 				emptyContent = m.withOnboardingGuide(renderContextualEmptyState("  "+EmptyStateNoTasks,
-					[]string{";i capture", ";q backlog", ": commands", "? help"}))
+					[]string{";i capture", ";q next", ": commands", "? help"}))
 			} else {
 				emptyContent = renderEmptyState("  "+EmptyStateNoTasks, "  Press a to add a task, or mark tasks as active in a project.")
 			}

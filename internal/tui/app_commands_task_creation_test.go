@@ -4,21 +4,6 @@ import (
 	"testing"
 )
 
-func TestTaskCommands_NewTask(t *testing.T) {
-	app := newTestAppModel()
-
-	cmds := app.taskCommands()
-	cmd := findCommand(cmds, "new task")
-	if cmd == nil {
-		t.Fatal("expected to find 'new task' command")
-	}
-
-	result := cmd.Handler()
-	if _, ok := result.(CreateTaskMsg); !ok {
-		t.Errorf("expected CreateTaskMsg, got %T", result)
-	}
-}
-
 func TestTaskCommands_QuickCapture(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 

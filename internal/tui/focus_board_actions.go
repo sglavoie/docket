@@ -72,7 +72,10 @@ func (m *FocusBoardModel) executeCockpitAction(action CockpitAction) (tea.Model,
 	case CockpitCommandUnblockTask:
 		return m.unblockSelectedTask()
 	case CockpitCommandPlanToday, CockpitCommandPlanMore:
-		return m, func() tea.Msg { return ShowFocusViewMsg{} }
+		// Plan-from-backlog opens the ranked Backlog (not the Next shortlist), the
+		// surface that shows every actionable task; from there q/w promote a row
+		// into Next or Today.
+		return m, func() tea.Msg { return ShowFocusBoardMsg{Tab: boardTabBacklog, SetTab: true} }
 	case CockpitCommandTriageInbox:
 		return m, func() tea.Msg { return ShowGlobalInboxProcessorMsg{} }
 	case CockpitCommandNewProject:

@@ -31,6 +31,9 @@ type BulkTransitionRequest struct {
 	// ProjectStatusArtifacts applies project-rule status effects to a checked
 	// workspace-catalog artifact in the same transaction.
 	ProjectStatusArtifacts WorkflowProjectStatusArtifactBuilder
+	// PlanningArtifacts folds the durable planning reconciliation (Today/Next
+	// exclusivity) the batch implies into the same transaction.
+	PlanningArtifacts PlanningArtifactBuilder
 	// SkipInvalid switches the batch from all-or-nothing to best-effort: tasks
 	// that cannot transition (invalid transition, dependency-blocked completion,
 	// or an incomplete-children guard) are dropped from the batch instead of
@@ -73,12 +76,14 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 	if undoContext == "" {
 		undoContext = string(req.Target)
 	}
+	req.PlanningArtifacts = s.defaultedPlanningArtifacts(req.PlanningArtifacts)
 
 	var refs []TaskRef
 	var projectIndexes map[string]int
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  req.Rules,
 		projectStatusArtifacts: req.ProjectStatusArtifacts,
+		planningArtifacts:      req.PlanningArtifacts,
 		undoAction:             undoAction,
 		undoContext:            undoContext,
 		forceCommit:            true,
@@ -122,10 +127,15 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 			for i := range commits {
 				sources[i] = commits[i].project
 			}
+			planningTaskIDs := make([]string, 0, len(refs))
+			for _, ref := range refs {
+				planningTaskIDs = append(planningTaskIDs, ref.Task.ID)
+			}
 			return workflowMutationPlan{
-				commits:        commits,
-				sources:        sources,
-				previousStates: previous,
+				commits:         commits,
+				sources:         sources,
+				previousStates:  previous,
+				planningTaskIDs: planningTaskIDs,
 				mutate: func(_ *WorkspaceResolver) error {
 					for _, ref := range refs {
 						applyState(ref.Task, req.Target)

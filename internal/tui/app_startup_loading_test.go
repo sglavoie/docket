@@ -33,7 +33,9 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	}})
 	runtime.Machine().SetRecentTaskVisits([]config.RecentTaskVisit{{ProjectID: project.ID, TaskID: "task-1"}})
 
-	task := &models.Task{ID: "task-1", ShortID: 1, Title: "Task", WorkflowState: models.StateReady}
+	// Queue membership is the StateNext workflow state, so the referenced member
+	// must be StateNext to survive prune-on-load hydration.
+	task := &models.Task{ID: "task-1", ShortID: 1, Title: "Task", WorkflowState: models.StateNext}
 	stored := *project
 	stored.Tasks = []*models.Task{task}
 	mock := NewMockPersister()

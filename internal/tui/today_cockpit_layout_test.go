@@ -359,7 +359,7 @@ func TestTodayCockpitStripSuppressedOnClosedTab(t *testing.T) {
 	closedProject := cockpitProject(t, "Closed Project")
 	closedTask := cockpitTask(t, closedProject, "Old closed task", models.StatusDone, models.SectionCompleted)
 	m.closedRows = []boardRow{cockpitBoardRow(closedTask, closedProject)}
-	m.tabs.Active = boardTabClosed
+	m.tabs.Active = boardTabDone
 	m.applyFilter()
 
 	plain := ansi.Strip(m.View().Content)

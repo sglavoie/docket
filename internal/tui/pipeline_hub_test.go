@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -8,6 +10,8 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/testutil"
 )
 
 var ansiStripper = regexp.MustCompile(`\x1b\[[0-9;]*m`)
@@ -123,16 +127,39 @@ func TestPipelineHubModel_ViewDoesNotPanic(t *testing.T) {
 }
 
 func TestPipelineHubModel_CountsAppearInView(t *testing.T) {
-	cfg := newTestConfig()
-	queueIDs := map[string]bool{"id1": true, "id2": true, "id3": true}
+	// The Next ("Plan") count derives from StateNext membership, not the passed
+	// queue-ID map, so seed three StateNext tasks on disk for loadPipelineCounts
+	// to load. Today's count remains the config-owned daily-plan list length.
+	dataDir := t.TempDir()
+	cfg := newTestConfigAt(dataDir)
+	project := testutil.NewTestProject("pipeline-counts")
+	project.Path = filepath.Join(dataDir, "projects", project.Slug)
+	for _, title := range []string{"Next A", "Next B", "Next C"} {
+		task := mustNewTestTask(project, title)
+		task.ApplyWorkflowState(models.StateNext)
+		project.Tasks = append(project.Tasks, task)
+	}
+	project.BuildTaskTree()
+
+	if err := os.MkdirAll(project.Path, 0o755); err != nil {
+		t.Fatalf("mkdir project path: %v", err)
+	}
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	defer func() { storage.DefaultRepository = oldRepo }()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("save project: %v", err)
+	}
+	setTestProjects(cfg, []*models.Project{project})
+
 	dailyPlanIDs := map[string]bool{"id4": true}
-	m := NewPipelineHubModel(testRuntimeAt("", cfg), queueIDs, dailyPlanIDs, nil)
+	m := NewPipelineHubModel(testRuntimeAt(dataDir, cfg), nil, dailyPlanIDs, nil)
 	m.SetSize(160, 40)
 
 	plain := stripANSI(m.View().Content)
-	// Queue count = 3, daily plan count = 1
+	// Next (StateNext) count = 3, daily plan count = 1
 	if !strings.Contains(plain, "(3)") {
-		t.Errorf("expected queue count (3) in output:\n%s", plain)
+		t.Errorf("expected StateNext count (3) in output:\n%s", plain)
 	}
 	if !strings.Contains(plain, "(1)") {
 		t.Errorf("expected daily plan count (1) in output:\n%s", plain)

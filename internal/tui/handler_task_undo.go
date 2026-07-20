@@ -2,10 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleTaskUndoMessages handles task undo/redo messages.
@@ -39,6 +42,94 @@ func (m *AppModel) handleUndoRedoPerformed(statusMsg string) (bool, tea.Cmd) {
 	cmds := m.refreshTaskViewsAfterSave()
 	cmds = append(cmds, defaultStatusTimeout())
 	return true, tea.Batch(cmds...)
+}
+
+// workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
+// holds a reversible transaction for the applicable action (undo when redo is
+// false, redo when true) that is at least as new as the cursor project's legacy
+// per-project history. Application-service mutations (edit, priority, completion,
+// state transition, section move) commit to the ledger, so when this returns true
+// general u/ctrl+r restores that durable, restart-safe transaction. It returns
+// false only when the legacy per-project history is genuinely newer, or the ledger
+// has no matching entry — the sole conditions under which the legacy restore path
+// is used.
+func (m *AppModel) workspaceLedgerRestoreIsNewest(project *models.Project, redo bool) bool {
+	ledger := workspaceLedgerFromConfig(m.runtime)
+	entry, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), redo)
+	if err != nil || !ok {
+		return false
+	}
+	legacyAt := legacyTaskHistoryTimestamp(project, redo)
+	return legacyAt.IsZero() || !legacyAt.After(entry.Timestamp)
+}
+
+// ledgerNewestEntry previews the entry a subsequent undo (redo=false) or redo
+// (redo=true) would restore for the scope, without applying it.
+func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScope, redo bool) (storage.LedgerEntry, bool, error) {
+	if redo {
+		return ledger.SelectNewestRedo(scope)
+	}
+	return ledger.SelectNewestUndo(scope)
+}
+
+// legacyTaskHistoryTimestamp returns the newest timestamp in the project's legacy
+// per-project undo (redo=false) or redo (redo=true) history, or the zero time when
+// none exists. It gates the ledger-vs-legacy recency decision for general
+// u/ctrl+r.
+func legacyTaskHistoryTimestamp(project *models.Project, redo bool) time.Time {
+	load := storage.LoadUndoHistory
+	if redo {
+		load = storage.LoadRedoHistory
+	}
+	var latest time.Time
+	if entries, err := load(project); err == nil {
+		latest = latestUndoEntryTimestamp(latest, entries)
+	}
+	return latest
+}
+
+// handleLedgerTaskUndoRedo restores the newest application-service workspace-ledger
+// transaction (undo when redo=false, redo when true). It reverses (or replays) the
+// entry, reloads every project the transaction touched, refreshes the runtime
+// snapshot so restored planning and other config artifacts are observed, repairs
+// task→project references, rebuilds the in-memory planning collections, and fans
+// the change out to the open task views — the same refresh the legacy restore
+// completion performs. Because it reads the durable ledger rather than in-memory
+// state, the restore survives a restart.
+func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
+	ledger := workspaceLedgerFromConfig(m.runtime)
+	restore := ledger.UndoWithEntry
+	verb, label := "Undid", "undo"
+	if redo {
+		restore = ledger.RedoWithEntry
+		verb, label = "Redo", "redo"
+	}
+	entry, desc, err := restore(storage.GlobalScope())
+	if err != nil {
+		// An exhausted ledger is not an error: leave the key unhandled so the
+		// caller can fall back rather than toast a spurious failure.
+		if strings.Contains(err.Error(), "history available") {
+			return nil
+		}
+		return errorCmd("%s", formatUndoRedoRestoreError(label, err))
+	}
+	restored := make([]*models.Project, 0, len(entry.ProjectIDs))
+	for _, id := range entry.ProjectIDs {
+		m.reloadProjectByID(id)
+		if p := m.projectByID(id); p != nil {
+			restored = append(restored, p)
+		}
+	}
+	m.refreshRuntime()
+	if err := m.repairTaskProjectRefsAfterRestore(restored); err != nil {
+		return errorCmd("%s", err)
+	}
+	m.rebuildPlanningFromRuntime()
+	m.clearToggleHistory()
+	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
+	cmds := m.refreshTaskViewsAfterSave()
+	cmds = append(cmds, defaultStatusTimeout())
+	return tea.Batch(cmds...)
 }
 
 func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project) error {

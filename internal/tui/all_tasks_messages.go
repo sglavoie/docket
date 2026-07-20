@@ -3,7 +3,11 @@ package tui
 import "github.com/sglavoie/tt/internal/models"
 
 // ShowAllTasksMsg is sent to open the all tasks view.
-type ShowAllTasksMsg struct{}
+// When SetGroup is true, the view opens grouped by Group (e.g. By-Due-Date).
+type ShowAllTasksMsg struct {
+	Group    AllTasksGroupBy
+	SetGroup bool
+}
 
 // CloseAllTasksMsg is sent when the all tasks view should close.
 type CloseAllTasksMsg struct{ PopToAnchorMsg }

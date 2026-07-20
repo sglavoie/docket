@@ -20,7 +20,7 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		if msg.Project != nil {
 			m.switchToProject(msg.Project, true)
-			m.pushView(ViewProjectTree)
+			m.pushView(ViewOutliner)
 		}
 		return true, nil
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -368,6 +369,54 @@ func containsSubstringFocus(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// TestFocusQueueUsesWorkflowState locks FR-008-002 for `tt focus queue`: the
+// listing derives Next membership from Task.State()==StateNext, consulting the
+// Focus Queue order index only to order qualifying tasks. An unindexed StateNext
+// task appears (after any indexed members); a stale indexed non-Next task does
+// not appear even though it lingers in the order index.
+func TestFocusQueueUsesWorkflowState(t *testing.T) {
+	project := testutil.NewTestProject("Next membership")
+
+	indexed := testutil.NewTestTask("Indexed on deck", models.TaskTypeTask)
+	indexed.ApplyWorkflowState(models.StateNext)
+	unindexed := testutil.NewTestTask("Unindexed on deck", models.TaskTypeTask)
+	unindexed.ApplyWorkflowState(models.StateNext)
+	stale := testutil.NewTestTask("Stale index entry", models.TaskTypeTask)
+	stale.ApplyWorkflowState(models.StateReady)
+
+	project.Tasks = []*models.Task{indexed, unindexed, stale}
+
+	// The persisted order index lists the indexed StateNext task and the stale
+	// non-Next task; membership must ignore the stale entry and include the
+	// unindexed StateNext task absent from the list.
+	queue := []config.FocusQueueItem{
+		{TaskID: indexed.ID, ProjectID: project.ID},
+		{TaskID: stale.ID, ProjectID: project.ID},
+	}
+
+	ordered := nextTasks([]*models.Project{project}, queue)
+
+	ids := make([]string, len(ordered))
+	for i, ft := range ordered {
+		ids[i] = ft.Task.ID
+	}
+	if len(ordered) != 2 {
+		t.Fatalf("nextTasks returned %d tasks (%v), want 2 (indexed + unindexed StateNext)", len(ordered), ids)
+	}
+	// Indexed member first, unindexed StateNext task after it.
+	if ordered[0].Task.ID != indexed.ID {
+		t.Errorf("first task = %q, want indexed StateNext member %q", ordered[0].Task.ID, indexed.ID)
+	}
+	if ordered[1].Task.ID != unindexed.ID {
+		t.Errorf("second task = %q, want unindexed StateNext task %q", ordered[1].Task.ID, unindexed.ID)
+	}
+	for _, ft := range ordered {
+		if ft.Task.ID == stale.ID {
+			t.Fatal("stale indexed non-Next task must be excluded from the Next listing")
+		}
+	}
 }
 
 // TestBuildProjectAndTaskMaps_SkipsNilTasks guards `tt focus today` and

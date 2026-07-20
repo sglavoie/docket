@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
@@ -30,6 +31,7 @@ func (m *FocusBoardModel) loadItems() {
 	m.nextRows = nil
 	m.closedRows = nil
 	m.todayRows = nil
+	m.backlogRows = nil
 
 	now := time.Now()
 	today := util.StartOfDay(now)
@@ -51,8 +53,10 @@ func (m *FocusBoardModel) loadItems() {
 				m.todayRows = append(m.todayRows, row)
 			}
 
-			// Collect closed tasks for the Closed tab
-			if task.IsTerminalState() {
+			// Collect closed tasks for the Done tab, honoring the
+			// "closed today" horizon so old terminal work does not
+			// accumulate indefinitely.
+			if terminalTaskClosedToday(task, today) {
 				m.closedRows = append(m.closedRows, row)
 			}
 
@@ -64,13 +68,14 @@ func (m *FocusBoardModel) loadItems() {
 			// All non-complete, non-snoozed tasks for the "All" tab
 			m.allRows = append(m.allRows, row)
 
-			// Collect Next-bucket tasks (the active ready/in_progress bucket
-			// shares the Next tab, matching the legacy empty-section default).
-			if bucket := taskSectionBucket(task); bucket == "" || bucket == models.SectionNext {
+			// Collect Next-tab tasks: membership is the StateNext workflow
+			// state (the repurposed queue). Every StateNext task appears here;
+			// ordering by the Next order index is applied in applyFilter.
+			if task.IsInState(models.StateNext) {
 				m.nextRows = append(m.nextRows, row)
 			}
 
-			isQueued := m.queueIDs[task.ID]
+			isQueued := taskIsNext(task)
 			isDueSoon := task.DueDate != nil && util.StartOfDay(*task.DueDate).Before(today.AddDate(0, 0, 1))
 			if isQueued || isDueSoon {
 				m.rows = append(m.rows, row)
@@ -94,6 +99,8 @@ func (m *FocusBoardModel) loadItems() {
 
 	m.expandTodayChildren()
 
+	m.buildBacklogRows(projects)
+
 	// Sort by priority ascending, then preserve original order within same priority
 	sort.SliceStable(m.rows, func(i, j int) bool {
 		if m.rows[i].Priority != m.rows[j].Priority {
@@ -112,6 +119,81 @@ func (m *FocusBoardModel) loadItems() {
 			m.applyFilter()
 		}
 	}
+}
+
+// buildBacklogRows populates the Backlog tab: every actionable task
+// (focus.CollectActionableTasks) minus Today (daily plan) and Next (StateNext),
+// ranked by the shared cross-project scorer. The ranked order is preserved as
+// the row order so the Backlog reads as a single "what to work on next" list.
+//
+// The Today/Next exclusion happens BEFORE RankCrossProjectTasks, not after.
+// RankCrossProjectTasks applies a cumulative per-project balance penalty
+// (-projectCount*300), so a hidden Today/Next row would consume a penalty slot
+// for its project and distort the score/order of the visible Backlog. Filtering
+// the candidate set first makes the visible Backlog order invariant to how many
+// same-project tasks sit in Today or Next.
+func (m *FocusBoardModel) buildBacklogRows(projects []*models.Project) {
+	actionable := focus.CollectActionableTasks(projects)
+	candidates := make([]focus.FocusTask, 0, len(actionable))
+	for _, ft := range actionable {
+		if ft.Task == nil || ft.Project == nil {
+			continue
+		}
+		// Exclude Today (daily plan) and Next (StateNext); those horizons have
+		// their own tabs. The Backlog is everything else actionable.
+		if m.dailyPlanIDs[ft.Task.ID] || ft.Task.IsInState(models.StateNext) {
+			continue
+		}
+		candidates = append(candidates, ft)
+	}
+	ranked := focus.RankCrossProjectTasks(candidates, nil, m.runtime)
+	for _, sft := range ranked {
+		if sft.Task == nil || sft.Project == nil {
+			continue
+		}
+		m.backlogRows = append(m.backlogRows, boardRow{
+			Task:     sft.Task,
+			Project:  sft.Project,
+			Priority: sft.Task.Priority,
+			Source:   sft.Project.Name,
+		})
+	}
+}
+
+// terminalTaskClosedToday reports whether a terminal task belongs in the
+// Planner Done tab, whose horizon is "closed today". A StateDone/StateCanceled
+// task qualifies only when its CompletedAt falls on the current local day
+// (today must already be truncated to the start of the day via util.StartOfDay).
+//
+// Legacy terminal tasks with a nil CompletedAt predate completion-timestamp
+// tracking; they are deliberately excluded so unknown-age closed work does not
+// accumulate indefinitely in the daily Done tab.
+func terminalTaskClosedToday(task *models.Task, today time.Time) bool {
+	if task == nil || !task.IsTerminalState() {
+		return false
+	}
+	if task.CompletedAt == nil {
+		return false
+	}
+	return util.StartOfDay(*task.CompletedAt).Equal(today)
+}
+
+// backlogFilteredByProject returns the ranked Backlog rows narrowed to the
+// active "By Project" quick filter (empty filter = all projects), preserving
+// the ranked order.
+func (m *FocusBoardModel) backlogFilteredByProject() []boardRow {
+	if len(m.backlogProjectFilter) == 0 {
+		out := make([]boardRow, len(m.backlogRows))
+		copy(out, m.backlogRows)
+		return out
+	}
+	var out []boardRow
+	for _, r := range m.backlogRows {
+		if r.Project != nil && m.backlogProjectFilter[r.Project.ID] {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // completedTodayCount returns the number of today's planned tasks that are complete.
@@ -135,10 +217,10 @@ func (m *FocusBoardModel) applyFilter() {
 	case boardTabNext:
 		m.filtered = make([]boardRow, len(m.nextRows))
 		copy(m.filtered, m.nextRows)
-		sort.SliceStable(m.filtered, func(i, j int) bool {
-			return m.filtered[i].Priority < m.filtered[j].Priority
-		})
-	case boardTabClosed:
+		m.sortNextByQueueOrder()
+	case boardTabBacklog:
+		m.filtered = m.backlogFilteredByProject()
+	case boardTabDone:
 		m.filtered = make([]boardRow, len(m.closedRows))
 		copy(m.filtered, m.closedRows)
 	default:
@@ -176,6 +258,43 @@ func (m *FocusBoardModel) applyFilter() {
 	if m.sort.Field != SortByDefault {
 		m.applySorting()
 	}
+}
+
+// sortNextByQueueOrder orders the Next tab by the stored Next order index
+// (config.PlanningState.FocusQueue). StateNext tasks absent from the index
+// (moved to Next via CLI, a workflow rule, or a redo) are appended after the
+// indexed ones, preserving their stable insertion order.
+func (m *FocusBoardModel) sortNextByQueueOrder() {
+	m.sortRowsByQueueOrder(m.filtered)
+}
+
+// sortRowsByQueueOrder stably orders the given rows by the stored Next order
+// index (config.PlanningState.FocusQueue), placing indexed members ahead of
+// unindexed StateNext rows and preserving the input order among unindexed rows.
+// Shared by the Next-tab display sort and the reorder path, which sorts the full
+// nextRows slice into its canonical order before permuting it.
+func (m *FocusBoardModel) sortRowsByQueueOrder(rows []boardRow) {
+	pos := make(map[string]int)
+	if m.focusQueue != nil {
+		for i, ft := range *m.focusQueue {
+			if ft.Task != nil {
+				pos[ft.Task.ID] = i
+			}
+		}
+	}
+	unindexed := len(pos)
+	orderOf := func(r boardRow) int {
+		if r.Task == nil {
+			return unindexed
+		}
+		if p, ok := pos[r.Task.ID]; ok {
+			return p
+		}
+		return unindexed
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		return orderOf(rows[i]) < orderOf(rows[j])
+	})
 }
 
 // applySorting sorts the filtered rows based on the current sort field.

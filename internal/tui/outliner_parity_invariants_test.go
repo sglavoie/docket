@@ -27,7 +27,7 @@ func crossParityKeyCases() []parityKeyCase {
 	return []parityKeyCase{
 		// Session 2 — navigation parity (primary view entries).
 		{
-			name:       "ctrl+p (OpenProjectTree)",
+			name:       "ctrl+p (OpenOutliner)",
 			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "ctrl+p") },
 			wantStatus: statusNoProjectUnderCursor,
 		},
@@ -188,11 +188,11 @@ func TestCrossOutlinerParity_CursorRoutingMatrix(t *testing.T) {
 	}
 	cases := []routingCase{
 		{
-			name:    "ctrl+p (OpenProjectTree)",
+			name:    "ctrl+p (OpenOutliner)",
 			invoke:  func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "ctrl+p") },
-			extract: func(msg tea.Msg) *models.Project { return msg.(ShowProjectTreeMsg).Project },
+			extract: func(msg tea.Msg) *models.Project { return msg.(ShowOutlinerMsg).Project },
 			extractOK: func(msg tea.Msg) bool {
-				_, ok := msg.(ShowProjectTreeMsg)
+				_, ok := msg.(ShowOutlinerMsg)
 				return ok
 			},
 		},

@@ -86,18 +86,28 @@ func TestPipelineHubWorkColumnAbsorbsExecuteEntries(t *testing.T) {
 	}
 
 	labels := make([]string, 0, len(work.entries))
+	outlinerRoutes := 0
 	for _, e := range work.entries {
 		labels = append(labels, e.label)
+		if e.viewType == ViewOutliner {
+			outlinerRoutes++
+		}
 	}
 
 	if !contains(labels, "Today") {
 		t.Errorf("Work column missing 'Today' entry; labels=%v", labels)
 	}
-	if !contains(labels, "Project Tree") {
-		t.Errorf("Work column missing 'Project Tree' entry; labels=%v", labels)
+	// The current project entry is the sole route to its Outliner — the retired
+	// ProjectTree left the Outliner as the only per-project surface, so a
+	// separate "Outliner" tile would be a duplicate.
+	if !contains(labels, "Alpha") {
+		t.Errorf("Work column missing current-project 'Alpha' entry; labels=%v", labels)
 	}
-	if !contains(labels, "Outliner") {
-		t.Errorf("Work column missing 'Outliner' entry; labels=%v", labels)
+	if contains(labels, "Outliner") {
+		t.Errorf("Work column should not carry a duplicate 'Outliner' entry; labels=%v", labels)
+	}
+	if outlinerRoutes != 1 {
+		t.Errorf("Work column should expose exactly one route to the Outliner, got %d; labels=%v", outlinerRoutes, labels)
 	}
 	if !contains(labels, "Kanban") {
 		t.Errorf("Work column missing 'Kanban' entry; labels=%v", labels)

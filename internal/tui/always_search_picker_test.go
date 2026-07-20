@@ -106,7 +106,7 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewProjectTree)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewOutliner)
 	m.Init()
 
 	model, _ := m.Update(syntheticCtrlKey('d'))
@@ -152,7 +152,7 @@ func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewProjectTree)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewOutliner)
 	m.SetSize(80, 24)
 
 	view := m.View().Content
@@ -198,7 +198,7 @@ func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, ViewProjectTree)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, ViewOutliner)
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd != nil {

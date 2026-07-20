@@ -46,8 +46,8 @@ func TestHandleTaskMessagesCloseDependencyViewer(t *testing.T) {
 
 func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
+	app.pushView(ViewOutliner)
 
 	msg := UndoPerformedMsg{Action: "Task deleted"}
 	handled, _ := app.handleTaskMessages(msg)
@@ -55,8 +55,8 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	if !handled {
 		t.Error("UndoPerformedMsg should be handled")
 	}
-	if app.currentView() != ViewProjectTree {
-		t.Errorf("currentView should remain ProjectTree after undo, got %v", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Errorf("currentView should remain Outliner after undo, got %v", app.currentView())
 	}
 	if app.statusMessage != "Undid: Task deleted" {
 		t.Errorf("statusMessage should contain undo action, got %q", app.statusMessage)
@@ -65,8 +65,8 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 
 func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.pushView(ViewProjectTree)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
+	app.pushView(ViewOutliner)
 
 	msg := RedoPerformedMsg{Action: "Task restored"}
 	handled, _ := app.handleTaskMessages(msg)
@@ -74,8 +74,8 @@ func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
 	if !handled {
 		t.Error("RedoPerformedMsg should be handled")
 	}
-	if app.currentView() != ViewProjectTree {
-		t.Errorf("currentView should remain ProjectTree after redo, got %v", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Errorf("currentView should remain Outliner after redo, got %v", app.currentView())
 	}
 	if app.statusMessage != "Redo: Task restored" {
 		t.Errorf("statusMessage should contain redo action, got %q", app.statusMessage)

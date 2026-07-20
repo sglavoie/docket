@@ -108,8 +108,21 @@ type AllTasksViewModel struct {
 	initialTabSet bool
 }
 
+// AllTasksOption configures an AllTasksViewModel at construction time.
+type AllTasksOption func(*AllTasksViewModel)
+
+// WithInitialGrouping opens the all tasks view grouped by the given strategy.
+// It also marks the initial tab as set so the active-tab auto-default does not
+// override the requested grouping (e.g. when opening ;D at By-Due-Date).
+func WithInitialGrouping(g AllTasksGroupBy) AllTasksOption {
+	return func(m *AllTasksViewModel) {
+		m.groupBy = g
+		m.initialTabSet = true
+	}
+}
+
 // NewAllTasksViewModel creates a new all tasks view model.
-func NewAllTasksViewModel(runtime *config.RuntimeState, mgr *config.Manager) *AllTasksViewModel {
+func NewAllTasksViewModel(runtime *config.RuntimeState, mgr *config.Manager, opts ...AllTasksOption) *AllTasksViewModel {
 	m := &AllTasksViewModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
 		projectService:    NewProjectService(),
@@ -119,6 +132,9 @@ func NewAllTasksViewModel(runtime *config.RuntimeState, mgr *config.Manager) *Al
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:              NewSortState(),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
+	}
+	for _, opt := range opts {
+		opt(m)
 	}
 	m.buildTabEntries()
 	km := m.buildKeyMap()

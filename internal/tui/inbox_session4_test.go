@@ -83,6 +83,12 @@ func (s *session4Backend) findTaskByID(taskID, _ string) (*models.Task, *models.
 	}
 	return nil, nil
 }
+func (s *session4Backend) projectByID(projectID string) *models.Project {
+	if s.project != nil && s.project.ID == projectID {
+		return s.project
+	}
+	return nil
+}
 func (s *session4Backend) showProjectInHeader() bool   { return s.scope == "global" }
 func (s *session4Backend) headerTitle() string         { return "" }
 func (s *session4Backend) headerSubtitleExtra() string { return "" }

@@ -99,15 +99,6 @@ func TestSidebarCommandsPreferLiveSingleProjectViewState(t *testing.T) {
 	app.runtime.SetMachineInMemory(machine)
 	registry := registerSidebarCommands(t, app)
 
-	tree := NewProjectTreeModel(project, app.configManager, app.runtime)
-	tree.sidebar.SetEnabled(true)
-	app.projectTree = tree
-	app.views.Register(ViewProjectTree, tree)
-	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewCommandPalette}
-	if cmd := availableBulkSidebarCommand(t, registry, ViewProjectTree); cmd.Name != disableAllSidebarsCommand {
-		t.Fatalf("live enabled Tree exposed %q, want %q", cmd.Name, disableAllSidebarsCommand)
-	}
-
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	outliner.sidebar.SetEnabled(false)
 	app.outliner = outliner
@@ -152,10 +143,6 @@ func TestBulkSidebarCommandsUpdateOnlyActiveProjectsAndLivePeers(t *testing.T) {
 	app.runtime.SetMachineInMemory(machine)
 	registry := registerSidebarCommands(t, app)
 
-	tree := NewProjectTreeModel(alpha, app.configManager, app.runtime)
-	tree.sidebar.Focus()
-	app.projectTree = tree
-	app.views.Register(ViewProjectTree, tree)
 	outliner := NewOutlinerModel(beta, app.configManager, app.runtime)
 	outliner.sidebar.Focus()
 	app.outliner = outliner
@@ -197,7 +184,7 @@ func TestBulkSidebarCommandsUpdateOnlyActiveProjectsAndLivePeers(t *testing.T) {
 	assertProjectState(sandbox.ID, false, func(state config.ProjectViewState) bool { return state.FilterPriority == 4 })
 	assertProjectState(internal.ID, true, func(state config.ProjectViewState) bool { return state.ViewMode == 3 })
 	for name, sidebar := range map[string]*SidebarComponent{
-		"tree": tree.sidebar, "outliner": outliner.sidebar, "temporary outliner": temporary.sidebar,
+		"outliner": outliner.sidebar, "temporary outliner": temporary.sidebar,
 	} {
 		if sidebar.IsEnabled() || sidebar.IsFocused() {
 			t.Errorf("%s sidebar = enabled:%v focused:%v, want disabled and blurred", name, sidebar.IsEnabled(), sidebar.IsFocused())
@@ -224,7 +211,7 @@ func TestBulkSidebarCommandsUpdateOnlyActiveProjectsAndLivePeers(t *testing.T) {
 	assertProjectState(sandbox.ID, false, func(state config.ProjectViewState) bool { return state.FilterPriority == 4 })
 	assertProjectState(internal.ID, true, func(state config.ProjectViewState) bool { return state.ViewMode == 3 })
 	for name, sidebar := range map[string]*SidebarComponent{
-		"tree": tree.sidebar, "outliner": outliner.sidebar, "temporary outliner": temporary.sidebar,
+		"outliner": outliner.sidebar, "temporary outliner": temporary.sidebar,
 	} {
 		if !sidebar.IsEnabled() {
 			t.Errorf("%s sidebar remained disabled after enable", name)

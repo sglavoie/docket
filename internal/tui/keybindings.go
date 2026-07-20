@@ -69,7 +69,6 @@ func BuildRegistryFromKeyMaps(views map[ViewType]*keymap.KeyMap) *KeybindingRegi
 func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
 	return map[ViewType]*keymap.KeyMap{
 		ViewDashboard:             (&DashboardModel{}).buildKeyMap(),
-		ViewProjectTree:           (&ProjectTreeModel{}).buildKeyMap(),
 		ViewOutliner:              (&OutlinerModel{project: &models.Project{}}).buildKeyMap(),
 		ViewCrossProjectOutliner:  (&OutlinerModel{}).buildKeyMap(),
 		ViewAllTasks:              (&AllTasksViewModel{}).buildKeyMap(),
@@ -77,12 +76,10 @@ func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
 		ViewKanban:                (&KanbanModel{}).buildKeyMap(),
 		ViewCrossProjectKanban:    (&KanbanModel{}).buildKeyMap(),
 		ViewPriorityView:          (&PriorityViewModel{}).buildKeyMap(),
-		ViewDueDateOverview:       (&DueDateOverviewModel{}).buildKeyMap(),
 		ViewInboxProcessor:        (&InboxProcessorModel{}).buildKeyMap(),
 		ViewGlobalInboxProcessor:  (&GlobalInboxProcessorModel{}).buildKeyMap(),
 		ViewDailyReview:           (&DailyReviewModel{}).buildKeyMap(),
 		ViewWeeklyReview:          (&WeeklyReviewModel{}).buildKeyMap(),
-		ViewFocusView:             (&FocusViewModel{}).buildKeyMap(),
 		ViewProjectFocusView:      (&ProjectFocusViewModel{}).buildKeyMap(),
 		ViewRecentActivity:        (&RecentActivityModel{}).buildKeyMap(),
 		ViewProjectRecentActivity: (&RecentActivityModel{}).buildKeyMap(),
@@ -268,18 +265,15 @@ func scopedAppBinding(key, description, category string, views []ViewType) Keybi
 
 func taskReferenceViews() []ViewType {
 	return []ViewType{
-		ViewProjectTree,
 		ViewOutliner,
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
 		ViewAllTasks,
-		ViewFocusView,
 		ViewProjectFocusView,
 		ViewKanban,
 		ViewCrossProjectKanban,
 		ViewDailyReview,
 		ViewWeeklyReview,
-		ViewDueDateOverview,
 		ViewPriorityView,
 		ViewRecentActivity,
 		ViewProjectRecentActivity,
@@ -287,6 +281,14 @@ func taskReferenceViews() []ViewType {
 		ViewGlobalInboxProcessor,
 		ViewTaskDetail,
 	}
+}
+
+// queueToggleViews lists the views where the q/w planning toggles fire. It is
+// taskReferenceViews() plus the Planner (ViewFocusBoard): the Planner owns q/w
+// as its replacement planning action, promoting a selected Backlog row into
+// Next (q) or Today (w) without leaving the consolidated planning surface.
+func queueToggleViews() []ViewType {
+	return append(taskReferenceViews(), ViewFocusBoard)
 }
 
 func taskPeekViews() []ViewType {
@@ -302,7 +304,6 @@ func projectNotesHelpViews() []ViewType {
 
 func repeatableActionViews() []ViewType {
 	return []ViewType{
-		ViewProjectTree,
 		ViewOutliner,
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
@@ -333,11 +334,11 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";r", Description: "Open Weekly Review", Category: "Navigation"},
 		Keybinding{Key: "ctrl+i", Description: "Open Global Inbox Processor", Category: "Navigation"},
 		Keybinding{Key: ";N", Description: "Open Global Notes", Category: "Navigation"},
-		Keybinding{Key: ";q", Description: "Open Backlog", Category: "Navigation"},
-		Keybinding{Key: ";w", Description: "Open Today", Category: "Navigation"},
+		Keybinding{Key: ";q", Description: "Open Planner — Next", Category: "Navigation"},
+		Keybinding{Key: ";w", Description: "Open Planner — Today", Category: "Navigation"},
 		Keybinding{Key: ";l", Description: "Open Recent Activity", Category: "Navigation"},
 		Keybinding{Key: ";B", Description: "Open Global Blockers", Category: "Navigation"},
-		Keybinding{Key: ";D", Description: "Open Due Date Overview", Category: "Navigation"},
+		Keybinding{Key: ";D", Description: "Open All Tasks by Due Date", Category: "Navigation"},
 		Keybinding{Key: ";m", Description: "Open Metrics Dashboard", Category: "Navigation"},
 		Keybinding{Key: ";a", Description: "Open All Tasks", Category: "Navigation"},
 		Keybinding{Key: "ctrl+/", Description: "Open Global Search", Category: "Navigation"},
@@ -368,8 +369,8 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 	)
 	r.add(
 		scopedAppBinding("space", "Toggle task detail peek (toggles selection in multi-select)", "Navigation", taskPeekViews()),
-		scopedAppBinding("q", "Toggle queue", "Navigation", taskReferenceViews()),
-		scopedAppBinding("w", "Toggle today's plan", "Navigation", taskReferenceViews()),
+		scopedAppBinding("q", "Toggle queue", "Navigation", queueToggleViews()),
+		scopedAppBinding("w", "Toggle today's plan", "Navigation", queueToggleViews()),
 		scopedAppBinding("ctrl+o", "Open task reference copy", "Task Operations", taskReferenceViews()),
 		scopedAppBinding("ctrl+n", "Open project Notes", "Notes", projectNotesHelpViews()),
 		scopedAppBinding(".", "Repeat last action", "Operations", repeatableActionViews()),

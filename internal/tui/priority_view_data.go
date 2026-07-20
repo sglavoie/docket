@@ -1,10 +1,9 @@
 package tui
 
 import (
-	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/scoring"
+	"github.com/sglavoie/tt/internal/focus"
 )
 
 // loadActionableTasks categorizes and sorts tasks by urgency.
@@ -23,7 +22,7 @@ func (m *PriorityViewModel) loadActionableTasks() {
 
 		pt := &PriorityTask{
 			Task:         task,
-			UrgencyScore: ComputeUrgencyScore(task, m.queueIDs[task.ID]),
+			UrgencyScore: ComputeUrgencyScore(task, taskIsNext(task)),
 			ParentTitle:  m.getParentTitle(task),
 			RelativeDue:  FormatRelativeDue(task.DueDate, false),
 		}
@@ -63,20 +62,36 @@ func (m *PriorityViewModel) loadActionableTasks() {
 	m.backlog = m.applyFiltersToGroup(m.backlog)
 	m.waitingOn = m.applyFiltersToGroup(m.waitingOn)
 
-	// Compute score-ranked list if a scoring profile is assigned
+	// Compute score-ranked list if a scoring profile is assigned. The By-Score
+	// tab reuses the shared cross-project ranker (focus.RankCrossProjectTasks)
+	// so its ordering matches the Planner Backlog instead of maintaining a
+	// duplicate composite-score sort. The profile gate is retained because the
+	// tab's UI advertises composite-score ranking (renderScoreRanking shows a
+	// "no scoring profile" hint otherwise).
 	m.scoredTasks = nil
 	if m.runtime != nil {
 		if profile := m.runtime.Automation().GetProjectScoringProfile(m.project.ID); profile != nil {
-			var all []*PriorityTask
-			all = append(all, m.overdue...)
-			all = append(all, m.today...)
-			all = append(all, m.thisWeek...)
-			all = append(all, m.later...)
-			all = append(all, m.backlog...)
-			sort.SliceStable(all, func(i, j int) bool {
-				return scoring.ComputeScore(all[i].Task, profile) > scoring.ComputeScore(all[j].Task, profile)
-			})
-			m.scoredTasks = all
+			var candidates []*PriorityTask
+			candidates = append(candidates, m.overdue...)
+			candidates = append(candidates, m.today...)
+			candidates = append(candidates, m.thisWeek...)
+			candidates = append(candidates, m.later...)
+			candidates = append(candidates, m.backlog...)
+
+			byID := make(map[string]*PriorityTask, len(candidates))
+			focusTasks := make([]focus.FocusTask, 0, len(candidates))
+			for _, pt := range candidates {
+				byID[pt.Task.ID] = pt
+				focusTasks = append(focusTasks, focus.FocusTask{Task: pt.Task, Project: m.project})
+			}
+
+			ranked := focus.RankCrossProjectTasks(focusTasks, nil, m.runtime)
+			m.scoredTasks = make([]*PriorityTask, 0, len(ranked))
+			for _, sft := range ranked {
+				if pt := byID[sft.Task.ID]; pt != nil {
+					m.scoredTasks = append(m.scoredTasks, pt)
+				}
+			}
 		}
 	}
 

@@ -50,9 +50,7 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case BulkEditDoneMsg:
 		m.popView()
-		if msg.Applied && m.projectTree != nil {
-			return true, m.projectTree.applyBulkChanges(msg.Changes, msg.Tasks)
-		}
+		// project-view bulk/quick actions are handled by the outliner keymap
 		return true, nil
 
 	case PaletteBulkPriorityMsg:

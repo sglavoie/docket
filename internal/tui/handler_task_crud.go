@@ -117,11 +117,6 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		} else if msg.Result != nil {
 			projectID = msg.Result.ProjectID
 		}
-		if m.currentProject != nil && (projectID == "" || m.currentProject.ID == projectID) {
-			if fresh := m.currentProject.GetTaskByID(msg.Task.ID); fresh != nil && m.projectTree != nil {
-				m.projectTree.NavigateToTask(fresh)
-			}
-		}
 		for _, outliner := range m.registeredProjectOutliners() {
 			if projectID != "" && outliner.project.ID != projectID {
 				continue

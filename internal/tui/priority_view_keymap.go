@@ -74,7 +74,7 @@ func (m *PriorityViewModel) priorityGotoEntries() []keymap.Entry {
 		JumpToTop:   func() (tea.Model, tea.Cmd) { return m, m.JumpToTop() },
 		GoToProject: m.priorityGoToProjectAction,
 		Extra: []keymap.Entry{
-			keymap.Bind("t", "Go to task in project tree", "Navigation", m.priorityGoToTaskAction),
+			keymap.Bind("t", "Go to task in outliner", "Navigation", m.priorityGoToTaskAction),
 			keymap.Bind("h", "Open task activity log", "Navigation", m.priorityOpenActivityAction),
 		},
 	})

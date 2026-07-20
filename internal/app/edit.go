@@ -27,6 +27,13 @@ type EditRequest struct {
 	// per-field optionality — is the faithful semantics. Form and the granular
 	// fields are mutually exclusive in practice.
 	Form *FormEdit
+	// PlanningArtifacts, when set, folds the durable planning reconciliation the
+	// edit implies (Today/Next exclusivity) into the same ledger transaction as the
+	// task write, so a form edit that changes the task's section — and therefore its
+	// workflow state — keeps Today/Next exclusive and undoes atomically. Nil uses
+	// the service default planning builder (installed by the TUI); when neither is
+	// set the edit is a bare task write.
+	PlanningArtifacts PlanningArtifactBuilder
 }
 
 // FormEdit is the task form's full editable field set. Every field is applied
@@ -66,9 +73,24 @@ type FormEdit struct {
 // req.Form is set, the full task-form field set is applied instead of the
 // granular pointer fields.
 func (s *Service) Edit(req EditRequest) (TaskResult, error) {
-	return s.mutateTask(req.TaskID, "Edit Task", "", func(ref TaskRef) error {
-		return s.applyEdit(ref.Task, req)
-	})
+	ref, revision, err := s.resolveTask(req.TaskID)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	if err := s.applyEdit(ref.Task, req); err != nil {
+		return TaskResult{}, err
+	}
+	// A form edit can change the task's section (and therefore its workflow state),
+	// so fold the same Today/Next exclusivity reconciliation a state transition does
+	// into the same transaction: entering StateNext drops Today, leaving StateNext
+	// drops the stale Next order entry. A granular edit that leaves the state
+	// unchanged reconciles to no planning change (nil artifacts), so this is a bare
+	// task write for `tt task edit`.
+	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	if err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Edit Task", "")
 }
 
 // EditWithWorkflow applies the same edit mutation as Edit, then evaluates rules
@@ -79,6 +101,11 @@ func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptio
 	if opts.UndoAction == "" {
 		opts.UndoAction = "Edit Task"
 	}
+	// A form edit changes the derived workflow state when its section changes, so
+	// fold the Today/Next exclusivity reconciliation into the same cascade
+	// transaction. The single-task workflow runner already names the edited task as
+	// its planning target, so the builder reconciles exactly that task.
+	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
 	return s.mutateWithWorkflow(req.TaskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
 		return s.applyEdit(ref.Task, req)
 	})

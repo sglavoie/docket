@@ -90,6 +90,9 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		Undo: func() (tea.Model, tea.Cmd) {
 			return c.model, c.undoLastAction()
 		},
+		Redo: func() (tea.Model, tea.Cmd) {
+			return c.model, c.redoLastAction()
+		},
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
 			return c.model, helpCmd(c.backend.viewType(), c.backend.helpViewName(), c.GetHelpItems())
 		},

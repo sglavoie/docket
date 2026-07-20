@@ -21,7 +21,7 @@ func TestParentSelectorViewRespectsVisualWidth(t *testing.T) {
 		t.Fatalf("NewTask B: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, false, ViewProjectTree)
+	m := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, false, ViewOutliner)
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 

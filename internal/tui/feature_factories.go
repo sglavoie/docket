@@ -41,9 +41,6 @@ func primaryFeatureFactories() map[ViewType]RouteFactory {
 		ViewDashboard: func(ctx ViewContext, _ RouteParams) View {
 			return NewDashboardModel(ctx.Runtime)
 		},
-		ViewProjectTree: func(ctx ViewContext, params RouteParams) View {
-			return NewProjectTreeModel(resolveRouteProject(ctx, params), ctx.ConfigManager, ctx.Runtime)
-		},
 		ViewOutliner: func(ctx ViewContext, params RouteParams) View {
 			return NewOutlinerModel(resolveRouteProject(ctx, params), ctx.ConfigManager, ctx.Runtime)
 		},

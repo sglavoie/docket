@@ -1,9 +1,10 @@
 # Generated mutation-callsite inventory — direct storage mutation calls in cmd/ and internal/tui/.
 # Do not edit by hand. Regenerate with:
 #   UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline
-# Total callsites: 9
+# Total callsites: 10
 cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)
 cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)
+cmd/doctor.go:fixFocusQueueNotNext:storage.SaveProjectLocked(project)
 cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)
 cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)
 cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)

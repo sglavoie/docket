@@ -74,12 +74,6 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg sc
 		score += 250
 	}
 
-	// Focus Queue bonus: Queue membership is an explicit planning signal. A nil
-	// cfg (callers scoring without config) yields no bonus.
-	if taskInFocusQueue(task, cfg) {
-		score += 200
-	}
-
 	// Leaf task bonus: prefer actionable leaf tasks over containers
 	if isLeafTask(task) {
 		score += 800
@@ -116,10 +110,12 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg sc
 	unblockingBonus := min(blockedByThisCount, 3)
 	score += unblockingBonus * 150
 
-	// State scoring: Next is boosted, Waiting/Paused/Someday penalized. Review is
-	// intentionally absent — it is rewarded by the review bonus above, not
-	// penalized as a holding bucket (33.7.6.4 recalibration off the legacy
-	// section switch).
+	// State scoring: Next is boosted, Waiting/Paused/Someday penalized. This
+	// StateNext boost is the single Next planning signal — the former Focus Queue
+	// bonus (derived from the persisted order list) was folded into it once
+	// membership became the StateNext state. Review is intentionally absent — it
+	// is rewarded by the review bonus above, not penalized as a holding bucket
+	// (33.7.6.4 recalibration off the legacy section switch).
 	switch task.State() {
 	case models.StateNext:
 		score += 100
@@ -281,19 +277,14 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 	return scored
 }
 
-// taskInFocusQueue reports whether the task is a member of the persisted Focus
-// Queue. A nil task or nil cfg (callers scoring without config, e.g. previews)
-// yields false.
-func taskInFocusQueue(task *models.Task, cfg scoringConfig) bool {
-	if task == nil || cfg == nil {
-		return false
-	}
-	for _, item := range cfg.GetFocusQueue() {
-		if item.TaskID == task.ID {
-			return true
-		}
-	}
-	return false
+// taskInFocusQueue reports Next (queue) membership. Membership is the StateNext
+// workflow state — the queue was repurposed as an ordering-only index — so the
+// signal reaches unindexed StateNext tasks and ignores stale persisted-list
+// entries for tasks that have since left Next. The cfg is retained for signature
+// stability with the reason/score callers but is no longer consulted for
+// membership. A nil task yields false.
+func taskInFocusQueue(task *models.Task, _ scoringConfig) bool {
+	return task != nil && task.State() == models.StateNext
 }
 
 // countIncompleteDependents returns the number of open (non-complete)

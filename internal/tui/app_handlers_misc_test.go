@@ -10,9 +10,9 @@ import (
 
 func TestHandleTagMessagesShowTagManager(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
-	msg := ShowTagManagerMsg{ProjectTree: app.projectTree}
+	msg := ShowTagManagerMsg{Project: project}
 	handled, _ := app.handleTagMessages(msg)
 
 	if !handled {
@@ -38,15 +38,15 @@ func TestHandleTagMessagesTagRenameKeepsActiveManagerOpen(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}
 	project.Tasks = nil
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
-	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
+	handled, _ := app.handleTagMessages(ShowTagManagerMsg{Project: project})
 	if !handled {
 		t.Fatal("ShowTagManagerMsg should be handled")
 	}
 
 	project.Tags = []string{"frontend"}
-	app.projectTree.filter.Tags = map[string]bool{"backend": true}
+	app.outliner.filter.Tags = map[string]bool{"backend": true}
 	handled, cmd := app.handleTagMessages(TagRenamedMsg{OldName: "backend", NewName: "frontend"})
 	if !handled {
 		t.Fatal("TagRenamedMsg should be handled")
@@ -57,8 +57,8 @@ func TestHandleTagMessagesTagRenameKeepsActiveManagerOpen(t *testing.T) {
 	if app.currentView() != ViewTagManager {
 		t.Fatalf("currentView = %v, want ViewTagManager", app.currentView())
 	}
-	if app.projectTree.filter.Tags["backend"] || !app.projectTree.filter.Tags["frontend"] {
-		t.Fatalf("project tree tag filter = %v, want frontend only", app.projectTree.filter.Tags)
+	if app.outliner.filter.Tags["backend"] || !app.outliner.filter.Tags["frontend"] {
+		t.Fatalf("outliner tag filter = %v, want frontend only", app.outliner.filter.Tags)
 	}
 
 	manager, ok := app.views.Get(ViewTagManager).(*TagManagerModel)
@@ -76,15 +76,15 @@ func TestHandleTagMessagesTagRemovedKeepsActiveManagerOpenAndClearsFilter(t *tes
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}
 	project.Tasks = nil
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
-	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
+	handled, _ := app.handleTagMessages(ShowTagManagerMsg{Project: project})
 	if !handled {
 		t.Fatal("ShowTagManagerMsg should be handled")
 	}
 
 	project.Tags = nil
-	app.projectTree.filter.Tags = map[string]bool{"backend": true}
+	app.outliner.filter.Tags = map[string]bool{"backend": true}
 	handled, cmd := app.handleTagMessages(TagRemovedMsg{Name: "backend"})
 	if !handled {
 		t.Fatal("TagRemovedMsg should be handled")
@@ -95,8 +95,8 @@ func TestHandleTagMessagesTagRemovedKeepsActiveManagerOpenAndClearsFilter(t *tes
 	if app.currentView() != ViewTagManager {
 		t.Fatalf("currentView = %v, want ViewTagManager", app.currentView())
 	}
-	if app.projectTree.filter.Tags["backend"] {
-		t.Fatalf("project tree tag filter = %v, want backend removed", app.projectTree.filter.Tags)
+	if app.outliner.filter.Tags["backend"] {
+		t.Fatalf("outliner tag filter = %v, want backend removed", app.outliner.filter.Tags)
 	}
 
 	manager, ok := app.views.Get(ViewTagManager).(*TagManagerModel)
@@ -112,9 +112,9 @@ func TestHandleTagMessagesTagPinnedKeepsManagerOpenAndRefreshesTree(t *testing.T
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}
 	project.Tasks = nil
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
-	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
+	handled, _ := app.handleTagMessages(ShowTagManagerMsg{Project: project})
 	if !handled {
 		t.Fatal("ShowTagManagerMsg should be handled")
 	}
@@ -130,8 +130,8 @@ func TestHandleTagMessagesTagPinnedKeepsManagerOpenAndRefreshesTree(t *testing.T
 	if app.currentView() != ViewTagManager {
 		t.Fatalf("currentView = %v, want ViewTagManager", app.currentView())
 	}
-	if got := app.projectTree.pinnedTagTabs(); !slices.Equal(got, []string{"All", "#backend"}) {
-		t.Fatalf("project tree tabs = %v, want [All #backend]", got)
+	if got := app.outliner.pinnedTagTabs(); !slices.Equal(got, []string{"All", "#backend"}) {
+		t.Fatalf("outliner tabs = %v, want [All #backend]", got)
 	}
 
 	manager, ok := app.views.Get(ViewTagManager).(*TagManagerModel)
@@ -178,15 +178,14 @@ func TestHandleSectionMessagesCloseSectionManagerRefreshesProjectContexts(t *tes
 		name     string
 		baseView ViewType
 	}{
-		{name: "project tree", baseView: ViewProjectTree},
 		{name: "single project outliner", baseView: ViewOutliner},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
-			app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-			app.views.Register(ViewProjectTree, app.projectTree)
+			app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+			app.views.Register(ViewOutliner, app.outliner)
 			app.pushView(tt.baseView)
 			app.pushView(ViewSectionManager)
 
@@ -273,9 +272,9 @@ func TestViewStackNavigation(t *testing.T) {
 	}
 
 	// Push some views
-	app.pushView(ViewProjectTree)
-	if app.currentView() != ViewProjectTree {
-		t.Error("currentView should be ProjectTree after push")
+	app.pushView(ViewOutliner)
+	if app.currentView() != ViewOutliner {
+		t.Error("currentView should be Outliner after push")
 	}
 
 	app.pushView(ViewTaskForm)
@@ -288,8 +287,8 @@ func TestViewStackNavigation(t *testing.T) {
 
 	// Pop back
 	app.popView()
-	if app.currentView() != ViewProjectTree {
-		t.Error("currentView should be ProjectTree after pop")
+	if app.currentView() != ViewOutliner {
+		t.Error("currentView should be Outliner after pop")
 	}
 
 	app.popView()

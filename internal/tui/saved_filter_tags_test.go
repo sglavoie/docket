@@ -17,15 +17,6 @@ func TestApplySavedFilterToProjectViewsKeepsZeroUseCatalogTag(t *testing.T) {
 		FilterTags: []string{"catalog-only", "missing"},
 	}
 
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.applySavedFilterToTree(filter)
-	if !app.projectTree.filter.Tags["catalog-only"] {
-		t.Fatalf("project tree tags = %v, want catalog-only restored", app.projectTree.filter.Tags)
-	}
-	if app.projectTree.filter.Tags["missing"] {
-		t.Fatalf("project tree tags = %v, want missing tag rejected", app.projectTree.filter.Tags)
-	}
-
 	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.applySavedFilterToOutliner(filter)
 	if !app.outliner.filter.Tags["catalog-only"] {

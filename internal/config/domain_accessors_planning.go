@@ -137,7 +137,10 @@ func (p *PlanningState) SetFocusQueue(items []FocusQueueItem) {
 	p.FocusQueue = items
 }
 
-// AddToFocusQueue mirrors (*Config).AddToFocusQueue.
+// AddToFocusQueue appends a task to the Next order index (idempotent by task ID).
+// Membership in Next is the task's StateNext workflow state; this only records
+// ordering, so callers set StateNext through the task-mutation boundary
+// separately. Mirrors (*Config).AddToFocusQueue.
 func (p *PlanningState) AddToFocusQueue(taskID, projectID string) bool {
 	if taskID == "" {
 		return false
@@ -151,7 +154,10 @@ func (p *PlanningState) AddToFocusQueue(taskID, projectID string) bool {
 	return true
 }
 
-// RemoveFromFocusQueue mirrors (*Config).RemoveFromFocusQueue.
+// RemoveFromFocusQueue drops a task's entry from the Next order index. It is
+// ordering-only maintenance; leaving StateNext (which clears Next membership) is
+// done through the task-mutation boundary separately. Mirrors
+// (*Config).RemoveFromFocusQueue.
 func (p *PlanningState) RemoveFromFocusQueue(taskID string) bool {
 	if taskID == "" || len(p.FocusQueue) == 0 {
 		return false
@@ -179,6 +185,27 @@ func (p *PlanningState) GetDailyPlan() []DailyPlanItem {
 // SetDailyPlan mirrors (*Config).SetDailyPlan.
 func (p *PlanningState) SetDailyPlan(items []DailyPlanItem) {
 	p.DailyPlan = items
+}
+
+// RemoveFromDailyPlan drops a task's Today (Daily Plan) entry, returning true
+// when the task was planned. Today and Next are mutually exclusive horizons, so
+// the queue and today mutations call this to enforce exclusivity when a task
+// moves between them.
+func (p *PlanningState) RemoveFromDailyPlan(taskID string) bool {
+	if taskID == "" || len(p.DailyPlan) == 0 {
+		return false
+	}
+	filtered := p.DailyPlan[:0]
+	removed := false
+	for _, item := range p.DailyPlan {
+		if item.TaskID == taskID {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	p.DailyPlan = filtered
+	return removed
 }
 
 // --- PlanningState: dismissed suggestions ----------------------------------

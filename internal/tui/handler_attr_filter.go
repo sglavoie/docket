@@ -35,7 +35,7 @@ func (m *AppModel) applyAttrFilterToView(source ViewType, prefix, key string) {
 
 	// Views implementing tagFilterApplicable (have getFilter() + refreshAndClamp()).
 	standardViews := []ViewType{
-		ViewFocusView, ViewFocusBoard, ViewDueDateOverview,
+		ViewFocusBoard,
 		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewPriorityView,
 		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,
 	}
@@ -52,13 +52,6 @@ func (m *AppModel) applyAttrFilterToView(source ViewType, prefix, key string) {
 	}
 
 	switch source {
-	case ViewProjectTree:
-		if m.projectTree != nil {
-			applyAttr(&m.projectTree.filter.CommonFilterState, func() {
-				m.projectTree.updateVisibility()
-				m.projectTree.clampCursor()
-			})
-		}
 	case ViewProjectFocusView:
 		if v := m.views.Get(ViewProjectFocusView); v != nil {
 			if pv, ok := v.(*ProjectFocusViewModel); ok {

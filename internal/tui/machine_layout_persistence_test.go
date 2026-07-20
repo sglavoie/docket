@@ -38,38 +38,37 @@ func newMachineLayoutTestApp(t *testing.T) (*AppModel, *models.Project) {
 	}
 
 	app := &AppModel{
-		configManager:            manager,
-		runtime:                  runtime,
-		deps:                     newShellDeps(runtime, nil, manager, nil),
-		persister:                NewProjectService(),
-		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
-		projectLastView:          make(map[string]ViewType),
-		viewStack:                []ViewType{ViewDashboard},
-		width:                    80,
-		height:                   24,
-		views:                    NewViewRegistry(),
-		currentProject:           project,
-		navHistory:               NewNavHistory(),
-		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		configManager:        manager,
+		runtime:              runtime,
+		deps:                 newShellDeps(runtime, nil, manager, nil),
+		persister:            NewProjectService(),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]ViewType),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		currentProject:       project,
+		navHistory:           NewNavHistory(),
 	}
 	return app, project
 }
 
-// TestSaveProjectTreeStateCommitsMachineDomain proves the migrated
-// saveProjectTreeState routes a per-project view-state change through the
+// TestSaveProjectViewStateCommitsMachineDomain proves the migrated
+// saveProjectViewState routes a per-project view-state change through the
 // machine-local committer (no whole-config Manager.Save): the change is readable
 // through the runtime snapshot and survives a fresh reload from disk.
-func TestSaveProjectTreeStateCommitsMachineDomain(t *testing.T) {
+func TestSaveProjectViewStateCommitsMachineDomain(t *testing.T) {
 	app, project := newMachineLayoutTestApp(t)
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.filter.Parked = true
-	app.projectTree.filter.GitHubIssue = true
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.outliner.filter.Parked = true
+	app.outliner.filter.GitHubIssue = true
 
-	app.saveProjectTreeState()
+	app.saveProjectViewState()
 
 	// Observable through the in-memory runtime snapshot after commit+refresh.
 	vs, ok := app.runtime.Machine().GetProjectViewState(project.ID)
-	if !ok || !vs.FilterParked || !vs.FilterGitHubIssue {
+	if !ok || !vs.OutlinerFilterParked || !vs.OutlinerFilterGitHubIssue {
 		t.Fatalf("runtime machine view state = %+v (ok=%v), want parked+github", vs, ok)
 	}
 
@@ -79,7 +78,7 @@ func TestSaveProjectTreeStateCommitsMachineDomain(t *testing.T) {
 		t.Fatalf("reload: %v", err)
 	}
 	rvs, ok := reloaded.Machine().GetProjectViewState(project.ID)
-	if !ok || !rvs.FilterParked || !rvs.FilterGitHubIssue {
+	if !ok || !rvs.OutlinerFilterParked || !rvs.OutlinerFilterGitHubIssue {
 		t.Fatalf("reloaded machine view state = %+v (ok=%v), want parked+github", rvs, ok)
 	}
 }

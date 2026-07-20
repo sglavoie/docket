@@ -20,10 +20,6 @@ func TestSharedTaskKeymapBulkPickerMessagesUseSelectedRefs(t *testing.T) {
 			setup: setupAllTasksSharedBulkKeymap,
 		},
 		{
-			name:  "focus view",
-			setup: setupFocusSharedBulkKeymap,
-		},
-		{
 			name:  "priority view",
 			setup: setupPrioritySharedBulkKeymap,
 		},
@@ -96,37 +92,6 @@ func setupAllTasksSharedBulkKeymap(t *testing.T) (*keymap.KeyMap, []TaskProjectR
 	want := []TaskProjectRef{
 		{Task: tasksA[1], Project: projectA},
 		{Task: tasksB[1], Project: projectB},
-	}
-	return model.buildKeyMap(), want
-}
-
-func setupFocusSharedBulkKeymap(t *testing.T) (*keymap.KeyMap, []TaskProjectRef) {
-	t.Helper()
-
-	projectA, tasksA := newSharedBulkProject("Alpha", "cursor", "selected-alpha")
-	projectB, tasksB := newSharedBulkProject("Beta", "selected-beta")
-	cfg := newTestConfig()
-	setTestProjects(cfg, []*models.Project{projectA, projectB})
-
-	model := newTestFocusViewModel(cfg)
-	model.MultiSelectState = MultiSelectState{
-		multiSelectMode: true,
-		selectedTasks: map[string]bool{
-			tasksA[1].ID: true,
-			tasksB[0].ID: true,
-		},
-	}
-	model.filtered = []FocusTask{
-		{Task: tasksA[0], Project: projectA},
-		{Task: tasksA[1], Project: projectA},
-		{Task: tasksB[0], Project: projectB},
-	}
-	model.tasks = model.filtered
-	model.cursor = 0
-
-	want := []TaskProjectRef{
-		{Task: tasksA[1], Project: projectA},
-		{Task: tasksB[0], Project: projectB},
 	}
 	return model.buildKeyMap(), want
 }

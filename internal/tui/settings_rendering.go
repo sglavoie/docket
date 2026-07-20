@@ -17,28 +17,6 @@ func renderDefaultHint(current, def string) string {
 	return "  " + MutedStyle.Render("(default: "+def+")")
 }
 
-// renderTreeColumnToggles renders the Project Tree column visibility toggles.
-// Iterates AllColumns filtered to exclude OutlinerOnly entries — the toggles
-// array indices must align with that filtered slice.
-// The Priority column is rendered as a 3-way enum selector instead of a toggle.
-func (m *SettingsModel) renderTreeColumnToggles(b *strings.Builder, toggles [15]bool, startIdx, labelWidth int, priorityCursor int) {
-	idx := 0
-	for _, col := range AllColumns {
-		if col.OutlinerOnly {
-			continue
-		}
-		focusIdx := startIdx + idx
-		b.WriteString(renderFormLabelWithWidth(col.Label+": ", labelWidth, m.focusIndex == focusIdx))
-		if col.ID == ColPriority {
-			b.WriteString(renderEnumSelector(priorityModeOptions, priorityCursor, m.focusIndex == focusIdx, m.width-(labelWidth+2)))
-		} else {
-			b.WriteString(renderFormToggle("Visible", "Hidden", toggles[idx], m.focusIndex == focusIdx))
-		}
-		b.WriteString("\n")
-		idx++
-	}
-}
-
 // renderOutlinerColumnToggles renders the Outliner column visibility toggles
 // across the full AllColumns list (no filtering).
 // The Priority column is rendered as a 3-way enum selector instead of a toggle.
@@ -72,8 +50,6 @@ func (m *SettingsModel) focusLineInContent() int {
 		return localIdx * 4
 	case tabAttachments:
 		return 3 + localIdx*5
-	case tabProjectTree:
-		return 3 + localIdx
 	case tabOutliner:
 		switch m.subTab {
 		case 0:
@@ -229,8 +205,6 @@ func (m *SettingsModel) View() tea.View {
 		content = m.renderBehaviorTab()
 	case tabAttachments:
 		content = m.renderAttachmentsTab()
-	case tabProjectTree:
-		content = m.renderProjectTreeTab()
 	case tabOutliner:
 		content = m.renderOutlinerTab()
 	case tabKanban:

@@ -126,14 +126,11 @@ func (s *Settings) GetResumeCardLimit() int {
 	return *s.ResumeCardLimit
 }
 
-// GetDefaultProjectView mirrors (*Config).GetDefaultProjectView.
+// GetDefaultProjectView returns the per-project default view. The Outliner is now
+// the sole surviving per-project surface, so the retired ProjectTree value
+// ("project_tree") and any unknown legacy value migrate safely to "outliner".
 func (s *Settings) GetDefaultProjectView() string {
-	switch s.DefaultProjectView {
-	case "outliner", "project_tree":
-		return s.DefaultProjectView
-	default:
-		return "outliner"
-	}
+	return "outliner"
 }
 
 // GetFocusBoardDefaultMode mirrors (*Config).GetFocusBoardDefaultMode.

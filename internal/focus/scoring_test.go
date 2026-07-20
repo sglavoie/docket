@@ -456,16 +456,24 @@ func TestScoringFactors(t *testing.T) {
 	})
 
 	t.Run("focus queue bonus", func(t *testing.T) {
-		// Focus Queue membership contributes an explicit planning bonus. Score the
-		// same task with and without membership to isolate it.
-		queued := baseTask()
+		// Queue membership is the StateNext workflow state, not the persisted
+		// Focus Queue list. A StateNext task earns the Next planning signal over
+		// its base state; a stale list entry for a non-Next task contributes
+		// nothing, so membership is state-derived rather than list-derived.
+		next := baseTask()
+		next.WorkflowState = models.StateNext
+		nextScore := computeCrossProjectScore(next, project, nil, now)
+		if nextScore <= baseScore {
+			t.Errorf("StateNext score (%d) should be > base score (%d)", nextScore, baseScore)
+		}
+
+		stale := baseTask()
 		domains := config.NewDomains()
-		domains.Planning.AddToFocusQueue(queued.ID, project.ID)
+		domains.Planning.AddToFocusQueue(stale.ID, project.ID)
 		cfg := config.NewRuntimeState("", domains)
-		queuedScore := computeCrossProjectScore(queued, project, cfg, now)
-		unqueuedScore := computeCrossProjectScore(queued, project, nil, now)
-		if queuedScore <= unqueuedScore {
-			t.Errorf("focus-queue score (%d) should be > unqueued score (%d)", queuedScore, unqueuedScore)
+		staleScore := computeCrossProjectScore(stale, project, cfg, now)
+		if staleScore != baseScore {
+			t.Errorf("stale Focus Queue membership must not change score: got %d, want %d", staleScore, baseScore)
 		}
 	})
 

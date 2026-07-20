@@ -6,16 +6,22 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// dailyPlanToggleAction records a single w-key toggle for undo support.
+// dailyPlanToggleAction records a single w-key toggle for undo support. It is
+// only used for the planning-only cases (adding a non-Next task to Today, or
+// removing a task from Today), which are pure config changes with no ledger
+// transaction to ride. The durable Next-to-Today move (a workflow-state change)
+// is committed as one workspace-ledger transaction instead and undoes/redoes
+// through the ledger (undoQueueToggle/redoQueueToggle), so it is never recorded
+// here.
 type dailyPlanToggleAction struct {
-	Task       *models.Task
-	Project    *models.Project
-	WasAdd     bool // true = task was added to daily plan
-	WasInQueue bool // true = task was in queue before (restore on undo)
+	Task    *models.Task
+	Project *models.Project
+	WasAdd  bool // true = task was added to daily plan
 }
 
 // toggleDailyPlan adds or removes the focused task from the daily plan.
@@ -33,41 +39,45 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 	if task == nil || project == nil {
 		return nil
 	}
-	if m.dailyPlanIDs[task.ID] {
-		// Remove from daily plan.
-		m.lastDailyPlanToggle = &dailyPlanToggleAction{
-			Task: task, Project: project, WasAdd: false,
-		}
-		for i, ft := range m.dailyPlan {
-			if ft.Task.ID == task.ID {
-				m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
-				break
-			}
-		}
-		delete(m.dailyPlanIDs, task.ID)
+	taskID, projectID := task.ID, project.ID
+
+	if m.dailyPlanIDs[taskID] {
+		// Remove from daily plan (planning-only; workflow state is untouched).
+		m.removeFromDailyPlan(taskID)
 		m.setInfoStatus(fmt.Sprintf("Removed from today's plan: %s", task.Title))
-	} else {
-		// Record before mutating so WasInQueue reflects the pre-toggle state.
-		wasInQueue := m.focusQueueIDs[task.ID]
-		m.lastDailyPlanToggle = &dailyPlanToggleAction{
-			Task: task, Project: project, WasAdd: true, WasInQueue: wasInQueue,
-		}
-		// Add to daily plan.
-		m.dailyPlan = append(m.dailyPlan, FocusTask{Task: task, Project: project})
-		m.dailyPlanIDs[task.ID] = true
-		// Mutual exclusivity: remove from queue if present.
-		if wasInQueue {
-			for i, ft := range m.focusQueue {
-				if ft.Task.ID == task.ID {
-					m.focusQueue = append(m.focusQueue[:i], m.focusQueue[i+1:]...)
-					break
-				}
-			}
-			delete(m.focusQueueIDs, task.ID)
-			m.persistFocusQueue()
-		}
-		m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", task.Title))
+		return m.recordPlanningOnlyDailyPlanToggle(&dailyPlanToggleAction{Task: task, Project: project, WasAdd: false})
 	}
+
+	if taskIsNext(task) {
+		// Mutual exclusivity: a Today task must not stay in Next. Fold the workflow
+		// state change (StateNext -> StateReady), the Next order drop, and the Today
+		// insertion into ONE workspace-ledger transaction so a crash cannot land a
+		// partial move and durable undo/redo restore all three together.
+		fresh, _, err := m.dailyPlanLedgerTransition(taskID, projectID)
+		if err != nil {
+			return errorCmd("%s", err)
+		}
+		m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", taskTitleOrFallback(fresh, task)))
+		// Route undo/redo through the durable ledger LIFO, exactly like the Next
+		// queue toggle, so consecutive u/ctrl+r presses walk the ledger stack.
+		m.lastToggleUndoKind = toggleUndoQueue
+		m.lastQueueToggleAt = time.Now()
+		m.clearToggleRedoHistory()
+		return m.queueToggleResultCmd()
+	}
+
+	// Add a non-Next task to Today: a pure planning-domain change with a bespoke
+	// in-memory undo (there is no ledger transaction to ride).
+	m.dailyPlan = append(m.dailyPlan, FocusTask{Task: task, Project: project})
+	m.dailyPlanIDs[taskID] = true
+	m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", task.Title))
+	return m.recordPlanningOnlyDailyPlanToggle(&dailyPlanToggleAction{Task: task, Project: project, WasAdd: true})
+}
+
+// recordPlanningOnlyDailyPlanToggle records a bespoke in-memory undo entry for a
+// planning-only Today toggle and persists the plan.
+func (m *AppModel) recordPlanningOnlyDailyPlanToggle(action *dailyPlanToggleAction) tea.Cmd {
+	m.lastDailyPlanToggle = action
 	m.lastToggleUndoKind = toggleUndoDailyPlan
 	m.lastDailyPlanToggleAt = time.Now()
 	m.clearToggleRedoHistory()
@@ -75,7 +85,31 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 	return defaultStatusTimeout()
 }
 
-// undoDailyPlanToggle reverses the last toggleDailyPlan action.
+// dailyPlanLedgerTransition commits a Next-to-Today move as one ledger
+// transaction that folds the workflow-state change (StateNext -> StateReady) and
+// the planning change (drop the stale Next order entry, add the Today entry)
+// together, then reloads the touched project and config and rebuilds the
+// in-memory planning collections from the committed state. It is the Today-side
+// analog of queueLedgerTransition.
+func (m *AppModel) dailyPlanLedgerTransition(taskID, projectID string) (*models.Task, *models.Project, error) {
+	plannedDate := time.Now().Format("2006-01-02")
+	builder := dailyPlanAddArtifactBuilder(m.configManager, taskID, projectID, plannedDate)
+	res, err := m.appService.Transition(app.StateRequest{TaskID: taskID, Target: models.StateReady, PlanningArtifacts: builder})
+	if err != nil {
+		return nil, m.projectByID(projectID), err
+	}
+	m.reloadProjectByID(res.ProjectID)
+	m.refreshRuntime()
+	m.rebuildPlanningFromRuntime()
+	project := m.projectByID(res.ProjectID)
+	var fresh *models.Task
+	if project != nil {
+		fresh = project.GetTaskByID(taskID)
+	}
+	return fresh, project, nil
+}
+
+// undoDailyPlanToggle reverses the last planning-only Today toggle.
 func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
 	action := m.lastDailyPlanToggle
 	if action == nil {
@@ -88,36 +122,21 @@ func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
 	m.lastToggleRedoKind = toggleUndoDailyPlan
 	m.lastToggleUndoKind = m.nextUndoKind(toggleUndoDailyPlan)
 
+	taskID := action.Task.ID
 	if action.WasAdd {
 		// Reverse add: remove from daily plan.
-		for i, ft := range m.dailyPlan {
-			if ft.Task.ID == action.Task.ID {
-				m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
-				break
-			}
-		}
-		delete(m.dailyPlanIDs, action.Task.ID)
-		m.persistDailyPlan()
-		// Restore to queue if it was there before.
-		if action.WasInQueue && !m.focusQueueIDs[action.Task.ID] {
-			m.focusQueue = append(m.focusQueue, FocusTask{Task: action.Task, Project: action.Project})
-			m.focusQueueIDs[action.Task.ID] = true
-			m.persistFocusQueue()
-		}
-		m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
-	} else {
+		m.removeFromDailyPlan(taskID)
+	} else if !m.dailyPlanIDs[taskID] {
 		// Reverse remove: add back to daily plan.
-		if !m.dailyPlanIDs[action.Task.ID] {
-			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
-			m.dailyPlanIDs[action.Task.ID] = true
-			m.persistDailyPlan()
-		}
-		m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
+		m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
+		m.dailyPlanIDs[taskID] = true
 	}
+	m.persistDailyPlan()
+	m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
 	return defaultStatusTimeout()
 }
 
-// redoDailyPlanToggle replays the last undone toggleDailyPlan action.
+// redoDailyPlanToggle replays the last undone planning-only Today toggle.
 func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
 	action := m.lastDailyPlanToggleRedo
 	if action == nil {
@@ -127,37 +146,19 @@ func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
 	m.lastDailyPlanRedoAt = time.Time{}
 	m.lastToggleRedoKind = m.nextRedoKind(toggleUndoDailyPlan)
 
+	taskID := action.Task.ID
 	if action.WasAdd {
 		// Redo add: re-add to daily plan.
-		if !m.dailyPlanIDs[action.Task.ID] {
+		if !m.dailyPlanIDs[taskID] {
 			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
-			m.dailyPlanIDs[action.Task.ID] = true
-			m.persistDailyPlan()
+			m.dailyPlanIDs[taskID] = true
 		}
-		// Mutual exclusivity: remove from queue if present.
-		if action.WasInQueue && m.focusQueueIDs[action.Task.ID] {
-			for i, ft := range m.focusQueue {
-				if ft.Task.ID == action.Task.ID {
-					m.focusQueue = append(m.focusQueue[:i], m.focusQueue[i+1:]...)
-					break
-				}
-			}
-			delete(m.focusQueueIDs, action.Task.ID)
-			m.persistFocusQueue()
-		}
-		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
 	} else {
 		// Redo remove: re-remove from daily plan.
-		for i, ft := range m.dailyPlan {
-			if ft.Task.ID == action.Task.ID {
-				m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
-				break
-			}
-		}
-		delete(m.dailyPlanIDs, action.Task.ID)
-		m.persistDailyPlan()
-		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
+		m.removeFromDailyPlan(taskID)
 	}
+	m.persistDailyPlan()
+	m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
 	m.lastDailyPlanToggle = action
 	m.lastDailyPlanToggleAt = time.Now()
 	m.lastToggleUndoKind = toggleUndoDailyPlan

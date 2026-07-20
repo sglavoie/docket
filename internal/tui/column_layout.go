@@ -8,39 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// ComputeTreeColumnLayout computes a ColumnLayout by scanning a slice of visible
-// tree nodes. Returns nil when nodes is empty. The caller must guard on width
-// (>= MinColumnAlignWidth) before calling.
-func ComputeTreeColumnLayout(nodes []*TreeNode, columnConfig *ColumnConfig) *ColumnLayout {
-	if len(nodes) == 0 {
-		return nil
-	}
-	cl := &ColumnLayout{}
-	for _, node := range nodes {
-		task := node.Task
-
-		// Priority (inline before the task title)
-		if columnConfig.ShouldShowPriority(task.Priority) {
-			badge := renderPriorityBadge(task.Priority)
-			if w := lipgloss.Width(badge); w > 0 {
-				cl.HasPriority = true
-				if w > cl.PriorityWidth {
-					cl.PriorityWidth = w
-				}
-			}
-		}
-
-		// Short ID (pre-title in the tree format string)
-		if columnConfig.IsVisible(ColShortID) {
-			cl.HasShortID = true
-			if sw := lipgloss.Width(fmt.Sprintf("#%d", task.ShortID)); sw > cl.ShortIDWidth {
-				cl.ShortIDWidth = sw
-			}
-		}
-	}
-	return cl
-}
-
 // ComputeOutlinerColumnLayout computes a ColumnLayout by scanning a slice of
 // visible outliner rows. Non-task rows (section headers, project sub-headers,
 // separators) are skipped via isTaskRow(). Returns nil when no task rows are

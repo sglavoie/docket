@@ -30,6 +30,10 @@ type TriagePrimaryDeps struct {
 	ManageTags Action
 	// Undo reverses the last action on the current task.
 	Undo Action
+	// Redo replays the most recently undone action. Optional: when nil, the
+	// ctrl+r binding is omitted so triage contexts without a redo stack keep
+	// their existing vocabulary.
+	Redo Action
 	// ToggleHelp shows or hides the help panel for the current view.
 	ToggleHelp Action
 }
@@ -40,12 +44,16 @@ type TriagePrimaryDeps struct {
 func TriagePrimaryGroup(deps TriagePrimaryDeps) []Entry {
 	navCat := "Navigation"
 	opsCat := "Operations"
-	return []Entry{
+	entries := []Entry{
 		Bind("n", "Skip task (move to next without processing)", navCat, deps.Skip),
 		Bind("e", "Edit task (title/description)", opsCat, deps.Edit),
 		Bind("D", "Mark done", opsCat, deps.MarkDone),
 		Bind("T", "Manage tags", opsCat, deps.ManageTags),
 		Bind("u", "Undo last operation on current task", opsCat, deps.Undo),
-		Bind("?", "Toggle help", navCat, deps.ToggleHelp),
 	}
+	if deps.Redo != nil {
+		entries = append(entries, Bind("ctrl+r", "Redo last undone operation", opsCat, deps.Redo))
+	}
+	entries = append(entries, Bind("?", "Toggle help", navCat, deps.ToggleHelp))
+	return entries
 }

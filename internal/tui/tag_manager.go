@@ -21,8 +21,7 @@ type TagInfo struct {
 
 // TagManagerModel is the model for the tag management view.
 type TagManagerModel struct {
-	projectTree   *ProjectTreeModel
-	project       *models.Project // Used directly when projectTree is nil
+	project       *models.Project
 	coordinator   TagCoordinator
 	tags          []TagInfo
 	cursor        int
@@ -40,12 +39,18 @@ type TagManagerModel struct {
 
 // ShowTagManagerMsg is sent to open the tag manager view.
 type ShowTagManagerMsg struct {
-	ProjectTree *ProjectTreeModel
-	Project     *models.Project // Used when ProjectTree is nil (e.g., from outliner)
+	Project *models.Project
 }
 
 // CloseTagManagerMsg is sent when the tag manager should close.
 type CloseTagManagerMsg struct{ PopViewMsg }
+
+// TagManagerFilterMsg is sent when the user selects a tag to filter by. It
+// closes the manager and applies exactly that tag to the originating outliner
+// filter, matching the other tag-filter entry points.
+type TagManagerFilterMsg struct {
+	Tag string
+}
 
 // TagRenamedMsg is sent after a tag has been renamed.
 type TagRenamedMsg struct {
@@ -74,22 +79,14 @@ type TagManagerErrorMsg struct {
 	Err error
 }
 
-// NewTagManagerModel creates a new tag manager model whose catalog mutations
-// commit through the given coordinator.
-func NewTagManagerModel(pt *ProjectTreeModel, coordinator TagCoordinator) *TagManagerModel {
-	m := newTagManagerModel(pt, nil)
-	m.coordinator = coordinator
-	return m
-}
-
 // NewTagManagerModelForProject creates a tag manager backed by a standalone project.
 func NewTagManagerModelForProject(project *models.Project, coordinator TagCoordinator) *TagManagerModel {
-	m := newTagManagerModel(nil, project)
+	m := newTagManagerModel(project)
 	m.coordinator = coordinator
 	return m
 }
 
-func newTagManagerModel(pt *ProjectTreeModel, project *models.Project) *TagManagerModel {
+func newTagManagerModel(project *models.Project) *TagManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
@@ -103,14 +100,10 @@ func newTagManagerModel(pt *ProjectTreeModel, project *models.Project) *TagManag
 	applyThemedTextInput(&addTagInput)
 
 	m := &TagManagerModel{
-		projectTree: pt,
 		project:     project,
 		cursor:      0,
 		renameInput: renameInput,
 		addTagInput: addTagInput,
-	}
-	if pt != nil {
-		m.project = pt.project
 	}
 	m.buildTagList()
 	return m
@@ -238,16 +231,16 @@ func (m *TagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
 	}
 }
 
-// filterByTag sets the project tree filter and closes the tag manager.
-// When projectTree is nil (outliner), it just closes without applying filters.
-func (m *TagManagerModel) filterByTag(tagName string) tea.Cmd {
-	if m.projectTree != nil {
-		m.projectTree.filter.Tags = map[string]bool{tagName: true}
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
-	}
+// filterByTag closes the tag manager and applies the selected tag to the
+// originating outliner filter. Filter application is owned by the app handler
+// (via applyTagFilterToView), keeping this consistent with the other
+// tag-filter entry points. An empty tag degrades to a plain close.
+func (m *TagManagerModel) filterByTag(name string) tea.Cmd {
 	return func() tea.Msg {
-		return CloseTagManagerMsg{}
+		if name == "" {
+			return CloseTagManagerMsg{}
+		}
+		return TagManagerFilterMsg{Tag: name}
 	}
 }
 

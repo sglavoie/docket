@@ -31,9 +31,9 @@ type CrossProjectZoomEntry struct {
 }
 
 // OutlinerModel is the outliner view for navigating tasks in a hierarchical,
-// zoomable tree. It implements the View interface as a standalone struct
-// (not extending ProjectTreeModel) to allow independent evolution of
-// navigation semantics, sort modes, and zoom-stack behavior.
+// zoomable tree. It is the sole per-project primary view and implements the
+// View interface as a standalone struct, owning its own navigation semantics,
+// sort modes, and zoom-stack behavior.
 type OutlinerModel struct {
 	BaseSearchableView
 	InteractiveViewState

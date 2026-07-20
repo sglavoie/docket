@@ -38,11 +38,23 @@ func TestCLIReferenceFocusContract(t *testing.T) {
 	if end := strings.Index(queueSection, "\n## "); end >= 0 {
 		queueSection = queueSection[:end]
 	}
-	if !strings.Contains(queueSection, "'q' to toggle Queue membership") ||
-		!strings.Contains(queueSection, "dismisses a suggestion without changing existing Queue items") {
-		t.Fatalf("CLI reference does not describe explicit Queue controls:\n%s", queueSection)
+	// The queue section must describe the state-driven Planner/Next model:
+	// membership is StateNext and the persisted list is ordering-only.
+	for _, want := range []string{"StateNext", "ordering-only", "Planner"} {
+		if !strings.Contains(queueSection, want) {
+			t.Fatalf("CLI reference queue section missing %q:\n%s", want, queueSection)
+		}
 	}
-	if strings.Contains(queueSection, "'x' to remove") {
-		t.Fatalf("CLI reference still describes suggestion dismissal as Queue removal:\n%s", queueSection)
+	// The retired Focus View and its obsolete state-independent Queue vocabulary
+	// must not resurface in the generated reference.
+	for _, stale := range []string{
+		"'q' to toggle Queue membership",
+		"dismisses a suggestion without changing existing Queue items",
+		"focus view",
+		"'x' to remove",
+	} {
+		if strings.Contains(queueSection, stale) {
+			t.Fatalf("CLI reference queue section still contains obsolete wording %q:\n%s", stale, queueSection)
+		}
 	}
 }

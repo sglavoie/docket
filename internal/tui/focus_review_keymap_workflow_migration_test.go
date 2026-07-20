@@ -14,34 +14,6 @@ import (
 // adapter's default (batch) path, and asserts the change is durable on disk and
 // reverts through the workspace undo ledger.
 
-// TestFocusViewStandardKeymapCommitsWorkflowAndUndoes drives Focus View's
-// non-overridden toggle-pin default through the workflow path.
-func TestFocusViewStandardKeymapCommitsWorkflowAndUndoes(t *testing.T) {
-	task := seedTask(t, 1, "Focus view task", models.StateReady)
-	env, features := newSecondaryEnv(t, "focusviewwf", task)
-
-	cfg := newTestConfig()
-	m := &FocusViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg))}
-	m.taskItem = features.TaskItem
-	m.filtered = []FocusTask{{Task: task, Project: env.project}}
-	m.cursor = 0
-
-	deps := m.focusTaskActionDeps()
-
-	_, cmd := buildTogglePinAction(deps)()
-	msg := runBatchResult(t, cmd)
-	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
-		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
-	}
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || !got.Pinned {
-		t.Fatalf("reloaded Pinned = %v, want true", got)
-	}
-	env.undo(t)
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Pinned {
-		t.Fatalf("undo Pinned = %v, want false", got)
-	}
-}
-
 // TestFocusBoardStandardKeymapCommitsWorkflowAndUndoes drives Focus Board's
 // non-overridden priority-change default through the workflow path. Focus
 // Board's post-commit advance/reload rides the same BatchTransactionResultMsg

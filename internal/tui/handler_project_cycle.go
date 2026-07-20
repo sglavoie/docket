@@ -195,7 +195,7 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 
 func (m *AppModel) switchToCycleProjectNow(project *models.Project) (bool, tea.Cmd) {
 	m.saveCurrentProjectView()
-	m.saveProjectTreeState()
+	m.saveProjectViewState()
 	m.saveOutlinerToggleState()
 	m.saveOutlinerFilterState()
 	m.currentProject = project
@@ -207,39 +207,19 @@ func (m *AppModel) switchToCycleProjectNow(project *models.Project) (bool, tea.C
 
 	_ = m.persister.Load(project)
 	m.runtime.Settings().ApplyGlobalColorsToProject(project)
-	m.projectTree = NewProjectTreeModel(project, m.configManager, m.runtime)
-	m.projectTree.queueIDs = m.focusQueueIDs
-	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
-	m.projectTree.SetSize(m.width, m.height-2)
-	m.restoreProjectTreeState()
-	m.views.Register(ViewProjectTree, m.projectTree)
+	m.restoreProjectViewState()
 
-	// Determine which project view to show: preserve current view if it's a
-	// project-level view, otherwise use the last project view the user was on.
-	targetView := m.currentView()
-	if targetView != ViewProjectTree && targetView != ViewOutliner {
-		targetView = m.lastProjectView
-	}
-
-	switch targetView {
-	case ViewOutliner:
-		m.saveOutlinerToggleState()
-		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-		m.outliner.queueIDs = m.focusQueueIDs
-		m.outliner.dailyPlanIDs = m.dailyPlanIDs
-		m.restoreOutlinerToggleState()
-		m.restoreOutlinerFilterState()
-		m.outliner.SetSize(m.width, m.height-2)
-		m.views.Register(ViewOutliner, m.outliner)
-		if m.currentView() != ViewOutliner {
-			m.pushView(ViewOutliner)
-		}
-	default:
-		// ProjectTree or no prior project view — navigate to project tree
-		if m.currentView() != ViewProjectTree {
-			m.pushView(ViewProjectTree)
-		}
+	m.saveOutlinerToggleState()
+	m.saveOutlinerFilterState()
+	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
+	m.outliner.queueIDs = m.focusQueueIDs
+	m.outliner.dailyPlanIDs = m.dailyPlanIDs
+	m.restoreOutlinerToggleState()
+	m.restoreOutlinerFilterState()
+	m.outliner.SetSize(m.width, m.height-2)
+	m.views.Register(ViewOutliner, m.outliner)
+	if m.currentView() != ViewOutliner {
+		m.pushView(ViewOutliner)
 	}
 
 	return true, nil

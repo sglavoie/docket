@@ -86,14 +86,14 @@ func (m *AppModel) currentView() ViewType {
 }
 
 // baseProjectView walks the view stack from the top to find the underlying
-// project-level view (ProjectTree, Outliner, or CrossProjectOutliner), skipping overlays
+// project-level view (Outliner or CrossProjectOutliner), skipping overlays
 // like the command palette. This is needed by command handlers that run inside
 // the palette's Cmd — at that point currentView() returns ViewCommandPalette,
 // but the handler needs to know which project view it was invoked from.
 func (m *AppModel) baseProjectView() ViewType {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		switch m.viewStack[i] {
-		case ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
+		case ViewOutliner, ViewCrossProjectOutliner:
 			return m.viewStack[i]
 		default:
 		}
@@ -105,7 +105,7 @@ func (m *AppModel) baseProjectView() ViewType {
 // if it is a tracked view and history is not locked.
 func (m *AppModel) pushView(view ViewType) {
 	m.viewStack = append(m.viewStack, view)
-	if view == ViewProjectTree || view == ViewOutliner {
+	if view == ViewOutliner {
 		m.lastProjectView = view
 	}
 	if !m.navHistory.IsLocked() && isTrackedView(view) {
@@ -213,9 +213,9 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		if closingView == ViewCrossProjectOutliner && m.outliner != nil {
 			m.outliner.rebuildRows()
 		}
-		// Restore previous project when popping a stacked project tree
+		// Restore previous project when popping a stacked project view
 		statusAlreadySet := false
-		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {
+		if closingView == ViewOutliner && m.currentView() == ViewOutliner && len(m.projectStack) > 0 {
 			prevID := m.projectStack[len(m.projectStack)-1]
 			m.projectStack = m.projectStack[:len(m.projectStack)-1]
 			if prev := m.projectByID(prevID); prev != nil {
@@ -263,8 +263,6 @@ func (m *AppModel) jumpToDashboard() tea.Cmd {
 
 func (m *AppModel) saveStateForClosingView(viewType ViewType) {
 	switch viewType {
-	case ViewProjectTree:
-		m.saveProjectTreeState()
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
@@ -325,14 +323,14 @@ func isGlobalOverlayView(v ViewType) bool {
 }
 
 // popToAnchorView pops the view stack until the top is a project-level view
-// (ProjectTree, Outliner) or the Dashboard, or the stack has only one entry.
+// (Outliner) or the Dashboard, or the stack has only one entry.
 // Returns a tea.Cmd when popping reveals ViewCrossProjectOutliner so the
 // outliner can trigger an eager reload (mirrors popView's behavior).
 func (m *AppModel) popToAnchorView() tea.Cmd {
 	for len(m.viewStack) > 1 {
 		top := m.viewStack[len(m.viewStack)-1]
 		switch top {
-		case ViewDashboard, ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
+		case ViewDashboard, ViewOutliner, ViewCrossProjectOutliner:
 			if top == ViewDashboard {
 				m.reevaluateAlerts()
 			}
@@ -470,7 +468,7 @@ func (m *AppModel) showViewInit(viewType ViewType, view View) (bool, tea.Cmd) {
 }
 
 // replaceView replaces the top of the view stack instead of pushing.
-// Used when switching between peer project views (ProjectTree, Outliner)
+// Used when switching between peer project views (Outliner)
 // so the stack doesn't accumulate entries.
 func (m *AppModel) replaceView(viewType ViewType, view View) {
 	if m.currentView() == ViewAsk || viewType == ViewAsk {
@@ -486,7 +484,7 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 	} else {
 		m.viewStack = append(m.viewStack, viewType)
 	}
-	if viewType == ViewProjectTree || viewType == ViewOutliner {
+	if viewType == ViewOutliner {
 		m.lastProjectView = viewType
 	}
 	if !m.navHistory.IsLocked() && isTrackedView(viewType) {
@@ -517,17 +515,13 @@ func (m *AppModel) exitAskView() {
 // isOnProjectView returns true if the current view is a peer project view.
 func (m *AppModel) isOnProjectView() bool {
 	cur := m.currentView()
-	return cur == ViewProjectTree || cur == ViewOutliner
+	return cur == ViewOutliner
 }
 
 // defaultProjectViewType maps the settings' default_project_view string to a ViewType.
-func defaultProjectViewType(settings *config.Settings) ViewType {
-	switch settings.GetDefaultProjectView() {
-	case "project_tree":
-		return ViewProjectTree
-	default:
-		return ViewOutliner
-	}
+// The Outliner is the sole per-project view.
+func defaultProjectViewType(_ *config.Settings) ViewType {
+	return ViewOutliner
 }
 
 const maxProjectLastViewEntries = 50
@@ -538,7 +532,7 @@ func (m *AppModel) saveCurrentProjectView() {
 		return
 	}
 	cv := m.currentView()
-	if cv == ViewProjectTree || cv == ViewOutliner {
+	if cv == ViewOutliner {
 		m.projectLastView[m.currentProject.ID] = cv
 		// Evict oldest entries when over cap (simple eviction: delete arbitrary entries)
 		for len(m.projectLastView) > maxProjectLastViewEntries {
@@ -598,27 +592,16 @@ func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models
 		}
 	}
 
-	targetView := m.getProjectLastView(project.ID)
-	switch targetView {
-	case ViewProjectTree:
-		var navCmd tea.Cmd
-		if task != nil {
-			navCmd = m.projectTree.NavigateToTask(task)
-		}
-		m.showView(ViewProjectTree, m.projectTree)
-		return navCmd
-	default:
-		m.saveOutlinerToggleState()
-		m.saveOutlinerFilterState()
-		m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-		m.outliner.queueIDs = m.focusQueueIDs
-		m.outliner.dailyPlanIDs = m.dailyPlanIDs
-		m.restoreOutlinerToggleState()
-		m.restoreOutlinerFilterState()
-		if task != nil {
-			m.outliner.NavigateToSidebarTask(task)
-		}
-		m.showView(ViewOutliner, m.outliner)
-		return nil
+	m.saveOutlinerToggleState()
+	m.saveOutlinerFilterState()
+	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
+	m.outliner.queueIDs = m.focusQueueIDs
+	m.outliner.dailyPlanIDs = m.dailyPlanIDs
+	m.restoreOutlinerToggleState()
+	m.restoreOutlinerFilterState()
+	if task != nil {
+		m.outliner.NavigateToSidebarTask(task)
 	}
+	m.showView(ViewOutliner, m.outliner)
+	return nil
 }

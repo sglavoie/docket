@@ -378,7 +378,7 @@ func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task) string {
 	if m.dailyPlanIDs[task.ID] {
 		return ActiveStyle.Render("w") + " "
 	}
-	if m.queueIDs[task.ID] {
+	if taskIsNext(task) {
 		return ActiveStyle.Render("q") + " "
 	}
 	return "  "

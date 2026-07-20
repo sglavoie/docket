@@ -256,11 +256,23 @@ func (s *Service) UndimWithWorkflow(taskID string, opts SingleTaskWorkflowOption
 // committing through the ledger (Task.SetSection performs the state move). A
 // non-GTD name is silently ignored by the model, matching the retired section
 // rules. Custom sections and stages are retired under the workflow-state model.
+//
+// Because SetSection changes the derived workflow state, it folds the same
+// Today/Next exclusivity reconciliation a Transition does into the commit: a task
+// moved into StateNext leaves the Daily Plan (Today) and a task moved out of
+// StateNext drops its stale Next order entry, both in the same transaction, so a
+// section move can never leave a task in both horizons or with a stale order entry.
 func (s *Service) SetSection(taskID, section string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Set Section", section, func(ref TaskRef) error {
-		ref.Task.SetSection(section)
-		return nil
-	})
+	ref, revision, err := s.resolveTask(taskID)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	ref.Task.SetSection(section)
+	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(nil))
+	if err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Set Section", section)
 }
 
 // ApplyTypeAttrs applies type-specific attributes (bug/idea/task/story/epic

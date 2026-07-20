@@ -143,7 +143,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 
 func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
 
 	// Set up a task that will be "deleted"
 	deletedTask := &models.Task{ID: "will-be-deleted", Title: "Ghost"}

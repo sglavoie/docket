@@ -33,15 +33,20 @@ The "Backlog" engine ranks tasks across all active projects
 using a weighted formula that considers priority, due dates, status,
 activity recency, unblocking potential, and scoring profiles.
 
-# Focus Queue
+# Next (the on-deck shortlist)
 
-The focus queue is a persistent, ordered list of tasks to take next in
-the pipeline. It is separate from the Active section, which identifies
-work currently being worked on. A task may be queued from any section;
-queue membership does not move it or change its workflow state. Manage
-the queue in the TUI focus view: press a to accept a suggestion, q to
-toggle queue membership from a task view, and J/K to reorder. Pressing x
-dismisses a suggestion without changing existing queue items.
+Next is your standing, ordered shortlist of what to pick up next. A task
+is on Next exactly when its workflow state is StateNext, so queueing a
+task moves it into the StateNext workflow state — membership is the state
+itself, not a separate flag layered on top. The persisted order index is
+ordering-only: it records the sequence of Next tasks and never decides
+membership.
+
+Manage Next from the Planner (open it with ;q). Press q on a task to
+toggle StateNext membership, and J/K to reorder the selected Next task
+without changing its state. Today (the daily plan, opened with ;w) and
+Next are mutually exclusive: a task lives in at most one horizon. The
+Planner is the single home for Next; there is no separate focus screen.
 
 # Actionable Tasks
 

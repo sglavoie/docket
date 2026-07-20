@@ -33,36 +33,22 @@ type FilterItem struct {
 
 // FilterViewModel is the model for the filter summary view.
 type FilterViewModel struct {
-	projectTree *ProjectTreeModel
-	filter      *CommonFilterState // Used when projectTree is nil (e.g., from outliner)
-	project     *models.Project    // Used when projectTree is nil
-	items       []FilterItem
-	cursor      int
-	width       int
-	height      int
+	filter  *CommonFilterState
+	project *models.Project
+	items   []FilterItem
+	cursor  int
+	width   int
+	height  int
 }
 
 // ShowFilterMsg is sent to open the filter summary view.
 type ShowFilterMsg struct {
-	ProjectTree  *ProjectTreeModel
-	CommonFilter *CommonFilterState // Used when ProjectTree is nil (e.g., from outliner)
-	Project      *models.Project    // Used when ProjectTree is nil
+	CommonFilter *CommonFilterState
+	Project      *models.Project
 }
 
 // CloseFilterMsg is sent when the filter view should close.
 type CloseFilterMsg struct{ PopViewMsg }
-
-// NewFilterViewModel creates a new filter view model.
-func NewFilterViewModel(pt *ProjectTreeModel) *FilterViewModel {
-	m := &FilterViewModel{
-		projectTree: pt,
-		filter:      &pt.filter.CommonFilterState,
-		project:     pt.project,
-		cursor:      0,
-	}
-	m.buildFilterList()
-	return m
-}
 
 // NewFilterViewModelForOutliner creates a filter view model backed by a standalone CommonFilterState.
 func NewFilterViewModelForOutliner(filter *CommonFilterState, project *models.Project) *FilterViewModel {
@@ -153,15 +139,6 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if m.projectTree != nil && m.projectTree.searchQuery != "" {
-		m.items = append(m.items, FilterItem{
-			Name:       "Search",
-			Value:      fmt.Sprintf("\"%s\"", m.projectTree.searchQuery),
-			Key:        fmt.Sprintf("%d", keyNum),
-			FilterType: FilterSearchFilter,
-		})
-	}
-
 	m.cursor = ClampCursor(m.cursor, len(m.items))
 }
 
@@ -178,18 +155,7 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 		m.filter.Tags = make(map[string]bool)
 	case FilterDueDateFilter:
 		m.filter.DueDate = DueDateAll
-	case FilterSearchFilter:
-		// Search query is projectTree-specific
-		if m.projectTree != nil {
-			m.projectTree.searchQuery = ""
-			m.projectTree.searchInput.SetValue("")
-		}
 	default:
-	}
-	// Update visibility only if projectTree is available
-	if m.projectTree != nil {
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
 	}
 	m.buildFilterList()
 }
@@ -201,16 +167,6 @@ func (m *FilterViewModel) clearAllFilters() {
 	m.filter.Priority = 0
 	m.filter.Tags = make(map[string]bool)
 	m.filter.DueDate = DueDateAll
-	// Search query is projectTree-specific
-	if m.projectTree != nil {
-		m.projectTree.searchQuery = ""
-		m.projectTree.searchInput.SetValue("")
-	}
-	// Update visibility only if projectTree is available
-	if m.projectTree != nil {
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
-	}
 	m.buildFilterList()
 }
 

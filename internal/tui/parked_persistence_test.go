@@ -8,18 +8,6 @@ import (
 func TestSavedFilterCapturesAndAppliesParked(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.filter.Parked = true
-	treeFilter := app.captureProjectTreeFilter("Tree Parked", "tree-filter")
-	if !treeFilter.FilterParked {
-		t.Fatal("project tree saved filter should capture parked filter")
-	}
-	app.projectTree.filter.Parked = false
-	app.applySavedFilterToTree(treeFilter)
-	if !app.projectTree.filter.Parked {
-		t.Fatal("project tree saved filter should restore parked filter")
-	}
-
 	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.filter.Parked = true
 	outlinerFilter := app.captureOutlinerFilter("Outliner Parked", "outliner-filter")
@@ -48,18 +36,6 @@ func TestSavedFilterCapturesAndAppliesParked(t *testing.T) {
 
 func TestParkedFilterViewStatePersistence(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.filter.Parked = true
-	app.saveProjectTreeState()
-	if !app.runtime.Machine().ProjectViewStates[project.ID].FilterParked {
-		t.Fatal("project tree state should persist parked filter")
-	}
-	app.projectTree.filter.Parked = false
-	app.restoreProjectTreeState()
-	if !app.projectTree.filter.Parked {
-		t.Fatal("project tree state should restore parked filter")
-	}
 
 	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.filter.Parked = true
@@ -91,35 +67,10 @@ func TestCrossOutlinerParkedFilterPersistence(t *testing.T) {
 	}
 }
 
-func TestSharedViewStatePreservesParkedFilter(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.filter.Parked = true
-	treeState := app.extractSharedStateFromTree()
-	if treeState == nil || !treeState.Filter.Parked {
-		t.Fatal("shared state should capture project tree parked filter")
-	}
-
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
-	app.applySharedStateToOutliner(treeState)
-	if !app.outliner.filter.Parked {
-		t.Fatal("shared state should apply parked filter to outliner")
-	}
-
-	app.outliner.filter.Parked = true
-	outlinerState := app.extractSharedStateFromOutliner()
-	app.projectTree.filter.Parked = false
-	app.applySharedStateToTree(outlinerState)
-	if !app.projectTree.filter.Parked {
-		t.Fatal("shared state should apply parked filter to project tree")
-	}
-}
-
 func TestBuildCurrentViewSummaryUsesCrossProjectOutlinerFilters(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.configManager, app.runtime)
-	app.projectTree.filter.GitHubIssue = true
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.outliner.filter.GitHubIssue = true
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.filter.Parked = true
 	app.pushView(ViewCrossProjectOutliner)

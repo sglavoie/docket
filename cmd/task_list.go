@@ -10,7 +10,6 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -151,7 +150,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	}
 
 	if listJSON {
-		return displayTaskJSON(workspace.Runtime.Planning().GetFocusQueue(), tasks)
+		return displayTaskJSON(tasks)
 	}
 
 	if len(tasks) == 0 {
@@ -199,10 +198,11 @@ type taskJSONEntry struct {
 	HasTime      bool       `json:"has_time"`
 }
 
-// taskListJSONEntries builds the --json list rows. Status/Section derive from
-// State() and Queued reports Focus Queue membership; the retired Stage concept has no state
-// equivalent, so it is no longer emitted (session 33.7.6.3).
-func taskListJSONEntries(focusQueue []config.FocusQueueItem, tasks []*models.Task) []taskJSONEntry {
+// taskListJSONEntries builds the --json list rows. Status/Section and Queued
+// all derive from State(): Queued (Next membership) is State()==StateNext, not
+// presence in the Focus Queue order index. The retired Stage concept has no
+// state equivalent, so it is no longer emitted (session 33.7.6.3).
+func taskListJSONEntries(tasks []*models.Task) []taskJSONEntry {
 	entries := make([]taskJSONEntry, len(tasks))
 	for i, t := range tasks {
 		tags := t.Tags
@@ -221,7 +221,7 @@ func taskListJSONEntries(focusQueue []config.FocusQueueItem, tasks []*models.Tas
 			Tags:         tags,
 			Section:      models.SectionForState(t.State()),
 			Pinned:       t.Pinned,
-			Queued:       taskInFocusQueue(focusQueue, t.ID),
+			Queued:       t.State() == models.StateNext,
 			Dimmed:       t.Dimmed,
 			SnoozedUntil: t.SnoozedUntil,
 			Parked:       t.IsParked(),
@@ -236,8 +236,8 @@ func taskListJSONEntries(focusQueue []config.FocusQueueItem, tasks []*models.Tas
 	return entries
 }
 
-func displayTaskJSON(focusQueue []config.FocusQueueItem, tasks []*models.Task) error {
-	entries := taskListJSONEntries(focusQueue, tasks)
+func displayTaskJSON(tasks []*models.Task) error {
+	entries := taskListJSONEntries(tasks)
 	return printJSON(entries)
 }
 

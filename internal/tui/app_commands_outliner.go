@@ -551,12 +551,6 @@ func (m *AppModel) paletteTaskTarget() (*models.Task, *models.Project) {
 	switch m.nonPaletteOrigin() {
 	case ViewCrossProjectOutliner, ViewOutliner:
 		return m.outlinerTarget()
-	case ViewProjectTree:
-		task := m.selectedTreeTask()
-		if task == nil || m.currentProject == nil {
-			return nil, nil
-		}
-		return task, m.currentProject
 	default:
 	}
 	return nil, nil

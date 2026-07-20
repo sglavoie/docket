@@ -214,7 +214,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	}
 
 	app := newTestAppModel()
-	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, false, ViewProjectTree)
+	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, false, ViewOutliner)
 	app.showView(ViewParentSelector, selector)
 	selector.Init()
 
@@ -249,14 +249,14 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 // TestSpaceActivatesPeek verifies that space sets peekTask when a cursor task exists.
 func TestSpaceActivatesPeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, nil, app.runtime)
-	app.viewStack = []ViewType{ViewProjectTree}
+	app.outliner = NewOutlinerModel(project, nil, app.runtime)
+	app.viewStack = []ViewType{ViewOutliner}
 
 	// Simulate space press
 	msg := tea.KeyPressMsg{Code: tea.KeySpace}
 	app.Update(msg)
 
-	// peekTask may or may not be set depending on whether projectTree has cursor task
+	// peekTask may or may not be set depending on whether the outliner has a cursor task.
 	// The important thing is no panic occurred
 	_ = app.peekActive
 	_ = app.peekTask
