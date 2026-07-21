@@ -79,26 +79,20 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 		case 4:
 			return &m.maxRecentTaskVisitsInput
 		case 5:
-			return &m.popupTimeoutInput
-		case 6:
 			return &m.sectionLimitActiveInput
-		case 7:
+		case 6:
 			return &m.sectionLimitNextInput
-		case 8:
+		case 7:
 			return &m.sectionLimitInboxInput
-		case 9:
+		case 8:
 			return &m.sectionLimitStandbyInput
-		case 10:
+		case 9:
 			return &m.sectionLimitWaitingInput
-		case 11:
+		case 10:
 			return &m.sectionLimitSomedayInput
-		case 12:
+		case 11:
 			return &m.sectionLimitReviewInput
-		case 17:
-			return &m.dashboardHorizSplitInput
-		case 18:
-			return &m.dashboardVertSplitInput
-		case 19:
+		case 13:
 			return &m.resumeCardLimitInput
 		}
 	case tabAttachments:

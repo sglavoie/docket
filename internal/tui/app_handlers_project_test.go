@@ -109,7 +109,7 @@ func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmWithoutMutation(t
 func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmFromNonProviderView(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewDashboard, "Help"))
-	app.viewStack = []ViewType{ViewDashboard, ViewHelp}
+	app.viewStack = []PresentationID{ViewDashboard, ViewHelp}
 
 	handled, cmd := app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
 
@@ -172,7 +172,7 @@ func TestHandleProjectMessagesProjectArchiveConfirmedArchivesAndSetsStatus(t *te
 func TestCommandPaletteProjectArchiveClosesPaletteAndShowsAppConfirm(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewDashboard, "Help"))
-	app.viewStack = []ViewType{ViewDashboard, ViewHelp, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewHelp, ViewCommandPalette}
 
 	_, cmd := app.Update(CommandPaletteExecuteMsg{
 		ResultMsg: ProjectArchiveRequestMsg{Project: project, Archive: true},
@@ -202,7 +202,7 @@ func TestCommandPaletteProjectRestoreFromHelpConfirmsAtAppLevel(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.Archive()
 	app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewDashboard, "Help"))
-	app.viewStack = []ViewType{ViewDashboard, ViewHelp, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewHelp, ViewCommandPalette}
 
 	_, cmd := app.Update(CommandPaletteExecuteMsg{
 		ResultMsg: ProjectArchiveRequestMsg{Project: project, Archive: false},
@@ -513,23 +513,6 @@ func TestHandleProjectMessagesProjectUpdated(t *testing.T) {
 	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after project updated, got %v", app.currentView())
-	}
-}
-
-func TestHandleProjectMessagesToggleInfoPanel(t *testing.T) {
-	app, _ := newTestAppModelWithProject()
-
-	msg := ToggleInfoPanelMsg{}
-	handled, cmd := app.handleProjectMessages(msg)
-
-	if !handled {
-		t.Error("ToggleInfoPanelMsg should be handled")
-	}
-	if app.statusMessage == "" {
-		t.Error("statusMessage should be set after toggling info panel")
-	}
-	if cmd == nil {
-		t.Error("ToggleInfoPanelMsg should return a status timeout command")
 	}
 }
 

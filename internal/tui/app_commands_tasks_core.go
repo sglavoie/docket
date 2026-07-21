@@ -11,7 +11,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "quick capture",
 			Description: "Quick capture a single task",
-			Shortcut:    ";i",
 			Category:    CategoryTasks,
 			Aliases:     []string{"capture", "inbox"},
 			Handler: func() tea.Msg {
@@ -30,7 +29,7 @@ func (m *AppModel) taskCommands() []Command {
 			Description: "Bulk capture multiple tasks",
 			Shortcut:    "I",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"multi capture", "batch add"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -46,7 +45,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global bulk capture",
 			Description: "Bulk capture multiple tasks from any view",
-			Shortcut:    ";I",
 			Category:    CategoryTasks,
 			Aliases:     []string{"global multi capture", "global batch add"},
 			Handler: func() tea.Msg {
@@ -56,7 +54,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global note create",
 			Description: "Create a new note in any project from any view",
-			Shortcut:    ";{",
 			Category:    CategoryNotes,
 			Aliases:     []string{"global note", "new note"},
 			Handler: func() tea.Msg {
@@ -68,7 +65,7 @@ func (m *AppModel) taskCommands() []Command {
 			Description: "Edit the most recently modified task",
 			Shortcut:    "ctrl+l",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"edit recent", "last modified", "recent task"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -89,7 +86,7 @@ func (m *AppModel) taskCommands() []Command {
 			Name:        "archive completed tasks",
 			Description: "Move completed tasks to archive file",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"archive", "archive done", "archive completed"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -114,7 +111,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global status update",
 			Description: "Update task status from any view",
-			Shortcut:    ";,",
 			Category:    CategoryStatus,
 			Aliases:     []string{"set status", "change status", "update status"},
 			Handler: func() tea.Msg {
@@ -124,7 +120,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global priority update",
 			Description: "Update task priority from any view",
-			Shortcut:    ";!",
 			Category:    CategoryPriority,
 			Aliases:     []string{"set priority", "change priority", "update priority"},
 			Handler: func() tea.Msg {
@@ -134,7 +129,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global due date update",
 			Description: "Update task due date from any view",
-			Shortcut:    ";td",
 			Category:    CategoryDueDate,
 			Aliases:     []string{"set due date", "change due date", "update due date"},
 			Handler: func() tea.Msg {
@@ -144,7 +138,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global task move",
 			Description: "Move a task to another project from any view",
-			Shortcut:    ";tm",
 			Category:    CategoryTasks,
 			Aliases:     []string{"move task", "cross-project move", "transfer task"},
 			Handler: func() tea.Msg {
@@ -154,7 +147,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global section change",
 			Description: "Change task section from any view",
-			Shortcut:    ";ts",
 			Category:    CategoryTasks,
 			Aliases:     []string{"set section", "change section", "update section"},
 			Handler: func() tea.Msg {
@@ -164,7 +156,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global linked task",
 			Description: "Create or link a task from any view",
-			Shortcut:    ";c",
 			Category:    CategoryTasks,
 			Aliases:     []string{"link task", "create linked task", "global link"},
 			Handler: func() tea.Msg {
@@ -174,7 +165,6 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "global template task",
 			Description: "Create a task from a template in any project",
-			Shortcut:    ";tN",
 			Category:    CategoryTasks,
 			Aliases:     []string{"global template", "template task", "new from template"},
 			Handler: func() tea.Msg {

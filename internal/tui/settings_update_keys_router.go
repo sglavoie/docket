@@ -9,6 +9,9 @@ func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if m.searchActive {
 		return m.handleSearchKey(msg)
 	}
+	if m.themeActionMenu {
+		return m.handleThemeActionKey(msg.String())
+	}
 	if m.tabs.Active == tabPalette && m.themePresetMode != presetModeNone {
 		return m.handlePresetKey(msg)
 	}
@@ -40,9 +43,9 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 	case "tab", "shift+tab":
 		m.blurCurrentField()
 		if key == "tab" {
-			m.focusIndex = (m.focusIndex + 1) % settingsFieldCount
+			m.stepSupportedSettingsField(1)
 		} else {
-			m.focusIndex = (m.focusIndex + settingsFieldCount - 1) % settingsFieldCount
+			m.stepSupportedSettingsField(-1)
 		}
 		m.tabs.Active = tabForField(m.focusIndex)
 		m.subTab = subTabForField(m.focusIndex)
@@ -59,9 +62,9 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		if m.subTabRowFocused && visualSubTabNamesForVTab(m.visualTab) != nil {
 			refs := visualTabSubTabs[m.visualTab]
 			CycleTab(&m.visualSubTab, len(refs), delta)
-			m.tabs.Active = refs[m.visualSubTab].oldTab
-			m.subTab = refs[m.visualSubTab].oldSubTab
-			m.focusIndex = subTabFieldStart(m.tabs.Active, m.subTab)
+			m.tabs.Active = refs[m.visualSubTab].fieldTab
+			m.subTab = refs[m.visualSubTab].fieldSubTab
+			m.focusIndex = firstSupportedSettingsField(m.tabs.Active, m.subTab)
 			m.scrollOffset = 0
 			m.focusCurrentField()
 			return true, nil
@@ -79,35 +82,27 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 
 	case "enter":
-		if err := m.validateAll(); err != nil {
-			m.validationErr = err.Error()
+		if m.tabs.Active == tabPalette && m.focusIndex == tabFieldStart[tabPalette] {
+			return true, m.openThemeActions()
+		}
+		if m.focusedInput() == nil {
+			m.handleSpaceKey()
 			return true, nil
 		}
-		return true, m.saveSettings()
+		m.blurCurrentField()
+		m.stepSupportedSettingsField(1)
+		m.tabs.Active = tabForField(m.focusIndex)
+		m.subTab = subTabForField(m.focusIndex)
+		m.syncVisualFromOld()
+		m.focusCurrentField()
+		return true, nil
 
 	case "ctrl+s":
-		if m.tabs.Active == tabPalette {
-			m.openPresetSave()
-			return true, nil
-		}
 		if err := m.validateAll(); err != nil {
 			m.validationErr = err.Error()
 			return true, nil
 		}
 		return true, m.saveSettings()
-
-	case "ctrl+o":
-		if m.tabs.Active == tabPalette {
-			m.openPresetLoad()
-		}
-		return true, nil
-
-	case "ctrl+r":
-		if m.tabs.Active == tabPalette {
-			m.themePresetMode = presetModeResetConfirm
-			m.themePresetErr = ""
-		}
-		return true, nil
 
 	case "/":
 		si := textinput.New()
@@ -122,10 +117,6 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		m.searchCursor = 0
 		m.searchStatusMsg = ""
 		return true, textinput.Blink
-
-	case "ctrl+d":
-		m.handleResetToDefault()
-		return true, nil
 
 	case "?":
 		return true, helpCmd(ViewSettings, "Settings", m.GetHelpItems())

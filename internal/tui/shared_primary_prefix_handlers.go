@@ -291,7 +291,7 @@ func handleToggleDimmedKey(v prefixableView) (tea.Cmd, bool) {
 // handleTagKey handles the T key for tag filtering or bulk tag assignment.
 // selectedTags is the current tag filter selection from the view's filter state.
 // Returns (cmd, handled).
-func handleTagKey(v prefixableView, source ViewType, includeCompleted bool, selectedTags map[string]bool) (tea.Cmd, bool) {
+func handleTagKey(v prefixableView, source PresentationID, includeCompleted bool, selectedTags map[string]bool) (tea.Cmd, bool) {
 	project := v.getProject()
 
 	if tasks := v.getMultiSelectedTasks(); tasks != nil {

@@ -19,21 +19,6 @@ func TestProjectCommands_NewProject(t *testing.T) {
 	}
 }
 
-func TestProjectCommands_ToggleInfoPanel(t *testing.T) {
-	app := newTestAppModel()
-
-	cmds := app.projectCommands()
-	cmd := findCommand(cmds, "toggle info panel")
-	if cmd == nil {
-		t.Fatal("expected to find 'toggle info panel' command")
-	}
-
-	result := cmd.Handler()
-	if _, ok := result.(ToggleInfoPanelMsg); !ok {
-		t.Errorf("expected ToggleInfoPanelMsg, got %T", result)
-	}
-}
-
 func TestProjectCommands_RestoreFromTrash(t *testing.T) {
 	app := newTestAppModel()
 

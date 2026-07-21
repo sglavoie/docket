@@ -59,52 +59,12 @@ func (m *CustomContextEditorModel) save() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("select at least one project")} }
 	}
 
-	// Compute the cycle IDs for this context up front so the commit closure is a
-	// pure application of the already-decided mutations.
-	contextKey := "+" + name
-	var newCycleIDs []string
-	if m.editMode {
-		// Preserve existing cycle selections, adjusting for added/removed projects
-		existingCycleIDs := machine.GetCycleProjectIDsForContext(contextKey)
-		newProjectSet := make(map[string]bool, len(projectIDs))
-		for _, id := range projectIDs {
-			newProjectSet[id] = true
-		}
-		oldProjectSet := make(map[string]bool, len(m.initialSelectedIDs))
-		for id, sel := range m.initialSelectedIDs {
-			if sel {
-				oldProjectSet[id] = true
-			}
-		}
-		// Keep existing cycle IDs that are still in the context
-		for _, id := range existingCycleIDs {
-			if newProjectSet[id] {
-				newCycleIDs = append(newCycleIDs, id)
-			}
-		}
-		// Add newly added projects (not in old context) to cycle
-		for _, id := range projectIDs {
-			if !oldProjectSet[id] {
-				newCycleIDs = append(newCycleIDs, id)
-			}
-		}
-	} else {
-		// New context: select all projects by default
-		newCycleIDs = projectIDs
-	}
-
 	renamed := m.editMode && !strings.EqualFold(name, m.originalName)
 	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
-		// Delete old name if we renamed, migrating cycle projects to the new key.
 		if renamed {
 			machine.DeleteCustomContext(m.originalName)
-			oldKey := "+" + m.originalName
-			if oldCycleIDs := machine.GetCycleProjectIDsForContext(oldKey); len(oldCycleIDs) > 0 {
-				machine.SetCycleProjectsForContext(oldKey, nil)
-			}
 		}
 		machine.SetCustomContext(name, projectIDs)
-		machine.SetCycleProjectsForContext(contextKey, newCycleIDs)
 	}); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}

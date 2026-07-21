@@ -26,7 +26,7 @@ func TestSession6_NewPaletteShortcutsMatchKeymap(t *testing.T) {
 		{"snooze inbox task", "zd"},
 	}
 
-	for _, viewType := range []ViewType{ViewInboxProcessor, ViewGlobalInboxProcessor} {
+	for _, viewType := range []PresentationID{ViewInboxProcessor, ViewGlobalInboxProcessor} {
 		cmds := triageInboxCommands(t, app, viewType)
 		for _, tc := range cases {
 			cmd := findCommand(cmds, tc.name)

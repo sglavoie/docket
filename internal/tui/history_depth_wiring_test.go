@@ -132,7 +132,7 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	shell := driver.App()
 	ledger := shell.deps.historyLedger()
 	project := shell.projectByID(shell.runtime.SystemInboxProject().ID)
-	assertLedger := func(name string, view ViewType) {
+	assertLedger := func(name string, view PresentationID) {
 		t.Helper()
 		notes, ok := shell.views.Get(view).(*NotesViewModel)
 		if !ok {
@@ -148,10 +148,6 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	shell.handleNotesMessages(ShowGlobalNotesMsg{})
 	assertLedger("direct global notes", ViewGlobalNotes)
 
-	shell.reconstructProjectView(NavEntry{ViewType: ViewNotes, ProjectID: project.ID})
-	assertLedger("history project notes", ViewNotes)
-	shell.reconstructGlobalView(NavEntry{ViewType: ViewGlobalNotes})
-	assertLedger("history global notes", ViewGlobalNotes)
 }
 
 func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {

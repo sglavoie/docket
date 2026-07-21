@@ -123,7 +123,7 @@ func (m *SettingsModel) settingsFooter(contentLines []string, visibleHeight, max
 	if visualSubTabNamesForVTab(m.visualTab) != nil {
 		helpPrefix += "shift+↑/↓ sub-tabs · "
 	}
-	helpText := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ctrl+d: reset · ?: Help" + scrollHint
+	helpText := helpPrefix + "shift+←/→: tabs · Tab/Shift+Tab: fields · Enter: activate · Ctrl+S: save · Esc: cancel · ?: Help" + scrollHint
 	var left string
 	if m.searchStatusMsg != "" {
 		left = HelpStyle.Render(m.searchStatusMsg)
@@ -247,7 +247,13 @@ func (m *SettingsModel) View() tea.View {
 		blocks[i] = fitBlockWidth(block, m.width)
 	}
 	blocks = append(blocks, fitBlockWidth(body, m.width), fitBlockWidth(footer, m.width))
-	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, blocks...))
+	page := lipgloss.JoinVertical(lipgloss.Left, blocks...)
+	if popup := m.renderThemeActionOverlay(); popup != "" {
+		page = OverlayPopupDimmed(page, popup, m.width, m.height)
+	} else if popup := m.renderPresetOverlay(); popup != "" {
+		page = OverlayPopupDimmed(page, popup, m.width, m.height)
+	}
+	return tea.NewView(page)
 }
 
 // renderSearchOverlay renders the search input and filtered results list.

@@ -241,12 +241,11 @@ func (e *moveHandlerEnv) appModel() *AppModel {
 		persister:            NewProjectService(),
 		appService:           e.svc,
 		views:                NewViewRegistry(),
-		viewStack:            []ViewType{ViewDashboard},
+		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
-		navHistory:           NewNavHistory(),
+		projectLastView:      make(map[string]PresentationID),
 	}
 }
 

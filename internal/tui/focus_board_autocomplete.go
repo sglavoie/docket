@@ -171,11 +171,6 @@ func (m *FocusBoardModel) initBoardCaches() {
 			tagSet[tag] = true
 		}
 	}
-	for _, r := range m.closedRows {
-		for _, tag := range r.Task.Tags {
-			tagSet[tag] = true
-		}
-	}
 	m.acTagCache = make([]string, 0, len(tagSet))
 	for tag := range tagSet {
 		m.acTagCache = append(m.acTagCache, tag)

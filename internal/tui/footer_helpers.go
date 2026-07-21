@@ -82,15 +82,14 @@ func renderContextualFooter(spec StatusBarFooterSpec, width int, accent ...color
 }
 
 // FooterEscapeHints is the canonical escape-hatch hint cluster shown in
-// full-height view footers. Session 11 fixes these three keys as the stable
-// escape hatches across every primary daily-driver surface: ;; jumps back to
-// the pipeline hub, : opens the command palette, ? opens the per-view help.
+// full-height view footers. Ctrl+G opens the destination switcher, : opens the
+// command palette, and ? opens the per-view help.
 // The order matches the app status bar's hint cluster (see app_view_status.go)
 // so the escape hatches read identically whether the host view is full-height
 // or relies on the app status bar. The cluster is rendered after the
 // view-specific contextual hints so the footer reads as
 // "<top 3 contextual> · <escape hatches>".
-const FooterEscapeHints = ";; hub · : cmd · ? help"
+const FooterEscapeHints = "ctrl+g go · : cmd · ? help"
 
 // composeFullHeightFooterLeft returns the styled left side of a full-height
 // view footer: contextual hints concatenated with the canonical escape-hatch

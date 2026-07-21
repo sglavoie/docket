@@ -54,7 +54,7 @@ type AskViewModel struct {
 	viewport    viewport.Model
 	spinner     SpinnerModel
 	// project is retained exclusively for the focused, single-project
-	// compatibility constructors below. Production Ask views use
+	// constructors below. Production Ask views use
 	// workspaceLoader and must not inherit the dashboard's potentially stale
 	// current project.
 	project         *models.Project

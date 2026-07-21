@@ -10,9 +10,9 @@ import (
 // NewCommandPaletteModel creates a new command palette model.
 // The currentView parameter determines which commands are shown (context-aware filtering).
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
-func NewCommandPaletteModel(runtime *config.RuntimeState, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
+func NewCommandPaletteModel(runtime *config.RuntimeState, registry *CommandRegistry, currentView PresentationID, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search · :cmd :task :prj :tag :sec :saved :sv :note :view · Alt+↑↓ history"
+	searchInput.Placeholder = "Search commands, tasks, projects, notes, filters, and more"
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()
@@ -28,35 +28,31 @@ func NewCommandPaletteModel(runtime *config.RuntimeState, registry *CommandRegis
 		})
 	}
 
-	// Build pinned commands set for quick lookup
-	pinnedSet := make(map[string]bool)
-	for _, name := range runtime.Machine().GetPinnedCommands() {
-		pinnedSet[name] = true
-	}
-
 	m := &CommandPaletteModel{
-		runtime:                     runtime,
-		registry:                    registry,
-		currentView:                 currentView,
-		currentProject:              currentProject,
-		searchInput:                 searchInput,
-		cursor:                      0,
-		scrollAnchor:                -1,
-		showTips:                    true,
-		categoryCursors:             make(map[ItemCategory]int),
-		searchHistory:               runtime.Machine().GetPaletteSearchHistory(),
-		searchHistoryIndex:          -1,
-		suppressCategoryPersistence: true,
-		pinnedCommands:              pinnedSet,
-		selectedTasks:               make(map[string]bool),
+		runtime:        runtime,
+		registry:       registry,
+		currentView:    currentView,
+		currentProject: currentProject,
+		searchInput:    searchInput,
+		cursor:         0,
+		scrollAnchor:   -1,
+		showTips:       true,
+		selectedTasks:  make(map[string]bool),
 	}
 
 	// Load all searchable items (lazy loading on palette open per design decision)
 	m.allItems = m.loadAllItems()
 	// Start with all items visible, sorted by category (no search filter, no highlights)
 	m.filterItems()
-	m.suppressCategoryPersistence = false
 	return m
+}
+
+// SetCommandContext applies a typed route/selection context and rebuilds the
+// palette's lazy item index.
+func (m *CommandPaletteModel) SetCommandContext(ctx CommandContext) {
+	m.commandContext = &ctx
+	m.allItems = m.loadAllItems()
+	m.filterItems()
 }
 
 // HasActiveSearch returns true (search input is always active in the palette).
@@ -111,8 +107,7 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 		}
 	}
 
-	// Auto-enable compact mode on narrow terminals unless user explicitly toggled
-	if !m.userSetCompact {
-		m.compactMode = width < 100 || m.previewWidth < 25
-	}
+	// Narrow layouts remain responsive, but compact presentation is no longer
+	// a user-controlled or persisted palette mode.
+	m.compactMode = width < 100 || m.previewWidth < 25
 }

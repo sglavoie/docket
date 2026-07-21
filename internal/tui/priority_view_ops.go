@@ -30,8 +30,8 @@ func (m *PriorityViewModel) setStatus(msg string) { m.statusMessage = msg }
 
 // commonActionView methods for PriorityViewModel.
 
-func (m *PriorityViewModel) viewID() ViewType { return ViewPriorityView }
-func (m *PriorityViewModel) viewName() string { return "Priority View" }
+func (m *PriorityViewModel) viewID() PresentationID { return ViewPriorityView }
+func (m *PriorityViewModel) viewName() string       { return "Priority View" }
 
 func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.Cmd) {
 	return m, wfChangePriority(m, strconv.Itoa(newPriority))

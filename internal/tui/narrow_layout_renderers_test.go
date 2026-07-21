@@ -301,26 +301,6 @@ func TestRenderInboxFooterRespectsVisualWidthAcrossLayouts(t *testing.T) {
 	}
 }
 
-// TestRenderPipelineCardContentRespectsVisualWidth pins down the narrow
-// behavior of the pipeline summary line so the "Triage → Plan → Today →
-// Execute → Review" chain truncates instead of wrapping at narrow widths.
-func TestRenderPipelineCardContentRespectsVisualWidth(t *testing.T) {
-	cfg := newTestConfig()
-	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg)}
-	m.SetPipelineCounts(pipelineCounts{
-		inboxCount:          7,
-		queueLen:            5,
-		dailyPlanLen:        3,
-		inProgressCount:     2,
-		completedTodayCount: 4,
-	})
-
-	for _, width := range []int{60, 28} {
-		rendered := m.renderPipelineCardContent(width)
-		assertRenderedLinesWithinVisualWidth(t, fmt.Sprintf("pipeline card @%d", width), rendered, width)
-	}
-}
-
 // TestRenderProjectListNarrowModeRespectsVisualWidth exercises the dashboard
 // narrow-mode rendering path: wide rows split into name + stats lines and
 // must respect cardWidth even with active inbox indicators and long names.
@@ -347,45 +327,6 @@ func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
 	m.SetSize(cardWidth+6, 30)
 	rendered := m.renderProjectList(projects, 0, cardWidth, 0)
 	assertRenderedLinesWithinVisualWidth(t, "dashboard project list narrow mode", rendered, cardWidth)
-}
-
-// TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined verifies that the
-// alerts lines (joined by newlines in compact/full info cards) each fit when
-// the alerts card is narrow. Long project names in the "Inbox hotspots" line
-// are the main risk surface for overflow.
-func TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined(t *testing.T) {
-	cfg := newTestConfigAt(t.TempDir())
-	projects := make([]*models.Project, 0, 2)
-	for i := range 2 {
-		p := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
-		for j := range 6 {
-			task, err := models.NewTask(fmt.Sprintf("p%d-t%d", i, j), j+1, models.TaskTypeTask, "inbox item")
-			if err != nil {
-				t.Fatalf("NewTask: %v", err)
-			}
-			task.SetSection(models.SectionInbox)
-			p.Tasks = append(p.Tasks, task)
-		}
-		projects = append(projects, p)
-	}
-
-	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
-	lines := m.computeGlobalAlertLines(nil)
-	if len(lines) == 0 {
-		t.Fatalf("expected non-empty alert lines from 6-inbox-task projects")
-	}
-	// At a typical alerts column width, every line should fit.
-	const alertsWidth = 60
-	for _, line := range lines {
-		if lipgloss.Width(ansi.Strip(line)) > alertsWidth {
-			// Inbox-hotspots is allowed to overflow narrow widths because the
-			// joined list of project names is uncapped. The remaining alert
-			// lines are short summaries and must always fit.
-			if !strings.Contains(ansi.Strip(line), "Inbox hotspots") {
-				t.Fatalf("alert line exceeds width %d: %q (width=%d)", alertsWidth, ansi.Strip(line), lipgloss.Width(ansi.Strip(line)))
-			}
-		}
-	}
 }
 
 // TestHelpRenderByIntentContentRespectsVisualWidth confirms that the per-view

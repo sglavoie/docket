@@ -18,19 +18,6 @@ type KeySyncView interface {
 // keys handled entirely at the AppModel level (not by the view's Update),
 // or intentional handler/registry mismatches documented here.
 var keysExcludedFromSync = map[string]bool{
-	// @ popup sub-keys — handled by AppModel's project cycle manager
-	"@ j/k":      true,
-	"@ space":    true,
-	"@ 1-9":      true,
-	"@ enter/g":  true,
-	"@ p":        true,
-	"@ c/C":      true,
-	"@ u":        true,
-	"@ ctrl+j/k": true,
-	"@ ctrl+h/l": true,
-
-	// Legacy entries removed (replaced by shift+arrow keys)
-
 	// Recurrence keys: only implemented in primary views (ProjectTree/Outliner)
 	// via handleDeferRecurrence. Secondary views silently consume the prefix.
 	",k":  true,
@@ -94,7 +81,6 @@ var registryKeyExpansions = map[string][]string{
 	"t/T":                     {"t", "T"},
 	"zR/zM":                   {"zR", "zM"},
 	"zo/zc":                   {"zo", "zc"},
-	"ctrl+/":                  {"ctrl+/"},
 	"Space/Enter":             {"space", "enter"},
 	"Esc":                     {"esc"},
 	"o/Enter":                 {"o", "enter"},

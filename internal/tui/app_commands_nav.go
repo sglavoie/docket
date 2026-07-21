@@ -6,61 +6,12 @@ func (m *AppModel) navCommands() []Command {
 	return []Command{
 		{
 			Name:        "dashboard",
-			Description: "Go to dashboard",
+			Description: "Go to Home",
 			Shortcut:    "ctrl+esc",
 			Category:    CategoryNavigation,
+			Aliases:     []string{"home", "projects", "attention"},
 			Handler: func() tea.Msg {
 				return JumpDashboardMsg{}
-			},
-		},
-		{
-			Name:        "project cycle",
-			Description: "Configure project cycle, jump to project",
-			Shortcut:    "@",
-			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewOutliner},
-			Handler: func() tea.Msg {
-				return ShowProjectCycleManagerMsg{}
-			},
-		},
-		{
-			Name:        "project picker",
-			Description: "Open project cycle picker",
-			Shortcut:    "`",
-			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewOutliner},
-			Handler: func() tea.Msg {
-				return ShowProjectCyclePickerMsg{}
-			},
-		},
-		{
-			Name:        "previous project",
-			Description: "Switch to previous project in cycle",
-			Shortcut:    "~",
-			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewOutliner},
-			Handler: func() tea.Msg {
-				return CycleProjectMsg{Forward: false}
-			},
-		},
-		{
-			Name:        "history back",
-			Description: "Navigate back through view history",
-			Shortcut:    "alt+O",
-			Category:    CategoryNavigation,
-			Aliases:     []string{"go back history", "previous view", "back history"},
-			Handler: func() tea.Msg {
-				return NavigateHistoryBackMsg{}
-			},
-		},
-		{
-			Name:        "history forward",
-			Description: "Navigate forward through view history",
-			Shortcut:    "alt+I",
-			Category:    CategoryNavigation,
-			Aliases:     []string{"go forward history", "next view", "forward history"},
-			Handler: func() tea.Msg {
-				return NavigateHistoryForwardMsg{}
 			},
 		},
 		{
@@ -78,8 +29,8 @@ func (m *AppModel) navCommands() []Command {
 		},
 		{
 			Name:        "peek task detail",
-			Description: "Toggle peek for the selected task's details",
-			Shortcut:    "space",
+			Description: "Peek at the selected task's details",
+			Shortcut:    "shift+enter",
 			Category:    CategoryNavigation,
 			Views:       taskPeekViews(),
 			Aliases:     []string{"peek task", "task peek", "preview task"},

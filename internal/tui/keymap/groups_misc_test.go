@@ -91,10 +91,10 @@ func TestTypeChangeGroup(t *testing.T) {
 func TestCommonPrimaryViewGroup_Base(t *testing.T) {
 	deps := CommonPrimaryViewDeps{}
 	entries := CommonPrimaryViewGroup(deps)
-	// 16 base entries: EditLastModified and MoveReparent nil, and ctrl+p omitted
-	// because SwitchProjectView is nil (single-project outliner has no view toggle).
-	if len(entries) != 16 {
-		t.Errorf("CommonPrimaryViewGroup (base): want 16 entries, got %d", len(entries))
+	// 12 base entries: project-cycle keys are gone, EditLastModified and
+	// MoveReparent are nil, ctrl+p is omitted, and ctrl+n is globally captured.
+	if len(entries) != 12 {
+		t.Errorf("CommonPrimaryViewGroup (base): want 12 entries, got %d", len(entries))
 	}
 }
 
@@ -105,9 +105,9 @@ func TestCommonPrimaryViewGroup_AllOptional(t *testing.T) {
 		MoveReparent:      actFn(),
 	}
 	entries := CommonPrimaryViewGroup(deps)
-	// 16 base + ctrl+p (SwitchProjectView set) + EditLastModified + MoveReparent.
-	if len(entries) != 19 {
-		t.Errorf("CommonPrimaryViewGroup (full): want 19 entries, got %d", len(entries))
+	// 12 base + ctrl+p (SwitchProjectView set) + EditLastModified + MoveReparent.
+	if len(entries) != 15 {
+		t.Errorf("CommonPrimaryViewGroup (full): want 15 entries, got %d", len(entries))
 	}
 }
 
@@ -161,14 +161,17 @@ func TestCommonPrimaryViewGroup_ProjectViewDescription(t *testing.T) {
 	}
 }
 
-func TestCommonPrimaryViewGroup_ProjectNotesShortcut(t *testing.T) {
+func TestCommonPrimaryViewGroup_ProjectNotesKeysDoNotCollideWithGlobalCapture(t *testing.T) {
 	entries := CommonPrimaryViewGroup(CommonPrimaryViewDeps{})
 	keys := directBindingKeys(entries)
 
 	if slices.Contains(keys, "ctrl+o") {
 		t.Fatal("CommonPrimaryViewGroup should not bind ctrl+o to Outliner")
 	}
-	for _, k := range []string{"ctrl+n", "{", "}"} {
+	if slices.Contains(keys, "ctrl+n") {
+		t.Fatal("CommonPrimaryViewGroup should leave ctrl+n to the global Task Composer binding")
+	}
+	for _, k := range []string{"{", "}"} {
 		if !slices.Contains(keys, k) {
 			t.Fatalf("CommonPrimaryViewGroup missing key %q", k)
 		}
@@ -179,16 +182,9 @@ func TestCommonPrimaryViewGroup_ProjectNotesShortcut(t *testing.T) {
 			continue
 		}
 		switch e.Binding.Key {
-		case "ctrl+n":
-			if e.Binding.Description != "Open project Notes" {
-				t.Fatalf("ctrl+n description = %q", e.Binding.Description)
-			}
-			if e.Binding.Hidden {
-				t.Fatal("ctrl+n should be visible in help")
-			}
 		case "{":
 			if !e.Binding.Hidden {
-				t.Fatal("{ should remain handled as a hidden compatibility alias")
+				t.Fatal("{ should remain a handled local shortcut without appearing in help")
 			}
 		}
 	}

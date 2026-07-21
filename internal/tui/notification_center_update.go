@@ -49,7 +49,7 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "N":
 			return m, m.SectionGoToPrev(m.sectionStarts)
 
-		case "tab":
+		case "space", "tab":
 			if m.cursor >= 0 && m.cursor < len(m.items) && !m.items[m.cursor].isHeader {
 				if m.expandedItem == m.cursor {
 					m.expandedItem = -1
@@ -58,7 +58,7 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "d":
+		case "x", "d":
 			if a := m.selectedAlert(); a != nil {
 				key := a.DismissalKey()
 				cat := string(a.Category)

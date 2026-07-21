@@ -301,7 +301,7 @@ func (m *KanbanModel) applySelectedBulkDelete() (tea.Model, tea.Cmd) {
 
 // ─── commonActionView interface ───────────────────────────────────────────────
 
-func (m *KanbanModel) viewID() ViewType {
+func (m *KanbanModel) viewID() PresentationID {
 	if m.crossProject {
 		return ViewCrossProjectKanban
 	}

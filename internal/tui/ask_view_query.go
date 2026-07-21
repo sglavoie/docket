@@ -41,8 +41,8 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 
 	// Snapshot active projects on the UI event path before the asynchronous Tea
 	// command starts. The loader then performs only task-file I/O against these
-	// private, rehydrated models. Compatibility constructors retain their
-	// supplied single project for focused tests.
+	// private, rehydrated models. Focused constructors retain their supplied
+	// single project.
 	if m.workspaceLoader != nil && m.requestContextMode != external.TaskContextNone && m.contextConsentGranted() {
 		projects := m.runtime.ActiveProjects()
 		loader := m.workspaceLoader

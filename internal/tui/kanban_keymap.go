@@ -242,12 +242,6 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		DueDateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fd", key) }
 		},
-		AttrDirectKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fa", key) }
-		},
-		AttrSubKey: func(prefix, key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix(prefix, key) }
-		},
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: m.viewID()} }
 		},

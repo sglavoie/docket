@@ -207,7 +207,7 @@ func TestCockpitContractEnumsRejectUnknown(t *testing.T) {
 	if CockpitTargetKind("taskish").IsValid() {
 		t.Fatal("unknown cockpit target kind must be invalid")
 	}
-	if !CockpitCommandOpenTask.IsValid() || !CockpitCommandOpenPipelineHub.IsValid() {
+	if !CockpitCommandOpenTask.IsValid() || !CockpitCommandOpenDestination.IsValid() {
 		t.Fatal("known cockpit commands must be valid")
 	}
 	if CockpitCommand("open").IsValid() {
@@ -247,7 +247,7 @@ func TestCockpitActionHintAndFooterOrdering(t *testing.T) {
 		CockpitCommandCompleteTask,
 		CockpitCommandPrioritizeTask,
 		CockpitCommandQuickCapture,
-		CockpitCommandOpenPipelineHub,
+		CockpitCommandOpenDestination,
 		CockpitCommandOpenCommandPalette,
 		CockpitCommandShowHelp,
 	})
@@ -432,7 +432,7 @@ func TestBuildCockpitRecommendationCharacterizesCurrentSurfaceStates(t *testing.
 			}
 			assertCockpitCommands(t, got.Footer.Contextual, tc.wantFooter)
 			assertCockpitCommands(t, got.Footer.Escape, []CockpitCommand{
-				CockpitCommandOpenPipelineHub,
+				CockpitCommandOpenDestination,
 				CockpitCommandOpenCommandPalette,
 				CockpitCommandShowHelp,
 			})

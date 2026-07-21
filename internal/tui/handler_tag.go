@@ -6,8 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -16,10 +14,13 @@ import (
 func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowTagManagerMsg:
-		if msg.Project != nil {
-			m.showView(ViewTagManager, NewTagManagerModelForProject(msg.Project, m.secondaryFeatures.Tag))
+		if msg.Project == nil {
+			return true, m.activateManageProjectPicker(ManageTags)
 		}
-		return true, nil
+		return true, m.activateManageHub(ManageParams{
+			Module: ManageTags,
+			Scope:  ProjectEntityScope(msg.Project.ID),
+		})
 
 	case ShowTagSelectorMsg:
 		selector := NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
@@ -128,8 +129,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.runtime.ActiveProjects(), m.runtime, m.secondaryFeatures.Tag))
-		return true, nil
+		return true, m.activateManageHub(ManageParams{Module: ManageTags, Scope: AppEntityScope()})
 
 	case GlobalTagRenamedMsg:
 		m.popView()
@@ -276,11 +276,11 @@ func updateTagFilterAfterCatalogChange(tags map[string]bool, oldName, newName st
 }
 
 // applyTagFilterToView dispatches a tag filter selection to the originating view.
-func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
+func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]bool) {
 	// Views that implement commonFilterView can be handled generically.
-	standardViews := []ViewType{
+	standardViews := []PresentationID{
 		ViewFocusBoard, ViewProjectFocusView,
-		ViewDailyReview, ViewRecentActivity, ViewPriorityView,
+		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewPriorityView,
 		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,
 	}
 	for _, vt := range standardViews {
@@ -330,14 +330,7 @@ func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
 
 // applyColumnToggles applies the column toggle changes from the picker to the
 // appropriate view and persists them to config.
-func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) {
-	machine := m.runtime.Machine()
-
-	// mutate captures the machine-local persistence for the affected view; the
-	// view-model updates happen regardless so the change is visible even when the
-	// runtime is not writable (isolated tests).
-	var mutate func(*config.MachineState)
-
+func (m *AppModel) applyColumnToggles(source PresentationID, toggles map[string]bool) {
 	switch source {
 	case ViewOutliner:
 		target := m.outliner
@@ -351,36 +344,15 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 		if target == nil {
 			break
 		}
-		targetProjectID := ""
-		if target.project != nil {
-			targetProjectID = target.project.ID
-		}
-		priorityMode := resolvePriorityMode(targetProjectID, machine, "outliner")
-		target.columnConfig = NewColumnConfig(toggles, machine.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
+		priorityMode := target.columnConfig.PriorityMode()
+		target.columnConfig = NewColumnConfig(toggles, nil, DefaultOutlinerColumns, priorityMode)
 		target.rebuildRows()
-		if targetProjectID != "" {
-			mutate = func(mach *config.MachineState) {
-				state, _ := mach.GetProjectViewState(targetProjectID)
-				state.OutlinerColumnToggles = toggles
-				mach.SetProjectViewState(targetProjectID, state)
-			}
-		}
 	case ViewCrossProjectOutliner:
-		priorityMode := machine.OutlinerPriorityMode
 		if m.crossOutliner != nil {
-			m.crossOutliner.columnConfig = NewColumnConfig(toggles, machine.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
+			priorityMode := m.crossOutliner.columnConfig.PriorityMode()
+			m.crossOutliner.columnConfig = NewColumnConfig(toggles, nil, DefaultOutlinerColumns, priorityMode)
 			m.crossOutliner.rebuildRows()
 		}
-		mutate = func(mach *config.MachineState) {
-			mach.CrossOutlinerColumnToggles = toggles
-		}
 	default:
-	}
-
-	if mutate == nil {
-		return
-	}
-	if err := m.commitMachineMutation(mutate); err != nil {
-		logging.Warn("failed to save config: %v", err)
 	}
 }

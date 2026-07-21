@@ -7,6 +7,8 @@ import "github.com/sglavoie/tt/internal/models"
 type ShowAllTasksMsg struct {
 	Group    AllTasksGroupBy
 	SetGroup bool
+	Sort     SortField
+	SetSort  bool
 }
 
 // CloseAllTasksMsg is sent when the all tasks view should close.

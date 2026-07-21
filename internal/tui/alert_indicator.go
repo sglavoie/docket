@@ -33,7 +33,7 @@ func (m *AppModel) shouldShowAlertIndicator() bool {
 		ViewMetricsDashboard,
 		ViewAllTasks,
 		ViewRecentActivity,
-		ViewRoadmap, ViewPipelineHub,
+		ViewRoadmap,
 		ViewProjectFocusView,
 		ViewBlockers, ViewGlobalBlockers,
 		ViewProjectRecentActivity,

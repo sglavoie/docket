@@ -14,8 +14,7 @@ import (
 func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case SettingsMsg:
-		m.showView(ViewSettings, NewSettingsModel(m.deps))
-		return true, nil
+		return true, m.activateManageHub(ManageParams{Module: ManageSettings, Scope: AppEntityScope()})
 
 	case SettingsSavedMsg:
 		m.popView()
@@ -51,13 +50,22 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		m.err = fmt.Errorf("preset error: %s", msg.err)
 		return true, statusTimeout(5 * time.Second)
 
-	case ShowWorkflowRulesMsg:
-		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.runtime))
+	case settingsTransientOverlayMsg:
+		if msg.Open {
+			if msg.Key == settingsThemePresetOverlayKey {
+				m.closeTypedOverlay(OverlayPicker, settingsThemeActionsOverlayKey)
+			}
+			m.pushTypedOverlay(msg.Kind, msg.Key)
+		} else {
+			m.closeTypedOverlay(msg.Kind, msg.Key)
+		}
 		return true, nil
 
+	case ShowWorkflowRulesMsg:
+		return true, m.activateManageRules(ManageRulesWorkflow)
+
 	case ShowTaskTemplatesMsg:
-		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.runtime))
-		return true, nil
+		return true, m.activateManageHub(ManageParams{Module: ManageTemplates, Scope: AppEntityScope()})
 
 	case TaskTemplatesUpdatedMsg:
 		return true, nil
@@ -163,6 +171,13 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 }
 
 func (m *AppModel) refreshTaskTemplatesView() {
+	if hub, params, ok := m.manageHubPrimary(); ok && params.Module == ManageTemplates {
+		hub.RefreshTemplates()
+		if active := hub.ActiveModuleView(); active != nil {
+			m.registerManageModulePresentation(params, active)
+		}
+		return
+	}
 	if m.currentView() != ViewTaskTemplates {
 		return
 	}
@@ -181,6 +196,9 @@ func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplat
 		project = m.currentProject
 	}
 	if project != nil {
+		if m.typedNavigation {
+			return true, m.openTaskComposer(templateComposerPreset(project, parentTask, taskTemplate), ViewTaskForm)
+		}
 		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(project, m.runtime, parentTask, taskTemplate))
 	}
 
@@ -188,6 +206,13 @@ func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplat
 }
 
 func (m *AppModel) refreshWorkflowRulesView() {
+	if hub, params, ok := m.manageHubPrimary(); ok && params.Module == ManageRules && hub.RulesMode() == ManageRulesWorkflow {
+		hub.RefreshWorkflowRules()
+		if active := hub.ActiveModuleView(); active != nil {
+			m.registerManageModulePresentation(params, active)
+		}
+		return
+	}
 	if m.currentView() != ViewWorkflowRules {
 		return
 	}

@@ -246,14 +246,14 @@ func renderCommonFilterIndicator(f *CommonFilterState) string {
 	return renderFilterBadge(commonFilterParts(f))
 }
 
-func buildTagCmdFromProject(project *models.Project, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
+func buildTagCmdFromProject(project *models.Project, selected map[string]bool, source PresentationID, title string, excludeCompleted bool) tea.Cmd {
 	tags := BuildProjectTagList(project, excludeCompleted)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
 	}
 }
 
-func buildTagCmdFromProjectTasks(projects []*models.Project, tasks []*models.Task, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
+func buildTagCmdFromProjectTasks(projects []*models.Project, tasks []*models.Task, selected map[string]bool, source PresentationID, title string, excludeCompleted bool) tea.Cmd {
 	tags := BuildCatalogTagList(projects, tasks, excludeCompleted)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
@@ -294,22 +294,6 @@ func projectsFromCrossProjectTasks(items []CrossProjectTask) []*models.Project {
 }
 
 func tasksFromCrossProjectTasks(items []CrossProjectTask) []*models.Task {
-	tasks := make([]*models.Task, 0, len(items))
-	for _, item := range items {
-		tasks = append(tasks, item.Task)
-	}
-	return tasks
-}
-
-func projectsFromFocusTasks(items []FocusTask) []*models.Project {
-	projects := make([]*models.Project, 0, len(items))
-	for _, item := range items {
-		projects = append(projects, item.Project)
-	}
-	return uniqueProjects(projects)
-}
-
-func tasksFromFocusTasks(items []FocusTask) []*models.Task {
 	tasks := make([]*models.Task, 0, len(items))
 	for _, item := range items {
 		tasks = append(tasks, item.Task)

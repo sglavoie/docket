@@ -119,12 +119,11 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 		persister:               NewProjectService(),
 		appService:              service,
 		views:                   views,
-		viewStack:               []ViewType{activeType},
+		viewStack:               []PresentationID{activeType},
 		width:                   80,
 		height:                  40,
 		currentProject:          project,
 		dashboard:               dashboard,
-		globalSearch:            NewGlobalSearchModel(runtime),
 		focusQueue:              []FocusTask{{Task: task, Project: project}},
 		focusQueueIDs:           map[string]bool{task.ID: true},
 		dailyPlan:               []FocusTask{{Task: task, Project: project}},
@@ -133,8 +132,7 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 		priorityViewFilterCache: map[string]*PriorityViewCache{project.ID: {}},
 		allTasksFilterCache:     &AllTasksCache{},
 		outlinerToggleStates:    make(map[string]*OutlinerToggleState),
-		projectLastView:         make(map[string]ViewType),
-		navHistory:              NewNavHistory(),
+		projectLastView:         make(map[string]PresentationID),
 	}
 
 	// NotesSearchModel also loads the project while building its linked-task
@@ -322,16 +320,6 @@ func (e *noteLedgerReconcileEnv) assertReconciled(t *testing.T, after bool) {
 	}
 	if !e.notesSearch.stale {
 		t.Fatal("notes search index was not marked stale")
-	}
-	foundGlobalTask := false
-	for _, result := range e.shell.globalSearch.allTasks {
-		if result.Task != nil && result.Task.ID == e.taskID {
-			foundGlobalTask = result.Task.Title == wantTitle
-			break
-		}
-	}
-	if !foundGlobalTask {
-		t.Fatalf("global task index did not rebuild title %q", wantTitle)
 	}
 	if e.view.statusIsError || !strings.Contains(e.view.statusMessage, "Reconcile Notes Ledger") {
 		t.Fatalf("notes status = %q error=%v", e.view.statusMessage, e.view.statusIsError)

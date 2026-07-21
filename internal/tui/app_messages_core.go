@@ -51,12 +51,6 @@ type JumpDashboardMsg struct{}
 // ShowAskMsg requests opening the AI assistant view.
 type ShowAskMsg struct{}
 
-// NavigateHistoryBackMsg requests navigation backward through view history.
-type NavigateHistoryBackMsg struct{}
-
-// NavigateHistoryForwardMsg requests navigation forward through view history.
-type NavigateHistoryForwardMsg struct{}
-
 // RefreshMsg requests a refresh of the current view's data.
 type RefreshMsg struct{}
 
@@ -75,9 +69,6 @@ type StatusClearMsg struct{ ScheduledAt time.Time }
 // by a newer toast (checked via statusExpiresAt) so back-to-back
 // destructive actions do not cancel each other prematurely.
 type UndoToastTimeoutMsg struct{}
-
-// ClearSemicolonPrefixMsg clears a pending semicolon prefix if it has not been resolved.
-type ClearSemicolonPrefixMsg struct{}
 
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}

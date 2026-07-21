@@ -49,11 +49,11 @@ func (m *TaskTemplateCreatorModel) View() tea.View {
 	var helpText string
 	switch m.activeTab {
 	case templateTabFields:
-		helpText = "[]: tabs · Tab: next · ←/→: select · ↓: show all · Ctrl+S: save · Esc: cancel"
+		helpText = "[]: tabs · Tab/Shift+Tab or Enter: fields · Enter: newline in description · Ctrl+S: save · Esc: cancel"
 	case templateTabChecklist:
-		helpText = "[]: tabs · Tab: next · Ctrl+A: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Esc: cancel"
+		helpText = "[]: tabs · Tab/Shift+Tab or Enter: fields · Ctrl+A: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Esc: cancel"
 	case templateTabSubtasks:
-		helpText = "[]: tabs · Tab: next · ←/→: type · Ctrl+O: optional · Ctrl+T: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Esc: cancel"
+		helpText = "[]: tabs · Tab/Shift+Tab or Enter: fields · Ctrl+O: optional · Ctrl+T: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Esc: cancel"
 	}
 
 	content := b.String()

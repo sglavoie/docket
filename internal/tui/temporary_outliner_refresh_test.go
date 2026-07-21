@@ -17,18 +17,31 @@ func openRichTemporaryOutliner(t *testing.T) (*UITestDriver, *OutlinerModel) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	for _, action := range []UITestAction{
-		{Type: UITestActionKey, Key: ";"},
-		{Type: UITestActionKey, Key: "o"},
-		{Type: UITestActionWait},
-		{Type: UITestActionKey, Key: "j"},
-		{Type: UITestActionKey, Key: "g"},
-		{Type: UITestActionKey, Key: "o"},
+		{Type: UITestActionKey, Key: "ctrl+g"},
+		{Type: UITestActionKey, Key: "3"},
 		{Type: UITestActionWait},
 	} {
 		if _, actionErr := driver.ApplyAction(action, ObserveOptions{}); actionErr != nil {
 			t.Fatal(actionErr)
 		}
 	}
+
+	// TemporaryOutliner is still a supported compatibility surface, but the
+	// consolidated Task Workspace intentionally has no hidden `go` drill-down
+	// alias. Open it through its message contract so this regression continues
+	// to test registry-owned refresh behavior rather than retired navigation.
+	var targetProject *models.Project
+	for _, item := range driver.App().taskWorkspace.Snapshot().Items {
+		if item.Project != nil && driver.App().currentProject != nil && item.Project.ID == driver.App().currentProject.ID {
+			targetProject = item.Project
+			break
+		}
+	}
+	if targetProject == nil || len(targetProject.Tasks) == 0 {
+		t.Fatal("fixture did not load a temporary-outliner target project")
+	}
+	driver.dispatch(ShowOutlinerMsg{Project: targetProject, OpenAtTask: targetProject.Tasks[0], Temporary: true})
+	driver.drain()
 
 	if driver.App().currentView() != ViewTemporaryOutliner {
 		t.Fatalf("current view = %s, want TemporaryOutliner", driver.App().currentView())

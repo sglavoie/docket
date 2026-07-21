@@ -136,7 +136,6 @@ func (m *FilterViewModel) buildFilterList() {
 			Key:        fmt.Sprintf("%d", keyNum),
 			FilterType: FilterDueDateFilter,
 		})
-		keyNum++
 	}
 
 	m.cursor = ClampCursor(m.cursor, len(m.items))

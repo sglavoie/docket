@@ -75,22 +75,6 @@ func crossProjectNameLookup(items []CrossProjectTask) func(task *models.Task) st
 	}
 }
 
-// focusTaskNameLookup is the FocusTask counterpart to crossProjectNameLookup.
-func focusTaskNameLookup(items []FocusTask) func(task *models.Task) string {
-	names := make(map[string]string, len(items))
-	for _, it := range items {
-		if it.Task != nil && it.Project != nil {
-			names[it.Task.ID] = it.Project.Name
-		}
-	}
-	return func(task *models.Task) string {
-		if task == nil {
-			return ""
-		}
-		return names[task.ID]
-	}
-}
-
 // BadgeWidthOpts configures which badge columns ComputeBadgeWidths should
 // measure. Consumers explicitly enable each column so the helper can serve
 // both single-project (no Project column) and cross-project surfaces.

@@ -61,21 +61,10 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	gen := m.crossLoadGen
 	runtime := m.runtime
-	machine := m.runtime.Machine()
 	svc := m.projectService
 	return func() tea.Msg {
-		cycleOnly := machine.CrossOutlinerCycleOnly != nil && *machine.CrossOutlinerCycleOnly
-		var ctxKey string
-		if cycleOnly {
-			ctxKey = machine.FilterContext
-			if machine.FilterCustomContext != "" {
-				ctxKey = "+" + machine.FilterCustomContext
-			}
-		}
 		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
-			ActiveOnly:        true,
-			CycleProjectsOnly: cycleOnly,
-			ContextKey:        ctxKey,
+			ActiveOnly: true,
 		})
 		return crossProjectsLoadedMsg{
 			projects:    loaded,
@@ -110,14 +99,11 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	}
 	pinnedTagTabName, hasPinnedTagTab := m.consumeCrossOutlinerReloadPinnedTagTab()
 	if !hasPinnedTagTab {
-		pinnedTagTabName, hasPinnedTagTab = m.crossProjectPinnedTagTabBeforeLoad()
+		pinnedTagTabName, _ = m.crossProjectPinnedTagTabBeforeLoad()
 	}
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
-	if !hasPinnedTagTab {
-		pinnedTagTabName = m.runtime.Machine().CrossOutlinerPinnedTagTab
-	}
 	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
 	m.resetViewScrollOffset()
@@ -538,14 +524,6 @@ func (m *OutlinerModel) crossMergedTaskSlice() []*models.Task {
 // and separators.
 func (m *OutlinerModel) crossStatusBarLabel() string {
 	ctxName := "All"
-	if m.runtime != nil {
-		machine := m.runtime.Machine()
-		if machine.FilterCustomContext != "" {
-			ctxName = "+" + machine.FilterCustomContext
-		} else if machine.FilterContext != "" {
-			ctxName = machine.FilterContext
-		}
-	}
 	taskCount := 0
 	for _, row := range m.rows {
 		if row.isTaskRow() {

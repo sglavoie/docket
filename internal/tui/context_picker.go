@@ -25,7 +25,6 @@ type ContextPickerModel struct {
 	runtime             *config.RuntimeState // Machine-local navigation/context state
 	currentFilter       string               // Current filter context for highlighting
 	currentCustomFilter string               // Current custom context filter for highlighting
-	fromCycle           bool                 // True if opened from Project Cycle Manager
 	confirm             ConfirmDialog        // confirmation dialog
 	statusMessage       string               // Status message to display
 	renameMode          bool                 // True when renaming a context
@@ -45,7 +44,6 @@ type ContextPickerDoneMsg struct {
 	SelectedContext string
 	IsCustomContext bool // True if a custom context was selected
 	Canceled        bool
-	FromCycle       bool // True if picker was opened from cycle manager
 }
 
 // ShowCustomContextEditorMsg is sent to open the custom context editor.
@@ -69,7 +67,6 @@ type ContextRenamedMsg struct {
 // NewContextPickerModel creates a new context picker from dashboard.
 func NewContextPickerModel(dashboard *DashboardModel, runtime *config.RuntimeState) *ContextPickerModel {
 	contexts := buildContextListWithCustom(dashboard.projects, runtime)
-	machine := runtime.Machine()
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
@@ -80,8 +77,8 @@ func NewContextPickerModel(dashboard *DashboardModel, runtime *config.RuntimeSta
 	})
 
 	// Position cursor on currently filtered context (custom or regular)
-	if machine.FilterCustomContext != "" {
-		picker.SetCursorToID(customContextID(machine.FilterCustomContext))
+	if dashboard.filterCustomContext != "" {
+		picker.SetCursorToID(customContextID(dashboard.filterCustomContext))
 	} else if dashboard.filterContext != "" {
 		picker.SetCursorToID(dashboard.filterContext)
 	}
@@ -91,8 +88,7 @@ func NewContextPickerModel(dashboard *DashboardModel, runtime *config.RuntimeSta
 		projects:            dashboard.projects,
 		runtime:             runtime,
 		currentFilter:       dashboard.filterContext,
-		currentCustomFilter: machine.FilterCustomContext,
-		fromCycle:           false,
+		currentCustomFilter: dashboard.filterCustomContext,
 	}
 }
 
@@ -101,7 +97,6 @@ func NewContextPickerModel(dashboard *DashboardModel, runtime *config.RuntimeSta
 func NewContextPickerModelFromRuntime(runtime *config.RuntimeState) *ContextPickerModel {
 	projects := runtime.ActiveProjects()
 	contexts := buildContextListWithCustom(projects, runtime)
-	machine := runtime.Machine()
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
@@ -111,20 +106,10 @@ func NewContextPickerModelFromRuntime(runtime *config.RuntimeState) *ContextPick
 		ShowCounts:     true,
 	})
 
-	// Position cursor on currently filtered context (custom or regular)
-	if machine.FilterCustomContext != "" {
-		picker.SetCursorToID(customContextID(machine.FilterCustomContext))
-	} else if machine.FilterContext != "" {
-		picker.SetCursorToID(machine.FilterContext)
-	}
-
 	return &ContextPickerModel{
-		BasePicker:          picker,
-		projects:            projects,
-		runtime:             runtime,
-		currentFilter:       machine.FilterContext,
-		currentCustomFilter: machine.FilterCustomContext,
-		fromCycle:           true,
+		BasePicker: picker,
+		projects:   projects,
+		runtime:    runtime,
 	}
 }
 

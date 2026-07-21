@@ -170,30 +170,6 @@ func TestFocusBoardFlowLoopDismissAdvancesToNextActionable(t *testing.T) {
 	}
 }
 
-func TestFocusBoardFlowLoopUnblockPreservesSelectedRowAndRefreshesRecommendation(t *testing.T) {
-	m, _, tasks := newFlowLoopFocusBoard(t, models.StatusBlocked)
-	m.cursor = 0
-
-	before := m.computeNextActionRecommendation()
-	if before.Kind != RecommendationKindReviewBlocked {
-		t.Fatalf("precondition recommendation = %s, want ReviewBlocked", before.Kind)
-	}
-
-	_, cmd := m.unblockSelectedTask()
-	finishFocusBoardMutation(t, m, cmd)
-
-	if got := m.filtered[m.cursor].Task.ID; got != tasks[0].ID {
-		t.Fatalf("cursor selected %q, want unblocked task %q", got, tasks[0].ID)
-	}
-	if got := models.LegacyStatusForState(m.filtered[m.cursor].Task.State()); got != models.StatusTodo {
-		t.Fatalf("unblocked task status = %s, want %s", got, models.StatusTodo)
-	}
-	after := m.computeNextActionRecommendation()
-	if after.Kind != RecommendationKindWorkOnTask || after.Task == nil || after.Task.ID != tasks[0].ID {
-		t.Fatalf("recommendation after unblock = %s/%v, want WorkOnTask for unblocked task", after.Kind, after.Task)
-	}
-}
-
 func TestFocusBoardRefreshPreservesCursorByTaskIDAfterReorder(t *testing.T) {
 	m, project, tasks := newFlowLoopFocusBoard(t, models.StatusTodo, models.StatusTodo)
 	m.cursor = 1

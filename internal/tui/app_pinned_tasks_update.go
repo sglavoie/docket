@@ -5,88 +5,19 @@ import (
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/app"
 )
 
 // handlePinnedPopupKey handles key events when the pinned tasks popup is open.
 func (m *AppModel) handlePinnedPopupKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
-	if m.pinnedPendingPrefix != "" && isModifierOnly(msg) {
-		return m, nil
-	}
-	if m.pinnedPendingPrefix != "" {
-		return m.handlePinnedPopupPrefixKey(msg)
-	}
 	if m.pinnedPopupFiltering {
 		return m.handlePinnedPopupFilterKey(msg)
 	}
 	return m.handlePinnedPopupNormalKey(msg)
 }
 
-// handlePinnedPopupPrefixKey dispatches the second key of a `,` or `!` prefix.
-func (m *AppModel) handlePinnedPopupPrefixKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
-	prefix := m.pinnedPendingPrefix
-	m.pinnedPendingPrefix = ""
-	key := msg.String()
-
-	if key == "esc" {
-		return m, nil
-	}
-
-	if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= m.pinnedPopupFilteredLen() {
-		return m, nil
-	}
-	realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
-	entry := m.pinnedPopupItems[realIdx]
-
-	if prefix == "!" {
-		priority, ok := PriorityForPrefixKey(key)
-		if !ok {
-			return m, nil
-		}
-		res, err := m.appService.SetPriority(entry.Task.ID, priority)
-		if err != nil {
-			m.setInfoStatus(fmt.Sprintf("Failed to set priority: %v", err))
-			return m, nil
-		}
-		m.reloadProjectByID(res.ProjectID)
-		m.setSuccessStatus(fmt.Sprintf("Priority set to %d", priority))
-	}
-
-	if prefix == "," {
-		state, ok := StateForPrefixKey(key)
-		if !ok {
-			return m, nil
-		}
-		res, err := m.appService.Transition(app.StateRequest{TaskID: entry.Task.ID, Target: state})
-		if err != nil {
-			m.setInfoStatus(fmt.Sprintf("Failed to change status: %v", err))
-			return m, nil
-		}
-		m.reloadProjectByID(res.ProjectID)
-		m.setSuccessStatus(fmt.Sprintf("Task #%d -> %s", res.ShortID, state))
-	}
-
-	m.pinnedPopupItems = m.collectPinnedTasks()
-	if len(m.pinnedPopupItems) == 0 {
-		m.showPinnedPopup = false
-	} else {
-		m.rebuildPinnedPopupFilter()
-		m.pinnedPopupClampCursor()
-	}
-
-	return m, nil
-}
-
 // handlePinnedPopupNormalKey handles keys in normal (non-filtering) mode.
 func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	switch msg.String() {
-	case ",":
-		m.pinnedPendingPrefix = ","
-		return m, nil
-	case "!":
-		m.pinnedPendingPrefix = "!"
-		return m, nil
 	case "j", "down":
 		if m.pinnedPopupCursor < m.pinnedPopupFilteredLen()-1 {
 			m.pinnedPopupCursor++
@@ -99,24 +30,14 @@ func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyPressMsg) (*AppModel, t
 		return m, nil
 	case "enter":
 		return m.pinnedPopupSelectFiltered(m.pinnedPopupCursor)
-	case "u":
+	case "shift+enter":
+		return m.pinnedPopupPeekFiltered(m.pinnedPopupCursor)
+	case "p":
 		return m.unpinFromPopup()
-	case "r":
-		return m.repinFromPopup()
 	case "J":
 		return m.reorderPinnedTask(1)
 	case "K":
 		return m.reorderPinnedTask(-1)
-	case "ctrl+j":
-		if m.pinnedPreview != nil && m.pinnedPreview.cursor < len(m.pinnedPreview.rows)-1 {
-			m.pinnedPreview.cursor++
-		}
-		return m, nil
-	case "ctrl+k":
-		if m.pinnedPreview != nil && m.pinnedPreview.cursor > 0 {
-			m.pinnedPreview.cursor--
-		}
-		return m, nil
 	case "esc":
 		if m.pinnedPopupFilter != "" {
 			m.pinnedPopupFilter = ""
@@ -124,20 +45,9 @@ func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyPressMsg) (*AppModel, t
 			m.rebuildPinnedPopupFilter()
 			return m, nil
 		}
-		m.showPinnedPopup = false
-		m.pinnedPendingPrefix = ""
-		m.pinnedLastUnpinned = nil
+		m.closePinnedTasksOverlay()
 		m.invalidatePinnedPreview()
 		return m, nil
-	case "#":
-		m.showPinnedPopup = false
-		m.pinnedPendingPrefix = ""
-		m.pinnedLastUnpinned = nil
-		m.invalidatePinnedPreview()
-		return m, nil
-	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		idx := int(msg.String()[0]-'0') - 1
-		return m.pinnedPopupSelectFiltered(idx)
 	case "/":
 		m.pinnedPopupFiltering = true
 		m.pinnedPopupFilter = ""
@@ -164,8 +74,9 @@ func (m *AppModel) handlePinnedPopupFilterKey(msg tea.KeyPressMsg) (*AppModel, t
 		}
 		return m, nil
 	case "enter":
-		m.pinnedPopupFiltering = false
-		return m, nil
+		return m.pinnedPopupSelectFiltered(m.pinnedPopupCursor)
+	case "shift+enter":
+		return m.pinnedPopupPeekFiltered(m.pinnedPopupCursor)
 	case "esc":
 		m.pinnedPopupFilter = ""
 		m.pinnedPopupFiltering = false
@@ -194,10 +105,22 @@ func (m *AppModel) handlePinnedPopupFilterKey(msg tea.KeyPressMsg) (*AppModel, t
 	}
 }
 
+// pinnedPopupPeekFiltered opens Peek above Pinned without disturbing Pinned's
+// order, cursor, or active filter.
+func (m *AppModel) pinnedPopupPeekFiltered(filteredIdx int) (*AppModel, tea.Cmd) {
+	if filteredIdx < 0 || filteredIdx >= m.pinnedPopupFilteredLen() {
+		return m, nil
+	}
+	realIdx := m.pinnedPopupFiltered[filteredIdx]
+	entry := m.pinnedPopupItems[realIdx]
+	m.activatePeek(entry.Task, entry.Project)
+	return m, nil
+}
+
 // pinnedPopupSelectFiltered selects the entry at the given filtered index.
 func (m *AppModel) pinnedPopupSelectFiltered(filteredIdx int) (*AppModel, tea.Cmd) {
 	if filteredIdx < 0 || filteredIdx >= m.pinnedPopupFilteredLen() {
-		m.showPinnedPopup = false
+		m.closePinnedTasksOverlay()
 		m.invalidatePinnedPreview()
 		return m, nil
 	}
@@ -208,12 +131,12 @@ func (m *AppModel) pinnedPopupSelectFiltered(filteredIdx int) (*AppModel, tea.Cm
 // pinnedPopupSelect navigates to the entry at the given index and closes the popup.
 func (m *AppModel) pinnedPopupSelect(idx int) (*AppModel, tea.Cmd) {
 	if idx < 0 || idx >= len(m.pinnedPopupItems) {
-		m.showPinnedPopup = false
+		m.closePinnedTasksOverlay()
 		m.invalidatePinnedPreview()
 		return m, nil
 	}
 	entry := m.pinnedPopupItems[idx]
-	m.showPinnedPopup = false
+	m.closePinnedTasksOverlay()
 	m.invalidatePinnedPreview()
 	return m, m.navigateToTaskInProject(entry.Task, entry.Project)
 }
@@ -262,13 +185,11 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 		m.setInfoStatus(fmt.Sprintf("Failed to unpin task: %v", err))
 		return m, nil
 	}
-	saved := entry
-	m.pinnedLastUnpinned = &saved
 	m.reloadProjectByID(res.ProjectID)
 
 	m.pinnedPopupItems = m.collectPinnedTasks()
 	if len(m.pinnedPopupItems) == 0 {
-		m.showPinnedPopup = false
+		m.closePinnedTasksOverlay()
 	} else {
 		m.rebuildPinnedPopupFilter()
 		if m.pinnedPopupFilteredLen() == 0 {
@@ -278,28 +199,6 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 		}
 		m.pinnedPopupClampCursor()
 	}
-
-	return m, nil
-}
-
-// repinFromPopup re-pins the last unpinned task (undo for unpin).
-func (m *AppModel) repinFromPopup() (*AppModel, tea.Cmd) {
-	if m.pinnedLastUnpinned == nil {
-		return m, nil
-	}
-
-	entry := m.pinnedLastUnpinned
-	res, err := m.appService.SetPinned(entry.Task.ID, true)
-	if err != nil {
-		m.setInfoStatus(fmt.Sprintf("Failed to repin task: %v", err))
-		return m, nil
-	}
-	m.reloadProjectByID(res.ProjectID)
-
-	m.pinnedLastUnpinned = nil
-	m.pinnedPopupItems = m.collectPinnedTasks()
-	m.rebuildPinnedPopupFilter()
-	m.pinnedPopupClampCursor()
 
 	return m, nil
 }

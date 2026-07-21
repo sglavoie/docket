@@ -176,7 +176,7 @@ func TestHandleSectionMessagesCloseSectionManagerReturnsCrossOutlinerAppearCmd(t
 func TestHandleSectionMessagesCloseSectionManagerRefreshesProjectContexts(t *testing.T) {
 	tests := []struct {
 		name     string
-		baseView ViewType
+		baseView PresentationID
 	}{
 		{name: "single project outliner", baseView: ViewOutliner},
 	}

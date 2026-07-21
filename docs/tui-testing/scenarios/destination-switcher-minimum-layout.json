@@ -1,0 +1,11 @@
+{
+  "name": "destination-switcher-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
+    { "type": "assert", "assert": "view", "value": "Dashboard" },
+    { "type": "assert", "assert": "contains", "value": "Go to" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

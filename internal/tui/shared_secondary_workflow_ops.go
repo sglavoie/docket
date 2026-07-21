@@ -161,21 +161,6 @@ func wfToggleDim(v workflowOpsView) tea.Cmd {
 		})
 }
 
-// wfUnblock returns the cursor task from the waiting state to the Next queue
-// (todo + Next section), running the workflow cascade. The focus-board caller
-// guards that the task is actually blocked before invoking this.
-func wfUnblock(v workflowOpsView) tea.Cmd {
-	task, _ := v.getTaskRef()
-	if task == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, "Unblock Task")
-	return v.taskItemCoordinator().TransitionWorkflow(task.ID, models.StateNext, opts,
-		func(res app.TaskResult) string {
-			return fmt.Sprintf("Task #%d unblocked", res.ShortID)
-		})
-}
-
 // wfDeleteTask deletes the cursor task's subtree through the coordinator, folding
 // the durable planning-ref cleanup (Focus Queue, Daily Plan, dismissals) into the
 // same transaction as a config artifact. Machine-local recent visits are repaired

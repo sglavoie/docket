@@ -18,7 +18,8 @@ func TestHandleWithRefreshForwardsPopCmd(t *testing.T) {
 	// Simulate a stack: Dashboard → CrossProjectOutliner → TaskForm
 	// Popping the TaskForm should reveal the CrossProjectOutliner and emit
 	// ViewDidAppearMsg.
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewTaskForm}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewTaskForm}
+	app.enableTypedNavigation()
 
 	cmd := app.handleWithRefresh(true, false, "")
 	if cmd == nil {
@@ -35,7 +36,8 @@ func TestHandleWithRefreshForwardsPopCmd(t *testing.T) {
 // returns a cmd AND a status message is set, both Cmds are batched together.
 func TestHandleWithRefreshBatchesPopCmdWithStatus(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewTaskForm}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewTaskForm}
+	app.enableTypedNavigation()
 
 	cmd := app.handleWithRefresh(true, false, "Hello")
 	if cmd == nil {
@@ -62,7 +64,7 @@ func TestHandleWithRefreshBatchesPopCmdWithStatus(t *testing.T) {
 // and no status is set, the returned cmd is nil (not an empty Batch).
 func TestHandleWithRefreshNoPopReturnsNilWhenNoStatus(t *testing.T) {
 	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner}
 
 	cmd := app.handleWithRefresh(false, false, "")
 	if cmd != nil {

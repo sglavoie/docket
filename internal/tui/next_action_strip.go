@@ -240,26 +240,17 @@ func stripHintsFor(c nextActionStripCopy, opts NextActionStripOpts) string {
 // the cockpit action model so the strip cannot advertise stale shortcuts after
 // the Today key grammar changes.
 func primaryHintsFor(c nextActionStripCopy, opts NextActionStripOpts) []string {
-	rec := BuildCockpitRecommendation(opts.Action, CockpitContext{
-		HasProjects: opts.HasProjects,
-		OpenLoops:   opts.OpenLoops,
-	})
 	switch c.kind {
 	case RecommendationKindWorkOnTask:
-		action := actionPlanToday()
-		action.Label = "plan today"
-		return []string{action.Hint()}
+		return nil // enter is already in the Planner footer
 	case RecommendationKindReviewBlocked:
-		return []string{rec.PrimaryAction.Hint()}
+		return []string{"s state"}
 	case RecommendationKindTriageInbox:
-		return []string{rec.PrimaryAction.Hint()}
+		return []string{": manage inbox"}
 	case RecommendationKindPlanToday:
-		return []string{rec.PrimaryAction.Hint()}
+		return nil // tab is already in the Planner footer
 	case RecommendationKindAllDone:
-		if c.variant == stripVariantFirstRun {
-			return []string{rec.PrimaryAction.Hint()}
-		}
-		// caught-up + default: footer carries the affordance.
+		// a/tab are already in the Planner footer.
 		return nil
 	default:
 		return nil

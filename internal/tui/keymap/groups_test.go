@@ -407,8 +407,6 @@ func TestFilterGroup_Base(t *testing.T) {
 	deps := FilterDeps{
 		TypeKey:        func(string) Action { return nilAction },
 		StateKey:       func(string) Action { return nilAction },
-		AttrDirectKey:  func(string) Action { return nilAction },
-		AttrSubKey:     func(string, string) Action { return nilAction },
 		OpenAttrPicker: nilAction,
 		ScoreKey:       func(string) Action { return nilAction },
 	}
@@ -438,8 +436,6 @@ func TestFilterGroup_WithDueDate(t *testing.T) {
 		TypeKey:        func(string) Action { return nilAction },
 		StateKey:       func(string) Action { return nilAction },
 		DueDateKey:     func(string) Action { return nilAction },
-		AttrDirectKey:  func(string) Action { return nilAction },
-		AttrSubKey:     func(string, string) Action { return nilAction },
 		OpenAttrPicker: nilAction,
 		ScoreKey:       func(string) Action { return nilAction },
 	}
@@ -455,8 +451,6 @@ func TestFilterGroup_AttrPickerBind(t *testing.T) {
 	deps := FilterDeps{
 		TypeKey:        func(string) Action { return nilAction },
 		StateKey:       func(string) Action { return nilAction },
-		AttrDirectKey:  func(string) Action { return nilAction },
-		AttrSubKey:     func(string, string) Action { return nilAction },
 		OpenAttrPicker: nilAction,
 		ScoreKey:       func(string) Action { return nilAction },
 	}

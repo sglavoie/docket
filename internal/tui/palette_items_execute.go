@@ -5,8 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -34,7 +32,7 @@ func (m *CommandPaletteModel) findProjectWithSection(section string) *models.Pro
 
 // executeItem handles selection of an item from the palette.
 // For commands, it invokes the handler directly and returns its message.
-// For tasks, it emits GlobalSearchSelectMsg to navigate to the task.
+// For tasks, it emits PaletteEntitySelectMsg to navigate to the task.
 // For projects, it emits SelectProjectMsg to switch to that project.
 // For tags and sections, it emits navigation messages with the first associated project.
 // All item types use CommandPaletteExecuteMsg to ensure the palette closes and action
@@ -47,17 +45,9 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 		m.persistRecentSelections()
 	}
 
-	m.recordSearchHistory()
-
 	switch item.Category {
 	case ItemCategoryCommands:
 		if item.Command != nil && item.Command.Handler != nil {
-			if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
-				machine.AddCommandToHistory(item.Command.Name)
-			}); err != nil {
-				logging.Warn("failed to save machine state: %v", err)
-			}
-
 			result := item.Command.Handler()
 			return m, func() tea.Msg {
 				return CommandPaletteExecuteMsg{ResultMsg: result}
@@ -68,7 +58,7 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			task := item.Task
 			project := item.Project
 			return m, func() tea.Msg {
-				return CommandPaletteExecuteMsg{ResultMsg: GlobalSearchSelectMsg{Task: task, Project: project}}
+				return CommandPaletteExecuteMsg{ResultMsg: PaletteEntitySelectMsg{Task: task, Project: project}}
 			}
 		}
 	case ItemCategoryProjects:
@@ -98,13 +88,6 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 				}
 			}
 		}
-	case ItemCategorySavedSearch:
-		if item.SavedSearch != "" {
-			query := item.SavedSearch
-			m.searchInput.SetValue(query)
-			m.filterItems()
-			return m, nil
-		}
 	case ItemCategorySavedFilter:
 		if item.SavedFilter != nil {
 			sf := *item.SavedFilter
@@ -120,11 +103,34 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			}
 		}
 	case ItemCategoryViews:
+		if item.AliasTarget != "" {
+			target := item.AliasTarget
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: NavigatePaletteAliasMsg{Target: target}}
+			}
+		}
 		viewType := item.ViewTarget
 		return m, func() tea.Msg {
-			return CommandPaletteExecuteMsg{ResultMsg: NavigateToViewMsg{ViewType: viewType}}
+			return CommandPaletteExecuteMsg{ResultMsg: NavigateToViewMsg{PresentationID: viewType}}
 		}
 	}
 
 	return m, nil
+}
+
+// peekItem opens a task Peek above the palette without discarding the palette
+// or its query. A following Esc therefore returns to the exact search result.
+func (m *CommandPaletteModel) peekItem(item PaletteItem) (tea.Model, tea.Cmd) {
+	if item.Category != ItemCategoryTasks || item.Task == nil || item.Project == nil {
+		return m, nil
+	}
+	itemID := m.getItemID(item)
+	if itemID != "" {
+		recordRecentSelection(item, itemID)
+		m.persistRecentSelections()
+	}
+	task := item.Task
+	return m, func() tea.Msg {
+		return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
+	}
 }

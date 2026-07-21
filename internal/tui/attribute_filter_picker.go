@@ -6,7 +6,7 @@ import (
 
 // ShowAttrFilterPickerMsg opens the attribute filter picker overlay.
 type ShowAttrFilterPickerMsg struct {
-	Source ViewType
+	Source PresentationID
 }
 
 // AttrFilterPickerDoneMsg is returned after the user picks an attribute filter.
@@ -16,7 +16,7 @@ type AttrFilterPickerDoneMsg struct {
 	Prefix   string
 	Key      string
 	Canceled bool
-	Source   ViewType
+	Source   PresentationID
 }
 
 // attrFilterItem represents a single attribute filter option in the picker.
@@ -81,7 +81,7 @@ var allAttrFilterItems = []attrFilterItem{
 // AttrFilterPickerModel is a searchable picker for attribute filter options.
 type AttrFilterPickerModel struct {
 	*BasePicker[attrFilterItem]
-	source ViewType
+	source PresentationID
 }
 
 // NewAttrFilterPickerModel creates the picker for the given source view.

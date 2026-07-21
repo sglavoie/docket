@@ -304,6 +304,26 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 	return out, nil
 }
 
+// persistLoadedMigration commits one already-loaded domain against the exact
+// revision that produced it, then returns the revision of the migrated bytes.
+// The existing save path supplies locking, backup, and atomic replacement.
+func (s *DomainFileStore) persistLoadedMigration(kind domainKind, payload any, loadedRevision string) (string, error) {
+	if loadedRevision == "" {
+		// A missing artifact is a default in-memory domain, not something load is
+		// allowed to create. Bootstrap or the next explicit commit will persist
+		// the already-migrated defaults.
+		return "", nil
+	}
+	if err := s.save(kind, payload, loadedRevision); err != nil {
+		return loadedRevision, fmt.Errorf("failed to persist %s TUI-state migration: %w", kind.name(), err)
+	}
+	data, err := encodeDomainEnvelope(kind, s.workspaceID, payload)
+	if err != nil {
+		return loadedRevision, err
+	}
+	return revisionOf(data), nil
+}
+
 func decodeEnvelope(data []byte) (domainEnvelope, error) {
 	var env domainEnvelope
 	if err := json.Unmarshal(data, &env); err != nil {
@@ -590,6 +610,16 @@ func (s *DomainFileStore) LoadPlanningChecked() (*PlanningState, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
+	changed, err := out.MigrateTUIState()
+	if err != nil {
+		return nil, rev, err
+	}
+	if changed {
+		rev, err = s.persistLoadedMigration(domainPlanning, out, rev)
+		if err != nil {
+			return nil, rev, err
+		}
+	}
 	return out, rev, nil
 }
 
@@ -621,6 +651,16 @@ func (s *DomainFileStore) LoadSettingsChecked() (*Settings, string, error) {
 	rev, err := s.load(domainSettings, out)
 	if err != nil {
 		return nil, "", err
+	}
+	changed, err := out.MigrateTUIState()
+	if err != nil {
+		return nil, rev, err
+	}
+	if changed {
+		rev, err = s.persistLoadedMigration(domainSettings, out, rev)
+		if err != nil {
+			return nil, rev, err
+		}
 	}
 	return out, rev, nil
 }
@@ -692,6 +732,16 @@ func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 	rev, err := s.load(domainMachine, out)
 	if err != nil {
 		return nil, "", err
+	}
+	changed, err := out.MigrateTUIState()
+	if err != nil {
+		return nil, rev, err
+	}
+	if changed {
+		rev, err = s.persistLoadedMigration(domainMachine, out, rev)
+		if err != nil {
+			return nil, rev, err
+		}
 	}
 	return out, rev, nil
 }

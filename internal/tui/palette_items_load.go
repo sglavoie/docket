@@ -17,13 +17,18 @@ import (
 func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	var items []PaletteItem
 
-	// Load commands from registry (filtered by current view)
-	for _, cmd := range m.registry.GetForView(m.currentView) {
+	// Load commands from the typed capability context when the invoking route
+	// supplies one; renderer-scoped commands use PresentationID.
+	commands := m.registry.GetForView(m.currentView)
+	if m.commandContext != nil {
+		commands = m.registry.GetForContext(*m.commandContext)
+	}
+	for _, cmd := range commands {
 		cmdCopy := cmd
 		items = append(items, PaletteItem{
 			Name:        cmdCopy.Name,
 			Description: cmdCopy.Description,
-			Shortcut:    cmdCopy.Shortcut,
+			Shortcut:    activeGlobalPaletteShortcut(cmdCopy),
 			Category:    ItemCategoryCommands,
 			Command:     &cmdCopy,
 		})
@@ -64,7 +69,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			if task == nil {
 				continue
 			}
-			if !m.includeCompleted && task.IsTerminalState() {
+			if task.IsTerminalState() {
 				continue
 			}
 
@@ -132,22 +137,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
-	savedSearches := m.runtime.Machine().GetSavedSearches()
-	savedSearchNames := make([]string, 0, len(savedSearches))
-	for name := range savedSearches {
-		savedSearchNames = append(savedSearchNames, name)
-	}
-	sort.Strings(savedSearchNames)
-	for _, name := range savedSearchNames {
-		query := savedSearches[name]
-		items = append(items, PaletteItem{
-			Name:        name,
-			Description: query,
-			Category:    ItemCategorySavedSearch,
-			SavedSearch: query,
-		})
-	}
-
 	for _, project := range projects {
 		notes, err := storage.ListNotes(project)
 		if err != nil {
@@ -187,20 +176,29 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	viewItems := []struct {
 		name        string
 		description string
-		viewType    ViewType
+		viewType    PresentationID
+		aliasTarget PaletteAliasTarget
 	}{
-		{"Daily Review", "Review and plan your day", ViewDailyReview},
-		{"Weekly Review", "Strategic project health review", ViewWeeklyReview},
-		{"Priority View", "Tasks sorted by priority level", ViewPriorityView},
-		{"Blockers", "View blocked and blocking tasks", ViewBlockers},
-		{"All Tasks", "View tasks across all projects", ViewAllTasks},
-		{"Global Blockers", "Blockers across all projects", ViewGlobalBlockers},
-		{"Global Inbox", "Process unassigned tasks across projects", ViewGlobalInboxProcessor},
-		{"Global Tag Manager", "Manage tags across all projects", ViewGlobalTagManager},
-		{"Notes", "Project notes and documents", ViewNotes},
-		{"Global Notes", "Notes not tied to any project", ViewGlobalNotes},
-		{"Workflow Rules", "Manage workflow automation rules", ViewWorkflowRules},
-		{"Settings", "Application preferences and configuration", ViewSettings},
+		{name: "Daily Review", description: "Review and plan your day", viewType: ViewDailyReview},
+		{name: "Weekly Review", description: "Strategic project health review", viewType: ViewWeeklyReview},
+		{name: "Recent Activity", description: "Browse recent and completed tasks", viewType: ViewRecentActivity},
+		{name: "Metrics Dashboard", description: "Completion, cycle-time, and throughput analytics", viewType: ViewMetricsDashboard},
+		{name: "Roadmap", description: "Timelines, forecasts, and critical paths", viewType: ViewRoadmap},
+		{name: "Priority View", description: "Tasks sorted by priority level", viewType: ViewPriorityView},
+		{name: "Blockers", description: "View blocked and blocking tasks", viewType: ViewBlockers},
+		{name: "All Tasks", description: "View tasks across all projects", viewType: ViewAllTasks},
+		{name: "Global Blockers", description: "Blockers across all projects", viewType: ViewGlobalBlockers},
+		{name: "Global Inbox", description: "Process unassigned tasks across projects", viewType: ViewGlobalInboxProcessor},
+		{name: "Global Tag Manager", description: "Manage tags across all projects", viewType: ViewGlobalTagManager},
+		{name: "Notes", description: "Project notes and documents", viewType: ViewNotes},
+		{name: "Global Notes", description: "Notes not tied to any project", viewType: ViewGlobalNotes},
+		{name: "Workflow Rules", description: "Manage workflow automation rules", viewType: ViewWorkflowRules},
+		{name: "Settings", description: "Application preferences and configuration", viewType: ViewSettings},
+		// These names remain searchable aliases for consolidated surfaces. They
+		// do not restore the retired view implementations or their old keys.
+		{name: "Global Search", description: "Alias for Command Palette search", viewType: ViewGlobalSearch},
+		{name: "Notes Search", description: "Alias for Manage Notes search", viewType: ViewNotesSearch},
+		{name: "Pipeline Hub", description: "Alias for Home Attention", aliasTarget: PaletteAliasHomeAttention},
 	}
 	for _, v := range viewItems {
 		items = append(items, PaletteItem{
@@ -208,8 +206,24 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			Description: v.description,
 			Category:    ItemCategoryViews,
 			ViewTarget:  v.viewType,
+			AliasTarget: v.aliasTarget,
 		})
 	}
 
 	return items
+}
+
+// activeGlobalPaletteShortcut exposes only bindings from the exact global map.
+// Contextual operations remain searchable and executable through Enter, but
+// stale descriptor shortcuts cannot become ghost-key documentation.
+func activeGlobalPaletteShortcut(command Command) string {
+	if command.Reachability != CommandReachGlobalBinding {
+		return ""
+	}
+	switch command.Shortcut {
+	case ":", "?", "esc", "ctrl+c", "ctrl+esc", "ctrl+g", "ctrl+n", "ctrl+x", "|", "#":
+		return command.Shortcut
+	default:
+		return ""
+	}
 }

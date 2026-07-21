@@ -8,8 +8,8 @@ import (
 
 // handleFocusBoardReorder dispatches an adjacent reorder to the active planning
 // horizon: the Today plan on the Today tab, the Next shortlist on the Next tab.
-// It is a no-op on the Backlog/Done/All tabs, whose order is derived (ranked or
-// closed-today), not user-editable.
+// It is a no-op on Backlog, whose ranked order is derived rather than
+// user-editable.
 func (m *FocusBoardModel) handleFocusBoardReorder(delta int) (tea.Model, tea.Cmd) {
 	switch m.tabs.Active {
 	case boardTabToday:

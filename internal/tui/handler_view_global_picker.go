@@ -7,6 +7,18 @@ func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {
+			if m.typedNavigation && m.taskWorkspaceView != nil {
+				m.currentProject = msg.Project
+				_ = m.taskWorkspace.State.SetGrouping(WorkspaceGroupDueDate)
+				_ = m.taskWorkspace.State.SetSorting(SortState{Field: SortByScore, Ascending: true})
+				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
+					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceList, Focus: WorkspaceHighPriority,
+				})
+				if err != nil {
+					return true, func() tea.Msg { return ErrorMsg{Err: err} }
+				}
+				return true, m.activateTaskWorkspaceRoute(route)
+			}
 			pv := NewPriorityViewModel(msg.Project, m.runtime, m.configManager)
 			pv.queueIDs = m.focusQueueIDs
 			pv.dailyPlanIDs = m.dailyPlanIDs

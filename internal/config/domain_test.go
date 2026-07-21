@@ -434,24 +434,16 @@ func TestNewMachineStateDefaults(t *testing.T) {
 }
 
 func TestMachineStateValidate(t *testing.T) {
-	bad := 5
-	if err := (&MachineState{DashboardBottomLayout: &bad}).Validate(); err == nil {
-		t.Error("out-of-range dashboard layout should fail")
-	}
-	ok := 1
-	if err := (&MachineState{DashboardBottomLayout: &ok}).Validate(); err != nil {
-		t.Errorf("in-range dashboard layout should pass: %v", err)
+	if err := (&MachineState{AIHarness: "unknown-harness"}).Validate(); err == nil {
+		t.Error("unknown AI harness should fail")
 	}
 }
 
 func TestMachineStateRemoveProjectReferences(t *testing.T) {
 	m := &MachineState{
-		CurrentProject:       "drop",
-		ProjectViewStates:    map[string]ProjectViewState{"drop-slug": {}, "keep": {}},
-		RecentTaskVisits:     []RecentTaskVisit{{TaskID: "t", ProjectID: "drop"}, {TaskID: "t2", ProjectID: "keep"}},
-		CycleProjects:        []string{"drop", "keep"},
-		ContextCycleProjects: map[string][]string{"work": {"drop-slug", "keep"}},
-		CustomContexts:       map[string][]string{"work": {"drop"}},
+		CurrentProject:   "drop",
+		RecentTaskVisits: []RecentTaskVisit{{TaskID: "t", ProjectID: "drop"}, {TaskID: "t2", ProjectID: "keep"}},
+		CustomContexts:   map[string][]string{"work": {"drop"}},
 	}
 	if !m.RemoveProjectReferences("drop", "drop-slug") {
 		t.Fatal("expected change")
@@ -459,17 +451,8 @@ func TestMachineStateRemoveProjectReferences(t *testing.T) {
 	if m.CurrentProject != "" {
 		t.Errorf("current project should be cleared, got %q", m.CurrentProject)
 	}
-	if _, ok := m.ProjectViewStates["drop-slug"]; ok {
-		t.Error("view state for dropped slug should be removed")
-	}
 	if len(m.RecentTaskVisits) != 1 || m.RecentTaskVisits[0].ProjectID != "keep" {
 		t.Errorf("recent visits not cleaned: %+v", m.RecentTaskVisits)
-	}
-	if len(m.CycleProjects) != 1 || m.CycleProjects[0] != "keep" {
-		t.Errorf("cycle projects not cleaned: %+v", m.CycleProjects)
-	}
-	if got := m.ContextCycleProjects["work"]; len(got) != 1 || got[0] != "keep" {
-		t.Errorf("context cycle not cleaned: %+v", got)
 	}
 	if got := m.CustomContexts["work"]; len(got) != 0 {
 		t.Errorf("custom context not cleaned: %+v", got)

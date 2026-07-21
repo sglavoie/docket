@@ -71,10 +71,9 @@ func (m *SettingsModel) validateAll() error {
 		m.validateMaxPinnedBarItems,
 		m.validateMaxRecentTaskVisits,
 		m.validateSectionLimits,
+		m.validateResumeCardLimit,
 		m.validateAttachmentEditor,
 		m.validateCodeEditor,
-		m.validatePopupTimeout,
-		m.validateDashboardSplitPcts,
 		m.validateAlertSettings,
 	}
 	for _, v := range validators {
@@ -333,21 +332,6 @@ func normalizeHexColor(val string) string {
 		return string([]byte{'#', val[1], val[1], val[2], val[2], val[3], val[3]})
 	}
 	return val
-}
-
-func (m *SettingsModel) validatePopupTimeout() error {
-	_, _, err := validateIntOptionalInRange(m.popupTimeoutInput.Value(), "popup timeout", 0, 30)
-	return err
-}
-
-func (m *SettingsModel) validateDashboardSplitPcts() error {
-	if _, err := validateIntInRange(m.dashboardHorizSplitInput.Value(), "horizontal split %", 10, 90); err != nil {
-		return err
-	}
-	if _, err := validateIntInRange(m.dashboardVertSplitInput.Value(), "vertical split %", 10, 90); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (m *SettingsModel) validateEditorCommand(editor string) error {

@@ -43,13 +43,13 @@ type ParentSelectorModel struct {
 	allItems       []ParentPickerItem // All valid parent candidates
 	allowNone      bool               // Whether "None" is a valid option
 	currentID      *string            // Currently selected parent ID (for pre-selection)
-	source         ViewType           // Which view opened this selector
+	source         PresentationID     // Which view opened this selector
 	reparentTaskID string             // When non-empty, forwarded back in ParentSelectedMsg
 	alwaysSearch   *alwaysSearchSinglePicker[ParentPickerItem]
 }
 
 // NewParentSelectorModel creates a new parent selector.
-func NewParentSelectorModel(validParents []*models.Task, currentID *string, allowNone bool, source ViewType) *ParentSelectorModel {
+func NewParentSelectorModel(validParents []*models.Task, currentID *string, allowNone bool, source PresentationID) *ParentSelectorModel {
 	items := make([]ParentPickerItem, len(validParents))
 	for i, t := range validParents {
 		items[i] = ParentPickerItem{Task: t}

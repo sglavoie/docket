@@ -44,8 +44,8 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if target == models.StateDone && NewWorkspaceResolver(snap).HasIncompleteDependencies(ref.Task, ref.Project) {
 		return TaskResult{}, fmt.Errorf("%w: task #%d", ErrDependencyBlocked, ref.Task.ShortID)
 	}
-	if err := childrenCompletionGuard(ref.Task, target); err != nil {
-		return TaskResult{}, err
+	if guardErr := childrenCompletionGuard(ref.Task, target); guardErr != nil {
+		return TaskResult{}, guardErr
 	}
 	applyState(ref.Task, target)
 	ref.Task.UpdatedAt = s.clock.Now()

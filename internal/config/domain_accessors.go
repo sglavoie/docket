@@ -104,17 +104,6 @@ func (s *Settings) GetMaxRecentTaskVisits() int {
 	return *s.MaxRecentTaskVisits
 }
 
-// GetPopupTimeoutSeconds mirrors (*Config).GetPopupTimeoutSeconds.
-func (s *Settings) GetPopupTimeoutSeconds() int {
-	if s.PopupTimeoutSeconds == nil {
-		return 0
-	}
-	if *s.PopupTimeoutSeconds < 0 {
-		return 0
-	}
-	return *s.PopupTimeoutSeconds
-}
-
 // GetResumeCardLimit mirrors (*Config).GetResumeCardLimit.
 func (s *Settings) GetResumeCardLimit() int {
 	if s.ResumeCardLimit == nil || *s.ResumeCardLimit < 1 {
@@ -124,26 +113,6 @@ func (s *Settings) GetResumeCardLimit() int {
 		return ResumeCardLimitUpperBound
 	}
 	return *s.ResumeCardLimit
-}
-
-// GetDefaultProjectView returns the per-project default view. The Outliner is now
-// the sole surviving per-project surface, so the retired ProjectTree value
-// ("project_tree") and any unknown legacy value migrate safely to "outliner".
-func (s *Settings) GetDefaultProjectView() string {
-	return "outliner"
-}
-
-// GetFocusBoardDefaultMode mirrors (*Config).GetFocusBoardDefaultMode.
-func (s *Settings) GetFocusBoardDefaultMode() string {
-	if s.FocusBoardDefaultMode == "" {
-		return "list"
-	}
-	return s.FocusBoardDefaultMode
-}
-
-// SetFocusBoardDefaultMode mirrors (*Config).SetFocusBoardDefaultMode.
-func (s *Settings) SetFocusBoardDefaultMode(mode string) {
-	s.FocusBoardDefaultMode = mode
 }
 
 // GetSectionLimit mirrors (*Config).GetSectionLimit.
@@ -415,75 +384,10 @@ func (m *MachineState) GetCodeEditor() string {
 // GetStartView mirrors (*Config).GetStartView.
 func (m *MachineState) GetStartView() string {
 	switch m.StartView {
-	case "dashboard", "focus-board", "cross-project-outliner", "all-tasks",
-		"daily-review", "backlog", "priority", "due-dates":
+	case StartViewHome, StartViewPlanner, StartViewTasks, StartViewProject,
+		StartViewReview, StartViewManage:
 		return m.StartView
 	default:
 		return DefaultStartView
 	}
-}
-
-// GetTaskFormCollapsed mirrors (*Config).GetTaskFormCollapsed.
-func (m *MachineState) GetTaskFormCollapsed() bool {
-	if m.TaskFormCollapsed == nil {
-		return false
-	}
-	return *m.TaskFormCollapsed
-}
-
-// GetOutlinerCollapsedSections mirrors (*Config).GetOutlinerCollapsedSections.
-func (m *MachineState) GetOutlinerCollapsedSections() map[string]bool {
-	if m.OutlinerCollapsedSections == nil {
-		return make(map[string]bool)
-	}
-	return m.OutlinerCollapsedSections
-}
-
-// GetDashboardBottomLayout mirrors (*Config).GetDashboardBottomLayout.
-func (m *MachineState) GetDashboardBottomLayout() DashboardBottomLayout {
-	if m.DashboardBottomLayout == nil {
-		return DashboardLayoutHorizontal
-	}
-	v := DashboardBottomLayout(*m.DashboardBottomLayout)
-	if v < 0 || v >= dashboardLayoutCount {
-		return DashboardLayoutHorizontal
-	}
-	return v
-}
-
-// SetDashboardBottomLayout mirrors (*Config).SetDashboardBottomLayout.
-func (m *MachineState) SetDashboardBottomLayout(v DashboardBottomLayout) {
-	if v < 0 || v >= dashboardLayoutCount {
-		v = DashboardLayoutHorizontal
-	}
-	i := int(v)
-	m.DashboardBottomLayout = &i
-}
-
-// GetDashboardHorizontalSplitPct mirrors (*Config).GetDashboardHorizontalSplitPct.
-func (m *MachineState) GetDashboardHorizontalSplitPct() int {
-	if m.DashboardHorizontalSplitPct == nil {
-		return DefaultDashboardHorizontalSplitPct
-	}
-	return clampSplitPct(*m.DashboardHorizontalSplitPct)
-}
-
-// SetDashboardHorizontalSplitPct mirrors (*Config).SetDashboardHorizontalSplitPct.
-func (m *MachineState) SetDashboardHorizontalSplitPct(pct int) {
-	v := clampSplitPct(pct)
-	m.DashboardHorizontalSplitPct = &v
-}
-
-// GetDashboardVerticalSplitPct mirrors (*Config).GetDashboardVerticalSplitPct.
-func (m *MachineState) GetDashboardVerticalSplitPct() int {
-	if m.DashboardVerticalSplitPct == nil {
-		return DefaultDashboardVerticalSplitPct
-	}
-	return clampSplitPct(*m.DashboardVerticalSplitPct)
-}
-
-// SetDashboardVerticalSplitPct mirrors (*Config).SetDashboardVerticalSplitPct.
-func (m *MachineState) SetDashboardVerticalSplitPct(pct int) {
-	v := clampSplitPct(pct)
-	m.DashboardVerticalSplitPct = &v
 }

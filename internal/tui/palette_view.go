@@ -28,12 +28,6 @@ func (m *CommandPaletteModel) View() tea.View {
 	} else {
 		// Search input (only in search mode)
 		content.WriteString(m.searchInput.View())
-		// Show history indicator when browsing history
-		if m.searchHistoryIndex >= 0 && len(m.searchHistory) > 0 {
-			historyHint := fmt.Sprintf(" %s",
-				MutedStyle.Render(fmt.Sprintf("(history %d/%d)", m.searchHistoryIndex+1, len(m.searchHistory))))
-			content.WriteString(historyHint)
-		}
 		content.WriteString("\n\n")
 	}
 
@@ -60,7 +54,7 @@ func (m *CommandPaletteModel) View() tea.View {
 		out.WriteString("\n\n")
 		out.WriteString(HelpStyle.Render("Try: :cmd for commands · :task for tasks · :prj for projects"))
 		out.WriteString("\n")
-		out.WriteString(HelpStyle.Render("     :tag :sec :note :view · or clear to browse all"))
+		out.WriteString(HelpStyle.Render("     :tag :sec :note :sv :view · or clear for contextual commands"))
 		return tea.NewView(out.String())
 	}
 

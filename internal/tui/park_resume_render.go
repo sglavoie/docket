@@ -26,13 +26,6 @@ func parkedResumeNote(task *models.Task) string {
 	return "parked"
 }
 
-func parkedResumeRelative(task *models.Task) string {
-	if task != nil && task.ParkedAt != nil {
-		return formatRelativeTime(*task.ParkedAt)
-	}
-	return "parked"
-}
-
 func parkedResumeSnippet(task *models.Task, width int) string {
 	prefix := parkedResumeIcon + " "
 	if width <= lipgloss.Width(prefix) {

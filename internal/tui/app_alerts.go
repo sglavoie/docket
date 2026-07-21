@@ -36,8 +36,9 @@ func (m *AppModel) reevaluateAlerts() {
 		m.dismissedSet = nil
 		m.proactiveAlerts = rawSnapshot
 		if m.dashboard != nil {
-			counts, _ := loadPipelineCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
+			counts, _ := loadAttentionCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
 			m.dashboard.SetPipelineCounts(counts)
+			m.dashboard.SetAttentionAlerts(m.proactiveAlerts)
 		}
 		return
 	}
@@ -82,14 +83,20 @@ func (m *AppModel) reevaluateAlerts() {
 	m.dismissedSet = dismissedSet
 	m.proactiveAlerts = alerts.FilterDismissed(rawSnapshot, dismissedSet)
 	if m.dashboard != nil {
-		counts, _ := loadPipelineCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
+		counts, _ := loadAttentionCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
 		m.dashboard.SetPipelineCounts(counts)
+		m.dashboard.SetAttentionAlerts(m.proactiveAlerts)
 	}
 }
 
 // refreshNotificationCenter recreates the notification center if it's the current view,
 // preserving the cursor position and showDismissed toggle state.
 func (m *AppModel) refreshNotificationCenter() {
+	if hub, params, ok := m.manageHubPrimary(); ok && params.Module == ManageNotifications && params.NotificationMode == NotificationAlerts {
+		hub.SetNotificationData(m.proactiveAlerts, m.rawAlerts, m.dismissedSet)
+		m.refreshManageNotificationCenter()
+		return
+	}
 	if m.currentView() != ViewNotificationCenter {
 		return
 	}

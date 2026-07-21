@@ -222,14 +222,14 @@ func TestTodayCockpitCompactVisualStatesRespectWidthAndFooter(t *testing.T) {
 			model:  doneModel,
 			width:  48,
 			height: 14,
-			want:   []string{"All done!", "p plan more", "1/1 done"},
+			want:   []string{"All done!", "x done", "1/1 done"},
 		},
 		{
 			name:   "empty inbox only",
 			model:  emptyModel,
 			width:  48,
 			height: 16,
-			want:   []string{"Triage inbox", "ctrl+i triage", "a add"},
+			want:   []string{"Triage inbox", ": manage inbox", "a add"},
 		},
 	}
 
@@ -347,30 +347,6 @@ func TestTodayCockpitStripSuppressedOnNextTab(t *testing.T) {
 	}
 	if !strings.Contains(plain, "Other next-tab task") {
 		t.Fatalf("Next tab row missing: %s", plain)
-	}
-}
-
-// TestTodayCockpitStripSuppressedOnClosedTab is the Closed-tab counterpart of
-// the Next-tab suppression check above. Closed list-mode renders only history
-// rows and the strip must stay hidden.
-func TestTodayCockpitStripSuppressedOnClosedTab(t *testing.T) {
-	const title = "Ship overdue invoice"
-	m := cockpitWorkOnTaskFixture(t, title)
-	closedProject := cockpitProject(t, "Closed Project")
-	closedTask := cockpitTask(t, closedProject, "Old closed task", models.StatusDone, models.SectionCompleted)
-	m.closedRows = []boardRow{cockpitBoardRow(closedTask, closedProject)}
-	m.tabs.Active = boardTabDone
-	m.applyFilter()
-
-	plain := ansi.Strip(m.View().Content)
-	if strings.Contains(plain, "Next: "+title) {
-		t.Fatalf("strip leaked into Closed tab: %s", plain)
-	}
-	if !strings.Contains(plain, "Old closed task") {
-		t.Fatalf("Closed tab row missing: %s", plain)
-	}
-	if !strings.Contains(plain, ",o reopen") || !strings.Contains(plain, "enter/o details") || !strings.Contains(plain, "tD delete") {
-		t.Fatalf("Closed tab footer missing updated task actions: %s", plain)
 	}
 }
 
@@ -527,7 +503,7 @@ func TestTodayCockpitStripStaysOnEmptyState(t *testing.T) {
 
 // TestTodayCockpitWPlanShortcutHintStillPresent guards the footer-hint copy
 // for the steady-state Today tab. Even with the strip occupying the top of
-// the surface, the footer must continue to advertise `x done`, `p priority`,
+// the surface, the footer must continue to advertise `x done`, selection,
 // and `a add` so muscle memory keeps working. The strip's own hint cluster
 // is separate from this footer.
 func TestTodayCockpitActionShortcutHintsStillPresent(t *testing.T) {
@@ -535,7 +511,7 @@ func TestTodayCockpitActionShortcutHintsStillPresent(t *testing.T) {
 	m := cockpitWorkOnTaskFixture(t, title)
 
 	plain := ansi.Strip(m.View().Content)
-	for _, want := range []string{"x done", "p priority", "a add"} {
+	for _, want := range []string{"x done", "space select", "a add"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("footer hint %q missing alongside strip: %s", want, plain)
 		}

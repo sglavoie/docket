@@ -69,7 +69,6 @@ package tui
 //
 // Examples:
 //   - CommandPaletteTaskActionMsg{Action: "complete", Task: ...}
-//   - CycleProjectMsg{Forward: bool}
 //   - RefreshMsg, BackMsg, QuitMsg
 //
 // # File Organization

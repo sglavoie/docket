@@ -1,0 +1,6 @@
+{
+  "default_context": "work",
+  "fzf_enabled": true,
+  "glow_enabled": true,
+  "popup_timeout_seconds": 9
+}

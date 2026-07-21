@@ -6,39 +6,49 @@ type RecentPaletteItem struct {
 	Count    int    `json:"count,omitempty"`
 }
 
-const DefaultStartView = "focus-board"
-
-type InfoPanelMode int
-
 const (
-	InfoPanelOff            InfoPanelMode = 0
-	InfoPanelInfoCards      InfoPanelMode = 1
-	InfoPanelProjectSummary InfoPanelMode = 2
-	infoPanelModeCount                    = 3
+	// CurrentTUIStateVersion versions route and presentation state inside the
+	// machine, planning, and settings domains independently from their envelope
+	// schema. Each owning domain can therefore migrate and commit atomically.
+	CurrentTUIStateVersion = 1
+
+	StartViewHome    = "home"
+	StartViewPlanner = "planner"
+	StartViewTasks   = "tasks"
+	StartViewProject = "project"
+	StartViewReview  = "review"
+	StartViewManage  = "manage"
+
+	DefaultStartView = StartViewPlanner
+
+	// MaxRecentPaletteItems is the durable cap for the one palette history that
+	// survives the TUI-state migration.
+	MaxRecentPaletteItems = 10
 )
 
-type DashboardBottomLayout int
-
-const (
-	DashboardLayoutHorizontal DashboardBottomLayout = 0
-	DashboardLayoutVertical   DashboardBottomLayout = 1
-	DashboardLayoutListOnly   DashboardBottomLayout = 2
-	dashboardLayoutCount                            = 3
-)
-
-const (
-	DefaultDashboardHorizontalSplitPct = 70
-	DefaultDashboardVerticalSplitPct   = 60
-	MinDashboardSplitPct               = 10
-	MaxDashboardSplitPct               = 90
-)
-
-func clampSplitPct(pct int) int {
-	if pct < MinDashboardSplitPct {
-		return MinDashboardSplitPct
-	}
-	if pct > MaxDashboardSplitPct {
-		return MaxDashboardSplitPct
-	}
-	return pct
+// StartRouteState carries only the route semantics needed to preserve an old
+// startup choice while its top-level value is rewritten to one of the six
+// canonical destinations. Empty fields mean the destination's normal default.
+// It deliberately does not capture arbitrary live view state.
+type StartRouteState struct {
+	PlannerTab   string `json:"planner_tab,omitempty"`
+	TaskLayout   string `json:"task_layout,omitempty"`
+	TaskFocus    string `json:"task_focus,omitempty"`
+	TaskSort     string `json:"task_sort,omitempty"`
+	TaskGroup    string `json:"task_group,omitempty"`
+	ReviewModule string `json:"review_module,omitempty"`
 }
+
+const (
+	StartPlannerToday   = "today"
+	StartPlannerBacklog = "backlog"
+
+	StartTaskOutline = "outline"
+	StartTaskList    = "list"
+	StartTaskActive  = "active"
+
+	StartTaskSortPriority = "priority"
+	StartTaskGroupDueDate = "due-date"
+
+	StartReviewDaily = "daily"
+)

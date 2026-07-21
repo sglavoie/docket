@@ -9,12 +9,6 @@ type CommonPrimaryViewDeps struct {
 	SwitchProjectView Action
 	// SwitchProjectViewDescription overrides the context-specific help label.
 	SwitchProjectViewDescription string
-	// OpenProjectCyclePicker opens the numbered project cycle picker.
-	OpenProjectCyclePicker Action
-	// PrevProject cycles to the previous project.
-	PrevProject Action
-	// OpenCycleManager opens the cycle manager popup.
-	OpenCycleManager Action
 	// ProjectBlockers opens the project blockers view.
 	ProjectBlockers Action
 	// PriorityView opens the priority view.
@@ -61,9 +55,6 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 		entries = append(entries, Bind("ctrl+p", projectViewDescription, cat, deps.SwitchProjectView))
 	}
 	entries = append(entries,
-		Bind("`", "Open project picker", "Project Cycling", deps.OpenProjectCyclePicker),
-		Bind("~", "Previous project in cycle", "Project Cycling", deps.PrevProject),
-		Bind("@", "Open cycle manager", "Project Cycling", deps.OpenCycleManager),
 		Bind("B", "Project blockers", cat, deps.ProjectBlockers),
 		Bind("p", "Priority view", cat, deps.PriorityView),
 		Bind("w", "Open today's plan fallback", cat, deps.AddToPlan, AsHidden()),
@@ -71,7 +62,6 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 		Bind("i", "Quick capture", "Task Operations", deps.QuickCapture),
 		Bind("I", "Bulk capture", "Task Operations", deps.BulkCapture),
 		Bind(`\`, "Jump to task", "Navigation", deps.JumpToTask),
-		Bind("ctrl+n", "Open project Notes", "Notes", deps.OpenNotesView),
 		Bind("{", "Open project Notes", "Notes", deps.OpenNotesView, AsHidden()),
 		Bind("}", "Create new note", "Notes", deps.CreateNote),
 		Bind("R", "Reload from disk", "Other", deps.ReloadFromDisk),

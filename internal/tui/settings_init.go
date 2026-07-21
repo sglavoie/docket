@@ -90,14 +90,11 @@ func NewSettingsModel(deps *shellDeps) *SettingsModel {
 		linkedTaskJump:           settings.GetLinkedTaskJumpToNew(),
 		maxPinnedInput:           newSettingsInput(strconv.Itoa(config.DefaultMaxPinnedBarItems), 2, 6, strconv.Itoa(settings.GetMaxPinnedBarItems()), false),
 		maxRecentTaskVisitsInput: newSettingsInput(strconv.Itoa(config.DefaultMaxRecentTaskVisits), 2, 6, strconv.Itoa(settings.GetMaxRecentTaskVisits()), false),
-		popupTimeoutInput:        newSettingsInput("0", 2, 6, strconv.Itoa(settings.GetPopupTimeoutSeconds()), false),
 		attachmentEditorInput:    newSettingsInput("(OS default)", 256, 40, machine.AttachmentEditor, false),
 		codeEditorInput:          newSettingsInput("code", 256, 40, machine.CodeEditor, false),
-		outlinerCollapsed:        initOutlinerCollapsed(machine),
-		outlinerColumnDefaults:   initOutlinerColumnDefaults(machine.OutlinerDefaultColumns),
-		outlinerPriorityMode:     priorityModeToCursor(machine.OutlinerPriorityMode),
-		crossOutlinerSidebar:     machine.CrossOutlinerSidebarEnabled == nil || *machine.CrossOutlinerSidebarEnabled,
-		crossOutlinerCycleOnly:   machine.CrossOutlinerCycleOnly != nil && *machine.CrossOutlinerCycleOnly,
+		outlinerColumnDefaults:   initOutlinerColumnDefaults(nil),
+		outlinerPriorityMode:     priorityModeToCursor(PriorityModeConditional),
+		crossOutlinerSidebar:     true,
 		zebraStriping:            settings.ZebraStriping(),
 		weekEndDayCursor:         settingsOptionCursor(weekEndDayValues, settings.GetWeekEndDay(), 2),
 		timeFormatCursor:         settingsOptionCursor(timeFormatValues, settings.TimeFormat, 1),
@@ -171,11 +168,6 @@ func NewSettingsModel(deps *shellDeps) *SettingsModel {
 		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
 		activeHiddenDimmed:       themeHiddenDimmed(activeTheme),
 		startViewCursor:          settingsOptionCursor(startViewValues, machine.GetStartView(), defaultStartViewCursor),
-		taskFormCollapsed:        machine.GetTaskFormCollapsed(),
-		focusBoardModeCursor:     settingsOptionCursor(focusBoardModeValues, settings.GetFocusBoardDefaultMode(), 0),
-		dashboardLayoutCursor:    initDashboardLayoutCursor(machine.GetDashboardBottomLayout()),
-		dashboardHorizSplitInput: newSettingsInput(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct), 2, 6, strconv.Itoa(machine.GetDashboardHorizontalSplitPct()), false),
-		dashboardVertSplitInput:  newSettingsInput(strconv.Itoa(config.DefaultDashboardVerticalSplitPct), 2, 6, strconv.Itoa(machine.GetDashboardVerticalSplitPct()), false),
 		resumeCardLimitInput:     newSettingsInput(strconv.Itoa(config.DefaultResumeCardLimit), 2, 6, strconv.Itoa(settings.GetResumeCardLimit()), false),
 		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, settings.KanbanSettings.DefaultMode, 0),
 		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, settings.KanbanSettings.DefaultStartColumn, false),
@@ -285,22 +277,4 @@ func initKanbanEnabledModes(ids []string) [4]bool {
 		result[i] = idSet[v]
 	}
 	return result
-}
-
-// initDashboardLayoutCursor clamps the layout enum into a valid cursor index.
-func initDashboardLayoutCursor(v config.DashboardBottomLayout) int {
-	i := int(v)
-	if i < 0 || i >= len(dashboardLayoutOptions) {
-		return 0
-	}
-	return i
-}
-
-func initOutlinerCollapsed(machine *config.MachineState) [7]bool {
-	var outlinerCollapsed [7]bool
-	collapsedMap := machine.GetOutlinerCollapsedSections()
-	for i, sectionName := range outlinerSectionNames {
-		outlinerCollapsed[i] = collapsedMap[sectionName]
-	}
-	return outlinerCollapsed
 }

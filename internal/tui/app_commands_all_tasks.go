@@ -11,7 +11,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Navigate to task in outliner",
 			Shortcut:    "gp",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"open in project", "show in outliner"},
 			Handler: func() tea.Msg {
 				return syntheticKey('g')
@@ -22,7 +22,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Cycle task grouping mode",
 			Shortcut:    "ctrl+g",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"group by", "change grouping"},
 			Handler: func() tea.Msg {
 				return syntheticCtrlKey('g')
@@ -33,7 +33,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Enter or exit multi-select mode",
 			Shortcut:    "v",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"multi select", "bulk select"},
 			Handler: func() tea.Msg {
 				return syntheticKey('v')
@@ -44,7 +44,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Toggle group collapse/expand",
 			Shortcut:    "tab",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"fold group", "toggle group"},
 			Handler: func() tea.Msg {
 				return syntheticSpecialKey(tea.KeyTab)
@@ -55,7 +55,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Reload tasks from all projects",
 			Shortcut:    "r",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"reload tasks"},
 			Handler: func() tea.Msg {
 				return syntheticKey('r')
@@ -66,7 +66,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Copy task title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
 				return syntheticKey('y')
@@ -77,7 +77,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Copy task with details to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
 				return syntheticKey('Y')
@@ -88,7 +88,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Description: "Copy task title and description",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewAllTasks},
+			Views:       []PresentationID{ViewAllTasks},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
 				return syntheticCtrlKey('y')

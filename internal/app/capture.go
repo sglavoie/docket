@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // CaptureRequest describes a new task to create in a project. Only ProjectID and
@@ -51,6 +52,10 @@ type CaptureRequest struct {
 	// Prepend inserts the new task at the front of the project's task slice so it
 	// is prominently visible (Quick/Bulk Capture), rather than appended at the end.
 	Prepend bool
+	// PlanningArtifacts, when set, builds a checked planning-domain artifact for
+	// the freshly created task and commits it in the same ChangeSet. Planner uses
+	// this to make Today/Next creation and horizon membership one undoable write.
+	PlanningArtifacts PlanningArtifactBuilder
 }
 
 // Capture creates a new task in the target project and commits it as one
@@ -74,7 +79,11 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	insertCapturedTask(project, task, req.Prepend)
 
 	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
-	return s.commitProject(ref, revision, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	artifacts, err := s.transitionPlanningArtifacts(ref, req.PlanningArtifacts)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 }
 
 // CaptureMany creates every requested task in a single project and commits them
@@ -105,12 +114,16 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	revision := snap.Revision(project.ID)
 
 	tasks := make([]*models.Task, 0, len(reqs))
+	var planningBuilder PlanningArtifactBuilder
 	for _, req := range reqs {
 		task, buildErr := s.buildCapturedTask(project, req)
 		if buildErr != nil {
 			return nil, buildErr
 		}
 		tasks = append(tasks, task)
+		if planningBuilder == nil && req.PlanningArtifacts != nil {
+			planningBuilder = req.PlanningArtifacts
+		}
 	}
 	// Prepend the whole batch at once (newest first), then append the rest.
 	prepend := make([]*models.Task, 0, len(tasks))
@@ -130,15 +143,43 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		ctxTitle = fmt.Sprintf("#%d %s", tasks[0].ShortID, tasks[0].Title)
 	}
 	ref := TaskRef{Task: tasks[0], Project: project, Base: snap.Document(project.ID)}
-	if _, err := s.commitProject(ref, revision, "Add Tasks", ctxTitle); err != nil {
+	targets := make([]PlanningReconcileTarget, len(tasks))
+	for i, task := range tasks {
+		targets[i] = PlanningReconcileTarget{TaskID: task.ID, ProjectID: project.ID, State: task.State()}
+	}
+	artifacts, err := planningArtifactsForTargets(targets, planningBuilder)
+	if err != nil {
+		return nil, err
+	}
+	committed, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Tasks", ctxTitle)
+	if err != nil {
 		return nil, err
 	}
 
 	results := make([]TaskResult, len(tasks))
 	for i, task := range tasks {
-		results[i] = newTaskResult(TaskRef{Task: task, Project: project}, "")
+		results[i] = newTaskResult(TaskRef{Task: task, Project: project}, committed.Revision)
 	}
 	return results, nil
+}
+
+// planningArtifactsForTargets renders one checked planning artifact set for a
+// capture batch. Calling the builder once is important: every created task must
+// be added to Today/Next in the same planning snapshot and the same ChangeSet.
+func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {
+	if builder == nil || len(targets) == 0 {
+		return nil, nil
+	}
+	artifacts, err := builder(targets)
+	if err != nil {
+		return nil, err
+	}
+	for _, artifact := range artifacts {
+		if artifact.ExpectedRevision == nil {
+			return nil, fmt.Errorf("app: planning artifact %q has no expected revision", artifact.Path)
+		}
+	}
+	return artifacts, nil
 }
 
 // buildCapturedTask validates a CaptureRequest against an already-resolved

@@ -78,15 +78,6 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
 		SwitchProjectView:            switchProjectView,
 		SwitchProjectViewDescription: projectViewDescription,
-		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }
-		},
-		PrevProject: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }
-		},
-		OpenCycleManager: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
-		},
 		ProjectBlockers: func() (tea.Model, tea.Cmd) {
 			project := m.project
 			if project == nil {

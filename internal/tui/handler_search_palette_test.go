@@ -16,7 +16,7 @@ type palettePlumbingSentinelMsg struct{}
 // runtime intact, with the palette closed in the same update cycle.
 func TestCommandPaletteExecuteUnwrapsCommandCarryingResult(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCommandPalette}
 
 	sentinel := func() tea.Msg { return palettePlumbingSentinelMsg{} }
 	handled, cmd := app.handleSearchMessages(CommandPaletteExecuteMsg{
@@ -43,7 +43,7 @@ func TestCommandPaletteExecuteUnwrapsCommandCarryingResult(t *testing.T) {
 // the revealed view gets its eager-reload signal.
 func TestCommandPaletteExecutePreservesPopCmd(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	handled, cmd := app.handleSearchMessages(CommandPaletteExecuteMsg{
 		ResultMsg: nil,
@@ -68,7 +68,7 @@ func TestCommandPaletteExecutePreservesPopCmd(t *testing.T) {
 // together so neither side-effect is dropped.
 func TestCommandPaletteExecuteBatchesPopCmdWithResultCmd(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	sentinel := func() tea.Msg { return palettePlumbingSentinelMsg{} }
 	handled, cmd := app.handleSearchMessages(CommandPaletteExecuteMsg{
@@ -101,7 +101,7 @@ func TestCommandPaletteExecuteBatchesPopCmdWithResultCmd(t *testing.T) {
 // dismissed.
 func TestCommandPaletteExecuteKeepsPaletteForModalResults(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCommandPalette}
 
 	handled, cmd := app.handleSearchMessages(CommandPaletteExecuteMsg{
 		// Empty EditTaskMsg short-circuits in handleEditTask but is still

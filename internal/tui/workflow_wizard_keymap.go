@@ -28,6 +28,15 @@ func (m *WorkflowWizardModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("enter", "Select / confirm", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),
+		keymap.Bind("tab", "Next step", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
+		keymap.Bind("shift+tab", "Previous step", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
+		keymap.Bind("ctrl+s", "Save on review", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, nil
+		}),
 		keymap.Bind("esc", "Back one step / cancel", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),

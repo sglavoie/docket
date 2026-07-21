@@ -1,21 +1,12 @@
 package tui
 
-import (
-	tea "charm.land/bubbletea/v2"
+import tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
-)
-
-// handleSearchMessages handles search-related messages (global search, command palette, saved searches).
+// handleSearchMessages handles Palette search and selection messages.
 // Returns true if the message was handled.
 func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowGlobalSearchMsg:
-		m.globalSearch = NewGlobalSearchModel(m.runtime)
-		m.showView(ViewGlobalSearch, m.globalSearch)
-		return true, m.globalSearch.Init()
-
-	case GlobalSearchSelectMsg:
+	case PaletteEntitySelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
 			m.recordTaskVisit(msg.Task, msg.Project)
@@ -29,13 +20,22 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// and cross-project views should list tasks from every project (nil = all projects).
 		currentView := m.currentView()
 		paletteProject := m.currentProject
-		if currentView == ViewDashboard || isGlobalNavView(currentView) {
+		if presentationScope(currentView) == ScopeApp {
 			paletteProject = nil
+		}
+		if review, ok := m.activeView().(*ReviewHubModel); ok && review.ProjectScope() != nil {
+			paletteProject = review.ProjectScope()
 		}
 		palette := NewCommandPaletteModel(m.runtime, m.commandRegistry, currentView, paletteProject)
 		if currentView == ViewFocusBoard {
+			if planner, ok := m.activeView().(*FocusBoardModel); ok {
+				palette.SetCommandContext(planner.CommandContext())
+			}
 			palette.suggestedCommandOrder = m.focusBoardSuggestedCommandOrder()
 			palette.filterItems()
+		}
+		if review, ok := m.activeView().(*ReviewHubModel); ok {
+			palette.SetCommandContext(review.CommandContext())
 		}
 		// Apply pre-filter if specified (overrides last category)
 		if msg.PreFilter != "" {
@@ -73,54 +73,6 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, batchPaletteExecuteCmds(popCmd, resultCmd)
 
-	case ShowSaveSearchDialogMsg:
-		// Show a simple text input dialog for the search name
-		m.showView(ViewSaveSearchInput, NewSaveSearchInputModel(msg.Query))
-		return true, nil
-
-	case SaveSearchMsg:
-		// Saved searches are machine-local navigation state.
-		if err := m.commitMachineMutation(func(machine *config.MachineState) {
-			machine.SaveSearch(msg.Name, msg.Query)
-		}); err != nil {
-			return true, errorCmd("failed to save search: %w", err)
-		}
-		// Pop the input dialog
-		m.popView()
-		// Refresh the command palette if it's still showing
-		if m.currentView() == ViewCommandPalette {
-			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-				palette.allItems = palette.loadAllItems()
-				palette.filterItems()
-			}
-		}
-		return true, nil
-
-	case DeleteSavedSearchMsg:
-		// Saved searches are machine-local navigation state.
-		if err := m.commitMachineMutation(func(machine *config.MachineState) {
-			machine.DeleteSavedSearch(msg.Name)
-		}); err != nil {
-			return true, errorCmd("failed to delete saved search: %w", err)
-		}
-		// Refresh the command palette if it's showing
-		if m.currentView() == ViewCommandPalette {
-			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-				palette.allItems = palette.loadAllItems()
-				palette.filterItems()
-			}
-		}
-		return true, nil
-
-	case ExecuteSavedSearchMsg:
-		// Execute a saved search by setting the query in the palette
-		if m.currentView() == ViewCommandPalette {
-			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-				palette.searchInput.SetValue(msg.Query)
-				palette.filterItems()
-			}
-		}
-		return true, nil
 	}
 	return false, nil
 }

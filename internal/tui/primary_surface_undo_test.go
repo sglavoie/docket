@@ -30,7 +30,7 @@ func TestTUIWorkspaceLedgerUndoRedoAcrossPrimaryTaskSurfaces(t *testing.T) {
 	// the durable workspace-ledger transaction.
 	surfaces := []struct {
 		name string
-		view ViewType
+		view PresentationID
 	}{
 		{name: "outliner", view: ViewOutliner},
 		{name: "task-detail", view: ViewTaskDetail},

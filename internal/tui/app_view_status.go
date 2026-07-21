@@ -62,7 +62,7 @@ func (m *AppModel) renderStatusBar() string {
 	// temporary status message still replaces capture controls and the controls
 	// return once it clears. renderContextualFooter emits its own separator, so
 	// return it directly rather than prefixing the local one.
-	if view := m.views.Get(m.currentView()); view != nil {
+	if view := m.activeView(); view != nil {
 		if provider, ok := view.(ContextualFooterProvider); ok {
 			if spec, ok := provider.ContextualFooter(); ok {
 				return renderContextualFooter(spec, m.width, m.currentAccentColor())
@@ -80,7 +80,7 @@ func (m *AppModel) renderStatusBar() string {
 	// Check if view supports help shortcut hint; only show if view implements HelpProvider.
 	currentView := m.currentView()
 	showHelp := false
-	if view := m.views.Get(currentView); view != nil {
+	if view := m.activeView(); view != nil {
 		if _, ok := view.(HelpProvider); ok {
 			showHelp = true
 		}
@@ -94,7 +94,7 @@ func (m *AppModel) renderStatusBar() string {
 		if hint := pipelineNextHint(currentView); hint != "" {
 			help = hint
 		} else {
-			help = ";; hub · : cmd · ? help"
+			help = FooterEscapeHints
 		}
 		if !m.openLoops.HasTasks {
 			if onboarding := pipelineNextHintOnboarding(currentView); onboarding != "" {
@@ -115,7 +115,7 @@ func (m *AppModel) renderStatusBar() string {
 	}
 
 	// Add filter pill if current view has active filters.
-	if view := m.views.Get(currentView); view != nil {
+	if view := m.activeView(); view != nil {
 		if fp, ok := view.(ActiveFilterProvider); ok {
 			if count := fp.ActiveFilterCount(); count > 0 {
 				filterLabel := "filters"
@@ -128,7 +128,7 @@ func (m *AppModel) renderStatusBar() string {
 	}
 
 	// Prepend mode badge when the current view is in a named mode.
-	if view := m.views.Get(currentView); view != nil {
+	if view := m.activeView(); view != nil {
 		if mi, ok := view.(ModeIndicator); ok {
 			if label, c := mi.ActiveMode(); label != "" {
 				badge := lipgloss.NewStyle().
@@ -173,7 +173,7 @@ func fitStatusBarSegments(left, right string, width int) (string, string) {
 	return left, right
 }
 
-// buildBreadcrumb constructs a compact "Dashboard > project > view" label from the view stack.
+// buildBreadcrumb constructs a compact "Home > project > view" label from the view stack.
 // Each segment uses the view's StatusBarLabel() when available, with fallbacks for common views.
 // Project names are truncated to keep the breadcrumb short.
 func (m *AppModel) buildBreadcrumb() string {
@@ -182,7 +182,7 @@ func (m *AppModel) buildBreadcrumb() string {
 
 	// Build a deduplicated view stack, keeping the LAST occurrence of each
 	// view type (e.g. for stacked project views the deepest project wins).
-	lastIdx := make(map[ViewType]int)
+	lastIdx := make(map[PresentationID]int)
 	for i, vt := range m.viewStack {
 		lastIdx[vt] = i
 	}
@@ -232,26 +232,34 @@ func (m *AppModel) buildBreadcrumb() string {
 }
 
 // breadcrumbLabel returns a short human-readable label for a single view type.
-func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
-	// ViewDashboard has no StatusBarLabel; use a fixed string.
+func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string {
+	// ViewDashboard is Home's renderer identity.
 	if vt == ViewDashboard {
-		return "Dashboard"
+		return "Home"
 	}
 
 	var label string
+	if m.activeReviewHub() && len(m.viewStack) > 0 && vt == m.viewStack[len(m.viewStack)-1] {
+		label = m.reviewHub.StatusBarLabel()
+	}
+	if m.activeManageHub() && len(m.viewStack) > 0 && vt == m.viewStack[len(m.viewStack)-1] {
+		label = m.manageHub.StatusBarLabel()
+	}
 
 	// Use the registered view's StatusBarLabel when available.
-	if view := m.views.Get(vt); view != nil {
-		if labeler, ok := view.(StatusBarLabeler); ok {
-			raw := labeler.StatusBarLabel()
-			// Strip "Project: " prefix from project tree label for compactness.
-			label = strings.TrimPrefix(raw, "Project: ")
-			// Also strip cycle-position suffix (starts with " [") for compactness.
-			if idx := strings.Index(label, " ["); idx > 0 {
-				label = label[:idx]
-			}
-			if lipgloss.Width(label) > maxProjectLen {
-				label = truncateToVisualWidth(label, maxProjectLen)
+	if label == "" {
+		if view := m.views.Get(vt); view != nil {
+			if labeler, ok := view.(StatusBarLabeler); ok {
+				raw := labeler.StatusBarLabel()
+				// Strip "Project: " prefix from project tree label for compactness.
+				label = strings.TrimPrefix(raw, "Project: ")
+				// Also strip cycle-position suffix (starts with " [") for compactness.
+				if idx := strings.Index(label, " ["); idx > 0 {
+					label = label[:idx]
+				}
+				if lipgloss.Width(label) > maxProjectLen {
+					label = truncateToVisualWidth(label, maxProjectLen)
+				}
 			}
 		}
 	}

@@ -95,7 +95,7 @@ func (s *session4Backend) headerSubtitleExtra() string { return "" }
 func (s *session4Backend) emptyStateText() string      { return "" }
 func (s *session4Backend) emptyInboxText() string      { return "" }
 func (s *session4Backend) returnHint() string          { return "" }
-func (s *session4Backend) viewType() ViewType          { return ViewInboxProcessor }
+func (s *session4Backend) viewType() PresentationID    { return ViewInboxProcessor }
 func (s *session4Backend) helpViewName() string        { return "" }
 
 // newSession4Core builds a project with three processable inbox tasks plus a

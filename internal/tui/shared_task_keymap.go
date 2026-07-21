@@ -96,6 +96,15 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 	return entries
 }
 
+// buildReviewTaskActionEntries is the single task-action grammar shared by
+// every Review module that renders mutable task rows. Review models retain
+// module-specific navigation and side effects while status, priority, due,
+// snooze, move, relationship, task, blocker, and common actions come from this
+// one coordinator-backed definition.
+func buildReviewTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
+	return buildStandardTaskActionEntries(deps)
+}
+
 func buildStandardStatusEntries(deps TaskKeymapDeps) []keymap.Entry {
 	return gatePrefixEntries(keymap.StatusGroup(keymap.StatusDeps{
 		ChangeState:    buildStateChangeAction(deps),

@@ -67,16 +67,16 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 	}
 }
 
-func TestREADMEDescribesTodayCockpitDefault(t *testing.T) {
+func TestREADMEDescribesHomeDefault(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 
 	required := []string{
-		"`tt` opens on the Today cockpit by default",
-		"press `;w` to return to it",
+		"`tt` opens on Home by default",
+		"press `Ctrl+Esc` to return there from anywhere",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing Today cockpit default text: %q", needle)
+			t.Fatalf("README missing Home default text: %q", needle)
 		}
 	}
 }
@@ -156,13 +156,19 @@ func TestREADMEDocumentsParkedFiltering(t *testing.T) {
 		"tt task list --parked",
 		"`Fk`",
 		"Filter parked tasks",
-		"All Tasks includes a built-in `Parked` tab",
-		"the seven built-in All Tasks tabs fill the visible cap",
-		"the first pinned saved-filter tab can put `By Score` and saved-filter tabs behind `More…`",
+		"Task Workspace exposes fixed built-in focuses such as Active, Parked",
+		"saved filters change query semantics",
+		"without becoming navigation tabs",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("README missing parked filtering text: %q", needle)
+		}
+	}
+
+	for _, stale := range []string{"built-in All Tasks tabs", "saved-filter tabs behind `More…`"} {
+		if strings.Contains(content, stale) {
+			t.Fatalf("README contains retired tab-navigation text: %q", stale)
 		}
 	}
 }

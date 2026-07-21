@@ -7,12 +7,11 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // currentViewAsModel returns the current view as a tea.Model for interface assertions.
 func (m *AppModel) currentViewAsModel() tea.Model {
-	return m.views.Get(m.currentView())
+	return m.activeView()
 }
 
 // handleGlobalClipboard handles y/Y/ctrl+y clipboard operations for the current view.
@@ -52,87 +51,43 @@ var (
 	openReferenceFile           = external.OpenReferenceFile
 )
 
-func (m *AppModel) handleGlobalReferenceOpen() (bool, tea.Cmd) {
-	if _, ok := m.currentViewAsModel().(taskReferenceProvider); !ok {
-		return false, nil
-	}
-
-	task, project := m.getCurrentCursorTaskAndProject()
-	if task == nil {
-		m.setInfoStatus("No task selected for reference open")
-		return true, defaultStatusTimeout()
-	}
-
-	return true, m.openTaskReferenceSnapshot(task, project)
-}
-
-func (m *AppModel) handleGlobalNotesOpen() (bool, tea.Cmd) {
-	if _, ok := m.currentViewAsModel().(taskReferenceProvider); !ok {
-		return false, nil
-	}
-
-	task, project := m.getCurrentCursorTaskAndProject()
-	if task == nil || project == nil {
-		m.setInfoStatus("No task selected for Notes")
-		return true, defaultStatusTimeout()
-	}
-
-	return true, func() tea.Msg { return ShowNotesMsg{Project: project} }
-}
-
-func (m *AppModel) openTaskReferenceSnapshot(task *models.Task, project *models.Project) tea.Cmd {
-	linkedNotes, err := linkedNotesForReferenceTask(task, project)
-	if err != nil {
-		return errorCmd("failed to load linked notes: %w", err)
-	}
-
-	content := external.FormatTaskReferenceMarkdownWithNotes(task, linkedNotes)
-	path, err := createReferenceSnapshotFile(content, "tt-task-reference-", ".md")
-	if err != nil {
-		return errorCmd("failed to create reference snapshot: %w", err)
-	}
-
-	externalEditor := m.runtime.Machine().GetExternalEditor()
-	result, err := openReferenceFile(externalEditor, path)
-	if err != nil {
-		if result.Status == external.ReferenceOpenStatusUnsupportedEditor {
-			m.setInfoStatus(err.Error())
-			return defaultStatusTimeout()
-		}
-		return errorCmd("%s", err)
-	}
-
-	m.setSuccessStatus("Opened task reference copy")
-	return defaultStatusTimeout()
-}
-
-func linkedNotesForReferenceTask(task *models.Task, project *models.Project) ([]*models.Note, error) {
-	if task == nil || project == nil {
-		return nil, nil
-	}
-
-	notes, err := storage.ListNotes(project)
-	if err != nil {
-		return nil, err
-	}
-
-	linked := make([]*models.Note, 0)
-	for _, note := range notes {
-		if note != nil && note.HasLink(task.ID) {
-			linked = append(linked, note)
-		}
-	}
-	return linked, nil
-}
-
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo
+	key := msg.String()
+	if key == "ctrl+c" {
+		m.exitAskView()
+		m.saveProjectViewState()
+		m.saveOutlinerFilterState()
+		m.quitting = true
+		return true, tea.Quit
+	}
 	if isCtrlEscKey(msg) {
 		return true, m.jumpToDashboard()
+	}
+	// Esc is the canonical close/back operation. App-owned overlays and
+	// confirmations receive it before routed controls; a routed control may
+	// still capture Esc for its own inline state when no shell overlay is open.
+	if key == "esc" {
+		if m.pendingSandboxReset {
+			m.pendingSandboxReset = false
+			m.pendingSandboxProjectID = ""
+			m.pendingSandboxTaskCount = 0
+			m.setInfoStatus("Canceled")
+			return true, defaultStatusTimeout()
+		}
+		if handled, cmd := m.handleProjectArchiveConfirmKey(key); handled {
+			return true, cmd
+		}
+		if handled, cmd := m.handleActiveKeyOverlay(msg); handled {
+			return true, cmd
+		}
+		if handled, cmd := m.handleEscKey(); handled {
+			return true, cmd
+		}
 	}
 
 	// Handle pending sandbox reset confirmation before clearing status
 	if m.pendingSandboxReset {
-		switch msg.String() {
+		switch key {
 		case "y", "Y":
 			return true, m.executeSandboxReset()
 		case "n", "N", "esc":
@@ -147,7 +102,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 	}
 
-	if handled, cmd := m.handleProjectArchiveConfirmKey(msg.String()); handled {
+	if handled, cmd := m.handleProjectArchiveConfirmKey(key); handled {
 		return true, cmd
 	}
 
@@ -155,14 +110,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, cmd
 	}
 
-	if handled, cmd := m.handlePendingPrefixes(msg); handled {
-		return true, cmd
-	}
-
 	// Intercept keys when peek overlay is active: handle scroll, pane focus,
 	// and dismiss; block everything else so the underlying view is frozen.
 	if m.peekActive {
-		switch msg.String() {
+		switch key {
 		case "esc", "space":
 			m.dismissPeek()
 		case "tab", "shift+tab":
@@ -184,38 +135,59 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	// Guard against stale currentProject (e.g., deleted by external CLI command)
-	if m.currentView() != ViewDashboard && m.validateCurrentProject() {
+	if handled, cmd := m.handleInvalidManageProjectScope(); handled {
+		return true, cmd
+	}
+	if (m.currentView() != ViewDashboard || m.activeTaskWorkspace()) && m.validateCurrentProject() {
 		return true, defaultStatusTimeout()
 	}
-
-	switch msg.String() {
-	case "ctrl+c":
-		m.exitAskView()
-		m.saveProjectViewState()
-		m.saveOutlinerFilterState()
-		m.saveCrossOutlinerState()
-		m.quitting = true
-		return true, tea.Quit
-	case "alt+o":
-		return true, m.navigateHistoryBack()
-	case "alt+i":
-		return true, m.navigateHistoryForward()
-	case "ctrl+6":
-		if !m.hasActiveTextInput() && m.lastNavEntry.ViewType != 0 {
-			currentEntry := NavEntry{ViewType: m.currentView()}
-			if m.currentProject != nil && !isGlobalNavView(m.currentView()) {
-				currentEntry.ProjectID = m.currentProject.ID
-			}
-			if isTaskScopedView(m.currentView()) {
-				currentEntry.TaskID = m.lastNavigatedTaskID
-			}
-			targetEntry := m.lastNavEntry
-			m.lastNavEntry = currentEntry
-			return true, m.navigateToEntry(targetEntry)
-		}
-	case "alt+l":
+	// The exact non-preemptive global map is suppressed while the active
+	// control captures text. Ctrl+C, Ctrl+Esc, and Esc were handled above.
+	switch key {
+	case "ctrl+g":
 		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowMessageLogMsg{} }
+			m.toggleDestinationSwitcher()
+			return true, nil
+		}
+	case "ctrl+n":
+		if !m.typedNavigation {
+			break
+		}
+		if !m.hasActiveTextInput() {
+			return true, func() tea.Msg { return ShowQuickCaptureMsg{} }
+		}
+	case "ctrl+x":
+		if !m.hasActiveTextInput() {
+			return true, func() tea.Msg { return ShowProjectPickerMsg{} }
+		}
+	case ":":
+		if !m.hasActiveTextInput() {
+			return true, func() tea.Msg { return ShowCommandPaletteMsg{} }
+		}
+	case "?":
+		if !m.hasActiveTextInput() {
+			view := m.currentView()
+			items := GetKeybindingRegistry().GetForView(view)
+			viewName := view.String()
+			if workspace, ok := m.activeView().(*TaskWorkspaceView); ok {
+				items = workspace.GetHelpItems()
+				viewName = "Task Workspace"
+			} else if planner, ok := m.activeView().(*FocusBoardModel); ok {
+				items = planner.GetHelpItems()
+				viewName = "Planner"
+			} else if review, ok := m.activeView().(*ReviewHubModel); ok {
+				items = review.GetHelpItems()
+				viewName = review.StatusBarLabel()
+			} else if manage, ok := m.activeView().(*ManageHubModel); ok {
+				items = manage.GetHelpItems()
+				viewName = manage.StatusBarLabel()
+			} else if detail, ok := m.activeView().(*TaskDetailModel); ok {
+				items = detail.GetHelpItems()
+				viewName = detail.StatusBarLabel()
+			}
+			return true, func() tea.Msg {
+				return ShowHelpMsg{SourceView: view, ViewName: viewName, Items: items}
+			}
 		}
 	case "|":
 		if !m.hasActiveTextInput() {
@@ -225,17 +197,11 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if !m.hasActiveTextInput() && !m.hasActivePendingPrefix() {
 			return true, m.handlePinnedPopupToggle()
 		}
-	case "esc":
-		if handled, cmd := m.handleEscKey(); handled {
-			return true, cmd
-		}
 	case "q":
-		// q/w are no longer suppressed on the Planner: they are the replacement
-		// planning action that promotes the selected Backlog row into Next (q) or
-		// Today (w) without leaving the consolidated planning surface. The toggle
-		// routes through the same undoable boundary (toggleQueue/toggleDailyPlan)
-		// as the other task views, so exclusivity and undo behave identically.
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
+			break
+		}
+		if m.activeTaskWorkspace() || m.currentView() == ViewFocusBoard {
 			break
 		}
 		if cmd := m.toggleQueue(); cmd != nil {
@@ -244,6 +210,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, nil
 	case "w":
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+			break
+		}
+		if m.activeTaskWorkspace() || m.currentView() == ViewFocusBoard {
 			break
 		}
 		if cmd := m.toggleDailyPlan(); cmd != nil {
@@ -262,9 +231,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			m.clearStatus()
 			return true, cb()
 		}
-		if cmd := m.handleFocusBoardUnblock(); cmd != nil {
-			return true, m.batchWithFocusRefresh(cmd)
-		}
 		if cmd := m.handleUndoToggle(); cmd != nil {
 			return true, cmd
 		}
@@ -278,77 +244,11 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
-		// Mirror the u case: the atomic planning redo fires wherever a q/w toggle
-		// is reachable — including the Planner, now that it owns q/w — before the
-		// simple-grammar guard swallows the key for the Planner.
 		if cmd := m.handleRedoToggle(); cmd != nil {
 			return true, cmd
 		}
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
 		if cmd := m.handleGlobalTaskRedo(); cmd != nil {
 			return true, cmd
-		}
-	case "ctrl+x":
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowProjectPickerMsg{} }
-		}
-	case ":":
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowCommandPaletteMsg{} }
-		}
-	case ";":
-		if !m.hasActiveTextInput() && !m.hasActivePendingPrefix() {
-			m.pendingSemicolonPrefix = true
-			timeout := m.runtime.Settings().GetPopupTimeoutSeconds()
-			if timeout <= 0 {
-				return true, nil
-			}
-			return true, func() tea.Msg {
-				time.Sleep(time.Duration(timeout) * time.Second)
-				return ClearSemicolonPrefixMsg{}
-			}
-		}
-	case "ctrl+,":
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return SettingsMsg{} }
-		}
-	case "ctrl+i":
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowGlobalInboxProcessorMsg{} }
-		}
-	case "ctrl+/":
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowGlobalSearchMsg{} }
-		}
-	case "ctrl+o":
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
-			break
-		}
-		if handled, cmd := m.handleGlobalReferenceOpen(); handled {
-			return true, cmd
-		}
-	case "ctrl+n":
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
-			break
-		}
-		if handled, cmd := m.handleGlobalNotesOpen(); handled {
-			return true, cmd
-		}
-	case `ctrl+\`:
-		if !m.hasActiveTextInput() {
-			if m.currentView() == ViewKeybindingExplorer {
-				m.popView()
-				return true, nil
-			}
-			return true, func() tea.Msg { return ShowKeybindingExplorerMsg{} }
 		}
 	case "y", "Y", "ctrl+y":
 		if m.currentViewUsesTodaySimpleGrammar() {
@@ -357,29 +257,38 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
+		if m.activeTaskDetail() && m.taskDetail.Tab() != TaskOverview {
+			break
+		}
+		if m.activeTaskWorkspace() && key != "y" {
+			break
+		}
 		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
 			return true, cmd
 		}
-	case "space":
-		if m.currentViewUsesTodaySimpleGrammar() {
+	case "enter", "shift+enter":
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
 			break
 		}
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+		if m.activeTaskDetail() {
 			break
 		}
-		if m.hasActiveMultiSelect() {
-			return false, nil
-		}
-		if m.currentView() == ViewTaskDetail {
-			return false, nil
+		if m.activeTaskWorkspace() && m.taskWorkspaceView != nil && m.taskWorkspaceView.menuOpen {
+			break
 		}
 		task, project := m.getCurrentCursorTaskAndProject()
 		if task == nil {
 			return false, nil
 		}
-		m.activatePeek(task, project)
-		return true, nil
+		if key == "shift+enter" {
+			m.activatePeek(task, project)
+			return true, nil
+		}
+		return true, func() tea.Msg { return ShowTaskDetailMsg{Task: task, Project: project} }
 	case ".":
+		if m.activeTaskWorkspace() {
+			break
+		}
 		if !m.hasActiveTextInput() && m.lastRepeatableAction != nil {
 			if pv, ok := m.currentViewAsModel().(prefixableView); ok {
 				if pv.getCursorTask() != nil {
@@ -394,22 +303,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 
 func (m *AppModel) currentViewUsesTodaySimpleGrammar() bool {
 	return m.currentView() == ViewFocusBoard
-}
-
-func (m *AppModel) handleFocusBoardUnblock() tea.Cmd {
-	if m.currentView() != ViewFocusBoard {
-		return nil
-	}
-	focusBoard, ok := m.currentViewAsModel().(*FocusBoardModel)
-	if !ok {
-		return nil
-	}
-	action := focusBoard.resolveCockpitActionForKey("u")
-	if action.Command != CockpitCommandUnblockTask {
-		return nil
-	}
-	_, cmd := focusBoard.executeCockpitAction(action)
-	return cmd
 }
 
 func (m *AppModel) handleGlobalTaskUndo() tea.Cmd {
@@ -443,6 +336,15 @@ func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
 }
 
 func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
+	if m.activeTaskWorkspace() {
+		return true
+	}
+	if m.activeTaskDetail() {
+		return true
+	}
+	if m.activeReviewHub() {
+		return m.reviewHub.SupportsTaskUndoRedo()
+	}
 	switch m.currentView() { //nolint:exhaustive
 	case ViewPriorityView,
 		ViewDailyReview,
@@ -487,20 +389,15 @@ func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	if m.destinationSwitcher != nil {
+		return true, m.handleDestinationSwitcherKey(msg)
+	}
 	if m.showQuickSwitch {
 		_, cmd := m.handleQuickSwitchKey(msg)
 		return true, cmd
 	}
 	if m.showPinnedPopup {
 		_, cmd := m.handlePinnedPopupKey(msg)
-		return true, cmd
-	}
-	if m.showProjectCyclePicker {
-		_, cmd := m.handleProjectCyclePickerKey(msg)
-		return true, cmd
-	}
-	if m.showProjectCycle {
-		_, cmd := m.handleProjectCycleKey(msg)
 		return true, cmd
 	}
 	if m.quickNoteOverlay != nil {
@@ -575,98 +472,4 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	}
 
 	return false, nil
-}
-
-func (m *AppModel) handlePendingPrefixes(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if m.pendingSemicolonTPrefix {
-		return m.handlePendingSemicolonTPrefix(msg)
-	}
-
-	if m.pendingSemicolonPrefix {
-		return m.handlePendingSemicolonPrefix(msg)
-	}
-	return false, nil
-}
-
-func (m *AppModel) handlePendingSemicolonTPrefix(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if isModifierOnly(msg) {
-		return true, nil
-	}
-	m.pendingSemicolonTPrefix = false
-	switch msg.String() {
-	case "m":
-		return true, showGlobalProjectPickerCmd(PickerPurposeTaskMoveSource)
-	case "N":
-		return true, showGlobalProjectPickerCmd(PickerPurposeTemplatePick)
-	case "d":
-		return true, showGlobalProjectPickerCmd(PickerPurposeDueDate)
-	case "s":
-		return true, showGlobalProjectPickerCmd(PickerPurposeSectionChange)
-	default:
-		return true, nil
-	}
-}
-
-func (m *AppModel) handlePendingSemicolonPrefix(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if isModifierOnly(msg) {
-		return true, nil
-	}
-	m.pendingSemicolonPrefix = false
-	switch msg.String() {
-	case ";":
-		return true, func() tea.Msg { return ShowPipelineHubMsg{} }
-	case "n":
-		return true, func() tea.Msg { return ShowNotificationCenterMsg{} }
-	case "d":
-		return true, func() tea.Msg { return ShowDailyReviewMsg{} }
-	case "r":
-		return true, func() tea.Msg { return ShowWeeklyReviewMsg{} }
-	case "N":
-		return true, func() tea.Msg { return ShowGlobalNotesMsg{} }
-	case "q":
-		return true, func() tea.Msg { return ShowFocusBoardMsg{Tab: boardTabNext, SetTab: true} }
-	case "w":
-		return true, func() tea.Msg { return ShowFocusBoardMsg{Tab: boardTabToday, SetTab: true} }
-	case "l":
-		return true, func() tea.Msg { return ShowRecentActivityMsg{} }
-	case "B":
-		return true, func() tea.Msg { return ShowGlobalBlockersMsg{} }
-	case "D":
-		return true, func() tea.Msg { return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true} }
-	case "m":
-		return true, func() tea.Msg { return ShowMetricsDashboardMsg{} }
-	case "a":
-		return true, func() tea.Msg { return ShowAllTasksMsg{} }
-	case "W":
-		return true, func() tea.Msg { return ShowWorkflowRulesMsg{} }
-	case "k":
-		return true, func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
-	case "o":
-		return true, func() tea.Msg { return ShowGlobalOutlinerMsg{} }
-	case "R":
-		return true, func() tea.Msg { return ShowRoadmapMsg{} }
-	case "i":
-		return true, m.resolveQuickCaptureCmd()
-	case "I":
-		return true, showGlobalProjectPickerCmd(PickerPurposeBulkCapture)
-	case "{":
-		return true, showGlobalProjectPickerCmd(PickerPurposeNoteCreate)
-	case ",":
-		return true, showGlobalProjectPickerCmd(PickerPurposeStatusUpdate)
-	case "c":
-		return true, showGlobalProjectPickerCmd(PickerPurposeLinkedTask)
-	case "t":
-		m.pendingSemicolonTPrefix = true
-		return true, nil
-	case "!":
-		return true, showGlobalProjectPickerCmd(PickerPurposePriorityUpdate)
-	default:
-		return true, nil
-	}
-}
-
-func showGlobalProjectPickerCmd(purpose PickerPurpose) tea.Cmd {
-	return func() tea.Msg {
-		return ShowGlobalProjectPickerMsg{Purpose: purpose}
-	}
 }

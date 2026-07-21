@@ -8,10 +8,6 @@ func (m *CommandPaletteModel) renderPreview() string {
 		return m.renderActionPreview()
 	}
 
-	if m.inlineTaskMode {
-		return m.renderInlineTaskPreview()
-	}
-
 	query := strings.TrimSpace(m.searchInput.Value())
 	if strings.HasPrefix(query, "?") {
 		return m.renderHelpReference()
@@ -36,8 +32,6 @@ func (m *CommandPaletteModel) renderPreview() string {
 		preview = m.renderTagPreview(item)
 	case ItemCategorySections:
 		preview = m.renderSectionPreview(item)
-	case ItemCategorySavedSearch:
-		preview = m.renderSavedSearchPreview(item)
 	case ItemCategorySavedFilter:
 		preview = m.renderSavedFilterPreview(item)
 	case ItemCategoryNotes:

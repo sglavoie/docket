@@ -86,8 +86,6 @@ var prefixCategoryNames = map[string]string{
 	"Fap": "points",
 	"FS":  "filter-score",
 	"Fv":  "saved-filters",
-	";":   "tt",
-	";t":  "task",
 }
 
 // prefixCategoryMnemonicOverrides defines per-prefix title mnemonics.

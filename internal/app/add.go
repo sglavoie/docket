@@ -55,6 +55,10 @@ type AddTaskRequest struct {
 	// ChangeSet as the new task (e.g. the config store with an incremented
 	// template use-count), so the add and its side effects are atomic.
 	Artifacts []storage.ArtifactChange
+	// InitialState and PlanningArtifacts carry route-local composer presets
+	// (notably Planner Today/Next) through the full expanded form path.
+	InitialState      models.WorkflowState
+	PlanningArtifacts PlanningArtifactBuilder
 
 	// The following fields are populated only by the task form (via
 	// AddTaskWithChildren); the CLI `tt task add` path leaves them zero/nil so its
@@ -119,7 +123,12 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	return s.commitProjectWithArtifacts(ref, revision, req.Artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	planning, err := s.transitionPlanningArtifacts(ref, req.PlanningArtifacts)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	artifacts := append(append([]storage.ArtifactChange(nil), req.Artifacts...), planning...)
+	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 }
 
 // AddTaskWithWorkflow creates a fully-specified task and runs a stateless
@@ -213,6 +222,9 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 	if req.Section != "" && !models.IsGTDSection(req.Section) {
 		return normalizedAddTaskRequest{}, invalidInput("section", fmt.Sprintf("%q is not a built-in GTD section; use tags for flexible grouping", req.Section))
 	}
+	if req.InitialState != "" && !req.InitialState.IsValid() {
+		return normalizedAddTaskRequest{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", req.InitialState))
+	}
 
 	tags, err := normalizeTags(req.Tags)
 	if err != nil {
@@ -285,6 +297,9 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		if err := task.SetRecurrence(req.Recurrence); err != nil {
 			return TaskRef{}, "", invalidInput("recurrence", err.Error())
 		}
+	}
+	if req.InitialState != "" {
+		applyState(task, req.InitialState)
 	}
 	if parent != nil {
 		parentID := parent.ID
@@ -388,7 +403,12 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		childRefs = append(childRefs, TaskRef{Task: child, Project: ref.Project})
 	}
 
-	result, err := s.commitProjectWithArtifacts(ref, revision, req.Artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	planning, err := s.transitionPlanningArtifacts(ref, req.PlanningArtifacts)
+	if err != nil {
+		return FormCreateResult{}, err
+	}
+	artifacts := append(append([]storage.ArtifactChange(nil), req.Artifacts...), planning...)
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 	if err != nil {
 		return FormCreateResult{}, err
 	}

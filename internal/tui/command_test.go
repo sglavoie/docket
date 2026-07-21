@@ -401,13 +401,14 @@ func TestNewAppModelRegistersGlobalCommands(t *testing.T) {
 		t.Error("expected quit command to have a handler")
 	}
 
-	// Verify global search command with shortcut "/"
+	// Verify the searchable legacy alias resolves through the palette without
+	// reviving its retired global shortcut.
 	searchCmd, found := registry.GetByName("global search")
 	if !found {
 		t.Fatal("expected 'global search' command to be registered")
 	}
-	if searchCmd.Shortcut != "ctrl+/" {
-		t.Errorf("expected global search command shortcut to be 'ctrl+/', got '%s'", searchCmd.Shortcut)
+	if searchCmd.Shortcut != "" {
+		t.Errorf("expected global search alias to have no shortcut, got %q", searchCmd.Shortcut)
 	}
 	if searchCmd.Handler == nil {
 		t.Error("expected global search command to have a handler")
@@ -444,10 +445,10 @@ func TestGlobalCommandHandlersReturnCorrectMessages(t *testing.T) {
 		t.Errorf("expected quit command handler to return QuitMsg, got %T", quitMsg)
 	}
 
-	// Test global search command handler returns ShowGlobalSearchMsg
+	// Global Search is a searchable alias for Palette.
 	searchCmd, _ := registry.GetByName("global search")
 	searchMsg := searchCmd.Handler()
-	if _, ok := searchMsg.(ShowGlobalSearchMsg); !ok {
-		t.Errorf("expected global search command handler to return ShowGlobalSearchMsg, got %T", searchMsg)
+	if _, ok := searchMsg.(ShowCommandPaletteMsg); !ok {
+		t.Errorf("expected global search command handler to return ShowCommandPaletteMsg, got %T", searchMsg)
 	}
 }

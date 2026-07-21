@@ -225,8 +225,8 @@ func TestStartupMigratesLegacyFocusQueueBeforeHydration(t *testing.T) {
 	task2.WorkflowState = models.StateReady
 	project.Tasks = []*models.Task{task1, task2}
 	project.NextShortID = 3
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
+	if saveErr := storage.SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject: %v", saveErr)
 	}
 
 	domains := config.NewDomains()
@@ -239,8 +239,8 @@ func TestStartupMigratesLegacyFocusQueueBeforeHydration(t *testing.T) {
 		{ProjectID: project.ID, TaskID: task1.ID},
 		{ProjectID: project.ID, TaskID: task2.ID},
 	})
-	if err := saveTestRuntime(manager, config.NewRuntimeState(dataDir, domains)); err != nil {
-		t.Fatalf("seed runtime: %v", err)
+	if saveErr := saveTestRuntime(manager, config.NewRuntimeState(dataDir, domains)); saveErr != nil {
+		t.Fatalf("seed runtime: %v", saveErr)
 	}
 
 	runtime, err := config.LoadRuntimeState(dataDir)

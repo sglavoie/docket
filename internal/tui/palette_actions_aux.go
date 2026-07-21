@@ -88,35 +88,7 @@ func (m *CommandPaletteModel) getViewActions(item PaletteItem) []PaletteAction {
 			Icon:    "→",
 			KeyHint: "enter",
 			Handler: func() tea.Msg {
-				return NavigateToViewMsg{ViewType: viewType}
-			},
-		},
-	}
-}
-
-// getSavedSearchActions returns inline actions for a saved search item.
-func (m *CommandPaletteModel) getSavedSearchActions(item PaletteItem) []PaletteAction {
-	if item.SavedSearch == "" {
-		return nil
-	}
-	name := item.Name
-	query := item.SavedSearch
-
-	return []PaletteAction{
-		{
-			Name:    "Run search",
-			Icon:    icons.Get("search"),
-			KeyHint: "enter",
-			Handler: func() tea.Msg {
-				return ExecuteSavedSearchMsg{Query: query}
-			},
-		},
-		{
-			Name:    "Delete",
-			Icon:    icons.Get("close"),
-			KeyHint: "d",
-			Handler: func() tea.Msg {
-				return DeleteSavedSearchMsg{Name: name}
+				return NavigateToViewMsg{PresentationID: viewType}
 			},
 		},
 	}
@@ -148,23 +120,7 @@ func (m *CommandPaletteModel) getSavedFilterActions(item PaletteItem) []PaletteA
 		},
 	}
 
-	tabName := "Show as tab"
-	tabIcon := icons.Get("checkbox.unchecked")
-	if sf.ShowAsTab {
-		tabName = "Hide from tabs"
-		tabIcon = icons.Get("checkbox.checked")
-	}
-	filterID := sf.ID
-	currentTab := sf.ShowAsTab
 	actions = append(actions,
-		PaletteAction{
-			Name:    tabName,
-			Icon:    tabIcon,
-			KeyHint: "t",
-			Handler: func() tea.Msg {
-				return toggleSavedFilterTabMsg{ID: filterID, ShowAsTab: !currentTab}
-			},
-		},
 		PaletteAction{
 			Name:    "Delete",
 			Icon:    icons.Get("close"),

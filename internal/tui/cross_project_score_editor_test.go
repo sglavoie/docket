@@ -99,7 +99,7 @@ func TestScoreEditorDone_ReturningToCrossOutlinerForwardsViewDidAppear(t *testin
 	app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
 	app.crossOutliner.cursor = 0
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewScoreEditor}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewScoreEditor}
 
 	handled, cmd := app.handleScoringMessages(ScoreEditorDoneMsg{
 		Task:    task,
@@ -124,7 +124,7 @@ func TestScoreEditorDone_CancelReturningToCrossOutlinerForwardsViewDidAppear(t *
 	app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
 	app.crossOutliner.cursor = 0
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewScoreEditor}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewScoreEditor}
 
 	handled, cmd := app.handleScoringMessages(ScoreEditorDoneMsg{
 		Task:    task,

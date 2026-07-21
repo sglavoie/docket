@@ -13,7 +13,7 @@ import (
 func minimalAppModel() *AppModel {
 	return &AppModel{
 		views:     NewViewRegistry(),
-		viewStack: []ViewType{ViewDashboard},
+		viewStack: []PresentationID{ViewDashboard},
 	}
 }
 
@@ -21,7 +21,7 @@ func TestActiveOutliner_PaletteOriginPicksSingle(t *testing.T) {
 	app := minimalAppModel()
 	app.outliner = minimalOutliner()
 	app.crossOutliner = minimalOutliner()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	if got := app.activeOutliner(); got != app.outliner {
 		t.Fatalf("activeOutliner = %p, want single outliner %p", got, app.outliner)
@@ -32,7 +32,7 @@ func TestActiveOutliner_PaletteOriginPicksCross(t *testing.T) {
 	app := minimalAppModel()
 	app.outliner = minimalOutliner()
 	app.crossOutliner = minimalOutliner()
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	if got := app.activeOutliner(); got != app.crossOutliner {
 		t.Fatalf("activeOutliner = %p, want cross outliner %p", got, app.crossOutliner)
@@ -42,7 +42,7 @@ func TestActiveOutliner_PaletteOriginPicksCross(t *testing.T) {
 func TestActiveOutliner_FallbackWhenOriginIsNotOutliner(t *testing.T) {
 	app := minimalAppModel()
 	app.outliner = minimalOutliner()
-	app.viewStack = []ViewType{ViewDashboard}
+	app.viewStack = []PresentationID{ViewDashboard}
 
 	if got := app.activeOutliner(); got != app.outliner {
 		t.Fatalf("activeOutliner fallback = %p, want single outliner %p", got, app.outliner)
@@ -57,7 +57,7 @@ func TestActiveOutliner_FallbackWhenOriginIsNotOutliner(t *testing.T) {
 
 func TestActiveOutliner_NilWhenBothMissing(t *testing.T) {
 	app := minimalAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	if got := app.activeOutliner(); got != nil {
 		t.Fatalf("activeOutliner = %v, want nil", got)
@@ -73,7 +73,7 @@ func TestOutlinerTarget_SingleProjectPaletteOrigin(t *testing.T) {
 	app.outliner.project = proj
 	app.outliner.rows = []outlinerRow{{task: task, ProjectID: proj.ID}}
 	app.outliner.cursor = 0
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	gotTask, gotProj := app.outlinerTarget()
 	if gotTask != task || gotProj != proj {
@@ -96,7 +96,7 @@ func TestOutlinerTarget_CrossProjectPaletteOrigin(t *testing.T) {
 		{task: b1, ProjectID: projB.ID},
 	}
 	app.crossOutliner.cursor = 2
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	gotTask, gotProj := app.outlinerTarget()
 	if gotTask != b1 || gotProj != projB {
@@ -116,7 +116,7 @@ func TestOutlinerTarget_HeaderAndSeparatorReturnNil(t *testing.T) {
 		{IsSeparator: true},
 		{task: task, ProjectID: proj.ID},
 	}
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	for _, tc := range []struct {
 		name   string
@@ -144,7 +144,7 @@ func TestOutlinerTarget_CrossProjectStaleID(t *testing.T) {
 	app.crossOutliner.loadedProjects = []*models.Project{projA}
 	app.crossOutliner.rows = []outlinerRow{{task: orphan, ProjectID: "proj-missing"}}
 	app.crossOutliner.cursor = 0
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	gotTask, gotProj := app.outlinerTarget()
 	if gotTask != nil || gotProj != nil {
@@ -154,7 +154,7 @@ func TestOutlinerTarget_CrossProjectStaleID(t *testing.T) {
 
 func TestOutlinerTarget_NilWhenNoOutliner(t *testing.T) {
 	app := minimalAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	gotTask, gotProj := app.outlinerTarget()
 	if gotTask != nil || gotProj != nil {
@@ -171,7 +171,7 @@ func TestOutlinerCursorProject_SinglePaletteOrigin(t *testing.T) {
 	app.outliner.project = proj
 	app.outliner.rows = []outlinerRow{{task: task, ProjectID: proj.ID}}
 	app.outliner.cursor = 0
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	if got := app.outlinerCursorProject(); got != proj {
 		t.Fatalf("outlinerCursorProject = %v, want %v", got, proj)
@@ -193,7 +193,7 @@ func TestOutlinerCursorProject_CrossPaletteOrigin(t *testing.T) {
 		{task: b, ProjectID: projB.ID},
 	}
 	app.crossOutliner.cursor = 2
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	if got := app.outlinerCursorProject(); got != projB {
 		t.Fatalf("outlinerCursorProject = %v, want %v", got, projB)
@@ -212,7 +212,7 @@ func TestOutlinerCursorProject_HeaderSeparatorAndStale(t *testing.T) {
 		{IsSeparator: true},
 		{task: task, ProjectID: proj.ID},
 	}
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	for _, tc := range []struct {
 		name   string
@@ -237,7 +237,7 @@ func TestOutlinerCursorProject_HeaderSeparatorAndStale(t *testing.T) {
 	app2.crossOutliner.loadedProjects = []*models.Project{projA}
 	app2.crossOutliner.rows = []outlinerRow{{task: orphan, ProjectID: "proj-missing"}}
 	app2.crossOutliner.cursor = 0
-	app2.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app2.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	if got := app2.outlinerCursorProject(); got != nil {
 		t.Fatalf("outlinerCursorProject stale = %v, want nil", got)
@@ -246,7 +246,7 @@ func TestOutlinerCursorProject_HeaderSeparatorAndStale(t *testing.T) {
 
 func TestOutlinerCursorProject_NilWhenNoOutliner(t *testing.T) {
 	app := minimalAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	if got := app.outlinerCursorProject(); got != nil {
 		t.Fatalf("outlinerCursorProject = %v, want nil", got)
@@ -268,7 +268,7 @@ func TestRunOutlinerCmd_RefreshDispatchesToActiveOutliner(t *testing.T) {
 	app.outliner = minimalOutliner()
 	app.outliner.project = proj
 	app.outliner.rows = []outlinerRow{{task: task, ProjectID: proj.ID}}
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := func() tea.Msg { return outlinerRefreshMsg{} }
 	if got := app.runOutlinerCmd(cmd); got != nil {
@@ -279,7 +279,7 @@ func TestRunOutlinerCmd_RefreshDispatchesToActiveOutliner(t *testing.T) {
 func TestRunOutlinerCmd_BatchWalksRecursively(t *testing.T) {
 	app := minimalAppModel()
 	app.outliner = minimalOutliner()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	wantStatus := StatusMsg("hello")
 	cmd := func() tea.Msg {
@@ -298,7 +298,7 @@ func TestRunOutlinerCmd_BatchWalksRecursively(t *testing.T) {
 func TestRunOutlinerCmd_BatchAllRefreshReturnsNil(t *testing.T) {
 	app := minimalAppModel()
 	app.outliner = minimalOutliner()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := func() tea.Msg {
 		return tea.BatchMsg{

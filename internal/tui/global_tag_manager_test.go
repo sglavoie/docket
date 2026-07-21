@@ -229,7 +229,6 @@ func TestGlobalTagManagerNavigatesCatalogOnlyTag(t *testing.T) {
 
 func TestGlobalTagNavigateRespectsDefaultOutlinerView(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.runtime.Settings().DefaultProjectView = "outliner"
 	syncTestRuntime(app)
 	project.Tags = []string{"catalog-only"}
 	mockPersister := NewMockPersister()

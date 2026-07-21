@@ -153,7 +153,7 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 
 func (m *OutlinerModel) StatusBarLabel() string {
 	if m.project != nil {
-		status := fmt.Sprintf("Outliner: %s", m.project.Name) + FormatCyclePosition(m.runtime, m.project.ID)
+		status := fmt.Sprintf("Outliner: %s", m.project.Name)
 		if m.sidebar.IsFocused() {
 			status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
 		}

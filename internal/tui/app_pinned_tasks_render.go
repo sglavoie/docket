@@ -108,10 +108,8 @@ func (m *AppModel) renderPinnedPopup() string {
 		for i, realIdx := range filtered {
 			entry := m.pinnedPopupItems[realIdx]
 
-			var badge string
-			if !m.pinnedPopupFiltering && m.pinnedPopupFilter == "" && i < 9 {
-				badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
-			} else {
+			badge := badgeStyle.Render("›")
+			if m.pinnedPopupFiltering {
 				badge = dimBadgeStyle.Render("·")
 			}
 
@@ -148,11 +146,11 @@ func (m *AppModel) renderPinnedPopup() string {
 
 	var footer string
 	if m.pinnedPopupFiltering {
-		footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
+		footer = MutedStyle.Render("↑↓ nav  enter open  shift+enter Peek  esc clear")
 	} else if m.pinnedPopupFilter != "" {
-		footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
+		footer = MutedStyle.Render("j/k nav  enter open  shift+enter Peek  p unpin  J/K reorder  / filter  esc clear")
 	} else {
-		footer = MutedStyle.Render("j/k nav  / filter  J/K reorder  ,status  !pri  u unpin  r repin  ctrl+j/k scroll  ctrl+h/l section  esc close")
+		footer = MutedStyle.Render("j/k nav  / filter  enter open  shift+enter Peek  p unpin  J/K reorder  esc close")
 	}
 
 	return renderTitledBox(content, popupWidth, title, footer, borderStyle)

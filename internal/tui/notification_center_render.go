@@ -40,17 +40,13 @@ func (m *NotificationCenterModel) View() tea.View {
 
 	// Build the footer first so its actual height (the help text wraps to extra
 	// lines at narrow widths) can be reserved when sizing the alert window.
-	dismissLabel := "d: dismiss"
+	dismissLabel := "x: dismiss"
 	if m.showDismissed {
 		if item := m.selectedItem(); item != nil && item.dismissed {
-			dismissLabel = "d: restore"
+			dismissLabel = "x: restore"
 		}
 	}
-	toggleLabel := "D: show all"
-	if m.showDismissed {
-		toggleLabel = "D: hide dismissed"
-	}
-	footerLeft := HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: open · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
+	footerLeft := HelpStyle.Render("j/k: navigate · Space: expand · Enter: open · " + dismissLabel + " · v: view · Esc: close")
 	snap := m.activeSnapshot()
 	count := 0
 	if snap != nil {

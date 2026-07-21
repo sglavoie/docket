@@ -4,9 +4,6 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 )
 
 // handleContextMessages handles context picker and custom context messages.
@@ -21,35 +18,10 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case ShowContextPickerForCycleMsg:
-		m.showView(ViewContextPicker, NewContextPickerModelFromRuntime(m.runtime))
-		return true, nil
-
 	case ContextPickerDoneMsg:
 		m.popView()
 		if !msg.Canceled {
-			// Context filters are machine-local navigation state; custom and
-			// regular contexts are mutually exclusive.
-			if err := m.commitMachineMutation(func(machine *config.MachineState) {
-				if msg.IsCustomContext {
-					machine.FilterCustomContext = msg.SelectedContext
-					machine.FilterContext = ""
-				} else {
-					machine.FilterContext = msg.SelectedContext
-					machine.FilterCustomContext = ""
-				}
-			}); err != nil {
-				logging.Warn("failed to save machine state: %v", err)
-			}
-
-			if msg.FromCycle {
-				// Reopen the popup with refreshed items
-				m.resetProjectCycleSearch()
-				m.refreshProjectCycleItems()
-				m.showProjectCycle = true
-				m.projectCycleCursor = 0
-				m.projectCycleScroll = 0
-			} else if m.dashboard != nil {
+			if m.dashboard != nil {
 				// Update dashboard filter
 				if msg.IsCustomContext {
 					m.dashboard.filterContext = ""
@@ -70,7 +42,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 
 			// When the cross-project outliner is in the view stack, trigger a
-			// full eager-reload sequence identical to ;o activation: re-filter
+			// full eager-reload sequence for the cross-project workspace: re-filter
 			// projects by the new context, reload all tasks from disk, and
 			// rebuild all rows. Cursor is saved and restored so clampCursor()
 			// in crossProjectRebuildRows clamps it to the new row count.

@@ -4,16 +4,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 )
 
 // filterItems filters items based on the current search query using category-weighted fuzzy scoring.
 // Supports category prefix filtering (e.g., ":cmd help" filters to commands matching "help").
 // Supports negation with "-" prefix (e.g., "task -bug" excludes items matching "bug").
 // Supports direct task ID jump with "#123" syntax.
-// Supports inline task creation with "+Task title" syntax.
 func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 	query := strings.TrimSpace(m.searchInput.Value())
 
@@ -24,29 +20,6 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 		m.lastCursorItemID = ""
 	}
 
-	// Reset inline task mode
-	m.inlineTaskMode = false
-	m.inlineTaskParsed = nil
-
-	// Check for :help prefix - show syntax help as palette entries
-	if query == ":help" || strings.HasPrefix(query, ":help ") {
-		m.filteredItems = m.buildHelpItems()
-		m.cursor = 0
-		m.scrollOffset = 0
-		return
-	}
-
-	// Check for inline task creation (+Title syntax)
-	if matches := inlineTaskPattern.FindStringSubmatch(query); matches != nil {
-		m.inlineTaskMode = true
-		m.inlineTaskTitle = strings.TrimSpace(matches[1])
-		m.inlineTaskParsed = m.parseInlineTask(m.inlineTaskTitle)
-		m.filteredItems = nil
-		m.cursor = 0
-		m.scrollOffset = 0
-		return
-	}
-
 	// Check for direct task ID jump (#123 syntax)
 	if matches := taskIDPattern.FindStringSubmatch(query); matches != nil {
 		taskID, _ := strconv.Atoi(matches[1])
@@ -54,14 +27,8 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 		return
 	}
 
-	// Parse category prefix if present (with recent flag)
-	categoryFilter, searchQuery, isRecentFilter := m.parseQueryPrefixWithRecent(query)
-
-	// Persist category filter when used (e.g., ":task " becomes the default for next open)
-	// Don't persist :recent as it's a special filter
-	if !isRecentFilter {
-		m.persistCategoryFilter(query, categoryFilter)
-	}
+	// Parse category prefix if present.
+	categoryFilter, searchQuery := m.parseQueryPrefix(query)
 
 	// Parse field filters (priority:, status:, @overdue, etc.) from search query
 	searchQuery, fieldFilters := parseFieldFilters(searchQuery)
@@ -90,39 +57,6 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 		itemsToSearch = filtered
 	}
 
-	// If :recent prefix, further filter to only recently executed commands
-	if isRecentFilter {
-		recentCommands := m.runtime.Machine().GetCommandHistory()
-		recentSet := make(map[string]bool)
-		for _, cmd := range recentCommands {
-			recentSet[cmd] = true
-		}
-
-		var filtered []PaletteItem
-		for _, item := range itemsToSearch {
-			if item.Category == ItemCategoryCommands && item.Command != nil {
-				if recentSet[item.Command.Name] {
-					filtered = append(filtered, item)
-				}
-			}
-		}
-
-		// Sort by history order (most recent first)
-		sort.SliceStable(filtered, func(i, j int) bool {
-			for _, cmd := range recentCommands {
-				if filtered[i].Command != nil && filtered[i].Command.Name == cmd {
-					return true
-				}
-				if filtered[j].Command != nil && filtered[j].Command.Name == cmd {
-					return false
-				}
-			}
-			return false
-		})
-
-		itemsToSearch = filtered
-	}
-
 	// Apply field filters first (these are hard filters, not fuzzy)
 	if len(fieldFilters) > 0 {
 		var filtered []PaletteItem
@@ -134,17 +68,19 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 		itemsToSearch = filtered
 	}
 
-	// Empty search query shows all (filtered) items sorted by category (no highlighting)
+	// An empty palette is intentionally command-only and bounded: up to six
+	// recent commands followed by up to six contextual commands. Entities enter
+	// the result set only after the user types a query or category prefix.
 	if searchQuery == "" {
+		if categoryFilter == "" {
+			m.filteredItems = m.buildEmptyPaletteItems()
+			m.restoreCursorPosition()
+			return
+		}
 		sorted := m.sortItemsByCategory(itemsToSearch)
 		m.filteredItems = make([]filteredPaletteItem, len(sorted))
 		for i, item := range sorted {
 			m.filteredItems[i] = filteredPaletteItem{Item: item}
-		}
-		// Inject "Recent" and "Suggested" sections when browsing without any filter
-		if categoryFilter == "" && !isRecentFilter {
-			m.injectFrequentItems()
-			m.injectSuggestedItems()
 		}
 		m.restoreCursorPosition()
 		return
@@ -195,37 +131,7 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 			return scored[i].score > scored[j].score
 		}
 
-		// Secondary sort based on sortField (only for tasks)
-		itemI := scored[i].item
-		itemJ := scored[j].item
-
-		// Non-tasks: just keep score order
-		if itemI.Category != ItemCategoryTasks || itemJ.Category != ItemCategoryTasks {
-			return false
-		}
-		if itemI.Task == nil || itemJ.Task == nil {
-			return false
-		}
-
-		switch m.sortField {
-		case SortByPriority:
-			// Lower priority number = higher priority (1 is highest)
-			return itemI.Task.Priority < itemJ.Task.Priority
-		case SortByDueDate:
-			// Earlier due date first; no due date goes last
-			if itemI.Task.DueDate == nil && itemJ.Task.DueDate == nil {
-				return false
-			}
-			if itemI.Task.DueDate == nil {
-				return false // nil goes last
-			}
-			if itemJ.Task.DueDate == nil {
-				return true // nil goes last
-			}
-			return itemI.Task.DueDate.Before(*itemJ.Task.DueDate)
-		default:
-			return false
-		}
+		return false
 	})
 
 	// Extract sorted results with positions and match info
@@ -258,104 +164,6 @@ func (m *CommandPaletteModel) filterByTaskID(taskID int) {
 	m.filteredItems = results
 	m.cursor = 0
 	m.scrollOffset = 0
-}
-
-// persistCategoryFilter saves the category filter to config when a category prefix is used.
-// Only persists complete prefixes (e.g., ":task " not ":ta").
-func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter ItemCategory) {
-	if m.suppressCategoryPersistence {
-		return
-	}
-
-	// Only persist if we have a valid category filter with a complete prefix
-	if categoryFilter != "" {
-		// Find the prefix string that matches this category
-		for prefix, cat := range categoryPrefixes {
-			if cat == categoryFilter {
-				newValue := ":" + prefix + " "
-				// Only update if changed
-				if m.runtime.Machine().GetLastPaletteCategory() != newValue {
-					if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
-						machine.SetLastPaletteCategory(newValue)
-					}); err != nil {
-						logging.Warn("failed to save machine state: %v", err)
-					}
-				}
-				return
-			}
-		}
-	} else if query == "" {
-		// Clear the filter when query is empty
-		if m.runtime.Machine().GetLastPaletteCategory() != "" {
-			if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
-				machine.SetLastPaletteCategory("")
-			}); err != nil {
-				logging.Warn("failed to save machine state: %v", err)
-			}
-		}
-	}
-}
-
-// isNumberJumpEnabled returns true if number keys should trigger direct selection.
-// This is enabled when the search input is empty or contains only a category prefix.
-func (m *CommandPaletteModel) isNumberJumpEnabled() bool {
-	query := strings.TrimSpace(m.searchInput.Value())
-	if query == "" {
-		return true
-	}
-	// Check if query is just a category prefix (e.g., ":cmd", ":task ")
-	_, searchQuery := m.parseQueryPrefix(query)
-	return searchQuery == ""
-}
-
-// findNextSectionStart returns the index of the first item in the next category.
-// Categories cycle in the order: Commands → Projects → Tasks → Tags → Sections → Commands.
-// Saves the current cursor position for the current category to restore later.
-// Returns -1 if there are no items or only one category exists.
-func (m *CommandPaletteModel) findNextSectionStart() int {
-	if len(m.filteredItems) == 0 || m.cursor >= len(m.filteredItems) {
-		return -1
-	}
-
-	currentCategory := m.filteredItems[m.cursor].Item.Category
-
-	// Save current cursor position for this category
-	m.categoryCursors[currentCategory] = m.cursor
-
-	// Find current category's position in the order
-	currentIdx := -1
-	for i, cat := range categoryOrder {
-		if cat == currentCategory {
-			currentIdx = i
-			break
-		}
-	}
-	if currentIdx == -1 {
-		return -1
-	}
-
-	// Try each subsequent category in order (wrapping around)
-	for offset := 1; offset <= len(categoryOrder); offset++ {
-		nextCatIdx := (currentIdx + offset) % len(categoryOrder)
-		targetCategory := categoryOrder[nextCatIdx]
-
-		// Check if we have a saved cursor position for this category
-		if savedPos, ok := m.categoryCursors[targetCategory]; ok {
-			// Verify the saved position is still valid and in this category
-			if savedPos < len(m.filteredItems) && m.filteredItems[savedPos].Item.Category == targetCategory {
-				return savedPos
-			}
-		}
-
-		// Find first item with this category
-		for i, filtered := range m.filteredItems {
-			if filtered.Item.Category == targetCategory {
-				return i
-			}
-		}
-	}
-
-	return -1
 }
 
 // restoreCursorPosition tries to keep the previously selected item under the cursor.

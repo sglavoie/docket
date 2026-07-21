@@ -89,7 +89,7 @@ func TestShouldShowAlertIndicatorNoAlerts(t *testing.T) {
 
 func TestShouldShowAlertIndicatorWithAlertsOnDashboard(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard}
+	app.viewStack = []PresentationID{ViewDashboard}
 	app.proactiveAlerts = &alerts.AlertSnapshot{TotalCount: 3}
 	if !app.shouldShowAlertIndicator() {
 		t.Error("expected true for Dashboard with alerts")
@@ -98,7 +98,7 @@ func TestShouldShowAlertIndicatorWithAlertsOnDashboard(t *testing.T) {
 
 func TestShouldShowAlertIndicatorWithAlertsOnUnsupportedView(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewHelp}
+	app.viewStack = []PresentationID{ViewHelp}
 	app.proactiveAlerts = &alerts.AlertSnapshot{TotalCount: 3}
 	if app.shouldShowAlertIndicator() {
 		t.Error("expected false for unsupported view even with alerts")
@@ -106,7 +106,7 @@ func TestShouldShowAlertIndicatorWithAlertsOnUnsupportedView(t *testing.T) {
 }
 
 func TestShouldShowAlertIndicatorSupportedViews(t *testing.T) {
-	supported := []ViewType{
+	supported := []PresentationID{
 		ViewDashboard, ViewOutliner, ViewTemporaryOutliner, ViewFocusBoard,
 		ViewKanban, ViewCrossProjectKanban,
 		ViewCrossProjectOutliner,
@@ -115,7 +115,7 @@ func TestShouldShowAlertIndicatorSupportedViews(t *testing.T) {
 		ViewMetricsDashboard,
 		ViewAllTasks,
 		ViewRecentActivity,
-		ViewRoadmap, ViewPipelineHub,
+		ViewRoadmap,
 		ViewProjectFocusView,
 		ViewBlockers, ViewGlobalBlockers,
 		ViewProjectRecentActivity,
@@ -123,7 +123,7 @@ func TestShouldShowAlertIndicatorSupportedViews(t *testing.T) {
 	}
 	for _, view := range supported {
 		app := newTestAppModel()
-		app.viewStack = []ViewType{view}
+		app.viewStack = []PresentationID{view}
 		app.proactiveAlerts = &alerts.AlertSnapshot{TotalCount: 1}
 		if !app.shouldShowAlertIndicator() {
 			t.Errorf("view %v with alerts: expected true", view)

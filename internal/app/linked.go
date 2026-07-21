@@ -48,74 +48,119 @@ type LinkedTaskResult struct {
 // unless it becomes a child (subtask, or a parsed parent on a non-subtask link),
 // mirroring the legacy linked-task-creator ordering.
 func (s *Service) CreateLinkedTask(req LinkedTaskRequest) (LinkedTaskResult, error) {
-	snap, err := s.repo.Snapshot()
+	results, err := s.CreateLinkedTasks([]LinkedTaskRequest{req})
 	if err != nil {
 		return LinkedTaskResult{}, err
 	}
-	project := snap.ProjectByID(req.Task.ProjectID)
+	return results[0], nil
+}
+
+// CreateLinkedTasks creates every requested task and relationship in one
+// ChangeSet. It is the multiline Task Composer counterpart to CreateLinkedTask:
+// validation or relationship failure aborts the whole batch before persistence.
+func (s *Service) CreateLinkedTasks(reqs []LinkedTaskRequest) ([]LinkedTaskResult, error) {
+	if len(reqs) == 0 {
+		return nil, invalidInput("linked tasks", "no tasks to create")
+	}
+	projectID := reqs[0].Task.ProjectID
+	for _, req := range reqs {
+		if req.Task.ProjectID != projectID {
+			return nil, invalidInput("linked tasks", "all linked tasks must target the same project")
+		}
+	}
+
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return nil, err
+	}
+	project := snap.ProjectByID(projectID)
 	if project == nil {
-		return LinkedTaskResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, req.Task.ProjectID)
+		return nil, fmt.Errorf("%w: %s", ErrProjectNotFound, projectID)
 	}
 	revision := snap.Revision(project.ID)
 
-	source := project.GetTaskByID(req.SourceTaskID)
-	if source == nil {
-		return LinkedTaskResult{}, fmt.Errorf("%w: source %s", ErrTaskNotFound, req.SourceTaskID)
+	tasks := make([]*models.Task, 0, len(reqs))
+	sources := make([]*models.Task, 0, len(reqs))
+	for _, req := range reqs {
+		source := project.GetTaskByID(req.SourceTaskID)
+		if source == nil {
+			return nil, fmt.Errorf("%w: source %s", ErrTaskNotFound, req.SourceTaskID)
+		}
+
+		// A subtask's parent is the source, so ignore any parsed parent on that
+		// path (matching the single linked-task creator).
+		buildReq := req.Task
+		if req.Link == LinkSubtask {
+			buildReq.ParentID = nil
+		}
+		task, buildErr := s.buildCapturedTask(project, buildReq)
+		if buildErr != nil {
+			return nil, buildErr
+		}
+
+		switch req.Link {
+		case LinkBlocker:
+			if linkErr := source.AddDependency(task.ID); linkErr != nil {
+				return nil, invalidInput("blocker", linkErr.Error())
+			}
+		case LinkDependent:
+			if linkErr := task.AddDependency(source.ID); linkErr != nil {
+				return nil, invalidInput("dependent", linkErr.Error())
+			}
+		case LinkSubtask:
+			if source.Type.IsLeafType() {
+				source.Type = models.TaskTypeStory
+			}
+			parentID := source.ID
+			task.ParentID = &parentID
+		case LinkFollowUp:
+			if linkErr := source.AddRelatedTo(task.ID); linkErr != nil {
+				return nil, invalidInput("follow-up", linkErr.Error())
+			}
+			if linkErr := task.AddRelatedTo(source.ID); linkErr != nil {
+				return nil, invalidInput("follow-up", linkErr.Error())
+			}
+			for _, tag := range source.Tags {
+				task.AddTag(tag)
+			}
+		default:
+			return nil, invalidInput("link", fmt.Sprintf("%q is not a valid link kind", req.Link))
+		}
+		tasks = append(tasks, task)
+		sources = append(sources, source)
 	}
 
-	// A subtask's parent is the source, so ignore any parsed parent on that path
-	// (matching the legacy creator, which applied a parsed >parent only for
-	// non-subtask links).
-	buildReq := req.Task
-	if req.Link == LinkSubtask {
-		buildReq.ParentID = nil
+	// Preserve compact-line order for roots while children stay at the end of
+	// their sibling collection.
+	rootTasks := make([]*models.Task, 0, len(tasks))
+	for _, task := range tasks {
+		if task.ParentID == nil {
+			rootTasks = append(rootTasks, task)
+		} else {
+			project.Tasks = append(project.Tasks, task)
+		}
 	}
-	task, err := s.buildCapturedTask(project, buildReq)
+	if len(rootTasks) > 0 {
+		project.Tasks = append(rootTasks, project.Tasks...)
+	}
+
+	context := fmt.Sprintf("%d linked tasks", len(tasks))
+	undoAction := "Add Linked Tasks"
+	if len(tasks) == 1 {
+		context = fmt.Sprintf("#%d %s", tasks[0].ShortID, tasks[0].Title)
+		undoAction = "Add Linked Task"
+	}
+	ref := TaskRef{Task: tasks[0], Project: project, Base: snap.Document(project.ID)}
+	result, err := s.commitProject(ref, revision, undoAction, context)
 	if err != nil {
-		return LinkedTaskResult{}, err
+		return nil, err
 	}
 
-	switch req.Link {
-	case LinkBlocker:
-		if linkErr := source.AddDependency(task.ID); linkErr != nil {
-			return LinkedTaskResult{}, invalidInput("blocker", linkErr.Error())
-		}
-	case LinkDependent:
-		if linkErr := task.AddDependency(source.ID); linkErr != nil {
-			return LinkedTaskResult{}, invalidInput("dependent", linkErr.Error())
-		}
-	case LinkSubtask:
-		if source.Type.IsLeafType() {
-			source.Type = models.TaskTypeStory
-		}
-		parentID := source.ID
-		task.ParentID = &parentID
-	case LinkFollowUp:
-		if linkErr := source.AddRelatedTo(task.ID); linkErr != nil {
-			return LinkedTaskResult{}, invalidInput("follow-up", linkErr.Error())
-		}
-		if linkErr := task.AddRelatedTo(source.ID); linkErr != nil {
-			return LinkedTaskResult{}, invalidInput("follow-up", linkErr.Error())
-		}
-		for _, tag := range source.Tags {
-			task.AddTag(tag)
-		}
-	default:
-		return LinkedTaskResult{}, invalidInput("link", fmt.Sprintf("%q is not a valid link kind", req.Link))
+	results := make([]LinkedTaskResult, len(tasks))
+	for i, task := range tasks {
+		newResult := newTaskResult(TaskRef{Task: task, Project: project}, result.Revision)
+		sourceResult := newTaskResult(TaskRef{Task: sources[i], Project: project}, result.Revision)
+		results[i] = LinkedTaskResult{New: newResult, Source: sourceResult}
 	}
-
-	// A child stays at the end of its siblings; a root task is prepended for
-	// prominence.
-	insertCapturedTask(project, task, task.ParentID == nil)
-
-	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
-	result, err := s.commitProject(ref, revision, "Add Linked Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-	if err != nil {
-		return LinkedTaskResult{}, err
-	}
-
-	// Re-resolve the source from the committed project so its result reflects any
-	// promotion/relationship the mutation applied.
-	sourceResult := newTaskResult(TaskRef{Task: source, Project: project}, result.Revision)
-	return LinkedTaskResult{New: result, Source: sourceResult}, nil
+	return results, nil
 }

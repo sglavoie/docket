@@ -85,7 +85,7 @@ func TestPinnedPopupReorderThroughAppService(t *testing.T) {
 	}
 }
 
-func TestPinnedPopupUnpinAndRepinThroughAppService(t *testing.T) {
+func TestPinnedPopupUnpinThroughAppService(t *testing.T) {
 	m, proj, taskAID, _ := pinnedPopupFixture(t)
 
 	// Unpin the top task (A). It leaves the popup and its disk state clears.
@@ -101,23 +101,5 @@ func TestPinnedPopupUnpinAndRepinThroughAppService(t *testing.T) {
 	}
 	if got := fresh.GetTaskByID(taskAID); got == nil || got.Pinned {
 		t.Fatalf("task A still pinned on disk: %+v", got)
-	}
-	if m.pinnedLastUnpinned == nil {
-		t.Fatal("pinnedLastUnpinned not recorded for repin")
-	}
-
-	// Repin restores A.
-	if _, cmd := m.repinFromPopup(); cmd != nil {
-		t.Fatalf("repin returned unexpected command: %v", cmd)
-	}
-	if len(m.pinnedPopupItems) != 2 {
-		t.Fatalf("pinned count after repin = %d, want 2", len(m.pinnedPopupItems))
-	}
-	fresh2 := &models.Project{ID: proj.ID, Name: proj.Name, Path: proj.Path}
-	if err := storage.LoadProject(fresh2); err != nil {
-		t.Fatalf("reload: %v", err)
-	}
-	if got := fresh2.GetTaskByID(taskAID); got == nil || !got.Pinned {
-		t.Fatalf("task A not repinned on disk: %+v", got)
 	}
 }

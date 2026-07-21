@@ -89,6 +89,9 @@ type TransactionResultMsg struct {
 	Action string
 	// Result is the application layer's outcome for the affected task.
 	Result app.TaskResult
+	// PlanningChanged reports that the same ChangeSet carried a checked planning
+	// artifact. The shell advances its planning snapshot before refreshing Planner.
+	PlanningChanged bool
 }
 
 // SuccessMessage renders the status line shown when the transaction commits.
@@ -188,7 +191,10 @@ func (c CaptureCoordinator) CaptureBoard(req app.CaptureRequest) tea.Cmd {
 		if err != nil {
 			return ErrorMsg{Err: err}
 		}
-		return TransactionResultMsg{Feature: name, Action: fmt.Sprintf("Added #%d", res.ShortID), Result: res}
+		return TransactionResultMsg{
+			Feature: name, Action: fmt.Sprintf("Added #%d", res.ShortID), Result: res,
+			PlanningChanged: req.PlanningArtifacts != nil,
+		}
 	}
 }
 
@@ -200,13 +206,40 @@ func (c CaptureCoordinator) CaptureBoard(req app.CaptureRequest) tea.Cmd {
 func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSuccess bool) tea.Cmd {
 	mutator := c.mutator
 	return func() tea.Msg {
-		if _, err := mutator.CaptureMany(reqs); err != nil {
+		results, err := mutator.CaptureMany(reqs)
+		if err != nil {
 			return ErrorMsg{Err: err}
 		}
 		if closeOnSuccess {
-			return TaskCreatedMsg{}
+			msg := TaskCreatedMsg{CreatedCount: len(results)}
+			if len(results) > 0 {
+				result := results[0]
+				msg.Result = &result
+			}
+			return msg
 		}
 		return SaveCompleteMsg{}
+	}
+}
+
+type linkedTaskBatchMutator interface {
+	CreateLinkedTasks([]app.LinkedTaskRequest) ([]app.LinkedTaskResult, error)
+}
+
+// CreateLinkedBulk commits every compact linked-task line and its relationship
+// through one application-layer ChangeSet.
+func (c CaptureCoordinator) CreateLinkedBulk(reqs []app.LinkedTaskRequest, linkType LinkType) tea.Cmd {
+	mutator := c.mutator
+	return func() tea.Msg {
+		batch, ok := mutator.(linkedTaskBatchMutator)
+		if !ok {
+			return ErrorMsg{Err: fmt.Errorf("linked-task batch mutation is unavailable")}
+		}
+		results, err := batch.CreateLinkedTasks(reqs)
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return LinkedTaskBatchCreatedMsg{Results: results, LinkType: linkType}
 	}
 }
 

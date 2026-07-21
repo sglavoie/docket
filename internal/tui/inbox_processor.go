@@ -148,9 +148,9 @@ func (m *InboxProcessorModel) emptyStateText() string {
 func (m *InboxProcessorModel) emptyInboxText() string {
 	return icons.Get("success") + " Inbox is empty! All tasks have been triaged."
 }
-func (m *InboxProcessorModel) returnHint() string   { return "return to outliner" }
-func (m *InboxProcessorModel) viewType() ViewType   { return ViewInboxProcessor }
-func (m *InboxProcessorModel) helpViewName() string { return "Inbox Processor" }
+func (m *InboxProcessorModel) returnHint() string       { return "return to outliner" }
+func (m *InboxProcessorModel) viewType() PresentationID { return ViewInboxProcessor }
+func (m *InboxProcessorModel) helpViewName() string     { return "Inbox Processor" }
 
 func (m *InboxProcessorModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()

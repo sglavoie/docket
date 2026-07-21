@@ -53,7 +53,10 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 			return true, cmd
 		}
 	}
-	// No templates or skipped, go directly to task form
+	// No templates or skipped, go directly to the compact task composer.
+	if m.typedNavigation {
+		return true, m.openTaskComposer(m.createComposerPreset(project, msg.ParentTask), ViewTaskForm)
+	}
 	m.showView(ViewTaskForm, NewTaskFormModelCreate(project, m.runtime, msg.ParentTask))
 	return true, nil
 }
@@ -65,6 +68,10 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 		project = m.currentProject
 	}
 	if project != nil && msg.Task != nil {
+		if m.typedNavigation {
+			preset := TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: msg.Task}
+			return true, m.openTaskComposer(preset, ViewTaskForm)
+		}
 		m.showView(ViewTaskForm, NewTaskFormModelEdit(project, msg.Task, m.runtime))
 	}
 	return true, nil
@@ -98,7 +105,9 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		}
 	}
 
-	if msg.Task != nil {
+	if msg.CreatedCount > 0 {
+		m.sessionStats.tasksCreated += msg.CreatedCount
+	} else if msg.Task != nil {
 		m.sessionStats.tasksCreated++
 	}
 	if msg.Task != nil {
@@ -132,6 +141,9 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		if bucket := taskSectionBucket(msg.Task); bucket != "" {
 			m.setSuccessStatus(fmt.Sprintf("Created in %s", bucket))
 		}
+	}
+	if msg.CreatedCount > 1 {
+		m.setSuccessStatus(fmt.Sprintf("Created %d tasks", msg.CreatedCount))
 	}
 
 	// Override with onboarding next-step hint when this was the first task captured

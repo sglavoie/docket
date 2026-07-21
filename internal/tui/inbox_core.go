@@ -57,7 +57,7 @@ type inboxBackend interface {
 	emptyStateText() string
 	emptyInboxText() string
 	returnHint() string
-	viewType() ViewType
+	viewType() PresentationID
 	helpViewName() string
 }
 

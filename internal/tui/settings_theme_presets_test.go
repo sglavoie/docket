@@ -251,8 +251,10 @@ func TestPresetResetKey_Cancel(t *testing.T) {
 		if !handled {
 			t.Errorf("key %q: expected handled=true", key)
 		}
-		if cmd != nil {
-			t.Errorf("key %q: expected nil cmd on cancel", key)
+		if cmd == nil {
+			t.Errorf("key %q: expected overlay-close cmd on cancel", key)
+		} else if msg, ok := cmd().(settingsTransientOverlayMsg); !ok || msg.Open || msg.Kind != OverlayConfirmation {
+			t.Errorf("key %q: cancel cmd = %#v, want confirmation close", key, msg)
 		}
 		if m.themePresetMode != presetModeNone {
 			t.Errorf("key %q: mode = %d, want presetModeNone", key, m.themePresetMode)
@@ -350,8 +352,10 @@ func TestHandlePresetLoadKey_DShowsConfirm(t *testing.T) {
 	if !handled {
 		t.Fatal("expected handled=true for D in load mode")
 	}
-	if cmd != nil {
-		t.Error("expected nil cmd when showing confirm (no async work yet)")
+	if cmd == nil {
+		t.Error("expected typed confirmation-open cmd")
+	} else if msg, ok := cmd().(settingsTransientOverlayMsg); !ok || !msg.Open || msg.Kind != OverlayConfirmation {
+		t.Errorf("D cmd = %#v, want confirmation open", msg)
 	}
 	if !m.themePresetConfirmDelete.IsActive() {
 		t.Error("themePresetConfirmDelete should be active after D")
@@ -377,8 +381,10 @@ func TestHandlePresetLoadKey_ConfirmCancel(t *testing.T) {
 	if !handled {
 		t.Fatal("expected handled=true for n in confirm")
 	}
-	if cmd != nil {
-		t.Error("expected nil cmd on cancel")
+	if cmd == nil {
+		t.Error("expected typed confirmation-close cmd on cancel")
+	} else if msg, ok := cmd().(settingsTransientOverlayMsg); !ok || msg.Open || msg.Kind != OverlayConfirmation {
+		t.Errorf("cancel cmd = %#v, want confirmation close", msg)
 	}
 	if m.themePresetConfirmDelete.IsActive() {
 		t.Error("confirm dialog should be dismissed after n")

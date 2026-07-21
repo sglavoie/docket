@@ -22,8 +22,6 @@ func (m *AppModel) openQuickSwitch() {
 	m.quickSwitchFilter = ""
 	m.quickSwitchFiltering = false
 	m.quickSwitchFiltered = nil
-	m.quickSwitchPendingPrefix = ""
-	m.quickSwitchShowCompleted = false
 	m.refreshRecentTaskVisits()
 	// Re-sort so pinned entries come first
 	m.recentTaskVisits = m.sortedQuickSwitchEntries()
@@ -33,7 +31,7 @@ func (m *AppModel) openQuickSwitch() {
 // quickSwitchSelectFiltered selects the entry at the given filtered index.
 func (m *AppModel) quickSwitchSelectFiltered(filteredIdx int) (*AppModel, tea.Cmd) {
 	if filteredIdx < 0 || filteredIdx >= m.quickSwitchFilteredLen() {
-		m.showQuickSwitch = false
+		m.closeQuickSwitchOverlay()
 		return m, nil
 	}
 	realIdx := m.quickSwitchFiltered[filteredIdx]
@@ -43,10 +41,10 @@ func (m *AppModel) quickSwitchSelectFiltered(filteredIdx int) (*AppModel, tea.Cm
 // quickSwitchSelect navigates to the entry at the given index and closes the popup.
 func (m *AppModel) quickSwitchSelect(idx int) (*AppModel, tea.Cmd) {
 	if idx < 0 || idx >= len(m.recentTaskVisits) {
-		m.showQuickSwitch = false
+		m.closeQuickSwitchOverlay()
 		return m, nil
 	}
 	entry := m.recentTaskVisits[idx]
-	m.showQuickSwitch = false
+	m.closeQuickSwitchOverlay()
 	return m, m.navigateToTaskInProject(entry.Task, entry.Project)
 }

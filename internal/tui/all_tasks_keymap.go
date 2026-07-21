@@ -19,7 +19,6 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 	entries = append(entries, m.allTasksSortEntries()...)
 	entries = append(entries, m.allTasksTabEntries()...)
 	entries = append(entries, m.allTasksMultiSelectEntries()...)
-	entries = append(entries, m.allTasksSmartListEntries()...)
 	entries = append(entries, m.allTasksExportEntries()...)
 
 	return &keymap.KeyMap{
@@ -89,8 +88,6 @@ func (m *AllTasksViewModel) allTasksFilterEntries() []keymap.Entry {
 		TypeKey:           m.allTasksFilterTypeKey,
 		StateKey:          m.allTasksFilterStateKey,
 		DueDateKey:        nil,
-		AttrDirectKey:     m.allTasksFilterAttrKey,
-		AttrSubKey:        m.allTasksFilterAttrSubKey,
 		OpenAttrPicker:    m.allTasksOpenAttrPicker,
 		ScoreKey:          m.allTasksFilterScoreKey,
 	})
@@ -128,16 +125,6 @@ func (m *AllTasksViewModel) allTasksMultiSelectEntries() []keymap.Entry {
 		keymap.Bind("space", "Toggle selection (multi-select) / toggle peek", "Multi-select", m.allTasksToggleSelection, keymap.AsHidden()),
 		keymap.Bind("a", "Select all visible", "Multi-select", m.allTasksSelectAllVisible, keymap.AsHidden()),
 		keymap.Bind("A", "Deselect all", "Multi-select", m.allTasksDeselectAll, keymap.AsHidden()),
-	}
-}
-
-func (m *AllTasksViewModel) allTasksSmartListEntries() []keymap.Entry {
-	return []keymap.Entry{
-		keymap.Bind("+", "Create smart list tab", "Smart Lists", m.allTasksCreateSmartList),
-		keymap.Bind("E", "Edit current smart list tab", "Smart Lists", m.allTasksEditSmartList),
-		keymap.Bind("X", "Delete current smart list tab", "Smart Lists", m.allTasksDeleteSmartList),
-		keymap.Bind("{", "Move tab left", "Actions", m.allTasksMoveTabLeft),
-		keymap.Bind("}", "Move tab right", "Actions", m.allTasksMoveTabRight),
 	}
 }
 
@@ -365,18 +352,6 @@ func (m *AllTasksViewModel) allTasksFilterStateKey(key string) keymap.Action {
 	}
 }
 
-func (m *AllTasksViewModel) allTasksFilterAttrKey(key string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		return m.handleAllTasksFilterSubPrefix("Fa", key)
-	}
-}
-
-func (m *AllTasksViewModel) allTasksFilterAttrSubKey(prefix, key string) keymap.Action {
-	return func() (tea.Model, tea.Cmd) {
-		return m.handleAllTasksFilterSubPrefix(prefix, key)
-	}
-}
-
 func (m *AllTasksViewModel) allTasksOpenAttrPicker() (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewAllTasks} }
 }
@@ -465,43 +440,6 @@ func (m *AllTasksViewModel) allTasksDeselectAll() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode {
 		m.deselectAll()
 	}
-	return m, nil
-}
-
-func (m *AllTasksViewModel) allTasksCreateSmartList() (tea.Model, tea.Cmd) {
-	return m, func() tea.Msg { return ShowFilterBuilderMsg{} }
-}
-
-func (m *AllTasksViewModel) allTasksEditSmartList() (tea.Model, tea.Cmd) {
-	entry := m.activeTabEntry()
-	if entry == nil || entry.IsBuiltIn || entry.IsOverflow {
-		return m, nil
-	}
-	sf := m.runtime.Planning().GetSavedFilter(entry.SavedFilterID)
-	if sf == nil || sf.Mode != "criteria" {
-		return m, nil
-	}
-	filter := *sf
-	return m, func() tea.Msg {
-		return ShowFilterEditorMsg{Filter: &filter}
-	}
-}
-
-func (m *AllTasksViewModel) allTasksDeleteSmartList() (tea.Model, tea.Cmd) {
-	entry := m.activeTabEntry()
-	if entry != nil && !entry.IsBuiltIn && !entry.IsOverflow {
-		m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q?", entry.Name))
-	}
-	return m, nil
-}
-
-func (m *AllTasksViewModel) allTasksMoveTabLeft() (tea.Model, tea.Cmd) {
-	m.moveTabLeft()
-	return m, nil
-}
-
-func (m *AllTasksViewModel) allTasksMoveTabRight() (tea.Model, tea.Cmd) {
-	m.moveTabRight()
 	return m, nil
 }
 

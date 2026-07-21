@@ -123,7 +123,6 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case QuitMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
-		m.saveCrossOutlinerState()
 		m.quitting = true
 		return true, tea.Quit
 	case spinner.TickMsg:
@@ -133,14 +132,6 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return true, cmd
-	case ClearSemicolonPrefixMsg:
-		if !m.pendingSemicolonPrefix && !m.pendingSemicolonTPrefix {
-			return true, nil
-		}
-		m.pendingSemicolonPrefix = false
-		m.pendingSemicolonTPrefix = false
-		m.setInfoStatus("prefix cleared")
-		return true, defaultStatusTimeout()
 	case RecordRepeatableActionMsg:
 		m.lastRepeatableAction = msg.Action
 		return true, nil
@@ -207,6 +198,10 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // runs, keeping every open view consistent with the committed transaction.
 func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 	m.reloadProjectByID(msg.Result.ProjectID)
+	if msg.PlanningChanged && m.refreshRuntime() {
+		m.rebuildPlanningFromRuntime()
+	}
+	m.refreshLoadedTaskWorkspace()
 	m.observeLoadedProjectMilestones(msg.Result.ProjectID)
 	if m.dashboard != nil {
 		m.dashboard.Refresh()
@@ -223,6 +218,7 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	for _, projectID := range msg.TouchedProjectIDs {
 		m.reloadProjectByID(projectID)
 	}
+	m.refreshLoadedTaskWorkspace()
 	// Repair the machine-local recent visits for every removed task — a bulk
 	// delete folds the DURABLE planning refs (Focus Queue, Daily Plan, dismissals)
 	// into the transaction as a config artifact, but recent visits are
@@ -265,6 +261,15 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 		m.dashboard.Refresh()
 	}
 	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
+}
+
+func (m *AppModel) refreshLoadedTaskWorkspace() {
+	if m.taskWorkspace == nil {
+		return
+	}
+	if err := m.taskWorkspace.RefreshIfLoaded(); err != nil {
+		logging.Warn("failed to refresh Task Workspace: %v", err)
+	}
 }
 
 // reloadProjectByID reloads a project's tasks from disk into the AppModel's
@@ -325,7 +330,7 @@ func (m *AppModel) persistOutlinerFilterState() {
 	// from cross-outliner) reads the up-to-date cleared/changed values.
 	switch m.currentView() { //nolint:exhaustive
 	case ViewCrossProjectOutliner:
-		m.saveCrossOutlinerState()
+		return
 	default:
 		m.saveOutlinerFilterState()
 	}
@@ -383,6 +388,10 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 		m.allTasksView.loadAllTasks()
 		m.allTasksView.clampCursor()
 	}
+	if m.reviewHub != nil {
+		m.reviewHub.SetPlanningIndicators(m.focusQueueIDs, m.dailyPlanIDs)
+		m.reviewHub.Refresh()
+	}
 	m.reloadRegisteredProjectOutliners(storage.LoadProject)
 	m.rebuildRegisteredProjectOutliners()
 	var saveCmds []tea.Cmd
@@ -425,11 +434,16 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 		}
 		if v := m.views.Get(ViewTaskDetail); v != nil {
 			if td, ok := v.(*TaskDetailModel); ok {
-				td.refreshAfterReload()
+				if td.task != nil {
+					td.SetPlanningMembership(m.dailyPlanIDs[td.task.ID], m.focusQueueIDs[td.task.ID])
+				}
+				if !td.refreshAfterReload() && m.taskDetail == td && m.activeTaskDetail() {
+					saveCmds = append(saveCmds, func() tea.Msg { return BackMsg{} })
+				}
 			}
 		}
 		m.refreshLinkedTaskSelectorAfterReload()
-		for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
+		for _, vt := range []PresentationID{ViewKanban, ViewCrossProjectKanban} {
 			if v := m.views.Get(vt); v != nil {
 				if kb, ok := v.(*KanbanModel); ok {
 					kb.reloadData()
@@ -461,9 +475,6 @@ func (m *AppModel) refreshLinkedTaskSelectorAfterReload() {
 }
 
 func (m *AppModel) refreshNotesSearchState() {
-	if m.globalSearch != nil {
-		m.globalSearch.Rebuild()
-	}
 	if m.views == nil {
 		return
 	}

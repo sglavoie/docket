@@ -36,13 +36,13 @@ var AllColumns = []ColumnInfo{
 
 // ShowColumnPickerMsg opens the column picker for a specific view.
 type ShowColumnPickerMsg struct {
-	Source       ViewType
+	Source       PresentationID
 	ColumnConfig *ColumnConfig
 }
 
 // ColumnPickerDoneMsg is returned when the column picker is closed.
 type ColumnPickerDoneMsg struct {
-	Source   ViewType
+	Source   PresentationID
 	Canceled bool
 	Toggles  map[string]bool // Updated toggle map (nil means all visible)
 }
@@ -50,7 +50,7 @@ type ColumnPickerDoneMsg struct {
 // ColumnPickerModel is the picker for toggling column visibility.
 type ColumnPickerModel struct {
 	*BasePicker[ColumnInfo]
-	source ViewType
+	source PresentationID
 }
 
 // NewColumnPickerModel creates a column picker pre-selecting currently visible columns.

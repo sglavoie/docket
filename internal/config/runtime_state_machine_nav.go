@@ -39,36 +39,6 @@ func (rs *RuntimeState) CurrentProject() *models.Project {
 	return rs.GetProject(id)
 }
 
-// CycleProjects returns the global cycle projects (active, in order), mirroring
-// (*Config).GetCycleProjects.
-func (rs *RuntimeState) CycleProjects() []*models.Project {
-	return rs.projectsForIDs(rs.Machine().CycleProjects)
-}
-
-// CycleProjectIndex mirrors (*Config).GetCycleProjectIndex.
-func (rs *RuntimeState) CycleProjectIndex(projectID string) int {
-	for i, p := range rs.CycleProjects() {
-		if p.ID == projectID {
-			return i
-		}
-	}
-	return -1
-}
-
-// CycleProjectsForContext mirrors (*Config).GetCycleProjectsForContext.
-func (rs *RuntimeState) CycleProjectsForContext(context string) []*models.Project {
-	if context == "" {
-		return rs.CycleProjects()
-	}
-	return rs.projectsForIDs(rs.Machine().GetCycleProjectIDsForContext(context))
-}
-
-// ArchivedCycleProjectCountForContext mirrors
-// (*Config).GetArchivedCycleProjectCountForContext.
-func (rs *RuntimeState) ArchivedCycleProjectCountForContext(context string) int {
-	return rs.archivedProjectCountForIDs(rs.Machine().GetCycleProjectIDsForContext(context))
-}
-
 // CustomContextProjects mirrors (*Config).GetCustomContextProjects.
 func (rs *RuntimeState) CustomContextProjects(name string) []*models.Project {
 	return rs.activeProjectsForIDs(rs.Machine().GetCustomContext(name))
@@ -83,19 +53,6 @@ func (rs *RuntimeState) CustomContextProjectCount(name string) int {
 // (*Config).GetCustomContextArchivedProjectCount.
 func (rs *RuntimeState) CustomContextArchivedProjectCount(name string) int {
 	return rs.archivedProjectCountForIDs(rs.Machine().GetCustomContext(name))
-}
-
-// projectsForIDs rehydrates the given project IDs into active (non-archived)
-// projects, preserving order and skipping missing/archived references. It
-// mirrors the inline filter in (*Config).GetCycleProjects/ForContext.
-func (rs *RuntimeState) projectsForIDs(ids []string) []*models.Project {
-	var projects []*models.Project
-	for _, id := range ids {
-		if p := rs.GetProject(id); p != nil && !p.Archived {
-			projects = append(projects, p)
-		}
-	}
-	return projects
 }
 
 // activeProjectsForIDs mirrors (*Config).activeProjectsForIDs: nil ids yield a

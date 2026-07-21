@@ -4,8 +4,7 @@
   "size": "60x20",
   "actions": [
     { "type": "command", "label": "open kanban", "command": "kanban" },
-    { "type": "key", "label": "open snooze prefix", "key": "z" },
-    { "type": "key", "label": "open snooze picker", "key": "d" },
+    { "type": "key", "label": "open snooze picker", "key": "Z" },
     { "type": "assert", "assert": "view", "value": "SnoozeInput" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

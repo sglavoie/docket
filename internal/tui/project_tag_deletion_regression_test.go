@@ -45,10 +45,9 @@ func TestDeletedProjectTagAfterReloadIsAbsentFromTagSurfaces(t *testing.T) {
 	}
 
 	staleFilter := config.SavedFilter{
-		Name:         "Deleted Tag Snapshot",
-		Mode:         "snapshot",
-		FilterTags:   []string{"backend", "frontend"},
-		PinnedTagTab: "backend",
+		Name:       "Deleted Tag Snapshot",
+		Mode:       "snapshot",
+		FilterTags: []string{"backend", "frontend"},
 	}
 	app.applySavedFilterToOutliner(staleFilter)
 	if app.outliner.filter.Tags["backend"] || !app.outliner.filter.Tags["frontend"] {

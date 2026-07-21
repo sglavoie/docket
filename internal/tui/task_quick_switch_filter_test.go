@@ -195,7 +195,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		}
 	})
 
-	t.Run("comma enters status prefix mode", func(t *testing.T) {
+	t.Run("comma is inert outside filter mode", func(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}
 		app.recentTaskVisits = []RecentTaskVisitEntry{{Task: &models.Task{ID: "t1", Title: "Task 1"}, Project: p}}
@@ -205,12 +205,12 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		msg := syntheticKey(',')
 		app.handleQuickSwitchKey(msg)
 
-		if app.quickSwitchPendingPrefix != "," {
-			t.Errorf("expected pending prefix ',', got %q", app.quickSwitchPendingPrefix)
+		if !app.showQuickSwitch {
+			t.Error("inert key closed Recent")
 		}
 	})
 
-	t.Run("exclamation enters priority prefix mode", func(t *testing.T) {
+	t.Run("exclamation is inert outside filter mode", func(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}
 		app.recentTaskVisits = []RecentTaskVisitEntry{{Task: &models.Task{ID: "t1", Title: "Task 1"}, Project: p}}
@@ -220,8 +220,8 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		msg := syntheticKey('!')
 		app.handleQuickSwitchKey(msg)
 
-		if app.quickSwitchPendingPrefix != "!" {
-			t.Errorf("expected pending prefix '!', got %q", app.quickSwitchPendingPrefix)
+		if !app.showQuickSwitch {
+			t.Error("inert key closed Recent")
 		}
 	})
 
@@ -237,9 +237,6 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		msg := syntheticKey(',')
 		app.handleQuickSwitchKey(msg)
 
-		if app.quickSwitchPendingPrefix != "" {
-			t.Errorf("expected no pending prefix, got %q", app.quickSwitchPendingPrefix)
-		}
 		if app.quickSwitchFilter != "task," {
 			t.Errorf("expected filter 'task,', got %q", app.quickSwitchFilter)
 		}

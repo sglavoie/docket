@@ -184,8 +184,36 @@ func (m *FocusBoardModel) isActionableFlowRow(row boardRow) bool {
 }
 
 func (m *FocusBoardModel) setStatus(msg string) { m.statusMessage = msg }
-func (m *FocusBoardModel) viewID() ViewType     { return ViewFocusBoard }
-func (m *FocusBoardModel) viewName() string     { return "Today" }
+
+func (m *FocusBoardModel) parentRowIndices() []int {
+	var indices []int
+	for i, row := range m.filtered {
+		if row.Task != nil && row.TreePrefix == "" {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
+func (m *FocusBoardModel) focusBoardGoToNextParent() tea.Cmd {
+	old := m.cursor
+	cmd := m.SectionGoToNext(m.parentRowIndices())
+	m.clampCursor()
+	if cmd != nil {
+		return cmd
+	}
+	return flashIfJumped(old, m.cursor, &m.cursorFlash)
+}
+
+func (m *FocusBoardModel) focusBoardGoToPrevParent() tea.Cmd {
+	old := m.cursor
+	cmd := m.SectionGoToPrev(m.parentRowIndices())
+	m.clampCursor()
+	if cmd != nil {
+		return cmd
+	}
+	return flashIfJumped(old, m.cursor, &m.cursorFlash)
+}
 
 func (m *FocusBoardModel) ResetCursor() { m.cursor = 0 }
 

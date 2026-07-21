@@ -77,10 +77,15 @@ func (m *AppModel) activatePeek(task *models.Task, project *models.Project) {
 	m.peekLeftOffset = 0
 	m.peekRightOffset = 0
 	m.peekFocusRight = false
+	m.pushTypedOverlay(OverlayPeek, task.ID)
 }
 
 // dismissPeek clears all peek state.
 func (m *AppModel) dismissPeek() {
+	peekID := ""
+	if m.peekTask != nil {
+		peekID = m.peekTask.ID
+	}
 	m.peekTask = nil
 	m.peekProject = nil
 	m.peekActive = false
@@ -90,6 +95,7 @@ func (m *AppModel) dismissPeek() {
 	m.peekLeftLines = 0
 	m.peekRightLines = 0
 	m.peekPaneHeight = 0
+	m.closeTypedOverlay(OverlayPeek, peekID)
 }
 
 // clampPeekOffset bounds a scroll offset to [0, max(0, total-visible)].

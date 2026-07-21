@@ -37,18 +37,6 @@ func JoinGroupParts(parts ...string) string {
 	return strings.Join(nonEmpty, " ")
 }
 
-// FormatCyclePosition returns a " [i/n]" suffix if projectID appears in the
-// configured cycle list, or "" otherwise.
-func FormatCyclePosition(runtime *config.RuntimeState, projectID string) string {
-	cycleProjects := runtime.CycleProjects()
-	for i, project := range cycleProjects {
-		if project.ID == projectID {
-			return fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
-		}
-	}
-	return ""
-}
-
 // EmptyStateFiltered is the standard message shown when active filters produce no results.
 const EmptyStateFiltered = "No tasks match filters. Press 'F' then 'x' to clear."
 

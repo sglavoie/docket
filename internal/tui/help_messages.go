@@ -5,13 +5,7 @@ type CloseHelpMsg struct{ PopViewMsg }
 
 // ShowHelpMsg is sent to show help for a specific view.
 type ShowHelpMsg struct {
-	SourceView ViewType
+	SourceView PresentationID
 	ViewName   string
 	Items      []HelpItem
 }
-
-// ShowKeybindingExplorerMsg opens the global keybinding explorer.
-type ShowKeybindingExplorerMsg struct{}
-
-// CloseKeybindingExplorerMsg closes the global keybinding explorer.
-type CloseKeybindingExplorerMsg struct{ PopViewMsg }

@@ -30,12 +30,13 @@ type EditTaskMsg struct {
 // shared navigation/status logic, so the legacy Task/Project fields (still set by
 // the not-yet-migrated task form) and the coordinator path share one handler.
 type TaskCreatedMsg struct {
-	Task        *models.Task
-	Project     *models.Project // target project (for cross-project + open-after)
-	Result      *app.TaskResult // committed capture-coordinator outcome (nil on the legacy path)
-	OpenTaskID  string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
-	OpenContent bool            // open description editor after creation
-	OpenDetail  bool            // open task detail view after creation
+	Task         *models.Task
+	Project      *models.Project // target project (for cross-project + open-after)
+	Result       *app.TaskResult // committed capture-coordinator outcome (nil on the legacy path)
+	CreatedCount int             // bulk composer count; zero means infer one from Task/Result
+	OpenTaskID   string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
+	OpenContent  bool            // open description editor after creation
+	OpenDetail   bool            // open task detail view after creation
 }
 
 // TaskUpdatedMsg signals a task was modified.
@@ -225,17 +226,17 @@ type TaskCopiedMsg struct {
 // OpenParentSelectorMsg opens the parent task selector.
 type OpenParentSelectorMsg struct {
 	ValidParents   []*models.Task
-	CurrentID      *string  // Pre-select current parent
-	AllowNone      bool     // Whether "None" is valid option
-	Source         ViewType // Which view opened it
-	ReparentTaskID string   // When non-empty, reparent this task instead of updating a form field
+	CurrentID      *string        // Pre-select current parent
+	AllowNone      bool           // Whether "None" is valid option
+	Source         PresentationID // Which view opened it
+	ReparentTaskID string         // When non-empty, reparent this task instead of updating a form field
 }
 
 // ParentSelectedMsg returns the selected parent from parent selector.
 type ParentSelectedMsg struct {
-	ParentID       *string  // nil means "None"
-	Source         ViewType // Which view to send result to
-	ReparentTaskID string   // Forwarded from OpenParentSelectorMsg; non-empty means reparent operation
+	ParentID       *string        // nil means "None"
+	Source         PresentationID // Which view to send result to
+	ReparentTaskID string         // Forwarded from OpenParentSelectorMsg; non-empty means reparent operation
 }
 
 // CloseParentSelectorMsg closes the parent selector without selection.
@@ -245,11 +246,17 @@ type CloseParentSelectorMsg struct{ PopViewMsg }
 // Quick Capture Messages (Show/Close Pattern)
 // =============================================================================
 
+// ShowTaskComposerMsg opens the canonical typed composer preset directly.
+type ShowTaskComposerMsg struct {
+	Preset     TaskComposerPreset
+	CompatView PresentationID
+}
+
 // ShowQuickCaptureMsg opens the quick capture input.
 type ShowQuickCaptureMsg struct {
 	Project           *models.Project   // Explicit contextual destination; nil defaults to the system Inbox
 	AllProjects       []*models.Project // All non-archived projects for cross-project capture
-	FromGlobalCapture bool              // True when opened via ;i (project already selected)
+	FromGlobalCapture bool              // True when the project was selected before opening
 	SuggestedTag      string            // Pre-fill with #tag when single active tag filter
 	SuggestedSection  string            // Pre-fill with /section when in a specific section view
 }
@@ -373,6 +380,11 @@ type ShowTaskDetailMsg struct {
 	Project *models.Project
 }
 
+// TaskDetailTabChangedMsg synchronizes the live typed route after the unified
+// detail model changes tabs. The model owns tab-local UI state; the route owns
+// the canonical tab identity.
+type TaskDetailTabChangedMsg struct{ Tab TaskDetailTab }
+
 // AlertCenterShowDetailMsg requests task detail view from the alert center.
 // Resolved at the app level since the notification center doesn't hold config.
 type AlertCenterShowDetailMsg struct {
@@ -421,7 +433,7 @@ type MoveTaskToProjectMsg struct {
 	SourceProject *models.Project
 	DestProjectID string
 	DestSection   *string // Optional section chosen by global move flow before moving
-	FromGlobal    bool    // true when triggered from the global ;tm workflow (skip popView)
+	FromGlobal    bool    // true when triggered from a global move workflow (skip popView)
 }
 
 // TaskMovedToProjectMsg signals a task was moved to another project.
@@ -432,7 +444,7 @@ type TaskMovedToProjectMsg struct {
 	MovedCount    int  // Number of tasks moved (including descendants)
 	ClearedDeps   int  // Number of dependencies that were cleared
 	OldShortID    int  // Original short ID before move
-	FromGlobal    bool // true when triggered from the global ;tm workflow (skip popView)
+	FromGlobal    bool // true when triggered from a global move workflow (skip popView)
 }
 
 // =============================================================================
@@ -489,6 +501,12 @@ type LinkedTaskCreatedMsg struct {
 	LinkType    LinkType
 	OpenContent bool
 	OpenDetail  bool
+}
+
+// LinkedTaskBatchCreatedMsg reports one atomic compact composer batch.
+type LinkedTaskBatchCreatedMsg struct {
+	Results  []app.LinkedTaskResult
+	LinkType LinkType
 }
 
 // =============================================================================

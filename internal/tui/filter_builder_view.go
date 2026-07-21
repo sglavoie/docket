@@ -211,39 +211,7 @@ func (m *FilterBuilderModel) renderOptionsSection() string {
 	var b strings.Builder
 	section, _, _ := m.getFocusSection()
 
-	b.WriteString(BoldStyle.Render("Sort & Display"))
-	b.WriteString("\n\n")
-
-	// Sort field
-	sortLabel := "  Sort by: "
-	if section == "sort_field" {
-		sortLabel = "  " + FieldLabelFocusedStyle.Render("Sort by: ")
-	}
-	b.WriteString(sortLabel)
-	b.WriteString(m.renderEnumSelector(slSortFieldNames, m.sortField, section == "sort_field"))
-	b.WriteString("\n\n")
-
-	// Sort direction
-	dirLabel := "  Direction: "
-	if section == "sort_dir" {
-		dirLabel = "  " + FieldLabelFocusedStyle.Render("Direction: ")
-	}
-	b.WriteString(dirLabel)
-	if m.sortAscending {
-		if section == "sort_dir" {
-			b.WriteString(SelectorOptionSelectedStyle.Render("[Ascending]"))
-		} else {
-			b.WriteString(BoldStyle.Render("[Ascending]"))
-		}
-		b.WriteString(SelectorOptionStyle.Render(" Descending "))
-	} else {
-		b.WriteString(SelectorOptionStyle.Render(" Ascending "))
-		if section == "sort_dir" {
-			b.WriteString(SelectorOptionSelectedStyle.Render("[Descending]"))
-		} else {
-			b.WriteString(BoldStyle.Render("[Descending]"))
-		}
-	}
+	b.WriteString(BoldStyle.Render("Results"))
 	b.WriteString("\n\n")
 
 	// Include completed
@@ -262,29 +230,6 @@ func (m *FilterBuilderModel) renderOptionsSection() string {
 	} else {
 		b.WriteString(SelectorOptionStyle.Render(" Yes "))
 		if section == "include_completed" {
-			b.WriteString(SelectorOptionSelectedStyle.Render("[No]"))
-		} else {
-			b.WriteString(BoldStyle.Render("[No]"))
-		}
-	}
-	b.WriteString("\n\n")
-
-	// Show as tab
-	tabLabel := "  Show as tab: "
-	if section == "show_as_tab" {
-		tabLabel = "  " + FieldLabelFocusedStyle.Render("Show as tab: ")
-	}
-	b.WriteString(tabLabel)
-	if m.showAsTab {
-		if section == "show_as_tab" {
-			b.WriteString(SelectorOptionSelectedStyle.Render("[Yes]"))
-		} else {
-			b.WriteString(BoldStyle.Render("[Yes]"))
-		}
-		b.WriteString(SelectorOptionStyle.Render(" No "))
-	} else {
-		b.WriteString(SelectorOptionStyle.Render(" Yes "))
-		if section == "show_as_tab" {
 			b.WriteString(SelectorOptionSelectedStyle.Render("[No]"))
 		} else {
 			b.WriteString(BoldStyle.Render("[No]"))

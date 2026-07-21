@@ -60,7 +60,7 @@ func TestSetSectionColorIsSettingsDomainOnly(t *testing.T) {
 			other.ID:   other,
 		},
 		crossOutliner: &OutlinerModel{loadedProjects: []*models.Project{crossLoaded}},
-		viewStack:     []ViewType{ViewSectionManager},
+		viewStack:     []PresentationID{ViewSectionManager},
 	}
 
 	cmd := m.setSectionColor(models.SectionNext, "green")

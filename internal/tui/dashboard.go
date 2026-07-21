@@ -3,12 +3,13 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// DashboardModel represents the dashboard view.
+// DashboardModel renders the Home route's Projects and Attention panes.
 type DashboardModel struct {
 	BaseSearchableView
 	InteractiveViewState
@@ -25,32 +26,43 @@ type DashboardModel struct {
 	deleteTarget *models.Project // project to delete
 
 	// Pipeline summary counts for the pipeline info card.
-	pipelineCounts pipelineCounts
+	attentionCounts attentionCounts
 
-	// dashboardCompactCards collapses inert info cards (no actionable
-	// content) into one-line summary rows. Default true; toggled by `,c`.
-	dashboardCompactCards bool
+	// Home owns one project list and one actionable Attention list. Pane focus
+	// is presentation-local and is never persisted.
+	homePane                  homePane
+	attentionCursor           int
+	attentionViewScrollOffset int
+	attentionRows             []homeAttentionRow
+	attentionAlerts           *alerts.AlertSnapshot
+	attentionProjects         []*models.Project
 }
 
 // SetPipelineCounts updates the cached pipeline counts shown in the info section.
-func (m *DashboardModel) SetPipelineCounts(counts pipelineCounts) {
-	m.pipelineCounts = counts
+func (m *DashboardModel) SetPipelineCounts(counts attentionCounts) {
+	m.attentionCounts = counts
+	m.rebuildHomeAttention()
 }
 
 // NewDashboardModel creates a new dashboard model.
 func NewDashboardModel(runtime *config.RuntimeState) *DashboardModel {
-	machine := runtime.Machine()
-	m := &DashboardModel{
-		runtime:               runtime,
-		filterContext:         machine.FilterContext,       // Machine-local context filter
-		filterCustomContext:   machine.FilterCustomContext, // Machine-local custom context filter
-		dashboardCompactCards: true,
+	if runtime == nil {
+		runtime = config.EmptyRuntimeState("")
 	}
-	m.InitSearchInput("Search projects...", 100, 40)
+	m := &DashboardModel{
+		runtime:  runtime,
+		homePane: homePaneProjects,
+	}
+	m.InitSearchInput("Search Home...", 100, 40)
 	m.loadProjects()
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
 	return m
+}
+
+// NewHomeModel constructs the Home renderer.
+func NewHomeModel(runtime *config.RuntimeState) *DashboardModel {
+	return NewDashboardModel(runtime)
 }
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
@@ -60,14 +72,12 @@ func (m *DashboardModel) HasActiveSearch() bool {
 
 // Refresh reloads the dashboard data.
 func (m *DashboardModel) Refresh() {
-	machine := m.runtime.Machine()
-	m.filterContext = machine.FilterContext
-	m.filterCustomContext = machine.FilterCustomContext
 	m.loadProjects()
 }
 
 func (m *DashboardModel) resetViewScrollOffset() {
 	m.viewScrollOffset = 0
+	m.attentionViewScrollOffset = 0
 }
 
 // SetSize updates the view dimensions and resets the persisted scroll window
@@ -86,22 +96,14 @@ func (m *DashboardModel) HasTextInput() bool {
 	return m.DefaultHasTextInput()
 }
 
-// ShouldCaptureEsc returns true when dashboard search or prefix mode is active.
+// ShouldCaptureEsc returns true when Home search is active.
 func (m *DashboardModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() || m.HasActiveSearch()
 }
 
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+// GetPrefixPopupInfo returns nil because Home has no prefix grammar.
 func (m *DashboardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			"g": NavigationPrefixHints,
-		},
-	}
+	return nil
 }
 
 // SelectedProject returns the currently highlighted project, or nil if none.
@@ -113,4 +115,4 @@ func (m *DashboardModel) SelectedProject() *models.Project {
 	return nil
 }
 
-func (m *DashboardModel) StatusBarLabel() string { return "Dashboard" }
+func (m *DashboardModel) StatusBarLabel() string { return "Home" }

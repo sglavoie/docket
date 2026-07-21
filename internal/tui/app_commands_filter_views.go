@@ -41,6 +41,17 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Category:    CategoryFilters,
 			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if _, params, ok := m.taskWorkspacePrimary(); ok && m.taskWorkspace != nil {
+					params.Focus = WorkspaceCompleted
+					params.SavedFilterID = ""
+					if err := m.taskWorkspace.SetRouteParams(params); err != nil {
+						return ErrorMsg{Err: err}
+					}
+					if err := m.taskWorkspace.Refresh(); err != nil {
+						return ErrorMsg{Err: err}
+					}
+					return TaskWorkspaceRouteChangedMsg{Params: params}
+				}
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					if m.outliner.activePerspective == PerspectiveCompleted {
 						m.outliner.activePerspective = PerspectiveSnoozed
@@ -95,7 +106,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Jump to task by ID or name",
 			Shortcut:    "\\",
 			Category:    CategorySearch,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
 					return ShowTaskJumperMsg{Projects: m.crossOutliner.loadedProjects, CrossProject: true}
@@ -124,7 +135,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Manage global pinned tag tabs",
 			Shortcut:    "ctrl+t",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDashboard, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewDashboard, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
 			},
@@ -134,7 +145,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Browse built-in GTD sections",
 			Shortcut:    "ctrl+s",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner {
 					if m.crossOutliner == nil {
@@ -156,7 +167,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Name:        "open data folder",
 			Description: "Open root data folder in editor",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []PresentationID{ViewDashboard},
 			Aliases:     []string{"open folder", "reveal data", "data directory"},
 			Handler: func() tea.Msg {
 				return OpenDataFolderMsg{Project: nil}
@@ -186,7 +197,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Filter projects by name",
 			Shortcut:    "/",
 			Category:    CategorySearch,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []PresentationID{ViewDashboard},
 			Handler: func() tea.Msg {
 				if m.dashboard != nil {
 					return m.dashboard.ActivateSearch()

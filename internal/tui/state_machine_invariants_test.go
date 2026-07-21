@@ -39,78 +39,6 @@ func (v *invariantQueueView) getTaskRef() (*models.Task, *models.Project) {
 	return nil, v.project
 }
 
-func TestTUIStateMachine_ViewStackAnchorsAndNoUnderflow(t *testing.T) {
-	t.Run("project anchor", func(t *testing.T) {
-		app := newTestAppModel()
-		app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewTaskDetail, ViewFocusBoard}
-
-		steps := []struct {
-			name        string
-			wantHandled bool
-			wantView    ViewType
-			wantLen     int
-		}{
-			{name: "overlay pops to anchor", wantHandled: true, wantView: ViewOutliner, wantLen: 2},
-			{name: "anchor pops to dashboard", wantHandled: true, wantView: ViewDashboard, wantLen: 1},
-			{name: "dashboard does not underflow", wantHandled: false, wantView: ViewDashboard, wantLen: 1},
-		}
-
-		for _, step := range steps {
-			handled, _ := app.handleEscKey()
-			if handled != step.wantHandled {
-				t.Fatalf("%s: handled = %v, want %v", step.name, handled, step.wantHandled)
-			}
-			if got := app.currentView(); got != step.wantView {
-				t.Fatalf("%s: currentView = %v, want %v", step.name, got, step.wantView)
-			}
-			if got := len(app.viewStack); got != step.wantLen {
-				t.Fatalf("%s: stack len = %d, want %d", step.name, got, step.wantLen)
-			}
-		}
-	})
-
-	t.Run("cross-project anchor emits appear message", func(t *testing.T) {
-		app := newTestAppModel()
-		app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewTaskDetail, ViewFocusBoard}
-
-		handled, cmd := app.handleEscKey()
-		if !handled {
-			t.Fatal("expected esc to be consumed while closing the overlay")
-		}
-		if got := app.currentView(); got != ViewCrossProjectOutliner {
-			t.Fatalf("currentView = %v, want %v", got, ViewCrossProjectOutliner)
-		}
-		if got := len(app.viewStack); got != 2 {
-			t.Fatalf("stack len = %d, want 2", got)
-		}
-		if cmd == nil {
-			t.Fatal("expected ViewDidAppearMsg command when revealing cross-project outliner")
-		}
-		if _, ok := cmd().(ViewDidAppearMsg); !ok {
-			t.Fatalf("expected ViewDidAppearMsg, got %T", cmd())
-		}
-
-		handled, _ = app.handleEscKey()
-		if !handled {
-			t.Fatal("expected esc to pop cross-project outliner to dashboard")
-		}
-		if got := app.currentView(); got != ViewDashboard {
-			t.Fatalf("currentView = %v, want %v", got, ViewDashboard)
-		}
-		if got := len(app.viewStack); got != 1 {
-			t.Fatalf("stack len = %d, want 1", got)
-		}
-
-		handled, _ = app.handleEscKey()
-		if handled {
-			t.Fatal("dashboard esc should be a no-op")
-		}
-		if got := len(app.viewStack); got != 1 {
-			t.Fatalf("stack len = %d, want 1", got)
-		}
-	})
-}
-
 func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
@@ -480,7 +408,7 @@ func newFocusToggleTestApp(t *testing.T) (*AppModel, *models.Task) {
 // starts in the given workflow state, hosted under hostView (so key-flow tests
 // can drive q/w/u/ctrl+r from a real non-Planner task view). The hosted view is
 // a QueueToggleable that re-resolves the live task after each reload.
-func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostView ViewType) (*AppModel, *models.Task) {
+func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostView PresentationID) (*AppModel, *models.Task) {
 	t.Helper()
 
 	dataDir := t.TempDir()
@@ -517,13 +445,12 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 		persister:            NewProjectService(),
 		appService:           svc,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
-		viewStack:            []ViewType{ViewDashboard},
+		projectLastView:      make(map[string]PresentationID),
+		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		navHistory:           NewNavHistory(),
 		focusQueue:           []FocusTask{},
 		focusQueueIDs:        make(map[string]bool),
 		dailyPlan:            []FocusTask{},

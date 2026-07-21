@@ -12,13 +12,13 @@ func TestRegisterSameNameDifferentViewsSucceeds(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewTaskDetail},
+		Views:    []PresentationID{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewOutliner},
+		Views:    []PresentationID{ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 
@@ -36,13 +36,13 @@ func TestRegisterSameNameOverlappingViewsFails(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewTaskDetail, ViewOutliner},
+		Views:    []PresentationID{ViewTaskDetail, ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewOutliner, ViewDashboard},
+		Views:    []PresentationID{ViewOutliner, ViewDashboard},
 		Handler:  func() tea.Msg { return nil },
 	}
 
@@ -67,7 +67,7 @@ func TestRegisterSameNameGlobalConflicts(t *testing.T) {
 	viewCmd := Command{
 		Name:     "Help",
 		Category: CategoryHelp,
-		Views:    []ViewType{ViewTaskDetail},
+		Views:    []PresentationID{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 
@@ -89,13 +89,13 @@ func TestGetForViewReturnsCorrectVariant(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewTaskDetail},
+		Views:    []PresentationID{ViewTaskDetail},
 		Handler:  func() tea.Msg { return resultMsg{"tree"} },
 	}
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewOutliner},
+		Views:    []PresentationID{ViewOutliner},
 		Handler:  func() tea.Msg { return resultMsg{"outliner"} },
 	}
 
@@ -139,13 +139,13 @@ func TestGetForViewNoDuplicates(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewTaskDetail},
+		Views:    []PresentationID{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewOutliner},
+		Views:    []PresentationID{ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	global := Command{
@@ -176,13 +176,13 @@ func TestGetAllDeduplicatesSameNameCommands(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewTaskDetail},
+		Views:    []PresentationID{ViewTaskDetail},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewOutliner},
+		Views:    []PresentationID{ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	other := Command{
@@ -217,13 +217,13 @@ func TestPreferredVariantSelectionSkipsUnavailableCommands(t *testing.T) {
 	outlinerAvailable := true
 	if err := registry.Register(Command{
 		Name: "Scoped", Shortcut: "tree", Category: CategoryTasks,
-		Views: []ViewType{ViewTaskDetail}, Available: func() bool { return treeAvailable },
+		Views: []PresentationID{ViewTaskDetail}, Available: func() bool { return treeAvailable },
 	}); err != nil {
 		t.Fatalf("Register tree variant: %v", err)
 	}
 	if err := registry.Register(Command{
 		Name: "Scoped", Shortcut: "outliner", Category: CategoryTasks,
-		Views: []ViewType{ViewOutliner}, Available: func() bool { return outlinerAvailable },
+		Views: []PresentationID{ViewOutliner}, Available: func() bool { return outlinerAvailable },
 	}); err != nil {
 		t.Fatalf("Register outliner variant: %v", err)
 	}
@@ -267,15 +267,15 @@ func TestViewsOverlap(t *testing.T) {
 		t.Error("expected two global (empty) view lists to overlap")
 	}
 
-	if !viewsOverlap(nil, []ViewType{ViewTaskDetail}) {
+	if !viewsOverlap(nil, []PresentationID{ViewTaskDetail}) {
 		t.Error("expected global to overlap with specific view")
 	}
 
-	if !viewsOverlap([]ViewType{ViewTaskDetail, ViewOutliner}, []ViewType{ViewOutliner, ViewDashboard}) {
+	if !viewsOverlap([]PresentationID{ViewTaskDetail, ViewOutliner}, []PresentationID{ViewOutliner, ViewDashboard}) {
 		t.Error("expected overlapping view lists to overlap")
 	}
 
-	if viewsOverlap([]ViewType{ViewTaskDetail}, []ViewType{ViewDashboard}) {
+	if viewsOverlap([]PresentationID{ViewTaskDetail}, []PresentationID{ViewDashboard}) {
 		t.Error("expected disjoint view lists to not overlap")
 	}
 }

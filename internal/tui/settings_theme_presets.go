@@ -19,6 +19,25 @@ const (
 	presetModeResetConfirm            // y/n confirmation
 )
 
+const (
+	settingsThemeActionsOverlayKey = "settings-theme-actions"
+	settingsThemePresetOverlayKey  = "settings-theme-preset"
+	settingsThemeDeleteOverlayKey  = "settings-theme-delete"
+)
+
+type settingsTransientOverlayMsg struct {
+	Open bool
+	Kind OverlayKind
+	Key  string
+}
+
+var settingsThemeActions = []string{
+	"Toggle dark/light palette",
+	"Save palette preset",
+	"Load palette preset",
+	"Reset active palette",
+}
+
 // presetErrMsg carries an error from an async preset operation.
 type presetErrMsg struct{ err string }
 
@@ -123,6 +142,64 @@ func (m *SettingsModel) cancelPresetMode() {
 	m.themePresetMode = presetModeNone
 	m.themePresetErr = ""
 	m.themePresetInput.Blur()
+}
+
+func (m *SettingsModel) openThemeActions() tea.Cmd {
+	m.themeActionMenu = true
+	m.themeActionCursor = 0
+	m.themePresetErr = ""
+	return func() tea.Msg {
+		return settingsTransientOverlayMsg{Open: true, Kind: OverlayPicker, Key: settingsThemeActionsOverlayKey}
+	}
+}
+
+func (m *SettingsModel) closeThemeActions() tea.Cmd {
+	m.themeActionMenu = false
+	return func() tea.Msg {
+		return settingsTransientOverlayMsg{Open: false, Kind: OverlayPicker, Key: settingsThemeActionsOverlayKey}
+	}
+}
+
+func (m *SettingsModel) handleThemeActionKey(key string) (bool, tea.Cmd) {
+	switch key {
+	case "esc":
+		return true, m.closeThemeActions()
+	case "j", "down", "tab":
+		m.themeActionCursor = (m.themeActionCursor + 1) % len(settingsThemeActions)
+		return true, nil
+	case "k", "up", "shift+tab":
+		m.themeActionCursor = (m.themeActionCursor + len(settingsThemeActions) - 1) % len(settingsThemeActions)
+		return true, nil
+	case "enter", "ctrl+s":
+		closeMenu := m.closeThemeActions()
+		switch m.themeActionCursor {
+		case 0:
+			m.togglePaletteTheme()
+			ApplyTheme(m.buildTentativeThemeConfig())
+			return true, closeMenu
+		case 1:
+			m.openPresetSave()
+			return true, tea.Batch(closeMenu, func() tea.Msg {
+				return settingsTransientOverlayMsg{Open: true, Kind: OverlayForm, Key: settingsThemePresetOverlayKey}
+			})
+		case 2:
+			m.openPresetLoad()
+			if m.themePresetMode == presetModeNone {
+				m.themeActionMenu = true
+				return true, nil
+			}
+			return true, tea.Batch(closeMenu, func() tea.Msg {
+				return settingsTransientOverlayMsg{Open: true, Kind: OverlayPicker, Key: settingsThemePresetOverlayKey}
+			})
+		case 3:
+			m.themePresetMode = presetModeResetConfirm
+			m.themePresetErr = ""
+			return true, tea.Batch(closeMenu, func() tea.Msg {
+				return settingsTransientOverlayMsg{Open: true, Kind: OverlayConfirmation, Key: settingsThemePresetOverlayKey}
+			})
+		}
+	}
+	return true, nil
 }
 
 // execPresetSave writes the current palette as a named ThemeFile on disk.
@@ -237,8 +314,10 @@ func (m *SettingsModel) handlePresetSaveKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	switch msg.String() {
 	case "esc":
 		m.cancelPresetMode()
-		return true, nil
-	case "enter":
+		return true, func() tea.Msg {
+			return settingsTransientOverlayMsg{Open: false, Kind: OverlayForm, Key: settingsThemePresetOverlayKey}
+		}
+	case "enter", "ctrl+s":
 		name := strings.TrimSpace(m.themePresetInput.Value())
 		if name == "" {
 			m.themePresetErr = "name cannot be empty"
@@ -246,7 +325,9 @@ func (m *SettingsModel) handlePresetSaveKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		}
 		cmd := m.execPresetSave(name)
 		m.cancelPresetMode()
-		return true, cmd
+		return true, tea.Batch(cmd, func() tea.Msg {
+			return settingsTransientOverlayMsg{Open: false, Kind: OverlayForm, Key: settingsThemePresetOverlayKey}
+		})
 	}
 	var cmd tea.Cmd
 	m.themePresetInput, cmd = m.themePresetInput.Update(msg)
@@ -258,16 +339,22 @@ func (m *SettingsModel) handlePresetLoadKey(key string) (bool, tea.Cmd) {
 		confirmed, handled := m.themePresetConfirmDelete.HandleKey(key)
 		if handled {
 			if confirmed {
-				return true, m.execPresetDelete()
+				return true, tea.Batch(m.execPresetDelete(), func() tea.Msg {
+					return settingsTransientOverlayMsg{Open: false, Kind: OverlayConfirmation, Key: settingsThemeDeleteOverlayKey}
+				})
 			}
-			return true, nil
+			return true, func() tea.Msg {
+				return settingsTransientOverlayMsg{Open: false, Kind: OverlayConfirmation, Key: settingsThemeDeleteOverlayKey}
+			}
 		}
 	}
 
 	switch key {
 	case "esc":
 		m.cancelPresetMode()
-		return true, nil
+		return true, func() tea.Msg {
+			return settingsTransientOverlayMsg{Open: false, Kind: OverlayPicker, Key: settingsThemePresetOverlayKey}
+		}
 	case "j", "down":
 		if m.themePresetCursor < len(m.themePresetList)-1 {
 			m.themePresetCursor++
@@ -278,14 +365,19 @@ func (m *SettingsModel) handlePresetLoadKey(key string) (bool, tea.Cmd) {
 			m.themePresetCursor--
 		}
 		return true, nil
-	case "enter":
+	case "enter", "ctrl+s":
 		cmd := m.execPresetLoad()
 		m.cancelPresetMode()
-		return true, cmd
+		return true, tea.Batch(cmd, func() tea.Msg {
+			return settingsTransientOverlayMsg{Open: false, Kind: OverlayPicker, Key: settingsThemePresetOverlayKey}
+		})
 	case "D":
 		if len(m.themePresetList) > 0 {
 			name := m.themePresetList[m.themePresetCursor].Name
 			m.themePresetConfirmDelete.Show("delete", fmt.Sprintf("Delete preset '%s'?", name))
+			return true, func() tea.Msg {
+				return settingsTransientOverlayMsg{Open: true, Kind: OverlayConfirmation, Key: settingsThemeDeleteOverlayKey}
+			}
 		}
 		return true, nil
 	}
@@ -294,13 +386,17 @@ func (m *SettingsModel) handlePresetLoadKey(key string) (bool, tea.Cmd) {
 
 func (m *SettingsModel) handlePresetResetKey(key string) (bool, tea.Cmd) {
 	switch key {
-	case "y", "Y":
+	case "y", "Y", "enter", "ctrl+s":
 		cmd := m.execPresetReset()
 		m.cancelPresetMode()
-		return true, cmd
+		return true, tea.Batch(cmd, func() tea.Msg {
+			return settingsTransientOverlayMsg{Open: false, Kind: OverlayConfirmation, Key: settingsThemePresetOverlayKey}
+		})
 	case "n", "N", "esc":
 		m.cancelPresetMode()
-		return true, nil
+		return true, func() tea.Msg {
+			return settingsTransientOverlayMsg{Open: false, Kind: OverlayConfirmation, Key: settingsThemePresetOverlayKey}
+		}
 	}
 	return true, nil
 }
@@ -319,6 +415,30 @@ func (m *SettingsModel) renderPresetOverlay() string {
 		return m.renderPresetResetOverlay()
 	}
 	return ""
+}
+
+func (m *SettingsModel) renderThemeActionOverlay() string {
+	if !m.themeActionMenu {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(SubtitleStyle.Render("Theme Actions"))
+	b.WriteString("\n\n")
+	for i, action := range settingsThemeActions {
+		if i == m.themeActionCursor {
+			b.WriteString(SelectedStyle.Render(IconCursorRight + " " + action))
+		} else {
+			b.WriteString("  " + action)
+		}
+		b.WriteString("\n")
+	}
+	if m.themePresetErr != "" {
+		b.WriteString("\n")
+		b.WriteString(ValidationErrorStyle.Render(m.themePresetErr))
+	}
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("Tab/Shift+Tab or j/k navigate · Enter choose · Esc cancel"))
+	return OverlayBoxStyle.Render(b.String())
 }
 
 func (m *SettingsModel) renderPresetSaveOverlay() string {

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/config"
 )
 
@@ -31,7 +32,7 @@ func TestRetiredProjectTreeRuntimeSurfacesRemoved(t *testing.T) {
 		fq.SetSize(120, 30)
 		// No queued tasks → the empty-state hint renders; it must not tell the
 		// user to press q "in the project tree".
-		assertClean(t, "focus queue empty-state view", stripANSI(fq.View().Content))
+		assertClean(t, "focus queue empty-state view", ansi.Strip(fq.View().Content))
 		for _, item := range helpItemsFromKeyMap(fq.buildKeyMap()) {
 			assertClean(t, "focus queue keymap", item.Description)
 		}
@@ -79,27 +80,4 @@ func TestRetiredProjectTreeRuntimeSurfacesRemoved(t *testing.T) {
 		}
 	})
 
-	t.Run("pipeline hub work column exposes one outliner route", func(t *testing.T) {
-		hub := NewPipelineHubModel(runtime, nil, nil, project)
-		var work pipelineColumn
-		for _, col := range hub.columns {
-			if col.name == pipelineWorkColumnName {
-				work = col
-				break
-			}
-		}
-		if work.name == "" {
-			t.Fatal("pipeline hub missing Work column")
-		}
-		outlinerRoutes := 0
-		for _, e := range work.entries {
-			assertClean(t, "pipeline hub work entry", e.label)
-			if e.viewType == ViewOutliner {
-				outlinerRoutes++
-			}
-		}
-		if outlinerRoutes != 1 {
-			t.Fatalf("Work column should expose exactly one route to the current project's Outliner, got %d", outlinerRoutes)
-		}
-	})
 }

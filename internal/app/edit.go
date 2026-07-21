@@ -27,6 +27,11 @@ type EditRequest struct {
 	// per-field optionality — is the faithful semantics. Form and the granular
 	// fields are mutually exclusive in practice.
 	Form *FormEdit
+	// WorkflowState, when non-nil, preserves or changes the canonical lifecycle
+	// state after applying either a form or granular edit. Full-form callers need
+	// this because the legacy section projection cannot distinguish Ready from In
+	// Progress: both occupy the default active bucket.
+	WorkflowState *models.WorkflowState
 	// PlanningArtifacts, when set, folds the durable planning reconciliation the
 	// edit implies (Today/Next exclusivity) into the same ledger transaction as the
 	// task write, so a form edit that changes the task's section — and therefore its
@@ -77,8 +82,8 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	if err := s.applyEdit(ref.Task, req); err != nil {
-		return TaskResult{}, err
+	if applyErr := s.applyEdit(ref.Task, req); applyErr != nil {
+		return TaskResult{}, applyErr
 	}
 	// A form edit can change the task's section (and therefore its workflow state),
 	// so fold the same Today/Next exclusivity reconciliation a state transition does
@@ -114,26 +119,47 @@ func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptio
 // applyEdit is the shared validation and mutation seam for bare and
 // workflow-aware edits.
 func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
+	originalState := task.State()
+	if req.WorkflowState != nil {
+		if !req.WorkflowState.IsValid() {
+			return invalidInput("workflow state", fmt.Sprintf("%q is not a valid workflow state", *req.WorkflowState))
+		}
+		if *req.WorkflowState != originalState {
+			if reason := models.CanTransitionState(originalState, *req.WorkflowState); reason != "" {
+				return invalidInput("workflow state", reason)
+			}
+		}
+	}
 	if req.Form != nil {
-		return s.applyFormEdit(task, *req.Form)
-	}
-	if req.Title != nil {
-		title := strings.TrimSpace(*req.Title)
-		if err := models.ValidateTaskTitle(title); err != nil {
-			return invalidInput("title", err.Error())
+		if err := s.applyFormEdit(task, *req.Form); err != nil {
+			return err
 		}
-		task.Title = title
-	}
-	if req.Description != nil {
-		task.Description = *req.Description
-	}
-	if req.Type != nil {
-		if !req.Type.IsValid() {
-			return invalidInput("type", string(*req.Type)+" is not a valid task type")
+	} else {
+		if req.Title != nil {
+			title := strings.TrimSpace(*req.Title)
+			if err := models.ValidateTaskTitle(title); err != nil {
+				return invalidInput("title", err.Error())
+			}
+			task.Title = title
 		}
-		if task.Type != *req.Type {
-			task.ClearTypeAttrs()
-			task.Type = *req.Type
+		if req.Description != nil {
+			task.Description = *req.Description
+		}
+		if req.Type != nil {
+			if !req.Type.IsValid() {
+				return invalidInput("type", string(*req.Type)+" is not a valid task type")
+			}
+			if task.Type != *req.Type {
+				task.ClearTypeAttrs()
+				task.Type = *req.Type
+			}
+		}
+	}
+	if req.WorkflowState != nil {
+		if *req.WorkflowState == originalState {
+			task.ApplyWorkflowState(originalState)
+		} else {
+			task.ApplyStateTransition(*req.WorkflowState)
 		}
 	}
 	task.UpdatedAt = s.clock.Now()

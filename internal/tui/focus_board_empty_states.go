@@ -26,7 +26,7 @@ func (m *FocusBoardModel) renderTodayEmptyStateBody() string {
 		}
 		return m.withOnboardingGuide(
 			SuccessStyle.Render(fmt.Sprintf("  Today cleared — %d %s done.", completed, suffix)) +
-				"\n\n" + HelpStyle.Render("  "+cockpitActionsHint(actionPlanMore(), actionQuickCapture(), actionCloseView())),
+				"\n\n" + HelpStyle.Render("  tab backlog · a add · Esc home"),
 		)
 	}
 
@@ -34,7 +34,7 @@ func (m *FocusBoardModel) renderTodayEmptyStateBody() string {
 	case !m.hasAnyProjectsForRecommendation() && !m.openLoops.HasTasks:
 		return m.withOnboardingGuide(renderEmptyState(
 			"  Capture your first task to get started.",
-			"  a add · p new project · ? help",
+			"  a add · : commands · ? help",
 		))
 	case m.openLoops.Inbox > 0:
 		n := m.openLoops.Inbox
@@ -44,12 +44,12 @@ func (m *FocusBoardModel) renderTodayEmptyStateBody() string {
 		}
 		return m.withOnboardingGuide(renderEmptyState(
 			fmt.Sprintf("  %d %s waiting in your inbox.", n, suffix),
-			"  "+cockpitActionsHint(actionTriageInbox(), actionQuickCapture()),
+			"  a add · : open Manage Inbox",
 		))
 	default:
 		return m.withOnboardingGuide(renderEmptyState(
 			"  Plan today from your backlog.",
-			"  "+cockpitActionsHint(actionPlanToday(), actionQuickCapture(), actionShowHelp()),
+			"  tab switch · a add · ? help",
 		))
 	}
 }
@@ -70,9 +70,9 @@ func (m *FocusBoardModel) withOnboardingGuide(body string) string {
 		case !progress.TaskCaptured:
 			next = "capture(a)"
 		case !progress.InboxTriaged:
-			next = "triage(ctrl+i)"
+			next = "triage(:)"
 		case !progress.TaskPlanned:
-			next = "plan(;q)"
+			next = "plan(tab)"
 		case !progress.TaskCompleted:
 			next = "complete(x)"
 		}

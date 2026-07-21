@@ -128,10 +128,10 @@ func onboardingStatus(progress config.OnboardingProgress) string {
 		key  string
 		done bool
 	}{
-		{name: "create", key: "n", done: progress.ProjectCreated},
-		{name: "capture", key: "a/i/;i", done: progress.TaskCaptured},
-		{name: "triage", key: "ctrl+i", done: progress.InboxTriaged},
-		{name: "plan", key: ";q", done: progress.TaskPlanned},
+		{name: "create", key: ":", done: progress.ProjectCreated},
+		{name: "capture", key: "a", done: progress.TaskCaptured},
+		{name: "triage", key: ":", done: progress.InboxTriaged},
+		{name: "plan", key: "tab", done: progress.TaskPlanned},
 		{name: "complete", key: "x", done: progress.TaskCompleted},
 	}
 	parts := make([]string, 0, len(steps))

@@ -4,12 +4,31 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleCaptureAndBulkMessages handles quick capture, bulk capture, bulk edit, and palette bulk messages.
 func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ShowTaskComposerMsg:
+		if m.typedNavigation {
+			compat := msg.CompatView
+			if compat == ViewDashboard {
+				compat = ViewTaskForm
+			}
+			return true, m.openTaskComposer(msg.Preset, compat)
+		}
+		return true, nil
+
 	case ShowQuickCaptureMsg:
+		if m.typedNavigation {
+			preset, ok := m.captureComposerPreset(msg)
+			if ok {
+				return true, m.openTaskComposer(preset, ViewQuickCapture)
+			}
+			return true, nil
+		}
 		// Contextual entry points (project tree, dashboard, outliner, kanban, and
 		// their palette commands) supply the owning project. Context-free capture
 		// falls back to the visible system Inbox and may still be rerouted with
@@ -37,6 +56,19 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowBulkCaptureMsg:
+		if m.typedNavigation {
+			if msg.Project != nil {
+				preset := TaskComposerPreset{
+					Kind:            ComposerProject,
+					Project:         msg.Project,
+					AllProjects:     m.activeProjects(),
+					PreferMultiline: true,
+					Shared:          TaskComposerSharedAttributes{Section: models.SectionInbox},
+				}
+				return true, m.openTaskComposer(preset, ViewBulkCapture)
+			}
+			return true, nil
+		}
 		if msg.Project != nil {
 			m.showView(ViewBulkCapture, NewBulkCaptureModel(msg.Project))
 		}

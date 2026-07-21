@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestNotesCommands_CtrlNShowNotes(t *testing.T) {
+func TestNotesCommands_ShowNotesIsPaletteOnly(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 
 	cmds := app.notesCommands()
@@ -15,10 +15,10 @@ func TestNotesCommands_CtrlNShowNotes(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected to find 'show notes' command")
 	}
-	if cmd.Shortcut != "ctrl+n" {
-		t.Fatalf("show notes shortcut = %q, want ctrl+n", cmd.Shortcut)
+	if cmd.Shortcut != "" {
+		t.Fatalf("show notes shortcut = %q, want palette-only", cmd.Shortcut)
 	}
-	expectedViews := []ViewType{
+	expectedViews := []PresentationID{
 		ViewOutliner,
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
@@ -67,7 +67,7 @@ func TestNotesCommands_ShowNotes_UsesSelectedTaskProjectFromCrossProjectOrigin(t
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProject.ID}}
 	app.crossOutliner.cursor = 0
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	cmds := app.notesCommands()
 	cmd := findCommand(cmds, "show notes")
@@ -87,7 +87,7 @@ func TestNotesCommands_ShowNotes_UsesSelectedTaskProjectFromCrossProjectOrigin(t
 
 func TestNotesCommands_ShowNotes_FallsBackToCurrentProject(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmds := app.notesCommands()
 	cmd := findCommand(cmds, "show notes")
@@ -139,24 +139,12 @@ func TestNotesCommands_CreateNote(t *testing.T) {
 	}
 }
 
-func TestOutlinerCtrlNDispatchesShowNotes(t *testing.T) {
+func TestOutlinerCtrlNIsReservedForGlobalTaskComposer(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 
-	_, cmd, handled := outliner.Dispatcher.Dispatch(syntheticCtrlKey('n'))
-	if !handled {
-		t.Fatal("expected ctrl+n to be handled")
-	}
-	if cmd == nil {
-		t.Fatal("expected ctrl+n to return a command")
-	}
-	msg := cmd()
-	showNotes, ok := msg.(ShowNotesMsg)
-	if !ok {
-		t.Fatalf("expected ShowNotesMsg, got %T", msg)
-	}
-	if showNotes.Project != project {
-		t.Fatal("ShowNotesMsg should target the current project")
+	if _, _, handled := outliner.Dispatcher.Dispatch(syntheticCtrlKey('n')); handled {
+		t.Fatal("outliner must not consume global Ctrl+N Task Composer")
 	}
 
 	if _, _, handled := outliner.Dispatcher.Dispatch(syntheticCtrlKey('o')); handled {

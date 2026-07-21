@@ -276,9 +276,8 @@ func TestBaselineDashboardTriageAlertsRendersAcrossSizes(t *testing.T) {
 			// nil. Assign fresh in-memory projects (with their tasks intact)
 			// so the alerts card sees real triage backlog and overdue items.
 			m.projects = newBaselineAlertProjects()
-			// Compact mode collapses alerts to a single "Alerts · clear" line
-			// regardless of content. Expand so the rollup lines render.
-			m.dashboardCompactCards = false
+			m.rebuildHomeAttention()
+			m.FocusAttention()
 			m.SetSize(sz.width, sz.height)
 
 			rendered := m.View().Content
@@ -286,8 +285,8 @@ func TestBaselineDashboardTriageAlertsRendersAcrossSizes(t *testing.T) {
 
 			assertBaselineLineWidth(t, label, rendered, sz.width)
 			assertPrimaryActionsVisible(t, label, rendered,
-				"to triage",
-				"overdue",
+				"Triage 6 inbox item",
+				"Resolve 1 overdue task",
 			)
 		})
 	}

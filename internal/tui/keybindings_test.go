@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -32,9 +33,6 @@ func TestProjectViewToggle_KeybindingRegistryDescriptions(t *testing.T) {
 	assertHasHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", crossDescription)
 	assertLacksHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", "Toggle project tree/outliner")
 
-	explorerItems := registry.GetAllDeduplicated()
-	assertHasHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", crossDescription)
-	assertLacksHelpItem(t, explorerItems, ViewKeybindingExplorer, "ctrl+p", "Toggle project tree/outliner")
 }
 
 func hasHelpItem(items []HelpItem, key, description string) bool {
@@ -56,14 +54,14 @@ func countHelpItem(items []HelpItem, key, description string) int {
 	return count
 }
 
-func assertHasHelpItem(t *testing.T, items []HelpItem, view ViewType, key, description string) {
+func assertHasHelpItem(t *testing.T, items []HelpItem, view PresentationID, key, description string) {
 	t.Helper()
 	if !hasHelpItem(items, key, description) {
 		t.Fatalf("%s help missing %s %q binding", view, key, description)
 	}
 }
 
-func assertLacksHelpItem(t *testing.T, items []HelpItem, view ViewType, key, description string) {
+func assertLacksHelpItem(t *testing.T, items []HelpItem, view PresentationID, key, description string) {
 	t.Helper()
 	if hasHelpItem(items, key, description) {
 		t.Fatalf("%s help should not advertise %s %q binding", view, key, description)
@@ -93,23 +91,9 @@ func TestGetForView_Dashboard(t *testing.T) {
 	if !foundEnter {
 		t.Error("Expected enter key in Dashboard keymap")
 	}
-	for _, key := range []string{"ctrl+u", "ctrl+d", "ctrl+b", "ctrl+f"} {
+	for _, key := range []string{"ctrl+u", "ctrl+d", "h", "l", "a", "e", "v", "/", "shift+enter"} {
 		if !slices.Contains(keys, key) {
 			t.Errorf("Expected %s navigation key in Dashboard keymap", key)
-		}
-	}
-}
-
-func TestGetForView_KeybindingExplorerMetadata(t *testing.T) {
-	r := NewKeybindingRegistry()
-	items := r.GetForView(ViewKeybindingExplorer)
-
-	assertHasHelpItem(t, items, ViewKeybindingExplorer, "p", "Toggle by prefix/category")
-	for _, key := range []string{"n", "N"} {
-		for _, item := range items {
-			if item.Key == key {
-				t.Fatalf("Keybinding Explorer should not advertise stale %s binding: %+v", key, item)
-			}
 		}
 	}
 }
@@ -119,11 +103,10 @@ func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
 	items := r.GetForView(ViewDashboard)
 
 	taskOnlyBindings := []HelpItem{
-		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
+		{Key: "enter", Description: "Open task detail"},
+		{Key: "shift+enter", Description: "Peek task detail"},
 		{Key: "q", Description: "Toggle queue"},
 		{Key: "w", Description: "Toggle today's plan"},
-		{Key: "ctrl+o", Description: "Open task reference copy"},
-		{Key: "ctrl+n", Description: "Open project Notes"},
 		{Key: ".", Description: "Repeat last action"},
 		{Key: "y", Description: "Copy title"},
 		{Key: "Y", Description: "Copy description"},
@@ -135,10 +118,10 @@ func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
 
 	globalBindings := []HelpItem{
 		{Key: "ctrl+c", Description: "Quit"},
-		{Key: "?", Description: "Toggle help"},
-		{Key: `ctrl+\`, Description: "Keybinding Explorer"},
+		{Key: "?", Description: "Help"},
 		{Key: ":", Description: "Command palette"},
-		{Key: "ctrl+,", Description: "Open Settings"},
+		{Key: "ctrl+g", Description: "Go to destination"},
+		{Key: "ctrl+n", Description: "Task composer"},
 	}
 	for _, binding := range globalBindings {
 		assertHasHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
@@ -150,11 +133,11 @@ func TestGetForView_TaskCapableViewsIncludeScopedTaskGlobals(t *testing.T) {
 	items := r.GetForView(ViewOutliner)
 
 	scopedBindings := []HelpItem{
-		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
+		{Key: "enter", Description: "Open task detail"},
+		{Key: "shift+enter", Description: "Peek task detail"},
 		{Key: "q", Description: "Toggle queue"},
 		{Key: "w", Description: "Toggle today's plan"},
-		{Key: "ctrl+o", Description: "Open task reference copy"},
-		{Key: "ctrl+n", Description: "Open project Notes"},
+		{Key: "ctrl+n", Description: "Task composer"},
 		{Key: ".", Description: "Repeat last action"},
 		{Key: "y", Description: "Copy title"},
 		{Key: "Y", Description: "Copy description"},
@@ -185,15 +168,17 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	outlinerItems := outliner.GetHelpItems()
 	assertHasHelpItem(t, outlinerItems, ViewOutliner, "w", "Toggle today's plan")
-	assertHasHelpItem(t, outlinerItems, ViewOutliner, "ctrl+o", "Open task reference copy")
-	assertHasHelpItem(t, outlinerItems, ViewOutliner, "ctrl+n", "Open project Notes")
+	assertHasHelpItem(t, outlinerItems, ViewOutliner, "enter", "Open task detail")
+	assertHasHelpItem(t, outlinerItems, ViewOutliner, "shift+enter", "Peek task detail")
+	assertHasHelpItem(t, outlinerItems, ViewOutliner, "ctrl+n", "Task composer")
+	assertLacksHelpItem(t, outlinerItems, ViewOutliner, "ctrl+o", "Open task reference copy")
 	assertLacksHelpItem(t, outlinerItems, ViewOutliner, "w", "Add to today's plan")
-	if count := countHelpItem(outlinerItems, "ctrl+n", "Open project Notes"); count != 1 {
-		t.Fatalf("Outliner help has %d ctrl+n Open project Notes rows, want 1", count)
+	if count := countHelpItem(outlinerItems, "ctrl+n", "Task composer"); count != 1 {
+		t.Fatalf("Outliner help has %d ctrl+n Task composer rows, want 1", count)
 	}
 
 	allTasksItems := (&AllTasksViewModel{}).GetHelpItems()
-	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "space", "Toggle task detail peek (toggles selection in multi-select)")
+	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "shift+enter", "Peek task detail")
 	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "w", "Toggle today's plan")
 	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "y", "Copy title")
 
@@ -202,186 +187,66 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "j/k", "Scroll down/up")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "q", "Toggle queue")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "w", "Toggle today's plan")
-	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+o", "Open task reference copy")
-	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+n", "Open project Notes")
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+n", "Task composer")
+	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "ctrl+o", "Open task reference copy")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "y", "Copy title")
-	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "space", "Toggle task detail peek (toggles selection in multi-select)")
+	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "shift+enter", "Peek task detail")
 }
 
 func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
-	m := &FocusBoardModel{}
+	m, _, _ := focusBoardTaskActionFixture(t)
 	keys := m.HandledKeys()
-
-	for _, key := range []string{
-		"a", "x", "p", "P", "J", "K", "/", "?", "enter",
-		"tab", "shift+tab", "shift+left", "shift+right",
-		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
-		"g", "gg", "gp", "n", "N",
-		"f", "fp", "fa",
-		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS",
-		"1", "2", "3", "4", "5", "0",
-		",", ",d", "!", "!1", "d", "dd", "z", "zd", "m", "mn", "c", "cb", "t", "tn", "tN", "tD",
-		"b", "bb", "o", "D", "e", "S", "O", "ctrl+b", "ctrl+.",
-	} {
-		if !slices.Contains(keys, key) {
-			t.Errorf("FocusBoard HandledKeys missing canonical key %q", key)
-		}
+	want := []string{
+		"j", "down", "k", "up", "g", "G", "ctrl+u", "ctrl+d", "n", "N",
+		"enter", "shift+enter", "space", "/", "v", "a", "e", "x", "s", "p",
+		"!", "d", "t", "Z", "m", "J", "K", "P", "y", "u", "ctrl+r", "tab", "shift+tab",
 	}
-
-	for _, key := range []string{
-		"q", "w", "X", "E", "v", "space", "A",
-		"ctrl+f", "ctrl+r", "ctrl+t", "r",
-		"P0",
-		".",
-	} {
-		if slices.Contains(keys, key) {
-			t.Errorf("FocusBoard HandledKeys should not preserve removed key %q", key)
-		}
+	if !slices.Equal(keys, want) {
+		t.Fatalf("Planner keymap snapshot = %v, want %v", keys, want)
 	}
 
 	items := m.GetHelpItems()
-	for _, want := range []HelpItem{
-		{Key: "a", Description: "Quick-add board item"},
-		{Key: "x", Description: "Complete or dismiss item"},
-		{Key: "p", Description: "Plan or set priority"},
-		{Key: "P", Description: "Park task"},
-		{Key: "J", Description: "Reorder down (Today/Next)"},
-		{Key: "K", Description: "Reorder up (Today/Next)"},
-		{Key: "/", Description: "Search"},
-		{Key: "?", Description: "Toggle help"},
-		{Key: "enter", Description: "View task details"},
-		{Key: "gg", Description: "Jump to top"},
-		{Key: "gp", Description: "Go to task in project"},
-		{Key: "n", Description: "Go to next parent task"},
-		{Key: "N", Description: "Go to previous parent task"},
-		{Key: "o", Description: "View task details"},
-		{Key: "D", Description: "Mark done"},
-		{Key: "e", Description: "Edit task"},
-		{Key: "S", Description: "Edit score dimensions"},
-		{Key: "O", Description: "Open URL in browser"},
-		{Key: "ctrl+b", Description: "Move task to project"},
-		{Key: "ctrl+.", Description: "Quick note on task"},
-		{Key: "1", Description: "Sort within groups: priority"},
-		{Key: "2", Description: "Sort within groups: due date"},
-		{Key: "3", Description: "Sort within groups: created"},
-		{Key: "4", Description: "Sort within groups: status"},
-		{Key: "5", Description: "Sort within groups: score"},
-		{Key: "0", Description: "Reset group sort"},
-		{Key: "fp", Description: "Toggle inline preview"},
-		{Key: "fa", Description: "Toggle fold"},
-		{Key: ":", Description: "Command palette"},
-		{Key: "esc", Description: "Back / close"},
-		{Key: "u", Description: "Undo last task action"},
-		{Key: "Fh", Description: "Toggle hide-dimmed filter"},
-		// q/w are the Planner's replacement planning action (promote a selected
-		// Backlog row into Next / Today). They are app-level bindings scoped to
-		// the Planner, so they advertise in help but stay out of view-local
-		// HandledKeys (asserted absent above).
-		{Key: "q", Description: "Toggle queue"},
-		{Key: "w", Description: "Toggle today's plan"},
+	for _, expected := range []HelpItem{
+		{Key: "enter", Description: "Open task detail"},
+		{Key: "shift+enter", Description: "Peek at task"},
+		{Key: "space", Description: "Toggle selection"},
+		{Key: "v", Description: "Open View menu"},
+		{Key: "x", Description: "Complete task"},
+		{Key: "J", Description: "Reorder down within Today or Next"},
+		{Key: "tab", Description: "Next Planner tab"},
+		{Key: "shift+tab", Description: "Previous Planner tab"},
 	} {
-		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
+		assertHasHelpItem(t, items, ViewFocusBoard, expected.Key, expected.Description)
 	}
 	for _, key := range []string{
-		"X", "E", "v", "space", "A",
-		"ctrl+f", "ctrl+r", "ctrl+t", "r",
-		"g", "f",
-		"P0",
-		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
-		"ctrl+o", "ctrl+n",
-		"y", "Y", "ctrl+y",
+		"q", "w", "o", "gg", "gp", "fp", "fa", "1", "2", "3", "4", "5", "0", "tn", "tN", "tD", ",d",
 	} {
 		for _, item := range items {
 			if item.Key == key {
-				t.Errorf("FocusBoard help should not advertise removed key %q: %+v", key, item)
+				t.Errorf("Planner help advertises retired key %q: %+v", key, item)
 			}
 		}
 	}
-}
-
-func TestGetForView_FocusBoardIncludesTodayUngatedParity(t *testing.T) {
-	r := NewKeybindingRegistry()
-	items := r.GetForView(ViewFocusBoard)
-
-	for _, want := range []HelpItem{
-		{Key: "enter", Description: "View task details"},
-		{Key: "o", Description: "View task details"},
-		{Key: "gg", Description: "Jump to top"},
-		{Key: "gp", Description: "Go to task in project"},
-		{Key: "n", Description: "Go to next parent task"},
-		{Key: "N", Description: "Go to previous parent task"},
-		{Key: "1", Description: "Sort within groups: priority"},
-		{Key: "2", Description: "Sort within groups: due date"},
-		{Key: "3", Description: "Sort within groups: created"},
-		{Key: "4", Description: "Sort within groups: status"},
-		{Key: "5", Description: "Sort within groups: score"},
-		{Key: "0", Description: "Reset group sort"},
-		{Key: "fp", Description: "Toggle inline preview"},
-		{Key: "ctrl+b", Description: "Move task to project"},
-		{Key: "ctrl+.", Description: "Quick note on task"},
-		{Key: "q", Description: "Toggle queue"},
-		{Key: "w", Description: "Toggle today's plan"},
-	} {
-		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
-	}
-
-	for _, removed := range []HelpItem{
-		{Key: "ctrl+o", Description: "Open task reference copy"},
-		{Key: "ctrl+n", Description: "Open project Notes"},
-		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
-	} {
-		assertLacksHelpItem(t, items, ViewFocusBoard, removed.Key, removed.Description)
-	}
-}
-
-func TestFocusBoardHelpIncludesSelectedTaskParity(t *testing.T) {
-	m, _, _ := focusBoardTaskActionFixture(t)
-	items := m.GetHelpItems()
-
-	for _, want := range []HelpItem{
-		{Key: "tn", Description: "New task (no template)"},
-		{Key: "tN", Description: "New task (with template picker)"},
-		{Key: "tD", Description: "Delete task"},
-		{Key: ",d", Description: "Mark done"},
-		{Key: "ctrl+b", Description: "Move task to project"},
-		{Key: "ctrl+.", Description: "Quick note on task"},
-	} {
-		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
-	}
-}
-
-func TestFocusBoardHelpDistinguishesParentNavigationFromSnoozeNextMonday(t *testing.T) {
-	m, _, _ := focusBoardTaskActionFixture(t)
-	items := m.GetHelpItems()
-
-	assertHasHelpItem(t, items, ViewFocusBoard, "n", "Go to next parent task")
-	assertHasHelpItem(t, items, ViewFocusBoard, "N", "Go to previous parent task")
-	assertHasHelpItem(t, items, ViewFocusBoard, "zn", "Snooze until next Monday")
-	assertLacksHelpItem(t, items, ViewFocusBoard, "n", "Snooze until next Monday")
-	assertLacksHelpItem(t, items, ViewFocusBoard, "zn", "Go to next parent task")
 }
 
 func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	view := &ctrlORecorderTaskRefView{task: project.Tasks[0], project: project}
 	app.views.Register(ViewFocusBoard, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewFocusBoard}
+	app.viewStack = []PresentationID{ViewDashboard, ViewFocusBoard}
+	app.enableTypedNavigation()
 	app.focusQueueIDs = map[string]bool{}
 	app.dailyPlanIDs = map[string]bool{}
 
-	// q/w are no longer removed aliases on the Planner: they are its replacement
-	// planning action (promote a Backlog row into Next / Today). Their handled
-	// path is covered by TestFocusBoardBacklogPromotionFlow. ctrl+r still falls
-	// through here because there is no pending planning redo to replay.
+	// The Planner owns its complete shared task grammar in the view dispatcher.
+	// App-level legacy aliases must therefore fall through.
 	removed := []struct {
 		name string
 		key  tea.KeyPressMsg
 	}{
-		{"redo", syntheticCtrlKey('r')},
+		{"queue", syntheticKey('q')},
+		{"today", syntheticKey('w')},
 		{"reference", syntheticCtrlKey('o')},
-		{"notes", syntheticCtrlKey('n')},
-		{"peek", syntheticSpecialKey(tea.KeySpace)},
-		{"copy title", syntheticKey('y')},
 		{"copy description", syntheticKey('Y')},
 		{"copy title and description", syntheticCtrlKey('y')},
 	}
@@ -396,21 +261,18 @@ func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {
 	if handled, _ := app.handleGlobalKeyPress(syntheticKey('u')); !handled {
 		t.Fatal("FocusBoard should keep canonical app-level undo key u handled")
 	}
+	if handled, cmd := app.handleGlobalKeyPress(syntheticCtrlKey('n')); !handled || cmd == nil {
+		t.Fatal("FocusBoard should route canonical Ctrl+N to Task Composer")
+	}
 }
 
-func TestGetGlobalBindings_IncludesHandledSemicolonShortcuts(t *testing.T) {
+func TestGetGlobalBindings_ExcludesRemovedSemicolonShortcuts(t *testing.T) {
 	r := NewKeybindingRegistry()
 	items := r.GetGlobalBindings()
-
-	globalSemicolonBindings := []HelpItem{
-		{Key: ";!", Description: "Global Priority Update"},
-		{Key: ";td", Description: "Global Due Date Update"},
-		{Key: ";tm", Description: "Global Task Move"},
-		{Key: ";ts", Description: "Global Section Change"},
-		{Key: ";tN", Description: "Global Template Task Create"},
-	}
-	for _, binding := range globalSemicolonBindings {
-		assertHasHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
+	for _, item := range items {
+		if strings.HasPrefix(item.Key, ";") {
+			t.Fatalf("global bindings still advertise removed prefix %q", item.Key)
+		}
 	}
 }
 
@@ -423,7 +285,7 @@ func TestGetForView_OutlinerSectionFold(t *testing.T) {
 	}
 
 	r := NewKeybindingRegistry()
-	for _, view := range []ViewType{ViewOutliner, ViewCrossProjectOutliner} {
+	for _, view := range []PresentationID{ViewOutliner, ViewCrossProjectOutliner} {
 		found := map[string]bool{
 			"fs": false,
 			"fS": false,
@@ -447,7 +309,7 @@ func TestGetForView_OutlinerSectionFold(t *testing.T) {
 func TestGetForView_OutlinerTagManagerScope(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	assertHelpItem := func(view ViewType, key, desc string) {
+	assertHelpItem := func(view PresentationID, key, desc string) {
 		t.Helper()
 		for _, item := range r.GetForView(view) {
 			if item.Key == key && item.Description == desc {
@@ -467,7 +329,7 @@ func TestGetForView_OutlinerTagManagerScope(t *testing.T) {
 func TestGetForView_OutlinerSectionManagerScope(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	for _, view := range []ViewType{ViewOutliner, ViewCrossProjectOutliner} {
+	for _, view := range []PresentationID{ViewOutliner, ViewCrossProjectOutliner} {
 		found := false
 		for _, item := range r.GetForView(view) {
 			if item.Key == "ctrl+s" && item.Description == "Section manager" {
@@ -483,15 +345,18 @@ func TestGetForView_OutlinerSectionManagerScope(t *testing.T) {
 	}
 }
 
-func TestGetForView_OutlinerUsesCtrlNForProjectNotes(t *testing.T) {
+func TestGetForView_OutlinerUsesCtrlNForTaskComposer(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	for _, view := range []ViewType{ViewOutliner} {
+	for _, view := range []PresentationID{ViewOutliner} {
 		items := r.GetForView(view)
 		foundCtrlN := false
 		for _, item := range items {
-			if item.Key == "ctrl+n" && item.Description == "Open project Notes" {
+			if item.Key == "ctrl+n" && item.Description == "Task composer" {
 				foundCtrlN = true
+			}
+			if item.Key == "ctrl+n" && item.Description == "Open project Notes" {
+				t.Fatalf("%s still advertises retired Ctrl+N Notes action", view)
 			}
 			if item.Key == "ctrl+o" && item.Description == "Open outliner view" {
 				t.Fatalf("%s should not advertise ctrl+o as Outliner", view)
@@ -501,35 +366,35 @@ func TestGetForView_OutlinerUsesCtrlNForProjectNotes(t *testing.T) {
 			}
 		}
 		if !foundCtrlN {
-			t.Fatalf("%s missing ctrl+n Open project Notes binding", view)
+			t.Fatalf("%s missing ctrl+n Task composer binding", view)
 		}
 	}
 }
 
-func TestGetForView_ProjectNotesScopeDoesNotAdvertiseStaleCtrlN(t *testing.T) {
+func TestGetForView_ProjectNotesScopeAdvertisesCanonicalComposerCtrlN(t *testing.T) {
 	r := NewKeybindingRegistry()
 
 	for _, view := range projectNotesViews() {
 		items := r.GetForView(view)
 		for _, item := range items {
-			if item.Key == "ctrl+n" && item.Description != "Open project Notes" {
+			if item.Key == "ctrl+n" && item.Description != "Task composer" {
 				t.Fatalf("%s advertises ctrl+n as %q", view, item.Description)
 			}
 		}
 	}
 }
 
-func TestGetForView_WeeklyReviewAdvertisesScopedProjectNotesCtrlN(t *testing.T) {
+func TestGetForView_WeeklyReviewAdvertisesGlobalComposerCtrlN(t *testing.T) {
 	r := NewKeybindingRegistry()
 	items := r.GetForView(ViewWeeklyReview)
 
-	foundProjectNotes := false
+	foundComposer := false
 	for _, item := range items {
 		if item.Key != "ctrl+n" {
 			continue
 		}
-		if item.Description == "Open project Notes" {
-			foundProjectNotes = true
+		if item.Description == "Task composer" {
+			foundComposer = true
 			continue
 		}
 		if item.Description == "Next unreviewed section" {
@@ -537,8 +402,8 @@ func TestGetForView_WeeklyReviewAdvertisesScopedProjectNotesCtrlN(t *testing.T) 
 		}
 		t.Fatalf("Weekly Review advertises unexpected ctrl+n binding %q", item.Description)
 	}
-	if !foundProjectNotes {
-		t.Fatal("Weekly Review should advertise scoped ctrl+n Open project Notes binding")
+	if !foundComposer {
+		t.Fatal("Weekly Review should advertise global Ctrl+N Task composer binding")
 	}
 
 	keys := (&WeeklyReviewModel{}).buildKeyMap().HandledKeys()
@@ -628,7 +493,7 @@ func TestSharedTriagePrimaryVocabulary(t *testing.T) {
 func TestGetForView_IncludesGlobalBindings(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	for _, view := range []ViewType{ViewDashboard, ViewOutliner, ViewPriorityView, ViewInboxProcessor} {
+	for _, view := range []PresentationID{ViewDashboard, ViewOutliner, ViewPriorityView, ViewInboxProcessor} {
 		items := r.GetForView(view)
 		foundQuit := false
 		foundHelp := false
@@ -636,7 +501,7 @@ func TestGetForView_IncludesGlobalBindings(t *testing.T) {
 			if item.Key == "ctrl+c" && item.Description == "Quit" {
 				foundQuit = true
 			}
-			if item.Key == "?" && item.Description == "Toggle help" {
+			if item.Key == "?" && item.Description == "Help" {
 				foundHelp = true
 			}
 		}
@@ -663,7 +528,7 @@ func TestGetGlobalBindings(t *testing.T) {
 		if item.Key == ":" && item.Description == "Command palette" {
 			foundCommandPalette = true
 		}
-		if item.Key == "ctrl+esc" && item.Description == "Go to Dashboard" {
+		if item.Key == "ctrl+esc" && item.Description == "Home" {
 			foundDashboard = true
 		}
 	}
@@ -688,14 +553,14 @@ func TestGetGlobalBindings(t *testing.T) {
 
 func TestContainsView(t *testing.T) {
 	tests := []struct {
-		views    []ViewType
-		target   ViewType
+		views    []PresentationID
+		target   PresentationID
 		expected bool
 	}{
-		{[]ViewType{ViewDashboard, ViewOutliner}, ViewDashboard, true},
-		{[]ViewType{ViewDashboard, ViewOutliner}, ViewPriorityView, false},
-		{[]ViewType{}, ViewDashboard, false},
-		{[]ViewType{ViewOutliner}, ViewOutliner, true},
+		{[]PresentationID{ViewDashboard, ViewOutliner}, ViewDashboard, true},
+		{[]PresentationID{ViewDashboard, ViewOutliner}, ViewPriorityView, false},
+		{[]PresentationID{}, ViewDashboard, false},
+		{[]PresentationID{ViewOutliner}, ViewOutliner, true},
 	}
 
 	for _, tc := range tests {
@@ -753,27 +618,6 @@ func TestGetAllDeduplicatedPreservesScope(t *testing.T) {
 	for _, item := range items {
 		if item.Views != nil && len(item.Views) == 0 {
 			t.Errorf("binding %q (%q) has empty non-nil Views slice", item.Key, item.Description)
-		}
-	}
-}
-
-func TestScopeText(t *testing.T) {
-	tests := []struct {
-		views []ViewType
-		want  string
-	}{
-		{nil, "Global"},
-		{[]ViewType{}, "Global"},
-		{[]ViewType{ViewDashboard}, "Dashboard"},
-		{[]ViewType{ViewDashboard, ViewKanban}, "Dashboard, Kanban"},
-		{[]ViewType{ViewDashboard, ViewKanban, ViewPriorityView}, "Dashboard, Kanban, PriorityView"},
-		{[]ViewType{ViewDashboard, ViewKanban, ViewPriorityView, ViewAllTasks}, "4 views"},
-		{[]ViewType{ViewDashboard, ViewKanban, ViewPriorityView, ViewAllTasks, ViewOutliner}, "5 views"},
-	}
-	for _, tc := range tests {
-		got := scopeText(tc.views)
-		if got != tc.want {
-			t.Errorf("scopeText(%v) = %q, want %q", tc.views, got, tc.want)
 		}
 	}
 }

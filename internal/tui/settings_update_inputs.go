@@ -75,13 +75,9 @@ func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 			setErr(m.validateMaxPinnedBarItems())
 		case 4:
 			setErr(m.validateMaxRecentTaskVisits())
-		case 5:
-			setErr(m.validatePopupTimeout())
-		case 6, 7, 8, 9, 10, 11, 12:
+		case 5, 6, 7, 8, 9, 10, 11:
 			setErr(m.validateSectionLimits())
-		case 17, 18:
-			setErr(m.validateDashboardSplitPcts())
-		case 19:
+		case 13:
 			setErr(m.validateResumeCardLimit())
 		}
 	case tabAttachments:

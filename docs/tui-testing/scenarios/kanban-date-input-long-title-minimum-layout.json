@@ -4,7 +4,6 @@
   "size": "60x20",
   "actions": [
     { "type": "command", "label": "open kanban", "command": "kanban" },
-    { "type": "key", "label": "open due-date prefix", "key": "d" },
     { "type": "key", "label": "open date picker", "key": "d" },
     { "type": "assert", "assert": "view", "value": "DateInput" },
     { "type": "assert", "assert": "no_layout_issues" }

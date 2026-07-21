@@ -44,7 +44,7 @@ func TestBuildBreadcrumbTruncationIsUTF8Safe(t *testing.T) {
 	}
 	app.outliner = NewOutlinerModel(app.currentProject, app.configManager, app.runtime)
 	app.views.Register(ViewOutliner, app.outliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner}
 
 	crumb := app.buildBreadcrumb()
 	if !utf8.ValidString(crumb) {

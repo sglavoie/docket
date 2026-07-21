@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -39,17 +38,6 @@ func TestRetiredProjectTreeSurfacesRemoved(t *testing.T) {
 			if strings.EqualFold(f.Label, "Default View") {
 				t.Fatalf("settings still expose a selectable %q field", f.Label)
 			}
-		}
-	})
-
-	t.Run("legacy project_tree preference migrates to outliner", func(t *testing.T) {
-		s := &config.Settings{DefaultProjectView: "project_tree"}
-		if got := s.GetDefaultProjectView(); got != "outliner" {
-			t.Fatalf("GetDefaultProjectView() = %q, want outliner (safe migration)", got)
-		}
-		// The navigation resolver always lands on the Outliner regardless of value.
-		if got := defaultProjectViewType(s); got != ViewOutliner {
-			t.Fatalf("defaultProjectViewType() = %v, want ViewOutliner", got)
 		}
 	})
 

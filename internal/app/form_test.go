@@ -214,3 +214,48 @@ func TestEditFormRejectsInvalidTitle(t *testing.T) {
 		t.Fatal("a rejected edit must not commit")
 	}
 }
+
+func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
+	t.Run("preserves in progress through empty active section", func(t *testing.T) {
+		task := newTask("t-1", 1, "Before")
+		task.ApplyWorkflowState(models.StateInProgress)
+		project := newProject("proj-1", "Proj", task)
+		svc := newTestService(newFakeRepo(project))
+		state := models.StateInProgress
+
+		_, err := svc.Edit(app.EditRequest{
+			TaskID: task.ID,
+			Form: &app.FormEdit{
+				Title: "After", Type: models.TaskTypeTask, Priority: 3, Section: "", Tags: []string{},
+			},
+			WorkflowState: &state,
+		})
+		if err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+		if got := task.State(); got != models.StateInProgress {
+			t.Fatalf("state = %s, want in_progress", got)
+		}
+	})
+
+	t.Run("applies lifecycle side effects", func(t *testing.T) {
+		task := newTask("t-1", 1, "Before")
+		project := newProject("proj-1", "Proj", task)
+		svc := newTestService(newFakeRepo(project))
+		state := models.StateDone
+
+		_, err := svc.Edit(app.EditRequest{
+			TaskID: task.ID,
+			Form: &app.FormEdit{
+				Title: "Done", Type: models.TaskTypeTask, Priority: 3, Section: models.SectionCompleted, Tags: []string{},
+			},
+			WorkflowState: &state,
+		})
+		if err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+		if task.State() != models.StateDone || task.CompletedAt == nil {
+			t.Fatalf("terminal state did not apply lifecycle metadata: %+v", task)
+		}
+	})
+}

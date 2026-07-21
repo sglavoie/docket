@@ -89,7 +89,7 @@ func TestNextActionStripReviewBlockedSurfacesUnblockHint(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true},
 	})
 
-	for _, want := range []string{"Review blocked", "Wire SSO callback", "[Auth]", "blocked", "u unblock"} {
+	for _, want := range []string{"Review blocked", "Wire SSO callback", "[Auth]", "blocked", "s state"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -110,7 +110,7 @@ func TestNextActionStripTriageInboxCountsItems(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true, Inbox: 4},
 	})
 
-	for _, want := range []string{"Triage inbox", "(4 items)", "inbox needs triage", "ctrl+i triage"} {
+	for _, want := range []string{"Triage inbox", "(4 items)", "inbox needs triage", ": manage inbox"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -129,7 +129,7 @@ func TestNextActionStripTriageInboxFallsBackToOpenLoops(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true, Inbox: 1},
 	})
 
-	for _, want := range []string{"Triage inbox", "(1 item)", "ctrl+i triage"} {
+	for _, want := range []string{"Triage inbox", "(1 item)", ": manage inbox"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -150,7 +150,7 @@ func TestNextActionStripPlanTodaySuggestsPlanning(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true},
 	})
 
-	for _, want := range []string{"Plan today's work", "p plan"} {
+	for _, want := range []string{"Plan today's work"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -158,7 +158,7 @@ func TestNextActionStripPlanTodaySuggestsPlanning(t *testing.T) {
 	// Session 11: strip emits one recommendation-unique hint only — keys the
 	// host footer already advertises (`a add`, `enter open`, `x done`) must
 	// not be duplicated here.
-	for _, banned := range []string{"a add", "enter open", "x done"} {
+	for _, banned := range []string{"p plan", "a add", "enter open", "x done"} {
 		if strings.Contains(plain, banned) {
 			t.Fatalf("strip should not duplicate footer-owned hint %q, got %q", banned, plain)
 		}
@@ -179,7 +179,7 @@ func TestNextActionStripAllDoneFirstRunCopy(t *testing.T) {
 		OpenLoops:   OpenLoops{},
 	})
 
-	for _, want := range []string{"Create your first project", "p new project"} {
+	for _, want := range []string{"Create your first project"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -190,8 +190,8 @@ func TestNextActionStripAllDoneFirstRunCopy(t *testing.T) {
 	// Session 11: strip emits only the recommendation-unique key. `a quick
 	// capture` belongs to the host footer's contextual cluster and must not
 	// repeat inside the strip.
-	if strings.Contains(plain, "a quick capture") {
-		t.Fatalf("strip should not duplicate footer-owned hint \"a quick capture\", got %q", plain)
+	if strings.Contains(plain, "p new project") || strings.Contains(plain, "a add") {
+		t.Fatalf("strip should not duplicate footer-owned or retired hints, got %q", plain)
 	}
 }
 
@@ -228,7 +228,7 @@ func TestNextActionStripDegradesUnderNarrowWidth(t *testing.T) {
 
 	wide := renderStripPlain(t, NextActionStripOpts{
 		Action: RecommendedAction{
-			Kind:    RecommendationKindWorkOnTask,
+			Kind:    RecommendationKindReviewBlocked,
 			Task:    task,
 			Project: project,
 			Reasons: []RecommendationReason{ReasonOverdue},
@@ -236,16 +236,13 @@ func TestNextActionStripDegradesUnderNarrowWidth(t *testing.T) {
 		Width:       140,
 		HasProjects: true,
 	})
-	// Session 11: strip carries the recommendation-unique key only. For
-	// WorkOnTask that is `p plan today` (so the hint cannot collide with the
-	// host footer's `enter open` / `x done` / `a add` cluster).
-	if !strings.Contains(wide, "p plan today") {
+	if !strings.Contains(wide, "s state") {
 		t.Fatalf("hints should be visible at width 140, got %q", wide)
 	}
 
 	narrow := renderStripPlain(t, NextActionStripOpts{
 		Action: RecommendedAction{
-			Kind:    RecommendationKindWorkOnTask,
+			Kind:    RecommendationKindReviewBlocked,
 			Task:    task,
 			Project: project,
 			Reasons: []RecommendationReason{ReasonOverdue},
@@ -253,7 +250,7 @@ func TestNextActionStripDegradesUnderNarrowWidth(t *testing.T) {
 		Width:       40,
 		HasProjects: true,
 	})
-	if strings.Contains(narrow, "p plan today") {
+	if strings.Contains(narrow, "s state") {
 		t.Fatalf("hints should be dropped at width 40, got %q", narrow)
 	}
 	if lipgloss.Width(narrow) > 40 {

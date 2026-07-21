@@ -23,7 +23,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 			Icon:    "→",
 			KeyHint: "enter",
 			Handler: func() tea.Msg {
-				return GlobalSearchSelectMsg{Task: task, Project: project}
+				return PaletteEntitySelectMsg{Task: task, Project: project}
 			},
 		},
 		{

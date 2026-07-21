@@ -1,30 +1,13 @@
 package tui
 
 import (
-	"fmt"
-	"sort"
-	"strings"
-
 	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
 // buildCategories extracts ordered unique tab labels for the current help mode.
-// First-level (per-view) help labels tabs by intent bucket so they match the
-// rendered section headers; the explorer keeps raw Category labels.
+// Help labels tabs by intent bucket so they match the rendered section headers.
 func (m *HelpViewModel) buildCategories() []string {
-	if !m.isExplorer {
-		return m.buildIntentCategories()
-	}
-	seen := make(map[string]bool)
-	var cats []string
-	for _, item := range m.items {
-		if !seen[item.Category] {
-			seen[item.Category] = true
-			cats = append(cats, item.Category)
-		}
-	}
-	sort.Strings(cats)
-	return cats
+	return m.buildIntentCategories()
 }
 
 // buildIntentCategories returns the intent buckets present in m.items, in the
@@ -77,12 +60,7 @@ func (m *HelpViewModel) filterItems() {
 	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
 		activeLabel := m.categories[m.activeTab-1]
 		source = nil
-		matches := func(item HelpItem) bool {
-			if m.isExplorer {
-				return item.Category == activeLabel
-			}
-			return intentForItem(item, m.sourceView) == activeLabel
-		}
+		matches := func(item HelpItem) bool { return intentForItem(item, m.sourceView) == activeLabel }
 		for _, item := range m.items {
 			if matches(item) {
 				source = append(source, item)
@@ -105,12 +83,7 @@ func (m *HelpViewModel) filterItems() {
 		descScore, descPos := fuzzy.ScoreTermsWithPositions(item.Description, m.searchQuery)
 		catScore, _ := fuzzy.ScoreTermsWithPositions(item.Category, m.searchQuery)
 
-		scopeScore := 0
-		if m.isExplorer {
-			scopeScore, _ = fuzzy.ScoreTermsWithPositions(scopeText(item.Views), m.searchQuery)
-		}
-
-		if keyScore > 0 || descScore > 0 || catScore > 0 || scopeScore > 0 {
+		if keyScore > 0 || descScore > 0 || catScore > 0 {
 			filtered = append(filtered, filteredHelpItem{
 				HelpItem:      item,
 				keyPositions:  keyPos,
@@ -120,19 +93,4 @@ func (m *HelpViewModel) filterItems() {
 	}
 
 	m.filteredItems = filtered
-}
-
-// scopeText returns a human-readable scope label for a set of views.
-func scopeText(views []ViewType) string {
-	if len(views) == 0 {
-		return "Global"
-	}
-	if len(views) <= 3 {
-		names := make([]string, len(views))
-		for i, v := range views {
-			names[i] = v.String()
-		}
-		return strings.Join(names, ", ")
-	}
-	return fmt.Sprintf("%d views", len(views))
 }

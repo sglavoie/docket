@@ -85,12 +85,8 @@ func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 				} else {
 					m.logic = "and"
 				}
-			case "sort_dir":
-				m.sortAscending = !m.sortAscending
 			case "include_completed":
 				m.includeCompleted = !m.includeCompleted
-			case "show_as_tab":
-				m.showAsTab = !m.showAsTab
 			}
 			return m, nil
 
@@ -212,16 +208,8 @@ func (m *FilterBuilderModel) handleLeft() tea.Cmd {
 		if m.logic == "or" {
 			m.logic = "and"
 		}
-	case "sort_field":
-		if m.sortField > 0 {
-			m.sortField--
-		}
-	case "sort_dir":
-		m.sortAscending = !m.sortAscending
 	case "include_completed":
 		m.includeCompleted = !m.includeCompleted
-	case "show_as_tab":
-		m.showAsTab = !m.showAsTab
 	}
 	return nil
 }
@@ -257,16 +245,8 @@ func (m *FilterBuilderModel) handleRight() tea.Cmd {
 		if m.logic == "and" {
 			m.logic = "or"
 		}
-	case "sort_field":
-		if m.sortField < len(slSortFieldNames)-1 {
-			m.sortField++
-		}
-	case "sort_dir":
-		m.sortAscending = !m.sortAscending
 	case "include_completed":
 		m.includeCompleted = !m.includeCompleted
-	case "show_as_tab":
-		m.showAsTab = !m.showAsTab
 	}
 	return nil
 }
@@ -303,14 +283,8 @@ func (m *FilterBuilderModel) updateScrollForFocus() {
 		focusLine = 4 + itemIdx*4
 	case "logic":
 		focusLine = 4 + len(m.criteria)*4
-	case "sort_field":
-		focusLine = 2
-	case "sort_dir":
-		focusLine = 5
 	case "include_completed":
-		focusLine = 8
-	case "show_as_tab":
-		focusLine = 11
+		focusLine = 2
 	}
 
 	visibleHeight := max(m.height-7, 5)

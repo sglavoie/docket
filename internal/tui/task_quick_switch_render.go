@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -14,11 +13,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	}
 
 	borderStyle := InfoStatusStyle
-	titleText := "Recent Tasks"
-	if m.quickSwitchShowCompleted {
-		titleText += " (Completed)"
-	}
-	title := TitleStyle.Render(titleText)
+	title := TitleStyle.Render("Recent Tasks")
 	popupWidth := max(m.width-4, 30)
 
 	badgeStyle := InfoStatusStyle
@@ -71,9 +66,9 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 				contentLines = append(contentLines, dividerStyle.Render(strings.Repeat("─", innerWidth)))
 			}
 
-			badge := dimBadgeStyle.Render("·")
-			if !m.quickSwitchFiltering && i < 9 {
-				badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
+			badge := badgeStyle.Render("›")
+			if m.quickSwitchFiltering {
+				badge = dimBadgeStyle.Render("·")
 			}
 
 			statusIcon := GetStateStyle(entry.Task.State()).Render(entry.Task.State().Icon())
@@ -136,11 +131,11 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 
 	content := strings.Join(contentLines, "\n")
 
-	footer := MutedStyle.Render("j/k nav  / filter  1-9 jump  p pin  c toggle  ,status  !pri  x remove  esc close")
+	footer := MutedStyle.Render("j/k nav  / filter  enter open  shift+enter Peek  p pin/unpin  esc close")
 	if m.quickSwitchFiltering {
-		footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
+		footer = MutedStyle.Render("↑↓ nav  enter open  shift+enter Peek  esc clear")
 	} else if m.quickSwitchFilter != "" {
-		footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
+		footer = MutedStyle.Render("j/k nav  enter open  shift+enter Peek  p pin/unpin  / filter  esc clear")
 	}
 
 	return renderTitledBox(content, popupWidth, title, footer, borderStyle)

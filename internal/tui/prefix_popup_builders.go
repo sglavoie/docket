@@ -1,10 +1,6 @@
 package tui
 
-import (
-	"fmt"
-
-	"github.com/sglavoie/tt/internal/config"
-)
+import "github.com/sglavoie/tt/internal/config"
 
 // BuildPriorityPrefixHints returns priority hints with colored icons and
 // the current priority marked as active.
@@ -55,11 +51,6 @@ func overrideHintDetail(hints []PrefixHint, key, detail string) []PrefixHint {
 // `C` (inline input) entry — views without a score-input component must pass
 // false so the popup never advertises a key their Update() will not handle.
 func BuildFilterScorePrefixHints(machine *config.MachineState, supportsCustomInput bool) []PrefixHint {
-	customDetail := "(not set)"
-	if machine != nil && machine.ScoreFilterCustom != nil {
-		customDetail = fmt.Sprintf(">=%.0f", *machine.ScoreFilterCustom)
-	}
-
 	hints := []PrefixHint{
 		{Key: "1", Description: ">=30"},
 		{Key: "2", Description: ">=60"},
@@ -70,7 +61,6 @@ func BuildFilterScorePrefixHints(machine *config.MachineState, supportsCustomInp
 		{Key: "7", Description: ">=210"},
 		{Key: "8", Description: ">=240"},
 		{Key: "9", Description: ">=270"},
-		{Key: "c", Description: "custom", Detail: customDetail},
 	}
 	if supportsCustomInput {
 		hints = append(hints, PrefixHint{Key: "C", Description: "set value", Detail: "inline input"})

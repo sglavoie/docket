@@ -221,7 +221,7 @@ func TestUITestAvailableCommandsFields(t *testing.T) {
 		Shortcut: "n",
 		Category: CategoryTasks,
 		Aliases:  []string{"add task", "new task"},
-		Views:    []ViewType{ViewDashboard},
+		Views:    []PresentationID{ViewDashboard},
 	}); err != nil {
 		t.Fatalf("Register: %v", err)
 	}

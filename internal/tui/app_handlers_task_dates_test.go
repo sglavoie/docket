@@ -252,7 +252,7 @@ func TestHandleDueDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing.T)
 
 	app.crossOutliner = crossOutliner
 	app.views.Register(ViewCrossProjectOutliner, crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 
 	before := collectCrossProjectTaskTitles(crossOutliner)
 	if !before[task.Title] {
@@ -295,7 +295,7 @@ func TestHandleSnoozeDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing
 
 	app.crossOutliner = crossOutliner
 	app.views.Register(ViewCrossProjectOutliner, crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 
 	before := collectCrossProjectTaskTitles(crossOutliner)
 	if !before[task.Title] {

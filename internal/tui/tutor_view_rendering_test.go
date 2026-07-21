@@ -41,27 +41,6 @@ func TestTutorColorRulesDoNotTreatRetiredStageKeysAsBindings(t *testing.T) {
 	}
 }
 
-// TestRenderTutorContentEscapesLeadingHash verifies that a prose line escaped
-// with a leading backslash renders a literal "#" rather than being consumed as
-// a heading. The "Your first task" topic carries the only such line.
-func TestRenderTutorContentEscapesLeadingHash(t *testing.T) {
-	var topic TutorTopic
-	for _, tp := range tutorGettingStartedTopics() {
-		if tp.Title == "Your first task" {
-			topic = tp
-			break
-		}
-	}
-	if topic.Title == "" {
-		t.Fatal("could not find 'Your first task' topic")
-	}
-
-	out := ansi.Strip(renderTutorContent(topic, 80, ""))
-	if !strings.Contains(out, "# is for tags") {
-		t.Errorf("expected literal '# is for tags' in rendered output, got:\n%s", out)
-	}
-}
-
 // TestRenderTutorContentPreservesAlignedTable verifies that an indented line
 // containing an internal column run keeps its leading indent and internal
 // spacing verbatim (no reflow, no indent flattening).
@@ -268,8 +247,6 @@ func TestRenderTutorContentSampledAlignedRows(t *testing.T) {
 		{"Quick Capture Grammar", "    @date       Due date: @tomorrow @friday @+3d"},
 		{"Quick Capture Grammar", "    ^type       Task type: ^epic ^story ^task ^bug ^idea"},
 		{"Bulk Operations", "  ,s  Start all selected"},
-		{"Pipeline Views", "  Plan:     ;q next, ;D due dates, ;d daily review, ;R roadmap"},
-		{"The Task Pipeline", "  Capture   Get ideas and tasks in quickly"},
 		{"Attachments", "  tt attach 5 src/main.go:42      # Code reference (opens in IDE)"},
 	}
 

@@ -119,7 +119,7 @@ func contextProjectCountText(ctx ContextInfo) string {
 		return fmt.Sprintf(
 			"(%d active, %s)",
 			ctx.ProjectCount,
-			cycleArchivedHiddenText(ctx.ArchivedProjectCount),
+			fmt.Sprintf("%d archived", ctx.ArchivedProjectCount),
 		)
 	}
 	return fmt.Sprintf("(%d)", ctx.ProjectCount)

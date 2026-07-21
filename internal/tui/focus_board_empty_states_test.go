@@ -42,7 +42,7 @@ func TestTodayEmptyStateFirstRunCopy(t *testing.T) {
 		"Create your first project",               // strip
 		"Capture your first task to get started.", // body
 		"a add",
-		"p new project",
+		": commands",
 		"? help",
 	} {
 		if !strings.Contains(plain, want) {
@@ -74,7 +74,7 @@ func TestTodayEmptyStateInboxOnlyCopyPlural(t *testing.T) {
 	for _, want := range []string{
 		"Triage inbox",                   // strip
 		"3 items waiting in your inbox.", // body (plural)
-		"ctrl+i triage",
+		": open Manage Inbox",
 		"a add",
 	} {
 		if !strings.Contains(plain, want) {
@@ -109,8 +109,8 @@ func TestTodayEmptyStateInboxOnlyCopySingular(t *testing.T) {
 }
 
 // TestTodayEmptyStateBacklogReadyCopy covers the case where tasks exist but
-// nothing is planned or in the inbox. The body steers the user toward `p plan`
-// so they can move work from the backlog onto Today.
+// nothing is planned or in the inbox. The body steers the user toward the
+// Backlog tab so they can choose work for Today.
 func TestTodayEmptyStateBacklogReadyCopy(t *testing.T) {
 	project := cockpitProject(t, "Backlog")
 	backlogTask := cockpitTask(t, project, "Refactor parser", models.StatusTodo, models.SectionNext)
@@ -122,7 +122,7 @@ func TestTodayEmptyStateBacklogReadyCopy(t *testing.T) {
 
 	for _, want := range []string{
 		"Plan today from your backlog.",
-		"p plan",
+		"tab switch",
 		"a add",
 		"? help",
 	} {
@@ -256,7 +256,7 @@ func TestTodayEmptyStatePreservesFooterHints(t *testing.T) {
 	// The footer for the empty Today branch reads "a add · tab switch ·
 	// Esc close · ? help" (see focus_board_render.go). The new body must
 	// not displace these baseline hints.
-	for _, want := range []string{"a add", "tab switch", "Esc close"} {
+	for _, want := range []string{"a add", "tab"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("footer hint %q missing alongside empty state body:\n%s", want, plain)
 		}

@@ -170,8 +170,8 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
 	}
 	if w.startAtDefault {
-		if vt, ok := resolveStartupNavigation(app.runtime.Machine().GetStartView()); ok {
-			_, _ = app.Update(NavigateToViewMsg{ViewType: vt})
+		if app.startupMessage != nil {
+			_, _ = app.Update(app.startupMessage)
 		}
 	}
 	return NewUITestDriver(app, width, height), nil

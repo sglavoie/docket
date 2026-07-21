@@ -109,18 +109,6 @@ func TestDeleteSavedFilter_NotFound(t *testing.T) {
 	}
 }
 
-func TestGetTabFilters(t *testing.T) {
-	c := NewPlanningState()
-	c.SaveFilter(SavedFilter{ID: "1", Name: "Tab", ShowAsTab: true})
-	c.SaveFilter(SavedFilter{ID: "2", Name: "NoTab", ShowAsTab: false})
-	c.SaveFilter(SavedFilter{ID: "3", Name: "Tab2", ShowAsTab: true})
-
-	tabs := c.GetTabFilters()
-	if len(tabs) != 2 {
-		t.Fatalf("expected 2 tab filters, got %d", len(tabs))
-	}
-}
-
 func TestEffectiveLogic(t *testing.T) {
 	f := SavedFilter{Logic: "or"}
 	if f.EffectiveLogic() != "or" {
@@ -166,9 +154,6 @@ func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	if c.SavedFilters[0].FilterType != "bug" {
 		t.Errorf("expected filter_type 'bug', got %q", c.SavedFilters[0].FilterType)
 	}
-	if c.SavedFilters[0].PinnedTagTab != "backend" {
-		t.Errorf("expected pinned_tag_tab to migrate, got %q", c.SavedFilters[0].PinnedTagTab)
-	}
 	if !c.SavedFilters[0].FilterGitHubIssue {
 		t.Error("expected filter_github_issue to migrate")
 	}
@@ -207,9 +192,6 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 	}
 	if f.Mode != "criteria" {
 		t.Errorf("expected mode 'criteria', got %q", f.Mode)
-	}
-	if !f.ShowAsTab {
-		t.Error("expected ShowAsTab=true")
 	}
 	if len(f.Criteria) != 2 {
 		t.Fatalf("expected 2 criteria, got %d", len(f.Criteria))
@@ -264,16 +246,12 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 		ID:                "test-id",
 		Name:              "Complex",
 		Mode:              "snapshot",
-		ViewMode:          2,
 		FilterType:        "bug",
 		FilterTags:        []string{"a", "b"},
 		FilterAttrs:       map[string]string{"x": "y"},
 		FilterGitHubIssue: true,
 		FilterParked:      true,
 		FilterScoreMin:    42.5,
-		SortField:         3,
-		SortAscending:     true,
-		PinnedTagTab:      "backend",
 	}
 
 	data, err := json.Marshal(original)
@@ -300,9 +278,6 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	}
 	if len(decoded.FilterTags) != 2 {
 		t.Errorf("tags: got %d, want 2", len(decoded.FilterTags))
-	}
-	if decoded.PinnedTagTab != original.PinnedTagTab {
-		t.Errorf("pinned tag tab: got %q, want %q", decoded.PinnedTagTab, original.PinnedTagTab)
 	}
 }
 

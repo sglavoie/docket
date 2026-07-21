@@ -336,11 +336,11 @@ func (m *WorkflowWizardModel) actionValueInputHint() string {
 func (m *WorkflowWizardModel) stepHelpText() string {
 	switch m.step {
 	case wizStepTriggerType, wizStepTriggerOp, wizStepActionType:
-		return "j/k: navigate · Enter: select · Esc: back/cancel"
+		return "j/k: navigate · Enter/Tab: select · Shift+Tab/Esc: back"
 	case wizStepTriggerValue, wizStepActionValue:
-		return "Enter: confirm · Esc: back"
+		return "Enter/Tab: next · Shift+Tab/Esc: back"
 	case wizStepNameReview:
-		return "Enter/Ctrl+S: save rule · Esc: back"
+		return "Enter/Ctrl+S: save rule · Shift+Tab/Esc: back"
 	}
 	return ""
 }

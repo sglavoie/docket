@@ -51,13 +51,13 @@ func (m *AllTasksViewModel) deselectAll() {
 	m.UpdateStatus(&m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
 }
 
-// getSelectedBulkItems returns all selected tasks as a flat slice of bulkTaskItem.
-func (m *AllTasksViewModel) getSelectedBulkItems() []bulkTaskItem {
-	var items []bulkTaskItem
+// getSelectedBulkItems returns all selected tasks as a flat slice of TaskProjectRef.
+func (m *AllTasksViewModel) getSelectedBulkItems() []TaskProjectRef {
+	var items []TaskProjectRef
 	for _, group := range m.groups {
 		for _, item := range group.Tasks {
 			if m.selectedTasks[item.Task.ID] {
-				items = append(items, bulkTaskItem{Task: item.Task, Project: item.Project})
+				items = append(items, TaskProjectRef{Task: item.Task, Project: item.Project})
 			}
 		}
 	}

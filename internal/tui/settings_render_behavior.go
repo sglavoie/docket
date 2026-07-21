@@ -15,20 +15,33 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	case 3:
 		return m.renderBehaviorRecentTasksSection()
 	case 4:
-		return m.renderBehaviorPopupsSection()
-	case 5:
 		return m.renderBehaviorSectionLimitsSection()
-	case 6:
+	case 5:
 		return m.renderBehaviorStartupSection()
-	case 7:
-		return m.renderBehaviorTaskFormSection()
-	case 8:
-		return m.renderBehaviorFocusBoardSection()
-	case 9:
-		return m.renderBehaviorDashboardSection()
+	case 6:
+		return m.renderBehaviorHomeSection()
 	default:
 		return m.renderBehaviorRecentActivitySection()
 	}
+}
+
+func (m *SettingsModel) renderBehaviorHomeSection() string {
+	var b strings.Builder
+	const labelWidth = 19
+	const indent = 21
+	base := subTabFieldStart(tabBehavior, 6)
+
+	b.WriteString(renderFormLabelWithWidth("Parked task limit: ", labelWidth, m.focusIndex == base))
+	b.WriteString(m.resumeCardLimitInput.View())
+	b.WriteString(renderDefaultHint(m.resumeCardLimitInput.Value(), "5"))
+	b.WriteString("\n")
+	if m.focusIndex == base && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Maximum parked tasks shown in Home Attention", indent, m.focusIndex == base))
+	return b.String()
 }
 
 func (m *SettingsModel) renderBehaviorRecentActivitySection() string {
@@ -124,33 +137,11 @@ func (m *SettingsModel) renderBehaviorRecentTasksSection() string {
 	return b.String()
 }
 
-func (m *SettingsModel) renderBehaviorPopupsSection() string {
-	var b strings.Builder
-	const labelWidth = 17
-	const indent = 19
-	base := subTabFieldStart(tabBehavior, 4)
-
-	b.WriteString(renderFormLabelWithWidth("Auto-dismiss: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(m.popupTimeoutInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(0=stay, 1-30 seconds)"))
-	b.WriteString(renderDefaultHint(m.popupTimeoutInput.Value(), "0"))
-	b.WriteString("\n")
-	if m.focusIndex == base+0 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Seconds before prefix popups auto-dismiss (0=disabled)", indent, m.focusIndex == base+0))
-
-	return b.String()
-}
-
 func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
 	var b strings.Builder
 	const labelWidth = 17
 	const indent = 19
-	base := subTabFieldStart(tabBehavior, 5)
+	base := subTabFieldStart(tabBehavior, 4)
 
 	type limitField struct {
 		label  string
@@ -189,107 +180,13 @@ func (m *SettingsModel) renderBehaviorStartupSection() string {
 	var b strings.Builder
 	const labelWidth = 17
 	const indent = 19
-	base := subTabFieldStart(tabBehavior, 6)
+	base := subTabFieldStart(tabBehavior, 5)
 
 	b.WriteString(renderFormLabelWithWidth("Start view: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(renderEnumSelector(startViewOptions, m.startViewCursor, m.focusIndex == base+0, m.width-indent))
 	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Today"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("View shown when the application starts (default: Today cockpit)", indent, m.focusIndex == base+0))
-
-	return b.String()
-}
-
-func (m *SettingsModel) renderBehaviorTaskFormSection() string {
-	var b strings.Builder
-	const labelWidth = 17
-	const indent = 19
-	base := subTabFieldStart(tabBehavior, 7)
-
-	taskFormVal := "Expanded"
-	if m.taskFormCollapsed {
-		taskFormVal = "Collapsed"
-	}
-	b.WriteString(renderFormLabelWithWidth("Default mode: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(renderFormToggle("Collapsed", "Expanded", m.taskFormCollapsed, m.focusIndex == base+0))
-	b.WriteString(renderDefaultHint(taskFormVal, "Expanded"))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show only essential fields when opening the task form", indent, m.focusIndex == base+0))
-
-	return b.String()
-}
-
-func (m *SettingsModel) renderBehaviorFocusBoardSection() string {
-	var b strings.Builder
-	const labelWidth = 17
-	const indent = 19
-	base := subTabFieldStart(tabBehavior, 8)
-
-	b.WriteString(renderFormLabelWithWidth("Default mode: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(renderEnumSelector(focusBoardModeOptions, m.focusBoardModeCursor, m.focusIndex == base+0, m.width-indent))
-	b.WriteString(renderDefaultHint(focusBoardModeOptions[m.focusBoardModeCursor], "List"))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Display mode when Today opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
-
-	return b.String()
-}
-
-func (m *SettingsModel) renderBehaviorDashboardSection() string {
-	var b strings.Builder
-	const labelWidth = 17
-	const indent = 19
-	base := subTabFieldStart(tabBehavior, 9)
-
-	b.WriteString(renderFormLabelWithWidth("Layout: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(renderEnumSelector(dashboardLayoutOptions, m.dashboardLayoutCursor, m.focusIndex == base+0, m.width-indent))
-	b.WriteString(renderDefaultHint(dashboardLayoutOptions[m.dashboardLayoutCursor], "Horizontal"))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Dashboard bottom section layout (Horizontal=top/bottom, Vertical=side-by-side, List only=hide bottom)", indent, m.focusIndex == base+0))
-
-	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Horiz Split %: ", labelWidth, m.focusIndex == base+1))
-	b.WriteString(m.dashboardHorizSplitInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(10-90)"))
-	b.WriteString(renderDefaultHint(m.dashboardHorizSplitInput.Value(), "70"))
-	b.WriteString("\n")
-	if m.focusIndex == base+1 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Project-list height share in Horizontal layout", indent, m.focusIndex == base+1))
-
-	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Vert Split %: ", labelWidth, m.focusIndex == base+2))
-	b.WriteString(m.dashboardVertSplitInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(10-90)"))
-	b.WriteString(renderDefaultHint(m.dashboardVertSplitInput.Value(), "60"))
-	b.WriteString("\n")
-	if m.focusIndex == base+2 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Project-list width share in Vertical layout", indent, m.focusIndex == base+2))
-
-	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Resume Limit: ", labelWidth, m.focusIndex == base+3))
-	b.WriteString(m.resumeCardLimitInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(1-20)"))
-	b.WriteString(renderDefaultHint(m.resumeCardLimitInput.Value(), "5"))
-	b.WriteString("\n")
-	if m.focusIndex == base+3 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Maximum parked tasks shown in dashboard Resume card", indent, m.focusIndex == base+3))
+	b.WriteString(renderFormFieldDesc("Destination shown when the application starts (default: Planner)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

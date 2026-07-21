@@ -34,7 +34,6 @@ type SavedFilter struct {
 	Mode string `json:"mode"`
 
 	// --- Snapshot mode (from savedView) ---
-	ViewMode          int               `json:"view_mode,omitempty"`
 	FilterType        string            `json:"filter_type,omitempty"`
 	FilterStatus      string            `json:"filter_status,omitempty"`
 	FilterPriority    int               `json:"filter_priority,omitempty"`
@@ -47,23 +46,11 @@ type SavedFilter struct {
 	FilterParked      bool              `json:"filter_parked,omitempty"`
 	FilterAttrs       map[string]string `json:"filter_attrs,omitempty"`
 	FilterScoreMin    float64           `json:"filter_score_min,omitempty"`
-	SortField         int               `json:"sort_field,omitempty"`
-	SortAscending     bool              `json:"sort_ascending"`
-	PinnedTagTab      string            `json:"pinned_tag_tab,omitempty"`
 
 	// --- Criteria mode (from smartList) ---
 	Criteria         []SmartListCriterion `json:"criteria,omitempty"`
 	Logic            string               `json:"logic,omitempty"`
 	IncludeCompleted bool                 `json:"include_completed,omitempty"`
-
-	// --- Tab behavior ---
-	ShowAsTab bool `json:"show_as_tab,omitempty"`
-
-	// --- Kanban board configuration ---
-	KanbanMode           string   `json:"kanban_mode,omitempty"`            // Column axis mode ID
-	KanbanVisibleColumns []string `json:"kanban_visible_columns,omitempty"` // Which columns are shown
-	KanbanColumnOrder    []string `json:"kanban_column_order,omitempty"`    // Custom column ordering
-	ShowAsKanbanTab      bool     `json:"show_as_kanban_tab,omitempty"`     // Pin as a kanban preset tab
 }
 
 // EffectiveLogic returns the logic operator for criteria mode, defaulting to "and".
@@ -82,7 +69,6 @@ func savedViewToFilter(sv savedView) SavedFilter {
 		ID:                uuid.New().String(),
 		Name:              sv.Name,
 		Mode:              "snapshot",
-		ViewMode:          sv.ViewMode,
 		FilterType:        sv.FilterType,
 		FilterStatus:      sv.FilterStatus,
 		FilterPriority:    sv.FilterPriority,
@@ -94,9 +80,6 @@ func savedViewToFilter(sv savedView) SavedFilter {
 		FilterParked:      sv.FilterParked,
 		FilterAttrs:       sv.FilterAttrs,
 		FilterScoreMin:    sv.FilterScoreMin,
-		SortField:         sv.SortField,
-		SortAscending:     sv.SortAscending,
-		PinnedTagTab:      sv.PinnedTagTab,
 	}
 }
 
@@ -115,10 +98,7 @@ func smartListToFilter(sl smartList) SavedFilter {
 		Mode:             "criteria",
 		Criteria:         sl.Criteria,
 		Logic:            sl.Logic,
-		SortField:        sl.SortField,
-		SortAscending:    sl.SortAscending,
 		IncludeCompleted: sl.IncludeCompleted,
-		ShowAsTab:        true,
 	}
 }
 

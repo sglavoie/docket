@@ -25,7 +25,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		if m.showArchived {
 			cardContent.WriteString(MutedStyle.Render("No archived projects."))
 		} else {
-			cardContent.WriteString(MutedStyle.Render("No projects yet. Press n to create one."))
+			cardContent.WriteString(MutedStyle.Render("No projects yet. Press a to create one."))
 		}
 		return cardContent.String()
 	}
@@ -59,7 +59,8 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
-		rowBuilder.WriteString(m.renderProjectRow(visible[i], i == m.cursor, narrowMode, rowWidth, maxNameWidth, maxContextWidth, showContext, iconColWidth, dueSoonDays, &pinnedNum))
+		selected := m.homePane == homePaneProjects && i == m.cursor
+		rowBuilder.WriteString(m.renderProjectRow(visible[i], selected, narrowMode, rowWidth, maxNameWidth, maxContextWidth, showContext, iconColWidth, dueSoonDays, &pinnedNum))
 		if i < endIdx-1 {
 			rowBuilder.WriteString("\n")
 		}

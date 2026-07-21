@@ -17,7 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-// SelectorItem is an alias for selector.Item for backwards compatibility.
+// SelectorItem exposes the shared selector item in the TUI package.
 type SelectorItem = selector.Item
 
 // SelectorModel is the BubbleTea model for selection.

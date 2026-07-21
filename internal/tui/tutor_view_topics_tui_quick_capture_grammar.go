@@ -6,7 +6,7 @@ func tutorTUIQuickCaptureGrammarTopic() TutorTopic {
 		Category: "TUI",
 		Content: `# Opening Quick Capture
 
-Press ;i from any view to open the Quick Capture view. The
+Press Ctrl+N from any non-text control to open the Task Composer. The
 placeholder reads "Type a task title…" — start
 typing the title, then add sigils as needed. Press ? to toggle
 the grouped syntax reference — Basics, Priority & Tags,
@@ -92,11 +92,9 @@ appear as an inline suffix on the title.
     Task: Pair with Alex · Route: /waiting
     Schedule: weekly recurrence
 
-# Global Search Equivalents
+# Palette Search Equivalents
 
-Global search ($status #tag @due ^type) uses the same sigil
-prefixes for filtering, but targets existing tasks rather than
-creating new ones. Press ? in Global Search to see the full
-filter syntax reference.`,
+Palette search uses field prefixes to find existing tasks,
+projects, tags, sections, commands, and notes.`,
 	}
 }

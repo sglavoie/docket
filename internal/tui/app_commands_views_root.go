@@ -13,7 +13,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "Open highlighted project's outliner",
 			Shortcut:    "ctrl+p",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewCrossProjectOutliner},
 			Aliases:     []string{"project outliner", "drill into project", "open project view"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -26,9 +26,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "all tasks",
 			Description: "View all tasks across every project",
-			Shortcut:    ";a",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
 				return ShowAllTasksMsg{}
@@ -37,9 +35,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "outliner",
 			Description: "Open the cross-project outliner",
-			Shortcut:    ";o",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"global outliner", "cross-project outliner", "all tasks outliner"},
 			Handler: func() tea.Msg {
 				return ShowGlobalOutlinerMsg{}
@@ -48,9 +44,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "kanban",
 			Description: "Open the cross-project kanban board",
-			Shortcut:    ";k",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"global kanban", "cross-project kanban", "board"},
 			Handler: func() tea.Msg {
 				return ShowCrossProjectKanbanMsg{}
@@ -59,9 +53,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "all tasks by due date",
 			Description: "View all tasks grouped by due date",
-			Shortcut:    ";D",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard, ViewOutliner},
 			Aliases:     []string{"due dates", "by due date", "tasks by due date", "due date overview"},
 			Handler: func() tea.Msg {
 				return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true}
@@ -70,9 +62,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "daily review",
 			Description: "Daily planning and review view",
-			Shortcut:    ";d",
 			Category:    CategoryViews,
-			Aliases:     []string{"planning", "morning review"},
+			Aliases:     []string{"planning", "morning review", "DailyReview", "review daily", "ReviewHub/Daily"},
 			Handler: func() tea.Msg {
 				return ShowDailyReviewMsg{}
 			},
@@ -80,9 +71,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "weekly review",
 			Description: "Strategic project health review",
-			Shortcut:    ";r",
 			Category:    CategoryViews,
-			Aliases:     []string{"weekly", "project health", "strategic review"},
+			Aliases:     []string{"weekly", "project health", "strategic review", "WeeklyReview", "review weekly", "ReviewHub/Weekly"},
 			Handler: func() tea.Msg {
 				return ShowWeeklyReviewMsg{}
 			},
@@ -90,9 +80,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "latest activity",
 			Description: "View recently modified tasks across all projects",
-			Shortcut:    ";l",
 			Category:    CategoryViews,
-			Aliases:     []string{"recent", "activity", "latest", "recent tasks"},
+			Aliases:     []string{"recent", "activity", "latest", "recent tasks", "recent activity", "RecentActivity", "project recent activity", "ProjectRecentActivity", "review activity", "completed tasks", "ReviewHub/Activity"},
 			Handler: func() tea.Msg {
 				return ShowRecentActivityMsg{}
 			},
@@ -100,7 +89,6 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "planner next",
 			Description: "Planner — Next (on-deck shortlist, StateNext ordered)",
-			Shortcut:    ";q",
 			Category:    CategoryViews,
 			Aliases:     []string{"next", "planner on-deck", "queue", "on deck", "shortlist", "what's next"},
 			Handler: func() tea.Msg {
@@ -110,7 +98,6 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "today",
 			Description: "Planner — Today cockpit for daily execution",
-			Shortcut:    ";w",
 			Category:    CategoryViews,
 			Aliases:     []string{"planner today", "daily", "cockpit", "today cockpit", "command center", "external items"},
 			Handler: func() tea.Msg {
@@ -128,16 +115,11 @@ func (m *AppModel) viewCommands() []Command {
 		},
 		{
 			Name:        "priority view",
-			Description: "View tasks by priority (toggles cross-project Priority mode in the cross-outliner)",
+			Description: "Open the High Priority smart focus in Task Workspace",
 			Shortcut:    "p",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
-			Aliases:     []string{"priority mode", "toggle priority mode", "cross-project priority"},
+			Aliases:     []string{"priority", "priority mode", "toggle priority mode", "high priority", "cross-project priority"},
 			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
-					m.crossOutliner.toggleCrossPriorityMode()
-					return nil
-				}
 				if m.currentProject != nil {
 					return ShowPriorityViewMsg{Project: m.currentProject}
 				}
@@ -149,7 +131,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "Triage inbox items for this project one by one",
 			Shortcut:    "W",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"triage inbox", "triage project inbox", "process inbox", "inbox triage"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -167,7 +149,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "Triage inbox items for the highlighted project",
 			Shortcut:    "O",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []PresentationID{ViewDashboard},
 			Aliases:     []string{"inbox triage", "process inbox", "open inbox processor"},
 			Handler: func() tea.Msg {
 				var project *models.Project
@@ -193,7 +175,6 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "global notes",
 			Description: "Open global notes (not tied to any project)",
-			Shortcut:    ";N",
 			Category:    CategoryViews,
 			Aliases:     []string{"global notes", "notes", "scratch notes"},
 			Handler: func() tea.Msg {
@@ -203,7 +184,6 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "global blockers",
 			Description: "View blockers across all projects",
-			Shortcut:    ";B",
 			Category:    CategoryViews,
 			Aliases:     []string{"all blockers", "blockers overview"},
 			Handler: func() tea.Msg {
@@ -213,9 +193,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "metrics dashboard",
 			Description: "View completion rates, cycle time, and throughput",
-			Shortcut:    ";m",
 			Category:    CategoryViews,
-			Aliases:     []string{"metrics", "analytics", "stats", "statistics"},
+			Aliases:     []string{"metrics", "analytics", "stats", "statistics", "MetricsDashboard", "review metrics", "ReviewHub/Metrics"},
 			Handler: func() tea.Msg {
 				return ShowMetricsDashboardMsg{}
 			},
@@ -223,9 +202,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "roadmap",
 			Description: "View Gantt chart, critical path, and forecasts",
-			Shortcut:    ";R",
 			Category:    CategoryViews,
-			Aliases:     []string{"gantt", "timeline", "schedule", "critical path", "forecast"},
+			Aliases:     []string{"gantt", "timeline", "schedule", "critical path", "forecast", "review roadmap", "ReviewHub/Roadmap"},
 			Handler: func() tea.Msg {
 				return ShowRoadmapMsg{}
 			},

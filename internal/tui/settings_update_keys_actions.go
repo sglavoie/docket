@@ -1,11 +1,5 @@
 package tui
 
-import (
-	"strconv"
-
-	"github.com/sglavoie/tt/internal/config"
-)
-
 func (m *SettingsModel) togglePaletteTheme() {
 	snapshot := [20]string{
 		m.normalTextInput.Value(),
@@ -76,14 +70,8 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.recentActivityShowAll = !m.recentActivityShowAll
 		case 2:
 			m.linkedTaskJump = !m.linkedTaskJump
-		case 13:
+		case 12:
 			m.startViewCursor = (m.startViewCursor + 1) % len(startViewOptions)
-		case 14:
-			m.taskFormCollapsed = !m.taskFormCollapsed
-		case 15:
-			m.focusBoardModeCursor = (m.focusBoardModeCursor + 1) % len(focusBoardModeOptions)
-		case 16:
-			m.dashboardLayoutCursor = (m.dashboardLayoutCursor + 1) % len(dashboardLayoutOptions)
 		}
 	case tabOutliner:
 		columnsBase := subTabFieldStart(tabOutliner, 2) - tabFieldStart[tabOutliner]
@@ -202,12 +190,8 @@ func (m *SettingsModel) handleLeftPaletteKey(local int) {
 
 func (m *SettingsModel) handleLeftBehaviorKey(local int) {
 	switch local {
-	case 13:
+	case 12:
 		stepBoundedCursor(&m.startViewCursor, -1, len(startViewOptions)-1)
-	case 15:
-		stepBoundedCursor(&m.focusBoardModeCursor, -1, len(focusBoardModeOptions)-1)
-	case 16:
-		stepBoundedCursor(&m.dashboardLayoutCursor, -1, len(dashboardLayoutOptions)-1)
 	}
 }
 
@@ -255,12 +239,8 @@ func (m *SettingsModel) handleRightPaletteKey(local int) {
 
 func (m *SettingsModel) handleRightBehaviorKey(local int) {
 	switch local {
-	case 13:
+	case 12:
 		stepBoundedCursor(&m.startViewCursor, 1, len(startViewOptions)-1)
-	case 15:
-		stepBoundedCursor(&m.focusBoardModeCursor, 1, len(focusBoardModeOptions)-1)
-	case 16:
-		stepBoundedCursor(&m.dashboardLayoutCursor, 1, len(dashboardLayoutOptions)-1)
 	}
 }
 
@@ -324,154 +304,4 @@ func stepBoundedCursor(cursor *int, delta, maxValue int) {
 	case delta > 0 && *cursor < maxValue:
 		*cursor++
 	}
-}
-
-// handleResetToDefault resets the currently focused field to its default value.
-//
-//nolint:gocyclo // covers all field types across every settings tab
-func (m *SettingsModel) handleResetToDefault() {
-	meta, ok := settingsFieldByIndex(m.focusIndex)
-	if !ok {
-		return
-	}
-
-	tab := tabForField(m.focusIndex)
-	local := m.focusIndex - tabFieldStart[tab]
-	resetDone := false
-
-	switch tab {
-	case tabGeneral:
-		switch local {
-		case 0:
-			m.editorInput.SetValue("code")
-			resetDone = true
-		case 1:
-			m.externalEditorInput.SetValue("")
-			resetDone = true
-		case 2:
-			m.contextInput.SetValue("personal")
-			m.contextCursor = settingsOptionCursor(m.contexts, "personal", -1)
-			resetDone = true
-		case 3:
-			m.undoDepthInput.SetValue("50")
-			resetDone = true
-		}
-	case tabReview:
-		switch local {
-		case 0:
-			m.dueSoonInput.SetValue("7")
-			resetDone = true
-		case 1:
-			m.futureInput.SetValue("30")
-			resetDone = true
-		case 2:
-			m.oldDaysInput.SetValue("14")
-			resetDone = true
-		case 3:
-			m.completedHoursInput.SetValue("24")
-			resetDone = true
-		case 4:
-			m.staleTaskDaysInput.SetValue("0")
-			resetDone = true
-		}
-	case tabBehavior:
-		switch local {
-		case 0:
-			m.recentActivityInput.SetValue("20")
-			resetDone = true
-		case 1:
-			m.recentActivityShowAll = false
-			resetDone = true
-		case 2:
-			m.linkedTaskJump = false
-			resetDone = true
-		case 3:
-			m.maxPinnedInput.SetValue("5")
-			resetDone = true
-		case 4:
-			m.maxRecentTaskVisitsInput.SetValue("15")
-			resetDone = true
-		case 5:
-			m.popupTimeoutInput.SetValue("0")
-			resetDone = true
-		case 6:
-			m.sectionLimitActiveInput.SetValue("5")
-			resetDone = true
-		case 7:
-			m.sectionLimitNextInput.SetValue("5")
-			resetDone = true
-		case 8:
-			m.sectionLimitInboxInput.SetValue("5")
-			resetDone = true
-		case 9:
-			m.sectionLimitStandbyInput.SetValue("5")
-			resetDone = true
-		case 10:
-			m.sectionLimitWaitingInput.SetValue("3")
-			resetDone = true
-		case 11:
-			m.sectionLimitSomedayInput.SetValue("10")
-			resetDone = true
-		case 12:
-			m.sectionLimitReviewInput.SetValue("5")
-			resetDone = true
-		case 13:
-			m.startViewCursor = defaultStartViewCursor
-			resetDone = true
-		case 14:
-			m.taskFormCollapsed = false
-			resetDone = true
-		case 15:
-			m.focusBoardModeCursor = 0
-			resetDone = true
-		case 16:
-			m.dashboardLayoutCursor = 0
-			resetDone = true
-		case 17:
-			m.dashboardHorizSplitInput.SetValue(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct))
-			resetDone = true
-		case 18:
-			m.dashboardVertSplitInput.SetValue(strconv.Itoa(config.DefaultDashboardVerticalSplitPct))
-			resetDone = true
-		case 19:
-			m.resumeCardLimitInput.SetValue(strconv.Itoa(config.DefaultResumeCardLimit))
-			resetDone = true
-		}
-	case tabAttachments:
-		switch local {
-		case 0:
-			m.attachmentEditorInput.SetValue("")
-			resetDone = true
-		case 1:
-			m.codeEditorInput.SetValue("code")
-			resetDone = true
-		}
-	case tabAppearance:
-		switch local {
-		case 0:
-			m.zebraStriping = false
-			resetDone = true
-		case 1:
-			m.weekEndDayCursor = 2
-			resetDone = true
-		case 2:
-			m.timeFormatCursor = 1
-			resetDone = true
-		case 3:
-			m.autoTheme = false
-			resetDone = true
-		case 4:
-			m.useEmoji = false
-			resetDone = true
-		}
-	}
-
-	if !resetDone {
-		return
-	}
-	label := meta.Default
-	if label == "" {
-		label = "(empty)"
-	}
-	m.searchStatusMsg = "Reset to default: " + label
 }

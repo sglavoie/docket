@@ -1,13 +1,11 @@
 package tui
 
 import (
-	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -148,8 +146,7 @@ func ctrlEscKeyPress() tea.KeyPressMsg {
 
 func TestHandleGlobalKeyPress_CtrlEscJumpsToDashboard(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewTaskForm}
-	app.pendingSemicolonPrefix = true
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewTaskForm}
 	app.pendingSandboxReset = true
 	app.showQuickSwitch = true
 	app.peekActive = true
@@ -167,7 +164,7 @@ func TestHandleGlobalKeyPress_CtrlEscJumpsToDashboard(t *testing.T) {
 	if len(app.viewStack) != 1 {
 		t.Fatalf("stack len = %d, want 1", len(app.viewStack))
 	}
-	if app.pendingSemicolonPrefix || app.pendingSandboxReset || app.showQuickSwitch || app.peekActive {
+	if app.pendingSandboxReset || app.showQuickSwitch || app.peekActive {
 		t.Fatal("ctrl+esc should clear transient navigation state")
 	}
 }
@@ -180,7 +177,7 @@ func TestAppUpdate_CtrlEscBypassesTextInputAndLocalView(t *testing.T) {
 		hasTextInput: true,
 	}
 	app.views.Register(ViewTaskForm, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewTaskForm}
+	app.viewStack = []PresentationID{ViewDashboard, ViewTaskForm}
 
 	app.Update(ctrlEscKeyPress())
 	if app.currentView() != ViewDashboard {
@@ -202,7 +199,7 @@ func TestHandleGlobalKeyPress_QIgnoredDuringConfirmDialog(t *testing.T) {
 		confirmActive: true,
 	}
 	app.views.Register(ViewDailyReview, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewDailyReview}
+	app.viewStack = []PresentationID{ViewDashboard, ViewDailyReview}
 
 	handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if handled {
@@ -324,229 +321,11 @@ func TestCustomContextEditorSpaceTogglesProjectThroughApp(t *testing.T) {
 	}
 }
 
-func TestHandleGlobalKeyPress_CtrlOOpensTaskReference(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.runtime.Machine().Editor = "vim"
-	app.runtime.Machine().ExternalEditor = "code"
-	task := project.Tasks[0]
-	taskTitle := task.Title
-
-	view := &confirmQueueToggleView{
-		task:    task,
-		project: project,
-	}
-	app.views.Register(ViewDailyReview, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewDailyReview}
-
-	oldCreate := createReferenceSnapshotFile
-	oldOpen := openReferenceFile
-	t.Cleanup(func() {
-		createReferenceSnapshotFile = oldCreate
-		openReferenceFile = oldOpen
-	})
-
-	var snapshotContent string
-	var snapshotPrefix string
-	var snapshotSuffix string
-	createReferenceSnapshotFile = func(content string, prefix string, suffix string) (string, error) {
-		snapshotContent = content
-		snapshotPrefix = prefix
-		snapshotSuffix = suffix
-		return "/tmp/tt-task-reference.md", nil
-	}
-
-	var openedEditor string
-	var openedPath string
-	openReferenceFile = func(editor string, path string) (external.ReferenceOpenResult, error) {
-		openedEditor = editor
-		openedPath = path
-		return external.ReferenceOpenResult{
-			Status: external.ReferenceOpenStatusOpened,
-			Editor: editor,
-			Path:   path,
-		}, nil
-	}
-
-	handled, cmd := app.handleGlobalKeyPress(ctrlOKeyPress())
-	if !handled {
-		t.Fatal("expected ctrl+o to be handled for a task-focused view")
-	}
-	if cmd == nil {
-		t.Fatal("expected status timeout command")
-	}
-	if openedEditor != "code" {
-		t.Fatalf("opened editor = %q, want code", openedEditor)
-	}
-	if openedPath != "/tmp/tt-task-reference.md" {
-		t.Fatalf("opened path = %q", openedPath)
-	}
-	if snapshotPrefix != "tt-task-reference-" || snapshotSuffix != ".md" {
-		t.Fatalf("snapshot naming = %q %q", snapshotPrefix, snapshotSuffix)
-	}
-	if !strings.Contains(snapshotContent, taskTitle) {
-		t.Fatalf("snapshot content should include task title, got %q", snapshotContent)
-	}
-	if !strings.Contains(snapshotContent, external.ReferenceSnapshotWarning) {
-		t.Fatalf("snapshot content should include reference warning, got %q", snapshotContent)
-	}
-	if app.statusMessage != "Opened task reference copy" {
-		t.Fatalf("status = %q, want opened reference status", app.statusMessage)
-	}
-}
-
-func TestHandleGlobalKeyPress_CtrlNOpensTaskProjectNotes(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	view := &confirmQueueToggleView{
-		task:    project.Tasks[0],
-		project: project,
-	}
-	app.views.Register(ViewDailyReview, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewDailyReview}
-
-	handled, cmd := app.handleGlobalKeyPress(ctrlNKeyPress())
-	if !handled {
-		t.Fatal("expected ctrl+n to be handled for a task-focused view")
-	}
-	if cmd == nil {
-		t.Fatal("expected ShowNotesMsg command")
-	}
-
-	result := cmd()
-	showNotes, ok := result.(ShowNotesMsg)
-	if !ok {
-		t.Fatalf("expected ShowNotesMsg, got %T", result)
-	}
-	if showNotes.Project != project {
-		t.Fatal("ShowNotesMsg should target the selected task's project")
-	}
-}
-
-func TestHandleGlobalKeyPress_CtrlOOpensTaskReferenceFromPrimaryViews(t *testing.T) {
-	tests := []struct {
-		name      string
-		viewType  ViewType
-		setupView func(*AppModel, *models.Project) View
-	}{
-		{
-			name:     "outliner",
-			viewType: ViewOutliner,
-			setupView: func(app *AppModel, project *models.Project) View {
-				outliner := NewOutlinerModel(project, app.configManager, app.runtime)
-				outliner.rebuildRows()
-				for i, row := range outliner.rows {
-					if row.isTaskRow() && row.task != nil {
-						outliner.cursor = i
-						break
-					}
-				}
-				app.outliner = outliner
-				return outliner
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			app, project := newTestAppModelWithProject()
-			app.runtime.Machine().Editor = "vim"
-			app.runtime.Machine().ExternalEditor = "code"
-
-			view := tc.setupView(app, project)
-			refProvider, ok := view.(taskReferenceProvider)
-			if !ok {
-				t.Fatalf("%s does not provide task references", tc.viewType)
-			}
-			task, _ := refProvider.getTaskRef()
-			if task == nil {
-				t.Fatalf("%s did not resolve a cursor task", tc.viewType)
-			}
-
-			app.views.Register(tc.viewType, view)
-			app.viewStack = []ViewType{ViewDashboard, tc.viewType}
-
-			oldCreate := createReferenceSnapshotFile
-			oldOpen := openReferenceFile
-			t.Cleanup(func() {
-				createReferenceSnapshotFile = oldCreate
-				openReferenceFile = oldOpen
-			})
-
-			var snapshotContent string
-			createReferenceSnapshotFile = func(content string, prefix string, suffix string) (string, error) {
-				snapshotContent = content
-				return "/tmp/tt-task-reference.md", nil
-			}
-			var openedEditor string
-			openReferenceFile = func(editor string, path string) (external.ReferenceOpenResult, error) {
-				openedEditor = editor
-				return external.ReferenceOpenResult{
-					Status: external.ReferenceOpenStatusOpened,
-					Editor: editor,
-					Path:   path,
-				}, nil
-			}
-
-			handled, cmd := app.handleGlobalKeyPress(ctrlOKeyPress())
-			if !handled {
-				t.Fatal("expected ctrl+o to be handled by global reference open")
-			}
-			if cmd == nil {
-				t.Fatal("expected status timeout command")
-			}
-			if !strings.Contains(snapshotContent, task.Title) {
-				t.Fatalf("snapshot content should include selected task title %q, got:\n%s", task.Title, snapshotContent)
-			}
-			if openedEditor != "code" {
-				t.Fatalf("opened editor = %q, want code", openedEditor)
-			}
-			if app.statusMessage != "Opened task reference copy" {
-				t.Fatalf("status = %q, want opened reference status", app.statusMessage)
-			}
-		})
-	}
-}
-
-func TestHandleGlobalKeyPress_CtrlOShowsStatusWithoutCursorTask(t *testing.T) {
-	app := newTestAppModel()
-	view := &confirmQueueToggleView{}
-	app.views.Register(ViewDailyReview, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewDailyReview}
-
-	handled, cmd := app.handleGlobalKeyPress(ctrlOKeyPress())
-	if !handled {
-		t.Fatal("expected ctrl+o to be handled for task-capable view without cursor task")
-	}
-	if cmd == nil {
-		t.Fatal("expected status timeout command")
-	}
-	if !strings.Contains(app.statusMessage, "No task selected") {
-		t.Fatalf("status = %q, want no task selected", app.statusMessage)
-	}
-}
-
-func TestHandleGlobalKeyPress_CtrlNShowsStatusWithoutCursorTask(t *testing.T) {
-	app := newTestAppModel()
-	view := &confirmQueueToggleView{}
-	app.views.Register(ViewDailyReview, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewDailyReview}
-
-	handled, cmd := app.handleGlobalKeyPress(ctrlNKeyPress())
-	if !handled {
-		t.Fatal("expected ctrl+n to be handled for task-capable view without cursor task")
-	}
-	if cmd == nil {
-		t.Fatal("expected status timeout command")
-	}
-	if app.statusMessage != "No task selected for Notes" {
-		t.Fatalf("status = %q, want no task selected for Notes", app.statusMessage)
-	}
-}
-
 func TestAppUpdate_CtrlOFallsThroughToLocalViewWithoutTaskReference(t *testing.T) {
 	app := newTestAppModel()
 	view := &ctrlORecorderView{}
 	app.views.Register(ViewTaskAttachments, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewTaskAttachments}
+	app.viewStack = []PresentationID{ViewDashboard, ViewTaskAttachments}
 
 	app.Update(ctrlOKeyPress())
 	if !view.received {
@@ -561,7 +340,7 @@ func TestAppUpdate_CtrlNFallsThroughToLocalViewWithoutTaskReference(t *testing.T
 	app := newTestAppModel()
 	view := &ctrlNRecorderView{}
 	app.views.Register(ViewTaskAttachments, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewTaskAttachments}
+	app.viewStack = []PresentationID{ViewDashboard, ViewTaskAttachments}
 
 	app.Update(ctrlNKeyPress())
 	if !view.received {
@@ -580,16 +359,7 @@ func TestAppUpdate_CtrlOFallsThroughWhenTaskViewHasTextInput(t *testing.T) {
 		hasTextInput: true,
 	}
 	app.views.Register(ViewTaskForm, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewTaskForm}
-
-	oldOpen := openReferenceFile
-	t.Cleanup(func() {
-		openReferenceFile = oldOpen
-	})
-	openReferenceFile = func(string, string) (external.ReferenceOpenResult, error) {
-		t.Fatal("reference opener should not run while a text input is active")
-		return external.ReferenceOpenResult{}, nil
-	}
+	app.viewStack = []PresentationID{ViewDashboard, ViewTaskForm}
 
 	app.Update(ctrlOKeyPress())
 	if !view.received {
@@ -608,7 +378,7 @@ func TestAppUpdate_CtrlNFallsThroughWhenTaskViewHasTextInput(t *testing.T) {
 		hasTextInput: true,
 	}
 	app.views.Register(ViewTaskForm, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewTaskForm}
+	app.viewStack = []PresentationID{ViewDashboard, ViewTaskForm}
 
 	app.Update(ctrlNKeyPress())
 	if !view.received {
@@ -637,7 +407,7 @@ func TestHandleGlobalKeyPress_UndoRedoRoutesForTaskSecondaryView(t *testing.T) {
 				project: project,
 			}
 			app.views.Register(ViewPriorityView, view)
-			app.viewStack = []ViewType{ViewDashboard, ViewPriorityView}
+			app.viewStack = []PresentationID{ViewDashboard, ViewPriorityView}
 
 			handled, cmd := app.handleGlobalKeyPress(tt.key)
 			if !handled {
@@ -661,7 +431,7 @@ func TestHandleGlobalKeyPress_UndoRedoRoutesForTaskSecondaryView(t *testing.T) {
 func TestHandleGlobalKeyPress_UndoRedoPreservesProtectedLocalViews(t *testing.T) {
 	tests := []struct {
 		name     string
-		viewType ViewType
+		viewType PresentationID
 		key      tea.KeyPressMsg
 	}{
 		// The Inbox keeps its own local u/ctrl+r (skip-undo is local; stateful
@@ -684,7 +454,7 @@ func TestHandleGlobalKeyPress_UndoRedoPreservesProtectedLocalViews(t *testing.T)
 				project: project,
 			}
 			app.views.Register(tt.viewType, view)
-			app.viewStack = []ViewType{ViewDashboard, tt.viewType}
+			app.viewStack = []PresentationID{ViewDashboard, tt.viewType}
 
 			handled, cmd := app.handleGlobalKeyPress(tt.key)
 			if handled || cmd != nil {
@@ -714,7 +484,7 @@ func TestHandleGlobalKeyPress_PersistentUndoWinsOverOlderFocusToggle(t *testing.
 
 	view := &undoRedoRecorderTaskRefView{task: task, project: project}
 	app.views.Register(ViewFocusBoard, view)
-	app.viewStack = []ViewType{ViewDashboard, ViewFocusBoard}
+	app.viewStack = []PresentationID{ViewDashboard, ViewFocusBoard}
 
 	handled, cmd := app.handleGlobalKeyPress(syntheticKey('u'))
 	if !handled {

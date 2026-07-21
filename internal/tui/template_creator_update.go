@@ -69,6 +69,15 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 			// Save template
 			return m, m.saveTemplate()
 
+		case "enter":
+			// Multiline descriptions keep Enter for a newline. All other fields
+			// use Enter as the same forward action as Tab.
+			if section != "description" {
+				m.hideSuggestions()
+				s := formTabState{&m.activeTab, &m.focusIndex, &m.scrollOffset}
+				return m, handleFormTabKey(m, s, true)
+			}
+
 		case "ctrl+a":
 			// Switch to checklist tab and add new item
 			m.err = nil

@@ -27,12 +27,11 @@ func newSavedFilterTestApp(t *testing.T) *AppModel {
 		deps:                 newShellDeps(runtime, nil, manager, nil),
 		persister:            NewProjectService(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
-		viewStack:            []ViewType{ViewDashboard},
+		projectLastView:      make(map[string]PresentationID),
+		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
-		navHistory:           NewNavHistory(),
 	}
 }
 
@@ -110,33 +109,6 @@ func TestDeleteSavedFilterMsgRemovesFromPlanning(t *testing.T) {
 	}
 	if app.runtime.Planning().GetSavedFilter("del-me") != nil {
 		t.Fatal("filter should be removed from the planning domain after delete")
-	}
-}
-
-// TestToggleSavedFilterTabMsgUpdatesPlanning proves the tab toggle mutates
-// ShowAsTab on the persisted planning filter.
-func TestToggleSavedFilterTabMsgUpdatesPlanning(t *testing.T) {
-	app := newSavedFilterTestApp(t)
-
-	if err := app.commitPlanningMutation(func(p *config.PlanningState) {
-		p.SaveFilter(config.SavedFilter{ID: "tabbable", Name: "Tabbable", Mode: "snapshot"})
-	}); err != nil {
-		t.Fatalf("seed save failed: %v", err)
-	}
-
-	handled, _ := app.handleSavedFilterMessages(toggleSavedFilterTabMsg{ID: "tabbable", ShowAsTab: true})
-	if !handled {
-		t.Fatal("toggleSavedFilterTabMsg should be handled")
-	}
-	sf := app.runtime.Planning().GetSavedFilter("tabbable")
-	if sf == nil || !sf.ShowAsTab {
-		t.Fatalf("filter ShowAsTab = %v, want true", sf)
-	}
-
-	app.handleSavedFilterMessages(toggleSavedFilterTabMsg{ID: "tabbable", ShowAsTab: false})
-	sf = app.runtime.Planning().GetSavedFilter("tabbable")
-	if sf == nil || sf.ShowAsTab {
-		t.Fatalf("filter ShowAsTab = %v, want false", sf)
 	}
 }
 

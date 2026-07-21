@@ -1,7 +1,5 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/config"
-
 // Priority display mode constants.
 const (
 	PriorityModeAll         = "all"
@@ -98,23 +96,6 @@ func (c *ColumnConfig) PriorityMode() string {
 		return PriorityModeConditional
 	}
 	return c.priorityMode
-}
-
-// resolvePriorityMode resolves the priority mode for a view, checking per-project
-// machine-local state first, then falling back to the machine-local default.
-// viewName must be "outliner" (the sole surviving per-project view).
-func resolvePriorityMode(projectID string, machine *config.MachineState, viewName string) string {
-	if machine == nil || viewName != "outliner" {
-		return ""
-	}
-	if projectID != "" {
-		if vs, ok := machine.ProjectViewStates[projectID]; ok {
-			if vs.OutlinerPriorityMode != "" {
-				return vs.OutlinerPriorityMode
-			}
-		}
-	}
-	return machine.OutlinerPriorityMode
 }
 
 // IsVisible returns whether the named column should be rendered.

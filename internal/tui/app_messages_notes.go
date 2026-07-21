@@ -21,9 +21,8 @@ type CloseNotesMsg struct{ PopViewMsg }
 // NotesRefreshMsg refreshes the notes list.
 type NotesRefreshMsg struct{}
 
-// ProjectNoteMutationResultMsg reports one committed note transaction. The
-// historical name is retained for compatibility, but Location may be either a
-// project collection or the workspace-global collection. The command that emits
+// ProjectNoteMutationResultMsg reports one committed note transaction. Location
+// may be either a project collection or the workspace-global collection. The command that emits
 // it owns only copied request data; AppModel.Update reloads from committed state.
 type ProjectNoteMutationResultMsg struct {
 	Location       app.NoteLocation

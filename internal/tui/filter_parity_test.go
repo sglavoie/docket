@@ -31,7 +31,7 @@ import (
 
 // filterParityCase describes a shared-filter view under characterization.
 type filterParityCase struct {
-	view ViewType
+	view PresentationID
 	name string
 	km   *keymap.KeyMap
 }
@@ -42,7 +42,6 @@ type filterParityCase struct {
 // that capture the model pointer (the closures themselves are never executed).
 func sharedFilterViewCases() []filterParityCase {
 	return []filterParityCase{
-		{ViewFocusBoard, "FocusBoard", (&FocusBoardModel{}).buildKeyMap()},
 		{ViewProjectFocusView, "ProjectFocus", (&ProjectFocusViewModel{}).buildKeyMap()},
 		{ViewAllTasks, "AllTasks", (&AllTasksViewModel{}).buildKeyMap()},
 		{ViewOutliner, "Outliner", (&OutlinerModel{project: &models.Project{}}).buildKeyMap()},
@@ -247,9 +246,6 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 // sessions 2-4 can diff against them when they touch wiring.
 func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	wants := map[string][]string{
-		// Focus Board: full shared wiring including Fd due date, plus the FP
-		// "by project" Backlog quick filter (analogous to All Tasks' FP).
-		"FocusBoard":   {"#", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		"ProjectFocus": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// All Tasks: Fd is a direct cycle-binding (not a sub-prefix), and P is
 		// a view-specific direct project filter toggle.
@@ -281,22 +277,20 @@ func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	}
 }
 
-// TestFilterParity_FocusBoard_AdvertisesSharedFilterGroup asserts that Focus
-// Board (Today) exposes the shared F prefix wired through FilterGroup, including
-// the Fh hide-dimmed toggle and the full sub-prefix family (Ft, Fs, Fd, FS).
-func TestFilterParity_FocusBoard_AdvertisesSharedFilterGroup(t *testing.T) {
+// TestFilterParity_PlannerUsesViewMenuInsteadOfFilterPrefixes locks the
+// consolidated Planner grammar: filters and sorting live under v, with no
+// legacy F prefix or hidden compound filter aliases.
+func TestFilterParity_PlannerUsesViewMenuInsteadOfFilterPrefixes(t *testing.T) {
 	km := (&FocusBoardModel{}).buildKeyMap()
-	if findRootFPrefix(km) == nil {
-		t.Fatal("Focus Board must expose the shared F prefix")
+	if findRootFPrefix(km) != nil {
+		t.Fatal("Planner must not expose the retired F prefix")
 	}
-	if !fChildIsBinding(km, "h") {
-		t.Error("Focus Board must advertise Fh (hide-dimmed)")
-	}
-	for _, sub := range []string{"t", "s", "d", "S"} {
-		if !fChildIsPrefix(km, sub) {
-			t.Errorf("Focus Board must expose F%s sub-prefix", sub)
+	for _, item := range km.HelpItems() {
+		if item.Key == "v" && item.Description == "Open View menu" {
+			return
 		}
 	}
+	t.Fatal("Planner keymap does not advertise v Open View menu")
 }
 
 // TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup asserts Project
@@ -393,10 +387,9 @@ func TestFilterParity_SharedFilterViews_AdvertiseFk(t *testing.T) {
 }
 
 // TestFilterParity_ScoreSubPrefix_CapabilityGated documents the explicit
-// capability-driven asymmetry session 2 introduced: every wired view exposes
-// the lowercase `c` (stored custom threshold), but only views that pass a
-// non-nil ScoreCustomInput action through FilterDeps advertise uppercase `C`
-// (inline-input). Today Project Tree and both Outliner modes wire that capability.
+// capability-driven asymmetry: no view exposes the retired lowercase `c`
+// machine-stored threshold, while views that pass a non-nil ScoreCustomInput
+// action through FilterDeps advertise uppercase `C` (session-local input).
 // Adding a new view that wires ScoreCustomInput must add it to the
 // supportsCustomInput set below so the keymap, ? help, popup, and explorer
 // stay in lockstep.
@@ -420,8 +413,8 @@ func TestFilterParity_ScoreSubPrefix_CapabilityGated(t *testing.T) {
 					hasUpperC = true
 				}
 			}
-			if !hasLowerC {
-				t.Errorf("%s FS sub-prefix should advertise lowercase c (stored custom threshold); got children %v", tc.name, children)
+			if hasLowerC {
+				t.Errorf("%s FS sub-prefix restored lowercase c machine threshold; got children %v", tc.name, children)
 			}
 			wantUpperC := supportsCustomInput[tc.name]
 			if hasUpperC != wantUpperC {
@@ -433,9 +426,9 @@ func TestFilterParity_ScoreSubPrefix_CapabilityGated(t *testing.T) {
 
 // TestFilterParity_DispatcherPrefixHints_MatchHelpItems_OnFPrefix verifies the
 // invariant that Dispatcher.PrefixHints() (used to render the which-key popup)
-// and KeyMap.HelpItems() (used to render ? help and the keybinding explorer)
+// and KeyMap.HelpItems() (used to render ? help)
 // describe the same top-level F children. This catches drift between the
-// popup, the help overlay, and the keybinding explorer — exactly the parity
+// popup and the help overlay — exactly the parity
 // the plan wants enforced.
 func TestFilterParity_DispatcherPrefixHints_MatchHelpItems_OnFPrefix(t *testing.T) {
 	for _, tc := range sharedFilterViewCases() {
@@ -562,30 +555,31 @@ func TestFilterParity_HandledKeys_CoverAdvertisedFKeys(t *testing.T) {
 	}
 }
 
-// TestKeybindingExplorer_FocusBoardAdvertisesFilterPrefix ensures the keybinding
-// explorer surfaces the shared filter shortcuts wired into Focus Board,
-// including common boolean toggles.
-func TestKeybindingExplorer_FocusBoardAdvertisesFilterPrefix(t *testing.T) {
+// TestKeybindingExplorer_PlannerAdvertisesViewMenu ensures Help derives from
+// the consolidated declarative grammar rather than the retired filter tree.
+func TestKeybindingExplorer_PlannerAdvertisesViewMenu(t *testing.T) {
 	reg := BuildRegistryFromKeyMaps(migratedViewKeymaps())
 	items := reg.GetForView(ViewFocusBoard)
 	has := map[string]bool{}
 	for _, item := range items {
 		has[item.Key] = true
 	}
-	if !has["Fh"] {
-		t.Error("Focus Board explorer must advertise Fh (hide-dimmed)")
+	if !has["v"] {
+		t.Error("Planner explorer must advertise v (View menu)")
 	}
-	if !has["Fk"] {
-		t.Error("Focus Board explorer must advertise Fk (parked)")
+	for key := range has {
+		if strings.HasPrefix(key, "F") {
+			t.Errorf("Planner explorer advertises retired filter key %q", key)
+		}
 	}
 }
 
 // TestScoreSubPrefix_AllSharedViewsAdvertiseFullLadder freezes the FS score
-// ladder children every wired view advertises today: 1-9, c, 0 — plus the
+// ladder children every wired view advertises today: 1-9 and 0 — plus the
 // capability-gated uppercase C in views that wire ScoreCustomInput.
 func TestScoreSubPrefix_AllSharedViewsAdvertiseFullLadder(t *testing.T) {
-	wantNoCustomInput := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "c"}
-	wantWithCustomInput := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "c"}
+	wantNoCustomInput := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+	wantWithCustomInput := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "C"}
 	supportsCustomInput := map[string]bool{
 		"Outliner":             true,
 		"CrossProjectOutliner": true,

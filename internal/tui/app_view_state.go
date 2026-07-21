@@ -28,11 +28,20 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	// rather than self-padding. Regression coverage: the *-resize-minimum-layout
 	// scenarios under docs/tui-testing/scenarios/ (run by TestExampleScenariosPass).
 	m.views.SetSize(msg.Width, msg.Height-2)
-	if m.projectCyclePreview != nil {
-		m.projectCyclePreview.SetSize(msg.Width, msg.Height-2)
+	if m.taskWorkspaceView != nil {
+		m.taskWorkspaceView.SetSize(msg.Width, msg.Height-2)
 	}
-	if m.projectCycleSearch.searchInput.Placeholder != "" {
-		m.projectCycleSearch.searchInput.SetWidth(SearchInputWidth(msg.Width))
+	if m.reviewHub != nil {
+		m.reviewHub.SetSize(msg.Width, msg.Height-2)
+	}
+	if m.manageHub != nil {
+		m.manageHub.SetSize(msg.Width, msg.Height-2)
+	}
+	if m.taskDetail != nil {
+		m.taskDetail.SetSize(msg.Width, msg.Height-2)
+	}
+	if m.taskComposer != nil {
+		m.taskComposer.SetSize(msg.Width, msg.Height-2)
 	}
 	if m.pinnedPreview != nil {
 		m.pinnedPreview.SetSize(msg.Width, msg.Height-2)
@@ -40,7 +49,50 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 }
 
 // delegateToCurrentView forwards messages to the active view model.
-func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
+func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
+	if m.activeTaskComposer() {
+		updated, cmd := m.taskComposer.Update(msg)
+		if composer, ok := updated.(*TaskComposerModel); ok {
+			m.taskComposer = composer
+			m.views.Register(composer.presentation, composer)
+		}
+		return cmd
+	}
+	if m.activeTaskWorkspace() {
+		updated, cmd := m.taskWorkspaceView.Update(msg)
+		if view, ok := updated.(*TaskWorkspaceView); ok {
+			m.taskWorkspaceView = view
+		}
+		if m.peekActive {
+			if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
+				m.peekTask, m.peekProject = task, project
+			} else {
+				m.dismissPeek()
+			}
+		}
+		return cmd
+	}
+	if m.activeReviewHub() {
+		updated, cmd := m.reviewHub.Update(msg)
+		if hub, ok := updated.(*ReviewHubModel); ok {
+			m.reviewHub = hub
+		}
+		return cmd
+	}
+	if m.activeManageHub() {
+		updated, cmd := m.manageHub.Update(msg)
+		if hub, ok := updated.(*ManageHubModel); ok {
+			m.manageHub = hub
+		}
+		return cmd
+	}
+	if m.activeTaskDetail() {
+		updated, cmd := m.taskDetail.Update(msg)
+		if detail, ok := updated.(*TaskDetailModel); ok {
+			m.taskDetail = detail
+		}
+		return tea.Batch(cmd, m.syncTaskDetailTab(m.taskDetail.Tab()))
+	}
 	currentView := m.currentView()
 	cmd := m.views.Update(currentView, msg)
 
@@ -98,6 +150,18 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 // the current primary view, or (nil, nil) when no task is selected. The project
 // pointer enables overlays (e.g. peek) that need scoring profile lookups.
 func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Project) {
+	if view, _, ok := m.taskWorkspacePrimary(); ok && m.activeTaskWorkspace() {
+		return view.getTaskRef()
+	}
+	if hub, _, ok := m.reviewHubPrimary(); ok && m.activeReviewHub() {
+		return hub.getTaskRef()
+	}
+	if hub, _, ok := m.manageHubPrimary(); ok && m.activeManageHub() {
+		return hub.getTaskRef()
+	}
+	if detail, _, ok := m.taskDetailPrimary(); ok && m.activeTaskDetail() {
+		return detail.getTaskRef()
+	}
 	type taskRefProvider interface {
 		getTaskRef() (*models.Task, *models.Project)
 	}
@@ -110,6 +174,9 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 // getCurrentCursorTask returns the task under the cursor in the current primary view,
 // or nil if no task is selected or the current view is not a primary project view.
 func (m *AppModel) getCurrentCursorTask() *models.Task {
+	if m.activeTaskWorkspace() && m.taskWorkspaceView != nil {
+		return m.taskWorkspaceView.getCursorTask()
+	}
 	switch m.currentView() {
 	case ViewOutliner:
 		if m.outliner != nil {

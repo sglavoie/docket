@@ -197,9 +197,9 @@ func setupFocusMoveScenario(t *testing.T) (project *models.Project, configPath s
 
 	project.Tasks = []*models.Task{indexed, unindexed, stale, staleTwo}
 	project.NextShortID = 5
-	if err := storage.SaveProject(project); err != nil {
+	if saveErr := storage.SaveProject(project); saveErr != nil {
 		cleanup()
-		t.Fatalf("save project: %v", err)
+		t.Fatalf("save project: %v", saveErr)
 	}
 
 	// Seed the order index with the indexed StateNext member and TWO stale non-Next
@@ -269,8 +269,14 @@ func TestFocusQueueMoveUsesStateNextMembership(t *testing.T) {
 		_, _, _, _, _, cleanup := setupFocusMoveScenario(t)
 		defer cleanup()
 
-		focusQueueMoveCmd.Flags().Set("json", "true")
-		defer focusQueueMoveCmd.Flags().Set("json", "false")
+		if flagErr := focusQueueMoveCmd.Flags().Set("json", "true"); flagErr != nil {
+			t.Fatalf("enable JSON output: %v", flagErr)
+		}
+		t.Cleanup(func() {
+			if flagErr := focusQueueMoveCmd.Flags().Set("json", "false"); flagErr != nil {
+				t.Errorf("disable JSON output: %v", flagErr)
+			}
+		})
 
 		stdout, _, err := captureDoctorOutput(t, func() error {
 			return runFocusQueueMove(focusQueueMoveCmd, []string{"2", "1"})

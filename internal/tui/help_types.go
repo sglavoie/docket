@@ -7,10 +7,10 @@ import (
 
 // HelpItem represents a single help entry.
 type HelpItem struct {
-	Key         string     // e.g., "j/k", "ctrl+O"
-	Description string     // e.g., "Move cursor"
-	Category    string     // e.g., "Navigation", "Actions"
-	Views       []ViewType // nil = global; populated by GetAllDeduplicated for explorer scope display
+	Key         string           // e.g., "j/k", "ctrl+O"
+	Description string           // e.g., "Move cursor"
+	Category    string           // e.g., "Navigation", "Actions"
+	Views       []PresentationID // nil = global; populated by GetAllDeduplicated for explorer scope display
 }
 
 // filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.
@@ -40,14 +40,11 @@ type HelpViewModel struct {
 	searchQuery    string
 	width          int
 	height         int
-	sourceView     ViewType
+	sourceView     PresentationID
 	viewName       string
 	ready          bool
 	activeTab      int      // Current tab (category) index
 	categories     []string // Ordered list of categories derived from items
-	isExplorer     bool     // True when used as global keybinding explorer
-	byPrefixMode   bool     // True when grouping by prefix category (explorer only)
 	tabSearchMode  bool     // True when tab search input is active
 	tabSearchInput textinput.Model
-	compactTabs    bool // True when explorer category tabs collapse to a one-line summary
 }

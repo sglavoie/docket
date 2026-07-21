@@ -86,7 +86,7 @@ func cockpitBoardRow(task *models.Task, project *models.Project) boardRow {
 // and so each scenario controls its own data shape. The active tab and the
 // openLoops counter must be set explicitly by the caller because they drive
 // the title-row content the cockpit cares about.
-func cockpitModel(today, next, closed []boardRow, dailyPlanIDs map[string]bool, openLoops OpenLoops, activeTab int) *FocusBoardModel {
+func cockpitModel(today, next, _ []boardRow, dailyPlanIDs map[string]bool, openLoops OpenLoops, activeTab int) *FocusBoardModel {
 	m := newTestFocusBoard()
 	if dailyPlanIDs == nil {
 		dailyPlanIDs = map[string]bool{}
@@ -104,7 +104,6 @@ func cockpitModel(today, next, closed []boardRow, dailyPlanIDs map[string]bool, 
 	*m.dailyPlan = plan
 	m.todayRows = today
 	m.nextRows = next
-	m.closedRows = closed
 	// allRows mirrors loadItems(): the union of non-complete, non-snoozed rows
 	// across active surfaces. Tests use it only as a tag pool, so the union of
 	// today+next is sufficient for chrome rendering.
@@ -160,11 +159,11 @@ func TestBaselineCockpitEmptyAppRendersAcrossSizes(t *testing.T) {
 			// onboarding cue when no projects and no tasks exist. Session 4
 			// lands the strip; session 6 layers an action-oriented body
 			// below it ("Capture your first task to get started.") whose
-			// hint cluster ("a add · p new project · ? help") states the
+			// Planner add affordance states the
 			// keybinding for the strip's CTA.
 			assertCockpitContains(t, label, rendered, "Create your first project")
 			assertCockpitContains(t, label, rendered, "Capture your first task to get started.")
-			assertCockpitContains(t, label, rendered, "p new project")
+			assertCockpitContains(t, label, rendered, "a add")
 			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})
 	}
@@ -211,7 +210,7 @@ func TestBaselineCockpitInboxOnlyRendersAcrossSizes(t *testing.T) {
 			// strip with the triage keybinding so the user sees both the
 			// strip CTA and the long-form action hint.
 			assertCockpitContains(t, label, rendered, "4 items waiting in your inbox.")
-			assertCockpitContains(t, label, rendered, "ctrl+i triage")
+			assertCockpitContains(t, label, rendered, ": manage inbox")
 			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})
 	}
@@ -296,7 +295,7 @@ func TestBaselineCockpitPlannedTodayRendersAcrossSizes(t *testing.T) {
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Today",
 				"x done",
-				"p priority",
+				"space",
 				"a add",
 			)
 			assertCockpitContains(t, label, rendered, fmt.Sprintf("today 0/%d", len(plan)))
@@ -401,7 +400,7 @@ func TestBaselineCockpitTodayCompleteRendersAcrossSizes(t *testing.T) {
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Today",
 				"All done!",
-				"p plan more",
+				"tab",
 			)
 			assertCockpitContains(t, label, rendered, "today ✓")
 			// Next Action strip caught-up variant — every actionable task is
@@ -445,7 +444,7 @@ func TestBaselineCockpitManyProjectsRendersAcrossSizes(t *testing.T) {
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Next step 1",
 				"Next step 8",
-				"p plan today",
+				"tab",
 			)
 			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})

@@ -19,16 +19,8 @@ type CrossScopeOpts struct {
 	// ActiveOnly restricts selection to cfg.GetActiveProjects() (which
 	// already excludes archived/sandbox/internal). When false, the
 	// selection falls back to cfg.GetAllLoadableProjects() (archived
-	// excluded only). Ignored when CycleProjectsOnly is true.
+	// excluded only).
 	ActiveOnly bool
-
-	// CycleProjectsOnly restricts selection to the configured cycle
-	// projects for ContextKey. Takes precedence over ActiveOnly.
-	CycleProjectsOnly bool
-
-	// ContextKey is the filter-context key passed to
-	// runtime.CycleProjectsForContext when CycleProjectsOnly is true.
-	ContextKey string
 }
 
 type projectLoadFailure struct {
@@ -96,9 +88,6 @@ func loadCrossScopeSelection(selected []*models.Project, includeSandbox bool, lo
 }
 
 func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts) []*models.Project {
-	if opts.CycleProjectsOnly {
-		return runtime.CycleProjectsForContext(opts.ContextKey)
-	}
 	if opts.ActiveOnly {
 		return runtime.ActiveProjects()
 	}

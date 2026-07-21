@@ -27,7 +27,7 @@ type dailyPlanToggleAction struct {
 // toggleDailyPlan adds or removes the focused task from the daily plan.
 // Returns a status timeout cmd on success, or nil if no task is available.
 func (m *AppModel) toggleDailyPlan() tea.Cmd {
-	view := m.views.Get(m.currentView())
+	view := m.activeView()
 	if view == nil {
 		return nil
 	}

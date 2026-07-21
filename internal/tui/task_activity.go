@@ -198,7 +198,7 @@ func (m *TaskActivityModel) View() tea.View {
 		}
 	}
 
-	helpText := "Tab: tabs · j/k: navigate · s: sort · y: copy entry · Esc: close"
+	helpText := "Tab: detail tabs · Shift+Left/Right: activity filters · j/k: navigate · s: sort · y: copy entry · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
 	return tea.NewView(b.String())

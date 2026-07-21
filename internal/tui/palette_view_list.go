@@ -150,12 +150,7 @@ func (m *CommandPaletteModel) renderItemList() string {
 			break
 		}
 
-		numberHint := -1
-		if m.isNumberJumpEnabled() && i < 9 {
-			numberHint = i + 1
-		}
-
-		line := m.renderPaletteItemWithHighlight(filtered, i == m.cursor, contentWidth, numberHint)
+		line := m.renderPaletteItemWithHighlight(filtered, i == m.cursor, contentWidth, -1)
 		if appendPaletteLines(&b, &linesRendered, maxVisible, line) {
 			break
 		}
@@ -300,7 +295,7 @@ func (m *CommandPaletteModel) renderFrequentHeader() string {
 	return MutedStyle.Render(header)
 }
 
-// renderSuggestedHeader renders the section header for the Suggested section.
+// renderSuggestedHeader renders the contextual-command section header.
 func (m *CommandPaletteModel) renderSuggestedHeader() string {
 	count := 0
 	for _, fi := range m.filteredItems {
@@ -308,6 +303,6 @@ func (m *CommandPaletteModel) renderSuggestedHeader() string {
 			count++
 		}
 	}
-	header := fmt.Sprintf("── Suggested (%d) ", count)
+	header := fmt.Sprintf("── Contextual (%d) ", count)
 	return MutedStyle.Render(header)
 }

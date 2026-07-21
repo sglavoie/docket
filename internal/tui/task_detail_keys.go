@@ -67,23 +67,16 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		m.pendingPrefix = "!"
 		return m, nil
 
-	// Sub-view launchers
+	// Tab launchers. These change the mode of the current typed Task Detail
+	// route; they never push a child route.
 	case "c":
-		return m, func() tea.Msg {
-			return ShowTaskCommentsMsg{Task: m.task, Project: m.project}
-		}
+		return m.selectTab(TaskComments)
 	case "l":
-		return m, func() tea.Msg {
-			return ShowTaskChecklistMsg{Task: m.task, Project: m.project}
-		}
+		return m.selectTab(TaskChecklist)
 	case "a":
-		return m, func() tea.Msg {
-			return ShowTaskAttachmentsMsg{Task: m.task, Project: m.project}
-		}
+		return m.selectTab(TaskAttachments)
 	case "h":
-		return m, func() tea.Msg {
-			return OpenTaskActivityMsg{Task: m.task, Project: m.project}
-		}
+		return m.selectTab(TaskActivity)
 	case "p":
 		return m, func() tea.Msg {
 			return ShowDependencyViewerMsg{Task: m.task, Project: m.project}
@@ -93,9 +86,7 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 			return ShowScoreEditorMsg{Task: m.task, Project: m.project}
 		}
 	case "D":
-		return m, func() tea.Msg {
-			return ShowTaskDecisionsMsg{Task: m.task, Project: m.project}
-		}
+		return m.selectTab(TaskDecisions)
 	case "d":
 		return m, func() tea.Msg {
 			return SetDueDateMsg{Task: m.task, Project: m.project}
@@ -135,6 +126,11 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 	}
 
 	return m, nil
+}
+
+func (m *TaskDetailModel) selectTab(tab TaskDetailTab) (tea.Model, tea.Cmd) {
+	m.SetTab(tab)
+	return m, func() tea.Msg { return TaskDetailTabChangedMsg{Tab: tab} }
 }
 
 // handlePrefixKey handles keys after a prefix character.
@@ -236,7 +232,7 @@ func (m *TaskDetailModel) HandledKeys() []string {
 		"esc", "enter",
 		"j", "down", "k", "up",
 		"ctrl+d", "ctrl+u",
-		"G",
+		"G", "tab", "shift+tab",
 		"H",
 		",", "!",
 		"c", "l", "a", "h", "p", "S", "D", "d",
@@ -247,9 +243,16 @@ func (m *TaskDetailModel) HandledKeys() []string {
 
 // GetHelpItems returns the help items for the task detail view.
 func (m *TaskDetailModel) GetHelpItems() []HelpItem {
+	if m.tab != TaskOverview {
+		items := GetKeybindingRegistry().GetForView(taskDetailPresentation(m.tab))
+		return append(items, HelpItem{
+			Key: "Tab/Shift+Tab", Description: "Next/previous detail tab", Category: "Navigation",
+		})
+	}
 	items := GetKeybindingRegistry().GetAppLevelForView(ViewTaskDetail)
 	return append(items, []HelpItem{
 		{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
+		{Key: "Tab/Shift+Tab", Description: "Next/previous detail tab", Category: "Navigation"},
 		{Key: "Ctrl+D/U", Description: "Half page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
 		{Key: "o/Esc", Description: "Close detail view", Category: "Navigation"},
@@ -260,12 +263,12 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "e", Description: "Edit task", Category: "Actions"},
 		{Key: "d", Description: "Set due date", Category: "Actions"},
 		{Key: "P", Description: "Park task", Category: "Actions"},
-		{Key: "c", Description: "Comments", Category: "Sub-views"},
-		{Key: "l", Description: "Checklist", Category: "Sub-views"},
-		{Key: "a", Description: "Attachments", Category: "Sub-views"},
-		{Key: "h", Description: "Activity history", Category: "Sub-views"},
-		{Key: "p", Description: "Dependencies", Category: "Sub-views"},
-		{Key: "S", Description: "Score editor", Category: "Sub-views"},
-		{Key: "D", Description: "Decisions", Category: "Sub-views"},
+		{Key: "c", Description: "Comments tab", Category: "Tabs"},
+		{Key: "l", Description: "Checklist tab", Category: "Tabs"},
+		{Key: "a", Description: "Attachments tab", Category: "Tabs"},
+		{Key: "h", Description: "Activity tab", Category: "Tabs"},
+		{Key: "D", Description: "Decisions tab", Category: "Tabs"},
+		{Key: "p", Description: "Dependencies", Category: "Actions"},
+		{Key: "S", Description: "Score editor", Category: "Actions"},
 	}...)
 }

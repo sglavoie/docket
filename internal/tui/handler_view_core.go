@@ -7,8 +7,11 @@ import (
 )
 
 // handleViewCoreMessages handles generic view navigation, status, and utility messages.
-func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
+	case ShowDestinationSwitcherMsg:
+		m.toggleDestinationSwitcher()
+		return true, nil
 	case BackMsg:
 		if m.currentView() == ViewProjectCreator {
 			m.pendingProjectMoveTask = nil
@@ -21,6 +24,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.jumpToDashboard()
 
 	case RefreshMsg:
+		m.refreshLoadedTaskWorkspace()
 		if m.dashboard != nil {
 			m.dashboard.Refresh()
 		}
@@ -32,23 +36,66 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
 
-	case NavigateHistoryBackMsg:
-		return true, m.navigateHistoryBack()
-
-	case NavigateHistoryForwardMsg:
-		return true, m.navigateHistoryForward()
-
 	case NavigateToViewMsg:
 		return m.handleNavigateToView(msg)
+	case NavigatePaletteAliasMsg:
+		if msg.Target == PaletteAliasHomeAttention {
+			cmd := m.jumpToDashboard()
+			if m.dashboard != nil {
+				m.dashboard.FocusAttention()
+			}
+			return true, cmd
+		}
+		return true, nil
+
+	case taskWorkspaceViewMenuMsg:
+		if msg.Open {
+			m.pushTypedOverlay(OverlayViewMenu, taskWorkspaceViewMenuOverlayKey)
+		} else {
+			m.closeTypedOverlay(OverlayViewMenu, taskWorkspaceViewMenuOverlayKey)
+		}
+		return true, nil
+
+	case plannerViewMenuMsg:
+		if msg.Open {
+			m.pushTypedOverlay(OverlayViewMenu, plannerViewMenuOverlayKey)
+		} else {
+			m.closeTypedOverlay(OverlayViewMenu, plannerViewMenuOverlayKey)
+		}
+		return true, nil
+
+	case PlannerRouteChangedMsg:
+		if !m.typedNavigation || m.navigation.Primary.Current().ID() != Planner {
+			return true, nil
+		}
+		route, err := NewRoute(Planner, PlannerParams(msg))
+		if err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		route = withPresentation(route, ViewFocusBoard, "", "")
+		if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		m.syncPresentationStack()
+		return true, nil
+
+	case TaskWorkspaceRouteChangedMsg:
+		if !m.typedNavigation || m.navigation.Primary.Current().ID() != TaskWorkspace {
+			return true, nil
+		}
+		route, err := NewRoute(TaskWorkspace, msg.Params)
+		if err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		m.syncPresentationStack()
+		return true, nil
 
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)
-		return true, nil
-
-	case ShowKeybindingExplorerMsg:
-		explorer := NewKeybindingExplorerModel()
-		m.showView(ViewKeybindingExplorer, explorer)
 		return true, nil
 
 	case ShowTutorMsg:
@@ -59,11 +106,13 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.showViewInit(ViewAsk, NewAskViewModelForWorkspace(m.cliReference, m.runtime, m.appService, m.persister))
 
 	case ShowMessageLogMsg:
-		m.showView(ViewMessageLog, NewMessageLogViewModel(m.messageLog.Entries()))
-		return true, nil
+		return true, m.activateManageHub(ManageParams{
+			Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationLog,
+		})
 
 	case AppendToMessageLogMsg:
 		m.messageLog.Append(msg.Message, msg.Level)
+		m.refreshManageMessageLog()
 		return true, nil
 
 	case StatusClearMsg:

@@ -12,8 +12,6 @@ func (m *CommandPaletteModel) getActionsForItem(item PaletteItem) []PaletteActio
 		return m.getTagActions(item)
 	case ItemCategorySections:
 		return m.getSectionActions(item)
-	case ItemCategorySavedSearch:
-		return m.getSavedSearchActions(item)
 	case ItemCategorySavedFilter:
 		return m.getSavedFilterActions(item)
 	case ItemCategoryNotes:

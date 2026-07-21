@@ -62,57 +62,6 @@ var (
 
 )
 
-// taskCountScaleDark is the 10-step red-to-green gradient used in dark theme.
-var taskCountScaleDark = [10]color.Color{
-	lipgloss.Color("#f7768e"),
-	lipgloss.Color("#f09070"),
-	lipgloss.Color("#e8a858"),
-	lipgloss.Color("#e0af68"),
-	lipgloss.Color("#c8b860"),
-	lipgloss.Color("#b0c058"),
-	lipgloss.Color("#98c850"),
-	lipgloss.Color("#80d048"),
-	lipgloss.Color("#9ece6a"),
-	lipgloss.Color("#73daca"),
-}
-
-// taskCountScaleLight is the 10-step gradient used in light theme (muted hex).
-var taskCountScaleLight = [10]color.Color{
-	lipgloss.Color("#b91c1c"),
-	lipgloss.Color("#c2410c"),
-	lipgloss.Color("#d97706"),
-	lipgloss.Color("#ca8a04"),
-	lipgloss.Color("#a16207"),
-	lipgloss.Color("#65a30d"),
-	lipgloss.Color("#4d7c0f"),
-	lipgloss.Color("#15803d"),
-	lipgloss.Color("#166534"),
-	lipgloss.Color("#14532d"),
-}
-
-// taskCountScale returns the theme-appropriate color scale.
-func taskCountScale() [10]color.Color {
-	if activeThemeName == "light" {
-		return taskCountScaleLight
-	}
-	return taskCountScaleDark
-}
-
-// TaskCountColor maps a value within [min, max] to a theme-aware color gradient.
-func TaskCountColor(value, min, max int) color.Color {
-	scale := taskCountScale()
-	if min == max {
-		return scale[4]
-	}
-	idx := (value - min) * 9 / (max - min)
-	if idx < 0 {
-		idx = 0
-	} else if idx > 9 {
-		idx = 9
-	}
-	return scale[idx]
-}
-
 // SectionColorEntry represents a color in the section color palette.
 type SectionColorEntry struct {
 	Name  string

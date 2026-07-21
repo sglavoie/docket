@@ -78,14 +78,12 @@ func TestTutorNormalWidthAlignedRowsRemainReadable(t *testing.T) {
 		token string
 	}
 	samples := []sample{
-		{"Pipeline Views", "notifications"},  // Support: … (70 cols)
 		{"Quick Capture Grammar", ">Login"},  // >parent … (66 cols)
 		{"Repeat Last Action", "+1m)"},       // d1-9 … (68 cols)
 		{"Attachments", "IDE)"},              // tt attach … (65 cols)
-		{"Help", "explorer"},                 // ctrl+\ … (54 cols)
+		{"Help", "installed"},                // provider's CLI … (54 cols)
 		{"Command Palette", "inbox)"},        // triage inbox … (61 cols)
 		{"Recurrence", "2 weeks)"},           // Nd, Nw … (63 cols)
-		{"Your first task", "(dashboard)"},   // O … (58 cols)
 		{"Dashboard at a glance", "triage)"}, // ctrl+i … (56 cols)
 	}
 

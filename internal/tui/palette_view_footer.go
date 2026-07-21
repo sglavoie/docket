@@ -59,7 +59,6 @@ func (m *CommandPaletteModel) buildFooter() string {
 	}
 
 	catLabels := []catLabel{
-		{ItemCategorySavedSearch, "saved search", "saved searches"},
 		{ItemCategoryCommands, "command", "commands"},
 		{ItemCategoryProjects, "project", "projects"},
 		{ItemCategoryTasks, "task", "tasks"},
@@ -81,49 +80,18 @@ func (m *CommandPaletteModel) buildFooter() string {
 		countSummary = "0"
 	}
 
-	var toggles []string
-	if m.includeCompleted {
-		toggles = append(toggles, "+H")
-	}
-	if m.sortField != SortByDefault {
-		switch m.sortField { //nolint:exhaustive
-		case SortByPriority:
-			toggles = append(toggles, "P↓")
-		case SortByDueDate:
-			toggles = append(toggles, "D↓")
-		}
-	}
-	if m.compactMode {
-		toggles = append(toggles, "◫")
-	}
-
-	toggleSummary := ""
-	if len(toggles) > 0 {
-		toggleSummary = " [" + strings.Join(toggles, " ") + "]"
-	}
-
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
-		if tip := m.getMostUsedCommandTip(); tip != "" {
-			return fmt.Sprintf("+ create | : filter | # jump | Tip: %s · ctrl+\\: full reference", tip)
-		}
-		return "+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N · ctrl+\\: full reference"
+		return "Type to search · ↑↓ navigate · Enter open · Shift+Enter Peek · Esc close"
 	}
 
-	if m.isDirectActionEnabled() && len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-		item := m.filteredItems[m.cursor].Item
-		if item.Category == ItemCategoryTasks && item.Task != nil {
-			return fmt.Sprintf("e=Edit g=View x=Complete s=Start b=Block r=Reopen | %s%s", countSummary, toggleSummary)
-		}
-	}
-
-	hints := "↑↓ · Enter · Tab · ^H · ^O · ^P · Esc"
-	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
+	hints := "↑↓ · Enter · Shift+Enter · Space select · Tab actions · Esc"
+	return fmt.Sprintf("%s | %s", hints, countSummary)
 }
 
 // buildActionModeFooter builds a compact footer for action mode.
 func (m *CommandPaletteModel) buildActionModeFooter() string {
-	return "↑↓ Enter Tab Esc"
+	return "↑↓ navigate · Enter choose · Tab/Esc back"
 }
 
 // getContextualHint returns a context-aware hint based on current palette state.
@@ -143,17 +111,14 @@ func (m *CommandPaletteModel) getContextualHint() string {
 		item := m.filteredItems[m.cursor].Item
 		switch item.Category { //nolint:exhaustive
 		case ItemCategoryTasks:
-			if m.isDirectActionEnabled() {
-				return "Tip: e=edit  g=view  x=complete  s=start  b=block  r=reopen  Tab=more"
-			}
-			return "Tip: Press Tab for quick actions, or Enter to go to task"
+			return "Tip: Enter opens · Shift+Enter Peeks · Space selects · Tab shows actions"
 		case ItemCategoryCommands:
 			if item.Command != nil && item.Command.Shortcut != "" {
 				return fmt.Sprintf("Tip: Press %s to execute, or Enter to confirm", item.Command.Shortcut)
 			}
 			return "Tip: Press Enter to execute command"
 		case ItemCategoryProjects:
-			return "Tip: Enter=open project  Tab=more actions (edit, archive)"
+			return "Tip: Enter opens the project · Tab shows actions"
 		case ItemCategoryTags:
 			return "Tip: Enter=filter by tag  Tab=manage tags"
 		case ItemCategorySections:
@@ -162,7 +127,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 	}
 
 	if query == "" {
-		return "Tip: Type to search, or use :cmd :task :prj :tag :sec :note :view to filter"
+		return "Tip: Type to search commands and entities, or use a category prefix"
 	}
 
 	categoryFilter, _ := m.parseQueryPrefix(query)
@@ -175,31 +140,5 @@ func (m *CommandPaletteModel) getContextualHint() string {
 		}
 	}
 
-	return ""
-}
-
-// getMostUsedCommandTip returns a shortcut hint for the most-frequently used command.
-// Returns empty string if no command with a shortcut has been used more than once.
-func (m *CommandPaletteModel) getMostUsedCommandTip() string {
-	var best *recentSelection
-	for i := range recentPaletteSelections {
-		rs := &recentPaletteSelections[i]
-		if rs.Category != ItemCategoryCommands || rs.Count < 2 {
-			continue
-		}
-		if best == nil || rs.Count > best.Count {
-			best = rs
-		}
-	}
-	if best == nil {
-		return ""
-	}
-	for _, item := range m.allItems {
-		if item.Category == ItemCategoryCommands && item.Command != nil && item.Command.Name == best.ID {
-			if item.Command.Shortcut != "" {
-				return fmt.Sprintf("%s → %s", item.Command.Name, item.Command.Shortcut)
-			}
-		}
-	}
 	return ""
 }

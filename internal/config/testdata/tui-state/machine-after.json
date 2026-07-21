@@ -1,0 +1,25 @@
+{
+  "tui_state_version": 1,
+  "start_route": {
+    "task_layout": "list",
+    "task_focus": "active",
+    "task_sort": "priority"
+  },
+  "editor": "vim",
+  "current_project": "project-1",
+  "custom_contexts": {"Work": ["project-1"]},
+  "recent_task_visits": [{"project_id": "project-1", "task_id": "task-1"}],
+  "start_view": "tasks",
+  "recent_palette_items": [
+    {"category": "command", "id": "1"},
+    {"category": "command", "id": "2"},
+    {"category": "command", "id": "3"},
+    {"category": "command", "id": "4"},
+    {"category": "command", "id": "5"},
+    {"category": "command", "id": "6"},
+    {"category": "command", "id": "7"},
+    {"category": "command", "id": "8"},
+    {"category": "command", "id": "9"},
+    {"category": "command", "id": "10"}
+  ]
+}

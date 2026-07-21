@@ -57,14 +57,21 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowScoreProfileManagerMsg:
-		projectID := msg.ProjectID
-		if projectID == "" && m.currentProject != nil {
-			projectID = m.currentProject.ID
+		if msg.ProjectID != "" {
+			if project := m.projectByID(msg.ProjectID); project != nil {
+				m.currentProject = project
+			}
 		}
-		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.runtime, projectID))
-		return true, nil
+		return true, m.activateManageRules(ManageRulesScoring)
 
 	case ScoreProfileChangedMsg:
+		if hub, params, ok := m.manageHubPrimary(); ok && params.Module == ManageRules && hub.RulesMode() == ManageRulesScoring {
+			hub.RefreshScoringProfiles()
+			if active := hub.ActiveModuleView(); active != nil {
+				m.registerManageModulePresentation(params, active)
+			}
+			return true, nil
+		}
 		if m.currentView() == ViewScoreProfileManager {
 			projectID := ""
 			if v := m.views.Get(ViewScoreProfileManager); v != nil {
@@ -104,7 +111,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 				cross.rebuildRows()
 				cross.clampCursor()
 			}
-			for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
+			for _, vt := range []PresentationID{ViewKanban, ViewCrossProjectKanban} {
 				if v := m.views.Get(vt); v != nil {
 					if kb, ok := v.(*KanbanModel); ok {
 						kb.rebuildCols()

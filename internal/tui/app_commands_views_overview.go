@@ -13,7 +13,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Navigate to task in outliner",
 			Shortcut:    "gp",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewProjectFocusView},
+			Views:       []PresentationID{ViewProjectFocusView},
 			Aliases:     []string{"open in project", "show in outliner"},
 			Handler: func() tea.Msg {
 				return syntheticKey('g')
@@ -24,7 +24,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Copy task title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectFocusView},
+			Views:       []PresentationID{ViewProjectFocusView},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
 				return syntheticKey('y')
@@ -35,7 +35,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Copy task with details to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectFocusView},
+			Views:       []PresentationID{ViewProjectFocusView},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
 				return syntheticKey('Y')
@@ -46,7 +46,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Description: "Copy task title and description",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectFocusView},
+			Views:       []PresentationID{ViewProjectFocusView},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
 				return syntheticCtrlKey('y')
@@ -62,7 +62,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Focus on due today section",
 			Shortcut:    "sd",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"due today section"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -73,7 +73,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Focus on top priority section",
 			Shortcut:    "st",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"top priority section"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -84,7 +84,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Focus on stale tasks section",
 			Shortcut:    "ss",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"stale section"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -95,7 +95,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Focus on recently logged section",
 			Shortcut:    "sl",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"recently logged section"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -106,7 +106,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Focus on flagged/active tasks section",
 			Shortcut:    "sf",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"flagged section", "active section"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -117,7 +117,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Focus on overdue tasks section",
 			Shortcut:    "so",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"overdue section"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -128,7 +128,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Toggle section collapse/expand",
 			Shortcut:    "tab",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"fold section", "toggle section"},
 			Handler: func() tea.Msg {
 				return syntheticSpecialKey(tea.KeyTab)
@@ -139,7 +139,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Jump to next section",
 			Shortcut:    "n",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"section forward"},
 			Handler: func() tea.Msg {
 				return syntheticKey('n')
@@ -150,7 +150,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Jump to previous section",
 			Shortcut:    "N",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"section backward"},
 			Handler: func() tea.Msg {
 				return syntheticKey('N')
@@ -161,7 +161,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Copy task title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
 				return syntheticKey('y')
@@ -172,7 +172,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Copy task with details to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
 				return syntheticKey('Y')
@@ -183,7 +183,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Description: "Copy task title and description",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDailyReview},
+			Views:       []PresentationID{ViewDailyReview},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
 				return syntheticCtrlKey('y')
@@ -199,7 +199,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Start the suggested task",
 			Shortcut:    "s",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"begin suggestion", "accept suggestion"},
 			Handler: func() tea.Msg {
 				return syntheticKey('s')
@@ -210,7 +210,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Dismiss the current suggestion",
 			Shortcut:    "x",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"skip suggestion", "reject suggestion"},
 			Handler: func() tea.Msg {
 				return syntheticKey('x')
@@ -221,7 +221,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Navigate to task in outliner",
 			Shortcut:    "gt",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"open in outliner", "show in outliner"},
 			Handler: func() tea.Msg {
 				return syntheticKey('g')
@@ -232,7 +232,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Toggle waiting-on section visibility",
 			Shortcut:    "tab",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"show waiting", "hide waiting"},
 			Handler: func() tea.Msg {
 				return syntheticSpecialKey(tea.KeyTab)
@@ -243,7 +243,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Refresh priority data",
 			Shortcut:    "r",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"reload priorities"},
 			Handler: func() tea.Msg {
 				return syntheticKey('r')
@@ -254,7 +254,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Copy task title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
 				return syntheticKey('y')
@@ -265,7 +265,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Copy task with details to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
 				return syntheticKey('Y')
@@ -276,7 +276,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Description: "Copy task title and description",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewPriorityView},
+			Views:       []PresentationID{ViewPriorityView},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
 				return syntheticCtrlKey('y')
@@ -308,7 +308,7 @@ func (m *AppModel) activeInboxCore() (*inboxCore, *ConfirmDialog) {
 }
 
 func (m *AppModel) inboxProcessorCommands() []Command {
-	bothViews := []ViewType{ViewInboxProcessor, ViewGlobalInboxProcessor}
+	bothViews := []PresentationID{ViewInboxProcessor, ViewGlobalInboxProcessor}
 
 	// runInboxCmd invokes a shared inbox helper that returns a tea.Cmd, runs it
 	// synchronously, and returns the produced Msg. Use this for handlers whose

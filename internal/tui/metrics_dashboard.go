@@ -265,6 +265,18 @@ func (m *MetricsDashboardModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }
 
+func (m *MetricsDashboardModel) getTaskRef() (*models.Task, *models.Project) {
+	if m.activeTab != MetricsTabBlocked || m.metrics == nil {
+		return nil, nil
+	}
+	entries := m.metrics.Blocked.Entries
+	if m.blockedCursor < 0 || m.blockedCursor >= len(entries) {
+		return nil, nil
+	}
+	entry := entries[m.blockedCursor]
+	return entry.Task, entry.Project
+}
+
 func (m *MetricsDashboardModel) StatusBarLabel() string { return "Metrics" }
 
 // IsFullHeight returns true because the metrics dashboard renders its own footer.

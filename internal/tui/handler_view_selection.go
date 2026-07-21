@@ -33,7 +33,7 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TaskJumperSelectMsg:
 		m.popView()
 		if msg.Task != nil {
-			switch m.currentView() {
+			switch m.currentView() { //nolint:exhaustive // Only outliner presentations accept jumper repositioning.
 			case ViewCrossProjectOutliner:
 				if m.crossOutliner != nil {
 					m.crossOutliner.NavigateToTaskInProject(msg.Task, msg.Project)

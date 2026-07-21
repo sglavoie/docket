@@ -86,7 +86,7 @@ func TestValidateIntOptionalInRange(t *testing.T) {
 
 func TestValidateFocusedField_SectionLimitReview(t *testing.T) {
 	m := NewSettingsModel(newSettingsDeps(newTestConfig(), nil))
-	m.focusIndex = subTabFieldStart(tabBehavior, 5) + 6
+	m.focusIndex = subTabFieldStart(tabBehavior, 4) + 6
 	m.sectionLimitReviewInput.SetValue("6a")
 
 	m.validateFocusedField()
@@ -117,20 +117,12 @@ func TestValidateFocusedField_UsesCurrentSettingsFieldLayout(t *testing.T) {
 			wantErr: "stale badge days must be a number",
 		},
 		{
-			name:       "popup timeout",
-			focusIndex: subTabFieldStart(tabBehavior, 4),
+			name:       "home parked task limit",
+			focusIndex: subTabFieldStart(tabBehavior, 6),
 			mutate: func(m *SettingsModel) {
-				m.popupTimeoutInput.SetValue("31")
+				m.resumeCardLimitInput.SetValue("0")
 			},
-			wantErr: "popup timeout must be 0-30",
-		},
-		{
-			name:       "dashboard vertical split",
-			focusIndex: subTabFieldStart(tabBehavior, 9) + 2,
-			mutate: func(m *SettingsModel) {
-				m.dashboardVertSplitInput.SetValue("9")
-			},
-			wantErr: "vertical split % must be 10-90",
+			wantErr: "resume card limit must be 1-20",
 		},
 		{
 			name:       "project stale days alert",

@@ -61,7 +61,28 @@ func (m *NotificationCenterModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}),
+		keymap.Bind("space", "Expand/collapse notification", "Actions", func() (tea.Model, tea.Cmd) {
+			if m.cursor >= 0 && m.cursor < len(m.items) && !m.items[m.cursor].isHeader {
+				if m.expandedItem == m.cursor {
+					m.expandedItem = -1
+				} else {
+					m.expandedItem = m.cursor
+				}
+			}
+			return m, nil
+		}),
 		keymap.Bind("d", "Clear/restore notification", "Actions", func() (tea.Model, tea.Cmd) {
+			if a := m.selectedAlert(); a != nil {
+				key := a.DismissalKey()
+				cat := string(a.Category)
+				if m.selectedItem().dismissed {
+					return m, func() tea.Msg { return UndismissAlertMsg{Key: key} }
+				}
+				return m, func() tea.Msg { return DismissAlertMsg{Key: key, Category: cat} }
+			}
+			return m, nil
+		}),
+		keymap.Bind("x", "Clear/restore notification", "Actions", func() (tea.Model, tea.Cmd) {
 			if a := m.selectedAlert(); a != nil {
 				key := a.DismissalKey()
 				cat := string(a.Category)

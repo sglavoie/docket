@@ -39,7 +39,7 @@ func (m *GlobalTagManagerModel) View() tea.View {
 	if m.renameMode {
 		footerHelp = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		footerHelp = "j/k nav · enter filter · p pin · r rename · Esc close"
+		footerHelp = "j/k nav · enter filter · space/p pin · e edit · Esc close"
 	} else {
 		footerHelp = "Esc close"
 	}

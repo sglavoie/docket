@@ -155,13 +155,13 @@ func TestUITestScenarioResolveSize(t *testing.T) {
 
 func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	raw := `{
-		"name": "rich dashboard renders stable content",
+		"name": "rich Home renders stable content",
 		"fixture": "rich",
 		"size": "120x40",
 		"actions": [
 			{"type": "assert", "assert": "view", "value": "Dashboard"},
 			{"type": "assert", "assert": "contains", "value": "Rich Project"},
-			{"type": "assert", "assert": "contains", "value": "Launch platform"},
+			{"type": "assert", "assert": "contains", "value": "Attention"},
 			{"type": "assert", "assert": "no_layout_issues"}
 		]
 	}`
@@ -177,9 +177,13 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	if !result.OK {
-		t.Fatalf("scenario should pass, got error: %+v", result.Error)
+		var screen string
+		if len(result.Observations) > 0 {
+			screen = result.Observations[len(result.Observations)-1].PlainScreen
+		}
+		t.Fatalf("scenario should pass, got error: %+v\nlast screen:\n%s", result.Error, screen)
 	}
-	if result.Scenario != "rich dashboard renders stable content" {
+	if result.Scenario != "rich Home renders stable content" {
 		t.Fatalf("result scenario name = %q", result.Scenario)
 	}
 	if result.ActionsRun != 4 {
@@ -199,7 +203,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	// Golden-ish: the normalized screen carries stable fixture content and no
 	// ANSI escapes.
 	screen := result.FinalObservation.PlainScreen
-	for _, want := range []string{"Rich Project", "Launch platform"} {
+	for _, want := range []string{"Rich Project", "Attention"} {
 		if !strings.Contains(screen, want) {
 			t.Fatalf("final screen missing stable token %q:\n%s", want, screen)
 		}
@@ -209,17 +213,15 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioCommandPaletteSearchStartsBlankWithPersistedCategory(t *testing.T) {
+func TestUITestScenarioCommandPaletteSearchStartsBlank(t *testing.T) {
 	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
 	if err != nil {
 		t.Fatalf("NewFixtureDriver: %v", err)
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	driver.App().runtime.Machine().SetLastPaletteCategory(":sv ")
-
 	sc := UITestScenario{
-		Name: "command palette search ignores persisted category",
+		Name: "command palette search starts blank",
 		Actions: []UITestAction{
 			{Type: UITestActionKey, Key: ":"},
 			{Type: UITestActionText, Text: "all blockers"},
@@ -323,14 +325,14 @@ func TestUITestScenarioTaskDetailFromGlobalInboxNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
+func TestUITestScenarioHelpMinimumHeightNoOverflow(t *testing.T) {
 	sc := UITestScenario{
-		Name:    "keybinding explorer minimum height",
+		Name:    "help minimum height",
 		Fixture: "rich",
 		Size:    "72x20",
 		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "keybinding explorer"},
-			{Type: UITestActionAssert, Assert: "view", Value: "KeybindingExplorer"},
+			{Type: UITestActionCommand, Command: "help"},
+			{Type: UITestActionAssert, Assert: "view", Value: "Help"},
 			{Type: UITestActionAssert, Assert: "no_layout_issues"},
 		},
 	}
@@ -342,7 +344,7 @@ func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	if !result.OK {
-		t.Fatalf("keybinding explorer layout should pass, got error: %+v", result.Error)
+		t.Fatalf("help layout should pass, got error: %+v", result.Error)
 	}
 }
 
@@ -427,15 +429,14 @@ func TestUITestScenarioDashboardSearchAlertHeavyMinimumLayoutNoOverflow(t *testi
 	}
 }
 
-func TestUITestScenarioPipelineHubMinimumLayoutNoOverflow(t *testing.T) {
+func TestUITestScenarioDestinationSwitcherMinimumLayoutNoOverflow(t *testing.T) {
 	sc := UITestScenario{
-		Name:    "pipeline hub minimum layout",
+		Name:    "destination switcher minimum layout",
 		Fixture: "rich",
 		Size:    "72x20",
 		Actions: []UITestAction{
-			{Type: UITestActionKey, Key: ";"},
-			{Type: UITestActionKey, Key: ";"},
-			{Type: UITestActionAssert, Assert: "view", Value: "PipelineHub"},
+			{Type: UITestActionKey, Key: "ctrl+g"},
+			{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
 			{Type: UITestActionAssert, Assert: "no_layout_issues"},
 		},
 	}
@@ -447,7 +448,7 @@ func TestUITestScenarioPipelineHubMinimumLayoutNoOverflow(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	if !result.OK {
-		t.Fatalf("pipeline hub layout should pass, got error: %+v", result.Error)
+		t.Fatalf("destination switcher layout should pass, got error: %+v", result.Error)
 	}
 }
 
@@ -523,7 +524,7 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioDashboardSemicolonRouteCommands(t *testing.T) {
+func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 	tests := []struct {
 		name    string
 		command string
@@ -566,7 +567,7 @@ func TestUITestScenarioMinimumTerminalEmptyStatesNoOverflow(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"backlog queue empty state", "planner next", "Today"},
+		{"backlog queue empty state", "planner next", "Planner"},
 		{"workflow rules empty state", "workflow rules", "WorkflowRules"},
 		{"task templates empty state", "task templates", "TaskTemplates"},
 	}
@@ -611,7 +612,7 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 				{Type: UITestActionCommand, Command: "today"},
 				{Type: UITestActionKey, Key: "a"},
 				{Type: UITestActionText, Text: longValue},
-				{Type: UITestActionAssert, Assert: "view", Value: "QuickCapture"},
+				{Type: UITestActionAssert, Assert: "view", Value: "Planner"},
 				{Type: UITestActionAssert, Assert: "no_layout_issues"},
 			},
 		},
@@ -718,14 +719,14 @@ func TestUITestScenarioTodayQuickAddMinimumLayoutNoOverflow(t *testing.T) {
 			name: "syntax hint",
 			actions: []UITestAction{
 				{Type: UITestActionCommand, Command: "today"},
-				{Type: UITestActionCommand, Command: "today quick add"},
+				{Type: UITestActionKey, Key: "a"},
 			},
 		},
 		{
 			name: "metadata preview",
 			actions: []UITestAction{
 				{Type: UITestActionCommand, Command: "today"},
-				{Type: UITestActionCommand, Command: "today quick add"},
+				{Type: UITestActionKey, Key: "a"},
 				{Type: UITestActionText, Text: "New item !1 #reallylongtagname @tomorrow -s external -u https://example.com/very/long/path"},
 			},
 		},
@@ -735,7 +736,7 @@ func TestUITestScenarioTodayQuickAddMinimumLayoutNoOverflow(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actions := append([]UITestAction{}, tt.actions...)
 			actions = append(actions,
-				UITestAction{Type: UITestActionAssert, Assert: "view", Value: "QuickCapture"},
+				UITestAction{Type: UITestActionAssert, Assert: "view", Value: "Planner"},
 				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
 			)
 			sc := UITestScenario{
@@ -774,7 +775,7 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 		},
 		{
 			name: "global search",
-			view: "GlobalSearch",
+			view: "CommandPalette",
 			actions: []UITestAction{
 				{Type: UITestActionCommand, Command: "global search"},
 				{Type: UITestActionText, Text: strings.Repeat("a", 60)},
@@ -785,8 +786,8 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 			view: "NotesSearch",
 			actions: []UITestAction{
 				{Type: UITestActionKey, Key: "enter"},
-				{Type: UITestActionKey, Key: "{"},
-				{Type: UITestActionKey, Key: "/"},
+				{Type: UITestActionCommand, Command: "show notes"},
+				{Type: UITestActionCommand, Command: "search notes"},
 				{Type: UITestActionText, Text: strings.Repeat("a", 72)},
 			},
 		},

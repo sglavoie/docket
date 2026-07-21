@@ -4,162 +4,208 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
-// TestResolveStartupNavigation_DefaultsToFocusBoard guards the new Today
-// cockpit default. AppModel boots with the dashboard at the bottom of the
-// view stack; resolveStartupNavigation decides whether Init should push a
-// different start view on top. Unset/invalid StartView resolves to Focus
-// Board so a fresh install lands on the explainable next-action surface.
-func TestResolveStartupNavigation_DefaultsToFocusBoard(t *testing.T) {
-	cfg := newTestConfig()
-	vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
+func TestResolveStartupNavigationDefaultsToPlanner(t *testing.T) {
+	plan, ok := resolveStartupNavigation(config.NewMachineState(), "")
 	if !ok {
-		t.Fatalf("expected navigation away from dashboard for unset StartView")
+		t.Fatal("default startup should navigate to Planner")
 	}
-	if vt != ViewFocusBoard {
-		t.Errorf("expected ViewFocusBoard for unset StartView, got %v", vt)
+	if plan.Route.ID() != Planner {
+		t.Fatalf("default route = %s, want Planner", plan.Route.ID())
 	}
-}
-
-func TestResolveStartupNavigation_InvalidValueLandsOnFocusBoard(t *testing.T) {
-	cfg := newTestConfig()
-	cfg.Machine().StartView = "not-a-view"
-	vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
-	if !ok {
-		t.Fatalf("expected navigation away from dashboard for invalid StartView")
+	params := plan.Route.Params().(PlannerParams)
+	if params.Tab != PlannerToday {
+		t.Fatalf("default Planner tab = %v, want Today", params.Tab)
 	}
-	if vt != ViewFocusBoard {
-		t.Errorf("expected ViewFocusBoard fallback, got %v", vt)
+	msg, ok := plan.Message.(ShowFocusBoardMsg)
+	if !ok || !msg.SetTab || msg.Tab != boardTabToday {
+		t.Fatalf("default startup message = %#v, want Today planner", plan.Message)
 	}
 }
 
-// TestResolveStartupNavigation_ExplicitDashboardStaysPut keeps the legacy
-// dashboard-on-boot contract for users who deliberately pinned it.
-func TestResolveStartupNavigation_ExplicitDashboardStaysPut(t *testing.T) {
-	cfg := newTestConfig()
-	cfg.Machine().StartView = "dashboard"
-	vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
-	if ok {
-		t.Fatalf("expected no navigation push for explicit dashboard, got %v", vt)
-	}
-}
-
-func TestResolveStartupNavigation_HonoursExplicitViews(t *testing.T) {
-	cases := []struct {
+func TestResolveStartupNavigationCanonicalDestinations(t *testing.T) {
+	tests := []struct {
 		startView string
-		want      ViewType
+		projectID string
+		wantRoute RouteID
+		wantView  PresentationID
+		want      bool
 	}{
-		{"focus-board", ViewFocusBoard},
-		{"cross-project-outliner", ViewCrossProjectOutliner},
-		{"all-tasks", ViewAllTasks},
-		{"daily-review", ViewDailyReview},
-		{"backlog", ViewFocusBoard},
-		{"priority", ViewPriorityView},
-		{"due-dates", ViewAllTasks},
+		{config.StartViewHome, "", Home, ViewDashboard, false},
+		{config.StartViewPlanner, "", Planner, ViewFocusBoard, true},
+		{config.StartViewTasks, "", TaskWorkspace, ViewCrossProjectOutliner, true},
+		{config.StartViewProject, "project-1", TaskWorkspace, ViewOutliner, true},
+		{config.StartViewReview, "", ReviewHub, ViewDailyReview, true},
+		{config.StartViewManage, "", ManageHub, ViewSettings, true},
 	}
-	for _, tc := range cases {
-		cfg := newTestConfig()
-		cfg.Machine().StartView = tc.startView
-		vt, ok := resolveStartupNavigation(cfg.Machine().GetStartView())
-		if !ok {
-			t.Fatalf("StartView=%q: expected navigation push", tc.startView)
-		}
-		if vt != tc.want {
-			t.Errorf("StartView=%q: expected %v, got %v", tc.startView, tc.want, vt)
-		}
+	for _, tc := range tests {
+		t.Run(tc.startView, func(t *testing.T) {
+			machine := config.NewMachineState()
+			machine.SetStartView(tc.startView)
+			plan, ok := resolveStartupNavigation(machine, tc.projectID)
+			if ok != tc.want {
+				t.Fatalf("resolve ok = %v, want %v", ok, tc.want)
+			}
+			if !ok {
+				return
+			}
+			if plan.Route.ID() != tc.wantRoute || plan.Presentation != tc.wantView {
+				t.Fatalf("plan route/view = %s/%s, want %s/%s", plan.Route.ID(), plan.Presentation, tc.wantRoute, tc.wantView)
+			}
+		})
 	}
 }
 
-// TestStartupAliasesPreservePlannerTabAndAllTasksGrouping guards FR-007-006:
-// the "backlog" and "due-dates" start-view aliases fold onto shared views
-// (Planner / All Tasks) but must carry their subview so a persisted preference
-// does not decay into a default tab/grouping on boot. It asserts the resolved
-// startup message AND the tab/grouping of the model constructed from it, not
-// only the destination ViewType.
-func TestStartupAliasesPreservePlannerTabAndAllTasksGrouping(t *testing.T) {
-	t.Run("backlog opens the Planner Backlog tab", func(t *testing.T) {
-		msg, ok := startupNavigationMsg("backlog")
-		if !ok {
-			t.Fatalf("expected navigation push for backlog start-view")
+func TestResolveStartupNavigationPreservesLegacyRouteMeaning(t *testing.T) {
+	tests := []struct {
+		legacy string
+		check  func(*testing.T, startupNavigationPlan)
+	}{
+		{
+			legacy: "backlog",
+			check: func(t *testing.T, plan startupNavigationPlan) {
+				if got := plan.Route.Params().(PlannerParams).Tab; got != PlannerBacklog {
+					t.Fatalf("Planner tab = %v, want Backlog", got)
+				}
+				msg := plan.Message.(ShowFocusBoardMsg)
+				if !msg.SetTab || msg.Tab != boardTabBacklog {
+					t.Fatalf("Backlog message = %+v", msg)
+				}
+			},
+		},
+		{
+			legacy: "priority",
+			check: func(t *testing.T, plan startupNavigationPlan) {
+				params := plan.Route.Params().(TaskWorkspaceParams)
+				if params.Focus != WorkspaceActive || params.Layout != WorkspaceList {
+					t.Fatalf("priority route params = %+v", params)
+				}
+				msg := plan.Message.(ShowAllTasksMsg)
+				if !msg.SetSort || msg.Sort != SortByPriority {
+					t.Fatalf("priority message = %+v", msg)
+				}
+			},
+		},
+		{
+			legacy: "due-dates",
+			check: func(t *testing.T, plan startupNavigationPlan) {
+				msg := plan.Message.(ShowAllTasksMsg)
+				if !msg.SetGroup || msg.Group != ATGroupByDueDate {
+					t.Fatalf("due-date message = %+v", msg)
+				}
+			},
+		},
+		{
+			legacy: "daily-review",
+			check: func(t *testing.T, plan startupNavigationPlan) {
+				if got := plan.Route.Params().(ReviewParams).Module; got != ReviewDaily {
+					t.Fatalf("review module = %v, want Daily", got)
+				}
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.legacy, func(t *testing.T) {
+			machine := &config.MachineState{StartView: tc.legacy}
+			if _, err := machine.MigrateTUIState(); err != nil {
+				t.Fatalf("MigrateTUIState: %v", err)
+			}
+			plan, ok := resolveStartupNavigation(machine, "")
+			if !ok {
+				t.Fatal("migrated startup did not navigate")
+			}
+			tc.check(t, plan)
+		})
+	}
+}
+
+func TestResolveStartupProjectRequiresValidProject(t *testing.T) {
+	machine := config.NewMachineState()
+	machine.SetStartView(config.StartViewProject)
+
+	missing, ok := resolveStartupNavigation(machine, "")
+	if !ok {
+		t.Fatal("missing project should open picker")
+	}
+	if missing.HasRoute {
+		t.Fatal("missing project synthesized an invalid project route")
+	}
+	if _, messageOK := missing.Message.(ShowProjectPickerMsg); !messageOK {
+		t.Fatalf("missing-project message = %T, want ShowProjectPickerMsg", missing.Message)
+	}
+
+	valid, ok := resolveStartupNavigation(machine, "project-1")
+	if !ok || !valid.HasRoute {
+		t.Fatal("valid project did not resolve a route")
+	}
+	params := valid.Route.Params().(TaskWorkspaceParams)
+	if params.Scope.Kind != ScopeProject || params.Scope.ProjectID != "project-1" {
+		t.Fatalf("project startup scope = %+v", params.Scope)
+	}
+}
+
+func TestNewAppModelProjectStartupRestoresValidProjectOrOpensPicker(t *testing.T) {
+	project := &models.Project{ID: "project-1", Slug: "project-1", Name: "Project 1", Path: t.TempDir()}
+
+	t.Run("valid project", func(t *testing.T) {
+		runtime := newTestConfig()
+		setTestProjects(runtime, []*models.Project{project})
+		runtime.Machine().CurrentProject = project.ID
+		runtime.Machine().SetStartView(config.StartViewProject)
+		app, err := NewAppModel(runtime, &config.Manager{}, WithPersister(NewMockPersister()))
+		if err != nil {
+			t.Fatalf("NewAppModel: %v", err)
 		}
-		fbMsg, isFB := msg.(ShowFocusBoardMsg)
-		if !isFB {
-			t.Fatalf("expected ShowFocusBoardMsg, got %T", msg)
+		if app.currentProject == nil || app.currentProject.ID != project.ID {
+			t.Fatalf("restored project = %+v", app.currentProject)
 		}
-		if !fbMsg.SetTab || fbMsg.Tab != boardTabBacklog {
-			t.Fatalf("expected Planner Backlog tab, got %+v", fbMsg)
+		if _, ok := app.startupMessage.(NavigateToViewMsg); !ok {
+			t.Fatalf("startup message = %T, want project navigation", app.startupMessage)
 		}
-		// Applying the message to a constructed Planner lands it on Backlog
-		// regardless of Daily Plan contents (initialTabSet suppresses the
-		// empty-plan → Next auto-default).
-		fb := newTestFocusBoard()
-		if fbMsg.SetTab {
-			fb.tabs.Active = fbMsg.Tab
-			fb.initialTabSet = true
-		}
-		if fb.tabs.Active != boardTabBacklog {
-			t.Errorf("constructed Planner active tab = %d, want boardTabBacklog (%d)", fb.tabs.Active, boardTabBacklog)
-		}
-		if !fb.initialTabSet {
-			t.Errorf("constructed Planner did not mark initialTabSet; auto-default may override Backlog")
+		_, _ = app.Update(app.startupMessage)
+		params := app.navigation.Primary.Current().Params().(TaskWorkspaceParams)
+		if params.Scope.ProjectID != project.ID {
+			t.Fatalf("startup route project = %q, want %q", params.Scope.ProjectID, project.ID)
 		}
 	})
 
-	t.Run("due-dates opens All Tasks grouped by due date", func(t *testing.T) {
-		msg, ok := startupNavigationMsg("due-dates")
-		if !ok {
-			t.Fatalf("expected navigation push for due-dates start-view")
+	t.Run("missing project", func(t *testing.T) {
+		runtime := newTestConfig()
+		runtime.Machine().CurrentProject = "missing"
+		runtime.Machine().SetStartView(config.StartViewProject)
+		app, err := NewAppModel(runtime, &config.Manager{}, WithPersister(NewMockPersister()))
+		if err != nil {
+			t.Fatalf("NewAppModel: %v", err)
 		}
-		atMsg, isAT := msg.(ShowAllTasksMsg)
-		if !isAT {
-			t.Fatalf("expected ShowAllTasksMsg, got %T", msg)
+		if app.currentProject != nil {
+			t.Fatalf("missing current project restored as %+v", app.currentProject)
 		}
-		if !atMsg.SetGroup || atMsg.Group != ATGroupByDueDate {
-			t.Fatalf("expected All Tasks grouped by due date, got %+v", atMsg)
-		}
-		// The constructed model must open grouped by due date with the
-		// Active-tab auto-default suppressed (initialTabSet), mirroring the
-		// handler's WithInitialGrouping construction.
-		atv := NewAllTasksViewModel(newTestConfig(), &config.Manager{}, WithInitialGrouping(atMsg.Group))
-		if atv.groupBy != ATGroupByDueDate {
-			t.Errorf("constructed All Tasks groupBy = %v, want ATGroupByDueDate", atv.groupBy)
-		}
-		if !atv.initialTabSet {
-			t.Errorf("constructed All Tasks did not mark initialTabSet; Active-tab auto-default may override the grouping")
-		}
-	})
-
-	t.Run("dashboard start-view issues no push", func(t *testing.T) {
-		if _, ok := startupNavigationMsg("dashboard"); ok {
-			t.Fatalf("dashboard start-view should not push a startup navigation message")
-		}
-	})
-
-	t.Run("plain views route through NavigateToViewMsg", func(t *testing.T) {
-		msg, ok := startupNavigationMsg("all-tasks")
-		if !ok {
-			t.Fatalf("expected navigation push for all-tasks start-view")
-		}
-		nav, isNav := msg.(NavigateToViewMsg)
-		if !isNav {
-			t.Fatalf("expected NavigateToViewMsg for a plain view, got %T", msg)
-		}
-		if nav.ViewType != ViewAllTasks {
-			t.Errorf("NavigateToViewMsg.ViewType = %v, want ViewAllTasks", nav.ViewType)
+		if _, ok := app.startupMessage.(ShowProjectPickerMsg); !ok {
+			t.Fatalf("startup message = %T, want ShowProjectPickerMsg", app.startupMessage)
 		}
 	})
 }
 
-// TestDefaultStartViewCursor_MatchesConfigDefault locks the settings
-// selector to whatever config.DefaultStartView resolves to, so the Ctrl+D
-// reset and the unset-cursor fallback both point at the same option the
-// engine treats as the implicit default.
-func TestDefaultStartViewCursor_MatchesConfigDefault(t *testing.T) {
-	if defaultStartViewCursor < 0 || defaultStartViewCursor >= len(startViewValues) {
-		t.Fatalf("defaultStartViewCursor=%d is out of bounds for startViewValues (len=%d)", defaultStartViewCursor, len(startViewValues))
+func TestSettingsStartViewChoicesMatchConfigDefault(t *testing.T) {
+	want := []string{
+		config.StartViewHome,
+		config.StartViewPlanner,
+		config.StartViewTasks,
+		config.StartViewProject,
+		config.StartViewReview,
+		config.StartViewManage,
+	}
+	if len(startViewValues) != len(want) {
+		t.Fatalf("start-view choices = %v, want %v", startViewValues, want)
+	}
+	for i := range want {
+		if startViewValues[i] != want[i] {
+			t.Fatalf("startViewValues[%d] = %q, want %q", i, startViewValues[i], want[i])
+		}
 	}
 	if got := startViewValues[defaultStartViewCursor]; got != config.DefaultStartView {
-		t.Errorf("defaultStartViewCursor points at %q, expected %q", got, config.DefaultStartView)
+		t.Fatalf("default cursor points at %q, want %q", got, config.DefaultStartView)
 	}
 }

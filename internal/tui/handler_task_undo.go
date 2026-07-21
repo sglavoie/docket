@@ -39,6 +39,7 @@ func (m *AppModel) handleRedoPerformed(msg RedoPerformedMsg) (bool, tea.Cmd) {
 func (m *AppModel) handleUndoRedoPerformed(statusMsg string) (bool, tea.Cmd) {
 	m.clearToggleHistory()
 	m.setSuccessStatus(statusMsg)
+	m.refreshLoadedTaskWorkspace()
 	cmds := m.refreshTaskViewsAfterSave()
 	cmds = append(cmds, defaultStatusTimeout())
 	return true, tea.Batch(cmds...)
@@ -125,6 +126,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 		return errorCmd("%s", err)
 	}
 	m.rebuildPlanningFromRuntime()
+	m.refreshLoadedTaskWorkspace()
 	m.clearToggleHistory()
 	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
 	cmds := m.refreshTaskViewsAfterSave()

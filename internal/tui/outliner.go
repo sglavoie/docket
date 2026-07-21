@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"maps"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -162,22 +161,6 @@ func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
-	// Load column toggles from machine-local layout state.
-	machine := runtime.Machine()
-	var outlinerToggles map[string]bool
-	var outlinerPriorityMode string
-	if project != nil {
-		if vs, ok := machine.ProjectViewStates[project.ID]; ok {
-			outlinerToggles = vs.OutlinerColumnToggles
-			outlinerPriorityMode = vs.OutlinerPriorityMode
-		}
-	} else {
-		outlinerToggles = machine.CrossOutlinerColumnToggles
-	}
-	if outlinerPriorityMode == "" {
-		outlinerPriorityMode = machine.OutlinerPriorityMode
-	}
-
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfgManager, runtime),
 		project:           project,
@@ -191,60 +174,11 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
-		columnConfig:      NewColumnConfig(outlinerToggles, machine.OutlinerDefaultColumns, DefaultOutlinerColumns, outlinerPriorityMode),
+		columnConfig:      NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
 	}
-	// Seed default collapsed sections from machine-local layout state.
-	maps.Copy(m.collapsedSections, machine.GetOutlinerCollapsedSections())
 	m.InitSearchInput("Search tasks...", 100, 30)
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	// Restore sidebar and filter bar state from machine-local layout state.
-	if project != nil {
-		if state, exists := machine.GetProjectViewState(project.ID); exists {
-			m.sidebar.SetEnabled(state.SidebarEnabled)
-			m.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
-		}
-	} else {
-		// Cross-project outliner: use global setting (nil = true)
-		if machine.CrossOutlinerSidebarEnabled != nil {
-			m.sidebar.SetEnabled(*machine.CrossOutlinerSidebarEnabled)
-		}
-		// Restore persisted collapsed sections for cross-project outliner
-		if len(machine.CrossOutlinerCollapsedSections) > 0 {
-			maps.Copy(m.collapsedSections, machine.CrossOutlinerCollapsedSections)
-		}
-		// Restore persisted per-task fold state for cross-project outliner
-		for id := range machine.CrossOutlinerFoldState {
-			m.expandedNodes[id] = false
-		}
-		m.filter.Type = models.TaskType(machine.CrossOutlinerFilterType)
-		m.filter.Status = models.TaskStatus(machine.CrossOutlinerFilterStatus)
-		m.filter.Priority = machine.CrossOutlinerFilterPriority
-		m.filter.DueDate = DueDateFilter(machine.CrossOutlinerFilterDueDate)
-		m.filter.Actionable = machine.CrossOutlinerFilterActionable
-		m.filter.HideDimmed = machine.CrossOutlinerFilterHideDimmed
-		m.filter.GitHubIssue = machine.CrossOutlinerFilterGitHubIssue
-		m.filter.Parked = machine.CrossOutlinerFilterParked
-		m.filter.ScoreMin = machine.CrossOutlinerFilterScoreMin
-		m.sort.Field = SortField(machine.CrossOutlinerSortField)
-		m.sort.Ascending = machine.CrossOutlinerSortAscending
-		m.filterBar.SetEnabled(machine.CrossOutlinerFilterBarEnabled)
-		if len(machine.CrossOutlinerFilterTags) > 0 {
-			m.filter.Tags = make(map[string]bool, len(machine.CrossOutlinerFilterTags))
-			for _, tag := range machine.CrossOutlinerFilterTags {
-				m.filter.Tags[tag] = true
-			}
-		}
-		if len(machine.CrossOutlinerFilterSections) > 0 {
-			m.filter.Sections = make(map[string]bool, len(machine.CrossOutlinerFilterSections))
-			for _, section := range machine.CrossOutlinerFilterSections {
-				m.filter.Sections[section] = true
-			}
-		}
-		if len(machine.CrossOutlinerFilterAttrs) > 0 {
-			m.filter.Attrs = maps.Clone(machine.CrossOutlinerFilterAttrs)
-		}
-	}
 	return m
 }
 

@@ -275,26 +275,3 @@ func TestCloseInboxProcessorMsgUsesPersister(t *testing.T) {
 		t.Errorf("Expected 1 Load call, got %d", len(mockPersister.LoadCalls))
 	}
 }
-
-func TestCycleProjectUsesPersister(t *testing.T) {
-	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
-
-	// Add project to cycle
-	project2 := testutil.NewTestProjectWithTasks("Project 2")
-	mockPersister.Projects[project2.ID] = project2
-	addTestAppProject(app, project2)
-	app.runtime.Machine().CycleProjects = []string{project.ID, project2.ID}
-	syncTestRuntime(app)
-
-	// Cycle forward
-	handled, _ := app.handleCycleProject(true)
-
-	if !handled {
-		t.Error("CycleProjectMsg should be handled")
-	}
-
-	// Verify persister.Load was called for the next project
-	if len(mockPersister.LoadCalls) != 1 {
-		t.Errorf("Expected 1 Load call, got %d", len(mockPersister.LoadCalls))
-	}
-}

@@ -99,15 +99,16 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		}, undoAction+": "+updated.Title, false)
 
 	case ShowNotesMsg:
-		if msg.Project != nil {
-			m.showView(ViewNotes, NewNotesViewModelWithService(msg.Project, m.appService, m.deps.historyLedger(), m.runtime.Machine()))
+		if msg.Project == nil {
+			return true, m.activateManageProjectPicker(ManageNotes)
 		}
-		return true, nil
+		return true, m.activateManageHub(ManageParams{
+			Module: ManageNotes,
+			Scope:  ProjectEntityScope(msg.Project.ID),
+		})
 
 	case ShowGlobalNotesMsg:
-		dir := storage.GlobalNotesDir(m.runtime.DataDir())
-		m.showView(ViewGlobalNotes, NewGlobalNotesViewModelWithService(dir, m.appService, m.deps.historyLedger(), m.runtime.Machine()))
-		return true, nil
+		return true, m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
 
 	case ShowGlobalNoteCreatorMsg:
 		return m.handleCreateGlobalNote()

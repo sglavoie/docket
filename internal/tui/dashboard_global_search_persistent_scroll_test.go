@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
@@ -26,11 +25,9 @@ func makeDashboardScrollProjects(count int) []*models.Project {
 
 func newDashboardShortcutTestModel(projectCount int) *DashboardModel {
 	cfg := newTestConfig()
-	cfg.Machine().SetInfoPanelMode(config.InfoPanelOff)
 	m := &DashboardModel{
-		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
-		projects:              makeDashboardScrollProjects(projectCount),
-		dashboardCompactCards: true,
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
+		projects: makeDashboardScrollProjects(projectCount),
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.SetSize(100, 12)
@@ -50,7 +47,7 @@ func updateDashboardKey(t *testing.T, m *DashboardModel, key tea.KeyPressMsg) *D
 
 func TestDashboardCtrlDUHalfPageNavigation(t *testing.T) {
 	m := newDashboardShortcutTestModel(20)
-	halfPage := HalfPage(m.projectListPageSize())
+	halfPage := HalfPage(m.homePageSize())
 
 	m = updateDashboardKey(t, m, syntheticCtrlKey('d'))
 	if m.cursor != halfPage {
@@ -63,41 +60,14 @@ func TestDashboardCtrlDUHalfPageNavigation(t *testing.T) {
 	}
 }
 
-func TestDashboardCtrlBFPageNavigationAndClamp(t *testing.T) {
-	m := newDashboardShortcutTestModel(20)
-	pageSize := m.projectListPageSize()
-
-	m = updateDashboardKey(t, m, syntheticCtrlKey('f'))
-	if m.cursor != pageSize {
-		t.Fatalf("ctrl+f cursor = %d, want %d", m.cursor, pageSize)
-	}
-
-	m = updateDashboardKey(t, m, syntheticCtrlKey('b'))
-	if m.cursor != 0 {
-		t.Fatalf("ctrl+b cursor = %d, want 0", m.cursor)
-	}
-
-	m.cursor = len(m.projects) - 2
-	m = updateDashboardKey(t, m, syntheticCtrlKey('f'))
-	if want := len(m.projects) - 1; m.cursor != want {
-		t.Fatalf("ctrl+f at end cursor = %d, want %d", m.cursor, want)
-	}
-
-	m.cursor = 1
-	m = updateDashboardKey(t, m, syntheticCtrlKey('b'))
-	if m.cursor != 0 {
-		t.Fatalf("ctrl+b near start cursor = %d, want 0", m.cursor)
-	}
-}
-
 func TestDashboardCtrlNavigationDoesNotBypassSearchMode(t *testing.T) {
 	m := newDashboardShortcutTestModel(20)
 	m.cursor = 5
 	_ = m.ActivateSearch()
 
-	m = updateDashboardKey(t, m, syntheticCtrlKey('f'))
+	m = updateDashboardKey(t, m, syntheticCtrlKey('d'))
 	if m.cursor != 5 {
-		t.Fatalf("ctrl+f in search mode cursor = %d, want 5", m.cursor)
+		t.Fatalf("ctrl+d in search mode cursor = %d, want 5", m.cursor)
 	}
 }
 
@@ -135,61 +105,5 @@ func TestDashboardProjectListFilterShrinkClampsScrollOffset(t *testing.T) {
 	want := max(len(projects)-maxVisible, 0)
 	if m.viewScrollOffset != want {
 		t.Fatalf("shrunken dashboard list offset = %d, want %d", m.viewScrollOffset, want)
-	}
-}
-
-func makeGlobalSearchScrollResults(count int) []filteredSearchResult {
-	project := &models.Project{Slug: "project"}
-	results := make([]filteredSearchResult, 0, count)
-	for i := range count {
-		task := &models.Task{
-			ID:            fmt.Sprintf("task-%02d", i),
-			ShortID:       i + 1,
-			Title:         fmt.Sprintf("Task %02d", i),
-			Type:          models.TaskTypeTask,
-			WorkflowState: models.StateReady,
-		}
-		results = append(results, filteredSearchResult{
-			result: models.SearchResult{Task: task, Project: project},
-		})
-	}
-	return results
-}
-
-func TestGlobalSearchPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
-	m := &GlobalSearchModel{
-		runtime:   newTestConfig(),
-		filtered:  makeGlobalSearchScrollResults(8),
-		listWidth: 80,
-	}
-
-	m.cursor = 5
-	_ = m.renderTaskList(3)
-	start := m.scrollOffset
-	if start == 0 {
-		t.Fatalf("expected global search result list to scroll down, offset stayed at 0")
-	}
-
-	m.cursor = 4
-	_ = m.renderTaskList(3)
-	if m.scrollOffset != start {
-		t.Fatalf("moving up inside viewport changed first rendered row: offset=%d want %d", m.scrollOffset, start)
-	}
-}
-
-func TestGlobalSearchResultShrinkClampsScrollOffset(t *testing.T) {
-	m := &GlobalSearchModel{
-		runtime:      newTestConfig(),
-		filtered:     makeGlobalSearchScrollResults(5),
-		listWidth:    80,
-		cursor:       4,
-		scrollOffset: 99,
-	}
-
-	_ = m.renderTaskList(3)
-
-	const want = 2
-	if m.scrollOffset != want {
-		t.Fatalf("shrunken global search result offset = %d, want %d", m.scrollOffset, want)
 	}
 }

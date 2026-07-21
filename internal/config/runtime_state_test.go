@@ -35,8 +35,8 @@ func TestRuntimeState_ReloadSanitizesRetiredSetActiveActions(t *testing.T) {
 	}
 	planning := seed.Planning()
 	planning.AddToFocusQueue("already-queued", "project-1")
-	if err := seed.CommitPlanning(planning); err != nil {
-		t.Fatalf("CommitPlanning: %v", err)
+	if commitErr := seed.CommitPlanning(planning); commitErr != nil {
+		t.Fatalf("CommitPlanning: %v", commitErr)
 	}
 
 	automation := NewAutomationConfig()
@@ -63,8 +63,8 @@ func TestRuntimeState_ReloadSanitizesRetiredSetActiveActions(t *testing.T) {
 			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPinned, Value: "true"}},
 		},
 	}
-	if err := manager.CommitAutomation(automation); err != nil {
-		t.Fatalf("CommitAutomation: %v", err)
+	if commitErr := manager.CommitAutomation(automation); commitErr != nil {
+		t.Fatalf("CommitAutomation: %v", commitErr)
 	}
 
 	rs, err := manager.LoadRuntimeState()
@@ -87,8 +87,8 @@ func TestRuntimeState_ReloadSanitizesRetiredSetActiveActions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read sanitized automation: %v", err)
 	}
-	if err := rs.Reload(); err != nil {
-		t.Fatalf("idempotent Reload: %v", err)
+	if reloadErr := rs.Reload(); reloadErr != nil {
+		t.Fatalf("idempotent Reload: %v", reloadErr)
 	}
 	second, err := os.ReadFile(automationPath)
 	if err != nil {

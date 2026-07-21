@@ -6,46 +6,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// This file proves the focus/review standard-task-keymap views (Focus View,
-// Focus Board, Project Focus, Weekly Review) route their non-overridden standard
+// This file proves the remaining focus/review standard-task-keymap views route their non-overridden standard
 // keymap actions through the coordinator-backed workflow transaction path
 // (TaskKeymapDeps.View -> wf* -> TaskItemCoordinator -> app.Service). Each test
 // drives an action that the view does NOT override, so it exercises the shared
 // adapter's default (batch) path, and asserts the change is durable on disk and
 // reverts through the workspace undo ledger.
-
-// TestFocusBoardStandardKeymapCommitsWorkflowAndUndoes drives Focus Board's
-// non-overridden priority-change default through the workflow path. Focus
-// Board's post-commit advance/reload rides the same BatchTransactionResultMsg
-// the shell handles via refreshTaskViewsAfterSave, so a committed batch message
-// is what keeps that behavior intact after the migration.
-func TestFocusBoardStandardKeymapCommitsWorkflowAndUndoes(t *testing.T) {
-	task := seedTask(t, 1, "Focus board task", models.StateReady)
-	env, features := newSecondaryEnv(t, "focusboardwf", task)
-
-	cfg := newTestConfig()
-	m := &FocusBoardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg)}
-	m.taskItem = features.TaskItem
-	m.filtered = []boardRow{{Task: task, Project: env.project}}
-	m.cursor = 0
-
-	deps := m.focusBoardTaskKeymapDeps()
-
-	// Priority 1 differs from the default (3), so the change commits (an
-	// unchanged priority is a deliberate no-op in wfChangePriority).
-	_, cmd := buildPriorityChangeAction(deps)("1")()
-	msg := runBatchResult(t, cmd)
-	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
-		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
-	}
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Priority != 1 {
-		t.Fatalf("reloaded Priority = %v, want 1", got)
-	}
-	env.undo(t)
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Priority != 3 {
-		t.Fatalf("undo Priority = %v, want 3", got)
-	}
-}
 
 // TestProjectFocusStandardKeymapCommitsWorkflowAndUndoes drives Project Focus's
 // non-overridden status-change (mark-done) default through the workflow path.

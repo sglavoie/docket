@@ -120,8 +120,10 @@ every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 ```
 
 `<workspace-id>` is the canonical UUID stored in synced `workspace.json`. The
-file contains editors, integration choices, current navigation, histories, and
-layout state. A workspace with a different ID never shares this state. On first
+file contains editors, integration choices, the startup route, current project
+selection, custom contexts, and bounded recent task/palette items. Renderer
+layout, filters, cursors, folds, and composer expansion are session-owned and
+are not serialized. A workspace with a different ID never shares this state. On first
 startup after upgrading from the former layout, `tt` checks the machine file
 keyed by the current data-directory path, then the historical
 `~/.tt/machine.json`; it imports only an empty-ID or catalog-matching envelope,
@@ -145,9 +147,19 @@ prompt and never bypasses process locks, commit locks, or snapshot validation.
 After copying and validating the portable workspace, the move binds and migrates
 machine state while the source path is still known, rechecks source and destination,
 then switches the machine-local active-workspace pointer as the final commit. The
-source remains as a backup. Because the catalog ID is preserved, navigation, history,
-and layout remain available at the destination on the same machine. A true copy that
-is assigned a new workspace ID receives a separate default machine-state namespace.
+source remains as a backup. Because the catalog ID is preserved, supported
+machine preferences remain available at the destination on the same machine. A
+true copy assigned a new workspace ID receives a separate default machine-state
+namespace.
+
+## TUI navigation architecture
+
+The TUI has exactly seven typed routes: Home, Planner, Task Workspace, Review,
+Manage, Task Detail, and Reference. `Ctrl+G` exposes six destinations because
+Task Detail and Reference are child/overlay flows; Tasks and Project both use
+Task Workspace with application and project scopes respectively. Layouts and
+focuses are route parameters or in-route View menu modes rather than extra
+routes. Esc unwinds the active overlay or module, while Ctrl+Esc resets Home.
 
 ## Transactions, recovery, and undo
 

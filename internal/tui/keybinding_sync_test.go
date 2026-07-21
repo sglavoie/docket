@@ -46,9 +46,7 @@ func session4SyncViews() []syncTestCase {
 
 // session6SyncViews returns the pipeline hub view introduced in session 6.
 func session6SyncViews() []syncTestCase {
-	return []syncTestCase{
-		{ViewPipelineHub, &PipelineHubModel{}},
-	}
+	return []syncTestCase{}
 }
 
 // session8SyncViews returns the capture views introduced in session 8 (clipboard paste).
@@ -83,9 +81,9 @@ func captureParitySyncViews() []syncTestCase {
 	}
 }
 
-// syncTestCase pairs a ViewType with a KeySyncView implementation.
+// syncTestCase pairs a PresentationID with a KeySyncView implementation.
 type syncTestCase struct {
-	view    ViewType
+	view    PresentationID
 	handler KeySyncView
 }
 
@@ -113,7 +111,6 @@ func session1SyncViews() []syncTestCase {
 		{ViewBulkEdit, &BulkEditModel{}},
 		{ViewBlockers, &BlockersModel{}},
 		{ViewMetricsDashboard, &MetricsDashboardModel{}},
-		{ViewKeybindingExplorer, &HelpViewModel{isExplorer: true}},
 	}
 }
 
@@ -147,10 +144,10 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 	}
 }
 
-// TestViewTypeString verifies that ViewType.String() returns meaningful names
+// TestPresentationIDString verifies that PresentationID.String() returns meaningful names
 // for all views tested across sessions 1 and 2.
-func TestViewTypeString(t *testing.T) {
-	cases := map[ViewType]string{
+func TestPresentationIDString(t *testing.T) {
+	cases := map[PresentationID]string{
 		// Session 1
 		ViewDashboard:           "Dashboard",
 		ViewTaskChecklist:       "TaskChecklist",
@@ -179,7 +176,7 @@ func TestViewTypeString(t *testing.T) {
 		ViewDailyReview:           "DailyReview",
 		ViewWeeklyReview:          "WeeklyReview",
 		ViewPriorityView:          "PriorityView",
-		ViewFocusBoard:            "Today",
+		ViewFocusBoard:            "Planner",
 		ViewAllTasks:              "AllTasks",
 		ViewProjectFocusView:      "ProjectFocusView",
 		ViewRecentActivity:        "RecentActivity",
@@ -192,7 +189,6 @@ func TestViewTypeString(t *testing.T) {
 		ViewCrossProjectKanban: "CrossProjectKanban",
 		ViewTaskDetail:         "TaskDetail",
 		// Session 6
-		ViewPipelineHub: "PipelineHub",
 		// Session 8
 		ViewQuickCapture: "QuickCapture",
 		ViewTaskForm:     "TaskForm",
@@ -205,7 +201,7 @@ func TestViewTypeString(t *testing.T) {
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {
-			t.Errorf("ViewType(%d).String() = %q, want %q", int(v), got, want)
+			t.Errorf("PresentationID(%d).String() = %q, want %q", int(v), got, want)
 		}
 	}
 }

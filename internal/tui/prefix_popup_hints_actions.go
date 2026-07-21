@@ -145,41 +145,6 @@ var (
 		{Key: "D", Description: "delete", Detail: "Delete task", Danger: true},
 	}
 
-	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.
-	SemicolonPrefixHints = []PrefixHint{
-		{Key: ";", Description: "pipeline hub", Detail: "Overview of all pipeline stages", Group: ""},
-		{Key: "!", Description: "priority", Detail: "Change task priority globally", Group: "Support"},
-		{Key: ",", Description: "status update", Detail: "Change task status globally", Group: "Support"},
-		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects", Group: "Triage"},
-		{Key: "c", Description: "linked task", Detail: "Create or link a related task", Group: "Support"},
-		{Key: "d", Description: "daily review", Detail: "Open Daily Review", Group: "Plan"},
-		{Key: "w", Description: "Planner Today", Detail: "Today cockpit for daily execution", Group: "Work"},
-		{Key: "i", Description: "quick capture", Detail: "Full-width task capture view", Group: "Capture"},
-		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks", Group: "Review"},
-		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput", Group: "Review"},
-		{Key: "n", Description: "notifications", Detail: "Open Notification Center", Group: "Support"},
-		{Key: "k", Description: "kanban", Detail: "Cross-project kanban", Group: "Triage"},
-		{Key: "o", Description: "outliner", Detail: "Cross-project outliner", Group: "Triage"},
-		{Key: "q", Description: "Planner Next", Detail: "On-deck shortlist (StateNext)", Group: "Plan"},
-		{Key: "t", Description: "task...", Detail: "Task actions", Group: "Support"},
-		{Key: "r", Description: "weekly review", Detail: "Open Weekly Review", Group: "Review"},
-		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects", Group: "Support"},
-		{Key: "D", Description: "All Tasks by Due Date", Detail: "All tasks grouped by due date", Group: "Plan"},
-		{Key: "I", Description: "bulk capture", Detail: "Bulk task capture in a project", Group: "Capture"},
-		{Key: "N", Description: "global notes", Detail: "Open global notes", Group: "Support"},
-		{Key: "R", Description: "roadmap", Detail: "Gantt chart and critical path", Group: "Review"},
-		{Key: "W", Description: "workflow rules", Detail: "Manage workflow automation rules", Group: "Support"},
-		{Key: "{", Description: "note create", Detail: "Create note in a project", Group: "Support"},
-	}
-
-	// SemicolonTPrefixHints contains hints for the ";t" (task actions) sub-prefix.
-	SemicolonTPrefixHints = []PrefixHint{
-		{Key: "d", Description: "due date", Detail: "Set task due date globally"},
-		{Key: "m", Description: "move", Detail: "Move task to another project"},
-		{Key: "s", Description: "section", Detail: "Change task section globally"},
-		{Key: "N", Description: "template", Detail: "Create task from template"},
-	}
-
 	// BlockerPrefixHints contains hints for the "b" (blocker/dependency) prefix.
 	BlockerPrefixHints = []PrefixHint{
 		{Key: "b", Description: "view", Detail: "View blockers/dependencies"},

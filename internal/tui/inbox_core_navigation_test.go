@@ -46,7 +46,7 @@ func (s *stubInboxBackend) headerSubtitleExtra() string        { return "" }
 func (s *stubInboxBackend) emptyStateText() string             { return "" }
 func (s *stubInboxBackend) emptyInboxText() string             { return "" }
 func (s *stubInboxBackend) returnHint() string                 { return "" }
-func (s *stubInboxBackend) viewType() ViewType                 { return ViewInboxProcessor }
+func (s *stubInboxBackend) viewType() PresentationID           { return ViewInboxProcessor }
 func (s *stubInboxBackend) helpViewName() string               { return "" }
 
 // newTestInboxCore builds an inboxCore wired to the given stub, ready for

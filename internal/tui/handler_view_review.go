@@ -13,24 +13,20 @@ import (
 // handleViewReviewMessages handles overview, review, focus, and activity views.
 func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
+	case ShowReviewHubMsg:
+		return true, m.activateReviewHub(msg.Module, msg.Project)
+
+	case ReviewHubModuleSelectedMsg:
+		return true, m.activateReviewHub(msg.Module, msg.Project)
+
 	case ShowMetricsDashboardMsg:
-		if msg.Project != nil {
-			m.metricsDashboard = NewMetricsDashboardModelForProject(m.configManager, msg.Project)
-		} else {
-			m.metricsDashboard = NewMetricsDashboardModel(m.configManager)
-		}
-		m.showView(ViewMetricsDashboard, m.metricsDashboard)
-		return true, nil
+		return true, m.activateReviewHub(ReviewMetrics, msg.Project)
 
 	case MetricsDashboardSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowDailyReviewMsg:
-		dr := NewDailyReviewModel(m.runtime, m.configManager)
-		dr.queueIDs = m.focusQueueIDs
-		dr.dailyPlanIDs = m.dailyPlanIDs
-		m.showView(ViewDailyReview, dr)
-		return true, nil
+		return true, m.activateReviewHub(ReviewDaily, nil)
 
 	case MarkDailyReviewDoneMsg:
 		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
@@ -39,7 +35,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			logging.Warn("failed to save daily review completion: %v", err)
 		}
 		m.reevaluateAlerts()
-		m.setSuccessStatus("Review complete! Next: start working (;w)")
+		m.setSuccessStatus("Review complete! Next: open Planner Today")
 		return true, nil
 
 	case MarkWeeklyReviewDoneMsg:
@@ -73,11 +69,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowWeeklyReviewMsg:
-		wr := NewWeeklyReviewModel(m.runtime, m.configManager)
-		wr.queueIDs = m.focusQueueIDs
-		wr.dailyPlanIDs = m.dailyPlanIDs
-		m.showView(ViewWeeklyReview, wr)
-		return true, nil
+		return true, m.activateReviewHub(ReviewWeekly, nil)
 
 	case WeeklyReviewSelectProjectMsg:
 		m.popView()
@@ -93,9 +85,41 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowAllTasksMsg:
+		if m.typedNavigation && m.taskWorkspaceView != nil {
+			if msg.SetGroup {
+				_ = m.taskWorkspace.State.SetGrouping(workspaceGroupingFromAllTasks(msg.Group))
+			}
+			if msg.SetSort {
+				_ = m.taskWorkspace.State.SetSorting(SortState{Field: msg.Sort, Ascending: true})
+			}
+			var opts []AllTasksOption
+			if msg.SetGroup {
+				opts = append(opts, WithInitialGrouping(msg.Group))
+			}
+			if msg.SetSort {
+				opts = append(opts, WithInitialSort(msg.Sort, true))
+			}
+			m.allTasksView = NewAllTasksViewModel(m.runtime, m.configManager, opts...)
+			m.allTasksView.bulk = m.secondaryFeatures.Bulk
+			m.allTasksView.queueIDs = m.focusQueueIDs
+			m.allTasksView.dailyPlanIDs = m.dailyPlanIDs
+			m.allTasksView.SetSize(m.width, m.height-2)
+			m.wireSecondaryCoordinators(m.allTasksView)
+			m.views.Register(ViewAllTasks, m.allTasksView)
+			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
+				Scope: AppEntityScope(), Layout: WorkspaceList, Focus: WorkspaceActive,
+			})
+			if err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			return true, m.activateTaskWorkspaceRoute(route)
+		}
 		var opts []AllTasksOption
 		if msg.SetGroup {
 			opts = append(opts, WithInitialGrouping(msg.Group))
+		}
+		if msg.SetSort {
+			opts = append(opts, WithInitialSort(msg.Sort, true))
 		}
 		atv := NewAllTasksViewModel(m.runtime, m.configManager, opts...)
 		atv.bulk = m.secondaryFeatures.Bulk
@@ -111,6 +135,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.reevaluateAlerts()
 		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
 		if msg.SetTab {
+			if _, valid := plannerTabFromBoard(msg.Tab); !valid {
+				msg.Tab = boardTabToday
+			}
 			fb.tabs.Active = msg.Tab
 			fb.initialTabSet = true
 			fb.applyFilter()
@@ -121,21 +148,16 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			m.dailyPlanCarriedShown = true
 		}
 		m.showView(ViewFocusBoard, fb)
-		return true, nil
-
-	case ShowPipelineHubMsg:
-		hub := NewPipelineHubModel(m.runtime, m.focusQueueIDs, m.dailyPlanIDs, m.contextualProject())
-		m.showView(ViewPipelineHub, hub)
-		return true, nil
-
-	case PipelineHubCaptureMsg:
-		m.popView()
-		if msg.Purpose == PickerPurposeQuickCapture {
-			return true, func() tea.Msg { return ShowQuickCaptureMsg{} }
+		if m.typedNavigation && m.navigation.Primary.Current().ID() == Planner {
+			tab, _ := plannerTabFromBoard(fb.tabs.Active)
+			route, err := NewRoute(Planner, PlannerParams{Tab: tab})
+			if err == nil {
+				route = withPresentation(route, ViewFocusBoard, "", "")
+				_ = m.navigation.Primary.ReplaceCurrentMode(route)
+				m.syncPresentationStack()
+			}
 		}
-		return true, func() tea.Msg {
-			return ShowGlobalProjectPickerMsg{Purpose: msg.Purpose}
-		}
+		return true, nil
 
 	case FocusBoardSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
@@ -147,18 +169,11 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowRecentActivityMsg:
-		ra := NewRecentActivityModel(m.runtime, m.configManager)
-		ra.queueIDs = m.focusQueueIDs
-		ra.dailyPlanIDs = m.dailyPlanIDs
-		m.showView(ViewRecentActivity, ra)
-		return true, nil
+		return true, m.activateReviewHub(ReviewActivity, nil)
 
 	case ShowProjectRecentActivityMsg:
 		if msg.Project != nil {
-			pra := NewProjectRecentActivityModel(m.runtime, m.configManager, msg.Project)
-			pra.queueIDs = m.focusQueueIDs
-			pra.dailyPlanIDs = m.dailyPlanIDs
-			m.showView(ViewProjectRecentActivity, pra)
+			return true, m.activateReviewHub(ReviewActivity, msg.Project)
 		}
 		return true, nil
 
@@ -172,24 +187,41 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowProjectFocusViewMsg:
 		if msg.Project != nil {
+			if m.typedNavigation && m.taskWorkspaceView != nil {
+				m.currentProject = msg.Project
+				_ = m.taskWorkspace.State.SetGrouping(WorkspaceGroupNone)
+				_ = m.taskWorkspace.State.SetSorting(NewSortState())
+				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
+					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceList, Focus: WorkspaceNext,
+				})
+				if err != nil {
+					return true, func() tea.Msg { return ErrorMsg{Err: err} }
+				}
+				return true, m.activateTaskWorkspaceRoute(route)
+			}
 			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project, m.runtime))
 		}
 		return true, nil
 
 	case ShowRoadmapMsg:
-		if msg.Project != nil {
-			m.roadmap = NewRoadmapModelForProject(m.runtime, msg.Project)
-		} else {
-			m.roadmap = NewRoadmapModel(m.runtime)
-		}
-		m.showView(ViewRoadmap, m.roadmap)
-		return true, nil
+		return true, m.activateReviewHub(ReviewRoadmap, msg.Project)
 
 	case RoadmapSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowKanbanMsg:
 		if msg.Project != nil {
+			if m.typedNavigation && m.taskWorkspaceView != nil {
+				m.currentProject = msg.Project
+				_ = m.taskWorkspace.State.SetBoardAxis(WorkspaceBoardByStatus)
+				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
+					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceBoard, Focus: WorkspaceActive,
+				})
+				if err != nil {
+					return true, func() tea.Msg { return ErrorMsg{Err: err} }
+				}
+				return true, m.activateTaskWorkspaceRoute(route)
+			}
 			kanban := NewKanbanModel(msg.Project, m.configManager, m.runtime, NewProjectService())
 			m.restoreKanbanState(kanban)
 			m.showView(ViewKanban, kanban)
@@ -197,6 +229,16 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowCrossProjectKanbanMsg:
+		if m.typedNavigation && m.taskWorkspaceView != nil {
+			_ = m.taskWorkspace.State.SetBoardAxis(WorkspaceBoardByStatus)
+			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
+				Scope: AppEntityScope(), Layout: WorkspaceBoard, Focus: WorkspaceActive,
+			})
+			if err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			return true, m.activateTaskWorkspaceRoute(route)
+		}
 		kanban := NewCrossProjectKanbanModel(m.configManager, m.runtime, NewProjectService())
 		m.restoreKanbanState(kanban)
 		m.showView(ViewCrossProjectKanban, kanban)
@@ -207,4 +249,21 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	}
 
 	return false, nil
+}
+
+func workspaceGroupingFromAllTasks(group AllTasksGroupBy) TaskWorkspaceGroupBy {
+	switch group {
+	case ATGroupByProject:
+		return WorkspaceGroupProject
+	case ATGroupByStatus:
+		return WorkspaceGroupStatus
+	case ATGroupByPriority:
+		return WorkspaceGroupPriority
+	case ATGroupBySection:
+		return WorkspaceGroupSection
+	case ATGroupByDueDate:
+		return WorkspaceGroupDueDate
+	default:
+		return WorkspaceGroupNone
+	}
 }

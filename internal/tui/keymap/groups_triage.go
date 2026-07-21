@@ -16,7 +16,7 @@ package keymap
 //     t (task ops, TaskPrefixGroup), c (linked task,
 //     LinkedTaskGroup), b (blocker, BlockerGroup).
 //
-// Primary triage actions never use chord modifiers (no ctrl+/alt+); the shared
+// Primary triage actions use direct keys; the shared
 // vocabulary keeps the grammar uniform so the footer, help, command palette,
 // and tutor content can describe one model.
 type TriagePrimaryDeps struct {

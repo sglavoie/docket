@@ -3,9 +3,9 @@
   "fixture": "fresh",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "assert": "view", "value": "Today" },
+    { "type": "assert", "assert": "view", "value": "Planner" },
     { "type": "assert", "assert": "contains", "value": "Setup 0/5" },
-    { "type": "assert", "assert": "contains", "value": "capture(a/i/;i)" },
+    { "type": "assert", "assert": "contains", "value": "capture(a)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

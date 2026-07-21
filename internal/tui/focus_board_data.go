@@ -29,7 +29,6 @@ func (m *FocusBoardModel) loadItems() {
 	m.rows = nil
 	m.allRows = nil
 	m.nextRows = nil
-	m.closedRows = nil
 	m.todayRows = nil
 	m.backlogRows = nil
 
@@ -51,13 +50,6 @@ func (m *FocusBoardModel) loadItems() {
 			// Today tab: include daily-planned tasks regardless of completion status
 			if m.dailyPlanIDs[task.ID] {
 				m.todayRows = append(m.todayRows, row)
-			}
-
-			// Collect closed tasks for the Done tab, honoring the
-			// "closed today" horizon so old terminal work does not
-			// accumulate indefinitely.
-			if terminalTaskClosedToday(task, today) {
-				m.closedRows = append(m.closedRows, row)
 			}
 
 			// Skip completed/snoozed for active tabs
@@ -112,13 +104,7 @@ func (m *FocusBoardModel) loadItems() {
 	m.applyFilter()
 	m.initBoardCaches()
 
-	if !m.initialTabSet {
-		m.initialTabSet = true
-		if len(m.dailyPlanIDs) == 0 {
-			m.tabs.Active = boardTabNext
-			m.applyFilter()
-		}
-	}
+	m.initialTabSet = true
 }
 
 // buildBacklogRows populates the Backlog tab: every actionable task
@@ -158,24 +144,6 @@ func (m *FocusBoardModel) buildBacklogRows(projects []*models.Project) {
 			Source:   sft.Project.Name,
 		})
 	}
-}
-
-// terminalTaskClosedToday reports whether a terminal task belongs in the
-// Planner Done tab, whose horizon is "closed today". A StateDone/StateCanceled
-// task qualifies only when its CompletedAt falls on the current local day
-// (today must already be truncated to the start of the day via util.StartOfDay).
-//
-// Legacy terminal tasks with a nil CompletedAt predate completion-timestamp
-// tracking; they are deliberately excluded so unknown-age closed work does not
-// accumulate indefinitely in the daily Done tab.
-func terminalTaskClosedToday(task *models.Task, today time.Time) bool {
-	if task == nil || !task.IsTerminalState() {
-		return false
-	}
-	if task.CompletedAt == nil {
-		return false
-	}
-	return util.StartOfDay(*task.CompletedAt).Equal(today)
 }
 
 // backlogFilteredByProject returns the ranked Backlog rows narrowed to the
@@ -220,12 +188,10 @@ func (m *FocusBoardModel) applyFilter() {
 		m.sortNextByQueueOrder()
 	case boardTabBacklog:
 		m.filtered = m.backlogFilteredByProject()
-	case boardTabDone:
-		m.filtered = make([]boardRow, len(m.closedRows))
-		copy(m.filtered, m.closedRows)
 	default:
-		m.filtered = make([]boardRow, len(m.rows))
-		copy(m.filtered, m.rows)
+		m.tabs.Active = boardTabToday
+		m.filtered = make([]boardRow, len(m.todayRows))
+		copy(m.filtered, m.todayRows)
 	}
 
 	// Apply common filters and search
@@ -257,6 +223,21 @@ func (m *FocusBoardModel) applyFilter() {
 	// Apply sorting
 	if m.sort.Field != SortByDefault {
 		m.applySorting()
+	}
+
+	visible := make(map[TaskIdentity]struct{}, len(m.filtered))
+	for _, row := range m.filtered {
+		if row.Task != nil && row.Project != nil {
+			visible[TaskIdentity{ProjectID: row.Project.ID, TaskID: row.Task.ID}] = struct{}{}
+		}
+	}
+	for id := range m.selection {
+		if _, ok := visible[id]; !ok {
+			delete(m.selection, id)
+		}
+	}
+	if m.Dispatcher != nil {
+		m.rebuildPlannerDispatcher()
 	}
 }
 
@@ -347,23 +328,6 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	}
 	score := scoring.ComputeScore(r.Task, profile)
 	return scoring.ScorePercent(score, profile)
-}
-
-// rebuildTodayTree re-flattens the Today tree in-memory (no disk reload) after a
-// fold-depth change. It recovers the base rows (ParentID == "") from the current
-// todayRows, resets todayRows to that base, re-expands children under the current
-// childDepthLimit, then reapplies the active filter and clamps the cursor.
-func (m *FocusBoardModel) rebuildTodayTree() {
-	var base []boardRow
-	for _, r := range m.todayRows {
-		if r.ParentID == "" {
-			base = append(base, r)
-		}
-	}
-	m.todayRows = base
-	m.expandTodayChildren()
-	m.applyFilter()
-	m.clampCursor()
 }
 
 // expandTodayChildren inserts descendants of explicitly planned items into todayRows.

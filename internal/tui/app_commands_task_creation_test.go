@@ -38,7 +38,7 @@ func TestTaskCommands_QuickCapture_NilProject(t *testing.T) {
 func TestTaskCommands_QuickCapture_DashboardNoProject(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	app.currentProject = nil // No active project
-	app.viewStack = []ViewType{ViewDashboard}
+	app.viewStack = []PresentationID{ViewDashboard}
 
 	dash := NewDashboardModel(app.runtime)
 	app.views.Register(ViewDashboard, dash)

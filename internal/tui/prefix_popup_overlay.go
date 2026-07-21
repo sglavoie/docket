@@ -36,13 +36,6 @@ func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
 	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0), true)
 }
 
-// OverlayPopupFlushLeftDimmed dims the base content before placing the popup at
-// column 0. Use this when the popup width is already calculated to match a
-// left-hand layout pane and must not shift into the adjacent pane.
-func OverlayPopupFlushLeftDimmed(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, 0, true)
-}
-
 func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withShadow bool) string {
 	if popup == "" {
 		return base

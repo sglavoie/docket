@@ -41,7 +41,7 @@ func TestViewCommands_AllTasks(t *testing.T) {
 	}
 }
 
-func TestViewCommands_DashboardSemicolonRoutes(t *testing.T) {
+func TestViewCommands_DashboardWorkspaceLayouts(t *testing.T) {
 	app := newTestAppModel()
 	registry := registerCommandGroupsForTest(t, app.viewCommands())
 	cmds := registry.GetForView(ViewDashboard)
@@ -51,9 +51,9 @@ func TestViewCommands_DashboardSemicolonRoutes(t *testing.T) {
 		shortcut string
 		wantMsg  any
 	}{
-		{"all tasks", ";a", ShowAllTasksMsg{}},
-		{"outliner", ";o", ShowGlobalOutlinerMsg{}},
-		{"kanban", ";k", ShowCrossProjectKanbanMsg{}},
+		{"all tasks", "", ShowAllTasksMsg{}},
+		{"outliner", "", ShowGlobalOutlinerMsg{}},
+		{"kanban", "", ShowCrossProjectKanbanMsg{}},
 	}
 
 	for _, tt := range tests {
@@ -171,10 +171,10 @@ func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
 	if peekCmd == nil {
 		t.Fatal("outliner should expose task peek command")
 	}
-	if peekCmd.Shortcut != "space" {
-		t.Fatalf("peek shortcut = %q, want space", peekCmd.Shortcut)
+	if peekCmd.Shortcut != "shift+enter" {
+		t.Fatalf("peek shortcut = %q, want shift+enter", peekCmd.Shortcut)
 	}
-	if peekCmd.Description != "Toggle peek for the selected task's details" {
+	if peekCmd.Description != "Peek at the selected task's details" {
 		t.Fatalf("peek description = %q", peekCmd.Description)
 	}
 
@@ -182,8 +182,8 @@ func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
 	if notesCmd == nil {
 		t.Fatal("project recent activity should expose show notes command")
 	}
-	if notesCmd.Shortcut != "ctrl+n" {
-		t.Fatalf("show notes shortcut = %q, want ctrl+n", notesCmd.Shortcut)
+	if notesCmd.Shortcut != "" {
+		t.Fatalf("show notes shortcut = %q, want palette-only", notesCmd.Shortcut)
 	}
 
 	assertPickerCommandPurpose(t, findCommand(registry.GetForView(ViewDashboard), "global priority update"), PickerPurposePriorityUpdate)
@@ -261,13 +261,12 @@ func TestViewCommands_PriorityView_Aliases(t *testing.T) {
 	}
 }
 
-// TestViewCommands_PriorityView_TogglesCrossMode verifies that running the
-// `priority view` command handler when baseProjectView() == ViewCrossProjectOutliner
-// flips m.crossOutliner.crossPriorityMode rather than emitting ShowPriorityViewMsg.
-func TestViewCommands_PriorityView_TogglesCrossMode(t *testing.T) {
-	app := newTestAppModel()
+// TestViewCommands_PriorityViewAliasesToWorkspace verifies that the retired
+// cross-outliner presentation no longer owns a hidden in-place priority mode.
+func TestViewCommands_PriorityViewAliasesToWorkspace(t *testing.T) {
+	app, project := newTestAppModelWithProject()
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 
 	cmds := app.viewCommands()
 	cmd := findCommand(cmds, "priority view")
@@ -279,21 +278,12 @@ func TestViewCommands_PriorityView_TogglesCrossMode(t *testing.T) {
 		t.Fatal("crossPriorityMode should default to false")
 	}
 
-	msg := cmd.Handler()
-	if msg != nil {
-		t.Errorf("expected nil message when toggling in-place, got %T", msg)
-	}
-	if !app.crossOutliner.crossPriorityMode {
-		t.Error("priority view command should toggle crossPriorityMode on in cross-outliner scope")
-	}
-
-	// Second invocation toggles off.
-	msg2 := cmd.Handler()
-	if msg2 != nil {
-		t.Errorf("second invocation should still return nil, got %T", msg2)
+	msg, ok := cmd.Handler().(ShowPriorityViewMsg)
+	if !ok || msg.Project != project {
+		t.Fatalf("priority alias returned %#v, want typed workspace entry message for current project", msg)
 	}
 	if app.crossOutliner.crossPriorityMode {
-		t.Error("priority view command should toggle crossPriorityMode off on the second invocation")
+		t.Error("priority alias revived the retired cross-outliner priority mode")
 	}
 }
 

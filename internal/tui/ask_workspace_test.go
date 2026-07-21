@@ -69,7 +69,7 @@ func askWorkspaceLoadedMessage(t *testing.T, cmd tea.Cmd) AskWorkspaceLoadedMsg 
 
 func TestAskViewProductionWorkspaceSnapshotIgnoresStaleDashboardProject(t *testing.T) {
 	runtime, persister, alpha, beta := newAskWorkspaceFixture(t, true)
-	staleDashboardProject := &models.Project{ID: "sdr", Slug: "sdr", Name: "SDR"}
+	const staleDashboardProjectName = "SDR"
 	runner := &fakeAskRunner{streams: []external.Stream{
 		newScriptedAskStream([]byte(`{"version":1,"summary":"ok","actions":[]}`), 32, nil),
 	}}
@@ -105,7 +105,7 @@ func TestAskViewProductionWorkspaceSnapshotIgnoresStaleDashboardProject(t *testi
 			t.Fatalf("workspace context missing %q: %q", want, request.SystemPrompt)
 		}
 	}
-	if strings.Contains(request.SystemPrompt, staleDashboardProject.Name) {
+	if strings.Contains(request.SystemPrompt, staleDashboardProjectName) {
 		t.Fatalf("stale dashboard project leaked into workspace context: %q", request.SystemPrompt)
 	}
 	if request.WorkspaceDir != runtime.DataDir() {

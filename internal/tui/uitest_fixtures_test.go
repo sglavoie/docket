@@ -122,38 +122,35 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	}
 }
 
-func TestFreshFixtureCaptureKeysShareInboxFlow(t *testing.T) {
-	tests := []struct {
-		name string
-		keys []string
-	}{
-		{name: "a", keys: []string{"a"}},
-		{name: "i", keys: []string{"i"}},
-		{name: ";i", keys: []string{";", "i"}},
+func TestFreshFixturePlannerAddOwnsAWithoutLegacyCaptureAliases(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureFresh, 100, 35)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			driver, ws, err := NewFixtureDriver(FixtureFresh, 100, 35)
-			if err != nil {
-				t.Fatal(err)
+	t.Cleanup(func() { _ = ws.Cleanup() })
+	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "a"}, ObserveOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	planner, ok := driver.App().views.Get(ViewFocusBoard).(*FocusBoardModel)
+	if driver.App().currentView() != ViewFocusBoard || !ok || !planner.addMode {
+		t.Fatalf("a should open inline Planner add; view=%s model=%T addMode=%v", driver.App().currentView(), planner, ok && planner.addMode)
+	}
+
+	for _, keys := range [][]string{{"i"}, {";", "i"}} {
+		legacyDriver, legacyWS, fixtureErr := NewFixtureDriver(FixtureFresh, 100, 35)
+		if fixtureErr != nil {
+			t.Fatal(fixtureErr)
+		}
+		t.Cleanup(func() { _ = legacyWS.Cleanup() })
+		for _, key := range keys {
+			if _, actionErr := legacyDriver.ApplyAction(UITestAction{Type: UITestActionKey, Key: key}, ObserveOptions{}); actionErr != nil {
+				t.Fatal(actionErr)
 			}
-			t.Cleanup(func() { _ = ws.Cleanup() })
-			for _, key := range tc.keys {
-				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: key}, ObserveOptions{}); err != nil {
-					t.Fatalf("key %q: %v", key, err)
-				}
-			}
-			if driver.App().currentView() != ViewQuickCapture {
-				t.Fatalf("current view = %s, want QuickCapture", driver.App().currentView())
-			}
-			capture, ok := driver.App().views.Get(ViewQuickCapture).(*QuickCaptureModel)
-			if !ok || capture.project == nil || !driver.App().runtime.IsSystemInboxProject(capture.project.ID) {
-				t.Fatalf("capture default project = %v, want system Inbox", capture)
-			}
-			if capture.skipProjectSyntax {
-				t.Fatal("shared capture flow disabled optional project routing")
-			}
-		})
+		}
+		legacyPlanner, _ := legacyDriver.App().views.Get(ViewFocusBoard).(*FocusBoardModel)
+		if legacyDriver.App().currentView() != ViewFocusBoard || (legacyPlanner != nil && legacyPlanner.addMode) {
+			t.Fatalf("retired alias %v changed Planner state", keys)
+		}
 	}
 }
 
@@ -178,7 +175,7 @@ func TestFreshFixtureCapturePersistsOnboardingProgress(t *testing.T) {
 		t.Fatalf("load settings: %v", settingsErr)
 	}
 	progress := settings.GetOnboardingProgress()
-	if !progress.TaskCaptured || progress.ProjectCreated || progress.CompletedCount() != 1 {
+	if !progress.TaskCaptured || !progress.TaskPlanned || progress.ProjectCreated || progress.CompletedCount() != 2 {
 		t.Fatalf("persisted onboarding progress = %+v", progress)
 	}
 }

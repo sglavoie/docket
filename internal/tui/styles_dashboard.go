@@ -49,11 +49,9 @@ var (
 	CategoryProjectStyle     = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySectionStyle     = lipgloss.NewStyle().Foreground(ColorPurple)
-	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CategoryNoteStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
 	CategoryViewStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
 
 	SelectedCheckboxStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	PinIndicatorStyle     = lipgloss.NewStyle().Foreground(ColorWarning)
 )

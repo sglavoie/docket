@@ -135,11 +135,7 @@ func (m *ContextPickerModel) handleDeleteConfirm(msg tea.KeyPressMsg) (tea.Model
 		m.currentCustomFilter = ""
 	}
 	if err := commitMachineToRuntime(m.runtime, func(machine *config.MachineState) {
-		if wasActive {
-			machine.FilterCustomContext = ""
-		}
 		machine.DeleteCustomContext(name)
-		machine.SetCycleProjectsForContext(customContextID(name), nil)
 	}); err != nil {
 		logging.Warn("failed to save machine state: %v", err)
 	}
@@ -154,22 +150,19 @@ func (m *ContextPickerModel) handleDeleteConfirm(msg tea.KeyPressMsg) (tea.Model
 func (m *ContextPickerModel) handleDefaultKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		fromCycle := m.fromCycle
 		return m, func() tea.Msg {
-			return ContextPickerDoneMsg{Canceled: true, FromCycle: fromCycle}
+			return ContextPickerDoneMsg{Canceled: true}
 		}
 	case "enter":
 		if len(m.Filtered) == 0 || m.Cursor >= len(m.Filtered) {
 			return m, nil
 		}
 		selected := m.Filtered[m.Cursor]
-		fromCycle := m.fromCycle
 		return m, func() tea.Msg {
 			return ContextPickerDoneMsg{
 				SelectedContext: selected.Name,
 				IsCustomContext: selected.IsCustom,
 				Canceled:        false,
-				FromCycle:       fromCycle,
 			}
 		}
 	case "n":

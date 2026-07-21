@@ -12,7 +12,7 @@ import (
 
 // triageInboxCommands rebuilds the registry from production groups and
 // returns the commands available from the given inbox processor view.
-func triageInboxCommands(t *testing.T, app *AppModel, view ViewType) []Command {
+func triageInboxCommands(t *testing.T, app *AppModel, view PresentationID) []Command {
 	t.Helper()
 	registry := NewCommandRegistry()
 	for i, group := range app.commandGroups() {
@@ -54,7 +54,7 @@ func TestPaletteTriage_InboxProcessorShortcutsMatchKeymap(t *testing.T) {
 		{"delete inbox task", "tD"},
 	}
 
-	for _, viewType := range []ViewType{ViewInboxProcessor, ViewGlobalInboxProcessor} {
+	for _, viewType := range []PresentationID{ViewInboxProcessor, ViewGlobalInboxProcessor} {
 		cmds := triageInboxCommands(t, app, viewType)
 		for _, tc := range cases {
 			cmd := findCommand(cmds, tc.name)
@@ -415,14 +415,20 @@ func TestPaletteTriage_InboxProcessorCommandsRetainTriageAliases(t *testing.T) {
 	}
 }
 
-// TestPaletteTriage_FooterAdvertisesFullReference asserts the palette's
-// empty-query footer mentions `ctrl+\: full reference` so users learn the same
-// escape-hatch vocabulary across help and palette (session 8 contract).
-func TestPaletteTriage_FooterAdvertisesFullReference(t *testing.T) {
+// TestPaletteTriage_FooterAdvertisesSimplifiedControls asserts the palette no
+// teaches only the final palette controls.
+func TestPaletteTriage_FooterAdvertisesSimplifiedControls(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	palette := NewCommandPaletteModel(app.runtime, NewCommandRegistry(), ViewInboxProcessor, nil)
 	footer := palette.buildFooter()
-	if !strings.Contains(footer, `ctrl+\: full reference`) {
-		t.Errorf("palette empty-query footer should advertise 'ctrl+\\: full reference', got %q", footer)
+	for _, want := range []string{"Enter open", "Shift+Enter Peek", "Esc close"} {
+		if !strings.Contains(footer, want) {
+			t.Errorf("palette footer missing %q: %q", want, footer)
+		}
+	}
+	for _, ghost := range []string{`ctrl+\`, "^H", "^O", "^P", "+ create"} {
+		if strings.Contains(footer, ghost) {
+			t.Errorf("palette footer advertises retired control %q: %q", ghost, footer)
+		}
 	}
 }

@@ -118,7 +118,7 @@ records the sequence of Next tasks and never decides membership.
 
 Next is distinct from Today (the daily plan) and from the
 ranked Backlog; a task is in at most one of Today or Next.
-Manage Next from the Planner (;q).`,
+Manage Next from Planner.`,
 		},
 		{
 			Title:    "Notes",

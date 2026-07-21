@@ -30,7 +30,7 @@ func (m *AppModel) isNotesFullscreen() bool {
 // getActiveNotesView returns the currently active NotesViewModel (project or global).
 func (m *AppModel) getActiveNotesView() *NotesViewModel {
 	cv := m.currentView()
-	var viewType ViewType
+	var viewType PresentationID
 	switch cv {
 	case ViewNotes:
 		viewType = ViewNotes
@@ -70,6 +70,9 @@ func (m *AppModel) validateCurrentProject() bool {
 	m.exitAskView()
 	m.currentProject = nil
 	m.viewStack = m.viewStack[:1]
+	if m.typedNavigation {
+		m.navigation.ResetHome()
+	}
 	m.setInfoStatus("Project was removed — returning to dashboard")
 	if m.dashboard != nil {
 		m.dashboard.Refresh()
@@ -78,11 +81,8 @@ func (m *AppModel) validateCurrentProject() bool {
 }
 
 // currentView returns the current view type.
-func (m *AppModel) currentView() ViewType {
-	if len(m.viewStack) == 0 {
-		return ViewDashboard
-	}
-	return m.viewStack[len(m.viewStack)-1]
+func (m *AppModel) currentView() PresentationID {
+	return m.currentPresentationView()
 }
 
 // baseProjectView walks the view stack from the top to find the underlying
@@ -90,7 +90,7 @@ func (m *AppModel) currentView() ViewType {
 // like the command palette. This is needed by command handlers that run inside
 // the palette's Cmd — at that point currentView() returns ViewCommandPalette,
 // but the handler needs to know which project view it was invoked from.
-func (m *AppModel) baseProjectView() ViewType {
+func (m *AppModel) baseProjectView() PresentationID {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		switch m.viewStack[i] {
 		case ViewOutliner, ViewCrossProjectOutliner:
@@ -101,25 +101,19 @@ func (m *AppModel) baseProjectView() ViewType {
 	return ViewDashboard
 }
 
-// pushView pushes a new view onto the stack and records it in navigation history
-// if it is a tracked view and history is not locked.
-func (m *AppModel) pushView(view ViewType) {
+// pushView installs a renderer on the typed route or overlay stack. Headless
+// models without navigation retain a small append-only presentation stack.
+func (m *AppModel) pushView(view PresentationID) {
+	if m.installTypedPresentation(view) {
+		m.installPendingStartupRoute(view)
+		if view == ViewOutliner {
+			m.lastProjectView = view
+		}
+		return
+	}
 	m.viewStack = append(m.viewStack, view)
 	if view == ViewOutliner {
 		m.lastProjectView = view
-	}
-	if !m.navHistory.IsLocked() && isTrackedView(view) {
-		if curr, ok := m.navHistory.Current(); ok {
-			m.lastNavEntry = curr
-		}
-		entry := NavEntry{ViewType: view}
-		if m.currentProject != nil && !isGlobalNavView(view) {
-			entry.ProjectID = m.currentProject.ID
-		}
-		if isTaskScopedView(view) {
-			entry.TaskID = m.lastNavigatedTaskID
-		}
-		m.navHistory.Record(entry)
 	}
 }
 
@@ -127,7 +121,9 @@ func (m *AppModel) pushView(view ViewType) {
 // by the newly revealed view, including eager reload and resume hooks.
 func (m *AppModel) popView() tea.Cmd {
 	popped := false
-	if len(m.viewStack) > 1 {
+	if m.typedNavigation && m.popTypedPresentation() {
+		popped = true
+	} else if len(m.viewStack) > 1 {
 		if m.currentView() == ViewAsk {
 			m.exitAskView()
 		}
@@ -163,18 +159,22 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		m.dismissPeek()
 		return true, nil
 	}
-	if m.pendingSemicolonPrefix {
-		m.pendingSemicolonPrefix = false
-		return true, nil
+	presentationOverlay := false
+	if m.typedNavigation {
+		if overlay, ok := m.navigation.Overlays.Current(); ok {
+			_, presentationOverlay = overlay.Presentation()
+		}
 	}
-	if m.pendingSemicolonTPrefix {
-		m.pendingSemicolonTPrefix = false
-		return true, nil
+	if !presentationOverlay {
+		if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
+			return false, nil
+		}
 	}
-	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
-		return false, nil
+	primaryCanClose := m.currentView() != ViewDashboard
+	if m.typedNavigation && m.navigation.Primary.Current().ID() != Home {
+		primaryCanClose = true
 	}
-	if m.currentView() != ViewDashboard {
+	if primaryCanClose {
 		closingView := m.currentView()
 		// Capture the view label for the Esc undo hint before any state changes.
 		var closingLabel string
@@ -202,12 +202,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 				m.saveOutlinerFilterStateFrom(tempOutliner)
 			}
 		}
-		var cmd tea.Cmd
-		if isGlobalOverlayView(closingView) {
-			cmd = m.popToAnchorView()
-		} else {
-			cmd = m.popView()
-		}
+		cmd := m.popView()
 		// Rebuild outliner rows when returning from cross-outliner so the
 		// display reflects the current in-memory filter state (e.g. after Fx).
 		if closingView == ViewCrossProjectOutliner && m.outliner != nil {
@@ -226,7 +221,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			}
 		}
 		if !statusAlreadySet && closingLabel != "" && closingView != ViewCommandPalette {
-			m.setInfoStatus("Closed " + closingLabel + " — Alt+O to reopen")
+			m.setInfoStatus("Closed " + closingLabel)
 			return true, tea.Batch(cmd, defaultStatusTimeout())
 		}
 		return true, cmd
@@ -252,7 +247,10 @@ func (m *AppModel) jumpToDashboard() tea.Cmd {
 	}
 
 	m.clearTransientNavigationState()
-	m.viewStack = []ViewType{ViewDashboard}
+	if m.typedNavigation {
+		m.navigation.ResetHome()
+	}
+	m.viewStack = []PresentationID{ViewDashboard}
 	m.projectStack = nil
 	m.reevaluateAlerts()
 	if view := m.views.Get(ViewDashboard); view != nil {
@@ -261,7 +259,7 @@ func (m *AppModel) jumpToDashboard() tea.Cmd {
 	return nil
 }
 
-func (m *AppModel) saveStateForClosingView(viewType ViewType) {
+func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 	switch viewType {
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
@@ -279,21 +277,25 @@ func (m *AppModel) saveStateForClosingView(viewType ViewType) {
 
 func (m *AppModel) clearTransientNavigationState() {
 	m.dismissPeek()
-	m.pendingSemicolonPrefix = false
-	m.pendingSemicolonTPrefix = false
+	if m.taskWorkspaceView != nil {
+		m.taskWorkspaceView.menuOpen = false
+		m.taskWorkspaceView.searchMode = false
+		if m.taskWorkspaceView.quickEdit != nil {
+			m.taskWorkspaceView.quickEdit.Exit()
+			m.taskWorkspaceView.quickEditProject = nil
+		}
+	}
+	if planner, ok := m.views.Get(ViewFocusBoard).(*FocusBoardModel); ok && planner != nil {
+		planner.menuOpen = false
+	}
 	m.pendingSandboxReset = false
 	m.pendingSandboxProjectID = ""
 	m.pendingSandboxTaskCount = 0
 
 	m.showQuickSwitch = false
 	m.quickSwitchFiltering = false
-	m.quickSwitchPendingPrefix = ""
 	m.showPinnedPopup = false
 	m.pinnedPopupFiltering = false
-	m.pinnedPendingPrefix = ""
-	m.showProjectCyclePicker = false
-	m.showProjectCycle = false
-
 	m.Overlays().ClearAll()
 
 	m.pendingBulkTasks = nil
@@ -315,18 +317,14 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.globalLinkedTaskState.linkType = 0
 }
 
-// isGlobalOverlayView returns true for views launched via the global ";" overlay prefix.
-// These views can be opened from any context and should return to an anchor view when closed.
-// Defined declaratively by the route table's GlobalOverlay flag (see route.go).
-func isGlobalOverlayView(v ViewType) bool {
-	return routeFor(v).GlobalOverlay
-}
-
 // popToAnchorView pops the view stack until the top is a project-level view
 // (Outliner) or the Dashboard, or the stack has only one entry.
 // Returns a tea.Cmd when popping reveals ViewCrossProjectOutliner so the
 // outliner can trigger an eager reload (mirrors popView's behavior).
 func (m *AppModel) popToAnchorView() tea.Cmd {
+	if m.typedNavigation {
+		return m.popView()
+	}
 	for len(m.viewStack) > 1 {
 		top := m.viewStack[len(m.viewStack)-1]
 		switch top {
@@ -365,6 +363,15 @@ func (m *AppModel) popToAnchorView() tea.Cmd {
 // currentAccentColor returns the accent color for the topmost mapped view in
 // the stack, falling back to ColorPrimary when no mapping is found.
 func (m *AppModel) currentAccentColor() color.Color {
+	if m.activeTaskWorkspace() {
+		return m.navigation.Primary.Current().Accent()
+	}
+	if m.activeReviewHub() {
+		return m.navigation.Primary.Current().Accent()
+	}
+	if m.activeManageHub() {
+		return m.navigation.Primary.Current().Accent()
+	}
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		if c := ViewAccentColor(m.viewStack[i]); c != nil {
 			return c
@@ -443,7 +450,7 @@ func (m *AppModel) wireSecondaryCoordinators(view View) {
 	}
 }
 
-func (m *AppModel) showView(viewType ViewType, view View) {
+func (m *AppModel) showView(viewType PresentationID, view View) {
 	// Ask stream messages are routed only to the current view. Cancel an Ask
 	// request before covering that model, or before replacing the registry's
 	// existing Ask instance, so its provider cannot outlive the view lifecycle.
@@ -462,7 +469,7 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 
 // showViewInit is showView + return true, view.Init(). Used by handlers that
 // create a view, push it, and immediately return its Init command.
-func (m *AppModel) showViewInit(viewType ViewType, view View) (bool, tea.Cmd) {
+func (m *AppModel) showViewInit(viewType PresentationID, view View) (bool, tea.Cmd) {
 	m.showView(viewType, view)
 	return true, view.Init()
 }
@@ -470,7 +477,7 @@ func (m *AppModel) showViewInit(viewType ViewType, view View) (bool, tea.Cmd) {
 // replaceView replaces the top of the view stack instead of pushing.
 // Used when switching between peer project views (Outliner)
 // so the stack doesn't accumulate entries.
-func (m *AppModel) replaceView(viewType ViewType, view View) {
+func (m *AppModel) replaceView(viewType PresentationID, view View) {
 	if m.currentView() == ViewAsk || viewType == ViewAsk {
 		m.exitAskView()
 	}
@@ -479,6 +486,13 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 	view.SetSize(m.width, m.height-2)
 	m.wireSecondaryCoordinators(view)
 	m.views.Register(viewType, view)
+	if m.installTypedPresentation(viewType) {
+		if viewType == ViewOutliner {
+			m.lastProjectView = viewType
+		}
+		m.setAccentOnView(view)
+		return
+	}
 	if len(m.viewStack) > 1 {
 		m.viewStack[len(m.viewStack)-1] = viewType
 	} else {
@@ -486,19 +500,6 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 	}
 	if viewType == ViewOutliner {
 		m.lastProjectView = viewType
-	}
-	if !m.navHistory.IsLocked() && isTrackedView(viewType) {
-		if curr, ok := m.navHistory.Current(); ok {
-			m.lastNavEntry = curr
-		}
-		entry := NavEntry{ViewType: viewType}
-		if m.currentProject != nil && !isGlobalNavView(viewType) {
-			entry.ProjectID = m.currentProject.ID
-		}
-		if isTaskScopedView(viewType) {
-			entry.TaskID = m.lastNavigatedTaskID
-		}
-		m.navHistory.Record(entry)
 	}
 	m.setAccentOnView(view)
 }
@@ -514,13 +515,15 @@ func (m *AppModel) exitAskView() {
 
 // isOnProjectView returns true if the current view is a peer project view.
 func (m *AppModel) isOnProjectView() bool {
+	if m.activeTaskWorkspace() && m.taskWorkspace.State.Scope.Kind == ScopeProject {
+		return true
+	}
 	cur := m.currentView()
 	return cur == ViewOutliner
 }
 
-// defaultProjectViewType maps the settings' default_project_view string to a ViewType.
-// The Outliner is the sole per-project view.
-func defaultProjectViewType(_ *config.Settings) ViewType {
+// defaultProjectPresentation returns the sole project presentation.
+func defaultProjectPresentation(_ *config.Settings) PresentationID {
 	return ViewOutliner
 }
 
@@ -548,11 +551,11 @@ func (m *AppModel) saveCurrentProjectView() {
 
 // getProjectLastView returns the last project-level view for the given project ID,
 // falling back to the configured default project view.
-func (m *AppModel) getProjectLastView(projectID string) ViewType {
+func (m *AppModel) getProjectLastView(projectID string) PresentationID {
 	if v, ok := m.projectLastView[projectID]; ok {
 		return v
 	}
-	return defaultProjectViewType(m.runtime.Settings())
+	return defaultProjectPresentation(m.runtime.Settings())
 }
 
 // popAndNavigateToTask pops the current view and navigates to a task in its project.
@@ -590,6 +593,20 @@ func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models
 		if resolved := project.GetTaskByID(task.ID); resolved != nil {
 			task = resolved
 		}
+	}
+	if m.typedNavigation && m.taskWorkspaceView != nil {
+		m.prepareProjectOutliner(project, task)
+		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
+			Scope: ProjectEntityScope(project.ID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
+		})
+		if err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		cmd := m.activateTaskWorkspaceRoute(route)
+		if task != nil {
+			m.taskWorkspace.State.SetCursor(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
+		}
+		return cmd
 	}
 
 	m.saveOutlinerToggleState()

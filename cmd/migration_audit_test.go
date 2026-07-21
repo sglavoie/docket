@@ -87,8 +87,8 @@ func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
 			},
 		},
 	}
-	if err := saveTestRuntime(config.NewManager(deps.ConfigPath), deps.Config); err != nil {
-		t.Fatalf("seed legacy workspace: %v", err)
+	if saveErr := saveTestRuntime(config.NewManager(deps.ConfigPath), deps.Config); saveErr != nil {
+		t.Fatalf("seed legacy workspace: %v", saveErr)
 	}
 
 	legacyAutomation, err := os.ReadFile(config.AutomationPath(deps.DataDir))

@@ -493,6 +493,10 @@ func (m *RoadmapModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }
 
+func (m *RoadmapModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.selectedRow()
+}
+
 func (m *RoadmapModel) StatusBarLabel() string { return "Roadmap" }
 
 // IsFullHeight returns true because the roadmap renders its own footer.

@@ -83,15 +83,15 @@ func TestUITestActionTextTypesLiteralRunes(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioCommandPaletteFullReferenceShortcut(t *testing.T) {
+func TestUITestScenarioCommandPaletteIgnoresRemovedExplorerShortcut(t *testing.T) {
 	sc := UITestScenario{
-		Name:    "command palette full reference shortcut",
+		Name:    "command palette ignores removed explorer shortcut",
 		Fixture: FixtureRich,
 		Size:    "100x30",
 		Actions: []UITestAction{
 			{Type: UITestActionKey, Key: ":"},
 			{Type: UITestActionKey, Key: `ctrl+\`},
-			{Type: UITestActionAssert, Assert: "view", Value: "KeybindingExplorer"},
+			{Type: UITestActionAssert, Assert: "view", Value: "CommandPalette"},
 			{Type: UITestActionAssert, Assert: "no_layout_issues"},
 		},
 	}
@@ -103,7 +103,7 @@ func TestUITestScenarioCommandPaletteFullReferenceShortcut(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	if !result.OK {
-		t.Fatalf("command palette full reference shortcut should pass, got error: %+v", result.Error)
+		t.Fatalf("removed explorer shortcut scenario should pass, got error: %+v", result.Error)
 	}
 }
 
@@ -233,14 +233,14 @@ func TestUITestActionCommandOpensView(t *testing.T) {
 	app := newCommandTestApp(t, Command{
 		Name:     "Open Search",
 		Category: CategorySearch,
-		Handler:  func() tea.Msg { return ShowGlobalSearchMsg{} },
+		Handler:  func() tea.Msg { return ShowCommandPaletteMsg{} },
 	})
 	driver := NewUITestDriver(app, 100, 30)
 
 	// Case-insensitive match against available_commands[].name; no palette UI.
 	sc := UITestScenario{Actions: []UITestAction{
 		{Type: UITestActionCommand, Command: "open search"},
-		{Type: UITestActionAssert, Assert: "view", Value: "GlobalSearch"},
+		{Type: UITestActionAssert, Assert: "view", Value: "CommandPalette"},
 	}}
 	if _, err := driver.RunScenario(sc, ObserveOptions{}); err != nil {
 		t.Fatalf("RunScenario error: %v", err)
@@ -250,7 +250,7 @@ func TestUITestActionCommandOpensView(t *testing.T) {
 func TestUITestActionCommandUnknownFails(t *testing.T) {
 	app := newCommandTestApp(t, Command{
 		Name:    "Open Search",
-		Handler: func() tea.Msg { return ShowGlobalSearchMsg{} },
+		Handler: func() tea.Msg { return ShowCommandPaletteMsg{} },
 	})
 	driver := NewUITestDriver(app, 100, 30)
 
@@ -267,8 +267,8 @@ func TestUITestActionCommandViewScopedRejected(t *testing.T) {
 	// Command is only available in the outliner, not the dashboard.
 	app := newCommandTestApp(t, Command{
 		Name:    "Outliner Only",
-		Views:   []ViewType{ViewOutliner},
-		Handler: func() tea.Msg { return ShowGlobalSearchMsg{} },
+		Views:   []PresentationID{ViewOutliner},
+		Handler: func() tea.Msg { return ShowCommandPaletteMsg{} },
 	})
 	driver := NewUITestDriver(app, 100, 30)
 

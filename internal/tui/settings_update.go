@@ -20,9 +20,13 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.themePresetCursor = len(themes) - 1
 			}
 		}
-		return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
-			return presetFlashClearMsg{}
-		})
+		flash := tea.Tick(2*time.Second, func(time.Time) tea.Msg { return presetFlashClearMsg{} })
+		if msg.listEmpty {
+			return m, tea.Batch(flash, func() tea.Msg {
+				return settingsTransientOverlayMsg{Open: false, Kind: OverlayPicker, Key: settingsThemePresetOverlayKey}
+			})
+		}
+		return m, flash
 	case presetFlashClearMsg:
 		m.themePresetFlash = ""
 		return m, nil

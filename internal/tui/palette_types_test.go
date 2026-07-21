@@ -9,7 +9,6 @@ func TestCategoryWeight(t *testing.T) {
 	}{
 		{ItemCategoryCommands, weightCommands},
 		{ItemCategoryProjects, weightProjects},
-		{ItemCategorySavedSearch, weightCommands}, // Saved searches rank like commands
 		{ItemCategoryTasks, weightDefault},
 		{ItemCategoryTags, weightDefault},
 		{ItemCategorySections, weightDefault},
@@ -36,7 +35,6 @@ func TestGetCategoryDisplayName(t *testing.T) {
 		{ItemCategoryProjects, "Projects"},
 		{ItemCategoryTags, "Tags"},
 		{ItemCategorySections, "Sections"},
-		{ItemCategorySavedSearch, "Saved Searches"},
 		{ItemCategory("unknown"), "Other"},
 	}
 
@@ -53,16 +51,14 @@ func TestGetCategoryDisplayName(t *testing.T) {
 func TestCategoryPrefixes(t *testing.T) {
 	// Verify all expected prefixes exist
 	expectedPrefixes := map[string]ItemCategory{
-		"cmd":    ItemCategoryCommands,
-		"task":   ItemCategoryTasks,
-		"prj":    ItemCategoryProjects,
-		"tag":    ItemCategoryTags,
-		"sec":    ItemCategorySections,
-		"saved":  ItemCategorySavedSearch,
-		"recent": ItemCategoryCommands,
-		"note":   ItemCategoryNotes,
-		"sv":     ItemCategorySavedFilter,
-		"view":   ItemCategoryViews,
+		"cmd":  ItemCategoryCommands,
+		"task": ItemCategoryTasks,
+		"prj":  ItemCategoryProjects,
+		"tag":  ItemCategoryTags,
+		"sec":  ItemCategorySections,
+		"note": ItemCategoryNotes,
+		"sv":   ItemCategorySavedFilter,
+		"view": ItemCategoryViews,
 	}
 
 	for prefix, expectedCat := range expectedPrefixes {
@@ -88,7 +84,6 @@ func TestCategoryOrder(t *testing.T) {
 	// Verify all categories are in the order slice
 	expectedCategories := []ItemCategory{
 		ItemCategorySavedFilter,
-		ItemCategorySavedSearch,
 		ItemCategoryCommands,
 		ItemCategoryProjects,
 		ItemCategoryTasks,
@@ -145,7 +140,6 @@ func TestItemCategoryConstants(t *testing.T) {
 		{ItemCategoryProjects, "Projects"},
 		{ItemCategoryTags, "Tags"},
 		{ItemCategorySections, "Sections"},
-		{ItemCategorySavedSearch, "Saved"},
 	}
 
 	for _, tc := range tests {

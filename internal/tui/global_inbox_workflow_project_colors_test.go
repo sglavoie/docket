@@ -264,14 +264,6 @@ func TestProjectColorIdentityMatchesAcrossFinalMixedProjectSurfaces(t *testing.T
 		t.Fatalf("shared task row did not use durable project hue %v: %q", projectColor(project), shared)
 	}
 
-	search := &GlobalSearchModel{runtime: runtime, listWidth: 72, cursor: 1}
-	searchRow := search.renderTaskSearchRow(0, filteredSearchResult{
-		result: models.SearchResult{Task: task, Project: project},
-	}, nil)
-	if want := projectColorStyle(project).Render("[" + project.Slug + "]"); !strings.Contains(searchRow, want) {
-		t.Fatalf("Global Search did not use durable project hue %v: %q", projectColor(project), searchRow)
-	}
-
 	inbox := renderInboxTaskDisplay(task, 100, false, project, runtime.Settings())
 	if want := projectColorStyle(project).Render(project.Name); !strings.Contains(inbox, want) {
 		t.Fatalf("Global Inbox did not use durable project hue %v: %q", projectColor(project), inbox)

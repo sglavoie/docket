@@ -38,9 +38,9 @@ const (
 	// render info section cards side-by-side instead of stacked.
 	DashboardInfoSectionWideMinWidth = 100
 
-	// DashboardNarrowModeWidth is the threshold below which the dashboard
-	// switches to narrow mode rendering.
-	DashboardNarrowModeWidth = 50
+	// DashboardNarrowModeWidth is the minimum width at which Home's Projects
+	// pane can retain the dense tabular row without hiding project names.
+	DashboardNarrowModeWidth = 70
 
 	// DashboardMinVisibleProjects is the minimum number of project rows
 	// to display in the dashboard.

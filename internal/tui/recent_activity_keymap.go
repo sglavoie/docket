@@ -132,16 +132,6 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleRecentActivityFilterSubPrefix("Fd", key)
 			}
 		},
-		AttrDirectKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleRecentActivityFilterSubPrefix("Fa", key)
-			}
-		},
-		AttrSubKey: func(prefix, key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleRecentActivityFilterSubPrefix(prefix, key)
-			}
-		},
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewRecentActivity} }
 		},
@@ -158,7 +148,7 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 		t, _ := m.getTaskRef()
 		return t != nil
 	}
-	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
+	entries = append(entries, buildReviewTaskActionEntries(TaskKeymapDeps{
 		View:    m,
 		HasItem: hasItem,
 		ToggleHelp: func() (tea.Model, tea.Cmd) {

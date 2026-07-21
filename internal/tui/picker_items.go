@@ -127,48 +127,6 @@ type CountDisplayer interface {
 	CountDisplayText() string
 }
 
-// ProjectInfo holds project data for picker display.
-type ProjectInfo struct {
-	Project        *models.Project
-	TaskCount      int
-	CompletedCount int
-}
-
-// FilterText returns searchable text for project filtering.
-func (p ProjectInfo) FilterText() string {
-	return p.Project.Name + " " + p.Project.Context
-}
-
-// DisplayText returns the project name for display, with pin indicator if pinned.
-func (p ProjectInfo) DisplayText() string {
-	if p.Project.Pinned {
-		return "*" + p.Project.Name
-	}
-	return p.Project.Name
-}
-
-// CountValue returns the task count for this project.
-func (p ProjectInfo) CountValue() int {
-	return p.TaskCount
-}
-
-// ItemID returns the project ID as its unique identifier.
-func (p ProjectInfo) ItemID() string {
-	return p.Project.ID
-}
-
-// CountDisplayText returns a styled string showing active and completed counts.
-func (p ProjectInfo) CountDisplayText() string {
-	active := MatchHighlightStyle.Render(fmt.Sprintf("%d active", p.TaskCount))
-	done := MutedStyle.Render(fmt.Sprintf("%d done", p.CompletedCount))
-	return fmt.Sprintf("(%s / %s)", active, done)
-}
-
-// IsPinned returns whether the project is pinned.
-func (p ProjectInfo) IsPinned() bool {
-	return p.Project.Pinned
-}
-
 // TriggerFieldInfo wraps a workflow TriggerField with description for picker display.
 type TriggerFieldInfo struct {
 	Field       workflow.TriggerField

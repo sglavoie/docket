@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -12,30 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/models"
 )
-
-func TestDashboardRecentTasksContentRespectsVisualWidth(t *testing.T) {
-	project, err := models.NewProject("proj-1", "Unicode Project", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "修复界面布局对齐问题")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	task.UpdatedAt = time.Now().Add(-2 * time.Hour)
-	project.Tasks = []*models.Task{task}
-
-	m := NewDashboardModel(nil)
-	contentWidth := 28
-	rendered := m.renderRecentTasksContentWithWidth(project, contentWidth)
-
-	for line := range strings.SplitSeq(rendered, "\n") {
-		if lipgloss.Width(line) > contentWidth {
-			t.Fatalf("dashboard recent task line exceeds width %d: %q (width=%d)\n\n%s", contentWidth, ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
-		}
-	}
-}
 
 func TestNotificationCenterTruncateToWidthUsesVisualWidth(t *testing.T) {
 	input := "修复界面布局  详情说明内容"

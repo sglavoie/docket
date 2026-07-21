@@ -215,26 +215,6 @@ func TestNavigateToTaskPromptsThenEscLandsOnTarget(t *testing.T) {
 	}
 }
 
-func TestNavigateHistoryBypassesParkPrompt(t *testing.T) {
-	app, project, source, target := newParkPromptTestApp(t)
-	markSessionTaskMutated(project.ID, []string{source.ID})
-
-	cmd := app.navigateToEntry(NavEntry{
-		ViewType:  ViewTaskChecklist,
-		ProjectID: project.ID,
-		TaskID:    target.ID,
-	})
-	if cmd != nil {
-		_ = cmd()
-	}
-	if app.currentView() == ViewParkInput {
-		t.Fatal("nav-history reconstruction should bypass the smart park prompt")
-	}
-	if app.currentView() != ViewTaskChecklist {
-		t.Fatalf("currentView = %v, want ViewTaskChecklist", app.currentView())
-	}
-}
-
 // newParkPromptTestApp builds a disk-backed AppModel wired to the application
 // service (park now commits through the workspace ledger, not the per-project
 // .undo snapshot). The single project lives under a shared data dir so the
@@ -264,7 +244,7 @@ func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.outliner.SetSize(app.width, app.height-2)
 	app.views.Register(ViewOutliner, app.outliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner}
 
 	return app, project, source, target
 }

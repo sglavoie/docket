@@ -13,24 +13,17 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowNotificationCenterMsg:
 		m.reevaluateAlerts()
-		m.showView(ViewNotificationCenter, NewNotificationCenterModel(m.proactiveAlerts, m.rawAlerts, m.dismissedSet))
-		return true, nil
+		return true, m.activateManageHub(ManageParams{
+			Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationAlerts,
+		})
 
 	case AlertCenterNavigateMsg:
 		m.popView()
 		switch msg.Category {
 		case alerts.CategoryDailyReview:
-			dr := NewDailyReviewModel(m.runtime, m.configManager)
-			dr.queueIDs = m.focusQueueIDs
-			dr.dailyPlanIDs = m.dailyPlanIDs
-			m.showView(ViewDailyReview, dr)
-			return true, nil
+			return true, m.activateReviewHub(ReviewDaily, nil)
 		case alerts.CategoryWeeklyReview:
-			wr := NewWeeklyReviewModel(m.runtime, m.configManager)
-			wr.queueIDs = m.focusQueueIDs
-			wr.dailyPlanIDs = m.dailyPlanIDs
-			m.showView(ViewWeeklyReview, wr)
-			return true, nil
+			return true, m.activateReviewHub(ReviewWeekly, nil)
 		default:
 		}
 

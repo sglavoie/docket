@@ -88,31 +88,6 @@ func TestHandleViewMessagesCloseProjectFocusView(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowGlobalSearch(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := ShowGlobalSearchMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowGlobalSearchMsg should be handled")
-	}
-	if app.currentView() != ViewGlobalSearch {
-		t.Errorf("currentView should be GlobalSearch, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesCloseGlobalSearch(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewGlobalSearch)
-
-	app.Update(CloseGlobalSearchMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing search, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesCloseCommandPalette(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewCommandPalette)

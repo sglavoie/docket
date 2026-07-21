@@ -39,8 +39,8 @@ func TestGlobalCommands_GlobalSearch(t *testing.T) {
 		t.Fatal("expected 'global search' command")
 	}
 	msg := cmd.Handler()
-	if _, ok := msg.(ShowGlobalSearchMsg); !ok {
-		t.Errorf("expected ShowGlobalSearchMsg, got %T", msg)
+	if _, ok := msg.(ShowCommandPaletteMsg); !ok {
+		t.Errorf("expected ShowCommandPaletteMsg, got %T", msg)
 	}
 }
 

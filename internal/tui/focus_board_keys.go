@@ -6,6 +6,10 @@ import (
 
 // handleKeyMsg handles keyboard input in normal mode.
 func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if msg.String() == "esc" && len(m.selection) > 0 {
+		m.clearMultiSelect()
+		return m, nil
+	}
 	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
 		return model, cmd
 	}
@@ -18,13 +22,9 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 // GetHelpItems returns help items for this view.
 func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 	return mergeHelpItems(
-		GetKeybindingRegistry().GetAppLevelForView(m.viewID()),
+		GetKeybindingRegistry().GetGlobalBindings(),
 		helpItemsFromKeyMap(m.buildKeyMap()),
 	)
-}
-
-func (m *FocusBoardModel) toggleHelpAction() (tea.Model, tea.Cmd) {
-	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
 }
 
 func (m *FocusBoardModel) HandledKeys() []string {

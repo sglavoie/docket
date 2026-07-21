@@ -115,14 +115,11 @@ func TestCommandRegistry_CrossProjectOutlinerPaletteParity(t *testing.T) {
 
 	// `quick capture` is registered as a global command (empty Views), so
 	// GetForView falls back to the global entry from ViewCrossProjectOutliner.
-	// Its palette shortcut is the leader form `;i`; the direct outliner key `i`
-	// is a separate keymap binding (outliner_keymap_navigation.go:114) handled
-	// outside the palette. Pinning the shortcut here catches regressions where
-	// the global entry is converted to a view-scoped one that excludes the
-	// cross outliner or where the leader form is dropped.
+	// Task Composer is globally available through Ctrl+N; search results do not
+	// advertise a second navigation shortcut.
 	if cmd := findCommand(commands, "quick capture"); cmd == nil {
 		t.Error("'quick capture' should be reachable from ViewCrossProjectOutliner via global fallback")
-	} else if cmd.Shortcut != ";i" {
-		t.Errorf("'quick capture' shortcut = %q, want %q", cmd.Shortcut, ";i")
+	} else if cmd.Shortcut != "" {
+		t.Errorf("'quick capture' shortcut = %q, want no retired alias", cmd.Shortcut)
 	}
 }

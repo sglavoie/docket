@@ -17,6 +17,9 @@ func (m *AppModel) handleTaskLinkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case LinkedTaskCreatedMsg:
 		return m.handleLinkedTaskCreated(msg)
 
+	case LinkedTaskBatchCreatedMsg:
+		return m.handleLinkedTaskBatchCreated(msg)
+
 	case ShowLinkedTaskSelectorMsg:
 		return m.handleShowLinkedTaskSelector(msg)
 
@@ -35,9 +38,26 @@ func (m *AppModel) handleTaskLinkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
+func (m *AppModel) handleLinkedTaskBatchCreated(msg LinkedTaskBatchCreatedMsg) (bool, tea.Cmd) {
+	if len(msg.Results) == 0 {
+		return true, nil
+	}
+	projectID := msg.Results[0].New.ProjectID
+	m.reloadProjectByID(projectID)
+	m.popView()
+	m.refreshAllViews()
+	m.sessionStats.tasksCreated += len(msg.Results)
+	m.setSuccessStatus(fmt.Sprintf("Created %d linked tasks", len(msg.Results)))
+	return true, defaultStatusTimeout()
+}
+
 // handleCreateLinkedTask handles the CreateLinkedTaskMsg.
 func (m *AppModel) handleCreateLinkedTask(msg CreateLinkedTaskMsg) (bool, tea.Cmd) {
 	if msg.SourceTask != nil && msg.Project != nil {
+		if m.typedNavigation {
+			preset := linkedComposerPreset(msg.Project, msg.SourceTask, msg.LinkType)
+			return true, m.openTaskComposer(preset, ViewLinkedTaskCreator)
+		}
 		m.showView(ViewLinkedTaskCreator, NewLinkedTaskCreatorModel(msg.SourceTask, msg.Project, msg.LinkType))
 	}
 	return true, nil

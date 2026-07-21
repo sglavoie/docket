@@ -5,81 +5,30 @@ func tutorConceptTopicsPipeline() []TutorTopic {
 		{
 			Title:    "The Task Pipeline",
 			Category: "Concepts",
-			Content: `# The Pipeline Stages
+			Content: `# From Capture to Review
 
-tt organizes work into six pipeline stages. Each stage has
-dedicated views and shortcuts; the Pipeline Hub (;;) is the
-visual map across them.
+Capture ideas with Ctrl+N, then triage Inbox work from Home or
+Manage. Planner separates Today, Next, and Backlog so deciding
+what to do remains distinct from doing it.
 
-  Capture   Get ideas and tasks in quickly
-  Triage    Sort the inbox into actionable work
-  Plan      Decide what to work on next
-  Work      Focus on today's plan and project execution
-  Review    Reflect on progress and catch issues
-  Support   Cross-cutting tools: blockers, notes, rules, alerts
+# Task Workspace
 
-# Capture
+Tasks and Project both open Task Workspace. Tasks uses an
+application scope; Project uses the selected project scope.
+The View menu changes List, Outline, or Board layout and focus
+without changing the destination.
 
-Capture anything without stopping to organize it. Tasks land
-in your inbox and wait for triage.
+# Review and Manage
 
-  ;i  Quick capture (single task, inline modifiers)
-  ;I  Bulk capture (multi-line, one task per line)
+Review groups Daily, Weekly, Activity, Metrics, and Roadmap.
+Manage groups Inbox, Notes, Blockers, Rules, Templates, Tags,
+Notifications, and Settings.
 
-# Triage
+# Navigation
 
-Move tasks out of the inbox, assign priorities, sections,
-and tags. Use cross-project views to see everything at once.
-
-  ctrl+i  Global inbox processor (triage all inboxes)
-  ;a      All tasks (flat cross-project list)
-  ;o      Cross-project outliner
-  ;k      Cross-project kanban
-
-# Plan
-
-Decide what to work on. The Planner holds Today, Next, and a
-ranked Backlog. Next membership is the workflow state (StateNext);
-the persisted queue only orders those tasks. Promote a Backlog
-task with q (→ Next) or w (→ Today).
-
-  ;q  Planner — Next (on-deck shortlist)
-  ;D  All Tasks grouped by due date
-  ;d  Daily review
-  ;R  Roadmap
-
-# Work
-
-Your execution surface. Track today's commitments and dive
-into individual projects to move tasks forward.
-
-  ;w                    Planner — Today (daily cockpit)
-  Enter on a project    Open the project outliner
-
-# Review
-
-Reflect on what was done, catch stale work, and close loops.
-
-  ;r  Weekly review (structural health across projects)
-  ;m  Metrics dashboard
-  ;l  Recent activity log
-
-# Support
-
-Cross-cutting tools that span every stage: blockers you've
-recorded, free-form notes, automation rules, and alerts.
-
-  ;B  Global blockers
-  ;N  Global notes
-  ;W  Workflow rules
-  ;n  Notification center
-
-# Pipeline Hub
-
-Press ;; from anywhere to open the Pipeline Hub: a single
-overview screen showing every stage with live counts, the
-current Next Action recommendation, and one-keystroke access
-to every stage view.`,
+Press Ctrl+G for the six destinations and : to search actions
+by name. Esc closes the active overlay or module before moving
+back toward Home; Ctrl+Esc resets directly to Home.`,
 		},
 	}
 }

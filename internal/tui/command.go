@@ -35,19 +35,24 @@ const (
 // Commands are first-class data structures that can be searched, displayed,
 // and executed from the fuzzy-find command palette.
 type Command struct {
-	Name        string          // Display name shown in the palette (e.g., "Create Task")
-	Description string          // Brief description of what the command does
-	Shortcut    string          // Keyboard shortcut if any (e.g., "n", "ctrl+n")
-	Category    CommandCategory // Logical grouping for organization
-	Views       []ViewType      // Views where this command is available (empty = global/all views)
-	Aliases     []string        // Alternative names for discoverability (e.g., "create task", "add task")
-	Available   func() bool     // Optional dynamic availability predicate (nil = always available)
-	Handler     func() tea.Msg  // Execution closure returning a BubbleTea message
+	OperationID          OperationID               // Stable semantic identity used by the operation ledger
+	Reachability         CommandReachability       // Final discoverability classification during consolidation
+	FinalTarget          string                    // Binding, menu, hub, overlay, alias, or retirement target
+	Name                 string                    // Display name shown in the palette (e.g., "Create Task")
+	Description          string                    // Brief description of what the command does
+	Shortcut             string                    // Keyboard shortcut if any (e.g., "n", "ctrl+n")
+	Category             CommandCategory           // Logical grouping for organization
+	Views                []PresentationID          // Renderer scope (empty = global/all views)
+	Aliases              []string                  // Alternative names for discoverability
+	RequiredCapabilities CapabilitySet             // Capabilities required by the migrated command
+	ContextAvailable     func(CommandContext) bool // Optional selection/scope/entity predicate
+	Available            func() bool               // Legacy dynamic availability predicate
+	Handler              func() tea.Msg            // Execution closure returning a BubbleTea message
 }
 
 // projectTreeAndOutlinerViews returns the Views slice for per-project primary
 // commands. The project tree was retired, so this is now the Outliner alone;
 // the name is retained to avoid churning its call sites.
-func projectTreeAndOutlinerViews() []ViewType {
-	return []ViewType{ViewOutliner}
+func projectTreeAndOutlinerViews() []PresentationID {
+	return []PresentationID{ViewOutliner}
 }

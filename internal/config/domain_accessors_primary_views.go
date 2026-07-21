@@ -63,16 +63,8 @@ func (s *Settings) GetPriorityEscalationDays() int {
 	return *s.PriorityEscalationDays
 }
 
-// IsDescriptionColumnVisible mirrors (*Config).IsDescriptionColumnVisible:
-// the description-indicator column is on unless OutlinerDefaultColumns
-// explicitly disables it. Safe to call on a nil receiver.
+// IsDescriptionColumnVisible reports the fixed Task Workspace default.
 func (m *MachineState) IsDescriptionColumnVisible() bool {
-	if m == nil {
-		return true
-	}
-	if v, ok := m.OutlinerDefaultColumns["description"]; ok {
-		return v
-	}
 	return true
 }
 

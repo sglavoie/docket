@@ -26,12 +26,11 @@ func newTestAppModel() *AppModel {
 		projects:             make(map[string]*models.Project),
 		persister:            NewProjectService(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
-		viewStack:            []ViewType{ViewDashboard},
+		projectLastView:      make(map[string]PresentationID),
+		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
-		navHistory:           NewNavHistory(),
 	}
 }
 
@@ -56,13 +55,12 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		projects:             map[string]*models.Project{project.ID: project},
 		persister:            NewProjectService(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
-		viewStack:            []ViewType{ViewDashboard},
+		projectLastView:      make(map[string]PresentationID),
+		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		navHistory:           NewNavHistory(),
 	}
 
 	return app, project

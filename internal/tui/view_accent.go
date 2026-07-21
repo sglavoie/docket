@@ -2,18 +2,18 @@ package tui
 
 import "image/color"
 
-// viewAccentMap maps ViewType to its category accent color.
+// viewAccentMap maps PresentationID to its category accent color.
 // Unmapped views (pickers, editors, selectors) inherit from parent via stack walk.
-var viewAccentMap map[ViewType]color.Color
+var viewAccentMap map[PresentationID]color.Color
 
 // buildViewAccentMap initializes the accent map. Called from ApplyTheme so that
 // palette overrides are reflected on every theme change. The view→category
-// assignment lives declaratively in the route table (see route.go); this
-// resolves each route's accent category to the active theme color.
+// assignment is independent from route identity; this resolves each
+// presentation's category against the active theme.
 func buildViewAccentMap() {
-	m := make(map[ViewType]color.Color)
-	for _, vt := range allViewTypes() {
-		if c := accentColorForCategory(routeFor(vt).Accent); c != nil {
+	m := make(map[PresentationID]color.Color)
+	for _, vt := range allPresentations() {
+		if c := accentColorForCategory(presentationAccentCategory(vt)); c != nil {
 			m[vt] = c
 		}
 	}
@@ -21,7 +21,7 @@ func buildViewAccentMap() {
 }
 
 // ViewAccentColor returns the accent color for a view type, or nil if unmapped.
-func ViewAccentColor(vt ViewType) color.Color {
+func ViewAccentColor(vt PresentationID) color.Color {
 	if viewAccentMap == nil {
 		return nil
 	}

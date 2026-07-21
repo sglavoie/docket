@@ -339,6 +339,8 @@ func (w *WorkspaceCatalog) UpsertProject(p *models.Project) {
 // completion, dismissals, and saved task views/filters. It maps to
 // <data>/.tt/planning.json.
 type PlanningState struct {
+	TUIStateVersion int `json:"tui_state_version"`
+
 	// FocusQueue is the Next order index: it records the preferred ordering of
 	// StateNext tasks, not membership (which is derived from State()==StateNext).
 	FocusQueue         []FocusQueueItem `json:"focus_queue,omitempty"`
@@ -357,7 +359,7 @@ type PlanningState struct {
 
 // NewPlanningState returns an empty planning state.
 func NewPlanningState() *PlanningState {
-	return &PlanningState{}
+	return &PlanningState{TUIStateVersion: CurrentTUIStateVersion}
 }
 
 // Validate reports problems with the planning collections: focus queue and
@@ -502,23 +504,22 @@ func (p OnboardingProgress) Complete() bool { return p.CompletedCount() == 5 }
 // Settings owns portable behavior, appearance, alert, and privacy/AI-consent
 // preferences. It maps to <data>/.tt/settings.json.
 type Settings struct {
+	TUIStateVersion int `json:"tui_state_version"`
+
 	// Behavior.
-	DefaultContext        string              `json:"default_context,omitempty"`
-	FzfEnabled            bool                `json:"fzf_enabled"`
-	GlowEnabled           bool                `json:"glow_enabled"`
-	FzfTimeout            *int                `json:"fzf_timeout,omitempty"`
-	UndoHistoryDepth      *int                `json:"undo_history_depth,omitempty"`
-	PopupTimeoutSeconds   *int                `json:"popup_timeout_seconds,omitempty"`
-	TimeFormat            string              `json:"time_format,omitempty"`
-	WeekEndDay            string              `json:"week_end_day,omitempty"`
-	UseEmoji              *bool               `json:"use_emoji,omitempty"`
-	LinkedTaskJumpToNew   *bool               `json:"linked_task_jump_to_new,omitempty"`
-	TutorDismissed        *bool               `json:"tutor_dismissed,omitempty"`
-	Onboarding            *OnboardingProgress `json:"onboarding,omitempty"`
-	DefaultProjectView    string              `json:"default_project_view,omitempty"`
-	FocusBoardDefaultMode string              `json:"focus_board_default_mode,omitempty"`
-	GlobalPinnedTags      []string            `json:"global_pinned_tags,omitempty"`
-	SectionColors         map[string]string   `json:"section_colors,omitempty"`
+	DefaultContext      string              `json:"default_context,omitempty"`
+	FzfEnabled          bool                `json:"fzf_enabled"`
+	GlowEnabled         bool                `json:"glow_enabled"`
+	FzfTimeout          *int                `json:"fzf_timeout,omitempty"`
+	UndoHistoryDepth    *int                `json:"undo_history_depth,omitempty"`
+	TimeFormat          string              `json:"time_format,omitempty"`
+	WeekEndDay          string              `json:"week_end_day,omitempty"`
+	UseEmoji            *bool               `json:"use_emoji,omitempty"`
+	LinkedTaskJumpToNew *bool               `json:"linked_task_jump_to_new,omitempty"`
+	TutorDismissed      *bool               `json:"tutor_dismissed,omitempty"`
+	Onboarding          *OnboardingProgress `json:"onboarding,omitempty"`
+	GlobalPinnedTags    []string            `json:"global_pinned_tags,omitempty"`
+	SectionColors       map[string]string   `json:"section_colors,omitempty"`
 
 	// Behavior — activity, list, and pin limits.
 	MaxActivityEntries    *int  `json:"max_activity_entries,omitempty"`
@@ -594,6 +595,7 @@ type Settings struct {
 func NewSettings() *Settings {
 	depth := DefaultUndoHistoryDepth
 	return &Settings{
+		TUIStateVersion:  CurrentTUIStateVersion,
 		DefaultContext:   "personal",
 		FzfEnabled:       true,
 		GlowEnabled:      true,
@@ -670,6 +672,9 @@ func (a *AutomationConfig) RemoveProjectReferences(id, slug string) bool {
 // maps to ~/.tt/runtime/<workspace-id>/machine.json. The durable catalog UUID,
 // rather than the current data-directory path, selects its machine-local state.
 type MachineState struct {
+	TUIStateVersion int             `json:"tui_state_version"`
+	StartRoute      StartRouteState `json:"start_route,omitzero"`
+
 	// Editors and integrations.
 	Editor           string            `json:"editor,omitempty"`
 	AttachmentEditor string            `json:"attachment_editor,omitempty"`
@@ -679,71 +684,23 @@ type MachineState struct {
 	AIConfigDirs     map[string]string `json:"ai_config_dirs,omitempty"`
 
 	// Current navigation and active (non-saved) filter selections.
-	CurrentProject       string              `json:"current_project,omitempty"`
-	CycleProjects        []string            `json:"cycle_projects,omitempty"`
-	ContextCycleProjects map[string][]string `json:"context_cycle_projects,omitempty"`
-	CustomContexts       map[string][]string `json:"custom_contexts,omitempty"`
-	RecentTaskVisits     []RecentTaskVisit   `json:"recent_task_visits,omitempty"`
-	StartView            string              `json:"start_view,omitempty"`
-	FilterContext        string              `json:"filter_context,omitempty"`
-	FilterCustomContext  string              `json:"filter_custom_context,omitempty"`
-	ScoreFilterCustom    *float64            `json:"score_filter_custom,omitempty"`
+	CurrentProject   string              `json:"current_project,omitempty"`
+	CustomContexts   map[string][]string `json:"custom_contexts,omitempty"`
+	RecentTaskVisits []RecentTaskVisit   `json:"recent_task_visits,omitempty"`
+	StartView        string              `json:"start_view,omitempty"`
 
 	// Histories.
-	RecentPaletteItems   []RecentPaletteItem `json:"recent_palette_items,omitempty"`
-	LastPaletteCategory  string              `json:"last_palette_category,omitempty"`
-	PaletteSearchHistory []string            `json:"palette_search_history,omitempty"`
-	GlobalSearchHistory  []string            `json:"global_search_history,omitempty"`
-	CommandHistory       []string            `json:"command_history,omitempty"`
-	PinnedCommands       []string            `json:"pinned_commands,omitempty"`
-	SavedSearches        map[string]string   `json:"saved_searches,omitempty"`
-
-	// Layout — dashboard, tree, outliner, and cross-outliner view state.
-	ProjectViewStates           map[string]ProjectViewState `json:"project_view_states,omitempty"`
-	ShowInfoPanel               *bool                       `json:"show_info_panel,omitempty"`
-	InfoPanelMode               *int                        `json:"info_panel_mode,omitempty"`
-	DashboardBottomLayout       *int                        `json:"dashboard_bottom_layout,omitempty"`
-	DashboardHorizontalSplitPct *int                        `json:"dashboard_horizontal_split_pct,omitempty"`
-	DashboardVerticalSplitPct   *int                        `json:"dashboard_vertical_split_pct,omitempty"`
-	OutlinerCollapsedSections   map[string]bool             `json:"outliner_collapsed_sections,omitempty"`
-	TreeDefaultColumns          map[string]bool             `json:"tree_default_columns,omitempty"`
-	OutlinerDefaultColumns      map[string]bool             `json:"outliner_default_columns,omitempty"`
-	TreePriorityMode            string                      `json:"tree_priority_mode,omitempty"`
-	OutlinerPriorityMode        string                      `json:"outliner_priority_mode,omitempty"`
-	AllTasksTabOrder            []string                    `json:"all_tasks_tab_order,omitempty"`
-	TaskFormCollapsed           *bool                       `json:"task_form_collapsed,omitempty"`
-
-	// Layout — cross-outliner sidebar preferences and active filter/sort state.
-	// (Saved views/filters are portable planning state; these are the machine's
-	// current, in-flight cross-outliner selections.)
-	CrossOutlinerSidebarEnabled    *bool             `json:"cross_outliner_sidebar_enabled,omitempty"`
-	CrossOutlinerCycleOnly         *bool             `json:"cross_outliner_cycle_only,omitempty"`
-	CrossOutlinerCollapsedSections map[string]bool   `json:"cross_outliner_collapsed_sections,omitempty"`
-	CrossOutlinerFoldState         map[string]bool   `json:"cross_outliner_fold_state,omitempty"`
-	CrossOutlinerColumnToggles     map[string]bool   `json:"cross_outliner_column_toggles,omitempty"`
-	CrossOutlinerFilterType        string            `json:"cross_outliner_filter_type,omitempty"`
-	CrossOutlinerFilterStatus      string            `json:"cross_outliner_filter_status,omitempty"`
-	CrossOutlinerFilterPriority    int               `json:"cross_outliner_filter_priority,omitempty"`
-	CrossOutlinerFilterDueDate     int               `json:"cross_outliner_filter_due_date,omitempty"`
-	CrossOutlinerFilterActionable  bool              `json:"cross_outliner_filter_actionable,omitempty"`
-	CrossOutlinerFilterHideDimmed  bool              `json:"cross_outliner_filter_hide_dimmed,omitempty"`
-	CrossOutlinerFilterGitHubIssue bool              `json:"cross_outliner_filter_github_issue,omitempty"`
-	CrossOutlinerFilterParked      bool              `json:"cross_outliner_filter_parked,omitempty"`
-	CrossOutlinerFilterScoreMin    float64           `json:"cross_outliner_filter_score_min,omitempty"`
-	CrossOutlinerFilterTags        []string          `json:"cross_outliner_filter_tags,omitempty"`
-	CrossOutlinerFilterSections    []string          `json:"cross_outliner_filter_sections,omitempty"`
-	CrossOutlinerFilterAttrs       map[string]string `json:"cross_outliner_filter_attrs,omitempty"`
-	CrossOutlinerPinnedTagTab      string            `json:"cross_outliner_pinned_tag_tab,omitempty"`
-	CrossOutlinerSortField         int               `json:"cross_outliner_sort_field,omitempty"`
-	CrossOutlinerSortAscending     bool              `json:"cross_outliner_sort_ascending,omitempty"`
-	CrossOutlinerFilterBarEnabled  bool              `json:"cross_outliner_filter_bar_enabled,omitempty"`
+	RecentPaletteItems []RecentPaletteItem `json:"recent_palette_items,omitempty"`
 }
 
 // NewMachineState returns machine state seeded with the same editor default
 // NewConfig applies.
 func NewMachineState() *MachineState {
 	return &MachineState{
-		Editor: "code",
+		TUIStateVersion: CurrentTUIStateVersion,
+		Editor:          "code",
+		StartView:       DefaultStartView,
+		StartRoute:      StartRouteState{PlannerTab: StartPlannerToday},
 	}
 }
 
@@ -751,8 +708,8 @@ func NewMachineState() *MachineState {
 // existence is intentionally checked only when an explicit override is used,
 // so temporarily unavailable persisted directories remain loadable.
 func (m *MachineState) Validate() error {
-	if m.DashboardBottomLayout != nil && (*m.DashboardBottomLayout < 0 || *m.DashboardBottomLayout > 2) {
-		return fmt.Errorf("machine: dashboard_bottom_layout must be 0..2, got %d", *m.DashboardBottomLayout)
+	if m.TUIStateVersion > CurrentTUIStateVersion {
+		return fmt.Errorf("machine: TUI state version %d not supported, please upgrade tt", m.TUIStateVersion)
 	}
 	if m.AIHarness != "" {
 		if _, err := aiharness.Parse(m.AIHarness); err != nil {
@@ -781,10 +738,6 @@ func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
 		m.CurrentProject = ""
 		changed = true
 	}
-	if mapHadProjectKey(m.ProjectViewStates, id, slug) {
-		deleteProjectKey(m.ProjectViewStates, id, slug)
-		changed = true
-	}
 	var visits bool
 	m.RecentTaskVisits, visits = filterProjectRefSlice(m.RecentTaskVisits, func(v RecentTaskVisit) string {
 		return v.ProjectID
@@ -793,14 +746,6 @@ func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
 	})
 	changed = visits || changed
 
-	var cycled bool
-	m.CycleProjects, cycled = filterProjectIDs(m.CycleProjects, func(pid string) bool {
-		return !refMatches(pid, id, slug)
-	})
-	changed = cycled || changed
-	changed = filterProjectIDMap(m.ContextCycleProjects, func(pid string) bool {
-		return !refMatches(pid, id, slug)
-	}) || changed
 	changed = filterProjectIDMap(m.CustomContexts, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	}) || changed

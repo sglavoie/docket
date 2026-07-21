@@ -28,7 +28,7 @@ func TestIntentForItem_PrimaryTriageKeysPromoted(t *testing.T) {
 		{"u", "Undo last operation on current task", "Operations"},
 		{"?", "Toggle help", "Navigation"},
 	}
-	inboxSources := []ViewType{ViewInboxProcessor, ViewGlobalInboxProcessor}
+	inboxSources := []PresentationID{ViewInboxProcessor, ViewGlobalInboxProcessor}
 	for _, source := range inboxSources {
 		for _, tc := range cases {
 			got := intentForItem(HelpItem{Key: tc.key, Description: tc.desc, Category: tc.cat}, source)
@@ -73,19 +73,12 @@ func TestIntentForItem_CategoryMapping(t *testing.T) {
 }
 
 // TestIntentForItem_CrossViewJumpsDemoted verifies that broad cross-view
-// navigation jumps (`;x` shortcuts, the palette `:`, history hops, the global
-// inbox toggle, etc.) are routed to the "Jump to View" bucket. Keeping them
+// navigation jumps are routed to the "Jump to View" bucket. Keeping them
 // out of the primary intent buckets is what makes per-view help feel
 // "current-mode actions only" — these globals still appear, but in their own
 // section at the bottom.
 func TestIntentForItem_CrossViewJumpsDemoted(t *testing.T) {
-	keys := []string{
-		";d", ";r", ";a", ";o", ";w",
-		":", "|", "#",
-		"ctrl+,", "ctrl+/", "ctrl+i", "ctrl+x",
-		"alt+o", "alt+i", "alt+l",
-		"ctrl+6", "ctrl+esc",
-	}
+	keys := []string{":", "ctrl+g", "ctrl+x", "ctrl+esc", "|", "#"}
 	for _, k := range keys {
 		got := intentForItem(HelpItem{Key: k, Category: "Navigation"}, ViewInboxProcessor)
 		if got != "Jump to View" {
@@ -96,9 +89,9 @@ func TestIntentForItem_CrossViewJumpsDemoted(t *testing.T) {
 
 // TestIntentForItem_NavigateKeys covers the universal navigation/quit keys
 // that should always live in the Navigate bucket so users can find esc, the
-// scroll keys, and ctrl+\ in a predictable place.
+// scroll keys in a predictable place.
 func TestIntentForItem_NavigateKeys(t *testing.T) {
-	keys := []string{"j", "k", "G", "g", "ctrl+u", "ctrl+d", "esc", "ctrl+c", `ctrl+\`}
+	keys := []string{"j", "k", "G", "g", "ctrl+u", "ctrl+d", "esc", "ctrl+c"}
 	for _, k := range keys {
 		got := intentForItem(HelpItem{Key: k, Category: "Navigation"}, ViewInboxProcessor)
 		if got != "Navigate" {
@@ -143,14 +136,11 @@ func TestBuildIntentCategoriesReflectsHelpIntentOrder(t *testing.T) {
 	}
 }
 
-func TestFocusBoardHelpUsesPipelineIntentBuckets(t *testing.T) {
+func TestFocusBoardHelpUsesConsolidatedIntentBuckets(t *testing.T) {
 	items := []HelpItem{
 		{Key: "a", Description: "Quick-add board item", Category: "Actions"},
-		{Key: "ctrl+i", Description: "Open Global Inbox Processor", Category: "Navigation"},
 		{Key: "p", Description: "Plan or set priority", Category: "Actions"},
-		{Key: ";R", Description: "Open Roadmap", Category: "Navigation"},
 		{Key: "x", Description: "Complete or dismiss item", Category: "Actions"},
-		{Key: ";r", Description: "Open Weekly Review", Category: "Navigation"},
 		{Key: ":", Description: "Command palette", Category: "Navigation"},
 	}
 
@@ -159,11 +149,8 @@ func TestFocusBoardHelpUsesPipelineIntentBuckets(t *testing.T) {
 		want string
 	}{
 		{"a", "Capture"},
-		{"ctrl+i", "Triage"},
 		{"p", "Plan"},
-		{";R", "Plan"},
 		{"x", "Work"},
-		{";r", "Review"},
 		{":", "Jump to View"},
 	}
 	for _, tc := range cases {
@@ -174,7 +161,7 @@ func TestFocusBoardHelpUsesPipelineIntentBuckets(t *testing.T) {
 	}
 
 	m := NewHelpViewModel(items, ViewFocusBoard, "Today")
-	wantCategories := []string{"Capture", "Triage", "Plan", "Work", "Review", "Jump to View"}
+	wantCategories := []string{"Capture", "Plan", "Work", "Jump to View"}
 	if !slices.Equal(m.categories, wantCategories) {
 		t.Fatalf("Today first-level help tabs = %v, want %v", m.categories, wantCategories)
 	}
@@ -248,53 +235,6 @@ func TestRenderByIntentContent_SectionOrderingAndPlacement(t *testing.T) {
 	}
 }
 
-// TestRenderContent_FirstLevelUsesIntent_ExplorerKeepsCategory locks in the
-// split between the two help surfaces:
-//   - First-level (per-view) help uses intent buckets.
-//   - The keybinding explorer keeps raw-Category layout so it remains a
-//     faithful, exhaustive reference.
-//
-// Without this guard, a future refactor could accidentally route the explorer
-// through the intent renderer and lose the "full reference" property
-// session 9 (Command Palette Escape Hatch) depends on.
-func TestRenderContent_FirstLevelUsesIntent_ExplorerKeepsCategory(t *testing.T) {
-	items := []HelpItem{
-		{Key: "n", Description: "Skip", Category: "Navigation"},
-		{Key: ",s", Description: "Start", Category: "Status"},
-	}
-
-	firstLevel := NewHelpViewModel(items, ViewInboxProcessor, "Inbox Processor")
-	firstLevel.SetSize(120, 40)
-	firstLevelOut := firstLevel.renderContent()
-	if !strings.Contains(firstLevelOut, "Triage") {
-		t.Errorf("first-level help should render intent buckets, missing 'Triage' header:\n%s", firstLevelOut)
-	}
-	if !strings.Contains(firstLevelOut, "Resolve") {
-		t.Errorf("first-level help should render intent buckets, missing 'Resolve' header:\n%s", firstLevelOut)
-	}
-
-	explorer := &HelpViewModel{
-		items:         items,
-		filteredItems: []filteredHelpItem{{HelpItem: items[0]}, {HelpItem: items[1]}},
-		sourceView:    ViewKeybindingExplorer,
-		viewName:      "All Views",
-		isExplorer:    true,
-	}
-	explorer.categories = explorer.buildCategories()
-	explorer.SetSize(120, 40)
-	explorerOut := explorer.renderContent()
-	// Explorer should keep raw Category labels.
-	if !strings.Contains(explorerOut, "Status") {
-		t.Errorf("explorer should keep raw Category labels, missing 'Status' header:\n%s", explorerOut)
-	}
-	if !strings.Contains(explorerOut, "Navigation") {
-		t.Errorf("explorer should keep raw Category labels, missing 'Navigation' header:\n%s", explorerOut)
-	}
-	if strings.Contains(explorerOut, "Triage") {
-		t.Errorf("explorer should NOT use intent buckets; found 'Triage' header in:\n%s", explorerOut)
-	}
-}
-
 // TestIntentForItem_DashboardDoesNotPromoteTriageKeys is the source-aware
 // regression: the Dashboard binds n/e/D/T/u to "New project", "Edit project",
 // "Delete project", "View trash", and "Unarchive project". Those are not
@@ -323,150 +263,36 @@ func TestIntentForItem_DashboardDoesNotPromoteTriageKeys(t *testing.T) {
 	}
 }
 
-// TestDashboardFirstLevelHelpTriageBucket renders the Dashboard's first-level
-// help and asserts that the "Triage" intent section contains the `O`
-// ("Open inbox triage for project") entry but does NOT contain the Dashboard's
-// n/e/D/T/u action descriptions. This is the end-to-end version of the
-// source-aware classifier: a user opening help from the Dashboard must see
-// triage advertised exactly once — as the action that takes them into triage.
-func TestDashboardFirstLevelHelpTriageBucket(t *testing.T) {
+// TestHomeFirstLevelHelpMatchesSimplifiedGrammar verifies Help exposes Home's
+// pane, search, project, and open controls without retired Dashboard shortcuts.
+func TestHomeFirstLevelHelpMatchesSimplifiedGrammar(t *testing.T) {
 	cfg, _ := newTestConfigWithProject("Alpha")
 	cfg = testRuntimeAt(t.TempDir(), cfg)
 	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
 	items := dashboard.GetHelpItems()
 
-	for _, item := range items {
-		bucket := intentForItem(item, ViewDashboard)
-		switch item.Key {
-		case "n", "e", "D", "T", "u":
-			if bucket == "Triage" {
-				t.Errorf("Dashboard help item %q (%q) classified as Triage; want non-Triage",
-					item.Key, item.Description)
-			}
-		case "O":
-			if bucket != "Triage" {
-				t.Errorf("Dashboard help item %q (%q) classified as %q; want Triage",
-					item.Key, item.Description, bucket)
-			}
+	for key, description := range map[string]string{
+		"h": "Focus Projects", "l": "Focus Attention", "/": "Search Home",
+		"a": "Create project", "e": "Edit project", "v": "Show archived projects",
+		"enter": "Open", "shift+enter": "Peek",
+	} {
+		if got := dashboardHelpDescription(items, key); got != description {
+			t.Errorf("Home help %s = %q, want %q", key, got, description)
 		}
 	}
 
-	help := NewHelpViewModel(items, ViewDashboard, "Dashboard")
+	for _, retired := range []string{"n", "O", "D", "T", "@", "`", "~", ",", ";", "ctrl+b", "ctrl+f"} {
+		if got := dashboardHelpDescription(items, retired); got != "" {
+			t.Errorf("Home help still advertises retired key %q as %q", retired, got)
+		}
+	}
+
+	help := NewHelpViewModel(items, ViewDashboard, "Home")
 	help.SetSize(120, 40)
 	out := help.renderByIntentContent()
-
-	if !strings.Contains(out, "Triage") {
-		t.Fatalf("Dashboard first-level help missing Triage section:\n%s", out)
-	}
-	if !strings.Contains(out, "Open inbox triage for project") {
-		t.Errorf("Dashboard Triage section missing 'Open inbox triage for project' entry:\n%s", out)
-	}
-
-	triageStart := strings.Index(out, "Triage")
-	nextHeader := len(out)
-	for _, header := range []string{
-		"Route & Schedule", "Resolve", "Refine", "Task & Blockers",
-		"View Controls", "Navigate", "Jump to View", "Other",
-	} {
-		if idx := strings.Index(out[triageStart+len("Triage"):], header); idx >= 0 {
-			abs := triageStart + len("Triage") + idx
-			if abs < nextHeader {
-				nextHeader = abs
-			}
+	for _, required := range []string{"Focus Projects", "Focus Attention", "Search Home", "Create project", "Show archived projects"} {
+		if !strings.Contains(out, required) {
+			t.Errorf("Home help missing %q:\n%s", required, out)
 		}
-	}
-	triageSection := out[triageStart:nextHeader]
-	for _, forbidden := range []string{
-		"New project", "Edit project", "Delete project", "View trash", "Unarchive project",
-	} {
-		if strings.Contains(triageSection, forbidden) {
-			t.Errorf("Dashboard Triage section contains non-triage entry %q:\n%s",
-				forbidden, triageSection)
-		}
-	}
-}
-
-// TestHelpFooterAdvertisesExplorerAsFullReference verifies the per-view help
-// footer points users at the keybinding explorer (`ctrl+\`) for the deep,
-// exhaustive reference. This is the discoverability bridge: first-level help
-// trims the binding set; the footer tells the user where the rest lives.
-func TestHelpFooterAdvertisesExplorerAsFullReference(t *testing.T) {
-	items := []HelpItem{{Key: "n", Description: "Skip", Category: "Navigation"}}
-
-	firstLevel := NewHelpViewModel(items, ViewInboxProcessor, "Inbox Processor")
-	firstLevel.SetSize(120, 40)
-	out := firstLevel.View().Content
-	if !strings.Contains(out, `ctrl+\: full reference`) {
-		t.Errorf("first-level help footer should advertise ctrl+\\: full reference; got:\n%s", out)
-	}
-
-	explorer := NewKeybindingExplorerModel()
-	explorer.SetSize(120, 40)
-	explorerOut := explorer.View().Content
-	if strings.Contains(explorerOut, `ctrl+\: full reference`) {
-		t.Errorf("explorer footer should NOT advertise itself as full reference; got:\n%s", explorerOut)
-	}
-	if !strings.Contains(explorerOut, "p:") {
-		t.Errorf("explorer footer should keep its category/prefix toggle hint 'p:'; got:\n%s", explorerOut)
-	}
-}
-
-func TestKeybindingExplorerResizeDoesNotOverflowHeight(t *testing.T) {
-	explorer := NewKeybindingExplorerModel()
-	explorer.SetSize(120, 40)
-	explorer.SetSize(100, 35)
-
-	if explorer.compactTabs {
-		t.Fatal("keybinding explorer should keep full category tabs at 100x35")
-	}
-
-	_, issues := normalizeScreen(explorer.View().Content, 100, 35)
-	if len(issues) > 0 {
-		t.Fatalf("resized keybinding explorer reported layout issues: %+v", issues)
-	}
-}
-
-func TestKeybindingExplorerFullTabModeAtComfortableSize(t *testing.T) {
-	explorer := NewKeybindingExplorerModel()
-	explorer.SetSize(100, 35)
-
-	if explorer.compactTabs {
-		t.Fatal("keybinding explorer should render full tabs at 100x35")
-	}
-	if !strings.Contains(explorer.renderHelpTabBar(), "\n") {
-		t.Fatal("full tab mode should render the wrapping category tab bar")
-	}
-
-	out := explorer.View().Content
-	if !strings.Contains(out, "Blockers (b prefix)") {
-		t.Fatalf("full tab mode should render category tabs; got:\n%s", out)
-	}
-	if strings.Contains(out, "Category: All") {
-		t.Fatalf("full tab mode should not render the compact category summary; got:\n%s", out)
-	}
-
-	if _, issues := normalizeScreen(out, 100, 35); len(issues) > 0 {
-		t.Fatalf("full tab mode reported layout issues: %+v", issues)
-	}
-}
-
-func TestKeybindingExplorerCompactTabModeAtMinimumHeight(t *testing.T) {
-	explorer := NewKeybindingExplorerModel()
-	explorer.SetSize(72, 20)
-
-	if !explorer.compactTabs {
-		t.Fatal("keybinding explorer should collapse tabs at 72x20")
-	}
-	if strings.Contains(explorer.renderHelpTabBar(), "\n") {
-		t.Fatal("compact tab mode should render a one-line category summary")
-	}
-
-	out := explorer.View().Content
-	if !strings.Contains(out, "Category: All") {
-		t.Fatalf("compact tab mode should render category summary; got:\n%s", out)
-	}
-
-	if _, issues := normalizeScreen(out, 72, 20); len(issues) > 0 {
-		t.Fatalf("compact tab mode reported layout issues: %+v", issues)
 	}
 }

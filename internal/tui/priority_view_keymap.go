@@ -277,10 +277,6 @@ func (m *PriorityViewModel) priorityFilterEntries() []keymap.Entry {
 		TypeKey:           m.priorityFilterKeyAction("Ft"),
 		StateKey:          m.priorityFilterKeyAction("Fs"),
 		DueDateKey:        m.priorityFilterKeyAction("Fd"),
-		AttrDirectKey:     m.priorityFilterKeyAction("Fa"),
-		AttrSubKey: func(prefix, key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handlePriorityFilterSubPrefix(prefix, key) }
-		},
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewPriorityView} }
 		},

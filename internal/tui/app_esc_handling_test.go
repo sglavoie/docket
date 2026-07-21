@@ -21,7 +21,7 @@ import (
 func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 	alwaysCaptureViews := []struct {
 		name    string
-		viewTyp ViewType
+		viewTyp PresentationID
 		view    View
 	}{
 		{
@@ -250,7 +250,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 func TestSpaceActivatesPeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.outliner = NewOutlinerModel(project, nil, app.runtime)
-	app.viewStack = []ViewType{ViewOutliner}
+	app.viewStack = []PresentationID{ViewOutliner}
 
 	// Simulate space press
 	msg := tea.KeyPressMsg{Code: tea.KeySpace}

@@ -191,7 +191,7 @@ func SecondaryEscCapture(ivs *InteractiveViewState, steps []EscStep) bool {
 }
 
 // helpCmd returns a tea.Cmd that emits a ShowHelpMsg.
-func helpCmd(source ViewType, name string, items []HelpItem) tea.Cmd {
+func helpCmd(source PresentationID, name string, items []HelpItem) tea.Cmd {
 	return func() tea.Msg {
 		return ShowHelpMsg{SourceView: source, ViewName: name, Items: items}
 	}

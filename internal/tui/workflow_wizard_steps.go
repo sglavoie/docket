@@ -57,9 +57,9 @@ func (m *WorkflowWizardModel) handleListStepKey(msg tea.KeyPressMsg, listLen int
 			*cursor--
 			m.clampListScroll(cursor)
 		}
-	case "enter":
+	case "enter", "tab":
 		m.goForward()
-	case "esc":
+	case "esc", "shift+tab":
 		m.goBack()
 	}
 	return m, nil
@@ -68,10 +68,10 @@ func (m *WorkflowWizardModel) handleListStepKey(msg tea.KeyPressMsg, listLen int
 // handleInputStepKey handles text input and enter/esc for value-entry steps.
 func (m *WorkflowWizardModel) handleInputStepKey(msg tea.KeyPressMsg, input *textInputModel) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "enter":
+	case "enter", "tab":
 		m.goForward()
 		return m, nil
-	case "esc":
+	case "esc", "shift+tab":
 		m.goBack()
 		return m, nil
 	}
@@ -87,8 +87,10 @@ func (m *WorkflowWizardModel) handleNameReviewKey(msg tea.KeyPressMsg) (tea.Mode
 		m.err = nil
 		cmd := m.saveRule()
 		return m, cmd
-	case "esc":
+	case "esc", "shift+tab":
 		m.goBack()
+		return m, nil
+	case "tab":
 		return m, nil
 	}
 	var cmd tea.Cmd

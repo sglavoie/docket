@@ -13,11 +13,11 @@ import (
 	"github.com/sglavoie/tt/internal/template"
 )
 
-// ViewType represents the different views in the TUI.
-type ViewType int
+// PresentationID represents the different views in the TUI.
+type PresentationID int
 
 const (
-	ViewDashboard ViewType = iota
+	ViewDashboard PresentationID = iota
 	ViewProjectList
 	ViewProjectCreator
 	ViewProjectEditor
@@ -106,12 +106,10 @@ const (
 	ViewStatusIconPicker
 	ViewNotificationCenter
 	ViewMessageLog
-	ViewKeybindingExplorer
 	ViewProjectFilterSelector
 	ViewTaskForm
 	ViewKanban
 	ViewCrossProjectKanban
-	ViewPipelineHub
 	ViewRoadmap
 	ViewTaskDecisions
 	ViewAttrFilterPicker
@@ -187,6 +185,30 @@ type AppModel struct {
 	// feature_coordinator_secondary.go.
 	secondaryFeatures SecondaryCoordinators
 
+	// taskWorkspace owns the shared Task Workspace query, identity,
+	// organization, and mutation state consumed by Outline, List, and Board.
+	// Layout renderers register adapters with this controller.
+	taskWorkspace     *TaskWorkspaceController
+	taskWorkspaceView *TaskWorkspaceView
+
+	// reviewHub is the sole live Review destination. Daily, Weekly, Activity,
+	// Metrics, and Roadmap remain calculation/rendering modules owned by it.
+	reviewHub *ReviewHubModel
+
+	// manageHub is the sole live Manage destination for scoped collections,
+	// notifications, and the message log. Session 12 extends the same shell with
+	// automation, templates, scoring, and settings.
+	manageHub *ManageHubModel
+
+	// taskDetail is the sole live task-scoped primary child. Checklist, comments,
+	// decisions, attachments, and activity are embedded tabs rather than sibling
+	// routes; PresentationID identifies the active tab renderer.
+	taskDetail *TaskDetailModel
+
+	// taskComposer is the sole live compact/expanded task mutation overlay.
+	// Capture/form presentation IDs remain observations for embedded modes.
+	taskComposer *TaskComposerModel
+
 	// appService is the same application service the feature coordinators wrap,
 	// retained directly for the few AppModel-owned overlays that mutate
 	// synchronously in Update() and need the typed result inline (the pinned-task
@@ -194,10 +216,17 @@ type AppModel struct {
 	// and ledger-undoable without a direct raw save.
 	appService *app.Service
 
-	// View stack for navigation
-	viewStack []ViewType
-	width     int
-	height    int
+	// navigation is the live typed shell state. viewStack mirrors implementation
+	// renderer identity for registries and headless tests; production dispatch
+	// resolves through navigation.
+	navigation      NavigationState
+	typedNavigation bool
+	viewStack       []PresentationID
+	startupMessage  tea.Msg
+	startupRoute    *Route
+	startupView     PresentationID
+	width           int
+	height          int
 
 	// View registry for centralized view management
 	views *ViewRegistry
@@ -209,7 +238,6 @@ type AppModel struct {
 	dashboard            *DashboardModel
 	helpView             *HelpViewModel
 	taskJumper           *TaskJumperModel
-	globalSearch         *GlobalSearchModel
 	inboxProcessor       *InboxProcessorModel
 	globalInboxProcessor *GlobalInboxProcessorModel
 	metricsDashboard     *MetricsDashboardModel
@@ -351,10 +379,7 @@ type AppModel struct {
 	// CLI reference for AI assistant context
 	cliReference string
 
-	// Navigation history for back/forward (Alt+O / Alt+I)
-	navHistory          *NavHistory
 	lastNavigatedTaskID string
-	lastNavEntry        NavEntry // previous view for ctrl+6 quick toggle
 
 	// Recent task visits for quick-switch (Alt+R)
 	recentTaskVisits          []RecentTaskVisitEntry
@@ -364,15 +389,11 @@ type AppModel struct {
 	quickSwitchFiltering      bool
 	quickSwitchFiltered       []int   // indices into sortedQuickSwitchEntries
 	quickSwitchTitlePositions [][]int // parallel to quickSwitchFiltered: fuzzy match positions in title
-	quickSwitchPendingPrefix  string
-	quickSwitchShowCompleted  bool
 
 	// Pinned tasks popup state
 	showPinnedPopup      bool
 	pinnedPopupCursor    int
 	pinnedPopupItems     []pinnedTaskInfo
-	pinnedPendingPrefix  string
-	pinnedLastUnpinned   *pinnedTaskInfo
 	pinnedPopupFiltering bool
 	pinnedPopupFilter    string
 	pinnedPopupFiltered  []int          // indices into pinnedPopupItems
@@ -381,26 +402,12 @@ type AppModel struct {
 	pinnedPreviewID      string         // project ID the preview was built for
 	pinnedPreviewTaskID  string         // task ID the preview cursor was set for
 
-	// Project cycle popup state
-	showProjectCyclePicker bool
-	showProjectCycle       bool
-	projectCycleCursor     int
-	projectCycleScroll     int // scroll offset for cycle popup viewport
-	projectCycleAllItems   []ProjectInfo
-	projectCycleItems      []ProjectInfo
-	projectCycleSearch     BaseSearchableView
-	projectCyclePreview    *OutlinerModel // cached preview outliner for highlighted project
-	projectCyclePreviewID  string         // project ID the preview was built for
-
 	// Last project-level view used (Outliner) for cycle preservation
-	lastProjectView ViewType
+	lastProjectView PresentationID
 
 	// Per-project last view memory: remembers which project-level view was active
 	// for each project so switching back restores the same view.
-	projectLastView map[string]ViewType
-
-	pendingSemicolonPrefix  bool
-	pendingSemicolonTPrefix bool // true after ";t" while waiting for the sub-key (e.g. "m")
+	projectLastView map[string]PresentationID
 
 	// Proactive alert snapshots (ephemeral, regenerated on navigation)
 	rawAlerts       *alerts.AlertSnapshot // unfiltered (before dismissal filter)
@@ -433,10 +440,10 @@ type AppModel struct {
 	// Section quick picker overlay (shown as step 4 of global task move flow)
 	sectionQuickPicker *SectionQuickPicker
 
-	// Section change quick picker overlay (shown as step 3 of global ;ts section change flow)
+	// Section change quick picker overlay.
 	sectionChangeQuickPicker *SectionQuickPicker
 
-	// Intermediate state for the global ;tm task-move workflow.
+	// Intermediate state for the global task-move workflow.
 	// Cleared on completion or cancellation.
 	globalMoveState struct {
 		sourceProject *models.Project
@@ -444,19 +451,19 @@ type AppModel struct {
 		destProject   *models.Project
 	}
 
-	// Link type quick picker overlay (step 3 of global ;c linked task flow)
+	// Link type quick picker overlay.
 	linkTypeQuickPicker *LinkTypeQuickPicker
 
-	// Link mode quick picker overlay (step 4 of global ;c linked task flow)
+	// Link mode quick picker overlay.
 	linkModeQuickPicker *LinkModeQuickPicker
 
-	// Priority quick picker overlay (step 3 of global ;! priority update flow)
+	// Priority quick picker overlay.
 	priorityQuickPicker *PriorityQuickPicker
 
-	// Due date quick picker overlay (step 3 of global ;td due date flow)
+	// Due date quick picker overlay.
 	dueDateQuickPicker *DueDateQuickPicker
 
-	// Intermediate state for the global ;c linked task creation workflow.
+	// Intermediate state for global linked-task creation.
 	// Cleared on completion or cancellation.
 	globalLinkedTaskState struct {
 		sourceTask    *models.Task
@@ -474,6 +481,10 @@ type AppModel struct {
 	peekLeftLines   int  // cached total line count for left pane
 	peekRightLines  int  // cached total line count for right pane
 	peekPaneHeight  int  // cached visible height per pane
+
+	// Six-destination Ctrl+G switcher. It is a typed overlay rather than a
+	// routed view and therefore never enters the primary stack.
+	destinationSwitcher *DestinationSwitcher
 
 	// Export state for repeat-press clipboard behavior.
 	lastExportPath string

@@ -204,10 +204,6 @@ func handleFilterScoreKey(key string, f *CommonFilterState, machine *config.Mach
 		f.ScoreMin = 240
 	case "9":
 		f.ScoreMin = 270
-	case "c":
-		if machine != nil && machine.ScoreFilterCustom != nil {
-			f.ScoreMin = *machine.ScoreFilterCustom
-		}
 	case "0":
 		f.ScoreMin = 0
 	default:
@@ -393,17 +389,6 @@ func applyCommonFilterResult(result FilterPrefixResult, setPendingPrefix func(st
 		refreshView()
 	}
 	return result.TagCmd
-}
-
-// applyFilterSubPrefix handles a filter sub-prefix key press for views whose
-// custom-score input is wired through keymap actions. Returns true when the
-// sub-prefix was handled (caller already refreshed via refreshView).
-func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, machine *config.MachineState, setPendingPrefix func(string), refreshView func()) bool {
-	if dispatchFilterSubPrefix(prefix, key, f, machine, setPendingPrefix) {
-		refreshView()
-		return true
-	}
-	return false
 }
 
 // buildCommonFilterPrefixPopupHints returns the full PrefixHints map for the F prefix

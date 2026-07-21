@@ -7,9 +7,6 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 )
 
 // ScoreFilterInput encapsulates the inline text input for entering a custom
@@ -64,19 +61,12 @@ func (s *ScoreFilterInput) HandleKey(msg tea.KeyPressMsg) (value *float64, done 
 	return nil, false, cmd
 }
 
-// ProcessKey handles a key event, persists the result to config, and updates
-// the filter ScoreMin. The onApply callback is called when a valid value is
+// ProcessKey handles a key event and updates the session-owned filter ScoreMin.
+// The onApply callback is called when a valid value is
 // accepted so the caller can refresh its view.
-func (s *ScoreFilterInput) ProcessKey(msg tea.KeyPressMsg, runtime *config.RuntimeState, scoreMin *float64, onApply func()) tea.Cmd {
+func (s *ScoreFilterInput) ProcessKey(msg tea.KeyPressMsg, scoreMin *float64, onApply func()) tea.Cmd {
 	val, done, cmd := s.HandleKey(msg)
 	if done && val != nil {
-		// The custom score-filter threshold is machine-local (MachineState);
-		// commit only that domain rather than saving the whole config.
-		if err := commitMachineToRuntime(runtime, func(mc *config.MachineState) {
-			mc.ScoreFilterCustom = val
-		}); err != nil {
-			logging.Warn("failed to save score filter preference: %v", err)
-		}
 		*scoreMin = *val
 		onApply()
 	}

@@ -49,16 +49,17 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		projects:                make(map[string]*models.Project),
 		appearanceDetector:      appearance.NewDetector(),
 		persister:               NewProjectService(),
-		viewStack:               []ViewType{ViewDashboard},
+		navigation:              NewNavigationState(),
+		typedNavigation:         true,
+		viewStack:               []PresentationID{ViewDashboard},
 		sessionStats:            sessionStats{sessionStart: time.Now()},
 		width:                   80,
 		height:                  24,
 		views:                   NewViewRegistry(),
 		commandRegistry:         NewCommandRegistry(),
 		spinner:                 NewSpinner(),
-		navHistory:              NewNavHistory(),
-		lastProjectView:         defaultProjectViewType(runtime.Settings()),
-		projectLastView:         make(map[string]ViewType),
+		lastProjectView:         defaultProjectPresentation(runtime.Settings()),
+		projectLastView:         make(map[string]PresentationID),
 		outlinerToggleStates:    make(map[string]*OutlinerToggleState),
 		priorityViewFilterCache: make(map[string]*PriorityViewCache),
 		kanbanViewCache:         make(map[string]*KanbanViewCache),
@@ -98,16 +99,16 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// Assemble the domain-native dependency bundle shared by the shell and views.
 	app.deps = newShellDeps(runtime, appService, manager, ledger)
 
-	if err := app.ensureSystemInboxProject(); err != nil {
-		logging.Warn("failed to ensure system inbox project: %v", err)
+	if ensureErr := app.ensureSystemInboxProject(); ensureErr != nil {
+		logging.Warn("failed to ensure system inbox project: %v", ensureErr)
 	}
 	app.syncProjectCache()
-	if err := app.ensureSandboxProject(); err != nil {
-		logging.Warn("failed to ensure sandbox project: %v", err)
+	if ensureErr := app.ensureSandboxProject(); ensureErr != nil {
+		logging.Warn("failed to ensure sandbox project: %v", ensureErr)
 	}
 	app.syncProjectCache()
-	if err := app.ensureProjectColorSlots(); err != nil {
-		logging.Warn("failed to persist project color slots: %v", err)
+	if ensureErr := app.ensureProjectColorSlots(); ensureErr != nil {
+		logging.Warn("failed to persist project color slots: %v", ensureErr)
 	}
 	app.syncProjectCache()
 	activeProjects := app.activeProjects()
@@ -118,10 +119,26 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// become the long-lived shell pointer.
 	if currentID := runtime.Machine().CurrentProject; currentID != "" {
 		if current := app.projectByID(currentID); current != nil {
-			if err := app.loadStartupProject(current, startupLoads); err != nil {
-				logging.Warn("failed to load current project %s: %v", current.Name, err)
+			if loadErr := app.loadStartupProject(current, startupLoads); loadErr != nil {
+				logging.Warn("failed to load current project %s: %v", current.Name, loadErr)
 			}
 			app.currentProject = current
+		}
+	}
+	if runtime.Machine().GetStartView() == config.StartViewProject && app.currentProject != nil &&
+		(app.currentProject.Archived || app.currentProject.Sandbox || app.currentProject.Internal) {
+		app.currentProject = nil
+	}
+	projectID := ""
+	if app.currentProject != nil {
+		projectID = app.currentProject.ID
+	}
+	if startup, ok := resolveStartupNavigation(runtime.Machine(), projectID); ok {
+		app.startupMessage = startup.Message
+		if startup.HasRoute {
+			route := startup.Route
+			app.startupRoute = &route
+			app.startupView = startup.Presentation
 		}
 	}
 	// Migrate legacy (pre-state-driven) Focus Queue members to StateNext BEFORE
@@ -138,17 +155,40 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	app.hydrateDailyPlan(activeProjects, startupLoads)
 	app.hydrateRecentVisits(activeProjects, startupLoads)
 
+	workspaceParams := TaskWorkspaceParams{
+		Scope: AppEntityScope(), Layout: WorkspaceOutline, Focus: WorkspaceActive,
+	}
+	if app.startupRoute != nil && app.startupRoute.ID() == TaskWorkspace {
+		workspaceParams = app.startupRoute.Params().(TaskWorkspaceParams)
+	}
+	workspaceSource := NewRuntimeTaskWorkspaceSource(app.runtime, NewProjectService())
+	app.taskWorkspace, err = NewTaskWorkspaceController(
+		workspaceParams,
+		NewTaskWorkspaceQuery(workspaceSource),
+		NewFeatureTaskWorkspaceMutationAdapter(app.secondaryFeatures.TaskItem, app.secondaryFeatures.Bulk),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initialize task workspace: %w", err)
+	}
+	app.taskWorkspaceView, err = NewTaskWorkspaceView(app.taskWorkspace)
+	if err != nil {
+		return nil, fmt.Errorf("initialize task workspace layouts: %w", err)
+	}
+	app.taskWorkspaceView.resolveProject = app.projectByID
+
+	app.reviewHub = NewReviewHubModel(app.runtime, app.configManager, app.wireSecondaryCoordinators)
+	app.reviewHub.SetPlanningIndicators(app.focusQueueIDs, app.dailyPlanIDs)
+	app.reviewHub.SetSize(app.width, app.height-2)
+	app.ensureManageHub()
+
 	// Hydrate dismissed IDs from the planning-domain snapshot.
 	for _, id := range app.runtime.Planning().GetFocusDismissedIDs() {
 		app.focusDismissedIDs[id] = true
 	}
 
 	// Initialize dashboard and register it
-	app.dashboard = NewDashboardModel(runtime)
+	app.dashboard = NewHomeModel(runtime)
 	app.views.Register(ViewDashboard, app.dashboard)
-
-	// Record initial dashboard view in navigation history
-	app.navHistory.Record(NavEntry{ViewType: ViewDashboard})
 
 	// Register global commands
 	app.registerGlobalCommands()
@@ -409,34 +449,6 @@ func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, start
 	}
 }
 
-// makePriorityHandler creates a command handler that sets task priority.
-func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
-	return func() tea.Msg {
-		if m.outliner == nil {
-			return nil
-		}
-		if m.outliner.multiSelectMode && len(m.outliner.selectedTasks) > 0 {
-			selected := m.outliner.getSelectedTasks()
-			taskIDs := make([]string, 0, len(selected))
-			for _, task := range selected {
-				taskIDs = append(taskIDs, task.ID)
-				m.outliner.project.MutateTask(task.ID, func(t *models.Task) {
-					t.Priority = priority
-				})
-			}
-			m.outliner.rebuildRows()
-			return bulkTaskPropertyChangedWithUndo("Set Priority", fmt.Sprintf("P%d: %d tasks", priority, len(taskIDs)), taskIDs)
-		}
-		if task := m.outliner.getCursorTask(); task != nil {
-			m.outliner.project.MutateTask(task.ID, func(t *models.Task) {
-				t.Priority = priority
-			})
-			return taskPropertyChangedWithUndo(task, "Set Priority")
-		}
-		return nil
-	}
-}
-
 // commandGroups returns every command batch in the order they are registered.
 // Tests use this to rebuild the registry and assert palette invariants without
 // drifting from the production registration order.
@@ -481,25 +493,7 @@ func (m *AppModel) registerGlobalCommands() {
 
 // getGlobalHelpItems returns help items that apply across all views.
 func getGlobalHelpItems() []HelpItem {
-	return []HelpItem{
-		{Key: "?", Description: "Show help", Category: "General"},
-		{Key: "esc", Description: "Go back / cancel", Category: "General"},
-		{Key: "ctrl+c", Description: "Quit application", Category: "General"},
-		{Key: "/", Description: "Search projects", Category: "Navigation"},
-		{Key: "ctrl+/", Description: "Global search", Category: "Navigation"},
-		{Key: ":", Description: "Command palette", Category: "Navigation"},
-		{Key: "j/k", Description: "Move cursor down/up", Category: "Navigation"},
-		{Key: "↑/↓", Description: "Move cursor up/down", Category: "Navigation"},
-		{Key: "g/G", Description: "Go to first/last item", Category: "Navigation"},
-		{Key: "Enter", Description: "Select / confirm", Category: "Actions"},
-		{Key: ";n", Description: "Notification Center", Category: "Navigation"},
-		{Key: "ctrl+,", Description: "Settings", Category: "Navigation"},
-		{Key: ";d", Description: "Daily Review", Category: "Navigation"},
-		{Key: ";r", Description: "Weekly Review", Category: "Navigation"},
-		{Key: "alt+o", Description: "History back", Category: "Navigation"},
-		{Key: "alt+i", Description: "History forward", Category: "Navigation"},
-		{Key: "|", Description: "Recent tasks", Category: "Navigation"},
-	}
+	return NewKeybindingRegistry().GetGlobalBindings()
 }
 
 const periodicSaveInterval = 60 * time.Second
@@ -516,7 +510,8 @@ func (m *AppModel) Init() tea.Cmd {
 			return systemAppearanceCheckMsg{}
 		}))
 	}
-	if msg, ok := startupNavigationMsg(m.runtime.Machine().GetStartView()); ok {
+	if m.startupMessage != nil {
+		msg := m.startupMessage
 		cmds = append(cmds, func() tea.Msg {
 			return msg
 		})
@@ -524,66 +519,95 @@ func (m *AppModel) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// startupNavigationMsg resolves a start-view config string to the concrete
-// navigation message AppModel.Init should dispatch. Aliases that fold onto a
-// shared view with a specific subview carry that subview directly so the
-// persisted meaning survives startup: "backlog" opens the Planner Backlog tab
-// (ShowFocusBoardMsg.SetTab) and "due-dates" opens All Tasks grouped by due
-// date (ShowAllTasksMsg.SetGroup), suppressing each view's auto-default. Every
-// other start view routes through NavigateToViewMsg. Returns false for
-// "dashboard" (already at the bottom of the boot stack) so Init issues no
-// redundant push.
-func startupNavigationMsg(sv string) (tea.Msg, bool) {
-	vt, ok := resolveStartupNavigation(sv)
-	if !ok {
-		return nil, false
-	}
-	switch sv {
-	case "backlog":
-		return ShowFocusBoardMsg{Tab: boardTabBacklog, SetTab: true}, true
-	case "due-dates":
-		return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true}, true
-	default:
-		return NavigateToViewMsg{ViewType: vt}, true
-	}
+type startupNavigationPlan struct {
+	Message      tea.Msg
+	Route        Route
+	HasRoute     bool
+	Presentation PresentationID
 }
 
-// resolveStartupNavigation decides whether AppModel.Init should push a
-// startup view onto the dashboard-rooted stack. It returns the destination
-// ViewType and true when navigation is required; "dashboard" (the only
-// surface that matches the initial stack) returns false so the user stays on
-// the dashboard without a redundant push.
-func resolveStartupNavigation(sv string) (ViewType, bool) {
-	if sv == "dashboard" {
-		return ViewDashboard, false
+// resolveStartupNavigation translates the canonical persisted destination and
+// its narrow route semantics into a typed route plus a temporary renderer.
+func resolveStartupNavigation(machine *config.MachineState, projectID string) (startupNavigationPlan, bool) {
+	if machine == nil {
+		machine = config.NewMachineState()
 	}
-	return startViewTypeFromString(sv), true
-}
+	destination := machine.GetStartView()
+	state := machine.GetStartRoute()
+	mustRoute := func(id RouteID, params RouteParams) Route {
+		route, err := NewRoute(id, params)
+		if err != nil {
+			panic(err)
+		}
+		return route
+	}
+	plan := func(message tea.Msg, route Route, presentation PresentationID) (startupNavigationPlan, bool) {
+		return startupNavigationPlan{Message: message, Route: route, HasRoute: true, Presentation: presentation}, true
+	}
 
-// startViewTypeFromString maps a start view config string to a ViewType.
-func startViewTypeFromString(sv string) ViewType {
-	switch sv {
-	case "focus-board":
-		return ViewFocusBoard
-	case "cross-project-outliner":
-		return ViewCrossProjectOutliner
-	case "all-tasks":
-		return ViewAllTasks
-	case "daily-review":
-		return ViewDailyReview
-	case "backlog":
-		// The standalone Focus View is retired; the "backlog" start-view now
-		// lands on the Planner (Focus Board). startupNavigationMsg opens it on
-		// the Backlog tab so the persisted meaning survives.
-		return ViewFocusBoard
-	case "priority":
-		return ViewPriorityView
-	case "due-dates":
-		// The standalone Due Date Overview is retired; the "due-dates"
-		// start-view now lands on All Tasks. startupNavigationMsg opens it
-		// grouped by due date so the persisted meaning survives.
-		return ViewAllTasks
+	switch destination {
+	case config.StartViewHome:
+		return startupNavigationPlan{}, false
+	case config.StartViewPlanner:
+		tab := PlannerToday
+		boardTab := boardTabToday
+		if state.PlannerTab == config.StartPlannerBacklog {
+			tab = PlannerBacklog
+			boardTab = boardTabBacklog
+		}
+		return plan(
+			ShowFocusBoardMsg{Tab: boardTab, SetTab: true},
+			mustRoute(Planner, PlannerParams{Tab: tab}),
+			ViewFocusBoard,
+		)
+	case config.StartViewTasks:
+		layout := WorkspaceOutline
+		var message tea.Msg = NavigateToViewMsg{PresentationID: ViewCrossProjectOutliner}
+		presentation := ViewCrossProjectOutliner
+		if state.TaskLayout == config.StartTaskList {
+			layout = WorkspaceList
+			allTasks := ShowAllTasksMsg{}
+			if state.TaskGroup == config.StartTaskGroupDueDate {
+				allTasks.Group, allTasks.SetGroup = ATGroupByDueDate, true
+			}
+			if state.TaskSort == config.StartTaskSortPriority {
+				allTasks.Sort, allTasks.SetSort = SortByPriority, true
+			}
+			message, presentation = allTasks, ViewAllTasks
+		}
+		return plan(
+			message,
+			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope(), Layout: layout, Focus: WorkspaceActive}),
+			presentation,
+		)
+	case config.StartViewProject:
+		if projectID == "" {
+			return startupNavigationPlan{Message: ShowProjectPickerMsg{}}, true
+		}
+		return plan(
+			NavigateToViewMsg{PresentationID: ViewOutliner},
+			mustRoute(TaskWorkspace, TaskWorkspaceParams{
+				Scope: ProjectEntityScope(projectID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
+			}),
+			ViewOutliner,
+		)
+	case config.StartViewReview:
+		module := ReviewLanding
+		if state.ReviewModule == config.StartReviewDaily {
+			module = ReviewDaily
+		}
+		return plan(
+			ShowReviewHubMsg{Module: module},
+			mustRoute(ReviewHub, ReviewParams{Module: module}),
+			ViewDailyReview,
+		)
+	case config.StartViewManage:
+		return plan(
+			ShowManageHubMsg{Params: ManageParams{Module: ManageLanding, Scope: AppEntityScope()}},
+			mustRoute(ManageHub, ManageParams{Module: ManageLanding, Scope: AppEntityScope()}),
+			ViewSettings,
+		)
 	default:
-		return ViewDashboard
+		return startupNavigationPlan{}, false
 	}
 }

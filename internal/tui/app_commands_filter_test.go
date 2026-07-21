@@ -181,7 +181,7 @@ func TestFilterCommands_GlobalTagManagerAvailableInCrossProjectOutliner(t *testi
 	if cmd == nil {
 		t.Fatal("expected 'global tag manager' command")
 	}
-	for _, view := range []ViewType{ViewDashboard, ViewCrossProjectOutliner} {
+	for _, view := range []PresentationID{ViewDashboard, ViewCrossProjectOutliner} {
 		if !containsView(cmd.Views, view) {
 			t.Fatalf("global tag manager views = %v, want %s", cmd.Views, view)
 		}
@@ -253,7 +253,7 @@ func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *
 	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProject.ID}}
 	app.crossOutliner.cursor = 0
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.filterCommands(), "section manager")
 	if cmd == nil {
@@ -279,7 +279,7 @@ func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
 	app.crossOutliner.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox, ProjectID: project.ID}}
 	app.crossOutliner.cursor = 0
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
-	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.filterCommands(), "section manager")
 	if cmd == nil {

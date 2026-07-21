@@ -354,7 +354,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 			}
 			return m, nil
 
-		case "r":
+		case "e", "r":
 			if len(m.tags) > 0 && m.cursor < len(m.tags) {
 				m.renameMode = true
 				m.renameTarget = m.tags[m.cursor].Name
@@ -364,13 +364,13 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 			}
 			return m, nil
 
-		case "d":
+		case "x", "d":
 			if len(m.tags) > 0 && m.cursor < len(m.tags) {
 				return m, m.removeProjectTag(m.tags[m.cursor].Name)
 			}
 			return m, nil
 
-		case "p":
+		case "space", "p":
 			if len(m.tags) > 0 && m.cursor < len(m.tags) {
 				return m, m.togglePinnedTag(m.tags[m.cursor].Name)
 			}
@@ -523,7 +523,7 @@ func (m *TagManagerModel) View() tea.View {
 	} else if m.renameMode {
 		helpText = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		helpText = "j/k nav · enter filter · p pin · a add · r rename · d del · Esc close"
+		helpText = "j/k nav · enter filter · space pin · a add · e edit · x del · Esc close"
 	} else {
 		helpText = "a add tag · Esc close"
 	}

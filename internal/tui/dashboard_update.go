@@ -43,6 +43,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 			visible = m.visibleProjects()
 			m.cursor = ClampCursor(m.cursor, len(visible))
+			m.attentionCursor = ClampCursor(m.attentionCursor, len(m.visibleAttentionRows()))
 			m.resetViewScrollOffset()
 		}); handled {
 			return model, cmd
@@ -64,7 +65,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "?":
-			return m, helpCmd(ViewDashboard, "Dashboard", m.GetHelpItems())
+			return m, helpCmd(ViewDashboard, "Home", m.GetHelpItems())
 		}
 		_ = visible
 	}
@@ -89,12 +90,5 @@ func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 		}
 
 		return ProjectDeletedMsg{Project: project}
-	}
-}
-
-func (m *DashboardModel) toggleProjectPinned(project *models.Project) tea.Cmd {
-	project.TogglePinned()
-	return func() tea.Msg {
-		return ProjectPinnedToggledMsg{Project: project}
 	}
 }

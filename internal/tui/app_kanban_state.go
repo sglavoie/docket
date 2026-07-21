@@ -26,7 +26,7 @@ func (m *AppModel) saveKanbanState() {
 	m.saveKanbanStateForView(m.currentView())
 }
 
-func (m *AppModel) saveKanbanStateForView(viewType ViewType) {
+func (m *AppModel) saveKanbanStateForView(viewType PresentationID) {
 	v := m.views.Get(viewType)
 	kb, ok := v.(*KanbanModel)
 	if !ok {

@@ -71,8 +71,7 @@ func TestPlanningReviewCompletionRoundTrip(t *testing.T) {
 
 // TestPlanningSavedFilterAccessors confirms the saved-filter accessors on the
 // planning domain mirror the config.Config facade: upsert-by-ID identity,
-// name/ID lookup, tab filtering, and delete without touching machine-local tab
-// order (which is not a planning field).
+// name/ID lookup and deletion.
 func TestPlanningSavedFilterAccessors(t *testing.T) {
 	p := NewPlanningState()
 
@@ -81,7 +80,7 @@ func TestPlanningSavedFilterAccessors(t *testing.T) {
 	}
 
 	p.SaveFilter(SavedFilter{ID: "a", Name: "Alpha", Mode: "snapshot"})
-	p.SaveFilter(SavedFilter{ID: "b", Name: "Beta", Mode: "criteria", ShowAsTab: true})
+	p.SaveFilter(SavedFilter{ID: "b", Name: "Beta", Mode: "criteria"})
 	if len(p.GetSavedFilters()) != 2 {
 		t.Fatalf("saved filters = %d, want 2", len(p.GetSavedFilters()))
 	}
@@ -98,12 +97,6 @@ func TestPlanningSavedFilterAccessors(t *testing.T) {
 	// Name lookup is case-insensitive.
 	if sf := p.GetSavedFilterByName("beta"); sf == nil || sf.ID != "b" {
 		t.Fatalf("GetSavedFilterByName(beta) = %v, want id b", sf)
-	}
-
-	// Only ShowAsTab filters are tab filters.
-	tabs := p.GetTabFilters()
-	if len(tabs) != 1 || tabs[0].ID != "b" {
-		t.Fatalf("tab filters = %v, want only b", tabs)
 	}
 
 	if !p.DeleteSavedFilter("a") {

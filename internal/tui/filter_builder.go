@@ -47,9 +47,6 @@ const (
 	slTabOptions
 )
 
-// Sort field options for the filter builder.
-var slSortFieldNames = []string{"Default", "Priority", "Due Date", "Created", "Status", "Score"}
-
 // FilterBuilderModel handles creating or editing a smart list via TUI.
 type FilterBuilderModel struct {
 	runtime *config.RuntimeState
@@ -62,17 +59,14 @@ type FilterBuilderModel struct {
 	logic    string // "and" or "or"
 
 	// Options
-	sortField        int
-	sortAscending    bool
 	includeCompleted bool
-	showAsTab        bool
 
 	// Tab and layout state
 	activeTab int // 0=criteria, 1=options
 
 	// Focus tracking (tab-scoped)
 	// Criteria tab: 0=name, then 3 fields per criterion (field, op, value), then logic
-	// Options tab: 0=sort field, 1=sort direction, 2=include completed
+	// Options tab: include completed
 	focusIndex int
 
 	// Scroll offset for editor pane when content exceeds height
@@ -119,10 +113,7 @@ func NewFilterEditorModel(runtime *config.RuntimeState, sf *config.SavedFilter) 
 
 	m.nameInput.SetValue(sf.Name)
 	m.logic = sf.EffectiveLogic()
-	m.sortField = sf.SortField
-	m.sortAscending = sf.SortAscending
 	m.includeCompleted = sf.IncludeCompleted
-	m.showAsTab = sf.ShowAsTab
 
 	// Populate criteria
 	if len(sf.Criteria) > 0 {
@@ -198,7 +189,7 @@ func (m *FilterBuilderModel) focusFieldCount() int {
 		}
 		return count
 	case slTabOptions:
-		return 4 // sort field, sort direction, include completed, show as tab
+		return 1
 	}
 	return 1
 }
@@ -229,13 +220,7 @@ func (m *FilterBuilderModel) getFocusSection() (section string, itemIdx int, fie
 	case slTabOptions:
 		switch idx {
 		case 0:
-			return "sort_field", 0, 0
-		case 1:
-			return "sort_dir", 0, 0
-		case 2:
 			return "include_completed", 0, 0
-		case 3:
-			return "show_as_tab", 0, 0
 		}
 	}
 
@@ -332,10 +317,7 @@ func (m *FilterBuilderModel) buildSavedFilter() config.SavedFilter {
 		Mode:             "criteria",
 		Criteria:         criteria,
 		Logic:            m.logic,
-		SortField:        m.sortField,
-		SortAscending:    m.sortAscending,
 		IncludeCompleted: m.includeCompleted,
-		ShowAsTab:        m.showAsTab,
 	}
 }
 

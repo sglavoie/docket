@@ -61,8 +61,8 @@ func resolveTaskAndProject(v primaryProjectView, project *models.Project) (*mode
 
 // handleResolvedTaskKey handles keys that need resolveTaskAndProject before acting.
 // source identifies the calling view so messages requiring routing back to the
-// originator (e.g. OpenParentSelectorMsg) carry the correct ViewType.
-func handleResolvedTaskKey(key string, v primaryProjectView, project *models.Project, source ViewType) (tea.Cmd, bool) {
+// originator (e.g. OpenParentSelectorMsg) carry the correct PresentationID.
+func handleResolvedTaskKey(key string, v primaryProjectView, project *models.Project, source PresentationID) (tea.Cmd, bool) {
 	task, taskProject := resolveTaskAndProject(v, project)
 	if task == nil || taskProject == nil {
 		return nil, true

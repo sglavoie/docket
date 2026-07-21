@@ -20,9 +20,9 @@ func TestDashboardUnarchiveBindingOnlyWorksInArchivedMode(t *testing.T) {
 		t.Fatal("dashboard u binding should not be active outside archived mode")
 	}
 
-	_, _, consumed := dashboard.Dispatcher.Dispatch(syntheticKey('a'))
+	_, _, consumed := dashboard.Dispatcher.Dispatch(syntheticKey('v'))
 	if !consumed {
-		t.Fatal("dashboard a binding should switch to archived mode")
+		t.Fatal("Home v binding should switch to archived mode")
 	}
 	if !dashboard.showArchived {
 		t.Fatal("dashboard should be in archived mode")
@@ -60,8 +60,8 @@ func TestDashboardHelpShowsUnarchiveOnlyInArchivedMode(t *testing.T) {
 
 	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
 
-	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "a"); desc != "Show archived" {
-		t.Fatalf("active dashboard a help = %q, want Show archived", desc)
+	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "v"); desc != "Show archived projects" {
+		t.Fatalf("active Home v help = %q, want Show archived projects", desc)
 	}
 	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "u"); desc != "" {
 		t.Fatalf("active dashboard should not show u help, got %q", desc)
@@ -70,8 +70,8 @@ func TestDashboardHelpShowsUnarchiveOnlyInArchivedMode(t *testing.T) {
 	dashboard.showArchived = true
 	dashboard.loadProjects()
 
-	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "a"); desc != "Show active" {
-		t.Fatalf("archived dashboard a help = %q, want Show active", desc)
+	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "v"); desc != "Show active projects" {
+		t.Fatalf("archived Home v help = %q, want Show active projects", desc)
 	}
 	if desc := dashboardHelpDescription(dashboard.GetHelpItems(), "u"); desc != "Unarchive project" {
 		t.Fatalf("archived dashboard u help = %q, want Unarchive project", desc)

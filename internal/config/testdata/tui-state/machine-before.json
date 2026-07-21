@@ -1,0 +1,30 @@
+{
+  "editor": "vim",
+  "current_project": "project-1",
+  "custom_contexts": {"Work": ["project-1"]},
+  "recent_task_visits": [{"project_id": "project-1", "task_id": "task-1"}],
+  "start_view": "priority",
+  "recent_palette_items": [
+    {"category": "command", "id": "1"},
+    {"category": "command", "id": "2"},
+    {"category": "command", "id": "3"},
+    {"category": "command", "id": "4"},
+    {"category": "command", "id": "5"},
+    {"category": "command", "id": "6"},
+    {"category": "command", "id": "7"},
+    {"category": "command", "id": "8"},
+    {"category": "command", "id": "9"},
+    {"category": "command", "id": "10"},
+    {"category": "command", "id": "11"}
+  ],
+  "palette_search_history": ["discard"],
+  "global_search_history": ["discard"],
+  "command_history": ["discard"],
+  "pinned_commands": ["discard"],
+  "saved_searches": {"discard": "query"},
+  "last_palette_category": "discard",
+  "project_view_states": {"project-1": {"view_mode": 4}},
+  "dashboard_horizontal_split_pct": 42,
+  "task_form_collapsed": true,
+  "cross_outliner_fold_state": {"task-1": true}
+}

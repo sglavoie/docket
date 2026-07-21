@@ -8,32 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// prefixGroupOrder defines the display order for prefix groups in "by prefix" mode.
-var prefixGroupOrder = []string{
-	",", "!", "s", "d", "z", "c", "m", "t", "b", "f", "F",
-}
-
-// prefixGroupLabels maps registry Category names to their prefix group key.
-// Categories not present here are shown under "Direct Keys".
-var prefixGroupLabels = map[string]string{
-	"Status":              ",",
-	"Recurrence":          ",",
-	"Priority":            "!",
-	"Due Date":            "d",
-	"Snooze":              "z",
-	"Linked Tasks":        "c",
-	"Task (t prefix)":     "t",
-	"Folds":               "f",
-	"Move (m prefix)":     "m",
-	"Blockers (b prefix)": "b",
-	"Filters":             "F",
-}
-
-const (
-	helpViewportMinHeight            = 5
-	explorerCompactViewportMinHeight = 1
-)
-
 // helpIntentOrder defines the display order of intent buckets in first-level
 // (per-view) help. Buckets with no matching items in the current view are
 // skipped during rendering.
@@ -71,7 +45,6 @@ var helpCategoryIntent = map[string]string{
 	"Task Operations":     "Task & Blockers",
 	"Clipboard":           "Other",
 	"Notes":               "Other",
-	"Explorer":            "Navigate",
 }
 
 // helpCrossViewJumpKeys lists key strings that jump from any current view to
@@ -81,14 +54,7 @@ var helpCrossViewJumpKeys = map[string]bool{
 	":":        true,
 	"|":        true,
 	"#":        true,
-	"ctrl+,":   true,
-	"ctrl+/":   true,
-	"ctrl+i":   true,
 	"ctrl+x":   true,
-	"alt+o":    true,
-	"alt+i":    true,
-	"alt+l":    true,
-	"ctrl+6":   true,
 	"ctrl+esc": true,
 }
 
@@ -121,7 +87,6 @@ var helpNavigateKeys = map[string]bool{
 	"pgdown":    true,
 	"esc":       true,
 	"ctrl+c":    true,
-	`ctrl+\`:    true,
 	"enter":     true,
 	"backspace": true,
 	"space":     true,
@@ -138,7 +103,7 @@ var helpNavigateKeys = map[string]bool{
 // must not be advertised as triage. Dashboard's `O` is the lone exception —
 // it opens inbox triage, so it deserves the Triage label even though its raw
 // Category is generic.
-func intentForItem(item HelpItem, sourceView ViewType) string {
+func intentForItem(item HelpItem, sourceView PresentationID) string {
 	if sourceView == ViewFocusBoard {
 		if intent, ok := focusBoardPipelineIntentForItem(item.Key); ok {
 			return intent
@@ -159,7 +124,7 @@ func intentForItem(item HelpItem, sourceView ViewType) string {
 	if helpNavigateKeys[item.Key] {
 		return "Navigate"
 	}
-	if strings.HasPrefix(item.Key, ";") || helpCrossViewJumpKeys[item.Key] {
+	if helpCrossViewJumpKeys[item.Key] {
 		return "Jump to View"
 	}
 	if intent, ok := helpCategoryIntent[item.Category]; ok {
@@ -174,15 +139,15 @@ func intentForItem(item HelpItem, sourceView ViewType) string {
 
 func focusBoardPipelineIntentForItem(key string) (string, bool) {
 	switch key {
-	case "a", ";i", ";I":
+	case "a":
 		return "Capture", true
-	case "ctrl+i", ";a", ";o", ";k":
+	case "v", "/":
 		return "Triage", true
-	case "p", ";q", ";D", ";d", ";R":
+	case "p", "J", "K":
 		return "Plan", true
-	case "enter", "x", "u", ";w":
+	case "enter", "x", "u":
 		return "Work", true
-	case ";r", ";m", ";l":
+	case "shift+enter":
 		return "Review", true
 	default:
 		return "", false
@@ -192,115 +157,8 @@ func focusBoardPipelineIntentForItem(key string) (string, bool) {
 // isInboxProcessorSourceView reports whether the help originates from one of
 // the inbox processor views, which are the only surfaces where the primary
 // triage key vocabulary should be promoted into the "Triage" intent bucket.
-func isInboxProcessorSourceView(v ViewType) bool {
+func isInboxProcessorSourceView(v PresentationID) bool {
 	return v == ViewInboxProcessor || v == ViewGlobalInboxProcessor
-}
-
-// renderByPrefixContent renders the help items grouped by prefix category.
-func (m *HelpViewModel) renderByPrefixContent() string {
-	if len(m.filteredItems) == 0 {
-		return MutedStyle.Render("No matching help items.")
-	}
-
-	contentWidth := max(m.viewport.Width(), 1)
-	keyWidth := 16
-	columnGap := 4
-	columnOverhead := keyWidth + 2
-	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
-	columnWidth := keyWidth + 2 + descWidth
-
-	keyStyle := lipgloss.NewStyle().
-		Width(keyWidth).
-		Align(lipgloss.Right).
-		Foreground(ColorSecondary)
-	columnStyle := lipgloss.NewStyle().Width(columnWidth)
-
-	renderItem := func(item filteredHelpItem) string {
-		var renderedKey string
-		if len(item.keyPositions) > 0 {
-			renderedKey = keyStyle.Render(HighlightText(item.Key, item.keyPositions, TagInlineStyle))
-		} else {
-			renderedKey = keyStyle.Render(item.Key)
-		}
-		descText := item.Description
-		scopeSuffix := ""
-		if m.isExplorer {
-			scopeSuffix = "  · " + scopeText(item.Views)
-			descText = item.Description + scopeSuffix
-		}
-		wrappedDesc := wrapDescriptionWithIndent(descText, descWidth, keyWidth+2)
-		descLines := strings.Split(wrappedDesc, "\n")
-		if scopeSuffix != "" {
-			descLines = styleScopeLines(descLines)
-		}
-		var result strings.Builder
-		for i, line := range descLines {
-			if i == 0 {
-				result.WriteString(renderedKey)
-				result.WriteString("  ")
-				if len(item.descPositions) > 0 {
-					result.WriteString(HighlightText(line, item.descPositions, NormalStyle))
-				} else {
-					result.WriteString(line)
-				}
-			} else {
-				result.WriteString("\n")
-				result.WriteString(line)
-			}
-		}
-		return result.String()
-	}
-
-	// Bucket items by prefix group key
-	buckets := make(map[string][]filteredHelpItem)
-	var directItems []filteredHelpItem
-	for _, item := range m.filteredItems {
-		if group, ok := prefixGroupLabels[item.Category]; ok {
-			buckets[group] = append(buckets[group], item)
-		} else {
-			directItems = append(directItems, item)
-		}
-	}
-
-	var b strings.Builder
-	first := true
-
-	renderSection := func(header string, items []filteredHelpItem) {
-		if len(items) == 0 {
-			return
-		}
-		if !first {
-			b.WriteString("\n")
-		}
-		first = false
-		b.WriteString(HelpCategoryStyle.Render(header))
-		b.WriteString("\n")
-		for j := 0; j < len(items); j += 2 {
-			col1 := columnStyle.Render(renderItem(items[j]))
-			var col2 string
-			if j+1 < len(items) {
-				col2 = columnStyle.Render(renderItem(items[j+1]))
-			}
-			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
-			b.WriteString(row)
-			b.WriteString("\n")
-		}
-	}
-
-	for _, prefix := range prefixGroupOrder {
-		items, ok := buckets[prefix]
-		if !ok {
-			continue
-		}
-		catName := prefixCategoryNames[prefix]
-		header := fmt.Sprintf("%s  (%s)", catName, prefix)
-		renderSection(header, items)
-	}
-	if len(directItems) > 0 {
-		renderSection("direct keys", directItems)
-	}
-
-	return b.String()
 }
 
 // renderByIntentContent renders first-level (per-view) help grouped by user
@@ -384,145 +242,7 @@ func (m *HelpViewModel) renderByIntentContent() string {
 }
 
 func (m *HelpViewModel) renderContent() string {
-	if m.byPrefixMode {
-		return m.renderByPrefixContent()
-	}
-
-	// First-level help (per-view): group by user intent.
-	// The keybinding explorer keeps the raw-category layout so it remains a
-	// faithful, exhaustive reference.
-	if !m.isExplorer {
-		return m.renderByIntentContent()
-	}
-
-	if len(m.filteredItems) == 0 {
-		return MutedStyle.Render("No matching help items.")
-	}
-
-	var b strings.Builder
-
-	// Group items by category
-	categories := make(map[string][]filteredHelpItem)
-	var categoryOrder []string
-
-	for _, item := range m.filteredItems {
-		if _, exists := categories[item.Category]; !exists {
-			categoryOrder = append(categoryOrder, item.Category)
-		}
-		categories[item.Category] = append(categories[item.Category], item)
-	}
-
-	// Calculate column widths based on viewport width (not full width)
-	// Each column: keyWidth + separator(2) + descWidth
-	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
-	contentWidth := max(m.viewport.Width(), 1)
-	keyWidth := 16
-	columnGap := 4
-	columnOverhead := keyWidth + 2 // key + separator
-	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
-	columnWidth := keyWidth + 2 + descWidth
-
-	keyStyle := lipgloss.NewStyle().
-		Width(keyWidth).
-		Align(lipgloss.Right).
-		Foreground(ColorSecondary)
-
-	// columnStyle ensures entire column block has fixed width for proper alignment
-	columnStyle := lipgloss.NewStyle().Width(columnWidth)
-
-	// renderHelpItem renders a single key+description pair with proper wrapping
-	renderHelpItem := func(key, desc string, keyPos, descPos []int, views []ViewType) string {
-		// Render key with highlight if positions present
-		var renderedKey string
-		if len(keyPos) > 0 {
-			renderedKey = keyStyle.Render(HighlightText(key, keyPos, TagInlineStyle))
-		} else {
-			renderedKey = keyStyle.Render(key)
-		}
-
-		// Build description text, appending plain scope suffix for proper wrapping
-		descText := desc
-		scopeSuffix := ""
-		if m.isExplorer {
-			scopeSuffix = "  · " + scopeText(views)
-			descText = desc + scopeSuffix
-		}
-
-		// Wrap description with indentation for continuation lines
-		// Indent = keyWidth + separator(2) so wrapped text aligns under description
-		wrappedDesc := wrapDescriptionWithIndent(descText, descWidth, keyWidth+2)
-
-		descLines := strings.Split(wrappedDesc, "\n")
-
-		// HighlightText must run on plain text (before ANSI injection by styleScopeLines).
-		if scopeSuffix != "" && len(descPos) > 0 {
-			firstLine := descLines[0]
-			if markerIdx := strings.Index(firstLine, "·"); markerIdx >= 0 {
-				scopeStart := markerIdx
-				for scopeStart > 0 && firstLine[scopeStart-1] == ' ' {
-					scopeStart--
-				}
-				descLines[0] = HighlightText(firstLine[:scopeStart], descPos, NormalStyle) +
-					MutedStyle.Render(firstLine[scopeStart:])
-				for i := 1; i < len(descLines); i++ {
-					t := strings.TrimLeft(descLines[i], " ")
-					descLines[i] = strings.Repeat(" ", len(descLines[i])-len(t)) + MutedStyle.Render(t)
-				}
-			} else {
-				descLines[0] = HighlightText(firstLine, descPos, NormalStyle)
-				descLines = styleScopeLines(descLines)
-			}
-		} else if scopeSuffix != "" {
-			descLines = styleScopeLines(descLines)
-		} else if len(descPos) > 0 {
-			descLines[0] = HighlightText(descLines[0], descPos, NormalStyle)
-		}
-
-		var result strings.Builder
-		for i, line := range descLines {
-			if i == 0 {
-				result.WriteString(renderedKey)
-				result.WriteString("  ")
-				result.WriteString(line)
-			} else {
-				result.WriteString("\n")
-				result.WriteString(line)
-			}
-		}
-
-		return result.String()
-	}
-
-	// Render each category
-	for i, category := range categoryOrder {
-		if i > 0 {
-			b.WriteString("\n")
-		}
-
-		header := HelpCategoryStyle.Render(category)
-		b.WriteString(header)
-		b.WriteString("\n")
-
-		items := categories[category]
-
-		// Render items in 2-column layout
-		for j := 0; j < len(items); j += 2 {
-			item1 := items[j]
-			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description, item1.keyPositions, item1.descPositions, item1.Views))
-
-			var col2 string
-			if j+1 < len(items) {
-				item2 := items[j+1]
-				col2 = columnStyle.Render(renderHelpItem(item2.Key, item2.Description, item2.keyPositions, item2.descPositions, item2.Views))
-			}
-
-			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
-			b.WriteString(row)
-			b.WriteString("\n")
-		}
-	}
-
-	return b.String()
+	return m.renderByIntentContent()
 }
 
 // tabBarLines returns the number of visual lines the tab bar occupies.
@@ -531,61 +251,12 @@ func (m *HelpViewModel) tabBarLines() int {
 }
 
 func (m *HelpViewModel) renderHelpTabBar() string {
-	if m.isExplorer && m.compactTabs {
-		return m.renderCompactExplorerTabBar()
-	}
 	return m.renderFullHelpTabBar()
 }
 
 func (m *HelpViewModel) renderFullHelpTabBar() string {
 	tabNames := append([]string{"All"}, m.categories...)
 	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
-}
-
-func (m *HelpViewModel) renderCompactExplorerTabBar() string {
-	active := "All"
-	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
-		active = m.categories[m.activeTab-1]
-	}
-	summary := fmt.Sprintf("Category: %s · %d categories", active, len(m.categories))
-	if m.byPrefixMode {
-		summary += " · by prefix"
-	} else {
-		summary += " · by category"
-	}
-
-	width := max(m.innerWidth(), 1)
-	summary = truncateToVisualWidth(summary, width)
-	line := HelpStyle.Render(summary)
-	if remaining := width - lipgloss.Width(line); remaining > 0 {
-		line += MutedStyle.Render(strings.Repeat("─", remaining))
-	}
-	return line
-}
-
-func (m *HelpViewModel) explorerViewportHeight(height int) int {
-	m.compactTabs = false
-	fullTabBar := m.renderHelpTabBar()
-	availableWithFullTabs := height - m.helpChromeHeight(fullTabBar)
-	if availableWithFullTabs < helpViewportMinHeight {
-		m.compactTabs = true
-	}
-
-	viewportHeight := height - m.helpChromeHeight(m.renderHelpTabBar())
-	minHeight := helpViewportMinHeight
-	if m.compactTabs {
-		minHeight = explorerCompactViewportMinHeight
-	}
-	if viewportHeight < minHeight {
-		viewportHeight = minHeight
-	}
-	return viewportHeight
-}
-
-func (m *HelpViewModel) helpChromeHeight(tabBar string) int {
-	header := m.renderHelpHeader(tabBar)
-	footer := "\n" + m.renderHelpFooter()
-	return strings.Count(header, "\n") + strings.Count(footer, "\n")
 }
 
 func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
@@ -622,29 +293,13 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 func (m *HelpViewModel) renderHelpFooter() string {
 	title := fmt.Sprintf("Help - %s", m.viewName)
 	closeKey := "? close"
-	if m.isExplorer {
-		title = "Keybinding Explorer"
-		closeKey = "ctrl+\\ close"
-	}
 	left := StatusBarStyle.Render(title)
 
 	scrollPercent := ""
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	explorerHints := ""
-	if m.isExplorer {
-		prefixLabel := "by prefix"
-		if m.byPrefixMode {
-			prefixLabel = "by category"
-		}
-		explorerHints = fmt.Sprintf(" · p: %s", prefixLabel)
-	} else {
-		// First-level help advertises the keybinding explorer as the deeper
-		// reference for the full per-view binding set.
-		explorerHints = ` · ctrl+\: full reference`
-	}
-	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s%s", closeKey, explorerHints, scrollPercent))
+	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s", closeKey, scrollPercent))
 
 	return renderStatusBarFooter(left, right, m.width)
 }
@@ -673,13 +328,10 @@ func (m *HelpViewModel) View() tea.View {
 }
 
 func (m *HelpViewModel) StatusBarLabel() string {
-	if m.isExplorer {
-		return "Explorer"
-	}
 	return "Help"
 }
 
-// HandledKeys returns the keys handled by the keybinding explorer view.
+// HandledKeys returns the keys handled by Help.
 func (m *HelpViewModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }
@@ -732,29 +384,4 @@ func wrapDescriptionWithIndent(text string, width, indentWidth int) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// styleScopeLines applies MutedStyle to scope text across wrapped lines.
-// Once the "· " marker is found, everything from that point onward (including
-// subsequent continuation lines) is styled as muted.
-func styleScopeLines(lines []string) []string {
-	inScope := false
-	for i, line := range lines {
-		if inScope {
-			// Entire line is scope continuation — style it all (preserve indent)
-			trimmed := strings.TrimLeft(line, " ")
-			indent := len(line) - len(trimmed)
-			lines[i] = strings.Repeat(" ", indent) + MutedStyle.Render(trimmed)
-			continue
-		}
-		trimmed := strings.TrimLeft(line, " ")
-		markerIdx := strings.Index(trimmed, "·")
-		if markerIdx >= 0 {
-			indent := len(line) - len(trimmed)
-			absIdx := indent + markerIdx
-			lines[i] = line[:absIdx] + MutedStyle.Render(line[absIdx:])
-			inScope = true
-		}
-	}
-	return lines
 }

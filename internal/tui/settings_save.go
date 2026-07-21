@@ -132,8 +132,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	s.MaxPinnedBarItems = &maxPinned
 	maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
 	s.MaxRecentTaskVisits = &maxRecentVisits
-	popupTimeout, _ := strconv.Atoi(strings.TrimSpace(m.popupTimeoutInput.Value()))
-	s.PopupTimeoutSeconds = &popupTimeout
 	sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
 	s.SectionLimitActive = &sectionLimitActive
 	sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
@@ -151,24 +149,11 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	mach.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	mach.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 	mach.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())
-	mach.OutlinerDefaultColumns = outlinerColumnDefaultsToMap(m.outlinerColumnDefaults)
-
-	mach.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
-	if mach.OutlinerPriorityMode == PriorityModeConditional {
-		mach.OutlinerPriorityMode = ""
-	}
-
-	mach.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
-	mach.CrossOutlinerCycleOnly = boolPtr(m.crossOutlinerCycleOnly)
-	mach.StartView = startViewValues[m.startViewCursor]
-	mach.TaskFormCollapsed = boolPtr(m.taskFormCollapsed)
-	s.SetFocusBoardDefaultMode(focusBoardModeValues[m.focusBoardModeCursor])
-	mach.SetDashboardBottomLayout(config.DashboardBottomLayout(m.dashboardLayoutCursor))
-	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardHorizSplitInput.Value())); err == nil {
-		mach.SetDashboardHorizontalSplitPct(pct)
-	}
-	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardVertSplitInput.Value())); err == nil {
-		mach.SetDashboardVerticalSplitPct(pct)
+	selectedStartView := startViewValues[m.startViewCursor]
+	if selectedStartView != mach.GetStartView() {
+		mach.SetStartView(selectedStartView)
+	} else {
+		mach.StartView = selectedStartView
 	}
 	if limit, err := strconv.Atoi(strings.TrimSpace(m.resumeCardLimitInput.Value())); err == nil {
 		s.ResumeCardLimit = &limit
@@ -202,43 +187,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	s.AlertBlockedDays = &alertBlockedDays
 	alertProjectStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertProjectStaleDaysInput.Value()))
 	s.AlertProjectStaleDays = &alertProjectStaleDays
-
-	collapsed := make(map[string]bool)
-	for i, name := range outlinerSectionNames {
-		if m.outlinerCollapsed[i] {
-			collapsed[name] = true
-		}
-	}
-	if len(collapsed) > 0 {
-		mach.OutlinerCollapsedSections = collapsed
-	} else {
-		mach.OutlinerCollapsedSections = nil
-	}
-
-	// Kanban settings.
-	ks := &s.KanbanSettings
-	ks.DefaultMode = kanbanModeValues[m.kanbanDefaultModeCursor]
-	ks.DefaultStartColumn = strings.TrimSpace(m.kanbanStartColInput.Value())
-	showEmpty := m.kanbanShowEmptyColumns
-	ks.ShowEmptyColumns = &showEmpty
-	detailVisible := m.kanbanDetailPaneVisible
-	ks.DetailPaneVisible = &detailVisible
-	detailHeight := m.kanbanDetailHeightCursor + 1 // convert 0-based cursor to 1-based height
-	ks.DetailPaneHeight = &detailHeight
-	var enabledModes []string
-	allEnabled := true
-	for i, on := range m.kanbanEnabledModes {
-		if on {
-			enabledModes = append(enabledModes, kanbanModeValues[i])
-		} else {
-			allEnabled = false
-		}
-	}
-	if allEnabled {
-		ks.EnabledModes = nil // nil means all enabled (compact JSON)
-	} else {
-		ks.EnabledModes = enabledModes
-	}
 
 	// Persist the mutated working copy back into the base snapshots so a
 	// subsequent preset save/reset in the same session commits from the
@@ -275,26 +223,6 @@ func initOutlinerColumnDefaults(cfgMap map[string]bool) [15]bool {
 		result[i] = true
 	}
 	return result
-}
-
-// outlinerColumnDefaultsToMap converts a [15]bool array (full AllColumns) back
-// to a config map. Returns nil when every column is visible.
-func outlinerColumnDefaultsToMap(defaults [15]bool) map[string]bool {
-	allTrue := true
-	for _, v := range defaults {
-		if !v {
-			allTrue = false
-			break
-		}
-	}
-	if allTrue {
-		return nil
-	}
-	m := make(map[string]bool, 15)
-	for i, col := range AllColumns {
-		m[col.ID] = defaults[i]
-	}
-	return m
 }
 
 // draftToTheme converts the 20-slot inactiveThemeDraft array back to a config.Theme.
@@ -346,10 +274,8 @@ func (m *SettingsModel) HandledKeys() []string {
 		"h", "l", "left", "right",
 		// Search overlay
 		"/",
-		// Reset focused field to default
-		"ctrl+d",
-		// Palette preset shortcuts (palette tab)
-		"ctrl+s", "ctrl+o", "ctrl+r",
+		// Standard form commit and explicit theme-action menu controls.
+		"ctrl+s",
 		// Palette preset load overlay actions
 		"D",
 		// Confirmation keys (palette reset)

@@ -8,14 +8,36 @@ import (
 )
 
 // handleNavigateToView dispatches a NavigateToViewMsg to the appropriate Show message.
-func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) { //nolint:gocyclo
 	project := m.currentProject
 
-	switch msg.ViewType {
+	switch msg.PresentationID {
+	case ViewGlobalSearch:
+		// Search is now the palette itself; the alias closes the current
+		// palette and opens a fresh typed Palette overlay.
+		return m.handleSearchMessages(ShowCommandPaletteMsg{})
+	case ViewNotesSearch:
+		params := ManageParams{Module: ManageNotes, Scope: AppEntityScope()}
+		if project != nil {
+			params.Scope = ProjectEntityScope(project.ID)
+		}
+		activateCmd := m.activateManageHub(params)
+		if project == nil {
+			return true, activateCmd
+		}
+		search := NewNotesSearchModel(project)
+		m.showView(ViewNotesSearch, search)
+		return true, tea.Batch(activateCmd, search.Init())
 	case ViewDailyReview:
 		return m.handleViewMessages(ShowDailyReviewMsg{})
 	case ViewWeeklyReview:
 		return m.handleViewMessages(ShowWeeklyReviewMsg{})
+	case ViewRecentActivity:
+		return m.handleViewMessages(ShowRecentActivityMsg{})
+	case ViewProjectRecentActivity:
+		if project != nil {
+			return m.handleViewMessages(ShowProjectRecentActivityMsg{Project: project})
+		}
 	case ViewFocusBoard:
 		return m.handleViewMessages(ShowFocusBoardMsg{})
 	case ViewCrossProjectOutliner:
@@ -33,6 +55,16 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 			}
 			return m.handleViewMessages(ShowPriorityViewMsg{Project: project})
 		}
+	case ViewProjectFocusView:
+		if project != nil {
+			return m.handleViewMessages(ShowProjectFocusViewMsg{Project: project})
+		}
+	case ViewKanban:
+		if project != nil {
+			return m.handleViewMessages(ShowKanbanMsg{Project: project})
+		}
+	case ViewCrossProjectKanban:
+		return m.handleViewMessages(ShowCrossProjectKanbanMsg{})
 	case ViewBlockers:
 		if project != nil {
 			if err := storage.LoadProject(project); err != nil {
@@ -40,22 +72,40 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 			}
 			return m.handleViewMessages(ShowBlockersMsg{Project: project})
 		}
-	case ViewPipelineHub:
-		return m.handleViewMessages(ShowPipelineHubMsg{})
+		return m.handleViewMessages(ShowBlockersMsg{})
 	case ViewGlobalInboxProcessor:
-		return m.handleViewMessages(ShowGlobalInboxProcessorMsg{})
+		return m.handleInboxMessages(ShowGlobalInboxProcessorMsg{})
 	case ViewGlobalTagManager:
-		return m.handleViewMessages(ShowGlobalTagManagerMsg{})
+		return m.handleTagMessages(ShowGlobalTagManagerMsg{})
 	case ViewGlobalNotes:
 		return m.handleViewMessages(ShowGlobalNotesMsg{})
 	case ViewGlobalBlockers:
 		return m.handleViewMessages(ShowGlobalBlockersMsg{})
+	case ViewInboxProcessor:
+		return m.handleInboxMessages(ShowInboxProcessorMsg{Project: project})
+	case ViewTagManager:
+		return m.handleTagMessages(ShowTagManagerMsg{Project: project})
+	case ViewNotificationCenter:
+		return m.handleViewMessages(ShowNotificationCenterMsg{})
+	case ViewMessageLog:
+		return m.handleViewMessages(ShowMessageLogMsg{})
 	case ViewNotes:
 		if project != nil {
 			return m.handleViewMessages(ShowNotesMsg{Project: project})
 		}
+		return m.handleViewMessages(ShowNotesMsg{})
 	case ViewSettings:
 		return m.handleViewMessages(SettingsMsg{})
+	case ViewWorkflowRules:
+		return m.handleViewMessages(ShowWorkflowRulesMsg{})
+	case ViewScoreProfileManager:
+		projectID := ""
+		if project != nil {
+			projectID = project.ID
+		}
+		return m.handleViewMessages(ShowScoreProfileManagerMsg{ProjectID: projectID})
+	case ViewTaskTemplates:
+		return m.handleViewMessages(ShowTaskTemplatesMsg{})
 	case ViewOutliner:
 		if project != nil {
 			if err := storage.LoadProject(project); err != nil {

@@ -6,13 +6,10 @@ type ProjectReferences struct {
 	WasCurrent        bool               `json:"was_current,omitempty"`
 	WasActionInbox    bool               `json:"was_action_inbox,omitempty"`
 	ScoringProfile    *string            `json:"scoring_profile,omitempty"`
-	ViewState         *ProjectViewState  `json:"view_state,omitempty"`
 	WorkflowEval      *WorkflowEvalState `json:"workflow_eval,omitempty"`
 	FocusQueue        []FocusQueueItem   `json:"focus_queue,omitempty"`
 	DailyPlan         []DailyPlanItem    `json:"daily_plan,omitempty"`
 	RecentTaskVisits  []RecentTaskVisit  `json:"recent_task_visits,omitempty"`
-	InCycleProjects   bool               `json:"in_cycle_projects,omitempty"`
-	ContextCycleKeys  []string           `json:"context_cycle_keys,omitempty"`
 	CustomContextKeys []string           `json:"custom_context_keys,omitempty"`
 }
 

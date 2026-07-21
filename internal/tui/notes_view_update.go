@@ -149,15 +149,16 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			m.toggleNoteMultiSelectMode()
 			return m, nil
 		case "space":
-			if m.multiSelectMode {
-				m.toggleNoteSelection()
-				// Move cursor down after toggle
-				if m.cursor < len(m.notes)-1 {
-					m.cursor++
-					m.detailsPane.ResetScroll()
-				}
-				return m, nil
+			if !m.multiSelectMode {
+				m.toggleNoteMultiSelectMode()
 			}
+			m.toggleNoteSelection()
+			// Move cursor down after toggle.
+			if m.cursor < len(m.notes)-1 {
+				m.cursor++
+				m.detailsPane.ResetScroll()
+			}
+			return m, nil
 		case "a":
 			if m.multiSelectMode {
 				m.selectAllNotes()
@@ -171,7 +172,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			return m, m.openCurrentNoteReference()
 		case "n":
 			return m, m.createNote()
-		case "d":
+		case "x", "d":
 			if m.multiSelectMode && m.selectedNoteCount() > 0 {
 				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d notes?", m.selectedNoteCount()))
 				return m, nil

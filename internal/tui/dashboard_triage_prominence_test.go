@@ -12,51 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-// TestComputeGlobalAlertLinesSurfacesTriageCount verifies that any inbox
-// backlog (even a single task) yields a prominent "to triage" line at the top
-// of the alerts list, addressing session 5's "Where should this task go next?"
-// mental model.
-func TestComputeGlobalAlertLinesSurfacesTriageCount(t *testing.T) {
-	icons.SetUseEmoji(false)
-	t.Cleanup(func() { icons.SetUseEmoji(false) })
-
-	cfg := newTestConfigAt(t.TempDir())
-	project := testutil.NewTestProject("Triage Demo")
-	inboxA := testutil.NewTestTask("triage me", models.TaskTypeTask)
-	inboxA.SetSection(models.SectionInbox)
-	inboxB := testutil.NewTestTask("triage me too", models.TaskTypeTask)
-	inboxB.SetSection(models.SectionInbox)
-	project.Tasks = []*models.Task{inboxA, inboxB}
-	setTestProjects(cfg, []*models.Project{project})
-
-	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
-	lines := m.computeGlobalAlertLines(nil)
-	if len(lines) == 0 {
-		t.Fatal("expected at least one alert line")
-	}
-	first := ansi.Strip(lines[0])
-	if !strings.Contains(first, "2 to triage") {
-		t.Fatalf("expected first alert line to surface triage count, got %q", first)
-	}
-}
-
-// TestComputeGlobalAlertLinesSkipsTriageWhenEmpty verifies the triage line is
-// absent when no project has inbox tasks.
-func TestComputeGlobalAlertLinesSkipsTriageWhenEmpty(t *testing.T) {
-	cfg := newTestConfigAt(t.TempDir())
-	project := testutil.NewTestProject("Clean Inbox")
-	project.Tasks = []*models.Task{}
-	setTestProjects(cfg, []*models.Project{project})
-
-	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: []*models.Project{project}}
-	lines := m.computeGlobalAlertLines(nil)
-	for _, line := range lines {
-		if strings.Contains(ansi.Strip(line), "to triage") {
-			t.Fatalf("expected no triage line for empty inbox, got %q", ansi.Strip(line))
-		}
-	}
-}
-
 // TestProjectRowStatusIndicatorIncludesInbox verifies the per-row status
 // indicator surfaces inbox counts so users can see triage backlog at the row
 // level, and that the precomputed width stays in sync with the rendered
@@ -89,39 +44,34 @@ func TestProjectRowStatusIndicatorIncludesInbox(t *testing.T) {
 	}
 }
 
-// TestPipelineCardLabelsUseTriage pins the renamed pipeline stage so future
-// drift away from the "Triage" vocabulary fails a test.
-func TestPipelineCardLabelsUseTriage(t *testing.T) {
-	m := &DashboardModel{pipelineCounts: pipelineCounts{inboxCount: 3}}
-	out := ansi.Strip(m.renderPipelineCardContent(60))
-	if !strings.Contains(out, "Triage(3)") {
-		t.Fatalf("expected pipeline card to show Triage(3), got %q", out)
-	}
-	if strings.Contains(out, "Organize") {
-		t.Fatalf("pipeline card should no longer use legacy 'Organize' verb, got %q", out)
-	}
-}
+// TestHomePipelineTriageRowDispatchesMsg verifies pipeline triage moved from a
+// dedicated key and hub into an actionable Attention row.
+func TestHomePipelineTriageRowDispatchesMsg(t *testing.T) {
+	_, project := newTestConfigWithProject("Alpha")
+	inbox := testutil.NewTestTask("Clarify request", models.TaskTypeTask)
+	inbox.SetSection(models.SectionInbox)
+	project.Tasks = []*models.Task{inbox}
 
-// TestDashboardOpenInboxTriageKeyDispatchesMsg verifies the new `O` keybinding
-// opens the inbox processor for the currently selected project.
-func TestDashboardOpenInboxTriageKeyDispatchesMsg(t *testing.T) {
-	cfg, project := newTestConfigWithProject("Alpha")
-	cfg = testRuntimeAt(t.TempDir(), cfg)
-
-	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
-	_, cmd, consumed := dashboard.Dispatcher.Dispatch(syntheticKey('O'))
-	if !consumed {
-		t.Fatal("dashboard O binding should be active")
+	dashboard := dashboardWithProjects(120, 24, []*models.Project{project})
+	dashboard.FocusAttention()
+	var triageIndex = -1
+	for i, row := range dashboard.visibleAttentionRows() {
+		if row.Category == homeAttentionPipeline && row.Action == homeAttentionOpenGlobalInbox {
+			triageIndex = i
+			break
+		}
 	}
+	if triageIndex < 0 {
+		t.Fatal("Home Attention should include an actionable pipeline triage row")
+	}
+	dashboard.attentionCursor = triageIndex
+	cmd := dashboard.activateAttentionRow()
 	if cmd == nil {
-		t.Fatal("dashboard O binding should return a ShowInboxProcessorMsg command")
+		t.Fatal("pipeline triage row should return a command")
 	}
 
-	msg, ok := cmd().(ShowInboxProcessorMsg)
+	_, ok := cmd().(ShowGlobalInboxProcessorMsg)
 	if !ok {
-		t.Fatalf("dashboard O returned %T, want ShowInboxProcessorMsg", cmd())
-	}
-	if msg.Project == nil || msg.Project.ID != project.ID {
-		t.Fatal("dashboard O should target the currently selected project")
+		t.Fatalf("pipeline triage row returned %T, want ShowGlobalInboxProcessorMsg", cmd())
 	}
 }

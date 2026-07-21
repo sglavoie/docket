@@ -6,25 +6,27 @@ import (
 )
 
 // TestTutorPlanningNavigationMatchesKeybindings keeps the onboarding and
-// concept pipeline tutor topics in sync with the live planning keybindings so
-// retired-view language (Focus View, ProjectTree, Due Date Overview) and the
-// old "Backlog" label for ;q cannot silently return to maintained help.
+// concept pipeline tutor topics in sync with the consolidated destination
+// switcher and the Task Workspace scope model.
 func TestTutorPlanningNavigationMatchesKeybindings(t *testing.T) {
 	desc := map[string]string{}
 	for _, item := range GetKeybindingRegistry().GetGlobalBindings() {
 		desc[item.Key] = item.Description
 	}
 
-	// The planning shortcuts must advertise the surviving Planner horizons,
-	// not the retired views.
-	if got := desc[";q"]; !strings.Contains(got, "Planner") || !strings.Contains(got, "Next") {
-		t.Errorf(";q keybinding = %q, want Planner/Next", got)
+	// Direct semicolon navigation is retired; the global registry exposes only
+	// the canonical Ctrl+G destination switcher.
+	if got := desc[";q"]; got != "" {
+		t.Errorf("removed ;q keybinding is still advertised as %q", got)
 	}
-	if got := desc[";w"]; !strings.Contains(got, "Planner") || !strings.Contains(got, "Today") {
-		t.Errorf(";w keybinding = %q, want Planner/Today", got)
+	if got := desc[";w"]; got != "" {
+		t.Errorf("removed ;w keybinding is still advertised as %q", got)
 	}
-	if got := desc[";D"]; strings.Contains(got, "Overview") || !strings.Contains(got, "Due Date") {
-		t.Errorf(";D keybinding = %q, want All Tasks by Due Date (no 'Overview')", got)
+	if got := desc[";D"]; got != "" {
+		t.Errorf("removed ;D keybinding is still advertised as %q", got)
+	}
+	if got := desc["ctrl+g"]; !strings.Contains(got, "destination") {
+		t.Errorf("Ctrl+G keybinding = %q, want destination switcher", got)
 	}
 
 	// The onboarding + concept pipeline topics teach navigation. They must not
@@ -47,24 +49,28 @@ func TestTutorPlanningNavigationMatchesKeybindings(t *testing.T) {
 		}
 	}
 
-	// The concept pipeline topic must name the surviving Planner horizons, the
-	// project Outliner, and the by-due-date All Tasks grouping the keybindings
-	// advertise.
+	// The concept pipeline topic must name the surviving Planner horizons and
+	// explain the shared Task Workspace scopes.
 	concept := topics["The Task Pipeline"]
 	for _, want := range []string{
-		"Planner — Next",
-		"Planner — Today",
-		"All Tasks grouped by due date",
-		"project outliner",
+		"Today, Next, and Backlog",
+		"Tasks and Project both open Task Workspace",
+		"application scope",
+		"selected project scope",
 	} {
 		if !strings.Contains(concept, want) {
 			t.Errorf("concept pipeline topic missing %q:\n%s", want, concept)
 		}
 	}
 
-	// The onboarding pipeline topic must label ;q/;w as Planner horizons.
+	// The onboarding topic must enumerate the consolidated destinations and
+	// explain that Tasks and Project are scopes, not separate workspaces.
 	pipeline := topics["The pipeline"]
-	for _, want := range []string{"Planner / Next", "Planner / Today cockpit"} {
+	for _, want := range []string{
+		"Home, Planner, Tasks, Project, Review",
+		"Tasks and Project share Task Workspace",
+		"Planner contains Today",
+	} {
 		if !strings.Contains(pipeline, want) {
 			t.Errorf("onboarding pipeline topic missing %q:\n%s", want, pipeline)
 		}

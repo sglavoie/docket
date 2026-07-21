@@ -104,7 +104,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load project %s: %w", slug, err)
 		}
 	} else {
-		project, workspace, err = LoadRuntimeCurrentProject()
+		project, _, err = LoadRuntimeCurrentProject()
 		if err != nil {
 			return err
 		}

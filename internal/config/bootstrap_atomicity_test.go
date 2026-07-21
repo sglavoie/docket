@@ -17,8 +17,7 @@ import (
 func TestCreateDomainBundle_ValidatesBeforeBootstrapEffects(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "absent", "workspace")
 	domains := NewDomains()
-	invalidLayout := 3
-	domains.Machine.DashboardBottomLayout = &invalidLayout
+	domains.Machine.AIHarness = "unknown-harness"
 
 	err := createDomainBundle(
 		storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir}),

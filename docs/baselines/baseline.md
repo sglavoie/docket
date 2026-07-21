@@ -26,7 +26,7 @@ runs `go test -count=2 ./internal/external/...`, `go test -count=1 ./...`, and
 
 | Metric                   | Value | Reproduce |
 | ------------------------ | ----- | --------- |
-| Committed TUI scenarios  | 39    | `ls docs/tui-testing/scenarios \| wc -l` |
+| Committed TUI scenarios  | 43    | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
 
 Scenario fixtures live in `docs/tui-testing/scenarios/*.json` and are replayed by
 the committed TUI scenario tests.

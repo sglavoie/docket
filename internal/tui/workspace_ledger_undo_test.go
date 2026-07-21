@@ -158,7 +158,7 @@ func restartLedgerProject(src *models.Project) *models.Project {
 // wired to the same ledger-backed application service and planning reconciliation
 // as production. With seed=true it writes the project's initial tasks.md; with
 // seed=false it reloads an already-persisted project, modeling a restart.
-func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hostView ViewType, taskID string, seed bool) *AppModel {
+func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hostView PresentationID, taskID string, seed bool) *AppModel {
 	t.Helper()
 
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
@@ -190,13 +190,12 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 		persister:            NewProjectService(),
 		appService:           svc,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
-		viewStack:            []ViewType{ViewDashboard},
+		projectLastView:      make(map[string]PresentationID),
+		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		navHistory:           NewNavHistory(),
 		focusQueue:           []FocusTask{},
 		focusQueueIDs:        make(map[string]bool),
 		dailyPlan:            []FocusTask{},

@@ -12,6 +12,16 @@
       "type": "assert",
       "assert": "status_contains",
       "value": "No recent tasks"
+    },
+    {
+      "type": "key",
+      "label": "open Pinned Tasks with no pins",
+      "key": "#"
+    },
+    {
+      "type": "assert",
+      "assert": "status_contains",
+      "value": "No pinned tasks"
     }
   ]
 }

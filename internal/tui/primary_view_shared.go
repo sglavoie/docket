@@ -89,32 +89,6 @@ const (
 	ViewModeAll                       // All non-completed, non-snoozed tasks from all sections
 )
 
-// String returns the display name for a view mode.
-func (v ViewMode) String() string {
-	switch v {
-	case ViewModeNext:
-		return "Next"
-	case ViewModeInbox:
-		return "Inbox"
-	case ViewModeWaiting:
-		return "Waiting"
-	case ViewModeSomeday:
-		return "Someday"
-	case ViewModeReview:
-		return "Review"
-	case ViewModeStandby:
-		return "Standby"
-	case ViewModeCompleted:
-		return "Completed"
-	case ViewModeSnoozed:
-		return "Snoozed"
-	case ViewModeAll:
-		return "All"
-	default:
-		return "Active"
-	}
-}
-
 // captureTaskStates creates a snapshot of task states for event trigger detection.
 func captureTaskStates(tasks []*models.Task) map[string]*models.Task {
 	return workflow.CaptureTaskStates(tasks)

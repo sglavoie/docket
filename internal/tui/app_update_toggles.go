@@ -15,15 +15,16 @@ func (m *AppModel) handleQuickSwitchToggle() tea.Cmd {
 
 func (m *AppModel) toggleQuickSwitch() tea.Cmd {
 	if m.showQuickSwitch {
-		m.showQuickSwitch = false
+		m.closeQuickSwitchOverlay()
 		return nil
 	}
 	m.openQuickSwitch()
 	if len(m.recentTaskVisits) == 0 {
-		m.showQuickSwitch = false
+		m.closeQuickSwitchOverlay()
 		m.setInfoStatus("No recent tasks for quick-switch")
 		return defaultStatusTimeout()
 	}
+	m.pushTypedOverlay(OverlayRecent, "recent-tasks")
 	return nil
 }
 
@@ -34,6 +35,11 @@ func (m *AppModel) handlePinnedPopupToggle() tea.Cmd {
 		return defaultStatusTimeout()
 	}
 	m.showPinnedPopup = !m.showPinnedPopup
+	if m.showPinnedPopup {
+		m.pushTypedOverlay(OverlayPinned, "pinned-tasks")
+	} else {
+		m.closePinnedTasksOverlay()
+	}
 	m.pinnedPopupCursor = 0
 	m.pinnedPopupFilter = ""
 	m.pinnedPopupFiltering = false

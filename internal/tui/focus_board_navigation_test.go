@@ -6,7 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestFocusBoardNavigationDetailsAndProjectGrammar(t *testing.T) {
+func TestPlannerNavigationDetailAndPeekGrammar(t *testing.T) {
 	m, task, project := focusBoardTaskActionFixture(t)
 	km := m.buildKeyMap()
 
@@ -24,18 +24,10 @@ func TestFocusBoardNavigationDetailsAndProjectGrammar(t *testing.T) {
 			},
 		},
 		{
-			name: "o opens details",
-			keys: []string{"o"},
+			name: "shift enter shares the task target for shell Peek",
+			keys: []string{"shift+enter"},
 			want: func(msg any) bool {
 				got, ok := msg.(ShowTaskDetailMsg)
-				return ok && got.Task == task && got.Project == project
-			},
-		},
-		{
-			name: "gp navigates to task project",
-			keys: []string{"g", "p"},
-			want: func(msg any) bool {
-				got, ok := msg.(FocusBoardSelectMsg)
 				return ok && got.Task == task && got.Project == project
 			},
 		},
@@ -66,17 +58,17 @@ func TestFocusBoardNavigationGotoTopSkipsGroupHeader(t *testing.T) {
 	}
 	m.cursor = 2
 
-	action := findSharedTaskKeymapAction(t, m.buildKeyMap(), "g", "g")
+	action := findSharedTaskKeymapAction(t, m.buildKeyMap(), "g")
 	model, _ := action()
 
 	if model != m {
-		t.Fatalf("gg returned model %T, want original FocusBoardModel", model)
+		t.Fatalf("g returned model %T, want original FocusBoardModel", model)
 	}
 	if m.cursor != 1 {
-		t.Fatalf("gg cursor = %d, want first selectable parent row 1", m.cursor)
+		t.Fatalf("g cursor = %d, want first selectable parent row 1", m.cursor)
 	}
 	if m.filtered[m.cursor].GroupHeader != "" {
-		t.Fatalf("gg landed on group header at cursor %d", m.cursor)
+		t.Fatalf("g landed on group header at cursor %d", m.cursor)
 	}
 }
 

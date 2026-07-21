@@ -11,7 +11,7 @@ import (
 )
 
 // =============================================================================
-// LinkTypeQuickPicker — Step 3 of the ;c global linked task creation flow
+// LinkTypeQuickPicker — Step 3 of global linked task creation
 // =============================================================================
 
 // linkTypeEntry is a single entry in the LinkTypeQuickPicker.
@@ -45,7 +45,7 @@ type GlobalLinkedTaskTypeSelectedMsg struct {
 	LinkType LinkType
 }
 
-// LinkTypeQuickPicker is an overlay for selecting the link type in the ;c workflow.
+// LinkTypeQuickPicker is an overlay for selecting the link type.
 // Esc emits backMsg to return to the task picker.
 type LinkTypeQuickPicker struct {
 	task    *models.Task
@@ -157,7 +157,7 @@ func (p *LinkTypeQuickPicker) render(width int) string {
 }
 
 // =============================================================================
-// LinkModeQuickPicker — Step 4 of the ;c global linked task creation flow
+// LinkModeQuickPicker — Step 4 of global linked task creation
 // =============================================================================
 
 // linkModeEntry is a single entry in the LinkModeQuickPicker.
@@ -186,7 +186,7 @@ type GlobalLinkedTaskModeLinkMsg struct {
 }
 
 // LinkModeQuickPicker is an overlay for choosing between creating a new linked
-// task or linking an existing one. Step 4 of the ;c global workflow.
+// task or linking an existing one.
 // Esc emits backMsg to return to the link type picker.
 type LinkModeQuickPicker struct {
 	task     *models.Task

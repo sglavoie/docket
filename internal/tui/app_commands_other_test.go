@@ -51,7 +51,7 @@ func TestFocusQueuePaletteHasNoLegacyRemovalCommand(t *testing.T) {
 		}
 	}
 
-	for _, view := range []ViewType{ViewProjectFocusView} {
+	for _, view := range []PresentationID{ViewProjectFocusView} {
 		if cmd := findCommand(registry.GetForView(view), "remove from focus"); cmd != nil {
 			t.Fatalf("%s palette should not expose legacy queue removal: %+v", view, cmd)
 		}

@@ -1,6 +1,6 @@
 package tui
 
-var viewTypeNames = map[ViewType]string{
+var viewTypeNames = map[PresentationID]string{
 	ViewDashboard:             "Dashboard",
 	ViewProjectList:           "ProjectList",
 	ViewProjectCreator:        "ProjectCreator",
@@ -78,7 +78,7 @@ var viewTypeNames = map[ViewType]string{
 	ViewMetricsDashboard:      "MetricsDashboard",
 	ViewAllTasks:              "AllTasks",
 	ViewScoringProfilePicker:  "ScoringProfilePicker",
-	ViewFocusBoard:            "Today",
+	ViewFocusBoard:            "Planner",
 	ViewOutliner:              "Outliner",
 	ViewTemporaryOutliner:     "TemporaryOutliner",
 	ViewCrossProjectOutliner:  "CrossProjectOutliner",
@@ -90,20 +90,18 @@ var viewTypeNames = map[ViewType]string{
 	ViewStatusIconPicker:      "StatusIconPicker",
 	ViewNotificationCenter:    "NotificationCenter",
 	ViewMessageLog:            "MessageLog",
-	ViewKeybindingExplorer:    "KeybindingExplorer",
 	ViewProjectFilterSelector: "ProjectFilterSelector",
 	ViewTaskForm:              "TaskForm",
 	ViewKanban:                "Kanban",
 	ViewCrossProjectKanban:    "CrossProjectKanban",
-	ViewPipelineHub:           "PipelineHub",
 	ViewRoadmap:               "Roadmap",
 	ViewTaskDecisions:         "TaskDecisions",
 	ViewAttrFilterPicker:      "AttrFilterPicker",
 	ViewConflictResolution:    "ConflictResolution",
 }
 
-// String returns the name of the ViewType for readable test output.
-func (v ViewType) String() string {
+// String returns the name of the PresentationID for readable test output.
+func (v PresentationID) String() string {
 	if name, ok := viewTypeNames[v]; ok {
 		return name
 	}

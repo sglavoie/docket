@@ -5,74 +5,14 @@ import (
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/app"
 )
 
 // handleQuickSwitchKey handles key events when the quick-switch popup is open.
 func (m *AppModel) handleQuickSwitchKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
-	if m.quickSwitchPendingPrefix != "" {
-		return m.handleQuickSwitchPrefixKey(msg)
-	}
 	if m.quickSwitchFiltering {
 		return m.handleQuickSwitchFilterKey(msg)
 	}
 	return m.handleQuickSwitchNormalKey(msg)
-}
-
-// handleQuickSwitchPrefixKey dispatches the second key of a `,` or `!` prefix.
-func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
-	if isModifierOnly(msg) {
-		return m, nil
-	}
-	prefix := m.quickSwitchPendingPrefix
-	m.quickSwitchPendingPrefix = ""
-	key := msg.String()
-
-	if key == "esc" {
-		return m, nil
-	}
-
-	if m.quickSwitchCursor < 0 || m.quickSwitchCursor >= m.quickSwitchFilteredLen() {
-		return m, nil
-	}
-	realIdx := m.quickSwitchFiltered[m.quickSwitchCursor]
-	entry := m.recentTaskVisits[realIdx]
-
-	if prefix == "," {
-		state, ok := StateForPrefixKey(key)
-		if !ok {
-			return m, nil
-		}
-		res, err := m.appService.Transition(app.StateRequest{TaskID: entry.Task.ID, Target: state})
-		if err != nil {
-			m.setInfoStatus(fmt.Sprintf("Failed to change status: %v", err))
-			return m, nil
-		}
-		m.reloadProjectByID(res.ProjectID)
-		m.setSuccessStatus(fmt.Sprintf("Task #%d -> %s", res.ShortID, state))
-	}
-
-	if prefix == "!" {
-		priority, ok := PriorityForPrefixKey(key)
-		if !ok {
-			return m, nil
-		}
-		res, err := m.appService.SetPriority(entry.Task.ID, priority)
-		if err != nil {
-			m.setInfoStatus(fmt.Sprintf("Failed to set priority: %v", err))
-			return m, nil
-		}
-		m.reloadProjectByID(res.ProjectID)
-		m.setSuccessStatus(fmt.Sprintf("Priority set to %d", priority))
-	}
-
-	m.refreshRecentTaskVisits()
-	m.recentTaskVisits = m.sortedQuickSwitchEntries()
-	m.rebuildQuickSwitchFilter()
-	m.quickSwitchClampCursor()
-
-	return m, nil
 }
 
 // handleQuickSwitchNormalKey handles keys in normal (non-filtering) mode.
@@ -91,6 +31,8 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyPressMsg) (*AppModel, t
 		return m, nil
 	case "enter":
 		return m.quickSwitchSelectFiltered(m.quickSwitchCursor)
+	case "shift+enter":
+		return m.quickSwitchPeekFiltered(m.quickSwitchCursor)
 	case "esc":
 		if m.quickSwitchFilter != "" {
 			m.quickSwitchFilter = ""
@@ -98,32 +40,11 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyPressMsg) (*AppModel, t
 			m.rebuildQuickSwitchFilter()
 			return m, nil
 		}
-		m.showQuickSwitch = false
-		return m, nil
-	case "|":
-		m.showQuickSwitch = false
+		m.closeQuickSwitchOverlay()
 		return m, nil
 	case "p":
 		m.quickSwitchTogglePin()
 		return m, nil
-	case ",":
-		m.quickSwitchPendingPrefix = ","
-		return m, nil
-	case "!":
-		m.quickSwitchPendingPrefix = "!"
-		return m, nil
-	case "c":
-		m.quickSwitchShowCompleted = !m.quickSwitchShowCompleted
-		m.quickSwitchCursor = 0
-		m.rebuildQuickSwitchFilter()
-		m.quickSwitchClampCursor()
-		return m, nil
-	case "x":
-		m.quickSwitchRemoveEntry()
-		return m, nil
-	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		idx := int(key[0]-'0') - 1
-		return m.quickSwitchSelectFiltered(idx)
 	case "/":
 		m.quickSwitchFiltering = true
 		m.quickSwitchFilter = ""
@@ -150,8 +71,9 @@ func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyPressMsg) (*AppModel, t
 		}
 		return m, nil
 	case "enter":
-		m.quickSwitchFiltering = false
-		return m, nil
+		return m.quickSwitchSelectFiltered(m.quickSwitchCursor)
+	case "shift+enter":
+		return m.quickSwitchPeekFiltered(m.quickSwitchCursor)
 	case "esc":
 		m.quickSwitchFilter = ""
 		m.quickSwitchFiltering = false
@@ -178,6 +100,18 @@ func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyPressMsg) (*AppModel, t
 		}
 		return m, nil
 	}
+}
+
+// quickSwitchPeekFiltered opens Peek above Recent while keeping Recent's
+// cursor and filter state parked underneath it.
+func (m *AppModel) quickSwitchPeekFiltered(filteredIdx int) (*AppModel, tea.Cmd) {
+	if filteredIdx < 0 || filteredIdx >= m.quickSwitchFilteredLen() {
+		return m, nil
+	}
+	realIdx := m.quickSwitchFiltered[filteredIdx]
+	entry := m.recentTaskVisits[realIdx]
+	m.activatePeek(entry.Task, entry.Project)
+	return m, nil
 }
 
 // quickSwitchTogglePin toggles the pin state of the entry at the cursor.
@@ -213,31 +147,6 @@ func (m *AppModel) quickSwitchTogglePin() {
 			break
 		}
 	}
-
-	m.persistRecentTaskVisits()
-}
-
-// quickSwitchRemoveEntry removes the entry at the cursor from the list.
-func (m *AppModel) quickSwitchRemoveEntry() {
-	if m.quickSwitchCursor < 0 || m.quickSwitchCursor >= m.quickSwitchFilteredLen() {
-		return
-	}
-
-	realIdx := m.quickSwitchFiltered[m.quickSwitchCursor]
-	m.recentTaskVisits = append(m.recentTaskVisits[:realIdx], m.recentTaskVisits[realIdx+1:]...)
-
-	if len(m.recentTaskVisits) == 0 {
-		m.showQuickSwitch = false
-		return
-	}
-
-	m.rebuildQuickSwitchFilter()
-	if m.quickSwitchFilteredLen() == 0 {
-		m.quickSwitchFilter = ""
-		m.quickSwitchFiltering = false
-		m.rebuildQuickSwitchFilter()
-	}
-	m.quickSwitchClampCursor()
 
 	m.persistRecentTaskVisits()
 }

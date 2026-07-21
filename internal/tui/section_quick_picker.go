@@ -22,7 +22,7 @@ type GlobalMoveSectionSelectedMsg struct {
 }
 
 // GlobalSectionChangedMsg is emitted when the user picks a new section in the
-// global ;ts section change workflow.
+// global section change workflow.
 type GlobalSectionChangedMsg struct {
 	Task    *models.Task
 	Project *models.Project
@@ -32,8 +32,7 @@ type GlobalSectionChangedMsg struct {
 var sectionPickerBreadcrumb = []string{"Source Project", "Select Task", "Destination", "Section"}
 
 // SectionQuickPicker is an overlay for choosing the destination section
-// when moving a task to another project via the global ;tm workflow,
-// or for changing a task's section via the global ;ts workflow.
+// when moving a task to another project or changing a task's section.
 // Esc emits backMsg to return to the previous step.
 type SectionQuickPicker struct {
 	entries       []sectionPickerEntry
@@ -48,7 +47,7 @@ type SectionQuickPicker struct {
 
 // newSectionQuickPicker creates a picker listing Active plus all sections
 // from the destination project. Pre-selects Next if available, else Active.
-// Used by the ;tm global task-move workflow.
+// Used by the global task-move workflow.
 func newSectionQuickPicker(destProject *models.Project, sourceTask *models.Task, backMsg tea.Msg) *SectionQuickPicker {
 	entries := []sectionPickerEntry{
 		{displayName: "Active", section: ""},
@@ -82,7 +81,7 @@ func newSectionQuickPicker(destProject *models.Project, sourceTask *models.Task,
 
 // newSectionChangeQuickPicker creates a picker for changing a task's section
 // within its own project. Pre-selects the task's current section.
-// Used by the ;ts global section change workflow.
+// Used by the global section-change workflow.
 func newSectionChangeQuickPicker(project *models.Project, task *models.Task, backMsg tea.Msg) *SectionQuickPicker {
 	entries := []sectionPickerEntry{
 		{displayName: "Active", section: ""},

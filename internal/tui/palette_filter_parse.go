@@ -6,17 +6,10 @@ import (
 
 // parseQueryPrefix extracts a category filter prefix from the query.
 // Returns the category to filter by (or empty string for no filter), the remaining search query,
-// and whether the :recent prefix was used.
-// Prefix format: ":cmd ", ":task ", ":prj ", ":tag ", ":sec ", ":recent " (note the trailing space).
+// Prefix format: ":cmd ", ":task ", ":prj ", ":tag ", or ":sec ".
 func (m *CommandPaletteModel) parseQueryPrefix(query string) (ItemCategory, string) {
-	cat, searchQuery, _ := m.parseQueryPrefixWithRecent(query)
-	return cat, searchQuery
-}
-
-// parseQueryPrefixWithRecent is like parseQueryPrefix but also returns whether :recent was used.
-func (m *CommandPaletteModel) parseQueryPrefixWithRecent(query string) (ItemCategory, string, bool) {
 	if !strings.HasPrefix(query, ":") {
-		return "", query, false
+		return "", query
 	}
 
 	// Find the first space after the prefix
@@ -28,17 +21,17 @@ func (m *CommandPaletteModel) parseQueryPrefixWithRecent(query string) (ItemCate
 		// Check command category prefixes first
 		for p := range commandCategoryPrefixes {
 			if strings.HasPrefix(p, prefix) {
-				return ItemCategoryCommands, "", false
+				return ItemCategoryCommands, ""
 			}
 		}
 
 		for p := range categoryPrefixes {
 			if strings.HasPrefix(p, prefix) {
 				// Partial match - filter to this category but no search query yet
-				return categoryPrefixes[p], "", p == "recent"
+				return categoryPrefixes[p], ""
 			}
 		}
-		return "", query, false
+		return "", query
 	}
 
 	// Extract the prefix (without the colon)
@@ -46,15 +39,15 @@ func (m *CommandPaletteModel) parseQueryPrefixWithRecent(query string) (ItemCate
 
 	// Check command category prefixes first
 	if _, ok := commandCategoryPrefixes[prefix]; ok {
-		return ItemCategoryCommands, strings.TrimSpace(query[spaceIdx+1:]), false
+		return ItemCategoryCommands, strings.TrimSpace(query[spaceIdx+1:])
 	}
 
 	if cat, ok := categoryPrefixes[prefix]; ok {
-		return cat, strings.TrimSpace(query[spaceIdx+1:]), prefix == "recent"
+		return cat, strings.TrimSpace(query[spaceIdx+1:])
 	}
 
 	// Unknown prefix - treat as regular search
-	return "", query, false
+	return "", query
 }
 
 // parseCommandCategoryPrefix returns the CommandCategory if the query uses a command category prefix.

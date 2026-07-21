@@ -23,7 +23,7 @@ func NewCommandRegistry() *CommandRegistry {
 
 // viewsOverlap returns true if two view slices have any overlap.
 // An empty Views slice means "global" (all views), which overlaps with everything.
-func viewsOverlap(views1, views2 []ViewType) bool {
+func viewsOverlap(views1, views2 []PresentationID) bool {
 	if len(views1) == 0 || len(views2) == 0 {
 		return true
 	}
@@ -41,6 +41,7 @@ func (r *CommandRegistry) Register(cmd Command) error {
 	if r.commands == nil {
 		r.commands = make(map[string][]Command)
 	}
+	cmd = classifyCommand(cmd)
 
 	key := cmd.Name
 	existing := r.commands[key]
@@ -122,21 +123,26 @@ func (r *CommandRegistry) GetByName(name string) (Command, bool) {
 // that explicitly include the given view in their Views slice.
 // When multiple entries share a name, only the most specific match for the
 // requested view is returned (view-specific beats global).
-func (r *CommandRegistry) GetForView(view ViewType) []Command {
+func (r *CommandRegistry) GetForView(view PresentationID) []Command {
+	return r.GetForContext(PresentationCommandContext(view))
+}
+
+// GetForContext returns commands available for a capability-bearing route or
+// overlay context. Presentation-scoped commands and typed capabilities may be
+// combined with a selection/scope/entity predicate.
+func (r *CommandRegistry) GetForContext(ctx CommandContext) []Command {
 	result := []Command{}
 	for _, entries := range r.commands {
 		var globalCmd *Command
 		var viewCmd *Command
 		for i := range entries {
-			if !commandAvailable(entries[i]) {
+			if !commandAvailableForContext(entries[i], ctx) {
 				continue
 			}
 			if len(entries[i].Views) == 0 {
 				globalCmd = &entries[i]
-			} else {
-				if slices.Contains(entries[i].Views, view) {
-					viewCmd = &entries[i]
-				}
+			} else if presentationScopeMatches(entries[i], ctx.Capabilities) {
+				viewCmd = &entries[i]
 			}
 		}
 		// Prefer view-specific over global
@@ -148,6 +154,22 @@ func (r *CommandRegistry) GetForView(view ViewType) []Command {
 	}
 	sortCommands(result)
 	return result
+}
+
+func presentationScopeMatches(cmd Command, capabilities CapabilitySet) bool {
+	for _, view := range cmd.Views {
+		if capabilities.Has(presentationCapability(view)) {
+			return true
+		}
+	}
+	return false
+}
+
+func commandAvailableForContext(cmd Command, ctx CommandContext) bool {
+	if !commandAvailable(cmd) || !ctx.Capabilities.HasAll(cmd.RequiredCapabilities) {
+		return false
+	}
+	return cmd.ContextAvailable == nil || cmd.ContextAvailable(ctx)
 }
 
 func commandAvailable(cmd Command) bool {

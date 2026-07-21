@@ -284,16 +284,6 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 				return m.handleOutlinerFilterSubKey("Fd", key)
 			}
 		},
-		AttrDirectKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleOutlinerFilterSubKey("Fa", key)
-			}
-		},
-		AttrSubKey: func(prefix, key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return m.handleOutlinerFilterSubKey(prefix, key)
-			}
-		},
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			source := ViewOutliner
 			if m.project == nil {
@@ -307,7 +297,10 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 			}
 		},
 		ScoreCustomInput: func() (tea.Model, tea.Cmd) {
-			custom := m.runtime.Machine().ScoreFilterCustom
+			var custom *float64
+			if m.filter.ScoreMin > 0 {
+				custom = &m.filter.ScoreMin
+			}
 			m.scoreFilterInput.Enter(custom)
 			return m, nil
 		},

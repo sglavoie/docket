@@ -60,46 +60,6 @@ func TestQuickSwitchTogglePin(t *testing.T) {
 	})
 }
 
-func TestQuickSwitchRemoveEntry(t *testing.T) {
-	t.Run("removes entry and clamps cursor", func(t *testing.T) {
-		app := newTestAppForQuickSwitch()
-		p := &models.Project{ID: "p1", Name: "Project 1"}
-		app.recentTaskVisits = []RecentTaskVisitEntry{
-			{Task: &models.Task{ID: "t1", Title: "Task 1"}, Project: p},
-			{Task: &models.Task{ID: "t2", Title: "Task 2"}, Project: p},
-			{Task: &models.Task{ID: "t3", Title: "Task 3"}, Project: p},
-		}
-		initQuickSwitchFilter(app)
-		app.quickSwitchCursor = 2
-
-		app.quickSwitchRemoveEntry()
-
-		if len(app.recentTaskVisits) != 2 {
-			t.Fatalf("expected 2 entries, got %d", len(app.recentTaskVisits))
-		}
-		if app.quickSwitchCursor != 1 {
-			t.Errorf("expected cursor clamped to 1, got %d", app.quickSwitchCursor)
-		}
-	})
-
-	t.Run("closes popup when last entry removed", func(t *testing.T) {
-		app := newTestAppForQuickSwitch()
-		p := &models.Project{ID: "p1", Name: "Project 1"}
-		app.recentTaskVisits = []RecentTaskVisitEntry{
-			{Task: &models.Task{ID: "t1", Title: "Task 1"}, Project: p},
-		}
-		app.showQuickSwitch = true
-		app.quickSwitchCursor = 0
-		initQuickSwitchFilter(app)
-
-		app.quickSwitchRemoveEntry()
-
-		if app.showQuickSwitch {
-			t.Error("expected popup to close when list becomes empty")
-		}
-	})
-}
-
 func TestSortedQuickSwitchEntries(t *testing.T) {
 	app := newTestAppForQuickSwitch()
 	p := &models.Project{ID: "p1", Name: "Project 1"}

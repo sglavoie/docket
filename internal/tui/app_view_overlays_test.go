@@ -331,28 +331,27 @@ func (s *peekStubView) getTaskRef() (*models.Task, *models.Project) {
 }
 func (s *peekStubView) IsMultiSelectActive() bool { return s.multiSelect }
 
-// peekEligibleViews returns the production ViewType scope for task peek.
+// peekEligibleViews returns the production PresentationID scope for task peek.
 // The interface dispatch in getCurrentCursorTaskAndProject is identical for all
-// of them, so a single stub registered at each ViewType is sufficient to verify
+// of them, so a single stub registered at each PresentationID is sufficient to verify
 // the dispatch contract per view.
-func peekEligibleViews() []ViewType {
+func peekEligibleViews() []PresentationID {
 	return taskPeekViews()
 }
 
-// TestSpace_ActivatesPeek_AcrossViews verifies that pressing space in each
+// TestShiftEnterActivatesPeekAcrossViews verifies that pressing Shift+Enter in each
 // eligible view activates peek with the cursor task supplied by getTaskRef,
-// that releasing space leaves peek active, and that a second press dismisses
-// peek. Uses a stub view to isolate the
-// dispatch path from per-view setup complexity.
-func TestSpace_ActivatesPeek_AcrossViews(t *testing.T) {
+// and that a space press dismisses it. Uses a stub view to isolate the dispatch
+// path from per-view setup complexity.
+func TestShiftEnterActivatesPeekAcrossViews(t *testing.T) {
 	for _, vt := range peekEligibleViews() {
 		t.Run(vt.String(), func(t *testing.T) {
 			app, project := newTestAppModelWithProject()
 			stub := &peekStubView{task: project.Tasks[0], project: project}
 			app.views.Register(vt, stub)
-			app.viewStack = []ViewType{vt}
+			app.viewStack = []PresentationID{vt}
 
-			press := tea.KeyPressMsg{Code: tea.KeySpace}
+			press := tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
 			result, _ := app.Update(press)
 			app = result.(*AppModel)
 
@@ -366,19 +365,11 @@ func TestSpace_ActivatesPeek_AcrossViews(t *testing.T) {
 				t.Fatalf("peekProject mismatch in view %s", vt)
 			}
 
-			release := tea.KeyReleaseMsg{Code: tea.KeySpace}
-			result, _ = app.Update(release)
-			app = result.(*AppModel)
-
-			if !app.peekActive {
-				t.Fatalf("peek dismissed after space release in view %s", vt)
-			}
-
-			result, _ = app.Update(press)
+			result, _ = app.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 			app = result.(*AppModel)
 
 			if app.peekActive {
-				t.Fatalf("peek not dismissed after second space press in view %s", vt)
+				t.Fatalf("peek not dismissed after space press in view %s", vt)
 			}
 		})
 	}
@@ -388,7 +379,7 @@ func TestSpace_DoesNotPeekInTaskDetail(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	stub := &peekStubView{task: project.Tasks[0], project: project}
 	app.views.Register(ViewTaskDetail, stub)
-	app.viewStack = []ViewType{ViewTaskDetail}
+	app.viewStack = []PresentationID{ViewTaskDetail}
 
 	result, _ := app.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	app = result.(*AppModel)
@@ -412,7 +403,7 @@ func TestSpace_DoesNotPeekDuringMultiSelect(t *testing.T) {
 		multiSelect: true,
 	}
 	app.views.Register(ViewFocusBoard, stub)
-	app.viewStack = []ViewType{ViewFocusBoard}
+	app.viewStack = []PresentationID{ViewFocusBoard}
 
 	press := tea.KeyPressMsg{Code: tea.KeySpace}
 	result, _ := app.Update(press)

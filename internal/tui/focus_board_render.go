@@ -30,26 +30,28 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		b.WriteString(renderFullscreenTitleContentWithCounter(titleContent, "", FormatOpenLoops(m.openLoops), m.width))
 		b.WriteString("\n")
 	} else {
-		// Normal mode: show title + tab bar
-		title := "Today"
+		// Normal mode: show the Planner route and its three horizons.
+		title := "Planner"
 		titleColor := m.AccentColor()
-		var subtitle string
-		if m.tabs.Active == boardTabToday {
+		subtitle := focusBoardTabNames[m.tabs.Active]
+		switch m.tabs.Active {
+		case boardTabToday:
 			switch {
 			case plannedTotal == 0 && m.openLoops.Overdue > 0:
-				subtitle = fmt.Sprintf("0 planned · ⚠ %d overdue", m.openLoops.Overdue)
+				subtitle = fmt.Sprintf("Today · 0 planned · ⚠ %d overdue", m.openLoops.Overdue)
 				titleColor = ColorWarning
 			case plannedTotal == 0:
-				subtitle = "0 planned"
+				subtitle = "Today · 0 planned"
 			case completedToday == plannedTotal:
-				title = "Today ✓"
-				subtitle = "All done!"
+				subtitle = "Today · All done!"
 				titleColor = ColorSuccess
 			default:
-				subtitle = fmt.Sprintf("%d tasks · %d/%d done", len(m.rows), completedToday, plannedTotal)
+				subtitle = fmt.Sprintf("Today · %d tasks · %d/%d done", len(m.todayRows), completedToday, plannedTotal)
 			}
-		} else {
-			subtitle = fmt.Sprintf("%d tasks", len(m.rows))
+		case boardTabNext:
+			subtitle = fmt.Sprintf("Next · %d tasks", len(m.nextRows))
+		case boardTabBacklog:
+			subtitle = fmt.Sprintf("Backlog · %d tasks", len(m.backlogRows))
 		}
 		if name := PerspectiveLensName(m.activePerspective); name != "" {
 			subtitle += " · " + name
@@ -156,17 +158,15 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		b.WriteString("\n")
 		var emptyContent string
 		if m.HasActiveFilters() {
-			emptyContent = renderEmptyState("  "+EmptyStateFiltered, "  Press Fx to clear filters, or Esc to dismiss.")
+			emptyContent = renderEmptyState("  "+EmptyStateFiltered, "  Open v View to clear filters, or press Esc.")
 		} else if m.tabs.Active == boardTabToday {
 			emptyContent = m.renderTodayEmptyStateBody()
-		} else if m.tabs.Active == boardTabDone {
-			emptyContent = MutedStyle.Render("  " + EmptyStateClosed)
 		} else if m.tabs.Active == boardTabBacklog {
 			emptyContent = MutedStyle.Render("  Backlog clear — nothing ranked behind Today and Next.")
 		} else if len(m.rows) == 0 {
 			if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 				emptyContent = m.withOnboardingGuide(renderContextualEmptyState("  "+EmptyStateNoTasks,
-					[]string{";i capture", ";q next", ": commands", "? help"}))
+					[]string{"a add", "tab switch", ": commands", "? help"}))
 			} else {
 				emptyContent = renderEmptyState("  "+EmptyStateNoTasks, "  Press a to add a task, or mark tasks as active in a project.")
 			}

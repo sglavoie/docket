@@ -16,9 +16,6 @@ type TaskProjectGroup struct {
 	Items   []TaskProjectRef
 }
 
-// bulkTaskItem is kept as a compatibility alias for existing view helpers.
-type bulkTaskItem = TaskProjectRef
-
 // groupTaskProjectRefsByProject groups task refs by project, preserving the
 // first-seen project order and filtering refs that cannot be applied.
 func groupTaskProjectRefsByProject(refs []TaskProjectRef) []TaskProjectGroup {

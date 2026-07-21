@@ -16,12 +16,11 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	outliner.cursor = nthTaskRowIndex(t, outliner, 1)
 	before := driver.Observe(ObserveOptions{})
 	beforeStack := slices.Clone(before.ViewStack)
-	// Quick capture is now a stack view pushed over the outliner, so the outliner
-	// is no longer the active view; read its cursor directly instead of via the
-	// active-view snapshot.
+	// The typed composer overlay parks the outliner; read its cursor directly
+	// instead of via the active-view snapshot.
 	beforeCursor := outliner.cursor
 
-	driveUITestKeys(t, driver, ";", "i", "enter")
+	driveUITestKeys(t, driver, "ctrl+n")
 	assertQuickCaptureOpenOver(t, driver, ViewOutliner, beforeStack)
 	if got := driver.App().outliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
@@ -72,7 +71,7 @@ func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
 	beforeTaskID := detail.task.ID
 	beforeStack := slices.Clone(driver.Observe(ObserveOptions{}).ViewStack)
 
-	driveUITestKeys(t, driver, ";", "i", "enter")
+	driveUITestKeys(t, driver, "ctrl+n")
 	assertQuickCaptureOpenOver(t, driver, ViewTaskDetail, beforeStack)
 	detail = currentTaskDetail(t, driver)
 	if detail.scrollOffset != beforeScroll {
@@ -168,16 +167,23 @@ func driveUITestKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 	}
 }
 
-func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view ViewType, priorStack []string) {
+func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view PresentationID, priorStack []string) {
 	t.Helper()
 	obs := driver.Observe(ObserveOptions{})
-	// Quick capture is now a normal stack view pushed on top of the prior view.
+	// Task Composer is a typed overlay, so its compatibility view label changes
+	// while the legacy primary stack remains parked beneath it.
 	if obs.CurrentView != ViewQuickCapture.String() {
 		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, ViewQuickCapture.String())
 	}
-	wantStack := append(slices.Clone(priorStack), ViewQuickCapture.String())
-	if !slices.Equal(obs.ViewStack, wantStack) {
-		t.Fatalf("view stack while capture is open = %v, want %v", obs.ViewStack, wantStack)
+	if !slices.Equal(obs.ViewStack, priorStack) {
+		t.Fatalf("legacy view stack changed under typed composer = %v, want %v", obs.ViewStack, priorStack)
+	}
+	overlay, ok := driver.App().navigation.Overlays.Current()
+	if !ok || overlay.Kind() != OverlayComposer || overlay.Key() != taskComposerOverlayKey {
+		t.Fatalf("typed composer overlay = %+v, open=%v", overlay, ok)
+	}
+	if _, legacy := overlay.Presentation(); legacy {
+		t.Fatal("composer overlay unexpectedly retained a legacy capture route")
 	}
 	if len(priorStack) == 0 || priorStack[len(priorStack)-1] != view.String() {
 		t.Fatalf("capture should sit over %q; prior stack = %v", view.String(), priorStack)

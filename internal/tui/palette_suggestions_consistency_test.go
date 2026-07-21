@@ -9,10 +9,10 @@ import (
 
 func TestPaletteSuggestionsAreDeterministicAcrossRegistrationOrder(t *testing.T) {
 	commands := []Command{
-		{Name: "zeta action", Category: CategoryActions, Views: []ViewType{ViewDashboard}, Handler: func() tea.Msg { return nil }},
-		{Name: "alpha filter", Category: CategoryFilters, Views: []ViewType{ViewDashboard}, Handler: func() tea.Msg { return nil }},
-		{Name: "beta action", Category: CategoryActions, Views: []ViewType{ViewDashboard}, Handler: func() tea.Msg { return nil }},
-		{Name: "other-view filter", Category: CategoryFilters, Views: []ViewType{ViewOutliner}, Handler: func() tea.Msg { return nil }},
+		{Name: "zeta action", Category: CategoryActions, Views: []PresentationID{ViewDashboard}, Handler: func() tea.Msg { return nil }},
+		{Name: "alpha filter", Category: CategoryFilters, Views: []PresentationID{ViewDashboard}, Handler: func() tea.Msg { return nil }},
+		{Name: "beta action", Category: CategoryActions, Views: []PresentationID{ViewDashboard}, Handler: func() tea.Msg { return nil }},
+		{Name: "other-view filter", Category: CategoryFilters, Views: []PresentationID{ViewOutliner}, Handler: func() tea.Msg { return nil }},
 	}
 
 	build := func(order []Command) []string {

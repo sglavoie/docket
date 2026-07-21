@@ -267,9 +267,7 @@ func (p *PlanningState) SetStreakLastDate(day string) {
 // saved views (snapshot mode) and smart lists (criteria mode). The bodies below
 // mirror the (*Config) counterparts in saved_filter.go field-for-field so the TUI
 // saved-filter consumers read and commit this state through RuntimeState.Planning
-// without dereferencing config.Config. AllTasksTabOrder cleanup is intentionally
-// NOT performed here: the tab order is machine-local layout state, not planning
-// state, so it never lives on PlanningState.
+// without dereferencing config.Config.
 
 // GetSavedFilters mirrors (*Config).GetSavedFilters.
 func (p *PlanningState) GetSavedFilters() []SavedFilter {
@@ -312,11 +310,7 @@ func (p *PlanningState) SaveFilter(f SavedFilter) {
 }
 
 // DeleteSavedFilter removes a saved filter by ID from the planning domain,
-// returning true when the filter existed. Unlike (*Config).DeleteSavedFilter it
-// does not touch AllTasksTabOrder, which is machine-local layout state committed
-// through the machine domain; buildTabEntries already skips tab-order keys with
-// no matching filter, so a stale entry is harmless until the machine-local
-// layout migration reconciles it.
+// returning true when the filter existed.
 func (p *PlanningState) DeleteSavedFilter(id string) bool {
 	for i := range p.SavedFilters {
 		if p.SavedFilters[i].ID == id {
@@ -325,15 +319,4 @@ func (p *PlanningState) DeleteSavedFilter(id string) bool {
 		}
 	}
 	return false
-}
-
-// GetTabFilters mirrors (*Config).GetTabFilters.
-func (p *PlanningState) GetTabFilters() []SavedFilter {
-	var tabs []SavedFilter
-	for _, f := range p.SavedFilters {
-		if f.ShowAsTab {
-			tabs = append(tabs, f)
-		}
-	}
-	return tabs
 }

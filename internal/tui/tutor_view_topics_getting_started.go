@@ -7,133 +7,70 @@ func tutorGettingStartedTopics() []TutorTopic {
 			Category: "Getting Started",
 			Content: `# Capturing Your First Task
 
-Press ;i to open Quick Capture from any view, or i in a
-project view. The placeholder reads "Type a task title…" —
-start with the title and add inline sigils as you go. Press ?
-inside Quick Capture to toggle the full syntax reference
-(footer hint: "?: syntax").
-
-Quick Capture accepts natural-language input:
+Press Ctrl+N from any non-text control to open the Task
+Composer. Start with a title, add optional capture sigils,
+and press Enter to save:
 
   Buy groceries @tomorrow #errands !2
 
-\# is for tags, ! sets priority (1=high), @ sets the due date,
-~ sets recurrence, / sets the section. The live preview
-organizes your input into labeled rows (Task / Route /
-Schedule / Metadata / Aliases) so you can see exactly which
-sigil populates which field. Press Enter to save — the task
-lands in your Inbox.
+Use # for tags, ! for priority, @ for due dates, ~ for
+recurrence, and / for sections. Press ? in the composer for
+the complete grammar. New tasks land in the selected
+project's Inbox.
 
-# Where Tasks Go
+# Triage
 
-Captured tasks go to the Inbox section of their project. The
-dashboard shows the inbox backlog in two places: the lead
-"📥 N to triage" alert and the per-row status indicator's
-inbox segment. The "Triage" stage of the dashboard pipeline
-card mirrors the same count.
-
-To process the backlog:
-
-  O        Triage the selected project's inbox (dashboard)
-  ctrl+i   Triage every project's inbox in one flow
-
-The inbox processor walks one task at a time and asks
-"Where should this task go next?".
+Home shows projects and work needing attention. Press O on a
+selected project to process its Inbox, or find "global inbox
+processor" in the command palette to process every project.
 
 # First Workflow
 
-tt opens on the Today cockpit by default. The Next Action
-strip at the top tells you what to do next: capture, triage,
-or work the planned list.
-
-1. Capture a task with ;i
-2. Press ;; to open the Pipeline Hub, or O on the Dashboard,
-   to triage the project's inbox (or ctrl+i to triage every
-   project's inbox)
-3. Press w to schedule it for Today
-4. Open Today (;w) to work on it`,
+1. Capture a task with Ctrl+N.
+2. Triage it from Home or Manage > Inbox.
+3. Add it to Today with w.
+4. Open Planner from Ctrl+G and work from Today.`,
 		},
 		{
 			Title:    "The pipeline",
 			Category: "Getting Started",
-			Content: `# The tt Pipeline
+			Content: `# Canonical Destinations
 
-tt structures work as a six-stage flow:
+Press Ctrl+G to choose Home, Planner, Tasks, Project, Review,
+or Manage. Tasks and Project share Task Workspace and differ
+only by scope.
 
-  Capture → Triage → Plan → Work → Review → Support
+Home combines Projects and Attention. Planner contains Today,
+Next, and Backlog. Task Workspace provides List, Outline, and
+Board layouts. Review contains Daily, Weekly, Activity,
+Metrics, and Roadmap. Manage contains Inbox, Notes, Blockers,
+Rules, Templates, Tags, Notifications, and Settings.
 
-You move tasks through these stages deliberately.
-No task sneaks from Capture straight to Done.
-
-# Stage Shortcuts
-
-  ;i      Capture   — Quick Capture view
-  ctrl+i  Triage    — Global inbox processor
-  ;a      Triage    — All Tasks inbox triage
-  ;q      Plan      — Planner / Next (on-deck shortlist)
-  ;w      Work      — Planner / Today cockpit
-  ;r      Review    — Weekly Review
-  ;B      Support   — Global blockers
-
-Press ;; to open the Pipeline Hub, which shows the
-count at each stage, the current Next Action, and
-lets you jump directly. Use ;; when you feel lost.
-
-# Why a Pipeline
-
-A pipeline separates the act of capturing ideas from
-the act of doing them. Capture freely, triage later,
-plan deliberately, work focused, review honestly,
-and lean on Support for blockers, notes, and rules.`,
+Use : to search commands by name when you do not remember a
+local key. Use Esc to close the current overlay or mode, and
+Ctrl+Esc to clear the stack and return Home.`,
 		},
 		{
 			Title:    "Daily rhythm",
 			Category: "Getting Started",
 			Content: `# A Suggested Daily Rhythm
 
-Morning (5 min): plan your day
-  tt opens on Today by default. The Next Action strip
-  tells you what to do next. Press w on any task to add
-  it to today's list, or ;q to open the Next shortlist
-  and pull 1-3 on-deck tasks into Today. Switch to the
-  Planner's Backlog tab to scan the full ranked list.
+Morning: open Planner from Ctrl+G, review Next and Backlog,
+then add a short list to Today with w.
 
-During the day: stay in Today
-  ;w returns to Today from anywhere. The Next Action
-  strip suggests what to work on; the body shows your
-  planned tasks. Move tasks through status as you go.
+During the day: stay in Planner Today or open a project-scoped
+Task Workspace. Use the View menu to change List, Outline, or
+Board without creating another navigation destination.
 
-Evening (5 min): review and capture
-  ;r opens the Weekly Review summary.
-  ctrl+i captures any new ideas before you close.
+Evening: capture loose ends with Ctrl+N and open Review from
+Ctrl+G for Daily or Weekly review.
 
 # When You Feel Lost
 
-Press ;; to open the Pipeline Hub. It shows every stage
-(Capture / Triage / Plan / Work / Review / Support) with
-live counts and the current Next Action recommendation —
-one keystroke gets you back on track.
-
-# Keeping Inbox Clear
-
-Tasks land in Inbox until you triage them. The dashboard's
-lead alert "📥 N to triage" and the per-row inbox indicator
-surface the backlog. The Next Action strip on Today and
-Pipeline Hub flips to "Triage inbox" when items are
-waiting. Aim for Inbox 0 at the end of each week.
-
-Press ;; to open the Pipeline Hub and pick Triage, or O on
-the dashboard with a project selected to triage just that
-project's inbox, or ctrl+i to triage every project's inbox
-in one flow.
-
-# The Zeigarnik Counter
-
-The top-right of most views shows:
-  inbox 3 · today 2/7 · overdue 1
-
-This is your passive readout. When overdue appears
-in amber, something needs attention today.`,
+Ctrl+G always exposes the six destinations. Home Attention
+surfaces inbox, overdue, blocked, parked, and workflow issues.
+The top-right open-loops counter remains a passive summary of
+inbox, today, and overdue work.`,
 		},
 	}
 }

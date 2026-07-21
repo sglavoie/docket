@@ -19,13 +19,12 @@ type FocusTask = focus.FocusTask
 // ScoredFocusTask is an alias for focus.ScoredFocusTask.
 type ScoredFocusTask = focus.ScoredFocusTask
 
-var focusBoardTabNames = []string{"Today", "Next", "Backlog", "Done"}
+var focusBoardTabNames = []string{"Today", "Next", "Backlog"}
 
 const (
 	boardTabToday   = 0
 	boardTabNext    = 1
 	boardTabBacklog = 2
-	boardTabDone    = 3
 )
 
 const (
@@ -61,6 +60,7 @@ type FocusBoardModel struct {
 	projectService *ProjectService
 	capture        CaptureCoordinator
 	taskItem       TaskItemCoordinator
+	bulk           BulkCoordinator
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -74,7 +74,6 @@ type FocusBoardModel struct {
 	rows           []boardRow
 	allRows        []boardRow // all non-complete, non-snoozed tasks — used as tag pool for autocomplete and tag filter picker
 	nextRows       []boardRow
-	closedRows     []boardRow
 	todayRows      []boardRow
 	backlogRows    []boardRow // ranked actionable tasks excluding Today/Next (Backlog tab)
 	filtered       []boardRow
@@ -87,6 +86,11 @@ type FocusBoardModel struct {
 
 	// Tabs
 	tabs TabState
+
+	// Shared task grammar state.
+	selection  map[TaskIdentity]struct{}
+	menuOpen   bool
+	menuCursor int
 
 	pendingReloadIntent focusBoardReloadIntent
 
@@ -161,21 +165,6 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 	ei.SetWidth(60)
 	applyThemedTextInput(&ei)
 
-	// The focus-board default mode is a portable behavior preference owned by the
-	// Settings domain, read from the cached runtime snapshot rather than the
-	// config facade. A nil runtime (isolated tests) defaults to the list mode.
-	initialFocusMode := focusModeList
-	defaultMode := "list"
-	if runtime != nil {
-		defaultMode = runtime.Settings().GetFocusBoardDefaultMode()
-	}
-	switch defaultMode {
-	case "tunnel":
-		initialFocusMode = focusModeTunnel
-	case "zen":
-		initialFocusMode = focusModeZen
-	}
-
 	m := &FocusBoardModel{
 		configManager:        manager,
 		runtime:              runtime,
@@ -189,16 +178,16 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 		backlogProjectFilter: make(map[string]bool),
 		addInput:             ti,
 		editInput:            ei,
-		focusMode:            initialFocusMode,
+		focusMode:            focusModeList,
 		childDepthLimit:      -1,
 		foldOverrides:        make(map[string]bool),
 		FilterMixin:          FilterMixin{filter: newFilterState()},
 		sort:                 NewSortState(),
 		tabs:                 TabState{Names: focusBoardTabNames},
+		selection:            make(map[TaskIdentity]struct{}),
 		activePerspective:    PerspectiveInactive,
 	}
-	km := m.buildKeyMap()
-	m.Dispatcher = keymap.NewDispatcher(km)
+	m.rebuildPlannerDispatcher()
 	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
 		{
 			Active: func() bool { return m.confirm.IsActive() },
@@ -275,6 +264,9 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.editMode {
 			return m.handleEditInput(msg)
+		}
+		if m.menuOpen {
+			return m, m.handlePlannerMenuKey(msg)
 		}
 		if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 			m.applyFilter()
@@ -354,7 +346,7 @@ func (m *FocusBoardModel) escSteps() []EscStep {
 
 // ShouldCaptureEsc returns true when add mode, edit mode, focus mode, search, prefix, confirm, or filters are active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
-	return m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
+	return m.addMode || m.editMode || m.menuOpen || len(m.selection) > 0 || m.SearchShouldCaptureEsc() ||
 		m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
@@ -392,6 +384,8 @@ func (m *FocusBoardModel) HasTextInput() bool {
 func (m *FocusBoardModel) OnExit() {
 	m.addMode = false
 	m.editMode = false
+	m.menuOpen = false
+	clear(m.selection)
 	m.resetViewScrollOffset()
 	m.addInput.Blur()
 	m.editInput.Blur()
@@ -404,7 +398,7 @@ func (m *FocusBoardModel) OnExit() {
 	m.ClearAllFilters()
 }
 
-func (m *FocusBoardModel) StatusBarLabel() string { return "Today" }
+func (m *FocusBoardModel) StatusBarLabel() string { return "Planner" }
 
 // IsFullHeight returns true because the focus board renders its own footer.
 func (m *FocusBoardModel) IsFullHeight() bool { return true }

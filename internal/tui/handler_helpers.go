@@ -144,6 +144,7 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 		crossReloadCmd = crossInstance.reloadCrossProjects()
 	}
 	m.refreshAllViews()
+	m.refreshLoadedTaskWorkspace()
 	if crossReload {
 		crossInstance.cursor = crossSavedCursor
 	}

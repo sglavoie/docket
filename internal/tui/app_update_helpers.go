@@ -30,7 +30,7 @@ func dispatchOverlayKey(overlay keyInterceptor, msg tea.KeyPressMsg) (dismiss bo
 }
 
 func (m *AppModel) currentViewCapabilities() ViewCapabilities {
-	view := m.views.Get(m.currentView())
+	view := m.activeView()
 	if view == nil {
 		return nil
 	}
@@ -66,10 +66,6 @@ func (m *AppModel) hasActiveTextInput() bool {
 // optional inside the same input.
 func (m *AppModel) resolveQuickCaptureProject() tea.Msg {
 	return ShowQuickCaptureMsg{}
-}
-
-func (m *AppModel) resolveQuickCaptureCmd() tea.Cmd {
-	return func() tea.Msg { return m.resolveQuickCaptureProject() }
 }
 
 // isModifierOnly returns true when the key event is a bare modifier press
@@ -118,7 +114,7 @@ func upgradeKittyKeyboard() tea.Cmd {
 // a multi-key prefix sequence. Used to suppress global single-character
 // shortcuts (e.g. #, q, w, u) that would otherwise hijack prefix sub-keys.
 func (m *AppModel) hasActivePendingPrefix() bool {
-	view := m.views.Get(m.currentView())
+	view := m.activeView()
 	if view == nil {
 		return false
 	}
@@ -134,7 +130,7 @@ func (m *AppModel) hasActiveConfirmDialog() bool {
 	if m.projectArchiveConfirm.IsActive() {
 		return true
 	}
-	view := m.views.Get(m.currentView())
+	view := m.activeView()
 	if view == nil {
 		return false
 	}

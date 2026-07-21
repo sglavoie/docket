@@ -107,6 +107,40 @@ func dailyPlanAddArtifactBuilder(mgr *config.Manager, taskID, projectID, planned
 	}
 }
 
+// plannerCaptureArtifactBuilder builds the planning side of a tab-preset task
+// creation. The application layer supplies the freshly allocated task identity,
+// allowing the project write and Today/Next membership to share one ChangeSet.
+func plannerCaptureArtifactBuilder(mgr *config.Manager, tab int, plannedDate string) app.PlanningArtifactBuilder {
+	if mgr == nil || (tab != boardTabToday && tab != boardTabNext) {
+		return nil
+	}
+	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
+		coord := mgr.DomainCoordinator()
+		planning, err := coord.LoadPlanning()
+		if err != nil {
+			return nil, err
+		}
+		reconcilePlanningExclusivity(planning, targets)
+		for _, target := range targets {
+			switch tab {
+			case boardTabToday:
+				if !dailyPlanContains(planning, target.TaskID) {
+					planning.SetDailyPlan(append(planning.GetDailyPlan(), config.DailyPlanItem{
+						TaskID: target.TaskID, ProjectID: target.ProjectID, PlannedDate: plannedDate,
+					}))
+				}
+			case boardTabNext:
+				if !focusQueueContains(planning, target.TaskID) {
+					planning.SetFocusQueue(append(planning.GetFocusQueue(), config.FocusQueueItem{
+						TaskID: target.TaskID, ProjectID: target.ProjectID,
+					}))
+				}
+			}
+		}
+		return planningDomainArtifact(mgr, planning)
+	}
+}
+
 // rebuildPlanningFromRuntime rebuilds the in-memory Next order index and Daily
 // Plan from the (freshly reloaded) planning domain, resolving each entry against
 // the loaded projects. It is called after a ledger restore repoints the durable

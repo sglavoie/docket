@@ -223,6 +223,8 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		TaskAttrs:          taskAttrs,
 		StoryAttrs:         storyAttrs,
 		EpicAttrs:          epicAttrs,
+		InitialState:       m.presetState,
+		PlanningArtifacts:  m.presetPlan,
 	}
 
 	// Increment template use count when created from a template. This is a config

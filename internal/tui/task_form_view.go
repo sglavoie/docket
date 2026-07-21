@@ -53,6 +53,9 @@ func (m *TaskFormModel) View() tea.View {
 			subtitle = fmt.Sprintf("#%d%s", m.task.ShortID, marker)
 		}
 	}
+	if m.hostTitle != "" {
+		titleText = m.hostTitle
+	}
 	title := renderFullscreenTitle(titleText, subtitle)
 
 	// ── Tab bar ───────────────────────────────────────────────────────────────

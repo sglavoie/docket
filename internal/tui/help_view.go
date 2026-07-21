@@ -7,7 +7,7 @@ import (
 )
 
 // NewHelpViewModel creates a new help view model.
-func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *HelpViewModel {
+func NewHelpViewModel(items []HelpItem, sourceView PresentationID, viewName string) *HelpViewModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search keybindings..."
 	searchInput.CharLimit = 50
@@ -28,41 +28,6 @@ func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *H
 		searchInput:    searchInput,
 		searchQuery:    "",
 		ready:          false,
-		tabSearchInput: tabSearchInput,
-	}
-	m.filteredItems = make([]filteredHelpItem, len(items))
-	for i, item := range items {
-		m.filteredItems[i] = filteredHelpItem{HelpItem: item}
-	}
-	m.categories = m.buildCategories()
-	return m
-}
-
-// NewKeybindingExplorerModel creates a global keybinding explorer with auto-focused search.
-func NewKeybindingExplorerModel() *HelpViewModel {
-	items := GetKeybindingRegistry().GetAllDeduplicated()
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Search keybindings..."
-	searchInput.CharLimit = 50
-	searchInput.SetWidth(30)
-	searchInput.Focus()
-	applyThemedTextInput(&searchInput)
-
-	tabSearchInput := textinput.New()
-	tabSearchInput.Placeholder = "Search tabs..."
-	tabSearchInput.CharLimit = 30
-	tabSearchInput.SetWidth(20)
-	applyThemedTextInput(&tabSearchInput)
-
-	m := &HelpViewModel{
-		items:          items,
-		sourceView:     ViewKeybindingExplorer,
-		viewName:       "All Views",
-		searchMode:     true,
-		searchInput:    searchInput,
-		searchQuery:    "",
-		ready:          false,
-		isExplorer:     true,
 		tabSearchInput: tabSearchInput,
 	}
 	m.filteredItems = make([]filteredHelpItem, len(items))
@@ -107,25 +72,19 @@ func (m *HelpViewModel) SetSize(width, height int) {
 		viewportWidth = 1
 	}
 
-	viewportHeight := 0
-	if m.isExplorer {
-		viewportHeight = m.explorerViewportHeight(height)
-	} else {
-		searchHeight := 0
-		if m.searchMode || m.searchQuery != "" {
-			searchHeight = 2
-		}
-		tabSearchHeight := 0
-		if m.tabSearchMode {
-			tabSearchHeight = 2
-		}
-		statusBarHeight := 3 // blank line + separator + bar
-		tabBarHeight := m.tabBarLines()
-
-		viewportHeight = height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
-		if viewportHeight < 5 {
-			viewportHeight = 5
-		}
+	searchHeight := 0
+	if m.searchMode || m.searchQuery != "" {
+		searchHeight = 2
+	}
+	tabSearchHeight := 0
+	if m.tabSearchMode {
+		tabSearchHeight = 2
+	}
+	statusBarHeight := 3 // blank line + separator + bar
+	tabBarHeight := m.tabBarLines()
+	viewportHeight := height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
+	if viewportHeight < 5 {
+		viewportHeight = 5
 	}
 
 	if !m.ready {
@@ -141,9 +100,6 @@ func (m *HelpViewModel) SetSize(width, height int) {
 }
 
 func (m *HelpViewModel) Init() tea.Cmd {
-	if m.isExplorer {
-		return textinput.Blink
-	}
 	return nil
 }
 
@@ -164,16 +120,8 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateTabSearchMode(msg)
 		}
 
-		// Explorer-specific: ctrl+\ toggles close
-		if m.isExplorer && msg.String() == `ctrl+\` {
-			return m, func() tea.Msg { return CloseKeybindingExplorerMsg{} }
-		}
-
 		switch msg.String() {
 		case "?":
-			if m.isExplorer {
-				return m, nil // ? does not close the explorer
-			}
 			return m, func() tea.Msg {
 				return CloseHelpMsg{}
 			}
@@ -212,9 +160,6 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.GotoTop()
 				return m, nil
 			}
-			if m.isExplorer {
-				return m, func() tea.Msg { return CloseKeybindingExplorerMsg{} }
-			}
 		case "shift+left":
 			CycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterItems()
@@ -239,12 +184,6 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.HalfPageUp()
 		case "pgdown", "ctrl+d":
 			m.viewport.HalfPageDown()
-		case "p":
-			if m.isExplorer {
-				m.byPrefixMode = !m.byPrefixMode
-				m.viewport.SetContent(m.renderContent())
-				m.viewport.GotoTop()
-			}
 		}
 	}
 

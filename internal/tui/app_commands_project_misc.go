@@ -19,7 +19,7 @@ func (m *AppModel) notesCommands() []Command {
 		{
 			Name:        "show notes",
 			Description: "Open project Notes",
-			Shortcut:    "ctrl+n",
+			Shortcut:    "",
 			Category:    CategoryNotes,
 			Views:       projectNotesHelpViews(),
 			Aliases:     []string{"notes", "view notes", "open notes"},
@@ -35,7 +35,7 @@ func (m *AppModel) notesCommands() []Command {
 			Description: "Create a new note",
 			Shortcut:    "}",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"new note", "add note"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -51,7 +51,7 @@ func (m *AppModel) notesCommands() []Command {
 	}
 }
 
-func projectNotesViews() []ViewType {
+func projectNotesViews() []PresentationID {
 	return projectNotesHelpViews()
 }
 
@@ -63,6 +63,11 @@ func (m *AppModel) notesTargetProject() *models.Project {
 }
 
 func (m *AppModel) selectedTaskProjectFromOrigin() *models.Project {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		if task, project := view.getTaskRef(); task != nil && project != nil {
+			return project
+		}
+	}
 	origin := m.nonPaletteOrigin()
 
 	switch origin { //nolint:exhaustive // only task-origin views need special handling before the generic provider fallback.
@@ -97,8 +102,7 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Show this project's tasks in the Focus Queue",
 			Shortcut:    "alt+f",
 			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"project focus", "project queue"},
+			Aliases:     []string{"project focus", "project focus queue", "project queue", "next tasks"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowProjectFocusViewMsg{Project: m.currentProject}
@@ -111,7 +115,7 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Show blockers for the selected project",
 			Shortcut:    "b",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"blockers", "blocked tasks", "project blockers"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -157,7 +161,7 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Archive or unarchive the current project",
 			Shortcut:    "ctrl+a",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"unarchive project"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
@@ -178,7 +182,7 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Create a task in the project Inbox from clipboard text",
 			Shortcut:    "ctrl+v",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"paste task", "clipboard paste"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()

@@ -133,7 +133,7 @@ func TestCheckWeeklyReviewReminder_NeverCompleted(t *testing.T) {
 	if alerts[0].Title != "Weekly review never completed" {
 		t.Errorf("unexpected title: %s", alerts[0].Title)
 	}
-	if alerts[0].Details != "Open the weekly review with ;r" {
+	if alerts[0].Details != "Open Review from Ctrl+G and choose Weekly" {
 		t.Errorf("unexpected weekly review shortcut copy: %s", alerts[0].Details)
 	}
 }

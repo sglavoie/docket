@@ -98,7 +98,7 @@ func (m *DailyReviewModel) dailyReviewNavigationEntries() []keymap.Entry {
 }
 
 func (m *DailyReviewModel) dailyReviewTaskActionEntries() []keymap.Entry {
-	return buildStandardTaskActionEntries(m.dailyReviewTaskActionDeps())
+	return buildReviewTaskActionEntries(m.dailyReviewTaskActionDeps())
 }
 
 func (m *DailyReviewModel) dailyReviewTaskActionDeps() TaskKeymapDeps {
@@ -258,12 +258,6 @@ func (m *DailyReviewModel) dailyReviewFilterEntries() []keymap.Entry {
 		},
 		DueDateKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("Fd", key) }
-		},
-		AttrDirectKey: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("Fa", key) }
-		},
-		AttrSubKey: func(prefix, key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix(prefix, key) }
 		},
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewDailyReview} }

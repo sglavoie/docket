@@ -20,13 +20,13 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 	return m, nil
 }
 
-// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
-func (m *PriorityViewModel) getSelectedBulkItems() []bulkTaskItem {
-	var items []bulkTaskItem
+// getSelectedBulkItems returns selected tasks as TaskProjectRef slice.
+func (m *PriorityViewModel) getSelectedBulkItems() []TaskProjectRef {
+	var items []TaskProjectRef
 	for _, group := range [][]*PriorityTask{m.overdue, m.today, m.thisWeek, m.later, m.backlog, m.waitingOn} {
 		for _, pt := range group {
 			if m.selectedTasks[pt.Task.ID] {
-				items = append(items, bulkTaskItem{Task: pt.Task, Project: m.project})
+				items = append(items, TaskProjectRef{Task: pt.Task, Project: m.project})
 			}
 		}
 	}

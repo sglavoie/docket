@@ -20,24 +20,13 @@ func (m *AppModel) projectCommands() []Command {
 			Description: "Filter projects by context",
 			Shortcut:    "C",
 			Category:    CategoryFilters,
-			Views:       []ViewType{},
+			Views:       []PresentationID{},
 			Aliases:     []string{"context filter", "workspace"},
 			Handler: func() tea.Msg {
 				if m.dashboard != nil {
 					return ShowContextPickerMsg{Dashboard: m.dashboard}
 				}
 				return nil
-			},
-		},
-		{
-			Name:        "toggle info panel",
-			Description: "Show/hide info panel",
-			Shortcut:    "R",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
-			Aliases:     []string{"recent", "show recent", "info"},
-			Handler: func() tea.Msg {
-				return ToggleInfoPanelMsg{}
 			},
 		},
 		{
@@ -58,7 +47,7 @@ func (m *AppModel) projectCommands() []Command {
 			Description: "Edit status note for the selected project",
 			Shortcut:    "S",
 			Category:    CategoryProjects,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []PresentationID{ViewDashboard},
 			Aliases:     []string{"status", "project status"},
 			Handler: func() tea.Msg {
 				if m.dashboard != nil {
@@ -74,7 +63,7 @@ func (m *AppModel) projectCommands() []Command {
 			Name:        "rename project",
 			Description: "Rename the selected project",
 			Category:    CategoryProjects,
-			Views:       []ViewType{ViewDashboard, ViewOutliner},
+			Views:       []PresentationID{ViewDashboard, ViewOutliner},
 			Aliases:     []string{"edit project", "rename"},
 			Handler: func() tea.Msg {
 				if m.currentView() == ViewDashboard {
@@ -95,7 +84,7 @@ func (m *AppModel) projectCommands() []Command {
 			Description: "View and restore deleted projects",
 			Shortcut:    "T",
 			Category:    CategoryProjects,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []PresentationID{ViewDashboard},
 			Aliases:     []string{"trash", "undelete", "recover project"},
 			Handler: func() tea.Msg {
 				return ShowTrashedProjectsMsg{}
@@ -105,7 +94,7 @@ func (m *AppModel) projectCommands() []Command {
 			Name:        "reset sandbox",
 			Description: "Clear tasks, notes, and sections from sandbox",
 			Category:    CategoryProjects,
-			Views:       []ViewType{},
+			Views:       []PresentationID{},
 			Aliases:     []string{"clear sandbox"},
 			Handler: func() tea.Msg {
 				return SandboxResetRequestMsg{}

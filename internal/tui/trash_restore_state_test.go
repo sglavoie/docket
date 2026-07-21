@@ -58,13 +58,13 @@ func newTrashRestoreTestApp(
 		appService:           service,
 		projects:             make(map[string]*models.Project),
 		persister:            NewProjectService(),
-		viewStack:            []ViewType{ViewDashboard, ViewTrashedProjects},
+		viewStack:            []PresentationID{ViewDashboard, ViewTrashedProjects},
 		views:                NewViewRegistry(),
 		width:                80,
 		height:               24,
 		dailyPlanIDs:         make(map[string]bool),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]ViewType),
+		projectLastView:      make(map[string]PresentationID),
 	}
 	return app, project, entryID
 }
@@ -112,13 +112,9 @@ func TestRestoreProjectFromTrashCommandUsesImmutableCapturedState(t *testing.T) 
 }
 
 func TestRestoreProjectFromTrashMachineFailureRefreshesAndRetries(t *testing.T) {
-	viewState := config.ProjectViewState{FilterParked: true}
 	refs := config.ProjectReferences{
 		WasCurrent:       true,
-		ViewState:        &viewState,
 		RecentTaskVisits: []config.RecentTaskVisit{{TaskID: "restored-task"}},
-		InCycleProjects:  true,
-		ContextCycleKeys: []string{"work"},
 		FocusQueue:       []config.FocusQueueItem{{TaskID: "restored-task"}},
 	}
 	app, project, entryID := newTrashRestoreTestApp(t, refs)
@@ -185,14 +181,8 @@ func TestRestoreProjectFromTrashMachineFailureRefreshesAndRetries(t *testing.T) 
 	if machine.CurrentProject != project.ID {
 		t.Fatalf("CurrentProject = %q, want %q", machine.CurrentProject, project.ID)
 	}
-	if state, ok := machine.ProjectViewStates[project.ID]; !ok || !state.FilterParked {
-		t.Fatalf("restored view state = %+v (ok=%v), want parked", state, ok)
-	}
 	if len(machine.RecentTaskVisits) != 1 || machine.RecentTaskVisits[0].ProjectID != project.ID {
 		t.Fatalf("restored recent visits = %+v", machine.RecentTaskVisits)
-	}
-	if len(machine.CycleProjects) != 1 || machine.CycleProjects[0] != project.ID {
-		t.Fatalf("restored cycle projects = %+v", machine.CycleProjects)
 	}
 	if app.currentProject != app.projects[project.ID] {
 		t.Fatal("main update handler did not restore the current-project cache pointer")

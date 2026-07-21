@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -20,12 +21,13 @@ func dashboardWithProjects(width, height int, projects []*models.Project) *Dashb
 	cfg := newTestConfig()
 	setTestProjects(cfg, projects)
 	m := &DashboardModel{
-		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
-		projects:              projects,
-		dashboardCompactCards: true,
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
+		projects: projects,
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.SetSize(width, height)
+	m.rebuildHomeAttention()
+	m.Dispatcher = keymap.NewDispatcher(m.buildKeyMap())
 	return m
 }
 
@@ -39,16 +41,14 @@ func TestDashboardNoLongerRendersFirstRunNextActionStrip(t *testing.T) {
 	if strings.Contains(plain, "Create your first project") {
 		t.Fatalf("dashboard should not render the Today first-run CTA, got:\n%s", plain)
 	}
-	if !strings.Contains(plain, "No projects yet. Press n to create one.") {
+	if !strings.Contains(plain, "No projects yet. Press a to create one.") {
 		t.Fatalf("expected dashboard project-admin empty state, got:\n%s", plain)
 	}
 }
 
-// TestDashboardNoLongerRendersPlannedTodayRecommendation verifies Dashboard
-// does not surface planned-today task recommendations above the project list.
-// Today and Pipeline Hub own the Next Action strip; Dashboard remains a
-// project administration and overview surface.
-func TestDashboardNoLongerRendersPlannedTodayRecommendation(t *testing.T) {
+// TestHomeRendersPlannedTodayRecommendation verifies actionable guidance moved
+// into Home's Attention pane without restoring the old Next Action strip.
+func TestHomeRendersPlannedTodayRecommendation(t *testing.T) {
 	cfg := newTestConfig()
 	project := testutil.NewTestProject("Cockpit Plan")
 	planned, err := models.NewTask("task-planned", 1, models.TaskTypeTask, "Write design doc draft")
@@ -67,30 +67,28 @@ func TestDashboardNoLongerRendersPlannedTodayRecommendation(t *testing.T) {
 	}}
 
 	m := &DashboardModel{
-		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
-		projects:              []*models.Project{project},
-		dashboardCompactCards: true,
+		runtime:  testRuntimeAt(cfg.DataDir(), cfg),
+		projects: []*models.Project{project},
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.SetSize(120, 30)
+	m.rebuildHomeAttention()
 
 	plain := ansi.Strip(m.View().Content)
-	if strings.Contains(plain, "Next: Write design doc draft") {
-		t.Fatalf("dashboard should not render a planned-today Next Action strip, got:\n%s", plain)
+	if !strings.Contains(plain, "[Recommendation]") || !strings.Contains(plain, "Work on Write design doc draft") {
+		t.Fatalf("Home Attention should render the planned recommendation, got:\n%s", plain)
 	}
-	if strings.Contains(plain, "planned today") {
-		t.Fatalf("dashboard should not render daily-plan reason badges, got:\n%s", plain)
+	if len(m.attentionRows) == 0 || !strings.Contains(m.attentionRows[0].Detail, "planned today") {
+		t.Fatalf("Home recommendation detail = %+v, want planned today rationale", m.attentionRows)
 	}
 	if !strings.Contains(plain, "Projects (1)") || !strings.Contains(plain, "Cockpit Plan") {
 		t.Fatalf("expected dashboard project list to remain visible, got:\n%s", plain)
 	}
 }
 
-// TestDashboardNoLongerRendersInboxOnlyRecommendation verifies app-level
-// inbox counts cannot create a Dashboard "Triage inbox" recommendation strip.
-// Per-project triage still appears through alerts, row indicators, the
-// pipeline card, and the explicit O key.
-func TestDashboardNoLongerRendersInboxOnlyRecommendation(t *testing.T) {
+// TestHomeRendersInboxRecommendation verifies inbox guidance is actionable in
+// Attention instead of being repeated in an inert Dashboard summary.
+func TestHomeRendersInboxRecommendation(t *testing.T) {
 	project := testutil.NewTestProject("Inboxy")
 	inbox := testutil.NewTestTask("triage me", models.TaskTypeTask)
 	inbox.SetSection(models.SectionInbox)
@@ -99,8 +97,8 @@ func TestDashboardNoLongerRendersInboxOnlyRecommendation(t *testing.T) {
 	m := dashboardWithProjects(120, 30, []*models.Project{project})
 	plain := ansi.Strip(m.View().Content)
 
-	if strings.Contains(plain, "Triage inbox") {
-		t.Fatalf("dashboard should not render an inbox-only Next Action strip, got:\n%s", plain)
+	if !strings.Contains(plain, "Triage the inbox") || !strings.Contains(plain, "[Pipeline]") {
+		t.Fatalf("Home should render actionable inbox guidance, got:\n%s", plain)
 	}
 	if !strings.Contains(plain, "Projects (1)") || !strings.Contains(plain, "Inboxy") {
 		t.Fatalf("expected dashboard project list to remain visible, got:\n%s", plain)
@@ -117,10 +115,9 @@ func TestDashboardArchivedModeRemainsFocusedOnRecovery(t *testing.T) {
 	setTestProjects(cfg, []*models.Project{archived})
 
 	m := &DashboardModel{
-		runtime:               testRuntimeAt(cfg.DataDir(), cfg),
-		projects:              []*models.Project{archived},
-		dashboardCompactCards: true,
-		showArchived:          true,
+		runtime:      testRuntimeAt(cfg.DataDir(), cfg),
+		projects:     []*models.Project{archived},
+		showArchived: true,
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.SetSize(120, 30)
@@ -155,7 +152,7 @@ func TestDashboardStatusBarNoLongerShowsTodayProgress(t *testing.T) {
 	if strings.Contains(plain, "today:") {
 		t.Fatalf("dashboard status bar should not show Today progress, got:\n%s", plain)
 	}
-	if !strings.Contains(plain, "Dashboard") {
-		t.Fatalf("expected dashboard breadcrumb to remain, got:\n%s", plain)
+	if !strings.Contains(plain, "Home") {
+		t.Fatalf("expected Home breadcrumb, got:\n%s", plain)
 	}
 }

@@ -250,7 +250,7 @@ const (
 	CockpitCommandNewProject         CockpitCommand = "new_project"
 	CockpitCommandSwitchTab          CockpitCommand = "switch_tab"
 	CockpitCommandCloseView          CockpitCommand = "close_view"
-	CockpitCommandOpenPipelineHub    CockpitCommand = "open_pipeline_hub"
+	CockpitCommandOpenDestination    CockpitCommand = "open_destination_switcher"
 	CockpitCommandOpenCommandPalette CockpitCommand = "open_command_palette"
 	CockpitCommandShowHelp           CockpitCommand = "show_help"
 )
@@ -272,35 +272,12 @@ func (c CockpitCommand) IsValid() bool {
 		CockpitCommandNewProject,
 		CockpitCommandSwitchTab,
 		CockpitCommandCloseView,
-		CockpitCommandOpenPipelineHub,
+		CockpitCommandOpenDestination,
 		CockpitCommandOpenCommandPalette,
 		CockpitCommandShowHelp:
 		return true
 	}
 	return false
-}
-
-// AllCockpitCommands returns every executable cockpit command in stable order.
-// CockpitCommandNone is omitted because it represents no action.
-func AllCockpitCommands() []CockpitCommand {
-	return []CockpitCommand{
-		CockpitCommandOpenTask,
-		CockpitCommandCompleteTask,
-		CockpitCommandDismissTask,
-		CockpitCommandPrioritizeTask,
-		CockpitCommandPlanToday,
-		CockpitCommandPlanMore,
-		CockpitCommandTriageInbox,
-		CockpitCommandUnblockTask,
-		CockpitCommandQuickCapture,
-		CockpitCommandSearchFilter,
-		CockpitCommandNewProject,
-		CockpitCommandSwitchTab,
-		CockpitCommandCloseView,
-		CockpitCommandOpenPipelineHub,
-		CockpitCommandOpenCommandPalette,
-		CockpitCommandShowHelp,
-	}
 }
 
 // CockpitAction binds a stable command identifier to the key and label a
@@ -539,7 +516,7 @@ func cockpitActionCanUnblock(action RecommendedAction) bool {
 
 func cockpitEscapeActions() []CockpitAction {
 	return []CockpitAction{
-		actionOpenPipelineHub(),
+		actionOpenDestination(),
 		actionOpenCommandPalette(),
 		actionShowHelp(),
 	}
@@ -581,10 +558,6 @@ func actionQuickCapture() CockpitAction {
 	return CockpitAction{Command: CockpitCommandQuickCapture, Key: "a", Label: "add"}
 }
 
-func actionSearchFilter() CockpitAction {
-	return CockpitAction{Command: CockpitCommandSearchFilter, Key: "/", Label: "search"}
-}
-
 func actionNewProject() CockpitAction {
 	return CockpitAction{Command: CockpitCommandNewProject, Key: "p", Label: "new project"}
 }
@@ -597,8 +570,8 @@ func actionCloseView() CockpitAction {
 	return CockpitAction{Command: CockpitCommandCloseView, Key: "Esc", Label: "close"}
 }
 
-func actionOpenPipelineHub() CockpitAction {
-	return CockpitAction{Command: CockpitCommandOpenPipelineHub, Key: ";;", Label: "hub"}
+func actionOpenDestination() CockpitAction {
+	return CockpitAction{Command: CockpitCommandOpenDestination, Key: "ctrl+g", Label: "go"}
 }
 
 func actionOpenCommandPalette() CockpitAction {

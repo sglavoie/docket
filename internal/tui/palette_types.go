@@ -39,7 +39,6 @@ const (
 	ItemCategoryProjects    ItemCategory = "Projects"
 	ItemCategoryTags        ItemCategory = "Tags"
 	ItemCategorySections    ItemCategory = "Sections"
-	ItemCategorySavedSearch ItemCategory = "Saved"
 	ItemCategoryNotes       ItemCategory = "Notes"
 	ItemCategorySavedFilter ItemCategory = "Saved Filters"
 	ItemCategoryViews       ItemCategory = "Views"
@@ -48,16 +47,14 @@ const (
 // categoryPrefixes maps short prefixes to item categories for filtering.
 // Users can type ":cmd " to filter to commands only, ":task " for tasks, etc.
 var categoryPrefixes = map[string]ItemCategory{
-	"cmd":    ItemCategoryCommands,
-	"task":   ItemCategoryTasks,
-	"prj":    ItemCategoryProjects,
-	"tag":    ItemCategoryTags,
-	"sec":    ItemCategorySections,
-	"saved":  ItemCategorySavedSearch,
-	"recent": ItemCategoryCommands, // Special: filters to recently executed commands
-	"note":   ItemCategoryNotes,
-	"sv":     ItemCategorySavedFilter,
-	"view":   ItemCategoryViews,
+	"cmd":  ItemCategoryCommands,
+	"task": ItemCategoryTasks,
+	"prj":  ItemCategoryProjects,
+	"tag":  ItemCategoryTags,
+	"sec":  ItemCategorySections,
+	"note": ItemCategoryNotes,
+	"sv":   ItemCategorySavedFilter,
+	"view": ItemCategoryViews,
 }
 
 // commandCategoryPrefixes maps short prefixes to CommandCategory for sub-filtering commands.
@@ -79,7 +76,6 @@ var commandCategoryPrefixes = map[string]CommandCategory{
 // categoryOrder defines the display order for categories when showing headers.
 var categoryOrder = []ItemCategory{
 	ItemCategorySavedFilter,
-	ItemCategorySavedSearch,
 	ItemCategoryCommands,
 	ItemCategoryProjects,
 	ItemCategoryTasks,
@@ -120,10 +116,22 @@ type PaletteItem struct {
 	Project     *models.Project     // Set when Category is CategoryProjects
 	Tag         string              // Set when Category is CategoryTags
 	Section     string              // Set when Category is CategorySections
-	SavedSearch string              // Set when Category is CategorySavedSearch (the query)
 	Note        *models.Note        // Set when Category is CategoryNotes
 	SavedFilter *config.SavedFilter // Set when Category is CategorySavedView
-	ViewTarget  ViewType            // Set when Category is CategoryViews
+	ViewTarget  PresentationID      // Set when Category is CategoryViews
+	AliasTarget PaletteAliasTarget  // Set for a searchable legacy name
+}
+
+type PaletteAliasTarget string
+
+const PaletteAliasHomeAttention PaletteAliasTarget = "home-attention"
+
+type NavigatePaletteAliasMsg struct{ Target PaletteAliasTarget }
+
+// PaletteEntitySelectMsg navigates to an entity selected from Palette.
+type PaletteEntitySelectMsg struct {
+	Task    *models.Task
+	Project *models.Project
 }
 
 // PaletteAction represents an inline action that can be performed on a palette item.
@@ -157,15 +165,6 @@ type filteredPaletteItem struct {
 	IsSuggested   bool       // Item appears in the Suggested section (commands not yet used)
 }
 
-// inlineTaskPreview holds parsed metadata for inline task creation preview.
-// Syntax: "+Task title !priority #tag @due"
-type inlineTaskPreview struct {
-	title    string
-	priority int
-	tags     []string
-	dueDate  *time.Time
-}
-
 // CommandPaletteModel provides a fullscreen fuzzy search palette for commands.
 // It implements the View interface and follows the existing view stack pattern
 // used by GlobalSearchModel and HelpViewModel.
@@ -174,7 +173,8 @@ type CommandPaletteModel struct {
 	registry *CommandRegistry
 
 	// Current view context for filtering commands
-	currentView ViewType
+	currentView    PresentationID
+	commandContext *CommandContext
 
 	// Optional command names to lead the Suggested section for this palette open.
 	suggestedCommandOrder []string
@@ -211,32 +211,8 @@ type CommandPaletteModel struct {
 	// Onboarding state
 	showTips bool // Show tips until first keystroke
 
-	// Feature toggles
-	includeCompleted bool      // When true, include completed/canceled tasks (Ctrl+H)
-	sortField        SortField // Current sort mode for results (Ctrl+O to cycle)
-
-	// Inline task creation state
-	inlineTaskMode   bool   // When true, showing inline task creation preview
-	inlineTaskTitle  string // Parsed title from +query
-	inlineTaskParsed *inlineTaskPreview
-
-	// Category cursor persistence - remembers cursor position per category
-	categoryCursors map[ItemCategory]int
-
-	// View mode toggle - compact mode hides preview pane
-	compactMode    bool
-	userSetCompact bool // true when user explicitly toggled compact via Ctrl+P
-
-	// Search history navigation
-	searchHistory      []string // Copy of history from config
-	searchHistoryIndex int      // -1 = not browsing history, 0+ = index in history
-
-	// suppressCategoryPersistence prevents constructor-time filtering from
-	// clearing or rewriting persisted category state before the user acts.
-	suppressCategoryPersistence bool
-
-	// Pinned commands - set of pinned command names for quick lookup
-	pinnedCommands map[string]bool
+	// Compact presentation is derived from the terminal width.
+	compactMode bool
 
 	// Multi-select state for bulk actions on tasks
 	selectedTasks map[string]bool // Task IDs that are selected
@@ -268,12 +244,6 @@ type InlineTaskCreateMsg struct {
 	Priority int
 	Tags     []string
 	DueDate  *time.Time
-}
-
-// toggleSavedFilterTabMsg toggles the ShowAsTab flag on a saved filter.
-type toggleSavedFilterTabMsg struct {
-	ID        string
-	ShowAsTab bool
 }
 
 // CloseCommandPaletteMsg is sent when the command palette should close.
@@ -346,27 +316,6 @@ type CommandPaletteBulkActionMsg struct {
 // CommandPaletteClearSelectionMsg is sent to clear the multi-select state.
 type CommandPaletteClearSelectionMsg struct{}
 
-// ShowSaveSearchDialogMsg is sent to show a dialog for saving the current search.
-type ShowSaveSearchDialogMsg struct {
-	Query string // The search query to save
-}
-
-// SaveSearchMsg is sent when a search is saved with a name.
-type SaveSearchMsg struct {
-	Name  string // Name for the saved search
-	Query string // The search query
-}
-
-// DeleteSavedSearchMsg is sent to delete a saved search by name.
-type DeleteSavedSearchMsg struct {
-	Name string // Name of the saved search to delete
-}
-
-// ExecuteSavedSearchMsg is sent to execute a saved search.
-type ExecuteSavedSearchMsg struct {
-	Query string // The search query to execute
-}
-
 // PaletteBulkTaskItem represents a task and its project for bulk operations from the palette.
 type PaletteBulkTaskItem = TaskProjectRef
 
@@ -387,7 +336,7 @@ type PaletteBulkDueDateMsg struct {
 
 // NavigateToViewMsg is sent when a view is selected from the command palette.
 type NavigateToViewMsg struct {
-	ViewType ViewType
+	PresentationID PresentationID
 }
 
 // Category weight multipliers for fuzzy scoring.
@@ -405,8 +354,6 @@ func categoryWeight(cat ItemCategory) int {
 		return weightCommands
 	case ItemCategoryProjects:
 		return weightProjects
-	case ItemCategorySavedSearch:
-		return weightCommands // Saved searches rank high like commands
 	case ItemCategorySavedFilter:
 		return weightCommands // Saved filters rank high like commands
 	case ItemCategoryViews:
@@ -429,8 +376,6 @@ func getCategoryDisplayName(cat ItemCategory) string {
 		return "Tags"
 	case ItemCategorySections:
 		return "Sections"
-	case ItemCategorySavedSearch:
-		return "Saved Searches"
 	case ItemCategoryNotes:
 		return "Notes"
 	case ItemCategorySavedFilter:

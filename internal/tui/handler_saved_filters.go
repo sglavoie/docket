@@ -39,27 +39,32 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 		return true, nil
 
 	case LoadSavedFilterMsg:
+		if _, _, ok := m.taskWorkspacePrimary(); ok && m.taskWorkspace != nil {
+			// A saved filter contributes query semantics only. Layout, Board axis,
+			// grouping, sorting, columns, cursor, and selection stay exactly as
+			// configured in the current workspace.
+			if err := m.taskWorkspace.State.SetFocus(WorkspaceSavedFilter, msg.Filter.ID); err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			if err := m.taskWorkspace.Refresh(); err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			route, err := NewRoute(TaskWorkspace, m.taskWorkspace.State.RouteParams())
+			if err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			if m.typedNavigation {
+				if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
+					return true, func() tea.Msg { return ErrorMsg{Err: err} }
+				}
+				m.syncPresentationStack()
+			}
+			return true, nil
+		}
 		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
 			m.applySavedFilterToCrossOutliner(msg.Filter)
 		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.applySavedFilterToOutliner(msg.Filter)
-		}
-		return true, nil
-
-	case toggleSavedFilterTabMsg:
-		if sf := m.runtime.Planning().GetSavedFilter(msg.ID); sf != nil {
-			showAsTab := msg.ShowAsTab
-			if err := m.commitPlanningMutation(func(p *config.PlanningState) {
-				if f := p.GetSavedFilter(msg.ID); f != nil {
-					f.ShowAsTab = showAsTab
-				}
-			}); err != nil {
-				return true, errorCmd("failed to save filter: %w", err)
-			}
-			// Rebuild AllTasks tab entries
-			m.refreshAllTasksTabs()
-			// Refresh the command palette if it's showing
-			m.refreshCommandPaletteItems()
 		}
 		return true, nil
 
@@ -119,6 +124,26 @@ func (m *AppModel) captureCurrentFilter(name string) config.SavedFilter {
 	if existing != nil {
 		id = existing.ID
 	}
+	if _, _, ok := m.taskWorkspacePrimary(); ok && m.taskWorkspace != nil {
+		filter := m.taskWorkspace.State.AdvancedFilters
+		saved := config.SavedFilter{
+			ID: id, Name: name, Mode: "snapshot",
+			FilterType: string(filter.Type), FilterStatus: string(filter.Status), FilterPriority: filter.Priority,
+			FilterDueDate: int(filter.DueDate), FilterActionable: filter.Actionable, FilterHideDimmed: filter.HideDimmed,
+			FilterGitHubIssue: filter.GitHubIssue, FilterParked: filter.Parked, FilterScoreMin: filter.ScoreMin,
+		}
+		for tag := range filter.Tags {
+			saved.FilterTags = append(saved.FilterTags, tag)
+		}
+		for section := range filter.Sections {
+			saved.FilterSections = append(saved.FilterSections, section)
+		}
+		if len(filter.Attrs) > 0 {
+			saved.FilterAttrs = make(map[string]string, len(filter.Attrs))
+			maps.Copy(saved.FilterAttrs, filter.Attrs)
+		}
+		return saved
+	}
 
 	switch m.baseProjectView() { //nolint:exhaustive // saved filters are captured from the outliner base views.
 	case ViewCrossProjectOutliner:
@@ -144,7 +169,6 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 		return sf
 	}
 
-	sf.ViewMode = ol.activePerspective
 	sf.FilterType = string(ol.filter.Type)
 	sf.FilterStatus = string(ol.filter.Status)
 	sf.FilterPriority = ol.filter.Priority
@@ -154,8 +178,6 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	sf.FilterGitHubIssue = ol.filter.GitHubIssue
 	sf.FilterParked = ol.filter.Parked
 	sf.FilterScoreMin = ol.filter.ScoreMin
-	sf.SortField = int(ol.sort.Field)
-	sf.SortAscending = ol.sort.Ascending
 
 	if len(ol.filter.Tags) > 0 {
 		for tag := range ol.filter.Tags {
@@ -171,8 +193,6 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 		sf.FilterAttrs = make(map[string]string)
 		maps.Copy(sf.FilterAttrs, ol.filter.Attrs)
 	}
-
-	sf.PinnedTagTab = ol.activePinnedTagFilter()
 
 	return sf
 }
@@ -197,7 +217,6 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 	} else {
 		// Snapshot-mode: restore all flat filter/sort state
 		ol.activeCriteriaFilter = nil
-		ol.activePerspective = sf.ViewMode
 		ol.filter.Type = models.TaskType(sf.FilterType)
 		ol.filter.Status = models.TaskStatus(sf.FilterStatus)
 		ol.filter.Priority = sf.FilterPriority
@@ -207,8 +226,6 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		ol.filter.GitHubIssue = sf.FilterGitHubIssue
 		ol.filter.Parked = sf.FilterParked
 		ol.filter.ScoreMin = sf.FilterScoreMin
-		ol.sort.Field = SortField(sf.SortField)
-		ol.sort.Ascending = sf.SortAscending
 
 		// Restore tags — validate against the active outliner scope.
 		validTags := CollectTagNamesForProject(ol.project)
@@ -224,7 +241,6 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		ol.filter.Attrs = make(map[string]string)
 		maps.Copy(ol.filter.Attrs, sf.FilterAttrs)
 
-		ol.selectPinnedTagTab(sf.PinnedTagTab)
 	}
 
 	// Set active indicator

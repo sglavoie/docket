@@ -13,10 +13,6 @@ func (rs *RuntimeState) ExtractProjectReferences(id, slug string) ProjectReferen
 	if v, ok := lookupProjectKey(automation.ProjectScoringProfile, id, slug); ok {
 		refs.ScoringProfile = &v
 	}
-	if v, ok := lookupProjectKey(machine.ProjectViewStates, id, slug); ok {
-		vv := v
-		refs.ViewState = &vv
-	}
 	if v, ok := lookupProjectKey(automation.WorkflowEvalStates, id, slug); ok {
 		vv := v
 		refs.WorkflowEval = &vv
@@ -36,13 +32,6 @@ func (rs *RuntimeState) ExtractProjectReferences(id, slug string) ProjectReferen
 			refs.RecentTaskVisits = append(refs.RecentTaskVisits, visit)
 		}
 	}
-	for _, pid := range machine.CycleProjects {
-		if matches(pid) {
-			refs.InCycleProjects = true
-			break
-		}
-	}
-	refs.ContextCycleKeys = contextKeysContaining(machine.ContextCycleProjects, matches)
 	refs.CustomContextKeys = contextKeysContaining(machine.CustomContexts, matches)
 	return refs
 }
@@ -123,18 +112,10 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 	if m == nil || projectID == "" {
 		return false
 	}
-	changed := refs.WasCurrent || refs.ViewState != nil || len(refs.RecentTaskVisits) > 0 ||
-		refs.InCycleProjects || len(refs.ContextCycleKeys) > 0 || len(refs.CustomContextKeys) > 0
+	changed := refs.WasCurrent || len(refs.RecentTaskVisits) > 0 || len(refs.CustomContextKeys) > 0
 	if refs.WasCurrent {
 		m.CurrentProject = projectID
 	}
-	if refs.ViewState != nil {
-		if m.ProjectViewStates == nil {
-			m.ProjectViewStates = make(map[string]ProjectViewState)
-		}
-		m.ProjectViewStates[projectID] = *refs.ViewState
-	}
-
 	existingVisits := make(map[string]bool, len(m.RecentTaskVisits))
 	for _, visit := range m.RecentTaskVisits {
 		existingVisits[visit.TaskID] = true
@@ -148,12 +129,6 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 		existingVisits[visit.TaskID] = true
 	}
 
-	if refs.InCycleProjects && !containsString(m.CycleProjects, projectID) {
-		m.CycleProjects = append(m.CycleProjects, projectID)
-	}
-	for _, key := range refs.ContextCycleKeys {
-		addProjectToContextMap(&m.ContextCycleProjects, key, projectID)
-	}
 	for _, key := range refs.CustomContextKeys {
 		addProjectToContextMap(&m.CustomContexts, key, projectID)
 	}

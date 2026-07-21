@@ -31,7 +31,7 @@ type ShellContext interface {
 	// the active project/task where the route's scope calls for it.
 	CurrentRoute() Route
 	// CurrentView returns the topmost view type.
-	CurrentView() ViewType
+	CurrentView() PresentationID
 	// Size returns the current terminal width and height.
 	Size() (width, height int)
 }
@@ -47,10 +47,10 @@ type ShellState struct{ app *AppModel }
 func (m *AppModel) Shell() ShellState { return ShellState{app: m} }
 
 // CurrentView returns the topmost view type on the stack.
-func (s ShellState) CurrentView() ViewType { return s.app.currentView() }
+func (s ShellState) CurrentView() PresentationID { return s.app.currentView() }
 
 // Stack returns the current view stack (top is the last element).
-func (s ShellState) Stack() []ViewType { return s.app.viewStack }
+func (s ShellState) Stack() []PresentationID { return s.app.viewStack }
 
 // Depth returns the number of views on the stack.
 func (s ShellState) Depth() int { return len(s.app.viewStack) }
@@ -64,24 +64,32 @@ func (s ShellState) Size() (int, int) { return s.app.width, s.app.height }
 // CurrentRoute returns the route instance for the topmost view.
 func (s ShellState) CurrentRoute() Route { return s.app.CurrentRoute() }
 
-// CurrentRoute builds the route instance for the topmost view, binding the
-// active project and task where the route's scope requires it. This mirrors the
-// ProjectID/TaskID assignment that pushView records into navigation history, so
-// a route round-trips through NavEntry without changing history semantics.
+// CurrentRoute returns the live typed primary route. Headless models without
+// navigation derive a route from their renderer stack. Overlays are skipped
+// because they belong to the separate overlay stack.
 func (m *AppModel) CurrentRoute() Route {
-	vt := m.currentView()
-	params := RouteParams{}
-	if m.currentProject != nil && !isGlobalNavView(vt) {
-		params.ProjectID = m.currentProject.ID
+	if m.typedNavigation {
+		return m.navigation.Primary.Current()
 	}
-	if isTaskScopedView(vt) {
-		params.TaskID = m.lastNavigatedTaskID
+	projectID := ""
+	if m.currentProject != nil {
+		projectID = m.currentProject.ID
 	}
-	return NewRoute(vt, params)
+	for i := len(m.viewStack) - 1; i >= 0; i-- {
+		route, ok, err := routeForPresentation(m.viewStack[i], projectID, m.lastNavigatedTaskID)
+		if err == nil && ok && route.ID() != Reference {
+			return route
+		}
+	}
+	home, err := NewRoute(Home, HomeParams{})
+	if err != nil {
+		panic(err)
+	}
+	return home
 }
 
 // CurrentView satisfies ShellContext.
-func (m *AppModel) CurrentView() ViewType { return m.currentView() }
+func (m *AppModel) CurrentView() PresentationID { return m.currentView() }
 
 // Size satisfies ShellContext.
 func (m *AppModel) Size() (int, int) { return m.width, m.height }
@@ -109,8 +117,7 @@ func (w WorkspaceSession) HasCurrentProject() bool { return w.app.currentProject
 func (w WorkspaceSession) ProjectStack() []string { return w.app.projectStack }
 
 // ViewContext assembles the shared view construction context for the workspace,
-// sized to the shell's current geometry. It is the input a RouteFactory
-// receives when building a view.
+// sized to the shell's current geometry for view construction.
 func (w WorkspaceSession) ViewContext() ViewContext {
 	return ViewContext{
 		Width:         w.app.width,
@@ -145,7 +152,9 @@ func (o OverlayManager) HasActiveTextInput() bool {
 // Active reports whether any transient overlay is currently shown.
 func (o OverlayManager) Active() bool {
 	m := o.app
-	return m.quickNoteOverlay != nil ||
+	return (m.typedNavigation && m.navigation.Overlays.Active()) ||
+		m.destinationSwitcher != nil ||
+		m.quickNoteOverlay != nil ||
 		m.globalProjectPicker != nil ||
 		m.globalTaskPicker != nil ||
 		m.statusQuickPicker != nil ||
@@ -161,6 +170,14 @@ func (o OverlayManager) Active() bool {
 // so no overlay outlives the route it was opened over.
 func (o OverlayManager) ClearAll() {
 	m := o.app
+	if m.typedNavigation {
+		m.navigation.Overlays.CancelAll()
+	}
+	m.destinationSwitcher = nil
+	m.showQuickSwitch = false
+	m.quickSwitchFiltering = false
+	m.showPinnedPopup = false
+	m.pinnedPopupFiltering = false
 	m.quickNoteOverlay = nil
 	m.globalProjectPicker = nil
 	m.globalTaskPicker = nil

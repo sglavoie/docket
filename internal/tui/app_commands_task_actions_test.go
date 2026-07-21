@@ -15,7 +15,7 @@ func TestTaskActionCommands_ParkTask(t *testing.T) {
 	if expectedTask == nil {
 		t.Fatal("expected outliner to have a task under the cursor")
 	}
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmds := app.taskActionCommands()
 	cmd := findCommand(cmds, "park task")
@@ -25,7 +25,7 @@ func TestTaskActionCommands_ParkTask(t *testing.T) {
 	if cmd.Shortcut != "tP" {
 		t.Errorf("park task shortcut = %q, want tP", cmd.Shortcut)
 	}
-	for _, view := range []ViewType{ViewOutliner, ViewCrossProjectOutliner} {
+	for _, view := range []PresentationID{ViewOutliner, ViewCrossProjectOutliner} {
 		if !slices.Contains(cmd.Views, view) {
 			t.Errorf("park task missing view %v in %v", view, cmd.Views)
 		}
@@ -43,7 +43,7 @@ func TestTaskActionCommands_ParkTask(t *testing.T) {
 
 func TestTaskActionCommands_ParkTask_NoTaskSelected(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCommandPalette}
+	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewCommandPalette}
 
 	cmd := findCommand(app.taskActionCommands(), "park task")
 	if cmd == nil {

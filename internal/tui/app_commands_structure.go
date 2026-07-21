@@ -16,7 +16,7 @@ func (m *AppModel) quickNoteCommand() Command {
 		Description: "Append a quick note/comment to the selected task",
 		Shortcut:    "ctrl+.",
 		Category:    CategoryStructure,
-		Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner, ViewAllTasks, ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewFocusBoard, ViewPriorityView},
+		Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner, ViewAllTasks, ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewFocusBoard, ViewPriorityView},
 		Aliases:     []string{"note", "comment quick"},
 		Handler: func() tea.Msg {
 			task, project := m.quickNoteTarget()
@@ -34,7 +34,7 @@ func (m *AppModel) moveReparentCommand() Command {
 		Description: "Move selected task to a new parent or clear its parent",
 		Shortcut:    "ctrl+m",
 		Category:    CategoryStructure,
-		Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+		Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 		Aliases:     []string{"reparent", "move to parent", "clear parent", "remove parent"},
 		Handler: func() tea.Msg {
 			task, project, source := m.reparentTarget()
@@ -47,6 +47,9 @@ func (m *AppModel) moveReparentCommand() Command {
 }
 
 func (m *AppModel) quickNoteTarget() (*models.Task, *models.Project) {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		return view.getTaskRef()
+	}
 	origin := m.nonPaletteOrigin()
 	switch origin {
 	case ViewOutliner:
@@ -71,7 +74,11 @@ func (m *AppModel) quickNoteTarget() (*models.Task, *models.Project) {
 	return nil, nil
 }
 
-func (m *AppModel) reparentTarget() (*models.Task, *models.Project, ViewType) {
+func (m *AppModel) reparentTarget() (*models.Task, *models.Project, PresentationID) {
+	if view, params, ok := m.taskWorkspacePrimary(); ok {
+		task, project := view.getTaskRef()
+		return task, project, taskWorkspacePresentation(params)
+	}
 	origin := m.structureOrigin()
 	switch origin {
 	case ViewOutliner:
@@ -89,7 +96,7 @@ func (m *AppModel) reparentTarget() (*models.Task, *models.Project, ViewType) {
 	return nil, nil, origin
 }
 
-func (m *AppModel) nonPaletteOrigin() ViewType {
+func (m *AppModel) nonPaletteOrigin() PresentationID {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		if view := m.viewStack[i]; view != ViewCommandPalette {
 			return view
@@ -98,7 +105,7 @@ func (m *AppModel) nonPaletteOrigin() ViewType {
 	return ViewDashboard
 }
 
-func (m *AppModel) structureOrigin() ViewType {
+func (m *AppModel) structureOrigin() PresentationID {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		view := m.viewStack[i]
 		if view == ViewOutliner || view == ViewCrossProjectOutliner {
@@ -108,7 +115,7 @@ func (m *AppModel) structureOrigin() ViewType {
 	return ViewDashboard
 }
 
-func buildOpenParentSelectorMsg(task *models.Task, project *models.Project, source ViewType) tea.Msg {
+func buildOpenParentSelectorMsg(task *models.Task, project *models.Project, source PresentationID) tea.Msg {
 	validParents := buildReparentValidParents(project, task)
 	var currentParentID *string
 	if task.ParentID != nil {

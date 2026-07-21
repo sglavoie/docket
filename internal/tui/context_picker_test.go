@@ -42,7 +42,7 @@ func TestContextPickerShowsArchivedHiddenCountForCustomContext(t *testing.T) {
 	normalized := strings.Join(strings.Fields(rendered), " ")
 	for _, want := range []string{
 		"+ Work",
-		"(1 active, 1 archived project hidden)",
+		"(1 active, 1 archived)",
 	} {
 		if !strings.Contains(normalized, want) {
 			t.Fatalf("rendered context picker missing %q\n\n%s", want, rendered)

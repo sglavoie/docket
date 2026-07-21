@@ -13,7 +13,7 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 		m.quickSwitchFiltered = make([]int, 0, len(entries))
 		m.quickSwitchTitlePositions = make([][]int, 0, len(entries))
 		for i, entry := range entries {
-			if entry.Task.IsComplete() != m.quickSwitchShowCompleted {
+			if entry.Task.IsTerminalState() {
 				continue
 			}
 			m.quickSwitchFiltered = append(m.quickSwitchFiltered, i)
@@ -30,7 +30,7 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 
 	var pinned, unpinned []scored
 	for i, entry := range entries {
-		if entry.Task.IsComplete() != m.quickSwitchShowCompleted {
+		if entry.Task.IsTerminalState() {
 			continue
 		}
 		text := entry.Task.Title + " " + entry.Project.Name
@@ -74,14 +74,4 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 // quickSwitchFilteredLen returns the number of visible (filtered) entries.
 func (m *AppModel) quickSwitchFilteredLen() int {
 	return len(m.quickSwitchFiltered)
-}
-
-// quickSwitchClampCursor clamps the cursor to the filtered list bounds.
-func (m *AppModel) quickSwitchClampCursor() {
-	n := m.quickSwitchFilteredLen()
-	if n == 0 {
-		m.quickSwitchCursor = 0
-	} else if m.quickSwitchCursor >= n {
-		m.quickSwitchCursor = n - 1
-	}
 }

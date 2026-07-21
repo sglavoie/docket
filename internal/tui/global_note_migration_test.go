@@ -54,8 +54,7 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	shell := &AppModel{
 		appService: svc,
 		views:      views,
-		viewStack:  []ViewType{ViewGlobalNotes},
-		navHistory: NewNavHistory(),
+		viewStack:  []PresentationID{ViewGlobalNotes},
 	}
 	return &globalNoteTUIEnv{dataDir: dataDir, dir: dir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}
 }

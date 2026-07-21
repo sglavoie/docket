@@ -141,7 +141,7 @@ func describeSavedFilterSummary(sf *config.SavedFilter) string {
 		sf.FilterActionable, sf.FilterHideDimmed, sf.FilterGitHubIssue,
 		sf.FilterParked,
 		sf.FilterAttrs, sf.FilterScoreMin,
-		sf.SortField, sf.ViewMode,
+		0, 0,
 	)
 }
 

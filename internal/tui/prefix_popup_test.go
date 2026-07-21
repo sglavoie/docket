@@ -326,47 +326,6 @@ func TestRenderPrefixPopup_CategoryTitle(t *testing.T) {
 	}
 }
 
-func TestRenderPrefixPopup_SemicolonUsesAvailableWidth(t *testing.T) {
-	terminalWidth := 72
-	result := RenderPrefixPopup(";", PrefixHints{";": SemicolonPrefixHints}, terminalWidth, 40)
-	if result == "" {
-		t.Fatal("expected semicolon prefix popup to render")
-	}
-
-	width := popupWidth(result)
-	if width <= terminalWidth/2 {
-		t.Fatalf("semicolon popup width = %d, want wider than half terminal width %d", width, terminalWidth/2)
-	}
-	if width > terminalWidth-2 {
-		t.Fatalf("semicolon popup width = %d, want <= available width %d", width, terminalWidth-2)
-	}
-
-	plain := ansi.Strip(result)
-	for _, row := range []struct {
-		description string
-		detail      string
-	}{
-		{"pipeline hub", "Overview of all pipeline stages"},
-		{"bulk capture", "Bulk task capture in a project"},
-		{"Planner Next", "On-deck shortlist (StateNext)"},
-		{"metrics", "Completion rates and throughput"},
-		{"roadmap", "Gantt chart and critical path"},
-		{"priority", "Change task priority globally"},
-		{"status update", "Change task status globally"},
-	} {
-		assertPopupLineContains(t, plain, row.description, row.detail)
-		assertPopupDoesNotContainStandaloneLine(t, plain, row.detail)
-	}
-}
-
-func TestRenderPrefixCategoryTitle_SemicolonTTUsesWholeBoldTitle(t *testing.T) {
-	got := renderPrefixCategoryTitle(";", "tt", SuccessBoldStyle, NormalStyle)
-	want := NormalStyle.Bold(true).Render("tt")
-	if got != want {
-		t.Fatalf("semicolon tt title = %q, want %q", got, want)
-	}
-}
-
 func TestResolvePrefixCategoryHighlightSpan_DefaultUsesFirstRune(t *testing.T) {
 	start, end, ok := resolvePrefixCategoryHighlightSpan("m", "move")
 	if !ok {

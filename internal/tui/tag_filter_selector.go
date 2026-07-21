@@ -13,7 +13,7 @@ import (
 type ShowTagFilterMsg struct {
 	Tags     []TagInfo
 	Selected map[string]bool
-	Source   ViewType
+	Source   PresentationID
 	Title    string
 }
 
@@ -22,13 +22,13 @@ type ShowTagFilterMsg struct {
 type TagFilterDoneMsg struct {
 	SelectedTags []string
 	Canceled     bool
-	Source       ViewType
+	Source       PresentationID
 }
 
 // TagFilterSelectorModel is the unified tag filter selector.
 type TagFilterSelectorModel struct {
 	*BasePicker[TagInfo]
-	source ViewType
+	source PresentationID
 }
 
 // NewTagFilterSelectorModel creates a unified tag filter selector from a ShowTagFilterMsg.

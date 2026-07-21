@@ -41,7 +41,7 @@ func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bo
 	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Priority set to %d", msg.NewPriority))
 }
 
-// handleGlobalDueDateApplied applies a due date change from the global ;td due date flow.
+// handleGlobalDueDateApplied applies a due date change from the global picker flow.
 func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool, tea.Cmd) {
 	m.dueDateQuickPicker = nil
 	if msg.Clear {
@@ -53,14 +53,14 @@ func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool
 	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Due date set to %s", label))
 }
 
-// handleGlobalSectionChanged applies a section change from the global ;ts section change flow.
+// handleGlobalSectionChanged applies a section change from the global picker flow.
 func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool, tea.Cmd) {
 	m.sectionChangeQuickPicker = nil
 	res, err := m.appService.SetSection(msg.Task.ID, msg.Section)
 	return m.finalizeGlobalOp(res, err, "Moved to section")
 }
 
-// handleGlobalMoveSectionSelected completes the ;tm global task-move workflow.
+// handleGlobalMoveSectionSelected completes the global task-move workflow.
 // It forwards the chosen destination section with the move request so the
 // move handler can apply it to the canonical source task.
 func (m *AppModel) handleGlobalMoveSectionSelected(msg GlobalMoveSectionSelectedMsg) (bool, tea.Cmd) {

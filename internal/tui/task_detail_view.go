@@ -17,7 +17,7 @@ import (
 // maxContentWidth aliases the layout constant for local use.
 const maxContentWidth = MaxContentWidth
 
-const taskDetailFooterHelp = "j/k: scroll · ,: status · !: priority · e: edit · c: comments · D: decisions · d: due · h: history · H: toggle history · Esc: close"
+const taskDetailFooterHelp = "Tab/Shift+Tab: tabs · j/k: scroll · c: comments · D: decisions · H: toggle history · ,: status · !: priority · e: edit · d: due · Esc: close"
 
 // detailContentWidth returns the shared task-detail card width used by View,
 // section rendering, centering, and description markdown. It caps the model
@@ -31,6 +31,11 @@ func (m *TaskDetailModel) View() tea.View {
 	if m.task == nil || m.project == nil {
 		return tea.NewView("No task selected")
 	}
+	if child := m.activeTabView(); child != nil {
+		view := child.View()
+		view.SetContent(insertTaskDetailTabBar(view.Content, m.renderTabBar()))
+		return view
+	}
 
 	// Determine content width (capped, centered if wider)
 	contentWidth := m.detailContentWidth()
@@ -42,7 +47,33 @@ func (m *TaskDetailModel) View() tea.View {
 	// Footer with scroll position
 	footer := m.renderFooter()
 
-	return tea.NewView(titleBar + "\n" + content + "\n" + footer)
+	return tea.NewView(titleBar + "\n" + m.renderTabBar() + "\n" + content + "\n" + footer)
+}
+
+func insertTaskDetailTabBar(content, tabBar string) string {
+	if before, after, ok := strings.Cut(content, "\n"); ok {
+		return before + "\n" + tabBar + "\n" + after
+	}
+	return content + "\n" + tabBar
+}
+
+func (m *TaskDetailModel) renderTabBar() string {
+	names := taskDetailTabNames[:]
+	if m.width < 72 {
+		names = []string{"Overview", "Check", "Comments", "Decisions", "Files", "Activity"}
+	}
+	parts := make([]string, 0, len(taskDetailTabOrder))
+	for i, tab := range taskDetailTabOrder {
+		label := " " + names[i] + " "
+		if tab == m.tab {
+			label = SelectedItemTextStyle.Render("[" + names[i] + "]")
+		} else {
+			label = MutedStyle.Render(label)
+		}
+		parts = append(parts, label)
+	}
+	line := strings.Join(parts, " ")
+	return lipgloss.NewStyle().Width(max(m.width, 1)).Render(truncateToVisualWidth(line, max(m.width, 1)))
 }
 
 func (m *TaskDetailModel) renderDetailContent(contentWidth int) string {
@@ -93,7 +124,7 @@ func (m *TaskDetailModel) overviewSections(contentWidth int) []string {
 }
 
 func (m *TaskDetailModel) planningSections(contentWidth int) ([]string, bool) {
-	var sections []string
+	sections := []string{m.renderPlanningMembershipSection(contentWidth)}
 	planningHasFrame := false
 	if scoreProfile := m.taskDetailScoreProfile(); scoreProfile != nil {
 		sections = append(sections, m.renderPlanningCluster(scoreProfile, contentWidth))
@@ -110,7 +141,23 @@ func (m *TaskDetailModel) planningSections(contentWidth int) ([]string, bool) {
 	return sections, planningHasFrame
 }
 
+func (m *TaskDetailModel) renderPlanningMembershipSection(width int) string {
+	today := "not planned"
+	if m.inDailyPlan {
+		today = "planned"
+	}
+	focusQueue := "not ranked"
+	if m.inFocusQueue {
+		focusQueue = "ranked"
+	}
+	content := fmt.Sprintf("Today: %s\nFocus Queue: %s", today, focusQueue)
+	return renderCard("Planning membership", content, width, DefaultCardConfig())
+}
+
 func (m *TaskDetailModel) taskDetailScoreProfile() *scoring.ScoringProfile {
+	if m.runtime == nil {
+		return nil
+	}
 	return m.runtime.Automation().GetProjectScoringProfile(m.project.ID)
 }
 
@@ -258,7 +305,7 @@ func (m *TaskDetailModel) renderTitleBar() string {
 func (m *TaskDetailModel) footerHeight() int {
 	footerHeight := 2
 	for range 4 {
-		viewHeight := max(m.height-1-footerHeight, 1)
+		viewHeight := max(m.height-2-footerHeight, 1)
 		next := lipgloss.Height(m.renderFooterForViewHeight(viewHeight))
 		if next == footerHeight {
 			return next

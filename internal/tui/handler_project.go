@@ -115,6 +115,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, defaultStatusTimeout()
 
 	case ProjectDeletedMsg:
+		var manageFallback *ManageParams
+		if _, params, ok := m.manageHubPrimary(); ok && params.Scope.Kind == ScopeProject && params.Scope.ProjectID == msg.Project.ID {
+			fallback := params
+			fallback.Scope = AppEntityScope()
+			manageFallback = &fallback
+		}
 		domains := cloneRuntimeDomains(m.runtime)
 		domains.RemoveProjectReferences(msg.Project.ID, msg.Project.Slug)
 		if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
@@ -124,9 +130,19 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.err = err
 		}
 		m.pruneDeletedTaskRefs()
+		if manageFallback != nil {
+			if m.dashboard != nil {
+				m.dashboard.Refresh()
+			}
+			m.setInfoStatus("Project removed — showing all " + manageFallback.Module.String())
+			return true, m.activateManageHub(*manageFallback)
+		}
 		// Pop back to dashboard since the project no longer exists
 		m.exitAskView()
 		m.viewStack = m.viewStack[:1]
+		if m.typedNavigation {
+			m.navigation.ResetHome()
+		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh()
 			m.dashboard.ResetCursor()
@@ -165,24 +181,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		m.refreshProjectView()
 		return true, nil
-
-	case ToggleInfoPanelMsg:
-		var mode config.InfoPanelMode
-		if err := m.commitMachineMutation(func(machine *config.MachineState) {
-			mode = machine.CycleInfoPanelMode()
-		}); err != nil {
-			m.err = err
-			return true, nil
-		}
-		switch mode {
-		case config.InfoPanelOff:
-			m.setInfoStatus("Info panel hidden")
-		case config.InfoPanelInfoCards:
-			m.setInfoStatus("Info panel: info cards")
-		case config.InfoPanelProjectSummary:
-			m.setInfoStatus("Info panel: project summary")
-		}
-		return true, defaultStatusTimeout()
 
 	case TutorDismissedMsg:
 		// Tutor dismissal is a portable behavior preference (Settings domain), so
@@ -363,6 +361,10 @@ func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
 	}
 	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
+	if m.typedNavigation && m.taskWorkspaceView != nil {
+		_, cmd := m.handleProjectViewMessages(ShowOutlinerMsg{Project: project})
+		return cmd
+	}
 	m.saveOutlinerToggleState()
 	m.saveOutlinerFilterState()
 	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)

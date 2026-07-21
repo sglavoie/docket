@@ -114,12 +114,21 @@ func (m *DashboardModel) renderFilterBar() (string, int) {
 func (m *DashboardModel) loadProjects() {
 	if m.showArchived {
 		m.projects = m.runtime.ArchivedProjects()
+		m.attentionProjects = m.runtime.ActiveProjects()
 	} else {
 		m.projects = m.runtime.ActiveProjects()
+		m.attentionProjects = m.projects
 	}
 	for _, p := range m.projects {
 		if err := storage.LoadProject(p); err != nil {
 			logging.Warn("failed to load project %s: %v", p.Name, err)
+		}
+	}
+	if m.showArchived {
+		for _, p := range m.attentionProjects {
+			if err := storage.LoadProject(p); err != nil {
+				logging.Warn("failed to load active Home attention project %s: %v", p.Name, err)
+			}
 		}
 	}
 
@@ -156,13 +165,14 @@ func (m *DashboardModel) loadProjects() {
 	m.contexts = m.getAllContexts()
 	m.cursor = ClampCursor(m.cursor, len(m.visibleProjects()))
 	m.resetViewScrollOffset()
+	m.rebuildHomeAttention()
 }
 
 // GetHelpItems returns the help items for the dashboard view.
 func (m *DashboardModel) GetHelpItems() []HelpItem {
-	toggleArchiveDesc := "Show archived"
+	toggleArchiveDesc := "Show archived projects"
 	if m.showArchived {
-		toggleArchiveDesc = "Show active"
+		toggleArchiveDesc = "Show active projects"
 	}
 
 	items := append([]HelpItem{}, GetKeybindingRegistry().GetGlobalBindings()...)
@@ -174,7 +184,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		})
 	}
 	for i, item := range items {
-		if item.Key == "a" {
+		if item.Key == "v" {
 			items[i].Description = toggleArchiveDesc
 		}
 	}

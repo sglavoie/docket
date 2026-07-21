@@ -23,7 +23,7 @@ func (m *AppModel) handleAttrFilterMessages(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // applyAttrFilterToView applies an attribute filter selection to the originating view.
-func (m *AppModel) applyAttrFilterToView(source ViewType, prefix, key string) {
+func (m *AppModel) applyAttrFilterToView(source PresentationID, prefix, key string) {
 	applyAttr := func(f *CommonFilterState, refresh func()) {
 		if prefix == "Fa" {
 			handleFilterAttrKey(key, f)
@@ -32,9 +32,17 @@ func (m *AppModel) applyAttrFilterToView(source ViewType, prefix, key string) {
 		}
 		refresh()
 	}
+	if _, _, ok := m.taskWorkspacePrimary(); ok && m.taskWorkspace != nil {
+		applyAttr(&m.taskWorkspace.State.AdvancedFilters.CommonFilterState, func() {
+			if err := m.taskWorkspace.Refresh(); err != nil {
+				m.err = err
+			}
+		})
+		return
+	}
 
 	// Views implementing tagFilterApplicable (have getFilter() + refreshAndClamp()).
-	standardViews := []ViewType{
+	standardViews := []PresentationID{
 		ViewFocusBoard,
 		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewPriorityView,
 		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,

@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
-	"github.com/sglavoie/tt/internal/icons"
 )
 
 // renderTagPreview shows tasks with this tag.
@@ -83,64 +81,6 @@ func (m *CommandPaletteModel) writeTaskListPreview(b *strings.Builder, items []P
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more", len(items)-maxShow)))
 		b.WriteString("\n")
 	}
-}
-
-// renderSavedSearchPreview shows details for a saved search.
-func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string {
-	if item.SavedSearch == "" {
-		return MutedStyle.Render("No saved search details.")
-	}
-	var b strings.Builder
-
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(CategorySavedSearchStyle.Render(icons.Get("star") + " " + item.Name)))
-	b.WriteString("\n\n")
-
-	b.WriteString(SubtitleStyle.Render("Query"))
-	b.WriteString("\n")
-	b.WriteString(BoldStyle.Render(item.SavedSearch))
-	b.WriteString("\n\n")
-
-	b.WriteString(SubtitleStyle.Render("Components"))
-	b.WriteString("\n")
-
-	query := item.SavedSearch
-	categoryFilter, searchQuery := m.parseQueryPrefix(query)
-	if categoryFilter != "" {
-		fmt.Fprintf(&b, "  Category: %s\n", getCategoryDisplayName(categoryFilter))
-	}
-
-	remaining, filters := parseFieldFilters(searchQuery)
-	for _, f := range filters {
-		switch f.field {
-		case "priority":
-			fmt.Fprintf(&b, "  Priority: %s\n", f.value)
-		case "status":
-			m.writeSavedSearchAltOrValue(&b, "Status", f)
-		case "tag":
-			m.writeSavedSearchAltOrValue(&b, "Tag", f)
-		case "section":
-			m.writeSavedSearchAltOrValue(&b, "Section", f)
-		case "date":
-			fmt.Fprintf(&b, "  Due: %s\n", f.value)
-		}
-	}
-
-	if remaining != "" {
-		fmt.Fprintf(&b, "  Search: %s\n", remaining)
-	}
-
-	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("Press Enter to run · Tab for actions · d to delete"))
-
-	return b.String()
-}
-
-func (m *CommandPaletteModel) writeSavedSearchAltOrValue(b *strings.Builder, label string, f fieldFilter) {
-	if f.op == "in" {
-		fmt.Fprintf(b, "  %s: %s\n", label, strings.Join(f.alt, " or "))
-		return
-	}
-	fmt.Fprintf(b, "  %s: %s\n", label, f.value)
 }
 
 // renderSavedFilterPreview shows details for a saved filter.

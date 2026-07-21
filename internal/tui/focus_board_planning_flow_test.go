@@ -4,77 +4,102 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
-// TestFocusBoardBacklogPromotionFlow is the FR-007-002 regression: the Planner
-// (ViewFocusBoard) is the consolidated planning surface, but it used to be
-// unable to move ranked Backlog work into either planning horizon. The empty
-// Today "Plan" CTA opened the Next shortlist instead of the ranked Backlog, and
-// q/w were suppressed for the entire Planner with no replacement action, so a
-// selected Backlog row could not be promoted to Today or Next.
-//
-// The fix routes the Plan CTA to the Backlog tab and lets the Planner own q/w as
-// its promotion keys, dispatched through the same undoable toggle boundary
-// (toggleQueue/toggleDailyPlan) as every other task view — so promotion
-// preserves Today/Next exclusivity and is atomically undoable/redoable.
-func TestFocusBoardBacklogPromotionFlow(t *testing.T) {
-	t.Run("empty Today plan action opens the ranked Backlog", func(t *testing.T) {
-		m := cockpitModel(nil, nil, nil, nil, OpenLoops{HasTasks: true}, boardTabToday)
+func TestPlannerAddUsesActiveTabPresetAndOneUndoableTransaction(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		tab       int
+		wantState models.WorkflowState
+		wantToday bool
+		wantNext  bool
+	}{
+		{name: "Today", tab: boardTabToday, wantState: models.StateReady, wantToday: true},
+		{name: "Next", tab: boardTabNext, wantState: models.StateNext, wantNext: true},
+		{name: "Backlog", tab: boardTabBacklog, wantState: models.StateReady},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newPlanningReconcileEnv(t, models.StateReady)
+			baselineUndo, err := env.ledger.UndoCount(storage.GlobalScope())
+			if err != nil {
+				t.Fatalf("baseline undo count: %v", err)
+			}
+			m := newTestFocusBoard()
+			m.runtime = env.runtime
+			m.configManager = env.manager
+			m.filterMachine = env.runtime.Machine()
+			m.capture = CaptureCoordinator{newFeatureCoordinator("capture", env.service, env.service)}
+			m.acProjectCache = []*models.Project{env.project}
+			m.tabs.Active = tc.tab
 
-		for _, action := range []CockpitAction{actionPlanToday(), actionPlanMore()} {
-			_, cmd := m.executeCockpitAction(action)
+			_, cmd := m.createItemFromInput("Created from Planner %planning-reconcile")
 			if cmd == nil {
-				t.Fatalf("plan action %q produced no command", action.Command)
+				t.Fatal("Planner add returned no command")
 			}
-			msg, ok := cmd().(ShowFocusBoardMsg)
+			raw := cmd()
+			msg, ok := raw.(TransactionResultMsg)
 			if !ok {
-				t.Fatalf("plan action %q emitted %T, want ShowFocusBoardMsg", action.Command, cmd())
+				t.Fatalf("Planner add emitted %T (%#v), want TransactionResultMsg", raw, raw)
 			}
-			if !msg.SetTab || msg.Tab != boardTabBacklog {
-				t.Fatalf("plan action %q opened tab %d (SetTab=%v), want the ranked Backlog tab",
-					action.Command, msg.Tab, msg.SetTab)
+			if got := msg.PlanningChanged; got != (tc.wantToday || tc.wantNext) {
+				t.Fatalf("PlanningChanged = %v, want %v", got, tc.wantToday || tc.wantNext)
 			}
-		}
-	})
 
-	t.Run("q sends a Backlog task to Next from the Planner", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewFocusBoard)
+			assertPlannerCreatedState(t, env, msg.Result.TaskID, tc.wantState, tc.wantToday, tc.wantNext)
+			if count, err := env.ledger.UndoCount(storage.GlobalScope()); err != nil || count != baselineUndo+1 {
+				t.Fatalf("undo entries after Planner add = %d, err=%v, want baseline+1 (%d)", count, err, baselineUndo+1)
+			}
 
-		app = sendAppKey(app, syntheticKey('q'))
-		assertQueueKeyFlow(t, app, task.ID, true)
-	})
+			if _, err := env.ledger.Undo(storage.GlobalScope()); err != nil {
+				t.Fatalf("undo Planner add: %v", err)
+			}
+			if err := storage.LoadProject(env.project); err != nil {
+				t.Fatalf("reload project after undo: %v", err)
+			}
+			if task := env.project.GetTaskByID(msg.Result.TaskID); task != nil {
+				t.Fatalf("created task survived undo: %+v", task)
+			}
+			planning := env.reloadPlanning(t)
+			if dailyPlanContains(planning, msg.Result.TaskID) || focusQueueContains(planning, msg.Result.TaskID) {
+				t.Fatal("created task's planning membership survived undo")
+			}
 
-	t.Run("w sends a Backlog task to Today from the Planner", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewFocusBoard)
+			if _, err := env.ledger.Redo(storage.GlobalScope()); err != nil {
+				t.Fatalf("redo Planner add: %v", err)
+			}
+			assertPlannerCreatedState(t, env, msg.Result.TaskID, tc.wantState, tc.wantToday, tc.wantNext)
+		})
+	}
+}
 
-		app = sendAppKey(app, syntheticKey('w'))
-		assertDailyPlanKeyFlow(t, app, task.ID, true)
-	})
-
-	t.Run("promotion preserves Today/Next exclusivity", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewFocusBoard)
-
-		app = sendAppKey(app, syntheticKey('q'))
-		assertExclusiveMembership(t, app, task.ID, true, false)
-
-		// Promoting the same task to Today must drop it out of Next.
-		app = sendAppKey(app, syntheticKey('w'))
-		assertExclusiveMembership(t, app, task.ID, false, true)
-	})
-
-	t.Run("promotion uses the undoable planning boundary", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewFocusBoard)
-
-		app = sendAppKey(app, syntheticKey('q'))
-		assertQueueKeyFlow(t, app, task.ID, true)
-
-		// u undoes the promotion (state + order index) as one logical action,
-		// without leaving the Planner.
-		app = sendAppKey(app, syntheticKey('u'))
-		assertQueueKeyFlow(t, app, task.ID, false)
-
-		// ctrl+r replays it.
-		app = sendAppKey(app, syntheticCtrlKey('r'))
-		assertQueueKeyFlow(t, app, task.ID, true)
-	})
+func assertPlannerCreatedState(
+	t *testing.T,
+	env *planningReconcileEnv,
+	taskID string,
+	wantState models.WorkflowState,
+	wantToday bool,
+	wantNext bool,
+) {
+	t.Helper()
+	if err := storage.LoadProject(env.project); err != nil {
+		t.Fatalf("reload created project: %v", err)
+	}
+	task := env.project.GetTaskByID(taskID)
+	if task == nil {
+		t.Fatalf("created task %q missing", taskID)
+	}
+	if got := task.State(); got != wantState {
+		t.Fatalf("created task state = %s, want %s", got, wantState)
+	}
+	planning := env.reloadPlanning(t)
+	if got := dailyPlanContains(planning, taskID); got != wantToday {
+		t.Fatalf("Today membership = %v, want %v", got, wantToday)
+	}
+	if got := focusQueueContains(planning, taskID); got != wantNext {
+		t.Fatalf("Next membership = %v, want %v", got, wantNext)
+	}
+	if wantToday && wantNext {
+		t.Fatal("test requested invalid simultaneous Today and Next membership")
+	}
 }

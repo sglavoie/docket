@@ -11,7 +11,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Description: "View task activity log",
 			Shortcut:    "gh",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"activity log", "task history"},
 			Handler: func() tea.Msg {
 				task, project := m.paletteTaskTarget()
@@ -29,7 +29,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Description: "Park selected task with a resume note",
 			Shortcut:    "tP",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"parking note", "pause task", "resume note"},
 			Handler: func() tea.Msg {
 				task, project := m.paletteTaskTarget()
@@ -47,7 +47,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Description: "Show recent activity for the current project",
 			Shortcut:    "gl",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"recent activity", "project history"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()

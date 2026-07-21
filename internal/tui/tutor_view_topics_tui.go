@@ -60,11 +60,9 @@ Type to filter commands and press Enter to execute.
 
 # What It Contains
 
-The command palette lists all available actions for the current
-view. It is the fastest way to discover and access features
-without memorizing keybindings. The empty-query footer ends
-with "ctrl+\: full reference" so the keybinding explorer is one
-keystroke away when you need the exhaustive cross-view view.
+The command palette lists the actions available in the current
+route. It is the fastest way to discover and access features
+without memorizing keybindings.
 
 # Triage Escape Hatch
 
@@ -94,7 +92,7 @@ The palette's "Suggested" section is context-aware inside the
 inbox processors: it leads with the triage-momentum vocabulary
 ("plan today", "send to next", "set due date today", "snooze
 inbox task") so a brand-new user lands on the close-message
-next actions (;w Today · ;q Next) without memorizing chords
+next actions in Planner Today and Next without memorizing keys
 first.`,
 		},
 		{
@@ -102,20 +100,16 @@ first.`,
 			Category: "TUI",
 			Content: `# Where Dashboard Fits
 
-tt opens on the Today cockpit by default. The Dashboard is
-the project command center — press Esc from Today to back
-out to it, or open it from the Pipeline Hub (;;). Use the
-Dashboard when you need cross-project counts, project
-switching, or to triage a specific project's inbox.
+Home is the project command center. Use Ctrl+G to reach it
+when you need cross-project counts, project switching, or to
+triage a specific project's inbox.
 
 # Next Action Strip
 
-Dashboard no longer renders a daily Next Action strip.
-Use Today for the recommended next task or daily planning
-step, and use the Pipeline Hub for a staged cross-project
-overview. Dashboard stays focused on project selection,
-administration, archive recovery, and selected-project
-metadata.
+Home Attention holds actionable cross-project signals while
+Planner Today owns daily planning. Home stays focused on
+project selection, administration, archive recovery, and
+selected-project metadata.
 
 # Triage Prominence
 
@@ -219,20 +213,14 @@ See the Saved Filters topic under Concepts for details.`,
 		{
 			Title:    "Help",
 			Category: "TUI",
-			Content: `# Three Discoverability Layers
+			Content: `# Two Discoverability Layers
 
-tt has three escape hatches for discovering what you can do:
+tt has two escape hatches for discovering what you can do:
 
   ?         Context-sensitive help for the current view,
             grouped by what you're trying to do.
   :         Command palette — search every command available
             in the current view by name or alias.
-  ctrl+\    Full keybinding reference (the explorer) —
-            exhaustive, grouped by raw category.
-
-The first-level help footer ends with "ctrl+\: full reference"
-so the explorer is one keystroke away when you need more than
-the per-view view.
 
 # Context-Sensitive Help
 
@@ -247,13 +235,13 @@ most relevant actions show first. The canonical order is:
   Task & Blockers
   View Controls
   Navigate
-  Jump to View    Cross-view jumps (;x, :, ctrl+x, …)
+  Jump to View    Global routes and overlays (:, ctrl+g, ctrl+x, …)
   Other
 
 In triage-style views (inbox processors) the leading "Triage"
 bucket carries the same six primary keys advertised in the
-footer. The keybinding explorer (ctrl+\) keeps the raw-category
-layout so it remains an exhaustive cross-view reference.
+footer. Help is derived from the active declarative keymap, so
+it does not advertise hidden aliases.
 
 # AI Assistant
 
@@ -345,13 +333,12 @@ the per-project processor for the currently selected project.
 When the inbox empties the close message hands you the next
 moves verbatim:
 
-  Inbox clear! X triaged, Y skipped. Next: ;w Today · ;q Next
-  Inbox paused: Y skipped. Next: ;q Next
+  Inbox clear! X triaged, Y skipped. Next: Planner Today or Next
+  Inbox paused: Y skipped. Next: Planner Next
 
 The Global Inbox Processor uses the matching "Global inbox
-clear!" / "Global inbox paused:" prefixes. The ;w Today and
-;q Next hints route into the Pipeline Hub so the vocabulary
-stays consistent between triage and review.
+clear!" / "Global inbox paused:" prefixes. Planner Today and
+Next keep the vocabulary consistent between triage and review.
 
 # Both Processors Share One Model
 
@@ -409,46 +396,30 @@ group tasks differently.`,
 		{
 			Title:    "Pipeline Views",
 			Category: "TUI",
-			Content: `# The Semicolon Shortcut
+			Content: `# Canonical Destinations
 
-Press ; from anywhere to open the stage shortcut popup. Hints
-are grouped by pipeline stage (Capture, Triage, Plan, Work,
-Review, Support) so you can quickly find the view you need.
+Press Ctrl+G from any non-text control to choose one of six
+destinations: Home, Planner, Tasks, Project, Review, or Manage.
+Tasks and Project share Task Workspace and differ only by scope.
 
-# Pipeline Hub
+# Home
 
-Press ;; to open the Pipeline Hub: a six-column overview of
-all pipeline stages with live task counts, the current Next
-Action recommendation, and one-keystroke navigation to any
-stage view. When you feel lost, ;; is the anchor.
+Home combines Projects and Attention. Attention keeps actionable
+recommendations, alerts, parked work, and workflow issues without
+introducing another navigation hub.
 
-Navigate the Hub with h/l to move between columns and j/k to
-move within a column. Press Enter to open the highlighted view.
-Direct shortcut keys (q, w, etc.) also work from inside the
-Hub.
+# Destination Modules
 
-# Stage Breadcrumb
+Planner contains Today, Next, and Backlog. Review contains Daily,
+Weekly, Activity, Metrics, and Roadmap. Manage contains Inbox,
+Notes, Blockers, Rules, Templates, Tags, Notifications, and
+Settings. Use the View menu inside a destination to change modes
+or organization without creating route-history entries.
 
-When a global overlay view is open, the breadcrumb prepends
-the pipeline stage name: "Plan: Backlog", "Review: Weekly",
-"Triage: All Tasks". This keeps you oriented as you switch
-between stage views.
+# Getting Back
 
-# Next Action Strip
-
-Today and Pipeline Hub share the Next Action strip at the top:
-one recommendation-unique message per render. The strip is the
-message; the footer beneath it carries the top contextual keys
-plus the escape-hatch cluster ";; hub · : cmd · ? help".
-
-# Shortcut Reference
-
-  Capture:  ;i quick capture, ;I bulk capture
-  Triage:   ctrl+i inbox, ;a all tasks, ;o outliner, ;k kanban
-  Plan:     ;q next, ;D due dates, ;d daily review, ;R roadmap
-  Work:     ;w today, Enter a project from Dashboard or Hub
-  Review:   ;r weekly review, ;m metrics, ;l activity log
-  Support:  ;B blockers, ;N notes, ;W workflow rules, ;n notifications`,
+Esc closes the top overlay, Detail, or active hub module before
+returning to Home. Ctrl+Esc clears every overlay and resets Home.`,
 		},
 		{
 			Title:    "Priority",
@@ -468,8 +439,8 @@ Use ! followed by a number to set priority on the selected task:
 			Category: "TUI",
 			Content: `# Opening Quick Capture
 
-Press ;i from anywhere, or i in project views, to open Quick
-Capture. The placeholder reads "Type a task title…"
+Press Ctrl+N from any non-text control to open the Task
+Composer. The placeholder reads "Type a task title…"
 — start with the title, then add sigils as you go. The footer
 hint shows "?: syntax · Esc: cancel"; press ? to toggle the
 grouped syntax reference (Basics, Priority & Tags, Schedule,

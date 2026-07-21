@@ -39,12 +39,15 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		return tea.NewView(m.applyBackground(style.Render(msg)))
 	}
 
-	if current := m.views.Get(m.currentView()); current != nil {
+	if current := m.activeView(); current != nil {
 		if injector, ok := current.(openLoopsAware); ok {
 			injector.setOpenLoops(m.openLoops)
 		}
 	}
-	resultView := m.views.View(m.currentView())
+	resultView := tea.NewView("")
+	if current := m.activeView(); current != nil {
+		resultView = current.View()
+	}
 	content := resultView.Content
 	if content == "" {
 		content = "Unknown view"
@@ -60,7 +63,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	// Exception: when a transient status message is active (clipboard feedback,
 	// error, loading), replace the view's footer with the AppModel status bar.
 	// Further exception: zen mode suppresses even transient status overlays.
-	if currentView := m.views.Get(m.currentView()); currentView != nil {
+	if currentView := m.activeView(); currentView != nil {
 		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
 			inZen := false
 			if zenView, ok := currentView.(ZenModeView); ok {

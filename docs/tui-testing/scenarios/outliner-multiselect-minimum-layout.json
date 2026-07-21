@@ -4,10 +4,10 @@
   "size": "72x20",
   "actions": [
     { "type": "resize", "width": 72, "height": 20 },
-    { "type": "key", "label": "open global outliner (;o)", "key": ";" },
-    { "type": "key", "key": "o" },
+    { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
+    { "type": "key", "label": "choose Tasks", "key": "3" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "enter multi-select (v)", "key": "v" },
+    { "type": "key", "label": "select current task", "key": "space" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

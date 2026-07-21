@@ -85,8 +85,6 @@ func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
 		return item.Tag
 	case ItemCategorySections:
 		return item.Section
-	case ItemCategorySavedSearch:
-		return item.Name
 	case ItemCategorySavedFilter:
 		if item.SavedFilter != nil {
 			return item.SavedFilter.ID

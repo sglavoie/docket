@@ -33,7 +33,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		}
 	}
 
-	outlinerViews := []ViewType{ViewOutliner, ViewCrossProjectOutliner}
+	outlinerViews := []PresentationID{ViewOutliner, ViewCrossProjectOutliner}
 
 	cmds := []Command{
 		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"begin task", "in progress"}, Handler: outlinerStatusHandler(models.StatusInProgress)},
@@ -468,6 +468,9 @@ func (m *AppModel) activeOutliner() *OutlinerModel {
 // routing through getTaskRef so cross-project rows resolve their owning project
 // via loadedProjects.
 func (m *AppModel) outlinerTarget() (*models.Task, *models.Project) {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		return view.getTaskRef()
+	}
 	out := m.activeOutliner()
 	if out == nil {
 		return nil, nil
@@ -476,6 +479,9 @@ func (m *AppModel) outlinerTarget() (*models.Task, *models.Project) {
 }
 
 func (m *AppModel) outlinerScoreTarget() (*models.Task, *models.Project) {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		return view.getTaskRef()
+	}
 	switch m.nonPaletteOrigin() {
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
@@ -500,6 +506,14 @@ func (m *AppModel) outlinerScoreTarget() (*models.Task, *models.Project) {
 // project outliners always use the cursor row's task and owning project.
 // Returns (nil, nil) when the cursor row has no resolvable task/project.
 func (m *AppModel) outlinerCreateParent() (*models.Task, *models.Project) {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		if root, zoomed := m.taskWorkspace.State.ZoomRoot(); zoomed {
+			if item, exists := m.taskWorkspace.Snapshot().Item(root); exists {
+				return item.Task, item.Project
+			}
+		}
+		return view.getTaskRef()
+	}
 	out := m.activeOutliner()
 	if out == nil {
 		return nil, nil
@@ -524,6 +538,10 @@ func (m *AppModel) outlinerCreateParent() (*models.Task, *models.Project) {
 // outliner. Returns nil when no outliner is active, the cursor is on a header
 // or separator, or a cross-project row points at a stale project ID.
 func (m *AppModel) outlinerCursorProject() *models.Project {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		_, project := view.getTaskRef()
+		return project
+	}
 	out := m.activeOutliner()
 	if out == nil {
 		return nil
@@ -536,6 +554,10 @@ func (m *AppModel) outlinerCursorProject() *models.Project {
 // uses the cursor row's project so palette handlers mirror the direct-key
 // routing; every other origin falls back to m.currentProject.
 func (m *AppModel) paletteCursorProject() *models.Project {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		_, project := view.getTaskRef()
+		return project
+	}
 	if m.nonPaletteOrigin() == ViewCrossProjectOutliner && m.crossOutliner != nil {
 		return m.crossOutliner.cursorProject()
 	}
@@ -548,6 +570,9 @@ func (m *AppModel) paletteCursorProject() *models.Project {
 // origin uses the selected tree task and current project. Returns (nil, nil)
 // when no task/project pair can be resolved.
 func (m *AppModel) paletteTaskTarget() (*models.Task, *models.Project) {
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		return view.getTaskRef()
+	}
 	switch m.nonPaletteOrigin() {
 	case ViewCrossProjectOutliner, ViewOutliner:
 		return m.outlinerTarget()

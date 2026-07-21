@@ -36,7 +36,7 @@ func newAlertTestApp(t *testing.T) (*AppModel, *config.RuntimeState) {
 		runtime:       runtime,
 		persister:     NewProjectService(),
 		views:         NewViewRegistry(),
-		viewStack:     []ViewType{ViewDashboard},
+		viewStack:     []PresentationID{ViewDashboard},
 		width:         80,
 		height:        24,
 	}, cfg

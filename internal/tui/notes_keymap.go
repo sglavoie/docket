@@ -59,6 +59,13 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, m.deleteCurrentNote()
 		}),
+		keymap.Bind("x", "Delete note (confirm)", "Actions", func() (tea.Model, tea.Cmd) {
+			if m.multiSelectMode && m.selectedNoteCount() > 0 {
+				m.confirm.Show("bulk-delete", "Delete notes?")
+				return m, nil
+			}
+			return m, m.deleteCurrentNote()
+		}, keymap.AsHidden()),
 		keymap.Bind("u", undoDescription, "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.undoDelete()
 		}),

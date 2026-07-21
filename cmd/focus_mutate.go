@@ -163,12 +163,12 @@ func runFocusQueueAdd(cmd *cobra.Command, args []string) error {
 	// transaction, so state and planning commit and undo atomically.
 	if task.State() != models.StateNext {
 		projectID := project.ID
-		if err := setFocusQueueState(workspace, task, models.StateNext, "Move to Next", func(p *config.PlanningState) {
+		if transitionErr := setFocusQueueState(workspace, task, models.StateNext, "Move to Next", func(p *config.PlanningState) {
 			if !focusQueueContains(p, task.ID) {
 				p.SetFocusQueue(append(p.GetFocusQueue(), config.FocusQueueItem{TaskID: task.ID, ProjectID: projectID}))
 			}
-		}); err != nil {
-			return err
+		}); transitionErr != nil {
+			return transitionErr
 		}
 		return emitFocusMutation(out, "queued", task, project, len(workspace.Runtime.Planning().FocusQueue))
 	}
@@ -221,8 +221,8 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 	// order-entry drop (Today/Next exclusivity for the non-Next result) into the
 	// same ledger transaction.
 	if wasNext {
-		if err := setFocusQueueState(workspace, task, models.StateReady, "Leave Next", nil); err != nil {
-			return err
+		if transitionErr := setFocusQueueState(workspace, task, models.StateReady, "Leave Next", nil); transitionErr != nil {
+			return transitionErr
 		}
 		return emitFocusMutation(out, "dequeued", task, project, len(workspace.Runtime.Planning().FocusQueue))
 	}
@@ -337,8 +337,8 @@ func runFocusQueueMove(cmd *cobra.Command, args []string) error {
 	// commits its own workspace transaction, so clone the planning domain AFTER it
 	// runs to build the reorder on the post-migration state.
 	projects := loadActiveProjects(workspace.Runtime.ActiveProjects())
-	if err := migrateLegacyFocusQueueMembers(workspace, workspace.Runtime.Planning().GetFocusQueue(), projects); err != nil {
-		return err
+	if migrationErr := migrateLegacyFocusQueueMembers(workspace, workspace.Runtime.Planning().GetFocusQueue(), projects); migrationErr != nil {
+		return migrationErr
 	}
 
 	domains, err := cloneCLIWorkspaceDomains(workspace)
@@ -420,8 +420,8 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if wasNext {
-		if err := setFocusQueueState(workspace, task, models.StateReady, "Plan for Today", addPlan); err != nil {
-			return err
+		if transitionErr := setFocusQueueState(workspace, task, models.StateReady, "Plan for Today", addPlan); transitionErr != nil {
+			return transitionErr
 		}
 		return emitFocusMutation(out, "planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
 	}

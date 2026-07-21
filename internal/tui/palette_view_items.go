@@ -35,13 +35,6 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 		cursor = MutedStyle.Render(fmt.Sprintf("%d ", numberHint))
 	}
 
-	pinIndicator := ""
-	pinLen := 0
-	if m.isItemPinned(item) {
-		pinIndicator = PinIndicatorStyle.Render("*")
-		pinLen = 1
-	}
-
 	catBadge, catBadgeLen := m.renderCategoryBadge(item.Category, selected)
 
 	shortcutText := ""
@@ -57,7 +50,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 		shortcutReserved = shortcutColWidth
 	}
 
-	fixedWidth := 2 + checkboxLen + pinLen + catBadgeLen + 1 + shortcutReserved
+	fixedWidth := 2 + checkboxLen + catBadgeLen + 1 + shortcutReserved
 	remainingWidth := max(width-fixedWidth, 20)
 	leftContent, leftLen := m.renderItemContentWithHighlight(item, filtered.NamePositions, remainingWidth)
 
@@ -69,7 +62,6 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	var line strings.Builder
 	line.WriteString(cursor)
 	line.WriteString(checkbox)
-	line.WriteString(pinIndicator)
 	line.WriteString(catBadge)
 	line.WriteString(" ")
 	line.WriteString(leftContent)
@@ -109,9 +101,6 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory, selected boo
 	case ItemCategorySections:
 		badge = "§ SEC"
 		style = CategorySectionStyle
-	case ItemCategorySavedSearch:
-		badge = icons.Get("star") + " SAV"
-		style = CategorySavedSearchStyle
 	case ItemCategorySavedFilter:
 		badge = "⊡ SVW"
 		style = CategorySavedFilterStyle

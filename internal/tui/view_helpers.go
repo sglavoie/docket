@@ -35,14 +35,6 @@ func renderProjectTitle(project *models.Project, runtime *config.RuntimeState, p
 	if storage.NotesExist(project) {
 		b.WriteString(" ✎ Notes")
 	}
-	machine := runtime.Machine()
-	if machine.FilterCustomContext != "" {
-		b.WriteString(" ")
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", machine.FilterCustomContext)))
-	} else if machine.FilterContext != "" {
-		b.WriteString(" ")
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", machine.FilterContext)))
-	}
 	if project.Archived {
 		b.WriteString(" ")
 		b.WriteString(ArchivedBadgeStyle.Render("ARCHIVED"))

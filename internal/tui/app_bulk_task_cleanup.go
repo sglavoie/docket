@@ -27,7 +27,7 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 		m.crossOutliner.clearMultiSelect()
 	}
 
-	for _, vt := range []ViewType{
+	for _, vt := range []PresentationID{
 		ViewAllTasks,
 		ViewDailyReview,
 		ViewWeeklyReview,
@@ -42,7 +42,7 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 	}
 }
 
-func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt ViewType, selectedIDs map[string]bool) {
+func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt PresentationID, selectedIDs map[string]bool) {
 	if m.views == nil {
 		return
 	}

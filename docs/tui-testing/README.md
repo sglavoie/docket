@@ -79,9 +79,9 @@ not to scenario runs.)
   "size": "100x35",
   "actions": [
     { "type": "resize", "width": 100, "height": 35 },
-    { "type": "key", "label": "open Today (;w)", "key": ";" },
-    { "type": "key", "key": "w" },
-    { "type": "assert", "assert": "view", "value": "Today" },
+    { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
+    { "type": "key", "label": "choose Planner", "key": "2" },
+    { "type": "assert", "assert": "view", "value": "Planner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
@@ -104,11 +104,11 @@ Action types:
 | `assert`  | `assert`, `value`             | Check an invariant against a fresh observation (see below).        |
 
 Every action also accepts an optional `label`, echoed back in the failure error so
-a failing step names the intent an author gave it (e.g. `"open Today (;w)"`)
+a failing step names the intent an author gave it (e.g. `"choose Planner"`)
 instead of only the raw action index.
 
-Multi-key shortcuts are sent one key at a time. For `;w` (Open Today), send a
-`key` action for `;` then another for `w`. `:` (command palette) is a single key.
+Chorded keys such as `ctrl+g` are sent as one key action. Prefix grammars inside
+a view are sent one key at a time. `:` (command palette) is a single key.
 
 The `command` action invokes a registered command directly, without opening the
 command-palette UI or replaying its shortcut keys. The `command` field is the
@@ -129,7 +129,7 @@ Key syntax (`parseUITestKey`):
 - Named keys: `enter`/`return`, `esc`/`escape`, `tab`, `space`, `backspace`.
 - Arrows: `up`, `down`, `left`, `right`.
 - Pages: `pgup`/`pageup`, `pgdown`/`pagedown` (drive full-page scrolling, e.g. the Quick Capture syntax reference).
-- Modifiers joined with `+`: `ctrl+x`, `alt+o`, `shift+tab`, `ctrl+shift+a`.
+- Modifiers joined with `+`: `ctrl+x`, `ctrl+g`, `shift+tab`, `ctrl+shift+a`.
 
 Assertion kinds (`assert`):
 
@@ -177,14 +177,14 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 
 | File                            | Demonstrates                                              |
 | ------------------------------- | -------------------------------------------------------- |
-| `open-today.json`               | Open the Today cockpit (`;w`) and assert its view.       |
-| `reference-review-shortcuts.json` | Open Reference by command, assert its copy, then exercise `;d` and `;r`. |
+| `open-today.json`               | Choose Planner through `Ctrl+G` and assert Today.        |
+| `reference-review-shortcuts.json` | Open Reference and exercise Review destination modules. |
 | `fresh-install-alerts-quiet.json` | Open first-use notifications and assert review reminders stay quiet. |
 | `command-palette-search.json`   | Open the command palette (`:`) and type a search query.  |
 | `command-palette-all-blockers.json` | Execute the `all blockers` palette alias and assert the global blockers view. |
 | `command-palette-task-actions-narrow-layout.json` | Open task action mode on the long-title narrow fixture at `72x20`. |
 | `command-action-help.json`      | Invoke the `help` command by name (no palette) and assert its view. |
-| `navigate-outliner.json`        | Open the global outliner (`;o`) and move the cursor.     |
+| `navigate-outliner.json`        | Choose Tasks through `Ctrl+G` and move in Outline.       |
 | `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |
 | `focus-empty-minimum-layout.json` | Open the empty Backlog view at `72x20` and assert no layout issues. |
 | `baseline-layout.json`          | Assert no layout issues across baseline dashboard sizes. |
@@ -192,7 +192,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `attr-filter-picker-minimum-layout.json` | Open Attribute Filter Picker at `60x20` and assert no layout issues. |
 | `task-detail-narrow-layout.json` | Open TaskDetail on the narrow fixture at `60x20`; assert no layout issues and that the wrapped footer keeps the `c: comments`, `D: decisions`, `H: toggle history`, and `Esc: close` hints. |
 | `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
-| `pipeline-hub-minimum-layout.json` | Open Pipeline Hub at `72x20` and assert no layout issues. |
+| `destination-switcher-minimum-layout.json` | Open the six-destination switcher at `72x20`. |
 | `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
 | `message-log-export-project-minimum-layout.json` | Export a project, open the Message Log at `60x20`, and assert no layout issues. |
 | `notifications-minimum-layout.json` | Open the alert-heavy Notification Center at `72x20` and assert no layout issues. |
@@ -220,6 +220,25 @@ Replay every committed scenario with the same one-command gate used by CI:
 ```bash
 just tui-scenarios
 ```
+
+### Consolidated outcome matrix
+
+| Outcome | Committed scenario coverage |
+| --- | --- |
+| Fresh install and post-migration startup | `fresh-install-default.json`, `fresh-install-capture.json`, `fresh-install-alerts-quiet.json` |
+| Home and Attention | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
+| Planner Today, Next, and empty states | `open-today.json`, `focus-empty-minimum-layout.json` |
+| Task Workspace app/project scopes and List/Outline/Board layouts | `navigate-outliner.json`, `kanban-date-input-long-title-minimum-layout.json` |
+| Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
+| Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |
+| Detail and Composer | `task-detail-narrow-layout.json`, `quick-capture-minimum-layout.json`, `task-form-edit-standard-layout.json` |
+| Palette, Recent, Pinned aliases, and reference overlays | `command-palette-search.json`, `recent-tasks-empty-status.json`, `command-action-help.json` |
+| Picker/form overlays | `attr-filter-picker-minimum-layout.json`, `date-input-minimum-layout.json`, `workflow-rule-creator-minimum-layout.json` |
+| Undo/redo and mutation refresh | capture, inbox, multiselect, and message-log scenarios exercise the shared transaction refresh path; ledger selection parity is asserted by the operation-ledger suite |
+| Narrow/responsive layouts | every `*-minimum-layout.json`, `*-narrow-layout.json`, and `resize-stress.json` scenario |
+
+Legacy machine/config payload migration is fixture-driven in the config suite;
+the fresh-install scenarios exercise the resulting canonical runtime state.
 
 ## Interactive session mode (NDJSON)
 
@@ -350,12 +369,12 @@ committed scenarios do **not** yet guard. They are tracked as follow-ups, not
 fixed.
 
 - **Cross-project outliner multi-select overflows at 60×20.** Entering
-  multi-select in the global outliner (`;o` → `v`) prefixes each row with a
+  multi-select in Task Workspace Outline (`Ctrl+G` → Tasks → `v`) prefixes each row with a
   `[ ]` checkbox. That extra width pushes the trailing `#ID` past the edge of the
   ~33-column tree pane, so it wraps and the screen reports `height_overflow` at
   60×20. The shipped scenario
   `scenarios/outliner-multiselect-minimum-layout.json` only asserts
   `no_layout_issues` at **72×20**, where the rows still fit — so this narrower
-  overflow is currently invisible to regression coverage. Repro: `;o` → `v` at
+  overflow is currently invisible to regression coverage. Repro: open Tasks with `Ctrl+G`, press `v`, at
   60×20. Root cause: the checkbox-prefix width forces `#ID` to wrap in the narrow
   tree pane.

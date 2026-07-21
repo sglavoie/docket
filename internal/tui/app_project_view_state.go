@@ -33,22 +33,13 @@ func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.views.Register(ViewOutliner, m.outliner)
 }
 
-// saveProjectViewState persists the current outliner's filter/sort/fold state.
+// saveProjectViewState caches the current outliner's fold state for this session.
 func (m *AppModel) saveProjectViewState() {
 	if m.outliner == nil {
 		return
 	}
 	m.saveOutlinerToggleState()
 	m.saveOutlinerFilterState()
-}
-
-// restoreProjectViewState re-applies persisted state onto the current outliner.
-func (m *AppModel) restoreProjectViewState() {
-	if m.outliner == nil {
-		return
-	}
-	m.restoreOutlinerToggleState()
-	m.restoreOutlinerFilterState()
 }
 
 // refreshProjectView rebuilds the current outliner's rows from the (already

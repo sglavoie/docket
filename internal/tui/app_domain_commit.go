@@ -261,28 +261,10 @@ func (m *AppModel) commitRuntimeDomains(domains *config.Domains) error {
 // (via the Set* accessors) rather than mutating the pointed-to value in place.
 func cloneMachineState(m *config.MachineState) *config.MachineState {
 	cp := *m
-	cp.CycleProjects = slices.Clone(m.CycleProjects)
 	cp.RecentTaskVisits = slices.Clone(m.RecentTaskVisits)
 	cp.RecentPaletteItems = slices.Clone(m.RecentPaletteItems)
-	cp.PaletteSearchHistory = slices.Clone(m.PaletteSearchHistory)
-	cp.GlobalSearchHistory = slices.Clone(m.GlobalSearchHistory)
-	cp.CommandHistory = slices.Clone(m.CommandHistory)
-	cp.PinnedCommands = slices.Clone(m.PinnedCommands)
-	cp.CrossOutlinerFilterTags = slices.Clone(m.CrossOutlinerFilterTags)
-	cp.CrossOutlinerFilterSections = slices.Clone(m.CrossOutlinerFilterSections)
-	cp.AllTasksTabOrder = slices.Clone(m.AllTasksTabOrder)
 
-	cp.ContextCycleProjects = cloneStringSliceMap(m.ContextCycleProjects)
 	cp.CustomContexts = cloneStringSliceMap(m.CustomContexts)
-	cp.SavedSearches = maps.Clone(m.SavedSearches)
-	cp.ProjectViewStates = maps.Clone(m.ProjectViewStates)
-	cp.OutlinerCollapsedSections = maps.Clone(m.OutlinerCollapsedSections)
-	cp.TreeDefaultColumns = maps.Clone(m.TreeDefaultColumns)
-	cp.OutlinerDefaultColumns = maps.Clone(m.OutlinerDefaultColumns)
-	cp.CrossOutlinerCollapsedSections = maps.Clone(m.CrossOutlinerCollapsedSections)
-	cp.CrossOutlinerFoldState = maps.Clone(m.CrossOutlinerFoldState)
-	cp.CrossOutlinerColumnToggles = maps.Clone(m.CrossOutlinerColumnToggles)
-	cp.CrossOutlinerFilterAttrs = maps.Clone(m.CrossOutlinerFilterAttrs)
 	return &cp
 }
 

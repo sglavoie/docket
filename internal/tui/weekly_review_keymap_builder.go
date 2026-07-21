@@ -15,7 +15,7 @@ func buildWeeklyReviewKeyMap(m *WeeklyReviewModel) *keymap.KeyMap {
 	entries = append(entries, weeklyReviewNavigationEntries(m)...)
 	entries = append(entries, weeklyReviewGotoEntries(m)...)
 	entries = append(entries, weeklyReviewPreviewEntries(m)...)
-	entries = append(entries, buildStandardTaskActionEntries(weeklyReviewTaskActionDeps(m))...)
+	entries = append(entries, buildReviewTaskActionEntries(weeklyReviewTaskActionDeps(m))...)
 	entries = append(entries, weeklyReviewFilterEntries(m)...)
 	entries = append(entries, weeklyReviewViewSpecificEntries(m)...)
 
@@ -292,10 +292,6 @@ func weeklyReviewFilterEntries(m *WeeklyReviewModel) []keymap.Entry {
 		TypeKey:           m.weeklyReviewFilterKeyAction("Ft"),
 		StateKey:          m.weeklyReviewFilterKeyAction("Fs"),
 		DueDateKey:        m.weeklyReviewFilterKeyAction("Fd"),
-		AttrDirectKey:     m.weeklyReviewFilterKeyAction("Fa"),
-		AttrSubKey: func(prefix, key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return m.handleWeeklyReviewFilterSubPrefix(prefix, key) }
-		},
 		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewWeeklyReview} }
 		},

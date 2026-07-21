@@ -164,16 +164,10 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 	var left string
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("enter save · Esc cancel")
-	} else if m.tabs.Active == boardTabDone {
-		left = composeFullHeightFooterLeft(",o reopen · enter/o details · tD delete")
-	} else if m.tabs.Active == boardTabToday && stats.completedToday == stats.plannedTotal && stats.plannedTotal > 0 {
-		left = composeFullHeightFooterLeft(cockpitActionsHint(actionPlanMore(), actionQuickCapture(), actionCloseView()))
-	} else if m.tabs.Active == boardTabToday {
-		left = composeFullHeightFooterLeft(cockpitActionsHint(actionCompleteTask(), actionPrioritizeTask(), actionQuickCapture()))
+	} else if m.width < 100 {
+		left = HelpStyle.Render("j/k · enter · space · x done · a add · tab")
 	} else {
-		action := actionPlanToday()
-		action.Label = "plan today"
-		left = composeFullHeightFooterLeft(cockpitActionsHint(action, actionQuickCapture(), actionOpenTask()))
+		left = HelpStyle.Render("j/k move · enter detail · space select · x done · a add · tab switch")
 	}
 
 	var rightParts []string
@@ -188,8 +182,6 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
 	switch m.tabs.Active {
-	case boardTabDone:
-		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
 	case boardTabBacklog:
 		total := len(m.backlogRows)
 		visible := min(len(m.filtered), total)
@@ -206,7 +198,7 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 			rightParts = append(rightParts, formatEstimateDays(est)+" est")
 		}
 	default:
-		total := max(len(m.rows), len(m.filtered))
+		total := max(len(m.nextRows), len(m.filtered))
 		visible := min(len(m.filtered), total)
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", visible, total))
 		if est := sumEstimatesForRows(m.filtered); est > 0 {
@@ -215,17 +207,6 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 	}
 	right := MutedStyle.Render(strings.Join(rightParts, " · "))
 	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
-}
-
-func cockpitActionsHint(actions ...CockpitAction) string {
-	parts := make([]string, 0, len(actions))
-	for _, action := range actions {
-		if action.IsZero() {
-			continue
-		}
-		parts = append(parts, action.Hint())
-	}
-	return strings.Join(parts, " · ")
 }
 
 // renderRow renders a single board row line.
@@ -242,7 +223,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 func (m *FocusBoardModel) buildBoardRowSegments(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool, colLayout *ColumnLayout) focusBoardRowSegments {
 	task := row.Task
 	segments := focusBoardRowSegments{
-		queueIndicator:  m.renderBoardQueueIndicator(task),
+		queueIndicator:  m.renderBoardSelectionIndicator(row),
 		indent:          MutedStyle.Render(row.TreePrefix),
 		prefix:          renderBoardRowPrefix(rowNum, isFirstPlanItem),
 		statusIcon:      renderBoardStatusIcon(task, colLayout),
@@ -297,15 +278,14 @@ func (m *FocusBoardModel) renderBoardSelectableLine(row boardRow, content string
 	return line
 }
 
-func (m *FocusBoardModel) renderBoardQueueIndicator(task *models.Task) string {
-	switch {
-	case task != nil && m.dailyPlanIDs[task.ID]:
-		return ActiveStyle.Render("w") + " "
-	case taskIsNext(task):
-		return ActiveStyle.Render("q") + " "
-	default:
+func (m *FocusBoardModel) renderBoardSelectionIndicator(row boardRow) string {
+	if row.Task == nil || row.Project == nil {
 		return "  "
 	}
+	if _, selected := m.selection[TaskIdentity{ProjectID: row.Project.ID, TaskID: row.Task.ID}]; selected {
+		return SelectedCheckboxStyle.Render("✓") + " "
+	}
+	return "  "
 }
 
 func renderBoardRowPrefix(rowNum string, isFirstPlanItem bool) string {
@@ -535,7 +515,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 			remaining++
 		}
 	}
-	hint := HelpStyle.Render(fmt.Sprintf("  x done · p priority · enter details · j/k nav · Esc exit  (%d remaining)", remaining))
+	hint := HelpStyle.Render(fmt.Sprintf("  x done · ! priority · enter details · j/k nav · Esc exit  (%d remaining)", remaining))
 	b.WriteString("\n")
 	b.WriteString(hint)
 

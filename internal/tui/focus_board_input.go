@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -90,6 +91,10 @@ func (m *FocusBoardModel) SetCaptureCoordinator(c CaptureCoordinator) { m.captur
 // inline title edit commits through the application layer (taskItemWireable).
 func (m *FocusBoardModel) SetTaskItemCoordinator(c TaskItemCoordinator) { m.taskItem = c }
 
+// SetBulkCoordinator injects the shared grouped-mutation coordinator used by
+// Planner multi-selection.
+func (m *FocusBoardModel) SetBulkCoordinator(c BulkCoordinator) { m.bulk = c }
+
 // createItemFromInput parses the add input and creates a task through the
 // application-layer capture coordinator.
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
@@ -148,7 +153,16 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 		Due:        result.dueDate,
 		URL:        result.url,
 		Source:     result.source,
-		State:      captureStateForStatus(result.status),
+		State:      models.StateReady,
+	}
+	switch m.tabs.Active {
+	case boardTabToday:
+		req.PlanningArtifacts = plannerCaptureArtifactBuilder(m.configManager, boardTabToday, time.Now().Format("2006-01-02"))
+	case boardTabNext:
+		req.State = models.StateNext
+		req.PlanningArtifacts = plannerCaptureArtifactBuilder(m.configManager, boardTabNext, "")
+	case boardTabBacklog:
+		// Backlog is deliberately active and unplanned.
 	}
 	return m, m.capture.CaptureBoard(req)
 }

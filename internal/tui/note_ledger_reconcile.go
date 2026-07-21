@@ -38,7 +38,6 @@ func (m *AppModel) reconcileNoteLedgerRestore(entry storage.LedgerEntry) ([]tea.
 
 	m.invalidateNoteTaskCaches()
 	m.invalidatePinnedPreview()
-	m.invalidateCyclePreview()
 	cmds := m.refreshTaskViewsAfterRestore(runtimeReloaded)
 	if m.dashboard != nil {
 		m.dashboard.Refresh()
@@ -98,7 +97,7 @@ func (m *AppModel) invalidateNoteTaskCaches() {
 	if m.views == nil {
 		return
 	}
-	for _, viewType := range []ViewType{ViewNotes, ViewGlobalNotes} {
+	for _, viewType := range []PresentationID{ViewNotes, ViewGlobalNotes} {
 		if view, ok := m.views.Get(viewType).(*NotesViewModel); ok {
 			view.tasksLoaded = false
 			view.cachedTasks = nil

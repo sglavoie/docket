@@ -113,11 +113,18 @@ type AllTasksOption func(*AllTasksViewModel)
 
 // WithInitialGrouping opens the all tasks view grouped by the given strategy.
 // It also marks the initial tab as set so the active-tab auto-default does not
-// override the requested grouping (e.g. when opening ;D at By-Due-Date).
+// override the requested grouping when opening the due-date focus.
 func WithInitialGrouping(g AllTasksGroupBy) AllTasksOption {
 	return func(m *AllTasksViewModel) {
 		m.groupBy = g
 		m.initialTabSet = true
+	}
+}
+
+// WithInitialSort opens All Tasks with the sort carried by a startup route.
+func WithInitialSort(field SortField, ascending bool) AllTasksOption {
+	return func(m *AllTasksViewModel) {
+		m.sort = SortState{Field: field, Ascending: ascending}
 	}
 }
 
@@ -143,13 +150,8 @@ func NewAllTasksViewModel(runtime *config.RuntimeState, mgr *config.Manager, opt
 		{
 			Active: func() bool { return m.confirm.IsActive() },
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				action := m.confirm.Action()
 				if confirmed, handled := m.HandleConfirmKey(key); handled {
 					if confirmed {
-						if action == "delete-smart-list" {
-							model, cmd := m.handleDeleteSavedFilterTab()
-							return model, cmd, true
-						}
 						if m.multiSelectMode && m.SelectedCount() > 0 {
 							model, cmd := m.handleBulkDelete()
 							return model, cmd, true

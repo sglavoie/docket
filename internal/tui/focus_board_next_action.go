@@ -44,7 +44,6 @@ func (m *FocusBoardModel) collectFocusBoardProjects() []*models.Project {
 	}
 	visit(m.todayRows)
 	visit(m.nextRows)
-	visit(m.closedRows)
 	visit(m.allRows)
 	return out
 }
@@ -90,5 +89,5 @@ func (m *FocusBoardModel) hasAnyProjectsForRecommendation() bool {
 		}
 		return false
 	}
-	return check(m.todayRows) || check(m.nextRows) || check(m.closedRows) || check(m.allRows)
+	return check(m.todayRows) || check(m.nextRows) || check(m.allRows)
 }

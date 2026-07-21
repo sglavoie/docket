@@ -245,8 +245,8 @@ func (m *WeeklyReviewModel) ShouldCaptureEsc() bool {
 	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps()) || m.showingSummary
 }
 
-func (m *WeeklyReviewModel) viewID() ViewType { return ViewWeeklyReview }
-func (m *WeeklyReviewModel) viewName() string { return "Weekly Review" }
+func (m *WeeklyReviewModel) viewID() PresentationID { return ViewWeeklyReview }
+func (m *WeeklyReviewModel) viewName() string       { return "Weekly Review" }
 
 // GetHelpItems returns help items for this view.
 func (m *WeeklyReviewModel) GetHelpItems() []HelpItem {
@@ -295,15 +295,15 @@ func (m *WeeklyReviewModel) deselectAll() {
 	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
 }
 
-// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
-func (m *WeeklyReviewModel) getSelectedBulkItems() []bulkTaskItem {
-	var items []bulkTaskItem
+// getSelectedBulkItems returns selected tasks as TaskProjectRef slice.
+func (m *WeeklyReviewModel) getSelectedBulkItems() []TaskProjectRef {
+	var items []TaskProjectRef
 	for _, tasks := range [][]WeeklyReviewTask{
 		m.staleTasks, m.priorityMismatch, m.upcomingWeek, m.recurringOverview,
 	} {
 		for _, t := range tasks {
 			if m.selectedTasks[t.Task.ID] {
-				items = append(items, bulkTaskItem(t))
+				items = append(items, TaskProjectRef(t))
 			}
 		}
 	}

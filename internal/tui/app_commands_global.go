@@ -19,16 +19,6 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
-			Name:        "keybinding explorer",
-			Description: "Browse all keybindings across all views",
-			Shortcut:    `ctrl+\`,
-			Category:    CategoryHelp,
-			Aliases:     []string{"shortcuts", "keys", "bindings", "hotkeys", "explorer"},
-			Handler: func() tea.Msg {
-				return ShowKeybindingExplorerMsg{}
-			},
-		},
-		{
 			Name:        "quit",
 			Description: "Quit the application",
 			Shortcut:    "ctrl+c",
@@ -40,18 +30,16 @@ func (m *AppModel) globalCommands() []Command {
 		},
 		{
 			Name:        "global search",
-			Description: "Search tasks across all projects",
-			Shortcut:    "ctrl+/",
+			Description: "Search commands and entities in the palette",
 			Category:    CategorySearch,
 			Aliases:     []string{"find tasks", "search all"},
 			Handler: func() tea.Msg {
-				return ShowGlobalSearchMsg{}
+				return ShowCommandPaletteMsg{}
 			},
 		},
 		{
 			Name:        "settings",
 			Description: "Open application settings",
-			Shortcut:    "ctrl+,",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"preferences", "config", "options"},
 			Handler: func() tea.Msg {
@@ -61,7 +49,6 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "notifications",
 			Description: "Open the Notification Center",
-			Shortcut:    ";n",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"notification center", "messages", "alerts"},
 			Handler: func() tea.Msg {
@@ -71,7 +58,6 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "message log",
 			Description: "Show recent status messages",
-			Shortcut:    "alt+l",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"status log", "status history", "log"},
 			Handler: func() tea.Msg {
@@ -119,7 +105,6 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "workflow rules",
 			Description: "Manage workflow automation rules",
-			Shortcut:    ";W",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"automation", "rules", "workflow"},
 			Handler: func() tea.Msg {

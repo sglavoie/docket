@@ -107,20 +107,6 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 }
 
-// handleFilterPrefix handles the second key after pressing F (filter prefix).
-func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	if cmd, handled := handleFilterPrefixForView(m, key); handled {
-		return m, cmd
-	}
-	return m, nil
-}
-
-// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS).
-func (m *FocusBoardModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	handleFilterSubPrefixForView(m, prefix, key)
-	return m, nil
-}
-
 // matchesSearch returns true if the board row matches the search query.
 func (m *FocusBoardModel) matchesSearch(row boardRow) bool {
 	if TaskMatchesSearch(row.Task, m.searchQuery) {

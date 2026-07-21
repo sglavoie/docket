@@ -24,12 +24,6 @@ type FilterDeps struct {
 	// project quick filter — only views that maintain a project-scoped filter
 	// (e.g. the Planner Backlog) set it.
 	FilterByProject Action
-	// AttrDirectKey returns an Action for direct Fa keys (V, 0).
-	// Deprecated: kept for backward compatibility; use OpenAttrPicker instead.
-	AttrDirectKey func(key string) Action
-	// AttrSubKey returns an Action for an attribute sub-prefix leaf key.
-	// Deprecated: kept for backward compatibility; use OpenAttrPicker instead.
-	AttrSubKey func(prefix, key string) Action
 	// OpenAttrPicker opens the attribute filter picker overlay (replaces Fa sub-prefixes).
 	OpenAttrPicker Action
 	// ScoreKey returns an Action for a FS sub-key (1-9, c, 0).
@@ -101,7 +95,6 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("7", "Score ≥ 210", cat, deps.ScoreKey("7")),
 		Bind("8", "Score ≥ 240", cat, deps.ScoreKey("8")),
 		Bind("9", "Score ≥ 270", cat, deps.ScoreKey("9")),
-		Bind("c", "Score ≥ custom threshold", cat, deps.ScoreKey("c")),
 		Bind("0", "Clear score filter", cat, deps.ScoreKey("0")),
 	}
 	if deps.ScoreCustomInput != nil {

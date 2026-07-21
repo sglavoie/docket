@@ -4,11 +4,18 @@
   "size": "120x40",
   "actions": [
     { "type": "resize", "width": 120, "height": 40 },
-    { "type": "key", "label": "open global outliner (;o)", "key": ";" },
-    { "type": "key", "key": "o" },
+    { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
+    { "type": "key", "label": "choose Tasks", "key": "3" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "move cursor down", "key": "down" },
     { "type": "key", "key": "down" },
+    { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
+    { "type": "key", "label": "choose Project scope", "key": "4" },
+    { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "command", "label": "choose List layout", "command": "all tasks" },
+    { "type": "assert", "assert": "view", "value": "AllTasks" },
+    { "type": "command", "label": "choose Board layout", "command": "kanban" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectKanban" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

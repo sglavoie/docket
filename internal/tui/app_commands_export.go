@@ -8,7 +8,7 @@ func (m *AppModel) exportCommands() []Command {
 		Description: "Export current project to Markdown",
 		Shortcut:    "ctrl+e",
 		Category:    CategoryProjects,
-		Views: []ViewType{
+		Views: []PresentationID{
 			ViewDashboard, ViewOutliner,
 			ViewCrossProjectOutliner, ViewAllTasks,
 		},

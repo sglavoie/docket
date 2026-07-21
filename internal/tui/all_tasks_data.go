@@ -220,8 +220,8 @@ func (m *AllTasksViewModel) clampCursor() {
 	m.ClampCursorTo(m.totalNavigableItems())
 }
 
-func (m *AllTasksViewModel) viewID() ViewType { return ViewAllTasks }
-func (m *AllTasksViewModel) viewName() string { return "All Tasks" }
+func (m *AllTasksViewModel) viewID() PresentationID { return ViewAllTasks }
+func (m *AllTasksViewModel) viewName() string       { return "All Tasks" }
 
 // GetHelpItems returns help items for this view.
 func (m *AllTasksViewModel) GetHelpItems() []HelpItem {

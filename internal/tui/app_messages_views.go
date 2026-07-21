@@ -36,13 +36,6 @@ type PriorityViewSelectMsg struct {
 }
 
 // =============================================================================
-// Dashboard Messages
-// =============================================================================
-
-// ToggleInfoPanelMsg toggles the info panel visibility in dashboard.
-type ToggleInfoPanelMsg struct{}
-
-// =============================================================================
 // Daily Review Messages (Show/Close Pattern)
 // =============================================================================
 
@@ -132,21 +125,20 @@ type TutorDismissedMsg struct{}
 // Today Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowFocusBoardMsg opens the Planner. When SetTab is true the Planner opens
-// on Tab (boardTabToday/boardTabNext/...), overriding the empty-plan → Next
-// auto-default. The zero value opens the Planner with that auto-default intact.
+// ShowFocusBoardMsg opens the Planner. When SetTab is true the Planner opens on
+// one of its three canonical tabs; an invalid value falls back to Today.
 type ShowFocusBoardMsg struct {
 	Tab    int
 	SetTab bool
 }
 
-// CloseFocusBoardMsg closes the Today view.
+// CloseFocusBoardMsg closes Planner.
 type CloseFocusBoardMsg struct{ PopToAnchorMsg }
 
-// FocusBoardRefreshMsg requests a refresh of the Today data.
+// FocusBoardRefreshMsg requests a refresh of Planner data.
 type FocusBoardRefreshMsg struct{}
 
-// FocusBoardSelectMsg navigates to a task from Today.
+// FocusBoardSelectMsg navigates to a task from Planner.
 type FocusBoardSelectMsg struct {
 	Task    *models.Task
 	Project *models.Project

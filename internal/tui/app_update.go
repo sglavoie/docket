@@ -17,21 +17,19 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.err = fmt.Errorf("internal error: %v", r)
 			m.exitAskView()
 			if len(m.viewStack) == 0 || m.currentView() != ViewDashboard {
-				m.viewStack = []ViewType{ViewDashboard}
+				m.viewStack = []PresentationID{ViewDashboard}
 			}
-			m.pendingSemicolonPrefix = false
-			m.pendingSemicolonTPrefix = false
+			if m.typedNavigation {
+				m.navigation.ResetHome()
+			}
 			m.sectionQuickPicker = nil
 			m.linkTypeQuickPicker = nil
 			m.linkModeQuickPicker = nil
 			m.isLoading = false
 			m.showQuickSwitch = false
 			m.quickSwitchFiltering = false
-			m.quickSwitchShowCompleted = false
 			m.showPinnedPopup = false
 			m.pinnedPopupFiltering = false
-			m.showProjectCyclePicker = false
-			m.showProjectCycle = false
 			m.pendingSandboxReset = false
 			m.pendingSandboxProjectID = ""
 			m.pendingBulkTasks = nil
@@ -64,6 +62,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	if handled, cmd := m.handleAskMessage(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleManageHubMessages(msg); handled {
+		return m, cmd
+	}
 
 	if handled, cmd := m.handleProjectMessages(msg); handled {
 		return m, cmd
@@ -87,9 +88,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		return m, cmd
 	}
 	if handled, cmd := m.handleClipboardMessages(msg); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleProjectCycleMessages(msg); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleExportMessages(msg); handled {

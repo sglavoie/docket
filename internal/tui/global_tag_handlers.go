@@ -56,7 +56,7 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model
 		}
 		return m, nil
 
-	case "r":
+	case "e", "r":
 		if len(m.tags) > 0 && m.cursor < len(m.tags) {
 			m.renameMode = true
 			m.renameTarget = m.tags[m.cursor].Name
@@ -66,7 +66,7 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model
 		}
 		return m, nil
 
-	case "p":
+	case "space", "p":
 		if len(m.tags) > 0 && m.cursor < len(m.tags) {
 			return m, m.togglePinnedTag(m.tags[m.cursor].Name)
 		}

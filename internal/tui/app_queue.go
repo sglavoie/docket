@@ -67,7 +67,7 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 // so they survive a restart and honor LIFO ordering. Returns a status timeout cmd
 // on success, or nil if no task is available.
 func (m *AppModel) toggleQueue() tea.Cmd {
-	view := m.views.Get(m.currentView())
+	view := m.activeView()
 	if view == nil {
 		return nil
 	}

@@ -169,8 +169,8 @@ func (m *DailyReviewModel) ShouldCaptureEsc() bool {
 	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps())
 }
 
-func (m *DailyReviewModel) viewID() ViewType { return ViewDailyReview }
-func (m *DailyReviewModel) viewName() string { return "Review" }
+func (m *DailyReviewModel) viewID() PresentationID { return ViewDailyReview }
+func (m *DailyReviewModel) viewName() string       { return "Review" }
 
 // GetHelpItems returns help items for this view.
 func (m *DailyReviewModel) GetHelpItems() []HelpItem {
@@ -227,16 +227,16 @@ func (m *DailyReviewModel) deselectAll() {
 	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
 }
 
-// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
-func (m *DailyReviewModel) getSelectedBulkItems() []bulkTaskItem {
-	var items []bulkTaskItem
+// getSelectedBulkItems returns selected tasks as TaskProjectRef slice.
+func (m *DailyReviewModel) getSelectedBulkItems() []TaskProjectRef {
+	var items []TaskProjectRef
 	for _, tasks := range [][]CrossProjectTask{
 		m.overdue, m.dueToday, m.dueSoon, m.dueLater, m.future,
 		m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
 	} {
 		for _, t := range tasks {
 			if m.selectedTasks[t.Task.ID] {
-				items = append(items, bulkTaskItem{Task: t.Task, Project: t.Project})
+				items = append(items, TaskProjectRef{Task: t.Task, Project: t.Project})
 			}
 		}
 	}

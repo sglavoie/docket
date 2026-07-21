@@ -32,18 +32,15 @@ func NewTaskFormModelCreate(
 		}
 	}
 
-	collapsed := runtime.Machine().GetTaskFormCollapsed()
 	m := &TaskFormModel{
-		mode:              FormModeCreate,
-		project:           project,
-		draft:             draft,
-		runtime:           runtime,
-		activeTab:         formTabBasics,
-		focusIndex:        0,
-		collapsedBasics:   collapsed,
-		collapsedSchedule: collapsed,
-		width:             80,
-		height:            24,
+		mode:       FormModeCreate,
+		project:    project,
+		draft:      draft,
+		runtime:    runtime,
+		activeTab:  formTabBasics,
+		focusIndex: 0,
+		width:      80,
+		height:     24,
 	}
 	m.initTitleInput("")
 	m.initDueInput("")
@@ -152,19 +149,16 @@ func NewTaskFormModelEdit(
 		draft.epicAttrs = *task.EpicAttrs
 	}
 
-	collapsed := runtime.Machine().GetTaskFormCollapsed()
 	m := &TaskFormModel{
-		mode:              FormModeEdit,
-		project:           project,
-		task:              task,
-		draft:             draft,
-		runtime:           runtime,
-		activeTab:         formTabBasics,
-		focusIndex:        0,
-		collapsedBasics:   collapsed,
-		collapsedSchedule: collapsed,
-		width:             80,
-		height:            24,
+		mode:       FormModeEdit,
+		project:    project,
+		task:       task,
+		draft:      draft,
+		runtime:    runtime,
+		activeTab:  formTabBasics,
+		focusIndex: 0,
+		width:      80,
+		height:     24,
 	}
 	m.initTitleInput(draft.title)
 	m.initDueInput(draft.dueInput)

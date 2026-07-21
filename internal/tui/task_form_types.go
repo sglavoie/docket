@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
@@ -75,6 +76,9 @@ type TaskFormModel struct {
 	runtime      *config.RuntimeState
 	fromTemplate *template.TaskTemplate
 	taskForm     TaskFormCoordinator
+	presetState  models.WorkflowState
+	presetPlan   app.PlanningArtifactBuilder
+	hostTitle    string
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model

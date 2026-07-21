@@ -2,10 +2,7 @@ package tui
 
 import (
 	"image/color"
-	"strings"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // TestNextActionStripGlyphColorsMirrorUrgencyTier locks the session 13
@@ -97,22 +94,4 @@ func themeOrDefault(name string) string {
 		return "dark"
 	}
 	return name
-}
-
-// TestDashboardSuggestedTaskGlyphDoesNotDuplicateStrip pins the session 9
-// open question: the per-project scoring suggestion line must not reuse the
-// strip's primary "▸" CTA glyph. Session 13 swapped it to "★" so the two
-// signals read as distinct surfaces.
-func TestDashboardSuggestedTaskGlyphDoesNotDuplicateStrip(t *testing.T) {
-	task, err := models.NewTask("suggested-task", 1, models.TaskTypeTask, "Polish the cockpit")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	line := renderSuggestedTask(task)
-	if !strings.Contains(line, "★ Suggested:") {
-		t.Fatalf("expected '★ Suggested:' prefix, got %q", line)
-	}
-	if strings.Contains(line, "▸ Suggested:") {
-		t.Fatalf("suggested-task line still uses the strip's primary ▸ glyph: %q", line)
-	}
 }
