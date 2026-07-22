@@ -435,7 +435,7 @@ func TestBuildProjectAndTaskMaps_SkipsNilTasks(t *testing.T) {
 	if len(taskMap) != 1 {
 		t.Fatalf("expected 1 task in taskMap, got %d", len(taskMap))
 	}
-	if _, ok := taskMap[task.ID]; !ok {
+	if _, ok := taskMap[config.ProjectTaskLocator{ProjectID: project.ID, TaskID: task.ID}]; !ok {
 		t.Errorf("expected task %q in taskMap", task.ID)
 	}
 }

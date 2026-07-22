@@ -28,8 +28,16 @@ type EpicBaselineWorkflowResult struct {
 // Re-baselining updates both fields (idempotent). Non-epic tasks and epics with
 // no children are rejected before any mutation.
 func (s *Service) BaselineEpic(taskID string) (EpicBaselineResult, error) {
+	return s.baselineEpicSelection(taskID, TaskLocator{})
+}
+
+func (s *Service) BaselineEpicByLocator(locator TaskLocator) (EpicBaselineResult, error) {
+	return s.baselineEpicSelection("", locator)
+}
+
+func (s *Service) baselineEpicSelection(taskID string, locator TaskLocator) (EpicBaselineResult, error) {
 	var childCount int
-	res, err := s.mutateTask(taskID, "Baseline Epic", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Baseline Epic", "", func(ref TaskRef) error {
 		var mutationErr error
 		childCount, mutationErr = s.baselineEpic(ref.Task)
 		return mutationErr
@@ -58,9 +66,17 @@ func (s *Service) baselineEpic(task *models.Task) (int, error) {
 // BaselineEpicWithWorkflow records the current direct-child count through the
 // same validation as BaselineEpic and runs the workflow cascade atomically.
 func (s *Service) BaselineEpicWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (EpicBaselineWorkflowResult, error) {
+	return s.baselineEpicWithWorkflowSelection(taskID, TaskLocator{}, opts)
+}
+
+func (s *Service) BaselineEpicWithWorkflowByLocator(locator TaskLocator, opts SingleTaskWorkflowOptions) (EpicBaselineWorkflowResult, error) {
+	return s.baselineEpicWithWorkflowSelection("", locator, opts)
+}
+
+func (s *Service) baselineEpicWithWorkflowSelection(taskID string, locator TaskLocator, opts SingleTaskWorkflowOptions) (EpicBaselineWorkflowResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Baseline Epic")
 	var childCount int
-	cascade, err := s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	cascade, err := s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		var mutationErr error
 		childCount, mutationErr = s.baselineEpic(ref.Task)
 		return mutationErr

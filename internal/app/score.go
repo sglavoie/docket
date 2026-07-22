@@ -27,6 +27,20 @@ func (s *Service) SetScoreDimensions(taskID string, dims map[string]int) (TaskRe
 	})
 }
 
+func (s *Service) SetScoreDimensionsByLocator(locator TaskLocator, dims map[string]int) (TaskResult, error) {
+	if len(dims) == 0 {
+		return TaskResult{}, invalidInput("score", "at least one dimension value is required")
+	}
+	return s.mutateTaskByLocator(locator, "Set Score", describeScoreDims(dims), func(ref TaskRef) error {
+		if ref.Task.ScoreDimensions == nil {
+			ref.Task.ScoreDimensions = make(map[string]int, len(dims))
+		}
+		maps.Copy(ref.Task.ScoreDimensions, dims)
+		ref.Task.UpdatedAt = s.clock.Now()
+		return nil
+	})
+}
+
 // ReplaceScoreDimensions sets a task's manual scoring dimensions to exactly the
 // given set, replacing any previous manual values rather than merging onto them.
 // This is the interactive score-editor contract: the editor recomputes the full
@@ -37,6 +51,16 @@ func (s *Service) SetScoreDimensions(taskID string, dims map[string]int) (TaskRe
 // ChangeSet through the workspace ledger, exactly like SetScoreDimensions.
 func (s *Service) ReplaceScoreDimensions(taskID string, dims map[string]int) (TaskResult, error) {
 	return s.mutateTask(taskID, "Set Score", describeScoreDims(dims), func(ref TaskRef) error {
+		next := make(map[string]int, len(dims))
+		maps.Copy(next, dims)
+		ref.Task.ScoreDimensions = next
+		ref.Task.UpdatedAt = s.clock.Now()
+		return nil
+	})
+}
+
+func (s *Service) ReplaceScoreDimensionsByLocator(locator TaskLocator, dims map[string]int) (TaskResult, error) {
+	return s.mutateTaskByLocator(locator, "Set Score", describeScoreDims(dims), func(ref TaskRef) error {
 		next := make(map[string]int, len(dims))
 		maps.Copy(next, dims)
 		ref.Task.ScoreDimensions = next

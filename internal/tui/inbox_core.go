@@ -37,11 +37,9 @@ type inboxBackend interface {
 	shouldProcessOnSectionChange(task *models.Task, project *models.Project) bool
 	shouldProcessOnStateChange(newState models.WorkflowState) bool
 
-	// findTaskByID locates a task by ID (and optional project ID hint) so undo
-	// can restore an action's task even after auto-advance has moved the cursor
-	// away. The projectID hint is authoritative for the global processor; the
-	// local processor ignores it because it only owns a single project.
-	findTaskByID(taskID, projectID string) (task *models.Task, project *models.Project)
+	// findTask locates a task by qualified identity so undo can restore an
+	// action's task even after auto-advance has moved the cursor away.
+	findTask(identity TaskIdentity) (task *models.Task, project *models.Project)
 
 	// projectByID returns the in-memory project pointer for a logical id so a
 	// ledger-backed undo/redo can reload exactly the projects the restored
@@ -71,8 +69,8 @@ type inboxCore struct {
 	runtime *config.RuntimeState
 
 	currentIndex      int
-	processedIDs      map[string]bool
-	skippedIDs        map[string]bool
+	processedIDs      map[TaskIdentity]bool
+	skippedIDs        map[TaskIdentity]bool
 	processingHistory []processingAction
 	// redoHistory holds actions popped by undo so a subsequent ctrl+r can replay
 	// them. Any newly recorded action clears it, matching the linear Vim-style
@@ -80,25 +78,24 @@ type inboxCore struct {
 	// stateful actions redo through the ledger.
 	redoHistory []processingAction
 
-	// pendingFocusID, when non-empty, names the task the cursor should land on
+	// pendingFocus, when valid, names the task the cursor should land on
 	// after the next rebuildTasks. advanceToNext sets it to the new current
-	// task's ID so a subsequent rebuild (triggered by InboxProjectSavedMsg)
+	// task's identity so a subsequent rebuild (triggered by InboxProjectSavedMsg)
 	// can re-anchor instead of letting clamp drift past the intended task.
 	// Undo also sets it so the restored task gets focus after its project is
 	// reloaded from disk.
-	pendingFocusID string
+	pendingFocus TaskIdentity
 
 	// pendingDeletes holds the post-commit focus/auto-close metadata for each task
 	// this processor asked the shell to delete but whose transaction has not yet
-	// committed, keyed by task ID. It gates applyCommittedDelete so post-commit
+	// committed, keyed by task identity. It gates applyCommittedDelete so post-commit
 	// bookkeeping runs exactly once per deleted task. Each entry captures the
 	// post-delete cursor target computed against the intact queue at request time
 	// (see requestDelete), so the post-commit advance matches the legacy in-memory
-	// delete instead of skipping the natural next task. Keying by task ID (rather
-	// than a single slot) lets two overlapping deletes — delete, navigate, delete
-	// again — each retain their own focus target regardless of which result lands
-	// first.
-	pendingDeletes map[string]inboxPendingDelete
+	// delete instead of skipping the natural next task. Keying by identity (rather
+	// than a single slot) lets two overlapping deletes — including duplicate UUIDs
+	// from different projects — retain independent focus targets.
+	pendingDeletes map[TaskIdentity]inboxPendingDelete
 
 	backend inboxBackend
 	model   tea.Model // pointer to the outer (embedding) model, for Update returns
@@ -106,7 +103,7 @@ type inboxCore struct {
 
 // inboxPendingDelete captures the post-delete cursor target computed against the
 // intact queue at request time, so the post-commit advance matches the legacy
-// in-memory delete instead of skipping the natural next task. focusID names the
+// in-memory delete instead of skipping the natural next task. focus names the
 // task the cursor should land on once the deleted task leaves the queue.
 //
 // Auto-close is deliberately NOT captured here: back-to-back deletion of the
@@ -115,13 +112,12 @@ type inboxCore struct {
 // rebuilt committed queue plus the remaining in-flight deletes (see
 // shouldCloseAfterDelete), which closes the processor exactly once.
 type inboxPendingDelete struct {
-	focusID string
+	focus TaskIdentity
 }
 
 // processingAction records an action for undo support.
 type processingAction struct {
-	taskID       string
-	projectID    string
+	identity     TaskIdentity
 	actionType   string
 	timestamp    time.Time
 	prevSnapshot *inboxSnapshot
@@ -132,8 +128,8 @@ func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, manager *con
 	c.configManager = manager
 	c.runtime = runtime
 	c.currentIndex = 0
-	c.processedIDs = make(map[string]bool)
-	c.skippedIDs = make(map[string]bool)
+	c.processedIDs = make(map[TaskIdentity]bool)
+	c.skippedIDs = make(map[TaskIdentity]bool)
 	c.processingHistory = []processingAction{}
 	c.redoHistory = []processingAction{}
 	c.backend = backend

@@ -58,6 +58,7 @@ func assertHubPaletteNavPeek(t *testing.T, app *AppModel) {
 		t.Fatalf("direct Shift+Enter did not activate Peek: active=%v task=%v", app.peekActive, app.peekTask)
 	}
 	directTaskID := app.peekTask.ID
+	directIdentity := taskIdentityFor(app.peekTask, app.peekProject)
 	app.dismissPeek()
 
 	// Open a real command palette over the hub with a live query and selection so
@@ -65,7 +66,7 @@ func assertHubPaletteNavPeek(t *testing.T, app *AppModel) {
 	hubView := app.currentView()
 	palette := NewCommandPaletteModel(app.runtime, NewCommandRegistry(), hubView, nil)
 	palette.searchInput.SetValue("peek")
-	palette.selectedTasks[directTaskID] = true
+	palette.selectedTasks[directIdentity] = true
 	paletteCursor := palette.cursor
 	app.showView(ViewCommandPalette, palette)
 	if app.currentView() != ViewCommandPalette {
@@ -99,7 +100,7 @@ func assertHubPaletteNavPeek(t *testing.T, app *AppModel) {
 	if got := palette.searchInput.Value(); got != "peek" {
 		t.Fatalf("palette query = %q after Peek, want %q", got, "peek")
 	}
-	if !palette.selectedTasks[directTaskID] {
+	if !palette.selectedTasks[directIdentity] {
 		t.Fatal("palette selection was cleared by Peek")
 	}
 	if palette.cursor != paletteCursor {

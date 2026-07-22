@@ -310,9 +310,9 @@ func TestBaselineFocusBoardTodayRendersAcrossSizes(t *testing.T) {
 
 				&dailyPlan,
 				&focusQueue,
-				map[string]bool{},
-				map[string]bool{},
-				map[string]bool{})
+				map[TaskIdentity]bool{},
+				map[TaskIdentity]bool{},
+				map[TaskIdentity]bool{})
 
 			m.SetSize(sz.width, sz.height)
 

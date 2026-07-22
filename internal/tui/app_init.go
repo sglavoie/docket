@@ -62,11 +62,11 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		projectLastView:      make(map[string]PresentationID),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[string]bool),
+		focusQueueIDs:        make(map[TaskIdentity]bool),
 		focusDismissedIDs:    make(map[string]bool),
 		dailyPlan:            []FocusTask{},
-		dailyPlanIDs:         make(map[string]bool),
-		dailyPlanCarriedIDs:  make(map[string]bool),
+		dailyPlanIDs:         make(map[TaskIdentity]bool),
+		dailyPlanCarriedIDs:  make(map[TaskIdentity]bool),
 	}
 
 	// Apply functional options
@@ -263,14 +263,14 @@ func (m *AppModel) migrateLegacyFocusQueue(svc *app.Service, activeProjects []*m
 	if err := errors.Join(loadErrs...); err != nil {
 		return err
 	}
-	ids := focus.LegacyNextQueueMemberIDs(queue, activeProjects)
-	if len(ids) == 0 {
+	locators := focus.LegacyNextQueueMemberLocators(queue, activeProjects)
+	if len(locators) == 0 {
 		return nil
 	}
 	res, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
-		TaskIDs:    ids,
-		Target:     models.StateNext,
-		UndoAction: "Migrate legacy Next queue",
+		TaskLocators: appTaskLocatorsFromConfig(locators),
+		Target:       models.StateNext,
+		UndoAction:   "Migrate legacy Next queue",
 	})
 	if err != nil {
 		return err
@@ -314,7 +314,7 @@ func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startup
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil && task.IsInState(models.StateNext) {
 				app.focusQueue = append(app.focusQueue, FocusTask{Task: task, Project: p})
-				app.focusQueueIDs[task.ID] = true
+				app.focusQueueIDs[taskIdentityFor(task, p)] = true
 				updatedQueue = append(updatedQueue, item)
 				found = true
 			}
@@ -370,12 +370,12 @@ func (app *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupL
 			}
 			item.PlannedDate = today
 			app.dailyPlanCarried++
-			app.dailyPlanCarriedIDs[foundTask.ID] = true
+			app.dailyPlanCarriedIDs[taskIdentityFor(foundTask, foundProject)] = true
 			planChanged = true
 		}
 		updatedPlan = append(updatedPlan, item)
 		app.dailyPlan = append(app.dailyPlan, FocusTask{Task: foundTask, Project: foundProject})
-		app.dailyPlanIDs[foundTask.ID] = true
+		app.dailyPlanIDs[taskIdentityFor(foundTask, foundProject)] = true
 	}
 	if planChanged {
 		if updatedPlan == nil {

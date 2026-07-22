@@ -68,8 +68,8 @@ type WeeklyReviewModel struct {
 	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
-	queueIDs     map[string]bool
-	dailyPlanIDs map[string]bool
+	queueIDs     map[TaskIdentity]bool
+	dailyPlanIDs map[TaskIdentity]bool
 
 	// Project sections
 	staleProjects []WeeklyReviewProject
@@ -120,7 +120,7 @@ func NewWeeklyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *We
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		tabs:              TabState{Names: weeklyReviewTabNames},
 		FilterMixin:       FilterMixin{filter: newFilterState()},
 	}
@@ -265,7 +265,8 @@ func (m *WeeklyReviewModel) toggleTaskSelection() {
 	if wt == nil {
 		return
 	}
-	m.ToggleAndUpdateStatus(wt.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+	m.ToggleTaskIdentity(taskIdentityFor(wt.Task, wt.Project))
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
 }
 
 func (m *WeeklyReviewModel) selectAllVisible() {
@@ -273,7 +274,7 @@ func (m *WeeklyReviewModel) selectAllVisible() {
 		m.staleTasks, m.priorityMismatch, m.upcomingWeek, m.recurringOverview,
 	} {
 		for _, t := range tasks {
-			m.selectedTasks[t.Task.ID] = true
+			m.SelectTaskIdentity(taskIdentityFor(t.Task, t.Project))
 		}
 	}
 	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
@@ -291,7 +292,7 @@ func (m *WeeklyReviewModel) getSelectedBulkItems() []TaskProjectRef {
 		m.staleTasks, m.priorityMismatch, m.upcomingWeek, m.recurringOverview,
 	} {
 		for _, t := range tasks {
-			if m.selectedTasks[t.Task.ID] {
+			if m.IsTaskIdentitySelected(taskIdentityFor(t.Task, t.Project)) {
 				items = append(items, TaskProjectRef(t))
 			}
 		}

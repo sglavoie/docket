@@ -19,7 +19,10 @@ func TestPlannerViewMenuUpdatesTodayOrdering(t *testing.T) {
 	m := cockpitModel(
 		[]boardRow{cockpitBoardRow(lowPriority, project), cockpitBoardRow(highPriority, project)},
 		nil, nil,
-		map[string]bool{lowPriority.ID: true, highPriority.ID: true},
+		map[TaskIdentity]bool{
+			taskIdentityFor(lowPriority, project):  true,
+			taskIdentityFor(highPriority, project): true,
+		},
 		OpenLoops{TodayTotal: 2, HasTasks: true},
 		boardTabToday,
 	)
@@ -31,9 +34,7 @@ func TestPlannerViewMenuUpdatesTodayOrdering(t *testing.T) {
 		t.Fatalf("v emitted %#v with menuOpen=%v, want open Planner View menu", msg, m.menuOpen)
 	}
 
-	// Preview, Planner order, Priority.
-	m.handlePlannerMenuKey(syntheticKey('j'))
-	m.handlePlannerMenuKey(syntheticKey('j'))
+	movePlannerMenuCursorToLabel(t, m, "Sort: Priority")
 	m.handlePlannerMenuKey(syntheticSpecialKey(tea.KeyEnter))
 	if m.sort.Field != SortByPriority || !m.sort.Ascending {
 		t.Fatalf("View menu sort state = %+v, want priority ascending", m.sort)
@@ -50,6 +51,23 @@ func TestPlannerViewMenuUpdatesTodayOrdering(t *testing.T) {
 			t.Fatalf("retired sort/preview key %q remains bound", retired)
 		}
 	}
+}
+
+func movePlannerMenuCursorToLabel(t *testing.T, m *FocusBoardModel, label string) {
+	t.Helper()
+	for index, item := range m.plannerMenuItems() {
+		if item.label != label {
+			continue
+		}
+		for m.menuCursor < index {
+			m.handlePlannerMenuKey(syntheticKey('j'))
+		}
+		for m.menuCursor > index {
+			m.handlePlannerMenuKey(syntheticKey('k'))
+		}
+		return
+	}
+	t.Fatalf("Planner View menu missing %q", label)
 }
 
 func TestPlannerViewMenuTogglesInlinePreview(t *testing.T) {

@@ -547,7 +547,7 @@ func TestActionPlanDeleteCleansDurableSubtreeRefsAndUndoRestoresThem(t *testing.
 		Summary: "AI delete",
 		Actions: []app.Action{{Type: app.ActionDeleteTask, TaskID: root.ID}},
 	}
-	var artifactIDs []string
+	var artifactLocators []app.TaskLocator
 	prepared, err := service.PrepareActionPlan(plan)
 	if err != nil {
 		t.Fatalf("PrepareActionPlan: %v", err)
@@ -555,18 +555,18 @@ func TestActionPlanDeleteCleansDurableSubtreeRefsAndUndoRestoresThem(t *testing.
 	result, applyErr := service.ApplyPreparedActionPlan(context.Background(), prepared, app.ApplyActionPlanOptions{
 		ConfirmSafe:        true,
 		ConfirmDestructive: true,
-		DeletedTaskArtifacts: func(ids []string) ([]storage.ArtifactChange, error) {
-			artifactIDs = append([]string(nil), ids...)
+		DeletedTaskLocatorArtifacts: func(locators []app.TaskLocator) ([]storage.ArtifactChange, error) {
+			artifactLocators = append([]app.TaskLocator(nil), locators...)
 			domains, cloneErr := runtime.CloneDomains()
 			if cloneErr != nil {
 				return nil, cloneErr
 			}
-			deleted := make(map[string]bool, len(ids))
-			for _, id := range ids {
-				deleted[id] = true
+			qualified := make([]config.ProjectTaskLocator, 0, len(locators))
+			for _, locator := range locators {
+				qualified = append(qualified, config.ProjectTaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
 			}
-			if removed := domains.Planning.RemoveDurableTaskRefs(deleted); removed != 6 {
-				return nil, fmt.Errorf("removed planning refs = %d, want 6", removed)
+			if removed := domains.Planning.RemoveDurableTaskLocators(qualified); removed != 4 {
+				return nil, fmt.Errorf("removed planning refs = %d, want 4", removed)
 			}
 			artifact, artifactErr := runtime.CheckedPlanningArtifact(domains.Planning)
 			if artifactErr != nil {
@@ -580,10 +580,11 @@ func TestActionPlanDeleteCleansDurableSubtreeRefsAndUndoRestoresThem(t *testing.
 	if applyErr != nil {
 		t.Fatalf("ApplyPreparedActionPlan delete: %v", applyErr)
 	}
-	for _, ids := range [][]string{artifactIDs, result.DeletedTaskIDs} {
-		if len(ids) != 2 || !containsValue(ids, root.ID) || !containsValue(ids, child.ID) {
-			t.Fatalf("deleted task IDs = %v, want root and child", ids)
-		}
+	if len(artifactLocators) != 2 || len(result.DeletedTaskLocators) != 2 {
+		t.Fatalf("deleted task locators = callback %v result %v, want root and child", artifactLocators, result.DeletedTaskLocators)
+	}
+	if len(result.DeletedTaskIDs) != 2 || !containsValue(result.DeletedTaskIDs, root.ID) || !containsValue(result.DeletedTaskIDs, child.ID) {
+		t.Fatalf("deleted task IDs = %v, want root and child", result.DeletedTaskIDs)
 	}
 
 	reloaded := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
@@ -596,7 +597,7 @@ func TestActionPlanDeleteCleansDurableSubtreeRefsAndUndoRestoresThem(t *testing.
 	if err := runtime.RefreshAfterCommit(); err != nil {
 		t.Fatalf("refresh planning after AI delete: %v", err)
 	}
-	if got := runtime.Planning(); len(got.FocusQueue) != 0 || len(got.DailyPlan) != 0 || len(got.FocusDismissedIDs) != 0 {
+	if got := runtime.Planning(); len(got.FocusQueue) != 0 || len(got.DailyPlan) != 0 || len(got.FocusDismissedIDs) != 2 {
 		t.Fatalf("planning refs survived AI delete: focus=%v daily=%v dismissed=%v", got.FocusQueue, got.DailyPlan, got.FocusDismissedIDs)
 	}
 

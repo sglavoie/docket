@@ -36,14 +36,14 @@ const taskDeleteConfirmAction = "task-delete"
 // pendingInboxDelete records the inbox processor and task awaiting post-commit
 // bookkeeping after a canonical deletion request. Origin distinguishes the
 // per-project (ViewInboxProcessor) and global (ViewGlobalInboxProcessor)
-// processors; taskID is the root the shell was asked to remove; token is the
+// processors; identity is the root the shell was asked to remove; token is the
 // per-request correlation token (deleteRequestSeq) that also keys this value in
 // AppModel.pendingInboxDeletes, so the committing result must carry it before
 // this bookkeeping is consumed.
 type pendingInboxDelete struct {
-	token  uint64
-	origin PresentationID
-	taskID string
+	token    uint64
+	origin   PresentationID
+	identity TaskIdentity
 }
 
 // isInboxOrigin reports whether a delete request came from one of the inbox
@@ -60,26 +60,36 @@ func isInboxOrigin(origin PresentationID) bool {
 // (zero or unarmed token) is a no-op that LEAVES every other in-flight delete
 // armed, so a command — or a second same-surface delete — that finishes first
 // can never strand a committed Inbox delete.
-func (m *AppModel) applyPendingInboxDelete(token uint64, removedIDs []string) tea.Cmd {
+func (m *AppModel) applyPendingInboxDelete(token uint64, removedLocators []app.TaskLocator, legacyRemovedIDs []string) tea.Cmd {
 	if token == 0 {
 		return nil
 	}
 	pending, ok := m.pendingInboxDeletes[token]
-	if !ok || pending.taskID == "" {
+	if !ok || !pending.identity.Valid() {
 		return nil
 	}
 	delete(m.pendingInboxDeletes, token)
-	if !taskIDSliceToSet(removedIDs)[pending.taskID] {
+	if len(removedLocators) > 0 {
+		removed := make(map[TaskIdentity]bool, len(removedLocators))
+		for _, locator := range removedLocators {
+			removed[taskIdentityFromLocator(locator)] = true
+		}
+		if !removed[pending.identity] {
+			return nil
+		}
+	} else if !taskIDSliceToSet(legacyRemovedIDs)[pending.identity.TaskID] {
+		// Retain ID-only correlation solely for legacy tests/results that predate
+		// RemovedTaskLocators. Production delete results carry locators.
 		return nil
 	}
 	switch pending.origin {
 	case ViewInboxProcessor:
 		if m.inboxProcessor != nil {
-			return m.inboxProcessor.applyCommittedDelete(pending.taskID)
+			return m.inboxProcessor.applyCommittedDelete(pending.identity)
 		}
 	case ViewGlobalInboxProcessor:
 		if m.globalInboxProcessor != nil {
-			return m.globalInboxProcessor.applyCommittedDelete(pending.taskID)
+			return m.globalInboxProcessor.applyCommittedDelete(pending.identity)
 		}
 	default:
 		// Only inbox processors arm pendingInboxDeletes.
@@ -123,14 +133,15 @@ func (m *AppModel) applyPendingWeeklyReviewDelete(token uint64, removedIDs []str
 // counts the failed delete; the task stays in the queue, so the processor stays
 // open and a retry can close it normally.
 //
-// The processor keys that focus slot by task ID (inboxCore.pendingDeletes), while
+// The processor keys that focus slot by task identity (inboxCore.pendingDeletes), while
 // the shell keys this bookkeeping by a unique request token. Because a still-visible
 // Inbox task can be confirmed for deletion twice before the first result returns,
-// two distinct tokens can alias ONE processor slot (FR-016). Dropping the slot
+// two distinct tokens for the same qualified task can alias ONE processor slot
+// (FR-016). Dropping the slot
 // unconditionally would let a rejected duplicate delivered first delete the slot the
 // matching success still needs to rebuild the queue, mark the task processed, repair
 // focus, and auto-close. So the processor slot is dropped only when no OTHER
-// in-flight request still targets the same (origin, task): this token is removed
+// in-flight request still targets the same (origin, identity): this token is removed
 // first, then the slot survives as long as any sibling request references it.
 func (m *AppModel) clearPendingDeleteBookkeeping(token uint64) {
 	if token == 0 {
@@ -138,26 +149,26 @@ func (m *AppModel) clearPendingDeleteBookkeeping(token uint64) {
 	}
 	pending, ok := m.pendingInboxDeletes[token]
 	delete(m.pendingInboxDeletes, token)
-	if ok && !m.inboxTaskHasOtherPendingDelete(pending.origin, pending.taskID) {
-		m.clearInboxProcessorPendingDelete(pending.origin, pending.taskID)
+	if ok && !m.inboxTaskHasOtherPendingDelete(pending.origin, pending.identity) {
+		m.clearInboxProcessorPendingDelete(pending.origin, pending.identity)
 	}
 	delete(m.pendingWeeklyReviewDeletes, token)
 }
 
 // inboxTaskHasOtherPendingDelete reports whether any still-armed pendingInboxDeletes
-// entry targets the same processor origin and task ID. The inbox processor keys its
-// per-task focus slot by task ID, so two request tokens for one task share a single
-// slot; a caller must therefore consult this before dropping that slot on its own
+// entry targets the same processor origin and qualified identity. Two request
+// tokens for one task share a single slot; a caller must therefore consult this
+// before dropping that slot on its own
 // request's cancellation or rejection, keeping the shared slot alive until the LAST
 // referencing request resolves. Callers remove their own token from
 // pendingInboxDeletes first (rejection) or hold no token yet (cancellation, before
 // the token is minted), so this counts only the remaining sibling references.
-func (m *AppModel) inboxTaskHasOtherPendingDelete(origin PresentationID, taskID string) bool {
-	if taskID == "" {
+func (m *AppModel) inboxTaskHasOtherPendingDelete(origin PresentationID, identity TaskIdentity) bool {
+	if !identity.Valid() {
 		return false
 	}
 	for _, pending := range m.pendingInboxDeletes {
-		if pending.origin == origin && pending.taskID == taskID {
+		if pending.origin == origin && pending.identity == identity {
 			return true
 		}
 	}
@@ -167,18 +178,18 @@ func (m *AppModel) inboxTaskHasOtherPendingDelete(origin PresentationID, taskID 
 // clearInboxProcessorPendingDelete drops the per-task focus slot the originating
 // inbox processor armed in requestDelete, so a rejected delete no longer counts
 // toward the processor's remaining in-flight bookkeeping.
-func (m *AppModel) clearInboxProcessorPendingDelete(origin PresentationID, taskID string) {
-	if taskID == "" {
+func (m *AppModel) clearInboxProcessorPendingDelete(origin PresentationID, identity TaskIdentity) {
+	if !identity.Valid() {
 		return
 	}
 	switch origin {
 	case ViewInboxProcessor:
 		if m.inboxProcessor != nil {
-			delete(m.inboxProcessor.pendingDeletes, taskID)
+			delete(m.inboxProcessor.pendingDeletes, identity)
 		}
 	case ViewGlobalInboxProcessor:
 		if m.globalInboxProcessor != nil {
-			delete(m.globalInboxProcessor.pendingDeletes, taskID)
+			delete(m.globalInboxProcessor.pendingDeletes, identity)
 		}
 	default:
 		// Only inbox processors own per-task pending-delete slots.
@@ -200,9 +211,10 @@ func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) tea.Cmd
 }
 
 // canonicalizeTaskDeleteRoots drops refs with a nil task/project or blank ID and
-// removes duplicate roots by task ID, preserving first-seen order. Descendant
-// resolution and nested-root collapsing happen later (in confirmTaskDelete and
-// the application service); this only shapes the confirmation summary.
+// removes duplicate roots by project-qualified identity, preserving first-seen
+// order. Descendant resolution and nested-root collapsing happen later (in
+// confirmTaskDelete and the application service); this only shapes the
+// confirmation summary.
 func canonicalizeTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 	seen := make(map[TaskIdentity]bool, len(refs))
 	roots := make([]TaskProjectRef, 0, len(refs))
@@ -210,7 +222,7 @@ func canonicalizeTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" {
 			continue
 		}
-		identity := TaskIdentity{ProjectID: ref.Project.ID, TaskID: ref.Task.ID}
+		identity := ref.Identity()
 		if seen[identity] {
 			continue
 		}
@@ -263,7 +275,7 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 // would otherwise make shouldCloseAfterDelete treat the canceled request as a live
 // delete and suppress a later final-task close. A no-op for non-inbox origins.
 //
-// The processor slot is keyed by task ID, so a canceled duplicate of a task that a
+// The processor slot is keyed by task identity, so a canceled duplicate of a task that a
 // confirmed, still-in-flight delete already targets must NOT drop that shared slot
 // (FR-016) — the in-flight delete still needs it. inboxTaskHasOtherPendingDelete
 // sees only confirmed (tokened) requests, so it keeps the slot alive for the sibling
@@ -273,13 +285,14 @@ func (m *AppModel) cancelInboxPendingDelete() {
 		return
 	}
 	for _, ref := range m.pendingTaskDelete.roots {
-		if ref.Task == nil {
+		identity := ref.Identity()
+		if !identity.Valid() {
 			continue
 		}
-		if m.inboxTaskHasOtherPendingDelete(m.pendingTaskDelete.origin, ref.Task.ID) {
+		if m.inboxTaskHasOtherPendingDelete(m.pendingTaskDelete.origin, identity) {
 			continue
 		}
-		m.clearInboxProcessorPendingDelete(m.pendingTaskDelete.origin, ref.Task.ID)
+		m.clearInboxProcessorPendingDelete(m.pendingTaskDelete.origin, identity)
 	}
 }
 
@@ -315,7 +328,7 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 		if m.pendingInboxDeletes == nil {
 			m.pendingInboxDeletes = make(map[uint64]pendingInboxDelete)
 		}
-		m.pendingInboxDeletes[token] = pendingInboxDelete{token: token, origin: origin, taskID: roots[0].Task.ID}
+		m.pendingInboxDeletes[token] = pendingInboxDelete{token: token, origin: origin, identity: roots[0].Identity()}
 	}
 
 	// Expand every root to its whole subtree so the durable planning cleanup keys

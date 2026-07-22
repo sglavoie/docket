@@ -20,10 +20,10 @@ const (
 )
 
 type focusBoardReloadIntent struct {
-	valid  bool
-	mode   focusBoardReloadMode
-	taskID string
-	cursor int
+	valid    bool
+	mode     focusBoardReloadMode
+	identity TaskIdentity
+	cursor   int
 }
 
 // markDone marks the current task as done via the shared workflow pipeline.
@@ -103,8 +103,8 @@ func (m *FocusBoardModel) currentReloadIntent(mode focusBoardReloadMode) focusBo
 		mode:   mode,
 		cursor: m.cursor,
 	}
-	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
-		intent.taskID = row.Task.ID
+	if row := m.getRowAtCursor(); row != nil && row.Task != nil && row.Project != nil {
+		intent.identity = taskIdentityFor(row.Task, row.Project)
 	}
 	return intent
 }
@@ -129,12 +129,9 @@ func (m *FocusBoardModel) restoreCursorAfterReload(intent focusBoardReloadIntent
 			return
 		}
 	}
-	if intent.taskID != "" {
-		if idx := restoreCursorByID(intent.taskID, m.filtered, func(r boardRow) string {
-			if r.Task != nil {
-				return r.Task.ID
-			}
-			return ""
+	if intent.identity.Valid() {
+		if idx := restoreCursorByID(intent.identity, m.filtered, func(r boardRow) TaskIdentity {
+			return taskIdentityFor(r.Task, r.Project)
 		}); idx >= 0 {
 			m.cursor = idx
 			return
@@ -248,12 +245,14 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	// Build a detached candidate so a failed checked commit cannot mutate the
 	// shared Daily Plan through its aliased slice backing array.
 	dp := append([]FocusTask(nil), (*m.dailyPlan)...)
+	curIdentity := taskIdentityFor(curRow.Task, curRow.Project)
+	targetIdentity := taskIdentityFor(targetRow.Task, targetRow.Project)
 	curIdx, targetIdx := -1, -1
 	for i, ft := range dp {
-		switch ft.Task.ID {
-		case curRow.Task.ID:
+		switch taskIdentityFor(ft.Task, ft.Project) {
+		case curIdentity:
 			curIdx = i
-		case targetRow.Task.ID:
+		case targetIdentity:
 			targetIdx = i
 		}
 	}
@@ -272,13 +271,13 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	m.filtered[m.cursor], m.filtered[to] = m.filtered[to], m.filtered[m.cursor]
 
 	// todayRows may differ from filtered when search/filters are active,
-	// so look up the correct indices by task ID instead of using cursor position.
+	// so look up the correct indices by identity instead of using cursor position.
 	todayCurIdx, todayToIdx := -1, -1
 	for i, r := range m.todayRows {
-		switch r.Task.ID {
-		case curRow.Task.ID:
+		switch taskIdentityFor(r.Task, r.Project) {
+		case curIdentity:
 			todayCurIdx = i
-		case targetRow.Task.ID:
+		case targetIdentity:
 			todayToIdx = i
 		}
 	}

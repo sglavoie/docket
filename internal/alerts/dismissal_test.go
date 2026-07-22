@@ -10,7 +10,7 @@ import (
 func TestDismissalKey_TaskSpecific(t *testing.T) {
 	a := Alert{Category: CategoryOverdue, TaskID: "task-123", ProjectID: "proj-1"}
 	got := a.DismissalKey()
-	want := "overdue:task-123"
+	want := "overdue:proj-1:task-123"
 	if got != want {
 		t.Errorf("DismissalKey() = %q, want %q", got, want)
 	}
@@ -34,11 +34,19 @@ func TestDismissalKey_Singleton(t *testing.T) {
 	}
 }
 
-func TestDismissalKey_TaskTakesPrecedenceOverProject(t *testing.T) {
+func TestDismissalKey_TaskIncludesProject(t *testing.T) {
 	a := Alert{Category: CategoryBlocked, TaskID: "t1", ProjectID: "p1"}
 	got := a.DismissalKey()
-	if got != "blocked:t1" {
-		t.Errorf("expected task ID to take precedence, got %q", got)
+	if got != "blocked:p1:t1" {
+		t.Errorf("expected project-qualified task key, got %q", got)
+	}
+}
+
+func TestDismissalKey_DuplicateTaskIDsRemainIndependent(t *testing.T) {
+	alpha := Alert{Category: CategoryOverdue, TaskID: "shared", ProjectID: "alpha"}
+	beta := Alert{Category: CategoryOverdue, TaskID: "shared", ProjectID: "beta"}
+	if alpha.DismissalKey() == beta.DismissalKey() {
+		t.Fatalf("duplicate task alert keys collided: %q", alpha.DismissalKey())
 	}
 }
 

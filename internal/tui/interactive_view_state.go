@@ -162,11 +162,12 @@ func (s *InteractiveViewState) advanceCompletionFlashFrame(frame int) {
 	s.mutationFlashBg = completionFlashBg(frame)
 }
 
-// restoreCursorByID searches items for the task matching taskID using getID
-// and returns its index, or -1 if not found.
-func restoreCursorByID[T any](taskID string, items []T, getID func(T) string) int {
+// restoreCursorByID searches items for the task matching id using getID and
+// returns its index, or -1 if not found. The comparable key may be a bare ID
+// for single-project lists or a TaskIdentity for cross-project lists.
+func restoreCursorByID[T any, K comparable](id K, items []T, getID func(T) K) int {
 	for i, item := range items {
-		if getID(item) == taskID {
+		if getID(item) == id {
 			return i
 		}
 	}

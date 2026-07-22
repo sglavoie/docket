@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"path/filepath"
 	"testing"
 
 	appdomain "github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -166,6 +169,44 @@ func TestHandleProjectMessagesProjectArchiveConfirmedArchivesAndSetsStatus(t *te
 	}
 	if app.statusMessage != "Archived Test Project" {
 		t.Fatalf("statusMessage = %q, want %q", app.statusMessage, "Archived Test Project")
+	}
+}
+
+func TestConfirmProjectArchiveLoadsQualifiedCleanupTargets(t *testing.T) {
+	m := newTestAppModel()
+	project, err := models.NewProject("archive-project", "Archive Project", "")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	project.Path = filepath.Join(t.TempDir(), "projects", project.Slug)
+	task, err := models.NewTask("shared-id", 1, models.TaskTypeTask, "Shared")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	project.Tasks = []*models.Task{task}
+	project.NextShortID = 2
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
+	project.Tasks = nil // Catalog/dashboard snapshots are intentionally unloaded.
+	setTestAppProjects(m, project)
+	m.pendingProjectArchive = project
+	m.pendingProjectArchiveArchive = true
+
+	cmd := m.confirmProjectArchive()
+	if cmd == nil {
+		t.Fatal("confirmProjectArchive returned nil")
+	}
+	raw := cmd()
+	msg, ok := raw.(ProjectArchivedMsg)
+	if !ok {
+		t.Fatalf("archive command returned %T", raw)
+	}
+	if msg.Project != project || !project.Archived {
+		t.Fatalf("archive result = %#v, want archived project", msg)
+	}
+	if len(project.Tasks) != 1 || project.Tasks[0].ID != task.ID {
+		t.Fatalf("archive cleanup targets were not loaded: %#v", project.Tasks)
 	}
 }
 

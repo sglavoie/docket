@@ -130,7 +130,8 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.GuardedSnoozeWithWorkflow(task.ID, snoozeDate, workflows.options(true, "Snooze Task", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.GuardedSnoozeWithWorkflowByLocator(locator, snoozeDate, workflows.options(true, "Snooze Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)

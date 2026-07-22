@@ -73,7 +73,8 @@ func runTaskDim(_ *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.ToggleDimmedWithWorkflow(task.ID, workflows.options(true, "Toggle Dim", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.ToggleDimmedWithWorkflowByLocator(locator, workflows.options(true, "Toggle Dim", task))
 	})
 	if err != nil {
 		return translateAppError(err)
@@ -121,7 +122,8 @@ func runTaskUndim(_ *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.UndimWithWorkflow(task.ID, workflows.options(true, "Undim Task", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.UndimWithWorkflowByLocator(locator, workflows.options(true, "Undim Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)

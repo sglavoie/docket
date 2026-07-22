@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -19,6 +20,61 @@ func TestGetCompletedTasks_NoneCompleted(t *testing.T) {
 
 	completed := project.GetCompletedTasks()
 	testutil.AssertEqual(t, len(completed), 0)
+}
+
+func TestTaskArchivePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
+	deps, project := setupStateTest(t)
+	completed := project.GetCompletedTasks()
+	if len(completed) == 0 {
+		t.Fatal("test project has no completed task")
+	}
+	task := completed[0]
+	deps.Config.Planning().FocusQueue = []config.FocusQueueItem{
+		{TaskID: task.ID, ProjectID: "alpha"},
+		{TaskID: task.ID, ProjectID: project.ID},
+	}
+	deps.Config.Planning().DailyPlan = []config.DailyPlanItem{
+		{TaskID: task.ID, ProjectID: "alpha"},
+		{TaskID: task.ID, ProjectID: project.ID},
+	}
+	deps.Config.Planning().FocusDismissedIDs = []string{task.ID}
+	deps.Config.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+		{TaskID: task.ID, ProjectID: "alpha"},
+		{TaskID: task.ID, ProjectID: project.ID},
+	}
+	manager := config.NewManager(deps.ConfigPath)
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
+		t.Fatalf("saveTestRuntime: %v", err)
+	}
+
+	previousForce := archiveForce
+	previousAll := archiveAll
+	archiveForce = true
+	archiveAll = false
+	t.Cleanup(func() {
+		archiveForce = previousForce
+		archiveAll = previousAll
+	})
+	if err := runTaskArchive(newStateTestCmd(), nil); err != nil {
+		t.Fatalf("runTaskArchive: %v", err)
+	}
+
+	reloaded, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	if got := reloaded.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Fatalf("archive cleaned wrong focus refs: %+v", got)
+	}
+	if got := reloaded.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Fatalf("archive cleaned wrong daily refs: %+v", got)
+	}
+	if got := reloaded.Planning().FocusDismissedIDs; len(got) != 1 || got[0] != task.ID {
+		t.Fatalf("archive changed legacy dismissed IDs: %v", got)
+	}
+	if got := reloaded.Machine().RecentTaskVisits; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Fatalf("archive cleaned wrong recent visits: %+v", got)
+	}
 }
 
 func TestGetCompletedTasks_SomeCompleted(t *testing.T) {

@@ -46,11 +46,11 @@ func (m *FocusBoardModel) handleNextReorder(delta int) (tea.Model, tea.Cmd) {
 
 	// Reorder inside the full canonical Next order, not just the (possibly
 	// filtered) visible slice, so the persisted index always lists every live
-	// StateNext task. Swapping the two view-adjacent tasks by ID moves them past
+	// StateNext task. Swapping the two view-adjacent tasks by identity moves them past
 	// each other even when a filter hides intervening members.
 	ordered := m.orderedNextRows()
-	curIdx := nextRowIndexByID(ordered, curRow.Task.ID)
-	targetIdx := nextRowIndexByID(ordered, targetRow.Task.ID)
+	curIdx := nextRowIndexByIdentity(ordered, taskIdentityFor(curRow.Task, curRow.Project))
+	targetIdx := nextRowIndexByIdentity(ordered, taskIdentityFor(targetRow.Task, targetRow.Project))
 	if curIdx < 0 || targetIdx < 0 {
 		return m, nil
 	}
@@ -81,11 +81,11 @@ func (m *FocusBoardModel) orderedNextRows() []boardRow {
 	return ordered
 }
 
-// nextRowIndexByID returns the index of the row whose task has the given ID, or
-// -1 when no such row exists.
-func nextRowIndexByID(rows []boardRow, id string) int {
+// nextRowIndexByIdentity returns the index of the project-qualified task row,
+// or -1 when no such row exists.
+func nextRowIndexByIdentity(rows []boardRow, identity TaskIdentity) int {
 	for i, r := range rows {
-		if r.Task != nil && r.Task.ID == id {
+		if taskIdentityFor(r.Task, r.Project) == identity {
 			return i
 		}
 	}

@@ -66,51 +66,51 @@ type BulkMutator interface {
 // family (crossPersistFn/crossSaveProject) it replaced has been removed.
 type TaskItemMutator interface {
 	// SetSection commits one task's legacy GTD section field (resyncing state).
-	SetSection(taskID, section string) (app.TaskResult, error)
+	SetSectionByLocator(locator app.TaskLocator, section string) (app.TaskResult, error)
 	// MoveTaskToTop moves one task to the top of its model-order siblings.
-	MoveTaskToTop(taskID string) (app.TaskResult, error)
+	MoveTaskToTopByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskToBottom moves one task to the bottom of its model-order siblings.
-	MoveTaskToBottom(taskID string) (app.TaskResult, error)
+	MoveTaskToBottomByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskUp swaps one task with its previous model-order sibling.
-	MoveTaskUp(taskID string) (app.TaskResult, error)
+	MoveTaskUpByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskDown swaps one task with its next model-order sibling.
-	MoveTaskDown(taskID string) (app.TaskResult, error)
+	MoveTaskDownByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// IndentTask nests one task under the task visually/model above it.
-	IndentTask(taskID string) (app.TaskResult, error)
+	IndentTaskByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// OutdentTask moves one task to become a sibling of its current parent.
-	OutdentTask(taskID string) (app.TaskResult, error)
+	OutdentTaskByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// Transition moves one task to a target workflow state.
 	Transition(req app.StateRequest) (app.TaskResult, error)
 	// ClearRecurrence removes one task's recurrence pattern.
-	ClearRecurrence(taskID string) (app.RecurrenceResult, error)
+	ClearRecurrenceByLocator(locator app.TaskLocator) (app.RecurrenceResult, error)
 	// Edit applies content changes (title/description/type or a full form) to one task.
 	Edit(req app.EditRequest) (app.TaskResult, error)
 	// Capture creates a new task in a project and commits it as one ChangeSet.
 	Capture(req app.CaptureRequest) (app.TaskResult, error)
 	// SetPriority sets one task's 1..PriorityMax priority.
-	SetPriority(taskID string, priority int) (app.TaskResult, error)
+	SetPriorityByLocator(locator app.TaskLocator, priority int) (app.TaskResult, error)
 	// SetDueDate sets or clears (nil due) one task's due date.
-	SetDueDate(taskID string, due *time.Time, hasTime bool) (app.TaskResult, error)
+	SetDueDateByLocator(locator app.TaskLocator, due *time.Time, hasTime bool) (app.TaskResult, error)
 	// Snooze hides one task until the given date, or clears the snooze when nil.
-	Snooze(taskID string, until *time.Time) (app.TaskResult, error)
+	SnoozeByLocator(locator app.TaskLocator, until *time.Time) (app.TaskResult, error)
 	// SetPinned pins or unpins one task.
-	SetPinned(taskID string, pinned bool) (app.TaskResult, error)
+	SetPinnedByLocator(locator app.TaskLocator, pinned bool) (app.TaskResult, error)
 	// ReorderPinnedTasks swaps two pinned tasks' PinnedAt ordering as one
 	// (possibly cross-project) transaction.
-	ReorderPinnedTasks(taskAID, taskBID string) (app.PinnedReorderResult, error)
+	ReorderPinnedTasksByLocator(taskA, taskB app.TaskLocator) (app.PinnedReorderResult, error)
 	// ReplaceScoreDimensions sets one task's manual scoring dimensions to exactly
 	// the given set (replace, not merge) as one transaction.
-	ReplaceScoreDimensions(taskID string, dims map[string]int) (app.TaskResult, error)
+	ReplaceScoreDimensionsByLocator(locator app.TaskLocator, dims map[string]int) (app.TaskResult, error)
 	// ToggleDimmed flips one task's dimmed flag (clearing Active when dimming).
-	ToggleDimmed(taskID string) (app.TaskResult, error)
+	ToggleDimmedByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// SkipRecurrence advances one recurring task to its next occurrence.
-	SkipRecurrence(taskID string) (app.RecurrenceResult, error)
+	SkipRecurrenceByLocator(locator app.TaskLocator) (app.RecurrenceResult, error)
 	// DeferRecurrence pushes one recurring task's due date forward by days.
-	DeferRecurrence(taskID string, days int) (app.RecurrenceResult, error)
+	DeferRecurrenceByLocator(locator app.TaskLocator, days int) (app.RecurrenceResult, error)
 	// ChangeTaskType applies a type-hierarchy mutation (promote/demote/cycle).
-	ChangeTaskType(taskID string, change app.TaskTypeChange) (app.TaskResult, error)
+	ChangeTaskTypeByLocator(locator app.TaskLocator, change app.TaskTypeChange) (app.TaskResult, error)
 	// Reparent changes one task's parent within its owning project.
-	Reparent(taskID string, newParentID *string) (app.TaskResult, error)
+	ReparentByLocator(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
 
 	// The *WithWorkflow methods commit one single-task mutation AND run the
 	// legacy workflow-rule cascade (follow-ups, deferred cross-project moves,
@@ -119,13 +119,13 @@ type TaskItemMutator interface {
 	// trigger counts. They back secondary views (review, activity,
 	// due-date, focus, focus-board, project-focus) that historically ran the full
 	// workflow pipeline after every single-task save.
-	StateWithWorkflow(taskID string, target models.WorkflowState, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	SetPriorityWithWorkflow(taskID string, priority int, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	SetDueDateWithWorkflow(taskID string, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	SnoozeWithWorkflow(taskID string, until *time.Time, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	SetSectionWithWorkflow(taskID, section string, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	SetPinnedWithWorkflow(taskID string, pinned *bool, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	ToggleDimmedWithWorkflow(taskID string, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	StateWithWorkflowByLocator(locator app.TaskLocator, target models.WorkflowState, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	SetPriorityWithWorkflowByLocator(locator app.TaskLocator, priority int, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	SetDueDateWithWorkflowByLocator(locator app.TaskLocator, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	SnoozeWithWorkflowByLocator(locator app.TaskLocator, until *time.Time, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	SetSectionWithWorkflowByLocator(locator app.TaskLocator, section string, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	SetPinnedWithWorkflowByLocator(locator app.TaskLocator, pinned *bool, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
+	ToggleDimmedWithWorkflowByLocator(locator app.TaskLocator, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
 	// Delete permanently removes one task's subtree, folding any caller-supplied
 	// durable planning-ref artifacts into the same transaction.
 	Delete(req app.DeleteRequest, artifacts ...storage.ArtifactChange) (app.DeleteResult, error)
@@ -140,19 +140,19 @@ type TaskItemMutator interface {
 // attachment and removal ride their byte-copy/delete side effects on the same
 // journaled ChangeSet as the metadata write.
 type AttachmentMutator interface {
-	AttachURL(taskID, url string) (app.TaskResult, error)
-	AttachCodeReference(taskID, path string, line int) (app.TaskResult, error)
-	AttachFile(taskID, sourcePath string) (app.AttachFileResult, error)
-	RemoveAttachment(taskID string, index int, deleteFile bool) (app.RemoveAttachmentResult, error)
-	ReorderAttachment(taskID string, from, to int) (app.TaskResult, error)
+	AttachURLByLocator(locator app.TaskLocator, url string) (app.TaskResult, error)
+	AttachCodeReferenceByLocator(locator app.TaskLocator, path string, line int) (app.TaskResult, error)
+	AttachFileByLocator(locator app.TaskLocator, sourcePath string) (app.AttachFileResult, error)
+	RemoveAttachmentByLocator(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error)
+	ReorderAttachmentByLocator(locator app.TaskLocator, from, to int) (app.TaskResult, error)
 }
 
 // TagMutator is the narrow port the tag-manager overlay depends on. Task-tag
 // edits are single-task mutations; the catalog methods mutate the project's tag
 // catalog (add/remove/rename ripple into task usages) as one project commit.
 type TagMutator interface {
-	AddTag(taskID, tag string) (app.TaskResult, error)
-	RemoveTag(taskID, tag string) (app.TaskResult, error)
+	AddTagByLocator(locator app.TaskLocator, tag string) (app.TaskResult, error)
+	RemoveTagByLocator(locator app.TaskLocator, tag string) (app.TaskResult, error)
 	AddProjectTag(projectID, tag string) (app.TagCatalogResult, error)
 	RemoveProjectTag(projectID, tag string) (app.TagCatalogResult, error)
 	RenameProjectTag(projectID, oldName, newName string) (app.TagCatalogResult, error)
@@ -165,19 +165,19 @@ type TagMutator interface {
 // re-validates the item index against a fresh snapshot, so a stale panel index
 // surfaces as an error instead of silently targeting the wrong item.
 type SubviewMutator interface {
-	AddComment(taskID, text string) (app.CommentResult, error)
-	EditComment(taskID string, index int, text string) (app.CommentResult, error)
-	RemoveComment(taskID string, index int) (app.CommentResult, error)
-	ToggleCommentResolved(taskID string, index int) (app.CommentResult, error)
-	AddDecision(taskID, text, rationale string, category models.DecisionCategory) (app.DecisionResult, error)
-	EditDecision(taskID string, index int, text, rationale string, category *models.DecisionCategory) (app.DecisionResult, error)
-	RemoveDecision(taskID string, index int) (app.DecisionResult, error)
-	ToggleDecisionResolved(taskID string, index int) (app.DecisionResult, error)
-	AddChecklistItem(taskID, text string) (app.ChecklistResult, error)
-	EditChecklistItem(taskID string, index int, text string) (app.ChecklistResult, error)
-	RemoveChecklistItem(taskID string, index int) (app.ChecklistResult, error)
-	ToggleChecklistItem(taskID string, index int) (app.ChecklistResult, error)
-	ReorderChecklistItem(taskID string, from, to int) (app.ChecklistResult, error)
+	AddCommentByLocator(locator app.TaskLocator, text string) (app.CommentResult, error)
+	EditCommentByLocator(locator app.TaskLocator, index int, text string) (app.CommentResult, error)
+	RemoveCommentByLocator(locator app.TaskLocator, index int) (app.CommentResult, error)
+	ToggleCommentResolvedByLocator(locator app.TaskLocator, index int) (app.CommentResult, error)
+	AddDecisionByLocator(locator app.TaskLocator, text, rationale string, category models.DecisionCategory) (app.DecisionResult, error)
+	EditDecisionByLocator(locator app.TaskLocator, index int, text, rationale string, category *models.DecisionCategory) (app.DecisionResult, error)
+	RemoveDecisionByLocator(locator app.TaskLocator, index int) (app.DecisionResult, error)
+	ToggleDecisionResolvedByLocator(locator app.TaskLocator, index int) (app.DecisionResult, error)
+	AddChecklistItemByLocator(locator app.TaskLocator, text string) (app.ChecklistResult, error)
+	EditChecklistItemByLocator(locator app.TaskLocator, index int, text string) (app.ChecklistResult, error)
+	RemoveChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
+	ToggleChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
+	ReorderChecklistItemByLocator(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
 }
 
 // LinkMutator is the narrow port the task-link surfaces (linked-task selector,
@@ -185,11 +185,11 @@ type SubviewMutator interface {
 // task (one project commit); a bidirectional related link commits every touched
 // project as one transaction.
 type LinkMutator interface {
-	AddDependency(taskID, blockerRef string) (app.TaskResult, error)
-	RemoveDependency(taskID, blockerRef string) (app.TaskResult, error)
-	RemoveRelated(taskID, relatedRef string) (app.TaskResult, error)
-	AddRelatedBidirectional(taskID, otherRef string) (app.RelatedLinkResult, error)
-	RemoveRelatedBidirectional(taskID, otherRef string) (app.RelatedLinkResult, error)
+	AddDependencyByLocator(locator app.TaskLocator, blockerRef string) (app.TaskResult, error)
+	RemoveDependencyByLocator(locator app.TaskLocator, blockerRef string) (app.TaskResult, error)
+	RemoveRelatedByLocator(locator app.TaskLocator, relatedRef string) (app.TaskResult, error)
+	AddRelatedBidirectionalByLocator(locator app.TaskLocator, otherRef string) (app.RelatedLinkResult, error)
+	RemoveRelatedBidirectionalByLocator(locator app.TaskLocator, otherRef string) (app.RelatedLinkResult, error)
 }
 
 // BlockerMutator is the narrow port the project blocker editor depends on.
@@ -603,8 +603,8 @@ func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []stri
 // (MoveToTop/MoveToBottom) resolve to a BatchTransactionResultMsg because they
 // reorder a whole project's task slice, reloaded by handleBatchTransactionResult.
 // Both messages flow through the same save/reload path that ends in
-// crossOutliner.reloadCrossProjects(). Nothing routes through it yet — it is the
-// seam a later child migrates the cross-project single-task raw-save family onto.
+// crossOutliner.reloadCrossProjects(). Every task argument is project-qualified
+// so a coordinator cannot accidentally fall back to workspace iteration order.
 type TaskItemCoordinator struct {
 	name                   string
 	task                   TaskItemMutator
@@ -613,18 +613,18 @@ type TaskItemCoordinator struct {
 }
 
 // SetSection commits one task's legacy GTD section field as one transaction.
-func (c TaskItemCoordinator) SetSection(taskID, section string) tea.Cmd {
+func (c TaskItemCoordinator) SetSection(task TaskIdentity, section string) tea.Cmd {
 	return runTask(c.name, "Set Section", func() (app.TaskResult, error) {
-		return c.task.SetSection(taskID, section)
+		return c.task.SetSectionByLocator(task.Locator(), section)
 	})
 }
 
 // MoveToTop moves one task to the top of its siblings as one project-scoped
 // transaction, emitting a BatchTransactionResultMsg so the touched project is
 // reloaded through the shared batch path.
-func (c TaskItemCoordinator) MoveToTop(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) MoveToTop(task TaskIdentity) tea.Cmd {
 	return runBatch(c.name, "Move to Top", func() ([]string, string, error) {
-		res, err := c.task.MoveTaskToTop(taskID)
+		res, err := c.task.MoveTaskToTopByLocator(task.Locator())
 		if err != nil {
 			return nil, "", err
 		}
@@ -634,9 +634,9 @@ func (c TaskItemCoordinator) MoveToTop(taskID string) tea.Cmd {
 
 // MoveToBottom moves one task to the bottom of its siblings as one project-scoped
 // transaction (see MoveToTop).
-func (c TaskItemCoordinator) MoveToBottom(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) MoveToBottom(task TaskIdentity) tea.Cmd {
 	return runBatch(c.name, "Move to Bottom", func() ([]string, string, error) {
-		res, err := c.task.MoveTaskToBottom(taskID)
+		res, err := c.task.MoveTaskToBottomByLocator(task.Locator())
 		if err != nil {
 			return nil, "", err
 		}
@@ -646,9 +646,9 @@ func (c TaskItemCoordinator) MoveToBottom(taskID string) tea.Cmd {
 
 // MoveUp swaps one task with its previous model-order sibling as one
 // project-scoped transaction (see MoveToTop for the reload path).
-func (c TaskItemCoordinator) MoveUp(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) MoveUp(task TaskIdentity) tea.Cmd {
 	return runBatch(c.name, "Move Up", func() ([]string, string, error) {
-		res, err := c.task.MoveTaskUp(taskID)
+		res, err := c.task.MoveTaskUpByLocator(task.Locator())
 		if err != nil {
 			return nil, "", err
 		}
@@ -658,9 +658,9 @@ func (c TaskItemCoordinator) MoveUp(taskID string) tea.Cmd {
 
 // MoveDown swaps one task with its next model-order sibling as one project-scoped
 // transaction.
-func (c TaskItemCoordinator) MoveDown(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) MoveDown(task TaskIdentity) tea.Cmd {
 	return runBatch(c.name, "Move Down", func() ([]string, string, error) {
-		res, err := c.task.MoveTaskDown(taskID)
+		res, err := c.task.MoveTaskDownByLocator(task.Locator())
 		if err != nil {
 			return nil, "", err
 		}
@@ -670,9 +670,9 @@ func (c TaskItemCoordinator) MoveDown(taskID string) tea.Cmd {
 
 // Indent nests one task under the task model-above it as one project-scoped
 // transaction.
-func (c TaskItemCoordinator) Indent(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) Indent(task TaskIdentity) tea.Cmd {
 	return runBatch(c.name, "Indent", func() ([]string, string, error) {
-		res, err := c.task.IndentTask(taskID)
+		res, err := c.task.IndentTaskByLocator(task.Locator())
 		if err != nil {
 			return nil, "", err
 		}
@@ -682,9 +682,9 @@ func (c TaskItemCoordinator) Indent(taskID string) tea.Cmd {
 
 // Outdent moves one task to become a sibling of its parent as one project-scoped
 // transaction.
-func (c TaskItemCoordinator) Outdent(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) Outdent(task TaskIdentity) tea.Cmd {
 	return runBatch(c.name, "Outdent", func() ([]string, string, error) {
-		res, err := c.task.OutdentTask(taskID)
+		res, err := c.task.OutdentTaskByLocator(task.Locator())
 		if err != nil {
 			return nil, "", err
 		}
@@ -693,22 +693,24 @@ func (c TaskItemCoordinator) Outdent(taskID string) tea.Cmd {
 }
 
 // Transition moves one task to a target workflow state as one transaction.
-func (c TaskItemCoordinator) Transition(taskID string, target models.WorkflowState) tea.Cmd {
+func (c TaskItemCoordinator) Transition(task TaskIdentity, target models.WorkflowState) tea.Cmd {
 	return runTask(c.name, "Change State", func() (app.TaskResult, error) {
-		return c.task.Transition(app.StateRequest{TaskID: taskID, Target: target})
+		return c.task.Transition(app.StateRequest{Locator: task.Locator(), Target: target})
 	})
 }
 
 // ClearRecurrence removes one recurring task's pattern as one transaction.
-func (c TaskItemCoordinator) ClearRecurrence(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) ClearRecurrence(task TaskIdentity) tea.Cmd {
 	return runTask(c.name, "Clear Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.ClearRecurrence(taskID)
+		res, err := c.task.ClearRecurrenceByLocator(task.Locator())
 		return res.Task, err
 	})
 }
 
 // Edit applies content/form changes to one task as one transaction.
-func (c TaskItemCoordinator) Edit(req app.EditRequest) tea.Cmd {
+func (c TaskItemCoordinator) Edit(task TaskIdentity, req app.EditRequest) tea.Cmd {
+	req.TaskID = ""
+	req.Locator = task.Locator()
 	return runTask(c.name, "Edit Task", func() (app.TaskResult, error) {
 		return c.task.Edit(req)
 	})
@@ -722,77 +724,77 @@ func (c TaskItemCoordinator) Capture(req app.CaptureRequest) tea.Cmd {
 }
 
 // SetPriority sets one task's priority as one transaction.
-func (c TaskItemCoordinator) SetPriority(taskID string, priority int) tea.Cmd {
+func (c TaskItemCoordinator) SetPriority(task TaskIdentity, priority int) tea.Cmd {
 	return runTask(c.name, "Set Priority", func() (app.TaskResult, error) {
-		return c.task.SetPriority(taskID, priority)
+		return c.task.SetPriorityByLocator(task.Locator(), priority)
 	})
 }
 
 // SetDueDate sets or clears (nil due) one task's due date as one transaction.
-func (c TaskItemCoordinator) SetDueDate(taskID string, due *time.Time, hasTime bool) tea.Cmd {
+func (c TaskItemCoordinator) SetDueDate(task TaskIdentity, due *time.Time, hasTime bool) tea.Cmd {
 	return runTask(c.name, "Set Due Date", func() (app.TaskResult, error) {
-		return c.task.SetDueDate(taskID, due, hasTime)
+		return c.task.SetDueDateByLocator(task.Locator(), due, hasTime)
 	})
 }
 
 // Snooze hides one task until until, or clears the snooze when until is nil, as
 // one transaction.
-func (c TaskItemCoordinator) Snooze(taskID string, until *time.Time) tea.Cmd {
+func (c TaskItemCoordinator) Snooze(task TaskIdentity, until *time.Time) tea.Cmd {
 	return runTask(c.name, "Snooze", func() (app.TaskResult, error) {
-		return c.task.Snooze(taskID, until)
+		return c.task.SnoozeByLocator(task.Locator(), until)
 	})
 }
 
 // SetPinned pins or unpins one task as one transaction.
-func (c TaskItemCoordinator) SetPinned(taskID string, pinned bool) tea.Cmd {
+func (c TaskItemCoordinator) SetPinned(task TaskIdentity, pinned bool) tea.Cmd {
 	return runTask(c.name, "Toggle Pin", func() (app.TaskResult, error) {
-		return c.task.SetPinned(taskID, pinned)
+		return c.task.SetPinnedByLocator(task.Locator(), pinned)
 	})
 }
 
 // SetScore replaces one task's manual scoring dimensions as one transaction.
-func (c TaskItemCoordinator) SetScore(taskID string, dims map[string]int) tea.Cmd {
+func (c TaskItemCoordinator) SetScore(task TaskIdentity, dims map[string]int) tea.Cmd {
 	return runTask(c.name, "Set Score", func() (app.TaskResult, error) {
-		return c.task.ReplaceScoreDimensions(taskID, dims)
+		return c.task.ReplaceScoreDimensionsByLocator(task.Locator(), dims)
 	})
 }
 
 // ToggleDimmed flips one task's dimmed flag as one transaction.
-func (c TaskItemCoordinator) ToggleDimmed(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) ToggleDimmed(task TaskIdentity) tea.Cmd {
 	return runTask(c.name, "Toggle Dim", func() (app.TaskResult, error) {
-		return c.task.ToggleDimmed(taskID)
+		return c.task.ToggleDimmedByLocator(task.Locator())
 	})
 }
 
 // SkipRecurrence advances one recurring task to its next occurrence as one
 // transaction.
-func (c TaskItemCoordinator) SkipRecurrence(taskID string) tea.Cmd {
+func (c TaskItemCoordinator) SkipRecurrence(task TaskIdentity) tea.Cmd {
 	return runTask(c.name, "Skip Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.SkipRecurrence(taskID)
+		res, err := c.task.SkipRecurrenceByLocator(task.Locator())
 		return res.Task, err
 	})
 }
 
 // DeferRecurrence pushes one recurring task's due date forward by days as one
 // transaction.
-func (c TaskItemCoordinator) DeferRecurrence(taskID string, days int) tea.Cmd {
+func (c TaskItemCoordinator) DeferRecurrence(task TaskIdentity, days int) tea.Cmd {
 	return runTask(c.name, "Defer Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.DeferRecurrence(taskID, days)
+		res, err := c.task.DeferRecurrenceByLocator(task.Locator(), days)
 		return res.Task, err
 	})
 }
 
 // ChangeType applies a type-hierarchy mutation to one task as one transaction.
-func (c TaskItemCoordinator) ChangeType(taskID string, change app.TaskTypeChange) tea.Cmd {
+func (c TaskItemCoordinator) ChangeType(task TaskIdentity, change app.TaskTypeChange) tea.Cmd {
 	return runTask(c.name, "Change Type", func() (app.TaskResult, error) {
-		return c.task.ChangeTaskType(taskID, change)
+		return c.task.ChangeTaskTypeByLocator(task.Locator(), change)
 	})
 }
 
 // Reparent changes one task's parent within its owning project as one transaction.
-func (c TaskItemCoordinator) Reparent(taskID string, newParentID *string) tea.Cmd {
+func (c TaskItemCoordinator) Reparent(task TaskIdentity, newParentID *string) tea.Cmd {
 	return runTask(c.name, "Reparent Task", func() (app.TaskResult, error) {
-		return c.task.Reparent(taskID, newParentID)
+		return c.task.ReparentByLocator(task.Locator(), newParentID)
 	})
 }
 
@@ -825,61 +827,61 @@ func runTaskWorkflow(feature, action string, summary func(app.TaskResult) string
 
 // TransitionWorkflow moves one task to a target state and runs the workflow
 // cascade as one atomic transaction.
-func (c TaskItemCoordinator) TransitionWorkflow(taskID string, target models.WorkflowState, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) TransitionWorkflow(task TaskIdentity, target models.WorkflowState, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	opts.PlanningArtifacts = c.planningArtifacts
 	return runTaskWorkflow(c.name, "Change State", summary, func() (app.BulkResult, error) {
-		return c.task.StateWithWorkflow(taskID, target, opts)
+		return c.task.StateWithWorkflowByLocator(task.Locator(), target, opts)
 	})
 }
 
 // SetPriorityWorkflow sets one task's priority and runs the workflow cascade.
-func (c TaskItemCoordinator) SetPriorityWorkflow(taskID string, priority int, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) SetPriorityWorkflow(task TaskIdentity, priority int, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Set Priority", summary, func() (app.BulkResult, error) {
-		return c.task.SetPriorityWithWorkflow(taskID, priority, opts)
+		return c.task.SetPriorityWithWorkflowByLocator(task.Locator(), priority, opts)
 	})
 }
 
 // SetDueDateWorkflow sets or clears one task's due date and runs the workflow cascade.
-func (c TaskItemCoordinator) SetDueDateWorkflow(taskID string, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) SetDueDateWorkflow(task TaskIdentity, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Set Due Date", summary, func() (app.BulkResult, error) {
-		return c.task.SetDueDateWithWorkflow(taskID, due, hasTime, opts)
+		return c.task.SetDueDateWithWorkflowByLocator(task.Locator(), due, hasTime, opts)
 	})
 }
 
 // SnoozeWorkflow sets or clears one task's snooze date and runs the workflow cascade.
-func (c TaskItemCoordinator) SnoozeWorkflow(taskID string, until *time.Time, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) SnoozeWorkflow(task TaskIdentity, until *time.Time, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Snooze", summary, func() (app.BulkResult, error) {
-		return c.task.SnoozeWithWorkflow(taskID, until, opts)
+		return c.task.SnoozeWithWorkflowByLocator(task.Locator(), until, opts)
 	})
 }
 
 // SetSectionWorkflow sets one task's GTD section and runs the workflow cascade.
-func (c TaskItemCoordinator) SetSectionWorkflow(taskID, section string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) SetSectionWorkflow(task TaskIdentity, section string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	opts.PlanningArtifacts = c.planningArtifacts
 	return runTaskWorkflow(c.name, "Move to Section", summary, func() (app.BulkResult, error) {
-		return c.task.SetSectionWithWorkflow(taskID, section, opts)
+		return c.task.SetSectionWithWorkflowByLocator(task.Locator(), section, opts)
 	})
 }
 
 // TogglePinnedWorkflow toggles (nil) or forces one task's Pinned flag and runs
 // the workflow cascade.
-func (c TaskItemCoordinator) TogglePinnedWorkflow(taskID string, pinned *bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) TogglePinnedWorkflow(task TaskIdentity, pinned *bool, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Toggle Pin", summary, func() (app.BulkResult, error) {
-		return c.task.SetPinnedWithWorkflow(taskID, pinned, opts)
+		return c.task.SetPinnedWithWorkflowByLocator(task.Locator(), pinned, opts)
 	})
 }
 
 // ToggleDimmedWorkflow flips one task's Dimmed flag and runs the workflow cascade.
-func (c TaskItemCoordinator) ToggleDimmedWorkflow(taskID string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
+func (c TaskItemCoordinator) ToggleDimmedWorkflow(task TaskIdentity, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Toggle Dim", summary, func() (app.BulkResult, error) {
-		return c.task.ToggleDimmedWithWorkflow(taskID, opts)
+		return c.task.ToggleDimmedWithWorkflowByLocator(task.Locator(), opts)
 	})
 }
 
@@ -887,9 +889,9 @@ func (c TaskItemCoordinator) ToggleDimmedWorkflow(taskID string, opts app.Single
 // the caller-supplied durable planning-ref artifacts into it. The result carries
 // every removed task UUID so the shell repairs machine-local recent visits after
 // the commit (mirroring BulkCoordinator.Delete).
-func (c TaskItemCoordinator) DeleteTask(taskID string, artifacts []storage.ArtifactChange, summary func(app.DeleteResult) string) tea.Cmd {
+func (c TaskItemCoordinator) DeleteTask(task TaskIdentity, artifacts []storage.ArtifactChange, summary func(app.DeleteResult) string) tea.Cmd {
 	return func() tea.Msg {
-		res, err := c.task.Delete(app.DeleteRequest{TaskID: taskID, Confirm: true}, artifacts...)
+		res, err := c.task.Delete(app.DeleteRequest{Locator: task.Locator(), Confirm: true}, artifacts...)
 		if err != nil {
 			return TransactionErrorMsg{Feature: c.name, Action: "Delete Task", Err: err}
 		}
@@ -898,11 +900,12 @@ func (c TaskItemCoordinator) DeleteTask(taskID string, artifacts []storage.Artif
 			msg = summary(res)
 		}
 		return BatchTransactionResultMsg{
-			Feature:           c.name,
-			Action:            "Delete Task",
-			TouchedProjectIDs: res.TouchedProjectIDs,
-			Summary:           msg,
-			RemovedTaskIDs:    res.RemovedTaskIDs,
+			Feature:             c.name,
+			Action:              "Delete Task",
+			TouchedProjectIDs:   res.TouchedProjectIDs,
+			Summary:             msg,
+			RemovedTaskIDs:      res.RemovedTaskIDs,
+			RemovedTaskLocators: res.RemovedTaskLocators,
 		}
 	}
 }
@@ -942,39 +945,39 @@ type AttachmentCoordinator struct {
 }
 
 // AttachURL records a URL attachment on a task.
-func (c AttachmentCoordinator) AttachURL(taskID, url string) tea.Cmd {
+func (c AttachmentCoordinator) AttachURL(task TaskIdentity, url string) tea.Cmd {
 	return runTask(c.name, "Attach URL", func() (app.TaskResult, error) {
-		return c.attach.AttachURL(taskID, url)
+		return c.attach.AttachURLByLocator(task.Locator(), url)
 	})
 }
 
 // AttachCodeReference records a file:line code reference on a task.
-func (c AttachmentCoordinator) AttachCodeReference(taskID, path string, line int) tea.Cmd {
+func (c AttachmentCoordinator) AttachCodeReference(task TaskIdentity, path string, line int) tea.Cmd {
 	return runTask(c.name, "Attach Code Ref", func() (app.TaskResult, error) {
-		return c.attach.AttachCodeReference(taskID, path, line)
+		return c.attach.AttachCodeReferenceByLocator(task.Locator(), path, line)
 	})
 }
 
 // AttachFile ingests an external file into a task's attachments as one transaction.
-func (c AttachmentCoordinator) AttachFile(taskID, sourcePath string) tea.Cmd {
+func (c AttachmentCoordinator) AttachFile(task TaskIdentity, sourcePath string) tea.Cmd {
 	return runTask(c.name, "Attach File", func() (app.TaskResult, error) {
-		res, err := c.attach.AttachFile(taskID, sourcePath)
+		res, err := c.attach.AttachFileByLocator(task.Locator(), sourcePath)
 		return res.Task, err
 	})
 }
 
 // RemoveAttachment drops an attachment (and optionally its bytes) as one transaction.
-func (c AttachmentCoordinator) RemoveAttachment(taskID string, index int, deleteFile bool) tea.Cmd {
+func (c AttachmentCoordinator) RemoveAttachment(task TaskIdentity, index int, deleteFile bool) tea.Cmd {
 	return runTask(c.name, "Remove Attachment", func() (app.TaskResult, error) {
-		res, err := c.attach.RemoveAttachment(taskID, index, deleteFile)
+		res, err := c.attach.RemoveAttachmentByLocator(task.Locator(), index, deleteFile)
 		return res.Task, err
 	})
 }
 
 // Reorder swaps two attachments' positions as one transaction.
-func (c AttachmentCoordinator) Reorder(taskID string, from, to int) tea.Cmd {
+func (c AttachmentCoordinator) Reorder(task TaskIdentity, from, to int) tea.Cmd {
 	return runTask(c.name, "Reorder Attachments", func() (app.TaskResult, error) {
-		return c.attach.ReorderAttachment(taskID, from, to)
+		return c.attach.ReorderAttachmentByLocator(task.Locator(), from, to)
 	})
 }
 
@@ -985,16 +988,16 @@ type TagCoordinator struct {
 }
 
 // Add adds a tag to a task.
-func (c TagCoordinator) Add(taskID, tag string) tea.Cmd {
+func (c TagCoordinator) Add(task TaskIdentity, tag string) tea.Cmd {
 	return runTask(c.name, "Add Tag", func() (app.TaskResult, error) {
-		return c.tag.AddTag(taskID, tag)
+		return c.tag.AddTagByLocator(task.Locator(), tag)
 	})
 }
 
 // Remove removes a tag from a task.
-func (c TagCoordinator) Remove(taskID, tag string) tea.Cmd {
+func (c TagCoordinator) Remove(task TaskIdentity, tag string) tea.Cmd {
 	return runTask(c.name, "Remove Tag", func() (app.TaskResult, error) {
-		return c.tag.RemoveTag(taskID, tag)
+		return c.tag.RemoveTagByLocator(task.Locator(), tag)
 	})
 }
 
@@ -1046,106 +1049,106 @@ type SubviewCoordinator struct {
 }
 
 // AddComment appends a comment to a task.
-func (c SubviewCoordinator) AddComment(taskID, text string) tea.Cmd {
+func (c SubviewCoordinator) AddComment(task TaskIdentity, text string) tea.Cmd {
 	return runTask(c.name, "Add Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.AddComment(taskID, text)
+		res, err := c.sub.AddCommentByLocator(task.Locator(), text)
 		return res.Task, err
 	})
 }
 
 // EditComment replaces a comment's text, preserving its timestamp.
-func (c SubviewCoordinator) EditComment(taskID string, index int, text string) tea.Cmd {
+func (c SubviewCoordinator) EditComment(task TaskIdentity, index int, text string) tea.Cmd {
 	return runTask(c.name, "Edit Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.EditComment(taskID, index, text)
+		res, err := c.sub.EditCommentByLocator(task.Locator(), index, text)
 		return res.Task, err
 	})
 }
 
 // RemoveComment removes the comment at index.
-func (c SubviewCoordinator) RemoveComment(taskID string, index int) tea.Cmd {
+func (c SubviewCoordinator) RemoveComment(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Remove Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveComment(taskID, index)
+		res, err := c.sub.RemoveCommentByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
 
 // ToggleCommentResolved flips a comment's resolved state.
-func (c SubviewCoordinator) ToggleCommentResolved(taskID string, index int) tea.Cmd {
+func (c SubviewCoordinator) ToggleCommentResolved(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Resolve Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.ToggleCommentResolved(taskID, index)
+		res, err := c.sub.ToggleCommentResolvedByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
 
 // AddDecision appends a decision to a task.
-func (c SubviewCoordinator) AddDecision(taskID, text, rationale string, category models.DecisionCategory) tea.Cmd {
+func (c SubviewCoordinator) AddDecision(task TaskIdentity, text, rationale string, category models.DecisionCategory) tea.Cmd {
 	return runTask(c.name, "Add Decision", func() (app.TaskResult, error) {
-		res, err := c.sub.AddDecision(taskID, text, rationale, category)
+		res, err := c.sub.AddDecisionByLocator(task.Locator(), text, rationale, category)
 		return res.Task, err
 	})
 }
 
 // EditDecision replaces a decision's text/rationale; a nil category keeps the
 // existing one.
-func (c SubviewCoordinator) EditDecision(taskID string, index int, text, rationale string, category *models.DecisionCategory) tea.Cmd {
+func (c SubviewCoordinator) EditDecision(task TaskIdentity, index int, text, rationale string, category *models.DecisionCategory) tea.Cmd {
 	return runTask(c.name, "Edit Decision", func() (app.TaskResult, error) {
-		res, err := c.sub.EditDecision(taskID, index, text, rationale, category)
+		res, err := c.sub.EditDecisionByLocator(task.Locator(), index, text, rationale, category)
 		return res.Task, err
 	})
 }
 
 // RemoveDecision removes the decision at index.
-func (c SubviewCoordinator) RemoveDecision(taskID string, index int) tea.Cmd {
+func (c SubviewCoordinator) RemoveDecision(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Remove Decision", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveDecision(taskID, index)
+		res, err := c.sub.RemoveDecisionByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
 
 // ToggleDecisionResolved flips a decision's resolved state.
-func (c SubviewCoordinator) ToggleDecisionResolved(taskID string, index int) tea.Cmd {
+func (c SubviewCoordinator) ToggleDecisionResolved(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Resolve Decision", func() (app.TaskResult, error) {
-		res, err := c.sub.ToggleDecisionResolved(taskID, index)
+		res, err := c.sub.ToggleDecisionResolvedByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
 
 // AddChecklistItem appends a checklist item to a task.
-func (c SubviewCoordinator) AddChecklistItem(taskID, text string) tea.Cmd {
+func (c SubviewCoordinator) AddChecklistItem(task TaskIdentity, text string) tea.Cmd {
 	return runTask(c.name, "Add Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.AddChecklistItem(taskID, text)
+		res, err := c.sub.AddChecklistItemByLocator(task.Locator(), text)
 		return res.Task, err
 	})
 }
 
 // EditChecklistItem replaces a checklist item's text, preserving done state.
-func (c SubviewCoordinator) EditChecklistItem(taskID string, index int, text string) tea.Cmd {
+func (c SubviewCoordinator) EditChecklistItem(task TaskIdentity, index int, text string) tea.Cmd {
 	return runTask(c.name, "Edit Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.EditChecklistItem(taskID, index, text)
+		res, err := c.sub.EditChecklistItemByLocator(task.Locator(), index, text)
 		return res.Task, err
 	})
 }
 
 // RemoveChecklistItem removes the checklist item at index.
-func (c SubviewCoordinator) RemoveChecklistItem(taskID string, index int) tea.Cmd {
+func (c SubviewCoordinator) RemoveChecklistItem(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Remove Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveChecklistItem(taskID, index)
+		res, err := c.sub.RemoveChecklistItemByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
 
 // ToggleChecklistItem flips a checklist item's done state.
-func (c SubviewCoordinator) ToggleChecklistItem(taskID string, index int) tea.Cmd {
+func (c SubviewCoordinator) ToggleChecklistItem(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Toggle Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.ToggleChecklistItem(taskID, index)
+		res, err := c.sub.ToggleChecklistItemByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
 
 // ReorderChecklistItem swaps the checklist items at from and to.
-func (c SubviewCoordinator) ReorderChecklistItem(taskID string, from, to int) tea.Cmd {
+func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
 	return runTask(c.name, "Reorder Checklist", func() (app.TaskResult, error) {
-		res, err := c.sub.ReorderChecklistItem(taskID, from, to)
+		res, err := c.sub.ReorderChecklistItemByLocator(task.Locator(), from, to)
 		return res.Task, err
 	})
 }
@@ -1158,31 +1161,31 @@ type LinkCoordinator struct {
 
 // AddDependency adds a dependency edge onto blockerRef (validated for
 // existence and cycles across the workspace).
-func (c LinkCoordinator) AddDependency(taskID, blockerRef string) tea.Cmd {
+func (c LinkCoordinator) AddDependency(task TaskIdentity, blockerRef string) tea.Cmd {
 	return runTask(c.name, "Add Dependency", func() (app.TaskResult, error) {
-		return c.link.AddDependency(taskID, blockerRef)
+		return c.link.AddDependencyByLocator(task.Locator(), blockerRef)
 	})
 }
 
 // RemoveDependency drops a dependency edge.
-func (c LinkCoordinator) RemoveDependency(taskID, blockerRef string) tea.Cmd {
+func (c LinkCoordinator) RemoveDependency(task TaskIdentity, blockerRef string) tea.Cmd {
 	return runTask(c.name, "Remove Dependency", func() (app.TaskResult, error) {
-		return c.link.RemoveDependency(taskID, blockerRef)
+		return c.link.RemoveDependencyByLocator(task.Locator(), blockerRef)
 	})
 }
 
 // RemoveRelated drops a related link.
-func (c LinkCoordinator) RemoveRelated(taskID, relatedRef string) tea.Cmd {
+func (c LinkCoordinator) RemoveRelated(task TaskIdentity, relatedRef string) tea.Cmd {
 	return runTask(c.name, "Remove Related Link", func() (app.TaskResult, error) {
-		return c.link.RemoveRelated(taskID, relatedRef)
+		return c.link.RemoveRelatedByLocator(task.Locator(), relatedRef)
 	})
 }
 
 // RelateBidirectional links two tasks with reciprocal related references as one
 // transaction across every touched project.
-func (c LinkCoordinator) RelateBidirectional(taskID, otherRef string) tea.Cmd {
+func (c LinkCoordinator) RelateBidirectional(task TaskIdentity, otherRef string) tea.Cmd {
 	return runBatch(c.name, "Add Related Link", func() ([]string, string, error) {
-		res, err := c.link.AddRelatedBidirectional(taskID, otherRef)
+		res, err := c.link.AddRelatedBidirectionalByLocator(task.Locator(), otherRef)
 		if err != nil {
 			return nil, "", err
 		}
@@ -1192,9 +1195,9 @@ func (c LinkCoordinator) RelateBidirectional(taskID, otherRef string) tea.Cmd {
 
 // RemoveRelatedBidirectional drops a related link from both sides as one
 // transaction across every touched project.
-func (c LinkCoordinator) RemoveRelatedBidirectional(taskID, otherRef string) tea.Cmd {
+func (c LinkCoordinator) RemoveRelatedBidirectional(task TaskIdentity, otherRef string) tea.Cmd {
 	return runBatch(c.name, "Remove Related Link", func() ([]string, string, error) {
-		res, err := c.link.RemoveRelatedBidirectional(taskID, otherRef)
+		res, err := c.link.RemoveRelatedBidirectionalByLocator(task.Locator(), otherRef)
 		if err != nil {
 			return nil, "", err
 		}

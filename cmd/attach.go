@@ -90,6 +90,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	svc := newWorkspaceAppService(workspace)
+	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 
 	// Handle URL attachment
 	if attachURL != "" {
@@ -105,7 +106,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 
 		res, attachErr := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.AttachURL(task.ID, url)
+			return svc.AttachURLByLocator(locator, url)
 		})
 		if attachErr != nil {
 			return translateAppError(attachErr)
@@ -116,10 +117,12 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 		if out.JSON {
 			return printJSON(struct {
+				ProjectID   string `json:"project_id"`
+				TaskID      string `json:"task_id"`
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
-			}{TaskShortID: res.ShortID, Attachment: url, Type: "url"})
+			}{ProjectID: res.ProjectID, TaskID: res.TaskID, TaskShortID: res.ShortID, Attachment: url, Type: "url"})
 		}
 		fmt.Printf("Attached URL to #%d: %s\n", res.ShortID, url)
 		return nil
@@ -135,7 +138,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	if isCodeRef {
 		// Store code reference without copying.
 		res, attachErr := withTaskRetry(func() (app.TaskResult, error) {
-			return svc.AttachCodeReference(task.ID, codePath, lineNum)
+			return svc.AttachCodeReferenceByLocator(locator, codePath, lineNum)
 		})
 		if attachErr != nil {
 			return translateAppError(attachErr)
@@ -146,10 +149,12 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 		if out.JSON {
 			return printJSON(struct {
+				ProjectID   string `json:"project_id"`
+				TaskID      string `json:"task_id"`
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
-			}{TaskShortID: res.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"})
+			}{ProjectID: res.ProjectID, TaskID: res.TaskID, TaskShortID: res.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"})
 		}
 		// Check if file exists and show info message if not
 		if !storage.CodeReferenceFileExists(codePath) {
@@ -197,7 +202,7 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// written and a commit failure leaves no orphan, so the legacy copy-then-clean-up
 	// compensation is gone.
 	result, attachErr := withResultRetry(func() (app.AttachFileResult, error) {
-		return svc.AttachFile(task.ID, absPath)
+		return svc.AttachFileByLocator(locator, absPath)
 	})
 	if attachErr != nil {
 		return translateAppError(attachErr)
@@ -208,10 +213,12 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 	if out.JSON {
 		return printJSON(struct {
+			ProjectID   string `json:"project_id"`
+			TaskID      string `json:"task_id"`
 			TaskShortID int    `json:"task_short_id"`
 			Attachment  string `json:"attachment"`
 			Type        string `json:"type"`
-		}{TaskShortID: result.Task.ShortID, Attachment: result.Filename, Type: "file"})
+		}{ProjectID: result.Task.ProjectID, TaskID: result.Task.TaskID, TaskShortID: result.Task.ShortID, Attachment: result.Filename, Type: "file"})
 	}
 	fmt.Printf("Attached file to #%d: %s\n", result.Task.ShortID, result.Filename)
 	return nil

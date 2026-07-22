@@ -118,7 +118,7 @@ func TestSpaceOnProjectHeaderNoPanic(t *testing.T) {
 	m.buildProjectGroupedRows(groups)
 
 	m.multiSelectMode = true
-	m.selectedTasks = make(map[string]bool)
+	m.selectedTaskIdentities = make(map[TaskIdentity]bool)
 
 	headerIdx := -1
 	for i, row := range m.rows {

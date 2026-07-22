@@ -42,7 +42,7 @@ func (m *AppModel) handleParkNoteDone(msg ParkNoteDoneMsg) (bool, tea.Cmd) {
 	if fresh := msg.Project.GetTaskByID(msg.Task.ID); fresh != nil {
 		msg.Task = fresh
 	}
-	markParkPrompted(msg.Task.ID)
+	markParkPrompted(taskIdentityFor(msg.Task, msg.Project))
 
 	// Commit through the application layer. The Park/Unpark use cases load a
 	// fresh snapshot from disk, re-apply the mutation, and commit one
@@ -65,10 +65,11 @@ func (m *AppModel) handleParkNoteDone(msg ParkNoteDoneMsg) (bool, tea.Cmd) {
 // application layer, returning the mutation result. Unpark discards the note;
 // Park stores it (preserving any prior note as a timestamped comment).
 func (m *AppModel) applyParkMutation(msg ParkNoteDoneMsg) (app.TaskResult, error) {
+	locator := taskIdentityFor(msg.Task, msg.Project).Locator()
 	if msg.Unparked {
-		return m.appService.Unpark(msg.Task.ID)
+		return m.appService.UnparkByLocator(locator)
 	}
-	return m.appService.Park(msg.Task.ID, msg.Note)
+	return m.appService.ParkByLocator(locator, msg.Note)
 }
 
 func parkNoteStatusMessage(msg ParkNoteDoneMsg) string {

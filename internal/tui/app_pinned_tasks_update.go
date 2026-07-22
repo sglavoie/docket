@@ -156,7 +156,9 @@ func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 	a := m.pinnedPopupItems[realA]
 	b := m.pinnedPopupItems[realB]
 
-	res, err := m.appService.ReorderPinnedTasks(a.Task.ID, b.Task.ID)
+	res, err := m.appService.ReorderPinnedTasksByLocator(
+		taskIdentityFor(a.Task, a.Project).Locator(), taskIdentityFor(b.Task, b.Project).Locator(),
+	)
 	if err != nil {
 		m.setInfoStatus(fmt.Sprintf("Failed to reorder pinned tasks: %v", err))
 		return m, nil
@@ -180,7 +182,7 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 
 	realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
 	entry := m.pinnedPopupItems[realIdx]
-	res, err := m.appService.SetPinned(entry.Task.ID, false)
+	res, err := m.appService.SetPinnedByLocator(taskIdentityFor(entry.Task, entry.Project).Locator(), false)
 	if err != nil {
 		m.setInfoStatus(fmt.Sprintf("Failed to unpin task: %v", err))
 		return m, nil

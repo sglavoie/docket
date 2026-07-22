@@ -78,7 +78,6 @@ func handleResolvedTaskKey(key string, v primaryProjectView, project *models.Pro
 		}, true
 	case "ctrl+m":
 		validParents := buildReparentValidParents(taskProject, task)
-		taskID := task.ID
 		var currentParentID *string
 		if task.ParentID != nil {
 			id := *task.ParentID
@@ -86,11 +85,11 @@ func handleResolvedTaskKey(key string, v primaryProjectView, project *models.Pro
 		}
 		return func() tea.Msg {
 			return OpenParentSelectorMsg{
-				ValidParents:   validParents,
-				CurrentID:      currentParentID,
-				AllowNone:      true,
-				Source:         source,
-				ReparentTaskID: taskID,
+				ValidParents: validParents,
+				CurrentID:    currentParentID,
+				AllowNone:    true,
+				Source:       source,
+				ReparentTask: taskIdentityFor(task, taskProject),
 			}
 		}, true
 	}

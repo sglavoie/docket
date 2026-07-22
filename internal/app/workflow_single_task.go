@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -46,7 +45,11 @@ type SingleTaskWorkflowOptions struct {
 // batch result plumbing (reload every touched project, persist trigger counts to
 // config) the bulk-with-workflow path already uses.
 func (s *Service) mutateWithWorkflow(taskID string, opts SingleTaskWorkflowOptions, mutate func(TaskRef, *WorkspaceResolver) error) (BulkResult, error) {
-	return s.mutateWithWorkflowGuarded(taskID, opts, nil, mutate)
+	return s.mutateWithWorkflowSelection(taskID, TaskLocator{}, opts, nil, mutate)
+}
+
+func (s *Service) mutateWithWorkflowByLocator(locator TaskLocator, opts SingleTaskWorkflowOptions, mutate func(TaskRef, *WorkspaceResolver) error) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection("", locator, opts, nil, mutate)
 }
 
 // mutateWithWorkflowGuarded is mutateWithWorkflow plus a fresh-snapshot no-op
@@ -56,6 +59,25 @@ func (s *Service) mutateWithWorkflow(taskID string, opts SingleTaskWorkflowOptio
 // concurrent writer has already made the requested mutation unnecessary.
 func (s *Service) mutateWithWorkflowGuarded(
 	taskID string,
+	opts SingleTaskWorkflowOptions,
+	skip func(TaskRef) bool,
+	mutate func(TaskRef, *WorkspaceResolver) error,
+) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection(taskID, TaskLocator{}, opts, skip, mutate)
+}
+
+func (s *Service) mutateWithWorkflowGuardedByLocator(
+	locator TaskLocator,
+	opts SingleTaskWorkflowOptions,
+	skip func(TaskRef) bool,
+	mutate func(TaskRef, *WorkspaceResolver) error,
+) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection("", locator, opts, skip, mutate)
+}
+
+func (s *Service) mutateWithWorkflowSelection(
+	taskID string,
+	locator TaskLocator,
 	opts SingleTaskWorkflowOptions,
 	skip func(TaskRef) bool,
 	mutate func(TaskRef, *WorkspaceResolver) error,
@@ -74,12 +96,9 @@ func (s *Service) mutateWithWorkflowGuarded(
 		undoContext:            opts.UndoContext,
 		forceCommit:            true,
 		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
-			if strings.TrimSpace(taskID) == "" {
-				return workflowMutationPlan{}, invalidInput("task", "id is required")
-			}
-			resolved, ok := snap.Lookup(taskID)
-			if !ok {
-				return workflowMutationPlan{}, fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+			resolved, err := resolveTaskSelection(snap, taskID, locator)
+			if err != nil {
+				return workflowMutationPlan{}, err
 			}
 			ref = resolved
 			if skip != nil && skip(ref) {
@@ -132,6 +151,14 @@ func withDefaultWorkflowUndoAction(opts SingleTaskWorkflowOptions, action string
 // blocking on completion, and the incomplete-children guard) before mutating, so
 // a rejected transition never persists.
 func (s *Service) StateWithWorkflow(taskID string, target models.WorkflowState, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.stateWithWorkflow(taskID, TaskLocator{}, target, opts)
+}
+
+func (s *Service) StateWithWorkflowByLocator(locator TaskLocator, target models.WorkflowState, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.stateWithWorkflow("", locator, target, opts)
+}
+
+func (s *Service) stateWithWorkflow(taskID string, locator TaskLocator, target models.WorkflowState, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	if !target.IsValid() {
 		return BulkResult{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", target))
 	}
@@ -139,7 +166,7 @@ func (s *Service) StateWithWorkflow(taskID string, target models.WorkflowState, 
 	// runWorkflowOrchestration also defaults as the backstop for rule cascades
 	// initiated by mutations that do not directly change workflow state.
 	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, resolver *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
 		from := ref.Task.State()
 		if reason := models.CanTransitionState(from, target); reason != "" {
 			return &TransitionError{From: string(from), To: string(target), Reason: reason}
@@ -157,7 +184,15 @@ func (s *Service) StateWithWorkflow(taskID string, target models.WorkflowState, 
 
 // SetPriorityWithWorkflow sets one task's priority and runs the workflow cascade.
 func (s *Service) SetPriorityWithWorkflow(taskID string, priority int, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.setPriorityWithWorkflow(taskID, TaskLocator{}, priority, opts)
+}
+
+func (s *Service) SetPriorityWithWorkflowByLocator(locator TaskLocator, priority int, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.setPriorityWithWorkflow("", locator, priority, opts)
+}
+
+func (s *Service) setPriorityWithWorkflow(taskID string, locator TaskLocator, priority int, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		if err := models.ValidatePriority(priority, false); err != nil {
 			return invalidInput("priority", err.Error())
 		}
@@ -171,7 +206,15 @@ func (s *Service) SetPriorityWithWorkflow(taskID string, priority int, opts Sing
 // legacy secondary-view quick due-date path applied no state guard, so none is
 // enforced here.
 func (s *Service) SetDueDateWithWorkflow(taskID string, due *time.Time, hasTime bool, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.setDueDateWithWorkflow(taskID, TaskLocator{}, due, hasTime, opts)
+}
+
+func (s *Service) SetDueDateWithWorkflowByLocator(locator TaskLocator, due *time.Time, hasTime bool, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.setDueDateWithWorkflow("", locator, due, hasTime, opts)
+}
+
+func (s *Service) setDueDateWithWorkflow(taskID string, locator TaskLocator, due *time.Time, hasTime bool, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		if due == nil {
 			ref.Task.DueDate = nil
 			ref.Task.HasTime = false
@@ -189,7 +232,15 @@ func (s *Service) SetDueDateWithWorkflow(taskID string, due *time.Time, hasTime 
 // no terminal/in-progress guard, so this preserves that gate-free behavior (unlike
 // the CLI-facing Snooze use case).
 func (s *Service) SnoozeWithWorkflow(taskID string, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.snoozeWithWorkflow(taskID, TaskLocator{}, until, opts)
+}
+
+func (s *Service) SnoozeWithWorkflowByLocator(locator TaskLocator, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.snoozeWithWorkflow("", locator, until, opts)
+}
+
+func (s *Service) snoozeWithWorkflow(taskID string, locator TaskLocator, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		return s.applySnooze(ref.Task, until, false)
 	})
 }
@@ -200,8 +251,16 @@ func (s *Service) SnoozeWithWorkflow(taskID string, until *time.Time, opts Singl
 // Clearing an already-clear snooze is a true no-op: no rules are evaluated and
 // no transaction or ledger entry is created.
 func (s *Service) GuardedSnoozeWithWorkflow(taskID string, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.guardedSnoozeWithWorkflow(taskID, TaskLocator{}, until, opts)
+}
+
+func (s *Service) GuardedSnoozeWithWorkflowByLocator(locator TaskLocator, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.guardedSnoozeWithWorkflow("", locator, until, opts)
+}
+
+func (s *Service) guardedSnoozeWithWorkflow(taskID string, locator TaskLocator, until *time.Time, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Snooze Task")
-	return s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, func(ref TaskRef) bool {
 		return until == nil && ref.Task.SnoozedUntil == nil
 	}, func(ref TaskRef, _ *WorkspaceResolver) error {
 		return s.applySnooze(ref.Task, until, true)
@@ -213,12 +272,20 @@ func (s *Service) GuardedSnoozeWithWorkflow(taskID string, until *time.Time, opt
 // non-empty section is ensured on the project, matching the legacy
 // applySectionChange behavior.
 func (s *Service) SetSectionWithWorkflow(taskID, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.setSectionWithWorkflow(taskID, TaskLocator{}, section, opts)
+}
+
+func (s *Service) SetSectionWithWorkflowByLocator(locator TaskLocator, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.setSectionWithWorkflow("", locator, section, opts)
+}
+
+func (s *Service) setSectionWithWorkflow(taskID string, locator TaskLocator, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	// A section move changes the derived workflow state, so fold the same
 	// Today/Next exclusivity reconciliation state transitions use into the same
 	// transaction. This explicit default remains alongside the orchestration-level
 	// backstop used when a later workflow rule changes state.
 	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		ref.Task.SetSection(section)
 		if section != "" {
 			ref.Project.EnsureSection(section)
@@ -232,7 +299,15 @@ func (s *Service) SetSectionWithWorkflow(taskID, section string, opts SingleTask
 // a non-nil pinned forces it. It preserves the legacy applyTogglePinned behavior
 // (Pin/Unpin adjust the pinned ordering) while committing through the ledger.
 func (s *Service) SetPinnedWithWorkflow(taskID string, pinned *bool, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.setPinnedWithWorkflow(taskID, TaskLocator{}, pinned, opts)
+}
+
+func (s *Service) SetPinnedWithWorkflowByLocator(locator TaskLocator, pinned *bool, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.setPinnedWithWorkflow("", locator, pinned, opts)
+}
+
+func (s *Service) setPinnedWithWorkflow(taskID string, locator TaskLocator, pinned *bool, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		switch {
 		case pinned == nil:
 			ref.Task.TogglePinned()
@@ -248,7 +323,15 @@ func (s *Service) SetPinnedWithWorkflow(taskID string, pinned *bool, opts Single
 // ToggleDimmedWithWorkflow flips one task's Dimmed flag (clearing Active when
 // dimming, per the model) and runs the workflow cascade.
 func (s *Service) ToggleDimmedWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.toggleDimmedWithWorkflow(taskID, TaskLocator{}, opts)
+}
+
+func (s *Service) ToggleDimmedWithWorkflowByLocator(locator TaskLocator, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.toggleDimmedWithWorkflow("", locator, opts)
+}
+
+func (s *Service) toggleDimmedWithWorkflow(taskID string, locator TaskLocator, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		return toggleDimmedTask(ref.Task)
 	})
 }

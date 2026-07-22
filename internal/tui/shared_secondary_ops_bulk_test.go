@@ -89,7 +89,10 @@ func TestFinishTaskBulkSelection(t *testing.T) {
 	status := ""
 	state := &MultiSelectState{
 		multiSelectMode: true,
-		selectedTasks:   map[string]bool{"task-1": true, "task-2": true},
+		selectedTaskIdentities: map[TaskIdentity]bool{
+			{ProjectID: "project", TaskID: "task-1"}: true,
+			{ProjectID: "project", TaskID: "task-2"}: true,
+		},
 	}
 
 	finishTaskBulkSelection(state, &status, "Changed 2 tasks")

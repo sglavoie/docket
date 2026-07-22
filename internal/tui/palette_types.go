@@ -232,7 +232,7 @@ type CommandPaletteModel struct {
 	compactMode bool
 
 	// Multi-select state for bulk actions on tasks
-	selectedTasks map[string]bool // Task IDs that are selected
+	selectedTasks map[TaskIdentity]bool
 }
 
 // searchTermGroup represents a group of OR-ed alternatives within a search term.

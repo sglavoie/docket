@@ -313,13 +313,13 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 
 	line := RenderCrossProjectTaskLine(task, dt.Project, m.runtime, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          taskIsNext(task),
-		DailyPlanned:    m.dailyPlanIDs[task.ID],
+		DailyPlanned:    m.dailyPlanIDs[taskIdentityFor(task, dt.Project)],
 		StatusBadge:     statusBadge,
 		HideLowPriority: true,
 		DueStr:          m.sectionContextStr(dt, section),
 		ShowRecurrence:  true,
 		ShowDescription: m.runtime.Machine().IsDescriptionColumnVisible(),
-		Prefix:          m.Checkbox(task.ID),
+		Prefix:          m.CheckboxTaskIdentity(taskIdentityFor(task, dt.Project)),
 		Flash:           m.cursorFlash,
 		Layout:          layout,
 		RowIndex:        rowIndex,

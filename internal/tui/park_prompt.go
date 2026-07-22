@@ -9,19 +9,20 @@ import (
 )
 
 type pendingParkNavigation struct {
-	sourceTaskID string
-	continueNav  func() tea.Cmd
+	source      TaskIdentity
+	continueNav func() tea.Cmd
 }
 
-func (m *AppModel) maybePromptPark(targetTaskID string, continueNav func() tea.Cmd) (tea.Cmd, bool) {
+func (m *AppModel) maybePromptPark(target TaskIdentity, continueNav func() tea.Cmd) (tea.Cmd, bool) {
 	mutation, ok := lastSessionMutation()
 	if !ok || mutation.TaskID == "" {
 		return continueNav(), false
 	}
-	if targetTaskID != "" && mutation.TaskID == targetTaskID {
+	source := TaskIdentity{ProjectID: mutation.ProjectID, TaskID: mutation.TaskID}
+	if target.Valid() && source == target {
 		return continueNav(), false
 	}
-	if wasParkPrompted(mutation.TaskID) {
+	if wasParkPrompted(source) {
 		return continueNav(), false
 	}
 
@@ -35,8 +36,8 @@ func (m *AppModel) maybePromptPark(targetTaskID string, continueNav func() tea.C
 	}
 
 	m.pendingParkNav = &pendingParkNavigation{
-		sourceTaskID: mutation.TaskID,
-		continueNav:  continueNav,
+		source:      source,
+		continueNav: continueNav,
 	}
 	parkInput := NewParkInputModel(task, project)
 	parkInput.promptMode = true
@@ -67,11 +68,11 @@ func (m *AppModel) finishPendingParkPrompt(msg ParkNoteDoneMsg) (bool, tea.Cmd) 
 		return false, nil
 	}
 
-	taskID := pending.sourceTaskID
-	if msg.Task != nil {
-		taskID = msg.Task.ID
+	identity := pending.source
+	if msg.Task != nil && msg.Project != nil {
+		identity = taskIdentityFor(msg.Task, msg.Project)
 	}
-	markParkPrompted(taskID)
+	markParkPrompted(identity)
 
 	if msg.Skipped || msg.Task == nil || msg.Project == nil {
 		return true, m.runPendingParkContinuation()

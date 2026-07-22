@@ -201,7 +201,7 @@ func TestRoadmapViewBudgetsWrappedFooterHeight(t *testing.T) {
 		runtime:    testRuntimeAt(cfg.DataDir(), cfg),
 		isGlobal:   true,
 		zoom:       ZoomWeek,
-		collapsed:  make(map[string]bool),
+		collapsed:  make(map[TaskIdentity]bool),
 		labelWidth: 30,
 		activeTab:  RoadmapTabTimeline,
 	}

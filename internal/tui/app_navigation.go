@@ -521,11 +521,11 @@ func (m *AppModel) popAndNavigateToTask(task *models.Task, project *models.Proje
 // the specified task. When task is nil it just opens the project view.
 // Returns a tea.Cmd if any notification needs to be shown (e.g. filters cleared).
 func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Project) tea.Cmd {
-	targetTaskID := ""
-	if task != nil {
-		targetTaskID = task.ID
+	target := TaskIdentity{}
+	if task != nil && project != nil {
+		target = taskIdentityFor(task, project)
 	}
-	cmd, _ := m.maybePromptPark(targetTaskID, func() tea.Cmd {
+	cmd, _ := m.maybePromptPark(target, func() tea.Cmd {
 		return m.navigateToTaskInProjectNow(task, project)
 	})
 	return cmd

@@ -90,8 +90,9 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 		for _, t := range project.Tasks {
 			taskIDs[t.ID] = true
 		}
-		domains.Planning.RemoveDurableTaskRefs(taskIDs)
-		domains.Machine.RemoveMachineLocalTaskRefs(taskIDs)
+		locators := configTaskLocatorsForProject(project.ID, taskIDs)
+		domains.Planning.RemoveDurableTaskLocators(locators)
+		domains.Machine.RemoveMachineLocalTaskLocators(locators)
 	}
 
 	// Archiving a project changes only catalog/config state (the archived flag, the

@@ -198,10 +198,10 @@ func TestSession6_TogglePlanTodayMsgRoutedThroughInboxHandler(t *testing.T) {
 	// ViewInboxProcessor before popping the palette.
 	app.views.Register(ViewInboxProcessor, processor)
 	if app.dailyPlanIDs == nil {
-		app.dailyPlanIDs = make(map[string]bool)
+		app.dailyPlanIDs = make(map[TaskIdentity]bool)
 	}
 	if app.focusQueueIDs == nil {
-		app.focusQueueIDs = make(map[string]bool)
+		app.focusQueueIDs = make(map[TaskIdentity]bool)
 	}
 	app.popView()
 	if app.currentView() != ViewInboxProcessor {

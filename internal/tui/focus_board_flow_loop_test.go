@@ -67,11 +67,11 @@ func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusB
 
 	today := time.Now().Format("2006-01-02")
 	dailyPlan := make([]FocusTask, 0, len(tasks))
-	dailyPlanIDs := make(map[string]bool, len(tasks))
+	dailyPlanIDs := make(map[TaskIdentity]bool, len(tasks))
 	planItems := make([]config.DailyPlanItem, 0, len(tasks))
 	for _, task := range tasks {
 		dailyPlan = append(dailyPlan, FocusTask{Task: task, Project: project})
-		dailyPlanIDs[task.ID] = true
+		dailyPlanIDs[taskIdentityFor(task, project)] = true
 		planItems = append(planItems, config.DailyPlanItem{
 			TaskID:      task.ID,
 			ProjectID:   project.ID,
@@ -85,7 +85,7 @@ func newFlowLoopFocusBoard(t *testing.T, statuses ...models.TaskStatus) (*FocusB
 	}
 
 	focusQueue := []FocusTask{}
-	m := NewFocusBoardModel(testRuntimeAt(cfg.DataDir(), cfg), nil, &dailyPlan, &focusQueue, map[string]bool{}, dailyPlanIDs, map[string]bool{})
+	m := NewFocusBoardModel(testRuntimeAt(cfg.DataDir(), cfg), nil, &dailyPlan, &focusQueue, map[TaskIdentity]bool{}, dailyPlanIDs, map[TaskIdentity]bool{})
 	m.tabs.Active = boardTabToday
 
 	// Wire the single-task coordinator over the real transactional stack rooted at

@@ -31,10 +31,11 @@ func (c *inboxCore) advanceToNext(autoClose bool) tea.Cmd {
 	// previous task out of the current slot).
 
 	for i := c.currentIndex + 1; i < c.backend.taskCount(); i++ {
-		task, _ := c.backend.taskRef(i)
-		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+		task, project := c.backend.taskRef(i)
+		identity := taskIdentityFor(task, project)
+		if !c.processedIDs[identity] && !c.skippedIDs[identity] {
 			c.currentIndex = i
-			c.pendingFocusID = task.ID
+			c.pendingFocus = identity
 			c.statusMessage = ""
 			return nil
 		}
@@ -43,10 +44,11 @@ func (c *inboxCore) advanceToNext(autoClose bool) tea.Cmd {
 	// Also search backward so that processing/skipping the last item does not
 	// close the session while earlier unprocessed items remain.
 	for i := 0; i < c.currentIndex; i++ {
-		task, _ := c.backend.taskRef(i)
-		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+		task, project := c.backend.taskRef(i)
+		identity := taskIdentityFor(task, project)
+		if !c.processedIDs[identity] && !c.skippedIDs[identity] {
 			c.currentIndex = i
-			c.pendingFocusID = task.ID
+			c.pendingFocus = identity
 			c.statusMessage = ""
 			return nil
 		}
@@ -67,41 +69,42 @@ func (c *inboxCore) advanceToNext(autoClose bool) tea.Cmd {
 func (c *inboxCore) goToPrevious() {
 	if c.currentIndex > 0 {
 		c.currentIndex--
-		if task, _ := c.currentTaskRef(); task != nil {
-			c.pendingFocusID = task.ID
+		if task, project := c.currentTaskRef(); task != nil {
+			c.pendingFocus = taskIdentityFor(task, project)
 		}
 		c.statusMessage = ""
 	}
 }
 
-// realignCurrentIndex repositions the cursor onto pendingFocusID after a
+// realignCurrentIndex repositions the cursor onto pendingFocus after a
 // rebuild. The task list shifts whenever a save triggers rebuildTasks (deleted
 // or section-changed tasks leave the queue), so the raw currentIndex no
-// longer points at the task the user expects. If pendingFocusID is set and
+// longer points at the task the user expects. If pendingFocus is valid and
 // matches a current task, we land on it; otherwise we clamp to the nearest
 // valid slot.
 func (c *inboxCore) realignCurrentIndex() {
-	if c.pendingFocusID != "" {
+	if c.pendingFocus.Valid() {
 		for i := 0; i < c.backend.taskCount(); i++ {
-			task, _ := c.backend.taskRef(i)
-			if task.ID == c.pendingFocusID {
+			task, project := c.backend.taskRef(i)
+			if taskIdentityFor(task, project) == c.pendingFocus {
 				c.currentIndex = i
-				c.pendingFocusID = ""
+				c.pendingFocus = TaskIdentity{}
 				return
 			}
 		}
-		c.pendingFocusID = ""
+		c.pendingFocus = TaskIdentity{}
 	}
 	c.clampCurrentIndex()
 }
 
 func (c *inboxCore) skipCurrent() tea.Cmd {
-	task, _ := c.currentTaskRef()
+	task, project := c.currentTaskRef()
 	if task != nil {
-		c.skippedIDs[task.ID] = true
-		delete(c.processedIDs, task.ID)
+		identity := taskIdentityFor(task, project)
+		c.skippedIDs[identity] = true
+		delete(c.processedIDs, identity)
 		// Record without a snapshot — skip mutates no task state, so undo only
-		// needs to remove the ID from skippedIDs and refocus.
+		// needs to remove the identity from skippedIDs and refocus.
 		c.recordAction("skip", nil)
 		c.statusMessage = fmt.Sprintf("Skipped task #%d", task.ShortID)
 		return c.advanceToNext(true)
@@ -119,8 +122,9 @@ func (c *inboxCore) getProgressStats() (processed, skipped, remaining, total int
 	processed = len(c.processedIDs)
 	skipped = len(c.skippedIDs)
 	for i := 0; i < c.backend.taskCount(); i++ {
-		task, _ := c.backend.taskRef(i)
-		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+		task, project := c.backend.taskRef(i)
+		identity := taskIdentityFor(task, project)
+		if !c.processedIDs[identity] && !c.skippedIDs[identity] {
 			remaining++
 		}
 	}

@@ -32,7 +32,7 @@ func deliverInboxDeleteResult(m *AppModel, msg BatchTransactionResultMsg) tea.Cm
 	for _, pid := range msg.TouchedProjectIDs {
 		m.reloadProjectByID(pid)
 	}
-	return m.applyPendingInboxDelete(msg.DeleteRequestToken, msg.RemovedTaskIDs)
+	return m.applyPendingInboxDelete(msg.DeleteRequestToken, msg.RemovedTaskLocators, msg.RemovedTaskIDs)
 }
 
 // inboxCloseCounts runs each command and reports how many local/global inbox
@@ -93,9 +93,12 @@ func TestInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newInboxDeleteEnv(t)
 			idA, idB, idC := e.tasks[0].ID, e.tasks[1].ID, e.tasks[2].ID
+			identityA := TaskIdentity{ProjectID: e.project.ID, TaskID: idA}
+			identityB := TaskIdentity{ProjectID: e.project.ID, TaskID: idB}
+			identityC := TaskIdentity{ProjectID: e.project.ID, TaskID: idC}
 
 			// Skip C so A and B are the final two unprocessed inbox tasks.
-			e.processor.skippedIDs[idC] = true
+			e.processor.skippedIDs[identityC] = true
 
 			matchingA := confirmInboxDeleteAt(t, e, 0)
 			matchingB := confirmInboxDeleteAt(t, e, 1)
@@ -117,7 +120,7 @@ func TestInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
 			if processed != 2 || skipped != 1 {
 				t.Errorf("close counts = (processed=%d skipped=%d), want (2 1)", processed, skipped)
 			}
-			if !e.processor.processedIDs[idA] || !e.processor.processedIDs[idB] {
+			if !e.processor.processedIDs[identityA] || !e.processor.processedIDs[identityB] {
 				t.Errorf("both deleted tasks should be marked processed, got %v", e.processor.processedIDs)
 			}
 			if len(e.processor.pendingDeletes) != 0 {
@@ -155,12 +158,12 @@ func TestGlobalInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
 			e.m.views.Register(ViewGlobalInboxProcessor, gp)
 			e.m.pushView(ViewGlobalInboxProcessor)
 
-			idA := gp.inboxTasks[0].Task.ID
-			idB := gp.inboxTasks[1].Task.ID
-			idC := gp.inboxTasks[2].Task.ID
+			identityA := taskIdentityFor(gp.inboxTasks[0].Task, gp.inboxTasks[0].Project)
+			identityB := taskIdentityFor(gp.inboxTasks[1].Task, gp.inboxTasks[1].Project)
+			identityC := taskIdentityFor(gp.inboxTasks[2].Task, gp.inboxTasks[2].Project)
 
 			// Skip C so A and B are the final two unprocessed tasks in the queue.
-			gp.skippedIDs[idC] = true
+			gp.skippedIDs[identityC] = true
 
 			matchingA := confirmGlobalInboxDeleteAt(t, e.m, gp, 0)
 			matchingB := confirmGlobalInboxDeleteAt(t, e.m, gp, 1)
@@ -182,7 +185,7 @@ func TestGlobalInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
 			if processed != 2 || skipped != 1 {
 				t.Errorf("close counts = (processed=%d skipped=%d), want (2 1)", processed, skipped)
 			}
-			if !gp.processedIDs[idA] || !gp.processedIDs[idB] {
+			if !gp.processedIDs[identityA] || !gp.processedIDs[identityB] {
 				t.Errorf("both deleted tasks should be marked processed, got %v", gp.processedIDs)
 			}
 			if len(gp.pendingDeletes) != 0 {
@@ -202,9 +205,11 @@ func TestGlobalInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
 func TestInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	idA, idB, idC := e.tasks[0].ID, e.tasks[1].ID, e.tasks[2].ID
+	identityA := TaskIdentity{ProjectID: e.project.ID, TaskID: idA}
+	identityC := TaskIdentity{ProjectID: e.project.ID, TaskID: idC}
 
 	// Skip C so A and B are the final two unprocessed inbox tasks.
-	e.processor.skippedIDs[idC] = true
+	e.processor.skippedIDs[identityC] = true
 
 	// A commits (real transaction); B is armed but never committed, so it stays on
 	// disk and its result arrives as a rejection.
@@ -221,7 +226,7 @@ func TestInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses(t *testing.T) 
 	if closes != 0 {
 		t.Fatalf("the processor must stay open while the other delete is in flight, got %d closes", closes)
 	}
-	if !e.processor.processedIDs[idA] {
+	if !e.processor.processedIDs[identityA] {
 		t.Error("the committed delete should be marked processed")
 	}
 
@@ -280,10 +285,10 @@ func TestGlobalInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses(t *testi
 	e.m.views.Register(ViewGlobalInboxProcessor, gp)
 	e.m.pushView(ViewGlobalInboxProcessor)
 
-	idA := gp.inboxTasks[0].Task.ID
 	idB := gp.inboxTasks[1].Task.ID
-	idC := gp.inboxTasks[2].Task.ID
-	gp.skippedIDs[idC] = true
+	identityA := taskIdentityFor(gp.inboxTasks[0].Task, gp.inboxTasks[0].Project)
+	identityC := taskIdentityFor(gp.inboxTasks[2].Task, gp.inboxTasks[2].Project)
+	gp.skippedIDs[identityC] = true
 
 	matchingA := confirmGlobalInboxDeleteAt(t, e.m, gp, 0)
 	tokenB := armInboxDeleteNoCommit(t, e.m, &gp.inboxCore, 1)
@@ -296,7 +301,7 @@ func TestGlobalInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses(t *testi
 	if closes != 0 {
 		t.Fatalf("the global processor must stay open while the other delete is in flight, got %d closes", closes)
 	}
-	if !gp.processedIDs[idA] {
+	if !gp.processedIDs[identityA] {
 		t.Error("the committed delete should be marked processed")
 	}
 

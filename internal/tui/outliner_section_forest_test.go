@@ -55,7 +55,7 @@ func TestOutlinerAllGroupsEachTaskByOwnSection(t *testing.T) {
 	}
 
 	// A fold in Next must not hide the Inbox subtree.
-	m.expandedNodes[parent.ID] = false
+	m.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
 	m.rebuildRows()
 	if findTaskRow(m.rows, child.ID) < 0 || findTaskRow(m.rows, grandchild.ID) < 0 {
 		t.Fatal("cross-section Inbox descendants disappeared when Next parent was folded")

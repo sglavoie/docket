@@ -2,10 +2,10 @@ package tui
 
 import "github.com/sglavoie/tt/internal/app"
 
-// clearBulkTaskSelectionsForTaskIDs is the ID-list entry point the async batch
-// result path uses: the shell knows only the committed task IDs, not the live
-// refs, so it clears every view's multiselect keyed by ID after a successful
-// commit.
+// clearBulkTaskSelectionsForTaskIDs is the compatibility entry point for async
+// results that lack project-qualified locators. It clears identity-keyed state
+// only when each matching task ID belongs to one selected project; ambiguous
+// duplicate-ID selections are left intact.
 func (m *AppModel) clearBulkTaskSelectionsForTaskIDs(ids []string) {
 	m.clearBulkTaskSelectionsForTaskIDSet(taskIDSliceToSet(ids))
 }
@@ -15,12 +15,10 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 		return
 	}
 	set := make(map[TaskIdentity]bool, len(locators))
-	legacyIDs := make(map[string]bool, len(locators))
 	for _, locator := range locators {
-		identity := TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
+		identity := taskIdentityFromLocator(locator)
 		if identity.Valid() {
 			set[identity] = true
-			legacyIDs[identity.TaskID] = true
 		}
 	}
 	clearOutliner := func(outliner *OutlinerModel) {
@@ -29,9 +27,6 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 		}
 		for identity := range set {
 			delete(outliner.selectedTaskIdentities, identity)
-			if outliner.project == nil || outliner.project.ID == identity.ProjectID {
-				delete(outliner.selectedTasks, identity.TaskID)
-			}
 		}
 		if outliner.SelectedCount() == 0 {
 			outliner.clearMultiSelect()
@@ -48,11 +43,28 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 			}
 		}
 	}
-	// Review views still use their single-ID selection state; their row models
-	// already carry project identity into the request, and a successful batch
-	// consumes the whole selection.
 	for _, vt := range []PresentationID{ViewDailyReview, ViewWeeklyReview} {
-		m.clearViewBulkTaskSelectionForRefs(vt, legacyIDs)
+		m.clearViewBulkTaskSelectionForIdentities(vt, set)
+	}
+}
+
+func (m *AppModel) clearViewBulkTaskSelectionForIdentities(vt PresentationID, selected map[TaskIdentity]bool) {
+	if m.views == nil {
+		return
+	}
+	clearSelected := func(state *MultiSelectState) {
+		for identity := range selected {
+			state.DeselectTaskIdentity(identity)
+		}
+		if state.SelectedCount() == 0 {
+			state.ExitMultiSelect()
+		}
+	}
+	switch view := m.views.Get(vt).(type) {
+	case *DailyReviewModel:
+		clearSelected(&view.MultiSelectState)
+	case *WeeklyReviewModel:
+		clearSelected(&view.MultiSelectState)
 	}
 }
 
@@ -111,15 +123,22 @@ func taskIDSliceToSet(ids []string) map[string]bool {
 }
 
 func multiSelectStateHasTaskID(state *MultiSelectState, selectedIDs map[string]bool) bool {
-	if state == nil || len(state.selectedTasks) == 0 {
+	if state == nil {
 		return false
 	}
-	for id := range state.selectedTasks {
-		if selectedIDs[id] {
-			return true
+	matchedProjects := make(map[string]string, len(selectedIDs))
+	for identity := range state.selectedTaskIdentities {
+		if !selectedIDs[identity.TaskID] {
+			continue
 		}
+		if projectID, matched := matchedProjects[identity.TaskID]; matched && projectID != identity.ProjectID {
+			// An ID-only result cannot identify which duplicate selection committed.
+			// Leave the selection intact instead of clearing both projects.
+			return false
+		}
+		matchedProjects[identity.TaskID] = identity.ProjectID
 	}
-	return false
+	return len(matchedProjects) > 0
 }
 
 func clearMultiSelectStateForTaskIDs(state *MultiSelectState, selectedIDs map[string]bool) bool {

@@ -4,6 +4,9 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleArchiveCompletedTasks archives completed tasks from msg.Project if set,
@@ -23,10 +26,12 @@ func (m *AppModel) handleArchiveCompletedTasks(msg ArchiveCompletedTasksMsg) (bo
 	}
 
 	cmd := func() tea.Msg {
-		completedCount := project.CountCompletedTasks()
+		completedTasks := project.GetCompletedTasks()
+		completedCount := len(completedTasks)
 		if completedCount == 0 {
 			return TasksArchivedMsg{Count: 0}
 		}
+		archivedLocators := taskLocatorsForProjectTasks(project.ID, completedTasks)
 
 		// Record undo snapshot before archiving
 		if undoDepth > 0 {
@@ -48,7 +53,7 @@ func (m *AppModel) handleArchiveCompletedTasks(msg ArchiveCompletedTasksMsg) (bo
 		// Reload project
 		_ = persister.Load(project)
 
-		return TasksArchivedMsg{Count: count}
+		return TasksArchivedMsg{Count: count, ArchivedTaskLocators: archivedLocators}
 	}
 
 	return true, cmd
@@ -63,13 +68,15 @@ func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
 	cmd := func() tea.Msg {
 		totalArchived := 0
 		projectsAffected := 0
+		var archivedLocators []app.TaskLocator
 
 		for _, project := range projects {
 			if err := persister.Load(project); err != nil {
 				continue
 			}
 
-			if project.CountCompletedTasks() == 0 {
+			completedTasks := project.GetCompletedTasks()
+			if len(completedTasks) == 0 {
 				continue
 			}
 
@@ -84,6 +91,7 @@ func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
 
 			totalArchived += count
 			projectsAffected++
+			archivedLocators = append(archivedLocators, taskLocatorsForProjectTasks(project.ID, completedTasks)...)
 		}
 
 		// Reload current project if it was affected
@@ -91,8 +99,18 @@ func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
 			_ = persister.Load(currentProject)
 		}
 
-		return TasksArchivedMsg{Count: totalArchived, Projects: projectsAffected}
+		return TasksArchivedMsg{Count: totalArchived, Projects: projectsAffected, ArchivedTaskLocators: archivedLocators}
 	}
 
 	return true, cmd
+}
+
+func taskLocatorsForProjectTasks(projectID string, tasks []*models.Task) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(tasks))
+	for _, task := range tasks {
+		if projectID != "" && task != nil && task.ID != "" {
+			locators = append(locators, app.TaskLocator{ProjectID: projectID, TaskID: task.ID})
+		}
+	}
+	return locators
 }

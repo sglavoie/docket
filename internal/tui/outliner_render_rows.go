@@ -178,7 +178,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		}
 	}
 	cursorPrefix := RenderCursorPrefix(selected, task.Pinned, task.Dimmed)
-	queueIndicator := m.renderTaskQueueIndicator(task)
+	queueIndicator := m.renderTaskQueueIndicator(task, proj)
 	checkbox := m.renderTaskCheckbox(row)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
 	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator)
@@ -247,7 +247,11 @@ func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
 	if task == nil || !row.hasVisibleChildren {
 		return ""
 	}
-	if m.isExpanded(task.ID) {
+	identity := TaskIdentity{ProjectID: row.ProjectID, TaskID: task.ID}
+	if identity.ProjectID == "" && m.project != nil {
+		identity.ProjectID = m.project.ID
+	}
+	if m.isExpanded(identity) {
 		return MutedStyle.Render(IconExpanded) + " "
 	}
 	return MutedStyle.Render(IconCollapsed) + " "
@@ -373,8 +377,8 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.P
 	return JoinGroupParts(contentParts...)
 }
 
-func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task) string {
-	if m.dailyPlanIDs[task.ID] {
+func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task, project *models.Project) string {
+	if m.dailyPlanIDs[taskIdentityFor(task, project)] {
 		return ActiveStyle.Render("w") + " "
 	}
 	if taskIsNext(task) {

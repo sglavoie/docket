@@ -128,6 +128,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// commits atomically, revision-checked, and undoably via the workspace ledger.
 	// The adapter keeps flag parsing, read-only prechecks, and presentation.
 	svc := newWorkspaceAppService(workspace)
+	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 
 	// Handle --skip flag
 	if taskRecurSkip {
@@ -135,7 +136,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
 		res, skipErr := withResultRetry(func() (app.RecurrenceResult, error) {
-			return svc.SkipRecurrence(task.ID)
+			return svc.SkipRecurrenceByLocator(locator)
 		})
 		if skipErr != nil {
 			return translateAppError(skipErr)
@@ -158,7 +159,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
 		res, deferErr := withResultRetry(func() (app.RecurrenceResult, error) {
-			return svc.DeferRecurrence(task.ID, taskRecurDefer)
+			return svc.DeferRecurrenceByLocator(locator, taskRecurDefer)
 		})
 		if deferErr != nil {
 			return translateAppError(deferErr)
@@ -185,7 +186,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return nil
 		}
 		res, clearErr := withResultRetry(func() (app.RecurrenceResult, error) {
-			return svc.ClearRecurrence(task.ID)
+			return svc.ClearRecurrenceByLocator(locator)
 		})
 		if clearErr != nil {
 			return translateAppError(clearErr)
@@ -206,7 +207,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			// --from alone: update mode on existing recurrence
 			oldPattern := task.Recurrence.String()
 			res, modeErr := withResultRetry(func() (app.RecurrenceResult, error) {
-				return svc.SetRecurrenceMode(task.ID, recurMode)
+				return svc.SetRecurrenceModeByLocator(locator, recurMode)
 			})
 			if modeErr != nil {
 				return translateAppError(modeErr)
@@ -278,7 +279,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	res, setErr := withResultRetry(func() (app.RecurrenceResult, error) {
-		return svc.SetRecurrence(task.ID, pattern)
+		return svc.SetRecurrenceByLocator(locator, pattern)
 	})
 	if setErr != nil {
 		return translateAppError(setErr)

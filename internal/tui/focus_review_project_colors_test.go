@@ -82,7 +82,7 @@ func TestFocusBoardProjectColorPreservesRowSemantics(t *testing.T) {
 	m := newTestFocusBoard()
 	m.SetSize(100, 24)
 	m.tabs.Active = boardTabToday
-	m.carriedOverIDs[task.ID] = true
+	m.carriedOverIDs[taskIdentityFor(task, project)] = true
 
 	row := boardRow{Task: task, Project: project, Source: project.Name}
 	wantBadge := projectColorStyle(project).Render("[Focus]")
@@ -193,7 +193,7 @@ func TestRecentActivityColorsOnlyGlobalRowsAndPreviews(t *testing.T) {
 	item := CrossProjectTask{Task: task, Project: project}
 	fallbackItem := CrossProjectTask{Task: task, Project: &unassigned}
 
-	global := &RecentActivityModel{runtime: runtime, queueIDs: map[string]bool{}, dailyPlanIDs: map[string]bool{}}
+	global := &RecentActivityModel{runtime: runtime, queueIDs: map[TaskIdentity]bool{}, dailyPlanIDs: map[TaskIdentity]bool{}}
 	global.SetSize(120, 24)
 	globalLine := global.renderTaskLine(item, false, nil, 0)
 	if want := projectColorStyle(project).Render("[Activity]"); !strings.Contains(globalLine, want) {
@@ -202,8 +202,8 @@ func TestRecentActivityColorsOnlyGlobalRowsAndPreviews(t *testing.T) {
 
 	local := &RecentActivityModel{
 		runtime:      runtime,
-		queueIDs:     map[string]bool{},
-		dailyPlanIDs: map[string]bool{},
+		queueIDs:     map[TaskIdentity]bool{},
+		dailyPlanIDs: map[TaskIdentity]bool{},
 		projectScope: project,
 	}
 	local.SetSize(120, 24)

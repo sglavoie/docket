@@ -19,7 +19,7 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
-		cmd, _ := m.maybePromptPark("", func() tea.Cmd {
+		cmd, _ := m.maybePromptPark(TaskIdentity{}, func() tea.Cmd {
 			return m.selectProjectNow(msg.Project)
 		})
 		return true, cmd
@@ -62,6 +62,15 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, m.confirmProjectArchive()
 
 	case ProjectArchivedMsg:
+		archivedLocators := make([]config.ProjectTaskLocator, 0)
+		if msg.Project != nil {
+			archivedLocators = make([]config.ProjectTaskLocator, 0, len(msg.Project.Tasks))
+			for _, task := range msg.Project.Tasks {
+				if task != nil && task.ID != "" {
+					archivedLocators = append(archivedLocators, config.ProjectTaskLocator{ProjectID: msg.Project.ID, TaskID: task.ID})
+				}
+			}
+		}
 		popCmd := m.popView()
 		domains := cloneRuntimeDomains(m.runtime)
 		if msg.Project != nil {
@@ -75,13 +84,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.currentProject = nil
 		}
 		// Clean up config references for tasks in the archived project
-		if msg.Project != nil {
-			taskIDs := make(map[string]bool, len(msg.Project.Tasks))
-			for _, t := range msg.Project.Tasks {
-				taskIDs[t.ID] = true
-			}
-			domains.Planning.RemoveDurableTaskRefs(taskIDs)
-			domains.Machine.RemoveMachineLocalTaskRefs(taskIDs)
+		if len(archivedLocators) > 0 {
+			domains.Planning.RemoveDurableTaskLocators(archivedLocators)
+			domains.Machine.RemoveMachineLocalTaskLocators(archivedLocators)
 		}
 		if err := m.commitRuntimeDomains(domains); err != nil {
 			m.err = err
@@ -423,6 +428,17 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	}
 
 	if archive {
+		// Dashboard/catalog project snapshots may not have their computed task list
+		// loaded. Resolve it before flipping the archive flag so the completion
+		// message can carry every project-qualified cleanup target.
+		if project.Tasks == nil {
+			if m.persister == nil {
+				return errorCmd("cannot archive project: project storage is unavailable")
+			}
+			if err := m.persister.Load(project); err != nil {
+				return errorCmd("cannot archive project: %v", err)
+			}
+		}
 		project.Archive()
 		return func() tea.Msg {
 			return ProjectArchivedMsg{Project: project}

@@ -54,11 +54,13 @@ type AlertSnapshot struct {
 }
 
 // DismissalKey returns a stable identity string for this alert, used to track
-// dismissals across sessions. The key is built from category + the most specific
-// identifier available: taskID for task-specific alerts, projectID for
-// project-level alerts, or category alone for singletons like review reminders.
+// dismissals across sessions. Task-specific keys include their owning project
+// so duplicate task UUIDs in different projects remain independent.
 func (a Alert) DismissalKey() string {
 	if a.TaskID != "" {
+		if a.ProjectID != "" {
+			return string(a.Category) + ":" + a.ProjectID + ":" + a.TaskID
+		}
 		return string(a.Category) + ":" + a.TaskID
 	}
 	if a.ProjectID != "" {

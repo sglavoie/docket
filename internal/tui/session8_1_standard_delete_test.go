@@ -60,7 +60,10 @@ func TestWeeklyReviewUppercaseXDeleteTargetsSelection(t *testing.T) {
 	m := &WeeklyReviewModel{
 		MultiSelectState: MultiSelectState{
 			multiSelectMode: true,
-			selectedTasks:   map[string]bool{tasks[1].ID: true, tasks[2].ID: true},
+			selectedTaskIdentities: map[TaskIdentity]bool{
+				taskIdentityFor(tasks[1], project): true,
+				taskIdentityFor(tasks[2], project): true,
+			},
 		},
 		staleTasks: []WeeklyReviewTask{
 			{Task: tasks[0], Project: project},
@@ -89,7 +92,10 @@ func TestDailyReviewUppercaseXDeleteTargetsSelection(t *testing.T) {
 	m := &DailyReviewModel{
 		MultiSelectState: MultiSelectState{
 			multiSelectMode: true,
-			selectedTasks:   map[string]bool{tasks[0].ID: true, tasks[2].ID: true},
+			selectedTaskIdentities: map[TaskIdentity]bool{
+				taskIdentityFor(tasks[0], project): true,
+				taskIdentityFor(tasks[2], project): true,
+			},
 		},
 		overdue: []CrossProjectTask{
 			{Task: tasks[0], Project: project},

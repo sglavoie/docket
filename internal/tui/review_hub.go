@@ -79,8 +79,8 @@ type ReviewHubModel struct {
 	roadmap         *RoadmapModel
 	roadmapScopeID  string
 
-	queueIDs     map[string]bool
-	dailyPlanIDs map[string]bool
+	queueIDs     map[TaskIdentity]bool
+	dailyPlanIDs map[TaskIdentity]bool
 }
 
 func NewReviewHubModel(runtime *config.RuntimeState, manager *config.Manager, wire func(View)) *ReviewHubModel {
@@ -324,7 +324,7 @@ func (m *ReviewHubModel) Module() ReviewModule { return m.module }
 
 func (m *ReviewHubModel) ProjectScope() *models.Project { return m.project }
 
-func (m *ReviewHubModel) SetPlanningIndicators(queueIDs, dailyPlanIDs map[string]bool) {
+func (m *ReviewHubModel) SetPlanningIndicators(queueIDs, dailyPlanIDs map[TaskIdentity]bool) {
 	m.queueIDs, m.dailyPlanIDs = queueIDs, dailyPlanIDs
 	if m.daily != nil {
 		m.daily.queueIDs, m.daily.dailyPlanIDs = queueIDs, dailyPlanIDs

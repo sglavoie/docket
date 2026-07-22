@@ -86,13 +86,15 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Clean the DURABLE planning refs (Focus Queue, Daily Plan, dismissals) of every
+	locatorsToDelete := configTaskLocatorsForProject(project.ID, idsToDelete)
+
+	// Clean the DURABLE planning refs (Focus Queue and Daily Plan) of every
 	// deleted task and fold them into the delete transaction as a config artifact, so
 	// a partial delete can never leave planning refs pointing at a removed task. The
 	// machine-local recent visits are intentionally excluded here and repaired
 	// separately after a successful commit.
 	var artifacts []storage.ArtifactChange
-	if domains.Planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
+	if domains.Planning.RemoveDurableTaskLocators(locatorsToDelete) > 0 {
 		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
@@ -105,14 +107,14 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	// durable planning artifact all commit as ONE transaction, revision-checked and
 	// undoable through the workspace ledger.
 	svc := newWorkspaceAppService(workspace)
-	if _, err := svc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, artifacts...); err != nil {
+	if _, err := svc.Delete(app.DeleteRequest{Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, Confirm: true}, artifacts...); err != nil {
 		return translateAppError(err)
 	}
 
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the delete is already committed and recent visits are best-effort.
-	if domains.Machine.RemoveMachineLocalTaskRefs(idsToDelete) > 0 {
+	if domains.Machine.RemoveMachineLocalTaskLocators(locatorsToDelete) > 0 {
 		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}

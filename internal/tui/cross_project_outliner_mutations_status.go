@@ -25,7 +25,7 @@ func (m *OutlinerModel) crossHandleStateMutation(state models.WorkflowState) (te
 		model, cmd := m.crossApplyBulkStateChange(state)
 		return model, cmd, true
 	}
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return m, nil, true
 	}
@@ -34,7 +34,7 @@ func (m *OutlinerModel) crossHandleStateMutation(state models.WorkflowState) (te
 	// toast via handleTransactionResult. The completion-flash is the sole
 	// preserved view-local behavior — the per-key mutation flash for non-terminal
 	// transitions was dropped for the migrated cross handlers.
-	cmd := m.taskItem.TransitionWorkflow(row.task.ID, state, m.singleWorkflowOpts(row.task, StateVerb(state)+" Task"), nil)
+	cmd := m.taskItem.TransitionWorkflow(taskIdentityFor(row.task, project), state, m.singleWorkflowOpts(row.task, StateVerb(state)+" Task"), nil)
 	if state == models.StateDone {
 		m.setCompletionFlash()
 		return m, tea.Batch(cmd, completionFlashScheduler()), true

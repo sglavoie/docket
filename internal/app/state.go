@@ -9,8 +9,11 @@ import (
 
 // StateRequest asks to move a task to a target workflow state.
 type StateRequest struct {
-	// TaskID identifies the task to transition. Required.
+	// TaskID identifies the task to transition when it is workspace-unique.
 	TaskID string
+	// Locator is the project-qualified alternative to TaskID. The two fields are
+	// mutually exclusive.
+	Locator TaskLocator
 	// Target is the destination workflow state.
 	Target models.WorkflowState
 	// PlanningArtifacts, when set, folds the durable planning reconciliation the
@@ -33,7 +36,7 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if !target.IsValid() {
 		return TaskResult{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", target))
 	}
-	ref, snap, revision, err := s.loadTask(req.TaskID)
+	ref, snap, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -86,6 +89,11 @@ func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtif
 // dependencies or is already terminal.
 func (s *Service) Complete(taskID string) (TaskResult, error) {
 	return s.Transition(StateRequest{TaskID: taskID, Target: models.StateDone})
+}
+
+// CompleteByLocator completes one explicitly project-qualified task.
+func (s *Service) CompleteByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.Transition(StateRequest{Locator: locator, Target: models.StateDone})
 }
 
 // childrenCompletionGuard rejects a terminal transition (done or canceled) of a

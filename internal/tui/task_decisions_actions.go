@@ -28,7 +28,7 @@ func (m *TaskDecisionsModel) saveDecision() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Decisions) - 1
 
-	return commitTaskItemMutation(m.project, task, m.coordinator.AddDecision(task.ID, text, rationale, category), func(fresh *models.Task) tea.Msg {
+	return commitTaskItemMutation(m.project, task, m.coordinator.AddDecision(taskIdentityFor(task, m.project), text, rationale, category), func(fresh *models.Task) tea.Msg {
 		return DecisionAddedMsg{Task: fresh}
 	})
 }
@@ -87,7 +87,7 @@ func (m *TaskDecisionsModel) saveEditedDecision() tea.Cmd {
 	m.cancelEditMode()
 	m.err = nil
 
-	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditDecision(m.task.ID, editIndex, text, rationale, &category), func(fresh *models.Task) tea.Msg {
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditDecision(taskIdentityFor(m.task, m.project), editIndex, text, rationale, &category), func(fresh *models.Task) tea.Msg {
 		return DecisionEditedMsg{Task: fresh}
 	})
 }
@@ -113,7 +113,7 @@ func (m *TaskDecisionsModel) editInExternalEditor() tea.Cmd {
 
 		task.Decisions[editIndex].Text = newText
 		task.Decisions[editIndex].Rationale = newRationale
-		return commitTaskItemMutation(project, task, coordinator.EditDecision(task.ID, editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
+		return commitTaskItemMutation(project, task, coordinator.EditDecision(taskIdentityFor(task, project), editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
 			return DecisionEditedMsg{Task: fresh}
 		})()
 	})
@@ -139,7 +139,7 @@ func (m *TaskDecisionsModel) addDecisionInExternalEditor() tea.Cmd {
 		}
 
 		task.AddDecision(newText, newRationale, category)
-		return commitTaskItemMutation(project, task, coordinator.AddDecision(task.ID, newText, newRationale, category), func(fresh *models.Task) tea.Msg {
+		return commitTaskItemMutation(project, task, coordinator.AddDecision(taskIdentityFor(task, project), newText, newRationale, category), func(fresh *models.Task) tea.Msg {
 			return DecisionAddedMsg{Task: fresh}
 		})()
 	})
@@ -192,7 +192,7 @@ func (m *TaskDecisionsModel) editDecisionInExternalEditorFromEditMode() tea.Cmd 
 
 		task.Decisions[editIndex].Text = newText
 		task.Decisions[editIndex].Rationale = newRationale
-		return commitTaskItemMutation(project, task, coordinator.EditDecision(task.ID, editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
+		return commitTaskItemMutation(project, task, coordinator.EditDecision(taskIdentityFor(task, project), editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
 			return DecisionEditedMsg{Task: fresh}
 		})()
 	})

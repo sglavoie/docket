@@ -7,36 +7,17 @@ import "fmt"
 // common fields and basic selection operations.
 type MultiSelectState struct {
 	multiSelectMode        bool
-	selectedTasks          map[string]bool
 	selectedTaskIdentities map[TaskIdentity]bool
-}
-
-// ToggleSelection toggles the selection state of a task by ID.
-func (s *MultiSelectState) ToggleSelection(id string) {
-	if s.selectedTasks[id] {
-		delete(s.selectedTasks, id)
-	} else {
-		if s.selectedTasks == nil {
-			s.selectedTasks = make(map[string]bool)
-		}
-		s.selectedTasks[id] = true
-	}
 }
 
 // ClearSelection resets all selections without changing multiSelectMode.
 func (s *MultiSelectState) ClearSelection() {
-	s.selectedTasks = make(map[string]bool)
 	s.selectedTaskIdentities = make(map[TaskIdentity]bool)
-}
-
-// IsSelected returns true if the given task ID is selected.
-func (s *MultiSelectState) IsSelected(id string) bool {
-	return s.selectedTasks[id]
 }
 
 // SelectedCount returns the number of currently selected items.
 func (s *MultiSelectState) SelectedCount() int {
-	return len(s.selectedTasks) + len(s.selectedTaskIdentities)
+	return len(s.selectedTaskIdentities)
 }
 
 // IsMultiSelectActive reports whether multi-select mode is on. Used by the
@@ -83,6 +64,18 @@ func (s *MultiSelectState) IsTaskIdentitySelected(id TaskIdentity) bool {
 	return id.Valid() && s.selectedTaskIdentities[id]
 }
 
+// CheckboxTaskIdentity renders an identity-safe multi-select marker for
+// cross-project task lists.
+func (s *MultiSelectState) CheckboxTaskIdentity(id TaskIdentity) string {
+	if !s.multiSelectMode {
+		return ""
+	}
+	if s.IsTaskIdentitySelected(id) {
+		return "[x] "
+	}
+	return "[ ] "
+}
+
 // ToggleMode enters or exits multi-select mode. On entry, statusMsg is set to
 // enterMsg. On exit, selections are cleared and statusMsg is set to empty.
 func (s *MultiSelectState) ToggleMode(statusMsg *string, enterMsg string) {
@@ -95,14 +88,6 @@ func (s *MultiSelectState) ToggleMode(statusMsg *string, enterMsg string) {
 	}
 }
 
-// ToggleAndUpdateStatus toggles one task's selection, then updates the status
-// message. noSelMsg is shown when no tasks are selected; withSelFmt (containing
-// one %d verb) is used when at least one task is selected.
-func (s *MultiSelectState) ToggleAndUpdateStatus(id string, statusMsg *string, noSelMsg, withSelFmt string) {
-	s.ToggleSelection(id)
-	s.UpdateStatus(statusMsg, noSelMsg, withSelFmt)
-}
-
 // UpdateStatus sets the status message based on current selection count.
 // noSelMsg is used when count is 0; withSelFmt (with one %d) when count > 0.
 func (s *MultiSelectState) UpdateStatus(statusMsg *string, noSelMsg, withSelFmt string) {
@@ -112,18 +97,6 @@ func (s *MultiSelectState) UpdateStatus(statusMsg *string, noSelMsg, withSelFmt 
 	} else {
 		*statusMsg = fmt.Sprintf(withSelFmt, count)
 	}
-}
-
-// Checkbox returns "[x] " if id is selected, "[ ] " if not, or "" when not in
-// multi-select mode. Use this to prepend a selection indicator to task lines.
-func (s *MultiSelectState) Checkbox(id string) string {
-	if !s.multiSelectMode {
-		return ""
-	}
-	if s.selectedTasks[id] {
-		return "[x] "
-	}
-	return "[ ] "
 }
 
 // FinishBulk exits multi-select mode and sets the status message to msg.

@@ -37,7 +37,7 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	if task.Priority == priority {
 		return nil, true
 	}
-	cmd := v.singleTaskCoordinator().SetPriority(task.ID, priority)
+	cmd := v.singleTaskCoordinator().SetPriority(taskIdentityFor(task, project), priority)
 	msg := cmd()
 	if em, ok := msg.(TransactionErrorMsg); ok {
 		return func() tea.Msg { return ErrorMsg{Err: em.Err} }, true
@@ -72,11 +72,11 @@ func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 				v.setStatusMessage("Task has no due date")
 				return nil, true
 			}
-			cmd = v.singleTaskCoordinator().SetDueDate(task.ID, nil, false)
+			cmd = v.singleTaskCoordinator().SetDueDate(taskIdentityFor(task, project), nil, false)
 			recordCmd = recordRepeatClearDueDate()
 		} else {
 			due, _ := dueDateFromDays(days, false)
-			cmd = v.singleTaskCoordinator().SetDueDate(task.ID, due, false)
+			cmd = v.singleTaskCoordinator().SetDueDate(taskIdentityFor(task, project), due, false)
 			recordCmd = recordRepeatQuickDueDate(days)
 		}
 		msg := cmd()
@@ -265,9 +265,9 @@ func handleToggleKey(v prefixableView, spec toggleSpec, undoAction, bulkLabel st
 	var cmd tea.Cmd
 	switch spec.kind {
 	case toggleFlagPinned:
-		cmd = v.singleTaskCoordinator().SetPinned(task.ID, !task.Pinned)
+		cmd = v.singleTaskCoordinator().SetPinned(taskIdentityFor(task, project), !task.Pinned)
 	case toggleFlagDimmed:
-		cmd = v.singleTaskCoordinator().ToggleDimmed(task.ID)
+		cmd = v.singleTaskCoordinator().ToggleDimmed(taskIdentityFor(task, project))
 	default:
 		return nil, true
 	}

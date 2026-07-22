@@ -30,7 +30,7 @@ func TestExpandTodayChildren_OpenBeforeCompleted(t *testing.T) {
 
 	m := newTestFocusBoard()
 	m.childDepthLimit = -1
-	m.dailyPlanIDs = map[string]bool{parent.ID: true}
+	m.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(parent, project): true}
 	m.todayRows = []boardRow{
 		{Task: parent, Project: project, Source: project.Name},
 	}
@@ -65,7 +65,7 @@ func TestExpandTodayChildren_StableWithinGroups(t *testing.T) {
 
 	m := newTestFocusBoard()
 	m.childDepthLimit = -1
-	m.dailyPlanIDs = map[string]bool{parent.ID: true}
+	m.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(parent, project): true}
 	m.todayRows = []boardRow{
 		{Task: parent, Project: project, Source: project.Name},
 	}
@@ -101,7 +101,7 @@ func TestExpandTodayChildren_RecursiveOrdering(t *testing.T) {
 
 	m := newTestFocusBoard()
 	m.childDepthLimit = -1
-	m.dailyPlanIDs = map[string]bool{parent.ID: true}
+	m.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(parent, project): true}
 	m.todayRows = []boardRow{
 		{Task: parent, Project: project, Source: project.Name},
 	}
@@ -138,7 +138,7 @@ func TestExpandTodayChildren_TreeConnectorsReflectReordering(t *testing.T) {
 
 	m := newTestFocusBoard()
 	m.childDepthLimit = -1
-	m.dailyPlanIDs = map[string]bool{parent.ID: true}
+	m.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(parent, project): true}
 	m.todayRows = []boardRow{
 		{Task: parent, Project: project, Source: project.Name},
 	}

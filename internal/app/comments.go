@@ -32,12 +32,20 @@ type CommentWorkflowResult struct {
 // AddComment appends a timestamped comment to a task and commits it as one
 // ChangeSet. Empty or whitespace-only text is rejected before any mutation.
 func (s *Service) AddComment(taskID, text string) (CommentResult, error) {
+	return s.addCommentSelection(taskID, TaskLocator{}, text)
+}
+
+func (s *Service) AddCommentByLocator(locator TaskLocator, text string) (CommentResult, error) {
+	return s.addCommentSelection("", locator, text)
+}
+
+func (s *Service) addCommentSelection(taskID string, locator TaskLocator, text string) (CommentResult, error) {
 	trimmed, err := normalizeCommentText(text)
 	if err != nil {
 		return CommentResult{}, err
 	}
 	var out CommentResult
-	res, err := s.mutateTask(taskID, "Add Comment", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Add Comment", "", func(ref TaskRef) error {
 		var mutationErr error
 		out, mutationErr = s.addComment(ref.Task, trimmed)
 		return mutationErr
@@ -66,13 +74,21 @@ func (s *Service) addComment(task *models.Task, text string) (CommentResult, err
 // AddCommentWithWorkflow appends a comment through the same validation as
 // AddComment and runs the workflow cascade atomically with the task write.
 func (s *Service) AddCommentWithWorkflow(taskID, text string, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.addCommentWithWorkflowSelection(taskID, TaskLocator{}, text, opts)
+}
+
+func (s *Service) AddCommentWithWorkflowByLocator(locator TaskLocator, text string, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.addCommentWithWorkflowSelection("", locator, text, opts)
+}
+
+func (s *Service) addCommentWithWorkflowSelection(taskID string, locator TaskLocator, text string, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
 	trimmed, err := normalizeCommentText(text)
 	if err != nil {
 		return CommentWorkflowResult{}, err
 	}
 	opts = withDefaultWorkflowUndoAction(opts, "Add Comment")
 	var comment CommentResult
-	cascade, err := s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	cascade, err := s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		var mutationErr error
 		comment, mutationErr = s.addComment(ref.Task, trimmed)
 		return mutationErr
@@ -88,12 +104,20 @@ func (s *Service) AddCommentWithWorkflow(taskID, text string, opts SingleTaskWor
 // its original timestamp. Empty replacement text and out-of-range indices are
 // rejected before any mutation.
 func (s *Service) EditComment(taskID string, index int, text string) (CommentResult, error) {
+	return s.editCommentSelection(taskID, TaskLocator{}, index, text)
+}
+
+func (s *Service) EditCommentByLocator(locator TaskLocator, index int, text string) (CommentResult, error) {
+	return s.editCommentSelection("", locator, index, text)
+}
+
+func (s *Service) editCommentSelection(taskID string, locator TaskLocator, index int, text string) (CommentResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return CommentResult{}, invalidInput("comment", "text is required")
 	}
 	var out CommentResult
-	res, err := s.mutateTask(taskID, "Edit Comment", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Edit Comment", "", func(ref TaskRef) error {
 		if err := validCommentIndex(index, len(ref.Task.Comments)); err != nil {
 			return err
 		}
@@ -112,8 +136,16 @@ func (s *Service) EditComment(taskID string, index int, text string) (CommentRes
 
 // RemoveComment removes the comment at the given index.
 func (s *Service) RemoveComment(taskID string, index int) (CommentResult, error) {
+	return s.removeCommentSelection(taskID, TaskLocator{}, index)
+}
+
+func (s *Service) RemoveCommentByLocator(locator TaskLocator, index int) (CommentResult, error) {
+	return s.removeCommentSelection("", locator, index)
+}
+
+func (s *Service) removeCommentSelection(taskID string, locator TaskLocator, index int) (CommentResult, error) {
 	var out CommentResult
-	res, err := s.mutateTask(taskID, "Remove Comment", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Remove Comment", "", func(ref TaskRef) error {
 		var mutationErr error
 		out, mutationErr = s.removeComment(ref.Task, index)
 		return mutationErr
@@ -139,9 +171,17 @@ func (s *Service) removeComment(task *models.Task, index int) (CommentResult, er
 // RemoveCommentWithWorkflow removes the fresh-snapshot comment index and
 // preserves its post-mutation count alongside workflow effects.
 func (s *Service) RemoveCommentWithWorkflow(taskID string, index int, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.removeCommentWithWorkflowSelection(taskID, TaskLocator{}, index, opts)
+}
+
+func (s *Service) RemoveCommentWithWorkflowByLocator(locator TaskLocator, index int, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.removeCommentWithWorkflowSelection("", locator, index, opts)
+}
+
+func (s *Service) removeCommentWithWorkflowSelection(taskID string, locator TaskLocator, index int, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Remove Comment")
 	var comment CommentResult
-	cascade, err := s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	cascade, err := s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		var mutationErr error
 		comment, mutationErr = s.removeComment(ref.Task, index)
 		return mutationErr
@@ -157,8 +197,16 @@ func (s *Service) RemoveCommentWithWorkflow(taskID string, index int, opts Singl
 // comments still commits the (unchanged) project, matching the other idempotent
 // mutations; adapters that want a no-op fast path check before calling.
 func (s *Service) ClearComments(taskID string) (CommentResult, error) {
+	return s.clearCommentsSelection(taskID, TaskLocator{})
+}
+
+func (s *Service) ClearCommentsByLocator(locator TaskLocator) (CommentResult, error) {
+	return s.clearCommentsSelection("", locator)
+}
+
+func (s *Service) clearCommentsSelection(taskID string, locator TaskLocator) (CommentResult, error) {
 	var out CommentResult
-	res, err := s.mutateTask(taskID, "Clear Comments", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Clear Comments", "", func(ref TaskRef) error {
 		out = s.clearComments(ref.Task)
 		return nil
 	})
@@ -179,9 +227,17 @@ func (s *Service) clearComments(task *models.Task) CommentResult {
 // ClearCommentsWithWorkflow clears comments and returns the removed count. An
 // already-empty comment list is a true no-op matching the legacy CLI command.
 func (s *Service) ClearCommentsWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.clearCommentsWithWorkflowSelection(taskID, TaskLocator{}, opts)
+}
+
+func (s *Service) ClearCommentsWithWorkflowByLocator(locator TaskLocator, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.clearCommentsWithWorkflowSelection("", locator, opts)
+}
+
+func (s *Service) clearCommentsWithWorkflowSelection(taskID string, locator TaskLocator, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Clear Comments")
 	comment := CommentResult{Index: -1}
-	cascade, err := s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
+	cascade, err := s.mutateWithWorkflowSelection(taskID, locator, opts, func(ref TaskRef) bool {
 		comment.Count = len(ref.Task.Comments)
 		return comment.Count == 0
 	}, func(ref TaskRef, _ *WorkspaceResolver) error {
@@ -198,8 +254,16 @@ func (s *Service) ClearCommentsWithWorkflow(taskID string, opts SingleTaskWorkfl
 // ToggleCommentResolved flips the resolved state of the comment at the given
 // index and reports the post-toggle state.
 func (s *Service) ToggleCommentResolved(taskID string, index int) (CommentResult, error) {
+	return s.toggleCommentResolvedSelection(taskID, TaskLocator{}, index)
+}
+
+func (s *Service) ToggleCommentResolvedByLocator(locator TaskLocator, index int) (CommentResult, error) {
+	return s.toggleCommentResolvedSelection("", locator, index)
+}
+
+func (s *Service) toggleCommentResolvedSelection(taskID string, locator TaskLocator, index int) (CommentResult, error) {
 	var out CommentResult
-	res, err := s.mutateTask(taskID, "Resolve Comment", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Resolve Comment", "", func(ref TaskRef) error {
 		var mutationErr error
 		out, mutationErr = s.toggleCommentResolved(ref.Task, index)
 		return mutationErr
@@ -225,9 +289,17 @@ func (s *Service) toggleCommentResolved(task *models.Task, index int) (CommentRe
 // ToggleCommentResolvedWithWorkflow toggles the fresh-snapshot comment index
 // and returns the resulting resolved state with the workflow cascade.
 func (s *Service) ToggleCommentResolvedWithWorkflow(taskID string, index int, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.toggleCommentResolvedWithWorkflowSelection(taskID, TaskLocator{}, index, opts)
+}
+
+func (s *Service) ToggleCommentResolvedWithWorkflowByLocator(locator TaskLocator, index int, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
+	return s.toggleCommentResolvedWithWorkflowSelection("", locator, index, opts)
+}
+
+func (s *Service) toggleCommentResolvedWithWorkflowSelection(taskID string, locator TaskLocator, index int, opts SingleTaskWorkflowOptions) (CommentWorkflowResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Resolve Comment")
 	var comment CommentResult
-	cascade, err := s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	cascade, err := s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		var mutationErr error
 		comment, mutationErr = s.toggleCommentResolved(ref.Task, index)
 		return mutationErr

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
@@ -223,7 +224,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// machine-local recent visits are intentionally excluded here and reassigned
 	// separately after a successful commit.
 	var artifacts []storage.ArtifactChange
-	if domains.Planning.ReassignDurablePlanningProject(movedSet, destProject.ID) > 0 {
+	if domains.Planning.ReassignDurablePlanningProjectFrom(movedSet, sourceProject.ID, destProject.ID) > 0 {
 		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
@@ -235,7 +236,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// insertion, each moved task's attachment directory, and the durable planning
 	// artifact all commit as ONE transaction, revision-checked and undoable.
 	svc := newWorkspaceAppService(workspace)
-	res, err := svc.MoveToProject(task.ID, destProject.ID, artifacts...)
+	res, err := svc.MoveToProjectByLocator(app.TaskLocator{ProjectID: sourceProject.ID, TaskID: task.ID}, destProject.ID, artifacts...)
 	if err != nil {
 		return translateAppError(err)
 	}
@@ -243,7 +244,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the move is already committed and recent visits are best-effort.
-	if domains.Machine.ReassignRecentVisitsProject(movedSet, destProject.ID) > 0 {
+	if domains.Machine.ReassignRecentVisitsProjectFrom(movedSet, sourceProject.ID, destProject.ID) > 0 {
 		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}

@@ -123,7 +123,10 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 					return m, nil, true
 				}
 				return m, func() tea.Msg {
-					return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
+					return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+						Focus: OutlinerAll, SetFocus: true,
+						Lens: OutlinerLensTree, SetLens: true,
+					}}
 				}, true
 			}
 		}
@@ -137,7 +140,10 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 			return m, nil, true
 		}
 		return m, func() tea.Msg {
-			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
+			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+				Focus: OutlinerAll, SetFocus: true,
+				Lens: OutlinerLensTree, SetLens: true,
+			}}
 		}, true
 
 	case "/":

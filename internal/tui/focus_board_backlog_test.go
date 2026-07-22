@@ -19,7 +19,7 @@ func TestFocusBoardBacklogExcludesTodayAndNextRanked(t *testing.T) {
 	project.Tasks = []*models.Task{hi, lo, next, planned}
 
 	m := newTestFocusBoard()
-	m.dailyPlanIDs["planned"] = true
+	m.dailyPlanIDs[taskIdentityFor(planned, project)] = true
 
 	m.buildBacklogRows([]*models.Project{project})
 

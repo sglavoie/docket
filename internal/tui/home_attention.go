@@ -143,10 +143,11 @@ func (m *DashboardModel) rebuildHomeAttention() {
 		return
 	}
 
-	dailyPlanIDs := make(map[string]bool)
+	dailyPlanIDs := make(map[TaskIdentity]bool)
 	for _, item := range m.runtime.Planning().GetDailyPlan() {
-		if item.TaskID != "" {
-			dailyPlanIDs[planKey(item.TaskID, item.ProjectID)] = true
+		identity := TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}
+		if identity.Valid() {
+			dailyPlanIDs[identity] = true
 		}
 	}
 	projects := m.attentionProjects
@@ -416,6 +417,7 @@ func homeAttentionActionCmd(row homeAttentionRow) tea.Cmd {
 		case homeAttentionOpenDueDates:
 			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
 				Focus: OutlinerAll, SetFocus: true, Sort: SortByDueDate, SetSort: true,
+				Lens: OutlinerLensDueDate, SetLens: true,
 			}}
 		case homeAttentionOpenGlobalBlockers:
 			return ShowGlobalBlockersMsg{}

@@ -104,7 +104,7 @@ func TestToggleCrossPriorityModeRoundTripsAndReseedsBlocked(t *testing.T) {
 // EscStep ordering: multi-select, search, zoom, and finally crossPriorityMode.
 func TestEscCascadePrioritizesLocalDismissalsBeforePriorityExit(t *testing.T) {
 	m := minimalOutliner()
-	m.MultiSelectState = MultiSelectState{selectedTasks: make(map[string]bool)}
+	m.MultiSelectState = MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)}
 	m.enterCrossPriorityMode()
 	m.toggleMultiSelectMode()
 	if !m.multiSelectMode {

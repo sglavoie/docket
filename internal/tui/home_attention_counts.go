@@ -19,7 +19,7 @@ type attentionCounts struct {
 	completedTodayCount int
 }
 
-func loadAttentionCounts(runtime *config.RuntimeState, queueIDs, dailyPlanIDs map[string]bool) (attentionCounts, []*models.Project) {
+func loadAttentionCounts(runtime *config.RuntimeState, queueIDs, dailyPlanIDs map[TaskIdentity]bool) (attentionCounts, []*models.Project) {
 	_ = queueIDs
 	counts := attentionCounts{dailyPlanLen: len(dailyPlanIDs)}
 	if runtime == nil {

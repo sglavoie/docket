@@ -69,7 +69,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 				}
 			}
 			if msg.Project != nil {
-				req := app.EditRequest{TaskID: msg.Task.ID}
+				req := app.EditRequest{Locator: taskIdentityFor(msg.Task, msg.Project).Locator()}
 				if titleChanged {
 					req.Title = &msg.NewTitle
 				}
@@ -126,7 +126,7 @@ func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bo
 	}
 
 	res, err := m.appService.Edit(app.EditRequest{
-		TaskID:      msg.Task.ID,
+		Locator:     taskIdentityFor(msg.Task, msg.Project).Locator(),
 		Description: &msg.NewDescription,
 	})
 	if err != nil {

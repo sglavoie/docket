@@ -59,9 +59,9 @@ func setupCrossOutlinerSharedBulkKeymap(t *testing.T) (*keymap.KeyMap, []TaskPro
 	model.loadedProjects = []*models.Project{projectA, projectB}
 	model.MultiSelectState = MultiSelectState{
 		multiSelectMode: true,
-		selectedTasks: map[string]bool{
-			tasksA[1].ID: true,
-			tasksB[1].ID: true,
+		selectedTaskIdentities: map[TaskIdentity]bool{
+			taskIdentityFor(tasksA[1], projectA): true,
+			taskIdentityFor(tasksB[1], projectB): true,
 		},
 	}
 	model.rows = []outlinerRow{

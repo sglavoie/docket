@@ -119,7 +119,7 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	if roadmapCriticalPath {
 		var filtered []planner.ScheduledTask
 		for _, s := range scheduled {
-			if criticalPath.OnPath[s.Task.ID] {
+			if criticalPath.OnPath[planner.TaskKey(s.Task)] {
 				filtered = append(filtered, s)
 			}
 		}
@@ -188,7 +188,7 @@ func renderASCII(scheduled []planner.ScheduledTask, cp *planner.CriticalPathResu
 	// Build schedule map.
 	schedMap := make(map[string]planner.ScheduledTask, len(scheduled))
 	for _, s := range scheduled {
-		schedMap[s.Task.ID] = s
+		schedMap[planner.TaskKey(s.Task)] = s
 	}
 
 	for _, p := range projects {
@@ -216,7 +216,7 @@ func printASCIIRow(t *models.Task, indent int, schedMap map[string]planner.Sched
 
 	// Build bar.
 	bar := strings.Repeat(" ", barWidth)
-	if s, ok := schedMap[t.ID]; ok {
+	if s, ok := schedMap[planner.TaskKey(t)]; ok {
 		startCol := int(s.EarliestStart.Sub(axisStart).Hours() / 24 / unitDays)
 		endCol := int(s.EarliestEnd.Sub(axisStart).Hours() / 24 / unitDays)
 		startCol = max(0, min(startCol, barWidth-1))
@@ -243,7 +243,7 @@ func printASCIIRow(t *models.Task, indent int, schedMap map[string]planner.Sched
 
 	// Critical path marker.
 	critMarker := " "
-	if cp != nil && cp.OnPath[t.ID] {
+	if cp != nil && cp.OnPath[planner.TaskKey(t)] {
 		critMarker = "*"
 	}
 
@@ -273,7 +273,7 @@ func renderMermaid(scheduled []planner.ScheduledTask, cp *planner.CriticalPathRe
 
 	schedMap := make(map[string]planner.ScheduledTask, len(scheduled))
 	for _, s := range scheduled {
-		schedMap[s.Task.ID] = s
+		schedMap[planner.TaskKey(s.Task)] = s
 	}
 
 	for _, p := range projects {
@@ -296,13 +296,13 @@ func renderMermaid(scheduled []planner.ScheduledTask, cp *planner.CriticalPathRe
 }
 
 func printMermaidTask(t *models.Task, schedMap map[string]planner.ScheduledTask, cp *planner.CriticalPathResult) {
-	s, ok := schedMap[t.ID]
+	s, ok := schedMap[planner.TaskKey(t)]
 	if !ok {
 		return
 	}
 
 	tags := ""
-	if cp != nil && cp.OnPath[t.ID] {
+	if cp != nil && cp.OnPath[planner.TaskKey(t)] {
 		tags = "crit, "
 	} else if t.IsInState(models.StateInProgress) {
 		tags = "active, "
@@ -331,14 +331,21 @@ type jsonOutput struct {
 }
 
 type jsonCriticalPath struct {
-	LengthDays float64  `json:"length_days"`
-	TaskIDs    []string `json:"task_ids"`
+	LengthDays   float64           `json:"length_days"`
+	TaskIDs      []string          `json:"task_ids"`
+	TaskLocators []jsonTaskLocator `json:"task_locators,omitempty"`
+}
+
+type jsonTaskLocator struct {
+	ProjectID string `json:"project_id"`
+	TaskID    string `json:"task_id"`
 }
 
 type jsonTask struct {
 	ID            string  `json:"id"`
 	ShortID       int     `json:"short_id"`
 	Title         string  `json:"title"`
+	ProjectID     string  `json:"project_id"`
 	ProjectName   string  `json:"project"`
 	IsCritical    bool    `json:"is_critical"`
 	Slack         float64 `json:"slack_days"`
@@ -346,15 +353,17 @@ type jsonTask struct {
 	EarliestEnd   string  `json:"earliest_end,omitempty"`
 }
 
-func renderJSON(scheduled []planner.ScheduledTask, cp *planner.CriticalPathResult, projects []*models.Project, velocity float64) error {
-	// Build project lookup by task ID.
-	taskProject := make(map[string]string)
-	for _, p := range projects {
-		for _, t := range p.Tasks {
-			taskProject[t.ID] = p.Name
-		}
+func renderJSON(scheduled []planner.ScheduledTask, cp *planner.CriticalPathResult, _ []*models.Project, velocity float64) error {
+	out := buildRoadmapJSON(scheduled, cp, velocity)
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
 	}
+	fmt.Println(string(data))
+	return nil
+}
 
+func buildRoadmapJSON(scheduled []planner.ScheduledTask, cp *planner.CriticalPathResult, velocity float64) jsonOutput {
 	out := jsonOutput{
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		Velocity:    velocity,
@@ -364,16 +373,28 @@ func renderJSON(scheduled []planner.ScheduledTask, cp *planner.CriticalPathResul
 		out.CriticalPath.LengthDays = cp.Length
 		for _, t := range cp.Path {
 			out.CriticalPath.TaskIDs = append(out.CriticalPath.TaskIDs, t.ID)
+			if t.Project != nil {
+				out.CriticalPath.TaskLocators = append(out.CriticalPath.TaskLocators, jsonTaskLocator{
+					ProjectID: t.Project.ID,
+					TaskID:    t.ID,
+				})
+			}
 		}
 	}
 
 	for _, s := range scheduled {
+		projectID, projectName := "", ""
+		if s.Task.Project != nil {
+			projectID = s.Task.Project.ID
+			projectName = s.Task.Project.Name
+		}
 		jt := jsonTask{
 			ID:          s.Task.ID,
 			ShortID:     s.Task.ShortID,
 			Title:       s.Task.Title,
-			ProjectName: taskProject[s.Task.ID],
-			IsCritical:  cp != nil && cp.OnPath[s.Task.ID],
+			ProjectID:   projectID,
+			ProjectName: projectName,
+			IsCritical:  cp != nil && cp.OnPath[planner.TaskKey(s.Task)],
 			Slack:       s.Slack,
 		}
 		if !s.EarliestStart.IsZero() {
@@ -385,10 +406,5 @@ func renderJSON(scheduled []planner.ScheduledTask, cp *planner.CriticalPathResul
 		out.Schedule = append(out.Schedule, jt)
 	}
 
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(data))
-	return nil
+	return out
 }

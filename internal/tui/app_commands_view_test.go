@@ -37,7 +37,8 @@ func TestViewCommands_AllTasks(t *testing.T) {
 	}
 	msg := cmd.Handler()
 	outliner, ok := msg.(ShowGlobalOutlinerMsg)
-	if !ok || !outliner.Options.SetFocus || outliner.Options.Focus != OutlinerAll {
+	if !ok || !outliner.Options.SetFocus || outliner.Options.Focus != OutlinerAll ||
+		!outliner.Options.SetLens || outliner.Options.Lens != OutlinerLensTree {
 		t.Errorf("expected All-focused ShowGlobalOutlinerMsg, got %#v", msg)
 	}
 }
@@ -52,7 +53,10 @@ func TestViewCommands_DashboardOutlinerEntries(t *testing.T) {
 		shortcut string
 		wantMsg  any
 	}{
-		{"all tasks", "", ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}},
+		{"all tasks", "", ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+			Focus: OutlinerAll, SetFocus: true,
+			Lens: OutlinerLensTree, SetLens: true,
+		}}},
 		{"outliner", "", ShowGlobalOutlinerMsg{}},
 	}
 
@@ -84,8 +88,17 @@ func TestViewCommands_DueDateOverview(t *testing.T) {
 	if !ok {
 		t.Errorf("expected ShowGlobalOutlinerMsg, got %T", msg)
 	}
-	if !at.Options.SetFocus || at.Options.Focus != OutlinerAll || !at.Options.SetSort || at.Options.Sort != SortByDueDate {
+	if !at.Options.SetFocus || at.Options.Focus != OutlinerAll || !at.Options.SetSort || at.Options.Sort != SortByDueDate ||
+		!at.Options.SetLens || at.Options.Lens != OutlinerLensDueDate {
 		t.Errorf("expected All-focused Outliner sorted by due date, got %+v", at)
+	}
+}
+
+func TestHomeAttentionDueDatesSelectsDueDateLens(t *testing.T) {
+	msg := homeAttentionActionCmd(homeAttentionRow{Action: homeAttentionOpenDueDates})()
+	outliner, ok := msg.(ShowGlobalOutlinerMsg)
+	if !ok || !outliner.Options.SetLens || outliner.Options.Lens != OutlinerLensDueDate {
+		t.Fatalf("Home overdue navigation = %#v, want explicit due-date lens", msg)
 	}
 }
 

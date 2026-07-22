@@ -59,8 +59,8 @@ func TestPlannerBacklogRankingIgnoresTodayAndNextCandidates(t *testing.T) {
 	withHidden := newTestFocusBoard()
 	projA.Tasks = []*models.Task{aVis, next1, next2, next3, today1, today2}
 	projB.Tasks = []*models.Task{bVis}
-	withHidden.dailyPlanIDs["a-today-1"] = true
-	withHidden.dailyPlanIDs["a-today-2"] = true
+	withHidden.dailyPlanIDs[taskIdentityFor(today1, projA)] = true
+	withHidden.dailyPlanIDs[taskIdentityFor(today2, projA)] = true
 	withHidden.buildBacklogRows([]*models.Project{projA, projB})
 	hiddenIDs := boardRowIDs(withHidden.backlogRows)
 

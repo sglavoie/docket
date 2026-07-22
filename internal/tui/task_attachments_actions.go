@@ -39,7 +39,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 
 func (m *TaskAttachmentsModel) addURLAttachment(input string) tea.Cmd {
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachURL(m.task.ID, input)
+	return m.coordinator.AttachURL(taskIdentityFor(m.task, m.project), input)
 }
 
 func (m *TaskAttachmentsModel) addCodeReference(codePath string, lineNum int) tea.Cmd {
@@ -48,7 +48,7 @@ func (m *TaskAttachmentsModel) addCodeReference(codePath string, lineNum int) te
 	}
 
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachCodeReference(m.task.ID, codePath, lineNum)
+	return m.coordinator.AttachCodeReference(taskIdentityFor(m.task, m.project), codePath, lineNum)
 }
 
 func (m *TaskAttachmentsModel) addFileAttachment(input string) tea.Cmd {
@@ -73,7 +73,7 @@ func (m *TaskAttachmentsModel) addFileAttachment(input string) tea.Cmd {
 	}
 
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachFile(m.task.ID, absPath)
+	return m.coordinator.AttachFile(taskIdentityFor(m.task, m.project), absPath)
 }
 
 // finishOptimisticAdd exits add mode before the transaction commits; the new
@@ -94,7 +94,7 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 	// URL attachments have no bytes on disk; the file-backed ones delete their
 	// copied bytes in the same transaction (matching the old RemoveAttachmentFile).
 	deleteFile := !m.task.Attachments[m.cursor].IsURL
-	return m.coordinator.RemoveAttachment(m.task.ID, m.cursor, deleteFile)
+	return m.coordinator.RemoveAttachment(taskIdentityFor(m.task, m.project), m.cursor, deleteFile)
 }
 
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
@@ -102,7 +102,7 @@ func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
-	return m.coordinator.RemoveAttachment(m.task.ID, m.cursor, false)
+	return m.coordinator.RemoveAttachment(taskIdentityFor(m.task, m.project), m.cursor, false)
 }
 
 func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
@@ -112,7 +112,7 @@ func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
 	m.task.Attachments[from], m.task.Attachments[to] = m.task.Attachments[to], m.task.Attachments[from]
 	m.cursor = to
 
-	return m.coordinator.Reorder(m.task.ID, from, to)
+	return m.coordinator.Reorder(taskIdentityFor(m.task, m.project), from, to)
 }
 
 func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {

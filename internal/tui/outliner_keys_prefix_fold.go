@@ -12,11 +12,20 @@ func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (t
 	case "a":
 		// Toggle fold
 		if cursorTask != nil && len(cursorTask.Children) > 0 {
+			identity := TaskIdentity{TaskID: cursorTask.ID}
+			if m.project != nil {
+				identity.ProjectID = m.project.ID
+			} else if m.cursor >= 0 && m.cursor < len(m.rows) {
+				identity.ProjectID = m.rows[m.cursor].ProjectID
+			}
+			if !identity.Valid() {
+				return m, nil
+			}
 			m.ensureExpandedNodes()
-			if m.isExpanded(cursorTask.ID) {
-				m.expandedNodes[cursorTask.ID] = false
+			if m.isExpanded(identity) {
+				m.expandedNodes[identity] = false
 			} else {
-				m.expandedNodes[cursorTask.ID] = true
+				m.expandedNodes[identity] = true
 			}
 			m.resetViewScrollOffset()
 			m.rebuildRows()

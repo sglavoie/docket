@@ -29,7 +29,10 @@ func (m *AppModel) viewCommands() []Command {
 			Category:    CategoryViews,
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
-				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
+				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+					Focus: OutlinerAll, SetFocus: true,
+					Lens: OutlinerLensTree, SetLens: true,
+				}}
 			},
 		},
 		{

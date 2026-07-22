@@ -345,7 +345,7 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		EpicAttrs:     epicAttrs,
 	}
 
-	return m.taskForm.EditForm(app.EditRequest{TaskID: m.task.ID, Form: form})
+	return m.taskForm.EditForm(taskIdentityFor(m.task, m.project), app.EditRequest{Form: form})
 }
 
 // SetTaskFormCoordinator injects the shared task-form coordinator (taskFormWireable).

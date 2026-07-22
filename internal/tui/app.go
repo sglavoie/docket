@@ -227,20 +227,20 @@ type AppModel struct {
 
 	// Focus view session state (persists across view navigation within a session)
 	focusQueue        []FocusTask
-	focusQueueIDs     map[string]bool
+	focusQueueIDs     map[TaskIdentity]bool
 	focusDismissedIDs map[string]bool
 
 	// Daily plan session state (persists across view navigation within a session)
 	dailyPlan    []FocusTask
-	dailyPlanIDs map[string]bool
+	dailyPlanIDs map[TaskIdentity]bool
 
 	// openLoops caches the cross-project counts surfaced in the title row
 	// (Zeigarnik). Recomputed via RefreshOpenLoopsMsg after every mutation,
 	// so paint paths can read it without an extra full-tree walk.
 	openLoops             OpenLoops
-	dailyPlanCarried      int             // count of items carried over from a previous day
-	dailyPlanCarriedIDs   map[string]bool // task IDs that were carried over (for visual indicator)
-	dailyPlanCarriedShown bool            // true once the carry-over status message has been shown
+	dailyPlanCarried      int                   // count of items carried over from a previous day
+	dailyPlanCarriedIDs   map[TaskIdentity]bool // tasks that were carried over (for visual indicator)
+	dailyPlanCarriedShown bool                  // true once the carry-over status message has been shown
 
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind

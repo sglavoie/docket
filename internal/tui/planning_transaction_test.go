@@ -84,9 +84,9 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		views:                NewViewRegistry(),
 		currentProject:       project,
 		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[string]bool),
+		focusQueueIDs:        make(map[TaskIdentity]bool),
 		dailyPlan:            []FocusTask{},
-		dailyPlanIDs:         make(map[string]bool),
+		dailyPlanIDs:         make(map[TaskIdentity]bool),
 	}
 	appModel.showView(ViewOutliner, &invariantQueueView{taskID: task.ID, project: project})
 	return appModel, repo, task, dataDir
@@ -274,7 +274,7 @@ func TestSectionMovesPreservePlanningExclusivity(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
 		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
 
-		cmd := m.secondaryFeatures.TaskItem.SetSectionWorkflow(task.ID, models.SectionNext,
+		cmd := m.secondaryFeatures.TaskItem.SetSectionWorkflow(taskIdentityFor(task, m.currentProject), models.SectionNext,
 			app.SingleTaskWorkflowOptions{}, func(app.TaskResult) string { return "" })
 		assertNotTransactionError(t, cmd())
 

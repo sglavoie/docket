@@ -98,10 +98,10 @@ func (m *OutlinerModel) performRedo() tea.Cmd {
 // OutlinerToggleState captures section/fold state so it can survive outliner
 // recreation within the same TUI session.
 type OutlinerToggleState struct {
-	CollapsedSections map[string]bool // Section collapse state for All perspective
-	ExpandedNodes     map[string]bool // Node fold state (empty = all expanded)
-	CursorTaskID      string          // Task ID at cursor position (session-only)
-	ZoomStack         []ZoomEntry     // Zoom stack (session-only)
+	CollapsedSections map[string]bool       // Section collapse state for All perspective
+	ExpandedNodes     map[TaskIdentity]bool // Project-qualified node fold state (empty = all expanded)
+	CursorTaskID      string                // Task ID at cursor position (session-only)
+	ZoomStack         []ZoomEntry           // Zoom stack (session-only)
 }
 
 // SaveToggleState snapshots the current section/fold state.
@@ -143,12 +143,12 @@ func (m *OutlinerModel) RestoreToggleState(state *OutlinerToggleState) {
 	}
 }
 
-// copyBoolMap returns a shallow copy of a map[string]bool.
-func copyBoolMap(src map[string]bool) map[string]bool {
+// copyBoolMap returns a shallow copy of a bool map.
+func copyBoolMap[K comparable](src map[K]bool) map[K]bool {
 	if src == nil {
 		return nil
 	}
-	dst := make(map[string]bool, len(src))
+	dst := make(map[K]bool, len(src))
 	maps.Copy(dst, src)
 	return dst
 }

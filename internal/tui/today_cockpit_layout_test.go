@@ -38,7 +38,7 @@ func cockpitWorkOnTaskFixture(t *testing.T, title string) *FocusBoardModel {
 	task.DueDate = &pastDue
 	row := cockpitBoardRow(task, project)
 
-	dailyPlanIDs := map[string]bool{task.ID: true}
+	dailyPlanIDs := map[TaskIdentity]bool{taskIdentityFor(task, project): true}
 	openLoops := OpenLoops{TodayTotal: 1, HasTasks: true}
 	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, openLoops, boardTabToday)
 	m.SetSize(120, 30)
@@ -58,7 +58,7 @@ func cockpitRichPlannedFixture(t *testing.T, title string) (*FocusBoardModel, *m
 	task.DueDate = &tomorrow
 	row := cockpitBoardRow(task, project)
 
-	dailyPlanIDs := map[string]bool{task.ID: true}
+	dailyPlanIDs := map[TaskIdentity]bool{taskIdentityFor(task, project): true}
 	openLoops := OpenLoops{TodayTotal: 1, HasTasks: true}
 	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, openLoops, boardTabToday)
 	m.cursor = 0
@@ -146,7 +146,7 @@ func TestTodayCockpitEscalationHintCountsAgainstListHeight(t *testing.T) {
 	dueSoon := time.Now().Add(24 * time.Hour)
 	task.DueDate = &dueSoon
 	row := cockpitBoardRow(task, project)
-	dailyPlanIDs := map[string]bool{task.ID: true}
+	dailyPlanIDs := map[TaskIdentity]bool{taskIdentityFor(task, project): true}
 	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, OpenLoops{TodayTotal: 1, HasTasks: true}, boardTabToday)
 	m.SetSize(80, 10)
 
@@ -183,7 +183,7 @@ func TestTodayCockpitCompactVisualStatesRespectWidthAndFooter(t *testing.T) {
 		[]boardRow{unicodeRow},
 		nil,
 		nil,
-		map[string]bool{unicodeTask.ID: true},
+		map[TaskIdentity]bool{taskIdentityFor(unicodeTask, unicodeProject): true},
 		OpenLoops{TodayTotal: 1, HasTasks: true},
 		boardTabToday,
 	)
@@ -196,7 +196,7 @@ func TestTodayCockpitCompactVisualStatesRespectWidthAndFooter(t *testing.T) {
 		[]boardRow{doneRow},
 		nil,
 		nil,
-		map[string]bool{doneTask.ID: true},
+		map[TaskIdentity]bool{taskIdentityFor(doneTask, doneProject): true},
 		OpenLoops{TodayTotal: 1, TodayDone: 1, HasTasks: true},
 		boardTabToday,
 	)

@@ -182,7 +182,7 @@ func TestFocusBoardCarriedAndFirstPlanStyling(t *testing.T) {
 
 	project := newDenseRowProject(t)
 	m := newDenseRowFocusBoard(t)
-	m.carriedOverIDs = map[string]bool{task.ID: true}
+	m.carriedOverIDs = map[TaskIdentity]bool{taskIdentityFor(task, project): true}
 
 	row := boardRow{Task: task, Project: project, Source: project.Name}
 	line := ansi.Strip(m.renderRow(row, false, 100, "1.", true, nil))

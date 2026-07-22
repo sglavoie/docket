@@ -204,11 +204,11 @@ func sortFocusTasks(tasks []focus.FocusTask) {
 }
 
 // buildProjectAndTaskMaps walks the given projects and returns lookup maps
-// keyed by project ID and task ID. Nil projects and nil tasks are skipped so
-// downstream code can safely dereference the map values.
-func buildProjectAndTaskMaps(projects []*models.Project) (map[string]*models.Project, map[string]*models.Task) {
+// keyed by project ID and project-qualified task identity. Nil projects and nil
+// tasks are skipped so downstream code can safely dereference the map values.
+func buildProjectAndTaskMaps(projects []*models.Project) (map[string]*models.Project, map[config.ProjectTaskLocator]*models.Task) {
 	projectMap := make(map[string]*models.Project)
-	taskMap := make(map[string]*models.Task)
+	taskMap := make(map[config.ProjectTaskLocator]*models.Task)
 	for _, p := range projects {
 		if p == nil {
 			continue
@@ -218,7 +218,7 @@ func buildProjectAndTaskMaps(projects []*models.Project) (map[string]*models.Pro
 			if task == nil {
 				continue
 			}
-			taskMap[task.ID] = task
+			taskMap[config.ProjectTaskLocator{ProjectID: p.ID, TaskID: task.ID}] = task
 		}
 	}
 	return projectMap, taskMap
@@ -329,7 +329,7 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 			if !ok {
 				continue
 			}
-			task, ok := taskMap[item.TaskID]
+			task, ok := taskMap[config.ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}]
 			if !ok {
 				continue
 			}
@@ -348,7 +348,7 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 		if !ok {
 			continue
 		}
-		task, ok := taskMap[item.TaskID]
+		task, ok := taskMap[config.ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}]
 		if !ok {
 			continue
 		}
@@ -397,8 +397,8 @@ func nextTasks(projects []*models.Project, queue []config.FocusQueueItem) []focu
 	}
 	rank := focus.FocusQueueRank(queue)
 	sort.SliceStable(tasks, func(i, j int) bool {
-		ri := focus.RankOrUnindexed(rank, tasks[i].Task.ID)
-		rj := focus.RankOrUnindexed(rank, tasks[j].Task.ID)
+		ri := focus.RankOrUnindexed(rank, config.ProjectTaskLocator{ProjectID: tasks[i].Project.ID, TaskID: tasks[i].Task.ID})
+		rj := focus.RankOrUnindexed(rank, config.ProjectTaskLocator{ProjectID: tasks[j].Project.ID, TaskID: tasks[j].Task.ID})
 		if ri != rj {
 			return ri < rj
 		}
@@ -426,8 +426,8 @@ func nextTasks(projects []*models.Project, queue []config.FocusQueueItem) []focu
 // an error only when the transaction itself fails; a queue with no legacy members
 // is a no-op.
 func migrateLegacyFocusQueueMembers(workspace *CLIWorkspace, queue []config.FocusQueueItem, projects []*models.Project) error {
-	ids := focus.LegacyNextQueueMemberIDs(queue, projects)
-	if len(ids) == 0 {
+	locators := focus.LegacyNextQueueMemberLocators(queue, projects)
+	if len(locators) == 0 {
 		return nil
 	}
 	// A bare application service (no default planning-artifact builder) keeps the
@@ -435,9 +435,9 @@ func migrateLegacyFocusQueueMembers(workspace *CLIWorkspace, queue []config.Focu
 	// journals the StateNext transition without folding Today/Next reconciliation.
 	svc := newAppService(workspace.Manager)
 	if _, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
-		TaskIDs:    ids,
-		Target:     models.StateNext,
-		UndoAction: "Migrate legacy Next queue",
+		TaskLocators: appTaskLocatorsFromConfig(locators),
+		Target:       models.StateNext,
+		UndoAction:   "Migrate legacy Next queue",
 	}); err != nil {
 		return translateAppError(err)
 	}
@@ -456,13 +456,13 @@ func migrateLegacyFocusQueueMembers(workspace *CLIWorkspace, queue []config.Focu
 // ordering-only list stays aligned with the state-driven membership. It is
 // best-effort maintenance: a save failure is a warning, not a command failure.
 func pruneStaleFocusQueue(workspace *CLIWorkspace, queue []config.FocusQueueItem, ordered []focus.FocusTask) {
-	nextIDs := make(map[string]bool, len(ordered))
+	nextIDs := make(map[config.ProjectTaskLocator]bool, len(ordered))
 	for _, ft := range ordered {
-		nextIDs[ft.Task.ID] = true
+		nextIDs[config.ProjectTaskLocator{ProjectID: ft.Project.ID, TaskID: ft.Task.ID}] = true
 	}
 	pruned := make([]config.FocusQueueItem, 0, len(queue))
 	for _, item := range queue {
-		if nextIDs[item.TaskID] {
+		if nextIDs[config.ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] {
 			pruned = append(pruned, item)
 		}
 	}

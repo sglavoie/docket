@@ -30,14 +30,14 @@ func (m *AppModel) finalizeGlobalOp(res app.TaskResult, err error, successMsg st
 // state update flow.
 func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
 	m.statusQuickPicker = nil
-	res, err := m.appService.Transition(app.StateRequest{TaskID: msg.Task.ID, Target: msg.NewState})
+	res, err := m.appService.Transition(app.StateRequest{Locator: taskIdentityFor(msg.Task, msg.Project).Locator(), Target: msg.NewState})
 	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Task #%d -> %s", res.ShortID, msg.NewState))
 }
 
 // handleGlobalPriorityApplied applies a priority change from the global priority update flow.
 func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bool, tea.Cmd) {
 	m.priorityQuickPicker = nil
-	res, err := m.appService.SetPriority(msg.Task.ID, msg.NewPriority)
+	res, err := m.appService.SetPriorityByLocator(taskIdentityFor(msg.Task, msg.Project).Locator(), msg.NewPriority)
 	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Priority set to %d", msg.NewPriority))
 }
 
@@ -45,18 +45,18 @@ func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bo
 func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool, tea.Cmd) {
 	m.dueDateQuickPicker = nil
 	if msg.Clear {
-		res, err := m.appService.SetDueDate(msg.Task.ID, nil, false)
+		res, err := m.appService.SetDueDateByLocator(taskIdentityFor(msg.Task, msg.Project).Locator(), nil, false)
 		return m.finalizeGlobalOp(res, err, "Due date cleared")
 	}
 	due, label := dueDateFromDays(msg.DaysFromNow, false)
-	res, err := m.appService.SetDueDate(msg.Task.ID, due, false)
+	res, err := m.appService.SetDueDateByLocator(taskIdentityFor(msg.Task, msg.Project).Locator(), due, false)
 	return m.finalizeGlobalOp(res, err, fmt.Sprintf("Due date set to %s", label))
 }
 
 // handleGlobalSectionChanged applies a section change from the global picker flow.
 func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool, tea.Cmd) {
 	m.sectionChangeQuickPicker = nil
-	res, err := m.appService.SetSection(msg.Task.ID, msg.Section)
+	res, err := m.appService.SetSectionByLocator(taskIdentityFor(msg.Task, msg.Project).Locator(), msg.Section)
 	return m.finalizeGlobalOp(res, err, "Moved to section")
 }
 

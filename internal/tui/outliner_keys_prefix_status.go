@@ -72,7 +72,7 @@ func (m *OutlinerModel) applySingleStateTransition(task *models.Task, state mode
 		}
 	}
 
-	cmd := m.taskItem.TransitionWorkflow(task.ID, state, m.singleWorkflowOpts(task, StateVerb(state)+" Task"), nil)
+	cmd := m.taskItem.TransitionWorkflow(taskIdentityFor(task, m.project), state, m.singleWorkflowOpts(task, StateVerb(state)+" Task"), nil)
 	msg := cmd()
 	if em, ok := msg.(TransactionErrorMsg); ok {
 		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }

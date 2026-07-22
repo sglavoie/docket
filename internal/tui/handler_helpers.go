@@ -270,10 +270,10 @@ func (m *AppModel) clearStatus() {
 // It then persists the cleaned lists to config. Call this after task deletion
 // or archiving to prevent stale entries from being re-persisted.
 func (m *AppModel) pruneDeletedTaskRefs() {
-	// Build a set of all valid task IDs across all projects.
+	// Build a set of all valid project-qualified task identities.
 	// Projects not yet loaded from disk have nil Tasks; load them
 	// temporarily so their task IDs are not incorrectly pruned.
-	validTasks := make(map[string]bool)
+	validTasks := make(map[TaskIdentity]bool)
 	for _, p := range m.allLoadableProjects() {
 		wasUnloaded := p.Tasks == nil
 		if wasUnloaded {
@@ -289,7 +289,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 			}
 		}
 		for _, t := range p.Tasks {
-			validTasks[t.ID] = true
+			validTasks[taskIdentityFor(t, p)] = true
 		}
 		if wasUnloaded {
 			p.Tasks = nil
@@ -301,11 +301,12 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Prune focus queue
 	n := 0
 	for _, ft := range m.focusQueue {
-		if validTasks[ft.Task.ID] {
+		identity := taskIdentityFor(ft.Task, ft.Project)
+		if validTasks[identity] {
 			m.focusQueue[n] = ft
 			n++
 		} else {
-			delete(m.focusQueueIDs, ft.Task.ID)
+			delete(m.focusQueueIDs, identity)
 			dirty = true
 		}
 	}
@@ -314,11 +315,12 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Prune daily plan
 	n = 0
 	for _, ft := range m.dailyPlan {
-		if validTasks[ft.Task.ID] {
+		identity := taskIdentityFor(ft.Task, ft.Project)
+		if validTasks[identity] {
 			m.dailyPlan[n] = ft
 			n++
 		} else {
-			delete(m.dailyPlanIDs, ft.Task.ID)
+			delete(m.dailyPlanIDs, identity)
 			dirty = true
 		}
 	}
@@ -327,7 +329,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Prune recent task visits
 	n = 0
 	for _, rv := range m.recentTaskVisits {
-		if validTasks[rv.Task.ID] {
+		if validTasks[taskIdentityFor(rv.Task, rv.Project)] {
 			m.recentTaskVisits[n] = rv
 			n++
 		} else {

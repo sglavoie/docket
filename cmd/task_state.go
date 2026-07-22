@@ -87,13 +87,13 @@ func runAppTransition(cmd *cobra.Command, refs []string, target models.WorkflowS
 	var errs []string
 	succeeded := 0
 	for _, ref := range refs {
-		task, err := resolveAppTask(workspace.Manager, ref)
+		task, locator, err := resolveAppTaskTarget(workspace.Manager, ref)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", ref, err))
 			continue
 		}
 		cascade, err := withResultRetry(func() (app.BulkResult, error) {
-			return workflows.service.StateWithWorkflow(task.ID, target, workflows.options(true, "Change State", task))
+			return workflows.service.StateWithWorkflowByLocator(locator, target, workflows.options(true, "Change State", task))
 		})
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", ref, translateAppError(err)))

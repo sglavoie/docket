@@ -126,7 +126,7 @@ func TestBulkWorkflowReturnsNormalizedConflicts(t *testing.T) {
 		t.Fatalf("conflicts = %+v, want one normalized conflict", result.Conflicts)
 	}
 	conflict := result.Conflicts[0]
-	if conflict.TaskID != task.ID || conflict.TaskTitle != task.Title || conflict.Field != "priority" {
+	if conflict.ProjectID != project.ID || conflict.TaskID != task.ID || conflict.TaskTitle != task.Title || conflict.Field != "priority" {
 		t.Fatalf("conflict = %+v, want task identity and priority field", conflict)
 	}
 	if len(conflict.Rules) != 2 || conflict.Rules[0] != "Set P1" || conflict.Rules[1] != "Set P5" {

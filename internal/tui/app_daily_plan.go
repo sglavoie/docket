@@ -40,10 +40,11 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 		return nil
 	}
 	taskID, projectID := task.ID, project.ID
+	identity := taskIdentityFor(task, project)
 
-	if m.dailyPlanIDs[taskID] {
+	if m.dailyPlanIDs[identity] {
 		// Remove from daily plan (planning-only; workflow state is untouched).
-		m.removeFromDailyPlan(taskID)
+		m.removeFromDailyPlan(identity)
 		m.setInfoStatus(fmt.Sprintf("Removed from today's plan: %s", task.Title))
 		return m.recordPlanningOnlyDailyPlanToggle(&dailyPlanToggleAction{Task: task, Project: project, WasAdd: false})
 	}
@@ -69,7 +70,7 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 	// Add a non-Next task to Today: a pure planning-domain change with a bespoke
 	// in-memory undo (there is no ledger transaction to ride).
 	m.dailyPlan = append(m.dailyPlan, FocusTask{Task: task, Project: project})
-	m.dailyPlanIDs[taskID] = true
+	m.dailyPlanIDs[identity] = true
 	m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", task.Title))
 	return m.recordPlanningOnlyDailyPlanToggle(&dailyPlanToggleAction{Task: task, Project: project, WasAdd: true})
 }
@@ -94,7 +95,9 @@ func (m *AppModel) recordPlanningOnlyDailyPlanToggle(action *dailyPlanToggleActi
 func (m *AppModel) dailyPlanLedgerTransition(taskID, projectID string) (*models.Task, *models.Project, error) {
 	plannedDate := time.Now().Format("2006-01-02")
 	builder := dailyPlanAddArtifactBuilder(m.configManager, taskID, projectID, plannedDate)
-	res, err := m.appService.Transition(app.StateRequest{TaskID: taskID, Target: models.StateReady, PlanningArtifacts: builder})
+	res, err := m.appService.Transition(app.StateRequest{
+		Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID}, Target: models.StateReady, PlanningArtifacts: builder,
+	})
 	if err != nil {
 		return nil, m.projectByID(projectID), err
 	}
@@ -122,14 +125,14 @@ func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
 	m.lastToggleRedoKind = toggleUndoDailyPlan
 	m.lastToggleUndoKind = m.nextUndoKind(toggleUndoDailyPlan)
 
-	taskID := action.Task.ID
+	identity := taskIdentityFor(action.Task, action.Project)
 	if action.WasAdd {
 		// Reverse add: remove from daily plan.
-		m.removeFromDailyPlan(taskID)
-	} else if !m.dailyPlanIDs[taskID] {
+		m.removeFromDailyPlan(identity)
+	} else if !m.dailyPlanIDs[identity] {
 		// Reverse remove: add back to daily plan.
 		m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
-		m.dailyPlanIDs[taskID] = true
+		m.dailyPlanIDs[identity] = true
 	}
 	m.persistDailyPlan()
 	m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
@@ -146,16 +149,16 @@ func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
 	m.lastDailyPlanRedoAt = time.Time{}
 	m.lastToggleRedoKind = m.nextRedoKind(toggleUndoDailyPlan)
 
-	taskID := action.Task.ID
+	identity := taskIdentityFor(action.Task, action.Project)
 	if action.WasAdd {
 		// Redo add: re-add to daily plan.
-		if !m.dailyPlanIDs[taskID] {
+		if !m.dailyPlanIDs[identity] {
 			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
-			m.dailyPlanIDs[taskID] = true
+			m.dailyPlanIDs[identity] = true
 		}
 	} else {
 		// Redo remove: re-remove from daily plan.
-		m.removeFromDailyPlan(taskID)
+		m.removeFromDailyPlan(identity)
 	}
 	m.persistDailyPlan()
 	m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))

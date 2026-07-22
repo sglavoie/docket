@@ -123,10 +123,10 @@ func buildOpenParentSelectorMsg(task *models.Task, project *models.Project, sour
 		currentParentID = &id
 	}
 	return OpenParentSelectorMsg{
-		ValidParents:   validParents,
-		CurrentID:      currentParentID,
-		AllowNone:      true,
-		Source:         source,
-		ReparentTaskID: task.ID,
+		ValidParents: validParents,
+		CurrentID:    currentParentID,
+		AllowNone:    true,
+		Source:       source,
+		ReparentTask: taskIdentityFor(task, project),
 	}
 }

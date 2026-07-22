@@ -11,14 +11,14 @@ import (
 // through the single-task coordinator (app SetPinned). The current pinned state
 // is read off the row's live task pointer to pick the target value; the
 // coordinator commits one ledger-backed transaction and the shell owns reload.
-func (m *OutlinerModel) crossTogglePinned(row outlinerRow, _ *models.Project) (tea.Model, tea.Cmd) {
-	return m, m.taskItem.SetPinned(row.task.ID, !row.task.Pinned)
+func (m *OutlinerModel) crossTogglePinned(row outlinerRow, project *models.Project) (tea.Model, tea.Cmd) {
+	return m, m.taskItem.SetPinned(taskIdentityFor(row.task, project), !row.task.Pinned)
 }
 
 // crossToggleDimmed toggles the dimmed state for a task in cross-project mode
 // through the single-task coordinator (app ToggleDimmed).
-func (m *OutlinerModel) crossToggleDimmed(row outlinerRow, _ *models.Project) (tea.Model, tea.Cmd) {
-	return m, m.taskItem.ToggleDimmed(row.task.ID)
+func (m *OutlinerModel) crossToggleDimmed(row outlinerRow, project *models.Project) (tea.Model, tea.Cmd) {
+	return m, m.taskItem.ToggleDimmed(taskIdentityFor(row.task, project))
 }
 
 // crossSendTaskToSection moves the cursor task to the specified section in
@@ -27,7 +27,7 @@ func (m *OutlinerModel) crossToggleDimmed(row outlinerRow, _ *models.Project) (t
 // and RelocateTaskToEndOfSection) is retired-section design owned by session
 // 33.7.3.4.6 and intentionally NOT reintroduced here.
 func (m *OutlinerModel) crossSendTaskToSection(section string) (tea.Model, tea.Cmd) {
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return m, nil
 	}
@@ -35,7 +35,7 @@ func (m *OutlinerModel) crossSendTaskToSection(section string) (tea.Model, tea.C
 	if section == "" {
 		label = "Move to Ready"
 	}
-	return m, m.taskItem.SetSectionWorkflow(row.task.ID, section, m.singleWorkflowOpts(row.task, label), nil)
+	return m, m.taskItem.SetSectionWorkflow(taskIdentityFor(row.task, project), section, m.singleWorkflowOpts(row.task, label), nil)
 }
 
 // crossHandleTypeChange handles <, >, H, L type change keys in cross-project mode
@@ -50,11 +50,11 @@ func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
 		m.setStatus("bulk type change not supported in cross-project mode")
 		return nil, true
 	}
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return nil, true
 	}
-	return m.taskItem.ChangeType(row.task.ID, appTaskTypeChangeForOp(op)), true
+	return m.taskItem.ChangeType(taskIdentityFor(row.task, project), appTaskTypeChangeForOp(op)), true
 }
 
 // appTaskTypeChangeForOp maps the TUI TypeChangeOp to the application-layer
@@ -80,5 +80,5 @@ func appTaskTypeChangeForOp(op TypeChangeOp) app.TaskTypeChange {
 // invalid reparent before any commit, so no undo snapshot is recorded for a
 // rejected change. A nil ParentID promotes the task to a root.
 func (m *OutlinerModel) handleCrossProjectReparent(msg ParentSelectedMsg) (tea.Model, tea.Cmd) {
-	return m, m.taskItem.Reparent(msg.ReparentTaskID, msg.ParentID)
+	return m, m.taskItem.Reparent(msg.ReparentTask, msg.ParentID)
 }

@@ -114,7 +114,8 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		workflows := newCLIWorkflowRunner(workspace)
 		defer workflows.flush()
 		cascade, err := withResultRetry(func() (app.BulkResult, error) {
-			return workflows.service.ClearDependenciesWithWorkflow(task.ID, workflows.options(true, "Clear Dependencies", task))
+			locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+			return workflows.service.ClearDependenciesWithWorkflowByLocator(locator, workflows.options(true, "Clear Dependencies", task))
 		})
 		if err != nil {
 			return translateAppError(err)
@@ -157,7 +158,10 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		workflows := newCLIWorkflowRunner(workspace)
 		defer workflows.flush()
 		cascade, err := withResultRetry(func() (app.BulkResult, error) {
-			return workflows.service.RemoveDependencyWithWorkflow(task.ID, blocker.ID, workflows.options(true, "Remove Dependency", task))
+			locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+			// A bare dependency reference is intentionally relative to the
+			// locator-owned project, preserving the canonical same-project form.
+			return workflows.service.RemoveDependencyWithWorkflowByLocator(locator, blocker.ID, workflows.options(true, "Remove Dependency", task))
 		})
 		if err != nil {
 			return translateAppError(err)
@@ -201,7 +205,10 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		workflows := newCLIWorkflowRunner(workspace)
 		defer workflows.flush()
 		cascade, err := withResultRetry(func() (app.BulkResult, error) {
-			return workflows.service.AddDependencyWithWorkflow(task.ID, blocker.ID, workflows.options(true, "Add Dependency", task))
+			locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+			// A bare dependency reference is intentionally relative to the
+			// locator-owned project, preserving the canonical same-project form.
+			return workflows.service.AddDependencyWithWorkflowByLocator(locator, blocker.ID, workflows.options(true, "Add Dependency", task))
 		})
 		if err != nil {
 			return translateAppError(err)

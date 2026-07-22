@@ -165,10 +165,12 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		return nil
 	}
 
-	var selectedItems []TaskProjectRef
-	for _, filtered := range m.filteredItems {
-		item := filtered.Item
-		if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil && m.selectedTasks[item.Task.ID] {
+	selectedItems := make([]TaskProjectRef, 0, len(m.selectedTasks))
+	seen := make(map[TaskIdentity]bool, len(m.selectedTasks))
+	for _, item := range m.allItems {
+		identity := taskIdentityFor(item.Task, item.Project)
+		if item.Category == ItemCategoryTasks && m.selectedTasks[identity] && !seen[identity] {
+			seen[identity] = true
 			selectedItems = append(selectedItems, TaskProjectRef{Task: item.Task, Project: item.Project})
 		}
 	}

@@ -241,7 +241,15 @@ func globalTaskKey(projectID, taskID string) string {
 // stored reference preserves the qualified form so a later load resolves it to
 // the same target.
 func (s *Service) AddDependency(taskID, blockerRef string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.addDependencySelection(taskID, TaskLocator{}, blockerRef)
+}
+
+func (s *Service) AddDependencyByLocator(locator TaskLocator, blockerRef string) (TaskResult, error) {
+	return s.addDependencySelection("", locator, blockerRef)
+}
+
+func (s *Service) addDependencySelection(taskID string, locator TaskLocator, blockerRef string) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -284,11 +292,19 @@ func (s *Service) addDependency(ref TaskRef, resolver *WorkspaceResolver, blocke
 // AddDependencyWithWorkflow validates and adds a dependency through the same
 // workspace-aware resolver as AddDependency, then runs the workflow cascade.
 func (s *Service) AddDependencyWithWorkflow(taskID, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.addDependencyWithWorkflowSelection(taskID, TaskLocator{}, blockerRef, opts)
+}
+
+func (s *Service) AddDependencyWithWorkflowByLocator(locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.addDependencyWithWorkflowSelection("", locator, blockerRef, opts)
+}
+
+func (s *Service) addDependencyWithWorkflowSelection(taskID string, locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Add Dependency")
 	if opts.UndoContext == "" {
 		opts.UndoContext = strings.TrimSpace(blockerRef)
 	}
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, resolver *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
 		_, err := s.addDependency(ref, resolver, blockerRef)
 		return err
 	})
@@ -297,7 +313,15 @@ func (s *Service) AddDependencyWithWorkflow(taskID, blockerRef string, opts Sing
 // RemoveDependency drops a dependency edge. Removing an edge the task does not
 // carry is a no-op that still commits the (unchanged) project.
 func (s *Service) RemoveDependency(taskID, blockerRef string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.removeDependencySelection(taskID, TaskLocator{}, blockerRef)
+}
+
+func (s *Service) RemoveDependencyByLocator(locator TaskLocator, blockerRef string) (TaskResult, error) {
+	return s.removeDependencySelection("", locator, blockerRef)
+}
+
+func (s *Service) removeDependencySelection(taskID string, locator TaskLocator, blockerRef string) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -324,11 +348,19 @@ func (s *Service) removeDependency(ref TaskRef, resolver *WorkspaceResolver, blo
 // RemoveDependencyWithWorkflow removes every reference equivalent to blockerRef
 // and runs the workflow cascade on the resulting fresh-snapshot task.
 func (s *Service) RemoveDependencyWithWorkflow(taskID, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.removeDependencyWithWorkflowSelection(taskID, TaskLocator{}, blockerRef, opts)
+}
+
+func (s *Service) RemoveDependencyWithWorkflowByLocator(locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.removeDependencyWithWorkflowSelection("", locator, blockerRef, opts)
+}
+
+func (s *Service) removeDependencyWithWorkflowSelection(taskID string, locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	opts = withDefaultWorkflowUndoAction(opts, "Remove Dependency")
 	if opts.UndoContext == "" {
 		opts.UndoContext = strings.TrimSpace(blockerRef)
 	}
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, resolver *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
 		_, err := s.removeDependency(ref, resolver, blockerRef)
 		return err
 	})
@@ -342,6 +374,12 @@ func (s *Service) RemoveDependencyWithWorkflow(taskID, blockerRef string, opts S
 // commits the (unchanged) project.
 func (s *Service) ClearDependencies(taskID string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Clear Dependencies", "", func(ref TaskRef) error {
+		return clearTaskDependencies(ref.Task)
+	})
+}
+
+func (s *Service) ClearDependenciesByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskByLocator(locator, "Clear Dependencies", "", func(ref TaskRef) error {
 		return clearTaskDependencies(ref.Task)
 	})
 }
@@ -362,6 +400,15 @@ func (s *Service) ClearDependenciesWithWorkflow(taskID string, opts SingleTaskWo
 	})
 }
 
+func (s *Service) ClearDependenciesWithWorkflowByLocator(locator TaskLocator, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	opts = withDefaultWorkflowUndoAction(opts, "Clear Dependencies")
+	return s.mutateWithWorkflowGuardedByLocator(locator, opts, func(ref TaskRef) bool {
+		return len(ref.Task.DependsOn) == 0
+	}, func(ref TaskRef, _ *WorkspaceResolver) error {
+		return clearTaskDependencies(ref.Task)
+	})
+}
+
 // SetDependencies replaces a task's entire dependency set with deps, committing
 // one ChangeSet. It is the wholesale analog of AddDependency/RemoveDependency
 // for callers (the TUI dependency selector) that compute the complete post-edit
@@ -371,7 +418,15 @@ func (s *Service) ClearDependenciesWithWorkflow(taskID string, opts SingleTaskWo
 // blocking is a derived predicate rather than a workflow state, so this never
 // reopens or transitions the task.
 func (s *Service) SetDependencies(taskID string, deps []string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.setDependencies(taskID, TaskLocator{}, deps)
+}
+
+func (s *Service) SetDependenciesByLocator(locator TaskLocator, deps []string) (TaskResult, error) {
+	return s.setDependencies("", locator, deps)
+}
+
+func (s *Service) setDependencies(taskID string, locator TaskLocator, deps []string) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -387,7 +442,15 @@ func (s *Service) SetDependencies(taskID string, deps []string) (TaskResult, err
 // and carry no cycle constraint, so only existence and self-reference are
 // validated.
 func (s *Service) AddRelated(taskID, relatedRef string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.addRelated(taskID, TaskLocator{}, relatedRef)
+}
+
+func (s *Service) AddRelatedByLocator(locator TaskLocator, relatedRef string) (TaskResult, error) {
+	return s.addRelated("", locator, relatedRef)
+}
+
+func (s *Service) addRelated(taskID string, locator TaskLocator, relatedRef string) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -434,7 +497,15 @@ type RelatedLinkResult struct {
 // UUID or a "projectID:taskID" cross-project reference; the stored back-reference
 // is qualified with the source project when the tasks live in different projects.
 func (s *Service) AddRelatedBidirectional(taskID, otherRef string) (RelatedLinkResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.addRelatedBidirectional(taskID, TaskLocator{}, otherRef)
+}
+
+func (s *Service) AddRelatedBidirectionalByLocator(locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
+	return s.addRelatedBidirectional("", locator, otherRef)
+}
+
+func (s *Service) addRelatedBidirectional(taskID string, locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return RelatedLinkResult{}, err
 	}
@@ -493,7 +564,15 @@ func (s *Service) AddRelatedBidirectional(taskID, otherRef string) (RelatedLinkR
 // RemoveRelated drops a related link. Removing a link the task does not carry is a
 // no-op that still commits the (unchanged) project.
 func (s *Service) RemoveRelated(taskID, relatedRef string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.removeRelated(taskID, TaskLocator{}, relatedRef)
+}
+
+func (s *Service) RemoveRelatedByLocator(locator TaskLocator, relatedRef string) (TaskResult, error) {
+	return s.removeRelated("", locator, relatedRef)
+}
+
+func (s *Service) removeRelated(taskID string, locator TaskLocator, relatedRef string) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -518,7 +597,15 @@ func (s *Service) RemoveRelated(taskID, relatedRef string) (TaskResult, error) {
 // already-deleted link — degenerates to a source-only removal, so a half-broken
 // related pair can always be cleaned up.
 func (s *Service) RemoveRelatedBidirectional(taskID, otherRef string) (RelatedLinkResult, error) {
-	ref, snap, revision, err := s.loadTask(taskID)
+	return s.removeRelatedBidirectional(taskID, TaskLocator{}, otherRef)
+}
+
+func (s *Service) RemoveRelatedBidirectionalByLocator(locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
+	return s.removeRelatedBidirectional("", locator, otherRef)
+}
+
+func (s *Service) removeRelatedBidirectional(taskID string, locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return RelatedLinkResult{}, err
 	}

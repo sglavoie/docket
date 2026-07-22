@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -89,14 +90,15 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 	// of a raw save. The shell owns reload and toast via the batch result.
 	if len(refs) == 0 && msg.Task != nil && msg.HasExplicitValue {
 		m.pendingBulkTasks = nil
-		cmd := m.secondaryFeatures.Bulk.Snooze([]string{msg.Task.ID}, msg.SnoozedUntil)
+		locators := []app.TaskLocator{taskIdentityFor(msg.Task, msg.Project).Locator()}
+		cmd := m.secondaryFeatures.Bulk.SnoozeLocators(locators, msg.SnoozedUntil)
 		var summary string
 		if msg.SnoozedUntil != nil {
 			summary = fmt.Sprintf("Snoozed #%d until %s", msg.Task.ShortID, msg.SnoozedUntil.Format("2006-01-02"))
 		} else {
 			summary = fmt.Sprintf("Cleared snooze for #%d", msg.Task.ShortID)
 		}
-		return true, finalizeBatchResult(cmd, nil, summary)
+		return true, finalizeLocatedBatchResult(cmd, locators, summary)
 	}
 
 	if len(refs) > 1 && msg.Task != nil {
@@ -156,16 +158,17 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 	// clears the date. The shell owns reload and toast via the batch result.
 	if len(refs) == 0 && msg.Task != nil && msg.HasExplicitValue {
 		m.pendingBulkTasks = nil
+		locators := []app.TaskLocator{taskIdentityFor(msg.Task, msg.Project).Locator()}
 		var cmd tea.Cmd
 		var summary string
 		if msg.DueDate != nil {
-			cmd = m.secondaryFeatures.Bulk.SetDueDate([]string{msg.Task.ID}, *msg.DueDate, msg.HasTime)
+			cmd = m.secondaryFeatures.Bulk.SetDueDateLocators(locators, *msg.DueDate, msg.HasTime)
 			summary = fmt.Sprintf("Set due date for #%d", msg.Task.ShortID)
 		} else {
-			cmd = m.secondaryFeatures.Bulk.ClearDueDate([]string{msg.Task.ID})
+			cmd = m.secondaryFeatures.Bulk.ClearDueDateLocators(locators)
 			summary = fmt.Sprintf("Cleared due date for #%d", msg.Task.ShortID)
 		}
-		return true, finalizeBatchResult(cmd, nil, summary)
+		return true, finalizeLocatedBatchResult(cmd, locators, summary)
 	}
 
 	if len(refs) > 1 && msg.Task != nil {

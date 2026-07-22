@@ -20,7 +20,10 @@ func TestToggleMode(t *testing.T) {
 	t.Run("exits multi-select mode and clears selections", func(t *testing.T) {
 		s := &MultiSelectState{
 			multiSelectMode: true,
-			selectedTasks:   map[string]bool{"a": true, "b": true},
+			selectedTaskIdentities: map[TaskIdentity]bool{
+				{ProjectID: "project", TaskID: "a"}: true,
+				{ProjectID: "project", TaskID: "b"}: true,
+			},
 		}
 		var status string
 		s.ToggleMode(&status, "enter msg")
@@ -36,15 +39,17 @@ func TestToggleMode(t *testing.T) {
 	})
 }
 
-func TestToggleAndUpdateStatus(t *testing.T) {
+func TestToggleTaskIdentityAndUpdateStatus(t *testing.T) {
 	noSel := "no selection"
 	withSel := "%d selected"
+	identity := TaskIdentity{ProjectID: "project", TaskID: "task-1"}
 
 	t.Run("selecting a task updates status with count", func(t *testing.T) {
 		s := &MultiSelectState{multiSelectMode: true}
 		var status string
-		s.ToggleAndUpdateStatus("task-1", &status, noSel, withSel)
-		if !s.IsSelected("task-1") {
+		s.ToggleTaskIdentity(identity)
+		s.UpdateStatus(&status, noSel, withSel)
+		if !s.IsTaskIdentitySelected(identity) {
 			t.Fatal("expected task-1 to be selected")
 		}
 		if status != "1 selected" {
@@ -54,12 +59,13 @@ func TestToggleAndUpdateStatus(t *testing.T) {
 
 	t.Run("deselecting last task shows no-selection message", func(t *testing.T) {
 		s := &MultiSelectState{
-			multiSelectMode: true,
-			selectedTasks:   map[string]bool{"task-1": true},
+			multiSelectMode:        true,
+			selectedTaskIdentities: map[TaskIdentity]bool{identity: true},
 		}
 		var status string
-		s.ToggleAndUpdateStatus("task-1", &status, noSel, withSel)
-		if s.IsSelected("task-1") {
+		s.ToggleTaskIdentity(identity)
+		s.UpdateStatus(&status, noSel, withSel)
+		if s.IsTaskIdentitySelected(identity) {
 			t.Fatal("expected task-1 to be deselected")
 		}
 		if status != noSel {
@@ -83,7 +89,11 @@ func TestUpdateStatus(t *testing.T) {
 
 	t.Run("multiple selections", func(t *testing.T) {
 		s := &MultiSelectState{
-			selectedTasks: map[string]bool{"a": true, "b": true, "c": true},
+			selectedTaskIdentities: map[TaskIdentity]bool{
+				{ProjectID: "project", TaskID: "a"}: true,
+				{ProjectID: "project", TaskID: "b"}: true,
+				{ProjectID: "project", TaskID: "c"}: true,
+			},
 		}
 		var status string
 		s.UpdateStatus(&status, noSel, withSel)
@@ -96,7 +106,10 @@ func TestUpdateStatus(t *testing.T) {
 func TestFinishBulk(t *testing.T) {
 	s := &MultiSelectState{
 		multiSelectMode: true,
-		selectedTasks:   map[string]bool{"a": true, "b": true},
+		selectedTaskIdentities: map[TaskIdentity]bool{
+			{ProjectID: "project", TaskID: "a"}: true,
+			{ProjectID: "project", TaskID: "b"}: true,
+		},
 	}
 	var status string
 	s.FinishBulk(&status, "Changed 2 tasks")
@@ -109,5 +122,27 @@ func TestFinishBulk(t *testing.T) {
 	}
 	if status != "Changed 2 tasks" {
 		t.Fatalf("expected result message, got %q", status)
+	}
+}
+
+func TestMultiSelectStateHasTaskIDRejectsAmbiguousIdentity(t *testing.T) {
+	sharedID := "shared-task"
+	state := &MultiSelectState{
+		multiSelectMode: true,
+		selectedTaskIdentities: map[TaskIdentity]bool{
+			{ProjectID: "alpha", TaskID: sharedID}: true,
+			{ProjectID: "beta", TaskID: sharedID}:  true,
+		},
+	}
+	selectedIDs := map[string]bool{sharedID: true}
+
+	if multiSelectStateHasTaskID(state, selectedIDs) {
+		t.Fatal("ID-only lookup should reject duplicate selected task identities")
+	}
+	if clearMultiSelectStateForTaskIDs(state, selectedIDs) {
+		t.Fatal("ID-only cleanup should not clear an ambiguous duplicate selection")
+	}
+	if !state.multiSelectMode || state.SelectedCount() != 2 {
+		t.Fatalf("ambiguous selection changed: active=%v count=%d", state.multiSelectMode, state.SelectedCount())
 	}
 }

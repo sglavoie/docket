@@ -50,7 +50,7 @@ type BulkTagSelectorModel struct {
 	*BasePicker[TagInfo]
 	TagAdder
 	taskRefs     []TaskProjectRef
-	originalTags map[string][]string // taskID -> original tags
+	originalTags map[TaskIdentity][]string
 }
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
@@ -75,9 +75,9 @@ func NewBulkTagSelectorModel(taskRefs []TaskProjectRef) *BulkTagSelectorModel {
 		picker.SetCursorToID(commonTags[0])
 	}
 
-	originalTags := make(map[string][]string)
+	originalTags := make(map[TaskIdentity][]string)
 	for _, ref := range taskRefs {
-		originalTags[ref.Task.ID] = append([]string{}, ref.Task.Tags...)
+		originalTags[ref.Identity()] = append([]string{}, ref.Task.Tags...)
 	}
 
 	return &BulkTagSelectorModel{

@@ -30,9 +30,9 @@ func (s *stubInboxBackend) shouldProcessOnSectionChange(*models.Task, *models.Pr
 	return false
 }
 func (s *stubInboxBackend) shouldProcessOnStateChange(models.WorkflowState) bool { return false }
-func (s *stubInboxBackend) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
+func (s *stubInboxBackend) findTask(identity TaskIdentity) (*models.Task, *models.Project) {
 	for _, t := range s.tasks {
-		if t != nil && t.ID == taskID {
+		if t != nil && identity == testInboxIdentity(t.ID) {
 			return t, &models.Project{ID: "p1"}
 		}
 	}
@@ -53,11 +53,15 @@ func (s *stubInboxBackend) helpViewName() string               { return "" }
 func newTestInboxCore(tasks []*models.Task) *inboxCore {
 	stub := &stubInboxBackend{tasks: tasks}
 	c := &inboxCore{
-		processedIDs: make(map[string]bool),
-		skippedIDs:   make(map[string]bool),
+		processedIDs: make(map[TaskIdentity]bool),
+		skippedIDs:   make(map[TaskIdentity]bool),
 		backend:      stub,
 	}
 	return c
+}
+
+func testInboxIdentity(taskID string) TaskIdentity {
+	return TaskIdentity{ProjectID: "p1", TaskID: taskID}
 }
 
 // TestAdvanceToNext_BackwardSearchPreventsEarlyClose is the regression test for
@@ -74,8 +78,8 @@ func TestAdvanceToNext_BackwardSearchPreventsEarlyClose(t *testing.T) {
 		{ID: "t2", Title: "Task 2"},
 	}
 	c := newTestInboxCore(tasks)
-	c.currentIndex = 2        // cursor on last item
-	c.skippedIDs["t2"] = true // mark last item as skipped
+	c.currentIndex = 2                           // cursor on last item
+	c.skippedIDs[testInboxIdentity("t2")] = true // mark last item as skipped
 
 	cmd := c.advanceToNext(true)
 
@@ -103,9 +107,9 @@ func TestAdvanceToNext_ClosesWhenAllProcessed(t *testing.T) {
 	}
 	c := newTestInboxCore(tasks)
 	c.currentIndex = 2
-	c.processedIDs["t0"] = true
-	c.processedIDs["t1"] = true
-	c.skippedIDs["t2"] = true
+	c.processedIDs[testInboxIdentity("t0")] = true
+	c.processedIDs[testInboxIdentity("t1")] = true
+	c.skippedIDs[testInboxIdentity("t2")] = true
 
 	cmd := c.advanceToNext(true)
 
@@ -128,7 +132,7 @@ func TestAdvanceToNext_ForwardSearchStillWorks(t *testing.T) {
 	}
 	c := newTestInboxCore(tasks)
 	c.currentIndex = 0
-	c.processedIDs["t0"] = true
+	c.processedIDs[testInboxIdentity("t0")] = true
 
 	cmd := c.advanceToNext(true)
 

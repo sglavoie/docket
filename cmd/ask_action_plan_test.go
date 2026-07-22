@@ -103,6 +103,9 @@ func TestApplyCLIActionPlanCleansDurableAndMachineDeleteRefs(t *testing.T) {
 	if len(result.DeletedTaskIDs) != len(deleted) {
 		t.Fatalf("deleted IDs = %v, want %v", result.DeletedTaskIDs, deleted)
 	}
+	if len(result.DeletedTaskLocators) != len(deleted) {
+		t.Fatalf("deleted locators = %v, want %d qualified tasks", result.DeletedTaskLocators, len(deleted))
+	}
 	for _, id := range result.DeletedTaskIDs {
 		if !deleted[id] {
 			t.Fatalf("unexpected deleted task ID %q", id)
@@ -113,7 +116,7 @@ func TestApplyCLIActionPlanCleansDurableAndMachineDeleteRefs(t *testing.T) {
 	testutil.AssertNoError(t, loadErr)
 	if got := reloaded.Planning(); len(got.FocusQueue) != 1 || got.FocusQueue[0].TaskID != survivor.ID ||
 		len(got.DailyPlan) != 1 || got.DailyPlan[0].TaskID != survivor.ID ||
-		len(got.FocusDismissedIDs) != 1 || got.FocusDismissedIDs[0] != survivor.ID {
+		len(got.FocusDismissedIDs) != len(deleted)+1 {
 		t.Fatalf("CLI AI delete cleaned the wrong planning refs: focus=%v daily=%v dismissed=%v", got.FocusQueue, got.DailyPlan, got.FocusDismissedIDs)
 	}
 	if got := reloaded.Machine().RecentTaskVisits; len(got) != 1 || got[0].TaskID != survivor.ID {

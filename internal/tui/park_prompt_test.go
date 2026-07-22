@@ -13,7 +13,7 @@ func TestMaybePromptParkEscSkipsAndDoesNotReprompt(t *testing.T) {
 	markSessionTaskMutated(project.ID, []string{source.ID})
 
 	continued := 0
-	cmd, prompted := app.maybePromptPark(target.ID, func() tea.Cmd {
+	cmd, prompted := app.maybePromptPark(taskIdentityFor(target, project), func() tea.Cmd {
 		continued++
 		return nil
 	})
@@ -51,11 +51,11 @@ func TestMaybePromptParkEscSkipsAndDoesNotReprompt(t *testing.T) {
 	if app.currentView() != ViewOutliner {
 		t.Fatalf("currentView after skip = %v, want ViewOutliner", app.currentView())
 	}
-	if !wasParkPrompted(source.ID) {
+	if !wasParkPrompted(taskIdentityFor(source, project)) {
 		t.Fatal("Esc skip should mark the task prompted")
 	}
 
-	_, prompted = app.maybePromptPark(target.ID, func() tea.Cmd {
+	_, prompted = app.maybePromptPark(taskIdentityFor(target, project), func() tea.Cmd {
 		continued++
 		return nil
 	})
@@ -70,13 +70,13 @@ func TestMaybePromptParkEscSkipsAndDoesNotReprompt(t *testing.T) {
 func TestMaybePromptParkSkipMatrix(t *testing.T) {
 	tests := []struct {
 		name   string
-		target func(source, target *models.Task) string
+		target func(source, target *models.Task) TaskIdentity
 		mutate func(source *models.Task, mutation sessionTaskMutation)
 	}{
 		{
 			name: "same task target",
-			target: func(source, _ *models.Task) string {
-				return source.ID
+			target: func(source, _ *models.Task) TaskIdentity {
+				return taskIdentityFor(source, source.Project)
 			},
 		},
 		{
@@ -94,8 +94,8 @@ func TestMaybePromptParkSkipMatrix(t *testing.T) {
 		},
 		{
 			name: "already prompted",
-			mutate: func(source *models.Task, _ sessionTaskMutation) {
-				markParkPrompted(source.ID)
+			mutate: func(source *models.Task, mutation sessionTaskMutation) {
+				markParkPrompted(TaskIdentity{ProjectID: mutation.ProjectID, TaskID: source.ID})
 			},
 		},
 		{
@@ -119,12 +119,12 @@ func TestMaybePromptParkSkipMatrix(t *testing.T) {
 				project.BuildTaskTree()
 			}
 
-			targetID := target.ID
+			targetIdentity := taskIdentityFor(target, project)
 			if tt.target != nil {
-				targetID = tt.target(source, target)
+				targetIdentity = tt.target(source, target)
 			}
 			continued := 0
-			_, prompted := app.maybePromptPark(targetID, func() tea.Cmd {
+			_, prompted := app.maybePromptPark(targetIdentity, func() tea.Cmd {
 				continued++
 				return nil
 			})
@@ -148,7 +148,7 @@ func TestPromptParkEnterSavesSynchronouslyBeforeContinuation(t *testing.T) {
 	markSessionTaskMutated(project.ID, []string{source.ID})
 
 	continued := 0
-	_, prompted := app.maybePromptPark(target.ID, func() tea.Cmd {
+	_, prompted := app.maybePromptPark(taskIdentityFor(target, project), func() tea.Cmd {
 		continued++
 		return nil
 	})

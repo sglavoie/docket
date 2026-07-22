@@ -80,3 +80,26 @@ func TestRoadmapStorageSummariesForMetricsPreservesEffortFields(t *testing.T) {
 		t.Fatalf("velocity = %v, want 3 from archived large effort summary", velocity)
 	}
 }
+
+func TestBuildRoadmapJSONQualifiesDuplicateTaskIDs(t *testing.T) {
+	alpha := &models.Project{ID: "alpha", Name: "Alpha"}
+	beta := &models.Project{ID: "beta", Name: "Beta"}
+	alphaTask := &models.Task{ID: "shared-id", Title: "Alpha task", Project: alpha}
+	betaTask := &models.Task{ID: "shared-id", Title: "Beta task", Project: beta}
+	scheduled := []planner.ScheduledTask{{Task: alphaTask}, {Task: betaTask}}
+	cp := &planner.CriticalPathResult{
+		Path:   []*models.Task{alphaTask},
+		OnPath: map[string]bool{planner.TaskKey(alphaTask): true},
+	}
+
+	out := buildRoadmapJSON(scheduled, cp, 1)
+	if len(out.Schedule) != 2 || out.Schedule[0].ProjectID != "alpha" || out.Schedule[1].ProjectID != "beta" {
+		t.Fatalf("qualified schedule = %+v", out.Schedule)
+	}
+	if !out.Schedule[0].IsCritical || out.Schedule[1].IsCritical {
+		t.Fatalf("critical flags = alpha %v beta %v", out.Schedule[0].IsCritical, out.Schedule[1].IsCritical)
+	}
+	if len(out.CriticalPath.TaskLocators) != 1 || out.CriticalPath.TaskLocators[0] != (jsonTaskLocator{ProjectID: "alpha", TaskID: "shared-id"}) {
+		t.Fatalf("critical locators = %+v", out.CriticalPath.TaskLocators)
+	}
+}

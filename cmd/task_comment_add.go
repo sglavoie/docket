@@ -64,7 +64,8 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	res, err := withResultRetry(func() (app.CommentWorkflowResult, error) {
-		return workflows.service.AddCommentWithWorkflow(task.ID, commentText, workflows.options(true, "Add Comment", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.AddCommentWithWorkflowByLocator(locator, commentText, workflows.options(true, "Add Comment", task))
 	})
 	if err != nil {
 		return translateAppError(err)

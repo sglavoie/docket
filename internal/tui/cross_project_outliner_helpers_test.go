@@ -9,7 +9,7 @@ import (
 func minimalOutliner() *OutlinerModel {
 	return &OutlinerModel{
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
+		expandedNodes:     make(map[TaskIdentity]bool),
 	}
 }
 

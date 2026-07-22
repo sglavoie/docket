@@ -92,7 +92,7 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 	// which the app layer does not read.
 	svc := newWorkspaceAppService(workspace)
 	if _, err := withTaskRetry(func() (app.TaskResult, error) {
-		return svc.SetScoreDimensions(task.ID, pending)
+		return svc.SetScoreDimensionsByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, pending)
 	}); err != nil {
 		return translateAppError(err)
 	}
@@ -107,11 +107,12 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		maps.Copy(dims, task.ScoreDimensions)
 		maps.Copy(dims, pending)
 		return printJSON(struct {
+			ProjectID  string         `json:"project_id"`
 			TaskID     string         `json:"task_id"`
 			ShortID    int            `json:"short_id"`
 			Title      string         `json:"title"`
 			Dimensions map[string]int `json:"dimensions"`
-		}{TaskID: task.ID, ShortID: task.ShortID, Title: task.Title, Dimensions: dims})
+		}{ProjectID: project.ID, TaskID: task.ID, ShortID: task.ShortID, Title: task.Title, Dimensions: dims})
 	}
 	fmt.Printf("Updated score dimensions for task #%d %q\n", task.ShortID, task.Title)
 	return nil

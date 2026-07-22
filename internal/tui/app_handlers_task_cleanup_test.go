@@ -26,16 +26,16 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			{Task: deletedTask, Project: deletedProject},
 			{Task: task2, Project: project},
 		}
-		app.focusQueueIDs = map[string]bool{
-			task1.ID:          true,
-			"deleted-task-id": true,
-			task2.ID:          true,
+		app.focusQueueIDs = map[TaskIdentity]bool{
+			taskIdentityFor(task1, project):              true,
+			taskIdentityFor(deletedTask, deletedProject): true,
+			taskIdentityFor(task2, project):              true,
 		}
 		app.dailyPlan = []FocusTask{
 			{Task: deletedTask, Project: deletedProject},
 		}
-		app.dailyPlanIDs = map[string]bool{
-			"deleted-task-id": true,
+		app.dailyPlanIDs = map[TaskIdentity]bool{
+			taskIdentityFor(deletedTask, deletedProject): true,
 		}
 		app.recentTaskVisits = []RecentTaskVisitEntry{
 			{Task: task1, Project: project},
@@ -48,7 +48,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		if len(app.focusQueue) != 2 {
 			t.Fatalf("expected 2 focus queue entries, got %d", len(app.focusQueue))
 		}
-		if app.focusQueueIDs["deleted-task-id"] {
+		if app.focusQueueIDs[taskIdentityFor(deletedTask, deletedProject)] {
 			t.Error("deleted task should be removed from focusQueueIDs")
 		}
 
@@ -56,7 +56,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		if len(app.dailyPlan) != 0 {
 			t.Fatalf("expected 0 daily plan entries, got %d", len(app.dailyPlan))
 		}
-		if app.dailyPlanIDs["deleted-task-id"] {
+		if app.dailyPlanIDs[taskIdentityFor(deletedTask, deletedProject)] {
 			t.Error("deleted task should be removed from dailyPlanIDs")
 		}
 
@@ -95,12 +95,12 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			{Task: task1, Project: project},
 			{Task: otherTask, Project: otherProject},
 		}
-		app.focusQueueIDs = map[string]bool{
-			task1.ID:     true,
-			otherTask.ID: true,
+		app.focusQueueIDs = map[TaskIdentity]bool{
+			taskIdentityFor(task1, project):          true,
+			taskIdentityFor(otherTask, otherProject): true,
 		}
 		app.dailyPlan = []FocusTask{}
-		app.dailyPlanIDs = map[string]bool{}
+		app.dailyPlanIDs = map[TaskIdentity]bool{}
 		app.recentTaskVisits = []RecentTaskVisitEntry{}
 
 		app.pruneDeletedTaskRefs()
@@ -110,7 +110,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		if len(app.focusQueue) != 2 {
 			t.Fatalf("expected 2 focus queue entries, got %d", len(app.focusQueue))
 		}
-		if !app.focusQueueIDs[otherTask.ID] {
+		if !app.focusQueueIDs[taskIdentityFor(otherTask, otherProject)] {
 			t.Error("task from unloaded project should NOT be pruned")
 		}
 
@@ -125,9 +125,9 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		task1 := project.Tasks[0]
 
 		app.focusQueue = []FocusTask{{Task: task1, Project: project}}
-		app.focusQueueIDs = map[string]bool{task1.ID: true}
+		app.focusQueueIDs = map[TaskIdentity]bool{taskIdentityFor(task1, project): true}
 		app.dailyPlan = []FocusTask{}
-		app.dailyPlanIDs = map[string]bool{}
+		app.dailyPlanIDs = map[TaskIdentity]bool{}
 		app.recentTaskVisits = []RecentTaskVisitEntry{{Task: task1, Project: project}}
 
 		app.pruneDeletedTaskRefs()
@@ -148,9 +148,9 @@ func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
 	// Set up a task that will be "deleted"
 	deletedTask := &models.Task{ID: "will-be-deleted", Title: "Ghost"}
 	app.focusQueue = []FocusTask{{Task: deletedTask, Project: project}}
-	app.focusQueueIDs = map[string]bool{"will-be-deleted": true}
+	app.focusQueueIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
 	app.dailyPlan = []FocusTask{{Task: deletedTask, Project: project}}
-	app.dailyPlanIDs = map[string]bool{"will-be-deleted": true}
+	app.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
 
 	msg := TaskDeletedMsg{Task: deletedTask}
 	handled, _ := app.handleTaskMessages(msg)
@@ -180,9 +180,9 @@ func TestTasksArchivedMsgCleansConfigRefs(t *testing.T) {
 	// Simulate an archived task that no longer exists in project
 	archivedTask := &models.Task{ID: "archived-task", Title: "Done"}
 	app.focusQueue = []FocusTask{{Task: archivedTask, Project: project}}
-	app.focusQueueIDs = map[string]bool{"archived-task": true}
+	app.focusQueueIDs = map[TaskIdentity]bool{taskIdentityFor(archivedTask, project): true}
 	app.dailyPlan = []FocusTask{}
-	app.dailyPlanIDs = map[string]bool{}
+	app.dailyPlanIDs = map[TaskIdentity]bool{}
 
 	msg := TasksArchivedMsg{Count: 1}
 	handled, _ := app.handleTaskMessages(msg)

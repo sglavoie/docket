@@ -52,15 +52,15 @@ func TestSnapshotIndexesTasksAndRevisions(t *testing.T) {
 		t.Fatalf("Projects() = %d, want 2", got)
 	}
 
-	loc, ok := snap.Lookup("a1")
-	if !ok || loc.Task != a || loc.Project.ID != "proj-a" {
-		t.Fatalf("Lookup(a1) = %+v, ok=%v", loc, ok)
+	loc, status := snap.LookupTaskID("a1")
+	if status != TaskLookupUnique || loc.Task != a || loc.Project.ID != "proj-a" {
+		t.Fatalf("LookupTaskID(a1) = %+v, status=%v", loc, status)
 	}
-	if _, ok := snap.Lookup(""); ok {
-		t.Fatal("Lookup(\"\") should never match")
+	if _, status := snap.LookupTaskID(""); status != TaskLookupMissing {
+		t.Fatal("LookupTaskID(\"\") should be missing")
 	}
-	if _, ok := snap.Lookup("missing"); ok {
-		t.Fatal("Lookup(missing) should not match")
+	if _, status := snap.LookupTaskID("missing"); status != TaskLookupMissing {
+		t.Fatal("LookupTaskID(missing) should be missing")
 	}
 
 	if got := snap.Revision("proj-a"); got != "rev-proj-a" {
@@ -101,16 +101,19 @@ func TestSnapshotReverseDependencies(t *testing.T) {
 	}
 }
 
-func TestSnapshotDuplicateTaskIDKeepsFirst(t *testing.T) {
+func TestSnapshotDuplicateTaskIDIsAmbiguous(t *testing.T) {
 	first := makeTask("dup", 1)
 	second := makeTask("dup", 9)
 	snap := buildFromProjects(t,
 		makeProject("proj-a", "alpha", first),
 		makeProject("proj-b", "beta", second),
 	)
-	loc, ok := snap.Lookup("dup")
-	if !ok || loc.Task != first || loc.Project.ID != "proj-a" {
-		t.Fatalf("Lookup(dup) should resolve to the first-seen task, got %+v", loc)
+	loc, status := snap.LookupTaskID("dup")
+	if status != TaskLookupAmbiguous || loc != (TaskLocation{}) {
+		t.Fatalf("LookupTaskID(dup) = %+v, status=%v; want empty ambiguous result", loc, status)
+	}
+	if got := snap.QualifiedRef("dup"); got != "" {
+		t.Fatalf("QualifiedRef(dup) = %q, want empty for ambiguous id", got)
 	}
 }
 

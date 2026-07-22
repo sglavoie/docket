@@ -101,6 +101,7 @@ func TestInboxDeleteEndToEndAdvancesAfterCommit(t *testing.T) {
 	proc.currentIndex = 0
 	deletedID := e.tasks[0].ID
 	nextID := e.tasks[1].ID
+	deletedIdentity := TaskIdentity{ProjectID: e.project.ID, TaskID: deletedID}
 
 	// Press x: the processor emits the canonical request; nothing is mutated yet.
 	reqCmd := proc.requestDelete()
@@ -118,13 +119,13 @@ func TestInboxDeleteEndToEndAdvancesAfterCommit(t *testing.T) {
 	if !m.taskDeleteConfirm.IsActive() {
 		t.Fatal("shell delete confirmation should be armed")
 	}
-	if proc.processedIDs[deletedID] {
+	if proc.processedIDs[deletedIdentity] {
 		t.Fatal("request must not mark the task processed before commit")
 	}
 
 	// Confirm: the shell commits the atomic transaction.
 	_, cmd := m.handleGlobalKeyPress(keyPress("y"))
-	if pending, ok := singleArmedInboxDelete(m); !ok || pending.taskID != deletedID || pending.origin != ViewInboxProcessor {
+	if pending, ok := singleArmedInboxDelete(m); !ok || pending.identity != deletedIdentity || pending.origin != ViewInboxProcessor {
 		t.Fatalf("pendingInboxDelete not armed for the deleted task, got %+v (armed=%v)", pending, ok)
 	}
 	batch := runBatchResult(t, cmd)
@@ -134,7 +135,7 @@ func TestInboxDeleteEndToEndAdvancesAfterCommit(t *testing.T) {
 	if e.reload(t).GetTaskByID(deletedID) != nil {
 		t.Error("deleted task should be removed from disk")
 	}
-	if !proc.processedIDs[deletedID] {
+	if !proc.processedIDs[deletedIdentity] {
 		t.Error("deleted task should be marked processed after commit")
 	}
 	if len(m.pendingInboxDeletes) != 0 {
@@ -149,18 +150,19 @@ func TestApplyPendingInboxDeleteGuards(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	m, proc := e.m, e.processor
 	proc.currentIndex = 0
-	proc.pendingDeletes = map[string]inboxPendingDelete{
-		e.tasks[0].ID: {focusID: e.tasks[1].ID},
+	identity := TaskIdentity{ProjectID: e.project.ID, TaskID: e.tasks[0].ID}
+	proc.pendingDeletes = map[TaskIdentity]inboxPendingDelete{
+		identity: {focus: TaskIdentity{ProjectID: e.project.ID, TaskID: e.tasks[1].ID}},
 	}
 	armInboxToken := func(token uint64) {
 		m.pendingInboxDeletes = map[uint64]pendingInboxDelete{
-			token: {token: token, origin: ViewInboxProcessor, taskID: e.tasks[0].ID},
+			token: {token: token, origin: ViewInboxProcessor, identity: identity},
 		}
 	}
 
 	// No armed pending: no-op regardless of token.
 	m.pendingInboxDeletes = nil
-	if cmd := m.applyPendingInboxDelete(1, []string{e.tasks[0].ID}); cmd != nil {
+	if cmd := m.applyPendingInboxDelete(1, nil, []string{e.tasks[0].ID}); cmd != nil {
 		t.Errorf("unarmed applyPendingInboxDelete should be a no-op, got %v", cmd)
 	}
 
@@ -168,30 +170,40 @@ func TestApplyPendingInboxDeleteGuards(t *testing.T) {
 	// unrelated result: it must not consume the pending state and must LEAVE it
 	// in-flight so THIS delete's matching result can still apply.
 	armInboxToken(7)
-	if cmd := m.applyPendingInboxDelete(0, []string{e.tasks[0].ID}); cmd != nil {
+	if cmd := m.applyPendingInboxDelete(0, nil, []string{e.tasks[0].ID}); cmd != nil {
 		t.Errorf("token 0 (non-delete batch) should be a no-op, got %v", cmd)
 	}
-	if cmd := m.applyPendingInboxDelete(8, []string{e.tasks[0].ID}); cmd != nil {
+	if cmd := m.applyPendingInboxDelete(8, nil, []string{e.tasks[0].ID}); cmd != nil {
 		t.Errorf("mismatched token should be a no-op, got %v", cmd)
 	}
 	if _, ok := singleArmedInboxDelete(m); !ok {
 		t.Fatal("an unrelated result must leave the in-flight Inbox delete armed")
 	}
-	if proc.processedIDs[e.tasks[0].ID] {
+	if proc.processedIDs[identity] {
 		t.Error("an unrelated batch must not mark the task processed")
 	}
 
 	// The matching token but a batch that did not actually remove the pending task:
 	// clears the pending state (defensive) and applies nothing.
 	armInboxToken(7)
-	if cmd := m.applyPendingInboxDelete(7, []string{"someone-else"}); cmd != nil {
+	if cmd := m.applyPendingInboxDelete(7, nil, []string{"someone-else"}); cmd != nil {
 		t.Errorf("matching token but mismatched removed IDs should be a no-op, got %v", cmd)
 	}
-	if proc.processedIDs[e.tasks[0].ID] {
+	if proc.processedIDs[identity] {
 		t.Error("mismatched removed IDs must not mark the task processed")
 	}
 	if len(m.pendingInboxDeletes) != 0 {
 		t.Error("a token-matched result should clear its own pending state")
+	}
+
+	// A modern payload with locators must never fall back to its legacy ID list.
+	// The same UUID from a different project is not the pending task.
+	armInboxToken(9)
+	if cmd := m.applyPendingInboxDelete(9, []app.TaskLocator{{ProjectID: "other-project", TaskID: e.tasks[0].ID}}, []string{e.tasks[0].ID}); cmd != nil {
+		t.Errorf("mismatched locator should not apply through the legacy ID fallback, got %v", cmd)
+	}
+	if proc.processedIDs[identity] {
+		t.Error("mismatched project locator must not mark the pending task processed")
 	}
 }
 

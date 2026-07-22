@@ -20,7 +20,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	checkbox := ""
 	checkboxLen := 0
 	if item.Category == ItemCategoryTasks && item.Task != nil {
-		if m.selectedTasks[item.Task.ID] {
+		if m.selectedTasks[taskIdentityFor(item.Task, item.Project)] {
 			checkbox = SelectedCheckboxStyle.Render(icons.Get("checkbox.checked") + " ")
 		} else if len(m.selectedTasks) > 0 {
 			checkbox = MutedStyle.Render(icons.Get("checkbox.unchecked") + " ")

@@ -36,7 +36,7 @@ type RoadmapModel struct {
 	scrollOff        int
 	hScrollOff       int
 	zoom             ZoomLevel
-	collapsed        map[string]bool
+	collapsed        map[TaskIdentity]bool
 	labelWidth       int  // left pane width (~30 chars)
 	showCriticalPath bool // when true, dims non-critical rows
 	hasDeps          bool // true if any task has DependsOn edges
@@ -49,7 +49,7 @@ func NewRoadmapModel(runtime *config.RuntimeState) *RoadmapModel {
 		isGlobal:   true,
 		canToggle:  false,
 		zoom:       ZoomMonth,
-		collapsed:  make(map[string]bool),
+		collapsed:  make(map[TaskIdentity]bool),
 		labelWidth: 30,
 	}
 	m.computeData()
@@ -64,7 +64,7 @@ func NewRoadmapModelForProject(runtime *config.RuntimeState, project *models.Pro
 		isGlobal:   false,
 		canToggle:  true,
 		zoom:       ZoomMonth,
-		collapsed:  make(map[string]bool),
+		collapsed:  make(map[TaskIdentity]bool),
 		labelWidth: 30,
 	}
 	m.computeData()
@@ -180,7 +180,7 @@ func (m *RoadmapModel) buildRows(projects []*models.Project) {
 	m.rows = nil
 	schedMap := make(map[string]planner.ScheduledTask, len(m.scheduled))
 	for _, s := range m.scheduled {
-		schedMap[s.Task.ID] = s
+		schedMap[planner.TaskKey(s.Task)] = s
 	}
 
 	for _, p := range projects {
@@ -189,7 +189,7 @@ func (m *RoadmapModel) buildRows(projects []*models.Project) {
 				continue
 			}
 			m.rows = append(m.rows, m.buildRow(t, p, 0, schedMap))
-			if !m.collapsed[t.ID] {
+			if !m.collapsed[taskIdentityFor(t, p)] {
 				m.appendChildRows(t, p, 1, schedMap)
 			}
 		}
@@ -202,7 +202,7 @@ func (m *RoadmapModel) appendChildRows(parent *models.Task, p *models.Project, i
 			continue
 		}
 		m.rows = append(m.rows, m.buildRow(child, p, indent, schedMap))
-		if !m.collapsed[child.ID] {
+		if !m.collapsed[taskIdentityFor(child, p)] {
 			m.appendChildRows(child, p, indent+1, schedMap)
 		}
 	}
@@ -213,15 +213,15 @@ func (m *RoadmapModel) buildRow(t *models.Task, p *models.Project, indent int, s
 		Task:      t,
 		Project:   p,
 		Indent:    indent,
-		Collapsed: m.collapsed[t.ID],
+		Collapsed: m.collapsed[taskIdentityFor(t, p)],
 	}
 
 	if m.criticalPath != nil {
-		row.IsCritical = m.criticalPath.OnPath[t.ID]
-		row.Slack = m.criticalPath.Slack[t.ID]
+		row.IsCritical = m.criticalPath.OnPath[planner.TaskKey(t)]
+		row.Slack = m.criticalPath.Slack[planner.TaskKey(t)]
 	}
 
-	if s, ok := schedMap[t.ID]; ok {
+	if s, ok := schedMap[planner.TaskKey(t)]; ok {
 		row.ScheduledStart = s.EarliestStart
 		row.ScheduledEnd = s.EarliestEnd
 		row.BarStart = m.dateToCol(s.EarliestStart)
@@ -412,7 +412,8 @@ func (m *RoadmapModel) toggleTimelineRowCollapsed() {
 	if row.Task == nil {
 		return
 	}
-	m.collapsed[row.Task.ID] = !m.collapsed[row.Task.ID]
+	identity := taskIdentityFor(row.Task, row.Project)
+	m.collapsed[identity] = !m.collapsed[identity]
 	m.computeData()
 }
 

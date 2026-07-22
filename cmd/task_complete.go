@@ -210,14 +210,14 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 	var errs []string
 	succeeded := 0
 
-	transition := func(display, taskID string) error {
-		task, err := resolveAppTask(workspace.Manager, taskID)
+	transition := func(display, taskRef string) error {
+		task, locator, err := resolveAppTaskTarget(workspace.Manager, taskRef)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", display, err))
 			return nil
 		}
 		cascade, err := withResultRetry(func() (app.BulkResult, error) {
-			return workflows.service.StateWithWorkflow(task.ID, state, workflows.options(true, "Change State", task))
+			return workflows.service.StateWithWorkflowByLocator(locator, state, workflows.options(true, "Change State", task))
 		})
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", display, translateAppError(err)))
@@ -248,12 +248,7 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 	}
 
 	for _, ref := range args {
-		taskID, err := resolveAppTaskID(workspace.Manager, ref)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("task %s: %s", ref, err))
-			continue
-		}
-		if err := transition(ref, taskID); err != nil {
+		if err := transition(ref, ref); err != nil {
 			return err
 		}
 	}
@@ -263,7 +258,7 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 // selectStateTarget opens the interactive selector for a state command invoked
 // with no explicit reference. It lists only tasks in the current project whose
 // legacy status can validly transition to the action's target and returns the
-// chosen task's UUID.
+// chosen task's project-qualified UUID.
 func selectStateTarget(action string) (string, error) {
 	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
@@ -294,7 +289,7 @@ func selectStateTarget(action string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return task.ID, nil
+	return project.ID + ":" + task.ID, nil
 }
 
 // countCrossProjectDeps counts the number of cross-project dependencies on a task.

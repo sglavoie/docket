@@ -60,7 +60,7 @@ func (q *QuickNoteOverlay) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 		if err != nil {
 			return nil, true, ErrorMsg{Err: err}
 		}
-		msg := commitTaskItemMutation(q.project, task, q.coordinator.AddComment(task.ID, text), func(fresh *models.Task) tea.Msg {
+		msg := commitTaskItemMutation(q.project, task, q.coordinator.AddComment(taskIdentityFor(task, q.project), text), func(fresh *models.Task) tea.Msg {
 			return CommentAddedMsg{Task: fresh}
 		})()
 		return nil, true, msg

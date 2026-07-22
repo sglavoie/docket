@@ -53,7 +53,8 @@ func runEpicBaseline(cmd *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	res, err := withResultRetry(func() (app.EpicBaselineWorkflowResult, error) {
-		return workflows.service.BaselineEpicWithWorkflow(task.ID, workflows.options(true, "Baseline Epic", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.BaselineEpicWithWorkflowByLocator(locator, workflows.options(true, "Baseline Epic", task))
 	})
 	if err != nil {
 		return translateAppError(err)

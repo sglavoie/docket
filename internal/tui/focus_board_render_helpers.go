@@ -192,7 +192,7 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 	case boardTabToday:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", stats.completedToday, stats.plannedTotal))
 		if m.childDepthLimit >= 0 {
-			rightParts = append(rightParts, fmt.Sprintf("fold:%d", m.childDepthLimit))
+			rightParts = append(rightParts, fmt.Sprintf("tree:%d", m.childDepthLimit+1))
 		}
 		if est := sumEstimatesForRows(m.filtered); est > 0 {
 			rightParts = append(rightParts, formatEstimateDays(est)+" est")
@@ -255,7 +255,7 @@ func (m *FocusBoardModel) renderBoardRowContent(row boardRow, segments focusBoar
 	if trailing != "" {
 		content += " " + trailing
 	}
-	if m.tabs.Active == boardTabToday && m.carriedOverIDs[row.Task.ID] {
+	if m.tabs.Active == boardTabToday && m.carriedOverIDs[taskIdentityFor(row.Task, row.Project)] {
 		content += " " + MutedStyle.Render("(carried)")
 	}
 	return content
@@ -282,7 +282,7 @@ func (m *FocusBoardModel) renderBoardSelectionIndicator(row boardRow) string {
 	if row.Task == nil || row.Project == nil {
 		return "  "
 	}
-	if _, selected := m.selection[TaskIdentity{ProjectID: row.Project.ID, TaskID: row.Task.ID}]; selected {
+	if _, selected := m.selection[taskIdentityFor(row.Task, row.Project)]; selected {
 		return SelectedCheckboxStyle.Render("✓") + " "
 	}
 	return "  "

@@ -433,7 +433,7 @@ func confirmCLIActionPlan(reader *bufio.Reader, out io.Writer, preview app.PlanP
 // applyCLIActionPlan joins AI task deletion to the same planning and machine
 // reference contract as the ordinary delete command. The prepared plan retains
 // the exact reviewed deletion subtree, then invokes the artifact callback before
-// committing so Focus Queue, Daily Plan, and dismissals ride the task transaction
+// committing so Focus Queue and Daily Plan cleanup rides the task transaction
 // and workspace undo ledger. Machine-local visits are repaired only after that
 // durable commit succeeds; their failure is returned separately as a warning so
 // callers never retry an already-applied plan.
@@ -449,10 +449,22 @@ func applyCLIActionPlan(
 	}
 
 	var pendingDomains *config.Domains
+	priorLocatorBuilder := opts.DeletedTaskLocatorArtifacts
 	priorBuilder := opts.DeletedTaskArtifacts
-	opts.DeletedTaskArtifacts = func(deletedTaskIDs []string) ([]storage.ArtifactChange, error) {
+	opts.DeletedTaskArtifacts = nil
+	opts.DeletedTaskLocatorArtifacts = func(deletedTaskLocators []app.TaskLocator) ([]storage.ArtifactChange, error) {
 		var artifacts []storage.ArtifactChange
-		if priorBuilder != nil {
+		if priorLocatorBuilder != nil {
+			priorArtifacts, err := priorLocatorBuilder(deletedTaskLocators)
+			if err != nil {
+				return nil, err
+			}
+			artifacts = append(artifacts, priorArtifacts...)
+		} else if priorBuilder != nil {
+			deletedTaskIDs := make([]string, 0, len(deletedTaskLocators))
+			for _, locator := range deletedTaskLocators {
+				deletedTaskIDs = append(deletedTaskIDs, locator.TaskID)
+			}
 			priorArtifacts, err := priorBuilder(deletedTaskIDs)
 			if err != nil {
 				return nil, err
@@ -467,7 +479,7 @@ func applyCLIActionPlan(
 			return nil, err
 		}
 		pendingDomains = domains
-		if domains.Planning.RemoveDurableTaskRefs(actionPlanTaskIDSet(deletedTaskIDs)) == 0 || runtime.DataDir() == "" {
+		if domains.Planning.RemoveDurableTaskLocators(configTaskLocatorsFromApp(deletedTaskLocators)) == 0 || runtime.DataDir() == "" {
 			return artifacts, nil
 		}
 		artifact, err := runtime.CheckedPlanningArtifact(domains.Planning)
@@ -481,18 +493,18 @@ func applyCLIActionPlan(
 	if err != nil {
 		return app.ActionPlanResult{}, nil, err
 	}
-	warning := repairCLIActionPlanTaskRefs(runtime, result.DeletedTaskIDs, pendingDomains)
+	warning := repairCLIActionPlanTaskRefs(runtime, result.DeletedTaskLocators, pendingDomains)
 	return result, warning, nil
 }
 
-func repairCLIActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []string, pendingDomains *config.Domains) error {
-	if len(deletedTaskIDs) == 0 {
+func repairCLIActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskLocators []app.TaskLocator, pendingDomains *config.Domains) error {
+	if len(deletedTaskLocators) == 0 {
 		return nil
 	}
 	if runtime == nil {
 		return fmt.Errorf("runtime state is unavailable")
 	}
-	deleted := actionPlanTaskIDSet(deletedTaskIDs)
+	deleted := configTaskLocatorsFromApp(deletedTaskLocators)
 	if runtime.DataDir() == "" {
 		if pendingDomains == nil {
 			var err error
@@ -501,7 +513,7 @@ func repairCLIActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []
 				return err
 			}
 		}
-		pendingDomains.Machine.RemoveMachineLocalTaskRefs(deleted)
+		pendingDomains.Machine.RemoveMachineLocalTaskLocators(deleted)
 		runtime.SetDomainsInMemory(pendingDomains)
 		return nil
 	}
@@ -515,20 +527,12 @@ func repairCLIActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []
 		warnings = append(warnings, err)
 		return errors.Join(warnings...)
 	}
-	if domains.Machine.RemoveMachineLocalTaskRefs(deleted) > 0 {
+	if domains.Machine.RemoveMachineLocalTaskLocators(deleted) > 0 {
 		if err := runtime.CommitMachine(domains.Machine); err != nil {
 			warnings = append(warnings, fmt.Errorf("update recent visits: %w", err))
 		}
 	}
 	return errors.Join(warnings...)
-}
-
-func actionPlanTaskIDSet(ids []string) map[string]bool {
-	set := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		set[id] = true
-	}
-	return set
 }
 
 func ensureAIContextConsent(cmd *cobra.Command, workspace *CLIWorkspace, reader *bufio.Reader, harness aiharness.Name) (bool, error) {

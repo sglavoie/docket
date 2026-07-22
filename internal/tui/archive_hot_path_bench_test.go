@@ -47,7 +47,7 @@ func BenchmarkRoadmapArchiveHotPath(b *testing.B) {
 		runtime:    testRuntimeAt(cfg.DataDir(), cfg),
 		isGlobal:   true,
 		zoom:       ZoomMonth,
-		collapsed:  make(map[string]bool),
+		collapsed:  make(map[TaskIdentity]bool),
 		labelWidth: 30,
 	}
 

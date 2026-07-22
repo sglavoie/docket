@@ -429,31 +429,19 @@ func newWorkspaceAppService(workspace *CLIWorkspace) *app.Service {
 	return svc.WithPlanningArtifacts(cliPlanningReconcileArtifactBuilder(workspace))
 }
 
-// resolveAppTaskID applies the strict qualified-reference rules at the adapter
-// edge and returns the task's stable UUID, which the application use cases take
-// as their target. It reuses FindTaskGloballyByID so a bare numeric short ID is
-// accepted only when it is unique across the workspace, a cross-project target
-// must be qualified (slug:#short-id / slug:uuid), and ambiguity is reported as an
-// error listing candidates rather than silently acting on the wrong task.
-func resolveAppTaskID(mgr *config.Manager, ref string) (string, error) {
-	task, err := resolveAppTask(mgr, ref)
+// resolveAppTaskTarget applies the strict qualified-reference rules at the
+// adapter edge while retaining project ownership for the application mutation.
+// Bare references must be workspace-unique; qualified references keep their
+// locator even when another project contains the same task UUID.
+func resolveAppTaskTarget(mgr *config.Manager, ref string) (*models.Task, app.TaskLocator, error) {
+	task, project, err := findAppTaskGlobally(mgr, ref)
 	if err != nil {
-		return "", err
+		return nil, app.TaskLocator{}, err
 	}
-	return task.ID, nil
-}
-
-// resolveAppTask is resolveAppTaskID's richer form for workflow-aware adapters
-// that also need the command-start task title/short ID as undo context.
-func resolveAppTask(mgr *config.Manager, ref string) (*models.Task, error) {
-	task, _, err := findAppTaskGlobally(mgr, ref)
-	if err != nil {
-		return nil, err
+	if task == nil || project == nil {
+		return nil, app.TaskLocator{}, tterrors.NewTaskNotFoundError(ref)
 	}
-	if task == nil {
-		return nil, tterrors.NewTaskNotFoundError(ref)
-	}
-	return task, nil
+	return task, app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, nil
 }
 
 // findAppTaskGlobally is the domain-backed task resolver used by application

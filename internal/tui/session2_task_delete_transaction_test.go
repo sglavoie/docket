@@ -396,6 +396,57 @@ func TestTaskDeleteCrossProjectSelection(t *testing.T) {
 	}
 }
 
+func TestTUITaskDeletePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
+	e := newTaskDeleteEnv(t)
+	e.lone.ID = e.parent.ID
+	if err := storage.SaveProject(e.beta); err != nil {
+		t.Fatalf("save beta duplicate: %v", err)
+	}
+	e.cfg.Planning().FocusQueue = []config.FocusQueueItem{
+		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
+		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
+	}
+	e.cfg.Planning().DailyPlan = []config.DailyPlanItem{
+		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
+		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
+	}
+	e.cfg.Planning().FocusDismissedIDs = []string{e.parent.ID}
+	e.cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
+		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
+	}
+	if err := saveTestRuntime(e.mgr, e.cfg); err != nil {
+		t.Fatalf("save duplicate refs: %v", err)
+	}
+
+	m := e.appModel()
+	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
+		Refs: []TaskProjectRef{{Task: e.lone, Project: e.beta}},
+	})
+	_, cmd := m.handleGlobalKeyPress(keyPress("y"))
+	msg := runBatchResult(t, cmd)
+	m.handleBatchTransactionResult(msg)
+
+	if e.reload(t, e.alpha).GetTaskByID(e.parent.ID) == nil {
+		t.Fatal("alpha/shared was deleted")
+	}
+	if e.reload(t, e.beta).GetTaskByID(e.lone.ID) != nil {
+		t.Fatal("beta/shared survived delete")
+	}
+	if got := m.runtime.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+		t.Fatalf("delete cleaned wrong focus refs: %+v", got)
+	}
+	if got := m.runtime.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+		t.Fatalf("delete cleaned wrong daily refs: %+v", got)
+	}
+	if got := m.runtime.Planning().FocusDismissedIDs; len(got) != 1 || got[0] != e.parent.ID {
+		t.Fatalf("qualified delete changed legacy dismissed IDs: %v", got)
+	}
+	if got := m.runtime.Machine().RecentTaskVisits; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+		t.Fatalf("delete cleaned wrong recent visits: %+v", got)
+	}
+}
+
 // --- failed delete preserves state and emits no success --------------------
 
 func TestTaskDeleteFailurePreservesStateNoSuccess(t *testing.T) {

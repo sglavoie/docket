@@ -35,9 +35,9 @@ func TestCrossProjectReparent(t *testing.T) {
 
 	newParentID := "alpha-epic-b"
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
-		ReparentTaskID: "alpha-leaf",
-		ParentID:       &newParentID,
-		Source:         ViewCrossProjectOutliner,
+		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "alpha-leaf"},
+		ParentID:     &newParentID,
+		Source:       ViewCrossProjectOutliner,
 	})
 	runResult(t, cmd)
 
@@ -79,9 +79,9 @@ func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
 	// leafA cannot be a child of leafB (task type can't parent another task).
 	invalidParent := "leaf-b"
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
-		ReparentTaskID: "leaf-a",
-		ParentID:       &invalidParent,
-		Source:         ViewCrossProjectOutliner,
+		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf-a"},
+		ParentID:     &invalidParent,
+		Source:       ViewCrossProjectOutliner,
 	})
 	if cmd == nil {
 		t.Fatal("expected a command from an invalid reparent")
@@ -113,9 +113,9 @@ func TestCrossProjectReparentToRoot(t *testing.T) {
 	m := newCrossOutlinerFromEnv(env)
 
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
-		ReparentTaskID: "leaf",
-		ParentID:       nil,
-		Source:         ViewCrossProjectOutliner,
+		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf"},
+		ParentID:     nil,
+		Source:       ViewCrossProjectOutliner,
 	})
 	runResult(t, cmd)
 

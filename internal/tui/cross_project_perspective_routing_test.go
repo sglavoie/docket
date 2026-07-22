@@ -28,8 +28,8 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 	t.Run("All perspective routes to buildCrossProjectRowsWithSectionHeaders", func(t *testing.T) {
 		m := &OutlinerModel{
 			collapsedSections: make(map[string]bool),
-			expandedNodes:     make(map[string]bool),
-			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			expandedNodes:     make(map[TaskIdentity]bool),
+			MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 			activePerspective: PerspectiveAll,
 			loadedProjects:    []*models.Project{projAlpha, projBeta},
 		}
@@ -80,8 +80,8 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 
 		m := &OutlinerModel{
 			collapsedSections: make(map[string]bool),
-			expandedNodes:     make(map[string]bool),
-			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			expandedNodes:     make(map[TaskIdentity]bool),
+			MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 			activePerspective: PerspectiveAll + 1,
 			loadedProjects:    []*models.Project{p1, p2},
 		}
@@ -133,8 +133,8 @@ func TestCrossProjectGroupingByPerspective(t *testing.T) {
 	newModel := func(perspective int) *OutlinerModel {
 		return &OutlinerModel{
 			collapsedSections: make(map[string]bool),
-			expandedNodes:     make(map[string]bool),
-			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			expandedNodes:     make(map[TaskIdentity]bool),
+			MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 			activePerspective: perspective,
 			loadedProjects:    []*models.Project{proj1, proj2},
 		}

@@ -163,8 +163,8 @@ func runFocusQueueAdd(cmd *cobra.Command, args []string) error {
 	// transaction, so state and planning commit and undo atomically.
 	if task.State() != models.StateNext {
 		projectID := project.ID
-		if transitionErr := setFocusQueueState(workspace, task, models.StateNext, "Move to Next", func(p *config.PlanningState) {
-			if !focusQueueContains(p, task.ID) {
+		if transitionErr := setFocusQueueState(workspace, task, project, models.StateNext, "Move to Next", func(p *config.PlanningState) {
+			if !focusQueueContains(p, task.ID, projectID) {
 				p.SetFocusQueue(append(p.GetFocusQueue(), config.FocusQueueItem{TaskID: task.ID, ProjectID: projectID}))
 			}
 		}); transitionErr != nil {
@@ -180,8 +180,8 @@ func runFocusQueueAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	planning := domains.Planning
-	dropped := planning.RemoveFromDailyPlan(task.ID)
-	alreadyQueued := focusQueueContains(planning, task.ID)
+	dropped := planning.RemoveFromDailyPlanInProject(task.ID, project.ID)
+	alreadyQueued := focusQueueContains(planning, task.ID, project.ID)
 	if !alreadyQueued {
 		planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
 	}
@@ -212,7 +212,7 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	wasNext := task.State() == models.StateNext
-	inQueue := focusQueueContains(workspace.Runtime.Planning(), task.ID)
+	inQueue := focusQueueContains(workspace.Runtime.Planning(), task.ID, project.ID)
 	if !inQueue && !wasNext {
 		return emitFocusMutation(out, "not in queue", task, project, len(workspace.Runtime.Planning().FocusQueue))
 	}
@@ -221,7 +221,7 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 	// order-entry drop (Today/Next exclusivity for the non-Next result) into the
 	// same ledger transaction.
 	if wasNext {
-		if transitionErr := setFocusQueueState(workspace, task, models.StateReady, "Leave Next", nil); transitionErr != nil {
+		if transitionErr := setFocusQueueState(workspace, task, project, models.StateReady, "Leave Next", nil); transitionErr != nil {
 			return transitionErr
 		}
 		return emitFocusMutation(out, "dequeued", task, project, len(workspace.Runtime.Planning().FocusQueue))
@@ -233,7 +233,7 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	planning := domains.Planning
-	planning.RemoveFromFocusQueue(task.ID)
+	planning.RemoveFromFocusQueueInProject(task.ID, project.ID)
 	if err := commitCLIPlanning(workspace, planning); err != nil {
 		return err
 	}
@@ -247,13 +247,13 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 // undo — together. It refreshes the workspace runtime so callers read
 // post-mutation planning state. A nil planningMutate folds only the exclusivity
 // reconciliation.
-func setFocusQueueState(workspace *CLIWorkspace, task *models.Task, target models.WorkflowState, undoAction string, planningMutate func(*config.PlanningState)) error {
+func setFocusQueueState(workspace *CLIWorkspace, task *models.Task, project *models.Project, target models.WorkflowState, undoAction string, planningMutate func(*config.PlanningState)) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	opts := workflows.options(true, undoAction, task)
 	opts.PlanningArtifacts = focusPlanningArtifactBuilder(workspace, planningMutate)
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.StateWithWorkflow(task.ID, target, opts)
+		return workflows.service.StateWithWorkflowByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, target, opts)
 	})
 	if err != nil {
 		return translateAppError(err)
@@ -289,20 +289,22 @@ func focusPlanningArtifactBuilder(workspace *CLIWorkspace, extra func(*config.Pl
 	}
 }
 
-// focusQueueContains reports whether the Next order index already lists taskID.
-func focusQueueContains(planning *config.PlanningState, taskID string) bool {
+// focusQueueContains reports whether the Next order index already lists the
+// project-qualified task.
+func focusQueueContains(planning *config.PlanningState, taskID, projectID string) bool {
 	for _, item := range planning.FocusQueue {
-		if item.TaskID == taskID {
+		if item.TaskID == taskID && item.ProjectID == projectID {
 			return true
 		}
 	}
 	return false
 }
 
-// dailyPlanContains reports whether the Daily Plan already lists taskID.
-func dailyPlanContains(planning *config.PlanningState, taskID string) bool {
+// dailyPlanContains reports whether the Daily Plan already lists the
+// project-qualified task.
+func dailyPlanContains(planning *config.PlanningState, taskID, projectID string) bool {
 	for _, item := range planning.DailyPlan {
-		if item.TaskID == taskID {
+		if item.TaskID == taskID && item.ProjectID == projectID {
 			return true
 		}
 	}
@@ -350,7 +352,7 @@ func runFocusQueueMove(cmd *cobra.Command, args []string) error {
 
 	idx := -1
 	for i, ft := range ordered {
-		if ft.Task.ID == task.ID {
+		if ft.Task.ID == task.ID && ft.Project.ID == project.ID {
 			idx = i
 			break
 		}
@@ -411,7 +413,7 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 	plannedDate := time.Now().Format("2006-01-02")
 	projectID := project.ID
 	addPlan := func(p *config.PlanningState) {
-		if !dailyPlanContains(p, task.ID) {
+		if !dailyPlanContains(p, task.ID, projectID) {
 			p.SetDailyPlan(append(p.GetDailyPlan(), config.DailyPlanItem{
 				TaskID:      task.ID,
 				ProjectID:   projectID,
@@ -420,14 +422,14 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if wasNext {
-		if transitionErr := setFocusQueueState(workspace, task, models.StateReady, "Plan for Today", addPlan); transitionErr != nil {
+		if transitionErr := setFocusQueueState(workspace, task, project, models.StateReady, "Plan for Today", addPlan); transitionErr != nil {
 			return transitionErr
 		}
 		return emitFocusMutation(out, "planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
 	}
 
 	// Not Next: pure planning add (no state move to be atomic with).
-	if dailyPlanContains(workspace.Runtime.Planning(), task.ID) {
+	if dailyPlanContains(workspace.Runtime.Planning(), task.ID, project.ID) {
 		return emitFocusMutation(out, "already planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
 	}
 	domains, err := cloneCLIWorkspaceDomains(workspace)
@@ -464,7 +466,7 @@ func runFocusTodayRemove(cmd *cobra.Command, args []string) error {
 	filtered := make([]config.DailyPlanItem, 0, len(planning.DailyPlan))
 	removed := false
 	for _, item := range planning.DailyPlan {
-		if item.TaskID == task.ID {
+		if item.TaskID == task.ID && item.ProjectID == project.ID {
 			removed = true
 			continue
 		}

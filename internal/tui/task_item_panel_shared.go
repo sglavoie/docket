@@ -319,7 +319,7 @@ type taskItemDeleteMutation struct {
 	errorMessage string
 	// commit builds the coordinator command that persists the removal of the
 	// item at the given pre-decrement index.
-	commit  func(taskID string, index int) tea.Cmd
+	commit  func(task TaskIdentity, index int) tea.Cmd
 	success func(*models.Task) tea.Msg
 }
 
@@ -333,7 +333,7 @@ func executeTaskItemDeleteMutation(cfg taskItemDeleteMutation) tea.Cmd {
 		*cfg.cursor--
 	}
 
-	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit((*cfg.task).ID, index), cfg.success)
+	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit(taskIdentityFor(*cfg.task, cfg.project), index), cfg.success)
 }
 
 type taskItemToggleMutation struct {
@@ -344,7 +344,7 @@ type taskItemToggleMutation struct {
 	errorMessage string
 	// commit builds the coordinator command that persists the toggle of the
 	// item at the given index.
-	commit  func(taskID string, index int) tea.Cmd
+	commit  func(task TaskIdentity, index int) tea.Cmd
 	success func(*models.Task) tea.Msg
 }
 
@@ -354,7 +354,7 @@ func executeTaskItemToggleMutation(cfg taskItemToggleMutation) tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: errors.New(cfg.errorMessage)} }
 	}
 
-	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit((*cfg.task).ID, cfg.cursor), cfg.success)
+	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit(taskIdentityFor(*cfg.task, cfg.project), cfg.cursor), cfg.success)
 }
 
 // formatNumberedMarkdownList renders items as a numbered Markdown list in

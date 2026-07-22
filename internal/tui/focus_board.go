@@ -62,8 +62,8 @@ type FocusBoardModel struct {
 	bulk           BulkCoordinator
 
 	// Queue / daily-plan indicator support
-	queueIDs     map[string]bool
-	dailyPlanIDs map[string]bool
+	queueIDs     map[TaskIdentity]bool
+	dailyPlanIDs map[TaskIdentity]bool
 	dailyPlan    *[]FocusTask // shared with AppModel for reordering
 	// focusQueue is the shared, ordered Next order index (StateNext ordering
 	// only; may not contain every StateNext task). Used to sort the Next tab.
@@ -76,7 +76,7 @@ type FocusBoardModel struct {
 	todayRows      []boardRow
 	backlogRows    []boardRow // ranked actionable tasks excluding Today/Next (Backlog tab)
 	filtered       []boardRow
-	carriedOverIDs map[string]bool
+	carriedOverIDs map[TaskIdentity]bool
 
 	// backlogProjectFilter narrows the Backlog tab to the selected project IDs
 	// (empty = all). Populated on demand via the "By Project" quick filter
@@ -116,10 +116,10 @@ type FocusBoardModel struct {
 	previewMode     bool
 	focusMode       int // 0=list, 1=tunnel, 2=zen
 	childDepthLimit int // -1 = unlimited (default), 0/1/2 = max child depth in Today tab
-	// foldOverrides is a per-node fold override keyed by stable task ID
+	// foldOverrides is a per-node fold override keyed by project-qualified identity
 	// (true=collapsed, false=force-expanded, absent=follow childDepthLimit).
 	// Consulted before childDepthLimit in isParentExpanded; cleared by depth commands.
-	foldOverrides map[string]bool
+	foldOverrides map[TaskIdentity]bool
 	initialTabSet bool
 
 	// Perspective lens. PerspectiveInactive (-1) means no lens is applied;
@@ -151,7 +151,7 @@ func (m *FocusBoardModel) SetSize(width, height int) {
 }
 
 // NewFocusBoardModel creates a new focus board model.
-func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, dailyPlan, focusQueue *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
+func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, dailyPlan, focusQueue *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[TaskIdentity]bool) *FocusBoardModel {
 	ti := textinput.New()
 	ti.Placeholder = "Task title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
@@ -179,7 +179,7 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 		editInput:            ei,
 		focusMode:            focusModeList,
 		childDepthLimit:      -1,
-		foldOverrides:        make(map[string]bool),
+		foldOverrides:        make(map[TaskIdentity]bool),
 		FilterMixin:          FilterMixin{filter: newFilterState()},
 		sort:                 NewSortState(),
 		tabs:                 TabState{Names: focusBoardTabNames},

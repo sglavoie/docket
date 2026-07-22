@@ -150,7 +150,7 @@ func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project)
 		for _, task := range project.Tasks {
 			if task != nil && task.ID != "" {
 				ref := TaskProjectRef{Task: task, Project: project}
-				refs[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] = ref
+				refs[taskIdentityFor(task, project)] = ref
 				refsByTaskID[task.ID] = append(refsByTaskID[task.ID], ref)
 			}
 		}
@@ -160,7 +160,7 @@ func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project)
 			return TaskProjectRef{}, false
 		}
 		if project != nil {
-			ref, ok := refs[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}]
+			ref, ok := refs[taskIdentityFor(task, project)]
 			return ref, ok
 		}
 		candidates := refsByTaskID[task.ID]

@@ -62,7 +62,7 @@ func newTrashRestoreTestApp(
 		views:                NewViewRegistry(),
 		width:                80,
 		height:               24,
-		dailyPlanIDs:         make(map[string]bool),
+		dailyPlanIDs:         make(map[TaskIdentity]bool),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 		projectLastView:      make(map[string]PresentationID),
 	}

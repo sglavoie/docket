@@ -68,11 +68,25 @@ func (m *OutlinerModel) navigateToSidebarTask(task *models.Task) bool {
 	if task == nil {
 		return false
 	}
+	projectID := ""
+	if m.project != nil {
+		projectID = m.project.ID
+	} else {
+		for _, project := range m.loadedProjects {
+			if project != nil && project.GetTaskByID(task.ID) == task {
+				projectID = project.ID
+				break
+			}
+		}
+	}
 	for i, row := range m.rows {
-		if row.task != nil && row.task.ID == task.ID {
+		if row.task != nil && row.task.ID == task.ID && (m.project != nil || row.ProjectID == projectID) {
 			m.cursor = i
 			return true
 		}
+	}
+	if projectID == "" {
+		return false
 	}
 
 	if bucket := taskSectionBucket(task); bucket != "" && m.project != nil {
@@ -80,12 +94,12 @@ func (m *OutlinerModel) navigateToSidebarTask(task *models.Task) bool {
 	}
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[ancestor.ID] = true
+		m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
 	}
 	m.rebuildRows()
 
 	for i, row := range m.rows {
-		if row.task != nil && row.task.ID == task.ID {
+		if row.task != nil && row.task.ID == task.ID && (m.project != nil || row.ProjectID == projectID) {
 			m.cursor = i
 			return true
 		}
@@ -165,7 +179,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	m.crossZoomStack = nil
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[ancestor.ID] = true
+		m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
 	}
 	m.rebuildRows()
 

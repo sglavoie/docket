@@ -98,7 +98,11 @@ func (m *OutlinerModel) flattenSectionForest(forest *sectionTaskForest, projectI
 				hasVisibleChildren: len(children) > 0,
 				ProjectID:          projectID,
 			})
-			if len(children) > 0 && m.isExpanded(task.ID) {
+			identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+			if identity.ProjectID == "" && m.project != nil {
+				identity.ProjectID = m.project.ID
+			}
+			if len(children) > 0 && m.isExpanded(identity) {
 				next := append(append([]bool(nil), ancestorIsLast...), isLast)
 				walk(children, next)
 			}

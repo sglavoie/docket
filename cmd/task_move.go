@@ -124,16 +124,17 @@ func runTaskHierarchyMove(cmd *cobra.Command, args []string, action, verb string
 	}
 
 	svc := newWorkspaceAppService(workspace)
+	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 	res, err := withTaskRetry(func() (app.TaskResult, error) {
 		switch action {
 		case "up":
-			return svc.MoveTaskUp(task.ID)
+			return svc.MoveTaskUpByLocator(locator)
 		case "down":
-			return svc.MoveTaskDown(task.ID)
+			return svc.MoveTaskDownByLocator(locator)
 		case "indent":
-			return svc.IndentTask(task.ID)
+			return svc.IndentTaskByLocator(locator)
 		case "outdent":
-			return svc.OutdentTask(task.ID)
+			return svc.OutdentTaskByLocator(locator)
 		default:
 			return app.TaskResult{}, fmt.Errorf("unknown action: %s", action)
 		}

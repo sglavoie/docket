@@ -44,7 +44,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	outliner.rebuildRows()
 	outliner.multiSelectMode = true
-	outliner.selectedTasks[project.Tasks[0].ID] = true
+	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
 	outliner.SetSearchQuery(project.Tasks[0].Title)
 	outliner.zoomStack = []ZoomEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
 	app.showView(ViewOutliner, outliner)
@@ -138,7 +138,8 @@ func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
 func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 	t.Run("q on unindexed StateNext leaves Next", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewOutliner)
-		if app.focusQueueIDs[task.ID] {
+		identity := taskIdentityFor(task, app.currentProject)
+		if app.focusQueueIDs[identity] {
 			t.Fatal("precondition: StateNext task must start unindexed in the order list")
 		}
 
@@ -151,20 +152,21 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 		if fresh.State() == models.StateNext {
 			t.Fatalf("q on an unindexed StateNext task must leave Next, still %v", fresh.State())
 		}
-		if app.focusQueueIDs[task.ID] {
+		if app.focusQueueIDs[identity] {
 			t.Fatal("removed task must not retain an order-index entry")
 		}
 	})
 
 	t.Run("adding unindexed StateNext task to Today removes it from Next", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewOutliner)
-		if app.focusQueueIDs[task.ID] {
+		identity := taskIdentityFor(task, app.currentProject)
+		if app.focusQueueIDs[identity] {
 			t.Fatal("precondition: StateNext task must start unindexed in the order list")
 		}
 
 		_ = app.toggleDailyPlan()
 
-		if !app.dailyPlanIDs[task.ID] {
+		if !app.dailyPlanIDs[identity] {
 			t.Fatal("task should be planned for Today")
 		}
 		fresh := app.currentProject.GetTaskByID(task.ID)
@@ -174,7 +176,7 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 		if fresh.State() == models.StateNext {
 			t.Fatalf("Today and Next are exclusive: task must leave Next, still %v", fresh.State())
 		}
-		if app.focusQueueIDs[task.ID] {
+		if app.focusQueueIDs[identity] {
 			t.Fatal("task must not retain an order-index entry after moving to Today")
 		}
 	})
@@ -440,9 +442,9 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 		views:                NewViewRegistry(),
 		currentProject:       project,
 		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[string]bool),
+		focusQueueIDs:        make(map[TaskIdentity]bool),
 		dailyPlan:            []FocusTask{},
-		dailyPlanIDs:         make(map[string]bool),
+		dailyPlanIDs:         make(map[TaskIdentity]bool),
 	}
 	appModel.showView(hostView, &invariantQueueView{
 		taskID:  task.ID,
@@ -454,13 +456,14 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 func assertExclusiveMembership(t *testing.T, app *AppModel, taskID string, inQueue, inDaily bool) {
 	t.Helper()
 
-	if app.focusQueueIDs[taskID] != inQueue {
-		t.Fatalf("queue membership = %v, want %v", app.focusQueueIDs[taskID], inQueue)
+	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
+	if app.focusQueueIDs[identity] != inQueue {
+		t.Fatalf("queue membership = %v, want %v", app.focusQueueIDs[identity], inQueue)
 	}
-	if app.dailyPlanIDs[taskID] != inDaily {
-		t.Fatalf("daily-plan membership = %v, want %v", app.dailyPlanIDs[taskID], inDaily)
+	if app.dailyPlanIDs[identity] != inDaily {
+		t.Fatalf("daily-plan membership = %v, want %v", app.dailyPlanIDs[identity], inDaily)
 	}
-	if app.focusQueueIDs[taskID] && app.dailyPlanIDs[taskID] {
+	if app.focusQueueIDs[identity] && app.dailyPlanIDs[identity] {
 		t.Fatal("task must never be in both queue and daily plan")
 	}
 	if got := taskMembershipCount(app.focusQueue, taskID); got != boolCount(inQueue) {

@@ -140,7 +140,8 @@ func TestCrossProjectNavigateToTaskExpandsCollapsedSectionAndAncestors(t *testin
 	m.activePerspective = PerspectiveAll
 	m.loadedProjects = []*models.Project{project}
 	m.collapsedSections["_xp:"+models.SectionInbox] = true
-	m.expandedNodes[parent.ID] = false
+	parentIdentity := TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}
+	m.expandedNodes[parentIdentity] = false
 	m.rows = []outlinerRow{
 		{IsSectionHeader: true, SectionName: models.SectionInbox, CollapseKey: "_xp:" + models.SectionInbox},
 	}
@@ -150,7 +151,7 @@ func TestCrossProjectNavigateToTaskExpandsCollapsedSectionAndAncestors(t *testin
 	if m.collapsedSections["_xp:"+models.SectionInbox] {
 		t.Fatal("inbox section remained collapsed")
 	}
-	if !m.expandedNodes[parent.ID] {
+	if !m.expandedNodes[parentIdentity] {
 		t.Fatal("parent remained folded")
 	}
 	if m.cursor < 0 || m.cursor >= len(m.rows) {

@@ -72,7 +72,7 @@ func TestAttachmentScenario(t *testing.T) {
 	task := seedTask(t, 1, "Attach here", models.StateReady)
 	env, features := newSecondaryEnv(t, "attach", task)
 
-	res := runResult(t, features.Attachment.AttachURL(task.ID, "https://example.com/spec"))
+	res := runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/spec"))
 	if res.Revision == "" {
 		t.Fatal("attachment result carried no committed revision")
 	}
@@ -281,7 +281,7 @@ func TestSubviewCommentScenario(t *testing.T) {
 	task := seedTask(t, 1, "Comment here", models.StateReady)
 	env, features := newSecondaryEnv(t, "subview-comment", task)
 
-	res := runResult(t, features.Subview.AddComment(task.ID, "found the root cause"))
+	res := runResult(t, features.Subview.AddComment(taskIdentityFor(task, env.project), "found the root cause"))
 	if res.Revision == "" {
 		t.Fatal("comment result carried no committed revision")
 	}
@@ -303,8 +303,8 @@ func TestSubviewChecklistScenario(t *testing.T) {
 	task := seedTask(t, 1, "Check here", models.StateReady)
 	env, features := newSecondaryEnv(t, "subview-checklist", task)
 
-	runResult(t, features.Subview.AddChecklistItem(task.ID, "write the test"))
-	runResult(t, features.Subview.ToggleChecklistItem(task.ID, 0))
+	runResult(t, features.Subview.AddChecklistItem(taskIdentityFor(task, env.project), "write the test"))
+	runResult(t, features.Subview.ToggleChecklistItem(taskIdentityFor(task, env.project), 0))
 
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || len(got.Checklist) != 1 || !got.Checklist[0].Done {
 		t.Fatalf("reloaded checklist = %v, want one done item", got)
@@ -348,9 +348,9 @@ func TestAttachmentReorderScenario(t *testing.T) {
 	task := seedTask(t, 1, "Reorder here", models.StateReady)
 	env, features := newSecondaryEnv(t, "attach-reorder", task)
 
-	runResult(t, features.Attachment.AttachURL(task.ID, "https://example.com/a"))
-	runResult(t, features.Attachment.AttachURL(task.ID, "https://example.com/b"))
-	runResult(t, features.Attachment.Reorder(task.ID, 0, 1))
+	runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/a"))
+	runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/b"))
+	runResult(t, features.Attachment.Reorder(taskIdentityFor(task, env.project), 0, 1))
 
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Attachments[0].Filename != "https://example.com/b" {
 		t.Fatalf("reloaded attachments = %v, want b first", got)
@@ -370,7 +370,7 @@ func TestLinkScenario(t *testing.T) {
 	b := seedTask(t, 2, "Target", models.StateReady)
 	env, features := newSecondaryEnv(t, "links", a, b)
 
-	msg := runBatchResult(t, features.Link.RelateBidirectional(a.ID, b.ID))
+	msg := runBatchResult(t, features.Link.RelateBidirectional(taskIdentityFor(a, env.project), b.ID))
 	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
 		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
 	}
@@ -383,7 +383,7 @@ func TestLinkScenario(t *testing.T) {
 		t.Fatalf("target related = %v, want reciprocal link", got)
 	}
 
-	runResult(t, features.Link.RemoveRelated(a.ID, b.ID))
+	runResult(t, features.Link.RemoveRelated(taskIdentityFor(a, env.project), b.ID))
 	if got := env.reload(t).GetTaskByID(a.ID); got == nil || len(got.RelatedTo) != 0 {
 		t.Fatalf("unlink left source related = %v", got)
 	}

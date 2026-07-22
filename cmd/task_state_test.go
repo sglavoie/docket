@@ -89,6 +89,28 @@ func TestTaskStateConvenienceRoutesThroughApp(t *testing.T) {
 	}
 }
 
+func TestTaskStateQualifiedDuplicateUsesOwningProject(t *testing.T) {
+	root := t.TempDir()
+	alpha := newFileBackedProject(t, root, "state-alpha", "State Alpha")
+	beta := newFileBackedProject(t, root, "state-beta", "State Beta")
+	const duplicateID = "duplicate-state-task"
+	addTestTask(t, alpha, duplicateID, "Alpha duplicate", models.StatusTodo)
+	addTestTask(t, beta, duplicateID, "Beta duplicate", models.StatusTodo)
+	setupFileBackedWorkflowCLI(t, root, alpha, []*models.Project{alpha, beta}, nil, nil)
+
+	err := runAppTransition(newStateTestCmd(), []string{beta.Slug + ":" + duplicateID}, models.StateWaiting)
+	testutil.AssertNoError(t, err)
+
+	reloadWorkflowProject(t, alpha)
+	reloadWorkflowProject(t, beta)
+	if got := alpha.GetTaskByID(duplicateID).State(); got != models.StateReady {
+		t.Fatalf("alpha duplicate state = %q, want ready", got)
+	}
+	if got := beta.GetTaskByID(duplicateID).State(); got != models.StateWaiting {
+		t.Fatalf("beta duplicate state = %q, want waiting", got)
+	}
+}
+
 // TestTaskStateRejectsInvalidState reports an invalid target state without
 // mutating anything.
 func TestTaskStateRejectsInvalidState(t *testing.T) {

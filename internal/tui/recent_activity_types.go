@@ -29,8 +29,8 @@ type RecentActivityModel struct {
 	taskItem TaskItemCoordinator
 
 	// Queue / daily-plan indicator support
-	queueIDs     map[string]bool
-	dailyPlanIDs map[string]bool
+	queueIDs     map[TaskIdentity]bool
+	dailyPlanIDs map[TaskIdentity]bool
 
 	tasks    []CrossProjectTask
 	filtered []CrossProjectTask

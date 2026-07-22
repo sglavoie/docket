@@ -74,6 +74,21 @@ func TestResolveAllDependencies_CrossProject(t *testing.T) {
 	}
 }
 
+func TestResolveAllDependencies_OmitsAmbiguousPlainID(t *testing.T) {
+	sharedA := newTask("shared")
+	sharedB := newTask("shared")
+	pA := makeProject("projA", "alpha", sharedA)
+	pB := makeProject("projB", "beta", sharedB)
+
+	idx := ResolveAllDependencies([]*models.Project{pA, pB})
+	if got := LookupTask("shared", idx); got != nil {
+		t.Fatalf("ambiguous plain ID resolved to %p", got)
+	}
+	if idx["projA:shared"] != sharedA || idx["projB:shared"] != sharedB {
+		t.Fatal("qualified duplicate task lookups were not preserved")
+	}
+}
+
 func TestCollectAllIncompleteTasks_ExcludesComplete(t *testing.T) {
 	todo := newTask("todo")
 	done := withStatus(newTask("done"), models.StatusDone)

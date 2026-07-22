@@ -97,7 +97,7 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea
 			if mutated == nil {
 				return nil
 			}
-			return m.taskItem.Edit(app.EditRequest{TaskID: mutated.ID, Form: formEditFromTask(mutated)})
+			return m.taskItem.Edit(taskIdentityFor(mutated, proj), app.EditRequest{Form: formEditFromTask(mutated)})
 		}
 		undoFn = func(string, string) {}
 	}

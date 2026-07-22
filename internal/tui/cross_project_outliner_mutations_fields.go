@@ -17,11 +17,11 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 	if !ok {
 		return nil, false
 	}
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return nil, true
 	}
-	return m.taskItem.SetPriority(row.task.ID, priority), true
+	return m.taskItem.SetPriority(taskIdentityFor(row.task, project), priority), true
 }
 
 // crossHandleSnoozeMutation resolves the owning project from the cursor row and
@@ -49,11 +49,11 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 	if !ok {
 		return nil, false
 	}
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return nil, true
 	}
-	return m.taskItem.Snooze(row.task.ID, snoozeDate), true
+	return m.taskItem.Snooze(taskIdentityFor(row.task, project), snoozeDate), true
 }
 
 // crossHandleDueDateMutation handles the d prefix in cross-project mode.
@@ -76,12 +76,12 @@ func (m *OutlinerModel) crossHandleDueDateMutation(key string) (tea.Cmd, bool) {
 	if !ok {
 		return nil, false
 	}
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return nil, true
 	}
 	dueDate, _ := dueDateFromDays(days, isClear)
-	return m.taskItem.SetDueDate(row.task.ID, dueDate, false), true
+	return m.taskItem.SetDueDate(taskIdentityFor(row.task, project), dueDate, false), true
 }
 
 // crossHandleSkipRecurrence handles the ,k key in cross-project mode.
@@ -91,7 +91,7 @@ func (m *OutlinerModel) crossHandleDueDateMutation(key string) (tea.Cmd, bool) {
 //
 // Returns (cmd, true) when the key was consumed.
 func (m *OutlinerModel) crossHandleSkipRecurrence() (tea.Cmd, bool) {
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return nil, true
 	}
@@ -99,7 +99,7 @@ func (m *OutlinerModel) crossHandleSkipRecurrence() (tea.Cmd, bool) {
 		m.setStatus("Task is not recurring")
 		return nil, true
 	}
-	return m.taskItem.SkipRecurrence(row.task.ID), true
+	return m.taskItem.SkipRecurrence(taskIdentityFor(row.task, project)), true
 }
 
 // crossHandleDeferRecurrence handles the ,D prefix in cross-project mode.
@@ -110,7 +110,7 @@ func (m *OutlinerModel) crossHandleDeferRecurrence(key string) (tea.Cmd, bool) {
 	if !ok {
 		return nil, false
 	}
-	row, _, valid := m.crossGetMutationTarget()
+	row, project, valid := m.crossGetMutationTarget()
 	if !valid {
 		return nil, true
 	}
@@ -118,5 +118,5 @@ func (m *OutlinerModel) crossHandleDeferRecurrence(key string) (tea.Cmd, bool) {
 		m.setStatus("Task is not recurring")
 		return nil, true
 	}
-	return m.taskItem.DeferRecurrence(row.task.ID, days), true
+	return m.taskItem.DeferRecurrence(taskIdentityFor(row.task, project), days), true
 }

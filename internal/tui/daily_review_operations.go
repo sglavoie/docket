@@ -82,7 +82,7 @@ func reviewChangeState(m *DailyReviewModel, newState models.WorkflowState) (tea.
 		m.setStatus(reason)
 		return m, nil
 	}
-	return m, m.applyReviewMutation(m.taskItem.Transition(task.ID, newState))
+	return m, m.applyReviewMutation(m.taskItem.Transition(taskIdentityFor(task, project), newState))
 }
 
 // reviewChangePriority changes the priority of the cursor task and increments reviewedCount.
@@ -97,50 +97,50 @@ func reviewChangePriority(m *DailyReviewModel, key string) (tea.Model, tea.Cmd) 
 			}
 		}
 	}
-	task, _ := m.getTaskRef()
-	if task == nil {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
 		return m, nil
 	}
-	return m, m.applyReviewMutation(m.taskItem.SetPriority(task.ID, priority))
+	return m, m.applyReviewMutation(m.taskItem.SetPriority(taskIdentityFor(task, project), priority))
 }
 
 // reviewSetQuickDueDate sets the due date and increments reviewedCount.
 func reviewSetQuickDueDate(m *DailyReviewModel, daysFromNow int) (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task == nil {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
 		return m, nil
 	}
 	due := util.StartOfDay(time.Now().AddDate(0, 0, daysFromNow))
-	return m, m.applyReviewMutation(m.taskItem.SetDueDate(task.ID, &due, false))
+	return m, m.applyReviewMutation(m.taskItem.SetDueDate(taskIdentityFor(task, project), &due, false))
 }
 
 // reviewClearDueDate clears the due date and increments reviewedCount.
 func reviewClearDueDate(m *DailyReviewModel) (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task == nil {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
 		return m, nil
 	}
 	if task.DueDate == nil {
 		m.setStatus("Task has no due date")
 		return m, nil
 	}
-	return m, m.applyReviewMutation(m.taskItem.SetDueDate(task.ID, nil, false))
+	return m, m.applyReviewMutation(m.taskItem.SetDueDate(taskIdentityFor(task, project), nil, false))
 }
 
 // reviewQuickSnooze sets the snooze date and increments reviewedCount.
 func reviewQuickSnooze(m *DailyReviewModel, snoozeDate *time.Time) (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task == nil {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
 		return m, nil
 	}
-	return m, m.applyReviewMutation(m.taskItem.Snooze(task.ID, snoozeDate))
+	return m, m.applyReviewMutation(m.taskItem.Snooze(taskIdentityFor(task, project), snoozeDate))
 }
 
 // reviewSectionMove moves the cursor task to a section and increments reviewedCount.
 func reviewSectionMove(m *DailyReviewModel, section string) (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task == nil {
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
 		return m, nil
 	}
-	return m, m.applyReviewMutation(m.taskItem.SetSection(task.ID, section))
+	return m, m.applyReviewMutation(m.taskItem.SetSection(taskIdentityFor(task, project), section))
 }

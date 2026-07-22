@@ -108,14 +108,13 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// atomically, revision-checked, and undoably via app.Service (with
 	// stale-revision retry). The interactive editor and content parse above stay
 	// local because they need the loaded task; only the mutation moves. The task
-	// was resolved from the current project, so its UUID targets the use case
-	// directly.
+	// retains the current project's identity through the application boundary.
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	undoContext := fmt.Sprintf("#%d %s", task.ShortID, newTitle)
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
 		return workflows.service.EditWithWorkflow(app.EditRequest{
-			TaskID:      task.ID,
+			Locator:     app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
 			Title:       &newTitle,
 			Description: &newDesc,
 		}, workflows.optionsWithContext(true, "Edit Task", undoContext))

@@ -104,7 +104,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// Single task operation: commit through the application-layer priority
 		// mutation (one ledger-undoable ChangeSet), then reload and refresh.
 		if msg.Task != nil && msg.Project != nil {
-			res, err := m.appService.SetPriority(msg.Task.ID, msg.Priority)
+			res, err := m.appService.SetPriorityByLocator(taskIdentityFor(msg.Task, msg.Project).Locator(), msg.Priority)
 			if err != nil {
 				return true, errorCmd("%s", err)
 			}
@@ -128,11 +128,13 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			project := m.pendingBulkSectionProject
 			count := 0
 			var clearIDs []string
+			var clearLocators []app.TaskLocator
 			for _, task := range m.pendingBulkSectionTasks {
 				if task == nil {
 					continue
 				}
 				clearIDs = append(clearIDs, task.ID)
+				clearLocators = append(clearLocators, app.TaskLocator{ProjectID: project.ID, TaskID: task.ID})
 				if project.MutateTask(task.ID, func(t *models.Task) {
 					assignSection(t, msg.Section)
 				}) {
@@ -173,7 +175,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				PlanningTaskIDs: clearIDs,
 			}
 			cmd := m.secondaryFeatures.TaskItem.CommitProjectWorkflow(project, opts, successMsg)
-			return true, finalizeBatchResult(cmd, clearIDs, "")
+			// Populate ClearSelectionTaskLocators so shell cleanup cannot clear a
+			// same-UUID selection owned by another project.
+			return true, finalizeLocatedBatchResult(cmd, clearLocators, "")
 		}
 
 		// Form-based section pick (no task yet, e.g. TaskFormModel in create mode)
@@ -189,7 +193,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// section field is a retired legacy artifact resynced only into the derived
 		// workflow state.
 		if msg.Task != nil && msg.Project != nil {
-			res, err := m.appService.SetSection(msg.Task.ID, msg.Section)
+			res, err := m.appService.SetSectionByLocator(taskIdentityFor(msg.Task, msg.Project).Locator(), msg.Section)
 			if err != nil {
 				return true, errorCmd("%s", err)
 			}

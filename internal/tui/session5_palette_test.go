@@ -19,7 +19,7 @@ func newScoringPalette(items []PaletteItem) *CommandPaletteModel {
 	m := &CommandPaletteModel{
 		searchInput:   si,
 		scrollAnchor:  -1,
-		selectedTasks: make(map[string]bool),
+		selectedTasks: make(map[TaskIdentity]bool),
 	}
 	m.allItems = items
 	m.filterItems()

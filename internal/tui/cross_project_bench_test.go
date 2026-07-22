@@ -100,8 +100,8 @@ func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
 
 		m := &OutlinerModel{
 			collapsedSections: make(map[string]bool),
-			expandedNodes:     make(map[string]bool),
-			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			expandedNodes:     make(map[TaskIdentity]bool),
+			MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 			activePerspective: 1,
 			loadedProjects:    []*models.Project{alphaLoad, betaLoad},
 		}
@@ -153,7 +153,7 @@ func BenchmarkCrossProjectRowBuilding(b *testing.B) {
 		for b.Loop() {
 			m := &OutlinerModel{
 				collapsedSections: make(map[string]bool),
-				expandedNodes:     make(map[string]bool),
+				expandedNodes:     make(map[TaskIdentity]bool),
 			}
 			m.buildCrossProjectRowsWithSectionHeaders(groups)
 			if len(m.rows) == 0 {
@@ -166,7 +166,7 @@ func BenchmarkCrossProjectRowBuilding(b *testing.B) {
 		for b.Loop() {
 			m := &OutlinerModel{
 				collapsedSections: make(map[string]bool),
-				expandedNodes:     make(map[string]bool),
+				expandedNodes:     make(map[TaskIdentity]bool),
 			}
 			m.buildProjectGroupedRows(groups)
 			if len(m.rows) == 0 {

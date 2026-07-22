@@ -15,9 +15,9 @@ var sessionMutationRegistry = struct {
 	sync.Mutex
 	last     sessionTaskMutation
 	hasLast  bool
-	prompted map[string]bool
+	prompted map[TaskIdentity]bool
 }{
-	prompted: make(map[string]bool),
+	prompted: make(map[TaskIdentity]bool),
 }
 
 func markSessionTaskMutated(projectID string, taskIDs []string) {
@@ -51,22 +51,22 @@ func lastSessionMutation() (sessionTaskMutation, bool) {
 	return sessionMutationRegistry.last, true
 }
 
-func markParkPrompted(taskID string) {
-	if taskID == "" {
+func markParkPrompted(identity TaskIdentity) {
+	if !identity.Valid() {
 		return
 	}
 	sessionMutationRegistry.Lock()
 	defer sessionMutationRegistry.Unlock()
-	sessionMutationRegistry.prompted[taskID] = true
+	sessionMutationRegistry.prompted[identity] = true
 }
 
-func wasParkPrompted(taskID string) bool {
-	if taskID == "" {
+func wasParkPrompted(identity TaskIdentity) bool {
+	if !identity.Valid() {
 		return false
 	}
 	sessionMutationRegistry.Lock()
 	defer sessionMutationRegistry.Unlock()
-	return sessionMutationRegistry.prompted[taskID]
+	return sessionMutationRegistry.prompted[identity]
 }
 
 func resetSessionMutations() {
@@ -74,5 +74,5 @@ func resetSessionMutations() {
 	defer sessionMutationRegistry.Unlock()
 	sessionMutationRegistry.last = sessionTaskMutation{}
 	sessionMutationRegistry.hasLast = false
-	sessionMutationRegistry.prompted = make(map[string]bool)
+	sessionMutationRegistry.prompted = make(map[TaskIdentity]bool)
 }

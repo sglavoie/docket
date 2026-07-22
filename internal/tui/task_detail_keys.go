@@ -180,7 +180,7 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	cmd := m.taskItem.Transition(m.task.ID, targetState)
+	cmd := m.taskItem.Transition(taskIdentityFor(m.task, m.project), targetState)
 	msg := cmd()
 	if em, ok := msg.(TransactionErrorMsg); ok {
 		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }
@@ -210,7 +210,7 @@ func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) 
 
 	// Route through the single-task coordinator (one ledger-backed transaction;
 	// the shell owns reload + toast and refreshes this view via refreshAfterReload).
-	cmd := m.taskItem.SetPriority(m.task.ID, priority)
+	cmd := m.taskItem.SetPriority(taskIdentityFor(m.task, m.project), priority)
 	msg := cmd()
 	if em, ok := msg.(TransactionErrorMsg); ok {
 		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }

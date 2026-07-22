@@ -122,32 +122,28 @@ const (
 	tierFallback       = 7
 )
 
-func indexDailyPlan(plan []config.DailyPlanItem, todayKey string) (planned, carried map[string]bool) {
-	planned = make(map[string]bool, len(plan))
-	carried = make(map[string]bool, len(plan))
+func indexDailyPlan(plan []config.DailyPlanItem, todayKey string) (planned, carried map[TaskIdentity]bool) {
+	planned = make(map[TaskIdentity]bool, len(plan))
+	carried = make(map[TaskIdentity]bool, len(plan))
 	for _, item := range plan {
-		if item.TaskID == "" {
+		identity := TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}
+		if !identity.Valid() {
 			continue
 		}
-		key := planKey(item.TaskID, item.ProjectID)
 		switch {
 		case item.PlannedDate == todayKey:
-			planned[key] = true
+			planned[identity] = true
 		case item.PlannedDate != "" && item.PlannedDate < todayKey:
-			carried[key] = true
+			carried[identity] = true
 		}
 	}
 	return planned, carried
 }
 
-func planKey(taskID, projectID string) string {
-	return projectID + "::" + taskID
-}
-
-func classifyActionable(c *recommendCandidate, now, today time.Time, recencyWindow, staleThreshold time.Duration, plannedToday, carriedOver map[string]bool) {
+func classifyActionable(c *recommendCandidate, now, today time.Time, recencyWindow, staleThreshold time.Duration, plannedToday, carriedOver map[TaskIdentity]bool) {
 	task := c.task
 	project := c.project
-	key := planKey(task.ID, project.ID)
+	identity := taskIdentityFor(task, project)
 
 	var reasons []RecommendationReason
 	tier := tierFallback
@@ -168,14 +164,14 @@ func classifyActionable(c *recommendCandidate, now, today time.Time, recencyWind
 		}
 	}
 
-	if plannedToday[key] {
+	if plannedToday[identity] {
 		reasons = append(reasons, ReasonPlannedToday)
 		if tier > tierPlannedToday {
 			tier = tierPlannedToday
 		}
 	}
 
-	if carriedOver[key] {
+	if carriedOver[identity] {
 		reasons = append(reasons, ReasonCarriedOver)
 		if tier > tierCarriedOver {
 			tier = tierCarriedOver
@@ -209,7 +205,7 @@ func classifyActionable(c *recommendCandidate, now, today time.Time, recencyWind
 	c.tier = tier
 }
 
-func collectBlockedCandidates(projects []*models.Project, today time.Time, plannedToday, carriedOver map[string]bool) []recommendCandidate {
+func collectBlockedCandidates(projects []*models.Project, today time.Time, plannedToday, carriedOver map[TaskIdentity]bool) []recommendCandidate {
 	var blocked []recommendCandidate
 	for _, project := range projects {
 		if project == nil {
@@ -226,7 +222,7 @@ func collectBlockedCandidates(projects []*models.Project, today time.Time, plann
 			cand := recommendCandidate{task: task, project: project}
 			reasons := []RecommendationReason{ReasonBlocked}
 			tier := tierFallback
-			key := planKey(task.ID, project.ID)
+			identity := taskIdentityFor(task, project)
 			if task.DueDate != nil {
 				dueDay := util.StartOfDay(*task.DueDate)
 				switch {
@@ -242,13 +238,13 @@ func collectBlockedCandidates(projects []*models.Project, today time.Time, plann
 					}
 				}
 			}
-			if plannedToday[key] {
+			if plannedToday[identity] {
 				reasons = append(reasons, ReasonPlannedToday)
 				if tier > tierPlannedToday {
 					tier = tierPlannedToday
 				}
 			}
-			if carriedOver[key] {
+			if carriedOver[identity] {
 				reasons = append(reasons, ReasonCarriedOver)
 				if tier > tierCarriedOver {
 					tier = tierCarriedOver

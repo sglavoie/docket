@@ -228,6 +228,7 @@ func (s *Service) applyWorkflowCascade(
 
 	for _, conflict := range evaluated.Conflicts {
 		out.conflicts = append(out.conflicts, WorkflowConflict{
+			ProjectID: project.ID,
 			TaskID:    conflict.TaskID,
 			TaskTitle: conflict.TaskTitle,
 			Field:     conflict.Field,
@@ -274,7 +275,11 @@ func (s *Service) applyWorkflowCascade(
 				base:             snap.Document(destination.ID),
 			})
 		}
-		out.moves = append(out.moves, WorkflowMove{TaskID: move.TaskID, DestProjectID: destination.ID})
+		out.moves = append(out.moves, WorkflowMove{
+			SourceProjectID: project.ID,
+			TaskID:          move.TaskID,
+			DestProjectID:   destination.ID,
+		})
 		out.changedByWorkflow = true
 	}
 

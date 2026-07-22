@@ -150,6 +150,29 @@ func TestRunScoreSet(t *testing.T) {
 		testutil.AssertEqual(t, updatedTask.ScoreDimensions["ease"], 6)
 	})
 
+	t.Run("updates the current project when another project reuses the task ID", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		current := project.Tasks[0]
+		other, err := models.NewProject("score-other", "Score Other", "")
+		testutil.AssertNoError(t, err)
+		duplicate, err := models.NewTask(current.ID, 1, current.Type, "Duplicate elsewhere")
+		testutil.AssertNoError(t, err)
+		other.Tasks = append(other.Tasks, duplicate)
+		deps.Repository.Projects[other.ID] = other
+
+		err = runScoreSet(scoreSetCmd, []string{current.Title, "impact=7"})
+		testutil.AssertNoError(t, err)
+
+		if got := deps.Repository.Projects[project.ID].GetTaskByID(current.ID).ScoreDimensions["impact"]; got != 7 {
+			t.Fatalf("current-project impact = %d, want 7", got)
+		}
+		if got := deps.Repository.Projects[other.ID].GetTaskByID(duplicate.ID).ScoreDimensions["impact"]; got != 0 {
+			t.Fatalf("other-project impact = %d, want unchanged", got)
+		}
+	})
+
 	t.Run("rejects task not found", func(t *testing.T) {
 		deps, _ := setupScoreTest(t)
 		defer deps.Cleanup()

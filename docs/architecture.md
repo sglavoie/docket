@@ -123,7 +123,10 @@ every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 file contains editors, integration choices, the startup route, current project
 selection, custom contexts, and bounded recent task/palette items. Renderer
 layout, filters, cursors, folds, and composer expansion are session-owned and
-are not serialized. A workspace with a different ID never shares this state. On first
+are not serialized. Planner Today owns its project-qualified subtree overrides
+and global tree-depth limit for the session; users change both through Planner's
+`View` menu, and a depth change clears per-node overrides. A workspace with a
+different ID never shares this state. On first
 startup after upgrading from the former layout, `tt` checks the machine file
 keyed by the current data-directory path, then the historical
 `~/.tt/machine.json`; it imports only an empty-ID or catalog-matching envelope,
@@ -159,7 +162,11 @@ Manage, Task Detail, and Reference. `Ctrl+G` exposes six destinations because
 Task Detail and Reference are child/overlay flows; Tasks and Project both use
 Task Workspace with application and project scopes respectively. Layouts and
 focuses are route parameters or in-route View menu modes rather than extra
-routes. Esc unwinds the active overlay or module, while Ctrl+Esc resets Home.
+routes. Planner's Today-only folds live in its View menu. Task Workspace's
+workspace-wide due-date lens is selected only by explicit due-date navigation;
+explicit All Tasks navigation restores the tree lens, while generic Outliner
+navigation preserves the current lens. Esc unwinds the active overlay or module,
+while Ctrl+Esc resets Home.
 
 ## Transactions, recovery, and undo
 

@@ -82,7 +82,7 @@ func TestRoadmapDateToCol_WeekZoom(t *testing.T) {
 func TestRoadmapBuildAxis_TodayCol(t *testing.T) {
 	m := &RoadmapModel{
 		zoom:      ZoomMonth,
-		collapsed: make(map[string]bool),
+		collapsed: make(map[TaskIdentity]bool),
 	}
 	m.buildAxis()
 
@@ -96,7 +96,7 @@ func TestRoadmapBuildAxis_TodayCol(t *testing.T) {
 // TestRoadmapBuildAxis_Labels verifies axis labels are generated for all columns.
 func TestRoadmapBuildAxis_Labels(t *testing.T) {
 	for _, zoom := range []ZoomLevel{ZoomWeek, ZoomMonth, ZoomQuarter} {
-		m := &RoadmapModel{zoom: zoom, collapsed: make(map[string]bool)}
+		m := &RoadmapModel{zoom: zoom, collapsed: make(map[TaskIdentity]bool)}
 		m.buildAxis()
 		if len(m.axis.Labels) != m.axis.TotalCols {
 			t.Errorf("zoom %d: labels length %d != TotalCols %d", zoom, len(m.axis.Labels), m.axis.TotalCols)
@@ -104,20 +104,53 @@ func TestRoadmapBuildAxis_Labels(t *testing.T) {
 	}
 }
 
-// TestRoadmapCollapse verifies collapsed state is stored and retrieved per task ID.
+// TestRoadmapCollapse verifies collapsed state is stored by project-qualified identity.
 func TestRoadmapCollapse(t *testing.T) {
 	m := &RoadmapModel{
-		collapsed: make(map[string]bool),
+		collapsed: make(map[TaskIdentity]bool),
 	}
 
-	taskID := "test-task-id"
-	if m.collapsed[taskID] {
+	identity := TaskIdentity{ProjectID: "project", TaskID: "test-task-id"}
+	if m.collapsed[identity] {
 		t.Error("task should not be collapsed initially")
 	}
 
-	m.collapsed[taskID] = true
-	if !m.collapsed[taskID] {
+	m.collapsed[identity] = true
+	if !m.collapsed[identity] {
 		t.Error("task should be collapsed after setting")
+	}
+}
+
+func TestRoadmapBuildRowsKeepsDuplicateTaskSchedulesProjectQualified(t *testing.T) {
+	alpha := &models.Project{ID: "alpha", Name: "Alpha"}
+	beta := &models.Project{ID: "beta", Name: "Beta"}
+	alphaTask := &models.Task{ID: "shared-id", Title: "Alpha task", Project: alpha}
+	betaTask := &models.Task{ID: "shared-id", Title: "Beta task", Project: beta}
+	alpha.Tasks = []*models.Task{alphaTask}
+	beta.Tasks = []*models.Task{betaTask}
+	alphaStart := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	betaStart := alphaStart.AddDate(0, 0, 10)
+	m := &RoadmapModel{
+		axis:      TimelineAxis{Start: alphaStart, UnitDays: 1, TotalCols: 30},
+		collapsed: make(map[TaskIdentity]bool),
+		scheduled: []planner.ScheduledTask{
+			{Task: alphaTask, EarliestStart: alphaStart, EarliestEnd: alphaStart.AddDate(0, 0, 1)},
+			{Task: betaTask, EarliestStart: betaStart, EarliestEnd: betaStart.AddDate(0, 0, 1)},
+		},
+		criticalPath: &planner.CriticalPathResult{
+			OnPath: map[string]bool{planner.TaskKey(alphaTask): true},
+			Slack:  map[string]float64{planner.TaskKey(alphaTask): 0, planner.TaskKey(betaTask): 4},
+		},
+	}
+	m.buildRows([]*models.Project{alpha, beta})
+	if len(m.rows) != 2 {
+		t.Fatalf("roadmap rows = %d, want 2", len(m.rows))
+	}
+	if m.rows[0].Project != alpha || !m.rows[0].ScheduledStart.Equal(alphaStart) || !m.rows[0].IsCritical {
+		t.Fatalf("alpha row = %+v", m.rows[0])
+	}
+	if m.rows[1].Project != beta || !m.rows[1].ScheduledStart.Equal(betaStart) || m.rows[1].IsCritical || m.rows[1].Slack != 4 {
+		t.Fatalf("beta row = %+v", m.rows[1])
 	}
 }
 
@@ -161,14 +194,14 @@ func TestRoadmapToggleTimelineRowCollapsedIgnoresNegativeCursor(t *testing.T) {
 	m := &RoadmapModel{
 		activeTab:  RoadmapTabTimeline,
 		cursor:     -1,
-		collapsed:  make(map[string]bool),
+		collapsed:  make(map[TaskIdentity]bool),
 		rows:       []TimelineRow{{Task: task}},
 		labelWidth: 30,
 	}
 
 	m.toggleTimelineRowCollapsed()
 
-	if m.collapsed[task.ID] {
+	if m.collapsed[TaskIdentity{TaskID: task.ID}] {
 		t.Fatal("negative cursor should not toggle a row")
 	}
 }

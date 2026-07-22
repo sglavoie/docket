@@ -32,24 +32,25 @@ type SidebarHost interface {
 // lives elsewhere). A cursor out of range yields a nil command (nothing to
 // remove); an error surfaces as ErrorMsg so the shell shows it without popping.
 func sidebarUnlinkCommand(link LinkCoordinator, project *models.Project, sourceTask *models.Task, section, cursor int) tea.Cmd {
+	sourceIdentity := taskIdentityFor(sourceTask, project)
 	var commit tea.Cmd
 	switch section {
 	case 0: // Blocked by: remove sourceTask's dependency edge
 		if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
 			return nil
 		}
-		commit = link.RemoveDependency(sourceTask.ID, sourceTask.DependsOn[cursor])
+		commit = link.RemoveDependency(sourceIdentity, sourceTask.DependsOn[cursor])
 	case 1: // Blocking: remove the dependent task's edge onto sourceTask
 		blockedTasks := project.GetBlockedByTasks(sourceTask)
 		if cursor < 0 || cursor >= len(blockedTasks) {
 			return nil
 		}
-		commit = link.RemoveDependency(blockedTasks[cursor].ID, sourceTask.ID)
+		commit = link.RemoveDependency(taskIdentityFor(blockedTasks[cursor], project), sourceTask.ID)
 	case 2: // Related: bidirectional removal (may span projects)
 		if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
 			return nil
 		}
-		commit = link.RemoveRelatedBidirectional(sourceTask.ID, sourceTask.RelatedTo[cursor])
+		commit = link.RemoveRelatedBidirectional(sourceIdentity, sourceTask.RelatedTo[cursor])
 	default:
 		return nil
 	}

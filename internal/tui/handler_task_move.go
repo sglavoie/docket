@@ -41,6 +41,7 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// config reassignment correctly regardless of the fresh snapshot the use case loads.
 	msg.SourceProject.BuildTaskTree()
 	movedSet := collectDescendantIDs(msg.SourceProject.Tasks, map[string]bool{sourceTask.ID: true})
+	sourceProjectID := msg.SourceProject.ID
 
 	// When the move flow picks a destination section, that section changes the moved
 	// root's workflow state, so compute the state it will hold AFTER the move to
@@ -62,16 +63,17 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// moved root against its destination final state, so a move that lands the root in
 	// Next drops any stale Today entry and a move out of Next drops any stale order
 	// entry. Recent visits are excluded here and repaired separately after the commit.
-	artifacts, err := m.moveConfigArtifacts(movedSet, destProject.ID, sourceTask.ID, finalState)
+	artifacts, err := m.moveConfigArtifacts(movedSet, sourceProjectID, destProject.ID, sourceTask.ID, finalState)
 	if err != nil {
 		return true, errorCmd("failed to prepare move: %w", err)
 	}
 
 	var res app.MoveResult
+	locator := app.TaskLocator{ProjectID: sourceProjectID, TaskID: sourceTask.ID}
 	if msg.DestSection != nil {
-		res, err = m.appService.MoveToProjectInSection(sourceTask.ID, destProject.ID, *msg.DestSection, artifacts...)
+		res, err = m.appService.MoveToProjectInSectionByLocator(locator, destProject.ID, *msg.DestSection, artifacts...)
 	} else {
-		res, err = m.appService.MoveToProject(sourceTask.ID, destProject.ID, artifacts...)
+		res, err = m.appService.MoveToProjectByLocator(locator, destProject.ID, artifacts...)
 	}
 	if err != nil {
 		return true, errorCmd("failed to move task: %w", err)
@@ -86,7 +88,7 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the move is already committed.
 	if err := m.commitMachineMutation(func(machine *config.MachineState) {
-		machine.ReassignRecentVisitsProject(movedSet, destProject.ID)
+		machine.ReassignRecentVisitsProjectFrom(movedSet, sourceProjectID, destProject.ID)
 	}); err != nil {
 		logging.Warn("failed to update recent visits after move: %v", err)
 	}
@@ -94,17 +96,17 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// Update in-memory TUI focus queue, daily plan, and recent-visit references so
 	// open planning views point at the destination project immediately.
 	for i := range m.focusQueue {
-		if movedSet[m.focusQueue[i].Task.ID] {
+		if m.focusQueue[i].Project != nil && m.focusQueue[i].Project.ID == sourceProjectID && movedSet[m.focusQueue[i].Task.ID] {
 			m.focusQueue[i].Project = destProject
 		}
 	}
 	for i := range m.dailyPlan {
-		if movedSet[m.dailyPlan[i].Task.ID] {
+		if m.dailyPlan[i].Project != nil && m.dailyPlan[i].Project.ID == sourceProjectID && movedSet[m.dailyPlan[i].Task.ID] {
 			m.dailyPlan[i].Project = destProject
 		}
 	}
 	for i := range m.recentTaskVisits {
-		if movedSet[m.recentTaskVisits[i].Task.ID] {
+		if m.recentTaskVisits[i].Project != nil && m.recentTaskVisits[i].Project.ID == sourceProjectID && movedSet[m.recentTaskVisits[i].Task.ID] {
 			m.recentTaskVisits[i].Project = destProject
 		}
 	}
@@ -130,12 +132,12 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 // mirroring the CLI cross-project move. Reconciling in the same artifact as the
 // reassignment keeps both planning deltas atomic with the task write. Returns nil
 // when neither the reassignment nor the reconciliation changed anything.
-func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, destProjectID, rootID string, finalState *models.WorkflowState) ([]storage.ArtifactChange, error) {
+func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, sourceProjectID, destProjectID, rootID string, finalState *models.WorkflowState) ([]storage.ArtifactChange, error) {
 	if m.runtime == nil || m.configManager == nil {
 		return nil, nil
 	}
 	planning := clonePlanningState(m.runtime.Planning())
-	changed := planning.ReassignDurablePlanningProject(movedSet, destProjectID) > 0
+	changed := planning.ReassignDurablePlanningProjectFrom(movedSet, sourceProjectID, destProjectID) > 0
 	if finalState != nil && reconcilePlanningExclusivity(planning, []app.PlanningReconcileTarget{{
 		TaskID:    rootID,
 		ProjectID: destProjectID,

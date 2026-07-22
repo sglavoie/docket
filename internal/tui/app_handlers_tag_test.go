@@ -22,8 +22,8 @@ func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.loadedProjects = env.projects
 	app.crossOutliner.multiSelectMode = true
-	app.crossOutliner.selectedTasks[taskA.ID] = true
-	app.crossOutliner.selectedTasks[taskB.ID] = true
+	app.crossOutliner.SelectTaskIdentity(taskIdentityFor(taskA, env.projects[0]))
+	app.crossOutliner.SelectTaskIdentity(taskIdentityFor(taskB, env.projects[1]))
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 
 	app.pushView(ViewBulkTagSelector)

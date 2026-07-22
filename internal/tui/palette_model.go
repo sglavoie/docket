@@ -37,7 +37,7 @@ func NewCommandPaletteModel(runtime *config.RuntimeState, registry *CommandRegis
 		cursor:         0,
 		scrollAnchor:   -1,
 		showTips:       true,
-		selectedTasks:  make(map[string]bool),
+		selectedTasks:  make(map[TaskIdentity]bool),
 	}
 
 	// Load all searchable items (lazy loading on palette open per design decision)

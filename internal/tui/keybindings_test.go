@@ -230,8 +230,8 @@ func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {
 	app.views.Register(ViewFocusBoard, view)
 	app.viewStack = []PresentationID{ViewDashboard, ViewFocusBoard}
 	app.enableTypedNavigation()
-	app.focusQueueIDs = map[string]bool{}
-	app.dailyPlanIDs = map[string]bool{}
+	app.focusQueueIDs = map[TaskIdentity]bool{}
+	app.dailyPlanIDs = map[TaskIdentity]bool{}
 
 	// The Planner owns its complete shared task grammar in the view dispatcher.
 	// App-level legacy aliases must therefore fall through.

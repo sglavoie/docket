@@ -153,7 +153,7 @@ func newStartupMigrationModel(runtime *config.RuntimeState, persister Persister)
 		runtime:       runtime,
 		persister:     persister,
 		focusQueue:    []FocusTask{},
-		focusQueueIDs: make(map[string]bool),
+		focusQueueIDs: make(map[TaskIdentity]bool),
 	}
 }
 

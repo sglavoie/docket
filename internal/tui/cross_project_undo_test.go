@@ -18,8 +18,8 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: 1,
 		loadedProjects:    env.projects,
 	}

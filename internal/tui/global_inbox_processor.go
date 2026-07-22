@@ -142,17 +142,9 @@ func (m *GlobalInboxProcessorModel) shouldProcessOnStateChange(newState models.W
 	return newState.IsTerminal()
 }
 
-func (m *GlobalInboxProcessorModel) findTaskByID(taskID, projectID string) (*models.Task, *models.Project) {
-	if project, ok := m.projectCache[projectID]; ok && project != nil {
-		if t := project.GetTaskByID(taskID); t != nil {
-			return t, project
-		}
-	}
-	for _, project := range m.projectCache {
-		if project == nil {
-			continue
-		}
-		if t := project.GetTaskByID(taskID); t != nil {
+func (m *GlobalInboxProcessorModel) findTask(identity TaskIdentity) (*models.Task, *models.Project) {
+	if project, ok := m.projectCache[identity.ProjectID]; ok && project != nil {
+		if t := project.GetTaskByID(identity.TaskID); t != nil {
 			return t, project
 		}
 	}

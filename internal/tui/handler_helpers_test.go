@@ -255,9 +255,10 @@ func TestPruneDeletedTaskRefsAbortsOnLoadFailure(t *testing.T) {
 	// Populate focusQueue, dailyPlan, and recentTaskVisits with a reference
 	// to the project's task.
 	app.focusQueue = []FocusTask{{Task: task, Project: project}}
-	app.focusQueueIDs = map[string]bool{task.ID: true}
+	identity := taskIdentityFor(task, project)
+	app.focusQueueIDs = map[TaskIdentity]bool{identity: true}
 	app.dailyPlan = []FocusTask{{Task: task, Project: project}}
-	app.dailyPlanIDs = map[string]bool{task.ID: true}
+	app.dailyPlanIDs = map[TaskIdentity]bool{identity: true}
 	app.recentTaskVisits = []RecentTaskVisitEntry{{Task: task, Project: project}}
 
 	// Force the project into the "unloaded" state so prune triggers a Load.
@@ -268,13 +269,13 @@ func TestPruneDeletedTaskRefsAbortsOnLoadFailure(t *testing.T) {
 	if len(app.focusQueue) != 1 {
 		t.Errorf("focusQueue: expected entries preserved on load failure, got len=%d", len(app.focusQueue))
 	}
-	if !app.focusQueueIDs[task.ID] {
+	if !app.focusQueueIDs[identity] {
 		t.Errorf("focusQueueIDs: expected task id preserved on load failure")
 	}
 	if len(app.dailyPlan) != 1 {
 		t.Errorf("dailyPlan: expected entries preserved on load failure, got len=%d", len(app.dailyPlan))
 	}
-	if !app.dailyPlanIDs[task.ID] {
+	if !app.dailyPlanIDs[identity] {
 		t.Errorf("dailyPlanIDs: expected task id preserved on load failure")
 	}
 	if len(app.recentTaskVisits) != 1 {

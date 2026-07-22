@@ -12,8 +12,11 @@ import (
 // field is applied only when non-nil, so a caller changes just the fields it
 // sets and leaves the rest untouched.
 type EditRequest struct {
-	// TaskID identifies the task to edit. Required.
+	// TaskID identifies the task to edit when it is workspace-unique.
 	TaskID string
+	// Locator is the project-qualified alternative to TaskID. The two fields are
+	// mutually exclusive.
+	Locator TaskLocator
 	// Title, when non-nil, replaces the task title (validated).
 	Title *string
 	// Description, when non-nil, replaces the task description.
@@ -78,7 +81,7 @@ type FormEdit struct {
 // req.Form is set, the full task-form field set is applied instead of the
 // granular pointer fields.
 func (s *Service) Edit(req EditRequest) (TaskResult, error) {
-	ref, revision, err := s.resolveTask(req.TaskID)
+	ref, _, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -111,7 +114,7 @@ func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptio
 	// transaction. The single-task workflow runner already names the edited task as
 	// its planning target, so the builder reconciles exactly that task.
 	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
-	return s.mutateWithWorkflow(req.TaskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(req.TaskID, req.Locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		return s.applyEdit(ref.Task, req)
 	})
 }

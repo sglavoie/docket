@@ -187,6 +187,9 @@ func emitCLIWorkflowConflicts(conflicts []app.WorkflowConflict) {
 		sort.Strings(normalized[i].Rules)
 	}
 	sort.SliceStable(normalized, func(i, j int) bool {
+		if normalized[i].ProjectID != normalized[j].ProjectID {
+			return normalized[i].ProjectID < normalized[j].ProjectID
+		}
 		if normalized[i].TaskID != normalized[j].TaskID {
 			return normalized[i].TaskID < normalized[j].TaskID
 		}
@@ -199,8 +202,11 @@ func emitCLIWorkflowConflicts(conflicts []app.WorkflowConflict) {
 	fmt.Fprintln(os.Stderr, "warning: workflow rule conflicts detected:")
 	for _, conflict := range normalized {
 		task := conflict.TaskID
+		if conflict.ProjectID != "" {
+			task = conflict.ProjectID + ":" + task
+		}
 		if conflict.TaskTitle != "" {
-			task = fmt.Sprintf("%s (%s)", conflict.TaskTitle, conflict.TaskID)
+			task = fmt.Sprintf("%s (%s)", conflict.TaskTitle, task)
 		}
 		fmt.Fprintf(os.Stderr, "  %s: %s <- %s\n", task, conflict.Field, strings.Join(conflict.Rules, ", "))
 	}

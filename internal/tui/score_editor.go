@@ -178,7 +178,7 @@ func (m *ScoreEditorModel) save() tea.Cmd {
 
 	project := m.project
 	task := m.task
-	return adaptSubviewCommit(m.coordinator.SetScore(task.ID, dims), func() tea.Msg {
+	return adaptSubviewCommit(m.coordinator.SetScore(taskIdentityFor(task, project), dims), func() tea.Msg {
 		return ScoreEditorDoneMsg{Task: task, Saved: true, Project: project}
 	})
 }

@@ -32,9 +32,9 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 
 	app := env.appModel()
 	app.focusQueue = []FocusTask{{Task: moved, Project: source}}
-	app.focusQueueIDs = map[string]bool{moved.ID: true}
+	app.focusQueueIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
 	app.dailyPlan = []FocusTask{{Task: moved, Project: source}}
-	app.dailyPlanIDs = map[string]bool{moved.ID: true}
+	app.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
 	app.recentTaskVisits = []RecentTaskVisitEntry{{Task: moved, Project: source}}
 
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
@@ -84,6 +84,54 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 		t.Fatal("dest should contain task after redo")
 	}
 	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, false)
+}
+
+func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
+	env := newMoveHandlerEnv(t, "shared-id", "Move beta/shared")
+	source, dest := env.source, env.dest
+	moved := source.GetTaskByID("shared-id")
+	other := &models.Project{ID: "alpha", Name: "Alpha"}
+
+	env.cfg.Planning().FocusQueue = []config.FocusQueueItem{
+		{TaskID: moved.ID, ProjectID: source.ID},
+		{TaskID: moved.ID, ProjectID: other.ID},
+	}
+	env.cfg.Planning().DailyPlan = []config.DailyPlanItem{
+		{TaskID: moved.ID, ProjectID: source.ID},
+		{TaskID: moved.ID, ProjectID: other.ID},
+	}
+	env.cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+		{TaskID: moved.ID, ProjectID: source.ID},
+		{TaskID: moved.ID, ProjectID: other.ID},
+	}
+	if err := saveTestRuntime(env.mgr, env.cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+
+	m := env.appModel()
+	m.focusQueue = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	m.dailyPlan = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	m.recentTaskVisits = []RecentTaskVisitEntry{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	_, cmd := m.handleMoveTaskToProject(MoveTaskToProjectMsg{
+		Task: moved, SourceProject: source, DestProjectID: dest.ID,
+	})
+	assertMoveMsg(t, cmd)
+
+	reloaded, err := config.NewManager(env.mgr.GetConfigPath()).LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("reload config: %v", err)
+	}
+	if reloaded.Planning().FocusQueue[0].ProjectID != dest.ID || reloaded.Planning().FocusQueue[1].ProjectID != other.ID ||
+		reloaded.Planning().DailyPlan[0].ProjectID != dest.ID || reloaded.Planning().DailyPlan[1].ProjectID != other.ID ||
+		reloaded.Machine().RecentTaskVisits[0].ProjectID != dest.ID || reloaded.Machine().RecentTaskVisits[1].ProjectID != other.ID {
+		t.Fatalf("qualified move reassigned another project's refs: focus=%+v daily=%+v recent=%+v",
+			reloaded.Planning().FocusQueue, reloaded.Planning().DailyPlan, reloaded.Machine().RecentTaskVisits)
+	}
+	if m.focusQueue[0].Project.ID != dest.ID || m.focusQueue[1].Project.ID != other.ID ||
+		m.dailyPlan[0].Project.ID != dest.ID || m.dailyPlan[1].Project.ID != other.ID ||
+		m.recentTaskVisits[0].Project.ID != dest.ID || m.recentTaskVisits[1].Project.ID != other.ID {
+		t.Fatalf("qualified move reassigned another project's in-memory refs")
+	}
 }
 
 // TestTUITaskMoveAppliesDestSectionAndCanonicalTask verifies the migrated move

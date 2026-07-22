@@ -112,17 +112,15 @@ func (p *PlanningState) RemoveDurableTaskRefs(taskIDs map[string]bool) int {
 }
 
 // RemoveDurableTaskLocators removes project-qualified planning entries. The
-// legacy dismissed-ID list has no project column, so its entries retain the
-// historical task-ID semantics until that persisted shape is retired.
+// legacy dismissed-ID list has no project column, so qualified cleanup leaves
+// it unchanged rather than risking deletion of another project's reference.
 func (p *PlanningState) RemoveDurableTaskLocators(locators []ProjectTaskLocator) int {
 	qualified := make(map[ProjectTaskLocator]bool, len(locators))
-	legacyIDs := make(map[string]bool, len(locators))
 	for _, locator := range locators {
 		if locator.ProjectID == "" || locator.TaskID == "" {
 			continue
 		}
 		qualified[locator] = true
-		legacyIDs[locator.TaskID] = true
 	}
 	removed := 0
 	if len(p.FocusQueue) > 0 {
@@ -146,17 +144,6 @@ func (p *PlanningState) RemoveDurableTaskLocators(locators []ProjectTaskLocator)
 			filtered = append(filtered, item)
 		}
 		p.DailyPlan = filtered
-	}
-	if len(p.FocusDismissedIDs) > 0 {
-		filtered := p.FocusDismissedIDs[:0]
-		for _, id := range p.FocusDismissedIDs {
-			if legacyIDs[id] {
-				removed++
-				continue
-			}
-			filtered = append(filtered, id)
-		}
-		p.FocusDismissedIDs = filtered
 	}
 	return removed
 }
@@ -200,8 +187,50 @@ func (m *MachineState) RemoveMachineLocalTaskLocators(locators []ProjectTaskLoca
 	return removed
 }
 
-// ReassignDurablePlanningProject updates project ownership for moved task IDs
-// in the durable planning collections.
+// ReassignDurablePlanningProjectFrom updates project ownership only for entries
+// that currently name both the source project and one of the moved task IDs.
+// This is the project-qualified move seam; ReassignDurablePlanningProject is
+// retained below only for compatibility with callers that genuinely lack an
+// owning project.
+func (p *PlanningState) ReassignDurablePlanningProjectFrom(taskIDs map[string]bool, sourceProjectID, newProjectID string) int {
+	if sourceProjectID == "" || newProjectID == "" || sourceProjectID == newProjectID {
+		return 0
+	}
+	updated := 0
+	for i := range p.FocusQueue {
+		if p.FocusQueue[i].ProjectID == sourceProjectID && taskIDs[p.FocusQueue[i].TaskID] {
+			p.FocusQueue[i].ProjectID = newProjectID
+			updated++
+		}
+	}
+	for i := range p.DailyPlan {
+		if p.DailyPlan[i].ProjectID == sourceProjectID && taskIDs[p.DailyPlan[i].TaskID] {
+			p.DailyPlan[i].ProjectID = newProjectID
+			updated++
+		}
+	}
+	return updated
+}
+
+// ReassignRecentVisitsProjectFrom updates machine-local recent history only for
+// entries that currently name both the source project and a moved task ID.
+func (m *MachineState) ReassignRecentVisitsProjectFrom(taskIDs map[string]bool, sourceProjectID, newProjectID string) int {
+	if sourceProjectID == "" || newProjectID == "" || sourceProjectID == newProjectID {
+		return 0
+	}
+	updated := 0
+	for i := range m.RecentTaskVisits {
+		if m.RecentTaskVisits[i].ProjectID == sourceProjectID && taskIDs[m.RecentTaskVisits[i].TaskID] {
+			m.RecentTaskVisits[i].ProjectID = newProjectID
+			updated++
+		}
+	}
+	return updated
+}
+
+// ReassignDurablePlanningProject updates project ownership by task ID alone. It
+// is retained as a compatibility seam for callers that lack project ownership;
+// known-owner production paths must use ReassignDurablePlanningProjectFrom.
 func (p *PlanningState) ReassignDurablePlanningProject(taskIDs map[string]bool, newProjectID string) int {
 	updated := 0
 	for i := range p.FocusQueue {
@@ -219,8 +248,9 @@ func (p *PlanningState) ReassignDurablePlanningProject(taskIDs map[string]bool, 
 	return updated
 }
 
-// ReassignRecentVisitsProject updates project ownership for moved task IDs in
-// machine-local recent history.
+// ReassignRecentVisitsProject updates project ownership by task ID alone. It is
+// retained as a compatibility seam for callers that lack project ownership;
+// known-owner production paths must use ReassignRecentVisitsProjectFrom.
 func (m *MachineState) ReassignRecentVisitsProject(taskIDs map[string]bool, newProjectID string) int {
 	updated := 0
 	for i := range m.RecentTaskVisits {

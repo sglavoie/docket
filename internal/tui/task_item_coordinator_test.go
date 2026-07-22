@@ -19,7 +19,7 @@ func TestTaskItemSetSectionScenario(t *testing.T) {
 	task := seedTask(t, 1, "Park me", models.StateReady)
 	env, features := newSecondaryEnv(t, "section", task)
 
-	runResult(t, features.TaskItem.SetSection(task.ID, models.SectionSomeday))
+	runResult(t, features.TaskItem.SetSection(taskIdentityFor(task, env.project), models.SectionSomeday))
 	got := env.reload(t).GetTaskByID(task.ID)
 	if got == nil || models.SectionForState(got.State()) != models.SectionSomeday {
 		t.Fatalf("reloaded section = %v, want %q", got, models.SectionSomeday)
@@ -52,7 +52,7 @@ func TestTaskItemMoveToTopScenario(t *testing.T) {
 	c := seedTask(t, 3, "C", models.StateReady)
 	env, features := newSecondaryEnv(t, "reorder", a, b, c)
 
-	msg := runBatchResult(t, features.TaskItem.MoveToTop(c.ID))
+	msg := runBatchResult(t, features.TaskItem.MoveToTop(taskIdentityFor(c, env.project)))
 	if len(msg.TouchedProjectIDs) != 1 {
 		t.Fatalf("touched projects = %v, want 1", msg.TouchedProjectIDs)
 	}
@@ -71,7 +71,7 @@ func TestTaskItemMoveToBottomScenario(t *testing.T) {
 	c := seedTask(t, 3, "C", models.StateReady)
 	env, features := newSecondaryEnv(t, "reorder", a, b, c)
 
-	msg := runBatchResult(t, features.TaskItem.MoveToBottom(a.ID))
+	msg := runBatchResult(t, features.TaskItem.MoveToBottom(taskIdentityFor(a, env.project)))
 	if msg.Summary != "Moved #1 to bottom" {
 		t.Errorf("summary = %q, want %q", msg.Summary, "Moved #1 to bottom")
 	}

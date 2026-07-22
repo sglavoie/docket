@@ -100,7 +100,8 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	// crash between the metadata save and the file delete left the two out of sync.
 	svc := newWorkspaceAppService(workspace)
 	res, removeErr := withResultRetry(func() (app.RemoveAttachmentResult, error) {
-		return svc.RemoveAttachment(task.ID, index, !keepFile)
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return svc.RemoveAttachmentByLocator(locator, index, !keepFile)
 	})
 	if removeErr != nil {
 		return translateAppError(removeErr)

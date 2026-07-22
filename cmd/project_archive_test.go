@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/viper"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -113,6 +115,72 @@ func TestProjectArchive(t *testing.T) {
 			t.Error("runProjectArchive() should error for nonexistent project")
 		}
 	})
+}
+
+func TestProjectArchivePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
+	deps := setupTestDeps(t)
+	defer deps.Cleanup()
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	project := func(id string) *models.Project {
+		p, err := models.NewProject(id, id, "")
+		if err != nil {
+			t.Fatalf("NewProject(%s): %v", id, err)
+		}
+		p.Path = filepath.Join(deps.DataDir, "projects", p.Slug)
+		task, err := models.NewTask("shared-id", 1, models.TaskTypeTask, id+" shared")
+		if err != nil {
+			t.Fatalf("NewTask(%s): %v", id, err)
+		}
+		p.Tasks = []*models.Task{task}
+		p.NextShortID = 2
+		if err := storage.SaveProject(p); err != nil {
+			t.Fatalf("SaveProject(%s): %v", id, err)
+		}
+		return p
+	}
+	alpha := project("alpha")
+	beta := project("beta")
+	setTestProjects(deps.Config, []*models.Project{alpha, beta})
+	deps.Config.Machine().CurrentProject = alpha.ID
+	deps.Config.Planning().FocusQueue = []config.FocusQueueItem{
+		{ProjectID: alpha.ID, TaskID: "shared-id"},
+		{ProjectID: beta.ID, TaskID: "shared-id"},
+	}
+	deps.Config.Planning().DailyPlan = []config.DailyPlanItem{
+		{ProjectID: alpha.ID, TaskID: "shared-id"},
+		{ProjectID: beta.ID, TaskID: "shared-id"},
+	}
+	deps.Config.Planning().FocusDismissedIDs = []string{"shared-id"}
+	deps.Config.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+		{ProjectID: alpha.ID, TaskID: "shared-id"},
+		{ProjectID: beta.ID, TaskID: "shared-id"},
+	}
+	manager := config.NewManager(deps.ConfigPath)
+	if err := saveTestRuntime(manager, deps.Config); err != nil {
+		t.Fatalf("saveTestRuntime: %v", err)
+	}
+
+	if err := runProjectArchive(nil, []string{beta.ID}); err != nil {
+		t.Fatalf("runProjectArchive: %v", err)
+	}
+	reloaded, err := manager.LoadRuntimeState()
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	if got := reloaded.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != alpha.ID {
+		t.Fatalf("project archive cleaned wrong focus refs: %+v", got)
+	}
+	if got := reloaded.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != alpha.ID {
+		t.Fatalf("project archive cleaned wrong daily refs: %+v", got)
+	}
+	if got := reloaded.Planning().FocusDismissedIDs; len(got) != 1 || got[0] != "shared-id" {
+		t.Fatalf("project archive changed legacy dismissed IDs: %v", got)
+	}
+	if got := reloaded.Machine().RecentTaskVisits; len(got) != 1 || got[0].ProjectID != alpha.ID {
+		t.Fatalf("project archive cleaned wrong recent visits: %+v", got)
+	}
 }
 
 func TestProjectUnarchive(t *testing.T) {

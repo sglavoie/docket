@@ -99,12 +99,12 @@ func crossMultiFieldFixture(t *testing.T) (m *OutlinerModel, alpha *models.Proje
 			quickEdit:      NewQuickEditComponent(),
 		},
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
+		expandedNodes:     make(map[TaskIdentity]bool),
 		MultiSelectState: MultiSelectState{
 			multiSelectMode: true,
-			selectedTasks: map[string]bool{
-				alphaLoaded.ID: true,
-				betaLoaded.ID:  true,
+			selectedTaskIdentities: map[TaskIdentity]bool{
+				taskIdentityFor(alphaLoaded, alpha): true,
+				taskIdentityFor(betaLoaded, beta):   true,
 			},
 		},
 		activePerspective: 1,
@@ -148,8 +148,8 @@ func TestCrossProjectOutlinerBulkDueDateUpdatesMultipleProjects(t *testing.T) {
 	env := newCrossProjectTestEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
 	m := newCrossOutlinerFromEnv(env)
 	m.multiSelectMode = true
-	m.selectedTasks[alphaTask.ID] = true
-	m.selectedTasks[betaTask.ID] = true
+	m.SelectTaskIdentity(taskIdentityFor(alphaTask, env.projects[0]))
+	m.SelectTaskIdentity(taskIdentityFor(betaTask, env.projects[1]))
 	m.rows = []outlinerRow{
 		{IsSectionHeader: true, SectionName: "Selected"},
 		{task: alphaTask, ProjectID: env.projects[0].ID},

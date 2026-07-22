@@ -26,13 +26,14 @@ func recordRepeatPriority(priority int) tea.Cmd {
 				label: fmt.Sprintf("Set Priority %d", p),
 				apply: func(v prefixableView) tea.Cmd {
 					task := v.getCursorTask()
-					if task == nil {
+					project := v.getProject()
+					if task == nil || project == nil {
 						return nil
 					}
 					if task.Priority == p {
 						return nil
 					}
-					cmd := v.singleTaskCoordinator().SetPriority(task.ID, p)
+					cmd := v.singleTaskCoordinator().SetPriority(taskIdentityFor(task, project), p)
 					msg := cmd()
 					if em, ok := msg.(TransactionErrorMsg); ok {
 						return func() tea.Msg { return ErrorMsg{Err: em.Err} }
@@ -53,11 +54,12 @@ func recordRepeatQuickDueDate(days int) tea.Cmd {
 				label: "Set Due Date " + dueDateLabel(d),
 				apply: func(v prefixableView) tea.Cmd {
 					task := v.getCursorTask()
-					if task == nil {
+					project := v.getProject()
+					if task == nil || project == nil {
 						return nil
 					}
 					due, _ := dueDateFromDays(d, false)
-					cmd := v.singleTaskCoordinator().SetDueDate(task.ID, due, false)
+					cmd := v.singleTaskCoordinator().SetDueDate(taskIdentityFor(task, project), due, false)
 					msg := cmd()
 					if em, ok := msg.(TransactionErrorMsg); ok {
 						return func() tea.Msg { return ErrorMsg{Err: em.Err} }
@@ -76,13 +78,14 @@ func recordRepeatClearDueDate() tea.Cmd {
 				label: "Clear Due Date",
 				apply: func(v prefixableView) tea.Cmd {
 					task := v.getCursorTask()
-					if task == nil {
+					project := v.getProject()
+					if task == nil || project == nil {
 						return nil
 					}
 					if task.DueDate == nil {
 						return nil
 					}
-					cmd := v.singleTaskCoordinator().SetDueDate(task.ID, nil, false)
+					cmd := v.singleTaskCoordinator().SetDueDate(taskIdentityFor(task, project), nil, false)
 					msg := cmd()
 					if em, ok := msg.(TransactionErrorMsg); ok {
 						return func() tea.Msg { return ErrorMsg{Err: em.Err} }

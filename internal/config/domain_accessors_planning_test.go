@@ -146,6 +146,7 @@ func TestPlanningQualifiedRemovalPreservesDuplicateIDInOtherProject(t *testing.T
 		{ProjectID: "alpha", TaskID: "shared"},
 		{ProjectID: "beta", TaskID: "shared"},
 	}
+	planning.FocusDismissedIDs = []string{"shared", "other"}
 
 	removed := planning.RemoveDurableTaskLocators([]ProjectTaskLocator{{ProjectID: "beta", TaskID: "shared"}})
 	if removed != 2 {
@@ -156,5 +157,41 @@ func TestPlanningQualifiedRemovalPreservesDuplicateIDInOtherProject(t *testing.T
 	}
 	if len(planning.DailyPlan) != 1 || planning.DailyPlan[0].ProjectID != "alpha" {
 		t.Fatalf("daily plan = %+v, want alpha entry", planning.DailyPlan)
+	}
+	if len(planning.FocusDismissedIDs) != 2 || planning.FocusDismissedIDs[0] != "shared" {
+		t.Fatalf("dismissed IDs = %v, want legacy list unchanged", planning.FocusDismissedIDs)
+	}
+}
+
+func TestQualifiedMoveReassignmentPreservesDuplicateIDInOtherProject(t *testing.T) {
+	planning := NewPlanningState()
+	planning.FocusQueue = []FocusQueueItem{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
+	}
+	planning.DailyPlan = []DailyPlanItem{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
+	}
+	machine := NewMachineState()
+	machine.RecentTaskVisits = []RecentTaskVisit{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
+	}
+	moved := map[string]bool{"shared": true}
+
+	updated := planning.ReassignDurablePlanningProjectFrom(moved, "beta", "gamma")
+	updated += machine.ReassignRecentVisitsProjectFrom(moved, "beta", "gamma")
+	if updated != 3 {
+		t.Fatalf("updated = %d, want beta queue + daily + recent entries", updated)
+	}
+	if planning.FocusQueue[0].ProjectID != "alpha" || planning.FocusQueue[1].ProjectID != "gamma" {
+		t.Fatalf("focus queue = %+v, want alpha preserved and beta moved", planning.FocusQueue)
+	}
+	if planning.DailyPlan[0].ProjectID != "alpha" || planning.DailyPlan[1].ProjectID != "gamma" {
+		t.Fatalf("daily plan = %+v, want alpha preserved and beta moved", planning.DailyPlan)
+	}
+	if machine.RecentTaskVisits[0].ProjectID != "alpha" || machine.RecentTaskVisits[1].ProjectID != "gamma" {
+		t.Fatalf("recent visits = %+v, want alpha preserved and beta moved", machine.RecentTaskVisits)
 	}
 }

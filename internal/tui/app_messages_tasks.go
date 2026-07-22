@@ -225,18 +225,18 @@ type TaskCopiedMsg struct {
 
 // OpenParentSelectorMsg opens the parent task selector.
 type OpenParentSelectorMsg struct {
-	ValidParents   []*models.Task
-	CurrentID      *string        // Pre-select current parent
-	AllowNone      bool           // Whether "None" is valid option
-	Source         PresentationID // Which view opened it
-	ReparentTaskID string         // When non-empty, reparent this task instead of updating a form field
+	ValidParents []*models.Task
+	CurrentID    *string        // Pre-select current parent
+	AllowNone    bool           // Whether "None" is valid option
+	Source       PresentationID // Which view opened it
+	ReparentTask TaskIdentity   // When valid, reparent this qualified task instead of updating a form field
 }
 
 // ParentSelectedMsg returns the selected parent from parent selector.
 type ParentSelectedMsg struct {
-	ParentID       *string        // nil means "None"
-	Source         PresentationID // Which view to send result to
-	ReparentTaskID string         // Forwarded from OpenParentSelectorMsg; non-empty means reparent operation
+	ParentID     *string        // nil means "None"
+	Source       PresentationID // Which view to send result to
+	ReparentTask TaskIdentity   // Forwarded from OpenParentSelectorMsg for delayed reparent operations
 }
 
 // CloseParentSelectorMsg closes the parent selector without selection.
@@ -462,8 +462,9 @@ type ArchiveAllCompletedTasksMsg struct{}
 
 // TasksArchivedMsg signals that completed tasks were archived.
 type TasksArchivedMsg struct {
-	Count    int // Number of tasks archived
-	Projects int // Number of projects affected (0 means single-project archive)
+	Count                int // Number of tasks archived
+	Projects             int // Number of projects affected (0 means single-project archive)
+	ArchivedTaskLocators []app.TaskLocator
 }
 
 // =============================================================================

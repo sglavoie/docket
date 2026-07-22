@@ -33,7 +33,7 @@ func sendSectionFixture(t *testing.T) (*OutlinerModel, *models.Project) {
 
 	m := minimalOutliner()
 	m.project = proj
-	m.MultiSelectState = MultiSelectState{selectedTasks: make(map[string]bool)}
+	m.MultiSelectState = MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)}
 	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(proj).TaskItem)
 	return m, proj
 }

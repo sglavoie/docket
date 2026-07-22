@@ -53,6 +53,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
+	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 
 	if commentClearFlag {
 		// No-op fast path: skip the save entirely when there is nothing to clear.
@@ -63,7 +64,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		res, clearErr := withResultRetry(func() (app.CommentWorkflowResult, error) {
-			return workflows.service.ClearCommentsWithWorkflow(task.ID, workflows.options(true, "Clear Comments", task))
+			return workflows.service.ClearCommentsWithWorkflowByLocator(locator, workflows.options(true, "Clear Comments", task))
 		})
 		if clearErr != nil {
 			return translateAppError(clearErr)
@@ -94,7 +95,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	res, err := withResultRetry(func() (app.CommentWorkflowResult, error) {
-		return workflows.service.RemoveCommentWithWorkflow(task.ID, index, workflows.options(true, "Remove Comment", task))
+		return workflows.service.RemoveCommentWithWorkflowByLocator(locator, index, workflows.options(true, "Remove Comment", task))
 	})
 	if err != nil {
 		return translateAppError(err)

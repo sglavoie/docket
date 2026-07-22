@@ -39,7 +39,12 @@ func newWeeklyReviewDeleteModel(t *testing.T, e *taskDeleteEnv, rows []WeeklyRev
 	if len(selected) > 0 {
 		wr.multiSelectMode = true
 		for _, tk := range selected {
-			wr.selectedTasks[tk.ID] = true
+			for _, row := range rows {
+				if row.Task == tk {
+					wr.SelectTaskIdentity(taskIdentityFor(row.Task, row.Project))
+					break
+				}
+			}
 		}
 	}
 	m.views.Register(ViewWeeklyReview, wr)

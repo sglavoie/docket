@@ -126,7 +126,8 @@ func changeTaskType(cmd *cobra.Command, args []string, action string, change app
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.ChangeTaskTypeWithWorkflow(task.ID, change, workflows.options(true, typeChangeUndoAction(change), task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.ChangeTaskTypeWithWorkflowByLocator(locator, change, workflows.options(true, typeChangeUndoAction(change), task))
 	})
 	if err != nil {
 		return translateAppError(err)

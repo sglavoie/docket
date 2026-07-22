@@ -121,9 +121,10 @@ func TestPlanningBearingBatchRefreshesInMemoryHorizons(t *testing.T) {
 		t.Fatal("seeded task missing")
 	}
 	dailyPlan := []FocusTask{{Task: task, Project: env.project}}
-	dailyPlanIDs := map[string]bool{task.ID: true}
+	identity := taskIdentityFor(task, env.project)
+	dailyPlanIDs := map[TaskIdentity]bool{identity: true}
 	focusQueue := []FocusTask{}
-	focusQueueIDs := map[string]bool{}
+	focusQueueIDs := map[TaskIdentity]bool{}
 
 	shell := &AppModel{
 		configManager:        env.manager,
@@ -142,7 +143,7 @@ func TestPlanningBearingBatchRefreshesInMemoryHorizons(t *testing.T) {
 		focusQueueIDs:        focusQueueIDs,
 		dailyPlan:            dailyPlan,
 		dailyPlanIDs:         dailyPlanIDs,
-		dailyPlanCarriedIDs:  make(map[string]bool),
+		dailyPlanCarriedIDs:  make(map[TaskIdentity]bool),
 	}
 	planner := NewFocusBoardModel(
 		shell.runtime,
@@ -166,7 +167,7 @@ func TestPlanningBearingBatchRefreshesInMemoryHorizons(t *testing.T) {
 	// builder is nil. The service default still reconciles the planning artifact,
 	// matching the public workflow-cascade contract installed by the TUI shell.
 	cmd := newSecondaryCoordinators(env.service, nil).TaskItem.TransitionWorkflow(
-		task.ID,
+		taskIdentityFor(task, env.project),
 		models.StateNext,
 		app.SingleTaskWorkflowOptions{UndoAction: "Change State"},
 		func(app.TaskResult) string { return "Moved to Next" },
@@ -198,7 +199,7 @@ func TestPlanningBearingBatchRefreshesInMemoryHorizons(t *testing.T) {
 	if got := len(env.runtime.Planning().GetFocusQueue()); got != 0 {
 		t.Fatalf("runtime Next order entries = %d, want 0", got)
 	}
-	if shell.dailyPlanIDs[task.ID] || dailyPlanIDs[task.ID] || planner.dailyPlanIDs[task.ID] {
+	if shell.dailyPlanIDs[identity] || dailyPlanIDs[identity] || planner.dailyPlanIDs[identity] {
 		t.Fatal("task remained in AppModel or aliased Daily Plan membership map")
 	}
 	if got := taskMembershipCount(shell.dailyPlan, task.ID); got != 0 {
@@ -207,7 +208,7 @@ func TestPlanningBearingBatchRefreshesInMemoryHorizons(t *testing.T) {
 	if got := taskMembershipCount(*planner.dailyPlan, task.ID); got != 0 {
 		t.Fatalf("Planner-aliased Daily Plan slice count = %d, want 0", got)
 	}
-	if shell.focusQueueIDs[task.ID] || focusQueueIDs[task.ID] || planner.queueIDs[task.ID] {
+	if shell.focusQueueIDs[identity] || focusQueueIDs[identity] || planner.queueIDs[identity] {
 		t.Fatal("task unexpectedly entered AppModel or aliased Next order map")
 	}
 	if got := taskMembershipCount(shell.focusQueue, task.ID); got != 0 {
@@ -226,7 +227,7 @@ func TestPlanningBearingBatchRefreshesInMemoryHorizons(t *testing.T) {
 	// A behavioral identity check catches map replacement even when a rebuilt map
 	// is empty: writes through the AppModel fields must remain visible to the
 	// aliases retained by the already-open Planner.
-	const aliasProbe = "map-alias-probe"
+	aliasProbe := TaskIdentity{ProjectID: "map-alias-project", TaskID: "map-alias-probe"}
 	shell.dailyPlanIDs[aliasProbe] = true
 	shell.focusQueueIDs[aliasProbe] = true
 	if !dailyPlanIDs[aliasProbe] || !focusQueueIDs[aliasProbe] ||
@@ -258,7 +259,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		env.seedDailyPlan(t)
 
 		coords := newSecondaryCoordinators(env.service, env.manager)
-		cmd := coords.TaskItem.TransitionWorkflow(env.taskID, models.StateNext,
+		cmd := coords.TaskItem.TransitionWorkflow(TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID}, models.StateNext,
 			app.SingleTaskWorkflowOptions{UndoAction: "Change State"},
 			func(app.TaskResult) string { return "" })
 		assertNotTransactionError(t, cmd())

@@ -16,11 +16,11 @@ func TestCrossProjectPerspectivesUseSharedSectionMembership(t *testing.T) {
 	m := &OutlinerModel{
 		activePerspective: 3,
 		loadedProjects:    []*models.Project{project},
-		expandedNodes:     make(map[string]bool),
+		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		crossForceRebuild: true,
 	}
 	m.crossProjectRebuildRows()

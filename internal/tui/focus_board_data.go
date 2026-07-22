@@ -48,7 +48,7 @@ func (m *FocusBoardModel) loadItems() {
 			}
 
 			// Today tab: include daily-planned tasks regardless of completion status
-			if m.dailyPlanIDs[task.ID] {
+			if m.dailyPlanIDs[taskIdentityFor(task, project)] {
 				m.todayRows = append(m.todayRows, row)
 			}
 
@@ -76,9 +76,9 @@ func (m *FocusBoardModel) loadItems() {
 	}
 
 	// Sort today rows by state activeness, then by dailyPlan position within same state group
-	posMap := make(map[string]int, len(*m.dailyPlan))
+	posMap := make(map[TaskIdentity]int, len(*m.dailyPlan))
 	for i, ft := range *m.dailyPlan {
-		posMap[ft.Task.ID] = i
+		posMap[taskIdentityFor(ft.Task, ft.Project)] = i
 	}
 	sort.SliceStable(m.todayRows, func(i, j int) bool {
 		iOrd := TodayStateOrder(m.todayRows[i].Task.State())
@@ -86,7 +86,8 @@ func (m *FocusBoardModel) loadItems() {
 		if iOrd != jOrd {
 			return iOrd < jOrd
 		}
-		return posMap[m.todayRows[i].Task.ID] < posMap[m.todayRows[j].Task.ID]
+		return posMap[taskIdentityFor(m.todayRows[i].Task, m.todayRows[i].Project)] <
+			posMap[taskIdentityFor(m.todayRows[j].Task, m.todayRows[j].Project)]
 	})
 
 	m.expandTodayChildren()
@@ -127,7 +128,7 @@ func (m *FocusBoardModel) buildBacklogRows(projects []*models.Project) {
 		}
 		// Exclude Today (daily plan) and Next (StateNext); those horizons have
 		// their own tabs. The Backlog is everything else actionable.
-		if m.dailyPlanIDs[ft.Task.ID] || ft.Task.IsInState(models.StateNext) {
+		if m.dailyPlanIDs[taskIdentityFor(ft.Task, ft.Project)] || ft.Task.IsInState(models.StateNext) {
 			continue
 		}
 		candidates = append(candidates, ft)
@@ -228,7 +229,7 @@ func (m *FocusBoardModel) applyFilter() {
 	visible := make(map[TaskIdentity]struct{}, len(m.filtered))
 	for _, row := range m.filtered {
 		if row.Task != nil && row.Project != nil {
-			visible[TaskIdentity{ProjectID: row.Project.ID, TaskID: row.Task.ID}] = struct{}{}
+			visible[taskIdentityFor(row.Task, row.Project)] = struct{}{}
 		}
 	}
 	for id := range m.selection {
@@ -255,20 +256,20 @@ func (m *FocusBoardModel) sortNextByQueueOrder() {
 // Shared by the Next-tab display sort and the reorder path, which sorts the full
 // nextRows slice into its canonical order before permuting it.
 func (m *FocusBoardModel) sortRowsByQueueOrder(rows []boardRow) {
-	pos := make(map[string]int)
+	pos := make(map[TaskIdentity]int)
 	if m.focusQueue != nil {
 		for i, ft := range *m.focusQueue {
-			if ft.Task != nil {
-				pos[ft.Task.ID] = i
+			if ft.Task != nil && ft.Project != nil {
+				pos[taskIdentityFor(ft.Task, ft.Project)] = i
 			}
 		}
 	}
 	unindexed := len(pos)
 	orderOf := func(r boardRow) int {
-		if r.Task == nil {
+		if r.Task == nil || r.Project == nil {
 			return unindexed
 		}
-		if p, ok := pos[r.Task.ID]; ok {
+		if p, ok := pos[taskIdentityFor(r.Task, r.Project)]; ok {
 			return p
 		}
 		return unindexed
@@ -330,17 +331,34 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	return scoring.ScorePercent(score, profile)
 }
 
+// rebuildTodayTree re-flattens the Today tree after a session-owned fold
+// change. Cursor restoration uses the selected task's project-qualified
+// identity so duplicate UUIDs in different projects cannot steal focus.
+func (m *FocusBoardModel) rebuildTodayTree() {
+	intent := m.currentReloadIntent(focusBoardReloadPreserveSelection)
+	base := make([]boardRow, 0, len(m.todayRows))
+	for _, row := range m.todayRows {
+		if row.ParentID == "" {
+			base = append(base, row)
+		}
+	}
+	m.todayRows = base
+	m.expandTodayChildren()
+	m.applyFilter()
+	m.restoreCursorAfterReload(intent)
+}
+
 // expandTodayChildren inserts descendants of explicitly planned items into todayRows.
 func (m *FocusBoardModel) expandTodayChildren() {
-	seen := make(map[string]bool, len(m.todayRows))
+	seen := make(map[TaskIdentity]bool, len(m.todayRows))
 	for _, r := range m.todayRows {
-		seen[r.Task.ID] = true
+		seen[taskIdentityFor(r.Task, r.Project)] = true
 	}
 
 	var expanded []boardRow
 	for _, r := range m.todayRows {
 		expanded = append(expanded, r)
-		if m.dailyPlanIDs[r.Task.ID] {
+		if m.dailyPlanIDs[taskIdentityFor(r.Task, r.Project)] {
 			m.collectChildren(&expanded, r.Task, r.Project, nil, seen)
 		}
 	}
@@ -348,13 +366,13 @@ func (m *FocusBoardModel) expandTodayChildren() {
 }
 
 // collectChildren recursively appends child rows depth-first with tree connectors.
-func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, ancestorIsLast []bool, seen map[string]bool) {
-	if !m.isParentExpanded(parent.ID, len(ancestorIsLast)) {
+func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, ancestorIsLast []bool, seen map[TaskIdentity]bool) {
+	if !m.isParentExpanded(taskIdentityFor(parent, project), len(ancestorIsLast)) {
 		return
 	}
 	visible := make([]*models.Task, 0, len(parent.Children))
 	for _, child := range parent.Children {
-		if !seen[child.ID] {
+		if !seen[taskIdentityFor(child, project)] {
 			visible = append(visible, child)
 		}
 	}
@@ -362,7 +380,7 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 		return !visible[i].IsTerminalState() && visible[j].IsTerminalState()
 	})
 	for i, child := range visible {
-		seen[child.ID] = true
+		seen[taskIdentityFor(child, project)] = true
 		isLast := i == len(visible)-1
 		*out = append(*out, boardRow{
 			Task:       child,
@@ -382,8 +400,8 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 
 // isParentExpanded reports whether a parent task at the given depth should
 // have its children rendered in the Today tab.
-func (m *FocusBoardModel) isParentExpanded(id string, depth int) bool {
-	if v, ok := m.foldOverrides[id]; ok {
+func (m *FocusBoardModel) isParentExpanded(identity TaskIdentity, depth int) bool {
+	if v, ok := m.foldOverrides[identity]; ok {
 		return !v
 	}
 	if m.childDepthLimit < 0 {

@@ -120,7 +120,7 @@ func BenchmarkWorkspaceGlobalQueries36Projects(b *testing.B) {
 	for b.Loop() {
 		found := 0
 		for _, taskID := range fixture.taskIDs {
-			if _, ok := snapshot.Lookup(taskID); ok {
+			if _, status := snapshot.LookupTaskID(taskID); status == TaskLookupUnique {
 				found++
 			}
 			_ = snapshot.QualifiedRef(taskID)

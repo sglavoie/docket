@@ -38,12 +38,14 @@ import (
 func TestLocalInboxDeleteCancelClearsPending(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	idA, idB, idC := e.tasks[0].ID, e.tasks[1].ID, e.tasks[2].ID
+	identityA := TaskIdentity{ProjectID: e.project.ID, TaskID: idA}
+	identityB := TaskIdentity{ProjectID: e.project.ID, TaskID: idB}
 	proc := e.processor
 	proc.currentIndex = 0
 
 	req := requestInboxDelete(t, &proc.inboxCore)
 	e.m.handleTaskDeleteRequested(req)
-	if _, ok := proc.pendingDeletes[idA]; !ok {
+	if _, ok := proc.pendingDeletes[identityA]; !ok {
 		t.Fatal("request should arm the processor per-task slot")
 	}
 	if handled, _ := e.m.handleTaskDeleteConfirmKey("esc"); !handled {
@@ -67,8 +69,8 @@ func TestLocalInboxDeleteCancelClearsPending(t *testing.T) {
 
 	// The orphan no longer suppresses a later close: skip A and B, then delete the
 	// final unprocessed task C — the processor closes exactly once.
-	proc.skippedIDs[idA] = true
-	proc.skippedIDs[idB] = true
+	proc.skippedIDs[identityA] = true
+	proc.skippedIDs[identityB] = true
 	matching := confirmInboxDeleteAt(t, e, 2)
 	if matching.RemovedTaskIDs[0] != idC {
 		t.Fatalf("final delete should target C, removed %v", matching.RemovedTaskIDs)
@@ -89,13 +91,14 @@ func TestGlobalInboxDeleteCancelClearsPending(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	gp := newGlobalInboxDeleteProcessor(t, e)
 	idA := gp.inboxTasks[0].Task.ID
-	idB := gp.inboxTasks[1].Task.ID
 	idC := gp.inboxTasks[2].Task.ID
+	identityA := taskIdentityFor(gp.inboxTasks[0].Task, gp.inboxTasks[0].Project)
+	identityB := taskIdentityFor(gp.inboxTasks[1].Task, gp.inboxTasks[1].Project)
 	gp.currentIndex = 0
 
 	req := requestInboxDelete(t, &gp.inboxCore)
 	e.m.handleTaskDeleteRequested(req)
-	if _, ok := gp.pendingDeletes[idA]; !ok {
+	if _, ok := gp.pendingDeletes[identityA]; !ok {
 		t.Fatal("request should arm the global processor per-task slot")
 	}
 	if handled, _ := e.m.handleTaskDeleteConfirmKey("n"); !handled {
@@ -115,8 +118,8 @@ func TestGlobalInboxDeleteCancelClearsPending(t *testing.T) {
 		t.Errorf("cursor should stay on the canceled task, got %v", got)
 	}
 
-	gp.skippedIDs[idA] = true
-	gp.skippedIDs[idB] = true
+	gp.skippedIDs[identityA] = true
+	gp.skippedIDs[identityB] = true
 	matching := confirmGlobalInboxDeleteAt(t, e.m, gp, 2)
 	if matching.RemovedTaskIDs[0] != idC {
 		t.Fatalf("final delete should target C, removed %v", matching.RemovedTaskIDs)
@@ -138,6 +141,8 @@ func TestGlobalInboxDeleteCancelClearsPending(t *testing.T) {
 func TestLocalInboxDeleteArtifactBuildErrorClearsPending(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	idA, idB, idC := e.tasks[0].ID, e.tasks[1].ID, e.tasks[2].ID
+	identityA := TaskIdentity{ProjectID: e.project.ID, TaskID: idA}
+	identityB := TaskIdentity{ProjectID: e.project.ID, TaskID: idB}
 	proc := e.processor
 	proc.currentIndex = 0
 
@@ -166,8 +171,8 @@ func TestLocalInboxDeleteArtifactBuildErrorClearsPending(t *testing.T) {
 	}
 
 	restore()
-	proc.skippedIDs[idA] = true
-	proc.skippedIDs[idB] = true
+	proc.skippedIDs[identityA] = true
+	proc.skippedIDs[identityB] = true
 	matching := confirmInboxDeleteAt(t, e, 2)
 	if matching.RemovedTaskIDs[0] != idC {
 		t.Fatalf("final delete should target C, removed %v", matching.RemovedTaskIDs)
@@ -187,8 +192,9 @@ func TestGlobalInboxDeleteArtifactBuildErrorClearsPending(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	gp := newGlobalInboxDeleteProcessor(t, e)
 	idA := gp.inboxTasks[0].Task.ID
-	idB := gp.inboxTasks[1].Task.ID
 	idC := gp.inboxTasks[2].Task.ID
+	identityA := taskIdentityFor(gp.inboxTasks[0].Task, gp.inboxTasks[0].Project)
+	identityB := taskIdentityFor(gp.inboxTasks[1].Task, gp.inboxTasks[1].Project)
 	gp.currentIndex = 0
 
 	restore := armArtifactBuildFailure(t, e, idA)
@@ -214,8 +220,8 @@ func TestGlobalInboxDeleteArtifactBuildErrorClearsPending(t *testing.T) {
 	}
 
 	restore()
-	gp.skippedIDs[idA] = true
-	gp.skippedIDs[idB] = true
+	gp.skippedIDs[identityA] = true
+	gp.skippedIDs[identityB] = true
 	matching := confirmGlobalInboxDeleteAt(t, e.m, gp, 2)
 	if matching.RemovedTaskIDs[0] != idC {
 		t.Fatalf("final delete should target C, removed %v", matching.RemovedTaskIDs)

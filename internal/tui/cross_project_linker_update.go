@@ -211,11 +211,11 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 	var commit tea.Cmd
 	switch linkType { //nolint:exhaustive
 	case LinkTypeBlocker:
-		commit = m.coordinator.AddDependency(m.sourceTask.ID, targetRef)
+		commit = m.coordinator.AddDependency(taskIdentityFor(m.sourceTask, m.sourceProject), targetRef)
 	case LinkTypeDependent:
-		commit = m.coordinator.AddDependency(m.targetTask.ID, sourceRef)
+		commit = m.coordinator.AddDependency(taskIdentityFor(m.targetTask, m.targetProject), sourceRef)
 	case LinkTypeFollowUp:
-		commit = m.coordinator.RelateBidirectional(m.sourceTask.ID, targetRef)
+		commit = m.coordinator.RelateBidirectional(taskIdentityFor(m.sourceTask, m.sourceProject), targetRef)
 	}
 	if commit == nil {
 		return nil

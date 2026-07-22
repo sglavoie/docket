@@ -105,6 +105,20 @@ func TestOutlinerOpenOptionsReplaceCrossPriorityLens(t *testing.T) {
 	}
 }
 
+func TestOutlinerOpenOptionsPreserveLensUnlessIntentIsExplicit(t *testing.T) {
+	m := minimalOutliner()
+	m.lens = OutlinerLensDueDate
+	m.ApplyOpenOptions(OutlinerOpenOptions{})
+	if m.lens != OutlinerLensDueDate {
+		t.Fatalf("generic navigation changed lens to %v", m.lens)
+	}
+
+	m.ApplyOpenOptions(OutlinerOpenOptions{Lens: OutlinerLensTree, SetLens: true})
+	if m.lens != OutlinerLensTree {
+		t.Fatalf("explicit tree intent left lens at %v", m.lens)
+	}
+}
+
 func TestOpenAtTaskRevealsTargetHiddenByFocusAndSearch(t *testing.T) {
 	active := &models.Task{ID: "active", Title: "visible active", WorkflowState: models.StateReady}
 	completed := &models.Task{ID: "completed", Title: "hidden completed", WorkflowState: models.StateDone}

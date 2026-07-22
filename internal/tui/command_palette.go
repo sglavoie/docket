@@ -20,7 +20,7 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case CommandPaletteClearSelectionMsg:
-		m.selectedTasks = make(map[string]bool)
+		m.selectedTasks = make(map[TaskIdentity]bool)
 		m.actionMode = false
 		return m, nil
 
@@ -88,12 +88,12 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 		// Toggle selection on task items (Space key)
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 			item := m.filteredItems[m.cursor].Item
-			if item.Category == ItemCategoryTasks && item.Task != nil {
-				taskID := item.Task.ID
-				if m.selectedTasks[taskID] {
-					delete(m.selectedTasks, taskID)
+			identity := taskIdentityFor(item.Task, item.Project)
+			if item.Category == ItemCategoryTasks && identity.Valid() {
+				if m.selectedTasks[identity] {
+					delete(m.selectedTasks, identity)
 				} else {
-					m.selectedTasks[taskID] = true
+					m.selectedTasks[identity] = true
 				}
 				// Move cursor down after toggling
 				if m.cursor < len(m.filteredItems)-1 {

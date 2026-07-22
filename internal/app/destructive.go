@@ -13,8 +13,11 @@ import (
 // Destructive requests must set Confirm to signal explicit intent; a request
 // without it is rejected before any mutation with ErrDestructiveConfirmationRequired.
 type DeleteRequest struct {
-	// TaskID identifies the subtree root to delete. Required.
+	// TaskID identifies the subtree root when it is workspace-unique.
 	TaskID string
+	// Locator is the project-qualified alternative to TaskID. The two fields are
+	// mutually exclusive.
+	Locator TaskLocator
 	// Confirm records explicit destructive intent. A false value aborts the delete
 	// before any task is removed or any commit is attempted.
 	Confirm bool
@@ -27,6 +30,8 @@ type DeleteRequest struct {
 type DeleteResult struct {
 	// RemovedTaskIDs are the UUIDs removed (root plus descendants), sorted.
 	RemovedTaskIDs []string
+	// RemovedTaskLocators names every removed task within its owning project.
+	RemovedTaskLocators []TaskLocator
 	// QualifiedRef is the deleted root task's "slug:#short-id" reference, captured
 	// before removal.
 	QualifiedRef string
@@ -48,13 +53,13 @@ type DeleteResult struct {
 // to the removed tasks are cleaned both within the source project and across every
 // other project in the workspace — each repaired project joins the same commit, so
 // a delete plus its reference cleanup is atomic. Any artifacts the caller supplies
-// — the durable planning refs (Focus Queue, Daily Plan, dismissals) cleaned of the
+// — the durable project-qualified planning refs (Focus Queue and Daily Plan) cleaned of the
 // removed tasks — ride the same transaction so a partial delete can never leave
 // stale planning refs behind; machine-local recent visits are deliberately excluded
 // and repaired separately by the adapter after a successful commit. The request must
 // carry explicit destructive intent; an unconfirmed request never mutates anything.
 func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange) (DeleteResult, error) {
-	ref, snap, _, err := s.loadTask(req.TaskID)
+	ref, snap, _, err := s.loadTaskSelection(req.TaskID, req.Locator)
 	if err != nil {
 		return DeleteResult{}, err
 	}
@@ -70,8 +75,14 @@ func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange)
 	if err != nil {
 		return DeleteResult{}, err
 	}
+	removedIDs := sortedKeys(removed)
+	removedLocators := make([]TaskLocator, 0, len(removedIDs))
+	for _, taskID := range removedIDs {
+		removedLocators = append(removedLocators, TaskLocator{ProjectID: ref.Project.ID, TaskID: taskID})
+	}
 	return DeleteResult{
-		RemovedTaskIDs:          sortedKeys(removed),
+		RemovedTaskIDs:          removedIDs,
+		RemovedTaskLocators:     removedLocators,
 		QualifiedRef:            qualifiedRef,
 		SourceProjectID:         ref.Project.ID,
 		SourceRevision:          revs[ref.Project.ID],
@@ -293,9 +304,9 @@ func resolveDistinct(snap Snapshot, taskIDs []string) ([]TaskRef, error) {
 			continue
 		}
 		seen[id] = true
-		ref, ok := snap.Lookup(id)
-		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrTaskNotFound, id)
+		ref, err := resolveTaskSelection(snap, id, TaskLocator{})
+		if err != nil {
+			return nil, err
 		}
 		refs = append(refs, ref)
 	}
@@ -321,9 +332,9 @@ func resolveRequestedTasks(snap Snapshot, taskIDs []string, locators []TaskLocat
 			continue
 		}
 		seen[locator] = true
-		ref, ok := snap.LookupLocator(locator)
-		if !ok {
-			return nil, fmt.Errorf("%w: %s/%s", ErrTaskNotFound, locator.ProjectID, locator.TaskID)
+		ref, err := resolveTaskSelection(snap, "", locator)
+		if err != nil {
+			return nil, err
 		}
 		refs = append(refs, ref)
 	}

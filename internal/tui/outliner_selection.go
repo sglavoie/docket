@@ -50,19 +50,18 @@ func (m *OutlinerModel) cursorProject() *models.Project {
 func (m *OutlinerModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }
 
 func (m *OutlinerModel) taskIdentityForRow(row outlinerRow) TaskIdentity {
-	projectID := row.ProjectID
-	if m.project != nil {
-		projectID = m.project.ID
-	}
 	if row.task == nil {
 		return TaskIdentity{}
 	}
-	return TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
+	project := m.project
+	if project == nil {
+		project = m.crossResolveProject(row.ProjectID)
+	}
+	return taskIdentityFor(row.task, project)
 }
 
 func (m *OutlinerModel) isRowSelected(row outlinerRow) bool {
-	identity := m.taskIdentityForRow(row)
-	return m.IsTaskIdentitySelected(identity) || (row.task != nil && m.IsSelected(row.task.ID))
+	return m.IsTaskIdentitySelected(m.taskIdentityForRow(row))
 }
 
 func (m *OutlinerModel) toggleCursorSelection() {
@@ -101,7 +100,6 @@ func (m *OutlinerModel) deselectAllVisible() {
 			continue
 		}
 		m.DeselectTaskIdentity(m.taskIdentityForRow(row))
-		delete(m.selectedTasks, row.task.ID) // legacy single-ID selections
 	}
 }
 
@@ -110,19 +108,12 @@ func (m *OutlinerModel) pruneInvisibleSelections() {
 	if !m.multiSelectMode {
 		return
 	}
-	visibleIDs := make(map[string]bool, len(m.rows))
 	visibleIdentities := make(map[TaskIdentity]bool, len(m.rows))
 	for _, row := range m.rows {
 		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
-		visibleIDs[row.task.ID] = true
 		visibleIdentities[m.taskIdentityForRow(row)] = true
-	}
-	for id := range m.selectedTasks {
-		if !visibleIDs[id] {
-			delete(m.selectedTasks, id)
-		}
 	}
 	for identity := range m.selectedTaskIdentities {
 		if !visibleIdentities[identity] {

@@ -171,7 +171,7 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 	}
 
 	m := NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, ViewCrossProjectOutliner)
-	m.reparentTaskID = "task-1"
+	m.reparentTask = TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd == nil {
@@ -187,8 +187,8 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 	if msg.Source != ViewCrossProjectOutliner {
 		t.Fatalf("expected source %v, got %v", ViewCrossProjectOutliner, msg.Source)
 	}
-	if msg.ReparentTaskID != "task-1" {
-		t.Fatalf("expected reparent task ID %q, got %q", "task-1", msg.ReparentTaskID)
+	if msg.ReparentTask != (TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}) {
+		t.Fatalf("expected qualified reparent task, got %#v", msg.ReparentTask)
 	}
 }
 

@@ -27,7 +27,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			if out == nil || task == nil || project == nil {
 				return nil
 			}
-			return out.taskItem.Transition(task.ID, models.TargetStateForStatus(status))()
+			return out.taskItem.Transition(taskIdentityFor(task, project), models.TargetStateForStatus(status))()
 		}
 	}
 
@@ -416,7 +416,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				if out == nil || task == nil || project == nil {
 					return nil
 				}
-				return out.taskItem.ToggleDimmed(task.ID)()
+				return out.taskItem.ToggleDimmed(taskIdentityFor(task, project))()
 			},
 		},
 		{

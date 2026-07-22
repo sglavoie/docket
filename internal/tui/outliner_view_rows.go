@@ -121,7 +121,11 @@ func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorI
 		}
 		*rows = append(*rows, outlinerRow{task: task, prefix: prefix, hasVisibleChildren: len(task.Children) > 0})
 
-		if len(task.Children) > 0 && m.isExpanded(task.ID) {
+		identity := TaskIdentity{TaskID: task.ID}
+		if m.project != nil {
+			identity.ProjectID = m.project.ID
+		}
+		if len(task.Children) > 0 && m.isExpanded(identity) {
 			// Copy before appending to prevent slice aliasing.
 			child := make([]bool, len(ancestorIsLast)+1)
 			copy(child, ancestorIsLast)
@@ -159,11 +163,11 @@ func (m *OutlinerModel) insertDepth0Separators() {
 
 // isExpanded returns true if the node should show its children.
 // When the expandedNodes map is empty (default), all nodes are expanded.
-func (m *OutlinerModel) isExpanded(taskID string) bool {
+func (m *OutlinerModel) isExpanded(identity TaskIdentity) bool {
 	if len(m.expandedNodes) == 0 {
 		return true
 	}
-	expanded, exists := m.expandedNodes[taskID]
+	expanded, exists := m.expandedNodes[identity]
 	if !exists {
 		return true // Default to expanded
 	}

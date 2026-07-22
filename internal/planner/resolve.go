@@ -10,6 +10,7 @@ import "github.com/sglavoie/tt/internal/models"
 // identifiers so callers can look up tasks using either form.
 func ResolveAllDependencies(projects []*models.Project) map[string]*models.Task {
 	result := make(map[string]*models.Task)
+	ambiguousPlainIDs := make(map[string]bool)
 	for _, p := range projects {
 		if p == nil {
 			continue
@@ -18,8 +19,15 @@ func ResolveAllDependencies(projects []*models.Project) map[string]*models.Task 
 			if t == nil || t.ID == "" {
 				continue
 			}
-			// Plain task ID (unqualified, for same-project lookups).
-			result[t.ID] = t
+			// Plain task IDs remain available only while globally unique. A
+			// duplicate must not turn an unqualified dependency into a
+			// project-order-dependent lookup.
+			if _, exists := result[t.ID]; exists || ambiguousPlainIDs[t.ID] {
+				delete(result, t.ID)
+				ambiguousPlainIDs[t.ID] = true
+			} else {
+				result[t.ID] = t
+			}
 			// Qualified by project UUID.
 			result[p.ID+":"+t.ID] = t
 			// Qualified by project slug (common in user-authored dep refs).

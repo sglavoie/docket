@@ -41,7 +41,7 @@ type openLoopsAware interface {
 // startup-loaded catalog domain rather than the config.Config facade.
 // dailyPlanIDs supplies the Today scope (which tasks are planned for today) so
 // the counter agrees with Today regardless of completion status.
-func ComputeOpenLoops(rs *config.RuntimeState, dailyPlanIDs map[string]bool) OpenLoops {
+func ComputeOpenLoops(rs *config.RuntimeState, dailyPlanIDs map[TaskIdentity]bool) OpenLoops {
 	if rs == nil {
 		return OpenLoops{}
 	}
@@ -54,7 +54,7 @@ func ComputeOpenLoops(rs *config.RuntimeState, dailyPlanIDs map[string]bool) Ope
 		for _, task := range project.Tasks {
 			out.HasTasks = true
 			// Today scope: include planned tasks regardless of completion (matches Today).
-			if dailyPlanIDs != nil && dailyPlanIDs[task.ID] {
+			if dailyPlanIDs != nil && dailyPlanIDs[taskIdentityFor(task, project)] {
 				out.TodayTotal++
 				if task.IsComplete() {
 					out.TodayDone++

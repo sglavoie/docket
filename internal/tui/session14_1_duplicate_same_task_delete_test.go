@@ -95,6 +95,7 @@ func TestLocalInboxDuplicateSameTaskDelete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newInboxDeleteEnv(t)
 			idA, nextID := e.tasks[0].ID, e.tasks[1].ID
+			identityA := TaskIdentity{ProjectID: e.project.ID, TaskID: idA}
 
 			// First (real) delete of A commits to disk; its result is NOT delivered, so
 			// A stays visible in the intact queue.
@@ -122,7 +123,7 @@ func TestLocalInboxDuplicateSameTaskDelete(t *testing.T) {
 				deliverInboxDeleteOutcome(t, e.m, dupOut)
 			}
 
-			if !e.processor.processedIDs[idA] {
+			if !e.processor.processedIDs[identityA] {
 				t.Errorf("the committed task should be marked processed, got %v", e.processor.processedIDs)
 			}
 			if len(e.m.pendingInboxDeletes) != 0 {
@@ -156,6 +157,7 @@ func TestGlobalInboxDuplicateSameTaskDelete(t *testing.T) {
 			e := newInboxDeleteEnv(t)
 			gp := newGlobalInboxDeleteProcessor(t, e)
 			idA := gp.inboxTasks[0].Task.ID
+			identityA := taskIdentityFor(gp.inboxTasks[0].Task, gp.inboxTasks[0].Project)
 
 			realOut := confirmGlobalInboxDeleteRaw(t, e.m, gp, 0)
 			success, ok := realOut.(BatchTransactionResultMsg)
@@ -179,7 +181,7 @@ func TestGlobalInboxDuplicateSameTaskDelete(t *testing.T) {
 				deliverInboxDeleteOutcome(t, e.m, dupOut)
 			}
 
-			if !gp.processedIDs[idA] {
+			if !gp.processedIDs[identityA] {
 				t.Errorf("the committed task should be marked processed, got %v", gp.processedIDs)
 			}
 			if len(e.m.pendingInboxDeletes) != 0 {

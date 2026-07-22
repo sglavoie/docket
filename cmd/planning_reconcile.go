@@ -17,12 +17,12 @@ func reconcilePlanningExclusivity(planning *config.PlanningState, targets []app.
 	changed := false
 	for _, t := range targets {
 		if t.State == models.StateNext {
-			if planning.RemoveFromDailyPlan(t.TaskID) {
+			if planning.RemoveFromDailyPlanInProject(t.TaskID, t.ProjectID) {
 				changed = true
 			}
 			continue
 		}
-		if planning.RemoveFromFocusQueue(t.TaskID) {
+		if planning.RemoveFromFocusQueueInProject(t.TaskID, t.ProjectID) {
 			changed = true
 		}
 	}

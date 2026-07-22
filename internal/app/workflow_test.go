@@ -109,7 +109,7 @@ func TestApplyWorkflowsExecutesCrossProjectMoveInOneTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyWorkflows: %v", err)
 	}
-	if len(res.Moves) != 1 || res.Moves[0].DestProjectID != "proj-b" {
+	if len(res.Moves) != 1 || res.Moves[0].SourceProjectID != "proj-a" || res.Moves[0].DestProjectID != "proj-b" {
 		t.Fatalf("Moves = %v, want one move to proj-b", res.Moves)
 	}
 	if len(projA.Tasks) != 0 {

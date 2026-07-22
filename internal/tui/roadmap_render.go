@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/planner"
 )
 
 const (
@@ -406,7 +407,7 @@ func (m *RoadmapModel) renderCriticalPathTab(height int) string {
 	start, end := persistentIndexWindow(m.cursor, len(m.criticalPath.Path), contentRows, &m.scrollOff)
 	for i := start; i < end; i++ {
 		task := m.criticalPath.Path[i]
-		slack := m.criticalPath.Slack[task.ID]
+		slack := m.criticalPath.Slack[planner.TaskKey(task)]
 		title := truncateToVisualWidth(task.Title, 40)
 		titleCell := truncateAndPad(TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title), 42)
 		slackStr := fmt.Sprintf("%8s", fmt.Sprintf("%.1fd", slack))

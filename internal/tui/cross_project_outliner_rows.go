@@ -123,7 +123,8 @@ func (m *OutlinerModel) flattenTaskTreeWithFoldsAndProjectID(
 			ProjectID:          projectID,
 		})
 
-		if len(task.Children) > 0 && m.isExpanded(task.ID) {
+		identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+		if len(task.Children) > 0 && m.isExpanded(identity) {
 			child := make([]bool, len(ancestorIsLast)+1)
 			copy(child, ancestorIsLast)
 			child[len(ancestorIsLast)] = isLast

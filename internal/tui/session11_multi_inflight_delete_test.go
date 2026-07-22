@@ -98,6 +98,8 @@ func TestInboxDeleteBackToBackInFlightAppliesBothOrders(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newInboxDeleteEnv(t)
 			idA, idB, survivor := e.tasks[0].ID, e.tasks[1].ID, e.tasks[2].ID
+			identityA := TaskIdentity{ProjectID: e.project.ID, TaskID: idA}
+			identityB := TaskIdentity{ProjectID: e.project.ID, TaskID: idB}
 
 			// Arm both deletes: A at index 0, then B at index 1 (queue not yet rebuilt,
 			// so both roots are still selectable). Neither result has arrived.
@@ -120,7 +122,7 @@ func TestInboxDeleteBackToBackInFlightAppliesBothOrders(t *testing.T) {
 			e.m.handleBatchTransactionResult(first)
 			e.m.handleBatchTransactionResult(second)
 
-			if !e.processor.processedIDs[idA] || !e.processor.processedIDs[idB] {
+			if !e.processor.processedIDs[identityA] || !e.processor.processedIDs[identityB] {
 				t.Errorf("both deleted tasks should be marked processed, got %v", e.processor.processedIDs)
 			}
 			if len(e.m.pendingInboxDeletes) != 0 {
@@ -162,8 +164,8 @@ func TestGlobalInboxDeleteBackToBackInFlightAppliesBothOrders(t *testing.T) {
 			e.m.views.Register(ViewGlobalInboxProcessor, gp)
 			e.m.pushView(ViewGlobalInboxProcessor)
 
-			idA := gp.inboxTasks[0].Task.ID
-			idB := gp.inboxTasks[1].Task.ID
+			identityA := taskIdentityFor(gp.inboxTasks[0].Task, gp.inboxTasks[0].Project)
+			identityB := taskIdentityFor(gp.inboxTasks[1].Task, gp.inboxTasks[1].Project)
 
 			matchingA := confirmGlobalInboxDeleteAt(t, e.m, gp, 0)
 			matchingB := confirmGlobalInboxDeleteAt(t, e.m, gp, 1)
@@ -178,7 +180,7 @@ func TestGlobalInboxDeleteBackToBackInFlightAppliesBothOrders(t *testing.T) {
 			e.m.handleBatchTransactionResult(first)
 			e.m.handleBatchTransactionResult(second)
 
-			if !gp.processedIDs[idA] || !gp.processedIDs[idB] {
+			if !gp.processedIDs[identityA] || !gp.processedIDs[identityB] {
 				t.Errorf("both deleted tasks should be marked processed, got %v", gp.processedIDs)
 			}
 			if len(e.m.pendingInboxDeletes) != 0 {

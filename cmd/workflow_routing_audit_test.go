@@ -26,21 +26,30 @@ var legacyWorkflowEnabledCLIRoutes = []cliWorkflowRoute{
 	{file: "task_add.go", handler: "runTaskAdd", required: []string{"AddTaskWithWorkflow"}, forbidden: []string{"AddTask"}},
 	{file: "template_use.go", handler: "runTemplateUse", required: []string{"ApplyTemplateWithWorkflow"}, forbidden: []string{"ApplyTemplate"}},
 	{file: "task_edit.go", handler: "runTaskEdit", required: []string{"EditWithWorkflow"}, forbidden: []string{"Edit"}},
-	{file: "task_promote.go", handler: "changeTaskType", required: []string{"ChangeTaskTypeWithWorkflow"}, forbidden: []string{"ChangeTaskType"}},
-	{file: "task_state.go", handler: "runAppTransition", required: []string{"StateWithWorkflow"}, forbidden: []string{"Transition"}},
-	{file: "task_complete.go", handler: "runStateCommand", required: []string{"StateWithWorkflow"}, forbidden: []string{"Transition"}},
-	{file: "task_priority.go", handler: "runTaskPriority", required: []string{"SetPriorityWithWorkflow"}, forbidden: []string{"SetPriority"}},
-	{file: "task_dim.go", handler: "runTaskDim", required: []string{"ToggleDimmedWithWorkflow"}, forbidden: []string{"ToggleDimmed"}},
-	{file: "task_dim.go", handler: "runTaskUndim", required: []string{"UndimWithWorkflow"}, forbidden: []string{"Undim"}},
-	{file: "task_snooze.go", handler: "runTaskSnooze", required: []string{"GuardedSnoozeWithWorkflow"}, forbidden: []string{"Snooze"}},
-	{file: "task_park.go", handler: "runTaskPark", required: []string{"ParkWithWorkflow"}, forbidden: []string{"Park"}},
-	{file: "task_park.go", handler: "runTaskUnpark", required: []string{"UnparkWithWorkflow"}, forbidden: []string{"Unpark"}},
-	{file: "epic_baseline.go", handler: "runEpicBaseline", required: []string{"BaselineEpicWithWorkflow"}, forbidden: []string{"BaselineEpic"}},
-	{file: "task_attr.go", handler: "runTaskAttr", required: []string{"ApplyTypeAttrsWithWorkflow", "ClearTypeAttrsWithWorkflow"}, forbidden: []string{"ApplyTypeAttrs", "ClearTypeAttrs"}},
-	{file: "task_comment_add.go", handler: "runTaskCommentAdd", required: []string{"AddCommentWithWorkflow"}, forbidden: []string{"AddComment"}},
-	{file: "task_comment_remove.go", handler: "runTaskCommentRemove", required: []string{"RemoveCommentWithWorkflow", "ClearCommentsWithWorkflow"}, forbidden: []string{"RemoveComment", "ClearComments"}},
-	{file: "task_comment_resolve.go", handler: "runTaskCommentResolve", required: []string{"ToggleCommentResolvedWithWorkflow"}, forbidden: []string{"ToggleCommentResolved"}},
-	{file: "task_depends.go", handler: "runTaskDepends", required: []string{"AddDependencyWithWorkflow", "RemoveDependencyWithWorkflow", "ClearDependenciesWithWorkflow"}, forbidden: []string{"AddDependency", "RemoveDependency", "ClearDependencies"}},
+	{file: "task_promote.go", handler: "changeTaskType", required: []string{"ChangeTaskTypeWithWorkflowByLocator"}, forbidden: []string{"ChangeTaskType", "ChangeTaskTypeWithWorkflow"}},
+	{file: "task_state.go", handler: "runAppTransition", required: []string{"StateWithWorkflowByLocator"}, forbidden: []string{"Transition", "StateWithWorkflow"}},
+	{file: "task_complete.go", handler: "runStateCommand", required: []string{"StateWithWorkflowByLocator"}, forbidden: []string{"Transition", "StateWithWorkflow"}},
+	{file: "task_priority.go", handler: "runTaskPriority", required: []string{"SetPriorityWithWorkflowByLocator"}, forbidden: []string{"SetPriority", "SetPriorityWithWorkflow"}},
+	{file: "task_dim.go", handler: "runTaskDim", required: []string{"ToggleDimmedWithWorkflowByLocator"}, forbidden: []string{"ToggleDimmed", "ToggleDimmedWithWorkflow"}},
+	{file: "task_dim.go", handler: "runTaskUndim", required: []string{"UndimWithWorkflowByLocator"}, forbidden: []string{"Undim", "UndimWithWorkflow"}},
+	{file: "task_snooze.go", handler: "runTaskSnooze", required: []string{"GuardedSnoozeWithWorkflowByLocator"}, forbidden: []string{"Snooze", "GuardedSnoozeWithWorkflow"}},
+	{file: "task_park.go", handler: "runTaskPark", required: []string{"ParkWithWorkflowByLocator"}, forbidden: []string{"Park", "ParkWithWorkflow"}},
+	{file: "task_park.go", handler: "runTaskUnpark", required: []string{"UnparkWithWorkflowByLocator"}, forbidden: []string{"Unpark", "UnparkWithWorkflow"}},
+	{file: "epic_baseline.go", handler: "runEpicBaseline", required: []string{"BaselineEpicWithWorkflowByLocator"}, forbidden: []string{"BaselineEpic", "BaselineEpicWithWorkflow"}},
+	{file: "task_attr.go", handler: "runTaskAttr", required: []string{"ApplyTypeAttrsWithWorkflowByLocator", "ClearTypeAttrsWithWorkflowByLocator"}, forbidden: []string{"ApplyTypeAttrs", "ClearTypeAttrs", "ApplyTypeAttrsWithWorkflow", "ClearTypeAttrsWithWorkflow"}},
+	{file: "task_comment_add.go", handler: "runTaskCommentAdd", required: []string{"AddCommentWithWorkflowByLocator"}, forbidden: []string{"AddComment", "AddCommentWithWorkflow"}},
+	{file: "task_comment_remove.go", handler: "runTaskCommentRemove", required: []string{"RemoveCommentWithWorkflowByLocator", "ClearCommentsWithWorkflowByLocator"}, forbidden: []string{"RemoveComment", "ClearComments", "RemoveCommentWithWorkflow", "ClearCommentsWithWorkflow"}},
+	{file: "task_comment_resolve.go", handler: "runTaskCommentResolve", required: []string{"ToggleCommentResolvedWithWorkflowByLocator"}, forbidden: []string{"ToggleCommentResolved", "ToggleCommentResolvedWithWorkflow"}},
+	{file: "task_depends.go", handler: "runTaskDepends", required: []string{"AddDependencyWithWorkflowByLocator", "RemoveDependencyWithWorkflowByLocator", "ClearDependenciesWithWorkflowByLocator"}, forbidden: []string{"AddDependency", "RemoveDependency", "ClearDependencies", "AddDependencyWithWorkflow", "RemoveDependencyWithWorkflow", "ClearDependenciesWithWorkflow"}},
+}
+
+var knownOwnerCLILocatorRoutes = []cliWorkflowRoute{
+	{file: "task_comment_edit.go", handler: "runTaskCommentEdit", required: []string{"EditCommentByLocator"}, forbidden: []string{"EditComment"}},
+	{file: "task_recur.go", handler: "runTaskRecur", required: []string{"SkipRecurrenceByLocator", "DeferRecurrenceByLocator", "ClearRecurrenceByLocator", "SetRecurrenceModeByLocator", "SetRecurrenceByLocator"}, forbidden: []string{"SkipRecurrence", "DeferRecurrence", "ClearRecurrence", "SetRecurrenceMode", "SetRecurrence"}},
+	{file: "score_set.go", handler: "runScoreSet", required: []string{"SetScoreDimensionsByLocator"}, forbidden: []string{"SetScoreDimensions"}},
+	{file: "attach.go", handler: "runAttach", required: []string{"AttachURLByLocator", "AttachCodeReferenceByLocator", "AttachFileByLocator"}, forbidden: []string{"AttachURL", "AttachCodeReference", "AttachFile"}},
+	{file: "attachment_remove.go", handler: "runAttachmentRemove", required: []string{"RemoveAttachmentByLocator"}, forbidden: []string{"RemoveAttachment"}},
+	{file: "task_move.go", handler: "runTaskHierarchyMove", required: []string{"MoveTaskUpByLocator", "MoveTaskDownByLocator", "IndentTaskByLocator", "OutdentTaskByLocator"}, forbidden: []string{"MoveTaskUp", "MoveTaskDown", "IndentTask", "OutdentTask"}},
 }
 
 // historicallyBareCLIHandlers records representative mutation families that did
@@ -95,13 +104,32 @@ func TestHistoricallyBareCLIRoutingAudit(t *testing.T) {
 			calls := selectorCallsInFunction(t, route.file, route.handler)
 			var workflowCalls []string
 			for call := range calls {
-				if strings.HasSuffix(call, "WithWorkflow") {
+				if strings.Contains(call, "WithWorkflow") {
 					workflowCalls = append(workflowCalls, call)
 				}
 			}
 			sort.Strings(workflowCalls)
 			if len(workflowCalls) > 0 {
 				t.Fatalf("historically bare handler gained workflow routing: %s", strings.Join(workflowCalls, ", "))
+			}
+		})
+	}
+}
+
+func TestKnownOwnerCLIMutationsRetainTaskLocators(t *testing.T) {
+	for _, route := range knownOwnerCLILocatorRoutes {
+		route := route
+		t.Run(route.handler, func(t *testing.T) {
+			calls := selectorCallsInFunction(t, route.file, route.handler)
+			for _, required := range route.required {
+				if !calls[required] {
+					t.Errorf("%s no longer calls %s", route.handler, required)
+				}
+			}
+			for _, forbidden := range route.forbidden {
+				if calls[forbidden] {
+					t.Errorf("%s discarded project ownership through %s", route.handler, forbidden)
+				}
 			}
 		})
 	}

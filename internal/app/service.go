@@ -92,24 +92,62 @@ func (s *Service) resolveProject(projectID string) (Snapshot, *models.Project, s
 	return snap, project, snap.Revision(project.ID), nil
 }
 
-// loadTask loads a snapshot and resolves a task by its UUID, returning the task
-// reference, the snapshot it was resolved from, and the revision the owning
-// project was loaded at. Use cases that need workspace-wide context (dependency
-// resolution, cross-project moves) consume the snapshot directly; single-project
-// mutations go through resolveTask, which discards it.
-func (s *Service) loadTask(taskID string) (TaskRef, Snapshot, string, error) {
-	if strings.TrimSpace(taskID) == "" {
-		return TaskRef{}, nil, "", invalidInput("task", "id is required")
+// resolveTaskSelection validates and resolves either an unqualified task UUID or
+// a project-qualified locator against one already-loaded snapshot. The two forms
+// are mutually exclusive. All mutation paths use this resolver so malformed
+// locators, missing tasks, and ambiguous IDs fail before model state changes.
+func resolveTaskSelection(snap Snapshot, taskID string, locator TaskLocator) (TaskRef, error) {
+	taskID = strings.TrimSpace(taskID)
+	locator.ProjectID = strings.TrimSpace(locator.ProjectID)
+	locator.TaskID = strings.TrimSpace(locator.TaskID)
+	hasLocator := locator.ProjectID != "" || locator.TaskID != ""
+	if taskID != "" && hasLocator {
+		return TaskRef{}, invalidInput("task", "provide task id or task locator, not both")
 	}
+	if hasLocator {
+		if !locator.Valid() {
+			return TaskRef{}, invalidInput("task", "project id and task id are required")
+		}
+		ref, ok := snap.LookupLocator(locator)
+		if !ok {
+			return TaskRef{}, fmt.Errorf("%w: %s/%s", ErrTaskNotFound, locator.ProjectID, locator.TaskID)
+		}
+		return ref, nil
+	}
+	if taskID == "" {
+		return TaskRef{}, invalidInput("task", "id is required")
+	}
+	ref, status := snap.LookupTaskID(taskID)
+	switch status {
+	case TaskLookupUnique:
+		return ref, nil
+	case TaskLookupAmbiguous:
+		return TaskRef{}, fmt.Errorf("%w: %s; provide project ownership", ErrAmbiguousTaskID, taskID)
+	default:
+		return TaskRef{}, fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+	}
+}
+
+// loadTaskSelection loads a snapshot and resolves one validated target,
+// returning the owning project's optimistic-concurrency revision.
+func (s *Service) loadTaskSelection(taskID string, locator TaskLocator) (TaskRef, Snapshot, string, error) {
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return TaskRef{}, nil, "", err
 	}
-	ref, ok := snap.Lookup(taskID)
-	if !ok {
-		return TaskRef{}, nil, "", fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+	ref, err := resolveTaskSelection(snap, taskID, locator)
+	if err != nil {
+		return TaskRef{}, nil, "", err
 	}
 	return ref, snap, snap.Revision(ref.Project.ID), nil
+}
+
+func (s *Service) loadTask(taskID string) (TaskRef, Snapshot, string, error) {
+	return s.loadTaskSelection(taskID, TaskLocator{})
+}
+
+func (s *Service) loadTaskByLocator(locator TaskLocator) (TaskRef, Snapshot, string, error) {
+	return s.loadTaskSelection("", locator)
 }
 
 // resolveTask loads a snapshot and resolves a task by its UUID, returning the
@@ -119,13 +157,26 @@ func (s *Service) resolveTask(taskID string) (TaskRef, string, error) {
 	return ref, revision, err
 }
 
+func (s *Service) resolveTaskByLocator(locator TaskLocator) (TaskRef, string, error) {
+	ref, _, revision, err := s.loadTaskByLocator(locator)
+	return ref, revision, err
+}
+
 // mutateTask is the shared runner for every single-task mutation. It resolves
 // the task, applies mutate (which enforces domain rules and may return a typed
 // error), runs the post-mutation hooks, and commits one ChangeSet carrying the
 // captured expected revision plus the undo description. A mutate error aborts
 // before any commit, so a rejected mutation never persists.
 func (s *Service) mutateTask(taskID, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
-	ref, revision, err := s.resolveTask(taskID)
+	return s.mutateTaskSelection(taskID, TaskLocator{}, undoAction, undoContext, mutate)
+}
+
+func (s *Service) mutateTaskByLocator(locator TaskLocator, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
+	return s.mutateTaskSelection("", locator, undoAction, undoContext, mutate)
+}
+
+func (s *Service) mutateTaskSelection(taskID string, locator TaskLocator, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
+	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}

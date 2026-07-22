@@ -100,7 +100,8 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 	// revision-checked, and undoably via the workspace ledger.
 	svc := newWorkspaceAppService(workspace)
 	res, err := withResultRetry(func() (app.CommentResult, error) {
-		return svc.EditComment(task.ID, index, newText)
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return svc.EditCommentByLocator(locator, index, newText)
 	})
 	if err != nil {
 		return translateAppError(err)

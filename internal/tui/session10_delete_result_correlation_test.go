@@ -48,7 +48,7 @@ func armLocalInboxDelete(t *testing.T, e *inboxDeleteEnv) (matching BatchTransac
 		t.Fatal("confirm should dispatch the delete command")
 	}
 	pending, ok := singleArmedInboxDelete(m)
-	if !ok || pending.taskID != deletedID || pending.token == 0 {
+	if !ok || pending.identity != (TaskIdentity{ProjectID: e.project.ID, TaskID: deletedID}) || pending.token == 0 {
 		t.Fatalf("pending Inbox delete not armed with a token, got %+v (armed=%v)", pending, ok)
 	}
 	if matching.DeleteRequestToken != pending.token {
@@ -66,7 +66,7 @@ func assertInboxDeleteApplies(t *testing.T, e *inboxDeleteEnv, matching BatchTra
 	if e.reload(t).GetTaskByID(deletedID) != nil {
 		t.Error("deleted task should be removed from disk")
 	}
-	if !e.processor.processedIDs[deletedID] {
+	if !e.processor.processedIDs[TaskIdentity{ProjectID: e.project.ID, TaskID: deletedID}] {
 		t.Error("matching result should mark the task processed")
 	}
 	if len(e.m.pendingInboxDeletes) != 0 {
@@ -81,10 +81,10 @@ func assertInboxDeleteApplies(t *testing.T, e *inboxDeleteEnv, matching BatchTra
 // armed and applied no processor bookkeeping.
 func assertInboxPendingIntact(t *testing.T, e *inboxDeleteEnv, deletedID string) {
 	t.Helper()
-	if pending, ok := singleArmedInboxDelete(e.m); !ok || pending.taskID != deletedID {
+	if pending, ok := singleArmedInboxDelete(e.m); !ok || pending.identity != (TaskIdentity{ProjectID: e.project.ID, TaskID: deletedID}) {
 		t.Fatalf("unrelated message consumed the in-flight Inbox delete, pending=%+v", e.m.pendingInboxDeletes)
 	}
-	if e.processor.processedIDs[deletedID] {
+	if e.processor.processedIDs[TaskIdentity{ProjectID: e.project.ID, TaskID: deletedID}] {
 		t.Error("unrelated message must not mark the task processed")
 	}
 	if got, _ := e.processor.currentTaskRef(); got == nil || got.ID != deletedID {
@@ -165,9 +165,9 @@ func TestInboxDeleteOutOfOrderGlobalAutoCloseAfterInterleaved(t *testing.T) {
 
 	// Handle every other task so deleting the current one closes the session.
 	gp.currentIndex = 0
-	target := gp.inboxTasks[0].Task
-	gp.processedIDs[gp.inboxTasks[1].Task.ID] = true
-	gp.skippedIDs[gp.inboxTasks[2].Task.ID] = true
+	target := gp.inboxTasks[0]
+	gp.processedIDs[taskIdentityFor(gp.inboxTasks[1].Task, gp.inboxTasks[1].Project)] = true
+	gp.skippedIDs[taskIdentityFor(gp.inboxTasks[2].Task, gp.inboxTasks[2].Project)] = true
 
 	reqCmd := gp.requestDelete()
 	req, ok := reqCmd().(TaskDeleteRequestedMsg)
@@ -202,21 +202,21 @@ func TestInboxDeleteOutOfOrderGlobalAutoCloseAfterInterleaved(t *testing.T) {
 	for _, pid := range matching.TouchedProjectIDs {
 		e.m.reloadProjectByID(pid)
 	}
-	closeCmd := e.m.applyPendingInboxDelete(matching.DeleteRequestToken, matching.RemovedTaskIDs)
+	closeCmd := e.m.applyPendingInboxDelete(matching.DeleteRequestToken, matching.RemovedTaskLocators, matching.RemovedTaskIDs)
 	if closeCmd == nil {
 		t.Fatal("matching Global Inbox delete should auto-close when no unprocessed task remains")
 	}
 	if _, ok := closeCmd().(CloseGlobalInboxProcessorMsg); !ok {
 		t.Fatalf("expected CloseGlobalInboxProcessorMsg, got %T", closeCmd())
 	}
-	if !gp.processedIDs[target.ID] {
+	if !gp.processedIDs[taskIdentityFor(target.Task, target.Project)] {
 		t.Error("matching result should mark the deleted task processed")
 	}
 	if len(e.m.pendingInboxDeletes) != 0 {
 		t.Errorf("pending slot should clear after the matching apply, got %+v", e.m.pendingInboxDeletes)
 	}
 	// Exactly-once: a second matching apply is a no-op (pending already cleared).
-	if cmd := e.m.applyPendingInboxDelete(matching.DeleteRequestToken, matching.RemovedTaskIDs); cmd != nil {
+	if cmd := e.m.applyPendingInboxDelete(matching.DeleteRequestToken, matching.RemovedTaskLocators, matching.RemovedTaskIDs); cmd != nil {
 		t.Errorf("re-applying a consumed delete should be a no-op, got %v", cmd)
 	}
 }

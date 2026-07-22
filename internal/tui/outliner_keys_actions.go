@@ -151,7 +151,8 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 	if m.runtime.Settings().UndoHistoryDepth != nil {
 		undoDepth = *m.runtime.Settings().UndoHistoryDepth
 	}
-	completedCount := proj.CountCompletedTasks()
+	completedTasks := proj.GetCompletedTasks()
+	completedCount := len(completedTasks)
 
 	if completedCount == 0 {
 		return m, nil
@@ -172,7 +173,7 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 		}
 		_ = svc.Load(proj)
 		// Note: rebuildRows() is called by TasksArchivedMsg handler
-		return TasksArchivedMsg{Count: count}
+		return TasksArchivedMsg{Count: count, ArchivedTaskLocators: taskLocatorsForProjectTasks(proj.ID, completedTasks)}
 	}
 	m.clearStatus()
 	return m, cmd

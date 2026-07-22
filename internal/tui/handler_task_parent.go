@@ -20,7 +20,7 @@ func (m *AppModel) handleTaskParentMessages(msg tea.Msg) (bool, tea.Cmd) {
 // handleOpenParentSelector handles the OpenParentSelectorMsg.
 func (m *AppModel) handleOpenParentSelector(msg OpenParentSelectorMsg) (bool, tea.Cmd) {
 	selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
-	selector.reparentTaskID = msg.ReparentTaskID
+	selector.reparentTask = msg.ReparentTask
 	_, cmd := m.showViewInit(ViewParentSelector, selector)
 	return true, cmd
 }

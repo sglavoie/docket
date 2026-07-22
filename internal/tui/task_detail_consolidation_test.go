@@ -127,17 +127,17 @@ func TestTaskDetailClosePreservesWorkspaceCursorFiltersAndSelection(t *testing.T
 	outliner.cursor = 1
 	outliner.SetSearchQuery(project.Tasks[0].Title)
 	outliner.multiSelectMode = true
-	outliner.selectedTasks[project.Tasks[0].ID] = true
-	outliner.selectedTasks[project.Tasks[1].ID] = true
+	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
+	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[1], project))
 	app.outliner = outliner
 	app.views.Register(ViewOutliner, outliner)
 	app.pushView(ViewOutliner)
 
 	beforeSearch := outliner.SearchQuery()
 	beforeCursor := outliner.cursor
-	beforeSelected := make(map[string]bool, len(outliner.selectedTasks))
-	for id, selected := range outliner.selectedTasks {
-		beforeSelected[id] = selected
+	beforeSelected := make(map[TaskIdentity]bool, len(outliner.selectedTaskIdentities))
+	for identity, selected := range outliner.selectedTaskIdentities {
+		beforeSelected[identity] = selected
 	}
 	_ = app.activateTaskDetail(project.Tasks[0], project, TaskOverview)
 	if !app.popTypedPresentation() {
@@ -147,12 +147,12 @@ func TestTaskDetailClosePreservesWorkspaceCursorFiltersAndSelection(t *testing.T
 	if outliner.SearchQuery() != beforeSearch || outliner.cursor != beforeCursor {
 		t.Fatalf("Outliner return state changed: search=%q cursor=%d", outliner.SearchQuery(), outliner.cursor)
 	}
-	if len(outliner.selectedTasks) != len(beforeSelected) {
-		t.Fatalf("selection size changed: got %+v want %+v", outliner.selectedTasks, beforeSelected)
+	if len(outliner.selectedTaskIdentities) != len(beforeSelected) {
+		t.Fatalf("selection size changed: got %+v want %+v", outliner.selectedTaskIdentities, beforeSelected)
 	}
-	for id, selected := range beforeSelected {
-		if outliner.selectedTasks[id] != selected {
-			t.Fatalf("selection changed: got %+v want %+v", outliner.selectedTasks, beforeSelected)
+	for identity, selected := range beforeSelected {
+		if outliner.selectedTaskIdentities[identity] != selected {
+			t.Fatalf("selection changed: got %+v want %+v", outliner.selectedTaskIdentities, beforeSelected)
 		}
 	}
 }

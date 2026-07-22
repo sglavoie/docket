@@ -94,7 +94,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		// Seed the task into Today (Daily Plan) on disk so a transition into Next
 		// must drop the Today entry through the folded planning artifact.
 		seedTodayMembership(t, mutator.configManager, project.ID, task.ID)
-		if !planningTaskInToday(t, mutator.configManager, task.ID) {
+		if !planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {
 			t.Fatal("failed to seed Today membership")
 		}
 		before := readTasksFile(t, project)
@@ -102,7 +102,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		if _, err := mutator.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateNext}); err != nil {
 			t.Fatalf("planning-aware transition: %v", err)
 		}
-		if planningTaskInToday(t, mutator.configManager, task.ID) {
+		if planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {
 			t.Fatal("transition into Next did not drop the Today entry on disk")
 		}
 		after := readTasksFile(t, project)
@@ -113,7 +113,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		if got := readTasksFile(t, project); !bytes.Equal(got, before) {
 			t.Fatalf("undo did not restore exact tasks.md state\n before: %q\n after undo: %q", before, got)
 		}
-		if !planningTaskInToday(t, restarted.configManager, task.ID) {
+		if !planningTaskInToday(t, restarted.configManager, project.ID, task.ID) {
 			t.Fatal("undo did not restore the Today (Daily Plan) entry on disk")
 		}
 		if fresh := restarted.currentProject.GetTaskByID(task.ID); fresh == nil || fresh.State() == models.StateNext {
@@ -124,7 +124,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		if got := readTasksFile(t, project); !bytes.Equal(got, after) {
 			t.Fatalf("redo did not restore exact tasks.md state\n after: %q\n after redo: %q", after, got)
 		}
-		if planningTaskInToday(t, restarted.configManager, task.ID) {
+		if planningTaskInToday(t, restarted.configManager, project.ID, task.ID) {
 			t.Fatal("redo did not re-drop the Today entry on disk")
 		}
 	})
@@ -197,9 +197,9 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 		views:                NewViewRegistry(),
 		currentProject:       project,
 		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[string]bool),
+		focusQueueIDs:        make(map[TaskIdentity]bool),
 		dailyPlan:            []FocusTask{},
-		dailyPlanIDs:         make(map[string]bool),
+		dailyPlanIDs:         make(map[TaskIdentity]bool),
 	}
 	appModel.showView(hostView, &invariantQueueView{taskID: taskID, project: project})
 	return appModel
@@ -223,13 +223,25 @@ func seedTodayMembership(t *testing.T, manager *config.Manager, projectID, taskI
 }
 
 // planningTaskInToday reports whether the task is in the durable Daily Plan.
-func planningTaskInToday(t *testing.T, manager *config.Manager, taskID string) bool {
+// Pass projectID, taskID for a qualified assertion. The one-ID compatibility
+// form is retained for older single-project tests.
+func planningTaskInToday(t *testing.T, manager *config.Manager, ids ...string) bool {
 	t.Helper()
 	planning, err := manager.DomainCoordinator().LoadPlanning()
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	return dailyPlanContains(planning, taskID)
+	if len(ids) == 2 {
+		return dailyPlanContains(planning, TaskIdentity{ProjectID: ids[0], TaskID: ids[1]})
+	}
+	if len(ids) == 1 {
+		for _, item := range planning.GetDailyPlan() {
+			if item.TaskID == ids[0] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // readTasksFile returns the exact on-disk tasks.md bytes for the project.

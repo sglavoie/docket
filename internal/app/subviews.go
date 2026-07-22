@@ -30,12 +30,20 @@ type DecisionResult struct {
 // task and commits it as one ChangeSet. Empty or whitespace-only text is
 // rejected before any mutation.
 func (s *Service) AddDecision(taskID, text, rationale string, category models.DecisionCategory) (DecisionResult, error) {
+	return s.addDecisionSelection(taskID, TaskLocator{}, text, rationale, category)
+}
+
+func (s *Service) AddDecisionByLocator(locator TaskLocator, text, rationale string, category models.DecisionCategory) (DecisionResult, error) {
+	return s.addDecisionSelection("", locator, text, rationale, category)
+}
+
+func (s *Service) addDecisionSelection(taskID string, locator TaskLocator, text, rationale string, category models.DecisionCategory) (DecisionResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return DecisionResult{}, invalidInput("decision", "text is required")
 	}
 	var out DecisionResult
-	res, err := s.mutateTask(taskID, "Add Decision", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Add Decision", "", func(ref TaskRef) error {
 		ref.Task.AddDecision(trimmed, strings.TrimSpace(rationale), category)
 		ref.Task.UpdatedAt = s.clock.Now()
 		out.Index = len(ref.Task.Decisions) - 1
@@ -54,12 +62,20 @@ func (s *Service) AddDecision(taskID, text, rationale string, category models.De
 // category (the external-editor flow edits only text and rationale); a non-nil
 // category replaces it.
 func (s *Service) EditDecision(taskID string, index int, text, rationale string, category *models.DecisionCategory) (DecisionResult, error) {
+	return s.editDecisionSelection(taskID, TaskLocator{}, index, text, rationale, category)
+}
+
+func (s *Service) EditDecisionByLocator(locator TaskLocator, index int, text, rationale string, category *models.DecisionCategory) (DecisionResult, error) {
+	return s.editDecisionSelection("", locator, index, text, rationale, category)
+}
+
+func (s *Service) editDecisionSelection(taskID string, locator TaskLocator, index int, text, rationale string, category *models.DecisionCategory) (DecisionResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return DecisionResult{}, invalidInput("decision", "text is required")
 	}
 	var out DecisionResult
-	res, err := s.mutateTask(taskID, "Edit Decision", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Edit Decision", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("decision", index, len(ref.Task.Decisions)); err != nil {
 			return err
 		}
@@ -82,8 +98,16 @@ func (s *Service) EditDecision(taskID string, index int, text, rationale string,
 
 // RemoveDecision removes the decision at the given index.
 func (s *Service) RemoveDecision(taskID string, index int) (DecisionResult, error) {
+	return s.removeDecisionSelection(taskID, TaskLocator{}, index)
+}
+
+func (s *Service) RemoveDecisionByLocator(locator TaskLocator, index int) (DecisionResult, error) {
+	return s.removeDecisionSelection("", locator, index)
+}
+
+func (s *Service) removeDecisionSelection(taskID string, locator TaskLocator, index int) (DecisionResult, error) {
 	var out DecisionResult
-	res, err := s.mutateTask(taskID, "Remove Decision", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Remove Decision", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("decision", index, len(ref.Task.Decisions)); err != nil {
 			return err
 		}
@@ -105,8 +129,16 @@ func (s *Service) RemoveDecision(taskID string, index int) (DecisionResult, erro
 // ToggleDecisionResolved flips the resolved state of the decision at the given
 // index and reports the post-toggle state.
 func (s *Service) ToggleDecisionResolved(taskID string, index int) (DecisionResult, error) {
+	return s.toggleDecisionResolvedSelection(taskID, TaskLocator{}, index)
+}
+
+func (s *Service) ToggleDecisionResolvedByLocator(locator TaskLocator, index int) (DecisionResult, error) {
+	return s.toggleDecisionResolvedSelection("", locator, index)
+}
+
+func (s *Service) toggleDecisionResolvedSelection(taskID string, locator TaskLocator, index int) (DecisionResult, error) {
 	var out DecisionResult
-	res, err := s.mutateTask(taskID, "Resolve Decision", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Resolve Decision", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("decision", index, len(ref.Task.Decisions)); err != nil {
 			return err
 		}
@@ -143,12 +175,20 @@ type ChecklistResult struct {
 // AddChecklistItem appends an item to a task's checklist. Empty or
 // whitespace-only text is rejected before any mutation.
 func (s *Service) AddChecklistItem(taskID, text string) (ChecklistResult, error) {
+	return s.addChecklistItemSelection(taskID, TaskLocator{}, text)
+}
+
+func (s *Service) AddChecklistItemByLocator(locator TaskLocator, text string) (ChecklistResult, error) {
+	return s.addChecklistItemSelection("", locator, text)
+}
+
+func (s *Service) addChecklistItemSelection(taskID string, locator TaskLocator, text string) (ChecklistResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return ChecklistResult{}, invalidInput("checklist", "text is required")
 	}
 	var out ChecklistResult
-	res, err := s.mutateTask(taskID, "Add Checklist Item", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Add Checklist Item", "", func(ref TaskRef) error {
 		ref.Task.Checklist = append(ref.Task.Checklist, models.ChecklistItem{Text: trimmed})
 		ref.Task.UpdatedAt = s.clock.Now()
 		out.Index = len(ref.Task.Checklist) - 1
@@ -165,12 +205,20 @@ func (s *Service) AddChecklistItem(taskID, text string) (ChecklistResult, error)
 // EditChecklistItem replaces the text of the item at the given index,
 // preserving its done state.
 func (s *Service) EditChecklistItem(taskID string, index int, text string) (ChecklistResult, error) {
+	return s.editChecklistItemSelection(taskID, TaskLocator{}, index, text)
+}
+
+func (s *Service) EditChecklistItemByLocator(locator TaskLocator, index int, text string) (ChecklistResult, error) {
+	return s.editChecklistItemSelection("", locator, index, text)
+}
+
+func (s *Service) editChecklistItemSelection(taskID string, locator TaskLocator, index int, text string) (ChecklistResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return ChecklistResult{}, invalidInput("checklist", "text is required")
 	}
 	var out ChecklistResult
-	res, err := s.mutateTask(taskID, "Edit Checklist Item", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Edit Checklist Item", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("checklist", index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -189,8 +237,16 @@ func (s *Service) EditChecklistItem(taskID string, index int, text string) (Chec
 
 // RemoveChecklistItem removes the item at the given index.
 func (s *Service) RemoveChecklistItem(taskID string, index int) (ChecklistResult, error) {
+	return s.removeChecklistItemSelection(taskID, TaskLocator{}, index)
+}
+
+func (s *Service) RemoveChecklistItemByLocator(locator TaskLocator, index int) (ChecklistResult, error) {
+	return s.removeChecklistItemSelection("", locator, index)
+}
+
+func (s *Service) removeChecklistItemSelection(taskID string, locator TaskLocator, index int) (ChecklistResult, error) {
 	var out ChecklistResult
-	res, err := s.mutateTask(taskID, "Remove Checklist Item", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Remove Checklist Item", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("checklist", index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -210,8 +266,16 @@ func (s *Service) RemoveChecklistItem(taskID string, index int) (ChecklistResult
 // ToggleChecklistItem flips the done state of the item at the given index and
 // reports the post-toggle state.
 func (s *Service) ToggleChecklistItem(taskID string, index int) (ChecklistResult, error) {
+	return s.toggleChecklistItemSelection(taskID, TaskLocator{}, index)
+}
+
+func (s *Service) ToggleChecklistItemByLocator(locator TaskLocator, index int) (ChecklistResult, error) {
+	return s.toggleChecklistItemSelection("", locator, index)
+}
+
+func (s *Service) toggleChecklistItemSelection(taskID string, locator TaskLocator, index int) (ChecklistResult, error) {
 	var out ChecklistResult
-	res, err := s.mutateTask(taskID, "Toggle Checklist Item", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Toggle Checklist Item", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("checklist", index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -232,8 +296,16 @@ func (s *Service) ToggleChecklistItem(taskID string, index int) (ChecklistResult
 // ReorderChecklistItem swaps the items at from and to, matching the panel's
 // single-step move semantics.
 func (s *Service) ReorderChecklistItem(taskID string, from, to int) (ChecklistResult, error) {
+	return s.reorderChecklistItemSelection(taskID, TaskLocator{}, from, to)
+}
+
+func (s *Service) ReorderChecklistItemByLocator(locator TaskLocator, from, to int) (ChecklistResult, error) {
+	return s.reorderChecklistItemSelection("", locator, from, to)
+}
+
+func (s *Service) reorderChecklistItemSelection(taskID string, locator TaskLocator, from, to int) (ChecklistResult, error) {
 	var out ChecklistResult
-	res, err := s.mutateTask(taskID, "Reorder Checklist", "", func(ref TaskRef) error {
+	res, err := s.mutateTaskSelection(taskID, locator, "Reorder Checklist", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("checklist", from, len(ref.Task.Checklist)); err != nil {
 			return err
 		}

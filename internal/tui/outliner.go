@@ -40,8 +40,8 @@ type OutlinerModel struct {
 	MultiSelectState
 
 	// Queue / daily-plan indicator support
-	queueIDs     map[string]bool
-	dailyPlanIDs map[string]bool
+	queueIDs     map[TaskIdentity]bool
+	dailyPlanIDs map[TaskIdentity]bool
 
 	project *models.Project
 
@@ -59,9 +59,9 @@ type OutlinerModel struct {
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
 
-	pinnedTagTab      map[string]int  // Active pinned tag tab index per projectID (0 = All)
-	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
-	collapsedSections map[string]bool // Section collapse state for All perspective
+	pinnedTagTab      map[string]int        // Active pinned tag tab index per projectID (0 = All)
+	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
+	collapsedSections map[string]bool       // Section collapse state for All perspective
 
 	sidebar   *SidebarComponent   // Sidebar detail panel
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
@@ -166,13 +166,13 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		activePerspective: 1,
 		sidebar:           NewSidebarComponent(),
 		filterBar:         NewFilterBarComponent(),
-		expandedNodes:     make(map[string]bool),
+		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
 		pinnedTagTab:      make(map[string]int),
 		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		columnConfig:      NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
@@ -216,39 +216,16 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ParentSelectedMsg:
-		if msg.ReparentTaskID == "" {
+		if !msg.ReparentTask.Valid() {
 			return m, nil
 		}
 		if m.project == nil {
 			return m.handleCrossProjectReparent(msg)
 		}
-		task := m.project.GetTaskByID(msg.ReparentTaskID)
-		if task == nil {
+		if msg.ReparentTask.ProjectID != m.project.ID || m.project.GetTaskByID(msg.ReparentTask.TaskID) == nil {
 			return m, nil
 		}
-		// Validate first; skip the snapshot + save when the mutation would
-		// be a no-op (invalid target, cycle, type mismatch).
-		var newParent *string
-		if msg.ParentID != nil {
-			targetID := *msg.ParentID
-			taskMap := make(map[string]*models.Task, len(m.project.Tasks))
-			for _, t := range m.project.Tasks {
-				taskMap[t.ID] = t
-			}
-			targetParent := taskMap[targetID]
-			if targetParent == nil || !task.Type.CanBeChildOf(targetParent.Type) || models.WouldCreateCycle(taskMap, task.ID, targetID) {
-				return m, nil
-			}
-			newParent = &targetID
-		}
-		prevStates := captureTaskStates(m.project.Tasks)
-		m.project.MutateTask(task.ID, func(t *models.Task) {
-			t.ParentID = newParent
-		})
-		m.project.BuildTaskTree()
-		m.setUndoContext("Reparent Task", task.Title)
-		m.undo.TaskIDs = []string{task.ID}
-		return m, m.saveAndRefreshBulk(prevStates)
+		return m, m.taskItem.Reparent(msg.ReparentTask, msg.ParentID)
 
 	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)

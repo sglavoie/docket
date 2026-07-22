@@ -69,8 +69,8 @@ func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.P
 			quickEdit:      NewQuickEditComponent(),
 		},
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{alpha, beta},
 		filterProjects:    make(map[string]bool),
@@ -224,8 +224,8 @@ func TestCrossPriorityEnterOnParentTaskOpensDetailNotZoom(t *testing.T) {
 			quickEdit:      NewQuickEditComponent(),
 		},
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filterProjects:    make(map[string]bool),
@@ -487,11 +487,13 @@ func TestCrossPriorityActionableFilterScopesRows(t *testing.T) {
 }
 
 func TestCrossPriorityMultiSelectSurvivesRebuild(t *testing.T) {
-	m, _, _, alphaTaskID, betaTaskID, _ := crossPriorityFixture(t)
+	m, alpha, beta, alphaTaskID, betaTaskID, _ := crossPriorityFixture(t)
 
 	m.multiSelectMode = true
-	m.selectedTasks[alphaTaskID] = true
-	m.selectedTasks[betaTaskID] = true
+	alphaIdentity := TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTaskID}
+	betaIdentity := TaskIdentity{ProjectID: beta.ID, TaskID: betaTaskID}
+	m.SelectTaskIdentity(alphaIdentity)
+	m.SelectTaskIdentity(betaIdentity)
 
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
@@ -499,10 +501,10 @@ func TestCrossPriorityMultiSelectSurvivesRebuild(t *testing.T) {
 	if !m.multiSelectMode {
 		t.Error("multiSelectMode should persist across rebuild")
 	}
-	if !m.selectedTasks[alphaTaskID] {
+	if !m.IsTaskIdentitySelected(alphaIdentity) {
 		t.Error("alpha selection should survive rebuild because the row remains visible")
 	}
-	if !m.selectedTasks[betaTaskID] {
+	if !m.IsTaskIdentitySelected(betaIdentity) {
 		t.Error("beta selection should survive rebuild because the row remains visible")
 	}
 }
@@ -554,8 +556,8 @@ func TestCrossPriorityPinnedTagDoesNotDragNonMatchingParent(t *testing.T) {
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filterProjects:    make(map[string]bool),

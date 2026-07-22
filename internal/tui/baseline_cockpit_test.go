@@ -86,17 +86,17 @@ func cockpitBoardRow(task *models.Task, project *models.Project) boardRow {
 // and so each scenario controls its own data shape. The active tab and the
 // openLoops counter must be set explicitly by the caller because they drive
 // the title-row content the cockpit cares about.
-func cockpitModel(today, next, _ []boardRow, dailyPlanIDs map[string]bool, openLoops OpenLoops, activeTab int) *FocusBoardModel {
+func cockpitModel(today, next, _ []boardRow, dailyPlanIDs map[TaskIdentity]bool, openLoops OpenLoops, activeTab int) *FocusBoardModel {
 	m := newTestFocusBoard()
 	if dailyPlanIDs == nil {
-		dailyPlanIDs = map[string]bool{}
+		dailyPlanIDs = map[TaskIdentity]bool{}
 	}
 	m.dailyPlanIDs = dailyPlanIDs
 	// Compose a shared dailyPlan slice mirroring dailyPlanIDs so the focus
 	// board's posMap lookups in sorting do not panic on nil indirection.
 	plan := make([]FocusTask, 0, len(today))
 	for _, r := range today {
-		if r.Task == nil || !dailyPlanIDs[r.Task.ID] {
+		if r.Task == nil || !dailyPlanIDs[taskIdentityFor(r.Task, r.Project)] {
 			continue
 		}
 		plan = append(plan, FocusTask{Task: r.Task, Project: r.Project})
@@ -277,10 +277,10 @@ func TestBaselineCockpitPlannedTodayRendersAcrossSizes(t *testing.T) {
 				cockpitTask(t, project, "Write design doc draft", models.StatusInProgress, models.SectionNext),
 				cockpitTask(t, project, "Review staging deploy", models.StatusTodo, models.SectionNext),
 			}
-			dailyPlanIDs := map[string]bool{}
+			dailyPlanIDs := map[TaskIdentity]bool{}
 			rows := make([]boardRow, 0, len(plan))
 			for _, task := range plan {
-				dailyPlanIDs[task.ID] = true
+				dailyPlanIDs[taskIdentityFor(task, project)] = true
 				rows = append(rows, cockpitBoardRow(task, project))
 			}
 
@@ -335,7 +335,7 @@ func TestBaselineCockpitBlockedRendersAcrossSizes(t *testing.T) {
 			blocked := cockpitTask(t, project, "Wire SSO callback", models.StatusBlocked, models.SectionNext)
 			_ = blocked.AddDependency(blocker.ID)
 
-			dailyPlanIDs := map[string]bool{blocked.ID: true}
+			dailyPlanIDs := map[TaskIdentity]bool{taskIdentityFor(blocked, project): true}
 			rows := []boardRow{cockpitBoardRow(blocked, project)}
 
 			openLoops := OpenLoops{TodayTotal: 1, HasTasks: true}
@@ -383,7 +383,10 @@ func TestBaselineCockpitTodayCompleteRendersAcrossSizes(t *testing.T) {
 			done1 := cockpitTask(t, project, "Ship demo recording", models.StatusDone, models.SectionCompleted)
 			done2 := cockpitTask(t, project, "Email stakeholders", models.StatusDone, models.SectionCompleted)
 
-			dailyPlanIDs := map[string]bool{done1.ID: true, done2.ID: true}
+			dailyPlanIDs := map[TaskIdentity]bool{
+				taskIdentityFor(done1, project): true,
+				taskIdentityFor(done2, project): true,
+			}
 			rows := []boardRow{
 				cockpitBoardRow(done1, project),
 				cockpitBoardRow(done2, project),

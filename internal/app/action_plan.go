@@ -78,11 +78,16 @@ type ApplyActionPlanOptions struct {
 	ConfirmSafe        bool
 	ConfirmDestructive bool
 	Artifacts          []storage.ArtifactChange
+	// DeletedTaskLocatorArtifacts is called with the complete, sorted set of
+	// project-qualified tasks removed by accepted delete actions, including every
+	// subtree descendant. Known-owner adapters should use this callback so durable
+	// cleanup cannot affect an equal task ID in another project.
+	DeletedTaskLocatorArtifacts func([]TaskLocator) ([]storage.ArtifactChange, error)
 	// DeletedTaskArtifacts is called with the complete, sorted set of task IDs
 	// removed by accepted delete actions, including every subtree descendant. The
-	// callback uses the exact deletion set resolved into the retained prepared
-	// snapshot and runs before any mutation is persisted, allowing an adapter to
-	// fold durable planning-reference cleanup into the transaction.
+	// ID-only callback remains as a compatibility seam for adapters that have not
+	// migrated to DeletedTaskLocatorArtifacts. When both are set, the qualified
+	// callback takes precedence.
 	DeletedTaskArtifacts func([]string) ([]storage.ArtifactChange, error)
 }
 
@@ -90,11 +95,12 @@ type ApplyActionPlanOptions struct {
 // TransactionID because the workspace ledger keys its entry by the committed
 // transaction manifest ID.
 type ActionPlanResult struct {
-	TransactionID   string          `json:"transaction_id"`
-	UndoID          string          `json:"undo_id"`
-	TouchedProjects []string        `json:"touched_projects"`
-	DeletedTaskIDs  []string        `json:"deleted_task_ids,omitempty"`
-	Actions         []ActionPreview `json:"actions"`
+	TransactionID       string          `json:"transaction_id"`
+	UndoID              string          `json:"undo_id"`
+	TouchedProjects     []string        `json:"touched_projects"`
+	DeletedTaskIDs      []string        `json:"deleted_task_ids,omitempty"`
+	DeletedTaskLocators []TaskLocator   `json:"deleted_task_locators,omitempty"`
+	Actions             []ActionPreview `json:"actions"`
 }
 
 // PreparedActionPlan is an opaque, snapshot-bound interpretation of provider
@@ -218,9 +224,9 @@ func (s *Service) PrepareActionPlan(plan ActionPlan) (*PreparedActionPlan, error
 		}
 		risk := RiskForAction(action)
 		if action.Type == ActionDeleteTask {
-			ref, ok := retained.Lookup(action.TaskID)
-			if !ok {
-				return nil, fmt.Errorf("action %d: %w: %s", i+1, ErrTaskNotFound, action.TaskID)
+			ref, err := resolveTaskSelection(retained, action.TaskID, TaskLocator{})
+			if err != nil {
+				return nil, fmt.Errorf("action %d: %w", i+1, err)
 			}
 			descendants := len(collectSubtreeIDs(ref.Task)) - 1
 			noun := "descendants"
@@ -308,9 +314,9 @@ func resolvedActionProjects(snap Snapshot, action Action) (string, string, []str
 		}
 		return project.ID, "", []string{project.ID}, nil
 	}
-	ref, ok := snap.Lookup(action.TaskID)
-	if !ok {
-		return "", "", nil, fmt.Errorf("%w: %s", ErrTaskNotFound, action.TaskID)
+	ref, err := resolveTaskSelection(snap, action.TaskID, TaskLocator{})
+	if err != nil {
+		return "", "", nil, err
 	}
 	read := map[string]bool{ref.Project.ID: true}
 	if action.Type != ActionAddDependency && action.Type != ActionRemoveDependency {
@@ -319,9 +325,9 @@ func resolvedActionProjects(snap Snapshot, action Action) (string, string, []str
 		}
 		return ref.Project.ID, "", orderedProjectIDs(snap, read), nil
 	}
-	blocker, ok := snap.Lookup(action.BlockerTaskID)
-	if !ok {
-		return "", "", nil, fmt.Errorf("%w: blocker %s", ErrTaskNotFound, action.BlockerTaskID)
+	blocker, err := resolveTaskSelection(snap, action.BlockerTaskID, TaskLocator{})
+	if err != nil {
+		return "", "", nil, fmt.Errorf("blocker: %w", err)
 	}
 	read[blocker.Project.ID] = true
 	addReferencedProjectReads(snap, read, ref.Project, ref.Task.DependsOn)
@@ -397,9 +403,9 @@ func describeAction(snap Snapshot, action Action) (string, error) {
 		return project.Name, nil
 	}
 	taskLabel := func(id string) (string, TaskRef, error) {
-		ref, ok := snap.Lookup(id)
-		if !ok {
-			return "", TaskRef{}, fmt.Errorf("%w: %s", ErrTaskNotFound, id)
+		ref, err := resolveTaskSelection(snap, id, TaskLocator{})
+		if err != nil {
+			return "", TaskRef{}, err
 		}
 		return fmt.Sprintf("%s:#%d %q", ref.Project.Slug, ref.Task.ShortID, ref.Task.Title), ref, nil
 	}
@@ -594,8 +600,15 @@ func (s *Service) applyPreparedActionPlan(ctx context.Context, prepared *Prepare
 		return ActionPlanResult{}, contextErr
 	}
 	deletedTaskIDs := append([]string(nil), prepared.deletedTaskIDs...)
+	deletedTaskLocators := actionPlanDeletedTaskLocators(prepared.deletionRoots)
 	artifacts := append([]storage.ArtifactChange(nil), opts.Artifacts...)
-	if len(deletedTaskIDs) > 0 && opts.DeletedTaskArtifacts != nil {
+	if len(deletedTaskLocators) > 0 && opts.DeletedTaskLocatorArtifacts != nil {
+		deleteArtifacts, artifactErr := opts.DeletedTaskLocatorArtifacts(append([]TaskLocator(nil), deletedTaskLocators...))
+		if artifactErr != nil {
+			return ActionPlanResult{}, fmt.Errorf("prepare deleted-task artifacts: %w", artifactErr)
+		}
+		artifacts = append(artifacts, deleteArtifacts...)
+	} else if len(deletedTaskIDs) > 0 && opts.DeletedTaskArtifacts != nil {
 		deleteArtifacts, artifactErr := opts.DeletedTaskArtifacts(append([]string(nil), deletedTaskIDs...))
 		if artifactErr != nil {
 			return ActionPlanResult{}, fmt.Errorf("prepare deleted-task artifacts: %w", artifactErr)
@@ -625,7 +638,7 @@ func (s *Service) applyPreparedActionPlan(ctx context.Context, prepared *Prepare
 		touchedOrder = append(touchedOrder, project.ID)
 	}
 	if len(changesets) == 0 {
-		return ActionPlanResult{DeletedTaskIDs: deletedTaskIDs, Actions: preview.Actions}, nil
+		return ActionPlanResult{DeletedTaskIDs: deletedTaskIDs, DeletedTaskLocators: deletedTaskLocators, Actions: preview.Actions}, nil
 	}
 	changesets[0].ProjectPreconditions = prepared.projectPreconditions()
 	results, commitErr := s.repo.Commit(changesets...)
@@ -637,12 +650,25 @@ func (s *Service) applyPreparedActionPlan(ctx context.Context, prepared *Prepare
 		txnID = results[0].TransactionID
 	}
 	return ActionPlanResult{
-		TransactionID:   txnID,
-		UndoID:          txnID,
-		TouchedProjects: touchedOrder,
-		DeletedTaskIDs:  deletedTaskIDs,
-		Actions:         append([]ActionPreview(nil), preview.Actions...),
+		TransactionID:       txnID,
+		UndoID:              txnID,
+		TouchedProjects:     touchedOrder,
+		DeletedTaskIDs:      deletedTaskIDs,
+		DeletedTaskLocators: deletedTaskLocators,
+		Actions:             append([]ActionPreview(nil), preview.Actions...),
 	}, nil
+}
+
+func actionPlanDeletedTaskLocators(roots []preparedDeletionRoot) []TaskLocator {
+	qualified := make(map[TaskLocator]bool)
+	for _, root := range roots {
+		for _, taskID := range root.taskIDs {
+			if root.projectID != "" && taskID != "" {
+				qualified[TaskLocator{ProjectID: root.projectID, TaskID: taskID}] = true
+			}
+		}
+	}
+	return sortedTaskLocators(qualified)
 }
 
 func (p *PreparedActionPlan) beginApply() error {
@@ -737,9 +763,9 @@ func (s *Service) applyPlannedAction(snap Snapshot, action Action, touched map[s
 		return nil
 	}
 
-	ref, ok := snap.Lookup(action.TaskID)
-	if !ok {
-		return fmt.Errorf("%w: %s", ErrTaskNotFound, action.TaskID)
+	ref, err := resolveTaskSelection(snap, action.TaskID, TaskLocator{})
+	if err != nil {
+		return err
 	}
 	task := ref.Task
 	switch action.Type {
@@ -785,9 +811,9 @@ func (s *Service) applyPlannedAction(snap Snapshot, action Action, touched map[s
 		}
 		task.Tags = tags
 	case ActionAddDependency, ActionRemoveDependency:
-		blocker, ok := snap.Lookup(action.BlockerTaskID)
-		if !ok {
-			return fmt.Errorf("%w: blocker %s", ErrTaskNotFound, action.BlockerTaskID)
+		blocker, err := resolveTaskSelection(snap, action.BlockerTaskID, TaskLocator{})
+		if err != nil {
+			return fmt.Errorf("blocker: %w", err)
 		}
 		resolver := NewWorkspaceResolver(snap)
 		storedRef := blocker.Task.ID
@@ -824,9 +850,9 @@ func plannedDeletions(snap Snapshot, actions []Action) (map[string]bool, []TaskR
 		if action.Type != ActionDeleteTask {
 			continue
 		}
-		ref, ok := snap.Lookup(action.TaskID)
-		if !ok {
-			return nil, nil, fmt.Errorf("%w: %s", ErrTaskNotFound, action.TaskID)
+		ref, err := resolveTaskSelection(snap, action.TaskID, TaskLocator{})
+		if err != nil {
+			return nil, nil, err
 		}
 		selected[ref.Task.ID] = ref
 	}

@@ -30,7 +30,15 @@ type RecurrenceResult struct {
 // the post-mutation recurrence display fields off the mutated task so adapters can
 // render the new pattern/due date. A mutate error aborts before any commit.
 func (s *Service) mutateRecurrence(taskID, undoAction string, undoContext func(*models.Task) string, mutate func(*models.Task) error) (RecurrenceResult, error) {
-	ref, revision, err := s.resolveTask(taskID)
+	return s.mutateRecurrenceSelection(taskID, TaskLocator{}, undoAction, undoContext, mutate)
+}
+
+func (s *Service) mutateRecurrenceByLocator(locator TaskLocator, undoAction string, undoContext func(*models.Task) string, mutate func(*models.Task) error) (RecurrenceResult, error) {
+	return s.mutateRecurrenceSelection("", locator, undoAction, undoContext, mutate)
+}
+
+func (s *Service) mutateRecurrenceSelection(taskID string, locator TaskLocator, undoAction string, undoContext func(*models.Task) string, mutate func(*models.Task) error) (RecurrenceResult, error) {
+	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return RecurrenceResult{}, err
 	}
@@ -67,11 +75,39 @@ func (s *Service) SetRecurrence(taskID string, pattern *models.RecurrencePattern
 		})
 }
 
+func (s *Service) SetRecurrenceByLocator(locator TaskLocator, pattern *models.RecurrencePattern) (RecurrenceResult, error) {
+	if pattern == nil {
+		return RecurrenceResult{}, invalidInput("recurrence", "pattern is required")
+	}
+	context := pattern.String()
+	return s.mutateRecurrenceByLocator(locator, "Set Recurrence",
+		func(*models.Task) string { return context },
+		func(t *models.Task) error {
+			if err := t.SetRecurrence(pattern); err != nil {
+				return invalidInput("recurrence", err.Error())
+			}
+			return nil
+		})
+}
+
 // SetRecurrenceMode changes the scheduling mode ("from due" vs "from completion")
 // of an existing recurrence without altering the pattern. A task that is not
 // recurring is rejected: there is no mode to update.
 func (s *Service) SetRecurrenceMode(taskID string, mode models.RecurMode) (RecurrenceResult, error) {
 	return s.mutateRecurrence(taskID, "Set Recurrence Mode",
+		func(t *models.Task) string { return fmt.Sprintf("%s #%d", mode, t.ShortID) },
+		func(t *models.Task) error {
+			if t.Recurrence == nil {
+				return invalidInput("recurrence", "task is not recurring")
+			}
+			t.Recurrence.Mode = mode
+			t.UpdatedAt = s.clock.Now()
+			return nil
+		})
+}
+
+func (s *Service) SetRecurrenceModeByLocator(locator TaskLocator, mode models.RecurMode) (RecurrenceResult, error) {
+	return s.mutateRecurrenceByLocator(locator, "Set Recurrence Mode",
 		func(t *models.Task) string { return fmt.Sprintf("%s #%d", mode, t.ShortID) },
 		func(t *models.Task) error {
 			if t.Recurrence == nil {
@@ -96,10 +132,31 @@ func (s *Service) ClearRecurrence(taskID string) (RecurrenceResult, error) {
 		})
 }
 
+func (s *Service) ClearRecurrenceByLocator(locator TaskLocator) (RecurrenceResult, error) {
+	return s.mutateRecurrenceByLocator(locator, "Clear Recurrence",
+		func(t *models.Task) string { return fmt.Sprintf("#%d", t.ShortID) },
+		func(t *models.Task) error {
+			t.ClearRecurrence()
+			return nil
+		})
+}
+
 // SkipRecurrence advances a recurring task to its next occurrence without
 // completing it, breaking the streak. A non-recurring task is rejected.
 func (s *Service) SkipRecurrence(taskID string) (RecurrenceResult, error) {
 	return s.mutateRecurrence(taskID, "Skip Recurrence",
+		func(t *models.Task) string { return fmt.Sprintf("#%d", t.ShortID) },
+		func(t *models.Task) error {
+			if t.Recurrence == nil {
+				return invalidInput("recurrence", "task is not recurring")
+			}
+			t.SkipRecurrence()
+			return nil
+		})
+}
+
+func (s *Service) SkipRecurrenceByLocator(locator TaskLocator) (RecurrenceResult, error) {
+	return s.mutateRecurrenceByLocator(locator, "Skip Recurrence",
 		func(t *models.Task) string { return fmt.Sprintf("#%d", t.ShortID) },
 		func(t *models.Task) error {
 			if t.Recurrence == nil {
@@ -118,6 +175,21 @@ func (s *Service) DeferRecurrence(taskID string, days int) (RecurrenceResult, er
 		return RecurrenceResult{}, invalidInput("defer", fmt.Sprintf("days must be a positive number, got %d", days))
 	}
 	return s.mutateRecurrence(taskID, "Defer Recurrence",
+		func(t *models.Task) string { return fmt.Sprintf("%d days #%d", days, t.ShortID) },
+		func(t *models.Task) error {
+			if t.Recurrence == nil {
+				return invalidInput("recurrence", "task is not recurring")
+			}
+			t.DeferRecurrence(days)
+			return nil
+		})
+}
+
+func (s *Service) DeferRecurrenceByLocator(locator TaskLocator, days int) (RecurrenceResult, error) {
+	if days <= 0 {
+		return RecurrenceResult{}, invalidInput("defer", fmt.Sprintf("days must be a positive number, got %d", days))
+	}
+	return s.mutateRecurrenceByLocator(locator, "Defer Recurrence",
 		func(t *models.Task) string { return fmt.Sprintf("%d days #%d", days, t.ShortID) },
 		func(t *models.Task) error {
 			if t.Recurrence == nil {

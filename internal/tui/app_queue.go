@@ -36,15 +36,16 @@ type queueToggleAction struct {
 	PrevState      models.WorkflowState // task's workflow state before the toggle
 }
 
-// removeFromDailyPlan drops a task from the in-memory daily plan.
-func (m *AppModel) removeFromDailyPlan(taskID string) {
+// removeFromDailyPlan drops exactly one project-qualified task from the
+// in-memory daily plan.
+func (m *AppModel) removeFromDailyPlan(identity TaskIdentity) {
 	for i, ft := range m.dailyPlan {
-		if ft.Task.ID == taskID {
+		if taskIdentityFor(ft.Task, ft.Project) == identity {
 			m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
 			break
 		}
 	}
-	delete(m.dailyPlanIDs, taskID)
+	delete(m.dailyPlanIDs, identity)
 }
 
 // queueToggleResultCmd fans the state change out to every task view (mirroring a
@@ -119,7 +120,9 @@ func (m *AppModel) queueLedgerTransition(taskID, projectID string, target models
 	} else {
 		builder = planningReconcileArtifactBuilder(m.configManager)
 	}
-	res, err := m.appService.Transition(app.StateRequest{TaskID: taskID, Target: target, PlanningArtifacts: builder})
+	res, err := m.appService.Transition(app.StateRequest{
+		Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID}, Target: target, PlanningArtifacts: builder,
+	})
 	if err != nil {
 		return nil, m.projectByID(projectID), err
 	}

@@ -27,8 +27,8 @@ func crossProjectHeaderFixture(t *testing.T) (m *OutlinerModel, alphaHeader, bet
 
 	m = &OutlinerModel{
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll + 1, // Active
 		loadedProjects:    []*models.Project{alpha, beta},
 	}
@@ -149,7 +149,7 @@ func TestOutlinerProjectHeaderSelectAllSkipped(t *testing.T) {
 	// No project-header row should leak into the selection set under any key.
 	for _, row := range m.rows {
 		if row.IsProjectHeader && m.IsTaskIdentitySelected(TaskIdentity{ProjectID: row.ProjectID, TaskID: row.ProjectID}) {
-			t.Errorf("project header ProjectID=%q leaked into selectedTasks", row.ProjectID)
+			t.Errorf("project header ProjectID=%q leaked into selectedTaskIdentities", row.ProjectID)
 		}
 	}
 }

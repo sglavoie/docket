@@ -190,8 +190,8 @@ func TestAppUpdate_CtrlEscBypassesTextInputAndLocalView(t *testing.T) {
 
 func TestHandleGlobalKeyPress_QIgnoredDuringConfirmDialog(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.focusQueueIDs = map[string]bool{}
-	app.dailyPlanIDs = map[string]bool{}
+	app.focusQueueIDs = map[TaskIdentity]bool{}
+	app.dailyPlanIDs = map[TaskIdentity]bool{}
 
 	view := &confirmQueueToggleView{
 		task:          project.Tasks[0],
@@ -208,7 +208,7 @@ func TestHandleGlobalKeyPress_QIgnoredDuringConfirmDialog(t *testing.T) {
 	if len(app.focusQueue) != 0 {
 		t.Fatalf("expected queue unchanged, got %d items", len(app.focusQueue))
 	}
-	if app.focusQueueIDs[project.Tasks[0].ID] {
+	if app.focusQueueIDs[taskIdentityFor(project.Tasks[0], project)] {
 		t.Fatal("expected task to remain out of queue while confirm dialog is active")
 	}
 }
@@ -473,7 +473,7 @@ func TestHandleGlobalKeyPress_PersistentUndoWinsOverOlderFocusToggle(t *testing.
 
 	task := project.Tasks[0]
 	app.dailyPlan = []FocusTask{{Task: task, Project: project}}
-	app.dailyPlanIDs = map[string]bool{task.ID: true}
+	app.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(task, project): true}
 	app.lastDailyPlanToggle = &dailyPlanToggleAction{Task: task, Project: project, WasAdd: true}
 	app.lastDailyPlanToggleAt = time.Now().Add(-time.Hour)
 	app.lastToggleUndoKind = toggleUndoDailyPlan

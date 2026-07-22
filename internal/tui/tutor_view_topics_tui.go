@@ -407,7 +407,12 @@ Planner contains Today, Next, and Backlog. Review contains Daily,
 Weekly, Activity, Metrics, and Roadmap. Manage contains Inbox,
 Notes, Blockers, Rules, Templates, Tags, Notifications, and
 Settings. Use the View menu inside a destination to change modes
-or organization without creating route-history entries.
+or organization without creating route-history entries. In Planner
+Today, the View menu toggles the selected subtree or shows tree
+depth 1, 2, 3, or all; these folds last only for the TUI session.
+In Task Workspace, All Tasks uses the hierarchy tree, while explicit
+due-date navigation owns the flat due-date lens. Generic Outliner
+navigation keeps the lens already in use.
 
 # Getting Back
 

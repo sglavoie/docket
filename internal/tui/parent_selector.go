@@ -40,12 +40,12 @@ func (p ParentPickerItem) ItemID() string {
 // ParentSelectorModel provides fuzzy-find selection of parent tasks.
 type ParentSelectorModel struct {
 	*BasePicker[ParentPickerItem]
-	allItems       []ParentPickerItem // All valid parent candidates
-	allowNone      bool               // Whether "None" is a valid option
-	currentID      *string            // Currently selected parent ID (for pre-selection)
-	source         PresentationID     // Which view opened this selector
-	reparentTaskID string             // When non-empty, forwarded back in ParentSelectedMsg
-	alwaysSearch   *alwaysSearchSinglePicker[ParentPickerItem]
+	allItems     []ParentPickerItem // All valid parent candidates
+	allowNone    bool               // Whether "None" is a valid option
+	currentID    *string            // Currently selected parent ID (for pre-selection)
+	source       PresentationID     // Which view opened this selector
+	reparentTask TaskIdentity       // When valid, forwarded back in ParentSelectedMsg
+	alwaysSearch *alwaysSearchSinglePicker[ParentPickerItem]
 }
 
 // NewParentSelectorModel creates a new parent selector.
@@ -110,9 +110,9 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 			}
 
 			return ParentSelectedMsg{
-				ParentID:       parentID,
-				Source:         m.source,
-				ReparentTaskID: m.reparentTaskID,
+				ParentID:     parentID,
+				Source:       m.source,
+				ReparentTask: m.reparentTask,
 			}
 		},
 	})
@@ -152,9 +152,9 @@ func (m *ParentSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ParentSelectorModel) selectNoParent() tea.Cmd {
 	return func() tea.Msg {
 		return ParentSelectedMsg{
-			ParentID:       nil,
-			Source:         m.source,
-			ReparentTaskID: m.reparentTaskID,
+			ParentID:     nil,
+			Source:       m.source,
+			ReparentTask: m.reparentTask,
 		}
 	}
 }

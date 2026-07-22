@@ -74,7 +74,7 @@ func TestUITestSnapshotFocusBoard(t *testing.T) {
 	dailyPlan := []FocusTask{}
 	focusQueue := []FocusTask{}
 	m := NewFocusBoardModel(nil, ws.Manager, &dailyPlan, &focusQueue,
-		map[string]bool{}, map[string]bool{}, map[string]bool{})
+		map[TaskIdentity]bool{}, map[TaskIdentity]bool{}, map[TaskIdentity]bool{})
 
 	snap := m.UITestSnapshot()
 	if _, ok := snap["row_count"]; !ok {

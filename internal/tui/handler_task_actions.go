@@ -35,8 +35,8 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 	}
 
 	res, err := m.appService.Transition(app.StateRequest{
-		TaskID: msg.Task.ID,
-		Target: models.TargetStateForStatus(targetStatus),
+		Locator: taskIdentityFor(msg.Task, msg.Project).Locator(),
+		Target:  models.TargetStateForStatus(targetStatus),
 	})
 	if err != nil {
 		return true, errorCmd("%s", err)

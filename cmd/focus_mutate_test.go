@@ -126,6 +126,19 @@ func TestFocusQueueAddRemoveMove(t *testing.T) {
 	}
 }
 
+func TestFocusMutationMembershipChecksAreProjectQualified(t *testing.T) {
+	planning := &config.PlanningState{
+		FocusQueue: []config.FocusQueueItem{{ProjectID: "alpha", TaskID: "shared"}},
+		DailyPlan:  []config.DailyPlanItem{{ProjectID: "alpha", TaskID: "shared"}},
+	}
+	if !focusQueueContains(planning, "shared", "alpha") || !dailyPlanContains(planning, "shared", "alpha") {
+		t.Fatal("alpha membership was not found")
+	}
+	if focusQueueContains(planning, "shared", "beta") || dailyPlanContains(planning, "shared", "beta") {
+		t.Fatal("beta duplicate inherited alpha's planning membership")
+	}
+}
+
 func TestFocusQueueMoveReorders(t *testing.T) {
 	project, configPath, cleanup := setupFocusMutateCLI(t)
 	defer cleanup()

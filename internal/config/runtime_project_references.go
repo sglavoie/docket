@@ -79,30 +79,32 @@ func (d *Domains) ApplySyncedProjectReferences(projectID string, refs ProjectRef
 	}
 
 	if d.Planning != nil {
-		existingFocus := make(map[string]bool, len(d.Planning.FocusQueue))
+		existingFocus := make(map[ProjectTaskLocator]bool, len(d.Planning.FocusQueue))
 		for _, item := range d.Planning.FocusQueue {
-			existingFocus[item.TaskID] = true
+			existingFocus[ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 		for _, item := range refs.FocusQueue {
-			if existingFocus[item.TaskID] {
+			item.ProjectID = projectID
+			locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
+			if existingFocus[locator] {
 				continue
 			}
-			item.ProjectID = projectID
 			d.Planning.FocusQueue = append(d.Planning.FocusQueue, item)
-			existingFocus[item.TaskID] = true
+			existingFocus[locator] = true
 		}
 
-		existingPlan := make(map[string]bool, len(d.Planning.DailyPlan))
+		existingPlan := make(map[ProjectTaskLocator]bool, len(d.Planning.DailyPlan))
 		for _, item := range d.Planning.DailyPlan {
-			existingPlan[item.TaskID] = true
+			existingPlan[ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 		for _, item := range refs.DailyPlan {
-			if existingPlan[item.TaskID] {
+			item.ProjectID = projectID
+			locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
+			if existingPlan[locator] {
 				continue
 			}
-			item.ProjectID = projectID
 			d.Planning.DailyPlan = append(d.Planning.DailyPlan, item)
-			existingPlan[item.TaskID] = true
+			existingPlan[locator] = true
 		}
 	}
 }

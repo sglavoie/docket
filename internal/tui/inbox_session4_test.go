@@ -10,7 +10,7 @@ import (
 )
 
 // session4Backend is a richer inboxBackend stub for session-4 contract tests.
-// It owns a project (for findTaskByID/saveProjectCmd parity with the real
+// It owns a project (for findTask/saveProjectCmd parity with the real
 // backends), exposes scope-style hooks, and tracks which project was passed
 // to saveProjectCmd so undo can be verified against the action's project.
 type session4Backend struct {
@@ -59,8 +59,11 @@ func (s *session4Backend) shouldProcessOnSectionChange(task *models.Task, projec
 func (s *session4Backend) shouldProcessOnStateChange(newState models.WorkflowState) bool {
 	return newState.IsTerminal()
 }
-func (s *session4Backend) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
-	if t := s.project.GetTaskByID(taskID); t != nil {
+func (s *session4Backend) findTask(identity TaskIdentity) (*models.Task, *models.Project) {
+	if s.project == nil || identity.ProjectID != s.project.ID {
+		return nil, nil
+	}
+	if t := s.project.GetTaskByID(identity.TaskID); t != nil {
 		return t, s.project
 	}
 	return nil, nil
@@ -112,8 +115,8 @@ func newSession4Core(t *testing.T) (*inboxCore, *session4Backend, *models.Projec
 	wrapper := &session4BackendRebuilder{session4Backend: backend, rebuild: rebuild}
 
 	c := &inboxCore{
-		processedIDs: make(map[string]bool),
-		skippedIDs:   make(map[string]bool),
+		processedIDs: make(map[TaskIdentity]bool),
+		skippedIDs:   make(map[TaskIdentity]bool),
 		backend:      wrapper,
 	}
 	return c, backend, project
@@ -166,7 +169,7 @@ func TestProgressStatsRemainStableAcrossDeletion(t *testing.T) {
 	// Simulate completing the first task: mark processed, move it to Completed
 	// section, rebuild. The user's perception is "I've handled one of three";
 	// total must stay at 3.
-	c.processedIDs[project.Tasks[0].ID] = true
+	c.processedIDs[taskIdentityFor(project.Tasks[0], project)] = true
 	project.Tasks[0].ApplyTransition(models.StatusDone)
 	c.backend.rebuildTasks()
 
@@ -176,7 +179,7 @@ func TestProgressStatsRemainStableAcrossDeletion(t *testing.T) {
 	}
 
 	// Sectioning another task to Next must also keep total stable.
-	c.processedIDs[project.Tasks[1].ID] = true
+	c.processedIDs[taskIdentityFor(project.Tasks[1], project)] = true
 	project.Tasks[1].SetSection(models.SectionNext)
 	c.backend.rebuildTasks()
 
@@ -187,7 +190,7 @@ func TestProgressStatsRemainStableAcrossDeletion(t *testing.T) {
 
 	// Skipping the last visible task increments skipped, decrements remaining,
 	// and keeps total = 3.
-	c.skippedIDs[project.Tasks[2].ID] = true
+	c.skippedIDs[taskIdentityFor(project.Tasks[2], project)] = true
 	p, s, r, total = c.getProgressStats()
 	if p != 2 || s != 1 || r != 0 || total != 3 {
 		t.Errorf("after skip: got (p=%d s=%d r=%d total=%d), want (2 1 0 3)", p, s, r, total)
@@ -208,16 +211,16 @@ func TestUndoAfterAutoAdvanceRestoresCompletedTask(t *testing.T) {
 	// Simulate "complete the first task, auto-advance, rebuild".
 	snapshot := captureInboxSnapshot(first)
 	first.ApplyTransition(models.StatusDone)
-	c.processedIDs[first.ID] = true
+	firstIdentity := taskIdentityFor(first, project)
+	c.processedIDs[firstIdentity] = true
 	c.processingHistory = append(c.processingHistory, processingAction{
-		taskID:       first.ID,
-		projectID:    project.ID,
+		identity:     firstIdentity,
 		actionType:   "completed task",
 		timestamp:    time.Now(),
 		prevSnapshot: snapshot,
 	})
 	c.currentIndex = 1 // auto-advance moved past index 0
-	c.pendingFocusID = project.Tasks[1].ID
+	c.pendingFocus = taskIdentityFor(project.Tasks[1], project)
 	c.backend.rebuildTasks() // first leaves the queue
 	c.realignCurrentIndex()  // refocus on auto-advanced target
 
@@ -243,11 +246,11 @@ func TestUndoAfterAutoAdvanceRestoresCompletedTask(t *testing.T) {
 	if first.CompletedAt != nil {
 		t.Error("CompletedAt should be nil after undoing completion")
 	}
-	if c.processedIDs[first.ID] {
+	if c.processedIDs[firstIdentity] {
 		t.Error("processedIDs should not contain the undone task")
 	}
-	if c.pendingFocusID != first.ID {
-		t.Errorf("pendingFocusID: got %q, want %q (the restored task)", c.pendingFocusID, first.ID)
+	if c.pendingFocus != firstIdentity {
+		t.Errorf("pendingFocus: got %+v, want %+v (the restored task)", c.pendingFocus, firstIdentity)
 	}
 	if backend.lastSavedProject == nil || backend.lastSavedProject.ID != project.ID {
 		t.Errorf("undo must save action's project; lastSavedProject=%v", backend.lastSavedProject)
@@ -277,15 +280,15 @@ func TestUndoAfterAutoAdvanceRestoresSectionChange(t *testing.T) {
 	first := project.Tasks[0]
 	snapshot := captureInboxSnapshot(first)
 	first.SetSection(models.SectionNext)
-	c.processedIDs[first.ID] = true
+	firstIdentity := taskIdentityFor(first, project)
+	c.processedIDs[firstIdentity] = true
 	c.processingHistory = append(c.processingHistory, processingAction{
-		taskID:       first.ID,
-		projectID:    project.ID,
+		identity:     firstIdentity,
 		actionType:   "moved to Next",
 		prevSnapshot: snapshot,
 	})
 	c.currentIndex = 1
-	c.pendingFocusID = project.Tasks[1].ID
+	c.pendingFocus = taskIdentityFor(project.Tasks[1], project)
 	c.backend.rebuildTasks()
 	c.realignCurrentIndex()
 
@@ -294,7 +297,7 @@ func TestUndoAfterAutoAdvanceRestoresSectionChange(t *testing.T) {
 	if first.State() != models.StateInbox {
 		t.Errorf("state after undo: got %q, want Inbox", first.State())
 	}
-	if c.processedIDs[first.ID] {
+	if c.processedIDs[firstIdentity] {
 		t.Error("processedIDs should not contain the undone task")
 	}
 }
@@ -308,10 +311,10 @@ func TestUndoSkippedTaskRemovesFromSkippedSet(t *testing.T) {
 
 	// Simulate: skip first task, auto-advance to second.
 	first := project.Tasks[0]
-	c.skippedIDs[first.ID] = true
+	firstIdentity := taskIdentityFor(first, project)
+	c.skippedIDs[firstIdentity] = true
 	c.processingHistory = append(c.processingHistory, processingAction{
-		taskID:     first.ID,
-		projectID:  project.ID,
+		identity:   firstIdentity,
 		actionType: "skip",
 	})
 	c.currentIndex = 1
@@ -324,17 +327,17 @@ func TestUndoSkippedTaskRemovesFromSkippedSet(t *testing.T) {
 
 	c.undoLastAction()
 
-	if c.skippedIDs[first.ID] {
+	if c.skippedIDs[firstIdentity] {
 		t.Error("skippedIDs should not contain the unskipped task")
 	}
 	_, s, r, total := c.getProgressStats()
 	if s != 0 || r != 3 || total != 3 {
 		t.Errorf("stats after undo skip: got (s=%d r=%d total=%d), want (0 3 3)", s, r, total)
 	}
-	if c.pendingFocusID != "" {
-		// Pure-skip undo realigns synchronously, so pendingFocusID is consumed.
+	if c.pendingFocus.Valid() {
+		// Pure-skip undo realigns synchronously, so pendingFocus is consumed.
 		// Verify the cursor actually landed on the unskipped task.
-		t.Errorf("pendingFocusID should be consumed by realignCurrentIndex, got %q", c.pendingFocusID)
+		t.Errorf("pendingFocus should be consumed by realignCurrentIndex, got %+v", c.pendingFocus)
 	}
 	if got, _ := c.currentTaskRef(); got == nil || got.ID != first.ID {
 		t.Errorf("cursor should land on the unskipped task, got %v", got)
@@ -363,9 +366,9 @@ func TestCloseMessageReportsAccurateCounts(t *testing.T) {
 	c, backend, project := newSession4Core(t)
 
 	// Mark every task: one processed, one skipped, one processed.
-	c.processedIDs[project.Tasks[0].ID] = true
-	c.skippedIDs[project.Tasks[1].ID] = true
-	c.processedIDs[project.Tasks[2].ID] = true
+	c.processedIDs[taskIdentityFor(project.Tasks[0], project)] = true
+	c.skippedIDs[taskIdentityFor(project.Tasks[1], project)] = true
+	c.processedIDs[taskIdentityFor(project.Tasks[2], project)] = true
 	c.currentIndex = 2
 
 	cmd := c.advanceToNext(true)
@@ -395,15 +398,15 @@ func simulateCommittedDelete(c *inboxCore, project *models.Project, taskID strin
 			break
 		}
 	}
-	return c.applyCommittedDelete(taskID)
+	return c.applyCommittedDelete(TaskIdentity{ProjectID: project.ID, TaskID: taskID})
 }
 
 func TestApplyCommittedDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
 	c, backend, project := newSession4Core(t)
 
 	deletedID := project.Tasks[2].ID
-	c.processedIDs[project.Tasks[0].ID] = true
-	c.skippedIDs[project.Tasks[1].ID] = true
+	c.processedIDs[taskIdentityFor(project.Tasks[0], project)] = true
+	c.skippedIDs[taskIdentityFor(project.Tasks[1], project)] = true
 	c.currentIndex = 2
 
 	// The user presses x/X: requestDelete captures the pending task and the
@@ -416,7 +419,8 @@ func TestApplyCommittedDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
 	if _, ok := reqCmd().(TaskDeleteRequestedMsg); !ok {
 		t.Fatalf("requestDelete emitted %T, want TaskDeleteRequestedMsg", reqCmd())
 	}
-	if c.processedIDs[deletedID] {
+	deletedIdentity := TaskIdentity{ProjectID: project.ID, TaskID: deletedID}
+	if c.processedIDs[deletedIdentity] {
 		t.Fatal("request must not mark the task processed before the commit")
 	}
 
@@ -426,7 +430,7 @@ func TestApplyCommittedDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("applyCommittedDelete should return a close command when no unprocessed tasks remain")
 	}
-	if !c.processedIDs[deletedID] {
+	if !c.processedIDs[deletedIdentity] {
 		t.Fatal("deleted task should be marked processed after the commit")
 	}
 
@@ -457,7 +461,8 @@ func TestApplyCommittedDeleteAdvancesWhenUnprocessedTaskRemains(t *testing.T) {
 	if cmd != nil {
 		t.Fatalf("applyCommittedDelete should not close while an unprocessed task remains, got %v", cmd)
 	}
-	if !c.processedIDs[deletedID] {
+	deletedIdentity := TaskIdentity{ProjectID: project.ID, TaskID: deletedID}
+	if !c.processedIDs[deletedIdentity] {
 		t.Fatal("deleted task should be marked processed after the commit")
 	}
 	if backend.closeMsgFired {
@@ -469,8 +474,8 @@ func TestApplyCommittedDeleteAdvancesWhenUnprocessedTaskRemains(t *testing.T) {
 	if task == nil || task.ID != nextID {
 		t.Fatalf("after commit, current task ID = %v, want %q", task, nextID)
 	}
-	if c.pendingFocusID != "" {
-		t.Errorf("pendingFocusID should be consumed by realign, got %q", c.pendingFocusID)
+	if c.pendingFocus.Valid() {
+		t.Errorf("pendingFocus should be consumed by realign, got %+v", c.pendingFocus)
 	}
 }
 
@@ -510,9 +515,9 @@ func TestRealignCurrentIndexFindsFocusedTaskAfterRebuild(t *testing.T) {
 
 	// Move first task out of the inbox so a rebuild compacts the queue.
 	project.Tasks[0].SetSection(models.SectionNext)
-	c.processedIDs[project.Tasks[0].ID] = true
-	c.pendingFocusID = project.Tasks[1].ID // expected auto-advance target
-	c.currentIndex = 1                     // pre-rebuild index of project.Tasks[1]
+	c.processedIDs[taskIdentityFor(project.Tasks[0], project)] = true
+	c.pendingFocus = taskIdentityFor(project.Tasks[1], project) // expected auto-advance target
+	c.currentIndex = 1                                          // pre-rebuild index of project.Tasks[1]
 
 	c.backend.rebuildTasks()
 	c.realignCurrentIndex()
@@ -520,7 +525,7 @@ func TestRealignCurrentIndexFindsFocusedTaskAfterRebuild(t *testing.T) {
 	if got, _ := c.currentTaskRef(); got == nil || got.ID != project.Tasks[1].ID {
 		t.Errorf("realign should land on focus target; got %v", got)
 	}
-	if c.pendingFocusID != "" {
-		t.Error("pendingFocusID should be cleared after realign succeeds")
+	if c.pendingFocus.Valid() {
+		t.Error("pendingFocus should be cleared after realign succeeds")
 	}
 }

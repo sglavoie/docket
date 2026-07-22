@@ -12,6 +12,7 @@ import (
 // competing to set the same field on the same task. The conflicting field is left
 // unchanged; the adapter surfaces this to the user.
 type WorkflowConflict struct {
+	ProjectID string
 	TaskID    string
 	TaskTitle string
 	Field     string
@@ -21,8 +22,9 @@ type WorkflowConflict struct {
 // WorkflowMove records a task relocated to another project by a move_to_project
 // rule action, executed as part of the cascade.
 type WorkflowMove struct {
-	TaskID        string
-	DestProjectID string
+	SourceProjectID string
+	TaskID          string
+	DestProjectID   string
 }
 
 // WorkflowResult reports the outcome of a workflow cascade executed as one

@@ -37,23 +37,23 @@ func (m *OutlinerModel) setNoProjectStatus() {
 // marking all parent tasks as expanded.
 func (m *OutlinerModel) ensureExpandedNodes() {
 	if len(m.expandedNodes) == 0 {
-		m.expandedNodes = make(map[string]bool)
+		m.expandedNodes = make(map[TaskIdentity]bool)
 		if m.project != nil {
-			m.markAllExpanded(m.project.GetRootTasks())
+			m.markAllExpanded(m.project.ID, m.project.GetRootTasks())
 		} else {
 			for _, p := range m.loadedProjects {
-				m.markAllExpanded(p.GetRootTasks())
+				m.markAllExpanded(p.ID, p.GetRootTasks())
 			}
 		}
 	}
 }
 
 // markAllExpanded marks all parent tasks as expanded recursively.
-func (m *OutlinerModel) markAllExpanded(tasks []*models.Task) {
+func (m *OutlinerModel) markAllExpanded(projectID string, tasks []*models.Task) {
 	for _, task := range tasks {
 		if len(task.Children) > 0 {
-			m.expandedNodes[task.ID] = true
-			m.markAllExpanded(task.Children)
+			m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] = true
+			m.markAllExpanded(projectID, task.Children)
 		}
 	}
 }
@@ -61,20 +61,21 @@ func (m *OutlinerModel) markAllExpanded(tasks []*models.Task) {
 // collapseToDepth expands nodes at depth < N and collapses nodes at depth >= N.
 func (m *OutlinerModel) collapseToDepth(depth int) {
 	m.ensureExpandedNodes()
-	var walk func(tasks []*models.Task)
-	walk = func(tasks []*models.Task) {
+	var walk func(projectID string, tasks []*models.Task)
+	walk = func(projectID string, tasks []*models.Task) {
 		for _, task := range tasks {
 			if len(task.Children) > 0 {
-				m.expandedNodes[task.ID] = task.Level < depth
-				walk(task.Children)
+				identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+				m.expandedNodes[identity] = task.Level < depth
+				walk(projectID, task.Children)
 			}
 		}
 	}
 	if m.project != nil {
-		walk(m.project.GetRootTasks())
+		walk(m.project.ID, m.project.GetRootTasks())
 	} else {
 		for _, p := range m.loadedProjects {
-			walk(p.GetRootTasks())
+			walk(p.ID, p.GetRootTasks())
 		}
 	}
 	m.rebuildRows()
@@ -89,7 +90,7 @@ func (m *OutlinerModel) collapseToDepth(depth int) {
 // The coordinator commits one ledger-backed transaction and the shell owns
 // reload + toast. Mirrors the cross-project crossSendTaskToSection.
 func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (tea.Model, tea.Cmd) {
-	if task == nil {
+	if task == nil || m.project == nil {
 		return m, nil
 	}
 	label := "Move to " + section
@@ -97,7 +98,7 @@ func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (te
 		label = "Move to Ready"
 	}
 	opts := m.singleWorkflowOpts(task, label)
-	return m, m.taskItem.SetSectionWorkflow(task.ID, section, opts, func(app.TaskResult) string { return label })
+	return m, m.taskItem.SetSectionWorkflow(taskIdentityFor(task, m.project), section, opts, func(app.TaskResult) string { return label })
 }
 
 // sendTasksToSectionBulk moves all selected tasks to the specified section.
@@ -199,14 +200,14 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 // move-to-bottom keep their user-visible outcome while unifying on the app layer's
 // single source of truth.
 func (m *OutlinerModel) crossMoveTaskToPosition(task *models.Task, toTop bool) (tea.Model, tea.Cmd) {
-	row, _, ok := m.crossGetMutationTarget()
+	row, project, ok := m.crossGetMutationTarget()
 	if !ok || row.task.ID != task.ID {
 		return m, nil
 	}
 	if toTop {
-		return m, m.taskItem.MoveToTop(task.ID)
+		return m, m.taskItem.MoveToTop(taskIdentityFor(task, project))
 	}
-	return m, m.taskItem.MoveToBottom(task.ID)
+	return m, m.taskItem.MoveToBottom(taskIdentityFor(task, project))
 }
 
 // jumpToNextSection moves the cursor to the next (direction=1) or previous

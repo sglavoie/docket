@@ -313,16 +313,16 @@ func TestCLIWorkflowDisabledRulesAndNoOpCommands(t *testing.T) {
 func TestCLIWorkflowConflictWarningsAreNormalized(t *testing.T) {
 	_, stderr, err := captureTUITestOutput(t, func() error {
 		emitCLIWorkflowConflicts([]app.WorkflowConflict{
-			{TaskID: "task-b", TaskTitle: "Beta", Field: "priority", Rules: []string{"z-rule", "a-rule"}},
-			{TaskID: "task-a", TaskTitle: "Alpha", Field: "section", Rules: []string{"c-rule", "b-rule"}},
+			{ProjectID: "proj", TaskID: "task-b", TaskTitle: "Beta", Field: "priority", Rules: []string{"z-rule", "a-rule"}},
+			{ProjectID: "proj", TaskID: "task-a", TaskTitle: "Alpha", Field: "section", Rules: []string{"c-rule", "b-rule"}},
 		})
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("emit conflict warnings: %v", err)
 	}
-	alpha := "Alpha (task-a): section <- b-rule, c-rule"
-	beta := "Beta (task-b): priority <- a-rule, z-rule"
+	alpha := "Alpha (proj:task-a): section <- b-rule, c-rule"
+	beta := "Beta (proj:task-b): priority <- a-rule, z-rule"
 	if !strings.Contains(stderr, "warning: workflow rule conflicts detected:") ||
 		!strings.Contains(stderr, alpha) || !strings.Contains(stderr, beta) ||
 		strings.Index(stderr, alpha) > strings.Index(stderr, beta) {

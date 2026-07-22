@@ -30,7 +30,7 @@ func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive b
 		result, err := service.ApplyPreparedActionPlan(context.Background(), prepared, app.ApplyActionPlanOptions{
 			ConfirmSafe:        true,
 			ConfirmDestructive: destructive,
-			DeletedTaskArtifacts: func(deletedTaskIDs []string) ([]storage.ArtifactChange, error) {
+			DeletedTaskLocatorArtifacts: func(deletedTaskLocators []app.TaskLocator) ([]storage.ArtifactChange, error) {
 				if runtime == nil {
 					return nil, fmt.Errorf("runtime state is unavailable")
 				}
@@ -40,7 +40,7 @@ func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive b
 				if pendingDomains == nil {
 					return nil, fmt.Errorf("runtime domains are unavailable")
 				}
-				if pendingDomains.Planning.RemoveDurableTaskRefs(askActionPlanTaskIDSet(deletedTaskIDs)) == 0 || runtime.DataDir() == "" {
+				if pendingDomains.Planning.RemoveDurableTaskLocators(configTaskLocatorsFromApp(deletedTaskLocators)) == 0 || runtime.DataDir() == "" {
 					return nil, nil
 				}
 				artifact, artifactErr := runtime.CheckedPlanningArtifact(pendingDomains.Planning)
@@ -58,14 +58,14 @@ func (m *AskViewModel) applyPlan(prepared *app.PreparedActionPlan, destructive b
 	return tea.Batch(applyCmd, m.spinner.Tick())
 }
 
-func repairAskActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []string, pendingDomains *config.Domains) error {
-	if len(deletedTaskIDs) == 0 {
+func repairAskActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskLocators []app.TaskLocator, pendingDomains *config.Domains) error {
+	if len(deletedTaskLocators) == 0 {
 		return nil
 	}
 	if runtime == nil {
 		return fmt.Errorf("runtime state is unavailable")
 	}
-	deleted := askActionPlanTaskIDSet(deletedTaskIDs)
+	deleted := configTaskLocatorsFromApp(deletedTaskLocators)
 	if runtime.DataDir() == "" {
 		if pendingDomains == nil {
 			var err error
@@ -74,7 +74,7 @@ func repairAskActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []
 				return err
 			}
 		}
-		pendingDomains.Machine.RemoveMachineLocalTaskRefs(deleted)
+		pendingDomains.Machine.RemoveMachineLocalTaskLocators(deleted)
 		runtime.SetDomainsInMemory(pendingDomains)
 		return nil
 	}
@@ -88,18 +88,10 @@ func repairAskActionPlanTaskRefs(runtime *config.RuntimeState, deletedTaskIDs []
 		warnings = append(warnings, err)
 		return errors.Join(warnings...)
 	}
-	if domains.Machine.RemoveMachineLocalTaskRefs(deleted) > 0 {
+	if domains.Machine.RemoveMachineLocalTaskLocators(deleted) > 0 {
 		if err := runtime.CommitMachine(domains.Machine); err != nil {
 			warnings = append(warnings, fmt.Errorf("update recent visits: %w", err))
 		}
 	}
 	return errors.Join(warnings...)
-}
-
-func askActionPlanTaskIDSet(ids []string) map[string]bool {
-	set := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		set[id] = true
-	}
-	return set
 }

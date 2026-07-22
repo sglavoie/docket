@@ -140,15 +140,20 @@ func (m *LinkedTaskSelectorModel) unlinkTask(idx int) tea.Cmd {
 	}
 
 	rel := m.relations[idx]
+	sourceIdentity := taskIdentityFor(m.sourceTask, m.project)
 	var commit tea.Cmd
 	switch rel.RelationType {
 	case "blocked by":
-		commit = m.coordinator.RemoveDependency(m.sourceTask.ID, rel.TaskRef)
+		commit = m.coordinator.RemoveDependency(sourceIdentity, rel.TaskRef)
 	case "related":
-		commit = m.coordinator.RemoveRelated(m.sourceTask.ID, rel.TaskRef)
+		commit = m.coordinator.RemoveRelated(sourceIdentity, rel.TaskRef)
 	case "blocks":
 		if rel.Task != nil {
-			commit = m.coordinator.RemoveDependency(rel.Task.ID, m.sourceTask.ID)
+			project := rel.Project
+			if project == nil {
+				project = m.project
+			}
+			commit = m.coordinator.RemoveDependency(taskIdentityFor(rel.Task, project), m.sourceTask.ID)
 		}
 	}
 	if commit == nil {

@@ -35,10 +35,11 @@ func reconcilePlanningExclusivity(planning *config.PlanningState, targets []app.
 	return changed
 }
 
-// focusQueueContains reports whether the Next order index already lists taskID.
-func focusQueueContains(planning *config.PlanningState, taskID string) bool {
+// focusQueueContains reports whether the Next order index already lists the
+// project-qualified task.
+func focusQueueContains(planning *config.PlanningState, identity TaskIdentity) bool {
 	for _, item := range planning.GetFocusQueue() {
-		if item.TaskID == taskID {
+		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true
 		}
 	}
@@ -61,17 +62,18 @@ func focusQueueAddArtifactBuilder(mgr *config.Manager, taskID, projectID string)
 			return nil, err
 		}
 		reconcilePlanningExclusivity(planning, targets)
-		if !focusQueueContains(planning, taskID) {
+		if !focusQueueContains(planning, TaskIdentity{ProjectID: projectID, TaskID: taskID}) {
 			planning.SetFocusQueue(append(planning.GetFocusQueue(), config.FocusQueueItem{TaskID: taskID, ProjectID: projectID}))
 		}
 		return planningDomainArtifact(mgr, planning)
 	}
 }
 
-// dailyPlanContains reports whether the Daily Plan (Today) already lists taskID.
-func dailyPlanContains(planning *config.PlanningState, taskID string) bool {
+// dailyPlanContains reports whether the Daily Plan (Today) already lists the
+// project-qualified task.
+func dailyPlanContains(planning *config.PlanningState, identity TaskIdentity) bool {
 	for _, item := range planning.GetDailyPlan() {
-		if item.TaskID == taskID {
+		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true
 		}
 	}
@@ -96,7 +98,7 @@ func dailyPlanAddArtifactBuilder(mgr *config.Manager, taskID, projectID, planned
 			return nil, err
 		}
 		reconcilePlanningExclusivity(planning, targets)
-		if !dailyPlanContains(planning, taskID) {
+		if !dailyPlanContains(planning, TaskIdentity{ProjectID: projectID, TaskID: taskID}) {
 			planning.SetDailyPlan(append(planning.GetDailyPlan(), config.DailyPlanItem{
 				TaskID:      taskID,
 				ProjectID:   projectID,
@@ -122,15 +124,16 @@ func plannerCaptureArtifactBuilder(mgr *config.Manager, tab int, plannedDate str
 		}
 		reconcilePlanningExclusivity(planning, targets)
 		for _, target := range targets {
+			identity := TaskIdentity{ProjectID: target.ProjectID, TaskID: target.TaskID}
 			switch tab {
 			case boardTabToday:
-				if !dailyPlanContains(planning, target.TaskID) {
+				if !dailyPlanContains(planning, identity) {
 					planning.SetDailyPlan(append(planning.GetDailyPlan(), config.DailyPlanItem{
 						TaskID: target.TaskID, ProjectID: target.ProjectID, PlannedDate: plannedDate,
 					}))
 				}
 			case boardTabNext:
-				if !focusQueueContains(planning, target.TaskID) {
+				if !focusQueueContains(planning, identity) {
 					planning.SetFocusQueue(append(planning.GetFocusQueue(), config.FocusQueueItem{
 						TaskID: target.TaskID, ProjectID: target.ProjectID,
 					}))
@@ -152,7 +155,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 	planning := m.runtime.Planning()
 	m.focusQueue = m.focusQueue[:0]
 	if m.focusQueueIDs == nil {
-		m.focusQueueIDs = make(map[string]bool)
+		m.focusQueueIDs = make(map[TaskIdentity]bool)
 	} else {
 		clear(m.focusQueueIDs)
 	}
@@ -163,12 +166,12 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
 			m.focusQueue = append(m.focusQueue, FocusTask{Task: t, Project: p})
-			m.focusQueueIDs[item.TaskID] = true
+			m.focusQueueIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
 	m.dailyPlan = m.dailyPlan[:0]
 	if m.dailyPlanIDs == nil {
-		m.dailyPlanIDs = make(map[string]bool)
+		m.dailyPlanIDs = make(map[TaskIdentity]bool)
 	} else {
 		clear(m.dailyPlanIDs)
 	}
@@ -179,7 +182,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
 			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: t, Project: p})
-			m.dailyPlanIDs[item.TaskID] = true
+			m.dailyPlanIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
 }

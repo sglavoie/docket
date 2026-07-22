@@ -34,7 +34,7 @@ func (m *AppModel) handleAskMessage(raw tea.Msg) (bool, tea.Cmd) {
 
 	var cmds []tea.Cmd
 	if msg.Err == nil {
-		msg.RepairWarning = repairAskActionPlanTaskRefs(m.runtime, msg.Result.DeletedTaskIDs, msg.PendingDomains)
+		msg.RepairWarning = repairAskActionPlanTaskRefs(m.runtime, msg.Result.DeletedTaskLocators, msg.PendingDomains)
 		for _, projectID := range msg.Result.TouchedProjects {
 			m.reloadProjectByID(projectID)
 		}
@@ -228,22 +228,14 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	}
 	m.refreshLoadedTaskWorkspace()
 	// Repair the machine-local recent visits for every removed task — a bulk
-	// delete folds the DURABLE planning refs (Focus Queue, Daily Plan, dismissals)
+	// delete folds the DURABLE project-qualified planning refs (Focus Queue and Daily Plan)
 	// into the transaction as a config artifact, but recent visits are
 	// non-authoritative UI state cleaned separately after the commit, mirroring the
 	// CLI delete. A save failure here is a warning, not an error: the delete is
 	// already committed.
-	if len(msg.RemovedTaskLocators) > 0 || len(msg.RemovedTaskIDs) > 0 {
+	if len(msg.RemovedTaskLocators) > 0 {
 		if err := m.commitMachineMutation(func(machine *config.MachineState) {
-			if len(msg.RemovedTaskLocators) > 0 {
-				locators := make([]config.ProjectTaskLocator, 0, len(msg.RemovedTaskLocators))
-				for _, locator := range msg.RemovedTaskLocators {
-					locators = append(locators, config.ProjectTaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
-				}
-				machine.RemoveMachineLocalTaskLocators(locators)
-				return
-			}
-			machine.RemoveMachineLocalTaskRefs(taskIDSliceToSet(msg.RemovedTaskIDs))
+			machine.RemoveMachineLocalTaskLocators(configTaskLocatorsFromApp(msg.RemovedTaskLocators))
 		}); err != nil {
 			logging.Warn("failed to update recent visits after bulk delete: %v", err)
 		}
@@ -287,7 +279,7 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	// refreshed above (so the queue rebuild reads committed project data). A
 	// no-op for non-inbox origins and for a batch whose token does not match the
 	// armed request.
-	if inboxCmd := m.applyPendingInboxDelete(msg.DeleteRequestToken, msg.RemovedTaskIDs); inboxCmd != nil {
+	if inboxCmd := m.applyPendingInboxDelete(msg.DeleteRequestToken, msg.RemovedTaskLocators, msg.RemovedTaskIDs); inboxCmd != nil {
 		return tea.Batch(saveCmd, inboxCmd)
 	}
 	return saveCmd
@@ -453,8 +445,9 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 		}
 		if v := m.views.Get(ViewTaskDetail); v != nil {
 			if td, ok := v.(*TaskDetailModel); ok {
-				if td.task != nil {
-					td.SetPlanningMembership(m.dailyPlanIDs[td.task.ID], m.focusQueueIDs[td.task.ID])
+				if td.task != nil && td.project != nil {
+					identity := taskIdentityFor(td.task, td.project)
+					td.SetPlanningMembership(m.dailyPlanIDs[identity], m.focusQueueIDs[identity])
 				}
 				if !td.refreshAfterReload() && m.taskDetail == td && m.activeTaskDetail() {
 					saveCmds = append(saveCmds, func() tea.Msg { return BackMsg{} })

@@ -347,11 +347,13 @@ func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx i
 	}
 }
 
-// EditForm runs the task-form edit use case (full field replacement) and emits a
-// TaskUpdatedMsg carrying the committed result, so the shell reloads the project
-// and re-resolves the live task pointer. A rejected edit surfaces an ErrorMsg,
-// leaving the form open with the pre-mutation draft.
-func (c TaskFormCoordinator) EditForm(req app.EditRequest) tea.Cmd {
+// EditForm runs the task-form edit use case for a qualified task (full field
+// replacement) and emits a TaskUpdatedMsg carrying the committed result, so the
+// shell reloads the project and re-resolves the live task pointer. A rejected
+// edit surfaces an ErrorMsg, leaving the form open with the pre-mutation draft.
+func (c TaskFormCoordinator) EditForm(task TaskIdentity, req app.EditRequest) tea.Cmd {
+	req.TaskID = ""
+	req.Locator = task.Locator()
 	mutator := c.mutator
 	return func() tea.Msg {
 		res, err := mutator.Edit(req)

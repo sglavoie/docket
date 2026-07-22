@@ -138,11 +138,11 @@ func (m *AppModel) quickSwitchTogglePin() {
 
 	entry.Pinned = !entry.Pinned
 
-	taskID := entry.Task.ID
+	identity := entry.Identity()
 	m.recentTaskVisits = m.sortedQuickSwitchEntries()
 	m.rebuildQuickSwitchFilter()
 	for i, filteredIdx := range m.quickSwitchFiltered {
-		if m.recentTaskVisits[filteredIdx].Task.ID == taskID {
+		if m.recentTaskVisits[filteredIdx].Identity() == identity {
 			m.quickSwitchCursor = i
 			break
 		}

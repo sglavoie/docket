@@ -111,6 +111,20 @@ func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleArchiveAllCompletedTasks()
 
 	case TasksArchivedMsg:
+		if len(msg.ArchivedTaskLocators) > 0 {
+			domains := cloneRuntimeDomains(m.runtime)
+			if domains == nil {
+				m.err = fmt.Errorf("runtime state is unavailable")
+				return true, nil
+			}
+			locators := configTaskLocatorsFromApp(msg.ArchivedTaskLocators)
+			domains.Planning.RemoveDurableTaskLocators(locators)
+			domains.Machine.RemoveMachineLocalTaskLocators(locators)
+			if err := m.commitRuntimeDomains(domains); err != nil {
+				m.err = err
+				return true, nil
+			}
+		}
 		m.pruneDeletedTaskRefs()
 		statusMsg := fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count)
 		if msg.Projects > 0 {

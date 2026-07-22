@@ -180,7 +180,10 @@ func sortByID(tasks []*models.Task) {
 	})
 }
 
-func taskGraphKey(t *models.Task) string {
+// TaskKey returns the stable project-qualified identity used by cross-project
+// planning graphs and renderer indexes. It falls back to the bare task ID only
+// for projectless inputs retained by project-scoped compatibility callers.
+func TaskKey(t *models.Task) string {
 	if t == nil {
 		return ""
 	}
@@ -194,6 +197,8 @@ func taskGraphKey(t *models.Task) string {
 	}
 	return t.ID
 }
+
+func taskGraphKey(t *models.Task) string { return TaskKey(t) }
 
 // dependencyTaskKey resolves a dependency reference against the local task map.
 // Unqualified refs may match by parsed task ID. Qualified refs must match an

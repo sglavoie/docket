@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -88,13 +89,14 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	for _, t := range completedTasks {
 		archivedIDs[t.ID] = true
 	}
+	archivedLocators := configTaskLocatorsForProject(project.ID, archivedIDs)
 
-	// Clean the DURABLE planning refs (Focus Queue, Daily Plan, dismissals) of every
+	// Clean the DURABLE planning refs (Focus Queue and Daily Plan) of every
 	// archived task and fold them into the archive transaction as a config artifact,
 	// so a partial archive can never leave planning refs pointing at an archived
 	// task. Machine-local recent visits are repaired separately after the commit.
 	var artifacts []storage.ArtifactChange
-	if domains.Planning.RemoveDurableTaskRefs(archivedIDs) > 0 {
+	if domains.Planning.RemoveDurableTaskLocators(archivedLocators) > 0 {
 		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
@@ -115,7 +117,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	// Repair the machine-local recent visits separately — non-authoritative UI state
 	// updated only after the durable commit succeeded. A failure here is a warning,
 	// not an error: the archive is already committed and recent visits are best-effort.
-	if domains.Machine.RemoveMachineLocalTaskRefs(archivedIDs) > 0 {
+	if domains.Machine.RemoveMachineLocalTaskLocators(archivedLocators) > 0 {
 		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}
@@ -189,22 +191,21 @@ func runTaskArchiveAll(out MutateOutput) error {
 		return emitArchiveAllOutput(out, totalArchived, results, failures)
 	}
 
-	// Aggregate the archived task IDs across every confirmed candidate and clean their
-	// DURABLE planning refs (Focus Queue, Daily Plan, dismissals), folding them into
+	// Aggregate the archived task locators across every confirmed candidate and clean
+	// their DURABLE planning refs (Focus Queue and Daily Plan), folding them into
 	// the archive-all transaction as a single config artifact so the cleanup commits
 	// atomically with the whole batch. Machine-local recent visits are repaired
 	// separately after the commit.
-	allArchivedIDs := make(map[string]bool)
+	var allArchivedLocators []config.ProjectTaskLocator
 	projectIDs := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
 		projectIDs = append(projectIDs, candidate.Project.ID)
-		for id := range candidate.ArchivedIDs {
-			allArchivedIDs[id] = true
-		}
+		allArchivedLocators = append(allArchivedLocators,
+			configTaskLocatorsForProject(candidate.Project.ID, candidate.ArchivedIDs)...)
 	}
 
 	var artifacts []storage.ArtifactChange
-	if domains.Planning.RemoveDurableTaskRefs(allArchivedIDs) > 0 {
+	if domains.Planning.RemoveDurableTaskLocators(allArchivedLocators) > 0 {
 		arts, artErr := encodeSyncedDomainArtifacts(workspace.Runtime, domains)
 		if artErr != nil {
 			return artErr
@@ -230,7 +231,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 
 	// Repair machine-local recent visits once after the archive commit — best-effort,
 	// warning-only, non-authoritative UI state.
-	if domains.Machine.RemoveMachineLocalTaskRefs(allArchivedIDs) > 0 {
+	if domains.Machine.RemoveMachineLocalTaskLocators(allArchivedLocators) > 0 {
 		if saveErr := workspace.Runtime.CommitMachine(domains.Machine); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to update recent visits: %v\n", saveErr)
 		}

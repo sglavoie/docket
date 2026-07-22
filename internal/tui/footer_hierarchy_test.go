@@ -142,7 +142,7 @@ func TestTodayCompletedFooterKeepsPlannerTabNavigation(t *testing.T) {
 	project := cockpitProject(t, "Cockpit Done")
 	task := cockpitTask(t, project, "Wrap up release notes", models.StatusDone, models.SectionCompleted)
 	row := cockpitBoardRow(task, project)
-	dailyPlanIDs := map[string]bool{task.ID: true}
+	dailyPlanIDs := map[TaskIdentity]bool{taskIdentityFor(task, project): true}
 	openLoops := OpenLoops{TodayTotal: 1, TodayDone: 1, HasTasks: true}
 	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, openLoops, boardTabToday)
 	m.SetSize(120, 30)

@@ -17,11 +17,23 @@ func (s *Service) AttachURL(taskID, url string) (TaskResult, error) {
 	})
 }
 
+func (s *Service) AttachURLByLocator(locator TaskLocator, url string) (TaskResult, error) {
+	return s.mutateTaskByLocator(locator, "Attach URL", url, func(ref TaskRef) error {
+		return ref.Task.AddAttachment(url, true, url)
+	})
+}
+
 // AttachCodeReference records a code reference (file:line) on a task. Code
 // references are stored as metadata only — the referenced file is never copied —
 // so the mutation commits exactly one project write.
 func (s *Service) AttachCodeReference(taskID, path string, line int) (TaskResult, error) {
 	return s.mutateTask(taskID, "Attach Code Ref", fmt.Sprintf("%s:%d", path, line), func(ref TaskRef) error {
+		return ref.Task.AddCodeReference(path, line)
+	})
+}
+
+func (s *Service) AttachCodeReferenceByLocator(locator TaskLocator, path string, line int) (TaskResult, error) {
+	return s.mutateTaskByLocator(locator, "Attach Code Ref", fmt.Sprintf("%s:%d", path, line), func(ref TaskRef) error {
 		return ref.Task.AddCodeReference(path, line)
 	})
 }
@@ -44,10 +56,18 @@ type AttachFileResult struct {
 // legacy copy-then-compensate dance. A destination filename that already exists is
 // rejected by the copy resolver, matching the legacy CopyAttachment contract.
 func (s *Service) AttachFile(taskID, sourcePath string) (AttachFileResult, error) {
+	return s.attachFile(taskID, TaskLocator{}, sourcePath)
+}
+
+func (s *Service) AttachFileByLocator(locator TaskLocator, sourcePath string) (AttachFileResult, error) {
+	return s.attachFile("", locator, sourcePath)
+}
+
+func (s *Service) attachFile(taskID string, locator TaskLocator, sourcePath string) (AttachFileResult, error) {
 	if sourcePath == "" {
 		return AttachFileResult{}, invalidInput("attachment", "source path is required")
 	}
-	ref, revision, err := s.resolveTask(taskID)
+	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return AttachFileResult{}, err
 	}
@@ -96,7 +116,15 @@ type RemoveAttachmentResult struct {
 // vice versa). URL and code-reference removals, and removals with deleteFile
 // false, carry no file side effect.
 func (s *Service) RemoveAttachment(taskID string, index int, deleteFile bool) (RemoveAttachmentResult, error) {
-	ref, revision, err := s.resolveTask(taskID)
+	return s.removeAttachment(taskID, TaskLocator{}, index, deleteFile)
+}
+
+func (s *Service) RemoveAttachmentByLocator(locator TaskLocator, index int, deleteFile bool) (RemoveAttachmentResult, error) {
+	return s.removeAttachment("", locator, index, deleteFile)
+}
+
+func (s *Service) removeAttachment(taskID string, locator TaskLocator, index int, deleteFile bool) (RemoveAttachmentResult, error) {
+	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return RemoveAttachmentResult{}, err
 	}
@@ -136,6 +164,18 @@ func (s *Service) RemoveAttachment(taskID string, index int, deleteFile bool) (R
 // only — no bytes move — so the mutation commits exactly one project write.
 func (s *Service) ReorderAttachment(taskID string, from, to int) (TaskResult, error) {
 	return s.mutateTask(taskID, "Reorder Attachments", "", func(ref TaskRef) error {
+		count := len(ref.Task.Attachments)
+		if from < 0 || from >= count || to < 0 || to >= count {
+			return invalidInput("attachment", fmt.Sprintf("reorder %d -> %d out of range (task has %d)", from, to, count))
+		}
+		ref.Task.Attachments[from], ref.Task.Attachments[to] = ref.Task.Attachments[to], ref.Task.Attachments[from]
+		ref.Task.UpdatedAt = s.clock.Now()
+		return nil
+	})
+}
+
+func (s *Service) ReorderAttachmentByLocator(locator TaskLocator, from, to int) (TaskResult, error) {
+	return s.mutateTaskByLocator(locator, "Reorder Attachments", "", func(ref TaskRef) error {
 		count := len(ref.Task.Attachments)
 		if from < 0 || from >= count || to < 0 || to >= count {
 			return invalidInput("attachment", fmt.Sprintf("reorder %d -> %d out of range (task has %d)", from, to, count))

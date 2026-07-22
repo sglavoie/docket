@@ -380,12 +380,15 @@ func TestMoveTaskToProject_UpdatesConfigReferences(t *testing.T) {
 	domains := config.NewDomains()
 	domains.Planning.FocusQueue = []config.FocusQueueItem{
 		{TaskID: task.ID, ProjectID: sourceProject.ID},
+		{TaskID: task.ID, ProjectID: "other-project"},
 	}
 	domains.Planning.DailyPlan = []config.DailyPlanItem{
 		{TaskID: task.ID, ProjectID: sourceProject.ID, PlannedDate: "2026-04-13"},
+		{TaskID: task.ID, ProjectID: "other-project", PlannedDate: "2026-04-13"},
 	}
 	domains.Machine.RecentTaskVisits = []config.RecentTaskVisit{
 		{TaskID: task.ID, ProjectID: sourceProject.ID},
+		{TaskID: task.ID, ProjectID: "other-project"},
 	}
 
 	// Perform the move
@@ -399,8 +402,8 @@ func TestMoveTaskToProject_UpdatesConfigReferences(t *testing.T) {
 	for _, mt := range result.MovedTasks {
 		movedTaskIDs[mt.ID] = true
 	}
-	updated := domains.Planning.ReassignDurablePlanningProject(movedTaskIDs, destProject.ID)
-	updated += domains.Machine.ReassignRecentVisitsProject(movedTaskIDs, destProject.ID)
+	updated := domains.Planning.ReassignDurablePlanningProjectFrom(movedTaskIDs, sourceProject.ID, destProject.ID)
+	updated += domains.Machine.ReassignRecentVisitsProjectFrom(movedTaskIDs, sourceProject.ID, destProject.ID)
 
 	if updated != 3 {
 		t.Fatalf("expected 3 config entries updated, got %d", updated)
@@ -413,6 +416,12 @@ func TestMoveTaskToProject_UpdatesConfigReferences(t *testing.T) {
 	}
 	if domains.Machine.RecentTaskVisits[0].ProjectID != destProject.ID {
 		t.Errorf("RecentTaskVisits not updated: got %s, want %s", domains.Machine.RecentTaskVisits[0].ProjectID, destProject.ID)
+	}
+	if domains.Planning.FocusQueue[1].ProjectID != "other-project" ||
+		domains.Planning.DailyPlan[1].ProjectID != "other-project" ||
+		domains.Machine.RecentTaskVisits[1].ProjectID != "other-project" {
+		t.Fatalf("duplicate-ID references in other project were reassigned: planning=%+v/%+v recent=%+v",
+			domains.Planning.FocusQueue, domains.Planning.DailyPlan, domains.Machine.RecentTaskVisits)
 	}
 }
 

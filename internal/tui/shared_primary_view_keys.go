@@ -227,7 +227,7 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 	// its own snapshot and does not mutate this in-memory task, so project the new
 	// type deterministically for the flash before dispatching the mutation.
 	projectedType := projectedTypeForOp(task.Type, op)
-	cmd := v.singleTaskCoordinator().ChangeType(task.ID, appTaskTypeChangeForOp(op))
+	cmd := v.singleTaskCoordinator().ChangeType(taskIdentityFor(task, project), appTaskTypeChangeForOp(op))
 	msg := cmd()
 	if em, ok := msg.(TransactionErrorMsg); ok {
 		return func() tea.Msg { return ErrorMsg{Err: em.Err} }, true

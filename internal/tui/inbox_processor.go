@@ -116,8 +116,11 @@ func (m *InboxProcessorModel) shouldProcessOnStateChange(newState models.Workflo
 	return newState.IsTerminal()
 }
 
-func (m *InboxProcessorModel) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
-	if t := m.project.GetTaskByID(taskID); t != nil {
+func (m *InboxProcessorModel) findTask(identity TaskIdentity) (*models.Task, *models.Project) {
+	if m.project == nil || identity.ProjectID != m.project.ID {
+		return nil, nil
+	}
+	if t := m.project.GetTaskByID(identity.TaskID); t != nil {
 		return t, m.project
 	}
 	return nil, nil

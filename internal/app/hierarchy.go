@@ -15,7 +15,15 @@ import (
 // mutation. The task tree — levels and the max-nesting-depth cap — is rebuilt by
 // the post-mutation hooks.
 func (s *Service) Reparent(taskID string, newParentID *string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Reparent Task", "", func(ref TaskRef) error {
+	return s.reparent(taskID, TaskLocator{}, newParentID)
+}
+
+func (s *Service) ReparentByLocator(locator TaskLocator, newParentID *string) (TaskResult, error) {
+	return s.reparent("", locator, newParentID)
+}
+
+func (s *Service) reparent(taskID string, locator TaskLocator, newParentID *string) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Reparent Task", "", func(ref TaskRef) error {
 		if newParentID == nil {
 			ref.Task.ParentID = nil
 			ref.Task.UpdatedAt = s.clock.Now()
@@ -55,7 +63,15 @@ func (s *Service) Reparent(taskID string, newParentID *string) (TaskResult, erro
 // a silent no-op on those boundaries, so the guard is what produces the error the
 // user sees.
 func (s *Service) MoveTaskUp(taskID string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Move Task Up", "", func(ref TaskRef) error {
+	return s.moveTaskUp(taskID, TaskLocator{})
+}
+
+func (s *Service) MoveTaskUpByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.moveTaskUp("", locator)
+}
+
+func (s *Service) moveTaskUp(taskID string, locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Move Task Up", "", func(ref TaskRef) error {
 		t := ref.Task
 		siblings := ref.Project.GetSiblings(t)
 		idx := ref.Project.FindSiblingIndex(t)
@@ -74,7 +90,15 @@ func (s *Service) MoveTaskUp(taskID string) (TaskResult, error) {
 // task that would cross below a completed root sibling, is rejected with
 // ErrInvalidInput before any mutation.
 func (s *Service) MoveTaskDown(taskID string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Move Task Down", "", func(ref TaskRef) error {
+	return s.moveTaskDown(taskID, TaskLocator{})
+}
+
+func (s *Service) MoveTaskDownByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.moveTaskDown("", locator)
+}
+
+func (s *Service) moveTaskDown(taskID string, locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Move Task Down", "", func(ref TaskRef) error {
 		t := ref.Task
 		siblings := ref.Project.GetSiblings(t)
 		idx := ref.Project.FindSiblingIndex(t)
@@ -97,7 +121,15 @@ func (s *Service) MoveTaskDown(taskID string) (TaskResult, error) {
 // (filtered/collapsed) siblings the legacy crossMoveTaskToPosition used; a caller
 // that needs visible-order semantics must reconcile that before migrating.
 func (s *Service) MoveTaskToTop(taskID string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Move to Top", "", func(ref TaskRef) error {
+	return s.moveTaskToTop(taskID, TaskLocator{})
+}
+
+func (s *Service) MoveTaskToTopByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.moveTaskToTop("", locator)
+}
+
+func (s *Service) moveTaskToTop(taskID string, locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Move to Top", "", func(ref TaskRef) error {
 		moveTaskToSiblingEdge(ref.Project, ref.Task, true)
 		return nil
 	})
@@ -107,7 +139,15 @@ func (s *Service) MoveTaskToTop(taskID string) (TaskResult, error) {
 // MoveTaskToTop and honoring the mirror completion boundary (an uncompleted root
 // cannot cross below a completed sibling).
 func (s *Service) MoveTaskToBottom(taskID string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Move to Bottom", "", func(ref TaskRef) error {
+	return s.moveTaskToBottom(taskID, TaskLocator{})
+}
+
+func (s *Service) MoveTaskToBottomByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.moveTaskToBottom("", locator)
+}
+
+func (s *Service) moveTaskToBottom(taskID string, locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Move to Bottom", "", func(ref TaskRef) error {
 		moveTaskToSiblingEdge(ref.Project, ref.Task, false)
 		return nil
 	})
@@ -148,7 +188,15 @@ func moveTaskToSiblingEdge(project *models.Project, task *models.Task, toTop boo
 // visual-above semantics cannot be expressed by Reparent (which takes an explicit
 // parent id), so this is a distinct ordering-aware use case.
 func (s *Service) IndentTask(taskID string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Indent Task", "", func(ref TaskRef) error {
+	return s.indentTask(taskID, TaskLocator{})
+}
+
+func (s *Service) IndentTaskByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.indentTask("", locator)
+}
+
+func (s *Service) indentTask(taskID string, locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Indent Task", "", func(ref TaskRef) error {
 		t := ref.Task
 		targetParent := ref.Project.GetTaskAbove(t)
 		if targetParent == nil {
@@ -168,7 +216,15 @@ func (s *Service) IndentTask(taskID string) (TaskResult, error) {
 // have a parent, and its type must remain valid at the new (grandparent) level;
 // otherwise the request is rejected with ErrInvalidInput before any mutation.
 func (s *Service) OutdentTask(taskID string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Outdent Task", "", func(ref TaskRef) error {
+	return s.outdentTask(taskID, TaskLocator{})
+}
+
+func (s *Service) OutdentTaskByLocator(locator TaskLocator) (TaskResult, error) {
+	return s.outdentTask("", locator)
+}
+
+func (s *Service) outdentTask(taskID string, locator TaskLocator) (TaskResult, error) {
+	return s.mutateTaskSelection(taskID, locator, "Outdent Task", "", func(ref TaskRef) error {
 		t := ref.Task
 		if ok, reason := t.CanOutdent(); !ok {
 			return invalidInput("outdent", reason)
@@ -203,11 +259,19 @@ const (
 // any commit, so a rejected type change never persists. Type attributes are cleared
 // on a successful change by the model method.
 func (s *Service) ChangeTaskType(taskID string, change TaskTypeChange) (TaskResult, error) {
+	return s.changeTaskType(taskID, TaskLocator{}, change)
+}
+
+func (s *Service) ChangeTaskTypeByLocator(locator TaskLocator, change TaskTypeChange) (TaskResult, error) {
+	return s.changeTaskType("", locator, change)
+}
+
+func (s *Service) changeTaskType(taskID string, locator TaskLocator, change TaskTypeChange) (TaskResult, error) {
 	undoAction, ok := typeChangeUndoAction(change)
 	if !ok {
 		return TaskResult{}, invalidInput("type change", "unknown type change operation")
 	}
-	return s.mutateTask(taskID, undoAction, "", func(ref TaskRef) error {
+	return s.mutateTaskSelection(taskID, locator, undoAction, "", func(ref TaskRef) error {
 		return applyTaskTypeChange(ref.Task, change)
 	})
 }
@@ -216,6 +280,14 @@ func (s *Service) ChangeTaskType(taskID string, change TaskTypeChange) (TaskResu
 // ChangeTaskType and evaluates workflow rules contextually against the true
 // pre-change type. This is required for type_changed event rules.
 func (s *Service) ChangeTaskTypeWithWorkflow(taskID string, change TaskTypeChange, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.changeTaskTypeWithWorkflow(taskID, TaskLocator{}, change, opts)
+}
+
+func (s *Service) ChangeTaskTypeWithWorkflowByLocator(locator TaskLocator, change TaskTypeChange, opts SingleTaskWorkflowOptions) (BulkResult, error) {
+	return s.changeTaskTypeWithWorkflow("", locator, change, opts)
+}
+
+func (s *Service) changeTaskTypeWithWorkflow(taskID string, locator TaskLocator, change TaskTypeChange, opts SingleTaskWorkflowOptions) (BulkResult, error) {
 	undoAction, ok := typeChangeUndoAction(change)
 	if !ok {
 		return BulkResult{}, invalidInput("type change", "unknown type change operation")
@@ -223,7 +295,7 @@ func (s *Service) ChangeTaskTypeWithWorkflow(taskID string, change TaskTypeChang
 	if opts.UndoAction == "" {
 		opts.UndoAction = undoAction
 	}
-	return s.mutateWithWorkflow(taskID, opts, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
 		return applyTaskTypeChange(ref.Task, change)
 	})
 }
@@ -290,7 +362,11 @@ type MoveResult struct {
 // is deliberately NOT part of this transaction; the adapter updates it separately
 // after a successful commit.
 func (s *Service) MoveToProject(taskID, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	return s.moveToProject(taskID, destProjectID, nil, artifacts)
+	return s.moveToProject(taskID, TaskLocator{}, destProjectID, nil, artifacts)
+}
+
+func (s *Service) MoveToProjectByLocator(locator TaskLocator, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
+	return s.moveToProject("", locator, destProjectID, nil, artifacts)
 }
 
 // MoveToProjectInSection is MoveToProject with an explicit destination section
@@ -303,14 +379,22 @@ func (s *Service) MoveToProjectInSection(taskID, destProjectID, section string, 
 	if strings.TrimSpace(section) != "" {
 		destSection = &section
 	}
-	return s.moveToProject(taskID, destProjectID, destSection, artifacts)
+	return s.moveToProject(taskID, TaskLocator{}, destProjectID, destSection, artifacts)
 }
 
-func (s *Service) moveToProject(taskID, destProjectID string, destSection *string, artifacts []storage.ArtifactChange) (MoveResult, error) {
+func (s *Service) MoveToProjectInSectionByLocator(locator TaskLocator, destProjectID, section string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
+	var destSection *string
+	if strings.TrimSpace(section) != "" {
+		destSection = &section
+	}
+	return s.moveToProject("", locator, destProjectID, destSection, artifacts)
+}
+
+func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectID string, destSection *string, artifacts []storage.ArtifactChange) (MoveResult, error) {
 	if strings.TrimSpace(destProjectID) == "" {
 		return MoveResult{}, invalidInput("destination", "project id is required")
 	}
-	ref, snap, srcRev, err := s.loadTask(taskID)
+	ref, snap, srcRev, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return MoveResult{}, err
 	}

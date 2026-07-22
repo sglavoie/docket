@@ -36,8 +36,8 @@ func TestCrossProjectRebuildRowsProjectIDInvariant(t *testing.T) {
 
 	m := &OutlinerModel{
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: 1,
 		loadedProjects:    []*models.Project{projAlpha, projBeta},
 	}

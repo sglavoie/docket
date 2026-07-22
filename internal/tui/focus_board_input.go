@@ -68,7 +68,7 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 			// Commit the title edit through the application-layer single-task
 			// coordinator; the shell's transaction-result handler reloads the
 			// committed project and refreshes the board (refreshData).
-			cmd := m.taskItem.Edit(app.EditRequest{TaskID: row.Task.ID, Title: &value})
+			cmd := m.taskItem.Edit(taskIdentityFor(row.Task, row.Project), app.EditRequest{Title: &value})
 			msg := cmd()
 			if em, ok := msg.(TransactionErrorMsg); ok {
 				m.setStatus("Failed to save: " + em.Err.Error())

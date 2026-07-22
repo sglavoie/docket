@@ -51,8 +51,8 @@ func TestStructureCommands_Reparent_DispatchesToCrossOutliner(t *testing.T) {
 	if msg.Source != ViewCrossProjectOutliner {
 		t.Errorf("Source: want ViewCrossProjectOutliner, got %v", msg.Source)
 	}
-	if msg.ReparentTaskID != crossTask.ID {
-		t.Errorf("ReparentTaskID: want %q, got %q", crossTask.ID, msg.ReparentTaskID)
+	if msg.ReparentTask != taskIdentityFor(crossTask, crossProj) {
+		t.Errorf("ReparentTask: want %#v, got %#v", taskIdentityFor(crossTask, crossProj), msg.ReparentTask)
 	}
 }
 
@@ -133,7 +133,7 @@ func TestStructureCommands_Reparent_DispatchesToOutliner(t *testing.T) {
 	if msg.Source != ViewOutliner {
 		t.Errorf("Source: want ViewOutliner, got %v", msg.Source)
 	}
-	if msg.ReparentTaskID != cursorTask.ID {
-		t.Errorf("ReparentTaskID: want %q, got %q", cursorTask.ID, msg.ReparentTaskID)
+	if msg.ReparentTask != taskIdentityFor(cursorTask, project) {
+		t.Errorf("ReparentTask: want %#v, got %#v", taskIdentityFor(cursorTask, project), msg.ReparentTask)
 	}
 }

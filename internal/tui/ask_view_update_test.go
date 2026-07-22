@@ -393,7 +393,7 @@ func TestAskActionPlanDeleteCleansPlanningAndMachineSubtreeRefs(t *testing.T) {
 
 	if got := runtime.Planning(); len(got.FocusQueue) != 1 || got.FocusQueue[0].TaskID != survivor.ID ||
 		len(got.DailyPlan) != 1 || got.DailyPlan[0].TaskID != survivor.ID ||
-		len(got.FocusDismissedIDs) != 1 || got.FocusDismissedIDs[0] != survivor.ID {
+		len(got.FocusDismissedIDs) != 3 {
 		t.Fatalf("TUI AI delete cleaned the wrong planning refs: focus=%v daily=%v dismissed=%v", got.FocusQueue, got.DailyPlan, got.FocusDismissedIDs)
 	}
 	if got := runtime.Machine().RecentTaskVisits; len(got) != 1 || got[0].TaskID != survivor.ID {
@@ -624,6 +624,7 @@ func TestAskActionPlanCoveredAndReplacedOutcomes(t *testing.T) {
 				}
 				if outcome.warning {
 					result.DeletedTaskIDs = []string{"deleted-task"}
+					result.DeletedTaskLocators = []app.TaskLocator{{ProjectID: "project", TaskID: "deleted-task"}}
 				}
 				_, _ = appModel.Update(AskActionPlanAppliedMsg{
 					OperationID:    origin.applyID,
@@ -696,7 +697,7 @@ func TestAskActionPlanHiddenDeleteRepairsTaskReferences(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CloneDomains: %v", err)
 	}
-	pending.Planning.RemoveDurableTaskRefs(map[string]bool{deletedID: true})
+	pending.Planning.RemoveDurableTaskLocators([]config.ProjectTaskLocator{{ProjectID: "p1", TaskID: deletedID}})
 
 	appModel := newTestAppModel()
 	appModel.runtime = runtime
@@ -707,10 +708,11 @@ func TestAskActionPlanHiddenDeleteRepairsTaskReferences(t *testing.T) {
 	_, _ = appModel.Update(AskActionPlanAppliedMsg{
 		OperationID: nextAskOperationID(),
 		Result: app.ActionPlanResult{
-			TransactionID:  "tx-hidden-delete",
-			UndoID:         "undo-hidden-delete",
-			DeletedTaskIDs: []string{deletedID},
-			Actions:        []app.ActionPreview{{Index: 1}},
+			TransactionID:       "tx-hidden-delete",
+			UndoID:              "undo-hidden-delete",
+			DeletedTaskIDs:      []string{deletedID},
+			DeletedTaskLocators: []app.TaskLocator{{ProjectID: "p1", TaskID: deletedID}},
+			Actions:             []app.ActionPreview{{Index: 1}},
 		},
 		PendingDomains: pending,
 	})
@@ -721,7 +723,7 @@ func TestAskActionPlanHiddenDeleteRepairsTaskReferences(t *testing.T) {
 	planning := runtime.Planning()
 	if len(planning.FocusQueue) != 1 || planning.FocusQueue[0].TaskID != survivorID ||
 		len(planning.DailyPlan) != 1 || planning.DailyPlan[0].TaskID != survivorID ||
-		len(planning.FocusDismissedIDs) != 1 || planning.FocusDismissedIDs[0] != survivorID {
+		len(planning.FocusDismissedIDs) != 2 {
 		t.Fatalf("hidden delete left durable refs: focus=%#v daily=%#v dismissed=%#v", planning.FocusQueue, planning.DailyPlan, planning.FocusDismissedIDs)
 	}
 	visits := runtime.Machine().RecentTaskVisits

@@ -7,17 +7,22 @@ import (
 )
 
 // recordTaskVisit records a task visit for the quick-switch list.
-// It deduplicates by task ID (moving revisits to the front), trims to m.runtime.Settings().GetMaxRecentTaskVisits(),
-// and persists the ID-only form to config.
+// It deduplicates by project-qualified identity (moving revisits to the front),
+// trims to m.runtime.Settings().GetMaxRecentTaskVisits(), and persists the
+// already-qualified config shape.
 func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 	if task == nil || project == nil {
+		return
+	}
+	identity := taskIdentityFor(task, project)
+	if !identity.Valid() {
 		return
 	}
 
 	var wasPinned bool
 	filtered := m.recentTaskVisits[:0:0]
 	for _, entry := range m.recentTaskVisits {
-		if entry.Task.ID == task.ID {
+		if entry.Identity() == identity {
 			wasPinned = entry.Pinned
 		} else {
 			filtered = append(filtered, entry)

@@ -37,8 +37,8 @@ func TestCrossProjectRebuildRowsActionableFilter(t *testing.T) {
 
 	m := &OutlinerModel{
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filter:            NewFilterState(),
@@ -95,8 +95,8 @@ func TestCrossProjectRebuildRowsSectionFilter(t *testing.T) {
 
 	m := &OutlinerModel{
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		expandedNodes:     make(map[TaskIdentity]bool),
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filter:            NewFilterState(),
@@ -155,7 +155,7 @@ func TestCrossProjectRebuildRowsIgnoresStalePinnedTagTabWithoutForce(t *testing.
 
 	m := &OutlinerModel{
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
+		expandedNodes:     make(map[TaskIdentity]bool),
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filter:            NewFilterState(),
@@ -202,7 +202,7 @@ func TestCrossProjectRebuildRowsPinnedTagTabFiltersByGlobalPinnedTag(t *testing.
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
+		expandedNodes:     make(map[TaskIdentity]bool),
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filter:            NewFilterState(),

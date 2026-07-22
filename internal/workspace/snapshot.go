@@ -63,7 +63,7 @@ type TaskLocation struct {
 type Snapshot struct {
 	projects      []*models.Project
 	tasks         []*models.Task
-	byID          map[string]TaskLocation
+	byID          map[string][]TaskLocation
 	reverseDeps   map[string][]string
 	qualifiedRefs map[string]string
 	revisions     map[string]string
@@ -72,7 +72,7 @@ type Snapshot struct {
 
 func newSnapshot() *Snapshot {
 	return &Snapshot{
-		byID:          make(map[string]TaskLocation),
+		byID:          make(map[string][]TaskLocation),
 		reverseDeps:   make(map[string][]string),
 		qualifiedRefs: make(map[string]string),
 		revisions:     make(map[string]string),
@@ -80,9 +80,9 @@ func newSnapshot() *Snapshot {
 }
 
 // addProject folds one successfully loaded project (and its computed revision)
-// into the snapshot indexes. Later duplicate task IDs do not overwrite the
-// first-seen location, mirroring the fail-closed lookup semantics used
-// elsewhere for cross-project resolution.
+// into the snapshot indexes. Every task owner is retained so an unqualified
+// duplicate UUID can be reported as ambiguous instead of selecting whichever
+// project happened to load first.
 func (s *Snapshot) addProject(project *models.Project, revision string) {
 	s.projects = append(s.projects, project)
 	s.revisions[project.ID] = revision
@@ -93,9 +93,7 @@ func (s *Snapshot) addProject(project *models.Project, revision string) {
 		}
 		s.tasks = append(s.tasks, task)
 		if task.ID != "" {
-			if _, seen := s.byID[task.ID]; !seen {
-				s.byID[task.ID] = TaskLocation{Task: task, Project: project}
-			}
+			s.byID[task.ID] = append(s.byID[task.ID], TaskLocation{Task: task, Project: project})
 		}
 		s.qualifiedRefs[task.ID] = fmt.Sprintf("%s:#%d", project.Slug, task.ShortID)
 		for _, depID := range task.DependsOn {
@@ -117,14 +115,30 @@ func (s *Snapshot) Projects() []*models.Project { return s.projects }
 // Tasks returns the flat union of every task across the loaded projects.
 func (s *Snapshot) Tasks() []*models.Task { return s.tasks }
 
-// Lookup resolves a task by its UUID, returning the task and its owning
-// project. An empty ID never matches.
-func (s *Snapshot) Lookup(taskID string) (TaskLocation, bool) {
+// TaskLookupStatus describes whether an unqualified UUID is missing, uniquely
+// owned, or present in more than one loaded project.
+type TaskLookupStatus uint8
+
+const (
+	TaskLookupMissing TaskLookupStatus = iota
+	TaskLookupUnique
+	TaskLookupAmbiguous
+)
+
+// LookupTaskID resolves a task by UUID only when the workspace has one owner.
+func (s *Snapshot) LookupTaskID(taskID string) (TaskLocation, TaskLookupStatus) {
 	if taskID == "" {
-		return TaskLocation{}, false
+		return TaskLocation{}, TaskLookupMissing
 	}
-	loc, ok := s.byID[taskID]
-	return loc, ok
+	locations := s.byID[taskID]
+	switch len(locations) {
+	case 0:
+		return TaskLocation{}, TaskLookupMissing
+	case 1:
+		return locations[0], TaskLookupUnique
+	default:
+		return TaskLocation{}, TaskLookupAmbiguous
+	}
 }
 
 // Revision returns the canonical content revision recorded for a project at
@@ -137,6 +151,9 @@ func (s *Snapshot) Revision(projectID string) string {
 // "" when the task is not part of the snapshot. Cross-project surfaces use this
 // so their output always carries an unambiguous, project-qualified reference.
 func (s *Snapshot) QualifiedRef(taskID string) string {
+	if _, status := s.LookupTaskID(taskID); status != TaskLookupUnique {
+		return ""
+	}
 	return s.qualifiedRefs[taskID]
 }
 

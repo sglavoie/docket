@@ -89,7 +89,7 @@ func TestDailyReviewMutationCommitsAndTracksProgress(t *testing.T) {
 	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
 
 	before := m.reviewedCount
-	if cmd := m.applyReviewMutation(m.taskItem.SetPriority(taskID, 1)); cmd == nil {
+	if cmd := m.applyReviewMutation(m.taskItem.SetPriority(TaskIdentity{ProjectID: project.ID, TaskID: taskID}, 1)); cmd == nil {
 		t.Fatal("expected a transaction command from applyReviewMutation")
 	}
 	if m.reviewedCount != before+1 {
@@ -101,7 +101,7 @@ func TestDailyReviewMutationCommitsAndTracksProgress(t *testing.T) {
 
 	// Failure path: a mutation targeting a missing task is rejected before commit,
 	// so it surfaces an error and leaves review progress untouched.
-	if cmd := m.applyReviewMutation(m.taskItem.SetPriority("nonexistent", 2)); cmd != nil {
+	if cmd := m.applyReviewMutation(m.taskItem.SetPriority(TaskIdentity{ProjectID: project.ID, TaskID: "nonexistent"}, 2)); cmd != nil {
 		t.Fatal("expected nil command on a rejected mutation")
 	}
 	if !m.HasError() {

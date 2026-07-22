@@ -162,7 +162,7 @@ func TestCommandContextFiltersCapabilitiesSelectionAndEntityState(t *testing.T) 
 	if got := registry.GetForContext(projectContext); len(got) != 0 {
 		t.Fatalf("context-free query returned selection-dependent command: %v", commandProjection(got))
 	}
-	projectContext.Selection = SelectionContext{ProjectID: "p1", TaskIDs: []string{"t1"}}
+	projectContext.Selection = SelectionContext{Tasks: []TaskIdentity{{ProjectID: "p1", TaskID: "t1"}}}
 	projectContext.Entity = EntityContext{ProjectID: "p1", TaskID: "t1", State: "ready", Mutable: true}
 	got := registry.GetForContext(projectContext)
 	if len(got) != 1 || got[0].Name != mutableSelection.Name {

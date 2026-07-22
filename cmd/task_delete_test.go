@@ -107,8 +107,19 @@ func TestDeleteRoutesThroughAppAndCleansPlanningRefs(t *testing.T) {
 
 	// Seed durable planning refs and a machine-local recent visit for the task, then
 	// persist the config so LoadCurrentProject inside the command sees them.
-	deps.Config.Planning().FocusQueue = []config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}}
-	deps.Config.Machine().RecentTaskVisits = []config.RecentTaskVisit{{TaskID: task.ID, ProjectID: project.ID}}
+	deps.Config.Planning().FocusQueue = []config.FocusQueueItem{
+		{TaskID: task.ID, ProjectID: "alpha"},
+		{TaskID: task.ID, ProjectID: project.ID},
+	}
+	deps.Config.Planning().DailyPlan = []config.DailyPlanItem{
+		{TaskID: task.ID, ProjectID: "alpha"},
+		{TaskID: task.ID, ProjectID: project.ID},
+	}
+	deps.Config.Planning().FocusDismissedIDs = []string{task.ID}
+	deps.Config.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+		{TaskID: task.ID, ProjectID: "alpha"},
+		{TaskID: task.ID, ProjectID: project.ID},
+	}
 	manager := config.NewManager(deps.ConfigPath)
 	testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
 
@@ -129,10 +140,16 @@ func TestDeleteRoutesThroughAppAndCleansPlanningRefs(t *testing.T) {
 	// Both the durable and machine-local refs are gone from the on-disk config.
 	reloaded, loadErr := manager.LoadRuntimeState()
 	testutil.AssertNoError(t, loadErr)
-	if got := reloaded.Planning().FocusQueue; len(got) != 0 {
-		t.Errorf("durable focus-queue ref survived delete: %v", got)
+	if got := reloaded.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Errorf("delete cleaned the wrong focus-queue refs: %v", got)
 	}
-	if got := reloaded.Machine().RecentTaskVisits; len(got) != 0 {
-		t.Errorf("machine-local recent-visit ref survived delete: %v", got)
+	if got := reloaded.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Errorf("delete cleaned the wrong daily-plan refs: %v", got)
+	}
+	if got := reloaded.Planning().FocusDismissedIDs; len(got) != 1 || got[0] != task.ID {
+		t.Errorf("qualified delete changed legacy dismissed IDs: %v", got)
+	}
+	if got := reloaded.Machine().RecentTaskVisits; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Errorf("delete cleaned the wrong machine-local recent visits: %v", got)
 	}
 }

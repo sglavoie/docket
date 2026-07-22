@@ -20,6 +20,10 @@ var (
 	// ErrTaskNotFound marks a request targeting a task absent from the loaded
 	// snapshot.
 	ErrTaskNotFound = errors.New("app: task not found")
+	// ErrAmbiguousTaskID marks an unqualified task UUID that exists in more than
+	// one project. Callers must retry with a TaskLocator so the application layer
+	// never guesses which owning project to mutate.
+	ErrAmbiguousTaskID = errors.New("app: ambiguous task id")
 	// ErrInvalidTransition marks a state transition the workflow model forbids
 	// (e.g. leaving a terminal state without reopening first).
 	ErrInvalidTransition = errors.New("app: invalid state transition")

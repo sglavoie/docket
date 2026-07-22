@@ -98,7 +98,8 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		}
 
 		cascade, mutErr := withResultRetry(func() (app.BulkResult, error) {
-			return workflows.service.SetPriorityWithWorkflow(task.ID, priority, workflows.options(true, "Set Priority", task))
+			locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+			return workflows.service.SetPriorityWithWorkflowByLocator(locator, priority, workflows.options(true, "Set Priority", task))
 		})
 		if mutErr != nil {
 			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, translateAppError(mutErr)))

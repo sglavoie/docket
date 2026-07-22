@@ -69,7 +69,7 @@ func TestStateChangingTUISurfacesPreservePlanningExclusivity(t *testing.T) {
 		// the app-layer Edit coordinator seam.
 		m.currentProject.MutateTask(task.ID, func(tk *models.Task) { tk.SetSection(models.SectionNext) })
 		mutated := m.currentProject.GetTaskByID(task.ID)
-		cmd := m.secondaryFeatures.TaskItem.Edit(app.EditRequest{TaskID: mutated.ID, Form: formEditFromTask(mutated)})
+		cmd := m.secondaryFeatures.TaskItem.Edit(taskIdentityFor(mutated, m.currentProject), app.EditRequest{Form: formEditFromTask(mutated)})
 		assertNotTransactionError(t, cmd())
 
 		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {

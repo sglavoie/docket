@@ -56,8 +56,9 @@ func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool
 	if got := fresh.State() == models.StateNext; got != inQueue {
 		t.Fatalf("StateNext membership = %v, want %v", got, inQueue)
 	}
-	if app.focusQueueIDs[taskID] != inQueue {
-		t.Fatalf("order-index membership = %v, want %v", app.focusQueueIDs[taskID], inQueue)
+	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
+	if app.focusQueueIDs[identity] != inQueue {
+		t.Fatalf("order-index membership = %v, want %v", app.focusQueueIDs[identity], inQueue)
 	}
 	if got := taskMembershipCount(app.focusQueue, taskID); got != boolCount(inQueue) {
 		t.Fatalf("order-index slice count = %d, want %d", got, boolCount(inQueue))
@@ -69,8 +70,9 @@ func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool
 func assertDailyPlanKeyFlow(t *testing.T, app *AppModel, taskID string, inPlan bool) {
 	t.Helper()
 
-	if app.dailyPlanIDs[taskID] != inPlan {
-		t.Fatalf("daily-plan membership = %v, want %v", app.dailyPlanIDs[taskID], inPlan)
+	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
+	if app.dailyPlanIDs[identity] != inPlan {
+		t.Fatalf("daily-plan membership = %v, want %v", app.dailyPlanIDs[identity], inPlan)
 	}
 	if got := taskMembershipCount(app.dailyPlan, taskID); got != boolCount(inPlan) {
 		t.Fatalf("daily-plan slice count = %d, want %d", got, boolCount(inPlan))

@@ -44,7 +44,8 @@ func (m *AppModel) activateTaskDetail(task *models.Task, project *models.Project
 		m.taskDetail.SetTab(tab)
 		m.taskDetail.syncEmbeddedTasks()
 	}
-	m.taskDetail.SetPlanningMembership(m.dailyPlanIDs[task.ID], m.focusQueueIDs[task.ID])
+	identity := taskIdentityFor(task, project)
+	m.taskDetail.SetPlanningMembership(m.dailyPlanIDs[identity], m.focusQueueIDs[identity])
 
 	route, err := NewRoute(TaskDetail, TaskDetailParams{
 		ProjectID: project.ID,

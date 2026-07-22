@@ -33,8 +33,8 @@ type DailyReviewModel struct {
 	PrimaryViewBundle
 
 	// Queue / daily-plan indicator support
-	queueIDs     map[string]bool
-	dailyPlanIDs map[string]bool
+	queueIDs     map[TaskIdentity]bool
+	dailyPlanIDs map[TaskIdentity]bool
 
 	// Sections
 	overdue    []CrossProjectTask
@@ -77,7 +77,7 @@ func NewDailyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *Dai
 		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
 		collapsedSections: make(map[int]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		tabs:              TabState{Names: dailyReviewTabNames},
 	}
 	if t := runtime.Planning().GetLastDailyReviewAt(); t != nil && isToday(*t) {
@@ -193,7 +193,8 @@ func (m *DailyReviewModel) toggleTaskSelection() {
 	if dt == nil {
 		return
 	}
-	m.ToggleAndUpdateStatus(dt.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+	m.ToggleTaskIdentity(taskIdentityFor(dt.Task, dt.Project))
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
 }
 
 func (m *DailyReviewModel) selectAllVisible() {
@@ -202,7 +203,7 @@ func (m *DailyReviewModel) selectAllVisible() {
 		m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
 	} {
 		for _, t := range tasks {
-			m.selectedTasks[t.Task.ID] = true
+			m.SelectTaskIdentity(taskIdentityFor(t.Task, t.Project))
 		}
 	}
 	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
@@ -221,7 +222,7 @@ func (m *DailyReviewModel) getSelectedBulkItems() []TaskProjectRef {
 		m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
 	} {
 		for _, t := range tasks {
-			if m.selectedTasks[t.Task.ID] {
+			if m.IsTaskIdentitySelected(taskIdentityFor(t.Task, t.Project)) {
 				items = append(items, TaskProjectRef{Task: t.Task, Project: t.Project})
 			}
 		}

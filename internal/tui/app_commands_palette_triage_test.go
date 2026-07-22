@@ -351,7 +351,7 @@ func TestPaletteTriage_GlobalInboxMarkDoneExecution(t *testing.T) {
 	if task.State() != models.StateDone {
 		t.Errorf("task.State() = %v, want StateDone", task.State())
 	}
-	if !processor.processedIDs[task.ID] {
+	if !processor.processedIDs[taskIdentityFor(task, project)] {
 		t.Error("global processor should have task in processedIDs after mark done")
 	}
 

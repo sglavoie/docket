@@ -52,9 +52,9 @@ func newNextReorderBoard(t *testing.T, seedIndex []string, staleItems []config.F
 		projectService:    NewProjectService(),
 		dailyPlan:         &dp,
 		focusQueue:        &fq,
-		dailyPlanIDs:      map[string]bool{},
-		queueIDs:          map[string]bool{},
-		carriedOverIDs:    map[string]bool{},
+		dailyPlanIDs:      map[TaskIdentity]bool{},
+		queueIDs:          map[TaskIdentity]bool{},
+		carriedOverIDs:    map[TaskIdentity]bool{},
 		addInput:          textinput.New(),
 		editInput:         textinput.New(),
 		FilterMixin:       FilterMixin{filter: newFilterState(), filterMachine: runtime.Machine()},
@@ -193,7 +193,11 @@ func newTodayReorderBoard(t *testing.T) (*FocusBoardModel, *config.RuntimeState)
 
 	m.tabs.Active = boardTabToday
 	m.dailyPlan = &dailyPlan
-	m.dailyPlanIDs = map[string]bool{a.ID: true, b.ID: true, c.ID: true}
+	m.dailyPlanIDs = map[TaskIdentity]bool{
+		taskIdentityFor(a, project): true,
+		taskIdentityFor(b, project): true,
+		taskIdentityFor(c, project): true,
+	}
 	m.todayRows = []boardRow{
 		{Task: a, Project: project, Priority: a.Priority, Source: project.Name},
 		{Task: b, Project: project, Priority: b.Priority, Source: project.Name},

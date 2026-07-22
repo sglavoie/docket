@@ -13,6 +13,10 @@ type RecentTaskVisitEntry struct {
 	Pinned  bool
 }
 
+func (e RecentTaskVisitEntry) Identity() TaskIdentity {
+	return taskIdentityFor(e.Task, e.Project)
+}
+
 const maxPinnedTaskVisits = 9
 
 // openQuickSwitch resets quick-switch state and refreshes the task list.

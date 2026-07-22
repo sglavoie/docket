@@ -150,10 +150,9 @@ func (m *FocusBoardModel) Capabilities() CapabilitySet {
 func (m *FocusBoardModel) CommandContext() CommandContext {
 	ctx := CommandContext{View: ViewFocusBoard, Scope: ScopeApp, Capabilities: m.Capabilities()}
 	for _, ref := range m.selectedTaskRefs() {
-		ctx.Selection.TaskIDs = append(ctx.Selection.TaskIDs, ref.Task.ID)
+		ctx.Selection.Tasks = append(ctx.Selection.Tasks, ref.Identity())
 	}
 	if task, project := m.getTaskRef(); task != nil && project != nil {
-		ctx.Selection.ProjectID = project.ID
 		ctx.Entity = EntityContext{
 			ProjectID: project.ID, TaskID: task.ID, State: task.State().String(), Mutable: true, Archived: project.Archived,
 		}
@@ -234,8 +233,8 @@ func (m *FocusBoardModel) handlePlannerAction(action PlannerAction) tea.Cmd { //
 			return ShowSectionPickerMsg{Task: task, Project: project}
 		})
 	case WorkspaceActionPin:
-		if task, _ := m.getTaskRef(); task != nil {
-			return m.taskItem.SetPinned(task.ID, !task.Pinned)
+		if task, project := m.getTaskRef(); task != nil && project != nil {
+			return m.taskItem.SetPinned(taskIdentityFor(task, project), !task.Pinned)
 		}
 	case WorkspaceActionPriority:
 		return m.currentTaskCommand(func(task *models.Task, project *models.Project) tea.Msg {
@@ -298,13 +297,10 @@ func (m *FocusBoardModel) completePlannerTargets() tea.Cmd {
 		_, cmd := m.markDone()
 		return cmd
 	}
-	ids := make([]string, 0, len(refs))
-	for _, ref := range refs {
-		ids = append(ids, ref.Task.ID)
-	}
+	locators := taskLocatorsFromTaskRefs(refs)
 	return m.bulk.TransitionWithWorkflow(app.BulkTransitionRequest{
-		TaskIDs: ids, Target: models.StateDone, Rules: m.workflowRules(),
-		UndoAction: "Complete Tasks", UndoContext: fmt.Sprintf("%d Planner tasks", len(ids)), SkipInvalid: true,
+		TaskLocators: locators, Target: models.StateDone, Rules: m.workflowRules(),
+		UndoAction: "Complete Tasks", UndoContext: fmt.Sprintf("%d Planner tasks", len(locators)), SkipInvalid: true,
 	}, func(changed int) string { return fmt.Sprintf("Completed %d task(s)", changed) })
 }
 
@@ -321,7 +317,7 @@ func (m *FocusBoardModel) currentTaskIdentity() (TaskIdentity, bool) {
 	if row == nil || row.Task == nil || row.Project == nil {
 		return TaskIdentity{}, false
 	}
-	return TaskIdentity{ProjectID: row.Project.ID, TaskID: row.Task.ID}, true
+	return taskIdentityFor(row.Task, row.Project), true
 }
 
 func (m *FocusBoardModel) togglePlannerSelection() {
@@ -346,7 +342,7 @@ func (m *FocusBoardModel) selectedTaskRefs() []TaskProjectRef {
 		if row.Task == nil || row.Project == nil {
 			continue
 		}
-		id := TaskIdentity{ProjectID: row.Project.ID, TaskID: row.Task.ID}
+		id := taskIdentityFor(row.Task, row.Project)
 		if _, selected := m.selection[id]; selected {
 			refs = append(refs, TaskProjectRef{Task: row.Task, Project: row.Project})
 		}
@@ -422,6 +418,34 @@ func (m *FocusBoardModel) plannerMenuItems() []plannerMenuItem {
 	items := []plannerMenuItem{
 		{label: "Preview", active: m.previewMode, apply: func() tea.Cmd { m.previewMode = !m.previewMode; return nil }},
 	}
+	if m.tabs.Active == boardTabToday {
+		items = append(items, plannerMenuItem{
+			label: "Toggle selected subtree",
+			apply: func() tea.Cmd {
+				m.toggleSelectedTodaySubtree()
+				return nil
+			},
+		})
+		for _, option := range []struct {
+			label string
+			limit int
+		}{
+			{label: "Tree depth: 1", limit: 0},
+			{label: "Tree depth: 2", limit: 1},
+			{label: "Tree depth: 3", limit: 2},
+			{label: "Tree depth: all", limit: -1},
+		} {
+			option := option
+			items = append(items, plannerMenuItem{
+				label:  option.label,
+				active: m.childDepthLimit == option.limit,
+				apply: func() tea.Cmd {
+					m.setTodayTreeDepth(option.limit)
+					return nil
+				},
+			})
+		}
+	}
 	for _, option := range []struct {
 		label string
 		field SortField
@@ -462,6 +486,33 @@ func (m *FocusBoardModel) plannerMenuItems() []plannerMenuItem {
 		}})
 	}
 	return items
+}
+
+func (m *FocusBoardModel) setTodayTreeDepth(limit int) {
+	if m.tabs.Active != boardTabToday {
+		return
+	}
+	m.childDepthLimit = limit
+	m.foldOverrides = make(map[TaskIdentity]bool)
+	m.rebuildTodayTree()
+}
+
+func (m *FocusBoardModel) toggleSelectedTodaySubtree() {
+	if m.tabs.Active != boardTabToday {
+		return
+	}
+	row := m.getRowAtCursor()
+	if row == nil || row.Task == nil || row.Project == nil || len(row.Task.Children) == 0 {
+		return
+	}
+	identity := taskIdentityFor(row.Task, row.Project)
+	if m.foldOverrides == nil {
+		m.foldOverrides = make(map[TaskIdentity]bool)
+	}
+	// The override stores the current expansion state as the next collapsed
+	// state: expanded nodes collapse, while depth-collapsed nodes force-expand.
+	m.foldOverrides[identity] = m.isParentExpanded(identity, row.Depth)
+	m.rebuildTodayTree()
 }
 
 func (m *FocusBoardModel) handlePlannerMenuKey(msg tea.KeyPressMsg) tea.Cmd {

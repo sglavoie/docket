@@ -69,7 +69,8 @@ func runTaskPark(cmd *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.ParkWithWorkflow(task.ID, note, workflows.options(true, "Park Task", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.ParkWithWorkflowByLocator(locator, note, workflows.options(true, "Park Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)
@@ -123,7 +124,8 @@ func runTaskUnpark(cmd *cobra.Command, args []string) error {
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.UnparkWithWorkflow(task.ID, workflows.options(true, "Unpark Task", task))
+		locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		return workflows.service.UnparkWithWorkflowByLocator(locator, workflows.options(true, "Unpark Task", task))
 	})
 	if err != nil {
 		return translateAppError(err)

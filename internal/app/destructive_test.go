@@ -44,6 +44,14 @@ func TestDeleteRemovesSubtreeInOneChangeSet(t *testing.T) {
 	if len(res.RemovedTaskIDs) != 2 {
 		t.Fatalf("RemovedTaskIDs = %v, want 2 (parent + child)", res.RemovedTaskIDs)
 	}
+	if len(res.RemovedTaskLocators) != 2 {
+		t.Fatalf("RemovedTaskLocators = %+v, want 2", res.RemovedTaskLocators)
+	}
+	for _, locator := range res.RemovedTaskLocators {
+		if locator.ProjectID != project.ID || (locator.TaskID != parent.ID && locator.TaskID != child.ID) {
+			t.Fatalf("unexpected removed locator: %+v", locator)
+		}
+	}
 	if res.QualifiedRef != "alpha:#1" {
 		t.Errorf("QualifiedRef = %q, want alpha:#1", res.QualifiedRef)
 	}

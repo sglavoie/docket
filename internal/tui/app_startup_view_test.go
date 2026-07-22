@@ -94,7 +94,8 @@ func TestResolveStartupNavigationPreservesLegacyRouteMeaning(t *testing.T) {
 			check: func(t *testing.T, plan startupNavigationPlan) {
 				msg := plan.Message.(ShowGlobalOutlinerMsg)
 				if !msg.Options.SetFocus || msg.Options.Focus != OutlinerAll ||
-					!msg.Options.SetSort || msg.Options.Sort != SortByDueDate {
+					!msg.Options.SetSort || msg.Options.Sort != SortByDueDate ||
+					!msg.Options.SetLens || msg.Options.Lens != OutlinerLensDueDate {
 					t.Fatalf("due-date message = %+v", msg)
 				}
 			},

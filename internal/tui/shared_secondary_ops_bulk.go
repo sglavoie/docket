@@ -5,7 +5,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TaskProjectRef represents a task and its owning project for bulk operations.
+// TaskProjectRef represents a task and its owning project across single-task and
+// bulk TUI flows.
 type TaskProjectRef struct {
 	Task    *models.Task
 	Project *models.Project
@@ -52,10 +53,11 @@ func taskIDsFromTaskRefs(refs []TaskProjectRef) []string {
 func taskLocatorsFromTaskRefs(refs []TaskProjectRef) []app.TaskLocator {
 	locators := make([]app.TaskLocator, 0, len(refs))
 	for _, ref := range refs {
-		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" || ref.Project.ID == "" {
+		locator := ref.Locator()
+		if !locator.Valid() {
 			continue
 		}
-		locators = append(locators, app.TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID})
+		locators = append(locators, locator)
 	}
 	return locators
 }

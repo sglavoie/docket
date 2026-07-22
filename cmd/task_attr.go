@@ -116,14 +116,15 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 
 	workflows := newCLIWorkflowRunner(workspace)
 	defer workflows.flush()
+	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
 		if attrClear {
-			return workflows.service.ClearTypeAttrsWithWorkflow(task.ID, workflows.options(true, "Clear Attributes", task))
+			return workflows.service.ClearTypeAttrsWithWorkflowByLocator(locator, workflows.options(true, "Clear Attributes", task))
 		}
 		vals := attrTypeAttrs
 		vals.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
 		vals.StoryPointsSet = cmd.Flags().Changed("story.points")
-		return workflows.service.ApplyTypeAttrsWithWorkflow(task.ID, vals, workflows.options(true, "Set Attributes", task))
+		return workflows.service.ApplyTypeAttrsWithWorkflowByLocator(locator, vals, workflows.options(true, "Set Attributes", task))
 	})
 	if err != nil {
 		return translateAppError(err)

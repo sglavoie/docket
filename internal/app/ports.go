@@ -83,11 +83,22 @@ type TaskRef struct {
 // uniqueness. Cross-project presentation layers must retain both fields until
 // the application snapshot resolves the task.
 type TaskLocator struct {
-	ProjectID string
-	TaskID    string
+	ProjectID string `json:"project_id"`
+	TaskID    string `json:"task_id"`
 }
 
 func (l TaskLocator) Valid() bool { return l.ProjectID != "" && l.TaskID != "" }
+
+// TaskLookupStatus describes the result of resolving an unqualified task UUID
+// across the workspace. Ambiguous IDs deliberately carry no TaskRef: callers
+// must provide a TaskLocator instead of relying on project iteration order.
+type TaskLookupStatus uint8
+
+const (
+	TaskLookupMissing TaskLookupStatus = iota
+	TaskLookupUnique
+	TaskLookupAmbiguous
+)
 
 // Snapshot is the revision-consistent read model the application layer consumes
 // before a mutation: it resolves task and project references and reports the
@@ -96,8 +107,9 @@ func (l TaskLocator) Valid() bool { return l.ProjectID != "" && l.TaskID != "" }
 type Snapshot interface {
 	// ProjectByID returns the loaded project with the given ID, or nil.
 	ProjectByID(projectID string) *models.Project
-	// Lookup resolves a task by its UUID to the task and its owning project.
-	Lookup(taskID string) (TaskRef, bool)
+	// LookupTaskID resolves an unqualified task UUID only when exactly one loaded
+	// project owns it.
+	LookupTaskID(taskID string) (TaskRef, TaskLookupStatus)
 	// LookupLocator resolves a task within an explicit owning project.
 	LookupLocator(locator TaskLocator) (TaskRef, bool)
 	// Revision returns the canonical content revision a project was loaded at,
@@ -125,12 +137,12 @@ type Repository interface {
 }
 
 // snapshotView is the concrete Snapshot the application layer builds over a set
-// of loaded projects and their revisions. It keeps the legacy first-seen UUID
-// index and a project-qualified index for collision-safe cross-project callers.
+// of loaded projects and their revisions. Its UUID index retains every owner so
+// unqualified lookups can reject cross-project collisions.
 type snapshotView struct {
 	projects  []*models.Project
 	byProject map[string]*models.Project
-	byTask    map[string]TaskRef
+	byTask    map[string][]TaskRef
 	byLocator map[TaskLocator]TaskRef
 	revisions map[string]string
 	documents map[string]*storage.ProjectDocument
@@ -143,7 +155,7 @@ type snapshotView struct {
 func NewSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument) Snapshot {
 	view := &snapshotView{
 		byProject: make(map[string]*models.Project, len(projects)),
-		byTask:    make(map[string]TaskRef),
+		byTask:    make(map[string][]TaskRef),
 		byLocator: make(map[TaskLocator]TaskRef),
 		revisions: make(map[string]string, len(revisions)),
 		documents: make(map[string]*storage.ProjectDocument, len(documents)),
@@ -166,9 +178,7 @@ func NewSnapshot(projects []*models.Project, revisions map[string]string, docume
 			}
 			ref := TaskRef{Task: task, Project: project, Base: view.documents[project.ID]}
 			view.byLocator[TaskLocator{ProjectID: project.ID, TaskID: task.ID}] = ref
-			if _, seen := view.byTask[task.ID]; !seen {
-				view.byTask[task.ID] = ref
-			}
+			view.byTask[task.ID] = append(view.byTask[task.ID], ref)
 		}
 	}
 	return view
@@ -181,12 +191,19 @@ func (v *snapshotView) ProjectByID(projectID string) *models.Project {
 	return v.byProject[projectID]
 }
 
-func (v *snapshotView) Lookup(taskID string) (TaskRef, bool) {
+func (v *snapshotView) LookupTaskID(taskID string) (TaskRef, TaskLookupStatus) {
 	if taskID == "" {
-		return TaskRef{}, false
+		return TaskRef{}, TaskLookupMissing
 	}
-	ref, ok := v.byTask[taskID]
-	return ref, ok
+	refs := v.byTask[taskID]
+	switch len(refs) {
+	case 0:
+		return TaskRef{}, TaskLookupMissing
+	case 1:
+		return refs[0], TaskLookupUnique
+	default:
+		return TaskRef{}, TaskLookupAmbiguous
+	}
 }
 
 func (v *snapshotView) LookupLocator(locator TaskLocator) (TaskRef, bool) {

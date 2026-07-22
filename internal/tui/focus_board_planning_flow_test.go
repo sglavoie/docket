@@ -61,7 +61,8 @@ func TestPlannerAddUsesActiveTabPresetAndOneUndoableTransaction(t *testing.T) {
 				t.Fatalf("created task survived undo: %+v", task)
 			}
 			planning := env.reloadPlanning(t)
-			if dailyPlanContains(planning, msg.Result.TaskID) || focusQueueContains(planning, msg.Result.TaskID) {
+			identity := TaskIdentity{ProjectID: env.project.ID, TaskID: msg.Result.TaskID}
+			if dailyPlanContains(planning, identity) || focusQueueContains(planning, identity) {
 				t.Fatal("created task's planning membership survived undo")
 			}
 
@@ -93,10 +94,11 @@ func assertPlannerCreatedState(
 		t.Fatalf("created task state = %s, want %s", got, wantState)
 	}
 	planning := env.reloadPlanning(t)
-	if got := dailyPlanContains(planning, taskID); got != wantToday {
+	identity := TaskIdentity{ProjectID: env.project.ID, TaskID: taskID}
+	if got := dailyPlanContains(planning, identity); got != wantToday {
 		t.Fatalf("Today membership = %v, want %v", got, wantToday)
 	}
-	if got := focusQueueContains(planning, taskID); got != wantNext {
+	if got := focusQueueContains(planning, identity); got != wantNext {
 		t.Fatalf("Next membership = %v, want %v", got, wantNext)
 	}
 	if wantToday && wantNext {

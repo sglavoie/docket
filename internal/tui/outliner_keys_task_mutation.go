@@ -19,7 +19,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			// MoveBlockedMsg toast), but the swap itself is delegated to the app-layer
 			// MoveTaskDown seam, which reorders MODEL-order siblings and commits one
 			// ledger transaction; the shell reloads the cross outliner.
-			row, _, ok := m.crossGetMutationTarget()
+			row, project, ok := m.crossGetMutationTarget()
 			if !ok {
 				return m, nil, true
 			}
@@ -33,7 +33,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 						return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
 					}, true
 				}
-				return m, m.taskItem.MoveDown(task.ID), true
+				return m, m.taskItem.MoveDown(taskIdentityFor(task, project)), true
 			}
 			return m, nil, true
 		}
@@ -64,7 +64,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 		if m.project == nil {
 			// Cross-project: VISIBLE-sibling guards, MODEL-order swap via the
 			// app-layer MoveTaskUp seam (see the "J" branch).
-			row, _, ok := m.crossGetMutationTarget()
+			row, project, ok := m.crossGetMutationTarget()
 			if !ok {
 				return m, nil, true
 			}
@@ -78,7 +78,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 						return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
 					}, true
 				}
-				return m, m.taskItem.MoveUp(task.ID), true
+				return m, m.taskItem.MoveUp(taskIdentityFor(task, project)), true
 			}
 			return m, nil, true
 		}
@@ -119,7 +119,11 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			if curRow.ProjectID != aboveRow.ProjectID {
 				return m, nil, true
 			}
-			return m, m.taskItem.Indent(curRow.task.ID), true
+			_, project, ok := m.crossGetMutationTarget()
+			if !ok {
+				return m, nil, true
+			}
+			return m, m.taskItem.Indent(taskIdentityFor(curRow.task, project)), true
 		}
 		task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
 		candidate := m.project.GetTaskByID(m.rows[m.cursor-1].task.ID)
@@ -143,8 +147,11 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			// Cross-project: delegate the outdent to the app-layer OutdentTask seam,
 			// which validates the task has a parent and commits one ledger
 			// transaction; the shell reloads the cross outliner.
-			curRow := m.rows[m.cursor]
-			return m, m.taskItem.Outdent(curRow.task.ID), true
+			curRow, project, ok := m.crossGetMutationTarget()
+			if !ok {
+				return m, nil, true
+			}
+			return m, m.taskItem.Outdent(taskIdentityFor(curRow.task, project)), true
 		}
 		task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
 		if task == nil {

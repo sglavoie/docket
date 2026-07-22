@@ -18,16 +18,12 @@ func (c *inboxCore) recordAction(actionType string, snapshot *inboxSnapshot) {
 	if task == nil {
 		return
 	}
-	projectID := ""
-	if project != nil {
-		projectID = project.ID
-	}
+	identity := taskIdentityFor(task, project)
 	// A newly recorded action invalidates any pending redo, matching the linear
 	// undo/redo contract the workspace ledger enforces for stateful actions.
 	c.redoHistory = nil
 	c.processingHistory = append(c.processingHistory, processingAction{
-		taskID:       task.ID,
-		projectID:    projectID,
+		identity:     identity,
 		actionType:   actionType,
 		timestamp:    time.Now(),
 		prevSnapshot: snapshot,
@@ -51,9 +47,9 @@ func (c *inboxCore) undoLastAction() tea.Cmd {
 		action := c.processingHistory[n-1]
 		c.processingHistory = c.processingHistory[:n-1]
 		c.redoHistory = append(c.redoHistory, action)
-		delete(c.processedIDs, action.taskID)
-		delete(c.skippedIDs, action.taskID)
-		c.pendingFocusID = action.taskID
+		delete(c.processedIDs, action.identity)
+		delete(c.skippedIDs, action.identity)
+		c.pendingFocus = action.identity
 		c.realignCurrentIndex()
 		c.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
 		return nil
@@ -69,9 +65,9 @@ func (c *inboxCore) undoLastAction() tea.Cmd {
 			action := c.processingHistory[n-1]
 			c.processingHistory = c.processingHistory[:n-1]
 			c.redoHistory = append(c.redoHistory, action)
-			delete(c.processedIDs, action.taskID)
-			delete(c.skippedIDs, action.taskID)
-			c.pendingFocusID = action.taskID
+			delete(c.processedIDs, action.identity)
+			delete(c.skippedIDs, action.identity)
+			c.pendingFocus = action.identity
 		}
 		c.realignCurrentIndex()
 		c.statusMessage = fmt.Sprintf("Undone: %s", desc)
@@ -87,14 +83,14 @@ func (c *inboxCore) undoLastAction() tea.Cmd {
 	}
 	action := c.processingHistory[n-1]
 	c.processingHistory = c.processingHistory[:n-1]
-	delete(c.processedIDs, action.taskID)
-	delete(c.skippedIDs, action.taskID)
-	c.pendingFocusID = action.taskID
+	delete(c.processedIDs, action.identity)
+	delete(c.skippedIDs, action.identity)
+	c.pendingFocus = action.identity
 
-	task, project := c.backend.findTaskByID(action.taskID, action.projectID)
+	task, project := c.backend.findTask(action.identity)
 	if task == nil || project == nil {
 		c.err = fmt.Errorf("cannot undo: task not found")
-		c.pendingFocusID = ""
+		c.pendingFocus = TaskIdentity{}
 		return nil
 	}
 	restoreInboxSnapshot(task, action.prevSnapshot)
@@ -110,9 +106,9 @@ func (c *inboxCore) redoLastAction() tea.Cmd {
 		action := c.redoHistory[n-1]
 		c.redoHistory = c.redoHistory[:n-1]
 		c.processingHistory = append(c.processingHistory, action)
-		c.skippedIDs[action.taskID] = true
-		delete(c.processedIDs, action.taskID)
-		c.pendingFocusID = action.taskID
+		c.skippedIDs[action.identity] = true
+		delete(c.processedIDs, action.identity)
+		c.pendingFocus = action.identity
 		c.realignCurrentIndex()
 		c.statusMessage = fmt.Sprintf("Redone: %s", action.actionType)
 		return nil
@@ -127,12 +123,12 @@ func (c *inboxCore) redoLastAction() tea.Cmd {
 		action := c.redoHistory[n-1]
 		c.redoHistory = c.redoHistory[:n-1]
 		c.processingHistory = append(c.processingHistory, action)
-		c.pendingFocusID = action.taskID
+		c.pendingFocus = action.identity
 		// If the replayed action moved the task out of the inbox (done, section
 		// change), re-mark it processed so it does not reappear in the queue.
-		if task, project := c.backend.findTaskByID(action.taskID, action.projectID); task != nil && project != nil && willLeaveInbox(task) {
-			c.processedIDs[action.taskID] = true
-			c.pendingFocusID = ""
+		if task, project := c.backend.findTask(action.identity); task != nil && project != nil && willLeaveInbox(task) {
+			c.processedIDs[action.identity] = true
+			c.pendingFocus = TaskIdentity{}
 		}
 	}
 	c.realignCurrentIndex()
@@ -241,7 +237,7 @@ func (c *inboxCore) changeTaskState(newState models.WorkflowState, verb string) 
 	c.statusMessage = fmt.Sprintf("Task #%d %s", current.ShortID, verb)
 
 	if c.backend.shouldProcessOnStateChange(newState) {
-		c.processedIDs[current.ID] = true
+		c.processedIDs[taskIdentityFor(current, project)] = true
 		return tea.Batch(c.backend.saveCmd(), c.advanceToNext(true))
 	}
 
@@ -270,7 +266,7 @@ func (c *inboxCore) sendToWaiting() tea.Cmd {
 
 	c.recordAction("sent to Waiting", snapshot)
 	c.statusMessage = fmt.Sprintf("Task #%d sent to Waiting", current.ShortID)
-	c.processedIDs[task.ID] = true
+	c.processedIDs[taskIdentityFor(task, project)] = true
 
 	return tea.Batch(c.backend.saveCmd(), c.advanceToNext(true))
 }
@@ -281,7 +277,7 @@ func (c *inboxCore) handleSectionPickerDone(msg SectionPickerDoneMsg) tea.Cmd {
 	}
 	task, project := c.currentTaskRef()
 	if task != nil && c.backend.shouldProcessOnSectionChange(task, project) {
-		c.processedIDs[task.ID] = true
+		c.processedIDs[taskIdentityFor(task, project)] = true
 		return tea.Batch(c.backend.saveCmd(), c.advanceToNext(true))
 	}
 	return c.backend.saveCmd()
@@ -301,11 +297,12 @@ func (c *inboxCore) requestDelete() tea.Cmd {
 	if task == nil || project == nil {
 		return nil
 	}
-	focusID := c.nextInboxFocusAfterDelete()
+	focus := c.nextInboxFocusAfterDelete()
+	identity := taskIdentityFor(task, project)
 	if c.pendingDeletes == nil {
-		c.pendingDeletes = make(map[string]inboxPendingDelete)
+		c.pendingDeletes = make(map[TaskIdentity]inboxPendingDelete)
 	}
-	c.pendingDeletes[task.ID] = inboxPendingDelete{focusID: focusID}
+	c.pendingDeletes[identity] = inboxPendingDelete{focus: focus}
 	origin := c.backend.viewType()
 	ref := TaskProjectRef{Task: task, Project: project}
 	return func() tea.Msg {
@@ -319,20 +316,22 @@ func (c *inboxCore) requestDelete() tea.Cmd {
 // reloads the committed queue. A blank result means no other unprocessed/unskipped
 // task remained at request time; whether the processor actually closes is decided
 // at apply time by shouldCloseAfterDelete, not by this request-time scan.
-func (c *inboxCore) nextInboxFocusAfterDelete() (focusID string) {
+func (c *inboxCore) nextInboxFocusAfterDelete() TaskIdentity {
 	for i := c.currentIndex + 1; i < c.backend.taskCount(); i++ {
-		task, _ := c.backend.taskRef(i)
-		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
-			return task.ID
+		task, project := c.backend.taskRef(i)
+		identity := taskIdentityFor(task, project)
+		if !c.processedIDs[identity] && !c.skippedIDs[identity] {
+			return identity
 		}
 	}
 	for i := 0; i < c.currentIndex; i++ {
-		task, _ := c.backend.taskRef(i)
-		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
-			return task.ID
+		task, project := c.backend.taskRef(i)
+		identity := taskIdentityFor(task, project)
+		if !c.processedIDs[identity] && !c.skippedIDs[identity] {
+			return identity
 		}
 	}
-	return ""
+	return TaskIdentity{}
 }
 
 // shouldCloseAfterDelete reports whether the processor should auto-close now that
@@ -354,8 +353,9 @@ func (c *inboxCore) shouldCloseAfterDelete() bool {
 		return false
 	}
 	for i := 0; i < c.backend.taskCount(); i++ {
-		task, _ := c.backend.taskRef(i)
-		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+		task, project := c.backend.taskRef(i)
+		identity := taskIdentityFor(task, project)
+		if !c.processedIDs[identity] && !c.skippedIDs[identity] {
 			return false
 		}
 	}
@@ -363,7 +363,7 @@ func (c *inboxCore) shouldCloseAfterDelete() bool {
 }
 
 // applyCommittedDelete finalizes processor state after the shell-owned
-// transaction commits the canonical deletion of taskID. It mirrors the advance,
+// transaction commits the canonical deletion of identity. It mirrors the advance,
 // processed-count, and cursor-anchoring bookkeeping the legacy in-memory
 // executeDelete performed inline, but runs post-commit: the committed project
 // data (reloaded by the shell) no longer contains the task, so the queue is
@@ -372,16 +372,16 @@ func (c *inboxCore) shouldCloseAfterDelete() bool {
 // remaining in-flight deletes (shouldCloseAfterDelete) rather than a request-time
 // snapshot, so back-to-back deletion of the final two tasks closes exactly once,
 // reporting the same processed/skipped counts the header showed.
-func (c *inboxCore) applyCommittedDelete(taskID string) tea.Cmd {
-	if taskID == "" {
+func (c *inboxCore) applyCommittedDelete(identity TaskIdentity) tea.Cmd {
+	if !identity.Valid() {
 		return nil
 	}
-	pending, ok := c.pendingDeletes[taskID]
+	pending, ok := c.pendingDeletes[identity]
 	if !ok {
 		return nil
 	}
-	delete(c.pendingDeletes, taskID)
-	focusID := pending.focusID
+	delete(c.pendingDeletes, identity)
+	focus := pending.focus
 
 	c.backend.rebuildTasks()
 	c.statusMessage = "Task deleted"
@@ -390,15 +390,15 @@ func (c *inboxCore) applyCommittedDelete(taskID string) tea.Cmd {
 		c.clampCurrentIndex()
 		return nil
 	}
-	c.processedIDs[taskID] = true
+	c.processedIDs[identity] = true
 
 	if c.shouldCloseAfterDelete() {
-		c.pendingFocusID = ""
+		c.pendingFocus = TaskIdentity{}
 		processed, skipped := len(c.processedIDs), len(c.skippedIDs)
 		return func() tea.Msg { return c.backend.closeMsg(processed, skipped) }
 	}
 
-	c.pendingFocusID = focusID
+	c.pendingFocus = focus
 	c.realignCurrentIndex()
 	return nil
 }
@@ -521,7 +521,7 @@ func (c *inboxCore) moveToSection(section string) tea.Cmd {
 	c.recordAction(fmt.Sprintf("moved to %s", sectionName), snapshot)
 	c.statusMessage = fmt.Sprintf("Moved to %s", sectionName)
 	if c.backend.shouldProcessOnSectionChange(task, project) {
-		c.processedIDs[task.ID] = true
+		c.processedIDs[taskIdentityFor(task, project)] = true
 		return tea.Batch(c.backend.saveCmd(), c.advanceToNext(true))
 	}
 	return c.backend.saveCmd()

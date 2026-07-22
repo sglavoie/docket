@@ -48,15 +48,14 @@ func (s CapabilitySet) Add(capabilities ...Capability) {
 	}
 }
 
-// SelectionContext preserves stable entity identity independently of cursor or
-// row position. TaskIDs may contain one focused task or a multi-selection.
+// SelectionContext preserves project-qualified task identity independently of
+// cursor or row position.
 type SelectionContext struct {
-	ProjectID string
-	TaskIDs   []string
+	Tasks []TaskIdentity
 }
 
 // Count returns the number of selected tasks.
-func (s SelectionContext) Count() int { return len(s.TaskIDs) }
+func (s SelectionContext) Count() int { return len(s.Tasks) }
 
 // EntityContext describes the entity a command would act on. State remains a
 // string at this shell seam so command discovery does not depend on a domain

@@ -326,7 +326,7 @@ func TestOutlinerUppercaseXMultiSelectEmitsDeleteRequestForSelection(t *testing.
 	var selected []*models.Task
 	for _, row := range app.outliner.rows {
 		if row.isTaskRow() && row.task != nil {
-			app.outliner.ToggleSelection(row.task.ID)
+			app.outliner.ToggleTaskIdentity(taskIdentityFor(row.task, project))
 			selected = append(selected, row.task)
 		}
 	}
