@@ -353,7 +353,8 @@ type PaletteBulkDueDateMsg struct {
 
 // NavigateToViewMsg is sent when a view is selected from the command palette.
 type NavigateToViewMsg struct {
-	PresentationID PresentationID
+	PresentationID  PresentationID
+	OutlinerOptions OutlinerOpenOptions
 }
 
 // Category weight multipliers for fuzzy scoring.

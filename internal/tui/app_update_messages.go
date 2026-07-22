@@ -285,11 +285,11 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 }
 
 func (m *AppModel) refreshLoadedTaskWorkspace() {
-	if m.taskWorkspace == nil {
-		return
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
 	}
-	if err := m.taskWorkspace.RefreshIfLoaded(); err != nil {
-		logging.Warn("failed to refresh Task Workspace: %v", err)
+	if m.crossOutliner != nil {
+		m.crossOutliner.rebuildRows()
 	}
 }
 
@@ -401,14 +401,9 @@ func (m *AppModel) refreshTaskViewsAfterRestore(runtimeReloaded bool) []tea.Cmd 
 }
 
 func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
-	m.invalidateFilterCaches()
 	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
 	m.refreshNotesSearchState()
 	m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
-	if m.allTasksView != nil {
-		m.allTasksView.loadAllTasks()
-		m.allTasksView.clampCursor()
-	}
 	if m.reviewHub != nil {
 		m.reviewHub.SetPlanningIndicators(m.focusQueueIDs, m.dailyPlanIDs)
 		m.reviewHub.Refresh()
@@ -420,12 +415,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 		saveCmds = append(saveCmds, m.crossOutliner.reloadCrossProjects())
 	}
 	if m.views != nil {
-		if v := m.views.Get(ViewPriorityView); v != nil {
-			if pv, ok := v.(*PriorityViewModel); ok {
-				pv.reloadData()
-				pv.clampCursor()
-			}
-		}
 		if v := m.views.Get(ViewDailyReview); v != nil {
 			if dr, ok := v.(*DailyReviewModel); ok {
 				dr.reloadData()
@@ -464,14 +453,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 			}
 		}
 		m.refreshLinkedTaskSelectorAfterReload()
-		for _, vt := range []PresentationID{ViewKanban, ViewCrossProjectKanban} {
-			if v := m.views.Get(vt); v != nil {
-				if kb, ok := v.(*KanbanModel); ok {
-					kb.reloadData()
-					kb.clampCursor()
-				}
-			}
-		}
 	}
 	if m.globalInboxProcessor != nil {
 		m.globalInboxProcessor.loadAllInboxTasks()

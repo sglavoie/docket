@@ -97,10 +97,10 @@ func TestMachineTUIStateMigrationMapsEveryLegacyStartValue(t *testing.T) {
 		{"dashboard", StartViewHome, StartRouteState{}},
 		{"focus-board", StartViewPlanner, StartRouteState{PlannerTab: StartPlannerToday}},
 		{"backlog", StartViewPlanner, StartRouteState{PlannerTab: StartPlannerBacklog}},
-		{"cross-project-outliner", StartViewTasks, StartRouteState{TaskLayout: StartTaskOutline, TaskFocus: StartTaskActive}},
-		{"all-tasks", StartViewTasks, StartRouteState{TaskLayout: StartTaskList, TaskFocus: StartTaskActive}},
-		{"priority", StartViewTasks, StartRouteState{TaskLayout: StartTaskList, TaskFocus: StartTaskActive, TaskSort: StartTaskSortPriority}},
-		{"due-dates", StartViewTasks, StartRouteState{TaskLayout: StartTaskList, TaskFocus: StartTaskActive, TaskGroup: StartTaskGroupDueDate}},
+		{"cross-project-outliner", StartViewTasks, StartRouteState{TaskFocus: StartTaskActive}},
+		{"all-tasks", StartViewTasks, StartRouteState{TaskFocus: StartTaskAll}},
+		{"priority", StartViewTasks, StartRouteState{TaskFocus: StartTaskHighPriority, TaskSort: StartTaskSortPriority}},
+		{"due-dates", StartViewTasks, StartRouteState{TaskFocus: StartTaskAll, TaskSort: StartTaskSortDueDate}},
 		{"daily-review", StartViewReview, StartRouteState{ReviewModule: StartReviewDaily}},
 		{"not-a-view", StartViewPlanner, StartRouteState{PlannerTab: StartPlannerToday}},
 	}
@@ -163,7 +163,9 @@ func TestLoadTimeTUIStateMigrationIsAtomicPerDomainAndIdempotent(t *testing.T) {
 	if runtime.Planning().StreakCount != 7 || runtime.Settings().DefaultContext != "work" || runtime.Machine().Editor != "vim" {
 		t.Fatalf("durable values changed: planning=%d settings=%q machine=%q", runtime.Planning().StreakCount, runtime.Settings().DefaultContext, runtime.Machine().Editor)
 	}
-	if runtime.Machine().GetStartView() != StartViewTasks || runtime.Machine().GetStartRoute().TaskGroup != StartTaskGroupDueDate {
+	if runtime.Machine().GetStartView() != StartViewTasks ||
+		runtime.Machine().GetStartRoute().TaskFocus != StartTaskAll ||
+		runtime.Machine().GetStartRoute().TaskSort != StartTaskSortDueDate {
 		t.Fatalf("startup route not migrated: %q %+v", runtime.Machine().GetStartView(), runtime.Machine().GetStartRoute())
 	}
 

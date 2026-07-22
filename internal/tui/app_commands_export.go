@@ -10,7 +10,7 @@ func (m *AppModel) exportCommands() []Command {
 		Category:    CategoryProjects,
 		Views: []PresentationID{
 			ViewDashboard, ViewOutliner,
-			ViewCrossProjectOutliner, ViewAllTasks,
+			ViewCrossProjectOutliner,
 		},
 		Aliases: []string{"export markdown", "save markdown"},
 		Handler: func() tea.Msg { return ExportProjectMsg{} },

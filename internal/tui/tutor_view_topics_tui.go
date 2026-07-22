@@ -8,7 +8,7 @@ func tutorTUITopics() []TutorTopic {
 			Category: "TUI",
 			Content: `# Multi-Select Mode
 
-Press v to toggle multi-select mode (V in Kanban). Once active,
+Press v to toggle multi-select mode. Once active,
 press Space on individual tasks to select or deselect them. Press
 a where available to select all visible tasks.
 
@@ -32,10 +32,6 @@ priority, due date, snooze, and tag updates can span projects in
 cross-project views. Section moves require a single target project;
 cross-project section moves are not supported.
 
-Kanban multi-select applies supported task-field mutations to the
-selected cards. Bulk delete is not supported in Kanban; selected
-cards stay selected when delete is requested.
-
 # Cursor-Only Actions
 
 Detail, edit, create, linked-task, checklist, comment, attachment,
@@ -44,9 +40,8 @@ unless a bulk picker or bulk action is explicitly opened.
 
 # Where It Works
 
-Task multi-select field actions are available in the outliner,
-cross-project outliner, all tasks, focus views, focus board,
-priority, due date, daily/weekly review, and Kanban views.
+Task multi-select field actions are available in project and
+cross-project Outliners, Planner, and daily/weekly review.
 
 Press Esc to exit multi-select mode and clear selections.`,
 		},
@@ -203,11 +198,9 @@ Active filters appear as badges in the status bar.
 
 # Saved Filters
 
-Save your current filter combination for reuse. Saved filters shown
-as All Tasks tabs share the capped tab row with built-in filters.
-Parked is built in, and the seven built-in All Tasks tabs fill the
-visible cap, so the first pinned saved-filter tab can put By Score
-and saved-filter tabs behind More….
+Save your current Outliner filter combination for reuse. Pinned tags
+appear as tabs, while saved filters are loaded from Fv or the command
+palette and appear as an active-filter badge.
 See the Saved Filters topic under Concepts for details.`,
 		},
 		{
@@ -596,7 +589,7 @@ Tasks with a scoring profile show a badge like [S:72] in green when
 all dimensions are explicitly set, or [S:~50] in orange when some
 dimensions use default values. The number is a normalized 0-300 score
 where 150 means all dimensions are at their defaults. The badge appears
-in the priority view and outliner task rows.
+in Outliner task rows, including the High Priority smart focus.
 
 # Score in Sidebar
 

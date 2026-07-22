@@ -10,7 +10,7 @@ const (
 	// CurrentTUIStateVersion versions route and presentation state inside the
 	// machine, planning, and settings domains independently from their envelope
 	// schema. Each owning domain can therefore migrate and commit atomically.
-	CurrentTUIStateVersion = 1
+	CurrentTUIStateVersion = 2
 
 	StartViewHome    = "home"
 	StartViewPlanner = "planner"
@@ -31,7 +31,9 @@ const (
 // canonical destinations. Empty fields mean the destination's normal default.
 // It deliberately does not capture arbitrary live view state.
 type StartRouteState struct {
-	PlannerTab   string `json:"planner_tab,omitempty"`
+	PlannerTab string `json:"planner_tab,omitempty"`
+	// TaskLayout and TaskGroup are decode-only v1 compatibility fields. The v2
+	// migration clears them so they are omitted from subsequent writes.
 	TaskLayout   string `json:"task_layout,omitempty"`
 	TaskFocus    string `json:"task_focus,omitempty"`
 	TaskSort     string `json:"task_sort,omitempty"`
@@ -45,9 +47,14 @@ const (
 
 	StartTaskOutline = "outline"
 	StartTaskList    = "list"
-	StartTaskActive  = "active"
+	StartTaskBoard   = "board"
+
+	StartTaskActive       = "active"
+	StartTaskAll          = "all"
+	StartTaskHighPriority = "high-priority"
 
 	StartTaskSortPriority = "priority"
+	StartTaskSortDueDate  = "due-date"
 	StartTaskGroupDueDate = "due-date"
 
 	StartReviewDaily = "daily"

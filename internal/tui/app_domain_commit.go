@@ -89,7 +89,7 @@ func (m *AppModel) commitMachineMutation(mutate func(*config.MachineState)) erro
 // commitMachineToRuntime commits a machine-local mutation through a runtime
 // snapshot without touching the legacy config.Config facade. It is the
 // view-level counterpart to AppModel.commitMachineMutation for views that hold
-// their own runtime reference (e.g. the all-tasks tab-order handlers). A nil or
+// their own runtime reference. A nil or
 // non-writable runtime is a silent no-op so isolated tests do not attempt a disk
 // commit; the caller's in-memory state remains authoritative.
 func commitMachineToRuntime(runtime *config.RuntimeState, mutate func(*config.MachineState)) error {
@@ -119,9 +119,8 @@ func commitAutomationToRuntime(runtime *config.RuntimeState, mutate func(*config
 
 // commitSettingsToRuntime commits a portable-settings mutation through a runtime
 // snapshot without touching the legacy config.Config facade. It is the
-// view-level counterpart used by the kanban view, whose axis/layout preferences
-// live in the Settings domain (KanbanSettings). A nil or non-writable runtime is
-// a silent no-op.
+// view-level counterpart for settings-owned mutations. A nil or non-writable
+// runtime is a silent no-op.
 func commitSettingsToRuntime(runtime *config.RuntimeState, mutate func(*config.Settings)) error {
 	if runtime == nil || runtime.DataDir() == "" {
 		return nil

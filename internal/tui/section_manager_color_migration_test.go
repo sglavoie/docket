@@ -172,17 +172,12 @@ func TestSectionColorSettingsCommitDeepClonesMutableFieldsOnFailure(t *testing.T
 
 	runtime := newTestConfigAt(dir)
 	timeout := 5
-	showEmpty := true
 	grantedAt := time.Date(2025, time.January, 2, 3, 4, 5, 0, time.UTC)
 	settings := runtime.Settings()
 	settings.FzfTimeout = &timeout
 	settings.Onboarding = &config.OnboardingProgress{}
 	settings.GlobalPinnedTags = []string{"home"}
 	settings.SectionColors = map[string]string{models.SectionNext: "red"}
-	settings.KanbanSettings.EnabledModes = []string{"section"}
-	settings.KanbanSettings.SectionColumnOrder = []string{"next"}
-	settings.KanbanSettings.StatusColumnOrder = []string{"ready"}
-	settings.KanbanSettings.ShowEmptyColumns = &showEmpty
 	settings.AIConsent.GrantedAt = &grantedAt
 
 	err := commitSettingsToRuntime(runtime, func(candidate *config.Settings) {
@@ -190,10 +185,6 @@ func TestSectionColorSettingsCommitDeepClonesMutableFieldsOnFailure(t *testing.T
 		candidate.Onboarding.ProjectCreated = true
 		candidate.GlobalPinnedTags[0] = "mutated"
 		candidate.SectionColors[models.SectionNext] = "green"
-		candidate.KanbanSettings.EnabledModes[0] = "mutated"
-		candidate.KanbanSettings.SectionColumnOrder[0] = "mutated"
-		candidate.KanbanSettings.StatusColumnOrder[0] = "mutated"
-		*candidate.KanbanSettings.ShowEmptyColumns = false
 		mutatedGrantedAt := grantedAt.Add(time.Hour)
 		candidate.AIConsent.GrantedAt = &mutatedGrantedAt
 	})
@@ -212,18 +203,6 @@ func TestSectionColorSettingsCommitDeepClonesMutableFieldsOnFailure(t *testing.T
 	}
 	if got := settings.SectionColors[models.SectionNext]; got != "red" {
 		t.Errorf("SectionColors after failure = %q, want red", got)
-	}
-	if got := settings.KanbanSettings.EnabledModes[0]; got != "section" {
-		t.Errorf("EnabledModes after failure = %q, want section", got)
-	}
-	if got := settings.KanbanSettings.SectionColumnOrder[0]; got != "next" {
-		t.Errorf("SectionColumnOrder after failure = %q, want next", got)
-	}
-	if got := settings.KanbanSettings.StatusColumnOrder[0]; got != "ready" {
-		t.Errorf("StatusColumnOrder after failure = %q, want ready", got)
-	}
-	if got := *settings.KanbanSettings.ShowEmptyColumns; !got {
-		t.Error("ShowEmptyColumns was mutated before the failed commit")
 	}
 	if got := *settings.AIConsent.GrantedAt; !got.Equal(grantedAt) {
 		t.Errorf("AIConsent.GrantedAt after failure = %s, want %s", got, grantedAt)

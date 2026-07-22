@@ -42,12 +42,8 @@ type filterParityCase struct {
 // that capture the model pointer (the closures themselves are never executed).
 func sharedFilterViewCases() []filterParityCase {
 	return []filterParityCase{
-		{ViewProjectFocusView, "ProjectFocus", (&ProjectFocusViewModel{}).buildKeyMap()},
-		{ViewAllTasks, "AllTasks", (&AllTasksViewModel{}).buildKeyMap()},
 		{ViewOutliner, "Outliner", (&OutlinerModel{project: &models.Project{}}).buildKeyMap()},
 		{ViewCrossProjectOutliner, "CrossProjectOutliner", (&OutlinerModel{}).buildKeyMap()},
-		{ViewKanban, "Kanban", (&KanbanModel{}).buildKeyMap()},
-		{ViewPriorityView, "PriorityView", (&PriorityViewModel{}).buildKeyMap()},
 		{ViewDailyReview, "DailyReview", (&DailyReviewModel{}).buildKeyMap()},
 		{ViewWeeklyReview, "WeeklyReview", (&WeeklyReviewModel{}).buildKeyMap()},
 		{ViewRecentActivity, "RecentActivity", (&RecentActivityModel{}).buildKeyMap()},
@@ -187,14 +183,6 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		m := &FocusBoardModel{runtime: runtime, FilterMixin: filterMixin()}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
-	case "ProjectFocus":
-		m := &ProjectFocusViewModel{runtime: runtime, FilterMixin: filterMixin()}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
-	case "AllTasks":
-		m := &AllTasksViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin(), projectFilter: make(map[string]bool)}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
 	case "Outliner":
 		m := &OutlinerModel{
 			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
@@ -214,14 +202,6 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 			filterProjects:    make(map[string]bool),
 		}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
-	case "Kanban":
-		m := &KanbanModel{runtime: runtime, FilterMixin: filterMixin()}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
-	case "PriorityView":
-		m := &PriorityViewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
-		m.pendingPrefix = "F"
 		return m.GetPrefixPopupInfo()
 	case "DailyReview":
 		m := &DailyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
@@ -246,21 +226,13 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 // sessions 2-4 can diff against them when they touch wiring.
 func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 	wants := map[string][]string{
-		"ProjectFocus": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		// All Tasks: Fd is a direct cycle-binding (not a sub-prefix), and P is
-		// a view-specific direct project filter toggle.
-		"AllTasks": {"#", "P", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		// The Outliner appends view-specific filters for
 		// completed/actionable/section/columns plus Fv saved filters.
 		"Outliner":             {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
 		"CrossProjectOutliner": {"#", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
-		"Kanban":               {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		// Priority view appends a view-specific direct binding `r` (toggle
-		// actionable filter) under the F prefix.
-		"PriorityView":   {"#", "S", "a", "d", "h", "i", "k", "p", "r", "s", "t", "x"},
-		"DailyReview":    {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"WeeklyReview":   {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"RecentActivity": {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"DailyReview":          {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"WeeklyReview":         {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
+		"RecentActivity":       {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 	}
 
 	for _, tc := range sharedFilterViewCases() {
@@ -293,25 +265,6 @@ func TestFilterParity_PlannerUsesViewMenuInsteadOfFilterPrefixes(t *testing.T) {
 	t.Fatal("Planner keymap does not advertise v Open View menu")
 }
 
-// TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup asserts Project
-// Focus exposes the full shared F filter group wired through FilterGroup,
-// including the Fh hide-dimmed toggle and the full sub-prefix family
-// (Ft, Fs, Fd, FS).
-func TestFilterParity_ProjectFocus_AdvertisesSharedFilterGroup(t *testing.T) {
-	km := (&ProjectFocusViewModel{}).buildKeyMap()
-	if findRootFPrefix(km) == nil {
-		t.Fatal("Project Focus must expose the shared F prefix")
-	}
-	if !fChildIsBinding(km, "h") {
-		t.Error("Project Focus must advertise Fh (hide-dimmed)")
-	}
-	for _, sub := range []string{"t", "s", "d", "S"} {
-		if !fChildIsPrefix(km, sub) {
-			t.Errorf("Project Focus must expose F%s sub-prefix", sub)
-		}
-	}
-}
-
 // TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup asserts Recent
 // Activity exposes the full shared F filter group wired through FilterGroup,
 // including the Fh hide-dimmed toggle and the full sub-prefix family
@@ -328,26 +281,6 @@ func TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup(t *testing.T) {
 		if !fChildIsPrefix(km, sub) {
 			t.Errorf("Recent Activity must expose F%s sub-prefix", sub)
 		}
-	}
-}
-
-// TestFilterParity_AllTasks_DueDateIsDirectCycleByDesign locks in the All Tasks
-// view-specific shape settled in session 5: Fd is a direct cycle binding
-// (overdue → today → this-week → none → clear) and FP is a direct project
-// filter toggle. Both are intentional view-specific bindings — analogous to
-// PriorityView's Fr (toggle actionable) — and are reflected as such in keymap,
-// help, popup, and explorer. Future changes here are a UX decision, not a
-// parity bug.
-func TestFilterParity_AllTasks_DueDateIsDirectCycleByDesign(t *testing.T) {
-	km := (&AllTasksViewModel{}).buildKeyMap()
-	if fChildIsPrefix(km, "d") {
-		t.Fatal("All Tasks Fd is intentionally a direct cycle; if it becomes a sub-prefix, update this test and the popup builder in all_tasks_render.go")
-	}
-	if !fChildIsBinding(km, "d") {
-		t.Fatal("All Tasks must advertise a direct Fd cycle binding")
-	}
-	if !fChildIsBinding(km, "P") {
-		t.Fatal("All Tasks must advertise direct FP (toggle project filter)")
 	}
 }
 

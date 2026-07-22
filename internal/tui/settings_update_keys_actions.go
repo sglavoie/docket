@@ -88,19 +88,6 @@ func (m *SettingsModel) handleSpaceKey() {
 		case local >= columnsBase && local <= columnsEnd:
 			m.outlinerColumnDefaults[local-columnsBase] = !m.outlinerColumnDefaults[local-columnsBase]
 		}
-	case tabKanban:
-		switch {
-		case local == 0:
-			m.kanbanDefaultModeCursor = (m.kanbanDefaultModeCursor + 1) % len(kanbanModeOptions)
-		case local == 2:
-			m.kanbanShowEmptyColumns = !m.kanbanShowEmptyColumns
-		case local == 3:
-			m.kanbanDetailPaneVisible = !m.kanbanDetailPaneVisible
-		case local == 4:
-			m.kanbanDetailHeightCursor = (m.kanbanDetailHeightCursor + 1) % len(kanbanDetailHeightOptions)
-		case local >= 5 && local < 5+len(kanbanModeLabels):
-			m.kanbanEnabledModes[local-5] = !m.kanbanEnabledModes[local-5]
-		}
 	case tabNotifications:
 		switch local {
 		case 0:
@@ -145,8 +132,6 @@ func (m *SettingsModel) handleLeftKey() {
 		m.handleLeftBehaviorKey(local)
 	case tabOutliner:
 		m.handleLeftOutlinerKey(local)
-	case tabKanban:
-		m.handleLeftKanbanKey(local)
 	case tabNotifications:
 		m.handleLeftNotificationsKey(local)
 	case tabAppearance:
@@ -167,8 +152,6 @@ func (m *SettingsModel) handleRightKey() {
 		m.handleRightBehaviorKey(local)
 	case tabOutliner:
 		m.handleRightOutlinerKey(local)
-	case tabKanban:
-		m.handleRightKanbanKey(local)
 	case tabNotifications:
 		m.handleRightNotificationsKey(local)
 	case tabAppearance:
@@ -198,15 +181,6 @@ func (m *SettingsModel) handleLeftBehaviorKey(local int) {
 func (m *SettingsModel) handleLeftOutlinerKey(local int) {
 	if local == 10 {
 		stepBoundedCursor(&m.outlinerPriorityMode, -1, 2)
-	}
-}
-
-func (m *SettingsModel) handleLeftKanbanKey(local int) {
-	switch local {
-	case 0:
-		stepBoundedCursor(&m.kanbanDefaultModeCursor, -1, len(kanbanModeOptions)-1)
-	case 4:
-		stepBoundedCursor(&m.kanbanDetailHeightCursor, -1, len(kanbanDetailHeightOptions)-1)
 	}
 }
 
@@ -247,15 +221,6 @@ func (m *SettingsModel) handleRightBehaviorKey(local int) {
 func (m *SettingsModel) handleRightOutlinerKey(local int) {
 	if local == 10 {
 		stepBoundedCursor(&m.outlinerPriorityMode, 1, 2)
-	}
-}
-
-func (m *SettingsModel) handleRightKanbanKey(local int) {
-	switch local {
-	case 0:
-		stepBoundedCursor(&m.kanbanDefaultModeCursor, 1, len(kanbanModeOptions)-1)
-	case 4:
-		stepBoundedCursor(&m.kanbanDetailHeightCursor, 1, len(kanbanDetailHeightOptions)-1)
 	}
 }
 

@@ -156,7 +156,7 @@ func (e *appBulkPickerEnv) redo(t *testing.T) {
 // with pending bulk tasks) now commits one asynchronous cross-project transaction
 // through the BulkCoordinator: the batch result carries the selection and per-view
 // summary, both projects' priorities are committed on disk, the shell clears the
-// cached All Tasks multi-select on commit, and the workspace ledger restores the
+// cached Outliner multi-select on commit, and the workspace ledger restores the
 // prior priorities. A non-zero baseline avoids the omitted-empty-field undo gap.
 func TestHandlePriorityPickerDoneBulkMigratedCommitsAsync(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha priority")
@@ -166,11 +166,12 @@ func TestHandlePriorityPickerDoneBulkMigratedCommitsAsync(t *testing.T) {
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
-	app.allTasksView.multiSelectMode = true
-	app.allTasksView.selectedTasks[taskA.ID] = true
-	app.allTasksView.selectedTasks[taskB.ID] = true
-	app.views.Register(ViewAllTasks, app.allTasksView)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner.loadedProjects = env.projects
+	app.crossOutliner.multiSelectMode = true
+	app.crossOutliner.selectedTasks[taskA.ID] = true
+	app.crossOutliner.selectedTasks[taskB.ID] = true
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 
 	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
 	app.pushView(ViewPriorityPicker)
@@ -199,8 +200,8 @@ func TestHandlePriorityPickerDoneBulkMigratedCommitsAsync(t *testing.T) {
 	}
 
 	app.handleBatchTransactionResult(msg)
-	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
-		t.Fatal("committed batch should clear cached All Tasks multi-select")
+	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
+		t.Fatal("committed batch should clear cached Outliner multi-select")
 	}
 
 	env.undo(t)

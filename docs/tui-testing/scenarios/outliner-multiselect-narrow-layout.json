@@ -6,10 +6,12 @@
     { "type": "resize", "width": 66, "height": 22 },
     { "type": "key", "label": "open project outliner (enter)", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "key", "label": "enter multi-select mode", "key": "v" },
+    { "type": "key", "label": "move to first task", "key": "down" },
     { "type": "key", "label": "select current task", "key": "space" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "narrower band where rows wrap", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "✓" },
+    { "type": "assert", "assert": "contains", "value": "[x]" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "taller-but-narrow band", "width": 70, "height": 22 },
     { "type": "assert", "assert": "no_layout_issues" }

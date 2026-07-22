@@ -15,7 +15,7 @@ import (
 func TestCrossProjectBulkStatusSkipsInvalidTransitions(t *testing.T) {
 	done := seedTask(t, 1, "Already done", models.StateDone)
 	todo := seedTask(t, 2, "Not started yet", models.StateReady)
-	env := newKanbanBulkEnv(t, []*models.Task{done, todo})
+	env := newCrossProjectTestEnv(t, []*models.Task{done, todo})
 	m := newCrossOutlinerFromEnv(env)
 
 	m.bulkOp.SetOperation(models.StateInProgress, []*models.Task{done, todo}, 0, nil)
@@ -52,7 +52,7 @@ func assertBulkSkipsParent(t *testing.T, state models.WorkflowState, wantState m
 	standalone, _ := models.NewTask("bulk-standalone-001", 3, models.TaskTypeTask, "Standalone leaf")
 	standalone.ApplyWorkflowState(models.StateReady)
 
-	env := newKanbanBulkEnv(t, []*models.Task{parent, child, standalone})
+	env := newCrossProjectTestEnv(t, []*models.Task{parent, child, standalone})
 	m := newCrossOutlinerFromEnv(env)
 
 	m.bulkOp.SetOperation(state, []*models.Task{parent, standalone}, 0, nil)
@@ -103,7 +103,7 @@ func TestCrossProjectBulkReconcileWholeProjectUndoRestoresReopenedParent(t *test
 	betaLeaf, _ := models.NewTask("beta-leaf-001", 1, models.TaskTypeTask, "Beta standalone")
 	betaLeaf.ApplyWorkflowState(models.StateReady)
 
-	env := newKanbanBulkEnv(t,
+	env := newCrossProjectTestEnv(t,
 		[]*models.Task{alphaParent, alphaChild, alphaLeaf},
 		[]*models.Task{betaLeaf})
 	m := newCrossOutlinerFromEnv(env)

@@ -15,7 +15,7 @@ import (
 func TestScoreEditorSaveReplacesThroughCoordinator(t *testing.T) {
 	task := seedTask(t, 1, "Scored", models.StateReady)
 	task.ScoreDimensions = map[string]int{"impact": 1, "reach": 5}
-	env := newKanbanBulkEnv(t, []*models.Task{task})
+	env := newCrossProjectTestEnv(t, []*models.Task{task})
 	coords := newSecondaryCoordinators(env.svc, nil)
 
 	m := &ScoreEditorModel{

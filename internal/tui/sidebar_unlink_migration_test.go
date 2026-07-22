@@ -13,7 +13,7 @@ import (
 // ledger-undoable ChangeSet (replacing the retired raw save), surfacing a
 // LinkRemovedMsg that carries the touched project IDs the shell reloads.
 
-func linkCoordFromEnv(env *kanbanBulkEnv) LinkCoordinator {
+func linkCoordFromEnv(env *crossProjectTestEnv) LinkCoordinator {
 	return newSecondaryCoordinators(env.svc, nil).Link
 }
 
@@ -34,7 +34,7 @@ func TestSidebarUnlink_DependencyThroughCoordinatorAndLedger(t *testing.T) {
 	a1 := seedTask(t, 1, "Blocked task", models.StateReady)
 	a2 := seedTask(t, 2, "Blocker task", models.StateReady)
 	a1.DependsOn = []string{a2.ID}
-	env := newKanbanBulkEnv(t, []*models.Task{a1, a2})
+	env := newCrossProjectTestEnv(t, []*models.Task{a1, a2})
 	link := linkCoordFromEnv(env)
 
 	// Section 0: remove a1's own dependency edge onto a2.
@@ -61,7 +61,7 @@ func TestSidebarUnlink_InverseBlockingRemovesDependentEdge(t *testing.T) {
 	a1 := seedTask(t, 1, "Blocked task", models.StateReady)
 	a2 := seedTask(t, 2, "Blocker task", models.StateReady)
 	a1.DependsOn = []string{a2.ID}
-	env := newKanbanBulkEnv(t, []*models.Task{a1, a2})
+	env := newCrossProjectTestEnv(t, []*models.Task{a1, a2})
 	link := linkCoordFromEnv(env)
 
 	// Section 1 from a2's sidebar lists a1 (blocked by a2); removing it drops
@@ -80,7 +80,7 @@ func TestSidebarUnlink_RelatedIsBidirectional(t *testing.T) {
 	a2 := seedTask(t, 2, "Peer", models.StateReady)
 	a1.RelatedTo = []string{a2.ID}
 	a2.RelatedTo = []string{a1.ID}
-	env := newKanbanBulkEnv(t, []*models.Task{a1, a2})
+	env := newCrossProjectTestEnv(t, []*models.Task{a1, a2})
 	link := linkCoordFromEnv(env)
 
 	lr := runLinkRemoved(t, sidebarUnlinkCommand(link, env.projects[0], a1, 2, 0))
@@ -101,7 +101,7 @@ func TestSidebarUnlink_RelatedIsBidirectional(t *testing.T) {
 
 func TestSidebarUnlink_OutOfRangeCursorIsNoOp(t *testing.T) {
 	a1 := seedTask(t, 1, "Lonely", models.StateReady)
-	env := newKanbanBulkEnv(t, []*models.Task{a1})
+	env := newCrossProjectTestEnv(t, []*models.Task{a1})
 	link := linkCoordFromEnv(env)
 
 	if cmd := sidebarUnlinkCommand(link, env.projects[0], a1, 0, 0); cmd != nil {

@@ -84,53 +84,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case DailyReviewSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
-	case ShowAllTasksMsg:
-		if m.typedNavigation && m.taskWorkspaceView != nil {
-			if msg.SetGroup {
-				_ = m.taskWorkspace.State.SetGrouping(workspaceGroupingFromAllTasks(msg.Group))
-			}
-			if msg.SetSort {
-				_ = m.taskWorkspace.State.SetSorting(SortState{Field: msg.Sort, Ascending: true})
-			}
-			var opts []AllTasksOption
-			if msg.SetGroup {
-				opts = append(opts, WithInitialGrouping(msg.Group))
-			}
-			if msg.SetSort {
-				opts = append(opts, WithInitialSort(msg.Sort, true))
-			}
-			m.allTasksView = NewAllTasksViewModel(m.runtime, m.configManager, opts...)
-			m.allTasksView.bulk = m.secondaryFeatures.Bulk
-			m.allTasksView.queueIDs = m.focusQueueIDs
-			m.allTasksView.dailyPlanIDs = m.dailyPlanIDs
-			m.allTasksView.SetSize(m.width, m.height-2)
-			m.wireSecondaryCoordinators(m.allTasksView)
-			m.views.Register(ViewAllTasks, m.allTasksView)
-			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-				Scope: AppEntityScope(), Layout: WorkspaceList, Focus: WorkspaceActive,
-			})
-			if err != nil {
-				return true, func() tea.Msg { return ErrorMsg{Err: err} }
-			}
-			return true, m.activateTaskWorkspaceRoute(route)
-		}
-		var opts []AllTasksOption
-		if msg.SetGroup {
-			opts = append(opts, WithInitialGrouping(msg.Group))
-		}
-		if msg.SetSort {
-			opts = append(opts, WithInitialSort(msg.Sort, true))
-		}
-		atv := NewAllTasksViewModel(m.runtime, m.configManager, opts...)
-		atv.bulk = m.secondaryFeatures.Bulk
-		atv.queueIDs = m.focusQueueIDs
-		atv.dailyPlanIDs = m.dailyPlanIDs
-		m.showView(ViewAllTasks, atv)
-		return true, nil
-
-	case AllTasksSelectMsg:
-		return m.popAndNavigateToTask(msg.Task, msg.Project)
-
 	case ShowFocusBoardMsg:
 		m.reevaluateAlerts()
 		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
@@ -185,85 +138,13 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case RecentActivitySelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
-	case ShowProjectFocusViewMsg:
-		if msg.Project != nil {
-			if m.typedNavigation && m.taskWorkspaceView != nil {
-				m.currentProject = msg.Project
-				_ = m.taskWorkspace.State.SetGrouping(WorkspaceGroupNone)
-				_ = m.taskWorkspace.State.SetSorting(NewSortState())
-				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceList, Focus: WorkspaceNext,
-				})
-				if err != nil {
-					return true, func() tea.Msg { return ErrorMsg{Err: err} }
-				}
-				return true, m.activateTaskWorkspaceRoute(route)
-			}
-			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project, m.runtime))
-		}
-		return true, nil
-
 	case ShowRoadmapMsg:
 		return true, m.activateReviewHub(ReviewRoadmap, msg.Project)
 
 	case RoadmapSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
-	case ShowKanbanMsg:
-		if msg.Project != nil {
-			if m.typedNavigation && m.taskWorkspaceView != nil {
-				m.currentProject = msg.Project
-				_ = m.taskWorkspace.State.SetBoardAxis(WorkspaceBoardByStatus)
-				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceBoard, Focus: WorkspaceActive,
-				})
-				if err != nil {
-					return true, func() tea.Msg { return ErrorMsg{Err: err} }
-				}
-				return true, m.activateTaskWorkspaceRoute(route)
-			}
-			kanban := NewKanbanModel(msg.Project, m.configManager, m.runtime, NewProjectService())
-			m.restoreKanbanState(kanban)
-			m.showView(ViewKanban, kanban)
-		}
-		return true, nil
-
-	case ShowCrossProjectKanbanMsg:
-		if m.typedNavigation && m.taskWorkspaceView != nil {
-			_ = m.taskWorkspace.State.SetBoardAxis(WorkspaceBoardByStatus)
-			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-				Scope: AppEntityScope(), Layout: WorkspaceBoard, Focus: WorkspaceActive,
-			})
-			if err != nil {
-				return true, func() tea.Msg { return ErrorMsg{Err: err} }
-			}
-			return true, m.activateTaskWorkspaceRoute(route)
-		}
-		kanban := NewCrossProjectKanbanModel(m.configManager, m.runtime, NewProjectService())
-		m.restoreKanbanState(kanban)
-		m.showView(ViewCrossProjectKanban, kanban)
-		return true, nil
-
-	case KanbanSelectMsg:
-		return m.popAndNavigateToTask(msg.Task, msg.Project)
 	}
 
 	return false, nil
-}
-
-func workspaceGroupingFromAllTasks(group AllTasksGroupBy) TaskWorkspaceGroupBy {
-	switch group {
-	case ATGroupByProject:
-		return WorkspaceGroupProject
-	case ATGroupByStatus:
-		return WorkspaceGroupStatus
-	case ATGroupByPriority:
-		return WorkspaceGroupPriority
-	case ATGroupBySection:
-		return WorkspaceGroupSection
-	case ATGroupByDueDate:
-		return WorkspaceGroupDueDate
-	default:
-		return WorkspaceGroupNone
-	}
 }

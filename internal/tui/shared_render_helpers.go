@@ -208,7 +208,7 @@ func renderChecklistIndicator(task *models.Task) string {
 }
 
 // renderChecklistIndicatorCompact renders the smallest checklist progress form
-// (no icon, plain "X/Y") suitable for very narrow containers like Kanban cards.
+// (no icon, plain "X/Y") suitable for very narrow containers.
 func renderChecklistIndicatorCompact(task *models.Task) string {
 	if len(task.Checklist) == 0 {
 		return ""

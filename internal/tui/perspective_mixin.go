@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// PerspectiveInactive is the sentinel value used by views (Cross-Kanban, Today)
+// PerspectiveInactive is the sentinel value used by views such as Planner
 // that treat perspectives as an optional lens. -1 means "no perspective
 // filter active"; valid perspective indices are 0..9.
 const PerspectiveInactive = -1
@@ -27,7 +27,7 @@ type PerspectivePrefixDeps struct {
 }
 
 // BuildPerspectivePrefixEntry returns the "P" prefix entry shared by views that
-// expose perspectives as a lens (Cross-Kanban, Today). Children:
+// expose perspectives as a lens. Children:
 //   - 0..9      direct preset selection (P0..P9)
 //   - P         cycle to next perspective (PP)
 //   - N         cycle to previous perspective (PN)

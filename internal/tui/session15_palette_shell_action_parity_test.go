@@ -9,32 +9,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// Session 15.1 (FR-017) parity: the Task Workspace and Planner palette adapters
-// expose Peek, Undo, and Redo, but AppModel intercepts the direct Shift+Enter /
+// Session 15.1 (FR-017) parity: the Planner palette adapter exposes Peek, Undo,
+// and Redo, but AppModel intercepts the direct Shift+Enter /
 // u / Ctrl+R keys before either view dispatcher runs. Before the repair the
 // palette commands delegated to the view dispatcher, which opened full task
 // detail for Peek and no-op'd Undo/Redo. These end-to-end tests execute all
-// three registered palette commands on both surfaces and assert their effect
+// three registered palette commands and assert their effect
 // matches the direct key: Peek activates the same in-app overlay and preserves
 // the palette; Undo/Redo restore the same on-disk tasks.md the keyboard does.
-
-// --- Task Workspace ------------------------------------------------------------
-
-func TestTaskWorkspacePaletteShellActionsMatchDirectKeys(t *testing.T) {
-	t.Run("peek", func(t *testing.T) {
-		app, _, _ := newWorkspaceParityApp(t)
-		assertPalettePeekParity(t, app, app.taskWorkspaceCommands(), "Task Workspace Peek at task")
-	})
-
-	t.Run("undo-redo", func(t *testing.T) {
-		app, project, task := newWorkspaceParityApp(t)
-		// The live controller refreshes its own snapshot after each restore, so
-		// the workspace cursor survives without re-seeding.
-		assertPaletteUndoRedoParity(t, app, project, task,
-			"Task Workspace Undo task change", "Task Workspace Redo task change",
-			func() []Command { return app.taskWorkspaceCommands() }, func() {})
-	})
-}
 
 // --- Planner -------------------------------------------------------------------
 
@@ -127,14 +109,6 @@ func assertPaletteUndoRedoParity(t *testing.T, app *AppModel, project *models.Pr
 	if bytes.Equal(before, after) {
 		t.Fatal("seed mutation did not change tasks.md; cannot compare undo/redo")
 	}
-	// Keep the live workspace snapshot consistent with the committed mutation so
-	// the palette adapter still resolves the cursor task after the change.
-	if app.taskWorkspace != nil {
-		if err := app.taskWorkspace.RefreshIfLoaded(); err != nil {
-			t.Fatalf("refresh workspace after mutation: %v", err)
-		}
-	}
-
 	cmds := commands()
 	undo := findParityCommand(t, cmds, undoName)
 	redo := findParityCommand(t, cmds, redoName)
@@ -157,7 +131,7 @@ func assertPaletteUndoRedoParity(t *testing.T, app *AppModel, project *models.Pr
 
 	// Step 3 — direct u restores the pre-mutation state.
 	reseed()
-	app = sendAppKey(app, syntheticKey('u'))
+	_ = sendAppKey(app, syntheticKey('u'))
 	if got := readTasksFile(t, project); !bytes.Equal(got, before) {
 		t.Fatalf("direct u did not restore pre-mutation tasks.md\n got: %q\nwant: %q", got, before)
 	}
@@ -208,48 +182,6 @@ func findParityCommand(t *testing.T, cmds []Command, name string) Command {
 }
 
 // --- Live-surface fixtures over the ledger-backed transaction stack ------------
-
-// newWorkspaceParityApp builds a ledger-backed AppModel whose live, active Task
-// Workspace is scoped to one project with the cursor on task. Direct u/Ctrl+R
-// resolve the workspace via activeTaskWorkspace(); the palette adapter resolves
-// it via taskWorkspacePrimary() — both must reach the same shell restore.
-func newWorkspaceParityApp(t *testing.T) (*AppModel, *models.Project, *models.Task) {
-	t.Helper()
-	dataDir := t.TempDir()
-	task := seedTask(t, 1, "Workspace parity target", models.StateReady)
-	project := newLedgerUndoProject(t, dataDir, "workspace-parity", task)
-	app := newLedgerUndoApp(t, dataDir, project, ViewOutliner, task.ID, true)
-
-	controller, err := NewTaskWorkspaceController(
-		TaskWorkspaceParams{Scope: ProjectEntityScope(project.ID), Layout: WorkspaceOutline, Focus: WorkspaceAll},
-		NewTaskWorkspaceQuery(staticTaskWorkspaceSource{data: TaskWorkspaceData{Projects: []*models.Project{project}}}),
-		NewFeatureTaskWorkspaceMutationAdapter(TaskItemCoordinator{}, BulkCoordinator{}),
-	)
-	if err != nil {
-		t.Fatalf("build workspace controller: %v", err)
-	}
-	view, err := NewTaskWorkspaceView(controller)
-	if err != nil {
-		t.Fatalf("build workspace view: %v", err)
-	}
-	view.resolveProject = app.projectByID
-	app.taskWorkspace = controller
-	app.taskWorkspaceView = view
-	app.enableTypedNavigation()
-	if err := controller.Refresh(); err != nil {
-		t.Fatalf("refresh workspace: %v", err)
-	}
-	if !controller.State.SetCursor(TaskIdentity{ProjectID: project.ID, TaskID: task.ID}) {
-		t.Fatal("failed to place workspace cursor on the parity task")
-	}
-	if !app.activeTaskWorkspace() {
-		t.Fatal("task workspace did not activate after wiring")
-	}
-	if _, _, ok := app.taskWorkspacePrimary(); !ok {
-		t.Fatal("taskWorkspacePrimary did not resolve the live workspace")
-	}
-	return app, project, task
-}
 
 // newPlannerParityApp builds a ledger-backed AppModel whose current view is a
 // live Planner (FocusBoardModel) with the cursor on task. Direct u/Ctrl+R and

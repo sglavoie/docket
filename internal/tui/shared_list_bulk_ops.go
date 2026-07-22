@@ -12,12 +12,12 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// This file holds the shared bulk-mutation builders used by the flat list views
+// This file holds shared bulk-mutation builders used by task-row views
 // (Daily Review, Due Date Overview, Backlog/Focus, Priority, Weekly Review).
 // Each builder resolves the selected task IDs, builds the application-layer
 // BulkCoordinator command, and returns finalizeBatchResult(cmd, ids, summary) so
 // the shell owns reload, selection-clear, recent-visit repair, and rule-trigger
-// persistence — exactly the reference shape proven on All Tasks. The view-facing
+// persistence. The view-facing
 // wording ("Changed %d tasks to %s", etc.) matches the previous synchronous
 // path so migrated toasts read identically. A nil return means nothing was
 // selected and the caller should no-op.

@@ -26,22 +26,24 @@ func invokeCommonTaskActionKey(t *testing.T, m *OutlinerModel, key string) tea.M
 	return runEntryAction(t, findTopLevelBinding(t, entries, key))
 }
 
-func TestUtilityKey_AllTasks_CrossNonCompletedEmitsShowAllTasks(t *testing.T) {
+func TestUtilityKey_AllTasks_CrossNonCompletedEmitsGlobalOutliner(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	// activePerspective defaults to zero (not PerspectiveCompleted).
 	m.cursor = 1 // task row
 	msg := invokeUtilityKey(t, m, "A")
-	if _, ok := msg.(ShowAllTasksMsg); !ok {
-		t.Fatalf("expected ShowAllTasksMsg, got %T", msg)
+	got, ok := msg.(ShowGlobalOutlinerMsg)
+	if !ok || !got.Options.SetFocus || got.Options.Focus != OutlinerAll {
+		t.Fatalf("expected global All outliner, got %#v", msg)
 	}
 }
 
 func TestUtilityKey_AllTasks_CrossNonCompletedHeaderStillEmits(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
-	m.cursor = 0 // header row - non-Completed perspective still emits ShowAllTasksMsg
+	m.cursor = 0 // header row - non-Completed perspective still emits the global All focus
 	msg := invokeUtilityKey(t, m, "A")
-	if _, ok := msg.(ShowAllTasksMsg); !ok {
-		t.Fatalf("expected ShowAllTasksMsg, got %T", msg)
+	got, ok := msg.(ShowGlobalOutlinerMsg)
+	if !ok || !got.Options.SetFocus || got.Options.Focus != OutlinerAll {
+		t.Fatalf("expected global All outliner, got %#v", msg)
 	}
 }
 

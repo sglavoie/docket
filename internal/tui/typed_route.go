@@ -67,61 +67,6 @@ type PlannerParams struct{ Tab PlannerTab }
 
 func (PlannerParams) routeParams() {}
 
-type TaskWorkspaceLayout uint8
-
-const (
-	WorkspaceOutline TaskWorkspaceLayout = iota
-	WorkspaceList
-	WorkspaceBoard
-)
-
-type TaskWorkspaceFocus uint8
-
-const (
-	WorkspaceActive TaskWorkspaceFocus = iota
-	WorkspaceAll
-	WorkspaceInbox
-	WorkspaceNext
-	WorkspaceWaiting
-	WorkspaceReview
-	WorkspaceSomeday
-	WorkspaceCompleted
-	WorkspaceDueSoon
-	WorkspaceHighPriority
-	WorkspaceBlocked
-	WorkspaceParked
-	WorkspaceSnoozed
-	WorkspacePinned
-	WorkspaceRecent
-	WorkspaceSavedFilter
-)
-
-var taskWorkspaceFocusNames = [...]string{
-	"Active",
-	"All",
-	"Inbox",
-	"Next",
-	"Waiting",
-	"Review",
-	"Someday",
-	"Completed",
-	"Due Soon",
-	"High Priority",
-	"Blocked",
-	"Parked",
-	"Snoozed",
-	"Pinned",
-	"Recent",
-	"Saved Filter",
-}
-
-func (focus TaskWorkspaceFocus) String() string {
-	if int(focus) < len(taskWorkspaceFocusNames) {
-		return taskWorkspaceFocusNames[focus]
-	}
-	return fmt.Sprintf("TaskWorkspaceFocus(%d)", focus)
-}
-
 // EntityScope identifies app-wide or project-bound route data. App scope is
 // canonicalized to an empty ProjectID; project scope requires one.
 type EntityScope struct {
@@ -136,10 +81,7 @@ func ProjectEntityScope(projectID string) EntityScope {
 }
 
 type TaskWorkspaceParams struct {
-	Scope         EntityScope
-	Layout        TaskWorkspaceLayout
-	Focus         TaskWorkspaceFocus
-	SavedFilterID string
+	Scope EntityScope
 }
 
 func (TaskWorkspaceParams) routeParams() {}
@@ -296,19 +238,6 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		scope, err := canonicalEntityScope(id, p.Scope)
 		if err != nil {
 			return nil, err
-		}
-		if p.Layout > WorkspaceBoard {
-			return nil, invalidParams(id, "unknown workspace layout")
-		}
-		if p.Focus > WorkspaceSavedFilter {
-			return nil, invalidParams(id, "unknown workspace focus")
-		}
-		if p.Focus == WorkspaceSavedFilter {
-			if p.SavedFilterID == "" {
-				return nil, invalidParams(id, "saved-filter focus requires a saved filter ID")
-			}
-		} else {
-			p.SavedFilterID = ""
 		}
 		p.Scope = scope
 		return p, nil

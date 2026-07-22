@@ -162,7 +162,7 @@ func TestHandleDueDateChangedBulkCrossProjectPersistsAllTasks(t *testing.T) {
 // cross-project transaction through the BulkCoordinator: the batch result
 // carries the selection to clear and the per-view summary, both projects' due
 // dates (with the timed flag preserved) are committed on disk, the shell clears
-// the cached All Tasks multi-select on commit, and the workspace ledger restores
+// the cross-project Outliner multi-select on commit, and the workspace ledger restores
 // the prior due dates.
 func TestHandleDueDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha explicit due")
@@ -174,11 +174,12 @@ func TestHandleDueDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing.T)
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
-	app.allTasksView.multiSelectMode = true
-	app.allTasksView.selectedTasks[taskA.ID] = true
-	app.allTasksView.selectedTasks[taskB.ID] = true
-	app.views.Register(ViewAllTasks, app.allTasksView)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner.loadedProjects = env.projects
+	app.crossOutliner.multiSelectMode = true
+	app.crossOutliner.selectedTasks[taskA.ID] = true
+	app.crossOutliner.selectedTasks[taskB.ID] = true
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 
 	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
 	app.pushView(ViewDateInput)
@@ -208,8 +209,8 @@ func TestHandleDueDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing.T)
 	assertTaskDueDate(t, env.reload(t, 1).GetTaskByID(taskB.ID), dueDate, true)
 
 	app.handleBatchTransactionResult(msg)
-	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
-		t.Fatal("committed batch should clear cached All Tasks multi-select")
+	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
+		t.Fatal("committed batch should clear cross-project Outliner multi-select")
 	}
 
 	env.undo(t)
@@ -373,11 +374,12 @@ func TestHandleSnoozeDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
-	app.allTasksView.multiSelectMode = true
-	app.allTasksView.selectedTasks[taskA.ID] = true
-	app.allTasksView.selectedTasks[taskB.ID] = true
-	app.views.Register(ViewAllTasks, app.allTasksView)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner.loadedProjects = env.projects
+	app.crossOutliner.multiSelectMode = true
+	app.crossOutliner.selectedTasks[taskA.ID] = true
+	app.crossOutliner.selectedTasks[taskB.ID] = true
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 
 	app.pendingBulkTasks = append(env.refs(0, taskA), env.refs(1, taskB)...)
 	app.pushView(ViewSnoozeInput)
@@ -406,8 +408,8 @@ func TestHandleSnoozeDateChangedBulkExplicitValueMigratedCommitsAsync(t *testing
 	assertTaskSnoozedUntil(t, env.reload(t, 1).GetTaskByID(taskB.ID), snooze)
 
 	app.handleBatchTransactionResult(msg)
-	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
-		t.Fatal("committed batch should clear cached All Tasks multi-select")
+	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
+		t.Fatal("committed batch should clear cross-project Outliner multi-select")
 	}
 
 	env.undo(t)

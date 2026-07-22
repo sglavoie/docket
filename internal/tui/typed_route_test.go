@@ -44,20 +44,15 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 	}
 
 	workspace := mustRoute(t, TaskWorkspace, TaskWorkspaceParams{
-		Scope: AppEntityScope(), Layout: WorkspaceBoard, Focus: WorkspaceActive, SavedFilterID: "irrelevant",
+		Scope: EntityScope{Kind: ScopeApp, ProjectID: "irrelevant"},
 	}).Params().(TaskWorkspaceParams)
-	if workspace.Scope.ProjectID != "" || workspace.SavedFilterID != "" {
+	if workspace.Scope != AppEntityScope() {
 		t.Errorf("workspace params not canonical: %+v", workspace)
 	}
 	if _, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-		Scope: EntityScope{Kind: ScopeProject}, Layout: WorkspaceOutline,
+		Scope: EntityScope{Kind: ScopeProject},
 	}); !errors.Is(err, ErrProjectRequired) {
 		t.Fatalf("project workspace without project error = %v", err)
-	}
-	if _, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-		Scope: AppEntityScope(), Focus: WorkspaceSavedFilter,
-	}); !errors.Is(err, ErrInvalidRouteParams) {
-		t.Fatalf("saved filter without ID error = %v", err)
 	}
 
 	manage := mustRoute(t, ManageHub, ManageParams{

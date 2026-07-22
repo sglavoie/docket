@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -116,22 +117,6 @@ func TestRenderPrefixPopup_TaskPrefixIncludesCommonActions(t *testing.T) {
 		{"park", "Note where you left off"},
 	} {
 		assertPopupLineContains(t, result, row.description, row.detail)
-	}
-}
-
-func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
-	hints := PrefixHints{
-		"g": ProjectTreeNavigationPrefixHints,
-	}
-
-	result := RenderPrefixPopup("g", hints, 200, 40)
-
-	// Should contain extended navigation hints
-	expectedDescriptions := []string{"first", "active", "next", "inbox", "waiting", "someday", "completed"}
-	for _, desc := range expectedDescriptions {
-		if !strings.Contains(result, desc) {
-			t.Errorf("expected result to contain description %q, got %q", desc, result)
-		}
 	}
 }
 
@@ -269,46 +254,6 @@ func TestNavigationPrefixHints_Contents(t *testing.T) {
 	if NavigationPrefixHints[0].Key != "g" || NavigationPrefixHints[0].Description != "first" {
 		t.Errorf("expected (g, first), got (%s, %s)",
 			NavigationPrefixHints[0].Key, NavigationPrefixHints[0].Description)
-	}
-}
-
-func TestProjectTreeNavigationPrefixHints_HasExtendedKeys(t *testing.T) {
-	// ProjectTree should have more hints than basic navigation
-	if len(ProjectTreeNavigationPrefixHints) <= len(NavigationPrefixHints) {
-		t.Errorf("expected ProjectTreeNavigationPrefixHints to have more entries than NavigationPrefixHints")
-	}
-
-	// Should include basic "gg" functionality
-	foundFirst := false
-	for _, hint := range ProjectTreeNavigationPrefixHints {
-		if hint.Key == "g" && hint.Description == "first" {
-			foundFirst = true
-			break
-		}
-	}
-	if !foundFirst {
-		t.Error("expected ProjectTreeNavigationPrefixHints to contain 'g' -> 'first'")
-	}
-}
-
-func TestRenderPrefixPopup_CompactModeOnSmallHeight(t *testing.T) {
-	hints := PrefixHints{
-		"g": ProjectTreeNavigationPrefixHints,
-	}
-
-	// Use small height to force compact mode (18 hints won't fit one-per-line)
-	result := RenderPrefixPopup("g", hints, 80, 10)
-
-	// Should still contain all hints
-	for _, hint := range ProjectTreeNavigationPrefixHints {
-		if !strings.Contains(result, hint.Description) {
-			t.Errorf("expected result to contain description %q even in compact mode, got %q", hint.Description, result)
-		}
-	}
-
-	// Should contain escape hint
-	if !strings.Contains(result, "Esc to cancel") {
-		t.Errorf("expected result to contain escape hint, got %q", result)
 	}
 }
 

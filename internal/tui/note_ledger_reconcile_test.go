@@ -113,26 +113,24 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 	dashboard := NewDashboardModel(runtime)
 	views.Register(ViewDashboard, dashboard)
 	shell := &AppModel{
-		configManager:           manager,
-		runtime:                 runtime,
-		projects:                map[string]*models.Project{project.ID: project},
-		persister:               NewProjectService(),
-		appService:              service,
-		views:                   views,
-		viewStack:               []PresentationID{activeType},
-		width:                   80,
-		height:                  40,
-		currentProject:          project,
-		dashboard:               dashboard,
-		focusQueue:              []FocusTask{{Task: task, Project: project}},
-		focusQueueIDs:           map[string]bool{task.ID: true},
-		dailyPlan:               []FocusTask{{Task: task, Project: project}},
-		dailyPlanIDs:            map[string]bool{task.ID: true},
-		recentTaskVisits:        []RecentTaskVisitEntry{{Task: task, Project: project}},
-		priorityViewFilterCache: map[string]*PriorityViewCache{project.ID: {}},
-		allTasksFilterCache:     &AllTasksCache{},
-		outlinerToggleStates:    make(map[string]*OutlinerToggleState),
-		projectLastView:         make(map[string]PresentationID),
+		configManager:        manager,
+		runtime:              runtime,
+		projects:             map[string]*models.Project{project.ID: project},
+		persister:            NewProjectService(),
+		appService:           service,
+		views:                views,
+		viewStack:            []PresentationID{activeType},
+		width:                80,
+		height:               40,
+		currentProject:       project,
+		dashboard:            dashboard,
+		focusQueue:           []FocusTask{{Task: task, Project: project}},
+		focusQueueIDs:        map[string]bool{task.ID: true},
+		dailyPlan:            []FocusTask{{Task: task, Project: project}},
+		dailyPlanIDs:         map[string]bool{task.ID: true},
+		recentTaskVisits:     []RecentTaskVisitEntry{{Task: task, Project: project}},
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		projectLastView:      make(map[string]PresentationID),
 	}
 
 	// NotesSearchModel also loads the project while building its linked-task
@@ -314,9 +312,6 @@ func (e *noteLedgerReconcileEnv) assertReconciled(t *testing.T, after bool) {
 	}
 	if linkedTask == nil || linkedTask.Title != wantTitle {
 		t.Fatalf("note linked-task cache = %#v, want title %q", linkedTask, wantTitle)
-	}
-	if len(e.shell.priorityViewFilterCache) != 0 || e.shell.allTasksFilterCache != nil {
-		t.Fatal("task filter caches were not invalidated")
 	}
 	if !e.notesSearch.stale {
 		t.Fatal("notes search index was not marked stale")

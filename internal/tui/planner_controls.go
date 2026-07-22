@@ -24,8 +24,8 @@ const (
 )
 
 const (
-	PlannerActionNextTab     TaskWorkspaceAction = "planner-next-tab"
-	PlannerActionPreviousTab TaskWorkspaceAction = "planner-previous-tab"
+	PlannerActionNextTab     PlannerAction = "planner-next-tab"
+	PlannerActionPreviousTab PlannerAction = "planner-previous-tab"
 )
 
 type plannerViewMenuMsg struct{ Open bool }
@@ -34,79 +34,56 @@ type plannerViewMenuMsg struct{ Open bool }
 // tab selected inside its renderer.
 type PlannerRouteChangedMsg struct{ Tab PlannerTab }
 
-// PlannerBindingCatalog projects the shared Task Workspace task grammar onto
-// the Planner capabilities. Layout-only bindings are omitted; Planner adds only
-// its two tab bindings and gives J/K their horizon-ordering semantics.
-func PlannerBindingCatalog() []TaskWorkspaceBinding {
-	allowed := map[TaskWorkspaceAction]bool{
-		WorkspaceActionCursorDown: true, WorkspaceActionCursorUp: true,
-		WorkspaceActionJumpFirst: true, WorkspaceActionJumpLast: true,
-		WorkspaceActionPageUp: true, WorkspaceActionPageDown: true,
-		WorkspaceActionNextGroup: true, WorkspaceActionPreviousGroup: true,
-		WorkspaceActionOpenDetail: true, WorkspaceActionOpenPeek: true,
-		WorkspaceActionSelect: true, WorkspaceActionSearch: true,
-		WorkspaceActionViewMenu: true, WorkspaceActionAdd: true,
-		WorkspaceActionEdit: true, WorkspaceActionComplete: true,
-		WorkspaceActionDelete: true,
-		WorkspaceActionState:  true, WorkspaceActionPin: true,
-		WorkspaceActionPriority: true, WorkspaceActionDueDate: true,
-		WorkspaceActionTags: true, WorkspaceActionSnooze: true,
-		WorkspaceActionMove: true, WorkspaceActionMoveDown: true,
-		WorkspaceActionMoveUp: true, WorkspaceActionPark: true,
-		WorkspaceActionCopy: true, WorkspaceActionUndo: true,
-		WorkspaceActionRedo: true,
+// PlannerBindingCatalog is Planner's complete key grammar. The Outliner uses
+// its own mature keymap and does not project through this catalog.
+func PlannerBindingCatalog() []PlannerBinding {
+	task := []Capability{CapabilityPlanner, CapabilityPlannerTask}
+	mutation := []Capability{CapabilityPlanner, CapabilityPlannerTask, CapabilityPlannerMutation}
+	return []PlannerBinding{
+		plannerBinding("j", WorkspaceActionCursorDown, "Move down", "Navigation", CapabilityPlanner),
+		plannerBinding("down", WorkspaceActionCursorDown, "Move down", "Navigation", CapabilityPlanner),
+		plannerBinding("k", WorkspaceActionCursorUp, "Move up", "Navigation", CapabilityPlanner),
+		plannerBinding("up", WorkspaceActionCursorUp, "Move up", "Navigation", CapabilityPlanner),
+		plannerBinding("g", WorkspaceActionJumpFirst, "Jump to first task", "Navigation", CapabilityPlanner),
+		plannerBinding("G", WorkspaceActionJumpLast, "Jump to last task", "Navigation", CapabilityPlanner),
+		plannerBinding("ctrl+u", WorkspaceActionPageUp, "Page up", "Navigation", CapabilityPlanner),
+		plannerBinding("ctrl+d", WorkspaceActionPageDown, "Page down", "Navigation", CapabilityPlanner),
+		plannerBinding("n", WorkspaceActionNextGroup, "Next group", "Navigation", CapabilityPlanner),
+		plannerBinding("N", WorkspaceActionPreviousGroup, "Previous group", "Navigation", CapabilityPlanner),
+		plannerBinding("enter", WorkspaceActionOpenDetail, "Open task detail", "Open", task...),
+		plannerBinding("shift+enter", WorkspaceActionOpenPeek, "Peek at task", "Open", task...),
+		plannerBinding("space", WorkspaceActionSelect, "Toggle selection", "Selection", task...),
+		plannerBinding("/", WorkspaceActionSearch, "Search tasks", "Open", CapabilityPlanner),
+		plannerBinding("v", WorkspaceActionViewMenu, "Open View menu", "View", CapabilityPlanner, CapabilityPlannerViewMenu),
+		plannerBinding("a", WorkspaceActionAdd, "Add task", "Mutation", CapabilityPlanner, CapabilityPlannerMutation),
+		plannerBinding("e", WorkspaceActionEdit, "Edit task", "Mutation", mutation...),
+		plannerBinding("x", WorkspaceActionComplete, "Complete task", "Mutation", mutation...),
+		plannerBinding("X", WorkspaceActionDelete, "Delete task", "Mutation", mutation...),
+		plannerBinding("s", WorkspaceActionState, "Change state", "Mutation", mutation...),
+		plannerBinding("p", WorkspaceActionPin, "Toggle pin", "Mutation", mutation...),
+		plannerBinding("!", WorkspaceActionPriority, "Change priority", "Mutation", mutation...),
+		plannerBinding("d", WorkspaceActionDueDate, "Set due date", "Mutation", mutation...),
+		plannerBinding("t", WorkspaceActionTags, "Manage tags", "Mutation", mutation...),
+		plannerBinding("Z", WorkspaceActionSnooze, "Snooze task", "Mutation", mutation...),
+		plannerBinding("m", WorkspaceActionMove, "Move task", "Mutation", mutation...),
+		plannerBinding("J", WorkspaceActionMoveDown, "Reorder down within Today or Next", "Mutation", append(mutation, CapabilityPlannerReorder)...),
+		plannerBinding("K", WorkspaceActionMoveUp, "Reorder up within Today or Next", "Mutation", append(mutation, CapabilityPlannerReorder)...),
+		plannerBinding("P", WorkspaceActionPark, "Park task", "Mutation", mutation...),
+		plannerBinding("y", WorkspaceActionCopy, "Copy task", "Mutation", task...),
+		plannerBinding("u", WorkspaceActionUndo, "Undo task change", "Mutation", CapabilityPlanner, CapabilityPlannerMutation),
+		plannerBinding("ctrl+r", WorkspaceActionRedo, "Redo task change", "Mutation", CapabilityPlanner, CapabilityPlannerMutation),
+		plannerBinding("tab", PlannerActionNextTab, "Next Planner tab", "Navigation", CapabilityPlanner),
+		plannerBinding("shift+tab", PlannerActionPreviousTab, "Previous Planner tab", "Navigation", CapabilityPlanner),
 	}
-	bindings := make([]TaskWorkspaceBinding, 0, len(TaskWorkspaceBindingCatalog())+2)
-	for _, binding := range TaskWorkspaceBindingCatalog() {
-		if !allowed[binding.Action] {
-			continue
-		}
-		binding.RequiredCapabilities = plannerCapabilitiesFor(binding.RequiredCapabilities)
-		switch binding.Action { //nolint:exhaustive // Only reorder bindings need Planner capability overrides.
-		case WorkspaceActionMoveDown:
-			binding.RequiredCapabilities.Add(CapabilityPlannerReorder)
-			binding.Description = "Reorder down within Today or Next"
-		case WorkspaceActionMoveUp:
-			binding.RequiredCapabilities.Add(CapabilityPlannerReorder)
-			binding.Description = "Reorder up within Today or Next"
-		}
-		bindings = append(bindings, binding)
-	}
-	bindings = append(bindings,
-		taskWorkspaceBinding("tab", PlannerActionNextTab, "Next Planner tab", "Navigation", CapabilityPlanner),
-		taskWorkspaceBinding("shift+tab", PlannerActionPreviousTab, "Previous Planner tab", "Navigation", CapabilityPlanner),
-	)
-	return bindings
 }
 
-func plannerCapabilitiesFor(required CapabilitySet) CapabilitySet {
-	result := NewCapabilitySet()
-	for capability := range required {
-		switch capability {
-		case CapabilityTaskWorkspace:
-			result.Add(CapabilityPlanner)
-		case CapabilityWorkspaceTask:
-			result.Add(CapabilityPlannerTask)
-		case CapabilityWorkspaceMutation:
-			result.Add(CapabilityPlannerMutation)
-		case CapabilityWorkspaceViewMenu:
-			result.Add(CapabilityPlannerViewMenu)
-		case CapabilityWorkspaceSelection:
-			result.Add(CapabilityPlannerSelection)
-		default:
-			result.Add(capability)
-		}
-	}
-	return result
-}
-
-func PlannerBindings(capabilities CapabilitySet) []TaskWorkspaceBinding {
-	return slices.DeleteFunc(PlannerBindingCatalog(), func(binding TaskWorkspaceBinding) bool {
+func PlannerBindings(capabilities CapabilitySet) []PlannerBinding {
+	return slices.DeleteFunc(PlannerBindingCatalog(), func(binding PlannerBinding) bool {
 		return !capabilities.HasAll(binding.RequiredCapabilities)
 	})
 }
 
-func BuildPlannerKeyMap(owner tea.Model, capabilities CapabilitySet, handle func(TaskWorkspaceAction) tea.Cmd) *keymap.KeyMap {
+func BuildPlannerKeyMap(owner tea.Model, capabilities CapabilitySet, handle func(PlannerAction) tea.Cmd) *keymap.KeyMap {
 	bindings := PlannerBindings(capabilities)
 	entries := make([]keymap.Entry, 0, len(bindings))
 	for _, binding := range bindings {
@@ -123,8 +100,8 @@ func BuildPlannerKeyMap(owner tea.Model, capabilities CapabilitySet, handle func
 
 // PlannerCommands projects the same capability-scoped grammar into the command
 // palette. It deliberately has no PresentationID scoping.
-func PlannerCommands(handler func(TaskWorkspaceAction) tea.Msg) []Command {
-	seen := make(map[TaskWorkspaceAction]struct{})
+func PlannerCommands(handler func(PlannerAction) tea.Msg) []Command {
+	seen := make(map[PlannerAction]struct{})
 	commands := make([]Command, 0)
 	for _, binding := range PlannerBindingCatalog() {
 		if _, duplicate := seen[binding.Action]; duplicate {
@@ -188,7 +165,7 @@ func (m *FocusBoardModel) rebuildPlannerDispatcher() {
 	m.Dispatcher = keymap.NewDispatcher(BuildPlannerKeyMap(m, m.Capabilities(), m.handlePlannerAction))
 }
 
-func (m *FocusBoardModel) handlePlannerAction(action TaskWorkspaceAction) tea.Cmd { //nolint:gocyclo
+func (m *FocusBoardModel) handlePlannerAction(action PlannerAction) tea.Cmd { //nolint:gocyclo
 	switch action { //nolint:exhaustive // Planner deliberately excludes Workspace-only layout actions.
 	case WorkspaceActionCursorDown:
 		if m.cursor < len(m.filtered)-1 {

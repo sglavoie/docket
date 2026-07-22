@@ -69,26 +69,6 @@ func (m *OutlinerModel) UITestSnapshot() map[string]any {
 	return snap
 }
 
-// UITestSnapshot exposes the kanban mode, columns, and focused card.
-func (m *KanbanModel) UITestSnapshot() map[string]any {
-	snap := map[string]any{
-		"mode":          KanbanModeNames[m.mode],
-		"column_count":  len(m.columns),
-		"active_column": m.activeCol,
-		"card_count":    len(m.allCards),
-		"cross_project": m.crossProject,
-	}
-	if m.activeCol >= 0 && m.activeCol < len(m.columns) {
-		col := m.columns[m.activeCol]
-		snap["active_column_label"] = col.Label
-		snap["active_column_card_count"] = len(col.Tasks)
-		if col.Cursor >= 0 && col.Cursor < len(col.Tasks) && col.Tasks[col.Cursor].Task != nil {
-			snap["selected_task"] = col.Tasks[col.Cursor].Task.Title
-		}
-	}
-	return snap
-}
-
 // UITestSnapshot exposes the command palette query, results, and selection.
 func (m *CommandPaletteModel) UITestSnapshot() map[string]any {
 	snap := map[string]any{

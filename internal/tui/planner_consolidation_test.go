@@ -103,21 +103,8 @@ func TestPlannerSelectionUsesStableTaskIdentity(t *testing.T) {
 }
 
 func TestCompletedWorkRemainsReachableOutsidePlanner(t *testing.T) {
-	state, err := NewTaskWorkspaceState(TaskWorkspaceParams{
-		Scope: AppEntityScope(), Layout: WorkspaceList, Focus: WorkspaceActive,
-	})
-	if err != nil {
-		t.Fatalf("NewTaskWorkspaceState: %v", err)
-	}
-	var completed bool
-	for _, item := range TaskWorkspaceViewMenu(state, TaskWorkspaceSnapshot{}, nil) {
-		if item.ID == "focus:completed" && item.Label == "Completed" {
-			completed = true
-			break
-		}
-	}
-	if !completed {
-		t.Fatal("Tasks View menu does not expose Completed")
+	if perspective, ok := OutlinerCompleted.perspectiveID(); !ok || perspective != PerspectiveCompleted {
+		t.Fatalf("Completed focus = perspective %d/%v, want %d", perspective, ok, PerspectiveCompleted)
 	}
 
 	route, ok, err := routeForPresentation(ViewRecentActivity, "", "")

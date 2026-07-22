@@ -3,12 +3,11 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // taskOpsView abstracts the view-specific operations needed by the shared
-// task-action keymaps. List/board views that support task mutations (status,
+// task-action keymaps. Task-row views that support task mutations (status,
 // priority, due date, etc.) implement this interface so the standard keymap
 // helpers can look up the cursor task and surface status/errors uniformly.
 //
@@ -18,8 +17,6 @@ import (
 type taskOpsView interface {
 	tea.Model
 	getTaskRef() (task *models.Task, project *models.Project)
-	getRuntime() *config.RuntimeState
-	getConfigManager() *config.Manager
 	clampCursor()
 	setStatus(string)
 }

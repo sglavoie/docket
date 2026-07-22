@@ -211,7 +211,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			}
 		}
 
-		tasks := filterTaskTree(roots, p.Filter)
+		tasks := filterTaskTree(roots, m.baseFocusFilter(proj))
 
 		if tag := m.activePinnedTagFilter(); tag != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
@@ -248,6 +248,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 				return taskIsActionableState(t, proj)
 			})
 		}
+		tasks = m.applyFocusOrdering(tasks, proj.ID)
 
 		if len(tasks) == 0 {
 			continue
@@ -261,7 +262,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		m.sortCrossProjectGroups(groups)
 	}
 
-	if p.Name == "All" {
+	if m.smartFocus == nil && p.Name == "All" {
 		m.buildCrossProjectRowsWithSectionHeaders(groups)
 	} else {
 		m.buildProjectGroupedRows(groups)
@@ -332,6 +333,11 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "projects=%s|", boolMapFingerprint(m.filterProjects))
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "criteria=%s|", m.activeCriteriaFilterFingerprint())
+	if m.smartFocus != nil {
+		fmt.Fprintf(&b, "focus=%d|", *m.smartFocus)
+	} else {
+		b.WriteString("focus=perspective|")
+	}
 	fmt.Fprintf(&b, "priority=%t:%s", m.crossPriorityMode, crossPriorityCollapsedGroupsFingerprint(m.crossPriorityCollapsedGroups))
 	return b.String()
 }

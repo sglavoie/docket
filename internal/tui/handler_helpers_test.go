@@ -234,25 +234,6 @@ func TestFormatSuccessWithNextOmitsSeparatorWhenNoHint(t *testing.T) {
 	}
 }
 
-// TestInvalidateFilterCachesPreservesUXState pins the documented carve-out:
-// only data-dependent caches are cleared; spatial/toggle UX state is left
-// alone (asserted indirectly by checking the targeted fields are reset and
-// nothing else is touched on the model).
-func TestInvalidateFilterCachesPreservesUXState(t *testing.T) {
-	app := newTestAppModel()
-	app.priorityViewFilterCache = map[string]*PriorityViewCache{"k": {}}
-	app.allTasksFilterCache = &AllTasksCache{}
-
-	app.invalidateFilterCaches()
-
-	if len(app.priorityViewFilterCache) != 0 {
-		t.Error("priorityViewFilterCache should be emptied")
-	}
-	if app.allTasksFilterCache != nil {
-		t.Error("allTasksFilterCache should be nil")
-	}
-}
-
 // TestPruneDeletedTaskRefsAbortsOnLoadFailure verifies that a transient
 // persister Load failure does not cause references to be silently pruned.
 // Before the fix, a load error on an unloaded project caused the loop to

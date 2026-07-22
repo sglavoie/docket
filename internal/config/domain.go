@@ -554,20 +554,19 @@ type Settings struct {
 	SectionLimitReview  *int `json:"section_limit_review,omitempty"`
 
 	// Appearance.
-	ActiveTheme        string         `json:"active_theme,omitempty"`
-	AutoTheme          *bool          `json:"auto_theme,omitempty"`
-	ThemeDark          Theme          `json:"theme_dark,omitzero"`
-	ThemeDarkName      string         `json:"theme_dark_name,omitempty"`
-	ThemeDarkRev       int            `json:"theme_dark_rev,omitempty"`
-	ThemeLight         Theme          `json:"theme_light,omitzero"`
-	ThemeLightName     string         `json:"theme_light_name,omitempty"`
-	ThemeLightRev      int            `json:"theme_light_rev,omitempty"`
-	Palette            PaletteColors  `json:"palette,omitzero"`
-	KanbanSettings     KanbanSettings `json:"kanban_settings,omitzero"`
-	TUIBackgroundColor string         `json:"tui_background_color,omitempty"`
-	TUICursorColor     string         `json:"tui_cursor_color,omitempty"`
-	TUICursorTextColor string         `json:"tui_cursor_text_color,omitempty"`
-	TUIZebraStriping   *bool          `json:"tui_zebra_striping,omitempty"`
+	ActiveTheme        string        `json:"active_theme,omitempty"`
+	AutoTheme          *bool         `json:"auto_theme,omitempty"`
+	ThemeDark          Theme         `json:"theme_dark,omitzero"`
+	ThemeDarkName      string        `json:"theme_dark_name,omitempty"`
+	ThemeDarkRev       int           `json:"theme_dark_rev,omitempty"`
+	ThemeLight         Theme         `json:"theme_light,omitzero"`
+	ThemeLightName     string        `json:"theme_light_name,omitempty"`
+	ThemeLightRev      int           `json:"theme_light_rev,omitempty"`
+	Palette            PaletteColors `json:"palette,omitzero"`
+	TUIBackgroundColor string        `json:"tui_background_color,omitempty"`
+	TUICursorColor     string        `json:"tui_cursor_color,omitempty"`
+	TUICursorTextColor string        `json:"tui_cursor_text_color,omitempty"`
+	TUIZebraStriping   *bool         `json:"tui_zebra_striping,omitempty"`
 
 	// Alerts.
 	AlertDailyReviewEnabled   *bool `json:"alert_daily_review_enabled,omitempty"`
@@ -600,10 +599,6 @@ func NewSettings() *Settings {
 		FzfEnabled:       true,
 		GlowEnabled:      true,
 		UndoHistoryDepth: &depth,
-		KanbanSettings: KanbanSettings{
-			DefaultMode:        defaultKanbanMode,
-			DefaultStartColumn: defaultKanbanStartColumn,
-		},
 	}
 }
 

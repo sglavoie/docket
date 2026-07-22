@@ -111,7 +111,7 @@ New CLI mutations should save through `cmd.SaveProject` with `SaveOptions{UndoAc
 
 ### TUI Column Alignment
 
-List-row renderers (Focus Board, Kanban, Outliner, All-Tasks, Daily/Weekly review, Due Date, Priority, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.
+Task-row renderers (Planner, Outliner, Daily/Weekly review, Recent Activity, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.
 
 ## UX Metrics
 

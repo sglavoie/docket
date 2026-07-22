@@ -145,7 +145,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	if handled, cmd := m.handleInvalidManageProjectScope(); handled {
 		return true, cmd
 	}
-	if (m.currentView() != ViewDashboard || m.activeTaskWorkspace()) && m.validateCurrentProject() {
+	if (m.currentView() != ViewDashboard || m.activeOutlinerRoute()) && m.validateCurrentProject() {
 		return true, defaultStatusTimeout()
 	}
 	// The exact non-preemptive global map is suppressed while the active
@@ -176,10 +176,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			view := m.currentView()
 			items := GetKeybindingRegistry().GetForView(view)
 			viewName := view.String()
-			if workspace, ok := m.activeView().(*TaskWorkspaceView); ok {
-				items = workspace.GetHelpItems()
-				viewName = "Task Workspace"
-			} else if planner, ok := m.activeView().(*FocusBoardModel); ok {
+			if planner, ok := m.activeView().(*FocusBoardModel); ok {
 				items = planner.GetHelpItems()
 				viewName = "Planner"
 			} else if review, ok := m.activeView().(*ReviewHubModel); ok {
@@ -208,7 +205,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
-		if m.activeTaskWorkspace() || m.currentView() == ViewFocusBoard {
+		if m.activeOutlinerRoute() || m.currentView() == ViewFocusBoard {
 			break
 		}
 		if cmd := m.toggleQueue(); cmd != nil {
@@ -219,7 +216,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 			break
 		}
-		if m.activeTaskWorkspace() || m.currentView() == ViewFocusBoard {
+		if m.activeOutlinerRoute() || m.currentView() == ViewFocusBoard {
 			break
 		}
 		if cmd := m.toggleDailyPlan(); cmd != nil {
@@ -267,7 +264,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.activeTaskDetail() && m.taskDetail.Tab() != TaskOverview {
 			break
 		}
-		if m.activeTaskWorkspace() && key != "y" {
+		if m.activeOutlinerRoute() && key != "y" {
 			break
 		}
 		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
@@ -303,9 +300,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.activeTaskDetail() {
 			break
 		}
-		if m.activeTaskWorkspace() && m.taskWorkspaceView != nil && m.taskWorkspaceView.menuOpen {
-			break
-		}
 		task, project := m.getCurrentCursorTaskAndProject()
 		if task == nil {
 			return false, nil
@@ -316,7 +310,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 		return true, func() tea.Msg { return ShowTaskDetailMsg{Task: task, Project: project} }
 	case ".":
-		if m.activeTaskWorkspace() {
+		if m.activeOutlinerRoute() {
 			break
 		}
 		if !m.hasActiveTextInput() && m.lastRepeatableAction != nil {
@@ -376,9 +370,6 @@ func (m *AppModel) performGlobalTaskUndoRedoForProject(project *models.Project, 
 }
 
 func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
-	if m.activeTaskWorkspace() {
-		return true
-	}
 	if m.activeTaskDetail() {
 		return true
 	}
@@ -386,15 +377,10 @@ func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
 		return m.reviewHub.SupportsTaskUndoRedo()
 	}
 	switch m.currentView() { //nolint:exhaustive
-	case ViewPriorityView,
-		ViewDailyReview,
+	case ViewDailyReview,
 		ViewWeeklyReview,
-		ViewProjectFocusView,
-		ViewAllTasks,
 		ViewRecentActivity,
 		ViewFocusBoard,
-		ViewKanban,
-		ViewCrossProjectKanban,
 		// The single-project Outliner and Task Detail commit their mutations
 		// through the same workspace ledger as the views above, so their u/ctrl+r
 		// must select and restore that durable transaction (with the legacy

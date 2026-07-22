@@ -172,24 +172,24 @@ func TestReviewTaskModulesShareGrammarAndCompletedBrowsing(t *testing.T) {
 	}
 
 	app := typedTestApp(t)
-	controller, view, _, _, _ := workspaceViewFixture(t)
-	app.taskWorkspace, app.taskWorkspaceView = controller, view
-	route, err := NewRoute(TaskWorkspace, controller.State.RouteParams())
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.views.Register(ViewOutliner, app.outliner)
+	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(project.ID)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cmd := app.activateTaskWorkspaceRoute(route); cmd != nil {
-		if msg := cmd(); msg != nil {
-			t.Fatalf("activate Task Workspace returned %T", msg)
-		}
+		t.Fatalf("activate Task Workspace returned a command")
 	}
 	command := findCommand(app.filterCommands(), "view completed")
 	if command == nil {
 		t.Fatal("missing view completed command")
 	}
-	changed, ok := command.Handler().(TaskWorkspaceRouteChangedMsg)
-	if !ok || changed.Params.Focus != WorkspaceCompleted || controller.State.Focus != WorkspaceCompleted {
-		t.Fatalf("view completed result/state = %#v/%s, want Task Workspace/Completed", changed, controller.State.Focus)
+	if msg := command.Handler(); msg != nil {
+		t.Fatalf("view completed returned %T, want in-place change", msg)
+	}
+	if app.outliner.smartFocus != nil || app.outliner.activePerspective != PerspectiveCompleted {
+		t.Fatalf("view completed focus = %v/%d, want Completed", app.outliner.smartFocus, app.outliner.activePerspective)
 	}
 }
 

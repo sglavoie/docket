@@ -94,8 +94,10 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 				m.toggleCrossPriorityMode()
 				return m, nil
 			}
-			project := m.project
-			return m, func() tea.Msg { return ShowPriorityViewMsg{Project: project} }
+			m.ApplyOpenOptions(OutlinerOpenOptions{
+				Focus: OutlinerHighPriority, SetFocus: true, Sort: SortByScore, SetSort: true,
+			})
+			return m, nil
 		},
 		AddToPlan: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowFocusBoardMsg{} }
@@ -246,7 +248,7 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 			return m, nil
 		}),
 		keymap.Bind("z", "Jump to Snoozed perspective", "Navigation", func() (tea.Model, tea.Cmd) {
-			m.activePerspective = PerspectiveSnoozed
+			m.activatePerspective(PerspectiveSnoozed)
 			m.resetViewScrollOffset()
 			m.rebuildRows()
 			return m, nil
@@ -256,13 +258,6 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 				return m.crossHandleGoDrillDown()
 			}
 			return m, nil
-		}),
-		keymap.Bind("k", "Open kanban view", "Navigation", func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m, func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
-			}
-			project := m.project
-			return m, func() tea.Msg { return ShowKanbanMsg{Project: project} }
 		}),
 	})}
 }

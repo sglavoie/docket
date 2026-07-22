@@ -17,43 +17,21 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				fresh.dailyPlanIDs = m.dailyPlanIDs
 				fresh.OpenAtTask = msg.OpenAtTask
 				m.restoreOutlinerFilterStateTo(fresh)
+				fresh.ApplyOpenOptions(msg.Options)
 				m.showView(ViewTemporaryOutliner, fresh)
 				return true, nil
 			}
-			if m.typedNavigation && m.taskWorkspaceView != nil {
-				m.currentProject = msg.Project
-				m.prepareProjectOutliner(msg.Project, msg.OpenAtTask)
-				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-				})
+			m.currentProject = msg.Project
+			m.prepareProjectOutliner(msg.Project, msg.OpenAtTask)
+			m.outliner.ApplyOpenOptions(msg.Options)
+			if m.typedNavigation {
+				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(msg.Project.ID)})
 				if err != nil {
 					return true, func() tea.Msg { return ErrorMsg{Err: err} }
 				}
-				cmd := m.activateTaskWorkspaceRoute(route)
-				if msg.OpenAtTask != nil {
-					m.taskWorkspace.State.SetCursor(TaskIdentity{ProjectID: msg.Project.ID, TaskID: msg.OpenAtTask.ID})
-				}
-				return true, cmd
+				return true, m.activateTaskWorkspaceRoute(route)
 			}
-
-			replacing := m.isOnProjectView()
-
-			m.saveOutlinerToggleState()
-			m.saveOutlinerFilterState()
-			m.outliner = NewOutlinerModel(msg.Project, m.configManager, m.runtime)
-			m.outliner.queueIDs = m.focusQueueIDs
-			m.outliner.dailyPlanIDs = m.dailyPlanIDs
-			m.restoreOutlinerToggleState()
-			m.restoreOutlinerFilterState()
-			// Persist the applied state so config stays in sync with the
-			// in-memory filter state.
-			m.saveOutlinerFilterState()
-
-			if replacing {
-				m.replaceView(ViewOutliner, m.outliner)
-			} else {
-				m.showView(ViewOutliner, m.outliner)
-			}
+			m.showView(ViewOutliner, m.outliner)
 		}
 		return true, nil
 
@@ -65,34 +43,23 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowGlobalOutlinerMsg:
-		if m.typedNavigation && m.taskWorkspaceView != nil {
-			presentationCmd := m.prepareCrossProjectOutliner()
-			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-				Scope: AppEntityScope(), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-			})
-			if err != nil {
-				return true, func() tea.Msg { return ErrorMsg{Err: err} }
-			}
-			return true, tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
-		}
 		// Save current view state so it persists if a different project's
 		// view is later created from inside the cross-outliner.
 		if m.outliner != nil {
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 		}
-		if m.crossOutliner == nil {
-			m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
-			m.crossOutliner.queueIDs = m.focusQueueIDs
-			m.crossOutliner.dailyPlanIDs = m.dailyPlanIDs
-			m.showView(ViewCrossProjectOutliner, m.crossOutliner)
-			return true, m.crossOutliner.Init()
-		}
-		if m.currentView() == ViewCrossProjectOutliner {
-			return true, m.crossOutliner.reloadCrossProjects()
+		presentationCmd := m.prepareCrossProjectOutliner()
+		m.crossOutliner.ApplyOpenOptions(msg.Options)
+		if m.typedNavigation {
+			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+			if err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			return true, tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
 		}
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
-		return true, m.crossOutliner.reloadCrossProjects()
+		return true, presentationCmd
 
 	case CloseGlobalOutlinerMsg:
 		return true, m.popToAnchorView()
@@ -104,8 +71,8 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// Renderer-scoped commands and scenario assertions inspect these model caches.
-// They are not pushed or rendered; typed TaskWorkspaceView is the live surface.
+// The mature Outliner models are the canonical project and cross-project Task
+// Workspace renderers.
 func (m *AppModel) prepareProjectOutliner(project *models.Project, openAt *models.Task) {
 	if project == nil {
 		return

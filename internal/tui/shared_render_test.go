@@ -327,33 +327,16 @@ func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
 	due := time.Now().Add(24 * time.Hour)
 	task.DueDate = &due
 
-	tests := []struct {
-		name string
-		view func() string
-	}{
-		{
-			name: "all tasks",
-			view: func() string {
-				m := NewAllTasksViewModel(testRuntimeAt(cfg.DataDir(), cfg), nil)
-				m.SetSize(118, 18)
-				item := CrossProjectTask{Task: task, Project: proj}
-				m.allTasks = []CrossProjectTask{item}
-				m.groups = []AllTasksGroup{{Name: proj.Name, Tasks: []CrossProjectTask{item}}}
-				m.projectCache = map[string]*models.Project{proj.ID: proj}
-				m.cursor = 1
-				m.calculateNavigation()
-				return m.View().Content
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			plain := ansi.Strip(tt.view())
-			if got := strings.Count(plain, "stale"); got != 1 {
-				t.Fatalf("expected exactly one stale badge in %s, got %d:\n%s", tt.name, got, plain)
-			}
-		})
+	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
+	m.loadedProjects = []*models.Project{proj}
+	m.activePerspective = PerspectiveAll
+	m.SetSize(118, 18)
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+	m.NavigateToTaskInProject(task, proj)
+	plain := ansi.Strip(m.View().Content)
+	if got := strings.Count(plain, "stale"); got != 1 {
+		t.Fatalf("expected exactly one stale badge in cross-project Outliner, got %d:\n%s", got, plain)
 	}
 }
 

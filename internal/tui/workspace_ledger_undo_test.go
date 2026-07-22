@@ -56,7 +56,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 			task := seedTask(t, 1, "Ledger undo target", models.StateReady)
 			project := newLedgerUndoProject(t, dataDir, "ledger-undo", task)
 
-			mutator := newLedgerUndoApp(t, dataDir, project, ViewPriorityView, task.ID, true)
+			mutator := newLedgerUndoApp(t, dataDir, project, ViewOutliner, task.ID, true)
 			before := readTasksFile(t, project)
 
 			if err := tc.mutate(mutator.appService, task.ID); err != nil {
@@ -69,7 +69,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 
 			// Simulate a restart: a brand-new AppModel with no in-memory undo state,
 			// reading the durable ledger the previous session wrote.
-			restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewPriorityView, task.ID, false)
+			restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewOutliner, task.ID, false)
 
 			restarted = sendAppKey(restarted, syntheticKey('u'))
 			if got := readTasksFile(t, project); !bytes.Equal(got, before) {
@@ -89,7 +89,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		task := seedTask(t, 1, "Planning transition target", models.StateReady)
 		project := newLedgerUndoProject(t, dataDir, "planning-undo", task)
 
-		mutator := newLedgerUndoApp(t, dataDir, project, ViewPriorityView, task.ID, true)
+		mutator := newLedgerUndoApp(t, dataDir, project, ViewOutliner, task.ID, true)
 
 		// Seed the task into Today (Daily Plan) on disk so a transition into Next
 		// must drop the Today entry through the folded planning artifact.
@@ -107,7 +107,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		}
 		after := readTasksFile(t, project)
 
-		restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewPriorityView, task.ID, false)
+		restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewOutliner, task.ID, false)
 
 		restarted = sendAppKey(restarted, syntheticKey('u'))
 		if got := readTasksFile(t, project); !bytes.Equal(got, before) {

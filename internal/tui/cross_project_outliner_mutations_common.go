@@ -36,14 +36,3 @@ func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.
 	}
 	return row, proj, true
 }
-
-// crossFindProjectForTask scans m.loadedProjects to find the project that
-// contains the task with the given ID. Returns nil when not found.
-func (m *OutlinerModel) crossFindProjectForTask(taskID string) *models.Project {
-	for _, p := range m.loadedProjects {
-		if p.GetTaskByID(taskID) != nil {
-			return p
-		}
-	}
-	return nil
-}

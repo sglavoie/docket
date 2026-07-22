@@ -106,7 +106,7 @@ func (m *OutlinerModel) rebuildRows() {
 		}
 	}
 
-	tasks := filterTaskTree(roots, m.currentPerspective().Filter)
+	tasks := filterTaskTree(roots, m.baseFocusFilter(m.project))
 
 	if tag := m.activePinnedTagFilter(); tag != "" {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
@@ -143,12 +143,13 @@ func (m *OutlinerModel) rebuildRows() {
 			return matchesSearch(task, query, m.runtime.Planning())
 		})
 	}
+	tasks = m.applyFocusOrdering(tasks, m.project.ID)
 
 	if m.sort.Field != SortByDefault {
 		tasks = m.sortTaskTree(tasks)
 	}
 
-	if m.currentPerspective().Name == "All" {
+	if m.smartFocus == nil && m.currentPerspective().Name == "All" {
 		m.buildRowsWithSectionHeaders(tasks)
 	} else {
 		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)

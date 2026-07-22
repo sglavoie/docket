@@ -16,7 +16,7 @@ func (m *AppModel) quickNoteCommand() Command {
 		Description: "Append a quick note/comment to the selected task",
 		Shortcut:    "ctrl+.",
 		Category:    CategoryStructure,
-		Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner, ViewAllTasks, ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewFocusBoard, ViewPriorityView},
+		Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner, ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewFocusBoard},
 		Aliases:     []string{"note", "comment quick"},
 		Handler: func() tea.Msg {
 			task, project := m.quickNoteTarget()
@@ -47,7 +47,7 @@ func (m *AppModel) moveReparentCommand() Command {
 }
 
 func (m *AppModel) quickNoteTarget() (*models.Task, *models.Project) {
-	if view, _, ok := m.taskWorkspacePrimary(); ok {
+	if view, _, ok := m.outlinerPrimary(); ok {
 		return view.getTaskRef()
 	}
 	origin := m.nonPaletteOrigin()
@@ -75,7 +75,7 @@ func (m *AppModel) quickNoteTarget() (*models.Task, *models.Project) {
 }
 
 func (m *AppModel) reparentTarget() (*models.Task, *models.Project, PresentationID) {
-	if view, params, ok := m.taskWorkspacePrimary(); ok {
+	if view, params, ok := m.outlinerPrimary(); ok {
 		task, project := view.getTaskRef()
 		return task, project, taskWorkspacePresentation(params)
 	}

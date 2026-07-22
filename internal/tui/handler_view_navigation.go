@@ -41,30 +41,11 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 	case ViewFocusBoard:
 		return m.handleViewMessages(ShowFocusBoardMsg{})
 	case ViewCrossProjectOutliner:
-		return m.handleViewMessages(ShowGlobalOutlinerMsg{})
-	case ViewAllTasks:
-		return m.handleViewMessages(ShowAllTasksMsg{})
+		return m.handleViewMessages(ShowGlobalOutlinerMsg{Options: msg.OutlinerOptions})
 	case ViewMetricsDashboard:
 		return m.handleViewMessages(ShowMetricsDashboardMsg{})
 	case ViewRoadmap:
 		return m.handleViewMessages(ShowRoadmapMsg{})
-	case ViewPriorityView:
-		if project != nil {
-			if err := storage.LoadProject(project); err != nil {
-				logging.Warn("failed to load project %s: %v", project.Name, err)
-			}
-			return m.handleViewMessages(ShowPriorityViewMsg{Project: project})
-		}
-	case ViewProjectFocusView:
-		if project != nil {
-			return m.handleViewMessages(ShowProjectFocusViewMsg{Project: project})
-		}
-	case ViewKanban:
-		if project != nil {
-			return m.handleViewMessages(ShowKanbanMsg{Project: project})
-		}
-	case ViewCrossProjectKanban:
-		return m.handleViewMessages(ShowCrossProjectKanbanMsg{})
 	case ViewBlockers:
 		if project != nil {
 			if err := storage.LoadProject(project); err != nil {
@@ -111,7 +92,7 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 			if err := storage.LoadProject(project); err != nil {
 				logging.Warn("failed to load project %s: %v", project.Name, err)
 			}
-			return m.handleViewMessages(ShowOutlinerMsg{Project: project})
+			return m.handleViewMessages(ShowOutlinerMsg{Project: project, Options: msg.OutlinerOptions})
 		}
 	default:
 	}

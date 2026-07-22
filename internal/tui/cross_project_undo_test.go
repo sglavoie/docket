@@ -12,7 +12,7 @@ import (
 // seeded projects' BulkCoordinator and workspace ledger (via cfg.DataDir()), so its
 // bulk mutations commit through the application layer and its u/ctrl+r handlers
 // restore from the same ledger the coordinator wrote to.
-func newCrossOutlinerFromEnv(env *kanbanBulkEnv) *OutlinerModel {
+func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 	cfg := newTestConfigAt(env.dataDir)
 	setTestProjects(cfg, env.projects)
 	m := &OutlinerModel{
@@ -38,7 +38,7 @@ func TestCrossProjectUndoOrchestration(t *testing.T) { //nolint:gocyclo // integ
 	beta1 := seedTask(t, 1, "Configure lint", models.StateReady)
 	beta2 := seedTask(t, 2, "Write API docs", models.StateReady)
 
-	env := newKanbanBulkEnv(t, []*models.Task{alpha1, alpha2}, []*models.Task{beta1, beta2})
+	env := newCrossProjectTestEnv(t, []*models.Task{alpha1, alpha2}, []*models.Task{beta1, beta2})
 	m := newCrossOutlinerFromEnv(env)
 
 	m.bulkOp.SetOperation(models.StateInProgress, []*models.Task{alpha1, beta1}, 0, nil)
@@ -116,7 +116,7 @@ func TestCrossProjectSingleTaskUndoOrchestration(t *testing.T) {
 	alpha1 := seedTask(t, 1, "Implement login endpoint", models.StateReady)
 	beta1 := seedTask(t, 1, "Configure lint", models.StateReady)
 
-	env := newKanbanBulkEnv(t, []*models.Task{alpha1}, []*models.Task{beta1})
+	env := newCrossProjectTestEnv(t, []*models.Task{alpha1}, []*models.Task{beta1})
 	m := newCrossOutlinerFromEnv(env)
 
 	// Place the cursor on beta1 (project index 1) as a single-task target.

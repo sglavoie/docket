@@ -170,12 +170,6 @@ func NewSettingsModel(deps *shellDeps) *SettingsModel {
 		startViewCursor:          settingsOptionCursor(startViewValues, machine.GetStartView(), defaultStartViewCursor),
 		resumeCardLimitInput:     newSettingsInput(strconv.Itoa(config.DefaultResumeCardLimit), 2, 6, strconv.Itoa(settings.GetResumeCardLimit()), false),
 		homeProjectsHeightInput:  newSettingsInput(strconv.Itoa(config.DefaultHomeProjectsHeightPct), 2, 6, strconv.Itoa(machine.GetHomeProjectsHeightPct()), false),
-		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, settings.KanbanSettings.DefaultMode, 0),
-		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, settings.KanbanSettings.DefaultStartColumn, false),
-		kanbanShowEmptyColumns:   settings.KanbanSettings.ShowEmptyColumns == nil || *settings.KanbanSettings.ShowEmptyColumns,
-		kanbanDetailPaneVisible:  settings.KanbanSettings.DetailPaneVisible != nil && *settings.KanbanSettings.DetailPaneVisible,
-		kanbanDetailHeightCursor: initKanbanDetailHeight(settings.KanbanSettings.DetailPaneHeight),
-		kanbanEnabledModes:       initKanbanEnabledModes(settings.KanbanSettings.EnabledModes),
 		focusIndex:               0,
 		tabs:                     TabState{Names: settingsTabNames},
 		width:                    80,
@@ -241,41 +235,4 @@ func themeToInactiveDraft(t config.Theme) [20]string {
 // for storage in activeHiddenDimmed (these have no UI input widget).
 func themeHiddenDimmed(t config.Theme) [3]string {
 	return [3]string{t.Palette.Dimmed, t.Palette.DimmedBg, t.Palette.DimmedFg}
-}
-
-// initKanbanDetailHeight converts a *int detail pane height (1-5) to a cursor index (0-4).
-// nil or out-of-range defaults to index 2 (height 3).
-func initKanbanDetailHeight(h *int) int {
-	if h == nil {
-		return 2 // default height 3
-	}
-	v := *h - 1 // convert 1-based to 0-based
-	if v < 0 {
-		return 0
-	}
-	if v > 4 {
-		return 4
-	}
-	return v
-}
-
-// initKanbanEnabledModes converts a slice of mode ID strings to a [5]bool toggle array.
-// nil or empty slice means all modes are enabled.
-func initKanbanEnabledModes(ids []string) [4]bool {
-	var result [4]bool
-	if len(ids) == 0 {
-		// All enabled by default.
-		for i := range result {
-			result[i] = true
-		}
-		return result
-	}
-	idSet := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		idSet[id] = true
-	}
-	for i, v := range kanbanModeValues {
-		result[i] = idSet[v]
-	}
-	return result
 }

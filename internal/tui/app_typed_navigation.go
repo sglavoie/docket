@@ -1,12 +1,6 @@
 package tui
 
-import (
-	"slices"
-
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/logging"
-)
+import tea "charm.land/bubbletea/v2"
 
 // enableTypedNavigation initializes the live route/overlay stacks from the
 // current renderer identity. Production enables this in NewAppModel; small
@@ -55,19 +49,11 @@ func (m *AppModel) currentPresentationView() PresentationID {
 	if view, ok := m.navigation.Primary.Current().Presentation(); ok {
 		return view
 	}
-	// viewStack and CurrentView mirror renderer observations. A synthetic label
-	// does not select the renderer:
-	// activeView still returns TaskWorkspaceView for these typed routes.
+	// A Task Workspace route is rendered exclusively by the mature Outliner for
+	// its scope, even when a legacy route instance lacks presentation metadata.
 	if route := m.navigation.Primary.Current(); route.ID() == TaskWorkspace {
-		if params, ok := route.Params().(TaskWorkspaceParams); ok && m.taskWorkspace != nil && m.taskWorkspace.HasMode(params.Layout) {
-			presentation := taskWorkspacePresentation(params)
-			if len(m.viewStack) > 0 {
-				top := m.viewStack[len(m.viewStack)-1]
-				if top != ViewDashboard && top != presentation {
-					return top
-				}
-			}
-			return presentation
+		if params, ok := route.Params().(TaskWorkspaceParams); ok {
+			return taskWorkspacePresentation(params)
 		}
 	}
 	if route := m.navigation.Primary.Current(); route.ID() == ReviewHub && m.reviewHub != nil {
@@ -93,50 +79,39 @@ func (m *AppModel) currentPresentationView() PresentationID {
 }
 
 func taskWorkspacePresentation(params TaskWorkspaceParams) PresentationID {
-	if params.Layout == WorkspaceBoard {
-		if params.Scope.Kind == ScopeProject {
-			return ViewKanban
-		}
-		return ViewCrossProjectKanban
-	}
-	if params.Layout == WorkspaceList {
-		return ViewAllTasks
-	}
 	if params.Scope.Kind == ScopeProject {
 		return ViewOutliner
 	}
 	return ViewCrossProjectOutliner
 }
 
-// activeTaskWorkspace reports whether the typed Task Workspace has a live
-// Outline/List adapter and is not covered by a legacy-rendered overlay. Typed
-// shell overlays such as the View menu keep the workspace active underneath.
-func (m *AppModel) activeTaskWorkspace() bool {
-	if !m.typedNavigation || m.taskWorkspace == nil || m.taskWorkspaceView == nil {
-		return false
-	}
-	if overlay, ok := m.navigation.Overlays.Current(); ok {
-		if _, hasPresentation := overlay.Presentation(); hasPresentation {
-			return false
-		}
+// outlinerPrimary resolves the canonical Task Workspace model beneath shell
+// overlays such as the command palette.
+func (m *AppModel) outlinerPrimary() (*OutlinerModel, TaskWorkspaceParams, bool) {
+	if !m.typedNavigation {
+		return nil, TaskWorkspaceParams{}, false
 	}
 	route := m.navigation.Primary.Current()
 	if route.ID() != TaskWorkspace {
-		return false
-	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return false
+		return nil, TaskWorkspaceParams{}, false
 	}
 	params, ok := route.Params().(TaskWorkspaceParams)
-	if !ok || !m.taskWorkspace.HasMode(params.Layout) {
+	if !ok {
+		return nil, TaskWorkspaceParams{}, false
+	}
+	if params.Scope.Kind == ScopeProject {
+		return m.outliner, params, m.outliner != nil
+	}
+	return m.crossOutliner, params, m.crossOutliner != nil
+}
+
+func (m *AppModel) activeOutlinerRoute() bool {
+	if _, _, ok := m.outlinerPrimary(); !ok {
 		return false
 	}
-	presentation := taskWorkspacePresentation(params)
-	if len(m.viewStack) > 0 {
-		top := m.viewStack[len(m.viewStack)-1]
-		if top != ViewDashboard && top != presentation {
-			return false
-		}
+	if overlay, ok := m.navigation.Overlays.Current(); ok {
+		_, hasPresentation := overlay.Presentation()
+		return !hasPresentation
 	}
 	return true
 }
@@ -260,34 +235,9 @@ func (m *AppModel) taskDetailPrimary() (*TaskDetailModel, TaskDetailParams, bool
 	return m.taskDetail, params, true
 }
 
-// taskWorkspacePrimary returns the live workspace beneath shell overlays. It
-// ignores the PresentationID mirror so command-palette handlers resolve the
-// same identity as direct workspace keys. Renderer-backed temporary routes are
-// rejected while their own model is authoritative.
-func (m *AppModel) taskWorkspacePrimary() (*TaskWorkspaceView, TaskWorkspaceParams, bool) {
-	if !m.typedNavigation || m.taskWorkspace == nil || m.taskWorkspaceView == nil {
-		return nil, TaskWorkspaceParams{}, false
-	}
-	route := m.navigation.Primary.Current()
-	if route.ID() != TaskWorkspace {
-		return nil, TaskWorkspaceParams{}, false
-	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return nil, TaskWorkspaceParams{}, false
-	}
-	params, ok := route.Params().(TaskWorkspaceParams)
-	if !ok || !m.taskWorkspace.HasMode(params.Layout) {
-		return nil, TaskWorkspaceParams{}, false
-	}
-	return m.taskWorkspaceView, params, true
-}
-
 func (m *AppModel) activeView() View {
 	if m.activeTaskComposer() {
 		return m.taskComposer
-	}
-	if m.activeTaskWorkspace() {
-		return m.taskWorkspaceView
 	}
 	if m.activeReviewHub() {
 		return m.reviewHub
@@ -328,16 +278,6 @@ func (m *AppModel) installTypedPresentation(view PresentationID) bool {
 	if err != nil || !ok || route.ID() == Reference {
 		return false
 	}
-	// Every task-overview presentation resolves to typed Task Workspace. Keep
-	// renderer models registered for view-scoped commands without attaching
-	// their PresentationID identity to route semantics.
-	if m.taskWorkspaceView != nil && slices.Contains([]PresentationID{
-		ViewOutliner, ViewCrossProjectOutliner, ViewAllTasks,
-		ViewKanban, ViewCrossProjectKanban, ViewPriorityView, ViewProjectFocusView,
-	}, view) {
-		route.presentation, route.hasPresentation = 0, false
-	}
-
 	// Navigating to a primary route abandons transient presentations first.
 	m.navigation.Overlays.CancelAll()
 	m.syncPresentationStack()
@@ -364,7 +304,6 @@ func (m *AppModel) installTypedPresentation(view PresentationID) bool {
 		if err := m.navigation.ReplaceDestination(route); err != nil {
 			return false
 		}
-		m.syncTaskWorkspaceRoute(route)
 		m.syncPresentationStack()
 	}
 	return true
@@ -385,40 +324,23 @@ func (m *AppModel) installPendingStartupRoute(view PresentationID) {
 	if m.navigation.ReplaceDestination(route) != nil {
 		return
 	}
-	m.syncTaskWorkspaceRoute(route)
 	m.syncPresentationStack()
 	m.startupRoute = nil
 	m.startupView = ViewDashboard
 }
 
-func (m *AppModel) syncTaskWorkspaceRoute(route Route) {
-	if m.taskWorkspace == nil || route.ID() != TaskWorkspace {
-		return
+func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
+	if !m.typedNavigation || route.ID() != TaskWorkspace {
+		return nil
 	}
 	params, ok := route.Params().(TaskWorkspaceParams)
 	if !ok {
-		return
-	}
-	if err := m.taskWorkspace.SetRouteParams(params); err != nil {
-		logging.Warn("failed to synchronize Task Workspace route: %v", err)
-	}
-}
-
-func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
-	if !m.typedNavigation || route.ID() != TaskWorkspace || m.taskWorkspace == nil {
 		return nil
 	}
-	params, ok := route.Params().(TaskWorkspaceParams)
-	if !ok || !m.taskWorkspace.HasMode(params.Layout) {
-		return nil
-	}
+	presentation := taskWorkspacePresentation(params)
+	projectID := params.Scope.ProjectID
+	route = withPresentation(route, presentation, projectID, "")
 	if err := m.navigation.ReplaceDestination(route); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
-	}
-	if err := m.taskWorkspace.SetRouteParams(params); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
-	}
-	if err := m.taskWorkspace.Refresh(); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 	m.syncPresentationStack()
@@ -430,7 +352,7 @@ func (m *AppModel) syncPresentationStack() {
 	for _, route := range m.navigation.Primary.Routes() {
 		view, ok := route.Presentation()
 		if !ok && route.ID() == TaskWorkspace {
-			if params, paramsOK := route.Params().(TaskWorkspaceParams); paramsOK && m.taskWorkspace != nil && m.taskWorkspace.HasMode(params.Layout) {
+			if params, paramsOK := route.Params().(TaskWorkspaceParams); paramsOK {
 				view, ok = taskWorkspacePresentation(params), true
 			}
 		}
@@ -596,10 +518,6 @@ func (m *AppModel) cancelTypedOverlayPresentation(kind OverlayKind, key string) 
 		}
 	case OverlayViewMenu:
 		switch key {
-		case taskWorkspaceViewMenuOverlayKey:
-			if m.taskWorkspaceView != nil {
-				m.taskWorkspaceView.menuOpen = false
-			}
 		case plannerViewMenuOverlayKey:
 			if m.views != nil {
 				planner, ok := m.views.Get(ViewFocusBoard).(*FocusBoardModel)

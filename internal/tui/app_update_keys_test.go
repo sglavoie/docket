@@ -406,8 +406,8 @@ func TestHandleGlobalKeyPress_UndoRedoRoutesForTaskSecondaryView(t *testing.T) {
 				task:    project.Tasks[0],
 				project: project,
 			}
-			app.views.Register(ViewPriorityView, view)
-			app.viewStack = []PresentationID{ViewDashboard, ViewPriorityView}
+			app.views.Register(ViewOutliner, view)
+			app.viewStack = []PresentationID{ViewDashboard, ViewOutliner}
 
 			handled, cmd := app.handleGlobalKeyPress(tt.key)
 			if !handled {

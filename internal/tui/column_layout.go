@@ -43,7 +43,7 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 }
 
 // ComputeTaskLineColumnLayout computes a ColumnLayout for TaskLine-based views
-// (focus, priority, daily/weekly review, all tasks, etc.).
+// (Planner, Outliner, daily/weekly review, activity, etc.).
 // hideLowPriority mirrors the HideLowPriority flag on TaskLine.
 //
 // Equivalent to ComputeBadgeWidths with IncludeStatus/IncludeType enabled.

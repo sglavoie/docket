@@ -7,8 +7,8 @@ func tutorConceptTopicsPlanning() []TutorTopic {
 			Category: "Concepts",
 			Content: `# What Are Saved Filters
 
-A saved filter is a named preset that captures your current filter,
-sort, and view-mode settings. Instead of manually re-applying
+A saved filter is a named preset that captures your current filter
+and sort settings. Instead of manually re-applying
 filters every time you want to see the same slice of tasks, you
 save the combination once and load it with a couple of keystrokes.
 
@@ -38,7 +38,7 @@ Delete. The filter is removed from the config file.
 # Storage
 
 Saved filters are stored in the tt config file (~/.tt/.tt.json, or iCloud Drive when available) and
-are available across all projects. Snapshot filters capture view mode,
+are available across all projects. Snapshot filters capture
 type/status/priority/tag/section/due-date/attribute/score filters,
 sort field and direction, and the active pinned tag tab. Criteria
 filters store compound rules with AND/OR logic.`,
@@ -179,7 +179,7 @@ reappears automatically when the snooze period expires.
 
 # How Snoozed Tasks Reappear
 
-Snoozed tasks are excluded from normal list views and the
+Snoozed tasks are excluded from normal Outliner perspectives and the
 dashboard. When the snooze time passes, the task returns to
 its previous section and appears in your task list again.
 

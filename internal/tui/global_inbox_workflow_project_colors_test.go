@@ -247,18 +247,6 @@ func TestProjectColorIdentityMatchesAcrossFinalMixedProjectSurfaces(t *testing.T
 		t.Fatalf("outliner did not use durable project hue %v: %q", projectColor(project), outlinerLine)
 	}
 
-	kanban := newRenderKanban(80, 24, []KanbanColumn{{
-		ID: "next", Label: "next", Icon: "·",
-		Tasks: []KanbanCard{{Task: task, Project: project}},
-	}})
-	kanban.crossProject = true
-	kanbanRendered := kanbanRender(kanban)
-	kanbanLayout := computeKanbanColumnLayout(kanban.width, len(kanban.columns), kanban.colScrollOff)
-	kanbanProject := projectColorStyle(project).Background(ColorDimmedBg).Bold(true).Width(kanbanLayout.colWidth).Render(project.Name)
-	if !strings.Contains(kanbanRendered, kanbanProject) {
-		t.Fatalf("kanban did not use durable project hue %v:\n%s", projectColor(project), kanbanRendered)
-	}
-
 	shared := RenderCrossProjectTaskLine(task, project, runtime, false, 100, 40, CrossProjectTaskLineOpts{})
 	if want := projectColorStyle(project).Render("[" + project.Name + "]"); !strings.Contains(shared, want) {
 		t.Fatalf("shared task row did not use durable project hue %v: %q", projectColor(project), shared)

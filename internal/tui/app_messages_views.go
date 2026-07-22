@@ -12,27 +12,10 @@ type SettingsMsg struct{}
 // SettingsSavedMsg signals settings were saved.
 type SettingsSavedMsg struct{}
 
-// =============================================================================
-// Priority View Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowPriorityViewMsg opens the priority overview.
-type ShowPriorityViewMsg struct {
-	Project *models.Project
-}
-
-// ClosePriorityViewMsg closes the priority overview.
-type ClosePriorityViewMsg struct{ PopViewMsg }
-
 // ShowScoreEditorMsg opens the score dimension editor for a task.
 type ShowScoreEditorMsg struct {
 	Task    *models.Task
 	Project *models.Project
-}
-
-// PriorityViewSelectMsg navigates to a task from priority view in the project tree.
-type PriorityViewSelectMsg struct {
-	Task *models.Task
 }
 
 // =============================================================================
@@ -100,18 +83,6 @@ type ShowProjectRecentActivityMsg struct {
 type CloseProjectRecentActivityMsg struct{ PopViewMsg }
 
 // =============================================================================
-// Project Focus View Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowProjectFocusViewMsg opens the project-scoped focus view.
-type ShowProjectFocusViewMsg struct {
-	Project *models.Project
-}
-
-// CloseProjectFocusViewMsg closes the project focus view.
-type CloseProjectFocusViewMsg struct{ PopViewMsg }
-
-// =============================================================================
 // Tutor Messages
 // =============================================================================
 
@@ -172,13 +143,16 @@ type ShowOutlinerMsg struct {
 	Project    *models.Project
 	OpenAtTask *models.Task
 	Temporary  bool
+	Options    OutlinerOpenOptions
 }
 
 // CloseOutlinerMsg closes the outliner view.
 type CloseOutlinerMsg struct{}
 
 // ShowGlobalOutlinerMsg opens the cross-project outliner view.
-type ShowGlobalOutlinerMsg struct{}
+type ShowGlobalOutlinerMsg struct {
+	Options OutlinerOpenOptions
+}
 
 // CloseGlobalOutlinerMsg closes the cross-project outliner and pops to the previous anchor.
 type CloseGlobalOutlinerMsg struct{}
@@ -206,22 +180,4 @@ type DismissAlertMsg struct {
 // UndismissAlertMsg requests removal of a dismissal for a specific alert.
 type UndismissAlertMsg struct {
 	Key string
-}
-
-// =============================================================================
-// Kanban Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowKanbanMsg opens the per-project kanban view.
-type ShowKanbanMsg struct {
-	Project *models.Project
-}
-
-// ShowCrossProjectKanbanMsg opens the cross-project kanban view.
-type ShowCrossProjectKanbanMsg struct{}
-
-// KanbanSelectMsg navigates to a task's project from the kanban view.
-type KanbanSelectMsg struct {
-	Task    *models.Task
-	Project *models.Project
 }

@@ -79,11 +79,12 @@ func TestResolveStartupNavigationPreservesLegacyRouteMeaning(t *testing.T) {
 			legacy: "priority",
 			check: func(t *testing.T, plan startupNavigationPlan) {
 				params := plan.Route.Params().(TaskWorkspaceParams)
-				if params.Focus != WorkspaceActive || params.Layout != WorkspaceList {
+				if params.Scope.Kind != ScopeApp {
 					t.Fatalf("priority route params = %+v", params)
 				}
-				msg := plan.Message.(ShowAllTasksMsg)
-				if !msg.SetSort || msg.Sort != SortByPriority {
+				msg := plan.Message.(ShowGlobalOutlinerMsg)
+				if !msg.Options.SetFocus || msg.Options.Focus != OutlinerHighPriority ||
+					!msg.Options.SetSort || msg.Options.Sort != SortByPriority {
 					t.Fatalf("priority message = %+v", msg)
 				}
 			},
@@ -91,8 +92,9 @@ func TestResolveStartupNavigationPreservesLegacyRouteMeaning(t *testing.T) {
 		{
 			legacy: "due-dates",
 			check: func(t *testing.T, plan startupNavigationPlan) {
-				msg := plan.Message.(ShowAllTasksMsg)
-				if !msg.SetGroup || msg.Group != ATGroupByDueDate {
+				msg := plan.Message.(ShowGlobalOutlinerMsg)
+				if !msg.Options.SetFocus || msg.Options.Focus != OutlinerAll ||
+					!msg.Options.SetSort || msg.Options.Sort != SortByDueDate {
 					t.Fatalf("due-date message = %+v", msg)
 				}
 			},

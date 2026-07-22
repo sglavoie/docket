@@ -110,9 +110,8 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		if m.project == nil {
 			return m, nil, true
 		}
-		return m, func() tea.Msg {
-			return ShowProjectFocusViewMsg{Project: m.project}
-		}, true
+		m.ApplyOpenOptions(OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true})
+		return m, nil, true
 
 	case "A":
 		proj := m.project
@@ -124,7 +123,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 					return m, nil, true
 				}
 				return m, func() tea.Msg {
-					return ShowAllTasksMsg{}
+					return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
 				}, true
 			}
 		}
@@ -138,7 +137,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 			return m, nil, true
 		}
 		return m, func() tea.Msg {
-			return ShowAllTasksMsg{}
+			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
 		}, true
 
 	case "/":

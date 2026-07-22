@@ -11,7 +11,7 @@ import (
 // palette now commits one asynchronous cross-project transaction through the
 // BulkCoordinator: the batch result carries the selection to clear and the
 // per-view summary, both projects' tags are committed on disk, the shell clears
-// the cached All Tasks multi-select on commit, and the workspace ledger undoes
+// the cross-project Outliner multi-select on commit, and the workspace ledger undoes
 // the whole batch.
 func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha task", "old")
@@ -19,11 +19,12 @@ func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	app := env.appModel()
 
-	app.allTasksView = NewAllTasksViewModel(app.runtime, app.configManager)
-	app.allTasksView.multiSelectMode = true
-	app.allTasksView.selectedTasks[taskA.ID] = true
-	app.allTasksView.selectedTasks[taskB.ID] = true
-	app.views.Register(ViewAllTasks, app.allTasksView)
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner.loadedProjects = env.projects
+	app.crossOutliner.multiSelectMode = true
+	app.crossOutliner.selectedTasks[taskA.ID] = true
+	app.crossOutliner.selectedTasks[taskB.ID] = true
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 
 	app.pushView(ViewBulkTagSelector)
 	handled, cmd := app.handleTagMessages(BulkTagSelectorDoneMsg{
@@ -53,8 +54,8 @@ func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	}
 
 	app.handleBatchTransactionResult(msg)
-	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
-		t.Fatal("committed batch should clear cached All Tasks multi-select")
+	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
+		t.Fatal("committed batch should clear cross-project Outliner multi-select")
 	}
 
 	env.undo(t)

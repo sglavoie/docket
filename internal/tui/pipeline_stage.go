@@ -6,7 +6,7 @@ func pipelineStage(vt PresentationID) string {
 	switch vt {
 	case ViewQuickCapture, ViewBulkCapture:
 		return "Capture"
-	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
+	case ViewGlobalInboxProcessor, ViewCrossProjectOutliner:
 		return "Triage"
 	case ViewDailyReview, ViewRoadmap:
 		return "Plan"
@@ -33,7 +33,7 @@ func captureNextHint(taskCountBefore int) string {
 // pipelineNextHintOnboarding returns a special next-step hint for empty-state views.
 // Called when no tasks exist yet so beginners get an actionable prompt.
 func pipelineNextHintOnboarding(vt PresentationID) string {
-	if vt == ViewAllTasks {
+	if vt == ViewCrossProjectOutliner {
 		return "Next: capture a task (Ctrl+N)"
 	}
 	return ""
@@ -45,7 +45,7 @@ func pipelineNextHint(vt PresentationID) string {
 	switch vt {
 	case ViewQuickCapture, ViewBulkCapture:
 		return "Next: Manage Inbox | Ctrl+G Planner"
-	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
+	case ViewGlobalInboxProcessor, ViewCrossProjectOutliner:
 		return "Next: Planner Next | Planner Today"
 	case ViewRoadmap:
 		return "Next: Planner Today | Enter project"

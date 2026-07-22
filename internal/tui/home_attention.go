@@ -414,7 +414,9 @@ func homeAttentionActionCmd(row homeAttentionRow) tea.Cmd {
 		case homeAttentionOpenPlannerNext:
 			return ShowFocusBoardMsg{Tab: boardTabNext, SetTab: true}
 		case homeAttentionOpenDueDates:
-			return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true}
+			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+				Focus: OutlinerAll, SetFocus: true, Sort: SortByDueDate, SetSort: true,
+			}}
 		case homeAttentionOpenGlobalBlockers:
 			return ShowGlobalBlockersMsg{}
 		case homeAttentionOpenProjectBlockers:

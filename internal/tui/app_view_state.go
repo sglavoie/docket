@@ -28,9 +28,6 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	// rather than self-padding. Regression coverage: the *-resize-minimum-layout
 	// scenarios under docs/tui-testing/scenarios/ (run by TestExampleScenariosPass).
 	m.views.SetSize(msg.Width, msg.Height-2)
-	if m.taskWorkspaceView != nil {
-		m.taskWorkspaceView.SetSize(msg.Width, msg.Height-2)
-	}
 	if m.reviewHub != nil {
 		m.reviewHub.SetSize(msg.Width, msg.Height-2)
 	}
@@ -55,20 +52,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		if composer, ok := updated.(*TaskComposerModel); ok {
 			m.taskComposer = composer
 			m.views.Register(composer.presentation, composer)
-		}
-		return cmd
-	}
-	if m.activeTaskWorkspace() {
-		updated, cmd := m.taskWorkspaceView.Update(msg)
-		if view, ok := updated.(*TaskWorkspaceView); ok {
-			m.taskWorkspaceView = view
-		}
-		if m.peekActive {
-			if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
-				m.peekTask, m.peekProject = task, project
-			} else {
-				m.dismissPeek()
-			}
 		}
 		return cmd
 	}
@@ -131,10 +114,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		if v := m.views.Get(ViewGlobalInboxProcessor); v != nil {
 			m.globalInboxProcessor = v.(*GlobalInboxProcessorModel)
 		}
-	case ViewAllTasks:
-		if v := m.views.Get(ViewAllTasks); v != nil {
-			m.allTasksView = v.(*AllTasksViewModel)
-		}
 	case ViewOutliner:
 		if v := m.views.Get(ViewOutliner); v != nil {
 			m.outliner = v.(*OutlinerModel)
@@ -153,9 +132,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 // the current primary view, or (nil, nil) when no task is selected. The project
 // pointer enables overlays (e.g. peek) that need scoring profile lookups.
 func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Project) {
-	if view, _, ok := m.taskWorkspacePrimary(); ok && m.activeTaskWorkspace() {
-		return view.getTaskRef()
-	}
 	if hub, _, ok := m.reviewHubPrimary(); ok && m.activeReviewHub() {
 		return hub.getTaskRef()
 	}
@@ -186,7 +162,7 @@ func (m *AppModel) peekCursorTaskAndProject() (*models.Task, *models.Project) {
 	if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
 		return task, project
 	}
-	if view, _, ok := m.taskWorkspacePrimary(); ok {
+	if view, _, ok := m.outlinerPrimary(); ok {
 		if task, project := view.getTaskRef(); task != nil {
 			return task, project
 		}
@@ -212,9 +188,6 @@ func (m *AppModel) peekCursorTaskAndProject() (*models.Task, *models.Project) {
 // getCurrentCursorTask returns the task under the cursor in the current primary view,
 // or nil if no task is selected or the current view is not a primary project view.
 func (m *AppModel) getCurrentCursorTask() *models.Task {
-	if m.activeTaskWorkspace() && m.taskWorkspaceView != nil {
-		return m.taskWorkspaceView.getCursorTask()
-	}
 	switch m.currentView() {
 	case ViewOutliner:
 		if m.outliner != nil {
@@ -239,14 +212,6 @@ func (m *AppModel) getCurrentCursorTask() *models.Task {
 		if m.globalInboxProcessor != nil {
 			task, _ := m.globalInboxProcessor.getTaskRef()
 			return task
-		}
-	case ViewKanban, ViewCrossProjectKanban:
-		if v := m.views.Get(m.currentView()); v != nil {
-			if kb, ok := v.(*KanbanModel); ok {
-				if card := kb.getCursorCard(); card != nil {
-					return card.Task
-				}
-			}
 		}
 	default:
 		// Other view types don't have a cursor task.

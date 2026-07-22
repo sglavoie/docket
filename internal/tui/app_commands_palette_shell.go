@@ -21,7 +21,7 @@ import (
 // shell-owned (the caller must not delegate to its view dispatcher) and
 // (nil, false) otherwise. task/project are the palette adapter's resolved cursor
 // reference — the same target the direct keys act on.
-func (m *AppModel) shellOwnedPaletteAction(action TaskWorkspaceAction, task *models.Task, project *models.Project) (tea.Msg, bool) {
+func (m *AppModel) shellOwnedPaletteAction(action PlannerAction, task *models.Task, project *models.Project) (tea.Msg, bool) {
 	switch action {
 	case WorkspaceActionOpenPeek:
 		if task == nil || project == nil {

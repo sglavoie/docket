@@ -10,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestAllTasksFocusDueDateDailyReviewWeeklyReviewTaskRowsUseProjectColor(t *testing.T) {
+func TestDailyReviewWeeklyReviewTaskRowsUseProjectColor(t *testing.T) {
 	previousTheme := activeThemeName
 	t.Cleanup(func() { activeThemeName = previousTheme })
 	activeThemeName = "dark"
@@ -27,9 +27,6 @@ func TestAllTasksFocusDueDateDailyReviewWeeklyReviewTaskRowsUseProjectColor(t *t
 	item := CrossProjectTask{Task: task, Project: project}
 	wantBadge := projectColorStyle(project).Render("[Alpha]")
 
-	allTasks := NewAllTasksViewModel(runtime, nil)
-	allTasks.SetSize(120, 24)
-
 	dailyReview := NewDailyReviewModel(runtime, nil)
 	dailyReview.SetSize(120, 24)
 
@@ -40,12 +37,6 @@ func TestAllTasksFocusDueDateDailyReviewWeeklyReviewTaskRowsUseProjectColor(t *t
 		name   string
 		render func() string
 	}{
-		{
-			name: "All Tasks",
-			render: func() string {
-				return allTasks.renderTaskLine(item, false, false, 60, 0, 120, nil)
-			},
-		},
 		{
 			name: "Daily Review",
 			render: func() string {

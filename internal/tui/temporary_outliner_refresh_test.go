@@ -31,9 +31,12 @@ func openRichTemporaryOutliner(t *testing.T) (*UITestDriver, *OutlinerModel) {
 	// alias. Open it through its message contract so this regression continues
 	// to test registry-owned refresh behavior rather than retired navigation.
 	var targetProject *models.Project
-	for _, item := range driver.App().taskWorkspace.Snapshot().Items {
-		if item.Project != nil && driver.App().currentProject != nil && item.Project.ID == driver.App().currentProject.ID {
-			targetProject = item.Project
+	if driver.App().crossOutliner == nil {
+		t.Fatal("fixture did not open the cross-project Outliner")
+	}
+	for _, project := range driver.App().crossOutliner.loadedProjects {
+		if project != nil && driver.App().currentProject != nil && project.ID == driver.App().currentProject.ID {
+			targetProject = project
 			break
 		}
 	}

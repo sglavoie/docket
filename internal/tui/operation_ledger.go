@@ -7,7 +7,7 @@ import (
 )
 
 // TUIScenarioBaseline records the committed consolidated scenario inventory.
-const TUIScenarioBaseline = 43
+const TUIScenarioBaseline = 41
 
 // OperationID is the stable semantic identity of a registered command.
 type OperationID string
@@ -54,17 +54,17 @@ func buildCommandClassificationTable() map[OperationID]commandFinalClassificatio
 	add(CommandReachHub, "Planner",
 		"today", "planner next", "planner backlog")
 	add(CommandReachHub, "TaskWorkspace",
-		"all tasks", "outliner", "kanban")
+		"all tasks", "outliner")
 	add(CommandReachHub, "ReviewHub",
 		"daily review", "weekly review", "latest activity", "project recent activity", "metrics dashboard", "roadmap")
 	add(CommandReachHub, "ManageHub",
 		"inbox processor", "global inbox processor", "global notes", "global blockers", "global tag manager",
 		"tag manager", "workflow rules", "scoring profiles", "task templates", "settings", "notifications", "message log")
 	add(CommandReachViewMenu, "View menu",
-		"all tasks by due date", "clear filters", "clear tag filter", "cycle grouping", "cycle note sort",
+		"all tasks by due date", "clear filters", "clear tag filter", "cycle note sort",
 		"cycle note tag filter", "filter by context", "filter by section", "filter by tag", "outliner reset sort",
 		"outliner sort by created", "outliner sort by due date", "outliner sort by priority", "outliner sort by score",
-		"outliner sort by status", "section manager", "show notes", "toggle waiting section", "view completed")
+		"outliner sort by status", "section manager", "show notes", "view completed")
 	add(CommandReachPaletteAlias, "Reference/Ask", "ask ai")
 	add(CommandReachPaletteAlias, "ManageHub/Blockers", "blockers view")
 	add(CommandReachPaletteAlias, "Palette/Search", "global search")

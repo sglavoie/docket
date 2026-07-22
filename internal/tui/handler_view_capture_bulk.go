@@ -29,7 +29,7 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			return true, nil
 		}
-		// Contextual entry points (project tree, dashboard, outliner, kanban, and
+		// Contextual entry points (dashboard, Outliner, and
 		// their palette commands) supply the owning project. Context-free capture
 		// falls back to the visible system Inbox and may still be rerouted with
 		// %project inside the capture input.

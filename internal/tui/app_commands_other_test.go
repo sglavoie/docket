@@ -21,8 +21,9 @@ func TestOtherCommands_ProjectFocus(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowProjectFocusViewMsg); !ok {
-		t.Errorf("expected ShowProjectFocusViewMsg, got %T", result)
+	msg, ok := result.(ShowOutlinerMsg)
+	if !ok || !msg.Options.SetFocus || msg.Options.Focus != OutlinerNext {
+		t.Errorf("expected Next-focused ShowOutlinerMsg, got %#v", result)
 	}
 }
 
@@ -51,7 +52,7 @@ func TestFocusQueuePaletteHasNoLegacyRemovalCommand(t *testing.T) {
 		}
 	}
 
-	for _, view := range []PresentationID{ViewProjectFocusView} {
+	for _, view := range []PresentationID{ViewOutliner} {
 		if cmd := findCommand(registry.GetForView(view), "remove from focus"); cmd != nil {
 			t.Fatalf("%s palette should not expose legacy queue removal: %+v", view, cmd)
 		}

@@ -40,7 +40,6 @@ const (
 	ViewCustomContextEditor
 	ViewGlobalSearch
 	ViewParentSelector
-	ViewPriorityView
 	ViewQuickCapture
 	ViewBulkCapture
 	ViewInboxProcessor
@@ -60,7 +59,6 @@ const (
 	ViewRecurrenceEditor
 	ViewTextEditor
 	ViewGlobalInboxProcessor
-	ViewProjectFocusView
 	ViewBlockers
 	ViewTaskAttachments
 	ViewLinkedTaskCreator
@@ -92,7 +90,6 @@ const (
 	ViewScoreProfileManager
 	ViewSaveFilterInput
 	ViewMetricsDashboard
-	ViewAllTasks
 	ViewScoringProfilePicker
 	ViewFocusBoard
 	ViewOutliner
@@ -108,26 +105,11 @@ const (
 	ViewMessageLog
 	ViewProjectFilterSelector
 	ViewTaskForm
-	ViewKanban
-	ViewCrossProjectKanban
 	ViewRoadmap
 	ViewTaskDecisions
 	ViewAttrFilterPicker
 	ViewConflictResolution
 )
-
-// PriorityViewCache stores session-only filter + tab state for PriorityView.
-type PriorityViewCache struct {
-	Filter    CommonFilterState
-	TabActive int
-}
-
-// AllTasksCache stores session-only filter + groupBy + tab state for AllTasks.
-type AllTasksCache struct {
-	Filter    CommonFilterState
-	GroupBy   AllTasksGroupBy
-	TabActive int
-}
 
 // sessionStats tracks task activity during a single TUI session for the end-of-session summary.
 type sessionStats struct {
@@ -185,12 +167,6 @@ type AppModel struct {
 	// feature_coordinator_secondary.go.
 	secondaryFeatures SecondaryCoordinators
 
-	// taskWorkspace owns the shared Task Workspace query, identity,
-	// organization, and mutation state consumed by Outline, List, and Board.
-	// Layout renderers register adapters with this controller.
-	taskWorkspace     *TaskWorkspaceController
-	taskWorkspaceView *TaskWorkspaceView
-
 	// reviewHub is the sole live Review destination. Daily, Weekly, Activity,
 	// Metrics, and Roadmap remain calculation/rendering modules owned by it.
 	reviewHub *ReviewHubModel
@@ -242,20 +218,12 @@ type AppModel struct {
 	globalInboxProcessor *GlobalInboxProcessorModel
 	metricsDashboard     *MetricsDashboardModel
 	roadmap              *RoadmapModel
-	allTasksView         *AllTasksViewModel
 	outliner             *OutlinerModel
 	crossOutliner        *OutlinerModel
 
 	// Per-project outliner toggle state (section collapse + node fold),
 	// keyed by project ID. Survives outliner recreation within a session.
 	outlinerToggleStates map[string]*OutlinerToggleState
-
-	// Session-only filter caches for views reconstructed during history navigation.
-	priorityViewFilterCache map[string]*PriorityViewCache // keyed by projectID
-	allTasksFilterCache     *AllTasksCache                // single global entry
-
-	// Kanban view session cache — keyed by project ID or "cross_project".
-	kanbanViewCache map[string]*KanbanViewCache
 
 	// Focus view session state (persists across view navigation within a session)
 	focusQueue        []FocusTask

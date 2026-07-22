@@ -360,9 +360,6 @@ func TestNewSettingsDefaults(t *testing.T) {
 	if s.UndoHistoryDepth == nil || *s.UndoHistoryDepth != DefaultUndoHistoryDepth {
 		t.Errorf("UndoHistoryDepth should default to %d", DefaultUndoHistoryDepth)
 	}
-	if s.KanbanSettings.DefaultMode != defaultKanbanMode {
-		t.Errorf("KanbanSettings.DefaultMode = %q, want %q", s.KanbanSettings.DefaultMode, defaultKanbanMode)
-	}
 	if err := s.Validate(); err != nil {
 		t.Errorf("default settings should validate: %v", err)
 	}
@@ -474,8 +471,8 @@ func TestMachineStateHomeProjectsHeightPctJSONRoundTrip(t *testing.T) {
 	}
 
 	var reloaded MachineState
-	if err := json.Unmarshal(data, &reloaded); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	if unmarshalErr := json.Unmarshal(data, &reloaded); unmarshalErr != nil {
+		t.Fatalf("unmarshal: %v", unmarshalErr)
 	}
 	if reloaded.GetHomeProjectsHeightPct() != 75 {
 		t.Fatalf("reloaded height = %d, want 75", reloaded.GetHomeProjectsHeightPct())

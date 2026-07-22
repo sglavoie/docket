@@ -128,7 +128,3 @@ func (s *ProjectService) Backup(project *models.Project) error {
 func (s *ProjectService) Save(project *models.Project) error {
 	return storage.SaveProjectLocked(project)
 }
-
-// defaultPersister is a package-level Persister for callers that don't hold
-// their own ProjectService instance (e.g. daily/weekly review views).
-var defaultPersister Persister = &ProjectService{}

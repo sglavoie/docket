@@ -172,26 +172,3 @@ func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNam
 	}
 	return renderWrappingTabBar(tabNames, activeTab, width, accent...)
 }
-
-// renderDynamicSubTabBar renders the dynamic sub-tab row when there are
-// multiple sub-tabs (prepends "All"), or returns "" if none.
-func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int, accent ...color.Color) string {
-	if len(subTabNames) <= 1 {
-		return ""
-	}
-
-	tabs := make([]string, 0, len(subTabNames)+1)
-	tabs = append(tabs, "All")
-	tabs = append(tabs, subTabNames...)
-
-	// Use wrapping tab bar with width reduced for focus indicator column
-	bar := renderWrappingTabBar(tabs, subTab, width-2, accent...)
-
-	lines := strings.Split(bar, "\n")
-	if subTabRowFocused {
-		lines[0] = FocusIndicator + lines[0]
-	} else {
-		lines[0] = " " + lines[0]
-	}
-	return strings.Join(lines, "\n")
-}

@@ -62,7 +62,7 @@ func confirmInboxDeleteRaw(t *testing.T, e *inboxDeleteEnv, index int) tea.Msg {
 	return cmd()
 }
 
-// confirmGlobalInboxDeleteRaw is the Global Inbox analogue of confirmInboxDeleteRaw.
+// confirmGlobalInboxDeleteRaw is the Global Inbox analog of confirmInboxDeleteRaw.
 func confirmGlobalInboxDeleteRaw(t *testing.T, m *AppModel, gp *GlobalInboxProcessorModel, index int) tea.Msg {
 	t.Helper()
 	gp.currentIndex = index
@@ -141,7 +141,7 @@ func TestLocalInboxDuplicateSameTaskDelete(t *testing.T) {
 	}
 }
 
-// TestGlobalInboxDuplicateSameTaskDelete is the Global Inbox analogue: two tokens
+// TestGlobalInboxDuplicateSameTaskDelete is the Global Inbox analog: two tokens
 // for one aggregated task alias one processor slot, and the committed delete must
 // mark the task processed exactly once and clear all bookkeeping in either order.
 func TestGlobalInboxDuplicateSameTaskDelete(t *testing.T) {

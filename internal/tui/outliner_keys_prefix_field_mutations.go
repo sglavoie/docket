@@ -14,7 +14,7 @@ func (m *OutlinerModel) handlePerspectivePrefix(key string) (tea.Model, tea.Cmd)
 		if m.project == nil {
 			return m.crossHandlePerspectiveJump(perspective.ID)
 		}
-		m.activePerspective = perspective.ID
+		m.activatePerspective(perspective.ID)
 		m.resetViewScrollOffset()
 		m.rebuildRows()
 		return m, nil

@@ -45,13 +45,6 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if review, ok := m.activeView().(*ReviewHubModel); ok {
 			palette.SetCommandContext(review.CommandContext())
 		}
-		// Every TaskWorkspace-backed active view (Outliner, All Tasks, Kanban, …)
-		// installs its typed command context so the palette exposes the same
-		// capability-scoped Task Workspace grammar — including uppercase-X
-		// deletion — that direct keys and help advertise.
-		if workspace, _, ok := m.taskWorkspacePrimary(); ok && m.activeTaskWorkspace() {
-			palette.SetCommandContext(workspace.CommandContext())
-		}
 		// Apply pre-filter if specified (overrides last category)
 		if msg.PreFilter != "" {
 			palette.searchInput.SetValue(msg.PreFilter)

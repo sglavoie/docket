@@ -1,8 +1,7 @@
 {
-  "tui_state_version": 1,
+  "tui_state_version": 2,
   "start_route": {
-    "task_layout": "list",
-    "task_focus": "active",
+    "task_focus": "high-priority",
     "task_sort": "priority"
   },
   "editor": "vim",

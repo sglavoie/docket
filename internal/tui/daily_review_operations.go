@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -21,11 +20,9 @@ func (m *DailyReviewModel) getTaskRef() (*models.Task, *models.Project) {
 	return dt.Task, dt.Project
 }
 
-func (m *DailyReviewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *DailyReviewModel) getRuntime() *config.RuntimeState  { return m.runtime }
-func (m *DailyReviewModel) reloadData()                       { m.loadTasks() }
-func (m *DailyReviewModel) setErr(err error)                  { m.err = err }
-func (m *DailyReviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
+func (m *DailyReviewModel) reloadData()          { m.loadTasks() }
+func (m *DailyReviewModel) setErr(err error)     { m.err = err }
+func (m *DailyReviewModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }
 
 // applyReviewMutation commits a single-task review mutation through the
 // application-layer single-task coordinator and advances review progress. The

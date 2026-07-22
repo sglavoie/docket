@@ -54,23 +54,6 @@ func reloadCoordinatorTask(t *testing.T, project *models.Project, taskID string)
 	return task
 }
 
-// TestPriorityViewStartSuggestedTaskCommitsThroughCoordinator verifies the
-// priority view's "start suggested task" action commits the in_progress
-// transition through the single-task coordinator.
-func TestPriorityViewStartSuggestedTaskCommitsThroughCoordinator(t *testing.T) {
-	project, taskID := savedCoordinatorProject(t)
-	m := NewPriorityViewModel(project, newTestConfig(), nil)
-	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
-	m.suggestion = &SuggestedTask{Task: &PriorityTask{Task: project.GetTaskByID(taskID)}}
-
-	if _, cmd := m.startSuggestedTask(); cmd == nil {
-		t.Fatal("expected a transaction command from startSuggestedTask")
-	}
-	if got := reloadCoordinatorTask(t, project, taskID).State(); got != models.StateInProgress {
-		t.Fatalf("state = %q, want in_progress", got)
-	}
-}
-
 // TestFocusBoardEditTitleCommitsThroughCoordinator verifies the focus board's
 // inline title edit commits through the single-task coordinator.
 func TestFocusBoardEditTitleCommitsThroughCoordinator(t *testing.T) {
@@ -92,21 +75,6 @@ func TestFocusBoardEditTitleCommitsThroughCoordinator(t *testing.T) {
 	}
 	if m.editMode {
 		t.Error("editMode should be cleared after committing the edit")
-	}
-}
-
-// TestKanbanPriorityMoveCommitsThroughCoordinator verifies the kanban single-card
-// priority change commits through the single-task coordinator.
-func TestKanbanPriorityMoveCommitsThroughCoordinator(t *testing.T) {
-	project, taskID := savedCoordinatorProject(t)
-	m := NewKanbanModel(project, nil, nil, NewProjectService())
-	m.SetTaskItemCoordinator(newTestSecondaryCoordinators(project).TaskItem)
-
-	if _, cmd := m.applyKanbanPriorityChange(project, project.GetTaskByID(taskID), 1); cmd == nil {
-		t.Fatal("expected a transaction command from applyKanbanPriorityChange")
-	}
-	if got := reloadCoordinatorTask(t, project, taskID).Priority; got != 1 {
-		t.Fatalf("priority = %d, want 1", got)
 	}
 }
 

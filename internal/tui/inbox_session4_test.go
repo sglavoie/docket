@@ -49,26 +49,8 @@ func (s *session4Backend) saveProjectCmd(project *models.Project) tea.Cmd {
 	s.lastSavedProject = project
 	return func() tea.Msg { return InboxProjectSavedMsg{} }
 }
-func (s *session4Backend) reloadCmd() tea.Cmd { return nil }
-func (s *session4Backend) rebuildTasks()      {}
-func (s *session4Backend) deleteFromData(task *models.Task, project *models.Project) {
-	if task == nil {
-		return
-	}
-	if project == nil {
-		project = s.project
-	}
-	if project == nil {
-		return
-	}
-	for i, t := range project.Tasks {
-		if t.ID == task.ID {
-			project.Tasks = append(project.Tasks[:i], project.Tasks[i+1:]...)
-			return
-		}
-	}
-}
-
+func (s *session4Backend) reloadCmd() tea.Cmd         { return nil }
+func (s *session4Backend) rebuildTasks()              {}
 func (s *session4Backend) markDeletedProcessed() bool { return true }
 func (s *session4Backend) shouldProcessOnSectionChange(task *models.Task, project *models.Project) bool {
 	current := project.GetTaskByID(task.ID)

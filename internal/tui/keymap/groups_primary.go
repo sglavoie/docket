@@ -11,7 +11,7 @@ type CommonPrimaryViewDeps struct {
 	SwitchProjectViewDescription string
 	// ProjectBlockers opens the project blockers view.
 	ProjectBlockers Action
-	// PriorityView opens the priority view.
+	// PriorityView opens the priority focus or lens.
 	PriorityView Action
 	// AddToPlan adds the task to today's plan.
 	AddToPlan Action
@@ -56,7 +56,7 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 	}
 	entries = append(entries,
 		Bind("B", "Project blockers", cat, deps.ProjectBlockers),
-		Bind("p", "Priority view", cat, deps.PriorityView),
+		Bind("p", "Priority focus", cat, deps.PriorityView),
 		Bind("w", "Open today's plan fallback", cat, deps.AddToPlan, AsHidden()),
 		Bind("W", "Inbox processor", cat, deps.InboxProcessor),
 		Bind("i", "Quick capture", "Task Operations", deps.QuickCapture),

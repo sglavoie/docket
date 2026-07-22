@@ -337,8 +337,8 @@ func TestCrossPriorityModeFingerprintInvalidatesMemoization(t *testing.T) {
 
 // TestPriorityViewKeyTogglesCrossModeInOutliner verifies that the keymap
 // `PriorityView` dep handler toggles cross-project Priority mode when the
-// outliner is operating in cross-project context (m.project == nil) and emits
-// the single-project ShowPriorityViewMsg when a project is loaded.
+// outliner is operating in cross-project context (m.project == nil) and applies
+// the high-priority focus in place when a project is loaded.
 func TestPriorityViewKeyTogglesCrossModeInOutliner(t *testing.T) {
 	cfg := newTestConfig()
 	pKey := tea.KeyPressMsg{Code: 'p', Text: "p"}
@@ -364,19 +364,22 @@ func TestPriorityViewKeyTogglesCrossModeInOutliner(t *testing.T) {
 		t.Error("second `p` should exit Priority mode")
 	}
 
-	// Single-project context: `p` emits ShowPriorityViewMsg and does not flip
-	// the unrelated crossPriorityMode flag.
+	// Single-project context: `p` applies the priority focus in place and does
+	// not flip the unrelated crossPriorityMode flag.
 	proj := &models.Project{ID: "p1", Name: "P1"}
 	single := NewOutlinerModel(proj, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	_, singleCmd, ok := single.Dispatcher.Dispatch(pKey)
 	if !ok {
 		t.Fatal("dispatcher should handle `p` in single-project outliner")
 	}
-	if singleCmd == nil {
-		t.Fatal("`p` in single-project context should emit ShowPriorityViewMsg via tea.Cmd")
+	if singleCmd != nil {
+		t.Fatal("`p` in single-project context should apply the focus in place")
 	}
-	if _, ok := singleCmd().(ShowPriorityViewMsg); !ok {
-		t.Errorf("expected ShowPriorityViewMsg from single-project `p`, got %T", singleCmd())
+	if single.smartFocus == nil || *single.smartFocus != OutlinerHighPriority {
+		t.Fatalf("single-project focus = %v, want High Priority", single.smartFocus)
+	}
+	if single.sort.Field != SortByScore {
+		t.Fatalf("single-project sort = %v, want Score", single.sort.Field)
 	}
 	if single.crossPriorityMode {
 		t.Error("single-project `p` must not flip cross-project priority mode")

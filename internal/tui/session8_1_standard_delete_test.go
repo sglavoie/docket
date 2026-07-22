@@ -52,34 +52,6 @@ func TestRecentActivityUppercaseXDeleteEmitsCanonicalRequest(t *testing.T) {
 
 // --- FR-006: remaining surfaces honor their advertised X target --------------
 
-// TestProjectFocusUppercaseXDeleteEmitsCanonicalRequest proves Project Focus,
-// which previously overrode X with a no-op, now emits the canonical request for
-// the cursor task.
-func TestProjectFocusUppercaseXDeleteEmitsCanonicalRequest(t *testing.T) {
-	m, project := newTestProjectFocusView(t)
-	if len(m.tasks) == 0 {
-		t.Fatal("project focus fixture has no queued task")
-	}
-	m.cursor = 0
-	cursor := m.getTaskAtCursor()
-	if cursor == nil {
-		t.Fatal("no task under cursor")
-	}
-
-	action := findSharedTaskKeymapAction(t, m.buildKeyMap(), "X")
-	_, cmd := action()
-	msg := deleteRequestFromCmd(t, cmd)
-	if got := requestTaskIDs(msg); !slices.Equal(got, []string{cursor.ID}) {
-		t.Fatalf("project focus delete targets = %v, want [%s]", got, cursor.ID)
-	}
-	if msg.Refs[0].Project.ID != project.ID {
-		t.Errorf("ref project = %q, want %q", msg.Refs[0].Project.ID, project.ID)
-	}
-	if msg.Origin != ViewProjectFocusView {
-		t.Errorf("origin = %v, want ViewProjectFocusView", msg.Origin)
-	}
-}
-
 // TestWeeklyReviewUppercaseXDeleteTargetsSelection proves Weekly Review targets
 // the full active multi-selection (not just the cursor) through the canonical
 // request.
@@ -136,27 +108,5 @@ func TestDailyReviewUppercaseXDeleteTargetsSelection(t *testing.T) {
 	}
 	if msg.Origin != ViewDailyReview {
 		t.Errorf("origin = %v, want ViewDailyReview", msg.Origin)
-	}
-}
-
-// TestPriorityUppercaseXDeleteTargetsSelection proves Priority targets the full
-// active multi-selection through the canonical request.
-func TestPriorityUppercaseXDeleteTargetsSelection(t *testing.T) {
-	km, want := setupPrioritySharedBulkKeymap(t)
-
-	action := findSharedTaskKeymapAction(t, km, "X")
-	_, cmd := action()
-	msg := deleteRequestFromCmd(t, cmd)
-
-	wantIDs := make([]string, 0, len(want))
-	for _, ref := range want {
-		wantIDs = append(wantIDs, ref.Task.ID)
-	}
-	slices.Sort(wantIDs)
-	if got := requestTaskIDs(msg); !slices.Equal(got, wantIDs) {
-		t.Fatalf("priority delete targets = %v, want the selection %v", got, wantIDs)
-	}
-	if msg.Origin != ViewPriorityView {
-		t.Errorf("origin = %v, want ViewPriorityView", msg.Origin)
 	}
 }

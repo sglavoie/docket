@@ -124,7 +124,7 @@ func TestWeeklyReviewDeleteCommitSummaryReportsDeletions(t *testing.T) {
 	}
 }
 
-// TestWeeklyReviewDeleteCancellationSkipsAccounting proves cancelling the shell
+// TestWeeklyReviewDeleteCancellationSkipsAccounting proves canceling the shell
 // confirm (n or Esc) never arms the accounting and preserves the tasks on disk.
 func TestWeeklyReviewDeleteCancellationSkipsAccounting(t *testing.T) {
 	for _, key := range []string{"n", "esc"} {
@@ -196,12 +196,12 @@ func TestWeeklyReviewDeleteFailureSkipsAccounting(t *testing.T) {
 func TestWeeklyReviewDeleteUnrelatedOriginSkipsAccounting(t *testing.T) {
 	e := newTaskDeleteEnv(t)
 	rows := []WeeklyReviewTask{{Task: e.sibling, Project: e.alpha}}
-	// Register the Weekly Review surface but drive the delete from All Tasks.
+	// Register the Weekly Review surface but drive the delete from the Outliner.
 	m, wr := newWeeklyReviewDeleteModel(t, e, rows)
 
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs:   []TaskProjectRef{{Task: e.sibling, Project: e.alpha}},
-		Origin: ViewAllTasks,
+		Origin: ViewOutliner,
 	})
 	_, confirmCmd := m.handleTaskDeleteConfirmKey("y")
 	if armedWeeklyReviewDeleteTotal(m) != 0 {

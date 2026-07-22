@@ -20,13 +20,12 @@ func (s *stubInboxBackend) taskRef(i int) (*models.Task, *models.Project) {
 func (s *stubInboxBackend) closeMsg(processed, skipped int) tea.Msg {
 	return struct{ closed bool }{closed: true}
 }
-func (s *stubInboxBackend) handleSavedMsg(tea.Msg) (bool, error)         { return false, nil }
-func (s *stubInboxBackend) saveCmd() tea.Cmd                             { return nil }
-func (s *stubInboxBackend) saveProjectCmd(*models.Project) tea.Cmd       { return nil }
-func (s *stubInboxBackend) reloadCmd() tea.Cmd                           { return nil }
-func (s *stubInboxBackend) rebuildTasks()                                {}
-func (s *stubInboxBackend) deleteFromData(*models.Task, *models.Project) {}
-func (s *stubInboxBackend) markDeletedProcessed() bool                   { return false }
+func (s *stubInboxBackend) handleSavedMsg(tea.Msg) (bool, error)   { return false, nil }
+func (s *stubInboxBackend) saveCmd() tea.Cmd                       { return nil }
+func (s *stubInboxBackend) saveProjectCmd(*models.Project) tea.Cmd { return nil }
+func (s *stubInboxBackend) reloadCmd() tea.Cmd                     { return nil }
+func (s *stubInboxBackend) rebuildTasks()                          {}
+func (s *stubInboxBackend) markDeletedProcessed() bool             { return false }
 func (s *stubInboxBackend) shouldProcessOnSectionChange(*models.Task, *models.Project) bool {
 	return false
 }

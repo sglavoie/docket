@@ -20,7 +20,7 @@ func TestPresentationScopes(t *testing.T) {
 		want         RouteScope
 	}{
 		{ViewDashboard, ScopeApp},
-		{ViewCrossProjectKanban, ScopeApp},
+		{ViewCrossProjectOutliner, ScopeApp},
 		{ViewOutliner, ScopeProject},
 		{ViewTaskDetail, ScopeTask},
 	}

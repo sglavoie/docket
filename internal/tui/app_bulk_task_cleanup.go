@@ -17,9 +17,6 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 		m.outliner.rebuildRows()
 		m.outliner.clampCursor()
 	}
-	if m.allTasksView != nil {
-		clearMultiSelectStateForTaskIDs(&m.allTasksView.MultiSelectState, selectedIDs)
-	}
 	if m.outliner != nil && multiSelectStateHasTaskID(&m.outliner.MultiSelectState, selectedIDs) {
 		m.outliner.clearMultiSelect()
 	}
@@ -28,12 +25,8 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 	}
 
 	for _, vt := range []PresentationID{
-		ViewAllTasks,
 		ViewDailyReview,
 		ViewWeeklyReview,
-		ViewPriorityView,
-		ViewKanban,
-		ViewCrossProjectKanban,
 		ViewOutliner,
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
@@ -48,15 +41,9 @@ func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt PresentationID, selected
 	}
 	view := m.views.Get(vt)
 	switch v := view.(type) {
-	case *AllTasksViewModel:
-		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
 	case *DailyReviewModel:
 		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
 	case *WeeklyReviewModel:
-		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
-	case *PriorityViewModel:
-		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
-	case *KanbanModel:
 		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
 	case *OutlinerModel:
 		if multiSelectStateHasTaskID(&v.MultiSelectState, selectedIDs) {

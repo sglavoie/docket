@@ -17,28 +17,12 @@ func routeForPresentation(view PresentationID, projectID, taskID string) (route 
 		id, params = Home, HomeParams{}
 	case ViewFocusBoard:
 		id, params = Planner, PlannerParams{Tab: PlannerToday}
-	case ViewPriorityView:
-		id, params = TaskWorkspace, TaskWorkspaceParams{
-			Scope: ProjectEntityScope(projectID), Layout: WorkspaceList, Focus: WorkspaceHighPriority,
-		}
-	case ViewProjectFocusView:
-		id, params = TaskWorkspace, TaskWorkspaceParams{
-			Scope: ProjectEntityScope(projectID), Layout: WorkspaceList, Focus: WorkspaceNext,
-		}
-	case ViewAllTasks:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope(), Layout: WorkspaceList}
 	case ViewOutliner:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID), Layout: WorkspaceOutline}
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}
 	case ViewTemporaryOutliner:
-		id, params = TaskWorkspace, TaskWorkspaceParams{
-			Scope: ProjectEntityScope(projectID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-		}
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}
 	case ViewCrossProjectOutliner:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope(), Layout: WorkspaceOutline}
-	case ViewKanban:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID), Layout: WorkspaceBoard}
-	case ViewCrossProjectKanban:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope(), Layout: WorkspaceBoard}
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewDailyReview:
 		id, params = ReviewHub, ReviewParams{Module: ReviewDaily}
 	case ViewWeeklyReview:

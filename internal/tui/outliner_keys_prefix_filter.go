@@ -39,9 +39,9 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "c":
 		if m.activePerspective == PerspectiveCompleted {
-			m.activePerspective = PerspectiveSnoozed
+			m.activatePerspective(PerspectiveSnoozed)
 		} else {
-			m.activePerspective = PerspectiveCompleted
+			m.activatePerspective(PerspectiveCompleted)
 		}
 		m.resetViewScrollOffset()
 		m.rebuildRows()

@@ -104,10 +104,6 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 		case 1:
 			return &m.codeEditorInput
 		}
-	case tabKanban:
-		if local == 1 {
-			return &m.kanbanStartColInput
-		}
 	case tabNotifications:
 		switch local {
 		case 1:

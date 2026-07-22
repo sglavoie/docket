@@ -42,13 +42,6 @@ var registry = map[string]iconPair{
 	"status.blocked":     {"🚫", "⊘"},
 	"status.canceled":    {"❌", "✕"},
 
-	// Kanban Column Icons
-	"kanban.todo":     {"📋", "○"},
-	"kanban.review":   {"🔎", "◎"},
-	"kanban.blocked":  {"🚫", "⊗"},
-	"kanban.done":     {"✅", "✓"},
-	"kanban.canceled": {"❌", "✗"},
-
 	// Priority Icons
 	"priority.1": {"🔴", "◉"},
 	"priority.2": {"🟠", "●"},

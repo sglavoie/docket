@@ -518,7 +518,7 @@ func TestAskActionPlanShellCompletionIsExactlyOnce(t *testing.T) {
 	}
 }
 
-func TestAskActionPlanShellReloadsEveryTouchedProjectAndInvalidatesCaches(t *testing.T) {
+func TestAskActionPlanShellReloadsEveryTouchedProject(t *testing.T) {
 	root := t.TempDir()
 	projects := make([]*models.Project, 0, 2)
 	for i, id := range []string{"ask-touched-alpha", "ask-touched-beta"} {
@@ -545,8 +545,6 @@ func TestAskActionPlanShellReloadsEveryTouchedProjectAndInvalidatesCaches(t *tes
 	for _, project := range projects {
 		project.Tasks = nil
 	}
-	appModel.priorityViewFilterCache = map[string]*PriorityViewCache{"stale": {}}
-	appModel.allTasksFilterCache = &AllTasksCache{}
 	ask := NewAskViewModelWithDeps(nil, "", appModel.runtime, nil)
 	ask.state = askStateApplying
 	ask.applyID = nextAskOperationID()
@@ -567,9 +565,6 @@ func TestAskActionPlanShellReloadsEveryTouchedProjectAndInvalidatesCaches(t *tes
 		if len(project.Tasks) != 1 || !strings.Contains(project.Tasks[0].Title, project.ID) {
 			t.Fatalf("project %s was not reloaded from disk: %#v", project.ID, project.Tasks)
 		}
-	}
-	if len(appModel.priorityViewFilterCache) != 0 || appModel.allTasksFilterCache != nil {
-		t.Fatalf("task/filter caches were not invalidated: priority=%#v all=%#v", appModel.priorityViewFilterCache, appModel.allTasksFilterCache)
 	}
 }
 

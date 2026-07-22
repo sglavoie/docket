@@ -73,9 +73,6 @@ func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
 	return row.Task, row.Project
 }
 
-func (m *FocusBoardModel) getRuntime() *config.RuntimeState  { return m.runtime }
-func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
-
 // workflowOpsView accessors: FocusBoard does not embed ViewBundle, so it exposes
 // its own single-task coordinator and enabled rules for the shared wf* helpers.
 func (m *FocusBoardModel) taskItemCoordinator() TaskItemCoordinator { return m.taskItem }

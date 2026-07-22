@@ -5,34 +5,6 @@ import tea "charm.land/bubbletea/v2"
 // handleGlobalPickerMessages handles global picker, status, priority, due date, section, and linked task messages.
 func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowPriorityViewMsg:
-		if msg.Project != nil {
-			if m.typedNavigation && m.taskWorkspaceView != nil {
-				m.currentProject = msg.Project
-				_ = m.taskWorkspace.State.SetGrouping(WorkspaceGroupDueDate)
-				_ = m.taskWorkspace.State.SetSorting(SortState{Field: SortByScore, Ascending: true})
-				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-					Scope: ProjectEntityScope(msg.Project.ID), Layout: WorkspaceList, Focus: WorkspaceHighPriority,
-				})
-				if err != nil {
-					return true, func() tea.Msg { return ErrorMsg{Err: err} }
-				}
-				return true, m.activateTaskWorkspaceRoute(route)
-			}
-			pv := NewPriorityViewModel(msg.Project, m.runtime, m.configManager)
-			pv.queueIDs = m.focusQueueIDs
-			pv.dailyPlanIDs = m.dailyPlanIDs
-			m.showView(ViewPriorityView, pv)
-		}
-		return true, nil
-
-	case PriorityViewSelectMsg:
-		m.popView()
-		if msg.Task != nil && m.currentProject != nil {
-			return true, m.navigateToTaskInProject(msg.Task, m.currentProject)
-		}
-		return true, nil
-
 	case ShowGlobalProjectPickerMsg:
 		activeProjects := m.activeProjects()
 		m.globalProjectPicker = newGlobalProjectPicker(activeProjects, m.allProjects(), msg.Purpose, msg.ExcludeIDs, msg.BackMsg)

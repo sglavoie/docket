@@ -333,22 +333,6 @@ func tasksFromWeeklyReviewTasks(items []WeeklyReviewTask) []*models.Task {
 	return tasks
 }
 
-func projectsFromProjectCache(projectCache map[string]*models.Project) []*models.Project {
-	projects := make([]*models.Project, 0, len(projectCache))
-	for _, project := range projectCache {
-		projects = append(projects, project)
-	}
-	return uniqueProjects(projects)
-}
-
-func tasksFromCrossProjectCards(cards []KanbanCard) []*models.Task {
-	tasks := make([]*models.Task, 0, len(cards))
-	for _, card := range cards {
-		tasks = append(tasks, card.Task)
-	}
-	return tasks
-}
-
 // validateSavedStringSet returns the subset of saved that exist in valid.
 func validateSavedStringSet(saved []string, valid []string) map[string]bool {
 	validSet := make(map[string]bool, len(valid))

@@ -139,6 +139,10 @@ func wrappedLineCount(s string, width int) int {
 }
 
 func (m *OutlinerModel) buildPerspectiveLabel(perspective Perspective) string {
+	if m.smartFocus != nil {
+		return "  " + GetViewModeStyleForSection(m.smartFocus.String()).Render("@ "+m.smartFocus.String()) +
+			" " + MutedStyle.Render("P perspectives")
+	}
 	prevID := CyclePerspective(perspective.ID, -1)
 	nextID := CyclePerspective(perspective.ID, 1)
 	previous, _ := PerspectiveByID(prevID)
@@ -314,6 +318,9 @@ func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 	}
 	if m.project == nil {
 		return "No tasks found."
+	}
+	if m.smartFocus != nil {
+		return fmt.Sprintf("No tasks match the %s focus. Try P to pick a perspective or F to adjust filters.", m.smartFocus.String())
 	}
 	if perspective.Name != "All" && len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID

@@ -28,8 +28,8 @@ func TestCurrentRouteBinding(t *testing.T) {
 	app.pushView(ViewOutliner)
 	r := app.CurrentRoute()
 	workspace, ok := r.Params().(TaskWorkspaceParams)
-	if r.ID() != TaskWorkspace || !ok || workspace.Scope.ProjectID != "p1" || workspace.Layout != WorkspaceOutline {
-		t.Errorf("Outliner route = %s %+v, want project p1 / outline", r.ID(), r.Params())
+	if r.ID() != TaskWorkspace || !ok || workspace.Scope.ProjectID != "p1" {
+		t.Errorf("Outliner route = %s %+v, want project p1", r.ID(), r.Params())
 	}
 
 	// Task-scoped view carries both.
@@ -42,11 +42,11 @@ func TestCurrentRouteBinding(t *testing.T) {
 
 	// Global-nav view drops the project.
 	app.jumpToDashboard()
-	app.pushView(ViewAllTasks)
+	app.pushView(ViewCrossProjectOutliner)
 	r = app.CurrentRoute()
 	workspace, ok = r.Params().(TaskWorkspaceParams)
 	if !ok || workspace.Scope != AppEntityScope() {
-		t.Errorf("AllTasks route scope = %+v, want app", workspace.Scope)
+		t.Errorf("cross-project Outliner route scope = %+v, want app", workspace.Scope)
 	}
 
 	// Legacy overlays do not replace the typed primary route.

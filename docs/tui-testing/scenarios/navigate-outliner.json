@@ -12,10 +12,10 @@
     { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
     { "type": "key", "label": "choose Project scope", "key": "4" },
     { "type": "assert", "assert": "view", "value": "Outliner" },
-    { "type": "command", "label": "choose List layout", "command": "all tasks" },
-    { "type": "assert", "assert": "view", "value": "AllTasks" },
-    { "type": "command", "label": "choose Board layout", "command": "kanban" },
-    { "type": "assert", "assert": "view", "value": "CrossProjectKanban" },
+    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "command", "label": "sort All focus by due date", "command": "all tasks by due date" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

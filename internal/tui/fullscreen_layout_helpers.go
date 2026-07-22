@@ -41,21 +41,6 @@ func fullscreenContentHeightForBlocks(totalHeight int, blocks ...string) int {
 	return 1
 }
 
-// fullscreenContentHeightWithFooter budgets content height for builder-style
-// fullscreen views that append a renderFullscreenFooterBlock after the content
-// (rather than joining every block with lipgloss.JoinVertical). Like
-// fullscreenContentHeight it subtracts the title line plus tabBarOverhead header
-// rows, but it reserves the footer's actual rendered height instead of assuming
-// two rows, so a wrapped help footer no longer pushes the joined view past
-// totalHeight. footer is the rendered footer block; its leading newline overlaps
-// the content's final line terminator, so only its remaining rows are reserved
-// below the content.
-func fullscreenContentHeightWithFooter(totalHeight, tabBarOverhead int, footer string) int {
-	const titleOverhead = 1 // title line
-	footerRows := max(lipgloss.Height(footer)-1, 0)
-	return max(totalHeight-titleOverhead-tabBarOverhead-footerRows, 1)
-}
-
 // footerHelpSeparator delimits the individual key/action items inside a footer
 // help string (e.g. "j/k nav · Enter open · ? help"). It is the wrap boundary
 // renderStatusBarFooter uses to keep help text readable at narrow widths.
@@ -331,23 +316,6 @@ func renderStatusMessages(statusMessage string, err error) string {
 		b.WriteString("\n")
 	}
 	return b.String()
-}
-
-// renderGroupHeader renders a group header with count, using overdue styling when appropriate.
-// If width > 0, a trailing horizontal rule fills the remaining line width.
-func renderGroupHeader(name string, count int, isOverdue bool, width int) string {
-	header := fmt.Sprintf("%s (%d)", name, count)
-	var styled string
-	if isOverdue {
-		styled = OverdueStyle.Bold(true).Render(header)
-	} else {
-		styled = GroupHeaderStyle.Render(header)
-	}
-	visibleWidth := lipgloss.Width(styled)
-	if width > visibleWidth+2 {
-		styled += " " + MutedStyle.Render(strings.Repeat("─", width-visibleWidth-1))
-	}
-	return styled
 }
 
 // renderCollapsibleHeader renders a collapsible section/group header.

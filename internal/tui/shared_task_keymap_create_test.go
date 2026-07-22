@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -122,10 +121,6 @@ func (v *sharedTaskPrefixCreateView) View() tea.View { return tea.NewView("") }
 func (v *sharedTaskPrefixCreateView) getTaskRef() (*models.Task, *models.Project) {
 	return v.task, v.project
 }
-
-func (v *sharedTaskPrefixCreateView) getRuntime() *config.RuntimeState { return nil }
-
-func (v *sharedTaskPrefixCreateView) getConfigManager() *config.Manager { return nil }
 
 func (v *sharedTaskPrefixCreateView) clampCursor() {}
 

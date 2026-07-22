@@ -137,7 +137,7 @@ Assertion kinds (`assert`):
 | ------------------ | ------------------------------- | ---------------------------------------------------------- |
 | `contains`         | substring                       | the plain screen contains `value`.                         |
 | `not_contains`     | substring                       | the plain screen does not contain `value`.                 |
-| `view`             | view name                       | the current view equals `value` (e.g. `Dashboard`, `Today`, `CommandPalette`, `Outliner`, `CrossProjectOutliner`, `Kanban`). |
+| `view`             | view name                       | the current view equals `value` (e.g. `Dashboard`, `Today`, `CommandPalette`, `Outliner`, `CrossProjectOutliner`). |
 | `status_contains`  | substring                       | the status line contains `value`.                          |
 | `no_layout_issues` | (ignored)                       | no normalization/layout issues were detected.              |
 
@@ -205,8 +205,6 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `global-inbox-processor-minimum-layout.json` | Open Global Inbox Processor at `72x20` and assert no layout issues. |
 | `date-input-minimum-layout.json` | Open the Set Due Date input at `72x20` and assert no layout issues. |
 | `snooze-input-minimum-layout.json` | Open the Snooze Task input at `72x20` and assert no layout issues. |
-| `kanban-date-input-long-title-minimum-layout.json` | Open Set Due Date from Kanban on a long-title task at `60x20`. |
-| `kanban-snooze-input-long-title-minimum-layout.json` | Open Snooze from Kanban on a long-title task at `60x20`. |
 | `quick-capture-minimum-layout.json` | Open Quick Capture over a project outliner at `60x20`, expand the grouped `Capture Syntax` reference, scroll it by line (`ctrl+j`) and page (`pgdown`), and assert no layout issues with the wrapped contextual footer. |
 
 Run any of them:
@@ -228,7 +226,7 @@ just tui-scenarios
 | Fresh install and post-migration startup | `fresh-install-default.json`, `fresh-install-capture.json`, `fresh-install-alerts-quiet.json` |
 | Home and Attention | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
 | Planner Today, Next, and empty states | `open-today.json`, `focus-empty-minimum-layout.json` |
-| Task Workspace app/project scopes and List/Outline/Board layouts | `navigate-outliner.json`, `kanban-date-input-long-title-minimum-layout.json` |
+| Task Workspace app/project scopes and Outliner focus/sort translation | `navigate-outliner.json` |
 | Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
 | Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |
 | Detail and Composer | `task-detail-narrow-layout.json`, `quick-capture-minimum-layout.json`, `task-form-edit-standard-layout.json` |
@@ -321,8 +319,8 @@ height). `line` is 1-based, or `0` for screen-wide issues.
 A compact, stable per-view semantic map — high-signal fields only (counts,
 cursor, selected-item title, active mode/tab/perspective), never whole task or
 project structs. It is present only for views that implement it: **Dashboard,
-Today, Outliner, Kanban, CommandPalette** (Cross-Project Outliner/Kanban reuse the
-same models). Keys vary by view and are defined in
+Today, Outliner, CommandPalette** (Cross-Project Outliner reuses the same
+model). Keys vary by view and are defined in
 `internal/tui/uitest_snapshot.go` — consult that file for the authoritative set.
 Examples:
 

@@ -37,7 +37,7 @@ func (b *outlinerKeymapBuilder) perspectiveCycleEntries() []keymap.Entry {
 			if m.project == nil {
 				return m.crossHandlePerspectiveCycle("h")
 			}
-			m.activePerspective = CyclePerspective(m.activePerspective, -1)
+			m.activatePerspective(CyclePerspective(m.activePerspective, -1))
 			m.rebuildRows()
 			return m, nil
 		}),
@@ -45,7 +45,7 @@ func (b *outlinerKeymapBuilder) perspectiveCycleEntries() []keymap.Entry {
 			if m.project == nil {
 				return m.crossHandlePerspectiveCycle("l")
 			}
-			m.activePerspective = CyclePerspective(m.activePerspective, 1)
+			m.activatePerspective(CyclePerspective(m.activePerspective, 1))
 			m.rebuildRows()
 			return m, nil
 		}),
@@ -233,7 +233,7 @@ func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 			}
 			return m, nil
 		}, keymap.AsHidden()),
-		keymap.Bind("A", "Deselect all / archive / all-tasks", "Views", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("A", "Deselect all / archive / All focus", "Views", func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode {
 				m.deselectAllVisible()
 				return m, nil

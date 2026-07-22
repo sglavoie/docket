@@ -9,8 +9,8 @@ import (
 )
 
 // CrossScopeOpts controls which projects are selected and loaded by
-// LoadCrossScopeTasks for the cross-project surfaces (Cross-Outliner,
-// Cross-Kanban, Today).
+// LoadCrossScopeTasks for cross-project surfaces such as the Outliner and
+// Planner.
 type CrossScopeOpts struct {
 	// IncludeSandbox includes Sandbox projects in the result when true.
 	// Defaults to false; matches existing per-caller behavior.

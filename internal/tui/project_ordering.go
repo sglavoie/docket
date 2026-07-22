@@ -46,12 +46,6 @@ func sortCrossProjectTasksByProjectDisplayOrder(tasks []CrossProjectTask) {
 	})
 }
 
-func sortKanbanCardsByProjectDisplayOrder(cards []KanbanCard) {
-	sort.SliceStable(cards, func(i, j int) bool {
-		return compareProjectsByDisplayOrder(cards[i].Project, cards[j].Project) < 0
-	})
-}
-
 func sortProjectTaskGroupsByProjectDisplayOrder(groups []projectTasksGroup, projects []*models.Project) {
 	projectsByID := projectDisplayLookupByID(projects)
 	sort.SliceStable(groups, func(i, j int) bool {

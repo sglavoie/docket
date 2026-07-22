@@ -11,7 +11,7 @@ import (
 // binds against. It satisfies both taskOpsView (message/ref helpers) and
 // workflowOpsView (coordinator-backed mutations), so each non-overridden action
 // routes through the wf* helpers that commit via the application-layer
-// TaskItemCoordinator. All list/board views satisfy both interfaces.
+// TaskItemCoordinator. Task-row views satisfy both interfaces.
 type taskActionView interface {
 	taskOpsView
 	workflowOpsView
@@ -47,7 +47,7 @@ type TaskKeymapDeps struct {
 	// canonical, shell-owned TaskDeleteRequestedMsg for the active selection (or
 	// the cursor task when nothing is selected), which prompts for confirmation
 	// before any mutation. Overriding is reserved for surfaces that must shape the
-	// request themselves (e.g. Kanban, which refuses bulk deletion).
+	// request themselves when a surface has more restrictive semantics.
 	DeleteTask keymap.Action
 
 	// Status recurrence — nil skips recurrence bindings (,k and ,D).
@@ -234,8 +234,8 @@ func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 }
 
 // buildStandardDeleteEntry returns the canonical uppercase-X delete binding
-// shared by every standard task-action surface (review lists, All Tasks,
-// Priority, Kanban, Project Focus) so the destructive action uses one
+// shared by every standard task-action surface (Outliner, Planner, and review
+// lists) so the destructive action uses one
 // consistent key across task-bearing views.
 func buildStandardDeleteEntry(deps TaskKeymapDeps) keymap.Entry {
 	return keymap.Bind("X", "Delete task", "Actions", buildDeleteTaskAction(deps))

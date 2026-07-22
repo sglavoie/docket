@@ -48,14 +48,6 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		}
 		return true, nil
 
-	case taskWorkspaceViewMenuMsg:
-		if msg.Open {
-			m.pushTypedOverlay(OverlayViewMenu, taskWorkspaceViewMenuOverlayKey)
-		} else {
-			m.closeTypedOverlay(OverlayViewMenu, taskWorkspaceViewMenuOverlayKey)
-		}
-		return true, nil
-
 	case plannerViewMenuMsg:
 		if msg.Open {
 			m.pushTypedOverlay(OverlayViewMenu, plannerViewMenuOverlayKey)
@@ -73,20 +65,6 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 			return true, func() tea.Msg { return ErrorMsg{Err: err} }
 		}
 		route = withPresentation(route, ViewFocusBoard, "", "")
-		if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
-			return true, func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-		m.syncPresentationStack()
-		return true, nil
-
-	case TaskWorkspaceRouteChangedMsg:
-		if !m.typedNavigation || m.navigation.Primary.Current().ID() != TaskWorkspace {
-			return true, nil
-		}
-		route, err := NewRoute(TaskWorkspace, msg.Params)
-		if err != nil {
-			return true, func() tea.Msg { return ErrorMsg{Err: err} }
-		}
 		if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
 			return true, func() tea.Msg { return ErrorMsg{Err: err} }
 		}

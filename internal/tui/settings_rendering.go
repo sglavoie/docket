@@ -62,8 +62,6 @@ func (m *SettingsModel) focusLineInContent() int {
 		case 2:
 			return localIdx
 		}
-	case tabKanban:
-		return localIdx * 3
 	case tabNotifications:
 		switch m.subTab {
 		case 0:
@@ -207,8 +205,6 @@ func (m *SettingsModel) View() tea.View {
 		content = m.renderAttachmentsTab()
 	case tabOutliner:
 		content = m.renderOutlinerTab()
-	case tabKanban:
-		content = m.renderKanbanTab()
 	case tabNotifications:
 		content = m.renderNotificationsTab()
 	case tabAppearance:

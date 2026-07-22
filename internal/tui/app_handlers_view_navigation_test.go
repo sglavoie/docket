@@ -63,28 +63,17 @@ func TestHandleViewMessagesCloseDailyReview(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowProjectFocusView(t *testing.T) {
+func TestHandleViewMessagesShowProjectFocusInOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	msg := ShowProjectFocusViewMsg{Project: project}
+	msg := ShowOutlinerMsg{Project: project, Options: OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true}}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
-		t.Error("ShowProjectFocusViewMsg should be handled")
+		t.Error("ShowOutlinerMsg should be handled")
 	}
-	if app.currentView() != ViewProjectFocusView {
-		t.Errorf("currentView should be ProjectFocusView, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesCloseProjectFocusView(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewProjectFocusView)
-
-	app.Update(CloseProjectFocusViewMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing project focus, got %v", app.currentView())
+	if app.currentView() != ViewOutliner || app.outliner.activePerspective != PerspectiveNext {
+		t.Errorf("project focus should use Next Outliner, got %v perspective %d", app.currentView(), app.outliner.activePerspective)
 	}
 }
 
@@ -99,28 +88,17 @@ func TestHandleViewMessagesCloseCommandPalette(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowPriorityView(t *testing.T) {
+func TestHandleViewMessagesShowPriorityFocusInOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	msg := ShowPriorityViewMsg{Project: project}
+	msg := ShowOutlinerMsg{Project: project, Options: OutlinerOpenOptions{Focus: OutlinerHighPriority, SetFocus: true}}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
-		t.Error("ShowPriorityViewMsg should be handled")
+		t.Error("ShowOutlinerMsg should be handled")
 	}
-	if app.currentView() != ViewPriorityView {
-		t.Errorf("currentView should be PriorityView, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesClosePriorityView(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewPriorityView)
-
-	app.Update(ClosePriorityViewMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing priority view, got %v", app.currentView())
+	if app.currentView() != ViewOutliner || app.outliner.smartFocus == nil || *app.outliner.smartFocus != OutlinerHighPriority {
+		t.Errorf("priority focus should use Outliner, got %v focus %v", app.currentView(), app.outliner.smartFocus)
 	}
 }
 
@@ -149,17 +127,17 @@ func TestHandleViewMessagesCloseWeeklyReview(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowAllTasks(t *testing.T) {
+func TestHandleViewMessagesShowAllTasksInCrossProjectOutliner(t *testing.T) {
 	app := newTestAppModel()
 
-	msg := ShowAllTasksMsg{}
+	msg := ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
-		t.Error("ShowAllTasksMsg should be handled")
+		t.Error("ShowGlobalOutlinerMsg should be handled")
 	}
-	if app.currentView() != ViewAllTasks {
-		t.Errorf("currentView should be AllTasks, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner || app.crossOutliner.activePerspective != PerspectiveAll {
+		t.Errorf("all tasks should use cross-project Outliner, got %v", app.currentView())
 	}
 }
 

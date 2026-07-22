@@ -30,7 +30,7 @@ func TestCrossProjectReparent(t *testing.T) {
 	alphaLeaf.ParentID = strPtr("alpha-epic-a")
 	betaEpic := newReparentTask(t, "beta-epic", 1, models.TaskTypeEpic, "Beta Epic")
 
-	env := newKanbanBulkEnv(t, []*models.Task{alphaEpicA, alphaEpicB, alphaLeaf}, []*models.Task{betaEpic})
+	env := newCrossProjectTestEnv(t, []*models.Task{alphaEpicA, alphaEpicB, alphaLeaf}, []*models.Task{betaEpic})
 	m := newCrossOutlinerFromEnv(env)
 
 	newParentID := "alpha-epic-b"
@@ -73,7 +73,7 @@ func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
 	leafA := newReparentTask(t, "leaf-a", 1, models.TaskTypeTask, "Leaf A")
 	leafB := newReparentTask(t, "leaf-b", 2, models.TaskTypeTask, "Leaf B")
 
-	env := newKanbanBulkEnv(t, []*models.Task{leafA, leafB})
+	env := newCrossProjectTestEnv(t, []*models.Task{leafA, leafB})
 	m := newCrossOutlinerFromEnv(env)
 
 	// leafA cannot be a child of leafB (task type can't parent another task).
@@ -109,7 +109,7 @@ func TestCrossProjectReparentToRoot(t *testing.T) {
 	leaf := newReparentTask(t, "leaf", 2, models.TaskTypeTask, "Leaf")
 	leaf.ParentID = strPtr("epic")
 
-	env := newKanbanBulkEnv(t, []*models.Task{epic, leaf})
+	env := newCrossProjectTestEnv(t, []*models.Task{epic, leaf})
 	m := newCrossOutlinerFromEnv(env)
 
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{

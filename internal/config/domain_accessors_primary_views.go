@@ -1,7 +1,7 @@
 package config
 
-// Domain-native accessors backing the primary TUI views (dashboard, all-tasks,
-// outliner, project tree, kanban, focus board/view, inbox processors, reviews,
+// Domain-native accessors backing the primary TUI views (dashboard, Outliner,
+// Planner, inbox processors, reviews,
 // due-date/metrics/priority/roadmap/pipeline). Each mirrors the semantics of
 // its (*Config) counterpart so a view migrated off the facade observes the
 // same defaults.

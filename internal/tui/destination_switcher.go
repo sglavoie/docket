@@ -44,19 +44,15 @@ func GlobalDestinationEntries(projectID string) []DestinationEntry {
 		}
 		return route
 	}
-	projectRoute := mustRoute(TaskWorkspace, TaskWorkspaceParams{
-		Scope: AppEntityScope(), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-	})
+	projectRoute := mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
 	projectEnabled := projectID != ""
 	if projectEnabled {
-		projectRoute = mustRoute(TaskWorkspace, TaskWorkspaceParams{
-			Scope: ProjectEntityScope(projectID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-		})
+		projectRoute = mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)})
 	}
 	return []DestinationEntry{
 		{ID: DestinationHome, Name: "Home", Description: "Projects and attention", Route: mustRoute(Home, HomeParams{}), Enabled: true},
 		{ID: DestinationPlanner, Name: "Planner", Description: "Today, Next, and Backlog", Route: mustRoute(Planner, PlannerParams{Tab: PlannerToday}), Enabled: true},
-		{ID: DestinationTasks, Name: "Tasks", Description: "All active tasks", Route: mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope(), Layout: WorkspaceOutline, Focus: WorkspaceActive}), Enabled: true},
+		{ID: DestinationTasks, Name: "Tasks", Description: "All active tasks", Route: mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}), Enabled: true},
 		{ID: DestinationProject, Name: "Project", Description: "Current project tasks", Route: projectRoute, Enabled: projectEnabled},
 		{ID: DestinationReview, Name: "Review", Description: "Reviews and reports", Route: mustRoute(ReviewHub, ReviewParams{Module: ReviewLanding}), Enabled: true},
 		{ID: DestinationManage, Name: "Manage", Description: "Collections and settings", Route: mustRoute(ManageHub, ManageParams{Module: ManageLanding, Scope: AppEntityScope()}), Enabled: true},

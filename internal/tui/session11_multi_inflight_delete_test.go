@@ -142,7 +142,7 @@ func TestInboxDeleteBackToBackInFlightAppliesBothOrders(t *testing.T) {
 }
 
 // TestGlobalInboxDeleteBackToBackInFlightAppliesBothOrders is the Global Inbox
-// analogue: two overlapping deletes across the aggregated queue must each mark
+// analog: two overlapping deletes across the aggregated queue must each mark
 // their own task processed exactly once, in either completion order.
 func TestGlobalInboxDeleteBackToBackInFlightAppliesBothOrders(t *testing.T) {
 	for _, tc := range []struct {

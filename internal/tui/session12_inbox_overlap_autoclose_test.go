@@ -134,7 +134,7 @@ func TestInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
 	}
 }
 
-// TestGlobalInboxDeleteFinalPairBackToBackAutoCloses is the Global Inbox analogue:
+// TestGlobalInboxDeleteFinalPairBackToBackAutoCloses is the Global Inbox analog:
 // overlapping deletes of the aggregated queue's final two unprocessed tasks must
 // auto-close the global processor exactly once, in either result order.
 func TestGlobalInboxDeleteFinalPairBackToBackAutoCloses(t *testing.T) {
@@ -268,7 +268,7 @@ func TestInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses(t *testing.T) 
 }
 
 // TestGlobalInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses is the Global
-// Inbox analogue of the mixed-outcome case: a failed overlapping delete keeps the
+// Inbox analog of the mixed-outcome case: a failed overlapping delete keeps the
 // global processor open with its task, and retrying that task closes exactly once.
 func TestGlobalInboxDeleteFinalPairBackToBackMixedOutcomeThenAutoCloses(t *testing.T) {
 	e := newInboxDeleteEnv(t)

@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestRenderGitHubIssueIndicator(t *testing.T) {
@@ -135,27 +134,6 @@ func TestPeekGitHubIssueAttachmentDoesNotOverflowWidth(t *testing.T) {
 	for i, line := range lines {
 		if got := lipgloss.Width(line); got > width {
 			t.Fatalf("line %d exceeds width %d: width=%d, content=%q", i, width, got, line)
-		}
-	}
-}
-
-func TestKanbanGitHubIssueIndicatorDoesNotOverflowCard(t *testing.T) {
-	project := testutil.NewTestProject("p")
-	task := testutil.NewTestTask("Implement the issue metadata marker without overflowing", models.TaskTypeTask)
-	task.Attachments = []models.Attachment{
-		{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
-	}
-	col := KanbanColumn{
-		ID:    "inbox",
-		Label: "inbox",
-		Icon:  "·",
-		Tasks: []KanbanCard{{Task: task, Project: project}},
-	}
-
-	m := newRenderKanban(36, 12, []KanbanColumn{col})
-	for i, line := range strings.Split(ansi.Strip(kanbanRender(m)), "\n") {
-		if got := lipgloss.Width(line); got > m.width {
-			t.Fatalf("line %d exceeds width %d: width=%d, content=%q", i, m.width, got, line)
 		}
 	}
 }

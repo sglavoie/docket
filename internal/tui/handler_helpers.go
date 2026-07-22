@@ -126,7 +126,6 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 			_ = m.persister.Load(currentProject)
 		}
 		m.reloadRegisteredProjectOutliners(m.persister.Load, currentProject)
-		m.invalidateFilterCaches()
 	}
 	// Cross-project outliner has its own loadedProjects cache that bypasses
 	// m.currentProject, so a disk-backed reload is needed for mutations to
@@ -264,15 +263,6 @@ func (m *AppModel) clearStatus() {
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
 	m.err = nil
-}
-
-// invalidateFilterCaches clears data-dependent filter caches after a project
-// reload. Only clears priorityViewFilterCache and allTasksFilterCache, which
-// may hold filter criteria that reference tags or sections removed by the
-// reload. Spatial and toggle state (UX state) is intentionally preserved.
-func (m *AppModel) invalidateFilterCaches() {
-	m.priorityViewFilterCache = make(map[string]*PriorityViewCache)
-	m.allTasksFilterCache = nil
 }
 
 // pruneDeletedTaskRefs removes tasks that no longer exist in any active project

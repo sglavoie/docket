@@ -14,12 +14,12 @@ import (
 // coordinator) whose cursor sits on the beta task (project B, index 1). The
 // migrated field handlers commit through the coordinator, so assertions run the
 // returned command and reload the owning project from disk.
-func crossFieldFixture(t *testing.T) (m *OutlinerModel, env *kanbanBulkEnv, betaTaskID string) {
+func crossFieldFixture(t *testing.T) (m *OutlinerModel, env *crossProjectTestEnv, betaTaskID string) {
 	t.Helper()
 
 	alphaTask := seedTask(t, 1, "Alpha task", models.StateReady)
 	betaTask := seedTask(t, 1, "Beta task", models.StateReady)
-	env = newKanbanBulkEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
+	env = newCrossProjectTestEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
 
 	m = newCrossOutlinerFromEnv(env)
 	m.rows = []outlinerRow{{task: betaTask, ProjectID: env.projects[1].ID}}
@@ -29,7 +29,7 @@ func crossFieldFixture(t *testing.T) (m *OutlinerModel, env *kanbanBulkEnv, beta
 
 // crossRecurringFixture is like crossFieldFixture but beta's task has a weekly
 // recurrence and a due date so skip/defer assertions are deterministic.
-func crossRecurringFixture(t *testing.T) (m *OutlinerModel, env *kanbanBulkEnv, betaTaskID string, baseDate time.Time) {
+func crossRecurringFixture(t *testing.T) (m *OutlinerModel, env *crossProjectTestEnv, betaTaskID string, baseDate time.Time) {
 	t.Helper()
 
 	baseDate = time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
@@ -41,7 +41,7 @@ func crossRecurringFixture(t *testing.T) (m *OutlinerModel, env *kanbanBulkEnv, 
 		Unit:     models.RecurrenceWeekly,
 		Interval: 1,
 	}
-	env = newKanbanBulkEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
+	env = newCrossProjectTestEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
 
 	m = newCrossOutlinerFromEnv(env)
 	m.rows = []outlinerRow{{task: betaTask, ProjectID: env.projects[1].ID}}
@@ -145,7 +145,7 @@ func TestCrossProjectOutlinerBulkTagMessageUsesSelectedProjectRefs(t *testing.T)
 func TestCrossProjectOutlinerBulkDueDateUpdatesMultipleProjects(t *testing.T) {
 	alphaTask := seedTask(t, 1, "Alpha task", models.StateReady)
 	betaTask := seedTask(t, 1, "Beta task", models.StateReady)
-	env := newKanbanBulkEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
+	env := newCrossProjectTestEnv(t, []*models.Task{alphaTask}, []*models.Task{betaTask})
 	m := newCrossOutlinerFromEnv(env)
 	m.multiSelectMode = true
 	m.selectedTasks[alphaTask.ID] = true

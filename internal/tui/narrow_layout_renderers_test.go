@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -139,30 +138,6 @@ func TestWeeklyReviewProjectLineRespectsVisualWidth(t *testing.T) {
 
 	if lipgloss.Width(ansi.Strip(line)) > 30 {
 		t.Fatalf("weekly review line exceeds width 30: %q (width=%d)", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)))
-	}
-}
-
-func TestPriorityWaitingOnTaskRespectsVisualWidth(t *testing.T) {
-	project, err := models.NewProject("proj-1", "priority-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	dep, err := models.NewTask("dep-1", 41, models.TaskTypeTask, "等待中的依赖任务标题很长需要截断")
-	if err != nil {
-		t.Fatalf("NewTask dep: %v", err)
-	}
-	blocked, err := models.NewTask("task-1", 42, models.TaskTypeTask, "修复等待中任务行在窄宽度下的宽字符截断问题")
-	if err != nil {
-		t.Fatalf("NewTask blocked: %v", err)
-	}
-	blocked.DependsOn = []string{dep.ID}
-	project.Tasks = []*models.Task{dep, blocked}
-
-	m := NewPriorityViewModel(project, config.EmptyRuntimeState(""), nil)
-	m.SetSize(32, 14)
-	line := m.renderWaitingOnTask(&PriorityTask{Task: blocked})
-	if lipgloss.Width(ansi.Strip(line)) > 32 {
-		t.Fatalf("priority waiting-on line exceeds width 32: %q (width=%d)", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)))
 	}
 }
 

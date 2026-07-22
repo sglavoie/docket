@@ -9,7 +9,7 @@ import tea "charm.land/bubbletea/v2"
 // direct Shift+Enter / u / Ctrl+R keys rather than the dispatcher's stand-ins
 // (handlePlannerAction folds Peek into Enter and no-ops Undo/Redo).
 func (m *AppModel) focusBoardCommands() []Command {
-	return PlannerCommands(func(action TaskWorkspaceAction) tea.Msg {
+	return PlannerCommands(func(action PlannerAction) tea.Msg {
 		planner, ok := m.views.Get(ViewFocusBoard).(*FocusBoardModel)
 		if !ok || planner == nil {
 			return nil

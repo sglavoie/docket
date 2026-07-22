@@ -54,9 +54,9 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 	prevCursor := m.cursor
 	switch key {
 	case "h":
-		m.activePerspective = CyclePerspective(m.activePerspective, -1)
+		m.activatePerspective(CyclePerspective(m.activePerspective, -1))
 	case "l":
-		m.activePerspective = CyclePerspective(m.activePerspective, 1)
+		m.activatePerspective(CyclePerspective(m.activePerspective, 1))
 	}
 	m.resetViewScrollOffset()
 	m.rebuildRows()
@@ -69,7 +69,7 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 // landed on.
 func (m *OutlinerModel) crossHandlePerspectiveJump(perspID int) (tea.Model, tea.Cmd) {
 	prevCursor := m.cursor
-	m.activePerspective = perspID
+	m.activatePerspective(perspID)
 	m.resetViewScrollOffset()
 	m.rebuildRows()
 	return m.crossSkipNonNavigableRows(prevCursor, nil)

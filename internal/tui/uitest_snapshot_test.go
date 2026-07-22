@@ -124,29 +124,6 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 	}
 }
 
-func TestUITestSnapshotKanban(t *testing.T) {
-	ws := newSnapshotWorkspace(t)
-	project := ws.Runtime.ActiveProjects()[0]
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("load project: %v", err)
-	}
-	m := NewKanbanModel(project, ws.Manager, nil, NewProjectService())
-
-	snap := m.UITestSnapshot()
-	if got := snapString(t, snap, "mode"); got != "Section" {
-		t.Errorf("mode = %q, want Section", got)
-	}
-	if got := snapInt(t, snap, "column_count"); got <= 0 {
-		t.Errorf("column_count = %d, want > 0", got)
-	}
-	if got := snapInt(t, snap, "card_count"); got <= 0 {
-		t.Errorf("card_count = %d, want > 0", got)
-	}
-	if got, ok := snap["cross_project"].(bool); !ok || got {
-		t.Errorf("cross_project = %v, want false", snap["cross_project"])
-	}
-}
-
 func TestUITestSnapshotCommandPalette(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
 	registry := NewCommandRegistry()

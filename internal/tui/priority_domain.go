@@ -8,6 +8,28 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// PriorityGroup is the urgency grouping used by the Outliner's optional
+// cross-project priority lens.
+type PriorityGroup int
+
+const (
+	PriorityGroupOverdue PriorityGroup = iota
+	PriorityGroupToday
+	PriorityGroupThisWeek
+	PriorityGroupLater
+	PriorityGroupBacklog
+	PriorityGroupWaitingOn
+)
+
+// PriorityTask carries the urgency metadata rendered by the Outliner's
+// cross-project priority lens.
+type PriorityTask struct {
+	Task         *models.Task
+	UrgencyScore int
+	ParentTitle  string
+	RelativeDue  string
+}
+
 // IsEligibleForPriority reports whether a task is a candidate for the priority
 // view. Completed and snoozed tasks are excluded; parent/container tasks are
 // kept so they remain visible in priority listings.

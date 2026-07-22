@@ -183,9 +183,6 @@ func TestSettingsExposeAndPersistOnlySupportedFields(t *testing.T) {
 		t.Fatalf("Settings visual tabs = %v, want durable four-tab surface", settingsVisualTabNames)
 	}
 
-	m.baseSettings.KanbanSettings.DefaultMode = "priority"
-	m.kanbanDefaultModeCursor = 1
-
 	m.editorInput.SetValue("sh")
 	cmd := m.saveSettings()
 	if cmd == nil {
@@ -193,9 +190,6 @@ func TestSettingsExposeAndPersistOnlySupportedFields(t *testing.T) {
 	}
 	if msg := cmd(); msg == nil {
 		t.Fatal("saveSettings returned nil message")
-	}
-	if m.baseSettings.KanbanSettings.DefaultMode != "priority" {
-		t.Fatalf("settings save rewrote untouched Kanban state: settings=%#v", m.baseSettings)
 	}
 	if m.baseMachine.Editor != "sh" {
 		t.Fatalf("supported editor was not saved: %q", m.baseMachine.Editor)

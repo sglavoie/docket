@@ -26,15 +26,11 @@ func renderAlertIndicator(count int) string {
 func (m *AppModel) shouldShowAlertIndicator() bool {
 	switch m.currentView() {
 	case ViewDashboard, ViewOutliner, ViewTemporaryOutliner, ViewFocusBoard,
-		ViewKanban, ViewCrossProjectKanban,
 		ViewCrossProjectOutliner,
 		ViewDailyReview, ViewWeeklyReview,
-		ViewPriorityView,
 		ViewMetricsDashboard,
-		ViewAllTasks,
 		ViewRecentActivity,
 		ViewRoadmap,
-		ViewProjectFocusView,
 		ViewBlockers, ViewGlobalBlockers,
 		ViewProjectRecentActivity,
 		ViewGlobalInboxProcessor, ViewGlobalNotes:

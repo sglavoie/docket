@@ -530,9 +530,8 @@ func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"all tasks", "all tasks", "AllTasks"},
+		{"all tasks", "all tasks", "CrossProjectOutliner"},
 		{"outliner", "outliner", "CrossProjectOutliner"},
-		{"kanban", "kanban", "CrossProjectKanban"},
 	}
 
 	for _, tt := range tests {

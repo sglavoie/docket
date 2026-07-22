@@ -97,9 +97,6 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if msg.Project != nil {
 				m.reloadProjectByID(msg.Project.ID)
 			}
-			if m.allTasksView != nil {
-				m.allTasksView.loadAllTasks()
-			}
 			if m.outliner != nil {
 				if m.outliner.project == nil {
 					m.outliner.crossForceRebuild = true
@@ -110,13 +107,6 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 				cross.crossForceRebuild = true
 				cross.rebuildRows()
 				cross.clampCursor()
-			}
-			for _, vt := range []PresentationID{ViewKanban, ViewCrossProjectKanban} {
-				if v := m.views.Get(vt); v != nil {
-					if kb, ok := v.(*KanbanModel); ok {
-						kb.rebuildCols()
-					}
-				}
 			}
 			m.setSuccessStatus(fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())

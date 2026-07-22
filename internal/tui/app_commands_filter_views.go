@@ -41,24 +41,13 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Category:    CategoryFilters,
 			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
-				if _, params, ok := m.taskWorkspacePrimary(); ok && m.taskWorkspace != nil {
-					params.Focus = WorkspaceCompleted
-					params.SavedFilterID = ""
-					if err := m.taskWorkspace.SetRouteParams(params); err != nil {
-						return ErrorMsg{Err: err}
-					}
-					if err := m.taskWorkspace.Refresh(); err != nil {
-						return ErrorMsg{Err: err}
-					}
-					return TaskWorkspaceRouteChangedMsg{Params: params}
-				}
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					if m.outliner.activePerspective == PerspectiveCompleted {
-						m.outliner.activePerspective = PerspectiveSnoozed
+				if outliner, _, ok := m.outlinerPrimary(); ok {
+					if outliner.smartFocus == nil && outliner.activePerspective == PerspectiveCompleted {
+						outliner.activatePerspective(PerspectiveSnoozed)
 					} else {
-						m.outliner.activePerspective = PerspectiveCompleted
+						outliner.activatePerspective(PerspectiveCompleted)
 					}
-					m.outliner.rebuildRows()
+					outliner.rebuildRows()
 					return nil
 				}
 				return nil

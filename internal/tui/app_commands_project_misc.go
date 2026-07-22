@@ -63,7 +63,7 @@ func (m *AppModel) notesTargetProject() *models.Project {
 }
 
 func (m *AppModel) selectedTaskProjectFromOrigin() *models.Project {
-	if view, _, ok := m.taskWorkspacePrimary(); ok {
+	if view, _, ok := m.outlinerPrimary(); ok {
 		if task, project := view.getTaskRef(); task != nil && project != nil {
 			return project
 		}
@@ -105,7 +105,10 @@ func (m *AppModel) otherCommands() []Command {
 			Aliases:     []string{"project focus", "project focus queue", "project queue", "next tasks"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
-					return ShowProjectFocusViewMsg{Project: m.currentProject}
+					return ShowOutlinerMsg{
+						Project: m.currentProject,
+						Options: OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true},
+					}
 				}
 				return nil
 			},

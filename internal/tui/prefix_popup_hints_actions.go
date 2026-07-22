@@ -31,34 +31,6 @@ var (
 		{Key: "g", Description: "first", Detail: "Jump to first item"},
 	}
 
-	// PriorityViewNavigationPrefixHints contains "g" prefix hints for priority view.
-	PriorityViewNavigationPrefixHints = []PrefixHint{
-		{Key: "g", Description: "first", Detail: "Jump to first item"},
-		{Key: "t", Description: "tree", Detail: "Switch to tree view"},
-	}
-
-	// ProjectTreeNavigationPrefixHints contains extended "g" prefix hints for project tree.
-	ProjectTreeNavigationPrefixHints = []PrefixHint{
-		{Key: "g", Description: "first", Detail: "Jump to first item"},
-		{Key: "a", Description: "active", Detail: "Go to Active section"},
-		{Key: "n", Description: "next", Detail: "Go to Next section"},
-		{Key: "i", Description: "inbox", Detail: "Go to Inbox section"},
-		{Key: "w", Description: "waiting", Detail: "Go to Waiting section"},
-		{Key: "s", Description: "someday", Detail: "Go to Someday section"},
-		{Key: "c", Description: "completed", Detail: "Go to Completed section"},
-		{Key: "r", Description: "review", Detail: "Go to Review section"},
-		{Key: "S", Description: "standby", Detail: "Go to Standby section"},
-		{Key: "z", Description: "snoozed", Detail: "Go to Snoozed section"},
-		{Key: "*", Description: "all", Detail: "Go to All section"},
-		{Key: "o", Description: "origin", Detail: "Jump to task origin"},
-		{Key: "d", Description: "due-filter", Detail: "Toggle due date filter"},
-		{Key: "v", Description: "view-cycle", Detail: "Cycle through view modes"},
-		{Key: "h", Description: "history", Detail: "Show task history"},
-		{Key: "X", Description: "deselect", Detail: "Clear selection"},
-		{Key: "l", Description: "activity", Detail: "Show project recent activity"},
-		{Key: "k", Description: "kanban", Detail: "Open kanban view for current project"},
-	}
-
 	// ProjectTreeMovePrefixHints contains "m" prefix hints for project tree move operations.
 	ProjectTreeMovePrefixHints = []PrefixHint{
 		{Key: "a", Description: "→Active", Detail: "Send task to Active section"},

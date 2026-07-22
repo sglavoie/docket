@@ -44,31 +44,29 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	resetSessionMutations()
 
 	app := &AppModel{
-		configManager:           manager,
-		runtime:                 runtime,
-		projects:                make(map[string]*models.Project),
-		appearanceDetector:      appearance.NewDetector(),
-		persister:               NewProjectService(),
-		navigation:              NewNavigationState(),
-		typedNavigation:         true,
-		viewStack:               []PresentationID{ViewDashboard},
-		sessionStats:            sessionStats{sessionStart: time.Now()},
-		width:                   80,
-		height:                  24,
-		views:                   NewViewRegistry(),
-		commandRegistry:         NewCommandRegistry(),
-		spinner:                 NewSpinner(),
-		lastProjectView:         defaultProjectPresentation(runtime.Settings()),
-		projectLastView:         make(map[string]PresentationID),
-		outlinerToggleStates:    make(map[string]*OutlinerToggleState),
-		priorityViewFilterCache: make(map[string]*PriorityViewCache),
-		kanbanViewCache:         make(map[string]*KanbanViewCache),
-		focusQueue:              []FocusTask{},
-		focusQueueIDs:           make(map[string]bool),
-		focusDismissedIDs:       make(map[string]bool),
-		dailyPlan:               []FocusTask{},
-		dailyPlanIDs:            make(map[string]bool),
-		dailyPlanCarriedIDs:     make(map[string]bool),
+		configManager:        manager,
+		runtime:              runtime,
+		projects:             make(map[string]*models.Project),
+		appearanceDetector:   appearance.NewDetector(),
+		persister:            NewProjectService(),
+		navigation:           NewNavigationState(),
+		typedNavigation:      true,
+		viewStack:            []PresentationID{ViewDashboard},
+		sessionStats:         sessionStats{sessionStart: time.Now()},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		commandRegistry:      NewCommandRegistry(),
+		spinner:              NewSpinner(),
+		lastProjectView:      defaultProjectPresentation(runtime.Settings()),
+		projectLastView:      make(map[string]PresentationID),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		focusQueue:           []FocusTask{},
+		focusQueueIDs:        make(map[string]bool),
+		focusDismissedIDs:    make(map[string]bool),
+		dailyPlan:            []FocusTask{},
+		dailyPlanIDs:         make(map[string]bool),
+		dailyPlanCarriedIDs:  make(map[string]bool),
 	}
 
 	// Apply functional options
@@ -154,27 +152,6 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	app.hydrateFocusQueue(activeProjects, startupLoads, migrationErr == nil)
 	app.hydrateDailyPlan(activeProjects, startupLoads)
 	app.hydrateRecentVisits(activeProjects, startupLoads)
-
-	workspaceParams := TaskWorkspaceParams{
-		Scope: AppEntityScope(), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-	}
-	if app.startupRoute != nil && app.startupRoute.ID() == TaskWorkspace {
-		workspaceParams = app.startupRoute.Params().(TaskWorkspaceParams)
-	}
-	workspaceSource := NewRuntimeTaskWorkspaceSource(app.runtime, NewProjectService())
-	app.taskWorkspace, err = NewTaskWorkspaceController(
-		workspaceParams,
-		NewTaskWorkspaceQuery(workspaceSource),
-		NewFeatureTaskWorkspaceMutationAdapter(app.secondaryFeatures.TaskItem, app.secondaryFeatures.Bulk),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("initialize task workspace: %w", err)
-	}
-	app.taskWorkspaceView, err = NewTaskWorkspaceView(app.taskWorkspace)
-	if err != nil {
-		return nil, fmt.Errorf("initialize task workspace layouts: %w", err)
-	}
-	app.taskWorkspaceView.resolveProject = app.projectByID
 
 	app.reviewHub = NewReviewHubModel(app.runtime, app.configManager, app.wireSecondaryCoordinators)
 	app.reviewHub.SetPlanningIndicators(app.focusQueueIDs, app.dailyPlanIDs)
@@ -470,16 +447,12 @@ func (m *AppModel) commandGroups() [][]Command {
 		m.taskCommentsCommands(),
 		m.globalTagManagerCommands(),
 		m.attachmentCommands(),
-		m.focusViewCommands(),
 		m.focusBoardCommands(),
-		m.taskWorkspaceCommands(),
 		m.dailyReviewCommands(),
-		m.priorityViewCommands(),
 		m.inboxProcessorCommands(),
 		m.workflowRulesCommands(),
 		m.sidebarCommands(),
 		m.scoringCommands(),
-		m.allTasksCommands(),
 		m.outlinerCommands(),
 		m.exportCommands(),
 	}
@@ -562,34 +535,19 @@ func resolveStartupNavigation(machine *config.MachineState, projectID string) (s
 			ViewFocusBoard,
 		)
 	case config.StartViewTasks:
-		layout := WorkspaceOutline
-		var message tea.Msg = NavigateToViewMsg{PresentationID: ViewCrossProjectOutliner}
-		presentation := ViewCrossProjectOutliner
-		if state.TaskLayout == config.StartTaskList {
-			layout = WorkspaceList
-			allTasks := ShowAllTasksMsg{}
-			if state.TaskGroup == config.StartTaskGroupDueDate {
-				allTasks.Group, allTasks.SetGroup = ATGroupByDueDate, true
-			}
-			if state.TaskSort == config.StartTaskSortPriority {
-				allTasks.Sort, allTasks.SetSort = SortByPriority, true
-			}
-			message, presentation = allTasks, ViewAllTasks
-		}
+		opts := startupOutlinerOptions(state)
 		return plan(
-			message,
-			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope(), Layout: layout, Focus: WorkspaceActive}),
-			presentation,
+			ShowGlobalOutlinerMsg{Options: opts},
+			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}),
+			ViewCrossProjectOutliner,
 		)
 	case config.StartViewProject:
 		if projectID == "" {
 			return startupNavigationPlan{Message: ShowProjectPickerMsg{}}, true
 		}
 		return plan(
-			NavigateToViewMsg{PresentationID: ViewOutliner},
-			mustRoute(TaskWorkspace, TaskWorkspaceParams{
-				Scope: ProjectEntityScope(projectID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-			}),
+			NavigateToViewMsg{PresentationID: ViewOutliner, OutlinerOptions: startupOutlinerOptions(state)},
+			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}),
 			ViewOutliner,
 		)
 	case config.StartViewReview:
@@ -611,4 +569,21 @@ func resolveStartupNavigation(machine *config.MachineState, projectID string) (s
 	default:
 		return startupNavigationPlan{}, false
 	}
+}
+
+func startupOutlinerOptions(state config.StartRouteState) OutlinerOpenOptions {
+	opts := OutlinerOpenOptions{Focus: OutlinerActive, SetFocus: true}
+	switch state.TaskFocus {
+	case config.StartTaskAll:
+		opts.Focus = OutlinerAll
+	case config.StartTaskHighPriority:
+		opts.Focus = OutlinerHighPriority
+	}
+	switch state.TaskSort {
+	case config.StartTaskSortPriority:
+		opts.Sort, opts.SetSort = SortByPriority, true
+	case config.StartTaskSortDueDate:
+		opts.Sort, opts.SetSort = SortByDueDate, true
+	}
+	return opts
 }

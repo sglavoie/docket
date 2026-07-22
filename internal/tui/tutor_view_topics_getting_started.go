@@ -41,8 +41,8 @@ or Manage. Tasks and Project share Task Workspace and differ
 only by scope.
 
 Home combines Projects and Attention. Planner contains Today,
-Next, and Backlog. Task Workspace provides List, Outline, and
-Board layouts. Review contains Daily, Weekly, Activity,
+Next, and Backlog. Task Workspace uses one hierarchical Outliner
+with project or application scope. Review contains Daily, Weekly, Activity,
 Metrics, and Roadmap. Manage contains Inbox, Notes, Blockers,
 Rules, Templates, Tags, Notifications, and Settings.
 
@@ -59,8 +59,8 @@ Morning: open Planner from Ctrl+G, review Next and Backlog,
 then add a short list to Today with w.
 
 During the day: stay in Planner Today or open a project-scoped
-Task Workspace. Use the View menu to change List, Outline, or
-Board without creating another navigation destination.
+Task Workspace. Use Outliner perspectives, smart focuses, filters,
+and sorting to narrow the hierarchy without changing destinations.
 
 Evening: capture loose ends with Ctrl+N and open Review from
 Ctrl+G for Daily or Weekly review.

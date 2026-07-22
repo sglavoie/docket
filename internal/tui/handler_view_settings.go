@@ -163,7 +163,6 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 
 	case FilterBuilderSavedMsg:
 		m.popView()
-		m.refreshAllTasksTabs()
 		return true, nil
 	}
 

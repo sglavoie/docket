@@ -86,11 +86,6 @@ func (m *AppModel) resolveExportProject(msg ExportProjectMsg) *models.Project {
 		}
 	case ViewCrossProjectOutliner:
 		return m.crossOutlinerCursorProject()
-	case ViewAllTasks:
-		if m.allTasksView != nil {
-			_, p := m.allTasksView.getTaskRef()
-			return p
-		}
 	}
 	return nil
 }

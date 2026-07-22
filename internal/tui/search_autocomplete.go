@@ -90,7 +90,7 @@ func searchStatusSuggestions(partial string) []ACSuggestion {
 		name string
 		icon string
 	}{
-		{"todo", icons.Get("kanban.todo")},
+		{"todo", icons.Get("status.todo")},
 		{"in_progress", icons.Get("status.in_progress")},
 		{"review", icons.Get("status.review")},
 		{"standby", icons.Get("status.standby")},

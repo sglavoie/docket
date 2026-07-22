@@ -21,9 +21,8 @@ const (
 	tabBehavior      = 3
 	tabAttachments   = 4
 	tabOutliner      = 5
-	tabKanban        = 6
-	tabNotifications = 7
-	tabAppearance    = 8
+	tabNotifications = 6
+	tabAppearance    = 7
 )
 
 // settingsVisualTabNames expose the four durable preference categories.
@@ -87,10 +86,10 @@ func visualSubTabNamesForVTab(vt int) []string {
 }
 
 var (
-	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Outliner", "Kanban", "Notifications", "Appearance"}
+	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Outliner", "Notifications", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 18, 5, 15, 2, 24, 9, 15, 5}
+	tabFieldCount = []int{4, 18, 5, 15, 2, 24, 15, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -104,9 +103,8 @@ var (
 		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Home", 2}}, // 3: Behavior
 		nil, // 4: Attachments
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 5: Outliner
-		nil, // 6: Kanban
-		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}}, // 7: Notifications
-		nil, // 8: Appearance
+		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                   // 6: Notifications
+		nil, // 7: Appearance
 	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
@@ -129,18 +127,6 @@ var (
 
 	// timeFormatValues maps cursor index to config string value.
 	timeFormatValues = []string{"12h", "24h"}
-
-	// kanbanModeOptions lists the display labels for the kanban mode selector.
-	kanbanModeOptions = []string{"Section (GTD)", "Status", "Priority", "Score Buckets"}
-
-	// kanbanModeValues maps cursor index to the KanbanMode ID string.
-	kanbanModeValues = []string{"section", "status", "priority", "score_buckets"}
-
-	// kanbanModeLabels are short labels shown in the enabled-modes checkbox list.
-	kanbanModeLabels = []string{"Section (GTD)", "Status", "Priority", "Score Buckets"}
-
-	// kanbanDetailHeightOptions lists the allowed detail pane heights.
-	kanbanDetailHeightOptions = []string{"1", "2", "3", "4", "5"}
 
 	// startViewOptions lists display labels for the start view selector.
 	startViewOptions = []string{"Home", "Planner", "Tasks", "Project", "Review", "Manage"}
@@ -283,7 +269,7 @@ type SettingsModel struct {
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
 	crossOutlinerCycleOnly   bool     // Restrict cross-project outliner to cycle projects only
-	zebraStriping            bool     // Alternating row backgrounds in task list views
+	zebraStriping            bool     // Alternating backgrounds in task rows
 	weekEndDayCursor         int      // Index into weekEndDayValues (0=fri, 1=sat, 2=sun)
 	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)
 	autoTheme                bool     // Sync theme with macOS system appearance
@@ -294,14 +280,6 @@ type SettingsModel struct {
 	startViewCursor         int // Index into startViewValues
 	resumeCardLimitInput    textinput.Model
 	homeProjectsHeightInput textinput.Model // Home Projects/Attention split % (machine-local)
-
-	// Kanban settings (Kanban tab, index 94-104)
-	kanbanDefaultModeCursor  int             // Index into kanbanModeValues
-	kanbanStartColInput      textinput.Model // Default start column text input
-	kanbanShowEmptyColumns   bool            // Show columns even when empty
-	kanbanDetailPaneVisible  bool            // Bottom detail pane shown by default
-	kanbanDetailHeightCursor int             // Index into kanbanDetailHeightOptions (0=1 line .. 4=5 lines)
-	kanbanEnabledModes       [4]bool         // Enabled mode toggles (indexed by AllKanbanModes order)
 
 	// Alert settings (Notifications tab, indices 75-89)
 	alertDailyReviewEnabled    bool

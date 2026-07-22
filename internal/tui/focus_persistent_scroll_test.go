@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestFocusBoardViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
@@ -25,37 +23,6 @@ func TestFocusBoardViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 		m.rows = append(m.rows, row)
 		m.filtered = append(m.filtered, row)
 	}
-
-	m.cursor = 4
-	_ = m.View()
-	start := m.viewScrollOffset
-	if start == 0 {
-		t.Fatalf("expected initial render to scroll down, offset stayed at 0")
-	}
-
-	m.cursor = 3
-	_ = m.View()
-	if m.viewScrollOffset != start {
-		t.Fatalf("moving up inside viewport changed first rendered row: offset=%d want %d", m.viewScrollOffset, start)
-	}
-}
-
-func TestProjectFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
-	cfg := newTestConfig()
-	project := testutil.NewTestProject("focus-test")
-	queue := make([]config.FocusQueueItem, 0, 8)
-	for i := range 8 {
-		task := mustNewTestTask(project, fmt.Sprintf("Task %02d", i))
-		task.ApplyWorkflowState(models.StateNext)
-		task.Priority = i + 1
-		project.Tasks = append(project.Tasks, task)
-		queue = append(queue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
-	}
-	project.BuildTaskTree()
-	cfg.Planning().SetFocusQueue(queue)
-
-	m := NewProjectFocusViewModel(project, testRuntimeAt(cfg.DataDir(), cfg))
-	m.SetSize(100, 11)
 
 	m.cursor = 4
 	_ = m.View()

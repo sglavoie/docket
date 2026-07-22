@@ -206,9 +206,7 @@ type DeepLinkResolution struct {
 // task links. Missing projects request the project picker; missing tasks remain
 // on that parent and return an error status.
 func ResolveTaskDetailDeepLink(params TaskDetailParams, lookup RouteEntityLookup) (DeepLinkResolution, error) {
-	parent, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-		Scope: ProjectEntityScope(params.ProjectID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-	})
+	parent, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(params.ProjectID)})
 	if err != nil || lookup == nil || !lookup.ProjectExists(params.ProjectID) {
 		home, homeErr := NewRoute(Home, HomeParams{})
 		if homeErr != nil {

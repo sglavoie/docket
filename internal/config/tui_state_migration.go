@@ -130,16 +130,16 @@ func migrateStartRoute(value string, existing StartRouteState) (string, StartRou
 	case "backlog":
 		return StartViewPlanner, StartRouteState{PlannerTab: StartPlannerBacklog}
 	case "cross-project-outliner":
-		return StartViewTasks, StartRouteState{TaskLayout: StartTaskOutline, TaskFocus: StartTaskActive}
+		return StartViewTasks, StartRouteState{TaskFocus: StartTaskActive}
 	case "all-tasks":
-		return StartViewTasks, StartRouteState{TaskLayout: StartTaskList, TaskFocus: StartTaskActive}
+		return StartViewTasks, StartRouteState{TaskFocus: StartTaskAll}
 	case "priority":
 		return StartViewTasks, StartRouteState{
-			TaskLayout: StartTaskList, TaskFocus: StartTaskActive, TaskSort: StartTaskSortPriority,
+			TaskFocus: StartTaskHighPriority, TaskSort: StartTaskSortPriority,
 		}
 	case "due-dates":
 		return StartViewTasks, StartRouteState{
-			TaskLayout: StartTaskList, TaskFocus: StartTaskActive, TaskGroup: StartTaskGroupDueDate,
+			TaskFocus: StartTaskAll, TaskSort: StartTaskSortDueDate,
 		}
 	case "daily-review":
 		return StartViewReview, StartRouteState{ReviewModule: StartReviewDaily}
@@ -166,24 +166,23 @@ func normalizeStartRoute(destination string, route StartRouteState) StartRouteSt
 		}
 		return StartRouteState{PlannerTab: route.PlannerTab}
 	case StartViewTasks, StartViewProject:
-		if route.TaskLayout != StartTaskList {
-			route.TaskLayout = StartTaskOutline
+		focus := route.TaskFocus
+		if route.TaskLayout == StartTaskList && focus == StartTaskActive {
+			focus = StartTaskAll
 		}
-		route.TaskFocus = StartTaskActive
-		if route.TaskSort != StartTaskSortPriority {
-			route.TaskSort = ""
+		if focus != StartTaskAll && focus != StartTaskHighPriority {
+			focus = StartTaskActive
 		}
-		if route.TaskGroup != StartTaskGroupDueDate {
-			route.TaskGroup = ""
+		sort := route.TaskSort
+		if route.TaskGroup == StartTaskGroupDueDate {
+			sort = StartTaskSortDueDate
 		}
-		if route.TaskGroup != "" {
-			route.TaskLayout = StartTaskList
+		if sort != StartTaskSortPriority && sort != StartTaskSortDueDate {
+			sort = ""
 		}
 		return StartRouteState{
-			TaskLayout: route.TaskLayout,
-			TaskFocus:  route.TaskFocus,
-			TaskSort:   route.TaskSort,
-			TaskGroup:  route.TaskGroup,
+			TaskFocus: focus,
+			TaskSort:  sort,
 		}
 	case StartViewReview:
 		if route.ReviewModule == StartReviewDaily {

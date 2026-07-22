@@ -82,7 +82,7 @@ func TestLocalInboxDeleteCancelClearsPending(t *testing.T) {
 	}
 }
 
-// TestGlobalInboxDeleteCancelClearsPending is the Global Inbox analogue: canceling
+// TestGlobalInboxDeleteCancelClearsPending is the Global Inbox analog: canceling
 // a global Inbox delete drops the global processor's per-task slot, leaves task
 // data intact, and does not suppress the final-task auto-close.
 func TestGlobalInboxDeleteCancelClearsPending(t *testing.T) {
@@ -182,7 +182,7 @@ func TestLocalInboxDeleteArtifactBuildErrorClearsPending(t *testing.T) {
 }
 
 // TestGlobalInboxDeleteArtifactBuildErrorClearsPending is the Global Inbox
-// analogue of the artifact-build failure abort path.
+// analog of the artifact-build failure abort path.
 func TestGlobalInboxDeleteArtifactBuildErrorClearsPending(t *testing.T) {
 	e := newInboxDeleteEnv(t)
 	gp := newGlobalInboxDeleteProcessor(t, e)

@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/config"
 )
 
@@ -27,17 +26,6 @@ func TestRetiredProjectTreeRuntimeSurfacesRemoved(t *testing.T) {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 	mgr := config.NewManager(config.ConfigPathForDataDir(t.TempDir()))
 
-	t.Run("focus queue", func(t *testing.T) {
-		fq := NewProjectFocusViewModel(project, runtime)
-		fq.SetSize(120, 30)
-		// No queued tasks → the empty-state hint renders; it must not tell the
-		// user to press q "in the project tree".
-		assertClean(t, "focus queue empty-state view", ansi.Strip(fq.View().Content))
-		for _, item := range helpItemsFromKeyMap(fq.buildKeyMap()) {
-			assertClean(t, "focus queue keymap", item.Description)
-		}
-	})
-
 	t.Run("inbox", func(t *testing.T) {
 		inbox := NewInboxProcessorModel(project, mgr, runtime)
 		assertClean(t, "inbox returnHint", inbox.returnHint())
@@ -53,23 +41,6 @@ func TestRetiredProjectTreeRuntimeSurfacesRemoved(t *testing.T) {
 				hay := cmd.Name + " " + cmd.Description + " " + strings.Join(cmd.Aliases, " ")
 				assertClean(t, "palette command "+cmd.Name, hay)
 			}
-		}
-	})
-
-	t.Run("all tasks", func(t *testing.T) {
-		at := NewAllTasksViewModel(runtime, mgr)
-		for _, h := range AllTasksNavigationPrefixHints {
-			assertClean(t, "all tasks nav prefix hint", h.Description+" "+h.Detail)
-		}
-		for _, item := range helpItemsFromKeyMap(at.buildKeyMap()) {
-			assertClean(t, "all tasks keymap", item.Description)
-		}
-	})
-
-	t.Run("priority", func(t *testing.T) {
-		pv := NewPriorityViewModel(project, runtime, mgr)
-		for _, item := range helpItemsFromKeyMap(pv.buildKeyMap()) {
-			assertClean(t, "priority keymap", item.Description)
 		}
 	})
 

@@ -60,7 +60,7 @@ func renderFullscreenTitleContentWithCounter(titleContent, subtitle, counter str
 }
 
 // titleCounterAlertReserve mirrors the alert-indicator reserve used by
-// kanban_view.go so the right-aligned open-loops counter never collides with
+// fullscreen views so the right-aligned open-loops counter never collides with
 // the proactive-alert badge rendered by the app shell.
 const titleCounterAlertReserve = 10
 

@@ -61,21 +61,6 @@ func TestSortCrossProjectTasksByProjectDisplayOrderPreservesSameProjectTaskOrder
 	assertCrossProjectTaskIDs(t, tasks, []string{"alpha-1", "alpha-2", "beta-1", "beta-2", "nil-1"})
 }
 
-func TestSortKanbanCardsByProjectDisplayOrderPreservesSameProjectCardOrder(t *testing.T) {
-	alpha := projectForDisplayOrder("alpha", "alpha", "Alpha", false)
-	beta := projectForDisplayOrder("beta", "beta", "Beta", false)
-	cards := []KanbanCard{
-		{Task: taskForDisplayOrder("beta-1"), Project: beta},
-		{Task: taskForDisplayOrder("alpha-1"), Project: alpha},
-		{Task: taskForDisplayOrder("alpha-2"), Project: alpha},
-		{Task: taskForDisplayOrder("beta-2"), Project: beta},
-	}
-
-	sortKanbanCardsByProjectDisplayOrder(cards)
-
-	assertKanbanCardTaskIDs(t, cards, []string{"alpha-1", "alpha-2", "beta-1", "beta-2"})
-}
-
 func TestSortProjectTaskGroupsByProjectDisplayOrderUsesLookupAndKeepsUnknownLast(t *testing.T) {
 	alpha := projectForDisplayOrder("alpha", "alpha", "Alpha", false)
 	beta := projectForDisplayOrder("beta", "beta", "Beta", false)
@@ -128,18 +113,6 @@ func assertCrossProjectTaskIDs(t *testing.T, tasks []CrossProjectTask, want []st
 	for i, task := range tasks {
 		if task.Task.ID != want[i] {
 			t.Fatalf("task[%d] ID: got %q, want %q", i, task.Task.ID, want[i])
-		}
-	}
-}
-
-func assertKanbanCardTaskIDs(t *testing.T, cards []KanbanCard, want []string) {
-	t.Helper()
-	if len(cards) != len(want) {
-		t.Fatalf("got %d cards, want %d", len(cards), len(want))
-	}
-	for i, card := range cards {
-		if card.Task.ID != want[i] {
-			t.Fatalf("card[%d] task ID: got %q, want %q", i, card.Task.ID, want[i])
 		}
 	}
 }

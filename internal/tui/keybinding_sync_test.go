@@ -14,10 +14,7 @@ func session2SyncViews() []syncTestCase {
 	return []syncTestCase{
 		{ViewDailyReview, &DailyReviewModel{}},
 		{ViewWeeklyReview, &WeeklyReviewModel{}},
-		{ViewPriorityView, &PriorityViewModel{}},
 		{ViewFocusBoard, &FocusBoardModel{}},
-		{ViewAllTasks, &AllTasksViewModel{}},
-		{ViewProjectFocusView, &ProjectFocusViewModel{}},
 		{ViewRecentActivity, &RecentActivityModel{}},
 		{ViewProjectRecentActivity, &RecentActivityModel{}},
 		{ViewInboxProcessor, &InboxProcessorModel{}},
@@ -34,12 +31,9 @@ func session3SyncViews() []syncTestCase {
 	}
 }
 
-// session4SyncViews returns the kanban views introduced in session 4 and the
-// task detail view registered as part of the UX refinement wave (Item 4).
+// session4SyncViews returns the task detail view registered in session 4.
 func session4SyncViews() []syncTestCase {
 	return []syncTestCase{
-		{ViewKanban, &KanbanModel{}},
-		{ViewCrossProjectKanban, &KanbanModel{}},
 		{ViewTaskDetail, &TaskDetailModel{}},
 	}
 }
@@ -175,19 +169,14 @@ func TestPresentationIDString(t *testing.T) {
 		// Session 2
 		ViewDailyReview:           "DailyReview",
 		ViewWeeklyReview:          "WeeklyReview",
-		ViewPriorityView:          "PriorityView",
 		ViewFocusBoard:            "Planner",
-		ViewAllTasks:              "AllTasks",
-		ViewProjectFocusView:      "ProjectFocusView",
 		ViewRecentActivity:        "RecentActivity",
 		ViewProjectRecentActivity: "ProjectRecentActivity",
 		ViewInboxProcessor:        "InboxProcessor",
 		ViewGlobalInboxProcessor:  "GlobalInboxProcessor",
 		ViewOutliner:              "Outliner",
 		// Session 4
-		ViewKanban:             "Kanban",
-		ViewCrossProjectKanban: "CrossProjectKanban",
-		ViewTaskDetail:         "TaskDetail",
+		ViewTaskDetail: "TaskDetail",
 		// Session 6
 		// Session 8
 		ViewQuickCapture: "QuickCapture",

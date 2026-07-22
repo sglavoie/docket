@@ -122,62 +122,37 @@ func TestTaskDetailClosePreservesWorkspaceCursorFiltersAndSelection(t *testing.T
 	if len(project.Tasks) < 2 {
 		t.Fatal("workspace fixture needs at least two tasks")
 	}
-	params := TaskWorkspaceParams{
-		Scope:  ProjectEntityScope(project.ID),
-		Layout: WorkspaceOutline,
-		Focus:  WorkspaceActive,
-	}
-	controller, err := NewTaskWorkspaceController(
-		params,
-		NewTaskWorkspaceQuery(staticTaskWorkspaceSource{data: TaskWorkspaceData{Projects: []*models.Project{project}}}),
-		NewFeatureTaskWorkspaceMutationAdapter(TaskItemCoordinator{}, BulkCoordinator{}),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	view, err := NewTaskWorkspaceView(controller)
-	if err != nil {
-		t.Fatal(err)
-	}
-	app.taskWorkspace = controller
-	app.taskWorkspaceView = view
-	route, err := NewRoute(TaskWorkspace, params)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd := app.activateTaskWorkspaceRoute(route); cmd != nil {
-		if msg := cmd(); msg != nil {
-			t.Fatalf("activate workspace returned %T", msg)
-		}
-	}
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
+	outliner.rows = []outlinerRow{{task: project.Tasks[0]}, {task: project.Tasks[1]}}
+	outliner.cursor = 1
+	outliner.SetSearchQuery(project.Tasks[0].Title)
+	outliner.multiSelectMode = true
+	outliner.selectedTasks[project.Tasks[0].ID] = true
+	outliner.selectedTasks[project.Tasks[1].ID] = true
+	app.outliner = outliner
+	app.views.Register(ViewOutliner, outliner)
+	app.pushView(ViewOutliner)
 
-	first := TaskIdentity{ProjectID: project.ID, TaskID: project.Tasks[0].ID}
-	second := TaskIdentity{ProjectID: project.ID, TaskID: project.Tasks[1].ID}
-	controller.State.SetSearchQuery(project.Tasks[0].Title)
-	if !controller.State.SetCursor(first) || !controller.State.ToggleSelection(first) || !controller.State.ToggleSelection(second) {
-		t.Fatal("failed to seed workspace return state")
+	beforeSearch := outliner.SearchQuery()
+	beforeCursor := outliner.cursor
+	beforeSelected := make(map[string]bool, len(outliner.selectedTasks))
+	for id, selected := range outliner.selectedTasks {
+		beforeSelected[id] = selected
 	}
-
-	beforeParams := controller.State.RouteParams()
-	beforeSearch := controller.State.SearchQuery
-	beforeCursor, _ := controller.State.Cursor()
-	beforeSelected := controller.State.Selected()
 	_ = app.activateTaskDetail(project.Tasks[0], project, TaskOverview)
 	if !app.popTypedPresentation() {
 		t.Fatal("failed to close Task Detail")
 	}
 
-	afterCursor, _ := controller.State.Cursor()
-	afterSelected := controller.State.Selected()
-	if controller.State.RouteParams() != beforeParams || controller.State.SearchQuery != beforeSearch || afterCursor != beforeCursor {
-		t.Fatalf("workspace return state changed: params=%+v search=%q cursor=%+v", controller.State.RouteParams(), controller.State.SearchQuery, afterCursor)
+	if outliner.SearchQuery() != beforeSearch || outliner.cursor != beforeCursor {
+		t.Fatalf("Outliner return state changed: search=%q cursor=%d", outliner.SearchQuery(), outliner.cursor)
 	}
-	if len(afterSelected) != len(beforeSelected) {
-		t.Fatalf("selection size changed: got %+v want %+v", afterSelected, beforeSelected)
+	if len(outliner.selectedTasks) != len(beforeSelected) {
+		t.Fatalf("selection size changed: got %+v want %+v", outliner.selectedTasks, beforeSelected)
 	}
-	for i := range beforeSelected {
-		if afterSelected[i] != beforeSelected[i] {
-			t.Fatalf("selection changed: got %+v want %+v", afterSelected, beforeSelected)
+	for id, selected := range beforeSelected {
+		if outliner.selectedTasks[id] != selected {
+			t.Fatalf("selection changed: got %+v want %+v", outliner.selectedTasks, beforeSelected)
 		}
 	}
 }

@@ -9,8 +9,8 @@ import (
 )
 
 // TaskDeleteRequestedMsg is the canonical, shell-owned request to permanently
-// delete one or more task subtrees. Any surface (Outliner, All Tasks, Task
-// Detail, Kanban, …) emits it instead of running its own delete flow: the shell
+// delete one or more task subtrees. Any surface (Outliner, Planner, Task
+// Detail, review, …) emits it instead of running its own delete flow: the shell
 // canonicalizes the roots, prompts for confirmation, and — only after the user
 // confirms — executes ONE atomic BulkCoordinator.Delete transaction that folds
 // the durable planning-ref cleanup into the same commit. Refs carry each root
@@ -79,6 +79,8 @@ func (m *AppModel) applyPendingInboxDelete(token uint64, removedIDs []string) te
 		if m.globalInboxProcessor != nil {
 			return m.globalInboxProcessor.applyCommittedDelete(pending.taskID)
 		}
+	default:
+		// Only inbox processors arm pendingInboxDeletes.
 	}
 	return nil
 }
@@ -176,6 +178,8 @@ func (m *AppModel) clearInboxProcessorPendingDelete(origin PresentationID, taskI
 		if m.globalInboxProcessor != nil {
 			delete(m.globalInboxProcessor.pendingDeletes, taskID)
 		}
+	default:
+		// Only inbox processors own per-task pending-delete slots.
 	}
 }
 

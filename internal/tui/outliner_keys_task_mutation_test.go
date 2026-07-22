@@ -192,7 +192,7 @@ func TestOutlinerJ_CrossProject_StaysInsideSameProject(t *testing.T) {
 	a2 := seedInboxTask(t, "a2", 2, "A2")
 	b1 := seedInboxTask(t, "b1", 1, "B1")
 	b2 := seedInboxTask(t, "b2", 2, "B2")
-	env := newKanbanBulkEnv(t, []*models.Task{a1, a2}, []*models.Task{b1, b2})
+	env := newCrossProjectTestEnv(t, []*models.Task{a1, a2}, []*models.Task{b1, b2})
 	m := newCrossOutlinerFromEnv(env)
 	projA, projB := env.projects[0], env.projects[1]
 	m.rows = []outlinerRow{
@@ -444,9 +444,9 @@ func seedNestedInboxTasks(t *testing.T, prefix string) []*models.Task {
 // coordinator, and lays flat rows referencing the seeded pointers so J/K/move
 // handlers resolve visible siblings. Structural mutations commit through the
 // coordinator; assertions reload the committed project.
-func newCrossNestedEnv(t *testing.T) (*OutlinerModel, *kanbanBulkEnv) {
+func newCrossNestedEnv(t *testing.T) (*OutlinerModel, *crossProjectTestEnv) {
 	t.Helper()
-	env := newKanbanBulkEnv(t, seedNestedInboxTasks(t, "a"), seedNestedInboxTasks(t, "b"))
+	env := newCrossProjectTestEnv(t, seedNestedInboxTasks(t, "a"), seedNestedInboxTasks(t, "b"))
 	m := newCrossOutlinerFromEnv(env)
 	projA, projB := env.projects[0], env.projects[1]
 	aTasks, bTasks := projA.Tasks, projB.Tasks
@@ -469,7 +469,7 @@ func newCrossNestedEnv(t *testing.T) (*OutlinerModel, *kanbanBulkEnv) {
 // completeCrossReorderReload mirrors the shell's successful batch refresh: the
 // current row is captured, fresh project snapshots replace the old rows, and the
 // accepted load restores the cursor by project and task identity.
-func completeCrossReorderReload(t *testing.T, m *OutlinerModel, env *kanbanBulkEnv, projectID, taskID string) {
+func completeCrossReorderReload(t *testing.T, m *OutlinerModel, env *crossProjectTestEnv, projectID, taskID string) {
 	t.Helper()
 	_ = m.reloadCrossProjects()
 	projects := make([]*models.Project, len(env.projects))
@@ -572,7 +572,7 @@ func TestOutlinerK_CrossProject_ReordersCorrectProject(t *testing.T) {
 	a2 := seedInboxTask(t, "a2", 2, "A2")
 	b1 := seedInboxTask(t, "b1", 1, "B1")
 	b2 := seedInboxTask(t, "b2", 2, "B2")
-	env := newKanbanBulkEnv(t, []*models.Task{a1, a2}, []*models.Task{b1, b2})
+	env := newCrossProjectTestEnv(t, []*models.Task{a1, a2}, []*models.Task{b1, b2})
 	m := newCrossOutlinerFromEnv(env)
 	projA, projB := env.projects[0], env.projects[1]
 	m.rows = []outlinerRow{

@@ -32,20 +32,15 @@ func (m *AppModel) applyAttrFilterToView(source PresentationID, prefix, key stri
 		}
 		refresh()
 	}
-	if _, _, ok := m.taskWorkspacePrimary(); ok && m.taskWorkspace != nil {
-		applyAttr(&m.taskWorkspace.State.AdvancedFilters.CommonFilterState, func() {
-			if err := m.taskWorkspace.Refresh(); err != nil {
-				m.err = err
-			}
-		})
+	if outliner, _, ok := m.outlinerPrimary(); ok {
+		applyAttr(&outliner.filter.CommonFilterState, outliner.rebuildRows)
 		return
 	}
 
 	// Views implementing tagFilterApplicable (have getFilter() + refreshAndClamp()).
 	standardViews := []PresentationID{
 		ViewFocusBoard,
-		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewPriorityView,
-		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,
+		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity,
 	}
 	for _, vt := range standardViews {
 		if source != vt {
@@ -60,15 +55,6 @@ func (m *AppModel) applyAttrFilterToView(source PresentationID, prefix, key stri
 	}
 
 	switch source {
-	case ViewProjectFocusView:
-		if v := m.views.Get(ViewProjectFocusView); v != nil {
-			if pv, ok := v.(*ProjectFocusViewModel); ok {
-				applyAttr(&pv.filter, func() {
-					pv.loadTasks()
-					pv.clampCursor()
-				})
-			}
-		}
 	case ViewOutliner:
 		target := m.outliner
 		if target == nil {

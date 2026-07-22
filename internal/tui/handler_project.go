@@ -361,7 +361,7 @@ func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
 	}
 	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
-	if m.typedNavigation && m.taskWorkspaceView != nil {
+	if m.typedNavigation {
 		_, cmd := m.handleProjectViewMessages(ShowOutlinerMsg{Project: project})
 		return cmd
 	}

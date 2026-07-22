@@ -238,27 +238,15 @@ func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
 	runtime := config.NewRuntimeState("", domains)
 	setTestProjects(runtime, []*models.Project{project})
 
-	t.Run("project focus includes unindexed StateNext and excludes stale index", func(t *testing.T) {
-		pf := NewProjectFocusViewModel(project, runtime)
-
-		ids := make([]string, len(pf.tasks))
-		for i, task := range pf.tasks {
-			ids[i] = task.ID
+	t.Run("outliner Next includes unindexed StateNext and excludes stale index", func(t *testing.T) {
+		outliner := NewOutlinerModel(project, nil, runtime)
+		outliner.ApplyOpenOptions(OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true})
+		filter := outliner.baseFocusFilter(project)
+		if !filter(indexedNext) || !filter(unindexedNext) {
+			t.Fatal("Outliner Next must include every StateNext task")
 		}
-		if len(pf.tasks) != 2 {
-			t.Fatalf("project focus tasks = %v, want 2 StateNext tasks", ids)
-		}
-		// Indexed member first, unindexed StateNext after it.
-		if pf.tasks[0].ID != indexedNext.ID {
-			t.Errorf("first task = %q, want indexed member %q", pf.tasks[0].ID, indexedNext.ID)
-		}
-		if pf.tasks[1].ID != unindexedNext.ID {
-			t.Errorf("second task = %q, want unindexed StateNext %q", pf.tasks[1].ID, unindexedNext.ID)
-		}
-		for _, task := range pf.tasks {
-			if task.ID == stale.ID {
-				t.Fatal("stale indexed non-Next task must not appear in Project Focus")
-			}
+		if filter(stale) {
+			t.Fatal("stale indexed non-Next task must not appear in Outliner Next")
 		}
 	})
 

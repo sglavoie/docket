@@ -186,50 +186,6 @@ func TestRenderStatusBarFooterConstrainsOverWideLabel(t *testing.T) {
 	}
 }
 
-// TestAllTasksViewBudgetsWrappedFooterHeight renders the real All Tasks view at a
-// narrow width where its footer help wraps beyond two rows, with enough rows to
-// fill the content budget, and asserts the whole builder-composed view
-// (title + chrome + content + footer) still fits its height budget. This
-// exercises fullscreenContentHeightWithFooter end to end: reserving a fixed two
-// footer rows would let the wrapped footer push the filled content past height.
-func TestAllTasksViewBudgetsWrappedFooterHeight(t *testing.T) {
-	ws, err := newUITestWorkspace()
-	if err != nil {
-		t.Fatalf("newUITestWorkspace: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if _, err := ws.addProject("Budget Project", func(p *models.Project) {
-		// The built-in "Active" tab keeps StatusInProgress tasks; add plenty so
-		// the task list overflows the content area and must scroll.
-		for i := 0; i < 40; i++ {
-			task := newFixtureTask(p, models.TaskTypeTask, fmt.Sprintf("In-progress budgeting task %d", i+1))
-			task.WorkflowState = models.StateInProgress
-		}
-	}); err != nil {
-		t.Fatalf("addProject: %v", err)
-	}
-
-	m := NewAllTasksViewModel(ws.Runtime, ws.Manager)
-
-	const width, height = 40, 18
-	m.SetSize(width, height)
-
-	// Guard: more rows than the height budget (so content fills and scrolls) and
-	// a footer that wraps beyond two rows, so the budgeting path is exercised.
-	if m.totalNavigableItems() <= height {
-		t.Fatalf("expected the fixture to overflow the content budget, got %d navigable items", m.totalNavigableItems())
-	}
-	if got := lipgloss.Height(m.renderAllTasksFooter()); got <= 4 {
-		t.Fatalf("expected the All Tasks footer to wrap beyond two rows at width %d, got block height %d", width, got)
-	}
-
-	view := m.View().Content
-	if got := lipgloss.Height(view); got > height {
-		t.Fatalf("All Tasks view height %d exceeds budget %d\n\n%s", got, height, ansi.Strip(view))
-	}
-}
-
 // TestRoadmapViewBudgetsWrappedFooterHeight renders a real Roadmap timeline view
 // at a narrow, short terminal size where the footer help wraps beyond two rows
 // and there are far more rows than fit, so the timeline appends its

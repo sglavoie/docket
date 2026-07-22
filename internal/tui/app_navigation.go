@@ -191,10 +191,6 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 		}
-		// Save kanban view state (mode, cursor, scroll) so it persists across navigation.
-		if closingView == ViewKanban || closingView == ViewCrossProjectKanban {
-			m.saveKanbanState()
-		}
 		// Save temporary outliner's filter state so subsequent temporary
 		// outliners for the same project inherit any filter changes.
 		if closingView == ViewTemporaryOutliner {
@@ -268,8 +264,6 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 		if tempOutliner, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
 			m.saveOutlinerFilterStateFrom(tempOutliner)
 		}
-	case ViewKanban, ViewCrossProjectKanban:
-		m.saveKanbanStateForView(viewType)
 	default:
 		// Other views do not keep close-time navigation state.
 	}
@@ -277,14 +271,6 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 
 func (m *AppModel) clearTransientNavigationState() {
 	m.dismissPeek()
-	if m.taskWorkspaceView != nil {
-		m.taskWorkspaceView.menuOpen = false
-		m.taskWorkspaceView.searchMode = false
-		if m.taskWorkspaceView.quickEdit != nil {
-			m.taskWorkspaceView.quickEdit.Exit()
-			m.taskWorkspaceView.quickEditProject = nil
-		}
-	}
 	if planner, ok := m.views.Get(ViewFocusBoard).(*FocusBoardModel); ok && planner != nil {
 		planner.menuOpen = false
 	}
@@ -363,7 +349,7 @@ func (m *AppModel) popToAnchorView() tea.Cmd {
 // currentAccentColor returns the accent color for the topmost mapped view in
 // the stack, falling back to ColorPrimary when no mapping is found.
 func (m *AppModel) currentAccentColor() color.Color {
-	if m.activeTaskWorkspace() {
+	if m.activeOutlinerRoute() {
 		return m.navigation.Primary.Current().Accent()
 	}
 	if m.activeReviewHub() {
@@ -474,36 +460,6 @@ func (m *AppModel) showViewInit(viewType PresentationID, view View) (bool, tea.C
 	return true, view.Init()
 }
 
-// replaceView replaces the top of the view stack instead of pushing.
-// Used when switching between peer project views (Outliner)
-// so the stack doesn't accumulate entries.
-func (m *AppModel) replaceView(viewType PresentationID, view View) {
-	if m.currentView() == ViewAsk || viewType == ViewAsk {
-		m.exitAskView()
-	}
-	// See showView: all views are sized to height-2 here; Register re-applies
-	// the registry's stored height-2 regardless, matching handleWindowSize.
-	view.SetSize(m.width, m.height-2)
-	m.wireSecondaryCoordinators(view)
-	m.views.Register(viewType, view)
-	if m.installTypedPresentation(viewType) {
-		if viewType == ViewOutliner {
-			m.lastProjectView = viewType
-		}
-		m.setAccentOnView(view)
-		return
-	}
-	if len(m.viewStack) > 1 {
-		m.viewStack[len(m.viewStack)-1] = viewType
-	} else {
-		m.viewStack = append(m.viewStack, viewType)
-	}
-	if viewType == ViewOutliner {
-		m.lastProjectView = viewType
-	}
-	m.setAccentOnView(view)
-}
-
 func (m *AppModel) exitAskView() {
 	if m.views == nil {
 		return
@@ -511,15 +467,6 @@ func (m *AppModel) exitAskView() {
 	if ask, ok := m.views.Get(ViewAsk).(*AskViewModel); ok {
 		ask.OnExit()
 	}
-}
-
-// isOnProjectView returns true if the current view is a peer project view.
-func (m *AppModel) isOnProjectView() bool {
-	if m.activeTaskWorkspace() && m.taskWorkspace.State.Scope.Kind == ScopeProject {
-		return true
-	}
-	cur := m.currentView()
-	return cur == ViewOutliner
 }
 
 // defaultProjectPresentation returns the sole project presentation.
@@ -594,18 +541,13 @@ func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models
 			task = resolved
 		}
 	}
-	if m.typedNavigation && m.taskWorkspaceView != nil {
+	if m.typedNavigation {
 		m.prepareProjectOutliner(project, task)
-		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{
-			Scope: ProjectEntityScope(project.ID), Layout: WorkspaceOutline, Focus: WorkspaceActive,
-		})
+		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(project.ID)})
 		if err != nil {
 			return func() tea.Msg { return ErrorMsg{Err: err} }
 		}
 		cmd := m.activateTaskWorkspaceRoute(route)
-		if task != nil {
-			m.taskWorkspace.State.SetCursor(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
-		}
 		return cmd
 	}
 

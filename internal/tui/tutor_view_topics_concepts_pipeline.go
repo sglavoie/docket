@@ -15,8 +15,9 @@ what to do remains distinct from doing it.
 
 Tasks and Project both open Task Workspace. Tasks uses an
 application scope; Project uses the selected project scope.
-The View menu changes List, Outline, or Board layout and focus
-without changing the destination.
+Both scopes use the hierarchical Outliner. Perspectives, smart
+focuses, filters, and sorting change which tasks it shows without
+changing the destination.
 
 # Review and Manage
 

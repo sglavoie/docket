@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
@@ -125,11 +124,6 @@ func (s *InteractiveViewState) IsConfirmActive() bool {
 // GetConfirmDialog returns a pointer to the embedded confirm dialog.
 func (s *InteractiveViewState) GetConfirmDialog() *ConfirmDialog {
 	return &s.confirm
-}
-
-// showDeleteConfirm activates the delete confirmation dialog for the given task.
-func (s *InteractiveViewState) showDeleteConfirm(shortID int) {
-	s.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", shortID))
 }
 
 // HandleConfirmKey checks if a confirm dialog is active and processes the key.

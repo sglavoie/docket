@@ -111,7 +111,7 @@ type TaskItemMutator interface {
 	// legacy workflow-rule cascade (follow-ups, deferred cross-project moves,
 	// project status-icon rules, rule-trigger counters) atomically, returning a
 	// BulkResult so the shell reloads every touched project and persists fired
-	// trigger counts. They back the secondary views (all-tasks, review, priority,
+	// trigger counts. They back secondary views (review, activity,
 	// due-date, focus, focus-board, project-focus) that historically ran the full
 	// workflow pipeline after every single-task save.
 	StateWithWorkflow(taskID string, target models.WorkflowState, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)

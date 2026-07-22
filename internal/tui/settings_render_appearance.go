@@ -16,7 +16,7 @@ func (m *SettingsModel) renderAppearanceTab() string {
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.zebraStriping, m.focusIndex == base+0))
 	b.WriteString(renderDefaultHint(zebraVal, "Disabled"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Alternating row backgrounds in task list views", indent, m.focusIndex == base+0))
+	b.WriteString(renderFormFieldDesc("Alternating backgrounds in task rows", indent, m.focusIndex == base+0))
 
 	b.WriteString("\n")
 

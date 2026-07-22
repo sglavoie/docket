@@ -36,12 +36,13 @@ func TestViewCommands_AllTasks(t *testing.T) {
 		t.Fatal("expected 'all tasks' command")
 	}
 	msg := cmd.Handler()
-	if _, ok := msg.(ShowAllTasksMsg); !ok {
-		t.Errorf("expected ShowAllTasksMsg, got %T", msg)
+	outliner, ok := msg.(ShowGlobalOutlinerMsg)
+	if !ok || !outliner.Options.SetFocus || outliner.Options.Focus != OutlinerAll {
+		t.Errorf("expected All-focused ShowGlobalOutlinerMsg, got %#v", msg)
 	}
 }
 
-func TestViewCommands_DashboardWorkspaceLayouts(t *testing.T) {
+func TestViewCommands_DashboardOutlinerEntries(t *testing.T) {
 	app := newTestAppModel()
 	registry := registerCommandGroupsForTest(t, app.viewCommands())
 	cmds := registry.GetForView(ViewDashboard)
@@ -51,9 +52,8 @@ func TestViewCommands_DashboardWorkspaceLayouts(t *testing.T) {
 		shortcut string
 		wantMsg  any
 	}{
-		{"all tasks", "", ShowAllTasksMsg{}},
+		{"all tasks", "", ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}},
 		{"outliner", "", ShowGlobalOutlinerMsg{}},
-		{"kanban", "", ShowCrossProjectKanbanMsg{}},
 	}
 
 	for _, tt := range tests {
@@ -80,12 +80,12 @@ func TestViewCommands_DueDateOverview(t *testing.T) {
 		t.Fatal("expected 'all tasks by due date' command")
 	}
 	msg := cmd.Handler()
-	at, ok := msg.(ShowAllTasksMsg)
+	at, ok := msg.(ShowGlobalOutlinerMsg)
 	if !ok {
-		t.Errorf("expected ShowAllTasksMsg, got %T", msg)
+		t.Errorf("expected ShowGlobalOutlinerMsg, got %T", msg)
 	}
-	if !at.SetGroup || at.Group != ATGroupByDueDate {
-		t.Errorf("expected ShowAllTasksMsg grouped by due date, got %+v", at)
+	if !at.Options.SetFocus || at.Options.Focus != OutlinerAll || !at.Options.SetSort || at.Options.Sort != SortByDueDate {
+		t.Errorf("expected All-focused Outliner sorted by due date, got %+v", at)
 	}
 }
 
@@ -200,8 +200,9 @@ func TestViewCommands_PriorityView(t *testing.T) {
 		t.Fatal("expected 'priority view' command")
 	}
 	msg := cmd.Handler()
-	if _, ok := msg.(ShowPriorityViewMsg); !ok {
-		t.Errorf("expected ShowPriorityViewMsg, got %T", msg)
+	outliner, ok := msg.(ShowOutlinerMsg)
+	if !ok || !outliner.Options.SetFocus || outliner.Options.Focus != OutlinerHighPriority || outliner.Options.Sort != SortByScore {
+		t.Errorf("expected High Priority ShowOutlinerMsg, got %#v", msg)
 	}
 }
 
@@ -262,8 +263,7 @@ func TestViewCommands_PriorityView_Aliases(t *testing.T) {
 }
 
 // TestViewCommands_PriorityViewAliasesToWorkspace verifies that the retired
-// cross-outliner presentation no longer owns a hidden in-place priority mode.
-func TestViewCommands_PriorityViewAliasesToWorkspace(t *testing.T) {
+func TestViewCommands_PriorityViewAliasesToOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
@@ -278,9 +278,9 @@ func TestViewCommands_PriorityViewAliasesToWorkspace(t *testing.T) {
 		t.Fatal("crossPriorityMode should default to false")
 	}
 
-	msg, ok := cmd.Handler().(ShowPriorityViewMsg)
+	msg, ok := cmd.Handler().(ShowOutlinerMsg)
 	if !ok || msg.Project != project {
-		t.Fatalf("priority alias returned %#v, want typed workspace entry message for current project", msg)
+		t.Fatalf("priority alias returned %#v, want project Outliner entry message", msg)
 	}
 	if app.crossOutliner.crossPriorityMode {
 		t.Error("priority alias revived the retired cross-outliner priority mode")

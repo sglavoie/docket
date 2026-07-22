@@ -29,7 +29,7 @@ func (m *AppModel) viewCommands() []Command {
 			Category:    CategoryViews,
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
-				return ShowAllTasksMsg{}
+				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Focus: OutlinerAll, SetFocus: true}}
 			},
 		},
 		{
@@ -42,21 +42,14 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "kanban",
-			Description: "Open the cross-project kanban board",
-			Category:    CategoryViews,
-			Aliases:     []string{"global kanban", "cross-project kanban", "board"},
-			Handler: func() tea.Msg {
-				return ShowCrossProjectKanbanMsg{}
-			},
-		},
-		{
 			Name:        "all tasks by due date",
-			Description: "View all tasks grouped by due date",
+			Description: "View all tasks ordered by due date",
 			Category:    CategoryViews,
 			Aliases:     []string{"due dates", "by due date", "tasks by due date", "due date overview"},
 			Handler: func() tea.Msg {
-				return ShowAllTasksMsg{Group: ATGroupByDueDate, SetGroup: true}
+				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+					Focus: OutlinerAll, SetFocus: true, Sort: SortByDueDate, SetSort: true,
+				}}
 			},
 		},
 		{
@@ -121,7 +114,12 @@ func (m *AppModel) viewCommands() []Command {
 			Aliases:     []string{"priority", "priority mode", "toggle priority mode", "high priority", "cross-project priority"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
-					return ShowPriorityViewMsg{Project: m.currentProject}
+					return ShowOutlinerMsg{
+						Project: m.currentProject,
+						Options: OutlinerOpenOptions{
+							Focus: OutlinerHighPriority, SetFocus: true, Sort: SortByScore, SetSort: true,
+						},
+					}
 				}
 				return nil
 			},

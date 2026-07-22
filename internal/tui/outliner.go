@@ -49,8 +49,9 @@ type OutlinerModel struct {
 	crossZoomStack []CrossProjectZoomEntry // Zoom stack for cross-project mode (m.project == nil)
 	zoomNotice     string                  // Transient message shown when zoom target is removed
 
-	rows              []outlinerRow // Flattened rows, rebuilt on each render
-	activePerspective int           // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
+	rows              []outlinerRow  // Flattened rows, rebuilt on each render
+	activePerspective int            // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
+	smartFocus        *OutlinerFocus // Optional base predicate for non-perspective task focuses.
 
 	sort SortState // Current sort field and direction
 
@@ -132,9 +133,7 @@ func (m *OutlinerModel) SetSize(width, height int) {
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
-func (m *OutlinerModel) getProject() *models.Project       { return m.project }
-func (m *OutlinerModel) getRuntime() *config.RuntimeState  { return m.runtime }
-func (m *OutlinerModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *OutlinerModel) getProject() *models.Project { return m.project }
 func (m *OutlinerModel) getCursorTask() *models.Task {
 	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
 		row := m.rows[m.cursor]

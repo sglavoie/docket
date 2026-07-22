@@ -177,11 +177,6 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 		t.Fatalf("Outliner help has %d ctrl+n Task composer rows, want 1", count)
 	}
 
-	allTasksItems := (&AllTasksViewModel{}).GetHelpItems()
-	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "shift+enter", "Peek task detail")
-	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "w", "Toggle today's plan")
-	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "y", "Copy title")
-
 	detail := NewTaskDetailModel(project.Tasks[0], project, app.runtime)
 	detailItems := detail.GetHelpItems()
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "j/k", "Scroll down/up")
@@ -417,9 +412,8 @@ func TestListNavigationGroupConsumersExposeArrowKeys(t *testing.T) {
 		name string
 		keys []string
 	}{
-		{name: "All Tasks", keys: (&AllTasksViewModel{}).HandledKeys()},
+		{name: "Outliner", keys: (&OutlinerModel{}).HandledKeys()},
 		{name: "Planner", keys: (&FocusBoardModel{}).HandledKeys()},
-		{name: "Priority", keys: (&PriorityViewModel{}).HandledKeys()},
 		{name: "Recent Activity", keys: (&RecentActivityModel{}).HandledKeys()},
 	}
 
@@ -493,7 +487,7 @@ func TestSharedTriagePrimaryVocabulary(t *testing.T) {
 func TestGetForView_IncludesGlobalBindings(t *testing.T) {
 	r := NewKeybindingRegistry()
 
-	for _, view := range []PresentationID{ViewDashboard, ViewOutliner, ViewPriorityView, ViewInboxProcessor} {
+	for _, view := range []PresentationID{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewInboxProcessor} {
 		items := r.GetForView(view)
 		foundQuit := false
 		foundHelp := false
@@ -558,7 +552,7 @@ func TestContainsView(t *testing.T) {
 		expected bool
 	}{
 		{[]PresentationID{ViewDashboard, ViewOutliner}, ViewDashboard, true},
-		{[]PresentationID{ViewDashboard, ViewOutliner}, ViewPriorityView, false},
+		{[]PresentationID{ViewDashboard, ViewOutliner}, ViewInboxProcessor, false},
 		{[]PresentationID{}, ViewDashboard, false},
 		{[]PresentationID{ViewOutliner}, ViewOutliner, true},
 	}

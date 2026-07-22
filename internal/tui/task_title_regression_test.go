@@ -154,10 +154,7 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 	files := []string{
 		"shared_render.go",
 		"outliner_render_rows.go",
-		"priority_view_render.go",
 		"focus_board_render_helpers.go",
-		"kanban_view.go",
-		"kanban_detail_pane.go",
 		"app_pinned_tasks_render.go",
 		"task_quick_switch_render.go",
 		"metrics_dashboard_render.go",

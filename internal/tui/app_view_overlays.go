@@ -11,11 +11,6 @@ package tui
 //   - Peek/preview: dim (replaces context with detail)
 //   - Confirm dialogs: dim (destructive action requires focus)
 func (m *AppModel) applyOverlays(content string, h int) string {
-	if m.activeTaskWorkspace() && m.taskWorkspaceView != nil {
-		if popup := m.taskWorkspaceView.renderViewMenu(m.width); popup != "" {
-			content = OverlayPopupDimmed(content, popup, m.width, h)
-		}
-	}
 	if planner, ok := m.activeView().(*FocusBoardModel); ok {
 		if popup := planner.renderPlannerViewMenu(m.width); popup != "" {
 			content = OverlayPopupDimmed(content, popup, m.width, h)

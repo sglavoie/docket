@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// workflowOpsView is the seam the migrated secondary views (all-tasks, weekly
+// workflowOpsView is the seam used by migrated secondary views (weekly
 // review, priority, due-date, focus, focus-board, project-focus) satisfy so their
 // single-task keybindings commit through the application-layer TaskItemCoordinator
 // while still running the legacy workflow-rule cascade. It is the async,

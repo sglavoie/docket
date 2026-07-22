@@ -8,7 +8,7 @@ import (
 
 // TestPlanningToggleUndoRedoKeyFlow drives the q/w planning toggles and their
 // u / ctrl+r undo-redo through the real AppModel key path (app.Update) from the
-// views where q and w actually work — the Outliner and a global task view — not
+// Outliner scopes where q and w actually work — project and global — not
 // by calling the toggle helpers directly. It is the FR-007-001 regression: the
 // bespoke atomic planning undo used to be reachable only inside ViewFocusBoard,
 // where q and w are disabled, so an immediate u/ctrl+r in the view that created
@@ -30,8 +30,8 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 		assertQueueKeyFlow(t, app, task.ID, true)
 	})
 
-	t.Run("global task view daily-plan toggle restores plan entry", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewPriorityView)
+	t.Run("global outliner daily-plan toggle restores plan entry", func(t *testing.T) {
+		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 
 		app = sendAppKey(app, syntheticKey('w'))
 		assertDailyPlanKeyFlow(t, app, task.ID, true)
