@@ -196,12 +196,3 @@ func inboxHandleSectionPickerCore(v inboxOpsView, msg SectionPickerDoneMsg) bool
 	v.setInboxStatus(fmt.Sprintf("Section set to '%s'", sectionName))
 	return true
 }
-
-// inboxDeletePrompt shows the delete confirmation for the current task.
-func inboxDeletePrompt(v inboxOpsView, confirm *ConfirmDialog) {
-	task, _ := v.getInboxTaskRef()
-	if task == nil {
-		return
-	}
-	confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
-}

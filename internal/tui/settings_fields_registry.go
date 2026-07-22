@@ -102,7 +102,8 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+0, tabBehavior, 5, "General > Startup", "Start View", "startup start destination home planner tasks project review manage", "Planner")
 	// subTab 6: Home.
 	base = subTabFieldStart(tabBehavior, 6)
-	add(base, tabBehavior, 6, "General > Home", "Parked Task Limit", "home attention resume parked tasks limit", strconv.Itoa(config.DefaultResumeCardLimit))
+	add(base+0, tabBehavior, 6, "General > Home", "Parked Task Limit", "home attention resume parked tasks limit", strconv.Itoa(config.DefaultResumeCardLimit))
+	add(base+1, tabBehavior, 6, "General > Home", "Projects Height %", "home projects attention height split percentage layout stacked", strconv.Itoa(config.DefaultHomeProjectsHeightPct))
 
 	// Tab 4: Attachments (2 fields)
 	base = tabFieldStart[tabAttachments]

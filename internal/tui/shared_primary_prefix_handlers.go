@@ -303,25 +303,12 @@ func handleTagKey(v prefixableView, source PresentationID, includeCompleted bool
 	return buildTagCmdFromProject(project, selectedTags, source, "Filter by Tags", includeCompleted), true
 }
 
-// handleDeleteConfirmKey handles the tD prefix key for showing delete
-// confirmation dialogs. Returns true if the key was handled.
-func handleDeleteConfirmKey(v deleteConfirmView) bool {
-	if tasks := v.getMultiSelectedTasks(); tasks != nil {
-		v.showBulkDeleteConfirm()
-		return true
-	}
-	task := v.getCursorTask()
-	if task != nil {
-		v.showDeleteConfirm(task)
-	}
-	return true
-}
-
 // handleSharedTaskPrefix handles the t-prefix key sequence shared across
 // primary views: message-only handlers (to, tc, ta, tl, te, tm, td, tP), action
-// handlers (tn, tN, ts, tt), rename (tr), toggle pinned (tp), toggle dimmed (th), and delete (tD).
-// The onRename callback handles view-specific rename entry. focusedTask is the
-// zoom/focus target (may be nil).
+// handlers (tn, tN, ts, tt), rename (tr), toggle pinned (tp), toggle dimmed (th).
+// Task deletion is not a t-prefix action; it uses the canonical uppercase-X
+// grammar routed through TaskDeleteRequestedMsg. The onRename callback handles
+// view-specific rename entry. focusedTask is the zoom/focus target (may be nil).
 func handleSharedTaskPrefix(
 	key string,
 	v prefixableView,
@@ -360,11 +347,6 @@ func handleSharedTaskPrefix(
 	case "h":
 		cmd, _ := handleToggleDimmedKey(v)
 		return cmd, true
-	case "D":
-		if dv, ok := v.(deleteConfirmView); ok {
-			handleDeleteConfirmKey(dv)
-		}
-		return nil, true
 	}
 	return nil, false
 }

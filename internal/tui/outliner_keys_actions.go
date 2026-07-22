@@ -2,48 +2,21 @@ package tui
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleConfirmDialog processes key input while a confirmation dialog is active.
+//
+// Task deletion is no longer confirmed here: the Outliner emits the canonical,
+// shell-owned TaskDeleteRequestedMsg (see taskDeleteRequest), so this handler
+// only owns the Outliner-local confirmations that have no shell equivalent
+// (project archive, bulk status change, archive-completed).
 func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 	// Capture action before HandleKey clears it on confirm/cancel.
 	action := m.confirm.Action()
-
-	// Handle recurring delete separately (d/s/n instead of y/n)
-	if action == "delete-recurring" && m.deleteTarget != nil {
-		switch key {
-		case "d", "D":
-			m.confirm.Cancel()
-			m.clearStatus()
-			if m.project == nil {
-				return m.crossExecuteDelete()
-			}
-			return m.executeDelete()
-		case "s", "S":
-			// Stop recurrence but keep the task (don't delete). Route through the
-			// app-layer ClearRecurrence seam (one ledger transaction); the shell
-			// reloads and toasts. Same path in single-project and cross-project mode.
-			task := m.deleteTarget
-			m.deleteTarget = nil
-			m.confirm.Cancel()
-			m.clearStatus()
-			return m, m.taskItem.ClearRecurrence(task.ID)
-		case "n", "N", "esc":
-			m.confirm.Cancel()
-			m.clearStatus()
-			m.deleteTarget = nil
-			return m, nil
-		}
-		return m, nil
-	}
 
 	// Standard y/n handling
 	if confirmed, handled := m.HandleConfirmKey(key); handled {
@@ -51,13 +24,6 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 			switch action {
 			case projectArchiveConfirmAction:
 				return m, func() tea.Msg { return projectArchiveConfirmedMsg{} }
-			case "delete":
-				if m.project == nil {
-					return m.crossExecuteDelete()
-				}
-				return m.executeDelete()
-			case "bulk-delete":
-				return m.executeBulkDelete()
 			case "bulk-status":
 				if m.project == nil {
 					return m.crossExecutePendingBulkStatus()
@@ -67,12 +33,43 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 				return m.archiveCompletedTasks()
 			}
 		}
-		m.deleteTarget = nil
 		m.archiveTargetProject = nil
 		m.bulkOp.Clear()
 		return m, nil
 	}
 	return m, nil
+}
+
+// taskDeleteRequest builds the canonical, shell-owned deletion request for the
+// Outliner's current target: every multi-selected task when a selection is
+// active, otherwise the single cursor task. It resolves each task's owning
+// project (single-project uses m.project; cross-project resolves per row) and
+// stamps the originating presentation so the shell repairs the right cursor
+// after commit. It returns nil when there is no deletable target, and never
+// mutates task data — the shell confirms and runs the atomic transaction.
+func (m *OutlinerModel) taskDeleteRequest() tea.Msg {
+	origin := ViewOutliner
+	if m.project == nil {
+		origin = ViewCrossProjectOutliner
+	}
+	if refs := m.getSelectedTaskProjectRefs(); len(refs) > 0 {
+		return TaskDeleteRequestedMsg{Refs: refs, Origin: origin}
+	}
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
+		return nil
+	}
+	return TaskDeleteRequestedMsg{Refs: []TaskProjectRef{{Task: task, Project: project}}, Origin: origin}
+}
+
+// requestTaskDelete wraps taskDeleteRequest as a keyboard action, returning a
+// command that emits the canonical request (or a no-op when there is no target).
+func (m *OutlinerModel) requestTaskDelete() (tea.Model, tea.Cmd) {
+	msg := m.taskDeleteRequest()
+	if msg == nil {
+		return m, nil
+	}
+	return m, func() tea.Msg { return msg }
 }
 
 // applyBulkStateChange applies a workflow-state transition to all multi-selected
@@ -134,168 +131,6 @@ func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 	m.undo.TaskIDs = taskIDsFromSlice(tasks)
 	m.bulkOp.Clear()
 	return m, m.commitWorkflow(prevStates, fmt.Sprintf("Changed %d tasks to %s", len(tasks), state))
-}
-
-// showDeleteConfirm shows a confirmation dialog for deleting a single task.
-func (m *OutlinerModel) showDeleteConfirm(task *models.Task) {
-	m.deleteTarget = task
-	if task.IsRecurring() {
-		m.confirm.Show("delete-recurring",
-			fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
-				task.ShortID, task.Title))
-		return
-	}
-
-	childCount := task.CountChildren()
-	detail := &ConfirmDetail{
-		Items:    []string{fmt.Sprintf("#%d %s (%s)", task.ShortID, task.Title, task.Type)},
-		UndoHint: true,
-	}
-	if childCount > 0 {
-		label := "subtask"
-		if childCount != 1 {
-			label = "subtasks"
-		}
-		detail.CascadeNote = fmt.Sprintf("%d %s will also be deleted", childCount, label)
-	}
-	m.confirm.ShowWithDetail("delete", "Delete this task?", detail)
-}
-
-// showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
-func (m *OutlinerModel) showBulkDeleteConfirm() {
-	selected := m.getSelectedTasks()
-	totalChildren := 0
-	for _, task := range selected {
-		totalChildren += task.CountChildren()
-	}
-
-	const maxItems = 5
-	detail := &ConfirmDetail{
-		TotalCount: len(selected),
-		UndoHint:   true,
-	}
-	for i, task := range selected {
-		if i >= maxItems {
-			break
-		}
-		detail.Items = append(detail.Items, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-	}
-	if totalChildren > 0 {
-		label := "subtask"
-		if totalChildren != 1 {
-			label = "subtasks"
-		}
-		detail.CascadeNote = fmt.Sprintf("%d %s will also be deleted", totalChildren, label)
-	}
-
-	m.confirm.ShowWithDetail("bulk-delete",
-		fmt.Sprintf("Delete %d selected tasks?", len(selected)), detail)
-}
-
-// executeDelete removes the current deleteTarget task through the
-// application-layer BulkCoordinator (see the body comment for the transaction
-// and config-artifact semantics).
-func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
-	if m.deleteTarget == nil {
-		return m, nil
-	}
-	task := m.deleteTarget
-	m.deleteTarget = nil
-	m.clearStatus()
-
-	// Route the single-task delete through the application-layer BulkCoordinator
-	// (single-element), mirroring crossExecuteDelete. The durable planning-ref
-	// cleanup (Focus Queue, Daily Plan, dismissals) of the removed subtree rides
-	// the delete transaction as a config artifact so it is atomic and undoable
-	// through the ledger; machine-local recent visits are repaired by the shell
-	// after the commit from the batch's RemovedTaskIDs.
-	deleteIDs := collectDescendantIDs(m.project.Tasks, map[string]bool{task.ID: true})
-	var artifacts []storage.ArtifactChange
-	if m.runtime != nil && m.configManager != nil {
-		planning := clonePlanningState(m.runtime.Planning())
-		if planning.RemoveDurableTaskRefs(deleteIDs) > 0 {
-			arts, err := planningDomainArtifact(m.configManager, planning)
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-				return m, nil
-			}
-			artifacts = arts
-		}
-	}
-	return m, m.bulk.Delete([]string{task.ID}, artifacts...)
-}
-
-// executeBulkDelete removes all multi-selected tasks using shared helpers.
-// Collects all tasks and descendants, cleans up attachments, filters in one
-// pass, then persists once instead of per-task.
-func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
-	if len(m.selectedTasks) == 0 {
-		return m, nil
-	}
-
-	count := len(m.selectedTasks)
-	prevStates := captureTaskStates(m.project.Tasks)
-
-	// Collect all selected task IDs and their descendants
-	rootIDs := make(map[string]bool, len(m.selectedTasks))
-	for taskID := range m.selectedTasks {
-		rootIDs[taskID] = true
-	}
-	idsToDelete := collectDescendantIDs(m.project.Tasks, rootIDs)
-
-	// Clean up attachments for all tasks being deleted
-	for _, t := range m.project.Tasks {
-		if idsToDelete[t.ID] {
-			if err := storage.CleanupTaskAttachments(m.project, t); err != nil {
-				logging.Warn("failed to clean up attachments for task %s: %v", t.ID, err)
-			}
-		}
-	}
-
-	// Filter out deleted tasks and clear dangling references
-	var remaining []*models.Task
-	for _, t := range m.project.Tasks {
-		if !idsToDelete[t.ID] {
-			if t.ParentID != nil && idsToDelete[*t.ParentID] {
-				t.ParentID = nil
-			}
-			// Clear dangling DependsOn references to deleted tasks
-			if len(t.DependsOn) > 0 {
-				cleaned := t.DependsOn[:0]
-				for _, depID := range t.DependsOn {
-					if !idsToDelete[depID] {
-						cleaned = append(cleaned, depID)
-					}
-				}
-				t.DependsOn = cleaned
-			}
-			// Clear dangling RelatedTo references to deleted tasks
-			if len(t.RelatedTo) > 0 {
-				cleaned := t.RelatedTo[:0]
-				for _, relID := range t.RelatedTo {
-					if !idsToDelete[relID] {
-						cleaned = append(cleaned, relID)
-					}
-				}
-				t.RelatedTo = cleaned
-			}
-			remaining = append(remaining, t)
-		}
-	}
-	m.project.Tasks = remaining
-
-	// Commit the filtered project once through the application layer.
-	m.setUndoContext("Bulk Delete", fmt.Sprintf("%d tasks", count))
-	m.setUndoTaskIDs(slices.Collect(maps.Keys(idsToDelete)))
-	cmd := m.commitWorkflow(prevStates, fmt.Sprintf("Deleted %d tasks", count))
-
-	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	if err := cleanupRuntimeTaskRefs(m.runtime, idsToDelete); err != nil {
-		m.setStatus(fmt.Sprintf("Error: %v", err))
-	}
-
-	m.clearMultiSelect()
-	return m, cmd
 }
 
 // archiveCompletedTasks moves all completed tasks to the archive file.

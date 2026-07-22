@@ -287,25 +287,120 @@ func (c *inboxCore) handleSectionPickerDone(msg SectionPickerDoneMsg) tea.Cmd {
 	return c.backend.saveCmd()
 }
 
-func (c *inboxCore) executeDelete() tea.Cmd {
+// requestDelete emits the canonical, shell-owned deletion request for the
+// current inbox task. Both lowercase x and uppercase X route here. The shell
+// confirms and runs one atomic transaction; the processor defers all queue
+// bookkeeping to applyCommittedDelete, invoked only after the commit succeeds,
+// so a rejected transaction leaves the same task selected and unprocessed.
+//
+// The post-delete focus target is computed here, against the intact queue, so
+// it matches the legacy in-memory delete (which advanced before the queue was
+// rebuilt and thus landed on the natural next task rather than skipping it).
+func (c *inboxCore) requestDelete() tea.Cmd {
 	task, project := c.currentTaskRef()
-	if task == nil {
+	if task == nil || project == nil {
 		return nil
 	}
-
-	saveCmd := c.backend.saveCmd()
-	c.backend.deleteFromData(task, project)
-	c.statusMessage = "Task deleted"
-
-	if c.backend.markDeletedProcessed() {
-		c.processedIDs[task.ID] = true
-		return tea.Batch(saveCmd, c.advanceToNext(true))
+	focusID := c.nextInboxFocusAfterDelete()
+	if c.pendingDeletes == nil {
+		c.pendingDeletes = make(map[string]inboxPendingDelete)
 	}
+	c.pendingDeletes[task.ID] = inboxPendingDelete{focusID: focusID}
+	origin := c.backend.viewType()
+	ref := TaskProjectRef{Task: task, Project: project}
+	return func() tea.Msg {
+		return TaskDeleteRequestedMsg{Refs: []TaskProjectRef{ref}, Origin: origin}
+	}
+}
+
+// nextInboxFocusAfterDelete returns the task the cursor should land on once the
+// current task leaves the queue. It mirrors advanceToNext's forward-then-backward
+// scan but performs no mutation, so it can run at request time — before the shell
+// reloads the committed queue. A blank result means no other unprocessed/unskipped
+// task remained at request time; whether the processor actually closes is decided
+// at apply time by shouldCloseAfterDelete, not by this request-time scan.
+func (c *inboxCore) nextInboxFocusAfterDelete() (focusID string) {
+	for i := c.currentIndex + 1; i < c.backend.taskCount(); i++ {
+		task, _ := c.backend.taskRef(i)
+		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+			return task.ID
+		}
+	}
+	for i := 0; i < c.currentIndex; i++ {
+		task, _ := c.backend.taskRef(i)
+		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+			return task.ID
+		}
+	}
+	return ""
+}
+
+// shouldCloseAfterDelete reports whether the processor should auto-close now that
+// a committed delete has rebuilt the queue. It recomputes closure — rather than
+// trusting a request-time willClose snapshot — from two live signals:
+//
+//  1. no other delete this processor requested is still awaiting its commit
+//     (c.pendingDeletes is empty after the current entry was removed), and
+//  2. no unprocessed/unskipped task remains in the rebuilt committed queue.
+//
+// This is the fix for back-to-back deletion of the final two tasks: while both
+// were in flight each still saw the other queued, so a request-time snapshot
+// captured willClose=false for both and neither closed. Gating on the remaining
+// in-flight bookkeeping makes only the last delete to commit close the processor,
+// so it closes exactly once with complete counts in either result order. Skipped
+// tasks left in the queue never block closure, mirroring advanceToNext.
+func (c *inboxCore) shouldCloseAfterDelete() bool {
+	if len(c.pendingDeletes) > 0 {
+		return false
+	}
+	for i := 0; i < c.backend.taskCount(); i++ {
+		task, _ := c.backend.taskRef(i)
+		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+			return false
+		}
+	}
+	return true
+}
+
+// applyCommittedDelete finalizes processor state after the shell-owned
+// transaction commits the canonical deletion of taskID. It mirrors the advance,
+// processed-count, and cursor-anchoring bookkeeping the legacy in-memory
+// executeDelete performed inline, but runs post-commit: the committed project
+// data (reloaded by the shell) no longer contains the task, so the queue is
+// rebuilt and the cursor re-anchors on the focus target captured at request
+// time. Auto-close is recomputed here against the rebuilt queue plus the
+// remaining in-flight deletes (shouldCloseAfterDelete) rather than a request-time
+// snapshot, so back-to-back deletion of the final two tasks closes exactly once,
+// reporting the same processed/skipped counts the header showed.
+func (c *inboxCore) applyCommittedDelete(taskID string) tea.Cmd {
+	if taskID == "" {
+		return nil
+	}
+	pending, ok := c.pendingDeletes[taskID]
+	if !ok {
+		return nil
+	}
+	delete(c.pendingDeletes, taskID)
+	focusID := pending.focusID
 
 	c.backend.rebuildTasks()
-	c.clampCurrentIndex()
+	c.statusMessage = "Task deleted"
 
-	return saveCmd
+	if !c.backend.markDeletedProcessed() {
+		c.clampCurrentIndex()
+		return nil
+	}
+	c.processedIDs[taskID] = true
+
+	if c.shouldCloseAfterDelete() {
+		c.pendingFocusID = ""
+		processed, skipped := len(c.processedIDs), len(c.skippedIDs)
+		return func() tea.Msg { return c.backend.closeMsg(processed, skipped) }
+	}
+
+	c.pendingFocusID = focusID
+	c.realignCurrentIndex()
+	return nil
 }
 
 // --- inboxOpsView implementation (used by inbox_operations_shared.go) ---

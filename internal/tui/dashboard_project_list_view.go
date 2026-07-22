@@ -16,9 +16,11 @@ import (
 // tightly against the project title.
 const dashboardProjectIconGutterWidth = 2
 
-// renderProjectList renders the project list content for a card of the given width.
-// bottomHeight is reserved space below the card (only used in full-width mode).
-func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeight, cardWidth, bottomHeight int) string { //nolint:gocyclo
+// renderProjectList renders the project list content for a card of the given
+// width. contentHeight is the number of usable rows inside the card body (the
+// card height minus its top and bottom borders); the row window is sized from
+// that allocation rather than from the full dashboard height.
+func (m *DashboardModel) renderProjectList(visible []*models.Project, contentHeight, cardWidth int) string { //nolint:gocyclo
 	var cardContent strings.Builder
 
 	if len(m.projects) == 0 {
@@ -35,11 +37,12 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	narrowMode := cardWidth < DashboardNarrowModeWidth
+	showHeader := projectListShowsHeader(contentHeight, narrowMode)
 	dueSoonDays := m.runtime.Settings().GetReviewDueSoonDays()
 	showContext := m.filterContext == ""
 
 	maxNameWidth, maxContextWidth, maxStatusWidth, iconColWidth := m.projectListColumnWidths(visible, showContext, dueSoonDays)
-	maxVisible := m.projectListMaxVisible(chromeHeight, bottomHeight, narrowMode)
+	maxVisible := m.projectListMaxVisible(contentHeight, narrowMode)
 	rowWidth := cardWidth - 4
 	if len(visible) > maxVisible {
 		rowWidth--
@@ -50,7 +53,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	startIdx, endIdx := persistentIndexWindow(m.cursor, len(visible), maxVisible, &m.viewScrollOffset)
-	if !narrowMode {
+	if showHeader {
 		cardContent.WriteString(m.renderProjectListHeader(rowWidth, iconColWidth, maxNameWidth, maxContextWidth, showContext))
 		cardContent.WriteString("\n")
 	}
@@ -97,18 +100,29 @@ func (m *DashboardModel) projectListColumnWidths(visible []*models.Project, show
 	return maxNameWidth, maxContextWidth, maxStatusWidth, iconColWidth
 }
 
-func (m *DashboardModel) projectListMaxVisible(chromeHeight, bottomHeight int, narrowMode bool) int {
-	cardOverhead := CardVerticalBorderOverhead
-	headerLines := 1
-	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
+// projectListShowsHeader reports whether the tabular column header is rendered.
+// The header is a non-narrow affordance, but it is dropped when the card body is
+// too short to fit both the header and at least one project row. Otherwise a
+// fixed-height card would spend its only content row on the header and truncate
+// every project entry (the minimum-height 10% split regression, FR-008).
+func projectListShowsHeader(contentHeight int, narrowMode bool) bool {
+	return !narrowMode && contentHeight >= 2
+}
+
+// projectListMaxVisible derives the number of project rows that fit inside a
+// card body of contentHeight rows. Non-narrow rows are one line each below an
+// optional single header line; narrow rows are two lines each with no header.
+// The window never exceeds the body's physical row capacity, so a fixed-height
+// card always renders at least one project row instead of truncating them all.
+func (m *DashboardModel) projectListMaxVisible(contentHeight int, narrowMode bool) int {
 	if narrowMode {
-		availRows := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
-		maxVisible = (availRows + 1) / 2
+		return max(contentHeight/2, 1)
 	}
-	if maxVisible < DashboardMinVisibleProjects {
-		return DashboardMinVisibleProjects
+	rows := contentHeight
+	if projectListShowsHeader(contentHeight, narrowMode) {
+		rows = contentHeight - 1
 	}
-	return maxVisible
+	return max(rows, 1)
 }
 
 func clampProjectListColumnWidths(rowWidth, iconColWidth, maxNameWidth, maxContextWidth, maxStatusWidth int, showContext bool) (int, int) {

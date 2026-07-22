@@ -66,6 +66,8 @@ func (m *CommandPaletteModel) renderMatchInfo(filtered filteredPaletteItem) stri
 		fieldName = "tag"
 	case MatchFieldSection:
 		fieldName = "section"
+	case MatchFieldProjectSlug:
+		fieldName = "slug"
 	default:
 		return ""
 	}

@@ -472,6 +472,7 @@ func (m *AppModel) commandGroups() [][]Command {
 		m.attachmentCommands(),
 		m.focusViewCommands(),
 		m.focusBoardCommands(),
+		m.taskWorkspaceCommands(),
 		m.dailyReviewCommands(),
 		m.priorityViewCommands(),
 		m.inboxProcessorCommands(),

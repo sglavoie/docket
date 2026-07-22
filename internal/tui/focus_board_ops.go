@@ -63,11 +63,6 @@ func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 	}
 }
 
-// deleteItem deletes the task at cursor via the shared workflow pipeline.
-func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
-	return m, wfDeleteTask(m, m.runtime, m.configManager)
-}
-
 // taskOpsView implementation for FocusBoardModel.
 
 func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {

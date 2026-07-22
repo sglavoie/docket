@@ -264,12 +264,6 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 			project := m.project
 			return m, func() tea.Msg { return ShowKanbanMsg{Project: project} }
 		}),
-		keymap.Bind("X", "Deselect all (multi-select)", "Multi-select", func() (tea.Model, tea.Cmd) {
-			if m.multiSelectMode {
-				m.deselectAllVisible()
-			}
-			return m, nil
-		}),
 	})}
 }
 

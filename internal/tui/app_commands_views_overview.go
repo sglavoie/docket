@@ -539,17 +539,20 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 		{
 			Name:        "delete inbox task",
 			Description: "Delete the current inbox task (asks for confirmation)",
-			Shortcut:    "tD",
+			Shortcut:    "X",
 			Category:    CategoryActions,
 			Views:       bothViews,
 			Aliases:     []string{"remove inbox task", "trash inbox task"},
 			Handler: func() tea.Msg {
-				c, confirm := m.activeInboxCore()
-				if c == nil || confirm == nil {
+				c, _ := m.activeInboxCore()
+				if c == nil {
 					return nil
 				}
-				inboxDeletePrompt(c, confirm)
-				return nil
+				cmd := c.requestDelete()
+				if cmd == nil {
+					return nil
+				}
+				return cmd()
 			},
 		},
 	}

@@ -73,7 +73,7 @@ func TestCommandRegistry_CrossProjectOutlinerPaletteParity(t *testing.T) {
 		{"new task (with template picker)", "tN"},
 		{"create linked subtask", "cs"},
 		// Copy / mutation.
-		{"delete task", "tD"},
+		{"delete task", "X"},
 		{"copy title", "y"},
 		{"copy details", "Y"},
 		{"copy with description", "ctrl+y"},

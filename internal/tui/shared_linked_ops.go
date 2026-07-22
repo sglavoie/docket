@@ -100,7 +100,7 @@ func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Proje
 
 // handleTaskActionPrefixKey handles the "t" prefix keys that need task/project
 // and produce identical messages across ProjectTree and Outliner for single-task
-// paths: tn/tN (create), ts (section picker), tt (tag selector), tD (delete).
+// paths: tn/tN (create), ts (section picker), tt (tag selector).
 // focusedTask is the subtree focus task (may be nil), used as parent for tn/tN.
 // getMultiTasks returns selected tasks when in multi-select mode (nil if not).
 // Returns (handled, cmd).

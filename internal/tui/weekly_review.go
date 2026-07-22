@@ -144,6 +144,9 @@ func NewWeeklyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *We
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
+	// Uppercase-X deletion now routes through the shell-owned canonical
+	// TaskDeleteRequestedMsg confirmation, so the only view-local modal remaining
+	// is the weekly-review summary overlay.
 	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
 		{
 			Active: func() bool { return m.showingSummary },
@@ -153,20 +156,6 @@ func NewWeeklyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *We
 				}
 				m.showingSummary = false
 				return m, nil, true
-			},
-		},
-		{
-			Active: func() bool { return m.confirm.IsActive() },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				if confirmed, handled := m.HandleConfirmKey(key); handled {
-					if confirmed {
-						cmd := wfDeleteTask(m, m.runtime, m.configManager)
-						m.trackMutation("delete")
-						return m, cmd, true
-					}
-					return m, nil, true
-				}
-				return nil, nil, false
 			},
 		},
 	}

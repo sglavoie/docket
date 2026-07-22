@@ -175,14 +175,15 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 // projectFocusTaskKeymapDeps builds the standard task-action deps for Project
 // Focus. Every non-overridden default (status, priority, due-date, snooze,
 // section, mark-done, pin, dim) routes through the coordinator-backed wf*
-// helpers; DeleteTask is intentionally a no-op for this view.
+// helpers; uppercase-X delete emits the canonical, shell-owned request for the
+// cursor task (Project Focus exposes no multi-selection).
 func (m *ProjectFocusViewModel) projectFocusTaskKeymapDeps(hasItem func() bool) TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:    m,
 		HasItem: hasItem,
+		Origin:  ViewProjectFocusView,
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
 			return m, helpCmd(ViewProjectFocusView, "Project Focus Queue", m.GetHelpItems())
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) { return m, nil },
 	}
 }

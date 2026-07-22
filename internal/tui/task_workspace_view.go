@@ -432,6 +432,13 @@ func (m *TaskWorkspaceView) handleAction(action TaskWorkspaceAction) tea.Cmd { /
 		})
 	case WorkspaceActionComplete:
 		return m.controller.Transition(models.StateDone)
+	case WorkspaceActionDelete:
+		refs := m.selectedTaskRefs()
+		if len(refs) == 0 {
+			return nil
+		}
+		origin := taskWorkspacePresentation(m.controller.State.RouteParams())
+		return func() tea.Msg { return TaskDeleteRequestedMsg{Refs: refs, Origin: origin} }
 	case WorkspaceActionState:
 		return m.itemCommand(func(item TaskWorkspaceItem) tea.Msg {
 			return ShowSectionPickerMsg{Task: item.Task, Project: item.Project}
@@ -1119,10 +1126,23 @@ func (m *TaskWorkspaceView) StatusBarLabel() string {
 	return fmt.Sprintf("Task Workspace · %s", m.controller.State.Focus)
 }
 func (m *TaskWorkspaceView) SupportsHelpShortcut() bool { return true }
+
+// CommandContext exposes the live workspace's typed command context so the
+// palette enables the same capability-scoped grammar that direct keys and help
+// advertise. The presentation capability and View are merged in so the mature
+// renderer's presentation-scoped commands (e.g. Outliner task operations) stay
+// reachable alongside the typed Task Workspace catalog.
+func (m *TaskWorkspaceView) CommandContext() CommandContext {
+	ctx := m.controller.State.CommandContext(m.snapshot)
+	presentation := taskWorkspacePresentation(m.controller.State.RouteParams())
+	ctx.View = presentation
+	ctx.Capabilities.Add(presentationCapability(presentation))
+	return ctx
+}
 func (m *TaskWorkspaceView) ContextualFooter() (StatusBarFooterSpec, bool) {
-	left := "j/k move · enter detail · space select · / search · v view · ? help"
+	left := "j/k move · enter detail · space select · X delete · / search · v view · ? help"
 	if m.controller.State.Layout == WorkspaceBoard {
-		left = "j/k cards · h/l columns · K/J move card · v view · ? help"
+		left = "j/k cards · h/l columns · K/J move card · X delete · v view · ? help"
 	}
 	return StatusBarFooterSpec{
 		Left:  left,

@@ -118,8 +118,11 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-// peekItem opens a task Peek above the palette without discarding the palette
-// or its query. A following Esc therefore returns to the exact search result.
+// peekItem opens the in-app task Peek overlay above the palette without
+// discarding the palette or its query. It emits PalettePeekRequestMsg (not a
+// CommandPaletteExecuteMsg) so the AppModel activates its own Peek overlay while
+// leaving the palette on the view stack; a following Esc dismisses Peek and
+// returns to the exact search result, cursor, and selection state.
 func (m *CommandPaletteModel) peekItem(item PaletteItem) (tea.Model, tea.Cmd) {
 	if item.Category != ItemCategoryTasks || item.Task == nil || item.Project == nil {
 		return m, nil
@@ -130,7 +133,8 @@ func (m *CommandPaletteModel) peekItem(item PaletteItem) (tea.Model, tea.Cmd) {
 		m.persistRecentSelections()
 	}
 	task := item.Task
+	project := item.Project
 	return m, func() tea.Msg {
-		return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
+		return PalettePeekRequestMsg{Task: task, Project: project}
 	}
 }

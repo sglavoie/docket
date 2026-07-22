@@ -296,14 +296,19 @@ func TestTaskPrefixGroup(t *testing.T) {
 	if pn.Key != "t" {
 		t.Errorf("TaskPrefixGroup: want key 't', got %q", pn.Key)
 	}
-	if len(pn.Children) != 16 {
-		t.Errorf("TaskPrefixGroup: want 16 children, got %d", len(pn.Children))
+	if len(pn.Children) != 15 {
+		t.Errorf("TaskPrefixGroup: want 15 children, got %d", len(pn.Children))
 	}
 	keys := childBindingKeys(pn.Children)
-	for _, k := range []string{"n", "N", "r", "s", "o", "p", "h", "t", "c", "a", "l", "e", "m", "d", "P", "D"} {
+	for _, k := range []string{"n", "N", "r", "s", "o", "p", "h", "t", "c", "a", "l", "e", "m", "d", "P"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("TaskPrefixGroup: missing key %q", k)
 		}
+	}
+	// Task deletion migrated off the "t" prefix to the uppercase-X grammar in a
+	// prior session; "D" must no longer be a "t"-prefix child.
+	if slices.Contains(keys, "D") {
+		t.Errorf("TaskPrefixGroup: 'D' delete child should have been removed (uppercase-X is canonical delete)")
 	}
 }
 

@@ -58,7 +58,7 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 		return
 	}
 
-	m.setStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
+	m.setStatus("Multi-select: Space=toggle, a=all, A=deselect, X=delete, v/Esc=exit")
 }
 
 // selectAllVisible adds all currently visible rows to the selection.

@@ -106,6 +106,7 @@ const (
 	WorkspaceActionAdd           TaskWorkspaceAction = "add"
 	WorkspaceActionEdit          TaskWorkspaceAction = "edit"
 	WorkspaceActionComplete      TaskWorkspaceAction = "complete"
+	WorkspaceActionDelete        TaskWorkspaceAction = "delete"
 	WorkspaceActionState         TaskWorkspaceAction = "state"
 	WorkspaceActionPin           TaskWorkspaceAction = "pin"
 	WorkspaceActionPriority      TaskWorkspaceAction = "priority"
@@ -166,6 +167,7 @@ func TaskWorkspaceBindingCatalog() []TaskWorkspaceBinding {
 		taskWorkspaceBinding("a", WorkspaceActionAdd, "Add task", "Mutation", CapabilityTaskWorkspace, CapabilityWorkspaceMutation),
 		taskWorkspaceBinding("e", WorkspaceActionEdit, "Edit task", "Mutation", task...),
 		taskWorkspaceBinding("x", WorkspaceActionComplete, "Complete task", "Mutation", task...),
+		taskWorkspaceBinding("X", WorkspaceActionDelete, "Delete task", "Mutation", task...),
 		taskWorkspaceBinding("s", WorkspaceActionState, "Change state", "Mutation", task...),
 		taskWorkspaceBinding("p", WorkspaceActionPin, "Toggle pin", "Mutation", task...),
 		taskWorkspaceBinding("!", WorkspaceActionPriority, "Change priority", "Mutation", task...),
@@ -220,8 +222,8 @@ func TaskWorkspaceCommands(handler func(TaskWorkspaceAction) tea.Msg) []Command 
 		seen[binding.Action] = struct{}{}
 		action := binding.Action
 		commands = append(commands, Command{
-			OperationID:          OperationID("tui.workspace." + string(action)),
-			Name:                 binding.Description,
+			OperationID:          operationIDForName("Task Workspace " + binding.Description),
+			Name:                 "Task Workspace " + binding.Description,
 			Description:          binding.Description + " in Task Workspace",
 			Shortcut:             binding.Key,
 			Category:             CategoryTasks,

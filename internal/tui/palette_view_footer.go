@@ -37,10 +37,19 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 				total++
 			}
 		}
-		return fmt.Sprintf("%d items", total)
+		return m.decorateSubtitle(fmt.Sprintf("%d items", total))
 	}
 
-	return strings.Join(parts, " · ")
+	return m.decorateSubtitle(strings.Join(parts, " · "))
+}
+
+// decorateSubtitle appends a "showing all" marker while transient show-all is
+// active on an empty query, so the count reflects the expanded discovery set.
+func (m *CommandPaletteModel) decorateSubtitle(base string) string {
+	if m.showAll && strings.TrimSpace(m.searchInput.Value()) == "" {
+		return base + " · showing all"
+	}
+	return base
 }
 
 // buildFooter constructs the footer text with navigation hints and category counts.
@@ -82,16 +91,20 @@ func (m *CommandPaletteModel) buildFooter() string {
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
-		return "Type to search · ↑↓ navigate · Enter open · Shift+Enter Peek · Esc close"
+		showAllHint := "^A show all"
+		if m.showAll {
+			showAllHint = "^A show less"
+		}
+		return fmt.Sprintf("Type to search · ↑↓/^J^K navigate · Enter open · Shift+Enter Peek · %s · Esc close", showAllHint)
 	}
 
-	hints := "↑↓ · Enter · Shift+Enter · Space select · Tab actions · Esc"
+	hints := "↑↓/^J^K · Enter · Shift+Enter · Space select · Tab actions · Esc"
 	return fmt.Sprintf("%s | %s", hints, countSummary)
 }
 
 // buildActionModeFooter builds a compact footer for action mode.
 func (m *CommandPaletteModel) buildActionModeFooter() string {
-	return "↑↓ navigate · Enter choose · Tab/Esc back"
+	return "↑↓/^J^K navigate · Enter choose · Tab/Esc back"
 }
 
 // getContextualHint returns a context-aware hint based on current palette state.
@@ -127,7 +140,10 @@ func (m *CommandPaletteModel) getContextualHint() string {
 	}
 
 	if query == "" {
-		return "Tip: Type to search commands and entities, or use a category prefix"
+		if m.showAll {
+			return "Tip: Showing all commands and entities · Ctrl+A collapses back to suggestions"
+		}
+		return "Tip: Type to search, use a category prefix, or Ctrl+A to show everything"
 	}
 
 	categoryFilter, _ := m.parseQueryPrefix(query)

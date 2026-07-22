@@ -263,6 +263,13 @@ type BatchTransactionResultMsg struct {
 	// planning refs, which ride the delete transaction as a config artifact. Nil
 	// for non-delete mutations.
 	RemovedTaskIDs []string
+	// DeleteRequestToken correlates a committed canonical delete with the Inbox /
+	// Weekly Review post-commit bookkeeping it armed. Only the batch result whose
+	// token matches the armed request consumes that in-flight state, so an
+	// unrelated batch that commits first can never strand or falsely credit it.
+	// Zero for every non-delete batch (and for deletes that armed no bookkeeping);
+	// the correlation guards ignore zero.
+	DeleteRequestToken uint64
 }
 
 // finalizeBatchResult decorates a coordinator batch command with the shell-side
@@ -287,6 +294,30 @@ func finalizeBatchResult(cmd tea.Cmd, clearIDs []string, summaryOverride string)
 			batch.Summary = summaryOverride
 		}
 		return batch
+	}
+}
+
+// stampDeleteRequestToken tags the canonical delete command's outcome with the
+// request token that armed the Inbox / Weekly Review post-commit bookkeeping, so
+// only the exact result or error this request produced consumes that in-flight
+// state. A committed BatchTransactionResultMsg and a rejecting TransactionErrorMsg
+// both carry the token; any other message (and a nil command) passes through
+// untouched, leaving the correlation guards to ignore the zero token.
+func stampDeleteRequestToken(cmd tea.Cmd, token uint64) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch msg := cmd().(type) {
+		case BatchTransactionResultMsg:
+			msg.DeleteRequestToken = token
+			return msg
+		case TransactionErrorMsg:
+			msg.DeleteRequestToken = token
+			return msg
+		default:
+			return msg
+		}
 	}
 }
 

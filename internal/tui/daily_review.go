@@ -86,23 +86,9 @@ func NewDailyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *Dai
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
-		{
-			Active: func() bool { return m.confirm.IsActive() },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				if confirmed, handled := m.HandleConfirmKey(key); handled {
-					if confirmed {
-						// Delete through the coordinator-backed workflow path (folds the
-						// durable planning-ref cleanup into the same transaction); the shell
-						// reloads Daily Review from the async BatchTransactionResultMsg.
-						return m, wfDeleteTask(m, m.getRuntime(), m.getConfigManager()), true
-					}
-					return m, nil, true
-				}
-				return nil, nil, false
-			},
-		},
-	}
+	// Uppercase-X deletion now routes through the shell-owned canonical
+	// TaskDeleteRequestedMsg confirmation, so Daily Review keeps no view-local
+	// delete confirm modal.
 	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadTasks()
 	return m

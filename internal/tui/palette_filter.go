@@ -70,9 +70,11 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 
 	// An empty palette is intentionally command-only and bounded: up to six
 	// recent commands followed by up to six contextual commands. Entities enter
-	// the result set only after the user types a query or category prefix.
+	// the result set only after the user types a query or category prefix — or
+	// while transient show-all (Ctrl+A) is active, which lists every currently
+	// available command and entity sorted by the category order.
 	if searchQuery == "" {
-		if categoryFilter == "" {
+		if categoryFilter == "" && !m.showAll {
 			m.filteredItems = m.buildEmptyPaletteItems()
 			m.restoreCursorPosition()
 			return

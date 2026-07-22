@@ -402,7 +402,21 @@ func TestCloseMessageReportsAccurateCounts(t *testing.T) {
 	}
 }
 
-func TestExecuteDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
+// simulateCommittedDelete mimics the shell-owned deletion transaction: it removes
+// the task from committed project data (what reloadProjectByID/loadAllInboxTasks
+// observe post-commit) so a subsequent rebuildTasks compacts the queue, then
+// drives the processor's post-commit bookkeeping.
+func simulateCommittedDelete(c *inboxCore, project *models.Project, taskID string) tea.Cmd {
+	for i, t := range project.Tasks {
+		if t.ID == taskID {
+			project.Tasks = append(project.Tasks[:i], project.Tasks[i+1:]...)
+			break
+		}
+	}
+	return c.applyCommittedDelete(taskID)
+}
+
+func TestApplyCommittedDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
 	c, backend, project := newSession4Core(t)
 
 	deletedID := project.Tasks[2].ID
@@ -410,32 +424,31 @@ func TestExecuteDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
 	c.skippedIDs[project.Tasks[1].ID] = true
 	c.currentIndex = 2
 
-	cmd := c.executeDelete()
-	if cmd == nil {
-		t.Fatal("executeDelete should return save and close commands")
+	// The user presses x/X: requestDelete captures the pending task and the
+	// post-delete focus target against the intact queue, and emits the canonical
+	// request (no processor mutation yet).
+	reqCmd := c.requestDelete()
+	if reqCmd == nil {
+		t.Fatal("requestDelete should return a command emitting TaskDeleteRequestedMsg")
+	}
+	if _, ok := reqCmd().(TaskDeleteRequestedMsg); !ok {
+		t.Fatalf("requestDelete emitted %T, want TaskDeleteRequestedMsg", reqCmd())
+	}
+	if c.processedIDs[deletedID] {
+		t.Fatal("request must not mark the task processed before the commit")
 	}
 
-	if project.GetTaskByID(deletedID) != nil {
-		t.Fatal("deleted task should be removed from project data synchronously")
+	// The shell commits: the task leaves project data and the processor applies
+	// its post-commit bookkeeping.
+	cmd := simulateCommittedDelete(c, project, deletedID)
+	if cmd == nil {
+		t.Fatal("applyCommittedDelete should return a close command when no unprocessed tasks remain")
 	}
 	if !c.processedIDs[deletedID] {
-		t.Fatal("deleted task should be marked processed")
-	}
-	if backend.lastSavedProject != project {
-		t.Fatal("delete should capture a save command for the deleted task's project")
+		t.Fatal("deleted task should be marked processed after the commit")
 	}
 
-	msgs := collectCommandMessages(cmd)
-	var sawSave bool
-	for _, msg := range msgs {
-		if _, ok := msg.(InboxProjectSavedMsg); ok {
-			sawSave = true
-			break
-		}
-	}
-	if !sawSave {
-		t.Fatalf("delete command should include a save message, got %T (%v)", msgs, msgs)
-	}
+	cmd() // fire the close command
 	if !backend.closeMsgFired {
 		t.Fatal("delete should close the processor when no unprocessed tasks remain")
 	}
@@ -447,42 +460,61 @@ func TestExecuteDeleteFinalItemClosesWithProcessedCount(t *testing.T) {
 	}
 }
 
-func TestExecuteDeleteAdvancesWhenUnprocessedTaskRemains(t *testing.T) {
+func TestApplyCommittedDeleteAdvancesWhenUnprocessedTaskRemains(t *testing.T) {
 	c, backend, project := newSession4Core(t)
 
 	deletedID := project.Tasks[0].ID
 	nextID := project.Tasks[1].ID
 	c.currentIndex = 0
 
-	cmd := c.executeDelete()
-	if cmd == nil {
-		t.Fatal("executeDelete should return a save command")
+	if c.requestDelete() == nil {
+		t.Fatal("requestDelete should return a command")
 	}
-	if project.GetTaskByID(deletedID) != nil {
-		t.Fatal("deleted task should be removed from project data synchronously")
+
+	cmd := simulateCommittedDelete(c, project, deletedID)
+	if cmd != nil {
+		t.Fatalf("applyCommittedDelete should not close while an unprocessed task remains, got %v", cmd)
 	}
 	if !c.processedIDs[deletedID] {
-		t.Fatal("deleted task should be marked processed")
+		t.Fatal("deleted task should be marked processed after the commit")
 	}
 	if backend.closeMsgFired {
 		t.Fatal("delete should not close while an unprocessed task remains")
 	}
-	if c.pendingFocusID != nextID {
-		t.Fatalf("pending focus ID: got %q, want %q", c.pendingFocusID, nextID)
-	}
 
-	msgs := collectCommandMessages(cmd)
-	for _, msg := range msgs {
-		if _, ok := msg.(CloseInboxProcessorMsg); ok {
-			t.Fatalf("delete command should not include close msg while tasks remain: %T", msg)
-		}
-	}
-
-	c.backend.rebuildTasks()
-	c.realignCurrentIndex()
+	// The cursor lands on the natural next task (B), matching the legacy delete.
 	task, _ := c.currentTaskRef()
 	if task == nil || task.ID != nextID {
-		t.Fatalf("after rebuild, current task ID = %v, want %q", task, nextID)
+		t.Fatalf("after commit, current task ID = %v, want %q", task, nextID)
+	}
+	if c.pendingFocusID != "" {
+		t.Errorf("pendingFocusID should be consumed by realign, got %q", c.pendingFocusID)
+	}
+}
+
+// TestApplyCommittedDeleteFailureLeavesTaskSelected verifies that when no commit
+// arrives (transaction rejected), the processor's queue and cursor are untouched:
+// requestDelete records intent but applyCommittedDelete is never invoked.
+func TestApplyCommittedDeleteFailureLeavesTaskSelected(t *testing.T) {
+	c, backend, project := newSession4Core(t)
+	_ = backend
+
+	c.currentIndex = 1
+	target := project.Tasks[1]
+
+	if c.requestDelete() == nil {
+		t.Fatal("requestDelete should return a command")
+	}
+	// No commit: nothing else runs. The task is still present and selected, and
+	// nothing was marked processed.
+	if len(c.processedIDs) != 0 {
+		t.Errorf("no task should be processed on a rejected delete, got %v", c.processedIDs)
+	}
+	if got, _ := c.currentTaskRef(); got == nil || got.ID != target.ID {
+		t.Errorf("cursor should stay on the target task, got %v", got)
+	}
+	if project.GetTaskByID(target.ID) == nil {
+		t.Error("target task should remain in project data on a rejected delete")
 	}
 }
 

@@ -87,12 +87,13 @@ func TestHandleBatchTransactionResultClearsSelectionAndRepairsRecentVisits(t *te
 	}
 }
 
-// TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits exercises the full
-// migrated All Tasks bulk delete: durable planning refs ride the delete
-// transaction as a config artifact (cleaned before commit), the tasks leave disk,
-// the shell repairs machine-local recent visits and clears the selection, and the
-// durable cleanup is durable on disk.
-func TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) {
+// TestAllTasksCanonicalDeleteFoldsDurableRefsAndRepairsRecentVisits exercises the
+// full canonical All Tasks bulk delete: uppercase X emits the shell-owned
+// TaskDeleteRequestedMsg for the active selection, the shell confirmation folds
+// the durable planning refs into the delete transaction as a config artifact
+// (cleaned before commit), the tasks leave disk, the shell repairs machine-local
+// recent visits and clears the selection, and the durable cleanup persists on disk.
+func TestAllTasksCanonicalDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) {
 	a := seedTask(t, 1, "Doomed A", models.StateReady)
 	b := seedTask(t, 2, "Doomed B", models.StateReady)
 	env, features := newSecondaryEnv(t, "atbulkdel", a, b)
@@ -121,7 +122,22 @@ func TestAllTasksBulkDeleteFoldsDurableRefsAndRepairsRecentVisits(t *testing.T) 
 	m.allTasksView = atv
 	m.views.Register(ViewAllTasks, atv)
 
-	_, cmd := atv.handleBulkDelete()
+	// Uppercase X emits the canonical request for the full selection and mutates
+	// nothing; the shell arms its own confirmation, then commits on y.
+	action := findSharedTaskKeymapAction(t, atv.buildKeyMap(), "X")
+	_, reqCmd := action()
+	reqMsg := deleteRequestFromCmd(t, reqCmd)
+	if reqMsg.Origin != ViewAllTasks {
+		t.Errorf("origin = %v, want ViewAllTasks", reqMsg.Origin)
+	}
+	m.handleTaskDeleteRequested(reqMsg)
+	if got := m.taskDeleteConfirm.Prompt(); got != "Delete 2 tasks?" {
+		t.Errorf("prompt = %q, want %q", got, "Delete 2 tasks?")
+	}
+	handled, cmd := m.handleTaskDeleteConfirmKey("y")
+	if !handled || cmd == nil {
+		t.Fatal("y should confirm and dispatch the delete transaction")
+	}
 
 	// Building the checked artifact must not mutate the cached runtime snapshot
 	// before the task transaction actually commits.

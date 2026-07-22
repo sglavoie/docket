@@ -141,6 +141,7 @@ type taskItemPanelActions struct {
 	showIndexedDeleteConfirm func()
 	toggleResolved           func() tea.Cmd
 	copyText                 func() tea.Cmd
+	copyAllText              func() tea.Cmd
 	expandSelection          func()
 	close                    func() tea.Msg
 }
@@ -179,6 +180,8 @@ func (a taskItemPanelActions) handleNormalKey(state *InteractiveViewState, key s
 		if a.hasSelection() {
 			return a.copyText()
 		}
+	case "Y":
+		return a.copyAllText()
 	case "enter":
 		if a.hasSelection() {
 			a.expandSelection()
@@ -264,6 +267,9 @@ func buildTaskItemPanelKeyMap(viewName string, actions taskItemPanelActions, ext
 				return actions.model, actions.copyText()
 			}
 			return actions.model, nil
+		}, keymap.WithGate(func() bool { return !inInputMode() })),
+		keymap.Bind("Y", "Copy all as Markdown", "Actions", func() (tea.Model, tea.Cmd) {
+			return actions.model, actions.copyAllText()
 		}, keymap.WithGate(func() bool { return !inInputMode() })),
 		keymap.Bind("enter", fmt.Sprintf("Expand %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
 			if actions.hasSelection() {
@@ -351,7 +357,28 @@ func executeTaskItemToggleMutation(cfg taskItemToggleMutation) tea.Cmd {
 	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit((*cfg.task).ID, cfg.cursor), cfg.success)
 }
 
-func copyTextToClipboard(text string) error {
+// formatNumberedMarkdownList renders items as a numbered Markdown list in
+// display order (1-based). Multiline item text keeps its continuation lines,
+// indented beneath the "N. " marker so the list stays readable when pasted.
+func formatNumberedMarkdownList(items []string) string {
+	var out []string
+	for i, item := range items {
+		marker := fmt.Sprintf("%d. ", i+1)
+		indent := strings.Repeat(" ", len(marker))
+		for j, line := range strings.Split(item, "\n") {
+			if j == 0 {
+				out = append(out, marker+line)
+			} else {
+				out = append(out, indent+line)
+			}
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+// copyTextToClipboard is a package var so tests can inject clipboard success,
+// unsupported, and error paths without shelling out to the platform tool.
+var copyTextToClipboard = func(text string) error {
 	var clipCmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":

@@ -109,3 +109,23 @@ func (m *MachineState) GetRecentPaletteItems() []RecentPaletteItem {
 func (m *MachineState) SetRecentPaletteItems(items []RecentPaletteItem) {
 	m.RecentPaletteItems = items
 }
+
+// --- MachineState: Home layout ---------------------------------------------
+
+// GetHomeProjectsHeightPct returns the machine-local Home Projects/Attention
+// split percentage. It defaults to DefaultHomeProjectsHeightPct for nil state or
+// an unset value and clamps any persisted value into
+// [MinHomeProjectsHeightPct, MaxHomeProjectsHeightPct] before a renderer uses it.
+func (m *MachineState) GetHomeProjectsHeightPct() int {
+	if m == nil || m.HomeProjectsHeightPct == nil {
+		return DefaultHomeProjectsHeightPct
+	}
+	switch v := *m.HomeProjectsHeightPct; {
+	case v < MinHomeProjectsHeightPct:
+		return MinHomeProjectsHeightPct
+	case v > MaxHomeProjectsHeightPct:
+		return MaxHomeProjectsHeightPct
+	default:
+		return v
+	}
+}

@@ -259,7 +259,7 @@ func TestDashboardProjectListScrollbarRespectsVisualWidthWithEmoji(t *testing.T)
 	cfg := newTestConfig()
 	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
 	m.SetSize(28, 10)
-	rendered := m.renderProjectList(projects, 0, 28, 0)
+	rendered := m.renderProjectList(projects, 6, 28)
 	assertRenderedLinesWithinVisualWidth(t, "dashboard project list scrollbar", rendered, 24)
 }
 
@@ -325,7 +325,7 @@ func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
 	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
 	cardWidth := DashboardNarrowModeWidth - 4
 	m.SetSize(cardWidth+6, 30)
-	rendered := m.renderProjectList(projects, 0, cardWidth, 0)
+	rendered := m.renderProjectList(projects, 12, cardWidth)
 	assertRenderedLinesWithinVisualWidth(t, "dashboard project list narrow mode", rendered, cardWidth)
 }
 

@@ -79,6 +79,8 @@ func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 			setErr(m.validateSectionLimits())
 		case 13:
 			setErr(m.validateResumeCardLimit())
+		case 14:
+			setErr(m.validateHomeProjectsHeightPct())
 		}
 	case tabAttachments:
 		switch local {

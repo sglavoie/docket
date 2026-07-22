@@ -37,6 +37,7 @@ func (m *TaskDecisionsModel) panelActions() taskItemPanelActions {
 		},
 		toggleResolved: m.toggleResolved,
 		copyText:       m.copyDecisionText,
+		copyAllText:    m.copyAllDecisionsText,
 		expandSelection: func() {
 			m.expandedView = true
 		},

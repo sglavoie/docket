@@ -185,6 +185,14 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.err = msg.Err
+		// A rejected transaction must leave the inbox queue untouched: drop the
+		// armed post-commit bookkeeping so the same task stays selected and
+		// unprocessed, and likewise drop any armed Weekly Review deletion accounting
+		// so a failed delete stays uncounted. Correlate on the request token so only
+		// THIS delete's rejection clears its own state — an unrelated transaction
+		// error (token 0 or a different delete's token) leaves an in-flight Inbox or
+		// Weekly Review delete intact.
+		m.clearPendingDeleteBookkeeping(msg.DeleteRequestToken)
 		return true, statusTimeout(5 * time.Second)
 	default:
 		return false, nil
@@ -260,7 +268,20 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	if m.dashboard != nil {
 		m.dashboard.Refresh()
 	}
-	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
+	// Credit the Weekly Review completion summary for a committed delete it
+	// originated. A no-op for every other origin (the count is armed only for a
+	// Weekly Review-origin delete in confirmTaskDelete) and for an unrelated batch
+	// whose token does not match the armed request.
+	m.applyPendingWeeklyReviewDelete(msg.DeleteRequestToken, msg.RemovedTaskIDs)
+	saveCmd := m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
+	// Apply inbox processor bookkeeping only after the committed views have been
+	// refreshed above (so the queue rebuild reads committed project data). A
+	// no-op for non-inbox origins and for a batch whose token does not match the
+	// armed request.
+	if inboxCmd := m.applyPendingInboxDelete(msg.DeleteRequestToken, msg.RemovedTaskIDs); inboxCmd != nil {
+		return tea.Batch(saveCmd, inboxCmd)
+	}
+	return saveCmd
 }
 
 func (m *AppModel) refreshLoadedTaskWorkspace() {

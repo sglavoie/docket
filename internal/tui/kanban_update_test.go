@@ -611,7 +611,7 @@ func TestKanbanBulkKeymapActionsMutateSelectedCardsOnly(t *testing.T) {
 func TestKanbanBulkDeleteRejectsSelectedCards(t *testing.T) {
 	fixture := newKanbanBulkActionFixture(t)
 
-	model, cmd := runKanbanKeymapAction(t, fixture.model, "t", "D")
+	model, cmd := runKanbanKeymapAction(t, fixture.model, "X")
 	fixture.model = model
 	if cmd != nil {
 		t.Fatalf("bulk delete should issue no command, got %T", cmd)

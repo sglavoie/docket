@@ -45,7 +45,7 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 
 	selectedLine := findRenderedLineContaining(t, rendered, "#42")
 	selectedPlain := ansi.Strip(selectedLine)
-	assertNotContains(t, selectedPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
+	assertContains(t, selectedPlain, "[alpha]", "per-task project badge restored in cross-project All perspective")
 	assertContains(t, selectedPlain, "Selected child carries rendered metadata clearly", "selected title")
 	assertContains(t, selectedPlain, "#42", "selected short ID metadata")
 	assertNotContains(t, selectedPlain, "#ops #today", "tag metadata moves out of dense row into the metadata strip")
@@ -218,7 +218,7 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 	parentPlain := ansi.Strip(parentLine)
 	assertContains(t, parentPlain, "└────", "section-local parent tree prefix")
 	assertNotContains(t, parentPlain, IconExpanded, "cross-section child does not create a fold indicator")
-	assertNotContains(t, parentPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
+	assertContains(t, parentPlain, "[alpha]", "per-task project badge restored in cross-project All perspective")
 
 	wideChildLine := m.renderOutlinerTaskRow(m.rows[childIdx], true, wideRowWidth, wideRowWidth, childIdx, nil)
 	wideChildPlain := ansi.Strip(wideChildLine)
@@ -228,7 +228,7 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 	if childPos, parentPos := strings.Index(wideChildPlain, selectedTask.Title), strings.Index(wideChildPlain, "Alpha parent"); childPos < 0 || parentPos <= childPos {
 		t.Fatalf("promoted row labels are not child-first: %q", wideChildPlain)
 	}
-	assertNotContains(t, wideChildPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
+	assertContains(t, wideChildPlain, "[alpha]", "per-task project badge restored in cross-project All perspective")
 	assertContains(t, wideChildPlain, "#42", "child short ID metadata")
 	assertNotContains(t, wideChildPlain, "#ops #today", "dense rows no longer carry tag metadata inline")
 	if got := lipgloss.Width(wideChildLine); got != wideRowWidth {
@@ -510,7 +510,7 @@ func assertNotContains(t *testing.T, got, want, label string) {
 // TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders verifies that
 // non-All cross-project perspectives emit one synthetic project sub-header
 // per visible project group (mirroring the All-perspective shape) and no
-// GTD section headers. Inline `[slug]` badge suppression on task rows is a
+// GTD section headers. Inline `[slug]` badge rendering on task rows is a
 // rendering concern covered separately.
 func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
@@ -553,14 +553,13 @@ func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 	assertContains(t, rendered, renderedProjectHeaderBadge(alpha), "non-All perspective renders bold project sub-header badge")
 	assertContains(t, rendered, renderedProjectHeaderBadge(beta), "non-All perspective renders bold project sub-header badge")
 
-	// The inline `[slug]` task-row badge must be suppressed in normal
-	// cross-project perspectives: project identity now lives on the bold
-	// project sub-header above each group, so repeating it on every task row
-	// would be visual noise.
+	// The inline `[slug]` task-row badge is rendered on every cross-project task
+	// row for per-row project identity, matching Planner. The bold project
+	// sub-header above each group still clusters rows visually; both cues coexist.
 	alphaTaskLine := ansi.Strip(findRenderedLineContaining(t, rendered, "Alpha active item"))
-	assertNotContains(t, alphaTaskLine, "[alpha]", "non-All perspective suppresses inline alpha task badge in favor of project sub-header")
+	assertContains(t, alphaTaskLine, "[alpha]", "non-All perspective renders inline alpha task badge")
 	betaTaskLine := ansi.Strip(findRenderedLineContaining(t, rendered, "Beta active item"))
-	assertNotContains(t, betaTaskLine, "[beta]", "non-All perspective suppresses inline beta task badge in favor of project sub-header")
+	assertContains(t, betaTaskLine, "[beta]", "non-All perspective renders inline beta task badge")
 }
 
 // TestCrossProjectPriorityModeOmitsProjectSubHeaders verifies that the

@@ -9,7 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // FocusTask is an alias for focus.FocusTask — the cross-project ordered task the
@@ -188,21 +187,6 @@ func NewFocusBoardModel(runtime *config.RuntimeState, manager *config.Manager, d
 		activePerspective:    PerspectiveInactive,
 	}
 	m.rebuildPlannerDispatcher()
-	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
-		{
-			Active: func() bool { return m.confirm.IsActive() },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				if confirmed, handled := m.HandleConfirmKey(key); handled {
-					if confirmed {
-						model, cmd := m.deleteItem()
-						return model, cmd, true
-					}
-					return m, nil, true
-				}
-				return nil, nil, false
-			},
-		},
-	}
 	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.InitSearchInput("Search...", 100, 40)
 	m.loadItems()

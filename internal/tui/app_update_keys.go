@@ -77,6 +77,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if handled, cmd := m.handleProjectArchiveConfirmKey(key); handled {
 			return true, cmd
 		}
+		if handled, cmd := m.handleTaskDeleteConfirmKey(key); handled {
+			return true, cmd
+		}
 		if handled, cmd := m.handleActiveKeyOverlay(msg); handled {
 			return true, cmd
 		}
@@ -103,6 +106,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	if handled, cmd := m.handleProjectArchiveConfirmKey(key); handled {
+		return true, cmd
+	}
+
+	if handled, cmd := m.handleTaskDeleteConfirmKey(key); handled {
 		return true, cmd
 	}
 
@@ -266,6 +273,29 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
 			return true, cmd
 		}
+	case "X":
+		// Uppercase X is canonical task deletion. Task Workspace and Planner route
+		// it through their own capability dispatchers; Task Detail has no item-level
+		// dispatcher for it, so the shell intercepts X across the Overview and every
+		// embedded tab and emits the canonical request. Armed confirmations, text
+		// inputs, pending prefixes, and modal overlays were already handled above,
+		// so a live text field or open picker never reaches here.
+		if !m.activeTaskDetail() {
+			break
+		}
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
+			break
+		}
+		task, project := m.taskDetail.getTaskRef()
+		if task == nil || project == nil {
+			break
+		}
+		return true, func() tea.Msg {
+			return TaskDeleteRequestedMsg{
+				Refs:   []TaskProjectRef{{Task: task, Project: project}},
+				Origin: ViewTaskDetail,
+			}
+		}
 	case "enter", "shift+enter":
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
 			break
@@ -318,14 +348,24 @@ func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
 		return nil
 	}
 	_, project := m.getCurrentCursorTaskAndProject()
+	return m.performGlobalTaskUndoRedoForProject(project, redo)
+}
+
+// performGlobalTaskUndoRedoForProject applies the shell-owned ledger-vs-legacy
+// restore selection for the cursor project. It is the single seam shared by the
+// direct u/ctrl+r keys (via handleGlobalTaskUndoRedo) and the Task Workspace /
+// Planner palette adapters (via shellOwnedPaletteAction), so palette undo/redo
+// cannot drift from the keyboard behavior.
+//
+// Application-service mutations commit to the durable workspace ledger, while a
+// few remaining paths (task archive) still record legacy per-project snapshots.
+// Restore through whichever backend holds the newer transaction so a committed
+// application mutation is always reachable and a stale legacy entry never
+// shadows it.
+func (m *AppModel) performGlobalTaskUndoRedoForProject(project *models.Project, redo bool) tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	// Application-service mutations commit to the durable workspace ledger, while a
-	// few remaining paths (task archive) still record legacy per-project snapshots.
-	// Restore through whichever backend holds the newer transaction so a committed
-	// application mutation is always reachable and a stale legacy entry never
-	// shadows it.
 	if m.workspaceLedgerRestoreIsNewest(project, redo) {
 		return m.handleLedgerTaskUndoRedo(redo)
 	}

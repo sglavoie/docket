@@ -8,9 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -158,37 +156,5 @@ func wfToggleDim(v workflowOpsView) tea.Cmd {
 	return v.taskItemCoordinator().ToggleDimmedWorkflow(task.ID, opts,
 		func(res app.TaskResult) string {
 			return fmt.Sprintf("Toggled dim on #%d", res.ShortID)
-		})
-}
-
-// wfDeleteTask deletes the cursor task's subtree through the coordinator, folding
-// the durable planning-ref cleanup (Focus Queue, Daily Plan, dismissals) into the
-// same transaction as a config artifact. Machine-local recent visits are repaired
-// by the shell after the commit (see handleBatchTransactionResult). cfg/mgr are the
-// shell's authoritative config so the in-memory and on-disk views agree once
-// committed.
-func wfDeleteTask(v workflowOpsView, runtime *config.RuntimeState, mgr *config.Manager) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	shortID := task.ShortID
-
-	var artifacts []storage.ArtifactChange
-	if runtime != nil && mgr != nil {
-		idsToDelete := collectDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
-		planning := clonePlanningState(runtime.Planning())
-		if planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
-			arts, err := planningDomainArtifact(mgr, planning)
-			if err != nil {
-				return func() tea.Msg { return ErrorMsg{Err: err} }
-			}
-			artifacts = arts
-		}
-	}
-
-	return v.taskItemCoordinator().DeleteTask(task.ID, artifacts,
-		func(app.DeleteResult) string {
-			return fmt.Sprintf("Deleted task #%d", shortID)
 		})
 }

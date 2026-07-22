@@ -152,21 +152,68 @@ func TestOutlinerCommands_Cross_NewTaskWithTemplate(t *testing.T) {
 	}
 }
 
-func TestOutlinerCommands_Cross_DeleteSetsTargetOnCrossOutliner(t *testing.T) {
-	app, _, _, crossTask := setupCrossPaletteApp(t)
+func TestOutlinerCommands_Cross_DeleteEmitsRequestOnCrossOutliner(t *testing.T) {
+	app, _, crossProj, crossTask := setupCrossPaletteApp(t)
 
 	cmd := findCommand(app.outlinerCommands(), "delete task")
 	if cmd == nil {
 		t.Fatal("expected to find 'delete task' command")
 	}
-	if result := cmd.Handler(); result != nil {
-		t.Errorf("expected nil (confirmation shown), got %T", result)
+	// Cross-project palette delete emits the canonical request targeting the
+	// cursor row's task and its owning project, tagged with the cross origin.
+	result := cmd.Handler()
+	msg, ok := result.(TaskDeleteRequestedMsg)
+	if !ok {
+		t.Fatalf("expected TaskDeleteRequestedMsg, got %T", result)
 	}
-	if app.crossOutliner.deleteTarget != crossTask {
-		t.Errorf("crossOutliner.deleteTarget: want cross task, got %v", app.crossOutliner.deleteTarget)
+	if msg.Origin != ViewCrossProjectOutliner {
+		t.Errorf("Origin = %v, want ViewCrossProjectOutliner", msg.Origin)
 	}
-	if app.outliner.deleteTarget != nil {
-		t.Errorf("single outliner.deleteTarget should not have been touched, got %v", app.outliner.deleteTarget)
+	if len(msg.Refs) != 1 {
+		t.Fatalf("expected 1 ref, got %d", len(msg.Refs))
+	}
+	if msg.Refs[0].Task != crossTask {
+		t.Errorf("ref task: want cross task, got %v", msg.Refs[0].Task)
+	}
+	if msg.Refs[0].Project != crossProj {
+		t.Errorf("ref project: want cross project, got %v", msg.Refs[0].Project)
+	}
+}
+
+// TestOutlinerUppercaseXCrossProjectMatchesPaletteDelete verifies keyboard and
+// palette deletion emit equivalent canonical requests (same task, project, and
+// cross origin) in cross-project mode.
+func TestOutlinerUppercaseXCrossProjectMatchesPaletteDelete(t *testing.T) {
+	app, _, crossProj, crossTask := setupCrossPaletteApp(t)
+
+	_, keyCmd := app.crossOutliner.handleKeyMsg(syntheticKey('X'))
+	if keyCmd == nil {
+		t.Fatal("expected command from uppercase-X keypress")
+	}
+	keyMsg, ok := keyCmd().(TaskDeleteRequestedMsg)
+	if !ok {
+		t.Fatalf("keyboard: expected TaskDeleteRequestedMsg, got %T", keyCmd())
+	}
+	if keyMsg.Origin != ViewCrossProjectOutliner {
+		t.Errorf("keyboard Origin = %v, want ViewCrossProjectOutliner", keyMsg.Origin)
+	}
+	if len(keyMsg.Refs) != 1 || keyMsg.Refs[0].Task != crossTask || keyMsg.Refs[0].Project != crossProj {
+		t.Fatalf("keyboard target mismatch: got %+v", keyMsg.Refs)
+	}
+
+	cmd := findCommand(app.outlinerCommands(), "delete task")
+	if cmd == nil {
+		t.Fatal("expected to find 'delete task' command")
+	}
+	palMsg, ok := cmd.Handler().(TaskDeleteRequestedMsg)
+	if !ok {
+		t.Fatalf("palette: expected TaskDeleteRequestedMsg, got %T", cmd.Handler())
+	}
+	if palMsg.Origin != keyMsg.Origin {
+		t.Errorf("origin mismatch: keyboard %v, palette %v", keyMsg.Origin, palMsg.Origin)
+	}
+	if len(palMsg.Refs) != 1 || palMsg.Refs[0].Task != crossTask || palMsg.Refs[0].Project != crossProj {
+		t.Fatalf("palette target mismatch: got %+v", palMsg.Refs)
 	}
 }
 
@@ -327,14 +374,14 @@ func TestOutlinerCommands_Cross_ResetSort(t *testing.T) {
 	}
 }
 
-func TestOutlinerCommands_DeleteShortcutIsTD(t *testing.T) {
+func TestOutlinerCommands_DeleteShortcutIsX(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	cmd := findCommand(app.outlinerCommands(), "delete task")
 	if cmd == nil {
 		t.Fatal("expected to find 'delete task' command")
 	}
-	if cmd.Shortcut != "tD" {
-		t.Errorf("Shortcut: want \"tD\", got %q", cmd.Shortcut)
+	if cmd.Shortcut != "X" {
+		t.Errorf("Shortcut: want \"X\", got %q", cmd.Shortcut)
 	}
 }
 

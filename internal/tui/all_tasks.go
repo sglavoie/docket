@@ -1,8 +1,6 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
@@ -146,24 +144,9 @@ func NewAllTasksViewModel(runtime *config.RuntimeState, mgr *config.Manager, opt
 	m.buildTabEntries()
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
-		{
-			Active: func() bool { return m.confirm.IsActive() },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				if confirmed, handled := m.HandleConfirmKey(key); handled {
-					if confirmed {
-						if m.multiSelectMode && m.SelectedCount() > 0 {
-							model, cmd := m.handleBulkDelete()
-							return model, cmd, true
-						}
-						return m, wfDeleteTask(m, m.runtime, m.configManager), true
-					}
-					return m, nil, true
-				}
-				return nil, nil, false
-			},
-		},
-	}
+	// Uppercase-X deletion (single or multi-select) now routes through the
+	// shell-owned canonical TaskDeleteRequestedMsg confirmation, so All Tasks keeps
+	// no view-local delete confirm modal that could understate the target set.
 	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadAllTasks()
 	return m

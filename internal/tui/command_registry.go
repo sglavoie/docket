@@ -12,12 +12,19 @@ import (
 // if they have non-overlapping view scopes (e.g., one for ProjectTree and one for Outliner).
 type CommandRegistry struct {
 	commands map[string][]Command
+	// operationIDs maps every non-empty OperationID to the display name that
+	// first claimed it. A stable operation identity may be reused only by the
+	// same logical command registered for a different view scope (same name);
+	// a different command reusing an identity is rejected. Empty OperationIDs
+	// are exempt (legacy commands that never adopted a stable identity).
+	operationIDs map[OperationID]string
 }
 
 // NewCommandRegistry creates a new command registry with an initialized empty map.
 func NewCommandRegistry() *CommandRegistry {
 	return &CommandRegistry{
-		commands: make(map[string][]Command),
+		commands:     make(map[string][]Command),
+		operationIDs: make(map[OperationID]string),
 	}
 }
 
@@ -41,7 +48,16 @@ func (r *CommandRegistry) Register(cmd Command) error {
 	if r.commands == nil {
 		r.commands = make(map[string][]Command)
 	}
+	if r.operationIDs == nil {
+		r.operationIDs = make(map[OperationID]string)
+	}
 	cmd = classifyCommand(cmd)
+
+	if cmd.OperationID != "" {
+		if owner, seen := r.operationIDs[cmd.OperationID]; seen && !strings.EqualFold(owner, cmd.Name) {
+			return fmt.Errorf("command operation ID already registered: %s (%s vs %s)", cmd.OperationID, owner, cmd.Name)
+		}
+	}
 
 	key := cmd.Name
 	existing := r.commands[key]
@@ -58,6 +74,9 @@ func (r *CommandRegistry) Register(cmd Command) error {
 		}
 	}
 	r.commands[key] = append(existing, cmd)
+	if cmd.OperationID != "" {
+		r.operationIDs[cmd.OperationID] = cmd.Name
+	}
 	return nil
 }
 

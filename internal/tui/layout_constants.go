@@ -42,10 +42,6 @@ const (
 	// pane can retain the dense tabular row without hiding project names.
 	DashboardNarrowModeWidth = 70
 
-	// DashboardMinVisibleProjects is the minimum number of project rows
-	// to display in the dashboard.
-	DashboardMinVisibleProjects = 3
-
 	// TreeHeaderOffset is the number of lines consumed by the tree view
 	// header chrome (title, view mode tabs, status stats, etc.).
 	// Filter/sort info is now inline on the title line, so no extra line needed.

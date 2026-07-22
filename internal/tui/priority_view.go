@@ -118,21 +118,9 @@ func NewPriorityViewModel(project *models.Project, runtime *config.RuntimeState,
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
-		{
-			Active: func() bool { return m.confirm.IsActive() },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				if confirmed, handled := m.HandleConfirmKey(key); handled {
-					if confirmed {
-						model, cmd := m.deleteTask()
-						return model, cmd, true
-					}
-					return m, nil, true
-				}
-				return nil, nil, false
-			},
-		},
-	}
+	// Uppercase-X deletion now routes through the shell-owned canonical
+	// TaskDeleteRequestedMsg confirmation, so Priority keeps no view-local delete
+	// confirm modal.
 	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.InitSearchInput("Search tasks...", 100, 30)
 	m.loadActionableTasks()

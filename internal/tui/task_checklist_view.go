@@ -56,7 +56,7 @@ func (m *TaskChecklistModel) renderEditMode(b *strings.Builder) tea.View {
 	applyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -66,7 +66,7 @@ func (m *TaskChecklistModel) renderAddMode(b *strings.Builder) tea.View {
 	applyThemedTextarea(&m.textInput)
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -139,6 +139,6 @@ func (m *TaskChecklistModel) renderChecklistItemEntry(index, maxLen int) string 
 
 func (m *TaskChecklistModel) renderChecklistHelp(b *strings.Builder) {
 	b.WriteString("\n")
-	helpText := "j/k: nav · J/K: reorder · Space: toggle · a: add · e: edit · E: external editor · d: delete · Esc: close"
+	helpText := "j/k: nav · J/K: reorder · Space/Enter: toggle · e: edit · a: add · E: external editor · d: delete · y: copy · Y: copy all · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 }

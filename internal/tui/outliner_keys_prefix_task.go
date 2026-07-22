@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -58,18 +56,6 @@ func (m *OutlinerModel) handleTaskPrefix(key string, cursorTask *models.Task) (t
 		// th → dim/undim
 		if key == "h" {
 			return m.crossToggleDimmed(row, proj)
-		}
-		// tD → delete
-		if key == "D" {
-			if task.IsRecurring() {
-				m.confirm.Show("delete-recurring",
-					fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
-						task.ShortID, task.Title))
-			} else {
-				m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
-			}
-			m.deleteTarget = task
-			return m, nil
 		}
 		return m, nil
 	}

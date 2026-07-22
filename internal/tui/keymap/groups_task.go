@@ -32,8 +32,6 @@ type TaskPrefixDeps struct {
 	ViewDecisions Action
 	// ParkTask opens the task parking note input.
 	ParkTask Action
-	// DeleteTask deletes the current task (may show confirm dialog).
-	DeleteTask Action
 }
 
 // TaskPrefixGroup returns entries for the "t" prefix: task operations.
@@ -55,7 +53,6 @@ func TaskPrefixGroup(deps TaskPrefixDeps) []Entry {
 		Bind("m", "Move to another project", cat, deps.MoveToProject),
 		Bind("d", "View/add decisions", cat, deps.ViewDecisions),
 		Bind("P", "Park task (note where you left off)", cat, deps.ParkTask),
-		Bind("D", "Delete task", cat, deps.DeleteTask),
 	}
 	return []Entry{Prefix("t", "Task actions", cat, children)}
 }

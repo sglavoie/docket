@@ -78,14 +78,14 @@ func TestDashboardProjectListPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	m.projects = projects
 
 	m.cursor = 5
-	_ = m.renderProjectList(projects, 0, 80, 0)
+	_ = m.renderProjectList(projects, 5, 80)
 	start := m.viewScrollOffset
 	if start == 0 {
 		t.Fatalf("expected dashboard project list to scroll down, offset stayed at 0")
 	}
 
 	m.cursor = 4
-	_ = m.renderProjectList(projects, 0, 80, 0)
+	_ = m.renderProjectList(projects, 5, 80)
 	if m.viewScrollOffset != start {
 		t.Fatalf("moving up inside viewport changed first rendered row: offset=%d want %d", m.viewScrollOffset, start)
 	}
@@ -99,9 +99,9 @@ func TestDashboardProjectListFilterShrinkClampsScrollOffset(t *testing.T) {
 
 	m.cursor = len(projects) - 1
 	m.viewScrollOffset = 99
-	_ = m.renderProjectList(projects, 0, 80, 0)
+	_ = m.renderProjectList(projects, 5, 80)
 
-	maxVisible := m.projectListMaxVisible(0, 0, false)
+	maxVisible := m.projectListMaxVisible(5, false)
 	want := max(len(projects)-maxVisible, 0)
 	if m.viewScrollOffset != want {
 		t.Fatalf("shrunken dashboard list offset = %d, want %d", m.viewScrollOffset, want)

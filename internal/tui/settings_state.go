@@ -45,9 +45,9 @@ var visualTabSubTabs = [][]visualSubTabRef{
 		{"Linked Tasks", tabBehavior, 1},
 		{"Pinned Tasks", tabBehavior, 2},
 		{"Recent Tasks", tabBehavior, 3},
-		{"Section Limits", tabBehavior, 5},
-		{"Startup", tabBehavior, 6},
-		{"Home", tabBehavior, 9},
+		{"Section Limits", tabBehavior, 4},
+		{"Startup", tabBehavior, 5},
+		{"Home", tabBehavior, 6},
 		{"Attachments", tabAttachments, 0},
 	},
 	// vtab 1: Appearance = old Palette sub-sections + old Appearance
@@ -90,7 +90,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Outliner", "Kanban", "Notifications", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 18, 5, 14, 2, 24, 9, 15, 5}
+	tabFieldCount = []int{4, 18, 5, 15, 2, 24, 9, 15, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -101,7 +101,7 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Home", 1}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Home", 2}}, // 3: Behavior
 		nil, // 4: Attachments
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 5: Outliner
 		nil, // 6: Kanban
@@ -291,8 +291,9 @@ type SettingsModel struct {
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 
-	startViewCursor      int // Index into startViewValues
-	resumeCardLimitInput textinput.Model
+	startViewCursor         int // Index into startViewValues
+	resumeCardLimitInput    textinput.Model
+	homeProjectsHeightInput textinput.Model // Home Projects/Attention split % (machine-local)
 
 	// Kanban settings (Kanban tab, index 94-104)
 	kanbanDefaultModeCursor  int             // Index into kanbanModeValues

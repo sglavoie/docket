@@ -306,6 +306,21 @@ func repeatableActionViews() []PresentationID {
 	}
 }
 
+// taskDetailDeleteViews lists Task Detail's Overview and every embedded tab
+// presentation. Uppercase X is intercepted by handleGlobalKeyPress for all of
+// them (so it is not consumed as an item action inside a tab), so it is
+// registered as a scoped app-level binding and advertised in each tab's help.
+func taskDetailDeleteViews() []PresentationID {
+	return []PresentationID{
+		ViewTaskDetail,
+		ViewTaskChecklist,
+		ViewTaskComments,
+		ViewTaskDecisions,
+		ViewTaskAttachments,
+		ViewTaskActivity,
+	}
+}
+
 func clipboardBindings(views []PresentationID) []Keybinding {
 	return []Keybinding{
 		scopedAppBinding("y", "Copy title", "Clipboard", views),
@@ -333,6 +348,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		scopedAppBinding("q", "Toggle queue", "Navigation", queueToggleViews()),
 		scopedAppBinding("w", "Toggle today's plan", "Navigation", queueToggleViews()),
 		scopedAppBinding(".", "Repeat last action", "Operations", repeatableActionViews()),
+		scopedAppBinding("X", "Delete task", "Actions", taskDetailDeleteViews()),
 	)
 	r.add(clipboardBindings(taskReferenceViews())...)
 }

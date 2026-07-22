@@ -134,6 +134,15 @@ type PaletteEntitySelectMsg struct {
 	Project *models.Project
 }
 
+// PalettePeekRequestMsg asks the AppModel to open its in-app task Peek overlay
+// above the command palette without closing or resetting the palette. The
+// palette stays on the view stack beneath the overlay, so dismissing Peek (Esc)
+// restores the exact query, cursor, scroll anchor, and selection state.
+type PalettePeekRequestMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
 // PaletteAction represents an inline action that can be performed on a palette item.
 // When a user presses Tab on a non-command item, a submenu of available actions is shown.
 type PaletteAction struct {
@@ -153,6 +162,7 @@ const (
 	MatchFieldAlias                  // Matched in command aliases
 	MatchFieldTag                    // Matched in task tags
 	MatchFieldSection                // Matched in task section
+	MatchFieldProjectSlug            // Matched in a project's slug
 )
 
 // filteredPaletteItem wraps a PaletteItem with its match positions for highlighting.
@@ -210,6 +220,13 @@ type CommandPaletteModel struct {
 
 	// Onboarding state
 	showTips bool // Show tips until first keystroke
+
+	// Transient show-all expansion for an empty query. When true, an empty
+	// query lists every currently available command and entity (sorted by the
+	// category order) instead of the bounded recent/contextual discovery set.
+	// Toggled by Ctrl+A on an empty query; persists across query typing/clearing
+	// until toggled off or the palette closes.
+	showAll bool
 
 	// Compact presentation is derived from the terminal width.
 	compactMode bool

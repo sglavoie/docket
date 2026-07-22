@@ -133,31 +133,3 @@ func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) postRestore
 		return nil
 	}
 }
-
-func cleanupRuntimeTaskRefs(runtime *config.RuntimeState, taskIDs map[string]bool) error {
-	if runtime == nil {
-		return nil
-	}
-	planning := clonePlanningState(runtime.Planning())
-	machine := cloneMachineState(runtime.Machine())
-	planningChanged := planning.RemoveDurableTaskRefs(taskIDs) > 0
-	machineChanged := machine.RemoveMachineLocalTaskRefs(taskIDs) > 0
-	if runtime.DataDir() == "" {
-		if planningChanged {
-			*runtime.Planning() = *planning
-		}
-		if machineChanged {
-			runtime.SetMachineInMemory(machine)
-		}
-		return nil
-	}
-	if planningChanged {
-		if err := runtime.CommitPlanning(planning); err != nil {
-			return err
-		}
-	}
-	if machineChanged {
-		return runtime.CommitMachine(machine)
-	}
-	return nil
-}

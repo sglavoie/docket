@@ -198,7 +198,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	keys := m.HandledKeys()
 	want := []string{
 		"j", "down", "k", "up", "g", "G", "ctrl+u", "ctrl+d", "n", "N",
-		"enter", "shift+enter", "space", "/", "v", "a", "e", "x", "s", "p",
+		"enter", "shift+enter", "space", "/", "v", "a", "e", "x", "X", "s", "p",
 		"!", "d", "t", "Z", "m", "J", "K", "P", "y", "u", "ctrl+r", "tab", "shift+tab",
 	}
 	if !slices.Equal(keys, want) {
@@ -219,7 +219,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		assertHasHelpItem(t, items, ViewFocusBoard, expected.Key, expected.Description)
 	}
 	for _, key := range []string{
-		"q", "w", "o", "gg", "gp", "fp", "fa", "1", "2", "3", "4", "5", "0", "tn", "tN", "tD", ",d",
+		"q", "w", "o", "gg", "gp", "fp", "fa", "1", "2", "3", "4", "5", "0", "tn", "tN", ",d",
 	} {
 		for _, item := range items {
 			if item.Key == key {

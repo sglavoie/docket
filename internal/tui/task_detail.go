@@ -394,11 +394,26 @@ func (m *TaskDetailModel) ShouldCaptureEsc() bool {
 
 func (m *TaskDetailModel) IsConfirmActive() bool {
 	if child := m.activeTabView(); child != nil {
-		if confirm, ok := child.(interface{ IsConfirmActive() bool }); ok {
-			return confirm.IsConfirmActive()
+		if confirm, ok := child.(interface{ IsConfirmActive() bool }); ok && confirm.IsConfirmActive() {
+			return true
 		}
 	}
 	return m.InteractiveViewState.IsConfirmActive()
+}
+
+// GetConfirmDialog surfaces an active child tab's confirmation so the App shell
+// renders it as a floating overlay (checklist/comment/decision deletes and
+// discard prompts). It falls back to Task Detail's own confirm state when no
+// child tab owns an active dialog.
+func (m *TaskDetailModel) GetConfirmDialog() *ConfirmDialog {
+	if child := m.activeTabView(); child != nil {
+		if provider, ok := child.(ConfirmDialogProvider); ok {
+			if cd := provider.GetConfirmDialog(); cd != nil && cd.IsActive() {
+				return cd
+			}
+		}
+	}
+	return m.InteractiveViewState.GetConfirmDialog()
 }
 
 func (m *TaskDetailModel) OnExit() {

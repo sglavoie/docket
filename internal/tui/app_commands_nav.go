@@ -35,12 +35,17 @@ func (m *AppModel) navCommands() []Command {
 			Views:       taskPeekViews(),
 			Aliases:     []string{"peek task", "task peek", "preview task"},
 			Handler: func() tea.Msg {
-				task, project := m.getCurrentCursorTaskAndProject()
+				task, project := m.peekCursorTaskAndProject()
 				if task == nil {
 					return nil
 				}
-				m.activatePeek(task, project)
-				return nil
+				// Return the shell-owned overlay message (as the palette task-row
+				// Peek does) instead of mutating peek directly and returning nil.
+				// CommandPaletteExecuteMsg treats a nil result as a non-modal
+				// action and pops the palette; PalettePeekRequestMsg is in its
+				// keep-palette set, so the palette's query/cursor/selection survive
+				// while the same in-app Peek overlay opens as with Shift+Enter.
+				return PalettePeekRequestMsg{Task: task, Project: project}
 			},
 		},
 	}

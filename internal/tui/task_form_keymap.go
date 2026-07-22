@@ -29,7 +29,7 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 	// Actions
 	entries = append(entries,
 		keymap.Bind("enter", "Open picker / confirm text field", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+s", "Save", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
+		keymap.Bind("ctrl+s", "Save task", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("ctrl+v", "Paste clipboard text into focused field", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("ctrl+e", "Open description in external editor", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 	)

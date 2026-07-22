@@ -145,12 +145,12 @@ func TestSession15PaletteAliasInventoryAndTaskPeek(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("Shift+Enter did not produce a Peek command")
 	}
-	execute, ok := cmd().(CommandPaletteExecuteMsg)
+	peek, ok := cmd().(PalettePeekRequestMsg)
 	if !ok {
-		t.Fatalf("Shift+Enter message = %T, want CommandPaletteExecuteMsg", cmd())
+		t.Fatalf("Shift+Enter message = %T, want PalettePeekRequestMsg", cmd())
 	}
-	if glow, ok := execute.ResultMsg.(GlowViewMsg); !ok || glow.Task != task {
-		t.Fatalf("Shift+Enter result = %#v, want task Peek", execute.ResultMsg)
+	if peek.Task != task || peek.Project != project {
+		t.Fatalf("Shift+Enter result = %#v, want in-app Peek of task/project", peek)
 	}
 }
 

@@ -253,16 +253,11 @@ func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 	if row.ProjectID == "" {
 		return ""
 	}
-	// Suppress the per-task `[slug]` badge in every normal cross-project
-	// perspective: each task already appears beneath a project sub-header that
-	// carries the same colored badge, so repeating it on every task adds
-	// visual noise. Cross-project Priority mode is the exception — it buckets
-	// tasks individually with no per-project visual grouping, so the inline
-	// badge remains the only project identity cue.
-	if m.project == nil && !m.isActiveCrossPriority() {
-		return ""
-	}
-
+	// Every cross-project perspective renders the colored `[slug]` badge inline
+	// so each task row carries its own project identity, matching Planner's
+	// deterministic project-color treatment. Group headers and project
+	// sub-headers still cluster rows visually; the inline badge is the primary
+	// per-row identity cue and survives the narrow-row fallback order below.
 	project := m.resolveProjectForRow(row)
 	projectSlug := row.ProjectID
 	if project != nil {

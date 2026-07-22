@@ -32,12 +32,3 @@ type prefixableView interface {
 	setStatusMessage(msg string)                                   // sets the status bar text
 	setMutationFlash(bg color.Color)                               // triggers mutation flash with semantic color
 }
-
-// deleteConfirmView is the interface that views must implement to use the
-// shared delete confirm handler.
-type deleteConfirmView interface {
-	getCursorTask() *models.Task
-	getMultiSelectedTasks() []*models.Task
-	showDeleteConfirm(task *models.Task)
-	showBulkDeleteConfirm()
-}

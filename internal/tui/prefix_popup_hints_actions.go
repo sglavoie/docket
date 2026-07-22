@@ -142,7 +142,6 @@ var (
 		{Key: "d", Description: "decisions", Detail: "View/add decisions"},
 		{Key: "e", Description: "description", Detail: "Edit description"},
 		{Key: "m", Description: "move", Detail: "Move to another project"},
-		{Key: "D", Description: "delete", Detail: "Delete task", Danger: true},
 	}
 
 	// BlockerPrefixHints contains hints for the "b" (blocker/dependency) prefix.

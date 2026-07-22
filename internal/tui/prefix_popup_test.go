@@ -114,7 +114,6 @@ func TestRenderPrefixPopup_TaskPrefixIncludesCommonActions(t *testing.T) {
 		{"new", "Create new task"},
 		{"pin", "Toggle pin/unpin"},
 		{"park", "Note where you left off"},
-		{"delete", "Delete task"},
 	} {
 		assertPopupLineContains(t, result, row.description, row.detail)
 	}

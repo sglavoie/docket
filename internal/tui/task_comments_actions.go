@@ -201,6 +201,29 @@ func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
 	return nil
 }
 
+func (m *TaskCommentsModel) copyAllCommentsText() tea.Cmd {
+	if len(m.task.Comments) == 0 {
+		m.setStatus("Nothing to copy")
+		return nil
+	}
+	texts := make([]string, len(m.task.Comments))
+	for i, c := range m.task.Comments {
+		texts[i] = c.Text
+	}
+
+	if err := copyTextToClipboard(formatNumberedMarkdownList(texts)); err != nil {
+		if errors.Is(err, errClipboardUnsupported) {
+			m.setStatus(err.Error())
+			return nil
+		}
+		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		return nil
+	}
+
+	m.setStatus("All comments copied to clipboard")
+	return nil
+}
+
 func (m *TaskCommentsModel) editCommentWithExternalEditor(content string, emptyIsError bool, apply func(string) tea.Msg) tea.Cmd {
 	tmpPath, err := m.createCommentTempFile(content)
 	if err != nil {

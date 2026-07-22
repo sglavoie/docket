@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -14,36 +15,174 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestHomeResponsiveProjectsAndAttentionPanes(t *testing.T) {
+func homeWithOneAttentionRow(width, height int) *DashboardModel {
 	project := testutil.NewTestProject("Alpha")
-	home := dashboardWithProjects(120, 24, []*models.Project{project})
+	home := dashboardWithProjects(width, height, []*models.Project{project})
 	home.attentionRows = []homeAttentionRow{{
 		Category: homeAttentionPipeline,
 		Label:    "Plan one Next item",
 		Action:   homeAttentionOpenPlannerNext,
 	}}
+	return home
+}
 
-	wide := ansi.Strip(home.View().Content)
-	if !strings.Contains(wide, "Projects (1)") || !strings.Contains(wide, "Attention (1)") {
-		t.Fatalf("wide Home should render both panes:\n%s", wide)
+func countRenderedLines(out string) int {
+	trimmed := strings.TrimRight(out, "\n")
+	if trimmed == "" {
+		return 0
+	}
+	return strings.Count(trimmed, "\n") + 1
+}
+
+// TestHomeAlwaysStacksProjectsAboveAttention confirms the restored layout: both
+// cards are rendered at every supported width, Projects above Attention, with no
+// vertical overflow past the terminal height.
+func TestHomeAlwaysStacksProjectsAboveAttention(t *testing.T) {
+	for _, width := range []int{60, 80, 120} {
+		home := homeWithOneAttentionRow(width, 24)
+		out := ansi.Strip(home.View().Content)
+
+		pIdx := strings.Index(out, "Projects (1)")
+		aIdx := strings.Index(out, "Attention (1)")
+		if pIdx < 0 || aIdx < 0 {
+			t.Fatalf("width %d: Home must render both panes:\n%s", width, out)
+		}
+		if pIdx >= aIdx {
+			t.Fatalf("width %d: Projects must render above Attention:\n%s", width, out)
+		}
+		if lines := countRenderedLines(out); lines > 24 {
+			t.Fatalf("width %d: Home overflowed height 24 with %d lines:\n%s", width, lines, out)
+		}
+	}
+}
+
+// TestHomeFocusSwitchesWithHLWhileBothVisible verifies h/l still switch the
+// active pane even though both cards are always on screen.
+func TestHomeFocusSwitchesWithHLWhileBothVisible(t *testing.T) {
+	home := homeWithOneAttentionRow(80, 24)
+	if home.activeHomePane() != homePaneProjects {
+		t.Fatalf("Home should start focused on Projects, got %v", home.activeHomePane())
 	}
 
-	home.SetSize(80, 24)
-	narrowProjects := ansi.Strip(home.View().Content)
-	if !strings.Contains(narrowProjects, "Projects (1)") || strings.Contains(narrowProjects, "Attention (1)") {
-		t.Fatalf("narrow Home should render only Projects while it is active:\n%s", narrowProjects)
+	if _, _, handled := home.Dispatcher.Dispatch(syntheticKey('l')); !handled || home.activeHomePane() != homePaneAttention {
+		t.Fatalf("l should focus Attention: handled=%v pane=%v", handled, home.activeHomePane())
 	}
-	_, _, handled := home.Dispatcher.Dispatch(syntheticKey('l'))
-	if !handled {
-		t.Fatal("l should focus Attention")
+	if _, _, handled := home.Dispatcher.Dispatch(syntheticKey('h')); !handled || home.activeHomePane() != homePaneProjects {
+		t.Fatalf("h should restore Projects: handled=%v pane=%v", handled, home.activeHomePane())
 	}
-	narrowAttention := ansi.Strip(home.View().Content)
-	if !strings.Contains(narrowAttention, "Attention (1)") || strings.Contains(narrowAttention, "Projects (1)") {
-		t.Fatalf("narrow Home should render only Attention after l:\n%s", narrowAttention)
+
+	out := ansi.Strip(home.View().Content)
+	if !strings.Contains(out, "Projects (1)") || !strings.Contains(out, "Attention (1)") {
+		t.Fatalf("both panes must stay visible after focus switch:\n%s", out)
 	}
-	_, _, handled = home.Dispatcher.Dispatch(syntheticKey('h'))
-	if !handled || home.activeHomePane() != homePaneProjects {
-		t.Fatal("h should restore Projects focus")
+}
+
+// TestHomePaneHeightsAllocation exercises the deterministic split: default
+// 60/40, a custom 70/30, exact-remainder summing, and a minimum usable row per
+// pane at constrained heights.
+func TestHomePaneHeightsAllocation(t *testing.T) {
+	home := dashboardWithProjects(120, 24, nil)
+
+	// Default 60/40. Body = 24 - 0 chrome - 1 status - 1 separator = 22 rows.
+	projects, attention := home.homePaneHeights(0)
+	if projects+attention != 22 {
+		t.Fatalf("default split must sum to body 22, got projects=%d attention=%d", projects, attention)
+	}
+	if want := (22*config.DefaultHomeProjectsHeightPct + 50) / 100; abs(projects-want) > 1 {
+		t.Fatalf("default projects height %d not within one row of %d", projects, want)
+	}
+
+	// Custom 70/30.
+	pct := 70
+	home.runtime.Machine().HomeProjectsHeightPct = &pct
+	projects, attention = home.homePaneHeights(0)
+	if projects+attention != 22 {
+		t.Fatalf("custom split must sum to body 22, got projects=%d attention=%d", projects, attention)
+	}
+	if want := (22*70 + 50) / 100; abs(projects-want) > 1 {
+		t.Fatalf("custom projects height %d not within one row of %d", projects, want)
+	}
+
+	// Constrained height: both panes keep at least a usable row.
+	home.SetSize(120, 8)
+	projects, attention = home.homePaneHeights(0)
+	if projects < homeMinCardHeight || attention < homeMinCardHeight {
+		t.Fatalf("constrained split must keep a usable row per pane, got projects=%d attention=%d min=%d", projects, attention, homeMinCardHeight)
+	}
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// homeWithProjectAndAttention builds a Home with one named project and one
+// Attention row at the given size and Projects split percentage. Both panes are
+// nonempty so a render can assert each keeps a selectable item.
+func homeWithProjectAndAttention(width, height, pct int) *DashboardModel {
+	project := testutil.NewTestProject("Alpha")
+	home := dashboardWithProjects(width, height, []*models.Project{project})
+	home.runtime.Machine().HomeProjectsHeightPct = &pct
+	home.attentionRows = []homeAttentionRow{{
+		Category: homeAttentionPipeline,
+		Label:    "Plan one Next item",
+		Action:   homeAttentionOpenPlannerNext,
+	}}
+	return home
+}
+
+func assertHomeNoOverflow(t *testing.T, label string, out string, width, height int) {
+	t.Helper()
+	if lines := countRenderedLines(out); lines > height {
+		t.Fatalf("%s: Home overflowed height %d with %d lines:\n%s", label, height, lines, out)
+	}
+	for line := range strings.SplitSeq(strings.TrimRight(out, "\n"), "\n") {
+		if w := ansi.StringWidth(line); w > width {
+			t.Fatalf("%s: line exceeds width %d (got %d): %q", label, width, w, line)
+		}
+	}
+}
+
+// TestHomeMinimumSplitShowsSelectableItems is the FR-008 regression: at the
+// supported minimum terminal height, the pane clamped to homeMinCardHeight must
+// still render at least one project entry (Projects at 10%) and at least one
+// Attention entry (Attention at 90%), never truncating every row. Covers the
+// three supported widths for both the minimum (10%) and maximum (90%) splits.
+func TestHomeMinimumSplitShowsSelectableItems(t *testing.T) {
+	for _, width := range []int{60, 80, 120} {
+		for _, pct := range []int{config.MinHomeProjectsHeightPct, config.MaxHomeProjectsHeightPct} {
+			home := homeWithProjectAndAttention(width, minTerminalHeight, pct)
+			out := ansi.Strip(home.View().Content)
+
+			if !strings.Contains(out, "Alpha") {
+				t.Fatalf("width %d pct %d: Projects pane dropped every project row:\n%s", width, pct, out)
+			}
+			if !strings.Contains(out, "Plan one Next item") {
+				t.Fatalf("width %d pct %d: Attention pane dropped every row:\n%s", width, pct, out)
+			}
+			assertHomeNoOverflow(t, fmt.Sprintf("width %d pct %d", width, pct), out, width, minTerminalHeight)
+		}
+	}
+}
+
+// TestHomeSplitRendersNoOverflowWithFilters exercises minimum, default, and
+// maximum splits with an active search filter and confirms the matched project
+// still renders without vertical or horizontal overflow.
+func TestHomeSplitRendersNoOverflowWithFilters(t *testing.T) {
+	splits := []int{config.MinHomeProjectsHeightPct, config.DefaultHomeProjectsHeightPct, config.MaxHomeProjectsHeightPct}
+	for _, width := range []int{60, 80, 120} {
+		for _, pct := range splits {
+			home := homeWithProjectAndAttention(width, minTerminalHeight, pct)
+			home.SetSearchQuery("Alpha")
+			out := ansi.Strip(home.View().Content)
+
+			if !strings.Contains(out, "Alpha") {
+				t.Fatalf("width %d pct %d (filtered): matched project row missing:\n%s", width, pct, out)
+			}
+			assertHomeNoOverflow(t, fmt.Sprintf("filtered width %d pct %d", width, pct), out, width, minTerminalHeight)
+		}
 	}
 }
 

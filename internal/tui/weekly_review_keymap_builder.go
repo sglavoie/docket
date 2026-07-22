@@ -125,9 +125,9 @@ func weeklyReviewTaskActionDeps(m *WeeklyReviewModel) TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.weeklyReviewHasItem,
+		Origin:           ViewWeeklyReview,
 		ToggleHelp:       m.weeklyReviewToggleHelpAction,
 		SelectedTaskRefs: m.weeklyReviewSelectedTaskRefs,
-		DeleteTask:       m.weeklyReviewDeleteTaskAction,
 		OpenURL:          m.weeklyReviewOpenURLAction,
 		MoveToProject:    m.weeklyReviewMoveToProjectAction,
 		QuickNote:        m.weeklyReviewQuickNoteAction,
@@ -154,14 +154,6 @@ func (m *WeeklyReviewModel) weeklyReviewSelectedTaskRefs() []TaskProjectRef {
 
 func (m *WeeklyReviewModel) weeklyReviewToggleHelpAction() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
-}
-
-func (m *WeeklyReviewModel) weeklyReviewDeleteTaskAction() (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task != nil {
-		m.showDeleteConfirm(task.ShortID)
-	}
-	return m, nil
 }
 
 func (m *WeeklyReviewModel) weeklyReviewOpenURLAction() (tea.Model, tea.Cmd) {

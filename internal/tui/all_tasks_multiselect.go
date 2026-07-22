@@ -8,14 +8,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 const (
 	allTasksMultiSelectEnterMsg = "Multi-select: space=toggle, a=all, A=deselect, ,s/d/b=status"
 	allTasksMultiSelectNoSel    = "Multi-select: space=toggle, a=all, A=deselect"
-	allTasksMultiSelectWithSel  = "%d selected (space=toggle, ,s/d/b=status, D=delete)"
+	allTasksMultiSelectWithSel  = "%d selected (space=toggle, ,s/d/b=status, X=delete)"
 )
 
 // toggleMultiSelectMode enters or exits multi-select mode.
@@ -167,52 +166,6 @@ func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Mod
 			return fmt.Sprintf("Moved %d tasks to %s", changed, targetSection)
 		},
 	)
-	return m, finalizeBatchResult(cmd, taskIDs, "")
-}
-
-// handleBulkDelete deletes all selected subtrees through the application layer.
-// The durable planning refs (Focus Queue, Daily Plan, dismissals) of every
-// removed task ride the delete transaction as a config artifact, mirroring the
-// CLI delete; machine-local recent visits are repaired separately by the shell
-// after the commit.
-func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
-	taskIDs := m.bulkTaskIDs()
-	if len(taskIDs) == 0 {
-		return m, nil
-	}
-
-	// Expand the selected roots to their whole subtrees so the durable planning
-	// cleanup keys on every task the delete will remove, not just the roots.
-	idsToDelete := make(map[string]bool)
-	for _, group := range groupTaskProjectRefsByProject(m.getSelectedBulkItems()) {
-		if group.Project == nil {
-			continue
-		}
-		rootIDs := make(map[string]bool, len(group.Items))
-		for _, item := range group.Items {
-			rootIDs[item.Task.ID] = true
-		}
-		for id := range collectDescendantIDs(group.Project.Tasks, rootIDs) {
-			idsToDelete[id] = true
-		}
-	}
-
-	// Fold the durable planning-ref cleanup into the delete transaction as the
-	// revision-checked planning-domain artifact.
-	var artifacts []storage.ArtifactChange
-	if m.runtime != nil && m.configManager != nil {
-		planning := clonePlanningState(m.runtime.Planning())
-		if planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
-			arts, err := planningDomainArtifact(m.configManager, planning)
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-				return m, nil
-			}
-			artifacts = arts
-		}
-	}
-
-	cmd := m.bulk.Delete(taskIDs, artifacts...)
 	return m, finalizeBatchResult(cmd, taskIDs, "")
 }
 

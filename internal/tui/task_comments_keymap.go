@@ -37,6 +37,7 @@ func (m *TaskCommentsModel) panelActions() taskItemPanelActions {
 		},
 		toggleResolved: m.toggleResolved,
 		copyText:       m.copyCommentText,
+		copyAllText:    m.copyAllCommentsText,
 		expandSelection: func() {
 			m.expandedView = true
 		},

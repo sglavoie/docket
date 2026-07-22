@@ -111,6 +111,11 @@ type TransactionErrorMsg struct {
 	Feature string
 	Action  string
 	Err     error
+	// DeleteRequestToken correlates a rejected canonical delete with the Inbox /
+	// Weekly Review post-commit bookkeeping it armed, so only the exact request's
+	// failure drops that in-flight state. Zero for every non-delete rejection (and
+	// for deletes that armed no bookkeeping); the correlation guards ignore zero.
+	DeleteRequestToken uint64
 }
 
 // FeatureCoordinator is the shared base for the primary feature coordinators. It

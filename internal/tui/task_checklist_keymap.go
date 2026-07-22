@@ -83,12 +83,15 @@ func (m *TaskChecklistModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("enter", "Toggle done/undone", "Actions", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("y", "Copy item text", "Actions", func() (tea.Model, tea.Cmd) {
 			if m.hasSelection() {
-				return m, m.toggleItem()
+				return m, m.copyItemText()
 			}
 			return m, nil
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
+		}, keymap.WithGate(func() bool { return !inInputMode() })),
+		keymap.Bind("Y", "Copy all as Markdown", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, m.copyAllItemsText()
+		}, keymap.WithGate(func() bool { return !inInputMode() })),
 		keymap.Bind("J", "Reorder item down", "Actions", func() (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.task.Checklist)-1 {
 				return m, m.reorderItem(m.cursor, m.cursor+1)
@@ -103,14 +106,18 @@ func (m *TaskChecklistModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.WithGate(func() bool { return !inInputMode() })),
 	)
 
-	// Add/edit mode keys (always included in HandledKeys for esc handling)
+	// Enter toggles the selected item in normal mode and saves in add/edit mode.
+	// Always included in HandledKeys so esc/save handling stays documented.
 	entries = append(entries,
-		keymap.Bind("ctrl+s", "Save (add/edit mode)", "Actions", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("enter", "Toggle done/undone / save (add/edit mode)", "Actions", func() (tea.Model, tea.Cmd) {
 			if m.editMode {
 				return m, m.saveEditedItem()
 			}
 			if m.addMode {
 				return m, m.saveItem()
+			}
+			if m.hasSelection() {
+				return m, m.toggleItem()
 			}
 			return m, nil
 		}),

@@ -26,7 +26,7 @@ func triageInboxCommands(t *testing.T, app *AppModel, view PresentationID) []Com
 // TestPaletteTriage_InboxProcessorShortcutsMatchKeymap pins the palette's
 // command shortcuts for the inbox processor against the authoritative keymap
 // vocabulary (mark done = D, manage tags = T, route = ctrl+s, send to waiting
-// = ctrl+w, delete = tD, due date = dd, dependencies = bm, subtask = cs).
+// = ctrl+w, delete = X, due date = dd, dependencies = bm, subtask = cs).
 // Sessions 2/5/6 mandate this triage vocabulary across footer + palette.
 func TestPaletteTriage_InboxProcessorShortcutsMatchKeymap(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
@@ -51,7 +51,7 @@ func TestPaletteTriage_InboxProcessorShortcutsMatchKeymap(t *testing.T) {
 		{"create subtask from inbox", "cs"},
 		{"manage inbox dependencies", "bm"},
 		// Destructive.
-		{"delete inbox task", "tD"},
+		{"delete inbox task", "X"},
 	}
 
 	for _, viewType := range []PresentationID{ViewInboxProcessor, ViewGlobalInboxProcessor} {
@@ -175,11 +175,19 @@ func TestPaletteTriage_ChordHandlersDispatchToActiveProcessor(t *testing.T) {
 	if delCmd == nil {
 		t.Fatal("delete inbox task command missing")
 	}
-	if msg := delCmd.Handler(); msg != nil {
-		t.Errorf("delete inbox task handler should return nil (it mutates confirm), got %T", msg)
+	// The inbox delete command now emits the canonical shell-owned deletion
+	// request (the shell confirms and runs the atomic transaction) instead of
+	// arming a processor-local confirm dialog.
+	msg = delCmd.Handler()
+	req, ok := msg.(TaskDeleteRequestedMsg)
+	if !ok {
+		t.Fatalf("delete inbox task handler should return TaskDeleteRequestedMsg, got %T", msg)
 	}
-	if !processor.confirm.IsActive() {
-		t.Error("delete handler should activate the inbox processor's confirm dialog")
+	if req.Origin != ViewInboxProcessor {
+		t.Errorf("delete request Origin = %v, want ViewInboxProcessor", req.Origin)
+	}
+	if len(req.Refs) != 1 {
+		t.Fatalf("delete request should carry one ref, got %d", len(req.Refs))
 	}
 }
 

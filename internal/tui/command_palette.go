@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -107,16 +108,30 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 		m.searchInput, cmd = m.searchInput.Update(msg)
 		m.filterItems()
 		return m, cmd
-	case "up":
+	case "up", "ctrl+k":
 		if m.cursor > 0 {
 			m.cursor--
 		}
 		return m, nil
-	case "down":
+	case "down", "ctrl+j":
 		if m.cursor < len(m.filteredItems)-1 {
 			m.cursor++
 		}
 		return m, nil
+	case "ctrl+a":
+		// Toggle transient show-all only when the query is empty; with a
+		// nonempty query Ctrl+A keeps its ordinary text-input meaning.
+		if strings.TrimSpace(m.searchInput.Value()) == "" {
+			m.showAll = !m.showAll
+			m.showTips = false
+			m.filterItems()
+			return m, nil
+		}
+		m.showTips = false
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.filterItems()
+		return m, cmd
 	default:
 		// Update search input and filter items
 		m.showTips = false // Hide tips on first input
@@ -149,12 +164,12 @@ func (m *CommandPaletteModel) updateActionMode(msg tea.KeyPressMsg) (tea.Model, 
 			}
 		}
 		return m, nil
-	case "up":
+	case "up", "ctrl+k":
 		if m.actionCursor > 0 {
 			m.actionCursor--
 		}
 		return m, nil
-	case "down":
+	case "down", "ctrl+j":
 		if m.actionCursor < len(m.availableActions)-1 {
 			m.actionCursor++
 		}

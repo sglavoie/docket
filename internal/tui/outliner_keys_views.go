@@ -70,16 +70,6 @@ func (m *OutlinerModel) handleTaskViewKey(key string, onHeader bool) (tea.Model,
 		}
 		return m, nil, true
 
-	case "D":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks?", len(m.selectedTasks)))
-			return m, nil, true
-		}
-		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
-			m.showDeleteConfirm(m.rows[m.cursor].task)
-		}
-		return m, nil, true
-
 	case "ctrl+f":
 		return m, func() tea.Msg {
 			return ShowFilterMsg{CommonFilter: &m.filter.CommonFilterState, Project: m.project}

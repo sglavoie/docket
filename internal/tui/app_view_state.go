@@ -96,8 +96,11 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 	currentView := m.currentView()
 	cmd := m.views.Update(currentView, msg)
 
-	// Update peek task if active (cursor may have moved)
-	if m.peekActive {
+	// Update peek task if active (cursor may have moved). The command palette
+	// originates a frozen Peek snapshot and has no cursor task to follow, so
+	// leave that overlay untouched — otherwise an async message routed to the
+	// palette would dismiss a Peek the user is still reading.
+	if m.peekActive && currentView != ViewCommandPalette {
 		if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
 			m.peekTask = task
 			m.peekProject = project
@@ -167,6 +170,41 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 	}
 	if v, ok := m.currentViewAsModel().(taskRefProvider); ok {
 		return v.getTaskRef()
+	}
+	return nil, nil
+}
+
+// peekCursorTaskAndProject resolves the task under the primary view's cursor for
+// the shared palette "peek task detail" command. It first tries the direct-key
+// fast path (getCurrentCursorTaskAndProject). That helper gates each primary with
+// activeReviewHub/activeManageHub/activeTaskWorkspace/activeTaskDetail, all of
+// which are false while the command palette shadows the primary as a shell
+// overlay, so the palette-executed command would otherwise resolve nothing. The
+// fallback consults the same primaries ungated — they resolve beneath shell
+// overlays — so the palette Peek command targets the same task Shift+Enter does.
+func (m *AppModel) peekCursorTaskAndProject() (*models.Task, *models.Project) {
+	if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
+		return task, project
+	}
+	if view, _, ok := m.taskWorkspacePrimary(); ok {
+		if task, project := view.getTaskRef(); task != nil {
+			return task, project
+		}
+	}
+	if hub, _, ok := m.reviewHubPrimary(); ok {
+		if task, project := hub.getTaskRef(); task != nil {
+			return task, project
+		}
+	}
+	if hub, _, ok := m.manageHubPrimary(); ok {
+		if task, project := hub.getTaskRef(); task != nil {
+			return task, project
+		}
+	}
+	if detail, _, ok := m.taskDetailPrimary(); ok {
+		if task, project := detail.getTaskRef(); task != nil {
+			return task, project
+		}
 	}
 	return nil, nil
 }

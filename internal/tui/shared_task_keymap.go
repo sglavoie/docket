@@ -37,8 +37,17 @@ type TaskKeymapDeps struct {
 	// nil = this view does not expose task multi-select to shared actions.
 	SelectedTaskRefs func() []TaskProjectRef
 
-	// DeleteTask shows a confirmation dialog before deletion.
-	// nil = call taskOpsDeleteTask directly (no dialog).
+	// Origin identifies the presentation that owns this keymap so the canonical
+	// uppercase-X delete request carries it back to the shell for origin-aware
+	// post-commit repair. Standard surfaces set it and rely on the default
+	// delete action below; a view that overrides DeleteTask stamps its own origin.
+	Origin PresentationID
+
+	// DeleteTask overrides the standard uppercase-X delete action. nil = emit the
+	// canonical, shell-owned TaskDeleteRequestedMsg for the active selection (or
+	// the cursor task when nothing is selected), which prompts for confirmation
+	// before any mutation. Overriding is reserved for surfaces that must shape the
+	// request themselves (e.g. Kanban, which refuses bulk deletion).
 	DeleteTask keymap.Action
 
 	// Status recurrence — nil skips recurrence bindings (,k and ,D).
@@ -93,6 +102,7 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 	for _, build := range builders {
 		entries = append(entries, build(deps)...)
 	}
+	entries = append(entries, buildStandardDeleteEntry(deps))
 	return entries
 }
 
@@ -220,8 +230,15 @@ func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 		ParkTask: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return ShowParkInputMsg{Task: task, Project: project}
 		}),
-		DeleteTask: buildDeleteTaskAction(deps),
 	}), taskActionTargetGate(deps))
+}
+
+// buildStandardDeleteEntry returns the canonical uppercase-X delete binding
+// shared by every standard task-action surface (review lists, All Tasks,
+// Priority, Kanban, Project Focus) so the destructive action uses one
+// consistent key across task-bearing views.
+func buildStandardDeleteEntry(deps TaskKeymapDeps) keymap.Entry {
+	return keymap.Bind("X", "Delete task", "Actions", buildDeleteTaskAction(deps))
 }
 
 func buildNewTaskAction(deps TaskKeymapDeps, skipTemplatePicker bool) keymap.Action {
@@ -353,8 +370,30 @@ func buildDeleteTaskAction(deps TaskKeymapDeps) keymap.Action {
 		return deps.DeleteTask
 	}
 	return func() (tea.Model, tea.Cmd) {
-		return deps.View, wfDeleteTask(deps.View, deps.View.getRuntime(), deps.View.getConfigManager())
+		refs := taskDeleteTargetRefs(deps)
+		if len(refs) == 0 {
+			return deps.View, nil
+		}
+		origin := deps.Origin
+		return deps.View, func() tea.Msg {
+			return TaskDeleteRequestedMsg{Refs: refs, Origin: origin}
+		}
 	}
+}
+
+// taskDeleteTargetRefs resolves the roots the canonical uppercase-X delete
+// request should target: the active multi-selection when one exists, otherwise
+// the single cursor task. It returns nil when there is no deletable target so
+// the action stays a no-op rather than emitting an empty request.
+func taskDeleteTargetRefs(deps TaskKeymapDeps) []TaskProjectRef {
+	if refs := selectedTaskRefs(deps); len(refs) > 0 {
+		return refs
+	}
+	task, project := deps.View.getTaskRef()
+	if task == nil || project == nil {
+		return nil
+	}
+	return []TaskProjectRef{{Task: task, Project: project}}
 }
 
 func buildMarkDoneAction(deps TaskKeymapDeps) keymap.Action {

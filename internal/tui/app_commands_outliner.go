@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -226,19 +224,19 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "delete task",
 			Description: "Delete selected task",
-			Shortcut:    "tD",
+			Shortcut:    "X",
 			Category:    CategoryTasks,
 			Views:       outlinerViews,
 			Aliases:     []string{"remove task", "trash task"},
+			// Emit the canonical, shell-owned deletion request (single cursor task
+			// or the whole multi-selection) so palette deletion matches the keyboard
+			// X path exactly in single-project and cross-project modes.
 			Handler: func() tea.Msg {
 				out := m.activeOutliner()
-				task, _ := m.outlinerTarget()
-				if out == nil || task == nil {
+				if out == nil {
 					return nil
 				}
-				out.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
-				out.deleteTarget = task
-				return nil
+				return out.taskDeleteRequest()
 			},
 		},
 		{

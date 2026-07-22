@@ -156,11 +156,13 @@ func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
 
 func (m *TaskFormModel) childrenHelpEntries() []helpEntry {
 	entries := []helpEntry{
+		{key: "Enter", desc: "edit/save item"},
 		{key: "Ctrl+A", desc: "add item"},
 		{key: "Space", desc: "toggle done"},
 		{key: "Ctrl+D", desc: "delete"},
 		{key: "Ctrl+J/K", desc: "reorder"},
 		{key: "Ctrl+O", desc: "toggle optional"},
+		{key: "Ctrl+S", desc: "save task"},
 	}
 	if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
 		entries = append([]helpEntry{{key: "Ctrl+T", desc: "add subtask"}}, entries...)

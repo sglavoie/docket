@@ -287,7 +287,7 @@ func TestTaskWorkspaceKeyGrammarCapabilitiesAndViewMenu(t *testing.T) {
 	expectedKeys := []string{
 		"j", "down", "k", "up", "g", "G", "ctrl+u", "ctrl+d", "h", "l", "n", "N", "z", "backspace", "\\",
 		"enter", "shift+enter", "space", "/", "v",
-		"a", "e", "x", "s", "p", "!", "d", "t", "Z", "m", "J", "K", "P", "y", "u", "ctrl+r",
+		"a", "e", "x", "X", "s", "p", "!", "d", "t", "Z", "m", "J", "K", "P", "y", "u", "ctrl+r",
 	}
 	bindings := TaskWorkspaceBindings(state.Capabilities(snapshot))
 	actualKeys := make([]string, len(bindings))

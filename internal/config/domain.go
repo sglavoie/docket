@@ -691,7 +691,22 @@ type MachineState struct {
 
 	// Histories.
 	RecentPaletteItems []RecentPaletteItem `json:"recent_palette_items,omitempty"`
+
+	// Home layout. HomeProjectsHeightPct is the machine-local percentage of the
+	// Home body allocated to the Projects card; the Attention card receives the
+	// remainder. Kept machine-local so a workspace does not force a split that
+	// suits one terminal geometry onto another machine.
+	HomeProjectsHeightPct *int `json:"home_projects_height_pct,omitempty"`
 }
+
+// Home Projects/Attention split bounds. The Projects card receives
+// HomeProjectsHeightPct of the stacked Home body; the Attention card takes the
+// rest. Persisted values outside [Min, Max] are clamped before rendering.
+const (
+	DefaultHomeProjectsHeightPct = 60
+	MinHomeProjectsHeightPct     = 10
+	MaxHomeProjectsHeightPct     = 90
+)
 
 // NewMachineState returns machine state seeded with the same editor default
 // NewConfig applies.

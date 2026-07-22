@@ -62,9 +62,9 @@ func (m *AllTasksViewModel) allTasksTaskKeymapDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.allTasksHasItem,
+		Origin:           ViewAllTasks,
 		ToggleHelp:       m.allTasksToggleHelp,
 		SelectedTaskRefs: m.allTasksSelectedTaskRefs,
-		DeleteTask:       m.allTasksDeleteTask,
 		OpenURL:          m.allTasksOpenURL,
 		MoveToProject:    m.allTasksMoveToProject,
 		QuickNote:        m.allTasksQuickNote,
@@ -216,14 +216,6 @@ func (m *AllTasksViewModel) allTasksCycleGrouping() (tea.Model, tea.Cmd) {
 
 func (m *AllTasksViewModel) allTasksToggleHelp() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
-}
-
-func (m *AllTasksViewModel) allTasksDeleteTask() (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task != nil {
-		m.showDeleteConfirm(task.ShortID)
-	}
-	return m, nil
 }
 
 func (m *AllTasksViewModel) allTasksOpenURL() (tea.Model, tea.Cmd) {

@@ -98,6 +98,18 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
+	// --- Delete: both lowercase x and canonical uppercase X remove the current
+	// inbox task through the shell-owned deletion transaction. Unlike other task
+	// surfaces (where lowercase x completes), inbox triage binds both keys to
+	// delete so the destructive action is reachable without a prefix. ---
+	for _, k := range []string{"x", "X"} {
+		entries = append(entries,
+			keymap.Bind(k, "Delete task", "Operations", func() (tea.Model, tea.Cmd) {
+				return c.model, c.requestDelete()
+			}),
+		)
+	}
+
 	// --- Secondary inbox-specific shortcuts (not part of the shared primary
 	// vocabulary; kept as direct keys because the local picker affordances are
 	// useful when the user does not remember the section name). ---
@@ -376,10 +388,6 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 				return c.model, nil
 			}
 			return c.model, func() tea.Msg { return ShowParkInputMsg{Task: task, Project: project} }
-		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
-			inboxDeletePrompt(c, &c.confirm)
-			return c.model, nil
 		},
 	})
 	entries = append(entries, taskPrefixEntries...)

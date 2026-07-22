@@ -86,7 +86,7 @@ memorizing chords:
   snooze inbox task          (zd)
   create subtask from inbox  (cs)
   manage inbox dependencies  (bm)
-  delete inbox task          (tD)
+  delete inbox task          (x/X)
 
 The palette's "Suggested" section is context-aware inside the
 inbox processors: it leads with the triage-momentum vocabulary
@@ -323,7 +323,7 @@ matches the same verbs as the in-app chrome:
   snooze inbox task          (zd)
   create subtask from inbox  (cs)
   manage inbox dependencies  (bm)
-  delete inbox task          (tD)
+  delete inbox task          (x/X)
 
 The dashboard-only "triage inbox" command (Shortcut O) opens
 the per-project processor for the currently selected project.

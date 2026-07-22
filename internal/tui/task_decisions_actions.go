@@ -214,6 +214,29 @@ func (m *TaskDecisionsModel) copyDecisionText() tea.Cmd {
 	return nil
 }
 
+func (m *TaskDecisionsModel) copyAllDecisionsText() tea.Cmd {
+	if len(m.task.Decisions) == 0 {
+		m.setStatus("Nothing to copy")
+		return nil
+	}
+	texts := make([]string, len(m.task.Decisions))
+	for i, d := range m.task.Decisions {
+		texts[i] = d.Text
+	}
+
+	if err := copyTextToClipboard(formatNumberedMarkdownList(texts)); err != nil {
+		if errors.Is(err, errClipboardUnsupported) {
+			m.setStatus(err.Error())
+			return nil
+		}
+		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		return nil
+	}
+
+	m.setStatus("All decisions copied to clipboard")
+	return nil
+}
+
 func (m *TaskDecisionsModel) editDecisionWithExternalEditor(content string, emptyIsError bool, apply func(text, rationale string) tea.Msg) tea.Cmd {
 	tmpPath, err := m.createDecisionTempFile(content)
 	if err != nil {

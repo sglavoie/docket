@@ -105,9 +105,9 @@ func (m *DailyReviewModel) dailyReviewTaskActionDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.dailyReviewHasItem,
+		Origin:           ViewDailyReview,
 		ToggleHelp:       m.dailyReviewToggleHelp,
 		SelectedTaskRefs: m.dailyReviewSelectedTaskRefs,
-		DeleteTask:       m.dailyReviewDeleteTask,
 		StateChange:      m.dailyReviewStatusChangeAction,
 		PriorityChange:   m.dailyReviewPriorityChangeAction,
 		DueDateSet:       m.dailyReviewDueDateSetAction,
@@ -131,14 +131,6 @@ func (m *DailyReviewModel) dailyReviewSelectedTaskRefs() []TaskProjectRef {
 
 func (m *DailyReviewModel) dailyReviewToggleHelp() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
-}
-
-func (m *DailyReviewModel) dailyReviewDeleteTask() (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task != nil {
-		m.showDeleteConfirm(task.ShortID)
-	}
-	return m, nil
 }
 
 func (m *DailyReviewModel) dailyReviewStatusChangeAction(state string) keymap.Action {

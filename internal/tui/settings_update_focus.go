@@ -94,6 +94,8 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 			return &m.sectionLimitReviewInput
 		case 13:
 			return &m.resumeCardLimitInput
+		case 14:
+			return &m.homeProjectsHeightInput
 		}
 	case tabAttachments:
 		switch local {

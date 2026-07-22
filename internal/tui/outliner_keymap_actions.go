@@ -196,6 +196,9 @@ func (b *outlinerKeymapBuilder) taskViewEntries() []keymap.Entry {
 			model, cmd, _ := m.handleTaskViewKey("E", b.onHeader())
 			return model, cmd
 		}),
+		keymap.Bind("X", "Delete task", "Task Actions", func() (tea.Model, tea.Cmd) {
+			return m.requestTaskDelete()
+		}),
 		keymap.Bind("ctrl+f", "Filter summary", "Filters", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleTaskViewKey("ctrl+f", b.onHeader())
 			return model, cmd

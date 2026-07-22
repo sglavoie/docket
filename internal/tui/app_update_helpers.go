@@ -127,7 +127,7 @@ func (m *AppModel) hasActivePendingPrefix() bool {
 // hasActiveConfirmDialog returns true if the current view has an active confirm dialog.
 // Used to prevent the global clipboard handler from intercepting y/Y during delete confirmations.
 func (m *AppModel) hasActiveConfirmDialog() bool {
-	if m.projectArchiveConfirm.IsActive() {
+	if m.projectArchiveConfirm.IsActive() || m.taskDeleteConfirm.IsActive() {
 		return true
 	}
 	view := m.activeView()

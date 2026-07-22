@@ -370,6 +370,41 @@ type AppModel struct {
 	pendingProjectArchiveArchive bool
 	projectArchiveConfirm        ConfirmDialog
 
+	// Pending shell-owned task deletion confirmation. The canonical
+	// TaskDeleteRequestedMsg path stores the de-duplicated root refs plus the
+	// originating presentation here, prompts through taskDeleteConfirm, and only
+	// executes the atomic BulkCoordinator.Delete transaction on confirmation.
+	pendingTaskDelete taskDeletePending
+	taskDeleteConfirm ConfirmDialog
+
+	// pendingInboxDeletes arms post-commit bookkeeping for inbox processors that
+	// requested a canonical deletion, keyed by the per-request token minted in
+	// confirmTaskDelete. Inbox processors are not TaskWorkspace-backed, so they defer
+	// their advance/processed/cursor bookkeeping until the shell reports the delete
+	// transaction committed (applyPendingInboxDelete); a rejected transaction clears
+	// only the matching entry so the processor's queue stays untouched. Keying by
+	// token (rather than a single slot) lets two overlapping same-surface deletes
+	// each retain their own accounting until their matching result or error arrives,
+	// in either completion order, and prevents an unrelated command that finishes
+	// first from consuming an in-flight delete.
+	pendingInboxDeletes map[uint64]pendingInboxDelete
+
+	// pendingWeeklyReviewDeletes records the root-task count of each in-flight
+	// Weekly Review-origin canonical deletion, keyed by the request token that armed
+	// it. The Weekly Review completion summary has no post-commit callback of its
+	// own, so its Deletions accounting is credited only after the shell reports the
+	// exact batch committed (applyPendingWeeklyReviewDelete); a rejected transaction
+	// or an unrelated result clears/skips only the matching entry so cancellation,
+	// failures, and other deletes stay uncounted. Two overlapping Weekly Review
+	// deletes are therefore each credited exactly once in either completion order.
+	pendingWeeklyReviewDeletes map[uint64]int
+
+	// deleteRequestSeq is a monotonic counter minted per canonical deletion in
+	// confirmTaskDelete. The minted token rides the committing BatchTransactionResultMsg
+	// / TransactionErrorMsg (stampDeleteRequestToken) so post-commit Inbox and Weekly
+	// Review bookkeeping correlates with the exact result that originated it.
+	deleteRequestSeq uint64
+
 	// A trash restore commits the synced project/catalog data first, then repairs
 	// machine-local references from the captured tombstone on the update loop.
 	// Keep that payload until machine.json succeeds so a partial restore remains

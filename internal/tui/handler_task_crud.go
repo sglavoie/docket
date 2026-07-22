@@ -26,6 +26,9 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TaskUpdatedMsg:
 		return m.handleTaskUpdated(msg)
 
+	case TaskDeleteRequestedMsg:
+		return true, m.handleTaskDeleteRequested(msg)
+
 	case TaskDeletedMsg:
 		return m.handleTaskDeleted(msg)
 	}

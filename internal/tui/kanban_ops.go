@@ -289,11 +289,20 @@ func (m *KanbanModel) applySelectedBulkToggleDim() (tea.Model, tea.Cmd) {
 
 func (m *KanbanModel) applySelectedBulkDelete() (tea.Model, tea.Cmd) {
 	if len(m.selectedTaskProjectRefs()) == 0 {
-		// Single-card delete commits the subtree through the coordinator-backed
-		// workflow path (folding durable planning-ref cleanup into the same
-		// transaction); the shell reloads the board from the async
-		// BatchTransactionResultMsg.
-		return m, wfDeleteTask(m, m.getRuntime(), m.getConfigManager())
+		// Single-card delete emits the canonical, shell-owned
+		// TaskDeleteRequestedMsg so the user confirms before any mutation; the
+		// shell folds the durable planning-ref cleanup into the committed
+		// transaction and reloads the board from the async result.
+		task, project := m.getTaskRef()
+		if task == nil || project == nil {
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return TaskDeleteRequestedMsg{
+				Refs:   []TaskProjectRef{{Task: task, Project: project}},
+				Origin: m.viewID(),
+			}
+		}
 	}
 	m.setStatus("bulk delete not supported in Kanban")
 	return m, nil

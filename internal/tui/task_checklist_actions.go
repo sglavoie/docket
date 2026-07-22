@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -96,6 +97,48 @@ func (m *TaskChecklistModel) toggleItem() tea.Cmd {
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.ToggleChecklistItem(m.task.ID, index), func(fresh *models.Task) tea.Msg {
 		return ChecklistItemToggledMsg{Task: fresh}
 	})
+}
+
+func (m *TaskChecklistModel) copyItemText() tea.Cmd {
+	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
+		return nil
+	}
+	text := m.task.Checklist[m.cursor].Text
+
+	if err := copyTextToClipboard(text); err != nil {
+		if errors.Is(err, errClipboardUnsupported) {
+			m.setStatus(err.Error())
+			return nil
+		}
+		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		return nil
+	}
+
+	m.setStatus("Item copied to clipboard")
+	return nil
+}
+
+func (m *TaskChecklistModel) copyAllItemsText() tea.Cmd {
+	if len(m.task.Checklist) == 0 {
+		m.setStatus("Nothing to copy")
+		return nil
+	}
+	texts := make([]string, len(m.task.Checklist))
+	for i, item := range m.task.Checklist {
+		texts[i] = item.Text
+	}
+
+	if err := copyTextToClipboard(formatNumberedMarkdownList(texts)); err != nil {
+		if errors.Is(err, errClipboardUnsupported) {
+			m.setStatus(err.Error())
+			return nil
+		}
+		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		return nil
+	}
+
+	m.setStatus("All items copied to clipboard")
+	return nil
 }
 
 func (m *TaskChecklistModel) reorderItem(from, to int) tea.Cmd {

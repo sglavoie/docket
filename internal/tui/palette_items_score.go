@@ -1,10 +1,68 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/logging"
 )
+
+// Project identity match-quality tiers, ranked from strongest to weakest. They
+// order project matches by how the query relates to the project name or slug.
+const (
+	projectQualityNone      = 0
+	projectQualityFuzzy     = 1 // scattered subsequence match only
+	projectQualitySubstring = 2 // contiguous substring somewhere in name/slug
+	projectQualityPrefix    = 3 // name or slug starts with the query
+	projectQualityExact     = 4 // query equals the whole name or slug
+)
+
+// projectIdentityBonus returns a deterministic score bonus that ranks a project
+// identity match strictly by its quality tier, ahead of any fuzzy match from a
+// higher-weighted category (e.g. commands). The gaps dwarf the ordinary
+// fuzzy/category/recency range (a handful of points for short slugs), so the
+// ordering exact > prefix > substring > fuzzy holds regardless of the raw base
+// score — the base fuzzy score can otherwise invert substring vs. subsequence
+// matches (a start-anchored subsequence can outscore a mid-string substring).
+// This guarantees an exactly named or slugged project — such as one called
+// "tt" — is never buried in a command-heavy context.
+func projectIdentityBonus(quality int) int {
+	switch quality {
+	case projectQualityExact:
+		return 200000
+	case projectQualityPrefix:
+		return 20000
+	case projectQualitySubstring:
+		return 2000
+	case projectQualityFuzzy:
+		return 200
+	default:
+		return 0
+	}
+}
+
+// projectMatchQuality classifies how a single query term matches a project's
+// name or slug, taking the strongest tier across both fields.
+func projectMatchQuality(name, slug, query string) int {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return projectQualityNone
+	}
+	n := strings.ToLower(strings.TrimSpace(name))
+	s := strings.ToLower(strings.TrimSpace(slug))
+	switch {
+	case q == n || q == s:
+		return projectQualityExact
+	case strings.HasPrefix(n, q) || strings.HasPrefix(s, q):
+		return projectQualityPrefix
+	case strings.Contains(n, q) || strings.Contains(s, q):
+		return projectQualitySubstring
+	case fuzzy.Match(n, q) || fuzzy.Match(s, q):
+		return projectQualityFuzzy
+	}
+	return projectQualityNone
+}
 
 // scoreItemWithDetails scores an item and returns which field matched.
 // Returns (score, namePositions, matchedField).
@@ -20,6 +78,12 @@ func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query strin
 				aliasScore = score
 			}
 		}
+	}
+
+	// A project's slug is an explicit, first-class searchable field.
+	slugScore := 0
+	if item.Category == ItemCategoryProjects && item.Project != nil {
+		slugScore = fuzzy.ScoreTerms(item.Project.Slug, query)
 	}
 
 	var positions []int
@@ -39,8 +103,19 @@ func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query strin
 		matchedField = MatchFieldName
 	}
 
-	if nameScore > 0 && nameScore >= descScore && nameScore >= aliasScore {
+	// A slug match that beats name/description/alias takes over provenance so
+	// the preview can explain the result. Positions stay nil because they index
+	// Name, which the slug match did not necessarily touch.
+	if slugScore > bestScore {
+		bestScore = slugScore
+		matchedField = MatchFieldProjectSlug
+		positions = nil
+	}
+
+	if nameScore > 0 && nameScore >= descScore && nameScore >= aliasScore && nameScore >= slugScore {
 		bestScore = nameScore * 2
+		matchedField = MatchFieldName
+		positions = namePositions
 	}
 
 	if bestScore == 0 {
@@ -50,6 +125,12 @@ func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query strin
 	score := bestScore * categoryWeight(item.Category)
 	if m.isRecentSelection(item) {
 		score *= recentBoostMultiplier
+	}
+
+	// Add the identity bonus last so the deterministic tier gaps are not
+	// amplified by the category/recency multipliers above.
+	if item.Category == ItemCategoryProjects && item.Project != nil {
+		score += projectIdentityBonus(projectMatchQuality(item.Project.Name, item.Project.Slug, query))
 	}
 
 	return score, positions, matchedField

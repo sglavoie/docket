@@ -60,7 +60,7 @@ func (m *TaskChecklistModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.cancelEditMode()
 			return m, nil
-		case "ctrl+s":
+		case "enter":
 			return m, m.saveEditedItem()
 		case "ctrl+e":
 			return m, m.editItemInExternalEditorFromEditMode()
@@ -84,7 +84,7 @@ func (m *TaskChecklistModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.cancelAddMode()
 			return m, nil
-		case "ctrl+s":
+		case "enter":
 			return m, m.saveItem()
 		case "ctrl+e":
 			return m, m.addItemInExternalEditor()
@@ -151,6 +151,12 @@ func (m *TaskChecklistModel) handleNormalKey(key string) tea.Cmd {
 		if m.hasSelection() {
 			return m.toggleItem()
 		}
+	case "y":
+		if m.hasSelection() {
+			return m.copyItemText()
+		}
+	case "Y":
+		return m.copyAllItemsText()
 	case "J":
 		if m.cursor < len(m.task.Checklist)-1 {
 			return m.reorderItem(m.cursor, m.cursor+1)

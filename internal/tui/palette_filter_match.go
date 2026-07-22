@@ -165,6 +165,12 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 // itemMatchesNegativeGroups returns true if the item matches any negative term group.
 // A group matches if ANY of its alternatives match (OR logic within group).
 func (m *CommandPaletteModel) itemMatchesNegativeGroups(item PaletteItem, negativeGroups []searchTermGroup) bool {
+	// A project's slug is a first-class searchable field, so negation must be
+	// able to exclude on slug alone (mirroring the positive scoring path).
+	slug := ""
+	if item.Category == ItemCategoryProjects && item.Project != nil {
+		slug = item.Project.Slug
+	}
 	for _, group := range negativeGroups {
 		// Group matches if ANY alternative matches (OR logic)
 		for _, alt := range group.alternatives {
@@ -176,8 +182,14 @@ func (m *CommandPaletteModel) itemMatchesNegativeGroups(item PaletteItem, negati
 				if strings.Contains(nameLower, altLower) || strings.Contains(descLower, altLower) {
 					return true
 				}
+				if slug != "" && strings.Contains(strings.ToLower(slug), altLower) {
+					return true
+				}
 			} else {
 				if fuzzy.Match(item.Name, alt) || fuzzy.Match(item.Description, alt) {
+					return true
+				}
+				if slug != "" && fuzzy.Match(slug, alt) {
 					return true
 				}
 			}
@@ -214,6 +226,17 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 				descLower := strings.ToLower(item.Description)
 				altLower := strings.ToLower(alt)
 
+				// Project name/slug matches carry the same deterministic
+				// identity-quality bonus as the fuzzy scoring path
+				// (scoreItemWithDetails). Without it, a quoted exact term is
+				// scored by categoryWeight alone, letting a higher-weighted
+				// command category outrank an exactly named or slugged project
+				// and breaking the project-identity ordering contract.
+				identityBonus := 0
+				if item.Category == ItemCategoryProjects && item.Project != nil {
+					identityBonus = projectIdentityBonus(projectMatchQuality(item.Project.Name, item.Project.Slug, alt))
+				}
+
 				if strings.Contains(nameLower, altLower) {
 					// Find position of match in name for highlighting
 					idx := strings.Index(nameLower, altLower)
@@ -222,7 +245,7 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 						positions = append(positions, i)
 					}
 					// Score exact matches highly
-					score := len(alt) * 10 * categoryWeight(item.Category)
+					score := len(alt)*10*categoryWeight(item.Category) + identityBonus
 					if score > bestScore {
 						bestScore = score
 						bestPositions = positions
@@ -231,11 +254,24 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 					}
 				} else if strings.Contains(descLower, altLower) {
 					// Match in description, no name highlighting
-					score := len(alt) * 5 * categoryWeight(item.Category)
+					score := len(alt)*5*categoryWeight(item.Category) + identityBonus
 					if score > bestScore {
 						bestScore = score
 						bestPositions = nil
 						groupMatchField = MatchFieldDescription
+						groupMatchTerm = alt
+					}
+				} else if item.Category == ItemCategoryProjects && item.Project != nil &&
+					item.Project.Slug != "" && strings.Contains(strings.ToLower(item.Project.Slug), altLower) {
+					// Slug-only exact match: the project's slug is a first-class
+					// searchable identity field. Positions stay nil because they
+					// index Name, which the slug match did not touch; provenance
+					// records MatchFieldProjectSlug so the preview can attribute it.
+					score := len(alt)*10*categoryWeight(item.Category) + identityBonus
+					if score > bestScore {
+						bestScore = score
+						bestPositions = nil
+						groupMatchField = MatchFieldProjectSlug
 						groupMatchTerm = alt
 					}
 				}

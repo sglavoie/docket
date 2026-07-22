@@ -123,9 +123,9 @@ func (m *PriorityViewModel) priorityTaskActionDeps() TaskKeymapDeps {
 	return TaskKeymapDeps{
 		View:             m,
 		HasItem:          m.priorityHasItem,
+		Origin:           ViewPriorityView,
 		ToggleHelp:       m.priorityToggleHelpAction,
 		SelectedTaskRefs: m.prioritySelectedTaskRefs,
-		DeleteTask:       m.priorityDeleteTaskAction,
 		OpenURL:          m.priorityOpenURLAction,
 		MoveToProject:    m.priorityMoveToProjectAction,
 		QuickNote:        m.priorityQuickNoteAction,
@@ -151,14 +151,6 @@ func (m *PriorityViewModel) prioritySelectedTaskRefs() []TaskProjectRef {
 
 func (m *PriorityViewModel) priorityToggleHelpAction() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
-}
-
-func (m *PriorityViewModel) priorityDeleteTaskAction() (tea.Model, tea.Cmd) {
-	task, _ := m.getTaskRef()
-	if task != nil {
-		m.showDeleteConfirm(task.ShortID)
-	}
-	return m, nil
 }
 
 func (m *PriorityViewModel) priorityOpenURLAction() (tea.Model, tea.Cmd) {

@@ -72,6 +72,7 @@ func (m *SettingsModel) validateAll() error {
 		m.validateMaxRecentTaskVisits,
 		m.validateSectionLimits,
 		m.validateResumeCardLimit,
+		m.validateHomeProjectsHeightPct,
 		m.validateAttachmentEditor,
 		m.validateCodeEditor,
 		m.validateAlertSettings,
@@ -193,6 +194,11 @@ func (m *SettingsModel) validateMaxRecentTaskVisits() error {
 
 func (m *SettingsModel) validateResumeCardLimit() error {
 	_, err := validateIntInRange(m.resumeCardLimitInput.Value(), "resume card limit", 1, config.ResumeCardLimitUpperBound)
+	return err
+}
+
+func (m *SettingsModel) validateHomeProjectsHeightPct() error {
+	_, err := validateIntInRange(m.homeProjectsHeightInput.Value(), "projects height %", config.MinHomeProjectsHeightPct, config.MaxHomeProjectsHeightPct)
 	return err
 }
 

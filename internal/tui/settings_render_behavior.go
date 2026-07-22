@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 func (m *SettingsModel) renderBehaviorTab() string {
@@ -31,16 +35,31 @@ func (m *SettingsModel) renderBehaviorHomeSection() string {
 	const indent = 21
 	base := subTabFieldStart(tabBehavior, 6)
 
-	b.WriteString(renderFormLabelWithWidth("Parked task limit: ", labelWidth, m.focusIndex == base))
+	b.WriteString(renderFormLabelWithWidth("Parked task limit: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(m.resumeCardLimitInput.View())
-	b.WriteString(renderDefaultHint(m.resumeCardLimitInput.Value(), "5"))
+	b.WriteString(renderDefaultHint(m.resumeCardLimitInput.Value(), strconv.Itoa(config.DefaultResumeCardLimit)))
 	b.WriteString("\n")
-	if m.focusIndex == base && m.validationErr != "" {
+	if m.focusIndex == base+0 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Maximum parked tasks shown in Home Attention", indent, m.focusIndex == base))
+	b.WriteString(renderFormFieldDesc("Maximum parked tasks shown in Home Attention", indent, m.focusIndex == base+0))
+
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Projects height %: ", labelWidth, m.focusIndex == base+1))
+	b.WriteString(m.homeProjectsHeightInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%d-%d)", config.MinHomeProjectsHeightPct, config.MaxHomeProjectsHeightPct)))
+	b.WriteString(renderDefaultHint(m.homeProjectsHeightInput.Value(), strconv.Itoa(config.DefaultHomeProjectsHeightPct)))
+	b.WriteString("\n")
+	if m.focusIndex == base+1 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Share of Home height for Projects; Attention gets the rest", indent, m.focusIndex == base+1))
 	return b.String()
 }
 

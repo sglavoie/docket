@@ -14,6 +14,14 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case PalettePeekRequestMsg:
+		// Open the in-app Peek overlay above the palette. The palette view stays
+		// on the stack, so dismissing Peek (Esc) restores its exact state.
+		if msg.Task != nil {
+			m.activatePeek(msg.Task, msg.Project)
+		}
+		return true, nil
+
 	case ShowCommandPaletteMsg:
 		// Pass the current view (before pushing the palette) for context-aware command filtering.
 		// Scope tasks to currentProject only when the invoking view is project-scoped; Dashboard
@@ -37,6 +45,13 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if review, ok := m.activeView().(*ReviewHubModel); ok {
 			palette.SetCommandContext(review.CommandContext())
 		}
+		// Every TaskWorkspace-backed active view (Outliner, All Tasks, Kanban, …)
+		// installs its typed command context so the palette exposes the same
+		// capability-scoped Task Workspace grammar — including uppercase-X
+		// deletion — that direct keys and help advertise.
+		if workspace, _, ok := m.taskWorkspacePrimary(); ok && m.activeTaskWorkspace() {
+			palette.SetCommandContext(workspace.CommandContext())
+		}
 		// Apply pre-filter if specified (overrides last category)
 		if msg.PreFilter != "" {
 			palette.searchInput.SetValue(msg.PreFilter)
@@ -50,7 +65,12 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		keepPalette := false
 		if msg.ResultMsg != nil {
 			switch msg.ResultMsg.(type) {
-			case EditTaskMsg, SetDueDateMsg, SetSnoozeDateMsg, ShowSectionPickerMsg, ShowPriorityPickerMsg, GlowViewMsg:
+			case EditTaskMsg, SetDueDateMsg, SetSnoozeDateMsg, ShowSectionPickerMsg, ShowPriorityPickerMsg:
+				keepPalette = true
+			case PalettePeekRequestMsg:
+				// Peek activates an in-app overlay above the palette; keep the
+				// palette on the stack so Esc returns to its exact search state,
+				// matching the palette task-row Peek (peekItem) path.
 				keepPalette = true
 			}
 		}

@@ -148,9 +148,14 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 		t, _ := m.getTaskRef()
 		return t != nil
 	}
+	origin := ViewRecentActivity
+	if m.projectScope != nil {
+		origin = ViewProjectRecentActivity
+	}
 	entries = append(entries, buildReviewTaskActionEntries(TaskKeymapDeps{
 		View:    m,
 		HasItem: hasItem,
+		Origin:  origin,
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
 			viewType := ViewRecentActivity
 			viewName := "Recent Activity"

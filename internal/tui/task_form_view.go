@@ -111,7 +111,7 @@ func (m *TaskFormModel) View() tea.View {
 		if showSubtasks {
 			helpText += " · Ctrl+T: add subtask"
 		}
-		helpText += " · Ctrl+D: delete · Ctrl+J/K: reorder · Ctrl+S: save · Esc: cancel"
+		helpText += " · Enter: edit/save item · Ctrl+D: delete · Ctrl+J/K: reorder · Ctrl+S: save task · Esc: cancel"
 	}
 	separator := MutedStyle.Render(strings.Repeat("─", m.width))
 	helpLine := HelpStyle.Render(renderWrappingHelpLine(helpText, m.width))

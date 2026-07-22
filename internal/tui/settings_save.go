@@ -158,6 +158,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	if limit, err := strconv.Atoi(strings.TrimSpace(m.resumeCardLimitInput.Value())); err == nil {
 		s.ResumeCardLimit = &limit
 	}
+	if pct, err := strconv.Atoi(strings.TrimSpace(m.homeProjectsHeightInput.Value())); err == nil {
+		mach.HomeProjectsHeightPct = &pct
+	}
 	s.TUIZebraStriping = boolPtr(m.zebraStriping)
 	s.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	s.TimeFormat = timeFormatValues[m.timeFormatCursor]

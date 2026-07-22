@@ -165,9 +165,9 @@ func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) str
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("enter save · Esc cancel")
 	} else if m.width < 100 {
-		left = HelpStyle.Render("j/k · enter · space · x done · a add · tab")
+		left = HelpStyle.Render("j/k · enter · space · x done · X del · a add · tab")
 	} else {
-		left = HelpStyle.Render("j/k move · enter detail · space select · x done · a add · tab switch")
+		left = HelpStyle.Render("j/k move · enter detail · space select · x done · X delete · a add · tab switch")
 	}
 
 	var rightParts []string

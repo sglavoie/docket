@@ -169,6 +169,7 @@ func NewSettingsModel(deps *shellDeps) *SettingsModel {
 		activeHiddenDimmed:       themeHiddenDimmed(activeTheme),
 		startViewCursor:          settingsOptionCursor(startViewValues, machine.GetStartView(), defaultStartViewCursor),
 		resumeCardLimitInput:     newSettingsInput(strconv.Itoa(config.DefaultResumeCardLimit), 2, 6, strconv.Itoa(settings.GetResumeCardLimit()), false),
+		homeProjectsHeightInput:  newSettingsInput(strconv.Itoa(config.DefaultHomeProjectsHeightPct), 2, 6, strconv.Itoa(machine.GetHomeProjectsHeightPct()), false),
 		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, settings.KanbanSettings.DefaultMode, 0),
 		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, settings.KanbanSettings.DefaultStartColumn, false),
 		kanbanShowEmptyColumns:   settings.KanbanSettings.ShowEmptyColumns == nil || *settings.KanbanSettings.ShowEmptyColumns,

@@ -31,7 +31,6 @@ type inboxBackend interface {
 	saveProjectCmd(project *models.Project) tea.Cmd
 	reloadCmd() tea.Cmd
 	rebuildTasks()
-	deleteFromData(task *models.Task, project *models.Project)
 
 	// Behavioral hooks
 	markDeletedProcessed() bool
@@ -89,8 +88,34 @@ type inboxCore struct {
 	// reloaded from disk.
 	pendingFocusID string
 
+	// pendingDeletes holds the post-commit focus/auto-close metadata for each task
+	// this processor asked the shell to delete but whose transaction has not yet
+	// committed, keyed by task ID. It gates applyCommittedDelete so post-commit
+	// bookkeeping runs exactly once per deleted task. Each entry captures the
+	// post-delete cursor target computed against the intact queue at request time
+	// (see requestDelete), so the post-commit advance matches the legacy in-memory
+	// delete instead of skipping the natural next task. Keying by task ID (rather
+	// than a single slot) lets two overlapping deletes — delete, navigate, delete
+	// again — each retain their own focus target regardless of which result lands
+	// first.
+	pendingDeletes map[string]inboxPendingDelete
+
 	backend inboxBackend
 	model   tea.Model // pointer to the outer (embedding) model, for Update returns
+}
+
+// inboxPendingDelete captures the post-delete cursor target computed against the
+// intact queue at request time, so the post-commit advance matches the legacy
+// in-memory delete instead of skipping the natural next task. focusID names the
+// task the cursor should land on once the deleted task leaves the queue.
+//
+// Auto-close is deliberately NOT captured here: back-to-back deletion of the
+// final two tasks would each snapshot willClose=false (each still sees the
+// other's task queued), so closure is recomputed at apply time against the
+// rebuilt committed queue plus the remaining in-flight deletes (see
+// shouldCloseAfterDelete), which closes the processor exactly once.
+type inboxPendingDelete struct {
+	focusID string
 }
 
 // processingAction records an action for undo support.
@@ -116,19 +141,4 @@ func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, manager *con
 
 	km := c.buildKeyMap()
 	c.Dispatcher = keymap.NewDispatcher(km)
-	c.Dispatcher.ModalGuards = []keymap.ModalGuard{
-		{
-			Active: func() bool { return c.confirm.IsActive() },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				if confirmed, handled := c.confirm.HandleKey(key); handled {
-					if confirmed {
-						return c.model, c.executeDelete(), true
-					}
-					c.statusMessage = ""
-					return c.model, nil, true
-				}
-				return nil, nil, false
-			},
-		},
-	}
 }

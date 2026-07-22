@@ -47,7 +47,8 @@ func PlannerBindingCatalog() []TaskWorkspaceBinding {
 		WorkspaceActionSelect: true, WorkspaceActionSearch: true,
 		WorkspaceActionViewMenu: true, WorkspaceActionAdd: true,
 		WorkspaceActionEdit: true, WorkspaceActionComplete: true,
-		WorkspaceActionState: true, WorkspaceActionPin: true,
+		WorkspaceActionDelete: true,
+		WorkspaceActionState:  true, WorkspaceActionPin: true,
 		WorkspaceActionPriority: true, WorkspaceActionDueDate: true,
 		WorkspaceActionTags: true, WorkspaceActionSnooze: true,
 		WorkspaceActionMove: true, WorkspaceActionMoveDown: true,
@@ -245,6 +246,12 @@ func (m *FocusBoardModel) handlePlannerAction(action TaskWorkspaceAction) tea.Cm
 		}
 	case WorkspaceActionComplete:
 		return m.completePlannerTargets()
+	case WorkspaceActionDelete:
+		refs := m.plannerTargetRefs()
+		if len(refs) == 0 {
+			return nil
+		}
+		return func() tea.Msg { return TaskDeleteRequestedMsg{Refs: refs, Origin: ViewFocusBoard} }
 	case WorkspaceActionState:
 		return m.currentTaskCommand(func(task *models.Task, project *models.Project) tea.Msg {
 			return ShowSectionPickerMsg{Task: task, Project: project}

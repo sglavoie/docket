@@ -224,5 +224,5 @@ func (m *TaskDecisionsModel) renderDecisionEntry(index int, decision *models.Dec
 
 func (m *TaskDecisionsModel) renderFooter(b *strings.Builder) {
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · y: copy · Enter: expand · Esc: close", m.Width())))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · y: copy · Y: copy all · Enter: expand · Esc: close", m.Width())))
 }

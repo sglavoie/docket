@@ -131,15 +131,6 @@ func (m *GlobalInboxProcessorModel) rebuildTasks() {
 	m.loadAllInboxTasks()
 }
 
-func (m *GlobalInboxProcessorModel) deleteFromData(task *models.Task, project *models.Project) {
-	for i, t := range project.Tasks {
-		if t.ID == task.ID {
-			project.Tasks = append(project.Tasks[:i], project.Tasks[i+1:]...)
-			return
-		}
-	}
-}
-
 func (m *GlobalInboxProcessorModel) markDeletedProcessed() bool { return true }
 
 func (m *GlobalInboxProcessorModel) shouldProcessOnSectionChange(task *models.Task, project *models.Project) bool {

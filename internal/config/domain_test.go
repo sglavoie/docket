@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -436,6 +437,57 @@ func TestNewMachineStateDefaults(t *testing.T) {
 func TestMachineStateValidate(t *testing.T) {
 	if err := (&MachineState{AIHarness: "unknown-harness"}).Validate(); err == nil {
 		t.Error("unknown AI harness should fail")
+	}
+}
+
+func TestMachineGetHomeProjectsHeightPct(t *testing.T) {
+	pct := func(v int) *int { return &v }
+	tests := []struct {
+		name  string
+		state *MachineState
+		want  int
+	}{
+		{"nil state", nil, DefaultHomeProjectsHeightPct},
+		{"unset", &MachineState{}, DefaultHomeProjectsHeightPct},
+		{"in range", &MachineState{HomeProjectsHeightPct: pct(70)}, 70},
+		{"below min clamps", &MachineState{HomeProjectsHeightPct: pct(3)}, MinHomeProjectsHeightPct},
+		{"above max clamps", &MachineState{HomeProjectsHeightPct: pct(150)}, MaxHomeProjectsHeightPct},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.state.GetHomeProjectsHeightPct(); got != tt.want {
+				t.Fatalf("GetHomeProjectsHeightPct() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMachineStateHomeProjectsHeightPctJSONRoundTrip(t *testing.T) {
+	pct := 75
+	original := &MachineState{HomeProjectsHeightPct: &pct}
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(data), `"home_projects_height_pct":75`) {
+		t.Fatalf("expected home_projects_height_pct in JSON, got %s", data)
+	}
+
+	var reloaded MachineState
+	if err := json.Unmarshal(data, &reloaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if reloaded.GetHomeProjectsHeightPct() != 75 {
+		t.Fatalf("reloaded height = %d, want 75", reloaded.GetHomeProjectsHeightPct())
+	}
+
+	// Unset stays omitted so machines without the preference serialize cleanly.
+	empty, err := json.Marshal(&MachineState{})
+	if err != nil {
+		t.Fatalf("marshal empty: %v", err)
+	}
+	if strings.Contains(string(empty), "home_projects_height_pct") {
+		t.Fatalf("unset height should be omitted, got %s", empty)
 	}
 }
 

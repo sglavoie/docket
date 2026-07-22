@@ -65,32 +65,36 @@ func kanbanWorkflowResult(t *testing.T, cmd tea.Cmd) BatchTransactionResultMsg {
 	return BatchTransactionResultMsg{}
 }
 
-// TestKanbanStandardKeymapDeleteCommitsWorkflowAndUndoes drives the standard
-// task-prefix delete (tD) on a single card. With no active selection it now
-// commits through wfDeleteTask; the task is removed on disk and undo restores it.
-func TestKanbanStandardKeymapDeleteCommitsWorkflowAndUndoes(t *testing.T) {
+// TestKanbanUppercaseXDeleteEmitsCanonicalRequest drives the standard uppercase-X
+// delete on a single card. With no active selection it now emits the canonical,
+// shell-owned TaskDeleteRequestedMsg for the cursor card and performs NO mutation
+// before shell confirmation — the legacy path committed a subtree deletion here
+// with no user-facing prompt (FR-005).
+func TestKanbanUppercaseXDeleteEmitsCanonicalRequest(t *testing.T) {
 	a := seedTask(t, 1, "Delete me", models.StateReady)
 	b := seedTask(t, 2, "Keep me", models.StateReady)
 	env := newKanbanBulkEnv(t, []*models.Task{a, b})
 	m := env.kanbanCardModel(t, env.singleProjectCols(a, b))
 
 	_, cmd := m.applySelectedBulkDelete()
-	msg := kanbanWorkflowResult(t, cmd)
-	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.projects[0].ID {
-		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.projects[0].ID)
+	msg := deleteRequestFromCmd(t, cmd)
+	if got := requestTaskIDs(msg); len(got) != 1 || got[0] != a.ID {
+		t.Fatalf("delete targets = %v, want [%s]", got, a.ID)
+	}
+	if msg.Refs[0].Project.ID != env.projects[0].ID {
+		t.Errorf("ref project = %q, want %q", msg.Refs[0].Project.ID, env.projects[0].ID)
+	}
+	if msg.Origin != ViewKanban {
+		t.Errorf("origin = %v, want ViewKanban", msg.Origin)
 	}
 
+	// No mutation before shell confirmation: both cards remain on disk.
 	reloaded := env.reload(t, 0)
-	if got := reloaded.GetTaskByID(a.ID); got != nil {
-		t.Fatalf("task %s still present after delete", a.ID)
+	if got := reloaded.GetTaskByID(a.ID); got == nil {
+		t.Fatalf("task %s must not be deleted before confirmation", a.ID)
 	}
 	if got := reloaded.GetTaskByID(b.ID); got == nil {
-		t.Fatalf("sibling task %s was removed", b.ID)
-	}
-
-	env.undo(t)
-	if got := env.reload(t, 0).GetTaskByID(a.ID); got == nil {
-		t.Fatalf("undo did not restore task %s", a.ID)
+		t.Fatalf("sibling task %s must survive", b.ID)
 	}
 }
 

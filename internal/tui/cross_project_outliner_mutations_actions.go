@@ -1,13 +1,10 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // crossTogglePinned toggles the pinned state for a task in cross-project mode
@@ -84,46 +81,4 @@ func appTaskTypeChangeForOp(op TypeChangeOp) app.TaskTypeChange {
 // rejected change. A nil ParentID promotes the task to a root.
 func (m *OutlinerModel) handleCrossProjectReparent(msg ParentSelectedMsg) (tea.Model, tea.Cmd) {
 	return m, m.taskItem.Reparent(msg.ReparentTaskID, msg.ParentID)
-}
-
-// crossExecuteDelete performs a delete of m.deleteTarget in cross-project mode
-// through the application-layer BulkCoordinator (single-element). The durable
-// planning refs (Focus Queue, Daily Plan, dismissals) of the removed subtree ride
-// the delete transaction as a config artifact so the config-ref cleanup is atomic
-// with the delete and undoable through the ledger; machine-local recent visits are
-// repaired by the shell after the commit from the batch's RemovedTaskIDs.
-//
-// Called from handleConfirmDialog when m.project==nil and the confirmed action
-// is "delete" or "delete-recurring".
-func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
-	if m.deleteTarget == nil {
-		return m, nil
-	}
-	task := m.deleteTarget
-	m.deleteTarget = nil
-	m.clearStatus()
-
-	proj := m.crossFindProjectForTask(task.ID)
-	if proj == nil {
-		m.setStatus("Project for task not found")
-		return m, nil
-	}
-
-	// Fold the durable planning-ref cleanup for the whole removed subtree into the
-	// delete transaction as a config artifact.
-	deleteIDs := collectDescendantIDs(proj.Tasks, map[string]bool{task.ID: true})
-	var artifacts []storage.ArtifactChange
-	if m.runtime != nil && m.configManager != nil {
-		planning := clonePlanningState(m.runtime.Planning())
-		if planning.RemoveDurableTaskRefs(deleteIDs) > 0 {
-			arts, err := planningDomainArtifact(m.configManager, planning)
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Error: %v", err))
-				return m, nil
-			}
-			artifacts = arts
-		}
-	}
-
-	return m, m.bulk.Delete([]string{task.ID}, artifacts...)
 }
