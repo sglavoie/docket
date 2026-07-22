@@ -218,12 +218,89 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 	if !composer.confirmDiscard {
 		t.Fatal("dirty compact cancellation skipped confirmation")
 	}
+	if dialog := composer.GetConfirmDialog(); dialog == nil || !dialog.IsActive() {
+		t.Fatal("dirty compact cancellation did not expose its confirmation")
+	}
 
 	edit := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: project.Tasks[0]}, appModel.runtime)
 	edit.SetSize(60, 18)
 	if !strings.Contains(edit.View().Content, "Terminal too small") {
 		t.Fatal("narrow expanded composer did not use the safe responsive guard")
 	}
+}
+
+func TestTaskComposerEditEscFlowThroughTypedOverlay(t *testing.T) {
+	t.Run("clean edit closes", func(t *testing.T) {
+		appModel, project := newTestAppModelWithProject()
+		appModel.enableTypedNavigation()
+		appModel.Update(EditTaskMsg{Project: project, Task: project.Tasks[0]})
+
+		if !appModel.activeTaskComposer() {
+			t.Fatal("edit did not open the typed Task Composer overlay")
+		}
+		_, cmd := appModel.Update(syntheticSpecialKey(tea.KeyEsc))
+		if cmd == nil {
+			t.Fatal("clean edit Esc did not request navigation back")
+		}
+		backMsg := cmd()
+		if _, ok := backMsg.(BackMsg); !ok {
+			t.Fatalf("clean edit Esc emitted %T, want BackMsg", backMsg)
+		}
+		appModel.Update(backMsg)
+		if appModel.activeTaskComposer() || appModel.taskComposer != nil {
+			t.Fatal("clean edit Esc left the Task Composer overlay open")
+		}
+	})
+
+	t.Run("dirty edit exposes and dismisses discard confirmation", func(t *testing.T) {
+		appModel, project := newTestAppModelWithProject()
+		appModel.enableTypedNavigation()
+		task := project.Tasks[0]
+		originalTitle := task.Title
+		appModel.Update(EditTaskMsg{Project: project, Task: task})
+
+		appModel.Update(syntheticKey('x'))
+		if appModel.taskComposer == nil || appModel.taskComposer.expanded == nil || !appModel.taskComposer.expanded.hasChanges {
+			t.Fatal("typing in the edit composer did not dirty the embedded form")
+		}
+
+		appModel.Update(syntheticSpecialKey(tea.KeyEsc))
+		if !appModel.activeTaskComposer() {
+			t.Fatal("dirty edit Esc closed without confirmation")
+		}
+		if popup := appModel.renderConfirmDialogOverlay(); !strings.Contains(popup, "Discard unsaved changes?") {
+			t.Fatalf("dirty edit confirmation was not surfaced through the shell: %q", popup)
+		}
+
+		draftTitle := appModel.taskComposer.expanded.draft.title
+		appModel.Update(syntheticSpecialKey(tea.KeyEsc))
+		if popup := appModel.renderConfirmDialogOverlay(); popup != "" {
+			t.Fatalf("Esc did not dismiss the discard confirmation: %q", popup)
+		}
+		if !appModel.activeTaskComposer() {
+			t.Fatal("dismissing the discard confirmation closed the composer")
+		}
+		if appModel.taskComposer.expanded.draft.title != draftTitle {
+			t.Fatal("dismissing the discard confirmation changed the draft")
+		}
+
+		appModel.Update(syntheticSpecialKey(tea.KeyEsc))
+		_, cmd := appModel.Update(syntheticKey('y'))
+		if cmd == nil {
+			t.Fatal("confirming discard did not request navigation back")
+		}
+		backMsg := cmd()
+		if _, ok := backMsg.(BackMsg); !ok {
+			t.Fatalf("confirming discard emitted %T, want BackMsg", backMsg)
+		}
+		appModel.Update(backMsg)
+		if appModel.activeTaskComposer() || appModel.taskComposer != nil {
+			t.Fatal("confirming discard left the Task Composer overlay open")
+		}
+		if task.Title != originalTitle {
+			t.Fatal("discarding the draft mutated the task")
+		}
+	})
 }
 
 func TestTaskComposerPlannerPresetCarriesStateAndAtomicArtifacts(t *testing.T) {

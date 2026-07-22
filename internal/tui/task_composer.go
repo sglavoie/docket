@@ -652,6 +652,16 @@ func (m *TaskComposerModel) HasTextInput() bool     { return true }
 func (m *TaskComposerModel) IsFullHeight() bool     { return false }
 func (m *TaskComposerModel) StatusBarLabel() string { return "Task Composer" }
 
+// GetConfirmDialog surfaces the embedded form's confirmation in expanded mode
+// so the App shell can render and dismiss it. Compact mode owns its own discard
+// state directly on the composer.
+func (m *TaskComposerModel) GetConfirmDialog() *ConfirmDialog {
+	if m.mode == ComposerExpanded && m.expanded != nil {
+		return m.expanded.GetConfirmDialog()
+	}
+	return m.discardConfirmState.GetConfirmDialog()
+}
+
 func (m *TaskComposerModel) ContextualFooter() (StatusBarFooterSpec, bool) {
 	if m.mode == ComposerExpanded {
 		return StatusBarFooterSpec{}, false
