@@ -23,6 +23,7 @@ type outlinerRow struct {
 	Breadcrumb         string // Ancestor path for tasks promoted across a section boundary.
 	hasVisibleChildren bool   // Children rendered in this row's section-local tree.
 	IsSectionHeader    bool   // True if this row is a section header (not a task)
+	IsLensHeader       bool   // True for a non-GTD grouping header such as a due-date bucket
 	IsProjectHeader    bool   // True if this row is a synthetic, render-only project sub-header (not a task)
 	SectionName        string // Section name for header rows
 	SectionCount       int    // Number of tasks in this section

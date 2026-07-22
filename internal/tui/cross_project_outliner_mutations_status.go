@@ -21,7 +21,7 @@ func (m *OutlinerModel) crossHandleStateMutation(state models.WorkflowState) (te
 	if m.project != nil {
 		return nil, nil, false
 	}
-	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+	if m.multiSelectMode && m.SelectedCount() > 0 {
 		model, cmd := m.crossApplyBulkStateChange(state)
 		return model, cmd, true
 	}
@@ -51,14 +51,14 @@ func (m *OutlinerModel) crossApplyBulkStateChange(newState models.WorkflowState)
 		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
-		if m.selectedTasks[row.task.ID] {
+		if m.isRowSelected(row) {
 			tasks = append(tasks, row.task)
 		}
 	}
 	if len(tasks) == 0 {
 		return m, nil
 	}
-	m.bulkOp.SetOperation(newState, tasks, 0, nil)
+	m.bulkOp.SetLocatedOperation(newState, tasks, taskLocatorsFromTaskRefs(m.getSelectedTaskProjectRefs()))
 	m.confirm.Show("bulk-status", fmt.Sprintf("Change %d tasks to %s?", len(tasks), string(newState)))
 	m.clearMultiSelect()
 	return m, nil
@@ -74,25 +74,24 @@ func (m *OutlinerModel) crossApplyBulkStateChange(newState models.WorkflowState)
 // reloads, selection-clear, and user feedback via finalizeBatchResult.
 func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 	tasks := m.bulkOp.GetTasks()
+	locators := m.bulkOp.GetLocators()
 	state := m.bulkOp.GetState()
 	m.bulkOp.Clear()
 	if len(tasks) == 0 {
 		return m, nil
 	}
-
-	taskIDs := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		taskIDs = append(taskIDs, task.ID)
+	if len(locators) == 0 {
+		locators = m.crossTaskLocators(tasks)
 	}
 
 	cmd := m.bulk.TransitionWithWorkflow(
 		app.BulkTransitionRequest{
-			TaskIDs:     taskIDs,
-			Target:      state,
-			Rules:       m.enabledWorkflowRules(),
-			UndoAction:  "Bulk Status Change",
-			UndoContext: fmt.Sprintf("%d tasks -> %s", len(taskIDs), state),
-			SkipInvalid: true,
+			TaskLocators: locators,
+			Target:       state,
+			Rules:        m.enabledWorkflowRules(),
+			UndoAction:   "Bulk Status Change",
+			UndoContext:  fmt.Sprintf("%d tasks -> %s", len(locators), state),
+			SkipInvalid:  true,
 		},
 		func(changed int) string {
 			if changed == 0 {
@@ -101,5 +100,35 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 			return fmt.Sprintf("Changed %d tasks to %s", changed, state)
 		},
 	)
-	return m, finalizeBatchResult(cmd, taskIDs, "")
+	return m, finalizeLocatedBatchResult(cmd, locators, "")
+}
+
+func (m *OutlinerModel) crossTaskLocators(tasks []*models.Task) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(tasks))
+	for _, target := range tasks {
+		if target == nil {
+			continue
+		}
+		var unique app.TaskLocator
+		matches := 0
+		for _, project := range m.loadedProjects {
+			if project == nil {
+				continue
+			}
+			candidate := project.GetTaskByID(target.ID)
+			if candidate == target {
+				locators = append(locators, app.TaskLocator{ProjectID: project.ID, TaskID: target.ID})
+				matches = 0
+				break
+			}
+			if candidate != nil {
+				unique = app.TaskLocator{ProjectID: project.ID, TaskID: target.ID}
+				matches++
+			}
+		}
+		if matches == 1 {
+			locators = append(locators, unique)
+		}
+	}
+	return locators
 }

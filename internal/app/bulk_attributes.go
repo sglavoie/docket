@@ -32,15 +32,15 @@ import (
 // aborts the whole batch before any mutation persists — the batch is
 // all-or-nothing, matching the atomic guarantee every other bulk use case gives.
 // A nil validate skips the pre-check; a nil mutate is a programming error.
-func (s *Service) bulkAttribute(taskIDs []string, undoAction, undoContext string, validate func(TaskRef) error, mutate func(*models.Task)) (BulkResult, error) {
-	if len(taskIDs) == 0 {
+func (s *Service) bulkAttribute(taskIDs []string, locators []TaskLocator, undoAction, undoContext string, validate func(TaskRef) error, mutate func(*models.Task)) (BulkResult, error) {
+	if len(taskIDs) == 0 && len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return BulkResult{}, err
 	}
-	refs, err := resolveDistinct(snap, taskIDs)
+	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -76,10 +76,18 @@ func (s *Service) bulkAttribute(taskIDs []string, undoAction, undoContext string
 // it is uniform across the batch — so an out-of-range value aborts before any
 // snapshot is mutated. Tasks may span projects.
 func (s *Service) BulkSetPriority(taskIDs []string, priority int) (BulkResult, error) {
+	return s.bulkSetPriority(taskIDs, nil, priority)
+}
+
+func (s *Service) BulkSetPriorityByLocators(locators []TaskLocator, priority int) (BulkResult, error) {
+	return s.bulkSetPriority(nil, locators, priority)
+}
+
+func (s *Service) bulkSetPriority(taskIDs []string, locators []TaskLocator, priority int) (BulkResult, error) {
 	if err := models.ValidatePriority(priority, false); err != nil {
 		return BulkResult{}, invalidInput("priority", err.Error())
 	}
-	return s.bulkAttribute(taskIDs, "Set Priority", fmt.Sprintf("priority %d", priority), nil, func(t *models.Task) {
+	return s.bulkAttribute(taskIDs, locators, "Set Priority", fmt.Sprintf("priority %d", priority), nil, func(t *models.Task) {
 		t.Priority = priority
 		t.UpdatedAt = s.clock.Now()
 	})
@@ -90,7 +98,15 @@ func (s *Service) BulkSetPriority(taskIDs []string, priority int) (BulkResult, e
 // the due date; when false the clock component is dropped, matching single-task
 // SetDueDate. Use BulkClearDueDate to remove a due date. Tasks may span projects.
 func (s *Service) BulkSetDueDate(taskIDs []string, due time.Time, hasTime bool) (BulkResult, error) {
-	return s.bulkAttribute(taskIDs, "Set Due Date", "due date", nil, func(t *models.Task) {
+	return s.bulkSetDueDate(taskIDs, nil, due, hasTime)
+}
+
+func (s *Service) BulkSetDueDateByLocators(locators []TaskLocator, due time.Time, hasTime bool) (BulkResult, error) {
+	return s.bulkSetDueDate(nil, locators, due, hasTime)
+}
+
+func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due time.Time, hasTime bool) (BulkResult, error) {
+	return s.bulkAttribute(taskIDs, locators, "Set Due Date", "due date", nil, func(t *models.Task) {
 		d := due
 		t.DueDate = &d
 		t.HasTime = hasTime
@@ -104,7 +120,15 @@ func (s *Service) BulkSetDueDate(taskIDs []string, due time.Time, hasTime bool) 
 // project, matching the idempotent single-task attribute mutations. Tasks may
 // span projects.
 func (s *Service) BulkClearDueDate(taskIDs []string) (BulkResult, error) {
-	return s.bulkAttribute(taskIDs, "Clear Due Date", "due date", nil, func(t *models.Task) {
+	return s.bulkClearDueDate(taskIDs, nil)
+}
+
+func (s *Service) BulkClearDueDateByLocators(locators []TaskLocator) (BulkResult, error) {
+	return s.bulkClearDueDate(nil, locators)
+}
+
+func (s *Service) bulkClearDueDate(taskIDs []string, locators []TaskLocator) (BulkResult, error) {
+	return s.bulkAttribute(taskIDs, locators, "Clear Due Date", "due date", nil, func(t *models.Task) {
 		t.DueDate = nil
 		t.HasTime = false
 		t.UpdatedAt = s.clock.Now()
@@ -119,8 +143,16 @@ func (s *Service) BulkClearDueDate(taskIDs []string) (BulkResult, error) {
 // whole batch before any commit. Clearing a snooze carries no guards. Tasks may
 // span projects.
 func (s *Service) BulkSnooze(taskIDs []string, until *time.Time) (BulkResult, error) {
+	return s.bulkSnooze(taskIDs, nil, until)
+}
+
+func (s *Service) BulkSnoozeByLocators(locators []TaskLocator, until *time.Time) (BulkResult, error) {
+	return s.bulkSnooze(nil, locators, until)
+}
+
+func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *time.Time) (BulkResult, error) {
 	if until == nil {
-		return s.bulkAttribute(taskIDs, "Snooze Tasks", "clear", nil, func(t *models.Task) {
+		return s.bulkAttribute(taskIDs, locators, "Snooze Tasks", "clear", nil, func(t *models.Task) {
 			t.ClearSnooze()
 		})
 	}
@@ -133,7 +165,7 @@ func (s *Service) BulkSnooze(taskIDs []string, until *time.Time) (BulkResult, er
 		}
 		return nil
 	}
-	return s.bulkAttribute(taskIDs, "Snooze Tasks", "snooze", validate, func(t *models.Task) {
+	return s.bulkAttribute(taskIDs, locators, "Snooze Tasks", "snooze", validate, func(t *models.Task) {
 		u := *until
 		t.SnoozedUntil = &u
 		t.UpdatedAt = s.clock.Now()
@@ -146,6 +178,14 @@ func (s *Service) BulkSnooze(taskIDs []string, until *time.Time) (BulkResult, er
 // malformed tag aborts before any snapshot is mutated. An empty tags slice clears
 // every task's tags. Tasks may span projects.
 func (s *Service) BulkSetTags(taskIDs []string, tags []string) (BulkResult, error) {
+	return s.bulkSetTags(taskIDs, nil, tags)
+}
+
+func (s *Service) BulkSetTagsByLocators(locators []TaskLocator, tags []string) (BulkResult, error) {
+	return s.bulkSetTags(nil, locators, tags)
+}
+
+func (s *Service) bulkSetTags(taskIDs []string, locators []TaskLocator, tags []string) (BulkResult, error) {
 	normalized := make([]string, 0, len(tags))
 	seen := make(map[string]bool, len(tags))
 	for _, raw := range tags {
@@ -159,7 +199,7 @@ func (s *Service) BulkSetTags(taskIDs []string, tags []string) (BulkResult, erro
 		seen[tag] = true
 		normalized = append(normalized, tag)
 	}
-	return s.bulkAttribute(taskIDs, "Set Tags", "tags", nil, func(t *models.Task) {
+	return s.bulkAttribute(taskIDs, locators, "Set Tags", "tags", nil, func(t *models.Task) {
 		t.Tags = append([]string{}, normalized...)
 		t.UpdatedAt = s.clock.Now()
 	})

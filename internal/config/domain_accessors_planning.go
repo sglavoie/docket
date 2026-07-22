@@ -175,6 +175,23 @@ func (p *PlanningState) RemoveFromFocusQueue(taskID string) bool {
 	return removed
 }
 
+func (p *PlanningState) RemoveFromFocusQueueInProject(taskID, projectID string) bool {
+	if projectID == "" {
+		return p.RemoveFromFocusQueue(taskID)
+	}
+	filtered := p.FocusQueue[:0]
+	removed := false
+	for _, item := range p.FocusQueue {
+		if item.TaskID == taskID && item.ProjectID == projectID {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	p.FocusQueue = filtered
+	return removed
+}
+
 // --- PlanningState: daily plan ---------------------------------------------
 
 // GetDailyPlan mirrors (*Config).GetDailyPlan.
@@ -199,6 +216,23 @@ func (p *PlanningState) RemoveFromDailyPlan(taskID string) bool {
 	removed := false
 	for _, item := range p.DailyPlan {
 		if item.TaskID == taskID {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	p.DailyPlan = filtered
+	return removed
+}
+
+func (p *PlanningState) RemoveFromDailyPlanInProject(taskID, projectID string) bool {
+	if projectID == "" {
+		return p.RemoveFromDailyPlan(taskID)
+	}
+	filtered := p.DailyPlan[:0]
+	removed := false
+	for _, item := range p.DailyPlan {
+		if item.TaskID == taskID && item.ProjectID == projectID {
 			removed = true
 			continue
 		}

@@ -17,6 +17,9 @@ type BulkTransitionRequest struct {
 	// TaskIDs identifies each task to transition. At least one is required;
 	// duplicates are collapsed.
 	TaskIDs []string
+	// TaskLocators is the project-qualified alternative used by cross-project
+	// clients. It is mutually exclusive with TaskIDs.
+	TaskLocators []TaskLocator
 	// Target is the workflow state every task moves to. Required.
 	Target models.WorkflowState
 	// Rules, when non-empty, enables the workflow cascade after the transitions
@@ -65,7 +68,7 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 	if !req.Target.IsValid() {
 		return BulkResult{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", req.Target))
 	}
-	if len(req.TaskIDs) == 0 {
+	if len(req.TaskIDs) == 0 && len(req.TaskLocators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 	undoAction := req.UndoAction
@@ -88,7 +91,7 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 		undoContext:            undoContext,
 		forceCommit:            true,
 		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
-			resolved, err := resolveDistinct(snap, req.TaskIDs)
+			resolved, err := resolveRequestedTasks(snap, req.TaskIDs, req.TaskLocators)
 			if err != nil {
 				return workflowMutationPlan{}, err
 			}
@@ -127,15 +130,15 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 			for i := range commits {
 				sources[i] = commits[i].project
 			}
-			planningTaskIDs := make([]string, 0, len(refs))
+			planningTaskLocators := make([]TaskLocator, 0, len(refs))
 			for _, ref := range refs {
-				planningTaskIDs = append(planningTaskIDs, ref.Task.ID)
+				planningTaskLocators = append(planningTaskLocators, TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID})
 			}
 			return workflowMutationPlan{
-				commits:         commits,
-				sources:         sources,
-				previousStates:  previous,
-				planningTaskIDs: planningTaskIDs,
+				commits:              commits,
+				sources:              sources,
+				previousStates:       previous,
+				planningTaskLocators: planningTaskLocators,
 				mutate: func(_ *WorkspaceResolver) error {
 					for _, ref := range refs {
 						applyState(ref.Task, req.Target)

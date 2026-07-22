@@ -79,6 +79,16 @@ type TaskRef struct {
 	Base *storage.ProjectDocument
 }
 
+// TaskLocator identifies one task without relying on workspace-wide UUID
+// uniqueness. Cross-project presentation layers must retain both fields until
+// the application snapshot resolves the task.
+type TaskLocator struct {
+	ProjectID string
+	TaskID    string
+}
+
+func (l TaskLocator) Valid() bool { return l.ProjectID != "" && l.TaskID != "" }
+
 // Snapshot is the revision-consistent read model the application layer consumes
 // before a mutation: it resolves task and project references and reports the
 // canonical revision each project was loaded at, which the use cases capture as
@@ -88,6 +98,8 @@ type Snapshot interface {
 	ProjectByID(projectID string) *models.Project
 	// Lookup resolves a task by its UUID to the task and its owning project.
 	Lookup(taskID string) (TaskRef, bool)
+	// LookupLocator resolves a task within an explicit owning project.
+	LookupLocator(locator TaskLocator) (TaskRef, bool)
 	// Revision returns the canonical content revision a project was loaded at,
 	// or "" when the project is not part of the snapshot.
 	Revision(projectID string) string
@@ -113,13 +125,13 @@ type Repository interface {
 }
 
 // snapshotView is the concrete Snapshot the application layer builds over a set
-// of loaded projects and their revisions. It indexes tasks by UUID for O(1)
-// resolution; a later duplicate task ID does not overwrite the first-seen
-// location, mirroring the fail-closed cross-project resolution used elsewhere.
+// of loaded projects and their revisions. It keeps the legacy first-seen UUID
+// index and a project-qualified index for collision-safe cross-project callers.
 type snapshotView struct {
 	projects  []*models.Project
 	byProject map[string]*models.Project
 	byTask    map[string]TaskRef
+	byLocator map[TaskLocator]TaskRef
 	revisions map[string]string
 	documents map[string]*storage.ProjectDocument
 }
@@ -132,6 +144,7 @@ func NewSnapshot(projects []*models.Project, revisions map[string]string, docume
 	view := &snapshotView{
 		byProject: make(map[string]*models.Project, len(projects)),
 		byTask:    make(map[string]TaskRef),
+		byLocator: make(map[TaskLocator]TaskRef),
 		revisions: make(map[string]string, len(revisions)),
 		documents: make(map[string]*storage.ProjectDocument, len(documents)),
 	}
@@ -151,8 +164,10 @@ func NewSnapshot(projects []*models.Project, revisions map[string]string, docume
 			if task == nil || task.ID == "" {
 				continue
 			}
+			ref := TaskRef{Task: task, Project: project, Base: view.documents[project.ID]}
+			view.byLocator[TaskLocator{ProjectID: project.ID, TaskID: task.ID}] = ref
 			if _, seen := view.byTask[task.ID]; !seen {
-				view.byTask[task.ID] = TaskRef{Task: task, Project: project, Base: view.documents[project.ID]}
+				view.byTask[task.ID] = ref
 			}
 		}
 	}
@@ -171,6 +186,14 @@ func (v *snapshotView) Lookup(taskID string) (TaskRef, bool) {
 		return TaskRef{}, false
 	}
 	ref, ok := v.byTask[taskID]
+	return ref, ok
+}
+
+func (v *snapshotView) LookupLocator(locator TaskLocator) (TaskRef, bool) {
+	if !locator.Valid() {
+		return TaskRef{}, false
+	}
+	ref, ok := v.byLocator[locator]
 	return ref, ok
 }
 

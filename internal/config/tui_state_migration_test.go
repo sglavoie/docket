@@ -118,6 +118,26 @@ func TestMachineTUIStateMigrationMapsEveryLegacyStartValue(t *testing.T) {
 	}
 }
 
+func TestMachineUnmarshalMergesLegacySidebarStatePerProject(t *testing.T) {
+	payload := []byte(`{
+		"project_sidebar_enabled":{"current":false},
+		"project_view_states":{
+			"current":{"sidebar_enabled":true},
+			"legacy":{"sidebar_enabled":true}
+		}
+	}`)
+	var machine MachineState
+	if err := json.Unmarshal(payload, &machine); err != nil {
+		t.Fatal(err)
+	}
+	if machine.ProjectSidebarEnabled["current"] {
+		t.Fatal("legacy value overwrote explicit current sidebar value")
+	}
+	if !machine.ProjectSidebarEnabled["legacy"] {
+		t.Fatal("legacy-only project sidebar value was not imported")
+	}
+}
+
 func TestLoadTimeTUIStateMigrationIsAtomicPerDomainAndIdempotent(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dataDir := filepath.Join(t.TempDir(), "workspace")

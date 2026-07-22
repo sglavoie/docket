@@ -30,9 +30,11 @@ type workflowMutationPlan struct {
 	// planning-artifact builder reconciles Today/Next exclusivity for exactly the
 	// touched tasks (plus any the cascade modified) after the final state settles.
 	planningTaskIDs []string
-	mutate          func(*WorkspaceResolver) error
-	skipCommit      bool
-	undoContext     string
+	// planningTaskLocators retains project identity for cross-project batches.
+	planningTaskLocators []TaskLocator
+	mutate               func(*WorkspaceResolver) error
+	skipCommit           bool
+	undoContext          string
 }
 
 // workflowOrchestrationOutcome carries every presentation-neutral effect of the
@@ -43,6 +45,7 @@ type workflowOrchestrationOutcome struct {
 	commitOutcome        groupedCommitOutcome
 	committed            bool
 	modifiedTaskIDs      []string
+	modifiedTaskLocators []TaskLocator
 	followupTaskIDs      []string
 	moves                []WorkflowMove
 	conflicts            []WorkflowConflict
@@ -156,9 +159,10 @@ func (s *Service) runWorkflowOrchestration(req workflowOrchestrationRequest) (wo
 	// transaction into the same changeset. The reconciled set is the directly
 	// transitioned tasks plus any the rule cascade modified, so a rule that moves
 	// a Daily Plan task to StateNext also drops it from Today atomically.
-	planningIDs := append(append([]string(nil), plan.planningTaskIDs...), out.modifiedTaskIDs...)
+	planningIDs := append([]string(nil), plan.planningTaskIDs...)
+	planningLocators := append(append([]TaskLocator(nil), plan.planningTaskLocators...), out.modifiedTaskLocators...)
 	planningArtifacts := s.defaultedPlanningArtifacts(req.planningArtifacts)
-	if attachErr := attachPlanningArtifacts(out.commits, collectPlanningReconcileTargets(out.commits, planningIDs), planningArtifacts); attachErr != nil {
+	if attachErr := attachPlanningArtifacts(out.commits, collectPlanningReconcileTargets(out.commits, planningIDs, planningLocators), planningArtifacts); attachErr != nil {
 		return workflowOrchestrationOutcome{}, attachErr
 	}
 
@@ -235,6 +239,7 @@ func (s *Service) applyWorkflowCascade(
 			continue
 		}
 		out.modifiedTaskIDs = append(out.modifiedTaskIDs, task.ID)
+		out.modifiedTaskLocators = append(out.modifiedTaskLocators, TaskLocator{ProjectID: project.ID, TaskID: task.ID})
 		out.changedByWorkflow = true
 	}
 	for _, followup := range evaluated.NewFollowupTasks {

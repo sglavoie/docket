@@ -43,15 +43,20 @@ type BulkMutator interface {
 	BulkDelete(req app.BulkDeleteRequest, artifacts ...storage.ArtifactChange) (app.BulkDeleteResult, error)
 	// BulkSetPriority sets one priority on every selected task.
 	BulkSetPriority(taskIDs []string, priority int) (app.BulkResult, error)
+	BulkSetPriorityByLocators(locators []app.TaskLocator, priority int) (app.BulkResult, error)
 	// BulkSetDueDate sets one due date on every selected task.
 	BulkSetDueDate(taskIDs []string, due time.Time, hasTime bool) (app.BulkResult, error)
+	BulkSetDueDateByLocators(locators []app.TaskLocator, due time.Time, hasTime bool) (app.BulkResult, error)
 	// BulkClearDueDate removes the due date from every selected task.
 	BulkClearDueDate(taskIDs []string) (app.BulkResult, error)
+	BulkClearDueDateByLocators(locators []app.TaskLocator) (app.BulkResult, error)
 	// BulkSnooze hides every selected task until until, or clears the snooze when
 	// until is nil.
 	BulkSnooze(taskIDs []string, until *time.Time) (app.BulkResult, error)
+	BulkSnoozeByLocators(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
 	// BulkSetTags replaces the tag set on every selected task with tags.
 	BulkSetTags(taskIDs []string, tags []string) (app.BulkResult, error)
+	BulkSetTagsByLocators(locators []app.TaskLocator, tags []string) (app.BulkResult, error)
 }
 
 // TaskItemMutator is the narrow port the single-task outliner mutation handlers
@@ -257,12 +262,16 @@ type BatchTransactionResultMsg struct {
 	// leaves the selection intact for the user to retry. Nil when the caller owns
 	// its own selection lifecycle.
 	ClearSelectionTaskIDs []string
+	// ClearSelectionTaskLocators is the project-qualified equivalent used by
+	// cross-project selections where task IDs may collide.
+	ClearSelectionTaskLocators []app.TaskLocator
 	// RemovedTaskIDs lists every task UUID a bulk delete removed (roots plus
 	// descendants). The shell repairs machine-local recent visits for these after
 	// the commit — non-authoritative UI state cleaned separately from the durable
 	// planning refs, which ride the delete transaction as a config artifact. Nil
 	// for non-delete mutations.
-	RemovedTaskIDs []string
+	RemovedTaskIDs      []string
+	RemovedTaskLocators []app.TaskLocator
 	// DeleteRequestToken correlates a committed canonical delete with the Inbox /
 	// Weekly Review post-commit bookkeeping it armed. Only the batch result whose
 	// token matches the armed request consumes that in-flight state, so an
@@ -290,6 +299,28 @@ func finalizeBatchResult(cmd tea.Cmd, clearIDs []string, summaryOverride string)
 			return msg
 		}
 		batch.ClearSelectionTaskIDs = clearIDs
+		if summaryOverride != "" {
+			batch.Summary = summaryOverride
+		}
+		return batch
+	}
+}
+
+func finalizeLocatedBatchResult(cmd tea.Cmd, locators []app.TaskLocator, summaryOverride string) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		msg := cmd()
+		batch, ok := msg.(BatchTransactionResultMsg)
+		if !ok {
+			return msg
+		}
+		batch.ClearSelectionTaskLocators = locators
+		batch.ClearSelectionTaskIDs = make([]string, 0, len(locators))
+		for _, locator := range locators {
+			batch.ClearSelectionTaskIDs = append(batch.ClearSelectionTaskIDs, locator.TaskID)
+		}
 		if summaryOverride != "" {
 			batch.Summary = summaryOverride
 		}
@@ -423,19 +454,42 @@ func (c BulkCoordinator) TransitionWithWorkflow(req app.BulkTransitionRequest, s
 // result carries every removed task UUID so the shell can repair machine-local
 // recent visits after the commit.
 func (c BulkCoordinator) Delete(taskIDs []string, artifacts ...storage.ArtifactChange) tea.Cmd {
+	return c.delete(app.BulkDeleteRequest{TaskIDs: taskIDs, Confirm: true}, artifacts...)
+}
+
+func (c BulkCoordinator) DeleteLocators(locators []app.TaskLocator, artifacts ...storage.ArtifactChange) tea.Cmd {
+	return c.delete(app.BulkDeleteRequest{TaskLocators: locators, Confirm: true}, artifacts...)
+}
+
+func (c BulkCoordinator) delete(req app.BulkDeleteRequest, artifacts ...storage.ArtifactChange) tea.Cmd {
 	return func() tea.Msg {
-		res, err := c.bulk.BulkDelete(app.BulkDeleteRequest{TaskIDs: taskIDs, Confirm: true}, artifacts...)
+		res, err := c.bulk.BulkDelete(req, artifacts...)
 		if err != nil {
 			return TransactionErrorMsg{Feature: c.name, Action: "Bulk Delete", Err: err}
 		}
+		removedCount := len(res.RemovedTaskIDs)
+		if len(res.RemovedTaskLocators) > 0 {
+			removedCount = len(res.RemovedTaskLocators)
+		}
 		return BatchTransactionResultMsg{
-			Feature:           c.name,
-			Action:            "Bulk Delete",
-			TouchedProjectIDs: res.TouchedProjectIDs,
-			Summary:           fmt.Sprintf("Deleted %d task(s)", len(res.RemovedTaskIDs)),
-			RemovedTaskIDs:    res.RemovedTaskIDs,
+			Feature:             c.name,
+			Action:              "Bulk Delete",
+			TouchedProjectIDs:   res.TouchedProjectIDs,
+			Summary:             fmt.Sprintf("Deleted %d task(s)", removedCount),
+			RemovedTaskIDs:      res.RemovedTaskIDs,
+			RemovedTaskLocators: res.RemovedTaskLocators,
 		}
 	}
+}
+
+func (c BulkCoordinator) SetPriorityLocators(locators []app.TaskLocator, priority int) tea.Cmd {
+	return runBatch(c.name, "Bulk Set Priority", func() ([]string, string, error) {
+		res, err := c.bulk.BulkSetPriorityByLocators(locators, priority)
+		if err != nil {
+			return nil, "", err
+		}
+		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), nil
+	})
 }
 
 // SetPriority sets one priority on every selected task as one transaction.
@@ -460,10 +514,30 @@ func (c BulkCoordinator) SetDueDate(taskIDs []string, due time.Time, hasTime boo
 	})
 }
 
+func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time.Time, hasTime bool) tea.Cmd {
+	return runBatch(c.name, "Bulk Set Due Date", func() ([]string, string, error) {
+		res, err := c.bulk.BulkSetDueDateByLocators(locators, due, hasTime)
+		if err != nil {
+			return nil, "", err
+		}
+		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), nil
+	})
+}
+
 // ClearDueDate removes the due date from every selected task as one transaction.
 func (c BulkCoordinator) ClearDueDate(taskIDs []string) tea.Cmd {
 	return runBatch(c.name, "Bulk Clear Due Date", func() ([]string, string, error) {
 		res, err := c.bulk.BulkClearDueDate(taskIDs)
+		if err != nil {
+			return nil, "", err
+		}
+		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), nil
+	})
+}
+
+func (c BulkCoordinator) ClearDueDateLocators(locators []app.TaskLocator) tea.Cmd {
+	return runBatch(c.name, "Bulk Clear Due Date", func() ([]string, string, error) {
+		res, err := c.bulk.BulkClearDueDateByLocators(locators)
 		if err != nil {
 			return nil, "", err
 		}
@@ -487,10 +561,34 @@ func (c BulkCoordinator) Snooze(taskIDs []string, until *time.Time) tea.Cmd {
 	})
 }
 
+func (c BulkCoordinator) SnoozeLocators(locators []app.TaskLocator, until *time.Time) tea.Cmd {
+	return runBatch(c.name, "Bulk Snooze", func() ([]string, string, error) {
+		res, err := c.bulk.BulkSnoozeByLocators(locators, until)
+		if err != nil {
+			return nil, "", err
+		}
+		verb := "Snoozed"
+		if until == nil {
+			verb = "Cleared snooze on"
+		}
+		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), nil
+	})
+}
+
 // SetTags replaces the tag set on every selected task as one transaction.
 func (c BulkCoordinator) SetTags(taskIDs []string, tags []string) tea.Cmd {
 	return runBatch(c.name, "Bulk Set Tags", func() ([]string, string, error) {
 		res, err := c.bulk.BulkSetTags(taskIDs, tags)
+		if err != nil {
+			return nil, "", err
+		}
+		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), nil
+	})
+}
+
+func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []string) tea.Cmd {
+	return runBatch(c.name, "Bulk Set Tags", func() ([]string, string, error) {
+		res, err := c.bulk.BulkSetTagsByLocators(locators, tags)
 		if err != nil {
 			return nil, "", err
 		}

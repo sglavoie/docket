@@ -52,6 +52,16 @@ var outlinerFocusNames = [...]string{
 	"Recent",
 }
 
+// OutlinerLens selects the row presentation used inside the canonical
+// Outliner. Tree is the normal hierarchical view; DueDate is a workspace-wide
+// flat schedule used only by the cross-project Outliner.
+type OutlinerLens uint8
+
+const (
+	OutlinerLensTree OutlinerLens = iota
+	OutlinerLensDueDate
+)
+
 func (focus OutlinerFocus) String() string {
 	if int(focus) < len(outlinerFocusNames) {
 		return outlinerFocusNames[focus]
@@ -93,6 +103,8 @@ type OutlinerOpenOptions struct {
 	SetFocus bool
 	Sort     SortField
 	SetSort  bool
+	Lens     OutlinerLens
+	SetLens  bool
 }
 
 func (m *OutlinerModel) ApplyOpenOptions(opts OutlinerOpenOptions) {
@@ -110,6 +122,13 @@ func (m *OutlinerModel) ApplyOpenOptions(opts OutlinerOpenOptions) {
 	}
 	if opts.SetSort {
 		m.sort = SortState{Field: opts.Sort, Ascending: true}
+	}
+	if opts.SetLens {
+		m.lens = opts.Lens
+		if m.lens == OutlinerLensDueDate {
+			m.sort = SortState{Field: SortByDueDate, Ascending: true}
+			m.crossPriorityMode = false
+		}
 	}
 	m.rebuildRows()
 }

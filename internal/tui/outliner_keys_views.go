@@ -28,7 +28,7 @@ func (m *OutlinerModel) handleTaskViewKey(key string, onHeader bool) (tea.Model,
 
 	case "e":
 		if m.project == nil {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			if m.multiSelectMode && m.SelectedCount() > 0 {
 				m.setStatus("bulk edit not supported in cross-project mode")
 				return m, nil, true
 			}
@@ -39,7 +39,7 @@ func (m *OutlinerModel) handleTaskViewKey(key string, onHeader bool) (tea.Model,
 			task := row.task
 			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: proj} }, true
 		}
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			return m, func() tea.Msg {
 				return ShowBulkEditMsg{
 					Tasks:   m.getSelectedTasks(),

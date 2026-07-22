@@ -262,7 +262,9 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		m.sortCrossProjectGroups(groups)
 	}
 
-	if m.smartFocus == nil && p.Name == "All" {
+	if m.lens == OutlinerLensDueDate {
+		m.buildCrossProjectDueDateRows(groups)
+	} else if m.smartFocus == nil && p.Name == "All" {
 		m.buildCrossProjectRowsWithSectionHeaders(groups)
 	} else {
 		m.buildProjectGroupedRows(groups)
@@ -328,6 +330,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "tab=%d:%q|", m.pinnedTagTabIndex(), m.activePinnedTagFilter())
 	fmt.Fprintf(&b, "tabs=%q|", strings.Join(tabs, "\x1f"))
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
+	fmt.Fprintf(&b, "lens=%d|", m.lens)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "sections=%s|", boolMapFingerprint(m.filter.Sections))
 	fmt.Fprintf(&b, "projects=%s|", boolMapFingerprint(m.filterProjects))

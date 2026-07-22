@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -44,6 +45,34 @@ func TestBulkTransitionWithWorkflowFiresEventRuleAndCountsTriggers(t *testing.T)
 	}
 	if len(repo.commits) != 1 {
 		t.Errorf("Commit called %d times, want 1 (transitions and cascade share the transaction)", len(repo.commits))
+	}
+}
+
+func TestBulkTransitionLocatorsDisambiguateDuplicateTaskIDs(t *testing.T) {
+	alphaTask := newTask("shared", 1, "alpha")
+	betaTask := newTask("shared", 1, "beta")
+	alpha := newProject("alpha", "Alpha", alphaTask)
+	beta := newProject("beta", "Beta", betaTask)
+	repo := newFakeRepo(alpha, beta)
+	svc := newTestService(repo)
+	var planningTargets []app.PlanningReconcileTarget
+
+	_, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
+		TaskLocators: []app.TaskLocator{{ProjectID: beta.ID, TaskID: betaTask.ID}},
+		Target:       models.StateInProgress,
+		PlanningArtifacts: func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
+			planningTargets = append(planningTargets, targets...)
+			return nil, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if alphaTask.State() == models.StateInProgress || betaTask.State() != models.StateInProgress {
+		t.Fatalf("states = alpha:%s beta:%s, want only beta in progress", alphaTask.State(), betaTask.State())
+	}
+	if len(planningTargets) != 1 || planningTargets[0].ProjectID != beta.ID {
+		t.Fatalf("planning targets = %+v, want beta/shared only", planningTargets)
 	}
 }
 

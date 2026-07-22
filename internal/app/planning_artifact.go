@@ -33,14 +33,31 @@ type PlanningArtifactBuilder func([]PlanningReconcileTarget) ([]storage.Artifact
 // owning project among the committed projects, so the builder reconciles against
 // post-mutation, post-cascade state. Ids absent from every committed project
 // (e.g. a task moved out by a workflow rule) are skipped.
-func collectPlanningReconcileTargets(commits []projectCommit, taskIDs []string) []PlanningReconcileTarget {
-	if len(taskIDs) == 0 {
+func collectPlanningReconcileTargets(commits []projectCommit, taskIDs []string, locators []TaskLocator) []PlanningReconcileTarget {
+	if len(taskIDs) == 0 && len(locators) == 0 {
 		return nil
 	}
-	seen := make(map[string]bool, len(taskIDs))
-	targets := make([]PlanningReconcileTarget, 0, len(taskIDs))
+	seen := make(map[TaskLocator]bool, len(taskIDs)+len(locators))
+	targets := make([]PlanningReconcileTarget, 0, len(taskIDs)+len(locators))
+	appendTarget := func(locator TaskLocator, task *models.Task) {
+		if task == nil || !locator.Valid() || seen[locator] {
+			return
+		}
+		seen[locator] = true
+		targets = append(targets, PlanningReconcileTarget{
+			TaskID: locator.TaskID, ProjectID: locator.ProjectID, State: task.State(),
+		})
+	}
+	for _, locator := range locators {
+		for _, c := range commits {
+			if c.project != nil && c.project.ID == locator.ProjectID {
+				appendTarget(locator, c.project.GetTaskByID(locator.TaskID))
+				break
+			}
+		}
+	}
 	for _, id := range taskIDs {
-		if id == "" || seen[id] {
+		if id == "" {
 			continue
 		}
 		for _, c := range commits {
@@ -48,13 +65,7 @@ func collectPlanningReconcileTargets(commits []projectCommit, taskIDs []string) 
 				continue
 			}
 			if task := c.project.GetTaskByID(id); task != nil {
-				seen[id] = true
-				targets = append(targets, PlanningReconcileTarget{
-					TaskID:    id,
-					ProjectID: c.project.ID,
-					State:     task.State(),
-				})
-				break
+				appendTarget(TaskLocator{ProjectID: c.project.ID, TaskID: id}, task)
 			}
 		}
 	}

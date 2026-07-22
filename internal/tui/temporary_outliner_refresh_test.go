@@ -71,6 +71,26 @@ func outlinerContainsTask(outliner *OutlinerModel, taskID string) bool {
 	return false
 }
 
+func TestTemporaryOutlinerEscRestoresCrossProjectParent(t *testing.T) {
+	driver, _ := openRichTemporaryOutliner(t)
+	if route := driver.App().navigation.Primary.Current(); route.ID() != TaskWorkspace {
+		t.Fatalf("primary route = %s, want TaskWorkspace", route.ID())
+	}
+	overlay, ok := driver.App().navigation.Overlays.Current()
+	if !ok || overlay.Kind() != OverlayProjectDrilldown {
+		t.Fatalf("overlay = %v/%v, want project drill-down", overlay, ok)
+	}
+	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := driver.App().currentView(); got != ViewCrossProjectOutliner {
+		t.Fatalf("current view after Esc = %s, want CrossProjectOutliner", got)
+	}
+	if driver.App().navigation.Overlays.Active() {
+		t.Fatal("temporary drill-down overlay remained active after Esc")
+	}
+}
+
 // Regression: a project drill-down from the cross-project outliner owns a
 // separate project pointer and lives only in the view registry. Quick Capture
 // previously reloaded m.currentProject/m.outliner, leaving this view's Inbox

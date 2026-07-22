@@ -46,7 +46,7 @@ func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
 	if !ok {
 		return nil, false
 	}
-	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+	if m.multiSelectMode && m.SelectedCount() > 0 {
 		m.setStatus("bulk type change not supported in cross-project mode")
 		return nil, true
 	}

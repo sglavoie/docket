@@ -18,4 +18,11 @@ type DailyPlanItem struct {
 	PlannedDate string `json:"planned_date"`
 }
 
+// ProjectTaskLocator identifies one task in durable cross-project planning
+// collections without assuming task IDs are workspace-unique.
+type ProjectTaskLocator struct {
+	ProjectID string
+	TaskID    string
+}
+
 const maxFocusDismissedIDs = 200

@@ -491,25 +491,32 @@ func boolCount(v bool) int {
 func assertSelectedOutlinerTasksVisible(t *testing.T, m *OutlinerModel, wantIDs ...string) {
 	t.Helper()
 
-	visibleIDs := make(map[string]bool)
+	visible := make(map[TaskIdentity]bool)
 	for _, row := range m.rows {
 		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
 			continue
 		}
-		visibleIDs[row.task.ID] = true
+		visible[m.taskIdentityForRow(row)] = true
 	}
 
-	if got := len(m.selectedTasks); got != len(wantIDs) {
+	if got := m.SelectedCount(); got != len(wantIDs) {
 		t.Fatalf("selected task count = %d, want %d", got, len(wantIDs))
 	}
 	for _, wantID := range wantIDs {
-		if !m.selectedTasks[wantID] {
-			t.Fatalf("expected selected task %q, got %v", wantID, m.selectedTasks)
+		found := false
+		for _, row := range m.rows {
+			if row.task != nil && row.task.ID == wantID && m.isRowSelected(row) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected selected task %q, got %v", wantID, m.selectedTaskIdentities)
 		}
 	}
-	for id := range m.selectedTasks {
-		if !visibleIDs[id] {
-			t.Fatalf("selected task %q is no longer visible", id)
+	for identity := range m.selectedTaskIdentities {
+		if !visible[identity] {
+			t.Fatalf("selected task %v is no longer visible", identity)
 		}
 	}
 }

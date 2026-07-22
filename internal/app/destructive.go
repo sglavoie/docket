@@ -87,6 +87,9 @@ type BulkDeleteRequest struct {
 	// TaskIDs identifies each subtree root to delete. At least one is required;
 	// duplicates and roots nested under another selected root are de-duplicated.
 	TaskIDs []string
+	// TaskLocators is the project-qualified alternative used by cross-project
+	// clients. It is mutually exclusive with TaskIDs.
+	TaskLocators []TaskLocator
 	// Confirm records explicit destructive intent for the whole batch.
 	Confirm bool
 }
@@ -98,6 +101,8 @@ type BulkDeleteResult struct {
 	RemovedRootRefs []string
 	// RemovedTaskIDs are all UUIDs removed across every subtree, sorted.
 	RemovedTaskIDs []string
+	// RemovedTaskLocators names every removed task within its owning project.
+	RemovedTaskLocators []TaskLocator
 	// CrossProjectRefsCleared counts references dropped from projects outside the
 	// deleted subtrees.
 	CrossProjectRefsCleared int
@@ -112,14 +117,14 @@ type BulkDeleteResult struct {
 // planning refs cleaned of every removed task — ride the same transaction. The
 // request must carry explicit destructive intent.
 func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.ArtifactChange) (BulkDeleteResult, error) {
-	if len(req.TaskIDs) == 0 {
+	if len(req.TaskIDs) == 0 && len(req.TaskLocators) == 0 {
 		return BulkDeleteResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return BulkDeleteResult{}, err
 	}
-	roots, err := resolveDistinct(snap, req.TaskIDs)
+	roots, err := resolveRequestedTasks(snap, req.TaskIDs, req.TaskLocators)
 	if err != nil {
 		return BulkDeleteResult{}, err
 	}
@@ -129,10 +134,12 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 
 	rootRefs := make([]string, 0, len(roots))
 	allRemoved := make(map[string]bool)
+	allRemovedLocators := make(map[TaskLocator]bool)
 	for _, r := range roots {
 		rootRefs = append(rootRefs, fmt.Sprintf("%s:#%d", r.Project.Slug, r.Task.ShortID))
 		for id := range collectSubtreeIDs(r.Task) {
 			allRemoved[id] = true
+			allRemovedLocators[TaskLocator{ProjectID: r.Project.ID, TaskID: id}] = true
 		}
 	}
 
@@ -143,6 +150,7 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 	return BulkDeleteResult{
 		RemovedRootRefs:         rootRefs,
 		RemovedTaskIDs:          sortedKeys(allRemoved),
+		RemovedTaskLocators:     sortedTaskLocators(allRemovedLocators),
 		CrossProjectRefsCleared: crossCleared,
 		TouchedProjectIDs:       touched,
 	}, nil
@@ -292,6 +300,48 @@ func resolveDistinct(snap Snapshot, taskIDs []string) ([]TaskRef, error) {
 		refs = append(refs, ref)
 	}
 	return refs, nil
+}
+
+func resolveRequestedTasks(snap Snapshot, taskIDs []string, locators []TaskLocator) ([]TaskRef, error) {
+	if len(taskIDs) > 0 && len(locators) > 0 {
+		return nil, invalidInput("tasks", "provide task ids or task locators, not both")
+	}
+	if len(locators) == 0 {
+		return resolveDistinct(snap, taskIDs)
+	}
+	refs := make([]TaskRef, 0, len(locators))
+	seen := make(map[TaskLocator]bool, len(locators))
+	for _, locator := range locators {
+		locator.ProjectID = strings.TrimSpace(locator.ProjectID)
+		locator.TaskID = strings.TrimSpace(locator.TaskID)
+		if !locator.Valid() {
+			return nil, invalidInput("tasks", "project id and task id are required")
+		}
+		if seen[locator] {
+			continue
+		}
+		seen[locator] = true
+		ref, ok := snap.LookupLocator(locator)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s/%s", ErrTaskNotFound, locator.ProjectID, locator.TaskID)
+		}
+		refs = append(refs, ref)
+	}
+	return refs, nil
+}
+
+func sortedTaskLocators(values map[TaskLocator]bool) []TaskLocator {
+	locators := make([]TaskLocator, 0, len(values))
+	for locator := range values {
+		locators = append(locators, locator)
+	}
+	sort.Slice(locators, func(i, j int) bool {
+		if locators[i].ProjectID != locators[j].ProjectID {
+			return locators[i].ProjectID < locators[j].ProjectID
+		}
+		return locators[i].TaskID < locators[j].TaskID
+	})
+	return locators
 }
 
 // distinctProjectCommits collapses a set of task references into one projectCommit

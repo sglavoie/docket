@@ -6,8 +6,9 @@ import "fmt"
 // support selecting multiple tasks. Embed this in view models to share the
 // common fields and basic selection operations.
 type MultiSelectState struct {
-	multiSelectMode bool
-	selectedTasks   map[string]bool
+	multiSelectMode        bool
+	selectedTasks          map[string]bool
+	selectedTaskIdentities map[TaskIdentity]bool
 }
 
 // ToggleSelection toggles the selection state of a task by ID.
@@ -25,6 +26,7 @@ func (s *MultiSelectState) ToggleSelection(id string) {
 // ClearSelection resets all selections without changing multiSelectMode.
 func (s *MultiSelectState) ClearSelection() {
 	s.selectedTasks = make(map[string]bool)
+	s.selectedTaskIdentities = make(map[TaskIdentity]bool)
 }
 
 // IsSelected returns true if the given task ID is selected.
@@ -34,7 +36,7 @@ func (s *MultiSelectState) IsSelected(id string) bool {
 
 // SelectedCount returns the number of currently selected items.
 func (s *MultiSelectState) SelectedCount() int {
-	return len(s.selectedTasks)
+	return len(s.selectedTasks) + len(s.selectedTaskIdentities)
 }
 
 // IsMultiSelectActive reports whether multi-select mode is on. Used by the
@@ -46,7 +48,39 @@ func (s *MultiSelectState) IsMultiSelectActive() bool {
 // ExitMultiSelect deactivates multi-select mode and clears all selections.
 func (s *MultiSelectState) ExitMultiSelect() {
 	s.multiSelectMode = false
-	s.selectedTasks = make(map[string]bool)
+	s.ClearSelection()
+}
+
+func (s *MultiSelectState) ToggleTaskIdentity(id TaskIdentity) {
+	if !id.Valid() {
+		return
+	}
+	if s.selectedTaskIdentities[id] {
+		delete(s.selectedTaskIdentities, id)
+		return
+	}
+	if s.selectedTaskIdentities == nil {
+		s.selectedTaskIdentities = make(map[TaskIdentity]bool)
+	}
+	s.selectedTaskIdentities[id] = true
+}
+
+func (s *MultiSelectState) SelectTaskIdentity(id TaskIdentity) {
+	if !id.Valid() {
+		return
+	}
+	if s.selectedTaskIdentities == nil {
+		s.selectedTaskIdentities = make(map[TaskIdentity]bool)
+	}
+	s.selectedTaskIdentities[id] = true
+}
+
+func (s *MultiSelectState) DeselectTaskIdentity(id TaskIdentity) {
+	delete(s.selectedTaskIdentities, id)
+}
+
+func (s *MultiSelectState) IsTaskIdentitySelected(id TaskIdentity) bool {
+	return id.Valid() && s.selectedTaskIdentities[id]
 }
 
 // ToggleMode enters or exits multi-select mode. On entry, statusMsg is set to

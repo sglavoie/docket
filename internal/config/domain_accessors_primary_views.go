@@ -111,6 +111,56 @@ func (p *PlanningState) RemoveDurableTaskRefs(taskIDs map[string]bool) int {
 	return removed
 }
 
+// RemoveDurableTaskLocators removes project-qualified planning entries. The
+// legacy dismissed-ID list has no project column, so its entries retain the
+// historical task-ID semantics until that persisted shape is retired.
+func (p *PlanningState) RemoveDurableTaskLocators(locators []ProjectTaskLocator) int {
+	qualified := make(map[ProjectTaskLocator]bool, len(locators))
+	legacyIDs := make(map[string]bool, len(locators))
+	for _, locator := range locators {
+		if locator.ProjectID == "" || locator.TaskID == "" {
+			continue
+		}
+		qualified[locator] = true
+		legacyIDs[locator.TaskID] = true
+	}
+	removed := 0
+	if len(p.FocusQueue) > 0 {
+		filtered := p.FocusQueue[:0]
+		for _, item := range p.FocusQueue {
+			if qualified[ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, item)
+		}
+		p.FocusQueue = filtered
+	}
+	if len(p.DailyPlan) > 0 {
+		filtered := p.DailyPlan[:0]
+		for _, item := range p.DailyPlan {
+			if qualified[ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, item)
+		}
+		p.DailyPlan = filtered
+	}
+	if len(p.FocusDismissedIDs) > 0 {
+		filtered := p.FocusDismissedIDs[:0]
+		for _, id := range p.FocusDismissedIDs {
+			if legacyIDs[id] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, id)
+		}
+		p.FocusDismissedIDs = filtered
+	}
+	return removed
+}
+
 // RemoveMachineLocalTaskRefs mirrors (*Config).RemoveMachineLocalTaskRefs on
 // the machine domain: it removes RecentTaskVisits entries for the given task
 // IDs and returns the number removed.
@@ -127,6 +177,26 @@ func (m *MachineState) RemoveMachineLocalTaskRefs(taskIDs map[string]bool) int {
 		}
 		m.RecentTaskVisits = filtered
 	}
+	return removed
+}
+
+func (m *MachineState) RemoveMachineLocalTaskLocators(locators []ProjectTaskLocator) int {
+	qualified := make(map[ProjectTaskLocator]bool, len(locators))
+	for _, locator := range locators {
+		if locator.ProjectID != "" && locator.TaskID != "" {
+			qualified[locator] = true
+		}
+	}
+	removed := 0
+	filtered := m.RecentTaskVisits[:0]
+	for _, visit := range m.RecentTaskVisits {
+		if qualified[ProjectTaskLocator{ProjectID: visit.ProjectID, TaskID: visit.TaskID}] {
+			removed++
+			continue
+		}
+		filtered = append(filtered, visit)
+	}
+	m.RecentTaskVisits = filtered
 	return removed
 }
 

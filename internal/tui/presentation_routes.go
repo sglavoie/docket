@@ -19,8 +19,6 @@ func routeForPresentation(view PresentationID, projectID, taskID string) (route 
 		id, params = Planner, PlannerParams{Tab: PlannerToday}
 	case ViewOutliner:
 		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}
-	case ViewTemporaryOutliner:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}
 	case ViewCrossProjectOutliner:
 		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewDailyReview:
@@ -131,6 +129,8 @@ func presentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlaySearch, true
 	case ViewTaskJumper:
 		return OverlayTaskJump, true
+	case ViewTemporaryOutliner:
+		return OverlayProjectDrilldown, true
 	case ViewProjectPreview, ViewRecentActivityPreview:
 		return OverlayPeek, true
 	case ViewProjectCreator, ViewProjectEditor, ViewWorkflowRuleCreator, ViewWorkflowRuleEditor, ViewWorkflowWizard,

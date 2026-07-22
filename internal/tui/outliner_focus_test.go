@@ -105,6 +105,27 @@ func TestOutlinerOpenOptionsReplaceCrossPriorityLens(t *testing.T) {
 	}
 }
 
+func TestOpenAtTaskRevealsTargetHiddenByFocusAndSearch(t *testing.T) {
+	active := &models.Task{ID: "active", Title: "visible active", WorkflowState: models.StateReady}
+	completed := &models.Task{ID: "completed", Title: "hidden completed", WorkflowState: models.StateDone}
+	project := &models.Project{ID: "project", Tasks: []*models.Task{active, completed}}
+	project.BuildTaskTree()
+	m := NewOutlinerModel(project, nil, newTestConfig())
+	m.SetSearchQuery("visible")
+	m.OpenAtTask = completed
+	m.rebuildRows()
+
+	if m.OpenAtTask != nil {
+		t.Fatal("pending OpenAtTask was not consumed")
+	}
+	if m.activePerspective != PerspectiveCompleted || m.SearchQuery() != "" {
+		t.Fatalf("reveal state = perspective %d search %q", m.activePerspective, m.SearchQuery())
+	}
+	if task := m.getCursorTask(); task == nil || task.ID != completed.ID {
+		t.Fatalf("cursor task = %v, want completed target", task)
+	}
+}
+
 func taskIDs(tasks []*models.Task) []string {
 	ids := make([]string, len(tasks))
 	for index, task := range tasks {

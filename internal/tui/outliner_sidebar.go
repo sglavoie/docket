@@ -58,13 +58,20 @@ func (m *OutlinerModel) SidebarSelectedTask() *models.Task {
 	return nil
 }
 
-// NavigateToSidebarTask navigates to a task from the sidebar.
-// If the task is inside a collapsed parent, ancestors are expanded first.
+// NavigateToSidebarTask navigates to a task from the sidebar. If the task is
+// inside a collapsed parent, ancestors are expanded first.
 func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
+	m.navigateToSidebarTask(task)
+}
+
+func (m *OutlinerModel) navigateToSidebarTask(task *models.Task) bool {
+	if task == nil {
+		return false
+	}
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {
 			m.cursor = i
-			return
+			return true
 		}
 	}
 
@@ -80,9 +87,44 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {
 			m.cursor = i
+			return true
+		}
+	}
+	return false
+}
+
+// revealSidebarTask honors explicit task navigation even when persisted view
+// state would hide the target. The initial attempt preserves the current view;
+// only a genuinely hidden target resets visibility constraints.
+func (m *OutlinerModel) revealSidebarTask(task *models.Task) {
+	if m.navigateToSidebarTask(task) {
+		return
+	}
+
+	m.zoomStack = nil
+	m.filter = NewFilterState()
+	m.ClearSearch()
+	m.activeSavedFilter = ""
+	m.activeCriteriaFilter = nil
+	m.setPinnedTagTabIndex(0)
+	m.smartFocus = nil
+	switch {
+	case task.IsTerminalState():
+		m.activePerspective = PerspectiveCompleted
+	case task.IsSnoozed():
+		m.activePerspective = PerspectiveSnoozed
+	default:
+		m.activePerspective = PerspectiveAll
+	}
+
+	m.rebuildRows()
+	for i, row := range m.rows {
+		if row.task != nil && row.task.ID == task.ID {
+			m.cursor = i
 			return
 		}
 	}
+	m.setStatus("Task is unavailable in this project")
 }
 
 // NavigateToTaskInProject navigates to a task in the cross-project outliner.

@@ -119,22 +119,19 @@ func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.C
 	if section == "" {
 		label = "Move to Ready"
 	}
-	selectedIDs := make([]string, 0, len(m.selectedTasks))
-	for id := range m.selectedTasks {
-		selectedIDs = append(selectedIDs, id)
-	}
+	locators := taskLocatorsFromTaskRefs(m.getSelectedTaskProjectRefs())
 	m.clearMultiSelect()
 	var rules []workflow.WorkflowRule
 	if m.runtime != nil {
 		rules = m.runtime.Automation().GetEnabledWorkflowRules()
 	}
 	cmd := m.bulk.TransitionWithWorkflow(app.BulkTransitionRequest{
-		TaskIDs:     selectedIDs,
-		Target:      target,
-		Rules:       rules,
-		UndoAction:  label,
-		UndoContext: fmt.Sprintf("%d tasks", len(selectedIDs)),
-		SkipInvalid: true,
+		TaskLocators: locators,
+		Target:       target,
+		Rules:        rules,
+		UndoAction:   label,
+		UndoContext:  fmt.Sprintf("%d tasks", len(locators)),
+		SkipInvalid:  true,
 	}, func(changed int) string {
 		return fmt.Sprintf("Moved %d task(s) to %s", changed, section)
 	})

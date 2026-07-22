@@ -211,6 +211,28 @@ func TestBulkDeleteAcrossProjectsIsOneTransaction(t *testing.T) {
 	}
 }
 
+func TestBulkDeleteLocatorsDisambiguateDuplicateTaskIDs(t *testing.T) {
+	alphaTask := newTask("shared", 1, "alpha")
+	betaTask := newTask("shared", 1, "beta")
+	alpha := newProject("alpha", "Alpha", alphaTask)
+	beta := newProject("beta", "Beta", betaTask)
+	repo := newFakeRepo(alpha, beta)
+	svc := newTestService(repo)
+
+	res, err := svc.BulkDelete(app.BulkDeleteRequest{
+		TaskLocators: []app.TaskLocator{{ProjectID: beta.ID, TaskID: betaTask.ID}}, Confirm: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if alpha.GetTaskByID("shared") == nil || beta.GetTaskByID("shared") != nil {
+		t.Fatalf("duplicate delete targeted wrong project: alpha=%v beta=%v", alpha.Tasks, beta.Tasks)
+	}
+	if len(res.RemovedTaskLocators) != 1 || res.RemovedTaskLocators[0].ProjectID != beta.ID {
+		t.Fatalf("removed locators = %+v, want beta/shared", res.RemovedTaskLocators)
+	}
+}
+
 func TestBulkTransitionAcrossProjectsIsOneTransaction(t *testing.T) {
 	a := newTask("a", 1, "a")
 	a.SetSection(models.SectionInbox)

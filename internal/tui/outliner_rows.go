@@ -94,6 +94,11 @@ func (m *OutlinerModel) rebuildRows() {
 		m.crossProjectRebuildRows()
 		return
 	}
+	openAt := m.OpenAtTask
+	// Consume the pending target before any navigation helper can trigger a
+	// nested rebuild. A target hidden by the current focus or filters otherwise
+	// re-enters this block indefinitely.
+	m.OpenAtTask = nil
 	m.rows = m.rows[:0]
 
 	m.validateZoomStack()
@@ -158,9 +163,8 @@ func (m *OutlinerModel) rebuildRows() {
 	m.pruneInvisibleSelections()
 	m.clampCursor()
 
-	if m.OpenAtTask != nil && len(m.rows) > 0 {
-		m.NavigateToSidebarTask(m.OpenAtTask)
-		m.OpenAtTask = nil
+	if openAt != nil {
+		m.revealSidebarTask(openAt)
 	}
 }
 

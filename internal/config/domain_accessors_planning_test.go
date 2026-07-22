@@ -135,3 +135,26 @@ func TestDomainOwnershipSeparation(t *testing.T) {
 			settings.GetAlertDueSoonDays(), DefaultAlertDueSoonDays)
 	}
 }
+
+func TestPlanningQualifiedRemovalPreservesDuplicateIDInOtherProject(t *testing.T) {
+	planning := NewPlanningState()
+	planning.FocusQueue = []FocusQueueItem{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
+	}
+	planning.DailyPlan = []DailyPlanItem{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
+	}
+
+	removed := planning.RemoveDurableTaskLocators([]ProjectTaskLocator{{ProjectID: "beta", TaskID: "shared"}})
+	if removed != 2 {
+		t.Fatalf("removed = %d, want beta queue + daily entries", removed)
+	}
+	if len(planning.FocusQueue) != 1 || planning.FocusQueue[0].ProjectID != "alpha" {
+		t.Fatalf("focus queue = %+v, want alpha entry", planning.FocusQueue)
+	}
+	if len(planning.DailyPlan) != 1 || planning.DailyPlan[0].ProjectID != "alpha" {
+		t.Fatalf("daily plan = %+v, want alpha entry", planning.DailyPlan)
+	}
+}

@@ -1,11 +1,59 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/app"
+
 // clearBulkTaskSelectionsForTaskIDs is the ID-list entry point the async batch
 // result path uses: the shell knows only the committed task IDs, not the live
 // refs, so it clears every view's multiselect keyed by ID after a successful
 // commit.
 func (m *AppModel) clearBulkTaskSelectionsForTaskIDs(ids []string) {
 	m.clearBulkTaskSelectionsForTaskIDSet(taskIDSliceToSet(ids))
+}
+
+func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator) {
+	if len(locators) == 0 {
+		return
+	}
+	set := make(map[TaskIdentity]bool, len(locators))
+	legacyIDs := make(map[string]bool, len(locators))
+	for _, locator := range locators {
+		identity := TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
+		if identity.Valid() {
+			set[identity] = true
+			legacyIDs[identity.TaskID] = true
+		}
+	}
+	clearOutliner := func(outliner *OutlinerModel) {
+		if outliner == nil {
+			return
+		}
+		for identity := range set {
+			delete(outliner.selectedTaskIdentities, identity)
+			if outliner.project == nil || outliner.project.ID == identity.ProjectID {
+				delete(outliner.selectedTasks, identity.TaskID)
+			}
+		}
+		if outliner.SelectedCount() == 0 {
+			outliner.clearMultiSelect()
+		}
+	}
+	clearOutliner(m.outliner)
+	clearOutliner(m.crossOutliner)
+	if m.views != nil {
+		for _, vt := range []PresentationID{ViewOutliner, ViewTemporaryOutliner, ViewCrossProjectOutliner} {
+			if view := m.views.Get(vt); view != nil {
+				if outliner, ok := view.(*OutlinerModel); ok {
+					clearOutliner(outliner)
+				}
+			}
+		}
+	}
+	// Review views still use their single-ID selection state; their row models
+	// already carry project identity into the request, and a successful batch
+	// consumes the whole selection.
+	for _, vt := range []PresentationID{ViewDailyReview, ViewWeeklyReview} {
+		m.clearViewBulkTaskSelectionForRefs(vt, legacyIDs)
+	}
 }
 
 func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bool) {

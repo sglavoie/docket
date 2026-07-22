@@ -19,6 +19,7 @@ const (
 	OverlayConfirmation
 	OverlayRecent
 	OverlayPinned
+	OverlayProjectDrilldown
 	OverlayReference
 )
 
@@ -35,6 +36,7 @@ var overlayKindNames = [...]string{
 	"Confirmation",
 	"Recent",
 	"Pinned",
+	"ProjectDrilldown",
 	"Reference",
 }
 

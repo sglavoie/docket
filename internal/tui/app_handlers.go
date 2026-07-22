@@ -90,12 +90,12 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 // and selection-clear via the batch result.
 func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
 	refs = validTaskProjectRefs(refs)
-	taskIDs := taskIDsFromTaskRefs(refs)
-	if len(taskIDs) == 0 {
+	locators := taskLocatorsFromTaskRefs(refs)
+	if len(locators) == 0 {
 		return nil
 	}
-	cmd := m.secondaryFeatures.Bulk.SetTags(taskIDs, selectedTags)
-	return finalizeBatchResult(cmd, taskIDs, fmt.Sprintf("Tagged %d tasks", len(taskIDs)))
+	cmd := m.secondaryFeatures.Bulk.SetTagsLocators(locators, selectedTags)
+	return finalizeLocatedBatchResult(cmd, locators, fmt.Sprintf("Tagged %d tasks", len(locators)))
 }
 
 // processMessage routes a message through the app's handler chain.

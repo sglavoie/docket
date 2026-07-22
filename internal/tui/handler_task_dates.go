@@ -71,16 +71,16 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 		// snooze as one asynchronous cross-project transaction through the
 		// BulkCoordinator. Snooze is an attribute mutation, so no workflow rules run;
 		// the shell owns reload and selection-clear via the batch result.
-		taskIDs := taskIDsFromTaskRefs(refs)
+		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		var summary string
 		if msg.SnoozedUntil != nil {
-			summary = fmt.Sprintf("Snoozed %d tasks until %s", len(taskIDs), msg.SnoozedUntil.Format("2006-01-02"))
+			summary = fmt.Sprintf("Snoozed %d tasks until %s", len(locators), msg.SnoozedUntil.Format("2006-01-02"))
 		} else {
-			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(taskIDs))
+			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(locators))
 		}
-		cmd := m.secondaryFeatures.Bulk.Snooze(taskIDs, msg.SnoozedUntil)
-		return true, finalizeBatchResult(cmd, taskIDs, summary)
+		cmd := m.secondaryFeatures.Bulk.SnoozeLocators(locators, msg.SnoozedUntil)
+		return true, finalizeLocatedBatchResult(cmd, locators, summary)
 	}
 
 	// Single-task snooze overlay (explicit value, no pending bulk selection):
@@ -105,17 +105,17 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 		// through the BulkCoordinator as one asynchronous cross-project transaction,
 		// mirroring the explicit-value picker path above. The shell owns reload and
 		// selection-clear via the batch result.
-		taskIDs := taskIDsFromTaskRefs(refs)
+		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		newSnooze := msg.Task.SnoozedUntil
-		cmd := m.secondaryFeatures.Bulk.Snooze(taskIDs, newSnooze)
+		cmd := m.secondaryFeatures.Bulk.SnoozeLocators(locators, newSnooze)
 		var summary string
 		if newSnooze != nil {
-			summary = fmt.Sprintf("Snoozed %d tasks until %s", len(taskIDs), newSnooze.Format("2006-01-02"))
+			summary = fmt.Sprintf("Snoozed %d tasks until %s", len(locators), newSnooze.Format("2006-01-02"))
 		} else {
-			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(taskIDs))
+			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(locators))
 		}
-		return true, finalizeBatchResult(cmd, taskIDs, summary)
+		return true, finalizeLocatedBatchResult(cmd, locators, summary)
 	}
 
 	m.pendingBulkTasks = nil
@@ -135,18 +135,18 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 		// BulkCoordinator. Date-only vs timed semantics ride msg.HasTime. Setting a
 		// due date is an attribute mutation, so no workflow rules run; the shell owns
 		// reload and selection-clear via the batch result.
-		taskIDs := taskIDsFromTaskRefs(refs)
+		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		var cmd tea.Cmd
 		var summary string
 		if msg.DueDate != nil {
-			cmd = m.secondaryFeatures.Bulk.SetDueDate(taskIDs, *msg.DueDate, msg.HasTime)
-			summary = fmt.Sprintf("Set due date to %s for %d tasks", msg.DueDate.Format("2006-01-02"), len(taskIDs))
+			cmd = m.secondaryFeatures.Bulk.SetDueDateLocators(locators, *msg.DueDate, msg.HasTime)
+			summary = fmt.Sprintf("Set due date to %s for %d tasks", msg.DueDate.Format("2006-01-02"), len(locators))
 		} else {
-			cmd = m.secondaryFeatures.Bulk.ClearDueDate(taskIDs)
-			summary = fmt.Sprintf("Cleared due date for %d tasks", len(taskIDs))
+			cmd = m.secondaryFeatures.Bulk.ClearDueDateLocators(locators)
+			summary = fmt.Sprintf("Cleared due date for %d tasks", len(locators))
 		}
-		return true, finalizeBatchResult(cmd, taskIDs, summary)
+		return true, finalizeLocatedBatchResult(cmd, locators, summary)
 	}
 
 	// Single-task due-date overlay (explicit value, no pending bulk selection):
@@ -175,20 +175,20 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 		// the explicit-value picker path above. Date-only vs timed semantics ride the
 		// first task's HasTime flag. The shell owns reload and selection-clear via the
 		// batch result.
-		taskIDs := taskIDsFromTaskRefs(refs)
+		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		newDate := msg.Task.DueDate
 		newHasTime := msg.Task.HasTime
 		var cmd tea.Cmd
 		var summary string
 		if newDate != nil {
-			cmd = m.secondaryFeatures.Bulk.SetDueDate(taskIDs, *newDate, newHasTime)
-			summary = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), len(taskIDs))
+			cmd = m.secondaryFeatures.Bulk.SetDueDateLocators(locators, *newDate, newHasTime)
+			summary = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), len(locators))
 		} else {
-			cmd = m.secondaryFeatures.Bulk.ClearDueDate(taskIDs)
-			summary = fmt.Sprintf("Cleared due date for %d tasks", len(taskIDs))
+			cmd = m.secondaryFeatures.Bulk.ClearDueDateLocators(locators)
+			summary = fmt.Sprintf("Cleared due date for %d tasks", len(locators))
 		}
-		return true, finalizeBatchResult(cmd, taskIDs, summary)
+		return true, finalizeLocatedBatchResult(cmd, locators, summary)
 	}
 
 	m.pendingBulkTasks = nil

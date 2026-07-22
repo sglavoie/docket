@@ -54,6 +54,7 @@ type OutlinerModel struct {
 	smartFocus        *OutlinerFocus // Optional base predicate for non-perspective task focuses.
 
 	sort SortState // Current sort field and direction
+	lens OutlinerLens
 
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input

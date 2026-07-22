@@ -49,6 +49,7 @@ func (m *AppModel) viewCommands() []Command {
 			Handler: func() tea.Msg {
 				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
 					Focus: OutlinerAll, SetFocus: true, Sort: SortByDueDate, SetSort: true,
+					Lens: OutlinerLensDueDate, SetLens: true,
 				}}
 			},
 		},

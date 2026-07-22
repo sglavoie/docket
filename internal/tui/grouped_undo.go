@@ -82,12 +82,12 @@ func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) postRestore
 		if runtime == nil || len(projects) == 0 {
 			return nil
 		}
-		taskProjects := make(map[string]string)
+		taskProjects := make(map[string][]string)
 		for _, project := range projects {
 			projectID := tuiUndoProjectID(project)
 			for _, task := range project.Tasks {
 				if task != nil && task.ID != "" {
-					taskProjects[task.ID] = projectID
+					taskProjects[task.ID] = append(taskProjects[task.ID], projectID)
 				}
 			}
 		}
@@ -96,19 +96,19 @@ func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) postRestore
 		planningChanged := false
 		machineChanged := false
 		for i := range planning.FocusQueue {
-			if id, ok := taskProjects[planning.FocusQueue[i].TaskID]; ok && planning.FocusQueue[i].ProjectID != id {
+			if id, ok := restoredTaskProject(taskProjects, planning.FocusQueue[i].TaskID, planning.FocusQueue[i].ProjectID); ok && planning.FocusQueue[i].ProjectID != id {
 				planning.FocusQueue[i].ProjectID = id
 				planningChanged = true
 			}
 		}
 		for i := range planning.DailyPlan {
-			if id, ok := taskProjects[planning.DailyPlan[i].TaskID]; ok && planning.DailyPlan[i].ProjectID != id {
+			if id, ok := restoredTaskProject(taskProjects, planning.DailyPlan[i].TaskID, planning.DailyPlan[i].ProjectID); ok && planning.DailyPlan[i].ProjectID != id {
 				planning.DailyPlan[i].ProjectID = id
 				planningChanged = true
 			}
 		}
 		for i := range machine.RecentTaskVisits {
-			if id, ok := taskProjects[machine.RecentTaskVisits[i].TaskID]; ok && machine.RecentTaskVisits[i].ProjectID != id {
+			if id, ok := restoredTaskProject(taskProjects, machine.RecentTaskVisits[i].TaskID, machine.RecentTaskVisits[i].ProjectID); ok && machine.RecentTaskVisits[i].ProjectID != id {
 				machine.RecentTaskVisits[i].ProjectID = id
 				machineChanged = true
 			}
@@ -132,4 +132,17 @@ func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) postRestore
 		}
 		return nil
 	}
+}
+
+func restoredTaskProject(taskProjects map[string][]string, taskID, currentProjectID string) (string, bool) {
+	projects := taskProjects[taskID]
+	for _, projectID := range projects {
+		if projectID == currentProjectID {
+			return currentProjectID, true
+		}
+	}
+	if len(projects) == 1 {
+		return projects[0], true
+	}
+	return "", false
 }

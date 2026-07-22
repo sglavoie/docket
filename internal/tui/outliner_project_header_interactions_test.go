@@ -136,21 +136,19 @@ func TestOutlinerProjectHeaderSelectAllSkipped(t *testing.T) {
 	m.multiSelectMode = true
 	m.selectAllVisible()
 
-	if len(m.selectedTasks) != 2 {
-		t.Errorf("expected exactly 2 task selections (one per visible task), got %d: %v", len(m.selectedTasks), m.selectedTasks)
+	if m.SelectedCount() != 2 {
+		t.Errorf("expected exactly 2 task selections (one per visible task), got %d: %v", m.SelectedCount(), m.selectedTaskIdentities)
 	}
-	alphaTaskID := m.rows[alphaTaskRow].task.ID
-	betaTaskID := m.rows[betaTaskRow].task.ID
-	if !m.selectedTasks[alphaTaskID] {
-		t.Errorf("alpha task %q should be selected", alphaTaskID)
+	if !m.isRowSelected(m.rows[alphaTaskRow]) {
+		t.Errorf("alpha task %q should be selected", m.rows[alphaTaskRow].task.ID)
 	}
-	if !m.selectedTasks[betaTaskID] {
-		t.Errorf("beta task %q should be selected", betaTaskID)
+	if !m.isRowSelected(m.rows[betaTaskRow]) {
+		t.Errorf("beta task %q should be selected", m.rows[betaTaskRow].task.ID)
 	}
 
 	// No project-header row should leak into the selection set under any key.
 	for _, row := range m.rows {
-		if row.IsProjectHeader && m.selectedTasks[row.ProjectID] {
+		if row.IsProjectHeader && m.IsTaskIdentitySelected(TaskIdentity{ProjectID: row.ProjectID, TaskID: row.ProjectID}) {
 			t.Errorf("project header ProjectID=%q leaked into selectedTasks", row.ProjectID)
 		}
 	}

@@ -23,8 +23,8 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 	}
 
 	refs := validTaskProjectRefs(msg.Tasks)
-	taskIDs := taskIDsFromTaskRefs(refs)
-	if len(taskIDs) == 0 {
+	locators := taskLocatorsFromTaskRefs(refs)
+	if len(locators) == 0 {
 		return true, nil
 	}
 
@@ -47,12 +47,12 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 	// so the user can retry).
 	cmd := m.secondaryFeatures.Bulk.TransitionWithWorkflow(
 		app.BulkTransitionRequest{
-			TaskIDs:     taskIDs,
-			Target:      target,
-			Rules:       m.runtime.Automation().GetEnabledWorkflowRules(),
-			UndoAction:  undoAction,
-			UndoContext: fmt.Sprintf("%d tasks", len(taskIDs)),
-			SkipInvalid: true,
+			TaskLocators: locators,
+			Target:       target,
+			Rules:        m.runtime.Automation().GetEnabledWorkflowRules(),
+			UndoAction:   undoAction,
+			UndoContext:  fmt.Sprintf("%d tasks", len(locators)),
+			SkipInvalid:  true,
 		},
 		func(changed int) string {
 			if changed == 0 {
@@ -61,5 +61,5 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 			return fmt.Sprintf("%d tasks %s", changed, actionPast)
 		},
 	)
-	return true, finalizeBatchResult(cmd, taskIDs, "")
+	return true, finalizeLocatedBatchResult(cmd, locators, "")
 }

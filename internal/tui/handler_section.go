@@ -95,10 +95,10 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// the shell owns reload and selection-clear via the batch result.
 		if len(m.pendingBulkTasks) > 0 {
 			refs := validTaskProjectRefs(m.pendingBulkTasks)
-			taskIDs := taskIDsFromTaskRefs(refs)
+			locators := taskLocatorsFromTaskRefs(refs)
 			m.pendingBulkTasks = nil
-			cmd := m.secondaryFeatures.Bulk.SetPriority(taskIDs, msg.Priority)
-			return true, finalizeBatchResult(cmd, taskIDs, fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, len(taskIDs)))
+			cmd := m.secondaryFeatures.Bulk.SetPriorityLocators(locators, msg.Priority)
+			return true, finalizeLocatedBatchResult(cmd, locators, fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, len(locators)))
 		}
 
 		// Single task operation: commit through the application-layer priority

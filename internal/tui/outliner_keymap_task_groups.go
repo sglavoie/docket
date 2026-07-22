@@ -41,7 +41,7 @@ func (b *outlinerKeymapBuilder) statusEntries() []keymap.Entry {
 					}
 					return m, nil
 				}
-				if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				if m.multiSelectMode && m.SelectedCount() > 0 {
 					return m.applyBulkStateChange(s)
 				}
 				return m.applySingleStateTransition(task, s)
@@ -122,13 +122,13 @@ func (b *outlinerKeymapBuilder) moveEntries() []keymap.Entry {
 		MoveToSection: func(section string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				if m.project == nil {
-					if m.multiSelectMode && len(m.selectedTasks) > 0 {
+					if m.multiSelectMode && m.SelectedCount() > 0 {
 						m.setStatus("bulk section move not supported in cross-project mode")
 						return m, nil
 					}
 					return m.crossSendTaskToSection(section)
 				}
-				if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				if m.multiSelectMode && m.SelectedCount() > 0 {
 					return m.sendTasksToSectionBulk(section)
 				}
 				return m.sendTaskToSection(b.cursorTask(), section)

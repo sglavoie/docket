@@ -536,6 +536,9 @@ func resolveStartupNavigation(machine *config.MachineState, projectID string) (s
 		)
 	case config.StartViewTasks:
 		opts := startupOutlinerOptions(state)
+		if state.TaskSort == config.StartTaskSortDueDate {
+			opts.Lens, opts.SetLens = OutlinerLensDueDate, true
+		}
 		return plan(
 			ShowGlobalOutlinerMsg{Options: opts},
 			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}),

@@ -141,41 +141,49 @@ func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project)
 }
 
 func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project) {
-	refs := make(map[string]TaskProjectRef)
+	refs := make(map[TaskIdentity]TaskProjectRef)
+	refsByTaskID := make(map[string][]TaskProjectRef)
 	for _, project := range projects {
 		if project == nil {
 			continue
 		}
 		for _, task := range project.Tasks {
 			if task != nil && task.ID != "" {
-				refs[task.ID] = TaskProjectRef{Task: task, Project: project}
+				ref := TaskProjectRef{Task: task, Project: project}
+				refs[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] = ref
+				refsByTaskID[task.ID] = append(refsByTaskID[task.ID], ref)
 			}
 		}
 	}
+	resolve := func(task *models.Task, project *models.Project) (TaskProjectRef, bool) {
+		if task == nil {
+			return TaskProjectRef{}, false
+		}
+		if project != nil {
+			ref, ok := refs[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}]
+			return ref, ok
+		}
+		candidates := refsByTaskID[task.ID]
+		if len(candidates) == 1 {
+			return candidates[0], true
+		}
+		return TaskProjectRef{}, false
+	}
 
 	for i := range m.focusQueue {
-		if m.focusQueue[i].Task == nil {
-			continue
-		}
-		if ref, ok := refs[m.focusQueue[i].Task.ID]; ok {
+		if ref, ok := resolve(m.focusQueue[i].Task, m.focusQueue[i].Project); ok {
 			m.focusQueue[i].Task = ref.Task
 			m.focusQueue[i].Project = ref.Project
 		}
 	}
 	for i := range m.dailyPlan {
-		if m.dailyPlan[i].Task == nil {
-			continue
-		}
-		if ref, ok := refs[m.dailyPlan[i].Task.ID]; ok {
+		if ref, ok := resolve(m.dailyPlan[i].Task, m.dailyPlan[i].Project); ok {
 			m.dailyPlan[i].Task = ref.Task
 			m.dailyPlan[i].Project = ref.Project
 		}
 	}
 	for i := range m.recentTaskVisits {
-		if m.recentTaskVisits[i].Task == nil {
-			continue
-		}
-		if ref, ok := refs[m.recentTaskVisits[i].Task.ID]; ok {
+		if ref, ok := resolve(m.recentTaskVisits[i].Task, m.recentTaskVisits[i].Project); ok {
 			m.recentTaskVisits[i].Task = ref.Task
 			m.recentTaskVisits[i].Project = ref.Project
 		}

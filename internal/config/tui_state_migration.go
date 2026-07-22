@@ -40,21 +40,24 @@ func (m *MachineState) UnmarshalJSON(data []byte) error {
 	// ProjectViewStates was retired with the canonical-destination migration,
 	// but older machine files may still contain the sidebar preference inside
 	// that catch-all object. Import only the sidebar value into its focused
-	// replacement. An explicit current field always wins.
-	if m.ProjectSidebarEnabled == nil {
-		var legacy struct {
-			ProjectViewStates map[string]struct {
-				SidebarEnabled *bool `json:"sidebar_enabled"`
-			} `json:"project_view_states"`
+	// replacement. Explicit current values win per project; legacy values for
+	// other projects must still be imported from partially migrated payloads.
+	var legacy struct {
+		ProjectViewStates map[string]struct {
+			SidebarEnabled *bool `json:"sidebar_enabled"`
+		} `json:"project_view_states"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+	for projectID, state := range legacy.ProjectViewStates {
+		if state.SidebarEnabled == nil {
+			continue
 		}
-		if err := json.Unmarshal(data, &legacy); err != nil {
-			return err
+		if _, current := m.ProjectSidebarEnabled[projectID]; current {
+			continue
 		}
-		for projectID, state := range legacy.ProjectViewStates {
-			if state.SidebarEnabled != nil {
-				m.SetProjectSidebarEnabled(projectID, *state.SidebarEnabled)
-			}
-		}
+		m.SetProjectSidebarEnabled(projectID, *state.SidebarEnabled)
 	}
 	if !jsonObjectHasKey(data, "tui_state_version") {
 		m.TUIStateVersion = 0

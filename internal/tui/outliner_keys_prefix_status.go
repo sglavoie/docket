@@ -33,7 +33,7 @@ func (m *OutlinerModel) handleStatusPrefix(key string, cursorTask *models.Task) 
 		return m, nil
 	}
 	if state, ok := StateForPrefixKey(key); ok {
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			return m.applyBulkStateChange(state)
 		}
 		return m.applySingleStateTransition(cursorTask, state)

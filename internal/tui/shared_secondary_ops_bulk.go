@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -46,6 +47,17 @@ func taskIDsFromTaskRefs(refs []TaskProjectRef) []string {
 		ids = append(ids, ref.Task.ID)
 	}
 	return ids
+}
+
+func taskLocatorsFromTaskRefs(refs []TaskProjectRef) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(refs))
+	for _, ref := range refs {
+		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" || ref.Project.ID == "" {
+			continue
+		}
+		locators = append(locators, app.TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID})
+	}
+	return locators
 }
 
 // taskIDsByProjectFromTaskRefs groups selected task IDs by owning project.

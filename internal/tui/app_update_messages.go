@@ -233,10 +233,17 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	// non-authoritative UI state cleaned separately after the commit, mirroring the
 	// CLI delete. A save failure here is a warning, not an error: the delete is
 	// already committed.
-	if len(msg.RemovedTaskIDs) > 0 {
-		removed := taskIDSliceToSet(msg.RemovedTaskIDs)
+	if len(msg.RemovedTaskLocators) > 0 || len(msg.RemovedTaskIDs) > 0 {
 		if err := m.commitMachineMutation(func(machine *config.MachineState) {
-			machine.RemoveMachineLocalTaskRefs(removed)
+			if len(msg.RemovedTaskLocators) > 0 {
+				locators := make([]config.ProjectTaskLocator, 0, len(msg.RemovedTaskLocators))
+				for _, locator := range msg.RemovedTaskLocators {
+					locators = append(locators, config.ProjectTaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
+				}
+				machine.RemoveMachineLocalTaskLocators(locators)
+				return
+			}
+			machine.RemoveMachineLocalTaskRefs(taskIDSliceToSet(msg.RemovedTaskIDs))
 		}); err != nil {
 			logging.Warn("failed to update recent visits after bulk delete: %v", err)
 		}
@@ -244,7 +251,9 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
 	// selection intact for the user to retry.
-	if len(msg.ClearSelectionTaskIDs) > 0 {
+	if len(msg.ClearSelectionTaskLocators) > 0 {
+		m.clearBulkTaskSelectionsForLocators(msg.ClearSelectionTaskLocators)
+	} else if len(msg.ClearSelectionTaskIDs) > 0 {
 		m.clearBulkTaskSelectionsForTaskIDs(msg.ClearSelectionTaskIDs)
 	}
 	// Persist workflow-rule trigger counts fired by a bulk-with-rules mutation.

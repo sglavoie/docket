@@ -5,6 +5,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -202,16 +204,17 @@ func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) tea.Cmd
 // resolution and nested-root collapsing happen later (in confirmTaskDelete and
 // the application service); this only shapes the confirmation summary.
 func canonicalizeTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
-	seen := make(map[string]bool, len(refs))
+	seen := make(map[TaskIdentity]bool, len(refs))
 	roots := make([]TaskProjectRef, 0, len(refs))
 	for _, ref := range refs {
 		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" {
 			continue
 		}
-		if seen[ref.Task.ID] {
+		identity := TaskIdentity{ProjectID: ref.Project.ID, TaskID: ref.Task.ID}
+		if seen[identity] {
 			continue
 		}
-		seen[ref.Task.ID] = true
+		seen[identity] = true
 		roots = append(roots, ref)
 	}
 	return roots
@@ -317,14 +320,14 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 
 	// Expand every root to its whole subtree so the durable planning cleanup keys
 	// on each removed task, not just the roots.
-	idsToDelete := make(map[string]bool)
+	locatorsToDelete := make(map[app.TaskLocator]bool)
 	for _, group := range groupTaskProjectRefsByProject(roots) {
 		rootIDs := make(map[string]bool, len(group.Items))
 		for _, item := range group.Items {
 			rootIDs[item.Task.ID] = true
 		}
 		for id := range collectDescendantIDs(group.Project.Tasks, rootIDs) {
-			idsToDelete[id] = true
+			locatorsToDelete[app.TaskLocator{ProjectID: group.Project.ID, TaskID: id}] = true
 		}
 	}
 
@@ -334,7 +337,7 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	var artifacts []storage.ArtifactChange
 	if m.runtime != nil && m.configManager != nil {
 		planning := clonePlanningState(m.runtime.Planning())
-		if planning.RemoveDurableTaskRefs(idsToDelete) > 0 {
+		if planning.RemoveDurableTaskLocators(configLocators(locatorsToDelete)) > 0 {
 			arts, err := planningDomainArtifact(m.configManager, planning)
 			if err != nil {
 				// This aborts before the bulk transaction command is created, so its
@@ -363,9 +366,17 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 		m.pendingWeeklyReviewDeletes[token] = len(roots)
 	}
 
-	taskIDs := taskIDsFromTaskRefs(roots)
-	cmd := m.secondaryFeatures.Bulk.Delete(taskIDs, artifacts...)
-	return stampDeleteRequestToken(finalizeBatchResult(cmd, taskIDs, ""), token)
+	locators := taskLocatorsFromTaskRefs(roots)
+	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators, artifacts...)
+	return stampDeleteRequestToken(finalizeLocatedBatchResult(cmd, locators, ""), token)
+}
+
+func configLocators(locators map[app.TaskLocator]bool) []config.ProjectTaskLocator {
+	result := make([]config.ProjectTaskLocator, 0, len(locators))
+	for locator := range locators {
+		result = append(result, config.ProjectTaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
+	}
+	return result
 }
 
 // clearPendingTaskDelete discards the pending roots and dismisses the confirm

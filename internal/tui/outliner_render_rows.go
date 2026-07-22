@@ -72,16 +72,20 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	sectionStyle := GetViewModeStyleForSection(row.SectionName)
+	prefix := "@ "
+	if row.IsLensHeader {
+		prefix = "◷ "
+	}
 
 	line := renderSectionHeader(SectionHeaderOpts{
 		Name:        displayName,
 		Count:       row.SectionCount,
 		Collapsed:   m.isSectionRowCollapsed(row),
 		AccentColor: sectionStyle,
-		Prefix:      "@ ",
+		Prefix:      prefix,
 	})
 
-	if limit := m.runtime.Settings().GetSectionLimit(row.SectionName); limit > 0 && row.SectionCount > limit {
+	if limit := m.runtime.Settings().GetSectionLimit(row.SectionName); !row.IsLensHeader && limit > 0 && row.SectionCount > limit {
 		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
 	}
 	if row.ProjectID != "" {
@@ -175,7 +179,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	}
 	cursorPrefix := RenderCursorPrefix(selected, task.Pinned, task.Dimmed)
 	queueIndicator := m.renderTaskQueueIndicator(task)
-	checkbox := m.renderTaskCheckbox(task)
+	checkbox := m.renderTaskCheckbox(row)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
 	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator)
 
@@ -379,11 +383,11 @@ func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task) string {
 	return "  "
 }
 
-func (m *OutlinerModel) renderTaskCheckbox(task *models.Task) string {
+func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow) string {
 	if !m.multiSelectMode {
 		return ""
 	}
-	if m.IsSelected(task.ID) {
+	if m.isRowSelected(row) {
 		return SelectionCheckStyle.Render("[x]") + " "
 	}
 	return MutedStyle.Render("[ ]") + " "
