@@ -692,6 +692,10 @@ type MachineState struct {
 	// remainder. Kept machine-local so a workspace does not force a split that
 	// suits one terminal geometry onto another machine.
 	HomeProjectsHeightPct *int `json:"home_projects_height_pct,omitempty"`
+
+	// ProjectSidebarEnabled remembers sidebar visibility for project-backed task
+	// workspaces. Missing entries retain the enabled-by-default behavior.
+	ProjectSidebarEnabled map[string]bool `json:"project_sidebar_enabled,omitempty"`
 }
 
 // Home Projects/Attention split bounds. The Projects card receives
@@ -759,6 +763,10 @@ func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
 	changed = filterProjectIDMap(m.CustomContexts, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	}) || changed
+	if mapHadProjectKey(m.ProjectSidebarEnabled, id, slug) {
+		deleteProjectKey(m.ProjectSidebarEnabled, id, slug)
+		changed = true
+	}
 	return changed
 }
 

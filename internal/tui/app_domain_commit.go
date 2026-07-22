@@ -264,6 +264,7 @@ func cloneMachineState(m *config.MachineState) *config.MachineState {
 	cp.RecentPaletteItems = slices.Clone(m.RecentPaletteItems)
 
 	cp.CustomContexts = cloneStringSliceMap(m.CustomContexts)
+	cp.ProjectSidebarEnabled = maps.Clone(m.ProjectSidebarEnabled)
 	return &cp
 }
 

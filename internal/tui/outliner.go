@@ -177,6 +177,9 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 	m.InitSearchInput("Search tasks...", 100, 30)
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
+	if project != nil && runtime != nil {
+		m.sidebar.SetEnabled(runtime.Machine().GetProjectSidebarEnabled(project.ID))
+	}
 	return m
 }
 
