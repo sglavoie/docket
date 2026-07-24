@@ -132,7 +132,7 @@ func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 				if msg.Projects > 0 {
 					statusMsg = fmt.Sprintf("Archived %d task(s) across %d project(s)", msg.Count, msg.Projects)
 				}
-				refreshCmd := m.handleWithRefresh(false, false, "")
+				refreshCmd := m.handleWithRefresh(false, true, "")
 				m.setWarningStatus(machineRepairWarning(statusMsg, result.MachineErr))
 				return true, tea.Batch(refreshCmd, repairCmd, defaultStatusTimeout())
 			}
@@ -142,7 +142,7 @@ func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Projects > 0 {
 			statusMsg = fmt.Sprintf("Archived %d task(s) across %d project(s)", msg.Count, msg.Projects)
 		}
-		return true, m.handleWithRefresh(false, false, statusMsg)
+		return true, m.handleWithRefresh(false, true, statusMsg)
 	}
 	return false, nil
 }
