@@ -400,8 +400,8 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 	m.reloadRegisteredProjectOutliners(storage.LoadProject)
 	m.rebuildRegisteredProjectOutliners()
 	var saveCmds []tea.Cmd
-	if m.crossOutliner != nil {
-		saveCmds = append(saveCmds, m.crossOutliner.reloadCrossProjects())
+	if reloadCmd := m.requestCrossProjectOutlinerReload(); reloadCmd != nil {
+		saveCmds = append(saveCmds, reloadCmd)
 	}
 	if m.views != nil {
 		if v := m.views.Get(ViewWeeklyReview); v != nil {

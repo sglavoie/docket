@@ -79,7 +79,7 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 // eager reload from disk while preserving the current cursor position; the
 // cursor is clamped to the new row count once the load completes.
 func (m *OutlinerModel) handleViewDidAppear() tea.Cmd {
-	if m.project != nil {
+	if m.project != nil || m.crossLoading {
 		// Only applies in cross-project mode.
 		return nil
 	}

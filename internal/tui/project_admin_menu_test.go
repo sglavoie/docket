@@ -37,8 +37,11 @@ func TestProjectAdminMenuDispatchesContextualCommands(t *testing.T) {
 			}
 		}},
 		{"pin", adminActionPin, func(t *testing.T, msg any) {
-			if m, ok := msg.(ProjectPinnedToggledMsg); !ok || m.Project != project {
-				t.Fatalf("expected pin toggle, got %#v", msg)
+			if m, ok := msg.(ProjectPinRequestMsg); !ok || m.Project != project || !m.Pinned {
+				t.Fatalf("expected pin request, got %#v", msg)
+			}
+			if project.Pinned {
+				t.Fatal("admin pin action should not mutate before the app commits")
 			}
 		}},
 		{"archive", adminActionArchive, func(t *testing.T, msg any) {
@@ -87,6 +90,20 @@ func TestProjectAdminMenuLabelsReflectLifecycleState(t *testing.T) {
 	}
 	if labels[adminActionPin] != "Unpin project" {
 		t.Fatalf("expected unpin label for pinned project, got %q", labels[adminActionPin])
+	}
+
+	menu.cursor = 0
+	for i, item := range menu.items {
+		if item.action == adminActionPin {
+			menu.cursor = i
+		}
+	}
+	pinMsg, ok := menu.dispatch().(ProjectPinRequestMsg)
+	if !ok || pinMsg.Pinned {
+		t.Fatalf("expected unpin request for pinned project, got %#v", menu.dispatch())
+	}
+	if !archivedPinned.Pinned {
+		t.Fatal("admin unpin action should not mutate before the app commits")
 	}
 
 	// An archived project's admin archive action must request unarchival.

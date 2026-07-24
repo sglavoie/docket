@@ -14,8 +14,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 			m.pendingProjectMoveTask = nil
 			m.pendingProjectMoveSource = nil
 		}
-		m.popView()
-		return true, nil
+		return true, m.popView()
 
 	case JumpDashboardMsg:
 		return true, m.jumpToOutlinerRoot()

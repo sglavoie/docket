@@ -452,7 +452,7 @@ func findPaletteAction(t *testing.T, actions []PaletteAction, name string) Palet
 	return PaletteAction{}
 }
 
-func TestHandleProjectMessagesProjectPinnedToggled(t *testing.T) {
+func TestHandleProjectMessagesProjectPinRequest(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
 	tests := []struct {
@@ -467,13 +467,16 @@ func TestHandleProjectMessagesProjectPinnedToggled(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app.statusMessage = ""
-			project.Pinned = tt.pinned
+			project.Pinned = !tt.pinned
 
-			msg := ProjectPinnedToggledMsg{Project: project}
+			msg := ProjectPinRequestMsg{Project: project, Pinned: tt.pinned}
 			handled, _ := app.handleProjectMessages(msg)
 
 			if !handled {
-				t.Error("ProjectPinnedToggledMsg should be handled")
+				t.Error("ProjectPinRequestMsg should be handled")
+			}
+			if project.Pinned != tt.pinned {
+				t.Errorf("project.Pinned = %v, want %v", project.Pinned, tt.pinned)
 			}
 			if app.statusMessage != tt.wantStatus {
 				t.Errorf("statusMessage = %q, want %q", app.statusMessage, tt.wantStatus)

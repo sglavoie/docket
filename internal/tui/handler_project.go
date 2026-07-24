@@ -18,6 +18,9 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
+		if msg.Project != nil && msg.Project.Archived {
+			return true, m.showProjectArchiveConfirm(msg.Project, false)
+		}
 		cmd, _ := m.maybePromptPark(TaskIdentity{}, func() tea.Cmd {
 			return m.selectProjectNow(msg.Project)
 		})
@@ -30,23 +33,26 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case ProjectCreatedMsg:
-		m.popView()
+		popCmd := m.popView()
 		m.syncProjectCache()
 		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.ProjectCreated = true })
 		moveTask := m.pendingProjectMoveTask
 		moveSource := m.pendingProjectMoveSource
 		m.pendingProjectMoveTask = nil
 		m.pendingProjectMoveSource = nil
+		reloadCmd := m.requestCrossProjectOutlinerReload()
 		if moveTask != nil && moveSource != nil && msg.Project != nil {
-			return true, func() tea.Msg {
+			moveCmd := func() tea.Msg {
 				return MoveTaskToProjectMsg{
 					Task:          moveTask,
 					SourceProject: moveSource,
 					DestProjectID: msg.Project.ID,
+					FromGlobal:    true,
 				}
 			}
+			return true, tea.Batch(popCmd, moveCmd, reloadCmd)
 		}
-		return true, nil
+		return true, tea.Batch(popCmd, reloadCmd)
 
 	case ProjectArchiveRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemInboxProject(msg.Project.ID) {
@@ -91,23 +97,33 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.pruneDeletedTaskRefs()
 		if msg.Project != nil {
 			m.setSuccessStatus(fmt.Sprintf("Archived %s", msg.Project.Name))
-			return true, tea.Batch(popCmd, defaultStatusTimeout())
+			return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 		}
-		return true, popCmd
+		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload())
 
-	case ProjectPinnedToggledMsg:
+	case ProjectPinRequestMsg:
+		if msg.Project == nil {
+			return true, nil
+		}
+		updated := *msg.Project
+		if msg.Pinned {
+			updated.Pin()
+		} else {
+			updated.Unpin()
+		}
 		if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
-			catalog.UpsertProject(msg.Project)
+			catalog.UpsertProject(&updated)
 		}); err != nil {
 			m.err = err
 			return true, nil
 		}
+		copyCatalogMetadata(msg.Project, &updated)
 		statusMsg := "Pinned"
-		if !msg.Project.Pinned {
+		if !msg.Pinned {
 			statusMsg = "Unpinned"
 		}
 		m.setSuccessStatus(statusMsg)
-		return true, defaultStatusTimeout()
+		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case ProjectDeletedMsg:
 		var manageFallback *ManageParams
@@ -132,9 +148,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// Reset to the global Outliner root since the project no longer exists.
 		m.exitAskView()
 		if m.typedNavigation {
-			m.prepareCrossProjectOutliner()
+			presentationCmd := m.prepareCrossProjectOutliner()
 			m.navigation.ResetRoot()
-			return true, m.activateTaskWorkspaceRoute(outlinerRootRoute())
+			return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd)
 		}
 		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 		return true, nil
@@ -146,9 +162,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.err = err
 			return true, nil
 		}
+		m.syncProjectCache()
 		if msg.Project != nil {
 			m.setSuccessStatus(fmt.Sprintf("Unarchived %s", msg.Project.Name))
-			return true, defaultStatusTimeout()
+			return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 		}
 		return true, nil
 
@@ -162,9 +179,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case ProjectUpdatedMsg:
-		m.popView()
+		popCmd := m.popView()
+		m.syncProjectCache()
 		m.refreshProjectView()
-		return true, nil
+		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload())
 
 	case TutorDismissedMsg:
 		// Tutor dismissal is a portable behavior preference (Settings domain), so
@@ -198,17 +216,22 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.err = fmt.Errorf("project restore returned no project")
 			return true, nil
 		}
+		var popCmd tea.Cmd
 		if m.currentView() == ViewTrashedProjects {
-			m.popView()
+			popCmd = m.popView()
 		}
 		m.rememberTrashRestoreRecovery(msg)
 		if err := m.completeTrashRestoreRecovery(msg.Project.ID); err != nil {
 			m.err = trashRestorePartialError(msg.Project.Name, err)
-			return true, retryTrashRestoreMachineRefsCmd(msg.Project.ID)
+			return true, tea.Batch(
+				popCmd,
+				m.requestCrossProjectOutlinerReload(),
+				retryTrashRestoreMachineRefsCmd(msg.Project.ID),
+			)
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", msg.Project.Name))
-		return true, defaultStatusTimeout()
+		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case retryTrashRestoreMachineRefsMsg:
 		recovery, ok := m.pendingTrashRestoreRecovery[msg.ProjectID]
@@ -217,11 +240,14 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		if err := m.completeTrashRestoreRecovery(msg.ProjectID); err != nil {
 			m.err = trashRestorePartialError(recovery.Project.Name, err)
-			return true, retryTrashRestoreMachineRefsCmd(msg.ProjectID)
+			return true, tea.Batch(
+				m.requestCrossProjectOutlinerReload(),
+				retryTrashRestoreMachineRefsCmd(msg.ProjectID),
+			)
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", recovery.Project.Name))
-		return true, defaultStatusTimeout()
+		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case PurgeFromTrashMsg:
 		m.isLoading = true
@@ -273,6 +299,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.pendingSandboxProjectID = ""
 		m.pendingSandboxTaskCount = 0
 		m.reloadProjectByID(msg.Result.ProjectID)
+		m.reloadCrossProjectOutlinerProject(msg.Result.ProjectID)
 		m.setSuccessStatus(fmt.Sprintf("Cleared %d item(s) from sandbox", msg.Result.Cleared.Total()))
 		// Refresh views if sandbox is currently displayed
 		if m.currentProject != nil && m.currentProject.ID == msg.Result.ProjectID {

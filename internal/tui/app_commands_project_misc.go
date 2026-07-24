@@ -153,9 +153,9 @@ func (m *AppModel) otherCommands() []Command {
 			Aliases:     []string{"refresh", "reload data", "sync"},
 			Handler: func() tea.Msg {
 				// Reload the project under the visible Outliner cursor (or active
-				// scope) and rebuild the model the user actually sees, rather than
-				// the retired single-project m.outliner. From the global root a nil
-				// resolution surfaces an explicit no-project status.
+				// scope) and rebuild the authoritative visible model. From the
+				// global root a nil resolution surfaces an explicit no-project
+				// status.
 				project := m.paletteCursorProject()
 				if project == nil {
 					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {

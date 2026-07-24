@@ -119,9 +119,9 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
 	// Navigate every matching project view using the task pointer owned by that
-	// view's freshly reloaded project. Temporary outliners use a separate project
-	// object from m.currentProject, so routing only through m.outliner leaves their
-	// Inbox collapsed and their cursor on the pre-capture task.
+	// view's freshly reloaded project. Registered views may own project objects
+	// distinct from m.currentProject, so routing through only one cached pointer
+	// can leave a view's Inbox collapsed and its cursor on the pre-capture task.
 	if msg.Task != nil {
 		projectID := ""
 		if msg.Project != nil {

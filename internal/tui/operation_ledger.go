@@ -9,8 +9,9 @@ import (
 // TUIScenarioBaseline records the committed consolidated scenario inventory.
 // The retired destination-switcher scenario was removed with the Ctrl+G
 // destination switcher (41→40); session 8 removed the retired Planner
-// focus-empty scenario when the Planner surface was deleted (40→39).
-const TUIScenarioBaseline = 39
+// focus-empty scenario when the Planner surface was deleted (40→39). The
+// retained scope-query scenario added one committed interaction (39→40).
+const TUIScenarioBaseline = 40
 
 // OperationID is the stable semantic identity of a registered command.
 type OperationID string

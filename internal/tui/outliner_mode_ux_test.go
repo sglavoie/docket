@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -148,15 +149,60 @@ func TestModePickerFiltersByLabelAndAlias(t *testing.T) {
 	if len(rows) != 1 || rows[0].mode.ID != ModeBacklog {
 		t.Fatalf("query 'back' matched %v, want [Backlog]", modeIDs(rows))
 	}
-	// "done" matches Completed only by its alias.
+	// "done" includes Completed by its alias. Fuzzy matching may also include
+	// later categories, but must preserve category/catalog order.
 	rows = selectableModes(modePickerRows("done"))
-	if len(rows) != 1 || rows[0].mode.ID != ModeComplete {
-		t.Fatalf("query 'done' matched %v, want [Completed]", modeIDs(rows))
+	if len(rows) == 0 || rows[0].mode.ID != ModeComplete {
+		t.Fatalf("query 'done' matched %v, want Completed first", modeIDs(rows))
 	}
 	// Review modes now render as Outliner modes and list as selectable.
 	rows = selectableModes(modePickerRows("activity"))
 	if len(rows) != 1 || rows[0].disabled {
 		t.Fatalf("Activity should list as selectable, got %v", rows)
+	}
+
+	// Non-contiguous queries prove matching is fuzzy rather than substring-based.
+	rows = selectableModes(modePickerRows("bklg"))
+	if len(rows) != 1 || rows[0].mode.ID != ModeBacklog {
+		t.Fatalf("fuzzy label query 'bklg' matched %v, want [Backlog]", modeIDs(rows))
+	}
+	rows = selectableModes(modePickerRows("shdl"))
+	if len(rows) != 1 || rows[0].mode.ID != ModeDueDateLens {
+		t.Fatalf("fuzzy alias query 'shdl' matched %v, want [Due Date]", modeIDs(rows))
+	}
+}
+
+func TestModePickerUnicodeInputAndBackspace(t *testing.T) {
+	m := newWorkModeOutliner(t)
+	m.openModePicker()
+	m.modePicker.cursor = 3
+	m.modePicker.scroll = 4
+
+	for _, r := range []rune{'é', '界'} {
+		m.handleModePickerKey(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if got := m.modePicker.query; got != "é界" || !utf8.ValidString(got) {
+		t.Fatalf("Unicode input query = %q (valid UTF-8: %t), want %q", got, utf8.ValidString(got), "é界")
+	}
+	if m.modePicker.cursor != 0 || m.modePicker.scroll != 0 {
+		t.Fatalf("query change did not reset cursor/scroll: cursor=%d scroll=%d", m.modePicker.cursor, m.modePicker.scroll)
+	}
+
+	for _, want := range []string{"é", "", ""} {
+		m.handleModePickerKey(tea.KeyPressMsg{Code: tea.KeyBackspace})
+		if got := m.modePicker.query; got != want || !utf8.ValidString(got) {
+			t.Fatalf("Backspace query = %q (valid UTF-8: %t), want %q", got, utf8.ValidString(got), want)
+		}
+	}
+
+	for _, msg := range []tea.KeyPressMsg{
+		{Code: 'x', Mod: tea.ModCtrl},
+		{Code: '\n', Text: "\n"},
+	} {
+		m.handleModePickerKey(msg)
+		if got := m.modePicker.query; got != "" {
+			t.Fatalf("non-printable or modified key changed query to %q", got)
+		}
 	}
 }
 

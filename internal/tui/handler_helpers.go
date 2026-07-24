@@ -25,6 +25,57 @@ func (m *AppModel) activeCrossProjectOutliner() *OutlinerModel {
 	return nil
 }
 
+// requestCrossProjectOutlinerReload starts a disk-backed reload only when its
+// completion message can be routed to the cross-project Outliner. Full-screen
+// child views defer the reload until popView emits ViewDidAppearMsg after the
+// Outliner becomes active again.
+func (m *AppModel) requestCrossProjectOutlinerReload() tea.Cmd {
+	cross := m.crossOutliner
+	if cross == nil {
+		return nil
+	}
+	if m.typedNavigation {
+		if !m.activeOutlinerRoute() {
+			return nil
+		}
+	} else {
+		if m.currentView() != ViewCrossProjectOutliner || m.views == nil {
+			return nil
+		}
+		if registered, ok := m.views.Get(ViewCrossProjectOutliner).(*OutlinerModel); !ok || registered != cross {
+			return nil
+		}
+	}
+	return cross.reloadCrossProjects()
+}
+
+// reloadCrossProjectOutlinerProject refreshes one project object already owned
+// by the sole cross-project Outliner. Sandbox projects are intentionally absent
+// from the normal active-project reload selection, so a sandbox reset must
+// update that scoped copy directly instead of launching a reload that would
+// omit it.
+func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
+	if projectID == "" || m.crossOutliner == nil || m.persister == nil {
+		return
+	}
+	for _, project := range m.crossOutliner.loadedProjects {
+		if project == nil || project.ID != projectID {
+			continue
+		}
+		if err := m.persister.Load(project); err != nil {
+			logging.Warn("failed to reload cross-project copy %s: %v", project.Name, err)
+			return
+		}
+		if m.runtime != nil {
+			copyCatalogMetadata(project, m.runtime.GetProject(projectID))
+		}
+		m.crossOutliner.crossForceRebuild = true
+		m.crossOutliner.crossProjectRebuildRows()
+		m.crossOutliner.clampCursor()
+		return
+	}
+}
+
 // registeredProjectOutliners returns every distinct single-project outliner
 // owned by the app.
 func (m *AppModel) registeredProjectOutliners() []*OutlinerModel {
@@ -129,15 +180,15 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	// handleCrossProjectsLoaded via crossProjectRebuildRows.
 	var crossReloadCmd tea.Cmd
 	var crossSavedCursor int
-	crossInstance := m.activeCrossProjectOutliner()
+	crossInstance := m.crossOutliner
 	crossReload := reload && crossInstance != nil
 	if crossReload {
 		crossSavedCursor = crossInstance.cursor
-		crossReloadCmd = crossInstance.reloadCrossProjects()
+		crossReloadCmd = m.requestCrossProjectOutlinerReload()
 	}
 	m.refreshAllViews()
 	m.refreshLoadedTaskWorkspace()
-	if crossReload {
+	if crossReloadCmd != nil {
 		crossInstance.cursor = crossSavedCursor
 	}
 	if statusMsg != "" {

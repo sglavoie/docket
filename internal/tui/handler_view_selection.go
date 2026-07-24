@@ -89,10 +89,10 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case StatusUpdatedMsg:
-		m.popView()
+		popCmd := m.popView()
 		m.syncProjectCache()
 		m.setSuccessStatus("Status updated")
-		return true, defaultStatusTimeout()
+		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 	}
 
 	return false, nil

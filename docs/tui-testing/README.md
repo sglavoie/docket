@@ -185,6 +185,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `command-palette-task-actions-narrow-layout.json` | Open task action mode on the long-title narrow fixture at `72x20`. |
 | `command-action-help.json`      | Invoke the `help` command by name (no palette) and assert its view. |
 | `navigate-outliner.json`        | Open the global All mode, move the cursor, and re-sort the Outline. |
+| `scope-picker-search-commit.json` | Fuzzy-search project scopes, commit and retain the query with state-specific help, then act on the filtered project. |
 | `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |
 | `baseline-layout.json`          | Assert no layout issues across baseline Outliner sizes.  |
 | `dashboard-search-alerts-minimum-layout.json` | Assert the alert-heavy fixture root renders cleanly at `60x20`. |
@@ -224,7 +225,7 @@ just tui-scenarios
 | Fresh install and post-migration startup | `fresh-install-default.json`, `fresh-install-capture.json`, `fresh-install-alerts-quiet.json` |
 | Outliner root and onboarding | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
 | Outliner Today and Next modes | `open-today.json` |
-| Outliner project scopes and focus/sort translation | `navigate-outliner.json` |
+| Outliner project scopes and focus/sort translation | `navigate-outliner.json`, `scope-picker-search-commit.json` |
 | Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
 | Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |
 | Detail and Composer | `task-detail-narrow-layout.json`, `quick-capture-minimum-layout.json`, `task-form-edit-standard-layout.json` |

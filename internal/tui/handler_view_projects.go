@@ -89,10 +89,9 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 	if options.SetMode || options.SetFocus || options.SetSort || options.SetLens {
 		cross.ApplyOpenOptions(options)
 	} else {
-		// Explicit project navigation presents the project's full task tree — the
-		// same "All" default the retired single-project Outliner opened with —
-		// rather than inheriting the global Today horizon (which is empty for an
-		// unplanned project).
+		// Explicit project navigation presents the project's full task tree in
+		// All rather than inheriting the global Today horizon, which is empty for
+		// an unplanned project.
 		cross.selectOutlinerMode(ModeAll)
 	}
 	if openAt != nil {

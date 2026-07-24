@@ -84,7 +84,17 @@ func loadCrossScopeSelection(selected []*models.Project, includeSandbox bool, lo
 	for _, diag := range snap.Diagnostics() {
 		failed = append(failed, diagnosticToLoadFailure(diag))
 	}
-	return snap.Tasks(), snap.Projects(), failed
+	projects = snap.Projects()
+	catalogByID := make(map[string]*models.Project, len(kept))
+	for _, project := range kept {
+		if project != nil {
+			catalogByID[project.ID] = project
+		}
+	}
+	for _, project := range projects {
+		copyCatalogMetadata(project, catalogByID[project.ID])
+	}
+	return snap.Tasks(), projects, failed
 }
 
 func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts) []*models.Project {

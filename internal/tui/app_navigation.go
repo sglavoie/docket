@@ -59,25 +59,27 @@ func (m *AppModel) getActiveNotesView() *NotesViewModel {
 // validateCurrentProject checks that the current project still exists in config.
 // If the project was deleted (e.g., by an external CLI command), it clears the
 // stale pointer and resets to the global Outliner root with a status message.
-// Returns true if the project was invalidated.
-func (m *AppModel) validateCurrentProject() bool {
+// Returns handled=true with every command needed to present and load the
+// fallback Outliner.
+func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	if m.currentProject == nil {
-		return false
+		return false, nil
 	}
 	if m.projectByID(m.currentProject.ID) != nil {
-		return false
+		return false, nil
 	}
 	m.exitAskView()
 	m.currentProject = nil
 	if m.typedNavigation {
-		m.prepareCrossProjectOutliner()
+		presentationCmd := m.prepareCrossProjectOutliner()
 		m.navigation.ResetRoot()
-		m.activateTaskWorkspaceRoute(outlinerRootRoute())
+		routeCmd := m.activateTaskWorkspaceRoute(outlinerRootRoute())
+		cmd = tea.Batch(presentationCmd, routeCmd)
 	} else {
 		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 	}
 	m.setInfoStatus("Project was removed — returning to the Outliner")
-	return true
+	return true, cmd
 }
 
 // currentView returns the current view type.
@@ -121,8 +123,8 @@ func (m *AppModel) pushView(view PresentationID) {
 // by the newly revealed view, including eager reload and resume hooks.
 func (m *AppModel) popView() tea.Cmd {
 	popped := false
-	if m.typedNavigation && m.popTypedPresentation() {
-		popped = true
+	if m.typedNavigation {
+		popped = m.popTypedPresentation()
 	} else if len(m.viewStack) > 1 {
 		if m.currentView() == ViewAsk {
 			m.exitAskView()

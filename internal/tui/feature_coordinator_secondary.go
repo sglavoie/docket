@@ -602,9 +602,10 @@ func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []stri
 // single-task commit, reloaded by handleTransactionResult); the reorder seams
 // (MoveToTop/MoveToBottom) resolve to a BatchTransactionResultMsg because they
 // reorder a whole project's task slice, reloaded by handleBatchTransactionResult.
-// Both messages flow through the same save/reload path that ends in
-// crossOutliner.reloadCrossProjects(). Every task argument is project-qualified
-// so a coordinator cannot accidentally fall back to workspace iteration order.
+// Both messages flow through the same save/reload path. The shell starts a
+// cross-project reload only while the Outliner is routable and otherwise defers
+// it until the view reappears. Every task argument is project-qualified so a
+// coordinator cannot accidentally fall back to workspace iteration order.
 type TaskItemCoordinator struct {
 	name                   string
 	task                   TaskItemMutator

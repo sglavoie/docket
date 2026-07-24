@@ -177,8 +177,11 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// The Outliner is the sole root: construct and register the global
 	// (All Projects) Outliner in Today so the first frame renders the root even
 	// before Init's startup reload lands. NewNavigationState already roots the
-	// primary stack at the Outliner; sync the presentation mirror to match.
-	app.prepareCrossProjectOutliner()
+	// primary stack at the Outliner; sync the presentation mirror to match. The
+	// returned constructor command is deliberately startup-owned: AppModel.Init
+	// emits ShowGlobalOutlinerMsg, whose handler starts and returns the current
+	// generation's reload command.
+	_ = app.prepareCrossProjectOutliner()
 	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeToday, SetMode: true})
 	app.setAccentOnView(app.crossOutliner)
 	app.syncPresentationStack()

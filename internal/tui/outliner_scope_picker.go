@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -148,22 +149,19 @@ func (m *ScopePickerModel) moveCursor(delta int) {
 }
 
 func (m *ScopePickerModel) applyFilter() {
-	query := strings.ToLower(strings.TrimSpace(m.input.Value()))
+	query := strings.TrimSpace(m.input.Value())
 	if query == "" {
 		m.filtered = m.entries
 	} else {
 		out := make([]scopePickerEntry, 0, len(m.entries))
 		for _, e := range m.entries {
-			// Keep the scope-clear affordance visible regardless of the query.
-			if e.kind == scopeEntryAllProjects || strings.Contains(strings.ToLower(e.filterText()), query) {
+			if fuzzy.MatchTerms(e.filterText(), query) {
 				out = append(out, e)
 			}
 		}
 		m.filtered = out
 	}
-	if m.cursor >= len(m.filtered) {
-		m.cursor = max(len(m.filtered)-1, 0)
-	}
+	m.cursor = 0
 }
 
 // handleKey processes a key press, returning (inputCmd, dismiss, resultMsg) per
@@ -174,7 +172,7 @@ func (m *ScopePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 	// Permanent-delete confirmation captures every key until resolved.
 	if m.confirmPurge {
 		switch key {
-		case "y", "Y", "enter":
+		case "y", "Y":
 			target := m.purgeTarget
 			m.confirmPurge = false
 			m.purgeTarget = nil
@@ -182,9 +180,11 @@ func (m *ScopePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 				return nil, true, PurgeFromTrashMsg{EntryID: target.trashEntryID, Slug: target.trashSlug}
 			}
 			return nil, false, nil
-		default:
+		case "n", "N", "esc":
 			m.confirmPurge = false
 			m.purgeTarget = nil
+			return nil, false, nil
+		default:
 			return nil, false, nil
 		}
 	}
@@ -198,7 +198,9 @@ func (m *ScopePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 			m.applyFilter()
 			return nil, false, nil
 		case "enter":
-			return m.activateCurrent()
+			m.searching = false
+			m.input.Blur()
+			return nil, false, nil
 		case "up", "ctrl+k", "ctrl+p":
 			m.moveCursor(-1)
 			return nil, false, nil
@@ -218,6 +220,11 @@ func (m *ScopePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 
 	switch key {
 	case "esc":
+		if m.input.Value() != "" {
+			m.input.SetValue("")
+			m.applyFilter()
+			return nil, false, nil
+		}
 		return nil, true, nil
 	case "/":
 		m.searching = true
@@ -324,13 +331,22 @@ func (m *ScopePickerModel) rowLabel(e scopePickerEntry) string {
 func (m *ScopePickerModel) render(width int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Project Scope & Administration")
-	footerText := HelpStyle.Render("enter: scope/restore · X: unarchive · x: delete · /: search · esc: close")
+	footer := "↑/↓ move · enter act · X/x admin · / find · esc close"
+	switch {
+	case m.confirmPurge:
+		footer = "y: permanently delete · n/esc: cancel"
+	case m.searching:
+		footer = "type filter · ↑/↓ move · enter commit · esc clear"
+	case m.input.Value() != "":
+		footer = "↑/↓ move · enter act · X/x admin · / edit · esc clear"
+	}
+	footerText := HelpStyle.Render(footer)
 
 	innerWidth := max(min(max(width*3/5, 44), width-4), 1)
 	m.input.SetWidth(max(innerWidth-2, 1))
 
 	var content strings.Builder
-	if m.searching {
+	if m.searching || m.input.Value() != "" {
 		content.WriteString(m.input.View())
 	} else {
 		content.WriteString(MutedStyle.Render("Press / to search"))

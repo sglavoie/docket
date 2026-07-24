@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -124,36 +125,60 @@ func TestScopePickerArchivedAndTrashActions(t *testing.T) {
 		}
 	})
 
-	t.Run("trash permanent delete requires confirmation", func(t *testing.T) {
-		m, _, _, trash := newScopePickerFixture()
-		scopeCursorOnKind(t, m, scopeEntryTrash)
+	for _, key := range []string{"y", "Y"} {
+		t.Run("trash permanent delete confirms with "+key, func(t *testing.T) {
+			m, _, _, trash := newScopePickerFixture()
+			scopeCursorOnKind(t, m, scopeEntryTrash)
 
-		// First press arms the confirmation without emitting a destructive msg.
-		_, dismiss, result := m.handleKey(scopeKey(t, "x"))
-		if dismiss || result != nil {
-			t.Fatalf("expected arming (no dismiss/result), got dismiss=%v %#v", dismiss, result)
-		}
-		if !m.confirmPurge {
-			t.Fatal("expected purge confirmation to be armed")
-		}
+			// First press arms the confirmation without emitting a destructive msg.
+			_, dismiss, result := m.handleKey(scopeKey(t, "x"))
+			if dismiss || result != nil {
+				t.Fatalf("expected arming (no dismiss/result), got dismiss=%v %#v", dismiss, result)
+			}
+			if !m.confirmPurge {
+				t.Fatal("expected purge confirmation to be armed")
+			}
 
-		// Confirming emits the lifecycle-safe purge and dismisses.
-		_, dismiss, result = m.handleKey(scopeKey(t, "y"))
-		purge, ok := result.(PurgeFromTrashMsg)
-		if !dismiss || !ok || purge.EntryID != trash.EntryID {
-			t.Fatalf("expected purge of %q, got %#v", trash.EntryID, result)
-		}
-	})
+			// Only an explicit y/Y emits the lifecycle-safe purge and dismisses.
+			_, dismiss, result = m.handleKey(scopeKey(t, key))
+			purge, ok := result.(PurgeFromTrashMsg)
+			if !dismiss || !ok || purge.EntryID != trash.EntryID {
+				t.Fatalf("expected purge of %q, got %#v", trash.EntryID, result)
+			}
+		})
+	}
 
-	t.Run("trash permanent delete can be cancelled", func(t *testing.T) {
-		m, _, _, _ := newScopePickerFixture()
-		scopeCursorOnKind(t, m, scopeEntryTrash)
-		m.handleKey(scopeKey(t, "x"))
-		_, dismiss, result := m.handleKey(scopeKey(t, "n"))
-		if dismiss || result != nil || m.confirmPurge {
-			t.Fatalf("expected cancel to disarm without action, got dismiss=%v %#v armed=%v", dismiss, result, m.confirmPurge)
-		}
-	})
+	for _, key := range []string{"n", "N", "esc"} {
+		t.Run("trash permanent delete cancels with "+key, func(t *testing.T) {
+			m, _, _, _ := newScopePickerFixture()
+			scopeCursorOnKind(t, m, scopeEntryTrash)
+			m.handleKey(scopeKey(t, "x"))
+			_, dismiss, result := m.handleKey(scopeKey(t, key))
+			if dismiss || result != nil || m.confirmPurge {
+				t.Fatalf("expected cancel to disarm without action, got dismiss=%v %#v armed=%v", dismiss, result, m.confirmPurge)
+			}
+		})
+	}
+
+	for _, key := range []string{"enter", "q"} {
+		t.Run("trash permanent delete consumes "+key, func(t *testing.T) {
+			m, _, _, trash := newScopePickerFixture()
+			scopeCursorOnKind(t, m, scopeEntryTrash)
+			m.handleKey(scopeKey(t, "x"))
+			_, dismiss, result := m.handleKey(scopeKey(t, key))
+			if dismiss || result != nil || !m.confirmPurge {
+				t.Fatalf("expected key consumed with confirmation armed, got dismiss=%v %#v armed=%v", dismiss, result, m.confirmPurge)
+			}
+
+			// The consumed key must leave the same purge target available for an
+			// eventual explicit confirmation.
+			_, dismiss, result = m.handleKey(scopeKey(t, "Y"))
+			purge, ok := result.(PurgeFromTrashMsg)
+			if !dismiss || !ok || purge.EntryID != trash.EntryID {
+				t.Fatalf("expected later explicit purge of %q, got %#v", trash.EntryID, result)
+			}
+		})
+	}
 }
 
 func TestScopePickerArchiveGuardsAreLifecycleScoped(t *testing.T) {
@@ -169,26 +194,145 @@ func TestScopePickerArchiveGuardsAreLifecycleScoped(t *testing.T) {
 	}
 }
 
-func TestScopePickerSearchFiltersEntries(t *testing.T) {
+func TestScopePickerSearchCommitsAndActsOnFilteredSelection(t *testing.T) {
 	m, _, _, _ := newScopePickerFixture()
 	m.handleKey(scopeKey(t, "/"))
-	m.handleKey(scopeKey(t, "c")) // "charlie" trash slug
-	m.handleKey(scopeKey(t, "h"))
+	for _, key := range []string{"c", "h"} {
+		m.handleKey(scopeKey(t, key))
+	}
+	if len(m.filtered) != 1 || m.filtered[0].kind != scopeEntryTrash {
+		t.Fatalf("expected only the charlie trash row, got %+v", m.filtered)
+	}
 
-	var trashRows, otherProjects int
-	for _, e := range m.filtered {
-		switch e.kind {
-		case scopeEntryTrash:
-			trashRows++
-		case scopeEntryActive, scopeEntryArchived:
-			otherProjects++
+	_, dismiss, result := m.handleKey(scopeKey(t, "enter"))
+	if dismiss || result != nil || m.searching {
+		t.Fatalf("expected Enter to commit without acting, got dismiss=%v result=%#v searching=%v", dismiss, result, m.searching)
+	}
+	if got := m.input.Value(); got != "ch" {
+		t.Fatalf("expected committed query retained, got %q", got)
+	}
+	if rendered := m.render(100); !strings.Contains(rendered, "ch") {
+		t.Fatalf("expected committed query rendered, got:\n%s", rendered)
+	}
+
+	_, dismiss, result = m.handleKey(scopeKey(t, "enter"))
+	if _, ok := result.(RestoreFromTrashMsg); !dismiss || !ok {
+		t.Fatalf("expected Enter after commit to restore filtered trash row, got dismiss=%v %#v", dismiss, result)
+	}
+}
+
+func TestScopePickerSearchEscSequencingAndReopen(t *testing.T) {
+	t.Run("editing escape clears and stays open", func(t *testing.T) {
+		m, _, _, _ := newScopePickerFixture()
+		m.handleKey(scopeKey(t, "/"))
+		m.handleKey(scopeKey(t, "b"))
+		_, dismiss, result := m.handleKey(scopeKey(t, "esc"))
+		if dismiss || result != nil || m.searching || m.input.Value() != "" {
+			t.Fatalf("expected editing query cleared in place, got dismiss=%v result=%#v searching=%v query=%q", dismiss, result, m.searching, m.input.Value())
 		}
+		if len(m.filtered) != len(m.entries) || m.cursor != 0 {
+			t.Fatalf("expected full list reset at first row, got filtered=%d entries=%d cursor=%d", len(m.filtered), len(m.entries), m.cursor)
+		}
+	})
+
+	t.Run("committed escape clears before idle escape closes", func(t *testing.T) {
+		m, _, _, _ := newScopePickerFixture()
+		m.handleKey(scopeKey(t, "/"))
+		m.handleKey(scopeKey(t, "b"))
+		m.handleKey(scopeKey(t, "enter"))
+
+		_, dismiss, result := m.handleKey(scopeKey(t, "esc"))
+		if dismiss || result != nil || m.input.Value() != "" {
+			t.Fatalf("expected committed query cleared in place, got dismiss=%v result=%#v query=%q", dismiss, result, m.input.Value())
+		}
+		if _, dismiss, result = m.handleKey(scopeKey(t, "esc")); !dismiss || result != nil {
+			t.Fatalf("expected idle Esc to close, got dismiss=%v result=%#v", dismiss, result)
+		}
+	})
+
+	t.Run("slash reopens retained query", func(t *testing.T) {
+		m, _, _, _ := newScopePickerFixture()
+		m.handleKey(scopeKey(t, "/"))
+		m.handleKey(scopeKey(t, "b"))
+		m.handleKey(scopeKey(t, "enter"))
+		m.handleKey(scopeKey(t, "/"))
+		if !m.searching || m.input.Value() != "b" {
+			t.Fatalf("expected retained query reopened for editing, got searching=%v query=%q", m.searching, m.input.Value())
+		}
+	})
+}
+
+func TestScopePickerSearchUsesFuzzyMatchingAndResetsCursor(t *testing.T) {
+	m, _, _, _ := newScopePickerFixture()
+	m.cursor = len(m.filtered) - 1
+	m.handleKey(scopeKey(t, "/"))
+	for _, key := range []string{"a", "p", "a"} {
+		m.handleKey(scopeKey(t, key))
 	}
-	if trashRows != 1 {
-		t.Fatalf("expected the charlie trash row to survive filtering, got %d", trashRows)
+
+	if len(m.filtered) != 1 || m.filtered[0].kind != scopeEntryActive {
+		t.Fatalf("expected fuzzy query apa to match only Alpha, got %+v", m.filtered)
 	}
-	if otherProjects != 0 {
-		t.Fatalf("expected non-matching projects filtered out, got %d", otherProjects)
+	if m.cursor != 0 {
+		t.Fatalf("expected query changes to reset cursor, got %d", m.cursor)
+	}
+}
+
+func TestScopePickerSearchFiltersSyntheticAllProjectsRow(t *testing.T) {
+	m, _, _, _ := newScopePickerFixture()
+	m.handleKey(scopeKey(t, "/"))
+	for _, key := range []string{"b", "r", "v"} {
+		m.handleKey(scopeKey(t, key))
+	}
+	if len(m.filtered) != 1 || m.filtered[0].kind != scopeEntryArchived {
+		t.Fatalf("expected brv to match only Bravo without pinning All Projects, got %+v", m.filtered)
+	}
+}
+
+func TestScopePickerSearchEnterStaysInstalledThroughAppDispatch(t *testing.T) {
+	app := newTestAppModel()
+	app.scopePicker, _, _, _ = newScopePickerFixture()
+
+	for _, key := range []string{"/", "c", "h", "enter"} {
+		app.Update(scopeKey(t, key))
+	}
+	if app.scopePicker == nil {
+		t.Fatal("expected scope picker to remain installed after committing search")
+	}
+	if app.scopePicker.searching {
+		t.Fatal("expected AppModel-dispatched Enter to commit the search")
+	}
+	if got := app.scopePicker.input.Value(); got != "ch" {
+		t.Fatalf("expected AppModel-dispatched search retained, got %q", got)
+	}
+	if len(app.scopePicker.filtered) != 1 || app.scopePicker.filtered[0].kind != scopeEntryTrash {
+		t.Fatalf("expected AppModel-dispatched search to retain filtered trash row, got %+v", app.scopePicker.filtered)
+	}
+}
+
+func TestScopePickerRenderUsesStateSpecificFooter(t *testing.T) {
+	m, _, _, _ := newScopePickerFixture()
+	if got := m.render(100); !strings.Contains(got, "esc close") {
+		t.Fatalf("expected idle navigation footer, got:\n%s", got)
+	}
+
+	m.handleKey(scopeKey(t, "/"))
+	m.handleKey(scopeKey(t, "b"))
+	if got := m.render(100); !strings.Contains(got, "enter commit") || !strings.Contains(got, "esc clear") {
+		t.Fatalf("expected editing footer, got:\n%s", got)
+	}
+
+	m.handleKey(scopeKey(t, "enter"))
+	if got := m.render(100); !strings.Contains(got, "/ edit") || !strings.Contains(got, "esc clear") {
+		t.Fatalf("expected committed-search footer, got:\n%s", got)
+	}
+
+	m.input.SetValue("")
+	m.applyFilter()
+	scopeCursorOnKind(t, m, scopeEntryTrash)
+	m.handleKey(scopeKey(t, "x"))
+	if got := m.render(100); !strings.Contains(got, "y: permanently delete") || !strings.Contains(got, "n/esc: cancel") {
+		t.Fatalf("expected purge-confirmation footer, got:\n%s", got)
 	}
 }
 

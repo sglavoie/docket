@@ -65,8 +65,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 		Icon:    pinIcon,
 		KeyHint: "p",
 		Handler: func() tea.Msg {
-			project.TogglePinned()
-			return ProjectPinnedToggledMsg{Project: project}
+			return ProjectPinRequestMsg{Project: project, Pinned: !project.Pinned}
 		},
 	})
 

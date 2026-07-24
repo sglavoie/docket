@@ -48,8 +48,11 @@ type projectArchiveConfirmedMsg struct{}
 // ProjectDeletedMsg signals a project was permanently deleted.
 type ProjectDeletedMsg struct{ Project *models.Project }
 
-// ProjectPinnedToggledMsg signals a project's pinned state changed.
-type ProjectPinnedToggledMsg struct{ Project *models.Project }
+// ProjectPinRequestMsg requests a durable project pin-state change.
+type ProjectPinRequestMsg struct {
+	Project *models.Project
+	Pinned  bool
+}
 
 // =============================================================================
 // Project Tree Messages

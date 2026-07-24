@@ -155,8 +155,9 @@ func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, sourceProjectID
 func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, tea.Cmd) {
 	m.isLoading = false
 	m.loadingMessage = ""
+	var popCmd tea.Cmd
 	if !msg.FromGlobal {
-		m.popView() // Close project selector (not needed for global flow)
+		popCmd = m.popView() // Close project selector (not needed for global flow)
 	}
 	m.refreshAllViews()
 	// The cross-project move folded a checked config artifact (durable planning-ref
@@ -176,5 +177,5 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 		statusMsg += fmt.Sprintf(" (%d deps cleared)", msg.ClearedDeps)
 	}
 	m.setSuccessStatus(statusMsg)
-	return true, statusTimeout(3 * time.Second)
+	return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), statusTimeout(3*time.Second))
 }

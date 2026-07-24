@@ -2,8 +2,11 @@ package tui
 
 import (
 	"strings"
+	"unicode"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
 // outlinerModePicker is the inline, searchable, categorized mode selector opened
@@ -48,19 +51,8 @@ func (c OutlinerModeCategory) String() string {
 // modeMatchesQuery reports whether a mode matches the fuzzy query against its
 // label and aliases. An empty query matches everything.
 func modeMatchesQuery(mode OutlinerMode, query string) bool {
-	q := strings.ToLower(strings.TrimSpace(query))
-	if q == "" {
-		return true
-	}
-	if strings.Contains(strings.ToLower(mode.Label), q) {
-		return true
-	}
-	for _, alias := range mode.Aliases {
-		if strings.Contains(strings.ToLower(alias), q) {
-			return true
-		}
-	}
-	return false
+	searchText := strings.Join(append([]string{mode.Label}, mode.Aliases...), " ")
+	return fuzzy.MatchTerms(searchText, query)
 }
 
 // modePickerModeUnavailable reports whether a mode cannot yet be entered. Every
@@ -150,14 +142,16 @@ func (m *OutlinerModel) handleModePickerKey(msg tea.KeyPressMsg) (tea.Model, tea
 		return m, nil
 	case "backspace":
 		if p.query != "" {
-			p.query = p.query[:len(p.query)-1]
+			runes := []rune(p.query)
+			p.query = string(runes[:len(runes)-1])
 			p.cursor = 0
 			p.scroll = 0
 		}
 		return m, nil
 	default:
-		if s := msg.String(); len(s) == 1 && s >= " " {
-			p.query += s
+		runes := []rune(msg.Text)
+		if len(runes) == 1 && unicode.IsPrint(runes[0]) {
+			p.query += string(runes[0])
 			p.cursor = 0
 			p.scroll = 0
 		}

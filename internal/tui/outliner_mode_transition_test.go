@@ -100,7 +100,7 @@ func selectModeThroughLivePicker(t *testing.T, m *OutlinerModel, query string) {
 		t.Fatal("P did not open the live mode picker through the dispatcher")
 	}
 	for _, r := range query {
-		m.Update(tea.KeyPressMsg{Code: r})
+		m.Update(syntheticKey(r))
 	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if m.modePicker != nil {

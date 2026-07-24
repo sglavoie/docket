@@ -15,23 +15,13 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ContextPickerDoneMsg:
-		m.popView()
+		popCmd := m.popView()
 		if !msg.Canceled {
-			// When the cross-project outliner is in the view stack, trigger a
-			// full eager-reload sequence for the cross-project workspace: re-filter
-			// projects by the new context, reload all tasks from disk, and
-			// rebuild all rows. Cursor is saved and restored so clampCursor()
-			// in crossProjectRebuildRows clamps it to the new row count.
-			for _, v := range m.viewStack {
-				if v == ViewCrossProjectOutliner && m.crossOutliner != nil {
-					savedCursor := m.crossOutliner.cursor
-					reloadCmd := m.crossOutliner.reloadCrossProjects()
-					m.crossOutliner.cursor = savedCursor
-					return true, reloadCmd
-				}
-			}
+			// Reload immediately only when the pop reveals the Outliner. A
+			// still-covered Outliner reloads through its later ViewDidAppearMsg.
+			return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload())
 		}
-		return true, nil
+		return true, popCmd
 
 	case ShowCustomContextEditorMsg:
 		m.showView(ViewCustomContextEditor, NewCustomContextEditorModel(m.runtime, msg.EditName))

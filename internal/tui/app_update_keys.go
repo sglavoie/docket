@@ -145,8 +145,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	if handled, cmd := m.handleInvalidManageProjectScope(); handled {
 		return true, cmd
 	}
-	if (m.currentView() != ViewDashboard || m.activeOutlinerRoute()) && m.validateCurrentProject() {
-		return true, defaultStatusTimeout()
+	if m.currentView() != ViewDashboard || m.activeOutlinerRoute() {
+		if handled, cmd := m.validateCurrentProject(); handled {
+			return true, tea.Batch(cmd, defaultStatusTimeout())
+		}
 	}
 	// The exact non-preemptive global map is suppressed while the active
 	// control captures text. Ctrl+C, Ctrl+Esc, and Esc were handled above.

@@ -97,7 +97,7 @@ func (m *ProjectAdminMenuModel) dispatch() tea.Msg {
 	case adminActionStatus:
 		return ShowStatusInputMsg{Project: p}
 	case adminActionPin:
-		return ProjectPinnedToggledMsg{Project: p}
+		return ProjectPinRequestMsg{Project: p, Pinned: !p.Pinned}
 	case adminActionArchive:
 		return ProjectArchiveRequestMsg{Project: p, Archive: !p.Archived}
 	case adminActionNotes:
