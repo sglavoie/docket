@@ -118,17 +118,18 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 	if refs.WasCurrent {
 		m.CurrentProject = projectID
 	}
-	existingVisits := make(map[string]bool, len(m.RecentTaskVisits))
+	existingVisits := make(map[ProjectTaskLocator]bool, len(m.RecentTaskVisits))
 	for _, visit := range m.RecentTaskVisits {
-		existingVisits[visit.TaskID] = true
+		existingVisits[ProjectTaskLocator{ProjectID: visit.ProjectID, TaskID: visit.TaskID}] = true
 	}
 	for _, visit := range refs.RecentTaskVisits {
-		if existingVisits[visit.TaskID] {
+		visit.ProjectID = projectID
+		locator := ProjectTaskLocator{ProjectID: visit.ProjectID, TaskID: visit.TaskID}
+		if existingVisits[locator] {
 			continue
 		}
-		visit.ProjectID = projectID
 		m.RecentTaskVisits = append(m.RecentTaskVisits, visit)
-		existingVisits[visit.TaskID] = true
+		existingVisits[locator] = true
 	}
 
 	for _, key := range refs.CustomContextKeys {

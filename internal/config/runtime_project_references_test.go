@@ -24,3 +24,31 @@ func TestApplySyncedProjectReferencesKeepsDuplicateTaskIDsAcrossProjects(t *test
 		t.Fatalf("restored ownership was not reassigned to alpha: queue=%+v plan=%+v", domains.Planning.FocusQueue, domains.Planning.DailyPlan)
 	}
 }
+
+func TestApplyProjectReferencesKeepsDuplicateRecentVisitIDsAcrossProjects(t *testing.T) {
+	machine := &MachineState{
+		RecentTaskVisits: []RecentTaskVisit{{ProjectID: "beta", TaskID: "shared"}},
+	}
+	refs := ProjectReferences{
+		RecentTaskVisits: []RecentTaskVisit{{ProjectID: "archived-alpha", TaskID: "shared"}},
+	}
+
+	machine.ApplyProjectReferences("alpha", refs)
+	machine.ApplyProjectReferences("alpha", refs)
+
+	if len(machine.RecentTaskVisits) != 2 {
+		t.Fatalf("RecentTaskVisits = %+v, want one alpha and one beta visit", machine.RecentTaskVisits)
+	}
+	visits := make(map[ProjectTaskLocator]bool, len(machine.RecentTaskVisits))
+	for _, visit := range machine.RecentTaskVisits {
+		visits[ProjectTaskLocator{ProjectID: visit.ProjectID, TaskID: visit.TaskID}] = true
+	}
+	for _, locator := range []ProjectTaskLocator{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
+	} {
+		if !visits[locator] {
+			t.Errorf("RecentTaskVisits = %+v, missing %+v", machine.RecentTaskVisits, locator)
+		}
+	}
+}
