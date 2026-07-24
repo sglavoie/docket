@@ -32,7 +32,7 @@ func TestProjectAdminMenuDispatchesContextualCommands(t *testing.T) {
 			}
 		}},
 		{"status", adminActionStatus, func(t *testing.T, msg any) {
-			if m, ok := msg.(ShowStatusInputMsg); !ok || m.Project != project {
+			if m, ok := msg.(ShowStatusIconPickerMsg); !ok || m.Project != project {
 				t.Fatalf("expected status, got %#v", msg)
 			}
 		}},

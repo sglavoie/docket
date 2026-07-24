@@ -3,7 +3,10 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -271,6 +274,105 @@ func TestProjectArchiveFailureDoesNotPublishLiveMetadata(t *testing.T) {
 	}
 }
 
+func TestProjectArchiveMachineFailurePublishesWorkspaceAndRetriesCleanup(t *testing.T) {
+	project := newSession4Project(t, "Partial Archive")
+	fixture := newSession4LifecycleFixture(t, true, project)
+	app := fixture.app
+	live := app.projectByID(project.ID)
+	taskID := project.Tasks[0].ID
+
+	machine := cloneMachineState(app.runtime.Machine())
+	machine.CurrentProject = project.ID
+	machine.SetRecentTaskVisits([]config.RecentTaskVisit{{
+		ProjectID: project.ID,
+		TaskID:    taskID,
+	}})
+	if err := app.runtime.CommitMachine(machine); err != nil {
+		t.Fatalf("seed machine references: %v", err)
+	}
+
+	machineLock := blockTrashRestoreMachineCommit(t, app)
+	handled, cmd := app.handleProjectMessages(ProjectArchivedMsg{Project: live})
+	if !handled || cmd == nil {
+		t.Fatalf("partial archive = handled %v cmd %v, want published result and retry commands", handled, cmd)
+	}
+	if app.err != nil {
+		t.Fatalf("partial archive surfaced a total failure: %v", app.err)
+	}
+	if !live.Archived || app.currentProject != nil {
+		t.Fatalf("durable archive was not published: project=%#v current=%#v", live, app.currentProject)
+	}
+	runtimeProject := session3ProjectByID(t, app.runtime.AllProjects(), project.ID)
+	if !runtimeProject.Archived {
+		t.Fatal("runtime catalog did not advance to the committed archive")
+	}
+	if disk := session4DiskProject(t, fixture.dataDir, project.ID); !disk.Archived {
+		t.Fatal("workspace catalog did not persist the archive")
+	}
+	if app.runtime.Machine().CurrentProject != project.ID {
+		t.Fatalf("failed machine commit changed current project to %q", app.runtime.Machine().CurrentProject)
+	}
+	if len(app.runtime.Machine().RecentTaskVisits) != 1 {
+		t.Fatalf("failed machine commit changed recent visits: %+v", app.runtime.Machine().RecentTaskVisits)
+	}
+	if app.pendingMachineDomainRepair.empty() || !app.machineDomainRepairRetryScheduled {
+		t.Fatal("partial archive did not retain and schedule machine cleanup")
+	}
+	if !strings.Contains(app.statusMessage, "machine-state cleanup incomplete") {
+		t.Fatalf("partial archive status = %q, want retry warning", app.statusMessage)
+	}
+
+	if err := os.RemoveAll(machineLock); err != nil {
+		t.Fatalf("repair machine lock: %v", err)
+	}
+	latest := cloneMachineState(app.runtime.Machine())
+	latest.Editor = "vim"
+	if err := app.runtime.CommitMachine(latest); err != nil {
+		t.Fatalf("persist intervening machine change: %v", err)
+	}
+
+	retryHandled, retryCmd := app.handleGlobalLifecycleMessage(retryMachineDomainRepairMsg{})
+	if !retryHandled || retryCmd != nil {
+		t.Fatalf("successful retry = handled %v cmd %v, want handled and settled", retryHandled, retryCmd)
+	}
+	if !app.pendingMachineDomainRepair.empty() || app.machineDomainRepairRetryScheduled {
+		t.Fatal("successful retry retained pending machine cleanup")
+	}
+	repaired := app.runtime.Machine()
+	if repaired.CurrentProject != "" || len(repaired.RecentTaskVisits) != 0 {
+		t.Fatalf("machine cleanup was not applied: %+v", repaired)
+	}
+	if repaired.Editor != "vim" {
+		t.Fatalf("retry clobbered intervening machine change: editor=%q", repaired.Editor)
+	}
+}
+
+func TestProjectDeleteWorkspaceFailureDoesNotPublishNavigationState(t *testing.T) {
+	app, project := newBlockedProjectMutationApp(t, false)
+	originalCurrent := app.currentProject
+	originalView := app.currentView()
+
+	handled, cmd := app.handleProjectMessages(ProjectDeletedMsg{Project: project})
+	if !handled || cmd != nil {
+		t.Fatalf("failed project delete = handled %v cmd %v, want handled with no commands", handled, cmd)
+	}
+	if app.err == nil {
+		t.Fatal("failed project delete should surface an error")
+	}
+	if app.currentProject != originalCurrent {
+		t.Fatal("failed project delete cleared the live current project")
+	}
+	if app.currentView() != originalView {
+		t.Fatalf("failed project delete navigated from %s to %s", originalView, app.currentView())
+	}
+	if app.runtime.GetProject(project.ID) == nil {
+		t.Fatal("failed project delete removed the runtime catalog project")
+	}
+	if !app.pendingMachineDomainRepair.empty() || app.machineDomainRepairRetryScheduled {
+		t.Fatal("failed workspace transaction queued a machine repair")
+	}
+}
+
 func TestProjectUnarchiveFailureDoesNotPublishLiveMetadata(t *testing.T) {
 	app, project := newBlockedProjectMutationApp(t, true)
 	originalArchivedAt := *project.ArchivedAt
@@ -312,24 +414,104 @@ func TestProjectStatusIconFailureDoesNotPublishLiveMetadata(t *testing.T) {
 	})
 
 	if !handled || cmd != nil {
-		t.Fatalf("failed status icon = handled %v cmd %v, want handled with no commands", handled, cmd)
+		t.Fatalf("status icon draft = handled %v cmd %v, want handled with no commands", handled, cmd)
 	}
-	if app.err == nil {
-		t.Fatal("failed status-icon commit should surface an error")
+	if app.err != nil {
+		t.Fatalf("selecting a status-icon draft surfaced an error: %v", app.err)
 	}
 	if project.StatusIcon != "on-track" || project.StatusIconSource != "user" ||
 		!project.UpdatedAt.Equal(originalUpdatedAt) {
-		t.Fatalf("failed status-icon commit published live metadata: %#v", project)
+		t.Fatalf("status-icon draft published live metadata: %#v", project)
 	}
 	if app.currentView() != ViewStatusInput {
-		t.Fatalf("failed status-icon commit returned to %s, want status input", app.currentView())
+		t.Fatalf("status-icon draft returned to %s, want status input", app.currentView())
+	}
+
+	statusInput, ok := app.views.Get(ViewStatusInput).(*StatusInputModel)
+	if !ok {
+		t.Fatal("status input model was not registered")
+	}
+	statusInput.input.SetValue("new status")
+	_, saveCmd := statusInput.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if saveCmd == nil {
+		t.Fatal("failed status draft submit returned no command")
+	}
+	errMsg, ok := saveCmd().(ErrorMsg)
+	if !ok || errMsg.Err == nil {
+		t.Fatalf("failed status draft submit returned %#v, want ErrorMsg", errMsg)
+	}
+	_, _ = app.Update(errMsg)
+	if app.err == nil {
+		t.Fatal("failed status draft commit should surface an error")
+	}
+	if project.Description != "" || project.StatusIcon != "on-track" || project.StatusIconSource != "user" ||
+		!project.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed status draft commit published live metadata: %#v", project)
 	}
 	if app.statusMessage != "unchanged" {
-		t.Fatalf("failed status-icon commit changed status to %q", app.statusMessage)
+		t.Fatalf("failed status draft commit changed status to %q", app.statusMessage)
 	}
 	runtimeProject := session3ProjectByID(t, app.runtime.AllProjects(), project.ID)
 	if runtimeProject.StatusIcon != "" || !runtimeProject.UpdatedAt.Equal(originalUpdatedAt) {
-		t.Fatalf("failed status-icon commit changed runtime metadata: %#v", runtimeProject)
+		t.Fatalf("failed status draft commit changed runtime metadata: %#v", runtimeProject)
+	}
+}
+
+func TestProjectStatusDraftEscapeCancelsWholeEdit(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Description = "unchanged"
+	project.StatusIcon = "on-track"
+	project.StatusIconSource = "user"
+	originalUpdatedAt := project.UpdatedAt
+
+	app.showView(ViewStatusIconPicker, NewStatusIconPickerModel(project))
+	handled, cmd := app.handleViewSelectionMessages(StatusIconSelectedMsg{
+		Project:  project,
+		Canceled: true,
+	})
+	if !handled {
+		t.Fatal("status icon cancel was not handled")
+	}
+	if cmd != nil {
+		runSession2AppCommand(t, app, cmd)
+	}
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("status icon cancel returned to %s, want Dashboard", app.currentView())
+	}
+	if project.Description != "unchanged" || project.StatusIcon != "on-track" ||
+		!project.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("status icon cancel mutated project: %#v", project)
+	}
+
+	app.showView(ViewStatusIconPicker, NewStatusIconPickerModel(project))
+	_, _ = app.handleViewSelectionMessages(StatusIconSelectedMsg{
+		Project: project,
+		Key:     "at-risk",
+	})
+	statusInput, ok := app.views.Get(ViewStatusInput).(*StatusInputModel)
+	if !ok {
+		t.Fatal("status input model was not registered")
+	}
+	statusInput.input.SetValue("discard me")
+	_, backCmd := statusInput.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if backCmd == nil {
+		t.Fatal("status text cancel returned no BackMsg command")
+	}
+	rawBack := backCmd()
+	backMsg, ok := rawBack.(BackMsg)
+	if !ok {
+		t.Fatalf("status text cancel returned %T, want BackMsg", rawBack)
+	}
+	_, closeCmd := app.Update(backMsg)
+	if closeCmd != nil {
+		runSession2AppCommand(t, app, closeCmd)
+	}
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("status text cancel returned to %s, want Dashboard", app.currentView())
+	}
+	if project.Description != "unchanged" || project.StatusIcon != "on-track" ||
+		!project.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("status text cancel mutated project: %#v", project)
 	}
 }
 

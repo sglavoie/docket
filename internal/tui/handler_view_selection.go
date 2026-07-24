@@ -1,12 +1,6 @@
 package tui
 
-import (
-	"time"
-
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
-)
+import tea "charm.land/bubbletea/v2"
 
 // handleViewSelectionMessages handles transient pickers, previews, and status editors.
 func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
@@ -65,30 +59,15 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case StatusIconSelectedMsg:
-		m.popView()
+		popCmd := m.popView()
 		if msg.Project == nil {
-			return true, nil
+			return true, popCmd
+		}
+		if msg.Canceled {
+			return true, popCmd
 		}
 
-		if !msg.Canceled {
-			updated := *msg.Project
-			updated.StatusIcon = msg.Key
-			if msg.Key != "" {
-				updated.StatusIconSource = "user"
-			} else {
-				updated.StatusIconSource = ""
-			}
-			updated.UpdatedAt = time.Now()
-			if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
-				catalog.UpsertProject(&updated)
-			}); err != nil {
-				m.err = err
-			} else {
-				copyCatalogMetadata(msg.Project, &updated)
-			}
-		}
-
-		m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.runtime))
+		m.showView(ViewStatusInput, newStatusInputModelWithIcon(msg.Project, m.runtime, msg.Key))
 		return true, nil
 
 	case StatusUpdatedMsg:

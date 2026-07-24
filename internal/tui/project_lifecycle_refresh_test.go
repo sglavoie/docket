@@ -344,8 +344,27 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if fixture.app.currentView() != ViewStatusInput {
 					t.Fatalf("status icon selection revealed %s, want status input", fixture.app.currentView())
 				}
-				_, closeCmd := fixture.app.Update(BackMsg{})
-				runSession2AppCommand(t, fixture.app, closeCmd)
+				if live.StatusIcon != "" {
+					t.Fatalf("status icon draft published before submit: %q", live.StatusIcon)
+				}
+				if disk := session4DiskProject(t, fixture.dataDir, project.ID); disk.StatusIcon != "" {
+					t.Fatalf("status icon draft persisted before submit: %q", disk.StatusIcon)
+				}
+
+				statusInput, ok := fixture.app.views.Get(ViewStatusInput).(*StatusInputModel)
+				if !ok {
+					t.Fatal("status input model was not registered")
+				}
+				_, saveCmd := statusInput.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+				if saveCmd == nil {
+					t.Fatal("status draft submit returned no command")
+				}
+				saveMsg := saveCmd()
+				if _, ok := saveMsg.(StatusUpdatedMsg); !ok {
+					t.Fatalf("status draft submit returned %T, want StatusUpdatedMsg", saveMsg)
+				}
+				_, refreshCmd := fixture.app.Update(saveMsg)
+				runSession2AppCommand(t, fixture.app, refreshCmd)
 
 				loaded := session4LoadedProject(t, fixture.cross, project.ID)
 				if loaded.StatusIcon != "on-track" {

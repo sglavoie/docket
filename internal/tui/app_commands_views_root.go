@@ -7,18 +7,6 @@ import (
 func (m *AppModel) viewCommands() []Command {
 	return []Command{
 		{
-			Name:        "all tasks",
-			Description: "View all tasks across every project",
-			Category:    CategoryViews,
-			Aliases:     []string{"cross-project tasks", "every task"},
-			Handler: func() tea.Msg {
-				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
-					Focus: OutlinerAll, SetFocus: true,
-					Lens: OutlinerLensTree, SetLens: true,
-				}}
-			},
-		},
-		{
 			Name:        "outliner",
 			Description: "Open the global Outliner",
 			Category:    CategoryViews,
@@ -28,56 +16,12 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "all tasks by due date",
-			Description: "View all tasks ordered by due date",
-			Category:    CategoryViews,
-			Aliases:     []string{"due dates", "by due date", "tasks by due date", "due date overview"},
-			Handler: func() tea.Msg {
-				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
-					Focus: OutlinerAll, SetFocus: true, Sort: SortByDueDate, SetSort: true,
-					Lens: OutlinerLensDueDate, SetLens: true,
-				}}
-			},
-		},
-		{
-			Name:        "daily review",
-			Description: "Daily planning and review view",
-			Category:    CategoryViews,
-			Aliases:     []string{"planning", "morning review", "DailyReview", "review daily"},
-			Handler: func() tea.Msg {
-				return ShowDailyReviewMsg{}
-			},
-		},
-		{
 			Name:        "weekly review",
 			Description: "Strategic project health review",
 			Category:    CategoryViews,
 			Aliases:     []string{"weekly", "project health", "strategic review", "WeeklyReview", "review weekly"},
 			Handler: func() tea.Msg {
 				return ShowWeeklyReviewMsg{}
-			},
-		},
-		{
-			Name:        "latest activity",
-			Description: "View recently modified tasks across all projects",
-			Category:    CategoryViews,
-			Aliases:     []string{"recent", "activity", "latest", "recent tasks", "recent activity", "RecentActivity", "project recent activity", "ProjectRecentActivity", "review activity", "completed tasks"},
-			Handler: func() tea.Msg {
-				return ShowRecentActivityMsg{}
-			},
-		},
-		{
-			Name:        "priority view",
-			Description: "Open the High Priority smart focus in the Outliner",
-			Shortcut:    "p",
-			Category:    CategoryViews,
-			Aliases:     []string{"high priority"},
-			Handler: func() tea.Msg {
-				// Resolve to the single catalog High Priority mode on the global
-				// Outliner rather than a project-scoped focus keyed off the stale
-				// m.currentProject. The bare "priority" aliases are retired so that
-				// term resolves solely to the catalog Priority lens command.
-				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeHighPriority}}
 			},
 		},
 		{

@@ -139,7 +139,7 @@ var outlinerModes = []OutlinerMode{
 	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyFocusQueue, RowStrategy: RowStrategyNext, Perspective: PerspectiveNext},
 	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyRanked, RowStrategy: RowStrategyBacklog, Perspective: noPerspective},
 	{ID: ModeActive, Label: "Active", Aliases: []string{"active"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveActive},
-	{ID: ModeAll, Label: "All", Aliases: []string{"all"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveAll},
+	{ID: ModeAll, Label: "All", Aliases: []string{"all", "all tasks", "cross-project tasks", "every task"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveAll},
 
 	// Workflow.
 	{ID: ModeInbox, Label: "Inbox", Aliases: []string{"inbox"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveInbox},
@@ -148,23 +148,23 @@ var outlinerModes = []OutlinerMode{
 	{ID: ModeSomeday, Label: "Someday", Aliases: []string{"someday"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveSomeday},
 	{ID: ModeReview, Label: "Review", Aliases: []string{"review"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveReview},
 	{ID: ModeSnoozed, Label: "Snoozed", Aliases: []string{"snoozed"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveSnoozed},
-	{ID: ModeComplete, Label: "Completed", Aliases: []string{"completed", "done"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveCompleted},
+	{ID: ModeComplete, Label: "Completed", Aliases: []string{"completed", "done", "completed tasks"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveCompleted},
 
 	// Smart.
 	{ID: ModeDueSoon, Label: "Due Soon", Aliases: []string{"due-soon", "due"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerDueSoon)},
-	{ID: ModeHighPriority, Label: "High Priority", Aliases: []string{"high-priority", "high"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerHighPriority)},
+	{ID: ModeHighPriority, Label: "High Priority", Aliases: []string{"high-priority", "high", "priority view"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerHighPriority)},
 	{ID: ModeBlocked, Label: "Blocked", Aliases: []string{"blocked"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerBlocked)},
 	{ID: ModeParked, Label: "Parked", Aliases: []string{"parked"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerParked)},
 	{ID: ModePinned, Label: "Pinned", Aliases: []string{"pinned"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerPinned)},
-	{ID: ModeRecent, Label: "Recently Visited", Aliases: []string{"recently-visited", "recent"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerRecent)},
+	{ID: ModeRecent, Label: "Recently Visited", Aliases: []string{"recently-visited", "recent", "recent tasks"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerRecent)},
 
 	// Lenses.
 	{ID: ModePriorityLens, Label: "Priority", Aliases: []string{"priority"}, Category: ModeCategoryLens, OrderPolicy: OrderPolicyLens, RowStrategy: RowStrategyLens, Perspective: noPerspective, PriorityLens: true},
-	{ID: ModeDueDateLens, Label: "Due Date", Aliases: []string{"due-date", "schedule"}, Category: ModeCategoryLens, OrderPolicy: OrderPolicyLens, RowStrategy: RowStrategyLens, Perspective: noPerspective, Lens: lensPtr(OutlinerLensDueDate)},
+	{ID: ModeDueDateLens, Label: "Due Date", Aliases: []string{"due-date", "schedule", "all tasks by due date", "due dates", "by due date", "tasks by due date", "due date overview"}, Category: ModeCategoryLens, OrderPolicy: OrderPolicyLens, RowStrategy: RowStrategyLens, Perspective: noPerspective, Lens: lensPtr(OutlinerLensDueDate)},
 
 	// Review.
-	{ID: ModeDailyReview, Label: "Daily Review", Aliases: []string{"daily-review", "daily"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, RowStrategy: RowStrategyReview, Perspective: noPerspective},
-	{ID: ModeActivity, Label: "Activity", Aliases: []string{"activity"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, RowStrategy: RowStrategyReview, Perspective: noPerspective},
+	{ID: ModeDailyReview, Label: "Daily Review", Aliases: []string{"daily-review", "daily", "planning", "morning review", "DailyReview", "review daily"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, RowStrategy: RowStrategyReview, Perspective: noPerspective},
+	{ID: ModeActivity, Label: "Activity", Aliases: []string{"activity", "latest activity", "recent activity", "review activity", "RecentActivity", "latest"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, RowStrategy: RowStrategyReview, Perspective: noPerspective},
 }
 
 // outlinerModeIndex maps each mode ID to its catalog entry for O(1) lookup.

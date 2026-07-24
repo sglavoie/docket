@@ -1,8 +1,12 @@
 package tui
 
 import (
+	"os"
+	"strings"
 	"testing"
 
+	domainapp "github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -192,5 +196,70 @@ func TestTasksArchivedMsgCleansConfigRefs(t *testing.T) {
 	}
 	if len(app.focusQueue) != 0 {
 		t.Errorf("expected focus queue to be pruned after archive, got %d", len(app.focusQueue))
+	}
+}
+
+func TestTasksArchivedMachineFailurePublishesPlanningAndRetriesCleanup(t *testing.T) {
+	project := newSession4Project(t, "Partial Task Archive")
+	fixture := newSession4LifecycleFixture(t, true, project)
+	model := fixture.app
+	taskID := project.Tasks[0].ID
+
+	if err := commitPlanningToRuntime(model.runtime, func(planning *config.PlanningState) {
+		planning.SetFocusQueue([]config.FocusQueueItem{{
+			ProjectID: project.ID,
+			TaskID:    taskID,
+		}})
+	}); err != nil {
+		t.Fatalf("seed planning reference: %v", err)
+	}
+	machine := cloneMachineState(model.runtime.Machine())
+	machine.SetRecentTaskVisits([]config.RecentTaskVisit{{
+		ProjectID: project.ID,
+		TaskID:    taskID,
+	}})
+	if err := model.runtime.CommitMachine(machine); err != nil {
+		t.Fatalf("seed machine reference: %v", err)
+	}
+
+	machineLock := blockTrashRestoreMachineCommit(t, model)
+	handled, cmd := model.handleTaskArchiveMessages(TasksArchivedMsg{
+		Count: 1,
+		ArchivedTaskLocators: []domainapp.TaskLocator{{
+			ProjectID: project.ID,
+			TaskID:    taskID,
+		}},
+	})
+	if !handled || cmd == nil {
+		t.Fatalf("partial task archive = handled %v cmd %v, want published result and retry commands", handled, cmd)
+	}
+	if model.err != nil {
+		t.Fatalf("partial task archive surfaced a total failure: %v", model.err)
+	}
+	if len(model.runtime.Planning().FocusQueue) != 0 {
+		t.Fatalf("synced planning cleanup was not published: %+v", model.runtime.Planning().FocusQueue)
+	}
+	if len(model.runtime.Machine().RecentTaskVisits) != 1 {
+		t.Fatalf("failed machine commit changed recent visits: %+v", model.runtime.Machine().RecentTaskVisits)
+	}
+	if model.pendingMachineDomainRepair.empty() || !model.machineDomainRepairRetryScheduled {
+		t.Fatal("partial task archive did not retain and schedule machine cleanup")
+	}
+	if !strings.Contains(model.statusMessage, "machine-state cleanup incomplete") {
+		t.Fatalf("partial task archive status = %q, want retry warning", model.statusMessage)
+	}
+
+	if err := os.RemoveAll(machineLock); err != nil {
+		t.Fatalf("repair machine lock: %v", err)
+	}
+	retryHandled, retryCmd := model.handleGlobalLifecycleMessage(retryMachineDomainRepairMsg{})
+	if !retryHandled || retryCmd != nil {
+		t.Fatalf("successful retry = handled %v cmd %v, want handled and settled", retryHandled, retryCmd)
+	}
+	if visits := model.runtime.Machine().RecentTaskVisits; len(visits) != 0 {
+		t.Fatalf("machine cleanup was not applied: %+v", visits)
+	}
+	if !model.pendingMachineDomainRepair.empty() || model.machineDomainRepairRetryScheduled {
+		t.Fatal("successful retry retained pending machine cleanup")
 	}
 }

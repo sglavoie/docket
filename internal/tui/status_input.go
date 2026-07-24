@@ -16,6 +16,7 @@ import (
 type StatusInputModel struct {
 	project *models.Project
 	runtime *config.RuntimeState
+	iconKey string
 	input   textinput.Model
 	width   int
 	height  int
@@ -23,6 +24,17 @@ type StatusInputModel struct {
 
 // NewStatusInputModel creates a new status input model pre-filled with the current status.
 func NewStatusInputModel(project *models.Project, runtime *config.RuntimeState) *StatusInputModel {
+	iconKey := ""
+	if project != nil {
+		iconKey = project.StatusIcon
+	}
+	return newStatusInputModelWithIcon(project, runtime, iconKey)
+}
+
+// newStatusInputModelWithIcon creates the second step of the project-status
+// draft. The selected icon remains local to the editor until Enter commits the
+// icon and status text together.
+func newStatusInputModelWithIcon(project *models.Project, runtime *config.RuntimeState, iconKey string) *StatusInputModel {
 	input := textinput.New()
 	input.Placeholder = "Enter project status"
 	input.Focus()
@@ -34,6 +46,7 @@ func NewStatusInputModel(project *models.Project, runtime *config.RuntimeState) 
 	return &StatusInputModel{
 		project: project,
 		runtime: runtime,
+		iconKey: iconKey,
 		input:   input,
 	}
 }
@@ -59,20 +72,24 @@ func (m *StatusInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			status := strings.TrimSpace(m.input.Value())
-			oldStatus := m.project.Description
-			oldUpdatedAt := m.project.UpdatedAt
-			m.project.Description = status
-			m.project.UpdatedAt = time.Now()
+			updated := *m.project
+			updated.Description = status
+			updated.StatusIcon = m.iconKey
+			if m.iconKey != "" {
+				updated.StatusIconSource = "user"
+			} else {
+				updated.StatusIconSource = ""
+			}
+			updated.UpdatedAt = time.Now()
 
 			if err := commitCatalogToRuntime(m.runtime, func(catalog *config.WorkspaceCatalog) {
-				catalog.UpsertProject(m.project)
+				catalog.UpsertProject(&updated)
 			}); err != nil {
-				m.project.Description = oldStatus
-				m.project.UpdatedAt = oldUpdatedAt
 				return m, func() tea.Msg {
 					return ErrorMsg{Err: err}
 				}
 			}
+			copyCatalogMetadata(m.project, &updated)
 
 			return m, func() tea.Msg {
 				return StatusUpdatedMsg{}
@@ -96,8 +113,8 @@ func (m *StatusInputModel) View() tea.View {
 	b.WriteString("\n\n")
 
 	// Show current status icon if set
-	if m.project.StatusIcon != "" {
-		if icon := models.ProjectStatusIconByKey(m.project.StatusIcon); icon != nil {
+	if m.iconKey != "" {
+		if icon := models.ProjectStatusIconByKey(m.iconKey); icon != nil {
 			fmt.Fprintf(&b, "%s %s", icon.DisplayIcon(), MutedStyle.Render(icon.Label))
 			b.WriteString("\n\n")
 		}

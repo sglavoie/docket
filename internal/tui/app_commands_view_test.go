@@ -28,24 +28,21 @@ func assertPickerCommandPurpose(t *testing.T, cmd *Command, want PickerPurpose) 
 	}
 }
 
-func TestViewCommands_AllTasks(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "all tasks")
+func TestOutlinerModeCommands_All(t *testing.T) {
+	cmd := findCommand(outlinerModeCommands(), "All")
 	if cmd == nil {
-		t.Fatal("expected 'all tasks' command")
+		t.Fatal("expected canonical 'All' command")
 	}
 	msg := cmd.Handler()
 	outliner, ok := msg.(ShowGlobalOutlinerMsg)
-	if !ok || !outliner.Options.SetFocus || outliner.Options.Focus != OutlinerAll ||
-		!outliner.Options.SetLens || outliner.Options.Lens != OutlinerLensTree {
-		t.Errorf("expected All-focused ShowGlobalOutlinerMsg, got %#v", msg)
+	if !ok || !outliner.Options.SetMode || outliner.Options.Mode != ModeAll {
+		t.Errorf("expected All-mode ShowGlobalOutlinerMsg, got %#v", msg)
 	}
 }
 
 func TestViewCommands_DashboardOutlinerEntries(t *testing.T) {
 	app := newTestAppModel()
-	registry := registerCommandGroupsForTest(t, app.viewCommands())
+	registry := registerCommandGroupsForTest(t, app.viewCommands(), outlinerModeCommands())
 	cmds := registry.GetForView(ViewDashboard)
 
 	tests := []struct {
@@ -53,10 +50,7 @@ func TestViewCommands_DashboardOutlinerEntries(t *testing.T) {
 		shortcut string
 		wantMsg  any
 	}{
-		{"all tasks", "", ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
-			Focus: OutlinerAll, SetFocus: true,
-			Lens: OutlinerLensTree, SetLens: true,
-		}}},
+		{"All", "", ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeAll}}},
 		{"outliner", "", ShowGlobalOutlinerMsg{}},
 	}
 
@@ -76,34 +70,29 @@ func TestViewCommands_DashboardOutlinerEntries(t *testing.T) {
 	}
 }
 
-func TestViewCommands_DueDateOverview(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "all tasks by due date")
+func TestOutlinerModeCommands_DueDate(t *testing.T) {
+	cmd := findCommand(outlinerModeCommands(), "Due Date")
 	if cmd == nil {
-		t.Fatal("expected 'all tasks by due date' command")
+		t.Fatal("expected canonical 'Due Date' command")
 	}
 	msg := cmd.Handler()
 	at, ok := msg.(ShowGlobalOutlinerMsg)
 	if !ok {
 		t.Errorf("expected ShowGlobalOutlinerMsg, got %T", msg)
 	}
-	if !at.Options.SetFocus || at.Options.Focus != OutlinerAll || !at.Options.SetSort || at.Options.Sort != SortByDueDate ||
-		!at.Options.SetLens || at.Options.Lens != OutlinerLensDueDate {
-		t.Errorf("expected All-focused Outliner sorted by due date, got %+v", at)
+	if !at.Options.SetMode || at.Options.Mode != ModeDueDateLens {
+		t.Errorf("expected Due Date mode, got %+v", at)
 	}
 }
 
-func TestViewCommands_DailyReview(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "daily review")
+func TestOutlinerModeCommands_DailyReview(t *testing.T) {
+	cmd := findCommand(outlinerModeCommands(), "Daily Review")
 	if cmd == nil {
-		t.Fatal("expected 'daily review' command")
+		t.Fatal("expected canonical 'Daily Review' command")
 	}
-	msg := cmd.Handler()
-	if _, ok := msg.(ShowDailyReviewMsg); !ok {
-		t.Errorf("expected ShowDailyReviewMsg, got %T", msg)
+	msg, ok := cmd.Handler().(ShowGlobalOutlinerMsg)
+	if !ok || !msg.Options.SetMode || msg.Options.Mode != ModeDailyReview {
+		t.Errorf("expected Daily Review mode, got %#v", msg)
 	}
 }
 
@@ -120,16 +109,14 @@ func TestViewCommands_WeeklyReview(t *testing.T) {
 	}
 }
 
-func TestViewCommands_LatestActivity(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "latest activity")
+func TestOutlinerModeCommands_Activity(t *testing.T) {
+	cmd := findCommand(outlinerModeCommands(), "Activity")
 	if cmd == nil {
-		t.Fatal("expected 'latest activity' command")
+		t.Fatal("expected canonical 'Activity' command")
 	}
-	msg := cmd.Handler()
-	if _, ok := msg.(ShowRecentActivityMsg); !ok {
-		t.Errorf("expected ShowRecentActivityMsg, got %T", msg)
+	msg, ok := cmd.Handler().(ShowGlobalOutlinerMsg)
+	if !ok || !msg.Options.SetMode || msg.Options.Mode != ModeActivity {
+		t.Errorf("expected Activity mode, got %#v", msg)
 	}
 }
 
@@ -167,18 +154,13 @@ func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
 	assertPickerCommandPurpose(t, findCommand(registry.GetForView(ViewDashboard), "global section change"), PickerPurposeSectionChange)
 }
 
-// TestPriorityViewUsesCatalogMode verifies the `priority view` command resolves
-// to the single catalog High Priority mode on the global Outliner rather than a
-// project-scoped High Priority focus keyed off the stale m.currentProject. The
-// currentProject (set by newTestAppModelWithProject) must never leak into the
-// dispatched message, and the conflicting "priority" aliases are retired so that
-// term resolves solely to the catalog Priority lens command.
-func TestPriorityViewUsesCatalogMode(t *testing.T) {
-	app, _ := newTestAppModelWithProject()
-
-	cmd := findCommand(app.viewCommands(), "priority view")
+// TestHighPriorityUsesCatalogMode verifies the canonical command owns the old
+// `priority view` phrase while bare `priority` remains exclusive to the
+// Priority lens.
+func TestHighPriorityUsesCatalogMode(t *testing.T) {
+	cmd := findCommand(outlinerModeCommands(), "High Priority")
 	if cmd == nil {
-		t.Fatal("expected 'priority view' command")
+		t.Fatal("expected canonical 'High Priority' command")
 	}
 	msg, ok := cmd.Handler().(ShowGlobalOutlinerMsg)
 	if !ok {
@@ -187,45 +169,24 @@ func TestPriorityViewUsesCatalogMode(t *testing.T) {
 	if !msg.Options.SetMode || msg.Options.Mode != ModeHighPriority {
 		t.Errorf("expected global SetMode High Priority catalog mode, got %#v", msg.Options)
 	}
+	if !commandHasAlias(cmd, "priority view") {
+		t.Errorf("High Priority aliases = %v, want legacy phrase 'priority view'", cmd.Aliases)
+	}
 	for _, alias := range cmd.Aliases {
-		switch alias {
-		case "priority", "priority mode", "toggle priority mode", "cross-project priority":
-			t.Errorf("priority view must not carry conflicting alias %q", alias)
+		if alias == "priority" {
+			t.Errorf("High Priority must not carry Priority lens alias %q", alias)
 		}
 	}
 }
 
-// TestPriorityViewUsesCatalogMode_NilCurrentProject confirms a nil-currentProject
-// launch still dispatches the global catalog mode instead of returning nil.
-func TestPriorityViewUsesCatalogMode_NilCurrentProject(t *testing.T) {
-	app := newTestAppModel()
-
-	cmd := findCommand(app.viewCommands(), "priority view")
+func TestOutlinerModeCommands_HighPriorityCrossOutlinerScope(t *testing.T) {
+	registry := registerCommandGroupsForTest(t, outlinerModeCommands())
+	cmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "High Priority")
 	if cmd == nil {
-		t.Fatal("expected 'priority view' command")
+		t.Fatal("High Priority should be reachable from ViewCrossProjectOutliner")
 	}
-	msg, ok := cmd.Handler().(ShowGlobalOutlinerMsg)
-	if !ok {
-		t.Fatalf("expected ShowGlobalOutlinerMsg, got %T", cmd.Handler())
-	}
-	if !msg.Options.SetMode || msg.Options.Mode != ModeHighPriority {
-		t.Errorf("expected global SetMode High Priority catalog mode, got %#v", msg.Options)
-	}
-}
-
-// TestViewCommands_PriorityView_CrossOutlinerScope verifies that the
-// `priority view` command is exposed in the cross-project outliner scope so
-// the palette can reach the Priority-mode toggle from there.
-func TestViewCommands_PriorityView_CrossOutlinerScope(t *testing.T) {
-	app := newTestAppModel()
-	registry := registerCommandGroupsForTest(t, app.viewCommands())
-
-	cmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "priority view")
-	if cmd == nil {
-		t.Fatal("`priority view` command should be reachable from ViewCrossProjectOutliner")
-	}
-	if cmd.Shortcut != "p" {
-		t.Errorf("priority view shortcut = %q, want p", cmd.Shortcut)
+	if cmd.Shortcut != "" {
+		t.Errorf("High Priority shortcut = %q, want palette-only", cmd.Shortcut)
 	}
 }
 

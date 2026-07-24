@@ -56,21 +56,20 @@ func buildCommandClassificationTable() map[OperationID]commandFinalClassificatio
 	add(CommandReachRouteMode, "TaskWorkspace/Today",
 		"outliner root")
 	add(CommandReachRouteMode, "TaskWorkspace",
-		"all tasks", "outliner")
+		"outliner")
 	add(CommandReachRouteMode, "Review tools",
-		"daily review", "weekly review", "latest activity", "project recent activity", "metrics dashboard", "roadmap")
+		"weekly review", "project recent activity", "metrics dashboard", "roadmap")
 	add(CommandReachRouteMode, "Manage tools",
 		"inbox processor", "global inbox processor", "global notes", "global blockers", "global tag manager",
 		"tag manager", "workflow rules", "scoring profiles", "task templates", "settings", "notifications", "message log")
 	add(CommandReachViewMenu, "View menu",
-		"all tasks by due date", "clear filters", "clear tag filter", "cycle note sort",
+		"clear filters", "clear tag filter", "cycle note sort",
 		"cycle note tag filter", "filter by context", "filter by section", "filter by tag", "outliner reset sort",
 		"outliner sort by created", "outliner sort by due date", "outliner sort by priority", "outliner sort by score",
 		"outliner sort by status", "section manager", "show notes", "view completed")
 	add(CommandReachPaletteAlias, "Reference/Ask", "ask ai")
 	add(CommandReachPaletteAlias, "Blockers", "blockers view")
 	add(CommandReachPaletteAlias, "Palette/Search", "global search")
-	add(CommandReachPaletteAlias, "TaskWorkspace/Smart/HighPriority", "priority view")
 	add(CommandReachPaletteAlias, "TaskWorkspace/Smart/ProjectFocus", "project focus queue")
 	add(CommandReachPaletteAlias, "Metrics/Project", "project metrics")
 	add(CommandReachPaletteAlias, "Reference", "reference")

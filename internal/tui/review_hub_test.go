@@ -129,23 +129,27 @@ func TestReviewHubLegacyNamesMapToModulesAndRemainSearchable(t *testing.T) {
 	}
 
 	app := newTestAppModel()
-	// The retired Review Hub is fully removed: its `ReviewHub/*` aliases no
-	// longer appear (FR12-004). The legacy tool names (DailyReview,
-	// WeeklyReview, RecentActivity, MetricsDashboard) remain searchable because
-	// they name retained direct tools, not the removed hub navigation surface.
+	// The retired Review Hub is fully removed. Daily Review and Activity now
+	// derive their searchable names from the canonical Outliner mode catalog;
+	// the remaining direct tools stay in viewCommands.
 	aliases := []struct {
 		command   string
 		want      []string
 		forbidden []string
+		modes     bool
 	}{
-		{"daily review", []string{"DailyReview"}, []string{"ReviewHub/Daily"}},
-		{"weekly review", []string{"WeeklyReview"}, []string{"ReviewHub/Weekly"}},
-		{"latest activity", []string{"RecentActivity", "ProjectRecentActivity", "completed tasks"}, []string{"ReviewHub/Activity"}},
-		{"metrics dashboard", []string{"MetricsDashboard"}, []string{"ReviewHub/Metrics"}},
-		{"roadmap", []string{"review roadmap"}, []string{"ReviewHub/Roadmap"}},
+		{"Daily Review", []string{"DailyReview"}, []string{"ReviewHub/Daily"}, true},
+		{"weekly review", []string{"WeeklyReview"}, []string{"ReviewHub/Weekly"}, false},
+		{"Activity", []string{"RecentActivity", "latest activity"}, []string{"ReviewHub/Activity", "ProjectRecentActivity", "completed tasks"}, true},
+		{"Completed", []string{"completed tasks"}, nil, true},
+		{"metrics dashboard", []string{"MetricsDashboard"}, []string{"ReviewHub/Metrics"}, false},
+		{"roadmap", []string{"review roadmap"}, []string{"ReviewHub/Roadmap"}, false},
 	}
-	commands := app.viewCommands()
 	for _, tc := range aliases {
+		commands := app.viewCommands()
+		if tc.modes {
+			commands = outlinerModeCommands()
+		}
 		command := findCommand(commands, tc.command)
 		if command == nil {
 			t.Fatalf("missing Review command %q", tc.command)

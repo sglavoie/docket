@@ -220,18 +220,36 @@ func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 	}
 }
 
+// runtimeDomainsCommitResult distinguishes the authoritative synced workspace
+// transaction from the machine-local follow-up, which cannot share the same
+// transaction root. A caller must publish the workspace result when
+// WorkspaceCommitted is true even if MachineErr is non-nil, then queue the
+// idempotent machine repair for retry.
+type runtimeDomainsCommitResult struct {
+	WorkspaceCommitted bool
+	MachineCommitted   bool
+	MachineErr         error
+}
+
+func runtimeDomainsMachineFailure(result runtimeDomainsCommitResult, machineErr error) (runtimeDomainsCommitResult, error) {
+	result.MachineErr = machineErr
+	return result, nil
+}
+
 // commitRuntimeDomains commits a domain-spanning lifecycle mutation. The four
 // synced artifacts land as one application-layer transaction; machine-local
 // state is checked and committed separately because it lives outside the
-// workspace transaction root.
-func (m *AppModel) commitRuntimeDomains(domains *config.Domains) error {
+// workspace transaction root. Once the synced transaction lands it is
+// authoritative: a later machine failure is reported in the result rather than
+// masquerading as a rollback of already-durable workspace state.
+func (m *AppModel) commitRuntimeDomains(domains *config.Domains) (runtimeDomainsCommitResult, error) {
 	if m == nil || m.runtime == nil || domains == nil {
-		return nil
+		return runtimeDomainsCommitResult{}, nil
 	}
 	if m.runtime.DataDir() == "" || m.appService == nil || m.configManager == nil {
 		m.runtime.SetDomainsInMemory(domains)
 		m.syncProjectCache()
-		return nil
+		return runtimeDomainsCommitResult{WorkspaceCommitted: true, MachineCommitted: true}, nil
 	}
 	arts, err := syncedDomainArtifacts(
 		m.configManager,
@@ -241,16 +259,23 @@ func (m *AppModel) commitRuntimeDomains(domains *config.Domains) error {
 		domains.Automation,
 	)
 	if err != nil {
-		return err
+		return runtimeDomainsCommitResult{}, err
 	}
 	if err := m.appService.CommitConfig(arts...); err != nil {
-		return err
+		return runtimeDomainsCommitResult{}, err
 	}
+	result := runtimeDomainsCommitResult{WorkspaceCommitted: true}
 	if err := m.runtime.CommitMachine(domains.Machine); err != nil {
-		return err
+		// CommitMachine may have failed before writing or only while refreshing
+		// after a successful write. Either way, advance to the authoritative
+		// synced transaction when possible; the queued repair is idempotent.
+		_ = m.runtime.RefreshAfterCommit()
+		m.syncProjectCache()
+		return runtimeDomainsMachineFailure(result, err)
 	}
+	result.MachineCommitted = true
 	m.syncProjectCache()
-	return nil
+	return result, nil
 }
 
 // cloneMachineState returns a defensive copy of a machine snapshot whose mutable

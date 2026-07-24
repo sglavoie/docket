@@ -30,12 +30,10 @@ func TestPaletteSuggestionsAreDeterministicAcrossRegistrationOrder(t *testing.T)
 	slices.Reverse(reverseInput)
 	reverse := build(reverseInput)
 
-	// The three registered commands lead the Suggested section in a
-	// registration-order-independent order; the catalog-derived Outliner mode
-	// actions (appended by loadAllItems in stable catalog order) fill the
-	// remaining contextual slots (cap 6), so the leading modes are Today, Next,
-	// and Backlog.
-	want := []string{"alpha filter", "beta action", "zeta action", "Today", "Next", "Backlog"}
+	// Only registry commands participate. Outliner modes use this same path in
+	// production, so a partial test registry no longer gains palette-only mode
+	// items from a second source.
+	want := []string{"alpha filter", "beta action", "zeta action"}
 	if !slices.Equal(forward, want) {
 		t.Fatalf("forward suggestions = %v, want %v", forward, want)
 	}

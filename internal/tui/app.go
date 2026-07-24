@@ -376,6 +376,13 @@ type AppModel struct {
 	// retryable even though the durable trash entry has already been consumed.
 	pendingTrashRestoreRecovery map[string]trashRestoreMachineRecovery
 
+	// Synced workspace lifecycle commits are authoritative before their
+	// machine-local cleanup runs. Retain an idempotent patch when machine.json
+	// fails so the update loop can retry against fresh state without rolling
+	// back or clobbering the already-committed workspace result.
+	pendingMachineDomainRepair        machineDomainRepair
+	machineDomainRepairRetryScheduled bool
+
 	// CLI reference for AI assistant context
 	cliReference string
 

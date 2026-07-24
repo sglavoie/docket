@@ -4,7 +4,7 @@
   "size": "60x20",
   "actions": [
     { "type": "resize", "width": 60, "height": 20 },
-    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "command", "label": "open global All focus", "command": "All" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "key", "label": "drill into highlighted project", "key": "ctrl+p" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

@@ -159,7 +159,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 		"fixture": "rich",
 		"size": "120x40",
 		"actions": [
-			{"type": "command", "command": "all tasks"},
+			{"type": "command", "command": "All"},
 			{"type": "assert", "assert": "view", "value": "CrossProjectOutliner"},
 			{"type": "assert", "assert": "contains", "value": "[rich-project]"},
 			{"type": "assert", "assert": "no_layout_issues"}
@@ -473,7 +473,7 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 		// cursor (not the stale current project), so switch to all-tasks and land
 		// the cursor on a task row before opening the project editor.
 		{"project editor", []UITestAction{
-			{Type: UITestActionCommand, Command: "all tasks"},
+			{Type: UITestActionCommand, Command: "All"},
 			// Step past the shared section header and the navigable project
 			// header to land on the first task row.
 			{Type: UITestActionKey, Key: "down"},
@@ -484,7 +484,7 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 		// Outliner (Today mode has no rows), so switch to the all-tasks mode
 		// first and land the cursor on a task row.
 		{"inbox processor", []UITestAction{
-			{Type: UITestActionCommand, Command: "all tasks"},
+			{Type: UITestActionCommand, Command: "All"},
 			// Step past the shared section header and the navigable project
 			// header to land on the first task row.
 			{Type: UITestActionKey, Key: "down"},
@@ -527,7 +527,7 @@ func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"all tasks", "all tasks", "CrossProjectOutliner"},
+		{"All", "All", "CrossProjectOutliner"},
 		{"outliner", "outliner", "CrossProjectOutliner"},
 	}
 
@@ -618,7 +618,7 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 				// a task row via all-tasks before opening the editor. The rows lead
 				// with a shared section header then a navigable project header, so
 				// step past both to reach the first task.
-				{Type: UITestActionCommand, Command: "all tasks"},
+				{Type: UITestActionCommand, Command: "All"},
 				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionCommand, Command: "rename project"},
@@ -813,7 +813,7 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 					Fixture: "narrow",
 					Size:    size,
 					Actions: []UITestAction{
-						{Type: UITestActionCommand, Command: "all tasks"},
+						{Type: UITestActionCommand, Command: "All"},
 						// All-tasks rows lead with a shared section header then a
 						// navigable project header; step past both to land the
 						// cursor on the first task before opening its subview.

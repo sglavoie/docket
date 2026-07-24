@@ -91,6 +91,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case ProjectDeletedMsg:
+		if msg.Project == nil {
+			return true, nil
+		}
 		var manageFallback *ManageParams
 		if _, params, ok := m.manageHubPrimary(); ok && params.Scope.Kind == ScopeProject && params.Scope.ProjectID == msg.Project.ID {
 			fallback := params
@@ -98,27 +101,40 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			manageFallback = &fallback
 		}
 		domains := cloneRuntimeDomains(m.runtime)
+		if domains == nil {
+			m.err = fmt.Errorf("runtime state is unavailable")
+			return true, nil
+		}
 		domains.RemoveProjectReferences(msg.Project.ID, msg.Project.Slug)
+		result, err := m.commitRuntimeDomains(domains)
+		if err != nil {
+			m.err = err
+			return true, nil
+		}
+		var repairCmd tea.Cmd
+		if result.MachineErr != nil {
+			repairCmd = m.queueMachineDomainRepair(machineRepairForRemovedProject(msg.Project.ID, msg.Project.Slug))
+			m.setWarningStatus(machineRepairWarning("Project removed", result.MachineErr))
+		}
 		if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
 			m.currentProject = nil
 		}
-		if err := m.commitRuntimeDomains(domains); err != nil {
-			m.err = err
-		}
 		m.pruneDeletedTaskRefs()
 		if manageFallback != nil {
-			m.setInfoStatus("Project removed — showing all " + manageFallback.Module.String())
-			return true, m.activateManageHub(*manageFallback)
+			if result.MachineErr == nil {
+				m.setInfoStatus("Project removed — showing all " + manageFallback.Module.String())
+			}
+			return true, tea.Batch(m.activateManageHub(*manageFallback), repairCmd)
 		}
 		// Reset to the global Outliner root since the project no longer exists.
 		m.exitAskView()
 		if m.typedNavigation {
 			presentationCmd := m.prepareCrossProjectOutliner()
 			m.navigation.ResetRoot()
-			return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd)
+			return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd, repairCmd)
 		}
 		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
-		return true, nil
+		return true, repairCmd
 
 	case ProjectRestoredMsg:
 		return true, m.commitProjectUnarchive(msg.Project)
@@ -387,7 +403,8 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		domains.Planning.RemoveDurableTaskLocators(archivedLocators)
 		domains.Machine.RemoveMachineLocalTaskLocators(archivedLocators)
 	}
-	if err := m.commitRuntimeDomains(domains); err != nil {
+	result, err := m.commitRuntimeDomains(domains)
+	if err != nil {
 		m.err = err
 		return nil
 	}
@@ -397,8 +414,15 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		m.currentProject = nil
 	}
 	m.pruneDeletedTaskRefs()
-	m.setSuccessStatus(fmt.Sprintf("Archived %s", updated.Name))
-	return tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
+	action := fmt.Sprintf("Archived %s", updated.Name)
+	var repairCmd tea.Cmd
+	if result.MachineErr != nil {
+		repairCmd = m.queueMachineDomainRepair(machineRepairForArchivedProject(updated.ID, archivedLocators))
+		m.setWarningStatus(machineRepairWarning(action, result.MachineErr))
+	} else {
+		m.setSuccessStatus(action)
+	}
+	return tea.Batch(m.requestCrossProjectOutlinerReload(), repairCmd, defaultStatusTimeout())
 }
 
 // commitProjectUnarchive mirrors commitProjectArchive for the catalog-only

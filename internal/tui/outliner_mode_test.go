@@ -153,21 +153,18 @@ func isOutlinerModeCommand(cmd *Command) bool {
 func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
 	catalog := OutlinerModeCatalog()
 
-	// One derived palette action per catalog entry, indexed by the mode its
+	// One derived registered command per catalog entry, indexed by the mode its
 	// handler dispatches.
 	byID := make(map[OutlinerModeID]Command)
-	for _, item := range outlinerModePaletteItems() {
-		if item.Category != ItemCategoryCommands || item.Command == nil {
-			t.Fatalf("mode palette item %q is not a command item", item.Name)
-		}
-		id := modeIDFromHandler(t, item.Command)
+	for _, command := range outlinerModeCommands() {
+		id := modeIDFromHandler(t, &command)
 		if _, dup := byID[id]; dup {
-			t.Fatalf("mode %q has more than one palette action", id)
+			t.Fatalf("mode %q has more than one registered command", id)
 		}
-		byID[id] = *item.Command
+		byID[id] = command
 	}
 	if len(byID) != len(catalog) {
-		t.Fatalf("palette mode actions = %d, want one per catalog entry (%d)", len(byID), len(catalog))
+		t.Fatalf("registered mode commands = %d, want one per catalog entry (%d)", len(byID), len(catalog))
 	}
 
 	for _, mode := range catalog {
@@ -196,10 +193,14 @@ func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
 		}
 	}
 
-	// Catalog additions appear in the live palette without another registry edit:
-	// loadAllItems surfaces every mode even with an empty command registry.
+	// Catalog additions appear through the same registry path used by production
+	// and scenario command execution; loadAllItems has no second mode-item source.
 	rt := newTestConfig()
-	palette := NewCommandPaletteModel(testRuntimeAt(rt.DataDir(), rt), NewCommandRegistry(), ViewCrossProjectOutliner, nil)
+	registry := NewCommandRegistry()
+	if err := registry.RegisterBatch(outlinerModeCommands()); err != nil {
+		t.Fatalf("register mode commands: %v", err)
+	}
+	palette := NewCommandPaletteModel(testRuntimeAt(rt.DataDir(), rt), registry, ViewCrossProjectOutliner, nil)
 	present := make(map[OutlinerModeID]bool)
 	for _, item := range palette.loadAllItems() {
 		if item.Category == ItemCategoryCommands && item.Command != nil && isOutlinerModeCommand(item.Command) {
@@ -228,6 +229,69 @@ func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
 		}
 		if got := modeIDFromHandler(t, &cmd); got != id {
 			t.Errorf("representative mode %q handler dispatched mode %q", id, got)
+		}
+	}
+}
+
+// TestOutlinerModeLegacyPhrasesHaveCanonicalOwners pins the consolidation
+// boundary: retired command names remain searchable aliases, while historically
+// ambiguous terms resolve to the chosen catalog mode.
+func TestOutlinerModeLegacyPhrasesHaveCanonicalOwners(t *testing.T) {
+	wantOwners := map[string]OutlinerModeID{
+		"all tasks":             ModeAll,
+		"all tasks by due date": ModeDueDateLens,
+		"daily review":          ModeDailyReview,
+		"latest activity":       ModeActivity,
+		"priority view":         ModeHighPriority,
+		"recent":                ModeRecent,
+		"completed tasks":       ModeComplete,
+		"priority":              ModePriorityLens,
+	}
+
+	owners := make(map[string]map[OutlinerModeID]bool)
+	for _, command := range outlinerModeCommands() {
+		id := modeIDFromHandler(t, &command)
+		terms := append([]string{command.Name}, command.Aliases...)
+		for _, term := range terms {
+			key := strings.ToLower(strings.TrimSpace(term))
+			if owners[key] == nil {
+				owners[key] = make(map[OutlinerModeID]bool)
+			}
+			owners[key][id] = true
+		}
+	}
+
+	for phrase, want := range wantOwners {
+		got := owners[phrase]
+		if len(got) != 1 || !got[want] {
+			t.Errorf("%q owners = %v, want only %q", phrase, got, want)
+		}
+	}
+}
+
+func TestOutlinerModeAmbiguousQueriesRankCanonicalChoiceFirst(t *testing.T) {
+	app := newTestAppModel()
+	registry := NewCommandRegistry()
+	for index, group := range app.commandGroups() {
+		if err := registry.RegisterBatch(group); err != nil {
+			t.Fatalf("RegisterBatch[%d]: %v", index, err)
+		}
+	}
+	palette := NewCommandPaletteModel(app.runtime, registry, ViewCrossProjectOutliner, nil)
+
+	for query, want := range map[string]string{
+		"recent":          "Recently Visited",
+		"completed tasks": "Completed",
+		"priority":        "Priority",
+	} {
+		palette.searchInput.SetValue(query)
+		palette.filterItems()
+		if len(palette.filteredItems) == 0 {
+			t.Errorf("%q returned no palette results", query)
+			continue
+		}
+		if got := palette.filteredItems[0].Item.Name; got != want {
+			t.Errorf("%q first result = %q, want %q", query, got, want)
 		}
 	}
 }

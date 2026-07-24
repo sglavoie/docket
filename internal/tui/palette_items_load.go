@@ -183,10 +183,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
-	// Every Outliner catalog mode is a selectable palette action, derived from
-	// OutlinerModeCatalog rather than a hand-maintained parallel command list.
-	items = append(items, outlinerModePaletteItems()...)
-
 	return items
 }
 
@@ -204,9 +200,7 @@ type paletteViewItemSpec struct {
 // the palette registry for retired surface names without a live runtime.
 func staticPaletteViewItems() []paletteViewItemSpec {
 	return []paletteViewItemSpec{
-		{name: "Daily Review", description: "Review and plan your day", viewType: ViewDailyReview},
 		{name: "Weekly Review", description: "Strategic project health review", viewType: ViewWeeklyReview},
-		{name: "Recent Activity", description: "Browse recent and completed tasks", viewType: ViewRecentActivity},
 		{name: "Metrics Dashboard", description: "Completion, cycle-time, and throughput analytics", viewType: ViewMetricsDashboard},
 		{name: "Roadmap", description: "Timelines, forecasts, and critical paths", viewType: ViewRoadmap},
 		{name: "Blockers", description: "View blocked and blocking tasks", viewType: ViewBlockers},

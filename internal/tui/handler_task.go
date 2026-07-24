@@ -120,9 +120,21 @@ func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 			locators := configTaskLocatorsFromApp(msg.ArchivedTaskLocators)
 			domains.Planning.RemoveDurableTaskLocators(locators)
 			domains.Machine.RemoveMachineLocalTaskLocators(locators)
-			if err := m.commitRuntimeDomains(domains); err != nil {
+			result, err := m.commitRuntimeDomains(domains)
+			if err != nil {
 				m.err = err
 				return true, nil
+			}
+			if result.MachineErr != nil {
+				repairCmd := m.queueMachineDomainRepair(machineRepairForArchivedTasks(locators))
+				m.pruneDeletedTaskRefs()
+				statusMsg := fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count)
+				if msg.Projects > 0 {
+					statusMsg = fmt.Sprintf("Archived %d task(s) across %d project(s)", msg.Count, msg.Projects)
+				}
+				refreshCmd := m.handleWithRefresh(false, false, "")
+				m.setWarningStatus(machineRepairWarning(statusMsg, result.MachineErr))
+				return true, tea.Batch(refreshCmd, repairCmd, defaultStatusTimeout())
 			}
 		}
 		m.pruneDeletedTaskRefs()

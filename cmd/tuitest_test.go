@@ -163,7 +163,7 @@ func TestTUITestRunFixtureSuccess(t *testing.T) {
 	scenario := writeScenario(t, `{
       "name": "rich smoke",
       "actions": [
-        {"type": "command", "command": "all tasks"},
+        {"type": "command", "command": "All"},
         {"type": "assert", "assert": "contains", "value": "Triage support inbox"}
       ]
     }`)
@@ -312,7 +312,7 @@ func TestTUITestRunConfigModeCopiesData(t *testing.T) {
 	scenario := writeScenario(t, `{
       "name": "config smoke",
       "actions": [
-        {"type": "command", "command": "all tasks"},
+        {"type": "command", "command": "All"},
         {"type": "assert", "assert": "contains", "value": "Copied task title"}
       ]
     }`)
@@ -349,7 +349,7 @@ func TestTUITestRunObservationsIncludesList(t *testing.T) {
 	scenario := writeScenario(t, `{
       "name": "observations",
       "actions": [
-        {"type": "command", "command": "all tasks"},
+        {"type": "command", "command": "All"},
         {"type": "assert", "assert": "contains", "value": "Triage support inbox"}
       ]
     }`)
@@ -451,7 +451,7 @@ func TestTUITestSessionActionsObserveQuit(t *testing.T) {
 	// first action switches to All mode (fixture task titles are hidden in the
 	// empty startup Today), exercising a command action end to end.
 	input := strings.Join([]string{
-		`{"id":"a1","action":{"type":"command","command":"all tasks"}}`,
+		`{"id":"a1","action":{"type":"command","command":"All"}}`,
 		`{"id":"a2","action":{"type":"resize","width":120,"height":40}}`,
 		`{"id":"o1","command":"observe"}`,
 		`{"id":"q1","command":"quit"}`,
@@ -651,7 +651,7 @@ func TestTUITestSessionConfigModeCopiesData(t *testing.T) {
 	// Switch to All mode, then assert the copied task title is present — proving
 	// the source workspace was copied and loaded in session mode.
 	input := strings.Join([]string{
-		`{"id":"c1","action":{"type":"command","command":"all tasks"}}`,
+		`{"id":"c1","action":{"type":"command","command":"All"}}`,
 		`{"id":"c2","action":{"type":"assert","assert":"contains","value":"Session copied task"}}`,
 		`{"id":"q","command":"quit"}`,
 	}, "\n") + "\n"

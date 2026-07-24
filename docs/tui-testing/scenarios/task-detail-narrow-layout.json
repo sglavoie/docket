@@ -3,7 +3,7 @@
   "fixture": "narrow",
   "size": "60x20",
   "actions": [
-    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "command", "label": "open global All focus", "command": "All" },
     { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

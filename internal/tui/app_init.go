@@ -442,6 +442,7 @@ func (m *AppModel) commandGroups() [][]Command {
 		m.globalCommands(),
 		m.filterCommands(),
 		m.viewCommands(),
+		outlinerModeCommands(),
 		m.navCommands(),
 		m.taskCommands(),
 		m.projectCommands(),

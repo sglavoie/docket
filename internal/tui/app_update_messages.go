@@ -138,6 +138,8 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, nil
 		}
 		return true, m.crossOutliner.handleCrossProjectsLoaded(msg)
+	case retryMachineDomainRepairMsg:
+		return true, m.retryMachineDomainRepair()
 	case RecordRepeatableActionMsg:
 		m.lastRepeatableAction = msg.Action
 		return true, nil

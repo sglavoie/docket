@@ -6,24 +6,17 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// outlinerModePaletteItems derives one selectable palette command for every
-// OutlinerModeCatalog entry. It is the single source for palette mode actions:
-// the palette no longer hand-maintains a parallel subset (Today/Next/Backlog),
-// so adding a catalog entry surfaces a new palette action automatically without
-// another registry edit.
-func outlinerModePaletteItems() []PaletteItem {
+// outlinerModeCommands derives one registered command for every
+// OutlinerModeCatalog entry. The normal command registry is the single source
+// for both command-palette results and scenario command execution, so adding a
+// catalog mode cannot create a second palette-only command path.
+func outlinerModeCommands() []Command {
 	catalog := OutlinerModeCatalog()
-	items := make([]PaletteItem, 0, len(catalog))
+	commands := make([]Command, 0, len(catalog))
 	for _, mode := range catalog {
-		cmd := outlinerModeCommand(mode)
-		items = append(items, PaletteItem{
-			Name:        cmd.Name,
-			Description: cmd.Description,
-			Category:    ItemCategoryCommands,
-			Command:     &cmd,
-		})
+		commands = append(commands, outlinerModeCommand(mode))
 	}
-	return items
+	return commands
 }
 
 // outlinerModeCommand builds the palette command for a single catalog mode.
@@ -34,10 +27,12 @@ func outlinerModePaletteItems() []PaletteItem {
 func outlinerModeCommand(mode OutlinerMode) Command {
 	id := mode.ID
 	return Command{
-		Name:        mode.Label,
-		Description: "Switch to the " + mode.Label + " Outliner mode",
-		Category:    CategoryViews,
-		Aliases:     outlinerModeCommandAliases(mode),
+		Name:         mode.Label,
+		Description:  "Switch to the " + mode.Label + " Outliner mode",
+		Category:     CategoryViews,
+		Aliases:      outlinerModeCommandAliases(mode),
+		Reachability: CommandReachRouteMode,
+		FinalTarget:  "TaskWorkspace/Mode/" + string(mode.ID),
 		Handler: func() tea.Msg {
 			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: id}}
 		},
@@ -49,7 +44,9 @@ func outlinerModeCommand(mode OutlinerMode) Command {
 // ID and aliases without redundant terms. The label is already searched through
 // the command Name, so a catalog alias equal to the label collapses away.
 func outlinerModeCommandAliases(mode OutlinerMode) []string {
-	seen := make(map[string]bool)
+	seen := map[string]bool{
+		strings.ToLower(strings.TrimSpace(mode.Label)): true,
+	}
 	aliases := make([]string, 0, len(mode.Aliases)+1)
 	add := func(s string) {
 		key := strings.ToLower(strings.TrimSpace(s))

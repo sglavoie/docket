@@ -64,6 +64,29 @@ func projectMatchQuality(name, slug, query string) int {
 	return projectQualityNone
 }
 
+// commandIdentityBonus lets an exact canonical name beat an exact alias, and an
+// exact alias beat a longer command name that merely contains the query. The
+// bonus stays below project identity tiers so an exactly named project retains
+// the palette's established first-class identity behavior.
+func commandIdentityBonus(item PaletteItem, query string) int {
+	if item.Category != ItemCategoryCommands || item.Command == nil {
+		return 0
+	}
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return 0
+	}
+	if strings.ToLower(strings.TrimSpace(item.Name)) == query {
+		return 10000
+	}
+	for _, alias := range item.Command.Aliases {
+		if strings.ToLower(strings.TrimSpace(alias)) == query {
+			return 5000
+		}
+	}
+	return 0
+}
+
 // scoreItemWithDetails scores an item and returns which field matched.
 // Returns (score, namePositions, matchedField).
 func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query string) (int, []int, MatchField) {
@@ -126,6 +149,7 @@ func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query strin
 	if m.isRecentSelection(item) {
 		score *= recentBoostMultiplier
 	}
+	score += commandIdentityBonus(item, query)
 
 	// Add the identity bonus last so the deterministic tier gaps are not
 	// amplified by the category/recency multipliers above.

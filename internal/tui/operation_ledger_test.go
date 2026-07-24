@@ -43,8 +43,8 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	}
 
 	inventory := registry.Inventory()
-	if len(inventory) != 172 {
-		t.Fatalf("registered command variants = %d, want audited baseline 172", len(inventory))
+	if len(inventory) != 189 {
+		t.Fatalf("registered command variants = %d, want audited baseline 189", len(inventory))
 	}
 	validViews := make(map[PresentationID]bool, len(allPresentations()))
 	for _, view := range allPresentations() {
@@ -102,8 +102,8 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 			t.Errorf("command classification table contains unregistered operation %q", operationID)
 		}
 	}
-	if len(operationNames) != 169 {
-		t.Fatalf("stable command operations = %d, want audited baseline 169", len(operationNames))
+	if len(operationNames) != 186 {
+		t.Fatalf("stable command operations = %d, want audited baseline 186", len(operationNames))
 	}
 	for name, variants := range registry.commands {
 		for _, command := range variants {
@@ -130,7 +130,7 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	sort.Strings(operationSignatures)
 	sort.Strings(conditionallyUnavailable)
 	fingerprint := sha256.Sum256([]byte(strings.Join(operationSignatures, "\n")))
-	const wantFingerprint = "f019fa35be0acc98dfb3f3d4231ac6095b3d9482e58be5c73979521d78325b9d"
+	const wantFingerprint = "ba8c519ddd2d8abc90651b39658505bdf4658e1fa55dcbad14d84745554e80e6"
 	if got := fmt.Sprintf("%x", fingerprint); got != wantFingerprint {
 		t.Fatalf("command ledger fingerprint = %s, want audited baseline %s", got, wantFingerprint)
 	}
