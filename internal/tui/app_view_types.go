@@ -33,7 +33,6 @@ var viewTypeNames = map[PresentationID]string{
 	ViewCommandPalette:        "CommandPalette",
 	ViewBulkEdit:              "BulkEdit",
 	ViewSaveSearchInput:       "SaveSearchInput",
-	ViewTrashedProjects:       "TrashedProjects",
 	ViewProjectSelector:       "ProjectSelector",
 	ViewDailyReview:           "DailyReview",
 	ViewWorkflowRules:         "WorkflowRules",

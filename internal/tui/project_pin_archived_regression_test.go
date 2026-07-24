@@ -464,7 +464,12 @@ func TestProjectStatusDraftEscapeCancelsWholeEdit(t *testing.T) {
 	project.StatusIconSource = "user"
 	originalUpdatedAt := project.UpdatedAt
 
-	app.showView(ViewStatusIconPicker, NewStatusIconPickerModel(project))
+	iconPicker := NewStatusIconPickerModel(project)
+	footer := iconPicker.View().Content
+	if !strings.Contains(footer, "Esc cancel") || strings.Contains(footer, "Esc skip") {
+		t.Fatalf("status-icon footer does not describe whole-edit cancellation: %q", footer)
+	}
+	app.showView(ViewStatusIconPicker, iconPicker)
 	handled, cmd := app.handleViewSelectionMessages(StatusIconSelectedMsg{
 		Project:  project,
 		Canceled: true,

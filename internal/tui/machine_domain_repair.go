@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 const machineDomainRepairRetryDelay = time.Second
@@ -23,15 +24,15 @@ type machineProjectReference struct {
 // navigation, history, and preferences written after the original lifecycle
 // operation.
 type machineDomainRepair struct {
-	removeProjects         []machineProjectReference
-	clearCurrentProjectIDs []string
-	removeTaskLocators     []config.ProjectTaskLocator
+	removeProjects       []machineProjectReference
+	clearCurrentProjects []machineProjectReference
+	removeTaskLocators   []config.ProjectTaskLocator
 }
 
-func machineRepairForArchivedProject(projectID string, locators []config.ProjectTaskLocator) machineDomainRepair {
+func machineRepairForArchivedProject(projectID, slug string, locators []config.ProjectTaskLocator) machineDomainRepair {
 	return machineDomainRepair{
-		clearCurrentProjectIDs: []string{projectID},
-		removeTaskLocators:     slices.Clone(locators),
+		clearCurrentProjects: []machineProjectReference{{ID: projectID, Slug: slug}},
+		removeTaskLocators:   slices.Clone(locators),
 	}
 }
 
@@ -47,23 +48,84 @@ func machineRepairForArchivedTasks(locators []config.ProjectTaskLocator) machine
 
 func (r machineDomainRepair) empty() bool {
 	return len(r.removeProjects) == 0 &&
-		len(r.clearCurrentProjectIDs) == 0 &&
+		len(r.clearCurrentProjects) == 0 &&
 		len(r.removeTaskLocators) == 0
 }
 
-func (r machineDomainRepair) apply(machine *config.MachineState) {
-	if machine == nil {
-		return
+func machineProjectReferenceMatches(ref string, project machineProjectReference) bool {
+	if ref == "" {
+		return false
 	}
-	for _, project := range r.removeProjects {
-		machine.RemoveProjectReferences(project.ID, project.Slug)
+	return ref == project.ID || (project.Slug != "" && ref == project.Slug)
+}
+
+func isNormalWorkProject(project *models.Project) bool {
+	return project != nil && !project.Archived && !project.Sandbox && !project.Internal
+}
+
+// applyMachineDomainRepair validates every cleanup target against the current
+// authoritative workspace before mutating the fresh machine snapshot. A project
+// or task restored after the cleanup was queued is therefore retained. When an
+// active project's task data cannot be loaded, validation fails closed and the
+// whole patch remains queued for a later retry.
+func (m *AppModel) applyMachineDomainRepair(repair machineDomainRepair, machine *config.MachineState) (bool, error) {
+	if machine == nil || m == nil || m.runtime == nil {
+		return false, nil
 	}
-	for _, projectID := range r.clearCurrentProjectIDs {
-		if machine.CurrentProject == projectID {
-			machine.CurrentProject = ""
+
+	changed := false
+	for _, project := range repair.removeProjects {
+		for _, ref := range []string{project.ID, project.Slug} {
+			if ref == "" || m.runtime.GetProject(ref) != nil {
+				continue
+			}
+			changed = machine.RemoveProjectReferences(ref, "") || changed
 		}
 	}
-	machine.RemoveMachineLocalTaskLocators(r.removeTaskLocators)
+	for _, project := range repair.clearCurrentProjects {
+		if machineProjectReferenceMatches(machine.CurrentProject, project) &&
+			!isNormalWorkProject(m.runtime.GetProject(machine.CurrentProject)) {
+			machine.CurrentProject = ""
+			changed = true
+		}
+	}
+
+	loaded := make(map[string]*models.Project)
+	var invalidLocators []config.ProjectTaskLocator
+	for _, locator := range repair.removeTaskLocators {
+		live, err := m.machineTaskLocatorIsLive(locator, loaded)
+		if err != nil {
+			return false, err
+		}
+		if !live {
+			invalidLocators = append(invalidLocators, locator)
+		}
+	}
+	if machine.RemoveMachineLocalTaskLocators(invalidLocators) > 0 {
+		changed = true
+	}
+	return changed, nil
+}
+
+func (m *AppModel) machineTaskLocatorIsLive(locator config.ProjectTaskLocator, loaded map[string]*models.Project) (bool, error) {
+	if locator.ProjectID == "" || locator.TaskID == "" {
+		return false, nil
+	}
+	project := m.runtime.GetProject(locator.ProjectID)
+	if !isNormalWorkProject(project) {
+		return false, nil
+	}
+	if loadedProject, ok := loaded[project.ID]; ok {
+		return loadedProject.GetTaskByID(locator.TaskID) != nil, nil
+	}
+	if m.persister == nil {
+		return false, fmt.Errorf("validate machine-state task cleanup for project %s: project storage is unavailable", project.ID)
+	}
+	if err := m.persister.Load(project); err != nil {
+		return false, fmt.Errorf("validate machine-state task cleanup for project %s: %w", project.ID, err)
+	}
+	loaded[project.ID] = project
+	return project.GetTaskByID(locator.TaskID) != nil, nil
 }
 
 func (r *machineDomainRepair) merge(next machineDomainRepair) {
@@ -75,9 +137,9 @@ func (r *machineDomainRepair) merge(next machineDomainRepair) {
 			r.removeProjects = append(r.removeProjects, project)
 		}
 	}
-	for _, projectID := range next.clearCurrentProjectIDs {
-		if projectID != "" && !slices.Contains(r.clearCurrentProjectIDs, projectID) {
-			r.clearCurrentProjectIDs = append(r.clearCurrentProjectIDs, projectID)
+	for _, project := range next.clearCurrentProjects {
+		if (project.ID != "" || project.Slug != "") && !slices.Contains(r.clearCurrentProjects, project) {
+			r.clearCurrentProjects = append(r.clearCurrentProjects, project)
 		}
 	}
 	for _, locator := range next.removeTaskLocators {
@@ -99,12 +161,19 @@ func (m *AppModel) queueMachineDomainRepair(repair machineDomainRepair) tea.Cmd 
 	if m == nil || repair.empty() {
 		return nil
 	}
-	m.pendingMachineDomainRepair.merge(repair)
+	m.retainMachineDomainRepair(repair)
 	if m.machineDomainRepairRetryScheduled {
 		return nil
 	}
 	m.machineDomainRepairRetryScheduled = true
 	return retryMachineDomainRepairCmd()
+}
+
+func (m *AppModel) retainMachineDomainRepair(repair machineDomainRepair) {
+	if m == nil || repair.empty() {
+		return
+	}
+	m.pendingMachineDomainRepair.merge(repair)
 }
 
 func (m *AppModel) retryMachineDomainRepair() tea.Cmd {
@@ -126,16 +195,7 @@ func (m *AppModel) retryMachineDomainRepair() tea.Cmd {
 			return m.rescheduleMachineDomainRepair()
 		}
 	}
-	machine := cloneMachineState(m.runtime.Machine())
-	m.pendingMachineDomainRepair.apply(machine)
-
-	var err error
-	if m.runtime.DataDir() == "" {
-		m.runtime.SetMachineInMemory(machine)
-	} else {
-		err = m.runtime.CommitMachine(machine)
-	}
-	if err != nil {
+	if err := m.commitMachineDomainRepair(m.pendingMachineDomainRepair); err != nil {
 		logging.Warn("machine-state cleanup retry failed: %v", err)
 		return m.rescheduleMachineDomainRepair()
 	}
@@ -143,6 +203,65 @@ func (m *AppModel) retryMachineDomainRepair() tea.Cmd {
 	m.pendingMachineDomainRepair = machineDomainRepair{}
 	m.syncProjectCache()
 	m.messageLog.Append("Machine-state cleanup completed", MessageLogLevelSuccess)
+	return nil
+}
+
+func (m *AppModel) commitMachineDomainRepair(repair machineDomainRepair) error {
+	if m == nil || m.runtime == nil || repair.empty() {
+		return nil
+	}
+	machine := cloneMachineState(m.runtime.Machine())
+	changed, err := m.applyMachineDomainRepair(repair, machine)
+	if err != nil {
+		return err
+	}
+	if !changed {
+		return nil
+	}
+	if m.runtime.DataDir() == "" {
+		m.runtime.SetMachineInMemory(machine)
+	} else if err := m.runtime.CommitMachine(machine); err != nil {
+		return err
+	}
+	m.syncProjectCache()
+	return nil
+}
+
+// reconcileStartupMachineReferences reconstructs project-reference cleanup from
+// the authoritative catalog. If machine.json is still unavailable, the patch is
+// retained for Init to schedule; if the process exits first, the same repair is
+// derived again on the next startup.
+func (m *AppModel) reconcileStartupMachineReferences() error {
+	if m == nil || m.runtime == nil {
+		return nil
+	}
+	machine := m.runtime.Machine()
+	var repair machineDomainRepair
+	if current := machine.CurrentProject; current != "" {
+		project := m.runtime.GetProject(current)
+		switch {
+		case project == nil:
+			repair.merge(machineRepairForRemovedProject(current, ""))
+		case !isNormalWorkProject(project):
+			repair.merge(machineDomainRepair{
+				clearCurrentProjects: []machineProjectReference{{ID: project.ID, Slug: project.Slug}},
+			})
+		}
+	}
+	for _, projectRefs := range machine.CustomContexts {
+		for _, ref := range projectRefs {
+			if ref != "" && m.runtime.GetProject(ref) == nil {
+				repair.merge(machineRepairForRemovedProject(ref, ""))
+			}
+		}
+	}
+	if repair.empty() {
+		return nil
+	}
+	if err := m.commitMachineDomainRepair(repair); err != nil {
+		m.retainMachineDomainRepair(repair)
+		return err
+	}
 	return nil
 }
 

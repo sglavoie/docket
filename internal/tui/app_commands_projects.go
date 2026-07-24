@@ -71,17 +71,6 @@ func (m *AppModel) projectCommands() []Command {
 			},
 		},
 		{
-			Name:        "restore from trash",
-			Description: "View and restore deleted projects",
-			Shortcut:    "T",
-			Category:    CategoryProjects,
-			Views:       []PresentationID{ViewDashboard},
-			Aliases:     []string{"trash", "undelete", "recover project"},
-			Handler: func() tea.Msg {
-				return ShowTrashedProjectsMsg{}
-			},
-		},
-		{
 			Name:        "reset sandbox",
 			Description: "Clear tasks, notes, and sections from sandbox",
 			Category:    CategoryProjects,

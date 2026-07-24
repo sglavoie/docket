@@ -418,30 +418,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			},
 		},
 		{
-			name: "trash restore full view",
-			run: func(t *testing.T) {
-				app, project, entryID := newTrashRestoreTestApp(t, config.ProjectReferences{})
-				cross := attachSession4CrossOutliner(t, app)
-				app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewTrashedProjects}
-				raw := app.restoreProjectFromTrash(entryID)()
-				restored, ok := raw.(projectRestoredFromTrashMsg)
-				if !ok {
-					t.Fatalf("restore command returned %T", raw)
-				}
-
-				_, cmd := app.handleProjectMessages(restored)
-				runSession2AppCommand(t, app, cmd)
-
-				if app.currentView() != ViewCrossProjectOutliner {
-					t.Fatalf("full Trash restore returned to %s", app.currentView())
-				}
-				session4LoadedProject(t, cross, project.ID)
-				if _, err := os.Stat(project.Path); err != nil {
-					t.Fatalf("restored project data missing: %v", err)
-				}
-			},
-		},
-		{
 			name: "trash restore in-place scope picker",
 			run: func(t *testing.T) {
 				app, project, entryID := newTrashRestoreTestApp(t, config.ProjectReferences{})

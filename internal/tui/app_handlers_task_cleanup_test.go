@@ -252,6 +252,13 @@ func TestTasksArchivedMachineFailurePublishesPlanningAndRetriesCleanup(t *testin
 	if err := os.RemoveAll(machineLock); err != nil {
 		t.Fatalf("repair machine lock: %v", err)
 	}
+	// TasksArchivedMsg is a post-commit message. Mirror its production contract
+	// by removing the archived task from active project storage before the
+	// validity-aware machine cleanup retries.
+	project.Tasks = nil
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("persist archived task removal: %v", err)
+	}
 	retryHandled, retryCmd := model.handleGlobalLifecycleMessage(retryMachineDomainRepairMsg{})
 	if !retryHandled || retryCmd != nil {
 		t.Fatalf("successful retry = handled %v cmd %v, want handled and settled", retryHandled, retryCmd)

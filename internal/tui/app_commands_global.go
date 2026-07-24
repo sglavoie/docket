@@ -97,7 +97,10 @@ func (m *AppModel) globalCommands() []Command {
 			Description: "Open project scope picker",
 			Shortcut:    "ctrl+x",
 			Category:    CategoryNavigation,
-			Aliases:     []string{"project picker", "change project", "open project"},
+			Aliases: []string{
+				"project picker", "change project", "open project",
+				"restore from trash", "trash", "undelete", "recover project",
+			},
 			Handler: func() tea.Msg {
 				return ShowScopePickerMsg{}
 			},

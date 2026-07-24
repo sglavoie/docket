@@ -49,7 +49,6 @@ const (
 	ViewCommandPalette
 	ViewBulkEdit
 	ViewSaveSearchInput
-	ViewTrashedProjects
 	ViewProjectSelector
 	ViewDailyReview
 	ViewWorkflowRules

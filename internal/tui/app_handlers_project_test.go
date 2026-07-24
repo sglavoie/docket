@@ -589,31 +589,6 @@ func TestHandleProjectMessagesTutorDismissed(t *testing.T) {
 	}
 }
 
-func TestHandleProjectMessagesShowTrashedProjects(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := ShowTrashedProjectsMsg{}
-	handled, _ := app.handleProjectMessages(msg)
-
-	if !handled {
-		t.Error("ShowTrashedProjectsMsg should be handled")
-	}
-	if app.currentView() != ViewTrashedProjects {
-		t.Errorf("currentView should be TrashedProjects, got %v", app.currentView())
-	}
-}
-
-func TestHandleProjectMessagesCloseTrashedProjects(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewTrashedProjects)
-
-	app.Update(CloseTrashedProjectsMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing trashed projects, got %v", app.currentView())
-	}
-}
-
 func TestHandleProjectMessagesProjectRestored(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 

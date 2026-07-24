@@ -312,6 +312,16 @@ func TestFilterCommands_OpenDataFolder(t *testing.T) {
 	if m.Project != nil {
 		t.Errorf("expected nil project, got %v", m.Project)
 	}
+	if !containsView(cmd.Views, ViewCrossProjectOutliner) || containsView(cmd.Views, ViewDashboard) {
+		t.Errorf("open data folder views = %v, want only the live Outliner root", cmd.Views)
+	}
+	registry := registerCommandGroupsForTest(t, app.filterCommands())
+	if got := findCommand(registry.GetForView(ViewCrossProjectOutliner), "open data folder"); got == nil {
+		t.Fatal("open data folder is not reachable from the production Outliner context")
+	}
+	if got := findCommand(registry.GetForView(ViewDashboard), "open data folder"); got != nil {
+		t.Fatalf("open data folder remains reachable only through retired Dashboard scope: %+v", got)
+	}
 }
 
 func TestFilterCommands_OpenProjectFolder(t *testing.T) {

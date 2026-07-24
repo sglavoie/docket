@@ -146,7 +146,7 @@ func presentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlayConfirmation, true
 	case ViewDateInput, ViewDependencySelector, ViewDependencyViewer, ViewSectionPicker,
 		ViewPriorityPicker, ViewContextPicker, ViewParentSelector, ViewTagSelector,
-		ViewBulkTagSelector, ViewTrashedProjects, ViewRecurrenceEditor,
+		ViewBulkTagSelector, ViewRecurrenceEditor,
 		ViewLinkedTaskSelector, ViewCrossProjectLinker, ViewNoteTaskLinker,
 		ViewNoteTagSelector, ViewSnoozeInput, ViewParkInput, ViewTaskTemplatePicker,
 		ViewScoreEditor, ViewSaveFilterInput, ViewScoringProfilePicker,

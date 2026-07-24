@@ -168,7 +168,7 @@ func (m *StatusIconPickerModel) View() tea.View {
 	}
 
 	// Footer
-	left := HelpStyle.Render("↑/↓ navigate · Enter confirm · Esc skip")
+	left := HelpStyle.Render("↑/↓ navigate · Enter confirm · Esc cancel")
 	b.WriteString(renderStatusBarFooter(left, "", m.Width()))
 
 	return tea.NewView(b.String())

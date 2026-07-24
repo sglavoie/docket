@@ -58,16 +58,6 @@ type ProjectPinRequestMsg struct {
 // Project Tree Messages
 // =============================================================================
 
-// =============================================================================
-// Trash Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowTrashedProjectsMsg opens the trashed projects picker.
-type ShowTrashedProjectsMsg struct{}
-
-// CloseTrashedProjectsMsg closes the trashed projects picker.
-type CloseTrashedProjectsMsg struct{ PopViewMsg }
-
 // RestoreFromTrashMsg requests restoration of a project from trash.
 type RestoreFromTrashMsg struct {
 	EntryID string
@@ -83,11 +73,6 @@ type PurgeFromTrashMsg struct {
 // =============================================================================
 // Status Input Messages
 // =============================================================================
-
-// ShowStatusInputMsg opens the status input overlay for a project.
-type ShowStatusInputMsg struct {
-	Project *models.Project
-}
 
 // StatusUpdatedMsg signals the project status was updated.
 type StatusUpdatedMsg struct{}

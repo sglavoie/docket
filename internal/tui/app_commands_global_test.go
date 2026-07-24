@@ -133,6 +133,14 @@ func TestGlobalCommands_SwitchProject(t *testing.T) {
 	if _, ok := msg.(ShowScopePickerMsg); !ok {
 		t.Errorf("expected ShowScopePickerMsg, got %T", msg)
 	}
+	for _, alias := range []string{"restore from trash", "trash", "undelete", "recover project"} {
+		if !slices.Contains(cmd.Aliases, alias) {
+			t.Errorf("switch project aliases = %v, missing legacy Trash phrase %q", cmd.Aliases, alias)
+		}
+	}
+	if stale := findCommand(app.projectCommands(), "restore from trash"); stale != nil {
+		t.Fatalf("retired standalone Trash command still registered: %+v", stale)
+	}
 }
 
 func TestGlobalCommands_WorkflowRules(t *testing.T) {

@@ -107,6 +107,9 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		logging.Warn("failed to persist project color slots: %v", ensureErr)
 	}
 	app.syncProjectCache()
+	if repairErr := app.reconcileStartupMachineReferences(); repairErr != nil {
+		logging.Warn("failed to reconcile startup machine-state references; cleanup will retry: %v", repairErr)
+	}
 	activeProjects := app.activeProjects()
 	startupLoads := make(map[string]error, len(activeProjects))
 	// The catalog owns project metadata only. Rehydrate the selected project's
@@ -402,13 +405,17 @@ func (app *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupL
 func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, startupLoads map[string]error) {
 	visitsChanged := false
 	var updatedVisits []config.RecentTaskVisit
+	var staleLocators []config.ProjectTaskLocator
 	for _, item := range app.runtime.Machine().GetRecentTaskVisits() {
 		found := false
+		uncertain := false
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
 			if err := app.loadStartupProject(p, startupLoads); err != nil {
+				uncertain = true
+				updatedVisits = append(updatedVisits, item)
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil {
@@ -418,8 +425,12 @@ func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, start
 			}
 			break
 		}
-		if !found {
+		if !found && !uncertain {
 			visitsChanged = true
+			staleLocators = append(staleLocators, config.ProjectTaskLocator{
+				ProjectID: item.ProjectID,
+				TaskID:    item.TaskID,
+			})
 		}
 	}
 	if visitsChanged {
@@ -430,6 +441,7 @@ func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, start
 			machine.SetRecentTaskVisits(updatedVisits)
 		}); err != nil {
 			logging.Warn("failed to persist recent task visits pruning: %v", err)
+			app.retainMachineDomainRepair(machineRepairForArchivedTasks(staleLocators))
 		}
 	}
 }
@@ -484,6 +496,9 @@ func (m *AppModel) Init() tea.Cmd {
 		tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		}),
+	}
+	if repairCmd := m.rescheduleMachineDomainRepair(); repairCmd != nil {
+		cmds = append(cmds, repairCmd)
 	}
 	if m.runtime.Settings().GetAutoTheme() {
 		cmds = append(cmds, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {

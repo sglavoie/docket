@@ -166,10 +166,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.setSuccessStatus("Reference prompt dismissed")
 		return true, defaultStatusTimeout()
 
-	case ShowTrashedProjectsMsg:
-		m.showView(ViewTrashedProjects, NewTrashedProjectsModel(m.runtime.DataDir()))
-		return true, nil
-
 	case RestoreFromTrashMsg:
 		m.isLoading = true
 		m.loadingMessage = "Restoring..."
@@ -186,22 +182,17 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.err = fmt.Errorf("project restore returned no project")
 			return true, nil
 		}
-		var popCmd tea.Cmd
-		if m.currentView() == ViewTrashedProjects {
-			popCmd = m.popView()
-		}
 		m.rememberTrashRestoreRecovery(msg)
 		if err := m.completeTrashRestoreRecovery(msg.Project.ID); err != nil {
 			m.err = trashRestorePartialError(msg.Project.Name, err)
 			return true, tea.Batch(
-				popCmd,
 				m.requestCrossProjectOutlinerReload(),
 				retryTrashRestoreMachineRefsCmd(msg.Project.ID),
 			)
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", msg.Project.Name))
-		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
+		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case retryTrashRestoreMachineRefsMsg:
 		recovery, ok := m.pendingTrashRestoreRecovery[msg.ProjectID]
@@ -231,10 +222,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case projectPurgedFromTrashMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		// Refresh the trashed projects list by re-registering the view
-		newModel := NewTrashedProjectsModel(m.runtime.DataDir())
-		newModel.SetSize(m.width, m.height-2)
-		m.views.Register(ViewTrashedProjects, newModel)
 		m.setSuccessStatus(fmt.Sprintf("Permanently deleted: %s", msg.Slug))
 		return true, defaultStatusTimeout()
 
@@ -396,7 +383,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 
 	domains := cloneRuntimeDomains(m.runtime)
 	domains.Catalog.UpsertProject(&updated)
-	if domains.Machine.CurrentProject == updated.ID {
+	if domains.Machine.CurrentProject == updated.ID || domains.Machine.CurrentProject == updated.Slug {
 		domains.Machine.CurrentProject = ""
 	}
 	if len(archivedLocators) > 0 {
@@ -417,7 +404,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	action := fmt.Sprintf("Archived %s", updated.Name)
 	var repairCmd tea.Cmd
 	if result.MachineErr != nil {
-		repairCmd = m.queueMachineDomainRepair(machineRepairForArchivedProject(updated.ID, archivedLocators))
+		repairCmd = m.queueMachineDomainRepair(machineRepairForArchivedProject(updated.ID, updated.Slug, archivedLocators))
 		m.setWarningStatus(machineRepairWarning(action, result.MachineErr))
 	} else {
 		m.setSuccessStatus(action)

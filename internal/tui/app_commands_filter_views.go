@@ -163,7 +163,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Name:        "open data folder",
 			Description: "Open root data folder in editor",
 			Category:    CategoryActions,
-			Views:       []PresentationID{ViewDashboard},
+			Views:       []PresentationID{ViewCrossProjectOutliner},
 			Aliases:     []string{"open folder", "reveal data", "data directory"},
 			Handler: func() tea.Msg {
 				return OpenDataFolderMsg{Project: nil}

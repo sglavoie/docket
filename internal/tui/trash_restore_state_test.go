@@ -58,7 +58,7 @@ func newTrashRestoreTestApp(
 		appService:           service,
 		projects:             make(map[string]*models.Project),
 		persister:            NewProjectService(),
-		viewStack:            []PresentationID{ViewDashboard, ViewTrashedProjects},
+		viewStack:            []PresentationID{ViewDashboard},
 		views:                NewViewRegistry(),
 		width:                80,
 		height:               24,

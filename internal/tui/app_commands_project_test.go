@@ -19,21 +19,6 @@ func TestProjectCommands_NewProject(t *testing.T) {
 	}
 }
 
-func TestProjectCommands_RestoreFromTrash(t *testing.T) {
-	app := newTestAppModel()
-
-	cmds := app.projectCommands()
-	cmd := findCommand(cmds, "restore from trash")
-	if cmd == nil {
-		t.Fatal("expected to find 'restore from trash' command")
-	}
-
-	result := cmd.Handler()
-	if _, ok := result.(ShowTrashedProjectsMsg); !ok {
-		t.Errorf("expected ShowTrashedProjectsMsg, got %T", result)
-	}
-}
-
 func TestProjectCommands_ResetSandbox(t *testing.T) {
 	app := newTestAppModel()
 

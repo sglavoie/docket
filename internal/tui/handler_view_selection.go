@@ -46,12 +46,6 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case ShowStatusInputMsg:
-		if msg.Project != nil {
-			m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.runtime))
-		}
-		return true, nil
-
 	case ShowStatusIconPickerMsg:
 		if msg.Project != nil {
 			m.showView(ViewStatusIconPicker, NewStatusIconPickerModel(msg.Project))
