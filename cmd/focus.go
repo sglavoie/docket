@@ -53,12 +53,12 @@ Next membership is the workflow state: a task is in Next exactly when its
 state is "next" (StateNext). The persisted focus queue list is ordering-only
 — it just orders the StateNext tasks (indexed members first, then any
 unindexed StateNext task). Today (the Daily Plan) is a mutually exclusive
-planning horizon, so a task is never in both Next and Today.
+planning list, so a task is never in both Next and Today.
 
-In the TUI, press 'P' to open the Outliner mode picker. Press 'q' to toggle the
-selected task's Next membership or 'w' to toggle Today membership. From the CLI
-use 'tt focus queue add' (Next) or 'tt focus today add' (Today), and reorder Next
-with 'tt focus queue move'.
+In the TUI, press Tab to cycle the Outliner's work modes. Press 'q' to toggle
+the selected task's Next membership or 'w' to toggle Today membership. From
+the CLI use 'tt focus queue add' (Next) or 'tt focus today add' (Today), and
+reorder Next with 'tt focus queue move'.
 
 Examples:
   tt focus queue`,
@@ -70,9 +70,9 @@ var focusTodayCmd = &cobra.Command{
 	Short: "Show tasks planned for today",
 	Long: `Show tasks that have been planned for today's work session.
 
-Plan work in the Outliner's Today mode: press 'P' to open the mode picker, or
-use the command palette's Today commands. Unfinished tasks carry over
-automatically to the next day.
+Planned tasks appear in the built-in Today section at the top of the Outliner's
+All mode. Press 'w' on a task to toggle Today membership. Unfinished tasks carry
+over automatically to the next day.
 
 Examples:
   tt focus today`,

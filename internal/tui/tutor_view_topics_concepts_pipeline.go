@@ -8,16 +8,15 @@ func tutorConceptTopicsPipeline() []TutorTopic {
 			Content: `# From Capture to Review
 
 Capture ideas with Ctrl+N, then triage Inbox work from the
-Outliner. The Outliner is the sole root view, and it
-always opens in Today on every run. Its work modes separate
-Today, Next, and Backlog so deciding what to do stays distinct
-from doing it.
+Outliner. The Outliner is the sole root view, and it always
+opens in All on every run. The Daily Plan appears as a built-in
+Today section above the normal workflow sections.
 
 # Work Modes
 
-Tab cycles the Outliner work modes Today, Next, Backlog, Active,
-and All; Shift+Tab reverses. h and l rotate workflow
-perspectives, and P opens a categorized, searchable mode picker.
+Tab cycles the Outliner work modes Next, Backlog, Active, and
+All; Shift+Tab reverses. h and l rotate workflow perspectives,
+and P opens a categorized, searchable picker for non-work modes.
 Perspectives, smart focuses, filters, and sorting change which
 tasks appear without leaving the Outliner.
 
@@ -38,7 +37,7 @@ rather than separate views.
 
 Press : to search actions by name and ? for help. Esc closes the
 active overlay or child before returning toward the Outliner;
-Ctrl+Esc resets to a clean global Today Outliner.`,
+Ctrl+Esc resets to a clean global All Outliner.`,
 		},
 	}
 }

@@ -318,7 +318,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "?", Description: "Help", Category: "Navigation"},
 		Keybinding{Key: "esc", Description: "Close / back", Category: "Navigation"},
 		Keybinding{Key: "ctrl+c", Description: "Quit", Category: "Navigation"},
-		Keybinding{Key: "ctrl+esc", Description: "Reset to Today", Category: "Navigation"},
+		Keybinding{Key: "ctrl+esc", Description: "Reset to global All", Category: "Navigation"},
 		Keybinding{Key: "ctrl+n", Description: "Task composer", Category: "Navigation"},
 		Keybinding{Key: "ctrl+x", Description: "Project scope", Category: "Navigation"},
 		Keybinding{Key: "|", Description: "Recent tasks", Category: "Navigation"},

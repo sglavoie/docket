@@ -67,16 +67,16 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 	}
 }
 
-func TestREADMEDescribesOutlinerTodayDefault(t *testing.T) {
+func TestREADMEDescribesOutlinerAllDefault(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 
 	required := []string{
-		"`tt` opens on the Outliner in global Today by default",
+		"`tt` opens on the Outliner in global All by default",
 		"press `Ctrl+Esc` to return to that root from anywhere",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing Outliner Today default text: %q", needle)
+			t.Fatalf("README missing Outliner All default text: %q", needle)
 		}
 	}
 
@@ -247,10 +247,10 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"Projects can be specified by slug or ID.",
 		"tt select my-project   # Select by slug or ID directly",
 		"Show the Outliner's Next shortlist (StateNext tasks)",
-		"press 'P' to open the Outliner mode picker",
-		"Press 'q' to toggle the",
+		"press Tab to cycle the Outliner's work modes",
+		"Press 'q' to toggle",
 		"selected task's Next membership",
-		"Plan work in the Outliner's Today mode",
+		"built-in Today section at the top of the Outliner's",
 		"tt task list --parked     # Show parked tasks only",
 		"--parked bool    show parked tasks only",
 	}

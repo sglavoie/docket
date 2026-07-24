@@ -128,14 +128,13 @@ type OutlinerModel struct {
 	// bottom of the stack is the base all-projects frame.
 	scopeStack []outlinerScopeFrame
 
-	// workTodayMode / workNextMode / workBacklogMode select the three purpose-built
-	// work horizons (Today, Next, Backlog) from the unified mode catalog. Like
+	// workNextMode / workBacklogMode select the two purpose-built work horizons
+	// (Next, Backlog) from the unified mode catalog. Like
 	// crossPriorityMode they are session-only computed modes: when set, rebuildRows
 	// delegates to the mode-row strategies instead of the perspective/tree builder.
 	// workNextMode is only ever set in the global (cross-project) Outliner; a single
 	// project keeps Next as its persisted perspective. All default false so every
 	// existing perspective/smart-focus path is unchanged.
-	workTodayMode   bool
 	workNextMode    bool
 	workBacklogMode bool
 

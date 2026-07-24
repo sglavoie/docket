@@ -123,9 +123,9 @@ every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 file contains editors, integration choices, current project
 selection, custom contexts, and bounded recent task/palette items. Renderer
 layout, filters, cursors, folds, and composer expansion are session-owned and
-are not serialized. The Outliner's Today mode owns its project-qualified subtree
-overrides and global tree-depth limit for the session, and a depth change clears
-per-node overrides. A workspace with a
+are not serialized. The Outliner's Today section owns its project-qualified
+subtree overrides and global tree-depth limit for the session, and a depth
+change clears per-node overrides. A workspace with a
 different ID never shares this state. On first
 startup after upgrading from the former layout, `tt` checks the machine file
 keyed by the current data-directory path, then the historical
@@ -157,19 +157,20 @@ namespace.
 
 ## TUI navigation architecture
 
-The Outliner is the sole primary root and launches globally in Today on every
-run. Typed navigation is an Outliner root, Task Detail children, direct
+The Outliner is the sole primary root and launches globally in All on every
+run. Its config-backed Daily Plan appears as a synthetic Today section above the
+normal workflow sections. Typed navigation is an Outliner root, Task Detail children, direct
 secondary-tool children (Weekly Review, Metrics, Roadmap, Inbox, Notes,
 operational Blockers, workflow/scoring tools, Templates, Tags, Notifications,
 Settings, and other retained utilities), and reference/help surfaces. Modes and
 project scopes belong to the Outliner rather than to routes: `Tab`/`Shift+Tab`
-cycle Today → Next → Backlog → Active → All, `h`/`l` rotate workflow
-perspectives, `P` opens a categorized searchable mode picker, and `Ctrl+X`
-changes project scope. Saved-perspective IDs and saved filters are preserved and
+cycle Next → Backlog → Active → All, `h`/`l` rotate workflow perspectives, `P`
+opens a categorized searchable picker for non-work modes, and `Ctrl+X` changes
+project scope. Saved-perspective IDs and saved filters are preserved and
 normalized under the mode catalog; the workspace-wide due-date lens is a
 Due Date mode rather than a separate route. Esc unwinds local state, task zoom,
 project scope, then the active child screen; Ctrl+Esc resets to a clean global
-Today.
+All.
 
 A single Outliner model (`AppModel.crossOutliner`) and one presentation identity
 (`ViewCrossProjectOutliner`) own both global and project-scoped work. The root
@@ -184,7 +185,7 @@ which pushes or replaces a scope frame on that one instance rather than
 constructing a separate `AppModel.outliner`. The retired `Ctrl+P` and `g o`
 drill-downs no longer exist. Task creation and every retained project operation
 run from the scoped Outliner. Esc pops to the previous scope
-frame; Ctrl+Esc clears the scope stack back to global Today.
+frame; Ctrl+Esc clears the scope stack back to global All.
 
 ## Transactions, recovery, and undo
 

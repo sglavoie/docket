@@ -209,7 +209,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 // Esc ownership so it remains a reliable global escape hatch: it closes every
 // overlay, editor, child, and preview, clears project scope, search, filters,
 // task zoom, selections, pending prefixes, and transient modes, then activates
-// the clean global Today Outliner with the cursor safely reset.
+// the clean global All Outliner with the cursor safely reset.
 func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		viewType := m.viewStack[i]
@@ -242,7 +242,7 @@ func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
 	}
 	m.projectStack = nil
 	if m.crossOutliner != nil {
-		m.crossOutliner.resetToGlobalToday()
+		m.crossOutliner.resetToGlobalAll()
 		m.setAccentOnView(m.crossOutliner)
 	}
 	m.reevaluateAlerts()

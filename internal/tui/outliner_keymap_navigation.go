@@ -215,7 +215,7 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 
 // modeEntries binds the mode surface: P opens the searchable, categorized mode
 // picker (replacing the retired P0-P9 numeric prefix), and Tab/Shift+Tab cycle
-// the five-item Work rotation Today → Next → Backlog → Active → All.
+// the four-item Work rotation Next → Backlog → Active → All.
 //
 // R carries a single, non-conflicting behavior that depends on the active mode:
 // in Daily Review mode it marks or resets the persisted review timestamp;

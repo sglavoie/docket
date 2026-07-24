@@ -41,18 +41,13 @@ func TestSelectOutlinerModeMapsToState(t *testing.T) {
 		id     OutlinerModeID
 		verify func(t *testing.T)
 	}{
-		{ModeToday, func(t *testing.T) {
-			if !m.workTodayMode || m.workBacklogMode {
-				t.Fatalf("Today: workTodayMode=%t workBacklogMode=%t", m.workTodayMode, m.workBacklogMode)
-			}
-		}},
 		{ModeBacklog, func(t *testing.T) {
-			if m.workTodayMode || !m.workBacklogMode {
-				t.Fatalf("Backlog: workTodayMode=%t workBacklogMode=%t", m.workTodayMode, m.workBacklogMode)
+			if !m.workBacklogMode {
+				t.Fatal("Backlog did not activate its computed mode")
 			}
 		}},
 		{ModeActive, func(t *testing.T) {
-			if m.workTodayMode || m.workBacklogMode {
+			if m.workBacklogMode {
 				t.Fatal("Active must clear computed modes")
 			}
 			if m.activePerspective != PerspectiveActive || m.smartFocus != nil {
@@ -87,9 +82,9 @@ func TestSelectOutlinerModeMapsToState(t *testing.T) {
 func TestCycleWorkModeDeterministic(t *testing.T) {
 	m := newWorkModeOutliner(t)
 
-	// Forward from All wraps to Today, then walks the whole cycle.
+	// Forward from All wraps to Next, then walks the whole cycle.
 	m.selectOutlinerMode(ModeAll)
-	forward := []OutlinerModeID{ModeToday, ModeNext, ModeBacklog, ModeActive, ModeAll}
+	forward := []OutlinerModeID{ModeNext, ModeBacklog, ModeActive, ModeAll}
 	for _, want := range forward {
 		m.cycleWorkMode(1)
 		if got := m.activeOutlinerMode(); got != want {
@@ -97,19 +92,19 @@ func TestCycleWorkModeDeterministic(t *testing.T) {
 		}
 	}
 
-	// Backward from Today wraps to All.
-	m.selectOutlinerMode(ModeToday)
+	// Backward from Next wraps to All.
+	m.selectOutlinerMode(ModeNext)
 	m.cycleWorkMode(-1)
 	if got := m.activeOutlinerMode(); got != ModeAll {
-		t.Fatalf("backward from Today = %q, want All", got)
+		t.Fatalf("backward from Next = %q, want All", got)
 	}
 
-	// From a mode outside the five-item cycle, forward enters at Today and
+	// From a mode outside the four-item cycle, forward enters at Next and
 	// backward at All.
 	m.selectOutlinerMode(ModeStandby)
 	m.cycleWorkMode(1)
-	if got := m.activeOutlinerMode(); got != ModeToday {
-		t.Fatalf("forward from outside cycle = %q, want Today", got)
+	if got := m.activeOutlinerMode(); got != ModeNext {
+		t.Fatalf("forward from outside cycle = %q, want Next", got)
 	}
 	m.selectOutlinerMode(ModeStandby)
 	m.cycleWorkMode(-1)
@@ -124,7 +119,6 @@ func TestIsComputedOrderMode(t *testing.T) {
 		id   OutlinerModeID
 		want bool
 	}{
-		{ModeToday, true},
 		{ModeBacklog, true},
 		{ModeDueDateLens, true},
 		{ModeDailyReview, true},
@@ -144,10 +138,10 @@ func TestIsComputedOrderMode(t *testing.T) {
 }
 
 func TestModePickerFiltersByLabelAndAlias(t *testing.T) {
-	// "back" matches Backlog by label.
+	// Work modes are intentionally Tab-only.
 	rows := selectableModes(modePickerRows("back"))
-	if len(rows) != 1 || rows[0].mode.ID != ModeBacklog {
-		t.Fatalf("query 'back' matched %v, want [Backlog]", modeIDs(rows))
+	if len(rows) != 0 {
+		t.Fatalf("query 'back' matched %v, want no picker Work modes", modeIDs(rows))
 	}
 	// "done" includes Completed by its alias. Fuzzy matching may also include
 	// later categories, but must preserve category/catalog order.
@@ -162,9 +156,9 @@ func TestModePickerFiltersByLabelAndAlias(t *testing.T) {
 	}
 
 	// Non-contiguous queries prove matching is fuzzy rather than substring-based.
-	rows = selectableModes(modePickerRows("bklg"))
-	if len(rows) != 1 || rows[0].mode.ID != ModeBacklog {
-		t.Fatalf("fuzzy label query 'bklg' matched %v, want [Backlog]", modeIDs(rows))
+	rows = selectableModes(modePickerRows("hpri"))
+	if len(rows) != 1 || rows[0].mode.ID != ModeHighPriority {
+		t.Fatalf("fuzzy label query 'hpri' matched %v, want [High Priority]", modeIDs(rows))
 	}
 	rows = selectableModes(modePickerRows("shdl"))
 	if len(rows) != 1 || rows[0].mode.ID != ModeDueDateLens {
@@ -280,29 +274,27 @@ func TestModePickerEnterSelectsMode(t *testing.T) {
 	if !m.modePickerActive() {
 		t.Fatal("picker should be active after openModePicker")
 	}
-	m.modePicker.query = "backlog"
+	m.modePicker.query = "activity"
 	if _, cmd := m.handleModePickerKey(tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
 		_ = cmd()
 	}
 	if m.modePickerActive() {
 		t.Fatal("picker should close after selection")
 	}
-	if !m.workBacklogMode {
-		t.Fatal("selecting Backlog from picker did not enter Backlog mode")
+	if m.reviewMode != reviewActivity {
+		t.Fatal("selecting Activity from picker did not enter Activity mode")
 	}
 }
 
-func TestWorkModeStripShowsCountsAndFixedOrderIndicator(t *testing.T) {
+func TestOutlinerHeaderOmitsWorkModeChrome(t *testing.T) {
 	m := newWorkModeOutliner(t)
-	m.selectOutlinerMode(ModeToday)
-	strip := ansi.Strip(m.renderWorkModeStrip(120))
-	for _, label := range []string{"Today", "Next", "Backlog", "Active", "All"} {
-		if !strings.Contains(strip, label) {
-			t.Errorf("work-mode strip missing %q: %q", label, strip)
-		}
+	m.selectOutlinerMode(ModeBacklog)
+	rendered := ansi.Strip(m.renderOutlinerTreeContent(120))
+	if strings.Contains(rendered, "⇅") || strings.Contains(rendered, "Today 0 ·") {
+		t.Fatalf("retired work-mode chrome leaked into header:\n%s", rendered)
 	}
-	if !strings.Contains(strip, "auto-order") {
-		t.Errorf("Today mode strip should show the fixed-order indicator: %q", strip)
+	if !strings.Contains(rendered, "◆ Backlog") {
+		t.Fatalf("compact active-mode title marker missing:\n%s", rendered)
 	}
 }
 
@@ -348,9 +340,9 @@ func sectionCountSum(m *OutlinerModel) int {
 }
 
 // TestComputedModesHonorProjectFilter asserts that when unscoped with a
-// non-empty F P filter, every computed mode (Today, Next, Backlog, Daily
-// Review, Activity) enumerates only the selected projects in both its rows and
-// its counts, matching the tree/Priority rebuild paths.
+// non-empty F P filter, the Today section and every computed mode (Next,
+// Backlog, Daily Review, Activity) enumerate only the selected projects in both
+// their rows and counts, matching the tree/Priority rebuild paths.
 func TestComputedModesHonorProjectFilter(t *testing.T) {
 	alpha := buildFilterParityProject("alpha", "Alpha")
 	beta := buildFilterParityProject("beta", "Beta")
@@ -381,12 +373,24 @@ func TestComputedModesHonorProjectFilter(t *testing.T) {
 		t.Fatalf("filtered scope = %v, want [alpha]", projectIDsOf(got))
 	}
 
-	// Work modes: rows are Alpha-only and the tab count matches the row count.
+	// The All root embeds Alpha's Daily Plan entry in its Today section.
+	m.selectOutlinerMode(ModeAll)
+	var todayIDs []string
+	for _, row := range m.rows {
+		if row.IsTodaySection && row.isTaskRow() {
+			todayIDs = append(todayIDs, row.ProjectID)
+		}
+	}
+	assertAllProject(t, todayIDs, "alpha")
+	if len(todayIDs) != 1 {
+		t.Fatalf("Today section rows = %d, want 1 (%v)", len(todayIDs), todayIDs)
+	}
+
+	// Computed Work modes remain Alpha-only.
 	workCases := []struct {
 		id   OutlinerModeID
 		want int
 	}{
-		{ModeToday, 1},
 		{ModeNext, 1},
 		{ModeBacklog, 1},
 	}
@@ -397,9 +401,6 @@ func TestComputedModesHonorProjectFilter(t *testing.T) {
 			assertAllProject(t, ids, "alpha")
 			if len(ids) != tc.want {
 				t.Fatalf("%s rows = %d, want %d (%v)", tc.id, len(ids), tc.want, ids)
-			}
-			if count := m.workModeItemCount(tc.id); count != len(ids) {
-				t.Fatalf("%s count = %d, want row parity %d", tc.id, count, len(ids))
 			}
 		})
 	}
@@ -566,8 +567,8 @@ func buildTodayHierarchyProject(id string) *models.Project {
 	return project
 }
 
-// newTodayHierarchyOutliner returns a cross-project outliner in Today mode whose
-// scope is a single project with a planned root subtree (buildTodayHierarchyProject).
+// newTodayHierarchyOutliner returns a cross-project All outliner whose Today
+// section contains one planned root subtree.
 func newTodayHierarchyOutliner(t *testing.T) *OutlinerModel {
 	t.Helper()
 	project := buildTodayHierarchyProject("alpha")
@@ -578,7 +579,7 @@ func newTodayHierarchyOutliner(t *testing.T) *OutlinerModel {
 	m := NewOutlinerModel(nil, nil, runtime)
 	m.SetSize(120, 40)
 	m.loadedProjects = []*models.Project{project}
-	m.selectOutlinerMode(ModeToday)
+	m.selectOutlinerMode(ModeAll)
 	return m
 }
 
@@ -593,12 +594,12 @@ func taskRowIDs(m *OutlinerModel) []string {
 	return ids
 }
 
-// TestTodayModeFiltersDescendants guards FR13-003: Today must apply the composite
+// TestTodaySectionFiltersDescendants guards the Today section's composite
 // task predicate to every planned root AND its expanded descendants, retaining a
 // matching descendant with its minimal ancestor context while pruning
 // non-matching sibling/descendant subtrees — not the old all-or-nothing behavior
 // that keyed only off the depth-zero root.
-func TestTodayModeFiltersDescendants(t *testing.T) {
+func TestTodaySectionFiltersDescendants(t *testing.T) {
 	deepCriteria := &config.SavedFilter{
 		Mode: "criteria",
 		Criteria: []config.SmartListCriterion{

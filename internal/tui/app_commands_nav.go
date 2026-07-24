@@ -6,10 +6,10 @@ func (m *AppModel) navCommands() []Command {
 	return []Command{
 		{
 			Name:        "outliner root",
-			Description: "Reset to the Outliner root (global Today)",
+			Description: "Reset to the Outliner root (global All)",
 			Shortcut:    "ctrl+esc",
 			Category:    CategoryNavigation,
-			Aliases:     []string{"reset outliner", "global today", "reset to today"},
+			Aliases:     []string{"reset outliner", "global all", "reset to all"},
 			Handler: func() tea.Msg {
 				return JumpDashboardMsg{}
 			},

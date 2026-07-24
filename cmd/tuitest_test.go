@@ -157,13 +157,12 @@ func TestTUITestRunFixtureSuccess(t *testing.T) {
 	useFileSystemStorage(t)
 	resetTUITestRunFlags(t)
 
-	// The Outliner launches in an empty global Today, so fixture task titles only
-	// appear after switching to the All mode. Prove the rich fixture loaded by
-	// navigating there and asserting on one of its task titles.
+	// Reset the startup Outliner to a clean global All, then prove the rich
+	// fixture loaded by asserting one of its task titles.
 	scenario := writeScenario(t, `{
       "name": "rich smoke",
       "actions": [
-        {"type": "command", "command": "All"},
+        {"type": "command", "command": "outliner root"},
         {"type": "assert", "assert": "contains", "value": "Triage support inbox"}
       ]
     }`)
@@ -312,7 +311,7 @@ func TestTUITestRunConfigModeCopiesData(t *testing.T) {
 	scenario := writeScenario(t, `{
       "name": "config smoke",
       "actions": [
-        {"type": "command", "command": "All"},
+        {"type": "command", "command": "outliner root"},
         {"type": "assert", "assert": "contains", "value": "Copied task title"}
       ]
     }`)
@@ -349,7 +348,7 @@ func TestTUITestRunObservationsIncludesList(t *testing.T) {
 	scenario := writeScenario(t, `{
       "name": "observations",
       "actions": [
-        {"type": "command", "command": "All"},
+        {"type": "command", "command": "outliner root"},
         {"type": "assert", "assert": "contains", "value": "Triage support inbox"}
       ]
     }`)
@@ -448,10 +447,9 @@ func TestTUITestSessionActionsObserveQuit(t *testing.T) {
 	resetTUITestSessionFlags(t)
 
 	// Two actions, an explicit observe, then quit — the integration flow. The
-	// first action switches to All mode (fixture task titles are hidden in the
-	// empty startup Today), exercising a command action end to end.
+	// first action drives the global Ctrl+Esc reset to All end to end.
 	input := strings.Join([]string{
-		`{"id":"a1","action":{"type":"command","command":"All"}}`,
+		`{"id":"a1","action":{"type":"key","key":"ctrl+esc"}}`,
 		`{"id":"a2","action":{"type":"resize","width":120,"height":40}}`,
 		`{"id":"o1","command":"observe"}`,
 		`{"id":"q1","command":"quit"}`,
@@ -648,10 +646,10 @@ func TestTUITestSessionConfigModeCopiesData(t *testing.T) {
 	sourceConfig := buildSourceConfig(t, "Session Copied Project", "Session copied task")
 	viper.Set("config", sourceConfig)
 
-	// Switch to All mode, then assert the copied task title is present — proving
-	// the source workspace was copied and loaded in session mode.
+	// Reset to All, then assert the copied task title is present — proving the
+	// source workspace was copied and loaded in session mode.
 	input := strings.Join([]string{
-		`{"id":"c1","action":{"type":"command","command":"All"}}`,
+		`{"id":"c1","action":{"type":"key","key":"ctrl+esc"}}`,
 		`{"id":"c2","action":{"type":"assert","assert":"contains","value":"Session copied task"}}`,
 		`{"id":"q","command":"quit"}`,
 	}, "\n") + "\n"

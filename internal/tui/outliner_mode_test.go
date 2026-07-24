@@ -78,7 +78,7 @@ func TestOutlinerModeWrapsLenses(t *testing.T) {
 // for tree-order modes; every fixed-order horizon owns its ordering.
 func TestOutlinerModeManualSortOnlyForTreeOrder(t *testing.T) {
 	fixed := map[OutlinerModeID]bool{
-		ModeToday: true, ModeNext: true, ModeBacklog: true,
+		ModeNext: true, ModeBacklog: true,
 		ModePriorityLens: true, ModeDueDateLens: true,
 		ModeDailyReview: true, ModeActivity: true,
 	}
@@ -100,7 +100,6 @@ func TestOutlinerModeHorizonOrderPolicies(t *testing.T) {
 		policy   OutlinerOrderPolicy
 		strategy OutlinerRowStrategy
 	}{
-		{ModeToday, OrderPolicyDailyPlan, RowStrategyToday},
 		{ModeNext, OrderPolicyFocusQueue, RowStrategyNext},
 		{ModeBacklog, OrderPolicyRanked, RowStrategyBacklog},
 	}
@@ -144,14 +143,17 @@ func isOutlinerModeCommand(cmd *Command) bool {
 	return ok && show.Options.SetMode
 }
 
-// TestEveryOutlinerModeIsRegisteredInCommandPalette proves the command palette
-// derives one selectable action for every OutlinerModeCatalog entry — searchable
-// by label, stable ID, and every alias — rather than a hand-maintained subset,
-// that catalog additions appear without another registry edit, and that
-// executing a representative mode from each category dispatches through SetMode
-// into the canonical app-scoped Outliner.
-func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
+// TestNonWorkOutlinerModesAreRegisteredInCommandPalette proves Work modes are
+// Tab-only while every other catalog mode remains searchable and dispatches
+// through SetMode into the canonical app-scoped Outliner.
+func TestNonWorkOutlinerModesAreRegisteredInCommandPalette(t *testing.T) {
 	catalog := OutlinerModeCatalog()
+	var paletteCatalog []OutlinerMode
+	for _, mode := range catalog {
+		if mode.Category != ModeCategoryWork {
+			paletteCatalog = append(paletteCatalog, mode)
+		}
+	}
 
 	// One derived registered command per catalog entry, indexed by the mode its
 	// handler dispatches.
@@ -163,12 +165,18 @@ func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
 		}
 		byID[id] = command
 	}
-	if len(byID) != len(catalog) {
-		t.Fatalf("registered mode commands = %d, want one per catalog entry (%d)", len(byID), len(catalog))
+	if len(byID) != len(paletteCatalog) {
+		t.Fatalf("registered mode commands = %d, want one per non-Work catalog entry (%d)", len(byID), len(paletteCatalog))
 	}
 
 	for _, mode := range catalog {
 		cmd, ok := byID[mode.ID]
+		if mode.Category == ModeCategoryWork {
+			if ok {
+				t.Errorf("Work mode %q unexpectedly has a palette action", mode.ID)
+			}
+			continue
+		}
 		if !ok {
 			t.Errorf("catalog mode %q has no palette action", mode.ID)
 			continue
@@ -208,15 +216,20 @@ func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
 		}
 	}
 	for _, mode := range catalog {
+		if mode.Category == ModeCategoryWork {
+			if present[mode.ID] {
+				t.Errorf("Work mode %q is unexpectedly present in palette items", mode.ID)
+			}
+			continue
+		}
 		if !present[mode.ID] {
 			t.Errorf("mode %q is missing from the loaded command palette items", mode.ID)
 		}
 	}
 
-	// Execute a representative mode from each category; each must dispatch its own
+	// Execute a representative mode from each picker category; each must dispatch its own
 	// SetMode into the global Outliner.
 	representatives := []OutlinerModeID{
-		ModeToday,        // Work
 		ModeInbox,        // Workflow
 		ModeHighPriority, // Smart
 		ModeDueDateLens,  // Lens
@@ -238,7 +251,6 @@ func TestEveryOutlinerModeIsRegisteredInCommandPalette(t *testing.T) {
 // ambiguous terms resolve to the chosen catalog mode.
 func TestOutlinerModeLegacyPhrasesHaveCanonicalOwners(t *testing.T) {
 	wantOwners := map[string]OutlinerModeID{
-		"all tasks":             ModeAll,
 		"all tasks by due date": ModeDueDateLens,
 		"daily review":          ModeDailyReview,
 		"latest activity":       ModeActivity,

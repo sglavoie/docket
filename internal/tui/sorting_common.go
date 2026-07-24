@@ -90,7 +90,7 @@ func StateOrder(state models.WorkflowState) int {
 	}
 }
 
-// TodayStateOrder ranks workflow states by activeness for the Today tab.
+// TodayStateOrder ranks workflow states by activeness for the Today section.
 // In-progress first, review pushed below other active states, terminal last.
 // The three todo-ish planning states share one rank so the daily-plan position
 // keeps ordering them.

@@ -29,7 +29,7 @@ import (
 // escape-hatch row reads identically across full-height and non-full-height
 // surfaces.
 func TestFooterEscapeHintsCanonicalOrder(t *testing.T) {
-	if FooterEscapeHints != "ctrl+esc today · : cmd · ? help" {
+	if FooterEscapeHints != "ctrl+esc root · : cmd · ? help" {
 		t.Fatalf("FooterEscapeHints drifted from canonical order: %q", FooterEscapeHints)
 	}
 }
@@ -66,7 +66,7 @@ func TestComposeFullHeightFooterLeftFallsBackToEscapeHatches(t *testing.T) {
 // Session 11's design rule is "one canonical home" per shortcut: when a key
 // appears in the footer it must not appear in the strip and vice versa.
 func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
-	// Footer hint sets that may co-render with the strip on the Today tab.
+	// Footer hint sets that may co-render with the strip near the Today section.
 	// The strip is suppressed on Next/Closed/Tunnel/Zen, so Next-tab
 	// (`w plan today · a add · enter open`) and Closed-tab footers are out
 	// of scope.
@@ -130,7 +130,7 @@ func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
 // advertise. Without this lockstep, Dashboard users would see one set of
 // escape keys while Today and Hub users see a different ordering.
 func TestAppStatusBarDefaultHelpMatchesFooterEscapeHints(t *testing.T) {
-	const appStatusDefault = "ctrl+esc today · : cmd · ? help"
+	const appStatusDefault = "ctrl+esc root · : cmd · ? help"
 	if FooterEscapeHints != appStatusDefault {
 		t.Fatalf("FooterEscapeHints %q diverges from app status bar default %q; surfaces will show inconsistent escape hatches",
 			FooterEscapeHints, appStatusDefault)

@@ -183,7 +183,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// emits ShowGlobalOutlinerMsg, whose handler starts and returns the current
 	// generation's reload command.
 	_ = app.prepareCrossProjectOutliner()
-	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeToday, SetMode: true})
+	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeAll, SetMode: true})
 	app.setAccentOnView(app.crossOutliner)
 	app.syncPresentationStack()
 
@@ -528,6 +528,6 @@ type startupNavigationPlan struct {
 // mode-selection message dispatched from Init.
 func resolveStartupNavigation(_ *config.MachineState, _ string) (startupNavigationPlan, bool) {
 	return startupNavigationPlan{
-		Message: ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Mode: ModeToday, SetMode: true}},
+		Message: ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Mode: ModeAll, SetMode: true}},
 	}, true
 }

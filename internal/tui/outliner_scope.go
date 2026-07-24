@@ -29,7 +29,6 @@ type outlinerScopeFrame struct {
 	activePerspective int
 	smartFocus        *OutlinerFocus
 	lens              OutlinerLens
-	workTodayMode     bool
 	workNextMode      bool
 	workBacklogMode   bool
 	crossPriorityMode bool
@@ -103,7 +102,6 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		activePerspective:    m.activePerspective,
 		smartFocus:           cloneOutlinerFocus(m.smartFocus),
 		lens:                 m.lens,
-		workTodayMode:        m.workTodayMode,
 		workNextMode:         m.workNextMode,
 		workBacklogMode:      m.workBacklogMode,
 		crossPriorityMode:    m.crossPriorityMode,
@@ -133,7 +131,6 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.activePerspective = f.activePerspective
 	m.smartFocus = cloneOutlinerFocus(f.smartFocus)
 	m.lens = f.lens
-	m.workTodayMode = f.workTodayMode
 	m.workNextMode = f.workNextMode
 	m.workBacklogMode = f.workBacklogMode
 	m.crossPriorityMode = f.crossPriorityMode
@@ -275,14 +272,14 @@ func (m *OutlinerModel) clearProjectScope() bool {
 	return true
 }
 
-// resetToGlobalToday returns the cross-project Outliner to a clean, unscoped
-// global Today: it drops any project scope, clears every narrowing and ordering
+// resetToGlobalAll returns the cross-project Outliner to a clean, unscoped
+// global All root: it drops any project scope, clears every narrowing and ordering
 // axis (project filter, multi-project filter, search, saved criteria, common
 // filters, section/actionable filters, pinned-tag tab, and manual sort), clears
-// zoom/selection, activates the Today mode, and parks the cursor at the top. It
-// is the state Ctrl+Esc restores as the single global reset, so no advertised
-// clean reset can leave Today silently narrowed by a stale filter, tag, or sort.
-func (m *OutlinerModel) resetToGlobalToday() {
+// zoom/selection, activates All, and parks the cursor at the top. It is the state
+// Ctrl+Esc restores as the single global reset, so no advertised clean reset can
+// leave the root silently narrowed by a stale filter, tag, or sort.
+func (m *OutlinerModel) resetToGlobalAll() {
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.filterProjects = make(map[string]bool)
@@ -303,7 +300,7 @@ func (m *OutlinerModel) resetToGlobalToday() {
 	m.ClearSearch()
 	m.cursor = 0
 	m.resetViewScrollOffset()
-	m.selectOutlinerMode(ModeToday)
+	m.selectOutlinerMode(ModeAll)
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.clampCursor()

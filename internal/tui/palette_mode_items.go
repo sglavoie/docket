@@ -6,14 +6,16 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// outlinerModeCommands derives one registered command for every
-// OutlinerModeCatalog entry. The normal command registry is the single source
-// for both command-palette results and scenario command execution, so adding a
-// catalog mode cannot create a second palette-only command path.
+// outlinerModeCommands derives registered commands for non-Work catalog modes.
+// Work modes are intentionally Tab-only; the command registry remains the
+// source for command-palette results and scenario command execution.
 func outlinerModeCommands() []Command {
 	catalog := OutlinerModeCatalog()
 	commands := make([]Command, 0, len(catalog))
 	for _, mode := range catalog {
+		if mode.Category == ModeCategoryWork {
+			continue
+		}
 		commands = append(commands, outlinerModeCommand(mode))
 	}
 	return commands

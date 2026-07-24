@@ -9,7 +9,7 @@ import (
 
 // TestTutorPlanningNavigationMatchesKeybindings keeps the onboarding and
 // concept pipeline tutor topics in sync with the Outliner-as-sole-root model
-// and its Ctrl+Esc reset to Today.
+// and its Ctrl+Esc reset to global All.
 func TestTutorPlanningNavigationMatchesKeybindings(t *testing.T) {
 	desc := map[string]string{}
 	for _, item := range GetKeybindingRegistry().GetGlobalBindings() {
@@ -28,12 +28,12 @@ func TestTutorPlanningNavigationMatchesKeybindings(t *testing.T) {
 	}
 
 	// The Ctrl+G destination switcher is removed; Ctrl+Esc now resets the
-	// global Today Outliner.
+	// global All Outliner.
 	if got := desc["ctrl+g"]; got != "" {
 		t.Errorf("removed ctrl+g keybinding is still advertised as %q", got)
 	}
-	if got := desc["ctrl+esc"]; !strings.Contains(strings.ToLower(got), "today") {
-		t.Errorf("Ctrl+Esc keybinding = %q, want Today/reset", got)
+	if got := desc["ctrl+esc"]; !strings.Contains(strings.ToLower(got), "global all") {
+		t.Errorf("Ctrl+Esc keybinding = %q, want global All reset", got)
 	}
 
 	// The onboarding + concept pipeline topics teach navigation. They must not
@@ -60,9 +60,10 @@ func TestTutorPlanningNavigationMatchesKeybindings(t *testing.T) {
 	concept := topics["The Task Pipeline"]
 	for _, want := range []string{
 		"The Outliner is the sole root view",
-		"always opens in Today",
-		"Tab cycles the Outliner work modes Today, Next, Backlog, Active,",
-		"Ctrl+Esc resets to a clean global Today Outliner",
+		"opens in All on every run",
+		"Today section",
+		"work modes Next, Backlog, Active, and",
+		"Ctrl+Esc resets to a clean global All Outliner",
 	} {
 		if !strings.Contains(concept, want) {
 			t.Errorf("concept pipeline topic missing %q:\n%s", want, concept)
@@ -73,8 +74,8 @@ func TestTutorPlanningNavigationMatchesKeybindings(t *testing.T) {
 	pipeline := topics["The pipeline"]
 	for _, want := range []string{
 		"The Outliner is the sole root view",
-		"always opens in Today",
-		"Tab cycles Today, Next, Backlog, Active, and All",
+		"always opens in All",
+		"Tab cycles Next, Backlog, Active, and All",
 		"Ctrl+Esc to reset to a",
 	} {
 		if !strings.Contains(pipeline, want) {

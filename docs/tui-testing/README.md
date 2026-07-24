@@ -74,13 +74,14 @@ not to scenario runs.)
 
 ```json
 {
-  "name": "open-today",
+  "name": "open-all",
   "fixture": "rich",
   "size": "100x35",
   "actions": [
     { "type": "resize", "width": 100, "height": 35 },
-    { "type": "command", "label": "open Today focus", "command": "today" },
+    { "type": "command", "label": "reset to global All", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "@ All" },
     { "type": "assert", "assert": "contains", "value": "Today" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
@@ -177,7 +178,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 
 | File                            | Demonstrates                                              |
 | ------------------------------- | -------------------------------------------------------- |
-| `open-today.json`               | Open global Today via the `today` command and assert the Today focus. |
+| `open-all.json`                 | Reset to global All and assert its built-in Today section. |
 | `reference-review-shortcuts.json` | Open Reference and exercise Review destination modules. |
 | `fresh-install-alerts-quiet.json` | Open first-use notifications and assert review reminders stay quiet. |
 | `command-palette-search.json`   | Open the command palette (`:`) and type a search query.  |
@@ -209,7 +210,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 Run any of them:
 
 ```bash
-tt tui-test run --scenario docs/tui-testing/scenarios/open-today.json --json
+tt tui-test run --scenario docs/tui-testing/scenarios/open-all.json --json
 ```
 
 Replay every committed scenario with the same one-command gate used by CI:
@@ -224,7 +225,7 @@ just tui-scenarios
 | --- | --- |
 | Fresh install and post-migration startup | `fresh-install-default.json`, `fresh-install-capture.json`, `fresh-install-alerts-quiet.json` |
 | Outliner root and onboarding | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
-| Outliner Today and Next modes | `open-today.json` |
+| Outliner All root and Today section | `open-all.json` |
 | Outliner project scopes and focus/sort translation | `navigate-outliner.json`, `scope-picker-search-commit.json` |
 | Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
 | Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |

@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "72x20",
   "actions": [
-    { "type": "command", "label": "open global All focus", "command": "All" },
+    { "type": "command", "label": "open global All focus", "command": "outliner root" },
     { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "command", "label": "triage inbox", "command": "inbox processor" },

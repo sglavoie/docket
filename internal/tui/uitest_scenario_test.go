@@ -159,7 +159,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 		"fixture": "rich",
 		"size": "120x40",
 		"actions": [
-			{"type": "command", "command": "All"},
+			{"type": "command", "command": "outliner root"},
 			{"type": "assert", "assert": "view", "value": "CrossProjectOutliner"},
 			{"type": "assert", "assert": "contains", "value": "[rich-project]"},
 			{"type": "assert", "assert": "no_layout_issues"}
@@ -470,10 +470,10 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 		{"task template creator", nil, "create task template", "TaskTemplateCreator"},
 		{"project creator", nil, "new project", "ProjectCreator"},
 		// rename project now targets the project under the visible Outliner
-		// cursor (not the stale current project), so switch to all-tasks and land
-		// the cursor on a task row before opening the project editor.
+		// cursor (not the stale current project), so reset to All and land the
+		// cursor on a task row before opening the project editor.
 		{"project editor", []UITestAction{
-			{Type: UITestActionCommand, Command: "All"},
+			{Type: UITestActionCommand, Command: "outliner root"},
 			// Step past the shared section header and the navigable project
 			// header to land on the first task row.
 			{Type: UITestActionKey, Key: "down"},
@@ -481,10 +481,10 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 		}, "rename project", "ProjectEditor"},
 		{"workflow rule creator", nil, "new workflow rule", "WorkflowRuleCreator"},
 		// The inbox processor needs a project under the cursor in the global
-		// Outliner (Today mode has no rows), so switch to the all-tasks mode
+		// Outliner (the current mode has no matching rows), so switch to All
 		// first and land the cursor on a task row.
 		{"inbox processor", []UITestAction{
-			{Type: UITestActionCommand, Command: "All"},
+			{Type: UITestActionCommand, Command: "outliner root"},
 			// Step past the shared section header and the navigable project
 			// header to land on the first task row.
 			{Type: UITestActionKey, Key: "down"},
@@ -527,7 +527,7 @@ func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"All", "All", "CrossProjectOutliner"},
+		{"outliner root", "outliner root", "CrossProjectOutliner"},
 		{"outliner", "outliner", "CrossProjectOutliner"},
 	}
 
@@ -618,7 +618,7 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 				// a task row via all-tasks before opening the editor. The rows lead
 				// with a shared section header then a navigable project header, so
 				// step past both to reach the first task.
-				{Type: UITestActionCommand, Command: "All"},
+				{Type: UITestActionCommand, Command: "outliner root"},
 				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionCommand, Command: "rename project"},
@@ -728,7 +728,7 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 			view: "NotesSearch",
 			actions: []UITestAction{
 				// Scope into the fixture project via the Ctrl+X picker so "show
-				// notes" resolves the active project scope. The global Today root is
+				// notes" resolves the active project scope. The global All root is
 				// empty, so without a scope the notes command correctly refuses to
 				// open a stale off-screen project (FR17-003).
 				{Type: UITestActionCommand, Command: "switch project"},
@@ -813,7 +813,7 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 					Fixture: "narrow",
 					Size:    size,
 					Actions: []UITestAction{
-						{Type: UITestActionCommand, Command: "All"},
+						{Type: UITestActionCommand, Command: "outliner root"},
 						// All-tasks rows lead with a shared section header then a
 						// navigable project header; step past both to land the
 						// cursor on the first task before opening its subview.

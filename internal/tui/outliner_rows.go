@@ -104,11 +104,11 @@ func (m *OutlinerModel) rebuildRows() {
 
 	m.validateZoomStack()
 
-	// Computed work horizons (Today, Backlog) are flat, fixed-order lists built
-	// from the daily plan / cross-project ranker rather than the perspective
+	// The computed Backlog horizon is a flat, fixed-order list built from the
+	// cross-project ranker rather than the perspective
 	// tree. An explicit navigation target (openAt) falls through to the tree
 	// path so the target can be revealed.
-	if (m.workTodayMode || m.workBacklogMode) && openAt == nil {
+	if m.workBacklogMode && openAt == nil {
 		m.buildWorkModeRows()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -464,7 +464,6 @@ func (m *OutlinerModel) searchSectionCache() []string {
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
 	headerLines := 1
-	headerLines += m.workModeChromeHeaderLines()
 	if m.pinnedTagTabs() != nil {
 		headerLines += 2
 	}

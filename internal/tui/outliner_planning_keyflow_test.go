@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -192,7 +191,7 @@ func TestPlanningOnlyTodayRowsRefreshThroughGlobalKeys(t *testing.T) {
 		assertPlanningTaskRow(t, cross, task.ID, false)
 	})
 
-	t.Run("scoped Today removal drops selected row and clamps cursor", func(t *testing.T) {
+	t.Run("scoped Today removal moves the task back to its workflow section", func(t *testing.T) {
 		m, _, first, dataDir := newPlanningLedgerApp(t, models.StateReady)
 		project := m.currentProject
 		second := seedTask(t, 2, "Second planned task", models.StateReady)
@@ -203,7 +202,7 @@ func TestPlanningOnlyTodayRowsRefreshThroughGlobalKeys(t *testing.T) {
 		installCrossOutlinerRoot(t, m, first)
 		cross := m.crossOutliner
 		cross.pushProjectScope(project.ID)
-		cross.selectOutlinerMode(ModeToday)
+		cross.selectOutlinerMode(ModeAll)
 		if !cross.moveCursorToProjectTask(second.ID, project.ID) {
 			t.Fatalf("second task missing from scoped Today rows: %v", planningTaskRowIDs(cross))
 		}
@@ -211,13 +210,16 @@ func TestPlanningOnlyTodayRowsRefreshThroughGlobalKeys(t *testing.T) {
 
 		sendAppKey(m, syntheticKey('w'))
 		rendered := ansi.Strip(cross.View().Content)
-		if strings.Contains(rendered, second.Title) {
-			t.Fatalf("removed Today task still rendered in scoped view: %q", rendered)
+		if !strings.Contains(rendered, second.Title) {
+			t.Fatalf("task removed from Today did not return to its workflow section: %q", rendered)
 		}
 		assertPlanningTaskRow(t, cross, first.ID, true)
-		assertPlanningTaskRow(t, cross, second.ID, false)
-		if cross.cursor != 0 {
-			t.Fatalf("cursor after removing last scoped Today row = %d, want 0", cross.cursor)
+		assertPlanningTaskRow(t, cross, second.ID, true)
+		if countTaskRows(cross, second.ID) != 1 {
+			t.Fatalf("task removed from Today rendered more than once: %v", planningTaskRowIDs(cross))
+		}
+		if row, ok := findPlanningTaskRow(cross, second.ID); !ok || row.IsTodaySection {
+			t.Fatalf("task removed from Today did not move to a workflow section: %+v", row)
 		}
 		if cross.scopedProjectID != project.ID {
 			t.Fatalf("scope after Today removal = %q, want %q", cross.scopedProjectID, project.ID)
@@ -267,8 +269,8 @@ func TestPlanningOnlyTodayRowsRefreshThroughGlobalKeys(t *testing.T) {
 		if got := strings.TrimSpace(ansi.Strip(cross.renderTaskQueueIndicator(task, project))); got != "" {
 			t.Fatalf("failed planning commit rendered Today indicator %q", got)
 		}
-		if got := cross.workModeItemCount(ModeToday); got != 0 {
-			t.Fatalf("failed planning commit rendered Today count %d, want 0", got)
+		if got, visible := todaySectionCount(cross); visible || got != 0 {
+			t.Fatalf("failed planning commit rendered Today section count %d (visible=%v), want hidden", got, visible)
 		}
 		if m.statusMessage != "unchanged" {
 			t.Fatalf("failed planning commit changed success status to %q", m.statusMessage)
@@ -308,12 +310,16 @@ func assertPlanningOnlyTodayVisualState(
 	t.Helper()
 	cross := m.crossOutliner
 	rendered := ansi.Strip(cross.View().Content)
-	label := fmt.Sprintf("Today %d", wantCount)
-	if !strings.Contains(rendered, label) {
-		t.Fatalf("rendered work strip missing %q: %q", label, rendered)
-	}
-	if got := cross.workModeItemCount(ModeToday); got != wantCount {
-		t.Fatalf("Today item count = %d, want %d", got, wantCount)
+	if cross.activeOutlinerMode() == ModeAll {
+		got, visible := todaySectionCount(cross)
+		if wantCount == 0 && visible {
+			t.Fatalf("empty Today section remained visible: %q", rendered)
+		}
+		if wantCount > 0 && (!visible || got != wantCount) {
+			t.Fatalf("Today section count = %d (visible=%v), want %d: %q", got, visible, wantCount, rendered)
+		}
+	} else if _, visible := todaySectionCount(cross); visible {
+		t.Fatalf("Today section rendered outside All: %q", rendered)
 	}
 	identity := taskIdentityFor(task, project)
 	if got := m.dailyPlanIDs[identity]; got != wantIndicator {
@@ -326,6 +332,34 @@ func assertPlanningOnlyTodayVisualState(
 	if !wantIndicator && indicator != "" {
 		t.Fatalf("rendered Today indicator = %q, want empty", indicator)
 	}
+}
+
+func todaySectionCount(cross *OutlinerModel) (int, bool) {
+	for _, row := range cross.rows {
+		if row.IsSectionHeader && row.IsTodaySection {
+			return row.SectionCount, true
+		}
+	}
+	return 0, false
+}
+
+func findPlanningTaskRow(cross *OutlinerModel, taskID string) (outlinerRow, bool) {
+	for _, row := range cross.rows {
+		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
+			return row, true
+		}
+	}
+	return outlinerRow{}, false
+}
+
+func countTaskRows(cross *OutlinerModel, taskID string) int {
+	count := 0
+	for _, row := range cross.rows {
+		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
+			count++
+		}
+	}
+	return count
 }
 
 func assertPlanningTaskRow(t *testing.T, cross *OutlinerModel, taskID string, want bool) {

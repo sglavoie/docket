@@ -19,15 +19,15 @@ func TestResolveStartupNavigationAlwaysGlobalToday(t *testing.T) {
 		t.Fatalf("startup should not synthesize a route; NewAppModel installs the root")
 	}
 	msg, msgOK := plan.Message.(ShowGlobalOutlinerMsg)
-	if !msgOK || !msg.Options.SetMode || msg.Options.Mode != ModeToday {
-		t.Fatalf("startup message = %#v, want global Today Outliner", plan.Message)
+	if !msgOK || !msg.Options.SetMode || msg.Options.Mode != ModeAll {
+		t.Fatalf("startup message = %#v, want global All Outliner", plan.Message)
 	}
 }
 
-func TestNewAppModelStartupOpensGlobalToday(t *testing.T) {
+func TestNewAppModelStartupOpensGlobalAll(t *testing.T) {
 	project := &models.Project{ID: "project-1", Slug: "project-1", Name: "Project 1", Path: t.TempDir()}
 
-	t.Run("valid saved project still opens global Today", func(t *testing.T) {
+	t.Run("valid saved project still opens global All", func(t *testing.T) {
 		runtime := newTestConfig()
 		setTestProjects(runtime, []*models.Project{project})
 		runtime.Machine().CurrentProject = project.ID
@@ -44,8 +44,8 @@ func TestNewAppModelStartupOpensGlobalToday(t *testing.T) {
 			t.Fatalf("startup root = %s, want TaskWorkspace", app.navigation.Primary.Current().ID())
 		}
 		msg, ok := app.startupMessage.(ShowGlobalOutlinerMsg)
-		if !ok || !msg.Options.SetMode || msg.Options.Mode != ModeToday {
-			t.Fatalf("startup message = %#v, want global Today Outliner", app.startupMessage)
+		if !ok || !msg.Options.SetMode || msg.Options.Mode != ModeAll {
+			t.Fatalf("startup message = %#v, want global All Outliner", app.startupMessage)
 		}
 		_, _ = app.Update(app.startupMessage)
 		params := app.navigation.Primary.Current().Params().(TaskWorkspaceParams)

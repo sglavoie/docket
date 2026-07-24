@@ -29,24 +29,23 @@ the command palette to process every project.
 1. Capture a task with Ctrl+N.
 2. Triage it from the Inbox tool.
 3. Add it to Today with w.
-4. The Outliner opens in Today — work from there.`,
+4. The Outliner opens in All — work from its Today section.`,
 		},
 		{
 			Title:    "The pipeline",
 			Category: "Getting Started",
 			Content: `# The Outliner Is the Sole Root
 
-The Outliner is the sole root view. It always opens in Today, so
-every run starts on the same clean surface. There is no separate
-Home, Planner, or project destination — modes and scopes live
-inside the Outliner.
+The Outliner is the sole root view. It always opens in All, with
+the Daily Plan shown in a built-in Today section at the top.
+There is no separate Home, Planner, or project destination —
+modes and scopes live inside the Outliner.
 
 # Work Modes
 
-Tab cycles Today, Next, Backlog, Active, and All; Shift+Tab
-reverses. h and l rotate workflow perspectives, and P opens a
-categorized, searchable mode picker. Daily Review and Activity
-are Outliner modes too.
+Tab cycles Next, Backlog, Active, and All; Shift+Tab reverses.
+h and l rotate workflow perspectives, and P opens a categorized,
+searchable picker for workflow, smart, lens, and review modes.
 
 # Scope and Tools
 
@@ -57,7 +56,7 @@ Settings open as direct secondary tools.
 
 Use : to search commands by name and ? for help. Press Esc to
 close the current overlay or child, and Ctrl+Esc to reset to a
-clean global Today Outliner.`,
+clean global All Outliner.`,
 		},
 		{
 			Title:    "Daily rhythm",
@@ -67,20 +66,20 @@ clean global Today Outliner.`,
 Morning: press Tab to review Next and Backlog, then add a short
 list to Today with w.
 
-During the day: stay in the Today work mode, or narrow scope to
-a single project with Ctrl+X. Use Outliner perspectives, smart
-focuses, filters, and sorting to narrow the hierarchy without
-leaving the Outliner.
+During the day: work from All's Today section, or narrow scope
+to a single project with Ctrl+X. Use Outliner perspectives,
+smart focuses, filters, and sorting to narrow the hierarchy
+without leaving the Outliner.
 
 Evening: capture loose ends with Ctrl+N, use the Daily Review
 mode, and open Weekly Review as a secondary tool when needed.
 
 # When You Feel Lost
 
-Ctrl+Esc always resets to a clean global Today Outliner. The
+Ctrl+Esc always resets to a clean global All Outliner. The
 Outliner surfaces inbox, overdue, blocked, parked, and workflow
 issues. The top-right open-loops counter remains a passive
-summary of inbox, today, and overdue work.`,
+summary of inbox and overdue work.`,
 		},
 	}
 }

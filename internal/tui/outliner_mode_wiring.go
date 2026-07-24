@@ -6,9 +6,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// buildOutlinerModeInput assembles the cross-project input the Today/Backlog
-// row strategies consume, resolving the durable daily-plan and focus-queue
-// records against the given scope projects.
+// buildOutlinerModeInput assembles the cross-project input the Today section
+// and Backlog row strategy consume, resolving the durable daily-plan and
+// focus-queue records against the given scope projects.
 func (m *OutlinerModel) buildOutlinerModeInput(projects []*models.Project) OutlinerModeInput {
 	return OutlinerModeInput{
 		Projects:        projects,
@@ -60,38 +60,18 @@ func (m *OutlinerModel) resolveDailyPlanOrder(projects []*models.Project) []Focu
 }
 
 // buildWorkModeRows populates m.rows for the active computed work horizon
-// (Today, Next, or Backlog). Rows are flat, fixed-order lists produced by the
+// (Next or Backlog). Rows are flat, fixed-order lists produced by the
 // shared mode-row strategies, then narrowed by the same visible filters the tree
 // modes apply.
-//
-// Today is a tree horizon, so the composite predicate is pushed into the row
-// builder (via TaskFilter): every planned root and expanded descendant is tested
-// independently, a matching descendant stays discoverable with its ancestor
-// context, and non-matching sibling/descendant subtrees are pruned. Next and
-// Backlog are flat lists of independent roots, so the predicate applies per row.
 func (m *OutlinerModel) buildWorkModeRows() {
 	projects := m.workModeScopeProjects()
 	input := m.buildOutlinerModeInput(projects)
 
-	switch {
-	case m.workTodayMode:
-		input.TaskFilter = m.workModeTaskFilter()
-		modeRows := BuildTodayModeRows(input)
-		for i, mr := range modeRows {
-			if mr.Task == nil {
-				continue
-			}
-			row := m.outlinerRowFromModeRow(mr)
-			// A planned root's expand caret must reflect the pruned tree: it has
-			// visible children only when a surviving descendant follows it.
-			row.hasVisibleChildren = mr.Depth == 0 && i+1 < len(modeRows) && modeRows[i+1].Depth > 0
-			m.rows = append(m.rows, row)
-		}
-	case m.workNextMode:
+	if m.workNextMode {
 		m.appendFilteredFlatModeRows(BuildNextModeRows(input))
-	default:
-		m.appendFilteredFlatModeRows(BuildBacklogModeRows(input))
+		return
 	}
+	m.appendFilteredFlatModeRows(BuildBacklogModeRows(input))
 }
 
 // appendFilteredFlatModeRows appends the flat Next/Backlog mode rows, keeping
@@ -137,73 +117,4 @@ func (m *OutlinerModel) outlinerRowFromModeRow(mr OutlinerModeRow) outlinerRow {
 		row.ProjectID = mr.Project.ID
 	}
 	return row
-}
-
-// workModeItemCount returns the number of eligible items a Work-cycle tab would
-// show under the current scope, filters, and search. Each task is counted once
-// (Today descendants are not double-counted), matching the pinned tab-bar
-// contract.
-func (m *OutlinerModel) workModeItemCount(id OutlinerModeID) int {
-	projects := m.workModeScopeProjects()
-	now := time.Now()
-
-	switch id {
-	case ModeToday:
-		planIDs := m.resolveDailyPlanIDs(projects)
-		count := 0
-		for _, p := range projects {
-			if p == nil {
-				continue
-			}
-			predicate := m.workModeFilterPredicate(p)
-			for _, t := range p.Tasks {
-				if planIDs[taskIdentityFor(t, p)] && predicate(t) {
-					count++
-				}
-			}
-		}
-		return count
-	case ModeBacklog:
-		input := m.buildOutlinerModeInput(projects)
-		count := 0
-		for _, mr := range BuildBacklogModeRows(input) {
-			if mr.Task != nil && m.workModeFilterPredicate(mr.Project)(mr.Task) {
-				count++
-			}
-		}
-		return count
-	case ModeNext:
-		return m.countMatchingTasks(projects, func(t *models.Task, p *models.Project) bool {
-			return !t.IsTerminalState() && !t.IsSnoozedAt(now) && t.IsInState(models.StateNext)
-		})
-	case ModeActive:
-		return m.countMatchingTasks(projects, func(t *models.Task, p *models.Project) bool {
-			return t.InSection("") && !t.IsSnoozed()
-		})
-	case ModeAll:
-		return m.countMatchingTasks(projects, func(t *models.Task, p *models.Project) bool {
-			return !t.IsTerminalState() && !t.IsSnoozed()
-		})
-	default:
-		return 0
-	}
-}
-
-// countMatchingTasks counts every task in scope that satisfies membership and
-// passes the active visible filters. Project.Tasks is the flat list of all
-// tasks, so each task is visited exactly once with no descendant recursion.
-func (m *OutlinerModel) countMatchingTasks(projects []*models.Project, member func(*models.Task, *models.Project) bool) int {
-	count := 0
-	for _, p := range projects {
-		if p == nil {
-			continue
-		}
-		predicate := m.workModeFilterPredicate(p)
-		for _, t := range p.Tasks {
-			if member(t, p) && predicate(t) {
-				count++
-			}
-		}
-	}
-	return count
 }

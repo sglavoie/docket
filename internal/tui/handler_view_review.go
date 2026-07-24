@@ -36,7 +36,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			logging.Warn("failed to save daily review completion: %v", err)
 		}
 		m.reevaluateAlerts()
-		m.setSuccessStatus("Review complete! Next: open the Today mode")
+		m.setSuccessStatus("Review complete! Next: open All and review Today")
 		return true, nil
 
 	case MarkWeeklyReviewDoneMsg:

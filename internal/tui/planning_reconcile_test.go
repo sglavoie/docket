@@ -77,7 +77,7 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 }
 
 // seedDailyPlan commits a Daily Plan entry for the env's task through a checked
-// planning commit, establishing the Today horizon as a precondition.
+// planning commit, establishing Today membership as a precondition.
 func (e *planningReconcileEnv) seedDailyPlan(t *testing.T) {
 	t.Helper()
 	planning := clonePlanningState(e.runtime.Planning())

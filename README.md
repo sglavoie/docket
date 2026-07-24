@@ -37,10 +37,10 @@ tt
 ## Learn In-App
 
 The product surface is intentionally documented in the app instead of in a long README.
-`tt` opens on the Outliner in global Today by default; press `Ctrl+Esc` to return to that root from anywhere.
+`tt` opens on the Outliner in global All by default; press `Ctrl+Esc` to return to that root from anywhere.
 
 - Press `?` in most TUI views for contextual help.
-- Press `Tab`/`Shift+Tab` to cycle Today → Next → Backlog → Active → All, `P` to pick any mode, and `Ctrl+X` to change project scope.
+- Press `Tab`/`Shift+Tab` to cycle Next → Backlog → Active → All, `P` to pick a workflow, smart, lens, or review mode, and `Ctrl+X` to change project scope.
 - Open the command palette with `:` and run `:reference` for the full reference encyclopedia.
 - Use the `Ask AI` command from the TUI when you want precise answers while working.
 - Use `tt --help` and `tt <command> --help` for authoritative CLI usage.
@@ -97,8 +97,8 @@ confirmation instead of applying stale advice.
   state. The Active section represents work currently being worked on.
 - Next membership is exactly the workflow state `StateNext`. Focus Queue is an
   ordering-only index for the next tasks in the pipeline; it does not confer Next membership.
-- Today is a separate, config-backed Daily Plan. Today and Next membership are
-  mutually exclusive.
+- Today is a separate, config-backed Daily Plan shown as the first section in
+  the Outliner's All mode. Today and Next membership are mutually exclusive.
 - Tags are flexible labels for grouping work across sections.
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
 - Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the Outliner's Parked mode.
@@ -112,7 +112,7 @@ confirmation instead of applying stale advice.
 ## Common Commands
 
 ```bash
-tt                              # Open the TUI (Outliner, global Today)
+tt                              # Open the TUI (Outliner, global All)
 tt dash                         # Show a project dashboard in the CLI
 tt project list                 # List projects
 tt project show                 # Show current project details

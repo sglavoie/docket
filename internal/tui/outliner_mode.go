@@ -4,7 +4,7 @@ package tui
 // vocabulary that wraps the existing perspectives, smart focuses, and
 // priority/due-date lenses without changing their persisted meanings. It adds no
 // navigation or rendering cutover; it only defines the mode metadata and the
-// purpose-built ordering policies that the Today/Next/Backlog row strategies in
+// purpose-built ordering policies that the Next/Backlog row strategies in
 // outliner_mode_rows.go realize.
 
 // OutlinerModeID is the stable identifier for a catalog mode. IDs are strings so
@@ -15,7 +15,6 @@ type OutlinerModeID string
 // Stable mode IDs. These strings are the durable identity of each mode; changing
 // one is a breaking change to the picker and any future persisted selection.
 const (
-	ModeToday    OutlinerModeID = "today"
 	ModeNext     OutlinerModeID = "next"
 	ModeBacklog  OutlinerModeID = "backlog"
 	ModeActive   OutlinerModeID = "active"
@@ -60,7 +59,6 @@ type OutlinerOrderPolicy uint8
 
 const (
 	OrderPolicyTree       OutlinerOrderPolicy = iota // hierarchical; manual sort allowed
-	OrderPolicyDailyPlan                             // Today: daily-plan root order
 	OrderPolicyFocusQueue                            // Next: focus-queue order
 	OrderPolicyRanked                                // Backlog: cross-project ranker order
 	OrderPolicyLens                                  // Priority/Due Date: computed flat order
@@ -68,14 +66,13 @@ const (
 )
 
 // OutlinerRowStrategy names the row builder a mode uses. Perspective and
-// SmartFocus reuse the shared tree renderer with a predicate; Today/Next/Backlog
+// SmartFocus reuse the shared tree renderer with a predicate; Next/Backlog
 // are the purpose-built strategies in outliner_mode_rows.go.
 type OutlinerRowStrategy uint8
 
 const (
 	RowStrategyPerspective OutlinerRowStrategy = iota
 	RowStrategySmartFocus
-	RowStrategyToday
 	RowStrategyNext
 	RowStrategyBacklog
 	RowStrategyLens
@@ -97,7 +94,7 @@ type OutlinerMode struct {
 	RowStrategy OutlinerRowStrategy
 
 	// Perspective is the stable perspective ID this mode wraps, or noPerspective
-	// when the mode is a computed horizon (Today, Backlog) or a non-perspective
+	// when the mode is a computed horizon (Backlog) or a non-perspective
 	// surface (smart focuses, lenses, review).
 	Perspective int
 	// SmartFocus is set for smart modes so the existing matchesSmartFocus
@@ -135,7 +132,6 @@ func lensPtr(l OutlinerLens) *OutlinerLens         { return &l }
 // order within each category for the picker.
 var outlinerModes = []OutlinerMode{
 	// Work.
-	{ID: ModeToday, Label: "Today", Aliases: []string{"today", "t"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyDailyPlan, RowStrategy: RowStrategyToday, Perspective: noPerspective},
 	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyFocusQueue, RowStrategy: RowStrategyNext, Perspective: PerspectiveNext},
 	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyRanked, RowStrategy: RowStrategyBacklog, Perspective: noPerspective},
 	{ID: ModeActive, Label: "Active", Aliases: []string{"active"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveActive},

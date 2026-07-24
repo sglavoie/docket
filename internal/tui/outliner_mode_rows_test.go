@@ -107,10 +107,10 @@ func TestOutlinerModeNextOrdersByQueueRank(t *testing.T) {
 	}
 }
 
-// TestOutlinerModeTodayOpenBeforeCompleted ports the Planner Today ordering
+// TestTodaySectionRowsOpenBeforeCompleted ports the Planner Today ordering
 // regression: a planned parent whose children are stored as
 // [done, open, canceled, open] renders as [open, open, done, canceled].
-func TestOutlinerModeTodayOpenBeforeCompleted(t *testing.T) {
+func TestTodaySectionRowsOpenBeforeCompleted(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	parent := makeBoardTask(t, "id-parent", 1, "Parent")
@@ -131,9 +131,9 @@ func TestOutlinerModeTodayOpenBeforeCompleted(t *testing.T) {
 	assertModeRowOrder(t, rows, wantIDs)
 }
 
-// TestOutlinerModeTodayRecursiveOrdering ports the recursive partition: open
+// TestTodaySectionRowsRecursiveOrdering ports the recursive partition: open
 // children come before completed ones at every hierarchy depth.
-func TestOutlinerModeTodayRecursiveOrdering(t *testing.T) {
+func TestTodaySectionRowsRecursiveOrdering(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	parent := makeBoardTask(t, "id-parent", 1, "Parent")
@@ -155,10 +155,10 @@ func TestOutlinerModeTodayRecursiveOrdering(t *testing.T) {
 	assertModeRowOrder(t, rows, wantIDs)
 }
 
-// TestOutlinerModeTodayTreeConnectors ports the connector invariant: after the
+// TestTodaySectionRowsTreeConnectors ports the connector invariant: after the
 // open-before-completed partition, the last visible sibling carries the └───
 // connector even if it was not stored last.
-func TestOutlinerModeTodayTreeConnectors(t *testing.T) {
+func TestTodaySectionRowsTreeConnectors(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	parent := makeBoardTask(t, "id-parent", 1, "Parent")
@@ -185,6 +185,26 @@ func TestOutlinerModeTodayTreeConnectors(t *testing.T) {
 			t.Errorf("row[%d] prefix %q should contain ├───", i, rows[i].TreePrefix)
 		}
 	}
+}
+
+func TestTodaySectionRowsHardExcludePrunesDescendantsWithoutTaskFilter(t *testing.T) {
+	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
+	parent := makeBoardTask(t, "id-parent", 1, "Parent")
+	visible := makeBoardTask(t, "id-visible", 2, "Visible")
+	hidden := makeBoardTask(t, "id-hidden", 3, "Hidden")
+	parent.Children = []*models.Task{hidden, visible}
+	project.Tasks = []*models.Task{parent}
+
+	rows := BuildTodayModeRows(OutlinerModeInput{
+		Projects:        []*models.Project{project},
+		DailyPlanIDs:    map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
+		ChildDepthLimit: -1,
+		TaskExclude: func(task *models.Task, _ *models.Project) bool {
+			return task.ID == hidden.ID
+		},
+	})
+
+	assertModeRowOrder(t, rows, []string{parent.ID, visible.ID})
 }
 
 func assertModeRowOrder(t *testing.T, rows []OutlinerModeRow, wantIDs []string) {

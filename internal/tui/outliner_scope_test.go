@@ -264,15 +264,14 @@ func seedAllOutlinerNarrowing(m *OutlinerModel, projectID, taskID string) {
 	// Multi-select with one member.
 	m.multiSelectMode = true
 	m.selectedTaskIdentities = map[TaskIdentity]bool{{ProjectID: projectID, TaskID: taskID}: true}
-	// A non-Today horizon and a parked cursor.
-	m.workTodayMode = false
+	// A non-All horizon and a parked cursor.
 	m.workBacklogMode = true
 	m.cursor = 4
 }
 
-// assertGlobalTodayClean asserts every narrowing/ordering axis is back to its
-// clean unscoped-global-Today default and the cursor is parked at the top.
-func assertGlobalTodayClean(t *testing.T, m *OutlinerModel) {
+// assertGlobalAllClean asserts every narrowing/ordering axis is back to its
+// clean unscoped-global-All default and the cursor is parked at the top.
+func assertGlobalAllClean(t *testing.T, m *OutlinerModel) {
 	t.Helper()
 	if m.scopedProjectID != "" || len(m.scopeStack) != 0 {
 		t.Fatalf("project scope not cleared: id=%q stack=%d", m.scopedProjectID, len(m.scopeStack))
@@ -313,20 +312,20 @@ func assertGlobalTodayClean(t *testing.T, m *OutlinerModel) {
 	if m.multiSelectMode || m.SelectedCount() != 0 {
 		t.Fatalf("selection not cleared: mode=%v count=%d", m.multiSelectMode, m.SelectedCount())
 	}
-	if !m.workTodayMode {
-		t.Fatalf("reset did not land in global Today mode (active=%v)", m.activeOutlinerMode())
+	if got := m.activeOutlinerMode(); got != ModeAll {
+		t.Fatalf("reset did not land in global All mode (active=%v)", got)
 	}
 	if m.cursor != 0 {
 		t.Fatalf("cursor not parked at top: %d", m.cursor)
 	}
 }
 
-// TestResetToGlobalTodayClearsAllNarrowing locks FR-003: the advertised Ctrl+Esc
+// TestResetToGlobalAllClearsAllNarrowing locks FR-003: the advertised Ctrl+Esc
 // clean reset must drop EVERY narrowing and ordering axis — not just scope,
 // search, saved criteria, zoom, and selection, but also the common/section/
 // actionable filters, pinned-tag tab, and manual sort that the earlier reset left
-// live — and always land at cursor zero in unscoped global Today.
-func TestResetToGlobalTodayClearsAllNarrowing(t *testing.T) {
+// live — and always land at cursor zero in unscoped global All.
+func TestResetToGlobalAllClearsAllNarrowing(t *testing.T) {
 	t.Run("AppModel Ctrl+Esc path clears every seeded narrowing axis", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-reset", "reset", "Alpha", "Bravo")
 		app, cross, _ := newPlanningOrderApp(t, project)
@@ -335,23 +334,23 @@ func TestResetToGlobalTodayClearsAllNarrowing(t *testing.T) {
 		// Drive the real global reset through the shell, exactly as production does.
 		app.Update(ctrlEscKeyPress())
 
-		assertGlobalTodayClean(t, app.crossOutliner)
+		assertGlobalAllClean(t, app.crossOutliner)
 	})
 
-	t.Run("direct reset lands rows at cursor zero in global Today", func(t *testing.T) {
+	t.Run("direct reset lands rows at cursor zero in global All", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-reset2", "reset2", "Alpha", "Bravo")
 		app, cross, _ := newPlanningOrderApp(t, project)
 		// Put both tasks in Today so the reset has real rows to render.
 		seedDailyPlanOrder(t, app, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
 		seedAllOutlinerNarrowing(cross, project.ID, tasks[0].ID)
 
-		cross.resetToGlobalToday()
+		cross.resetToGlobalAll()
 
-		assertGlobalTodayClean(t, cross)
-		// loadedProjects is intact on the direct path, so Today renders the daily
-		// plan unscoped across the workspace with the cursor at the top.
+		assertGlobalAllClean(t, cross)
+		// loadedProjects is intact on the direct path, so All renders the daily
+		// plan in its Today section with the cursor at the top.
 		if len(cross.rows) == 0 {
-			t.Fatal("expected global Today to render rows after reset")
+			t.Fatal("expected global All to render rows after reset")
 		}
 	})
 }
@@ -403,7 +402,7 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.activePerspective = PerspectiveAll
 		m.smartFocus = nil
 		m.lens = OutlinerLensTree
-		m.workTodayMode, m.workNextMode, m.workBacklogMode = false, false, false
+		m.workNextMode, m.workBacklogMode = false, false
 		m.crossPriorityMode = false
 		m.reviewMode = reviewNone
 		m.filter = NewFilterState()
@@ -425,7 +424,7 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.activePerspective = PerspectiveNext
 		m.smartFocus = ptrFocus(OutlinerHighPriority)
 		m.lens = OutlinerLensDueDate
-		m.workTodayMode, m.workNextMode, m.workBacklogMode = false, false, true
+		m.workNextMode, m.workBacklogMode = false, true
 		m.crossPriorityMode = true
 		m.reviewMode = reviewDaily
 		m.filter = NewFilterState()
@@ -452,7 +451,7 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.activePerspective = PerspectiveActive
 		m.smartFocus = ptrFocus(OutlinerBlocked)
 		m.lens = OutlinerLensTree
-		m.workTodayMode, m.workNextMode, m.workBacklogMode = false, true, false
+		m.workNextMode, m.workBacklogMode = true, false
 		m.crossPriorityMode = false
 		m.reviewMode = reviewActivity
 		m.filter = NewFilterState()

@@ -57,7 +57,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 // child route and canceling overlays — pushes the project's scope frame, applies
 // the requested open options, and reveals openAt when provided. The root route
 // stays app-scoped; project identity lives only in the Outliner's scope stack, so
-// Esc restores the previous scope and Ctrl+Esc restores clean global Today.
+// Esc restores the previous scope and Ctrl+Esc restores clean global All.
 func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *models.Task, options OutlinerOpenOptions) tea.Cmd {
 	if project == nil {
 		return nil
@@ -90,8 +90,8 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 		cross.ApplyOpenOptions(options)
 	} else {
 		// Explicit project navigation presents the project's full task tree in
-		// All rather than inheriting the global Today horizon, which is empty for
-		// an unplanned project.
+		// All rather than inheriting another mode, so project navigation exposes
+		// the project's full workflow plus its scoped Today section.
 		cross.selectOutlinerMode(ModeAll)
 	}
 	if openAt != nil {

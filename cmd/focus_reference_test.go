@@ -16,12 +16,12 @@ func TestCLIReferenceFocusUsesOutlinerTerms(t *testing.T) {
 	todayHelp := focusTodayCmd.Short + "\n" + focusTodayCmd.Long
 
 	// Corrected help must teach the state-driven Next model and shipped keys.
-	for _, term := range []string{"Outliner", "Next", "StateNext", "ordering-only", "mode picker", "'P'", "'q'", "'w'"} {
+	for _, term := range []string{"Outliner", "Next", "StateNext", "ordering-only", "Tab", "'q'", "'w'"} {
 		if !strings.Contains(queueHelp, term) {
 			t.Errorf("focus queue help missing required Outliner term %q:\n%s", term, queueHelp)
 		}
 	}
-	for _, term := range []string{"Outliner's Today mode", "mode picker", "'P'"} {
+	for _, term := range []string{"built-in Today section", "All mode", "'w'"} {
 		if !strings.Contains(todayHelp, term) {
 			t.Errorf("focus today help missing required Outliner term %q:\n%s", term, todayHelp)
 		}
@@ -40,7 +40,7 @@ func TestCLIReferenceFocusUsesOutlinerTerms(t *testing.T) {
 		t.Fatalf("read cli-reference.md: %v", err)
 	}
 	ref := string(data)
-	for _, term := range []string{"Outliner's Next", "Outliner's Today mode", "ordering-only"} {
+	for _, term := range []string{"Outliner's Next", "built-in Today section", "ordering-only"} {
 		if !strings.Contains(ref, term) {
 			t.Errorf("cli-reference.md missing corrected focus term %q; run `just docs`", term)
 		}

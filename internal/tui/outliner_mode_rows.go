@@ -28,6 +28,9 @@ type OutlinerModeRow struct {
 type OutlinerModeInput struct {
 	Projects     []*models.Project
 	DailyPlanIDs map[TaskIdentity]bool
+	// CandidateTasks optionally narrows the tasks eligible to become Today
+	// roots per project. A missing project entry falls back to Project.Tasks.
+	CandidateTasks map[string][]*models.Task
 	// DailyPlanOrder is the durable Today ordering (daily-plan positions).
 	DailyPlanOrder []FocusTask
 	// FocusQueue is the durable Next order index (StateNext ordering only).
@@ -38,12 +41,16 @@ type OutlinerModeInput struct {
 	// -1 means unlimited depth.
 	ChildDepthLimit int
 	FoldOverrides   map[TaskIdentity]bool
-	// TaskFilter, when non-nil, narrows the Today horizon: a planned root or an
+	// TaskFilter, when non-nil, narrows the Today section: a planned root or an
 	// expanded descendant is kept only if it matches OR one of its rendered
 	// descendants matches. Non-matching subtrees are pruned; the ancestor chain
 	// of a matching descendant is retained as context so the tree stays
 	// coherent, and tree connectors are recomputed from the surviving siblings.
 	TaskFilter func(task *models.Task, project *models.Project) bool
+	// TaskExclude is a hard subtree exclusion applied before TaskFilter's
+	// ancestor-retention behavior. Today uses it to hide snoozed plan roots and
+	// everything inherited solely through those roots.
+	TaskExclude func(task *models.Task, project *models.Project) bool
 	// Now is the reference time for the snooze check; the zero value uses
 	// time.Now().
 	Now time.Time
@@ -56,7 +63,7 @@ func (in OutlinerModeInput) now() time.Time {
 	return in.Now
 }
 
-// BuildTodayModeRows realizes the Today horizon: every daily-plan task (including
+// BuildTodayModeRows realizes the Today section: every daily-plan task (including
 // completed tasks) as a root, ordered by state activeness then daily-plan
 // position, with descendants expanded open-before-completed. It ports the
 // Planner's loadItems/expandTodayChildren semantics verbatim.
@@ -66,8 +73,15 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 		if project == nil {
 			continue
 		}
-		for _, task := range project.Tasks {
+		tasks := project.Tasks
+		if candidates, ok := in.CandidateTasks[project.ID]; ok {
+			tasks = candidates
+		}
+		for _, task := range tasks {
 			if task == nil {
+				continue
+			}
+			if in.TaskExclude != nil && in.TaskExclude(task, project) {
 				continue
 			}
 			if in.DailyPlanIDs[taskIdentityFor(task, project)] {
@@ -92,9 +106,18 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 
 	isExpanded := todayModeExpanded(in.ChildDepthLimit, in.FoldOverrides)
 	if in.TaskFilter == nil {
+		if in.TaskExclude != nil {
+			return expandFilteredTodayModeDescendants(
+				roots,
+				in.DailyPlanIDs,
+				isExpanded,
+				func(*models.Task, *models.Project) bool { return true },
+				in.TaskExclude,
+			)
+		}
 		return expandTodayModeDescendants(roots, in.DailyPlanIDs, isExpanded)
 	}
-	return expandFilteredTodayModeDescendants(roots, in.DailyPlanIDs, isExpanded, in.TaskFilter)
+	return expandFilteredTodayModeDescendants(roots, in.DailyPlanIDs, isExpanded, in.TaskFilter, in.TaskExclude)
 }
 
 // BuildNextModeRows realizes the Next horizon: every StateNext task (excluding
@@ -205,7 +228,13 @@ func expandTodayModeDescendants(roots []OutlinerModeRow, dailyPlanIDs map[TaskId
 // descendants matches (ancestor retention). Pruning happens before tree
 // connectors are assigned, so the surviving siblings drive the ├───/└───
 // prefixes and the tree stays coherent.
-func expandFilteredTodayModeDescendants(roots []OutlinerModeRow, dailyPlanIDs map[TaskIdentity]bool, isExpanded func(TaskIdentity, int) bool, filter func(*models.Task, *models.Project) bool) []OutlinerModeRow {
+func expandFilteredTodayModeDescendants(
+	roots []OutlinerModeRow,
+	dailyPlanIDs map[TaskIdentity]bool,
+	isExpanded func(TaskIdentity, int) bool,
+	filter func(*models.Task, *models.Project) bool,
+	exclude func(*models.Task, *models.Project) bool,
+) []OutlinerModeRow {
 	seen := make(map[TaskIdentity]bool, len(roots))
 	for _, r := range roots {
 		seen[taskIdentityFor(r.Task, r.Project)] = true
@@ -217,6 +246,9 @@ func expandFilteredTodayModeDescendants(roots []OutlinerModeRow, dailyPlanIDs ma
 	// ancestor alive.
 	var keep func(task *models.Task, project *models.Project, depth int) bool
 	keep = func(task *models.Task, project *models.Project, depth int) bool {
+		if exclude != nil && exclude(task, project) {
+			return false
+		}
 		if filter(task, project) {
 			return true
 		}

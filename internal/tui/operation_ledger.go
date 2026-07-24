@@ -53,7 +53,7 @@ func buildCommandClassificationTable() map[OperationID]commandFinalClassificatio
 	add(CommandReachGlobalBinding, "Ctrl+N/TaskComposer", "quick capture")
 	add(CommandReachGlobalBinding, "Ctrl+X/ProjectPicker", "switch project")
 	add(CommandReachGlobalBinding, "|/RecentTasks", "recent tasks")
-	add(CommandReachRouteMode, "TaskWorkspace/Today",
+	add(CommandReachRouteMode, "TaskWorkspace/All",
 		"outliner root")
 	add(CommandReachRouteMode, "TaskWorkspace",
 		"outliner")

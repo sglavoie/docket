@@ -143,9 +143,13 @@ func wrappedLineCount(s string, width int) int {
 }
 
 func (m *OutlinerModel) buildPerspectiveLabel(perspective Perspective) string {
+	activeMode := m.activeOutlinerModeEntry()
+	if activeMode.Perspective == noPerspective {
+		return "  " + GetViewModeStyleForSection(activeMode.Label).Render("◆ "+activeMode.Label)
+	}
 	if m.smartFocus != nil {
 		return "  " + GetViewModeStyleForSection(m.smartFocus.String()).Render("@ "+m.smartFocus.String()) +
-			" " + MutedStyle.Render("P perspectives")
+			" " + MutedStyle.Render("P modes")
 	}
 	prevID := CyclePerspective(perspective.ID, -1)
 	nextID := CyclePerspective(perspective.ID, 1)
@@ -224,7 +228,10 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 // element (perspective label, search indicator, multi-select badge) has been
 // appended so the counter doesn't push them off the right edge.
 func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
-	counter := FormatOpenLoops(m.openLoops)
+	outlinerLoops := m.openLoops
+	outlinerLoops.TodayDone = 0
+	outlinerLoops.TodayTotal = 0
+	counter := FormatOpenLoops(outlinerLoops)
 	if counter == "" || width <= 0 {
 		return line
 	}
@@ -256,8 +263,6 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 	b.WriteString(m.buildOutlinerTitleLine(width, perspectiveLabel, searchIndicator))
 	b.WriteString("\n")
 
-	m.writeWorkModeChrome(b, width)
-
 	if m.ac.IsActive() {
 		b.WriteString(m.ac.RenderDropdown("    "))
 	}
@@ -281,8 +286,6 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 	line.WriteString(searchIndicator)
 	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
 	b.WriteString("\n")
-
-	m.writeWorkModeChrome(&b, width)
 
 	if m.ac.IsActive() {
 		b.WriteString(m.ac.RenderDropdown("    "))
@@ -331,14 +334,11 @@ func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 	if m.project == nil && len(m.loadedProjects) == 0 {
 		return "No projects in current context. Press C to switch context."
 	}
-	if m.workTodayMode {
-		return "Today is clear — press w to plan a task, Tab for Next, or P to pick a mode."
-	}
 	if m.workNextMode {
 		return "Next is empty — press q to shortlist a task, Tab for Backlog, or P to pick a mode."
 	}
 	if m.workBacklogMode {
-		return "Backlog is empty — everything actionable is already in Today or Next. Press Tab or P to switch modes."
+		return "Backlog is empty — everything actionable is already in Today or Next. Press Tab to switch work modes, or P for other modes."
 	}
 	if m.project == nil {
 		return "No tasks found."

@@ -414,7 +414,7 @@ func TestGetGlobalBindings(t *testing.T) {
 		if item.Key == ":" && item.Description == "Command palette" {
 			foundCommandPalette = true
 		}
-		if item.Key == "ctrl+esc" && item.Description == "Reset to Today" {
+		if item.Key == "ctrl+esc" && item.Description == "Reset to global All" {
 			foundDashboard = true
 		}
 	}
@@ -422,7 +422,7 @@ func TestGetGlobalBindings(t *testing.T) {
 		t.Error("Expected command palette in global bindings")
 	}
 	if !foundDashboard {
-		t.Error("Expected Ctrl+Esc reset-to-Today in global bindings")
+		t.Error("Expected Ctrl+Esc reset-to-global-All in global bindings")
 	}
 	removedShortcut := "ctrl+" + "Z"
 	removedDescription := "Undo/redo" + " stack"

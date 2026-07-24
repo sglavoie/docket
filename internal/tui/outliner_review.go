@@ -47,7 +47,6 @@ func (m *OutlinerModel) reviewModeActive() bool {
 func (m *OutlinerModel) applyReviewMode(kind reviewModeKind) {
 	m.smartFocus = nil
 	m.crossPriorityMode = false
-	m.workTodayMode = false
 	m.workNextMode = false
 	m.workBacklogMode = false
 	m.activeSavedFilter = ""

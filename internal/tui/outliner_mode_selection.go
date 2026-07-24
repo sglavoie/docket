@@ -8,11 +8,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// workModeCycleOrder is the canonical five-item Work cycle driven by Tab /
+// workModeCycleOrder is the canonical four-item Work cycle driven by Tab /
 // Shift+Tab. It is deliberately independent from the h/l workflow-perspective
 // rotation: Tab moves between work horizons, h/l rotates GTD workflow lenses.
 var workModeCycleOrder = []OutlinerModeID{
-	ModeToday,
 	ModeNext,
 	ModeBacklog,
 	ModeActive,
@@ -30,8 +29,6 @@ func (m *OutlinerModel) activeOutlinerMode() OutlinerModeID {
 		return ModeDailyReview
 	case m.reviewMode == reviewActivity:
 		return ModeActivity
-	case m.workTodayMode:
-		return ModeToday
 	case m.workNextMode:
 		return ModeNext
 	case m.workBacklogMode:
@@ -126,10 +123,10 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 
 // selectOutlinerMode applies the named catalog mode, translating it into the
 // underlying perspective/smart-focus/lens/priority state. It is the sole entry
-// point used by Tab cycling, the mode picker, and any command that jumps
-// directly to a mode. It captures the selected task identity before rebuilding
-// and restores it afterward (see restoreModeCursor) so an eligible task keeps
-// focus and scroll position across the reshape.
+// point used by Tab cycling, eligible mode-picker selections, startup, and any
+// command that jumps directly to a mode. It captures the selected task identity
+// before rebuilding and restores it afterward (see restoreModeCursor) so an
+// eligible task keeps focus and scroll position across the reshape.
 func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cmd) {
 	mode, ok := OutlinerModeByID(id)
 	if !ok {
@@ -148,10 +145,8 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	m.applyOutlinerModeTransition(transitionTarget)
 
 	switch mode.RowStrategy {
-	case RowStrategyToday:
-		m.applyWorkComputedMode(true, false, false)
 	case RowStrategyBacklog:
-		m.applyWorkComputedMode(false, false, true)
+		m.applyWorkComputedMode(false, true)
 	case RowStrategyNext:
 		// Global Next is a purpose-built computed horizon: one ungrouped
 		// workspace-wide sequence ordered by the durable focus queue. A single
@@ -162,7 +157,7 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 			// consumers while the global/scoped Outliner renders the computed
 			// focus-queue horizon.
 			m.activatePerspective(mode.Perspective)
-			m.applyWorkComputedMode(false, true, false)
+			m.applyWorkComputedMode(true, false)
 		} else {
 			m.activatePerspective(mode.Perspective)
 			m.lens = OutlinerLensTree
@@ -203,24 +198,22 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 // clearComputedModes drops the session-only computed horizons so a normal
 // perspective/smart-focus/lens selection takes over cleanly.
 func (m *OutlinerModel) clearComputedModes() {
-	m.workTodayMode = false
 	m.workNextMode = false
 	m.workBacklogMode = false
 	m.reviewMode = reviewNone
 }
 
-// applyWorkComputedMode switches into one of the three purpose-built work
-// horizons (Today, Next, Backlog). These are flat, fixed-order lists computed from
-// the daily plan / focus queue / cross-project ranker, so any active zoom or
+// applyWorkComputedMode switches into one of the two purpose-built work
+// horizons (Next, Backlog). These are flat, fixed-order lists computed from the
+// focus queue / cross-project ranker, so any active zoom or
 // saved filter is cleared to avoid scoping the computed rows to a stale
 // subtree.
-func (m *OutlinerModel) applyWorkComputedMode(today, next, backlog bool) {
+func (m *OutlinerModel) applyWorkComputedMode(next, backlog bool) {
 	m.smartFocus = nil
 	m.crossPriorityMode = false
 	m.activeSavedFilter = ""
 	m.activeCriteriaFilter = nil
 	m.lens = OutlinerLensTree
-	m.workTodayMode = today
 	m.workNextMode = next
 	m.workBacklogMode = backlog
 	m.reviewMode = reviewNone
@@ -268,8 +261,8 @@ func (m *OutlinerModel) applyPriorityLensMode() {
 	m.cursor = 0
 }
 
-// cycleWorkMode advances the active mode by delta within the five-item Work
-// cycle. Entering from a mode outside the cycle starts at Today when moving
+// cycleWorkMode advances the active mode by delta within the four-item Work
+// cycle. Entering from a mode outside the cycle starts at Next when moving
 // forward and All when moving backward, matching the pinned tab-bar order.
 func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 	current := m.activeOutlinerMode()
@@ -301,11 +294,10 @@ func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 // isComputedOrderMode reports whether the rows are currently a flat, computed
 // list whose order the engine owns, so a structural J/K move cannot apply. It
 // keys off the live render state rather than the catalog OrderPolicy. The global
-// Today and Next horizons are computed-order too, but their J/K reorders the
-// durable planning list (see isPlanningReorderMode) rather than being unavailable,
-// so callers that gate J/K must consult isPlanningReorderMode first.
+// Next horizon is computed-order too, but its J/K reorders the durable planning
+// list (see isPlanningReorderMode) rather than being unavailable.
 func (m *OutlinerModel) isComputedOrderMode() bool {
-	return m.workTodayMode || m.workNextMode || m.workBacklogMode || m.reviewModeActive() ||
+	return m.workNextMode || m.workBacklogMode || m.reviewModeActive() ||
 		(m.project == nil && m.crossPriorityMode) ||
 		m.lens == OutlinerLensDueDate
 }
@@ -321,7 +313,7 @@ func (m *OutlinerModel) orderingUnavailableStatus() {
 }
 
 // workModeScopeProjects returns the projects the computed work horizons and
-// tab-bar counts range over: the single project when scoped, otherwise every
+// Today section range over: the single project when scoped, otherwise every
 // loaded project narrowed by the active multi-project (F P) filter.
 //
 // The F P filter is honored only when unscoped: inside a single-project scope

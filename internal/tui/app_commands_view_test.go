@@ -28,15 +28,10 @@ func assertPickerCommandPurpose(t *testing.T, cmd *Command, want PickerPurpose) 
 	}
 }
 
-func TestOutlinerModeCommands_All(t *testing.T) {
+func TestOutlinerModeCommands_OmitTabOnlyAll(t *testing.T) {
 	cmd := findCommand(outlinerModeCommands(), "All")
-	if cmd == nil {
-		t.Fatal("expected canonical 'All' command")
-	}
-	msg := cmd.Handler()
-	outliner, ok := msg.(ShowGlobalOutlinerMsg)
-	if !ok || !outliner.Options.SetMode || outliner.Options.Mode != ModeAll {
-		t.Errorf("expected All-mode ShowGlobalOutlinerMsg, got %#v", msg)
+	if cmd != nil {
+		t.Fatalf("Tab-only All mode unexpectedly registered as a command: %#v", cmd)
 	}
 }
 
@@ -50,7 +45,6 @@ func TestViewCommands_DashboardOutlinerEntries(t *testing.T) {
 		shortcut string
 		wantMsg  any
 	}{
-		{"All", "", ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeAll}}},
 		{"outliner", "", ShowGlobalOutlinerMsg{}},
 	}
 

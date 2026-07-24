@@ -182,7 +182,6 @@ func (m *OutlinerModel) activatePerspective(perspective int) {
 	m.activePerspective = perspective
 	m.smartFocus = nil
 	m.crossPriorityMode = false
-	m.workTodayMode = false
 	m.workNextMode = false
 	m.workBacklogMode = false
 	m.reviewMode = reviewNone

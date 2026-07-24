@@ -169,7 +169,7 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
 	}
-	// The Outliner is the sole root and always boots into a loaded global Today.
+	// The Outliner is the sole root and always boots into a loaded global All.
 	// Dispatch the startup message through the driver and drain it so the
 	// cross-project cache is populated before the scenario observes the screen —
 	// mirroring the real app rather than a cold, unrendered root.

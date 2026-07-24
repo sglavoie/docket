@@ -10,9 +10,9 @@ import (
 )
 
 // outlinerModePicker is the inline, searchable, categorized mode selector opened
-// with P. It replaces the old P0-P9 numeric prefix tree: every catalog mode is
-// reachable by name (label or alias) with no memorized numbers. State is
-// self-contained; the picker never touches the view stack.
+// with P. It replaces the old P0-P9 numeric prefix tree for workflow, smart,
+// lens, and review modes; Work modes stay on Tab/Shift+Tab. State is
+// self-contained, and the picker never touches the view stack.
 type outlinerModePicker struct {
 	query string
 	// cursor indexes the selectable modes (headers skipped).
@@ -69,7 +69,7 @@ func modePickerModeUnavailable(mode OutlinerMode) bool {
 func modePickerRows(query string) []modePickerRow {
 	var rows []modePickerRow
 	categories := []OutlinerModeCategory{
-		ModeCategoryWork, ModeCategoryWorkflow, ModeCategorySmart, ModeCategoryLens, ModeCategoryReview,
+		ModeCategoryWorkflow, ModeCategorySmart, ModeCategoryLens, ModeCategoryReview,
 	}
 	for _, cat := range categories {
 		var modes []OutlinerMode

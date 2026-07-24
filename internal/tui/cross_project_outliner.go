@@ -195,7 +195,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		return
 	}
 
-	if m.workTodayMode || m.workNextMode || m.workBacklogMode {
+	if m.workNextMode || m.workBacklogMode {
 		m.buildWorkModeRows()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -212,6 +212,8 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Collect per-project task groups, applying per-project perspective filter.
 	// Grouping preserves project identity so ProjectID can be set on task rows.
 	var groups []projectTasksGroup
+	todayProjects := make([]*models.Project, 0, len(m.loadedProjects))
+	todayCandidates := make(map[string][]*models.Task)
 	for _, proj := range m.loadedProjects {
 		if m.scopeSkipProject(proj.ID) {
 			continue
@@ -234,6 +236,9 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 				continue
 			}
 		}
+
+		todayProjects = append(todayProjects, proj)
+		todayCandidates[proj.ID] = todayCandidateTasks(roots)
 
 		tasks := filterTaskTree(roots, m.baseFocusFilter(proj))
 
@@ -289,6 +294,16 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	if m.lens == OutlinerLensDueDate {
 		m.buildCrossProjectDueDateRows(groups)
 	} else if m.smartFocus == nil && p.Name == "All" {
+		today := m.buildTodaySection(todayProjects, todayCandidates)
+		filteredGroups := groups[:0]
+		for _, group := range groups {
+			group.tasks = removeTodayRowsFromTree(group.tasks, group.projectID, today.suppressed)
+			if len(group.tasks) > 0 {
+				filteredGroups = append(filteredGroups, group)
+			}
+		}
+		groups = filteredGroups
+		m.appendTodaySection(today)
 		m.buildCrossProjectRowsWithSectionHeaders(groups)
 	} else {
 		m.buildProjectGroupedRows(groups)
@@ -370,8 +385,15 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	}
 	fmt.Fprintf(&b, "priority=%t:%s|", m.crossPriorityMode, crossPriorityCollapsedGroupsFingerprint(m.crossPriorityCollapsedGroups))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
-	fmt.Fprintf(&b, "work=%t:%t:%t|", m.workTodayMode, m.workNextMode, m.workBacklogMode)
-	fmt.Fprintf(&b, "review=%d:%s", m.reviewMode, reviewCollapsedFingerprint(m.reviewCollapsedSections))
+	fmt.Fprintf(&b, "work=%t:%t|", m.workNextMode, m.workBacklogMode)
+	fmt.Fprintf(&b, "review=%d:%s|", m.reviewMode, reviewCollapsedFingerprint(m.reviewCollapsedSections))
+	fmt.Fprintf(&b, "today-fold=%t|", m.collapsedSections[todaySectionCollapseKey])
+	b.WriteString("today-plan=")
+	if m.runtime != nil {
+		for _, item := range m.runtime.Planning().GetDailyPlan() {
+			fmt.Fprintf(&b, "%s:%s,", item.ProjectID, item.TaskID)
+		}
+	}
 	return b.String()
 }
 
@@ -593,7 +615,6 @@ func (m *OutlinerModel) toggleCrossPriorityMode() {
 
 func (m *OutlinerModel) enterCrossPriorityMode() {
 	m.crossPriorityMode = true
-	m.workTodayMode = false
 	m.workNextMode = false
 	m.workBacklogMode = false
 	m.reviewMode = reviewNone

@@ -173,18 +173,18 @@ func TestFuzzyModeSelectionThroughAppModel(t *testing.T) {
 	if !cross.modePickerActive() {
 		t.Fatal("P did not open the mode picker through AppModel")
 	}
-	for _, key := range []string{"b", "k", "l", "g"} {
+	for _, key := range []string{"h", "p", "r", "i"} {
 		app.Update(scopeKey(t, key))
 	}
-	if got := cross.modePicker.query; got != "bklg" {
-		t.Fatalf("mode-picker query = %q, want bklg", got)
+	if got := cross.modePicker.query; got != "hpri" {
+		t.Fatalf("mode-picker query = %q, want hpri", got)
 	}
 
 	app.Update(scopeKey(t, "enter"))
 	if cross.modePickerActive() {
 		t.Fatal("fuzzy mode selection did not close the picker")
 	}
-	if got := cross.activeOutlinerMode(); got != ModeBacklog {
-		t.Fatalf("fuzzy mode selection = %q, want %q", got, ModeBacklog)
+	if got := cross.activeOutlinerMode(); got != ModeHighPriority {
+		t.Fatalf("fuzzy mode selection = %q, want %q", got, ModeHighPriority)
 	}
 }

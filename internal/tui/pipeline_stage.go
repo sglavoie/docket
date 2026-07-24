@@ -48,9 +48,9 @@ func pipelineNextHint(vt PresentationID) string {
 	case ViewGlobalInboxProcessor, ViewCrossProjectOutliner:
 		return "Next: Tab for Next | w plans Today"
 	case ViewRoadmap:
-		return "Next: Today mode | Enter project"
+		return "Next: All for Today | Enter project"
 	case ViewDailyReview:
-		return "ctrl+f weekly | Next: Today mode"
+		return "ctrl+f weekly | Next: All for Today"
 	case ViewFocusBoard:
 		return "ctrl+t backlog | Next: Daily Review"
 	case ViewWeeklyReview:

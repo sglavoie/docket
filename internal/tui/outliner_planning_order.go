@@ -10,8 +10,9 @@ import (
 )
 
 // planningReorderKind names the durable planning list a J/K move reorders in a
-// planning-order mode. Today reorders the Daily Plan; Next reorders the Focus
-// Queue (the Next order index). Neither touches task hierarchy.
+// planning-order context. The Today section reorders the Daily Plan; Next
+// reorders the Focus Queue (the Next order index). Neither touches task
+// hierarchy.
 type planningReorderKind uint8
 
 const (
@@ -20,11 +21,12 @@ const (
 )
 
 // OutlinerPlanningReorderMsg carries a durable planning-order reorder produced by
-// the global Outliner's J/K movement in Today or Next mode. The Outliner owns the
-// row ordering, so it computes the full new workspace order; the shell persists it
-// through the planning transaction path and reloads the cross outliner with the
-// cursor kept on the moved task. Because the whole reorder is a single planning
-// commit it survives a restart and never mutates the task tree.
+// the global Outliner's J/K movement in the Today section or Next mode. The
+// Outliner owns the row ordering, so it computes the full new workspace order;
+// the shell persists it through the planning transaction path and reloads the
+// cross outliner with the cursor kept on the moved task. Because the whole
+// reorder is a single planning commit it survives a restart and never mutates
+// the task tree.
 type OutlinerPlanningReorderMsg struct {
 	Kind         planningReorderKind
 	Order        []config.ProjectTaskLocator
@@ -33,16 +35,22 @@ type OutlinerPlanningReorderMsg struct {
 }
 
 // isPlanningReorderMode reports whether J/K reorders a durable planning list
-// rather than task hierarchy: the global (cross-project) Outliner's Today horizon
-// reorders the Daily Plan and its Next horizon reorders the Focus Queue. Single
-// project outliners keep the legacy structural/perspective behavior, so this is
-// false there.
+// rather than task hierarchy: an explicit member under the global Outliner's
+// synthetic Today section reorders the Daily Plan, while Next reorders the Focus
+// Queue. Context descendants beneath Today also return true so J/K is a quiet
+// no-op instead of accidentally mutating the underlying hierarchy.
 func (m *OutlinerModel) isPlanningReorderMode() bool {
-	return m.project == nil && (m.workTodayMode || m.workNextMode)
+	if m.project != nil {
+		return false
+	}
+	if m.workNextMode {
+		return true
+	}
+	return m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsTodaySection
 }
 
 // planningReorderMove builds the durable planning-order reorder for a J/K move in
-// the global Today or Next horizon. The target is the adjacent visible reorderable
+// the synthetic Today section or Next horizon. The target is the adjacent visible reorderable
 // planning row (in the move direction), and the two visible identities are swapped
 // in place within the complete workspace-wide planning order — so a scope or filter
 // can never swap the cursor with a hidden neighbor and hidden planning members stay

@@ -22,7 +22,7 @@ func mustMode(t *testing.T, id OutlinerModeID) OutlinerMode {
 // identity, and column state survive a mode switch.
 func TestModeTransitionPreservesContext(t *testing.T) {
 	all := mustMode(t, ModeAll)
-	today := mustMode(t, ModeToday)
+	backlog := mustMode(t, ModeBacklog)
 
 	before := OutlinerModeSwitch{
 		Mode:         ModeAll,
@@ -32,10 +32,10 @@ func TestModeTransitionPreservesContext(t *testing.T) {
 		CursorTaskID: "task-9",
 		Columns:      []string{"priority", "status"},
 	}
-	after := ApplyOutlinerModeTransition(before, all, today)
+	after := ApplyOutlinerModeTransition(before, all, backlog)
 
-	if after.Mode != ModeToday {
-		t.Errorf("mode = %q, want %q", after.Mode, ModeToday)
+	if after.Mode != ModeBacklog {
+		t.Errorf("mode = %q, want %q", after.Mode, ModeBacklog)
 	}
 	if after.ProjectScope != "proj-1" || after.PinnedTag != "backend" || after.Search != "invoice" || after.CursorTaskID != "task-9" {
 		t.Errorf("context not preserved: %+v", after)
@@ -50,14 +50,14 @@ func TestModeTransitionPreservesContext(t *testing.T) {
 // tree-mode sort so it can be restored later.
 func TestModeTransitionDeactivatesManualSortForFixedOrder(t *testing.T) {
 	all := mustMode(t, ModeAll)
-	today := mustMode(t, ModeToday)
+	backlog := mustMode(t, ModeBacklog)
 
 	before := OutlinerModeSwitch{
 		Mode:             ModeAll,
 		ActiveSort:       SortState{Field: SortByPriority, Ascending: true},
 		ManualSortActive: true,
 	}
-	after := ApplyOutlinerModeTransition(before, all, today)
+	after := ApplyOutlinerModeTransition(before, all, backlog)
 
 	if after.ManualSortActive {
 		t.Error("manual sort should be inactive in a fixed-order mode")
@@ -70,7 +70,7 @@ func TestModeTransitionDeactivatesManualSortForFixedOrder(t *testing.T) {
 	}
 
 	// Returning to a tree-order mode restores the stashed manual sort.
-	restored := ApplyOutlinerModeTransition(after, today, all)
+	restored := ApplyOutlinerModeTransition(after, backlog, all)
 	if !restored.ManualSortActive || restored.ActiveSort.Field != SortByPriority {
 		t.Errorf("tree-order restore = active %v sort %v, want active priority", restored.ManualSortActive, restored.ActiveSort.Field)
 	}
@@ -141,7 +141,7 @@ func TestLiveOutlinerModeTransitionRestoresTreeSort(t *testing.T) {
 		t.Fatalf("Due Date destroyed tree sort: %+v", m.treeSort)
 	}
 
-	selectModeThroughLivePicker(t, m, "all")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	if m.sort.Field != SortByPriority || m.treeSort != m.sort {
 		t.Fatalf("All did not restore priority sort: active %+v tree %+v", m.sort, m.treeSort)
 	}
@@ -156,7 +156,6 @@ func TestModeTransitionFixedToFixedPreservesTreeSort(t *testing.T) {
 	m.toggleSort(SortByPriority)
 
 	for _, id := range []OutlinerModeID{
-		ModeToday,
 		ModeNext,
 		ModeBacklog,
 		ModePriorityLens,
@@ -183,7 +182,7 @@ func TestModeTransitionRejectsManualSortInFixedMode(t *testing.T) {
 	m := NewOutlinerModel(nil, nil, newTestConfig())
 	m.selectOutlinerMode(ModeAll)
 	m.toggleSort(SortByPriority)
-	m.selectOutlinerMode(ModeToday)
+	m.selectOutlinerMode(ModeBacklog)
 	activeBefore, treeBefore := m.sort, m.treeSort
 
 	// Keyboard and palette commands both route through toggleSort.
@@ -195,7 +194,7 @@ func TestModeTransitionRejectsManualSortInFixedMode(t *testing.T) {
 		t.Fatalf("fixed-mode sort changed: active %+v→%+v tree %+v→%+v",
 			activeBefore, m.sort, treeBefore, m.treeSort)
 	}
-	if !strings.Contains(m.statusMessage, "Ordering is automatic in Today mode") {
+	if !strings.Contains(m.statusMessage, "Ordering is automatic in Backlog mode") {
 		t.Fatalf("fixed-mode status = %q", m.statusMessage)
 	}
 }

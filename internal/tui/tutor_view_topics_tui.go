@@ -101,10 +101,11 @@ triage a specific project's inbox.
 
 # Next Action Strip
 
-The Outliner's Today work mode owns daily planning while its
-attention signals hold actionable cross-project alerts. Project
-selection, administration, archive recovery, and selected-project
-metadata all stay reachable from the Outliner and its tools.
+The Outliner's built-in Today section presents the Daily Plan
+while its attention signals hold actionable cross-project alerts.
+Project selection, administration, archive recovery, and
+selected-project metadata all stay reachable from the Outliner
+and its tools.
 
 # Triage Prominence
 
@@ -382,23 +383,24 @@ restores the previous scope.
 # Perspectives
 
 Press h and l to rotate workflow perspectives, and P to open the
-categorized, searchable mode picker.`,
+categorized, searchable picker for non-work modes.`,
 		},
 		{
 			Title:    "Pipeline Views",
 			Category: "TUI",
 			Content: `# The Outliner Is the Sole Root
 
-The Outliner is the sole root view. It always opens in Today on
-every run. There is no Home, Planner, or project destination —
-modes and project scopes live inside the Outliner.
+The Outliner is the sole root view. It always opens in All on
+every run, with the Daily Plan shown in a built-in Today section.
+There is no Home, Planner, or project destination — modes and
+project scopes live inside the Outliner.
 
 # Work Modes
 
-Tab cycles the work modes Today, Next, Backlog, Active, and All;
+Tab cycles the work modes Next, Backlog, Active, and All;
 Shift+Tab reverses. h and l rotate workflow perspectives, and P
-opens a categorized, searchable mode picker. Daily Review and
-Activity are Outliner modes rather than separate views.
+opens a categorized, searchable picker for workflow, smart,
+lens, and review modes.
 
 # Scope and Folds
 
@@ -417,7 +419,7 @@ children of the Outliner.
 # Getting Back
 
 Esc closes the top overlay, Detail, or child before returning to
-the Outliner. Ctrl+Esc resets to a clean global Today Outliner.`,
+the Outliner. Ctrl+Esc resets to a clean global All Outliner.`,
 		},
 		{
 			Title:    "Priority",

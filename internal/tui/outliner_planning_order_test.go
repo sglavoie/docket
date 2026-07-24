@@ -188,10 +188,10 @@ func pressReorderKey(t *testing.T, m *AppModel, cross *OutlinerModel, key rune) 
 }
 
 // TestOutlinerPlanningOrderJK locks FR-002: from the global Outliner, J/K in Next
-// reorders the durable focus queue and J/K in Today reorders the durable daily
-// plan — both without touching task hierarchy — while J/K stays unavailable in the
-// other computed-order horizons. Cross-project interleaving proves the global
-// order survives a reload.
+// reorders the durable focus queue and J/K on explicit rows in All's Today section
+// reorders the durable daily plan — both without touching task hierarchy — while
+// J/K stays unavailable in the other computed-order horizons. Cross-project
+// interleaving proves the global order survives a reload.
 func TestOutlinerPlanningOrderJK(t *testing.T) {
 	t.Run("Next J reorders the durable focus queue and persists after reload", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-next", "next", "Alpha", "Bravo", "Charlie")
@@ -284,10 +284,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		seedDailyPlanOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeToday)
-		if !cross.workTodayMode {
-			t.Fatal("ModeToday did not enter workTodayMode")
-		}
+		enterCrossMode(cross, ModeAll)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
@@ -350,7 +347,7 @@ func TestTodayPlanningReorderStateBuckets(t *testing.T) {
 			seedDailyPlanOrder(t, m,
 				locatorOf(project, tasks[1]), locatorOf(project, tasks[0]),
 			)
-			enterCrossMode(cross, ModeToday)
+			enterCrossMode(cross, ModeAll)
 
 			visibleBefore := visibleTaskIDs(cross)
 			durableBefore := diskDailyPlanIDs(t, dataDir)
@@ -369,7 +366,7 @@ func TestTodayPlanningReorderStateBuckets(t *testing.T) {
 
 			// Rebuild from the unchanged durable plan and prove the cursor task
 			// did not move in the requested direction.
-			enterCrossMode(cross, ModeToday)
+			enterCrossMode(cross, ModeAll)
 			visibleAfter := visibleTaskIDs(cross)
 			assertOrder(t, "visible Today rows after boundary move", visibleAfter, visibleBefore)
 			if before, after := taskIDPosition(visibleBefore, tasks[tc.cursorTask].ID), taskIDPosition(visibleAfter, tasks[tc.cursorTask].ID); before != after {
@@ -398,7 +395,7 @@ func TestTodayPlanningReorderStateBuckets(t *testing.T) {
 		seedDailyPlanOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]),
 		)
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, ModeAll)
 		assertOrder(t, "same-rank Today rows before J", visibleTaskIDs(cross),
 			[]string{tasks[0].ID, tasks[1].ID})
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
@@ -417,7 +414,7 @@ func TestTodayPlanningReorderStateBuckets(t *testing.T) {
 		// The successful shell reorder schedules an async cross-project reload;
 		// re-seat the fixture projects before rebuilding from committed state.
 		cross.loadedProjects = []*models.Project{project}
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, ModeAll)
 		assertOrder(t, "same-rank Today rows after rebuild", visibleTaskIDs(cross), want)
 		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID})
 	})
@@ -465,7 +462,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		cross.SetSearchQuery("keep")
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, ModeAll)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("filtered Today visible rows = %v, want 2 (hidden middle pruned)", got)
