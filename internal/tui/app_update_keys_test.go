@@ -241,6 +241,113 @@ func TestHandleGlobalKeyPress_ProjectArchiveConfirmHandlesYesAtAppLevel(t *testi
 	}
 }
 
+func setupFocusedOutlinerClipboardApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Task) {
+	t.Helper()
+
+	app := typedTestApp(t)
+	project := app.currentProject
+	if len(project.Tasks) < 2 {
+		t.Fatal("outliner clipboard fixture needs at least two tasks")
+	}
+
+	outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
+	outliner.loadedProjects = []*models.Project{project}
+	outliner.rows = []outlinerRow{
+		{task: project.Tasks[0], ProjectID: project.ID},
+		{task: project.Tasks[1], ProjectID: project.ID},
+	}
+	outliner.cursor = 0
+	app.crossOutliner = outliner
+	app.views.Register(ViewCrossProjectOutliner, outliner)
+	if cmd := app.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
+		t.Fatal("activating Outliner root unexpectedly returned a command")
+	}
+
+	return app, outliner, project.Tasks[:2]
+}
+
+func TestHandleGlobalKeyPress_OutlinerClipboardVariants(t *testing.T) {
+	t.Run("Y copies focused task details", func(t *testing.T) {
+		app, _, tasks := setupFocusedOutlinerClipboardApp(t)
+
+		handled, cmd := app.handleGlobalKeyPress(syntheticKey('Y'))
+		if !handled || cmd == nil {
+			t.Fatalf("Y handled=%v cmd=%T, want handled clipboard command", handled, cmd)
+		}
+		copied := cmd()
+		msg, ok := copied.(CopyTaskDetailsMsg)
+		if !ok {
+			t.Fatalf("Y message = %T, want CopyTaskDetailsMsg", copied)
+		}
+		if msg.Task != tasks[0] {
+			t.Fatalf("Y copied task = %v, want %v", msg.Task, tasks[0])
+		}
+	})
+
+	t.Run("ctrl+y copies focused task title and description", func(t *testing.T) {
+		app, _, tasks := setupFocusedOutlinerClipboardApp(t)
+
+		handled, cmd := app.handleGlobalKeyPress(syntheticCtrlKey('y'))
+		if !handled || cmd == nil {
+			t.Fatalf("ctrl+y handled=%v cmd=%T, want handled clipboard command", handled, cmd)
+		}
+		copied := cmd()
+		msg, ok := copied.(CopyTaskTitleAndDescMsg)
+		if !ok {
+			t.Fatalf("ctrl+y message = %T, want CopyTaskTitleAndDescMsg", copied)
+		}
+		if msg.Task != tasks[0] {
+			t.Fatalf("ctrl+y copied task = %v, want %v", msg.Task, tasks[0])
+		}
+	})
+
+	t.Run("Y copies details for all selected tasks", func(t *testing.T) {
+		app, outliner, tasks := setupFocusedOutlinerClipboardApp(t)
+		outliner.multiSelectMode = true
+		outliner.SelectTaskIdentity(taskIdentityFor(tasks[0], app.currentProject))
+		outliner.SelectTaskIdentity(taskIdentityFor(tasks[1], app.currentProject))
+
+		handled, cmd := app.handleGlobalKeyPress(syntheticKey('Y'))
+		if !handled || cmd == nil {
+			t.Fatalf("Y handled=%v cmd=%T, want handled clipboard command", handled, cmd)
+		}
+		if outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
+			t.Fatal("bulk Y copy should clear Outliner selection")
+		}
+		copied := cmd()
+		msg, ok := copied.(CopyTasksDetailsMsg)
+		if !ok {
+			t.Fatalf("bulk Y message = %T, want CopyTasksDetailsMsg", copied)
+		}
+		if len(msg.Tasks) != 2 || msg.Tasks[0] != tasks[0] || msg.Tasks[1] != tasks[1] {
+			t.Fatalf("bulk Y copied tasks = %v, want %v", msg.Tasks, tasks)
+		}
+	})
+
+	t.Run("ctrl+y copies title and description for all selected tasks", func(t *testing.T) {
+		app, outliner, tasks := setupFocusedOutlinerClipboardApp(t)
+		outliner.multiSelectMode = true
+		outliner.SelectTaskIdentity(taskIdentityFor(tasks[0], app.currentProject))
+		outliner.SelectTaskIdentity(taskIdentityFor(tasks[1], app.currentProject))
+
+		handled, cmd := app.handleGlobalKeyPress(syntheticCtrlKey('y'))
+		if !handled || cmd == nil {
+			t.Fatalf("ctrl+y handled=%v cmd=%T, want handled clipboard command", handled, cmd)
+		}
+		if outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
+			t.Fatal("bulk ctrl+y copy should clear Outliner selection")
+		}
+		copied := cmd()
+		msg, ok := copied.(CopyTasksTitleAndDescMsg)
+		if !ok {
+			t.Fatalf("bulk ctrl+y message = %T, want CopyTasksTitleAndDescMsg", copied)
+		}
+		if len(msg.Tasks) != 2 || msg.Tasks[0] != tasks[0] || msg.Tasks[1] != tasks[1] {
+			t.Fatalf("bulk ctrl+y copied tasks = %v, want %v", msg.Tasks, tasks)
+		}
+	})
+}
+
 func TestHandleGlobalKeyPress_ProjectArchiveConfirmCancelClearsPendingState(t *testing.T) {
 	tests := []struct {
 		name string

@@ -268,9 +268,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.activeTaskDetail() && m.taskDetail.Tab() != TaskOverview {
 			break
 		}
-		if m.activeOutlinerRoute() && key != "y" {
-			break
-		}
 		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
 			return true, cmd
 		}
