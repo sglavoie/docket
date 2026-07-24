@@ -26,20 +26,13 @@ func (m *AppModel) activeCrossProjectOutliner() *OutlinerModel {
 }
 
 // registeredProjectOutliners returns every distinct single-project outliner
-// owned by the app. Temporary drill-down outliners live only in the view
-// registry, so consulting m.outliner alone leaves their project copy and rows
-// stale after mutations committed through the application layer.
+// owned by the app.
 func (m *AppModel) registeredProjectOutliners() []*OutlinerModel {
 	if m == nil {
 		return nil
 	}
 
 	candidates := []*OutlinerModel{m.outliner}
-	if m.views != nil {
-		if temporary, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
-			candidates = append(candidates, temporary)
-		}
-	}
 
 	outliners := make([]*OutlinerModel, 0, len(candidates))
 	seen := make(map[*OutlinerModel]struct{}, len(candidates))

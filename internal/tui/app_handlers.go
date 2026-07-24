@@ -42,25 +42,8 @@ func (m *AppModel) saveOutlinerFilterState() {
 	m.saveOutlinerToggleState()
 }
 
-func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
-	if o == nil || o.project == nil {
-		return
-	}
-	m.outlinerToggleStates[o.project.ID] = o.SaveToggleState()
-}
-
 func (m *AppModel) restoreOutlinerFilterState() {
 	m.restoreOutlinerToggleState()
-}
-
-func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
-	if o == nil || o.project == nil {
-		return
-	}
-	if state, ok := m.outlinerToggleStates[o.project.ID]; ok {
-		o.RestoreToggleState(state)
-	}
-	o.rebuildRows()
 }
 
 // reloadAndRefreshProjectTree reloads the project from storage and refreshes the

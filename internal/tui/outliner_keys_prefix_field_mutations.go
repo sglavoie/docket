@@ -2,27 +2,6 @@ package tui
 
 import tea "charm.land/bubbletea/v2"
 
-// handlePerspectivePrefix handles the P prefix key for perspective switching.
-func (m *OutlinerModel) handlePerspectivePrefix(key string) (tea.Model, tea.Cmd) {
-	// Perspective switching (P-prefix: P0-P9)
-	if key >= "0" && key <= "9" {
-		perspKey := int(key[0] - '0')
-		perspective, ok := PerspectiveByKey(perspKey)
-		if !ok {
-			return m, nil
-		}
-		if m.project == nil {
-			return m.crossHandlePerspectiveJump(perspective.ID)
-		}
-		m.activatePerspective(perspective.ID)
-		m.resetViewScrollOffset()
-		m.rebuildRows()
-		return m, nil
-	}
-
-	return m, nil
-}
-
 // handlePriorityPrefixOutliner handles the ! prefix key for setting priority.
 func (m *OutlinerModel) handlePriorityPrefixOutliner(key string) (tea.Model, tea.Cmd) {
 	if m.project == nil {

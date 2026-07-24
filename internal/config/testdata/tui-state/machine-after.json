@@ -1,14 +1,9 @@
 {
-  "tui_state_version": 2,
-  "start_route": {
-    "task_focus": "high-priority",
-    "task_sort": "priority"
-  },
+  "tui_state_version": 3,
   "editor": "vim",
   "current_project": "project-1",
   "custom_contexts": {"Work": ["project-1"]},
   "recent_task_visits": [{"project_id": "project-1", "task_id": "task-1"}],
-  "start_view": "tasks",
   "recent_palette_items": [
     {"category": "command", "id": "1"},
     {"category": "command", "id": "2"},

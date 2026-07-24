@@ -207,38 +207,17 @@ func (m *SettingsModel) renderAttachmentsTab() string {
 func (m *SettingsModel) renderOutlinerTab() string {
 	switch m.subTab {
 	case 1:
-		return m.renderOutlinerSectionStateSection()
-	case 2:
 		return m.renderOutlinerColumnVisibilitySection()
 	default:
-		return m.renderOutlinerSidebarSection()
+		return m.renderOutlinerSectionStateSection()
 	}
-}
-
-func (m *SettingsModel) renderOutlinerSidebarSection() string {
-	var b strings.Builder
-	const labelWidth = 22
-	const indent = 24
-	base := subTabFieldStart(tabOutliner, 0)
-
-	b.WriteString(renderFormLabelWithWidth("Cross-Project Sidebar: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerSidebar, m.focusIndex == base+0))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == base+0))
-
-	b.WriteString(renderFormLabelWithWidth("Cycle Projects Only: ", labelWidth, m.focusIndex == base+1))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerCycleOnly, m.focusIndex == base+1))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Only show projects in the current cycle (context-aware)", indent, m.focusIndex == base+1))
-
-	return b.String()
 }
 
 func (m *SettingsModel) renderOutlinerSectionStateSection() string {
 	var b strings.Builder
 	const labelWidth = 22
 	const indent = 24
-	base := subTabFieldStart(tabOutliner, 1)
+	base := subTabFieldStart(tabOutliner, 0)
 
 	for i, label := range outlinerSectionLabels {
 		focusIdx := base + i
@@ -257,7 +236,7 @@ func (m *SettingsModel) renderOutlinerColumnVisibilitySection() string {
 	var b strings.Builder
 	const labelWidth = 22
 
-	m.renderOutlinerColumnToggles(&b, m.outlinerColumnDefaults, subTabFieldStart(tabOutliner, 2), labelWidth, m.outlinerPriorityMode)
+	m.renderOutlinerColumnToggles(&b, m.outlinerColumnDefaults, subTabFieldStart(tabOutliner, 1), labelWidth, m.outlinerPriorityMode)
 
 	return b.String()
 }

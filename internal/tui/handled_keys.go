@@ -31,23 +31,8 @@ var keysExcludedFromSync = map[string]bool{
 	// in movePrefixBindings — intentionally undocumented alias.
 	"mS": true,
 
-	// Sidebar display entries for Outliner — handled by sidebar.HandleKeys when
-	// sidebar is focused; the constituent keys duplicate main navigation entries.
-	"j / ↓": true,
-	"k / ↑": true,
-	"h / ←": true,
-	"l / →": true,
-
 	// shift+tab is an undocumented alias for backward tab cycling in FocusBoard.
 	"shift+tab": true,
-
-	// Sidebar display entries for ProjectTree/Outliner — these are shown in the
-	// help popup but triggered while sidebar is focused, not via primary key dispatch.
-	"j/k (sidebar)":   true,
-	"h/l (sidebar)":   true,
-	"Enter (sidebar)": true,
-	"Esc (sidebar)":   true,
-	"x (sidebar)":     true,
 
 	// Documentation-only display strings that don't correspond to single key events.
 	"n / e": true,

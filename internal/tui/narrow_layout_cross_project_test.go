@@ -116,23 +116,3 @@ func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
 		}
 	}
 }
-
-func TestFormatSidebarLinkedTaskRespectsVisualWidth(t *testing.T) {
-	project, err := models.NewProject("proj-1", "sidebar-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	project.Name = "界面修复冲刺计划项目"
-	task, err := models.NewTask("task-1", 31, models.TaskTypeTask, "修复侧边栏关联任务在窄宽度下的宽字符截断问题")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-
-	line := formatSidebarLinkedTask(sidebarLinkedTask{Task: task, Project: project}, 24, true, true)
-	if lipgloss.Width(ansi.Strip(line)) > 24 {
-		t.Fatalf("sidebar linked task line exceeds width 24: %q (width=%d)", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)))
-	}
-	if !strings.Contains(ansi.Strip(line), "[界面") {
-		t.Fatalf("expected project label to remain visible, got %q", ansi.Strip(line))
-	}
-}

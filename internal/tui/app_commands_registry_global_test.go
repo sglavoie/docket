@@ -67,7 +67,6 @@ func TestCommandRegistry_CrossProjectOutlinerPaletteParity(t *testing.T) {
 		{"edit task", "e"},
 		{"rename task", "tr"},
 		{"edit content", "to"},
-		{"open project outliner", "ctrl+p"},
 		// Session 2 task creation parity.
 		{"new task (no template)", "tn"},
 		{"new task (with template picker)", "tN"},
@@ -87,7 +86,7 @@ func TestCommandRegistry_CrossProjectOutlinerPaletteParity(t *testing.T) {
 		{"dim/undim task", "th"},
 		{"move to project", "tm"},
 		// Session 3 read/view/capture palette parity.
-		{"blockers view", "b"},
+		{"blockers view", "B"},
 		{"inbox processor", "W"},
 		{"create note", "}"},
 		{"bulk capture", "I"},
@@ -121,5 +120,57 @@ func TestCommandRegistry_CrossProjectOutlinerPaletteParity(t *testing.T) {
 		t.Error("'quick capture' should be reachable from ViewCrossProjectOutliner via global fallback")
 	} else if cmd.Shortcut != "" {
 		t.Errorf("'quick capture' shortcut = %q, want no retired alias", cmd.Shortcut)
+	}
+}
+
+// TestCanonicalOutlinerProjectCommandsRemainReachable locks FR16-003: the
+// retained per-project commands `project metrics` and `reload project` were
+// scoped only to the retired single-project ViewOutliner, so they vanished from
+// the sole live root (ViewCrossProjectOutliner). They must now be reachable from
+// that root, and the operation ledger's reachability classification for each must
+// agree with the command actually exposed there.
+func TestCanonicalOutlinerProjectCommandsRemainReachable(t *testing.T) {
+	app, _ := newTestAppModelWithProject()
+	registry := NewCommandRegistry()
+	for _, group := range app.commandGroups() {
+		if err := registry.RegisterBatch(group); err != nil {
+			t.Fatalf("RegisterBatch failed: %v", err)
+		}
+	}
+
+	commands := registry.GetForView(ViewCrossProjectOutliner)
+
+	cases := []struct {
+		name         string
+		shortcut     string
+		reachability CommandReachability
+	}{
+		{"project metrics", "", CommandReachPaletteAlias},
+		{"reload project", "ctrl+r", CommandReachContextAction},
+	}
+	for _, tc := range cases {
+		cmd := findCommand(commands, tc.name)
+		if cmd == nil {
+			t.Errorf("%q should be reachable from ViewCrossProjectOutliner via GetForView", tc.name)
+			continue
+		}
+		if cmd.Shortcut != tc.shortcut {
+			t.Errorf("%q shortcut = %q, want %q", tc.name, cmd.Shortcut, tc.shortcut)
+		}
+		if cmd.Reachability != tc.reachability {
+			t.Errorf("%q reachability = %q, want %q", tc.name, cmd.Reachability, tc.reachability)
+		}
+		// The ledger's classification must agree with the command exposed from
+		// the sole root: a table entry pins the reachability, and its absence
+		// must leave the exposed command at the default contextual-action class.
+		if classification, ok := commandClassificationTable[cmd.OperationID]; ok {
+			if classification.Reachability != cmd.Reachability {
+				t.Errorf("%q ledger table reachability = %q, exposed reachability = %q; they must agree",
+					tc.name, classification.Reachability, cmd.Reachability)
+			}
+		} else if cmd.Reachability != CommandReachContextAction {
+			t.Errorf("%q has no ledger entry, so exposed reachability must default to %q, got %q",
+				tc.name, CommandReachContextAction, cmd.Reachability)
+		}
 	}
 }

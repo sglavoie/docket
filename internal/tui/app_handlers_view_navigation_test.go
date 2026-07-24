@@ -42,13 +42,19 @@ func TestHandleViewMessagesShowDailyReview(t *testing.T) {
 	app := newTestAppModel()
 
 	msg := ShowDailyReviewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	handled, cmd := app.handleViewMessages(msg)
 
 	if !handled {
 		t.Error("ShowDailyReviewMsg should be handled")
 	}
-	if app.currentView() != ViewDailyReview {
-		t.Errorf("currentView should be DailyReview, got %v", app.currentView())
+	// Daily Review is an Outliner computed mode: the launch message redirects into
+	// the global Outliner and selects the Daily Review mode.
+	if cmd == nil {
+		t.Fatal("ShowDailyReviewMsg should emit an Outliner redirect command")
+	}
+	outliner, ok := cmd().(ShowGlobalOutlinerMsg)
+	if !ok || !outliner.Options.SetMode || outliner.Options.Mode != ModeDailyReview {
+		t.Errorf("ShowDailyReviewMsg redirect = %#v, want Daily Review Outliner mode", cmd())
 	}
 }
 
@@ -72,8 +78,17 @@ func TestHandleViewMessagesShowProjectFocusInOutliner(t *testing.T) {
 	if !handled {
 		t.Error("ShowOutlinerMsg should be handled")
 	}
-	if app.currentView() != ViewOutliner || app.outliner.activePerspective != PerspectiveNext {
-		t.Errorf("project focus should use Next Outliner, got %v perspective %d", app.currentView(), app.outliner.activePerspective)
+	if app.outliner != nil {
+		t.Fatal("project navigation must not construct a separate AppModel.outliner root")
+	}
+	if app.crossOutliner == nil {
+		t.Fatal("expected the single cross-project Outliner to own the scoped work")
+	}
+	if app.crossOutliner.scopedProjectID != project.ID {
+		t.Errorf("expected project scope %q, got %q", project.ID, app.crossOutliner.scopedProjectID)
+	}
+	if app.crossOutliner.activePerspective != PerspectiveNext {
+		t.Errorf("project focus should use Next perspective, got %d", app.crossOutliner.activePerspective)
 	}
 }
 
@@ -97,8 +112,19 @@ func TestHandleViewMessagesShowPriorityFocusInOutliner(t *testing.T) {
 	if !handled {
 		t.Error("ShowOutlinerMsg should be handled")
 	}
-	if app.currentView() != ViewOutliner || app.outliner.smartFocus == nil || *app.outliner.smartFocus != OutlinerHighPriority {
-		t.Errorf("priority focus should use Outliner, got %v focus %v", app.currentView(), app.outliner.smartFocus)
+	if app.outliner != nil {
+		t.Fatal("project navigation must not construct a separate AppModel.outliner root")
+	}
+	if app.crossOutliner == nil || app.crossOutliner.smartFocus == nil || *app.crossOutliner.smartFocus != OutlinerHighPriority {
+		t.Errorf("priority focus should use the scoped cross Outliner, got focus %v", func() any {
+			if app.crossOutliner == nil {
+				return nil
+			}
+			return app.crossOutliner.smartFocus
+		}())
+	}
+	if app.crossOutliner != nil && app.crossOutliner.scopedProjectID != project.ID {
+		t.Errorf("expected project scope %q, got %q", project.ID, app.crossOutliner.scopedProjectID)
 	}
 }
 
@@ -141,31 +167,23 @@ func TestHandleViewMessagesShowAllTasksInCrossProjectOutliner(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowFocusBoard(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := ShowFocusBoardMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowFocusBoardMsg should be handled")
-	}
-	if app.currentView() != ViewFocusBoard {
-		t.Errorf("currentView should be FocusBoard, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesShowRecentActivity(t *testing.T) {
 	app := newTestAppModel()
 
 	msg := ShowRecentActivityMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	handled, cmd := app.handleViewMessages(msg)
 
 	if !handled {
 		t.Error("ShowRecentActivityMsg should be handled")
 	}
-	if app.currentView() != ViewRecentActivity {
-		t.Errorf("currentView should be RecentActivity, got %v", app.currentView())
+	// Activity is an Outliner computed mode: the launch message redirects into the
+	// global Outliner and selects the Activity mode.
+	if cmd == nil {
+		t.Fatal("ShowRecentActivityMsg should emit an Outliner redirect command")
+	}
+	outliner, ok := cmd().(ShowGlobalOutlinerMsg)
+	if !ok || !outliner.Options.SetMode || outliner.Options.Mode != ModeActivity {
+		t.Errorf("ShowRecentActivityMsg redirect = %#v, want Activity Outliner mode", cmd())
 	}
 }
 
@@ -253,48 +271,5 @@ func TestHandleViewMessagesCloseTaskAttachments(t *testing.T) {
 
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing attachments, got %v", app.currentView())
-	}
-}
-
-func TestGetCurrentCursorTask_TemporaryOutliner(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-
-	// Create a temporary outliner and register it (simulating the drill-down
-	// from the cross-project outliner). The temporary outliner is NOT stored
-	// in m.outliner — it only lives in the view registry.
-	tempOutliner := NewOutlinerModel(project, app.configManager, app.runtime)
-	tempOutliner.SetSize(80, 22)
-	app.views.Register(ViewTemporaryOutliner, tempOutliner)
-	app.pushView(ViewTemporaryOutliner)
-
-	// getCurrentCursorTask must resolve via the registry, not m.outliner.
-	// Before the fix, m.outliner was nil so the result was always nil.
-	task := app.getCurrentCursorTask()
-
-	// If the outliner has rows with tasks, we should get a task back.
-	// If there are no rows (empty project), nil is acceptable.
-	if len(tempOutliner.rows) > 0 && !tempOutliner.rows[0].IsSectionHeader && !tempOutliner.rows[0].IsSeparator {
-		if task == nil {
-			t.Error("getCurrentCursorTask should return a task from the temporary outliner, got nil")
-		}
-	}
-
-	// Verify that m.outliner is still nil (not clobbered)
-	if app.outliner != nil {
-		t.Error("m.outliner should remain nil when using a temporary outliner")
-	}
-}
-
-func TestHasActiveMultiSelect_TemporaryOutliner(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-
-	tempOutliner := NewOutlinerModel(project, app.configManager, app.runtime)
-	tempOutliner.SetSize(80, 22)
-	tempOutliner.multiSelectMode = true
-	app.views.Register(ViewTemporaryOutliner, tempOutliner)
-	app.pushView(ViewTemporaryOutliner)
-
-	if !app.hasActiveMultiSelect() {
-		t.Error("hasActiveMultiSelect should detect multi-select on a temporary outliner")
 	}
 }

@@ -43,8 +43,8 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	}
 
 	inventory := registry.Inventory()
-	if len(inventory) != 224 {
-		t.Fatalf("registered command variants = %d, want audited baseline 224", len(inventory))
+	if len(inventory) != 172 {
+		t.Fatalf("registered command variants = %d, want audited baseline 172", len(inventory))
 	}
 	validViews := make(map[PresentationID]bool, len(allPresentations()))
 	for _, view := range allPresentations() {
@@ -53,7 +53,7 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	validReachability := map[CommandReachability]bool{
 		CommandReachGlobalBinding: true,
 		CommandReachViewMenu:      true,
-		CommandReachHub:           true,
+		CommandReachRouteMode:     true,
 		CommandReachContextAction: true,
 		CommandReachPaletteAlias:  true,
 	}
@@ -102,8 +102,8 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 			t.Errorf("command classification table contains unregistered operation %q", operationID)
 		}
 	}
-	if len(operationNames) != 221 {
-		t.Fatalf("stable command operations = %d, want audited baseline 221", len(operationNames))
+	if len(operationNames) != 169 {
+		t.Fatalf("stable command operations = %d, want audited baseline 169", len(operationNames))
 	}
 	for name, variants := range registry.commands {
 		for _, command := range variants {
@@ -130,11 +130,11 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	sort.Strings(operationSignatures)
 	sort.Strings(conditionallyUnavailable)
 	fingerprint := sha256.Sum256([]byte(strings.Join(operationSignatures, "\n")))
-	const wantFingerprint = "ee6b42b46713b44d14b86fe2e812d3764cecddc9f59172d081919afe756104d8"
+	const wantFingerprint = "f019fa35be0acc98dfb3f3d4231ac6095b3d9482e58be5c73979521d78325b9d"
 	if got := fmt.Sprintf("%x", fingerprint); got != wantFingerprint {
 		t.Fatalf("command ledger fingerprint = %s, want audited baseline %s", got, wantFingerprint)
 	}
-	wantConditionallyUnavailable := []string{"enable sidebar for all projects"}
+	wantConditionallyUnavailable := []string{}
 	if !slices.Equal(conditionallyUnavailable, wantConditionallyUnavailable) {
 		t.Fatalf("state-dependent unavailable operations = %v, want documented baseline %v",
 			conditionallyUnavailable, wantConditionallyUnavailable)
@@ -142,6 +142,72 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	t.Logf("command ledger fingerprint: %x", fingerprint)
 	t.Logf("command ledger: %d variants, %d stable operations, classifications=%v", len(inventory), len(operationNames), counts)
 	t.Logf("state-dependent operations unavailable in the baseline fixture: %v", conditionallyUnavailable)
+}
+
+// TestOperationLedgerContainsNoRetiredSurfaceNames is the completion contract
+// for FR12-004. It scans the live command registry, the Command-Palette view
+// catalog, and user-facing Outliner strings for retired navigation-surface
+// terms. The Outliner-only cutover removed Dashboard, Home, Planner, the
+// Cross-Outliner label, Home Attention, Review Hub, and Manage Hub as reachable
+// or searchable surfaces; those names may survive only where they identify an
+// unrelated retained product (the Metrics Dashboard tool, the CLI `dash`
+// command).
+func TestOperationLedgerContainsNoRetiredSurfaceNames(t *testing.T) {
+	forbidden := []string{
+		"dashboard",
+		"planner",
+		"home",
+		"hub",
+		"cross-outliner",
+		"cross-project outliner",
+	}
+	// Retained products legitimately contain a forbidden substring.
+	allowed := func(l string) bool {
+		return strings.Contains(l, "metrics dashboard") || strings.Contains(l, "metricsdashboard")
+	}
+	scan := func(surface, s string) {
+		if s == "" {
+			return
+		}
+		l := strings.ToLower(s)
+		if allowed(l) {
+			return
+		}
+		for _, term := range forbidden {
+			if strings.Contains(l, term) {
+				t.Errorf("%s exposes retired surface term %q: %q", surface, term, s)
+			}
+		}
+	}
+
+	app, _ := newTestAppModelWithProject()
+
+	// 1. Live command registry: name, description, aliases, and the classified
+	//    final-reachability target of every registered command variant.
+	for _, group := range app.commandGroups() {
+		for _, cmd := range group {
+			classified := classifyCommand(cmd)
+			scan("command name", classified.Name)
+			scan("command description ("+classified.Name+")", classified.Description)
+			for _, alias := range classified.Aliases {
+				scan("command alias ("+classified.Name+")", alias)
+			}
+			scan("command target ("+classified.Name+")", classified.FinalTarget)
+		}
+	}
+
+	// 2. Command-Palette "Views" registry: the static direct-tool catalog.
+	for _, item := range staticPaletteViewItems() {
+		scan("palette view item", item.name)
+		scan("palette view item ("+item.name+")", item.description)
+	}
+
+	// 3. User-facing Outliner strings: the global Outliner status-bar label in
+	//    both modes and the inbox child tools' return hints.
+	scan("outliner status label", (&OutlinerModel{}).crossStatusBarLabel())
+	scan("outliner priority status label", (&OutlinerModel{crossPriorityMode: true}).crossStatusBarLabel())
+	scan("global inbox return hint", (&GlobalInboxProcessorModel{}).returnHint())
+	scan("inbox return hint", (&InboxProcessorModel{}).returnHint())
 }
 
 func TestCommandContextFiltersCapabilitiesSelectionAndEntityState(t *testing.T) {

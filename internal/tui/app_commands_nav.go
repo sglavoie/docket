@@ -5,11 +5,11 @@ import tea "charm.land/bubbletea/v2"
 func (m *AppModel) navCommands() []Command {
 	return []Command{
 		{
-			Name:        "dashboard",
-			Description: "Go to Home",
+			Name:        "outliner root",
+			Description: "Reset to the Outliner root (global Today)",
 			Shortcut:    "ctrl+esc",
 			Category:    CategoryNavigation,
-			Aliases:     []string{"home", "projects", "attention"},
+			Aliases:     []string{"reset outliner", "global today", "reset to today"},
 			Handler: func() tea.Msg {
 				return JumpDashboardMsg{}
 			},

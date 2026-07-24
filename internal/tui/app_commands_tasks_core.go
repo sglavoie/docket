@@ -14,8 +14,8 @@ func (m *AppModel) taskCommands() []Command {
 			Category:    CategoryTasks,
 			Aliases:     []string{"capture", "inbox"},
 			Handler: func() tea.Msg {
-				if m.nonPaletteOrigin() == ViewCrossProjectOutliner && m.crossOutliner != nil {
-					project := m.crossOutliner.cursorProject()
+				if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+					project := m.paletteCursorProject()
 					if project == nil {
 						return StatusMsg(statusNoProjectUnderCursor)
 					}

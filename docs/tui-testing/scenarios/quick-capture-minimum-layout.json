@@ -4,8 +4,10 @@
   "size": "60x20",
   "actions": [
     { "type": "resize", "width": 60, "height": 20 },
-    { "type": "key", "label": "open project outliner", "key": "enter" },
-    { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "key", "label": "drill into highlighted project", "key": "ctrl+p" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "open Task Composer", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "QuickCapture" },
     { "type": "assert", "assert": "no_layout_issues" },

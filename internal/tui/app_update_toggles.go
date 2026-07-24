@@ -73,7 +73,7 @@ func (m *AppModel) handleUndoToggle() tea.Cmd {
 		cmd = m.undoQueueToggle()
 	}
 	if cmd != nil {
-		return m.batchWithFocusRefresh(cmd)
+		return cmd
 	}
 	return nil
 }
@@ -100,7 +100,7 @@ func (m *AppModel) handleRedoToggle() tea.Cmd {
 		cmd = m.redoQueueToggle()
 	}
 	if cmd != nil {
-		return m.batchWithFocusRefresh(cmd)
+		return cmd
 	}
 	return nil
 }

@@ -105,38 +105,91 @@ type OutlinerOpenOptions struct {
 	SetSort  bool
 	Lens     OutlinerLens
 	SetLens  bool
+	// Mode selects a catalog mode directly (e.g. the review modes that the Daily
+	// Review / Activity launch messages redirect into). SetMode decides the final
+	// mode over focus/lens intent; an explicit SetSort can still initialize a tree
+	// target's active and durable sort together.
+	Mode    OutlinerModeID
+	SetMode bool
 }
 
 func (m *OutlinerModel) ApplyOpenOptions(opts OutlinerOpenOptions) {
+	target, hasModeIntent := m.openOptionsTargetMode(opts)
+	if hasModeIntent {
+		m.selectOutlinerMode(target.ID)
+	} else {
+		// Sort-only and no-op option sets still pass through the same seam so a
+		// fixed-order mode cannot retain a legacy active manual sort.
+		m.applyOutlinerModeTransition(target)
+	}
+
+	if opts.SetSort && target.SupportsManualSort() {
+		sortState := SortState{Field: opts.Sort, Ascending: true}
+		m.sort = sortState
+		m.treeSort = sortState
+	}
+	// selectOutlinerMode already rebuilt, but an explicit tree sort is applied
+	// afterward and therefore needs one final render. A no-intent call retains
+	// ApplyOpenOptions' historical rebuild behavior.
+	if !hasModeIntent || (opts.SetSort && target.SupportsManualSort()) {
+		m.rebuildRows()
+	}
+}
+
+// openOptionsTargetMode resolves the single catalog mode represented by a set
+// of command/startup options. Direct Mode intent retains its historical
+// precedence. Otherwise Due Date lens intent wins over focus, while an explicit
+// tree lens reveals the requested (or underlying) tree mode.
+func (m *OutlinerModel) openOptionsTargetMode(opts OutlinerOpenOptions) (OutlinerMode, bool) {
+	current := m.activeOutlinerModeEntry()
+	if opts.SetMode {
+		if mode, ok := OutlinerModeByID(opts.Mode); ok {
+			return mode, true
+		}
+		return current, false
+	}
+	if opts.SetLens && opts.Lens == OutlinerLensDueDate {
+		mode, _ := OutlinerModeByID(ModeDueDateLens)
+		return mode, true
+	}
 	if opts.SetFocus {
-		m.activeSavedFilter = ""
-		m.activeCriteriaFilter = nil
-		m.crossPriorityMode = false
 		if perspective, ok := opts.Focus.perspectiveID(); ok {
-			m.activePerspective = perspective
-			m.smartFocus = nil
-		} else {
-			focus := opts.Focus
-			m.smartFocus = &focus
+			if mode, found := OutlinerModeForPerspective(perspective); found {
+				return mode, true
+			}
+		}
+		if mode, ok := OutlinerModeForSmartFocus(opts.Focus); ok {
+			return mode, true
 		}
 	}
-	if opts.SetSort {
-		m.sort = SortState{Field: opts.Sort, Ascending: true}
-	}
-	if opts.SetLens {
-		m.lens = opts.Lens
-		if m.lens == OutlinerLensDueDate {
-			m.sort = SortState{Field: SortByDueDate, Ascending: true}
-			m.crossPriorityMode = false
+	if opts.SetLens && opts.Lens == OutlinerLensTree {
+		if current.ID == ModeDueDateLens {
+			if m.smartFocus != nil {
+				if mode, ok := OutlinerModeForSmartFocus(*m.smartFocus); ok {
+					return mode, true
+				}
+			}
+			if mode, ok := OutlinerModeForPerspective(m.activePerspective); ok {
+				return mode, true
+			}
 		}
+		return current, true
 	}
-	m.rebuildRows()
+	return current, false
 }
 
 func (m *OutlinerModel) activatePerspective(perspective int) {
 	m.activePerspective = perspective
 	m.smartFocus = nil
 	m.crossPriorityMode = false
+	m.workTodayMode = false
+	m.workNextMode = false
+	m.workBacklogMode = false
+	m.reviewMode = reviewNone
+	// A perspective is a tree-rendered mode. Restore the tree lens so a
+	// previously selected Due Date lens cannot silently take precedence in
+	// activeOutlinerMode (the lens is checked ahead of the perspective).
+	m.lens = OutlinerLensTree
 }
 
 // applyFocusOrdering preserves the Outliner's hierarchy while honoring the

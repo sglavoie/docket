@@ -122,9 +122,10 @@ type PaletteItem struct {
 	AliasTarget PaletteAliasTarget  // Set for a searchable legacy name
 }
 
+// PaletteAliasTarget names a searchable palette alias that resolves to a
+// navigation target rather than a PresentationID. It is generic plumbing; no
+// alias currently uses it.
 type PaletteAliasTarget string
-
-const PaletteAliasHomeAttention PaletteAliasTarget = "home-attention"
 
 type NavigatePaletteAliasMsg struct{ Target PaletteAliasTarget }
 

@@ -19,13 +19,6 @@ import (
 // and a Manage Hub inbox module, asserting it targets the same cursor task as the
 // direct Shift+Enter key and preserves the palette's query, cursor, and selection.
 
-// TestReviewHubPaletteNavPeekResolvesCursorTask exercises the shared navigation
-// Peek command while the command palette shadows the live Review Activity module.
-func TestReviewHubPaletteNavPeekResolvesCursorTask(t *testing.T) {
-	app := newReviewHubPeekApp(t)
-	assertHubPaletteNavPeek(t, app)
-}
-
 // TestManageInboxPaletteNavPeekResolvesCursorTask exercises the same command
 // while the palette shadows the live Manage Hub project inbox module.
 func TestManageInboxPaletteNavPeekResolvesCursorTask(t *testing.T) {
@@ -110,39 +103,6 @@ func assertHubPaletteNavPeek(t *testing.T, app *AppModel) {
 	if app.currentView() != ViewCommandPalette {
 		t.Fatalf("dismissing Peek did not reveal the preserved palette: view=%v", app.currentView())
 	}
-}
-
-// newReviewHubPeekApp builds a typed-navigation AppModel whose active primary is
-// the project-scoped Review Activity module with the cursor on a single task.
-// reviewHubPrimary resolves it beneath the palette overlay.
-func newReviewHubPeekApp(t *testing.T) *AppModel {
-	t.Helper()
-	app, project := newTestAppModelWithProject()
-	app.enableTypedNavigation()
-
-	task := &models.Task{ID: "review-peek-task", ShortID: 4242, Title: "Review peek target", WorkflowState: models.StateReady}
-	project.Tasks = []*models.Task{task}
-	project.BuildTaskTree()
-
-	if cmd := app.activateReviewHub(ReviewActivity, project); cmd != nil {
-		cmd()
-	}
-	hub, _, ok := app.reviewHubPrimary()
-	if !ok {
-		t.Fatal("reviewHubPrimary did not resolve the live Review Hub")
-	}
-	activity, ok := hub.ActiveModuleView().(*RecentActivityModel)
-	if !ok {
-		t.Fatalf("active Review module = %T, want *RecentActivityModel", hub.ActiveModuleView())
-	}
-	activity.loadTasks()
-	if resolved, _ := hub.getTaskRef(); resolved == nil || resolved.ID != task.ID {
-		t.Fatalf("review activity cursor = %v, want %q", resolved, task.ID)
-	}
-	if !app.activeReviewHub() {
-		t.Fatal("review hub is not the active primary surface")
-	}
-	return app
 }
 
 // newManageInboxPeekApp builds a typed-navigation AppModel whose active primary is

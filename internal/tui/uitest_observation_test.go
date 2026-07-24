@@ -11,11 +11,11 @@ func TestUITestObservationBasicFields(t *testing.T) {
 
 	obs := driver.Observe(ObserveOptions{})
 
-	if obs.CurrentView != "Dashboard" {
-		t.Errorf("CurrentView = %q, want Dashboard", obs.CurrentView)
+	if obs.CurrentView != "CrossProjectOutliner" {
+		t.Errorf("CurrentView = %q, want CrossProjectOutliner", obs.CurrentView)
 	}
-	if len(obs.ViewStack) != 1 || obs.ViewStack[0] != "Dashboard" {
-		t.Errorf("ViewStack = %v, want [Dashboard]", obs.ViewStack)
+	if len(obs.ViewStack) != 1 || obs.ViewStack[0] != "CrossProjectOutliner" {
+		t.Errorf("ViewStack = %v, want [CrossProjectOutliner]", obs.ViewStack)
 	}
 	if obs.Width != 100 || obs.Height != 30 {
 		t.Errorf("size = %dx%d, want 100x30", obs.Width, obs.Height)

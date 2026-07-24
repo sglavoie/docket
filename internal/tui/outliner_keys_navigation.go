@@ -170,6 +170,11 @@ func (m *OutlinerModel) escSteps() []EscStep {
 			m.cursor = top.CursorIndex
 			m.resetViewScrollOffset()
 		}},
+		// Task zoom unwinds before project scope: Esc pops one scope frame,
+		// restoring the previous scope's mode, filter, cursor, and scroll.
+		{Active: func() bool { return m.isProjectScoped() }, Clear: func() {
+			m.popProjectScope()
+		}},
 		{Active: func() bool { return m.project == nil && m.crossPriorityMode }, Clear: func() {
 			m.exitCrossPriorityMode()
 		}},
@@ -178,7 +183,7 @@ func (m *OutlinerModel) escSteps() []EscStep {
 
 func (m *OutlinerModel) ShouldCaptureEsc() bool {
 	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
-		AnyEscStepActive(m.escSteps()) || m.sidebar.ShouldCaptureEsc()
+		AnyEscStepActive(m.escSteps())
 }
 func (m *OutlinerModel) HasTextInput() bool {
 	return m.DefaultHasTextInput() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()

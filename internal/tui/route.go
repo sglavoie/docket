@@ -62,7 +62,7 @@ func presentationAccentCategory(view PresentationID) AccentCategory {
 		return AccentCatPlan
 	case ViewFocusBoard:
 		return AccentCatWork
-	case ViewOutliner, ViewTemporaryOutliner:
+	case ViewOutliner:
 		return AccentCatExecute
 	case ViewWeeklyReview, ViewMetricsDashboard, ViewRecentActivity:
 		return AccentCatReview

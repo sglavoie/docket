@@ -40,7 +40,7 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				}
 			case ViewOutliner:
 				if m.outliner != nil {
-					m.outliner.NavigateToSidebarTask(msg.Task)
+					m.outliner.NavigateToTask(msg.Task)
 				}
 			}
 		}
@@ -91,9 +91,6 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case StatusUpdatedMsg:
 		m.popView()
 		m.syncProjectCache()
-		if m.dashboard != nil {
-			m.dashboard.loadProjects()
-		}
 		m.setSuccessStatus("Status updated")
 		return true, defaultStatusTimeout()
 	}

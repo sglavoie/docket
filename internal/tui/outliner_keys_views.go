@@ -114,21 +114,18 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		return m, nil, true
 
 	case "A":
-		proj := m.project
+		proj := m.contextProject()
 		if proj == nil {
-			proj = m.cursorProject()
-			if proj == nil {
-				if m.activePerspective == PerspectiveCompleted {
-					m.setNoProjectStatus()
-					return m, nil, true
-				}
-				return m, func() tea.Msg {
-					return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
-						Focus: OutlinerAll, SetFocus: true,
-						Lens: OutlinerLensTree, SetLens: true,
-					}}
-				}, true
+			if m.activePerspective == PerspectiveCompleted {
+				m.setNoProjectStatus()
+				return m, nil, true
 			}
+			return m, func() tea.Msg {
+				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+					Focus: OutlinerAll, SetFocus: true,
+					Lens: OutlinerLensTree, SetLens: true,
+				}}
+			}, true
 		}
 		if m.activePerspective == PerspectiveCompleted {
 			completedCount := proj.CountCompletedTasks()
@@ -151,7 +148,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 
 	case "?":
 		if m.project == nil {
-			return m, helpCmd(ViewCrossProjectOutliner, "Cross-Project Outliner", m.GetHelpItems()), true
+			return m, helpCmd(ViewCrossProjectOutliner, "Outliner", m.GetHelpItems()), true
 		}
 		return m, helpCmd(ViewOutliner, "Outliner", m.GetHelpItems()), true
 
@@ -175,13 +172,10 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		return m, nil, true
 
 	case "ctrl+a":
-		proj := m.project
+		proj := m.contextProject()
 		if proj == nil {
-			proj = m.cursorProject()
-			if proj == nil {
-				m.setNoProjectStatus()
-				return m, nil, true
-			}
+			m.setNoProjectStatus()
+			return m, nil, true
 		}
 		if proj.Sandbox {
 			return m, func() tea.Msg {
@@ -201,28 +195,20 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		}, true
 
 	case "ctrl+s":
-		if m.project == nil {
-			task, project := m.getTaskRef()
-			if task == nil || project == nil {
-				m.setStatus("No task selected for section manager")
-				return m, nil, true
-			}
-			return m, func() tea.Msg {
-				return ShowSectionManagerMsg{Project: project}
-			}, true
+		project := m.contextProject()
+		if project == nil {
+			m.setNoProjectStatus()
+			return m, nil, true
 		}
 		return m, func() tea.Msg {
-			return ShowSectionManagerMsg{Project: m.project}
+			return ShowSectionManagerMsg{Project: project}
 		}, true
 
 	case "ctrl+v":
-		proj := m.project
+		proj := m.contextProject()
 		if proj == nil {
-			proj = m.cursorProject()
-			if proj == nil {
-				m.setNoProjectStatus()
-				return m, nil, true
-			}
+			m.setNoProjectStatus()
+			return m, nil, true
 		}
 		return m, m.pasteFromClipboardInto(proj), true
 

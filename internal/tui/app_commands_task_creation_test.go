@@ -35,26 +35,6 @@ func TestTaskCommands_QuickCapture_NilProject(t *testing.T) {
 	}
 }
 
-func TestTaskCommands_QuickCapture_DashboardNoProject(t *testing.T) {
-	app, _ := newTestAppModelWithProject()
-	app.currentProject = nil // No active project
-	app.viewStack = []PresentationID{ViewDashboard}
-
-	dash := NewDashboardModel(app.runtime)
-	app.views.Register(ViewDashboard, dash)
-
-	cmds := app.taskCommands()
-	cmd := findCommand(cmds, "quick capture")
-	if cmd == nil {
-		t.Fatal("expected to find 'quick capture' command")
-	}
-
-	result := cmd.Handler()
-	if _, ok := result.(ShowQuickCaptureMsg); !ok {
-		t.Fatalf("expected ShowQuickCaptureMsg, got %T", result)
-	}
-}
-
 func TestTaskCommands_BulkCapture(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 

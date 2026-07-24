@@ -110,8 +110,6 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 	views.Register(activeType, activeView)
 	notesSearch := NewNotesSearchModel(project)
 	views.Register(ViewNotesSearch, notesSearch)
-	dashboard := NewDashboardModel(runtime)
-	views.Register(ViewDashboard, dashboard)
 	shell := &AppModel{
 		configManager:        manager,
 		runtime:              runtime,
@@ -123,7 +121,6 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 		width:                80,
 		height:               40,
 		currentProject:       project,
-		dashboard:            dashboard,
 		focusQueue:           []FocusTask{{Task: task, Project: project}},
 		focusQueueIDs:        map[TaskIdentity]bool{taskIdentityFor(task, project): true},
 		dailyPlan:            []FocusTask{{Task: task, Project: project}},

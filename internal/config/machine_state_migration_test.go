@@ -177,8 +177,8 @@ func TestMachineStateMigrationImportsCurrentPathBeforeHistoricalDefault(t *testi
 	if decodeErr := json.Unmarshal(canonical.Data, &canonicalMachine); decodeErr != nil {
 		t.Fatalf("decode canonical payload: %v", decodeErr)
 	}
-	if canonicalMachine.TUIStateVersion != CurrentTUIStateVersion || canonicalMachine.GetStartView() != DefaultStartView {
-		t.Fatalf("canonical TUI state = version %d start %q", canonicalMachine.TUIStateVersion, canonicalMachine.GetStartView())
+	if canonicalMachine.TUIStateVersion != CurrentTUIStateVersion {
+		t.Fatalf("canonical TUI state = version %d, want %d", canonicalMachine.TUIStateVersion, CurrentTUIStateVersion)
 	}
 	if got, readErr := os.ReadFile(legacyPaths[0]); readErr != nil || string(got) != string(currentBytes) {
 		t.Fatalf("current-path rollback source changed: bytes=%q err=%v", got, readErr)

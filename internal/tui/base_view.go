@@ -32,8 +32,8 @@ type ViewBundle struct {
 
 	// link routes task-link mutations (dependency/related edge removal) through
 	// the application layer. The shell wires it via SetLinkCoordinator; a zero
-	// value (nil mutator) means the view was built in isolation. The sidebar
-	// unlink flow routes through it.
+	// value (nil mutator) means the view was built in isolation. The linked-task
+	// selector unlink flow routes through it.
 	link LinkCoordinator
 }
 

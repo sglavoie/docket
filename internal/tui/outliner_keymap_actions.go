@@ -34,20 +34,18 @@ func (b *outlinerKeymapBuilder) perspectiveCycleEntries() []keymap.Entry {
 
 	return []keymap.Entry{
 		keymap.Bind("h", "Cycle perspective left", "Perspectives", func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m.crossHandlePerspectiveCycle("h")
+			mode, ok := OutlinerModeForPerspective(CyclePerspective(m.activePerspective, -1))
+			if !ok {
+				return m, nil
 			}
-			m.activatePerspective(CyclePerspective(m.activePerspective, -1))
-			m.rebuildRows()
-			return m, nil
+			return m.selectOutlinerMode(mode.ID)
 		}),
 		keymap.Bind("l", "Cycle perspective right", "Perspectives", func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m.crossHandlePerspectiveCycle("l")
+			mode, ok := OutlinerModeForPerspective(CyclePerspective(m.activePerspective, 1))
+			if !ok {
+				return m, nil
 			}
-			m.activatePerspective(CyclePerspective(m.activePerspective, 1))
-			m.rebuildRows()
-			return m, nil
+			return m.selectOutlinerMode(mode.ID)
 		}),
 	}
 }
@@ -77,24 +75,6 @@ func (b *outlinerKeymapBuilder) actionEntries() []keymap.Entry {
 			model, cmd, _ := m.handleNavigationKey("backspace")
 			return model, cmd
 		}),
-		keymap.Bind("tab", "Cycle sidebar state", "Sidebar", func() (tea.Model, tea.Cmd) {
-			task := m.SidebarSelectedTask()
-			wasEnabled := m.sidebar.IsEnabled()
-			m.sidebar.CycleState(task)
-			if m.sidebar.IsFocused() && task != nil {
-				if proj := m.SidebarProject(); proj != nil {
-					sections := sidebarGetAvailableSections(proj, task)
-					if len(sections) > 0 {
-						m.sidebar.SetDependencySection(sections[0])
-					}
-				}
-			}
-			projectID := ""
-			if m.project != nil {
-				projectID = m.project.ID
-			}
-			return m, projectSidebarStateChangedCmd(projectID, wasEnabled, m.sidebar.IsEnabled())
-		}),
 	}
 }
 
@@ -103,10 +83,24 @@ func (b *outlinerKeymapBuilder) movementEntries() []keymap.Entry {
 
 	return []keymap.Entry{
 		keymap.Bind("J", "Move task down", "Task Movement", func() (tea.Model, tea.Cmd) {
+			if m.isPlanningReorderMode() {
+				return m.planningReorderMove(1)
+			}
+			if m.isComputedOrderMode() {
+				m.orderingUnavailableStatus()
+				return m, nil
+			}
 			model, cmd, _ := m.handleTaskMutationKey("J", b.onHeader())
 			return model, cmd
 		}),
 		keymap.Bind("K", "Move task up", "Task Movement", func() (tea.Model, tea.Cmd) {
+			if m.isPlanningReorderMode() {
+				return m.planningReorderMove(-1)
+			}
+			if m.isComputedOrderMode() {
+				m.orderingUnavailableStatus()
+				return m, nil
+			}
 			model, cmd, _ := m.handleTaskMutationKey("K", b.onHeader())
 			return model, cmd
 		}),
@@ -127,7 +121,6 @@ func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 	helpTitle := "Outliner"
 	if m.project == nil {
 		helpView = ViewCrossProjectOutliner
-		helpTitle = "Cross-Project Outliner"
 	}
 
 	return keymap.CommonTaskActionGroup(keymap.CommonTaskActionDeps{
@@ -275,14 +268,15 @@ func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 			return model, cmd
 		}),
 		keymap.Bind("ctrl+e", "Export project to Markdown", "Project", func() (tea.Model, tea.Cmd) {
-			project := m.project
+			project := m.contextProject()
+			if project == nil {
+				m.setNoProjectStatus()
+				return m, nil
+			}
 			return m, func() tea.Msg { return ExportProjectMsg{Project: project} }
 		}),
 		keymap.Bind("/", "Search tasks", "Filters", func() (tea.Model, tea.Cmd) {
 			return m, m.ActivateSearch()
-		}),
-		keymap.Bind("x", "Unlink task (sidebar)", "Sidebar", func() (tea.Model, tea.Cmd) {
-			return m, nil
 		}),
 	}
 }

@@ -102,9 +102,9 @@ func (v *recordingAuditView) SetSize(width, height int) {
 // normalizeScreen geometry issues.
 func TestRenderAuditObserveIncludesAuditIssues(t *testing.T) {
 	app := newUITestApp()
-	// Replace the dashboard render with a view that clips required text so the
-	// render performed inside Observe records an audit issue.
-	app.views.Register(ViewDashboard, &recordingAuditView{})
+	// Replace the current view's render with a view that clips required text so
+	// the render performed inside Observe records an audit issue.
+	app.views.Register(ViewCrossProjectOutliner, &recordingAuditView{})
 
 	driver := NewUITestDriver(app, 100, 30)
 	obs := driver.Observe(ObserveOptions{})

@@ -79,12 +79,12 @@ is holding up project progress.`,
 Contexts group related projects together. You might have a
 "work" context, a "personal" context, and a "side-projects"
 context. Switching contexts changes which projects appear
-in your dashboard and when cycling through projects.
+in the Outliner and when cycling through projects.
 
 # How Contexts Work
 
 When a context is active, only projects in that context
-appear in the dashboard and project list. This keeps your
+appear in the Outliner. This keeps your
 view focused on the relevant area of your life.`,
 		},
 		{

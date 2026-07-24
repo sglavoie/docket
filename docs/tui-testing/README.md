@@ -16,7 +16,7 @@ reliable, pre-populated data to drive against:
 
 | Fixture    | What it exercises                                                       |
 | ---------- | ----------------------------------------------------------------------- |
-| `empty`    | Zero-task onboarding surface (the dashboard capture hint).              |
+| `empty`    | Zero-task onboarding surface (the Outliner capture hint).               |
 | `rich`     | A full task hierarchy: every type, status, priority, and GTD sections.  |
 | `alerts`   | Overdue / due-soon / high-priority-blocked work that trips alerts.      |
 | `workflow` | Tasks spread across workflow stages for the stage-oriented views.       |
@@ -79,9 +79,9 @@ not to scenario runs.)
   "size": "100x35",
   "actions": [
     { "type": "resize", "width": 100, "height": 35 },
-    { "type": "key", "label": "open destination switcher", "key": "ctrl+g" },
-    { "type": "key", "label": "choose Planner", "key": "2" },
-    { "type": "assert", "assert": "view", "value": "Planner" },
+    { "type": "command", "label": "open Today focus", "command": "today" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Today" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
@@ -104,10 +104,10 @@ Action types:
 | `assert`  | `assert`, `value`             | Check an invariant against a fresh observation (see below).        |
 
 Every action also accepts an optional `label`, echoed back in the failure error so
-a failing step names the intent an author gave it (e.g. `"choose Planner"`)
+a failing step names the intent an author gave it (e.g. `"open Today focus"`)
 instead of only the raw action index.
 
-Chorded keys such as `ctrl+g` are sent as one key action. Prefix grammars inside
+Chorded keys such as `ctrl+x` are sent as one key action. Prefix grammars inside
 a view are sent one key at a time. `:` (command palette) is a single key.
 
 The `command` action invokes a registered command directly, without opening the
@@ -129,7 +129,7 @@ Key syntax (`parseUITestKey`):
 - Named keys: `enter`/`return`, `esc`/`escape`, `tab`, `space`, `backspace`.
 - Arrows: `up`, `down`, `left`, `right`.
 - Pages: `pgup`/`pageup`, `pgdown`/`pagedown` (drive full-page scrolling, e.g. the Quick Capture syntax reference).
-- Modifiers joined with `+`: `ctrl+x`, `ctrl+g`, `shift+tab`, `ctrl+shift+a`.
+- Modifiers joined with `+`: `ctrl+x`, `ctrl+p`, `shift+tab`, `ctrl+shift+a`.
 
 Assertion kinds (`assert`):
 
@@ -137,12 +137,12 @@ Assertion kinds (`assert`):
 | ------------------ | ------------------------------- | ---------------------------------------------------------- |
 | `contains`         | substring                       | the plain screen contains `value`.                         |
 | `not_contains`     | substring                       | the plain screen does not contain `value`.                 |
-| `view`             | view name                       | the current view equals `value` (e.g. `Dashboard`, `Today`, `CommandPalette`, `Outliner`, `CrossProjectOutliner`). |
+| `view`             | view name                       | the current view equals `value`. The Outliner root reports `CrossProjectOutliner`; children report their own identifiers (e.g. `TaskDetail`, `CommandPalette`, `Settings`). |
 | `status_contains`  | substring                       | the status line contains `value`.                          |
 | `no_layout_issues` | (ignored)                       | no normalization/layout issues were detected.              |
 
-> The dashboard needs a reasonably tall terminal to render without overflow —
-> use at least `100x35` for clean `no_layout_issues` assertions on the dashboard.
+> The Outliner root needs a reasonably tall terminal to render without overflow —
+> use at least `100x35` for clean `no_layout_issues` assertions on the root.
 > Smaller sizes legitimately report `height_overflow` / `width_overflow`.
 
 #### Layout issue kinds
@@ -177,22 +177,20 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 
 | File                            | Demonstrates                                              |
 | ------------------------------- | -------------------------------------------------------- |
-| `open-today.json`               | Choose Planner through `Ctrl+G` and assert Today.        |
+| `open-today.json`               | Open global Today via the `today` command and assert the Today focus. |
 | `reference-review-shortcuts.json` | Open Reference and exercise Review destination modules. |
 | `fresh-install-alerts-quiet.json` | Open first-use notifications and assert review reminders stay quiet. |
 | `command-palette-search.json`   | Open the command palette (`:`) and type a search query.  |
 | `command-palette-all-blockers.json` | Execute the `all blockers` palette alias and assert the global blockers view. |
 | `command-palette-task-actions-narrow-layout.json` | Open task action mode on the long-title narrow fixture at `72x20`. |
 | `command-action-help.json`      | Invoke the `help` command by name (no palette) and assert its view. |
-| `navigate-outliner.json`        | Choose Tasks through `Ctrl+G` and move in Outline.       |
+| `navigate-outliner.json`        | Open the global All mode, move the cursor, and re-sort the Outline. |
 | `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |
-| `focus-empty-minimum-layout.json` | Open the empty Backlog view at `72x20` and assert no layout issues. |
-| `baseline-layout.json`          | Assert no layout issues across baseline dashboard sizes. |
-| `dashboard-search-alerts-minimum-layout.json` | Activate Dashboard project search on the alert-heavy fixture at `60x20`. |
+| `baseline-layout.json`          | Assert no layout issues across baseline Outliner sizes.  |
+| `dashboard-search-alerts-minimum-layout.json` | Assert the alert-heavy fixture root renders cleanly at `60x20`. |
 | `attr-filter-picker-minimum-layout.json` | Open Attribute Filter Picker at `60x20` and assert no layout issues. |
 | `task-detail-narrow-layout.json` | Open TaskDetail on the narrow fixture at `60x20`; assert no layout issues and that the wrapped footer keeps the `c: comments`, `D: decisions`, `H: toggle history`, and `Esc: close` hints. |
 | `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
-| `destination-switcher-minimum-layout.json` | Open the six-destination switcher at `72x20`. |
 | `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
 | `message-log-export-project-minimum-layout.json` | Export a project, open the Message Log at `60x20`, and assert no layout issues. |
 | `notifications-minimum-layout.json` | Open the alert-heavy Notification Center at `72x20` and assert no layout issues. |
@@ -224,9 +222,9 @@ just tui-scenarios
 | Outcome | Committed scenario coverage |
 | --- | --- |
 | Fresh install and post-migration startup | `fresh-install-default.json`, `fresh-install-capture.json`, `fresh-install-alerts-quiet.json` |
-| Home and Attention | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
-| Planner Today, Next, and empty states | `open-today.json`, `focus-empty-minimum-layout.json` |
-| Task Workspace app/project scopes and Outliner focus/sort translation | `navigate-outliner.json` |
+| Outliner root and onboarding | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
+| Outliner Today and Next modes | `open-today.json` |
+| Outliner project scopes and focus/sort translation | `navigate-outliner.json` |
 | Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
 | Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |
 | Detail and Composer | `task-detail-narrow-layout.json`, `quick-capture-minimum-layout.json`, `task-form-edit-standard-layout.json` |
@@ -297,7 +295,7 @@ marked *omitempty* are absent when empty.
 
 | Field                | Meaning                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------ |
-| `current_view`       | Name of the active view (e.g. `Dashboard`, `Today`, `CommandPalette`).               |
+| `current_view`       | Name of the active view (the Outliner root reports `CrossProjectOutliner`; e.g. `TaskDetail`, `CommandPalette`). |
 | `view_stack`         | The navigation stack from root to the active view.                                   |
 | `width` / `height`   | The simulated terminal size.                                                         |
 | `plain_screen`       | The rendered screen with styling stripped and invalid UTF-8 sanitized.               |
@@ -318,15 +316,14 @@ height). `line` is 1-based, or `0` for screen-wide issues.
 
 A compact, stable per-view semantic map — high-signal fields only (counts,
 cursor, selected-item title, active mode/tab/perspective), never whole task or
-project structs. It is present only for views that implement it: **Dashboard,
-Today, Outliner, CommandPalette** (Cross-Project Outliner reuses the same
-model). Keys vary by view and are defined in
+project structs. It is present only for views that implement it: the **Outliner**
+(the sole root, whose `current_view` is `CrossProjectOutliner`) and the
+**CommandPalette**. Keys vary by view and are defined in
 `internal/tui/uitest_snapshot.go` — consult that file for the authoritative set.
 Examples:
 
-- Dashboard: `{cursor, project_count, selected_project, show_archived}`
+- Outliner: `{cross_project, cursor, perspective, row_count}`
 - CommandPalette: `{action_mode, cursor, query, result_count, selected_category, selected_item}`
-- Cross-Project Outliner: `{cross_project, cursor, perspective, row_count}`
 
 Because snapshot rows/columns are rebuilt lazily during a render, the driver
 always renders the active view before reading the snapshot — live scenarios need
@@ -337,8 +334,8 @@ no special handling.
 Each entry is `{name, shortcut, category, aliases}` for a command the active view
 exposes, sorted by name for stable output. This lets a review host discover the
 available actions without scraping help text. `shortcut` and `aliases` are
-*omitempty*. The dashboard exposes ~63 commands; some views (e.g. the palette
-itself) expose none, in which case the field is absent.
+*omitempty*. The Outliner root exposes dozens of commands; some views (e.g. the
+palette itself) expose none, in which case the field is absent.
 
 ## Safety guarantees
 
@@ -359,20 +356,3 @@ Both modes are read-only with respect to your real data:
   end to end in the test suite. `--config` and `--fixture` are mutually exclusive.
 
 Direct live writes to your real data directory are out of scope for v1.
-
-## Known layout issues
-
-These are real, reproducible layout defects the harness can surface but that the
-committed scenarios do **not** yet guard. They are tracked as follow-ups, not
-fixed.
-
-- **Cross-project outliner multi-select overflows at 60×20.** Entering
-  multi-select in Task Workspace Outline (`Ctrl+G` → Tasks → `v`) prefixes each row with a
-  `[ ]` checkbox. That extra width pushes the trailing `#ID` past the edge of the
-  ~33-column tree pane, so it wraps and the screen reports `height_overflow` at
-  60×20. The shipped scenario
-  `scenarios/outliner-multiselect-minimum-layout.json` only asserts
-  `no_layout_issues` at **72×20**, where the rows still fit — so this narrower
-  overflow is currently invisible to regression coverage. Repro: open Tasks with `Ctrl+G`, press `v`, at
-  60×20. Root cause: the checkbox-prefix width forces `#ID` to wrap in the narrow
-  tree pane.

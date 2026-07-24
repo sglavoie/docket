@@ -47,15 +47,6 @@ const (
 	// Filter/sort info is now inline on the title line, so no extra line needed.
 	TreeHeaderOffset = 7
 
-	// TreeMinWidth is the minimum width for the tree pane in split layout.
-	TreeMinWidth = 35
-
-	// SidebarMinWidth is the minimum width for the sidebar pane.
-	SidebarMinWidth = 25
-
-	// SidebarContentOverhead is the horizontal overhead for sidebar content.
-	SidebarContentOverhead = 3
-
 	// DashboardBottomPaneHeight is the minimum-clamp height for the bottom
 	// info section (summary/alerts cards) in the dashboard horizontal
 	// layout. Session 2 will compute the actual height from the configured

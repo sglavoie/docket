@@ -3,14 +3,14 @@
   "fixture": "fresh",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "assert": "view", "value": "Planner" },
-    { "type": "key", "label": "add to Today", "key": "a" },
-    { "type": "assert", "assert": "view", "value": "Planner" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "open Task Composer", "key": "ctrl+n" },
+    { "type": "assert", "assert": "view", "value": "QuickCapture" },
     { "type": "text", "label": "enter first task", "text": "Triage the welcome checklist" },
-    { "type": "key", "label": "create in Today", "key": "enter" },
+    { "type": "key", "label": "create the task", "key": "enter" },
     { "type": "wait", "label": "wait for capture commit" },
-    { "type": "assert", "assert": "view", "value": "Planner" },
-    { "type": "assert", "assert": "status_contains", "value": "Added #" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Task captured" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

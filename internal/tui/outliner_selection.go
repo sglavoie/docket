@@ -27,24 +27,34 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 	return nil, nil
 }
 
-// cursorProject returns the project that owns the row under the cursor.
-// Single-project mode returns m.project; cross-project mode resolves
-// row.ProjectID via m.loadedProjects. Returns nil for empty rows, an
-// out-of-range cursor, section headers, separators, project sub-headers,
-// rows without a task, or stale project IDs that no longer match any loaded
-// project.
-func (m *OutlinerModel) cursorProject() *models.Project {
-	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
-		return nil
-	}
-	row := m.rows[m.cursor]
-	if !row.isTaskRow() || row.task == nil {
-		return nil
-	}
+// contextProject resolves the project targeted by project-scoped Outliner
+// actions. Single-project models always target their own project. Cross-project
+// models prefer an explicit task or navigable project-header owner, then fall
+// back to an active project scope for rows that do not identify a project.
+//
+// An empty scoped view still has project context. An invalid cursor never does,
+// and an explicit task/header ProjectID must resolve successfully rather than
+// falling back to an unrelated active scope.
+func (m *OutlinerModel) contextProject() *models.Project {
 	if m.project != nil {
 		return m.project
 	}
-	return m.crossResolveProject(row.ProjectID)
+	if len(m.rows) == 0 {
+		return m.scopedProject()
+	}
+	if m.cursor < 0 || m.cursor >= len(m.rows) {
+		return nil
+	}
+
+	row := m.rows[m.cursor]
+	switch {
+	case row.isTaskRow() && row.task != nil:
+		return m.crossResolveProject(row.ProjectID)
+	case row.IsProjectHeader && row.isNavigable():
+		return m.crossResolveProject(row.ProjectID)
+	default:
+		return m.scopedProject()
+	}
 }
 
 func (m *OutlinerModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }

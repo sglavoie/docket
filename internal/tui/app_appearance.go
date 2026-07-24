@@ -35,9 +35,5 @@ func (m *AppModel) handleAppearanceResult(msg systemAppearanceResultMsg) tea.Cmd
 
 	ApplyTheme(NewThemeConfig(m.runtime.Settings()))
 
-	if m.dashboard != nil {
-		m.dashboard.Refresh()
-	}
-
 	return nil
 }

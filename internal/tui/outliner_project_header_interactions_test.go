@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // crossProjectHeaderFixture builds a non-All cross-project outliner with two
@@ -32,6 +33,7 @@ func crossProjectHeaderFixture(t *testing.T) (m *OutlinerModel, alphaHeader, bet
 		activePerspective: PerspectiveAll + 1, // Active
 		loadedProjects:    []*models.Project{alpha, beta},
 	}
+	m.Dispatcher = keymap.NewDispatcher(m.buildKeyMap())
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 
@@ -57,12 +59,98 @@ func crossProjectHeaderFixture(t *testing.T) (m *OutlinerModel, alphaHeader, bet
 	return m, alphaHeader, betaHeader, alphaTaskRow, betaTaskRow
 }
 
-func TestOutlinerProjectHeaderEnterIsNoOp(t *testing.T) {
-	m, alphaHeader, _, _, _ := crossProjectHeaderFixture(t)
+// navigateCursorTo drives j/k through the model's real keymap dispatcher until
+// the cursor rests on target, mirroring the production key path. It fails the
+// test if movement stalls before reaching target — this is how header rows are
+// reached without assigning m.cursor directly.
+func navigateCursorTo(t *testing.T, m *OutlinerModel, target int) {
+	t.Helper()
+	for guard := 0; m.cursor != target; guard++ {
+		key := 'j'
+		if m.cursor > target {
+			key = 'k'
+		}
+		before := m.cursor
+		m.Dispatcher.Dispatch(syntheticKey(key))
+		if m.cursor == before {
+			t.Fatalf("navigation stalled at cursor=%d trying to reach %d", m.cursor, target)
+		}
+		if guard > len(m.rows)+2 {
+			t.Fatalf("navigation failed to converge on cursor=%d (stuck at %d)", target, m.cursor)
+		}
+	}
+}
 
-	m.cursor = alphaHeader
+func TestOutlinerProjectHeadersAreNavigable(t *testing.T) {
+	// Separators stay non-navigable while project headers become navigable.
+	if (outlinerRow{IsSeparator: true}).isNavigable() {
+		t.Error("separator rows must remain non-navigable")
+	}
+	if !(outlinerRow{IsProjectHeader: true}).isNavigable() {
+		t.Error("project header rows must be navigable so Enter/Shift+Enter are reachable")
+	}
+
+	m, alphaHeader, betaHeader, alphaTaskRow, betaTaskRow := crossProjectHeaderFixture(t)
+
+	// After a rebuild the clamp is allowed to settle the cursor on the first
+	// project header rather than skipping past it to the task row.
+	if !m.rows[m.cursor].IsProjectHeader {
+		t.Fatalf("expected clamp to keep cursor on a project header, got row %d (%+v)", m.cursor, m.rows[m.cursor])
+	}
+
+	// Walk downward with j to the last row; record every cursor stop so we can
+	// assert that both project headers are landed on (not skipped) during normal
+	// movement. Walking to the last row index keeps the assertion independent of
+	// project group ordering.
+	lastRow := len(m.rows) - 1
+	visited := map[int]bool{m.cursor: true}
+	for guard := 0; m.cursor < lastRow; guard++ {
+		before := m.cursor
+		m.Dispatcher.Dispatch(syntheticKey('j'))
+		if m.cursor == before {
+			t.Fatalf("j stalled at cursor=%d", m.cursor)
+		}
+		visited[m.cursor] = true
+		if guard > len(m.rows)+2 {
+			t.Fatal("j navigation did not converge on the last row")
+		}
+	}
+	for _, want := range []struct {
+		name string
+		idx  int
+	}{
+		{"alpha header", alphaHeader},
+		{"alpha task", alphaTaskRow},
+		{"beta header", betaHeader},
+		{"beta task", betaTaskRow},
+	} {
+		if !visited[want.idx] {
+			t.Errorf("downward j movement skipped %s (row %d); every visible header and task must be reachable", want.name, want.idx)
+		}
+	}
+
+	// Walk back up with k and confirm each project header is landed on again.
+	navigateCursorTo(t, m, betaHeader)
+	if !m.rows[m.cursor].IsProjectHeader || m.rows[m.cursor].ProjectID != m.rows[betaHeader].ProjectID {
+		t.Fatalf("k movement failed to rest on the beta project header, got row %d (%+v)", m.cursor, m.rows[m.cursor])
+	}
+	navigateCursorTo(t, m, alphaHeader)
+	if !m.rows[m.cursor].IsProjectHeader || m.rows[m.cursor].ProjectID != m.rows[alphaHeader].ProjectID {
+		t.Fatalf("k movement failed to rest on the alpha project header, got row %d (%+v)", m.cursor, m.rows[m.cursor])
+	}
+}
+
+func TestOutlinerProjectHeaderEnterPushesScope(t *testing.T) {
+	m, alphaHeader, _, _, _ := crossProjectHeaderFixture(t)
+	alphaID := m.rows[alphaHeader].ProjectID
+
+	// Reach the header through real j/k navigation rather than a direct cursor
+	// assignment, proving the header is a legitimate cursor destination.
+	navigateCursorTo(t, m, alphaHeader)
+	if !m.rows[m.cursor].IsProjectHeader || m.rows[m.cursor].ProjectID != alphaID {
+		t.Fatalf("navigation did not land on the alpha project header, got row %d (%+v)", m.cursor, m.rows[m.cursor])
+	}
 	zoomBefore := len(m.crossZoomStack)
-	rowsBefore := append([]outlinerRow(nil), m.rows...)
 
 	model, cmd, handled := m.crossHandleEnterKey()
 	if !handled {
@@ -74,21 +162,18 @@ func TestOutlinerProjectHeaderEnterIsNoOp(t *testing.T) {
 	if model != m {
 		t.Fatalf("project header Enter must return the same model, got %T", model)
 	}
+	// Enter now scopes the global Outliner to the header's project in place.
+	if m.scopedProjectID != alphaID {
+		t.Fatalf("expected Enter on project header to scope to %q, got %q", alphaID, m.scopedProjectID)
+	}
 	if len(m.crossZoomStack) != zoomBefore {
-		t.Errorf("project header Enter must not push zoom stack: before=%d after=%d", zoomBefore, len(m.crossZoomStack))
+		t.Errorf("project header Enter must scope, not push zoom: before=%d after=%d", zoomBefore, len(m.crossZoomStack))
 	}
-	if len(m.rows) != len(rowsBefore) {
-		t.Errorf("project header Enter must not change row count: before=%d after=%d", len(rowsBefore), len(m.rows))
-	}
-}
-
-func TestOutlinerProjectHeaderDrillDownIgnored(t *testing.T) {
-	m, alphaHeader, _, _, _ := crossProjectHeaderFixture(t)
-
-	m.cursor = alphaHeader
-	_, cmd := m.crossHandleGoDrillDown()
-	if cmd != nil {
-		t.Fatalf("crossHandleGoDrillDown must return nil cmd for project header, got %T", cmd())
+	// The scoped view shows only alpha's rows.
+	for _, row := range m.rows {
+		if row.isTaskRow() && row.task != nil && row.ProjectID != alphaID {
+			t.Fatalf("scoped rows must belong to %q, found %q", alphaID, row.ProjectID)
+		}
 	}
 }
 
@@ -99,7 +184,7 @@ func TestOutlinerProjectHeaderMutationIgnored(t *testing.T) {
 	alpha := m.loadedProjects[0]
 	alphaTaskBefore := *alpha.Tasks[0]
 
-	m.cursor = alphaHeader
+	navigateCursorTo(t, m, alphaHeader)
 
 	// Priority mutation: with cursor on a non-task row, crossGetMutationTarget
 	// reports valid=false and the handler returns a nil cmd without touching
@@ -154,27 +239,34 @@ func TestOutlinerProjectHeaderSelectAllSkipped(t *testing.T) {
 	}
 }
 
-func TestOutlinerProjectHeaderCursorSkip(t *testing.T) {
-	m, alphaHeader, betaHeader, alphaTaskRow, betaTaskRow := crossProjectHeaderFixture(t)
+// TestOutlinerProjectHeaderSeparatorStillSkipped confirms that the
+// skip-non-navigable path still steps over separators even though project
+// headers are now valid cursor destinations. Project headers are no longer
+// skipped (see TestOutlinerProjectHeadersAreNavigable); only decorative
+// separators remain non-navigable.
+func TestOutlinerProjectHeaderSeparatorStillSkipped(t *testing.T) {
+	m, alphaHeader, _, alphaTaskRow, _ := crossProjectHeaderFixture(t)
 
-	// Simulate a forward navigation that lands on the beta project header.
-	// crossSkipNonNavigableRows should walk forward to the next navigable row
-	// (the beta task row beneath the header).
-	m.cursor = betaHeader
-	prev := alphaTaskRow
-	m.crossSkipNonNavigableRows(prev, nil)
-	if m.cursor != betaTaskRow {
-		t.Errorf("forward skip from project header: want cursor=%d (beta task), got %d", betaTaskRow, m.cursor)
+	// Splice a separator immediately after the alpha task row.
+	sepIdx := alphaTaskRow + 1
+	m.rows = append(m.rows[:sepIdx], append([]outlinerRow{{IsSeparator: true}}, m.rows[sepIdx:]...)...)
+
+	// Landing on the separator via a forward move must skip to the next
+	// navigable row (which is now a project header — itself navigable).
+	m.cursor = sepIdx
+	m.crossSkipNonNavigableRows(alphaTaskRow, nil)
+	if m.rows[m.cursor].IsSeparator {
+		t.Fatalf("forward skip left cursor on a separator at row %d", m.cursor)
+	}
+	if m.cursor <= sepIdx {
+		t.Fatalf("forward skip from separator should advance past row %d, got %d", sepIdx, m.cursor)
 	}
 
-	// Simulate a backward navigation that lands on the alpha project header
-	// from a position past it. The cursor should walk backward to a navigable
-	// row, and since the alpha header is the very first row, the recovery
-	// branch should then walk forward to the alpha task row.
+	// The alpha project header (before the separator) is a valid rest position:
+	// a backward move onto it must NOT skip away.
 	m.cursor = alphaHeader
-	prev = betaTaskRow
-	m.crossSkipNonNavigableRows(prev, nil)
-	if m.cursor != alphaTaskRow {
-		t.Errorf("backward skip from project header at list start: want cursor=%d (alpha task), got %d", alphaTaskRow, m.cursor)
+	m.crossSkipNonNavigableRows(alphaTaskRow, nil)
+	if m.cursor != alphaHeader {
+		t.Fatalf("backward move onto navigable project header should rest there, got %d", m.cursor)
 	}
 }

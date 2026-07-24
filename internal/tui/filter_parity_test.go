@@ -44,9 +44,7 @@ func sharedFilterViewCases() []filterParityCase {
 	return []filterParityCase{
 		{ViewOutliner, "Outliner", (&OutlinerModel{project: &models.Project{}}).buildKeyMap()},
 		{ViewCrossProjectOutliner, "CrossProjectOutliner", (&OutlinerModel{}).buildKeyMap()},
-		{ViewDailyReview, "DailyReview", (&DailyReviewModel{}).buildKeyMap()},
 		{ViewWeeklyReview, "WeeklyReview", (&WeeklyReviewModel{}).buildKeyMap()},
-		{ViewRecentActivity, "RecentActivity", (&RecentActivityModel{}).buildKeyMap()},
 	}
 }
 
@@ -179,10 +177,6 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 	}
 
 	switch name {
-	case "FocusBoard":
-		m := &FocusBoardModel{runtime: runtime, FilterMixin: filterMixin()}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
-		return m.GetPrefixPopupInfo()
 	case "Outliner":
 		m := &OutlinerModel{
 			PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(cfg.DataDir(), cfg)),
@@ -203,17 +197,9 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 		}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
-	case "DailyReview":
-		m := &DailyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
-		m.pendingPrefix = "F"
-		return m.GetPrefixPopupInfo()
 	case "WeeklyReview":
 		m := &WeeklyReviewModel{PrimaryViewBundle: NewPrimaryViewBundle(nil, runtime), FilterMixin: filterMixin()}
 		m.pendingPrefix = "F"
-		return m.GetPrefixPopupInfo()
-	case "RecentActivity":
-		m := &RecentActivityModel{runtime: runtime, FilterMixin: filterMixin()}
-		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
 	default:
 		t.Fatalf("missing runtime popup setup for %s", name)
@@ -230,9 +216,7 @@ func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 		// completed/actionable/section/columns plus Fv saved filters.
 		"Outliner":             {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
 		"CrossProjectOutliner": {"#", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
-		"DailyReview":          {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 		"WeeklyReview":         {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
-		"RecentActivity":       {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 	}
 
 	for _, tc := range sharedFilterViewCases() {
@@ -246,41 +230,6 @@ func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 				t.Errorf("F children for %s\n  got:  %v\n  want: %v", tc.name, got, want)
 			}
 		})
-	}
-}
-
-// TestFilterParity_PlannerUsesViewMenuInsteadOfFilterPrefixes locks the
-// consolidated Planner grammar: filters and sorting live under v, with no
-// legacy F prefix or hidden compound filter aliases.
-func TestFilterParity_PlannerUsesViewMenuInsteadOfFilterPrefixes(t *testing.T) {
-	km := (&FocusBoardModel{}).buildKeyMap()
-	if findRootFPrefix(km) != nil {
-		t.Fatal("Planner must not expose the retired F prefix")
-	}
-	for _, item := range km.HelpItems() {
-		if item.Key == "v" && item.Description == "Open View menu" {
-			return
-		}
-	}
-	t.Fatal("Planner keymap does not advertise v Open View menu")
-}
-
-// TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup asserts Recent
-// Activity exposes the full shared F filter group wired through FilterGroup,
-// including the Fh hide-dimmed toggle and the full sub-prefix family
-// (Ft, Fs, Fd, FS).
-func TestFilterParity_RecentActivity_AdvertisesSharedFilterGroup(t *testing.T) {
-	km := (&RecentActivityModel{}).buildKeyMap()
-	if findRootFPrefix(km) == nil {
-		t.Fatal("Recent Activity must expose the shared F prefix")
-	}
-	if !fChildIsBinding(km, "h") {
-		t.Error("Recent Activity must advertise Fh (hide-dimmed)")
-	}
-	for _, sub := range []string{"t", "s", "d", "S"} {
-		if !fChildIsPrefix(km, sub) {
-			t.Errorf("Recent Activity must expose F%s sub-prefix", sub)
-		}
 	}
 }
 
@@ -485,25 +434,6 @@ func TestFilterParity_HandledKeys_CoverAdvertisedFKeys(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// TestKeybindingExplorer_PlannerAdvertisesViewMenu ensures Help derives from
-// the consolidated declarative grammar rather than the retired filter tree.
-func TestKeybindingExplorer_PlannerAdvertisesViewMenu(t *testing.T) {
-	reg := BuildRegistryFromKeyMaps(migratedViewKeymaps())
-	items := reg.GetForView(ViewFocusBoard)
-	has := map[string]bool{}
-	for _, item := range items {
-		has[item.Key] = true
-	}
-	if !has["v"] {
-		t.Error("Planner explorer must advertise v (View menu)")
-	}
-	for key := range has {
-		if strings.HasPrefix(key, "F") {
-			t.Errorf("Planner explorer advertises retired filter key %q", key)
-		}
 	}
 }
 

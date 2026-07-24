@@ -57,8 +57,8 @@ func TestManageAutomationModulesUseOneTypedRoute(t *testing.T) {
 			}
 			route := app.CurrentRoute()
 			params, ok := route.Params().(ManageParams)
-			if route.ID() != ManageHub || !ok || params.Module != tc.module || params.Scope != AppEntityScope() {
-				t.Fatalf("route = %s/%#v, want Manage/%s/app", route.ID(), route.Params(), tc.module)
+			if route.ID() != SecondaryTool || !ok || params.Module != tc.module || params.Scope != AppEntityScope() {
+				t.Fatalf("route = %s/%#v, want SecondaryTool/%s/app", route.ID(), route.Params(), tc.module)
 			}
 			if _, legacy := route.Presentation(); legacy {
 				t.Fatal("Manage automation module retained a legacy route presentation")

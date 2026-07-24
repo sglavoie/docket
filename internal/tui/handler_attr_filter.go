@@ -56,15 +56,7 @@ func (m *AppModel) applyAttrFilterToView(source PresentationID, prefix, key stri
 
 	switch source {
 	case ViewOutliner:
-		target := m.outliner
-		if target == nil {
-			if v := m.views.Get(ViewTemporaryOutliner); v != nil {
-				if o, ok := v.(*OutlinerModel); ok {
-					target = o
-				}
-			}
-		}
-		if target != nil {
+		if target := m.outliner; target != nil {
 			applyAttr(&target.filter.CommonFilterState, func() {
 				target.rebuildRows()
 				target.clampCursor()

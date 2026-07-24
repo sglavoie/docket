@@ -3,6 +3,11 @@
   "fixture": "rich",
   "size": "72x20",
   "actions": [
+    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "key", "label": "step onto the project header", "key": "down" },
+    { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "key", "label": "drill into highlighted project", "key": "ctrl+p" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "command", "label": "open Project Editor", "command": "rename project" },
     { "type": "assert", "assert": "view", "value": "ProjectEditor" },
     { "type": "assert", "assert": "no_layout_issues" }

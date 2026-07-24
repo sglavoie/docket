@@ -130,8 +130,8 @@ func TestGlobalCommands_SwitchProject(t *testing.T) {
 		t.Fatal("expected 'switch project' command")
 	}
 	msg := cmd.Handler()
-	if _, ok := msg.(ShowProjectPickerMsg); !ok {
-		t.Errorf("expected ShowProjectPickerMsg, got %T", msg)
+	if _, ok := msg.(ShowScopePickerMsg); !ok {
+		t.Errorf("expected ShowScopePickerMsg, got %T", msg)
 	}
 }
 

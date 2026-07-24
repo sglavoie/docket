@@ -11,16 +11,6 @@ package tui
 //   - Peek/preview: dim (replaces context with detail)
 //   - Confirm dialogs: dim (destructive action requires focus)
 func (m *AppModel) applyOverlays(content string, h int) string {
-	if planner, ok := m.activeView().(*FocusBoardModel); ok {
-		if popup := planner.renderPlannerViewMenu(m.width); popup != "" {
-			content = OverlayPopupDimmed(content, popup, m.width, h)
-		}
-	}
-	// The canonical Ctrl+G destination switcher is a typed shell overlay.
-	if popup := m.renderDestinationSwitcher(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
 	// Overlay prefix popup if the current view provides one
 	if popup := m.renderPrefixPopupOverlay(); popup != "" {
 		content = OverlayPopup(content, popup, m.width, h)
@@ -74,6 +64,12 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	var out []widthRenderer
 	if m.globalProjectPicker != nil {
 		out = append(out, m.globalProjectPicker)
+	}
+	if m.scopePicker != nil {
+		out = append(out, m.scopePicker)
+	}
+	if m.projectAdminMenu != nil {
+		out = append(out, m.projectAdminMenu)
 	}
 	if m.globalTaskPicker != nil {
 		out = append(out, m.globalTaskPicker)

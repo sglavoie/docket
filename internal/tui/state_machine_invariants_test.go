@@ -253,6 +253,17 @@ func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
 	})
 
 	t.Run("pipeline plan count is the StateNext count", func(t *testing.T) {
+		var countNext func(task *models.Task) int
+		countNext = func(task *models.Task) int {
+			n := 0
+			if task.State() == models.StateNext {
+				n++
+			}
+			for _, child := range task.Children {
+				n += countNext(child)
+			}
+			return n
+		}
 		total := 0
 		for _, task := range project.GetRootTasks() {
 			total += countNext(task)

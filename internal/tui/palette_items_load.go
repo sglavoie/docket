@@ -173,12 +173,37 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
-	viewItems := []struct {
-		name        string
-		description string
-		viewType    PresentationID
-		aliasTarget PaletteAliasTarget
-	}{
+	for _, v := range staticPaletteViewItems() {
+		items = append(items, PaletteItem{
+			Name:        v.name,
+			Description: v.description,
+			Category:    ItemCategoryViews,
+			ViewTarget:  v.viewType,
+			AliasTarget: v.aliasTarget,
+		})
+	}
+
+	// Every Outliner catalog mode is a selectable palette action, derived from
+	// OutlinerModeCatalog rather than a hand-maintained parallel command list.
+	items = append(items, outlinerModePaletteItems()...)
+
+	return items
+}
+
+// paletteViewItemSpec describes a directly-openable surface exposed as a
+// Command Palette "Views" entry.
+type paletteViewItemSpec struct {
+	name        string
+	description string
+	viewType    PresentationID
+	aliasTarget PaletteAliasTarget
+}
+
+// staticPaletteViewItems is the fixed catalog of direct-tool palette entries.
+// It is a package-level function (not an inline literal) so guard tests can scan
+// the palette registry for retired surface names without a live runtime.
+func staticPaletteViewItems() []paletteViewItemSpec {
+	return []paletteViewItemSpec{
 		{name: "Daily Review", description: "Review and plan your day", viewType: ViewDailyReview},
 		{name: "Weekly Review", description: "Strategic project health review", viewType: ViewWeeklyReview},
 		{name: "Recent Activity", description: "Browse recent and completed tasks", viewType: ViewRecentActivity},
@@ -196,19 +221,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		// do not restore the retired view implementations or their old keys.
 		{name: "Global Search", description: "Alias for Command Palette search", viewType: ViewGlobalSearch},
 		{name: "Notes Search", description: "Alias for Manage Notes search", viewType: ViewNotesSearch},
-		{name: "Pipeline Hub", description: "Alias for Home Attention", aliasTarget: PaletteAliasHomeAttention},
 	}
-	for _, v := range viewItems {
-		items = append(items, PaletteItem{
-			Name:        v.name,
-			Description: v.description,
-			Category:    ItemCategoryViews,
-			ViewTarget:  v.viewType,
-			AliasTarget: v.aliasTarget,
-		})
-	}
-
-	return items
 }
 
 // activeGlobalPaletteShortcut exposes only bindings from the exact global map.
@@ -219,7 +232,7 @@ func activeGlobalPaletteShortcut(command Command) string {
 		return ""
 	}
 	switch command.Shortcut {
-	case ":", "?", "esc", "ctrl+c", "ctrl+esc", "ctrl+g", "ctrl+n", "ctrl+x", "|", "#":
+	case ":", "?", "esc", "ctrl+c", "ctrl+esc", "ctrl+n", "ctrl+x", "|", "#":
 		return command.Shortcut
 	default:
 		return ""

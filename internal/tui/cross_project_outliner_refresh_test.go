@@ -25,7 +25,11 @@ func TestHandleWithRefreshTriggersCrossProjectReload(t *testing.T) {
 		{ID: "alpha", Name: "Alpha"},
 		{ID: "beta", Name: "Beta"},
 	}
-	app.outliner = &OutlinerModel{
+	// The global Outliner root owns the cross-project cache, so the active
+	// cross-project instance is m.crossOutliner (activeCrossProjectOutliner
+	// prefers it). Install the hand-built cross-mode model there.
+	app.outliner = nil
+	app.crossOutliner = &OutlinerModel{
 		PrimaryViewBundle:    newCrossProjectRefreshPrimaryBundle(),
 		InteractiveViewState: InteractiveViewState{cursor: 7},
 		project:              nil, // cross-project mode
@@ -37,14 +41,14 @@ func TestHandleWithRefreshTriggersCrossProjectReload(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected non-nil cmd containing cross-project reload")
 	}
-	if app.outliner.loadedProjects != nil {
+	if app.crossOutliner.loadedProjects != nil {
 		t.Error("expected loadedProjects to be cleared by reloadCrossProjects")
 	}
-	if !app.outliner.crossLoading {
+	if !app.crossOutliner.crossLoading {
 		t.Error("expected crossLoading=true after startCrossProjectLoad")
 	}
-	if app.outliner.cursor != 7 {
-		t.Errorf("expected cursor preserved at 7, got %d", app.outliner.cursor)
+	if app.crossOutliner.cursor != 7 {
+		t.Errorf("expected cursor preserved at 7, got %d", app.crossOutliner.cursor)
 	}
 }
 

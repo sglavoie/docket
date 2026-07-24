@@ -12,11 +12,7 @@ import (
 // failures. ViewProjectRecentActivity is tested separately (same model, one less key).
 func session2SyncViews() []syncTestCase {
 	return []syncTestCase{
-		{ViewDailyReview, &DailyReviewModel{}},
 		{ViewWeeklyReview, &WeeklyReviewModel{}},
-		{ViewFocusBoard, &FocusBoardModel{}},
-		{ViewRecentActivity, &RecentActivityModel{}},
-		{ViewProjectRecentActivity, &RecentActivityModel{}},
 		{ViewInboxProcessor, &InboxProcessorModel{}},
 		{ViewGlobalInboxProcessor, &GlobalInboxProcessorModel{}},
 		{ViewOutliner, &OutlinerModel{}},
@@ -84,7 +80,6 @@ type syncTestCase struct {
 // session1SyncViews returns the 19 simple/secondary views implemented in session 1.
 func session1SyncViews() []syncTestCase {
 	return []syncTestCase{
-		{ViewDashboard, &DashboardModel{}},
 		{ViewTaskChecklist, &TaskChecklistModel{}},
 		{ViewTaskComments, &TaskCommentsModel{}},
 		{ViewTaskDecisions, &TaskDecisionsModel{}},

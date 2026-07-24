@@ -43,10 +43,11 @@ func (r outlinerRow) isTaskRow() bool {
 
 // isNavigable reports whether the cursor is allowed to rest on this row.
 // Section headers remain navigable (Enter toggles section fold); task rows
-// are navigable; project sub-headers and separators are skipped by all
-// cursor movement and rebuild/clamp paths.
+// are navigable; project sub-headers are navigable so Enter can scope to the
+// project and Shift+Enter can open its administration menu. Only separators
+// (purely decorative) are skipped by cursor movement and rebuild/clamp paths.
 func (r outlinerRow) isNavigable() bool {
-	return !r.IsSeparator && !r.IsProjectHeader
+	return !r.IsSeparator
 }
 
 // collapseKey returns the effective key for collapsedSections lookups.
@@ -66,6 +67,9 @@ func (r outlinerRow) effectiveCollapseKey() string {
 func (m *OutlinerModel) isSectionRowCollapsed(row outlinerRow) bool {
 	if g, ok := priorityGroupFromCollapseKey(row.CollapseKey); ok {
 		return m.crossPriorityCollapsedGroups[g]
+	}
+	if isReviewCollapseKey(row.CollapseKey) {
+		return m.reviewCollapsedSections[row.CollapseKey]
 	}
 	return m.collapsedSections[row.effectiveCollapseKey()]
 }

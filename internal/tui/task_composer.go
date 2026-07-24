@@ -77,11 +77,11 @@ func (p TaskComposerPreset) label() string {
 	case ComposerPlanner:
 		switch p.PlannerTab {
 		case boardTabToday:
-			return "Planner · Today"
+			return "Today"
 		case boardTabNext:
-			return "Planner · Next"
+			return "Next"
 		default:
-			return "Planner · Backlog"
+			return "Backlog"
 		}
 	case ComposerTemplate:
 		if p.Template != nil {

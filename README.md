@@ -37,10 +37,10 @@ tt
 ## Learn In-App
 
 The product surface is intentionally documented in the app instead of in a long README.
-`tt` opens on Home by default; press `Ctrl+Esc` to return there from anywhere.
+`tt` opens on the Outliner in global Today by default; press `Ctrl+Esc` to return to that root from anywhere.
 
 - Press `?` in most TUI views for contextual help.
-- Press `Ctrl+G` for Home, Planner, Tasks, Project, Review, or Manage.
+- Press `Tab`/`Shift+Tab` to cycle Today → Next → Backlog → Active → All, `P` to pick any mode, and `Ctrl+X` to change project scope.
 - Open the command palette with `:` and run `:reference` for the full reference encyclopedia.
 - Use the `Ask AI` command from the TUI when you want precise answers while working.
 - Use `tt --help` and `tt <command> --help` for authoritative CLI usage.
@@ -101,8 +101,8 @@ confirmation instead of applying stale advice.
   mutually exclusive.
 - Tags are flexible labels for grouping work across sections.
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
-- Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the dashboard Resume card.
-- In the TUI, park from task-list prefix menus with `tP`; focused task surfaces such as Task Detail and the Focus Board use `P`.
+- Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the Outliner's Parked mode.
+- In the TUI, park from task-list prefix menus with `tP`; the focused Task Detail surface uses `P`.
 - Filter parked tasks with `tt task list --parked` in the CLI or `Fk` in TUI filter popups.
 - Task Workspace exposes fixed built-in focuses such as Active, Parked, Due Soon,
   High Priority, Blocked, and By Score; saved filters change query semantics
@@ -112,7 +112,7 @@ confirmation instead of applying stale advice.
 ## Common Commands
 
 ```bash
-tt                              # Open the TUI on Home
+tt                              # Open the TUI (Outliner, global Today)
 tt dash                         # Show a project dashboard in the CLI
 tt project list                 # List projects
 tt project show                 # Show current project details
@@ -158,11 +158,11 @@ focus views, move targets, quick capture targets, dashboard summaries, and norma
 cross-project task workflows. It does not delete the project or its files.
 
 Archived projects remain discoverable in project-level search surfaces with an
-`ARCHIVED` marker. The TUI Dashboard remains the project administration surface:
-press `a` to show archived projects, select one, and press `u` to unarchive
-it after confirmation. The command
-palette and project picker can also find archived projects by name, while their
-task rows stay excluded until the project is restored.
+`ARCHIVED` marker. In the TUI, unarchive from the command palette
+(`Archive or unarchive the current project`) or with `Ctrl+A` on a project
+header row in the Outliner, confirming when prompted. The command palette and
+project scope picker can also find archived projects by name, while their task
+rows stay excluded until the project is restored.
 
 Use explicit project commands when you need CLI recovery:
 

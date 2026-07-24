@@ -1,22 +1,19 @@
 package tui
 
 import (
-	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleViewReviewMessages handles overview, review, focus, and activity views.
 func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowReviewHubMsg:
-		return true, m.activateReviewHub(msg.Module, msg.Project)
-
-	case ReviewHubModuleSelectedMsg:
 		return true, m.activateReviewHub(msg.Module, msg.Project)
 
 	case ShowMetricsDashboardMsg:
@@ -26,7 +23,11 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowDailyReviewMsg:
-		return true, m.activateReviewHub(ReviewDaily, nil)
+		// Daily Review is an Outliner computed mode: select it in the global
+		// Outliner rather than launching a standalone review screen.
+		return true, func() tea.Msg {
+			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeDailyReview}}
+		}
 
 	case MarkDailyReviewDoneMsg:
 		if err := m.commitPlanningMutation(func(p *config.PlanningState) {
@@ -35,7 +36,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			logging.Warn("failed to save daily review completion: %v", err)
 		}
 		m.reevaluateAlerts()
-		m.setSuccessStatus("Review complete! Next: open Planner Today")
+		m.setSuccessStatus("Review complete! Next: open the Today mode")
 		return true, nil
 
 	case MarkWeeklyReviewDoneMsg:
@@ -84,59 +85,17 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case DailyReviewSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
-	case ShowFocusBoardMsg:
-		m.reevaluateAlerts()
-		fb := NewFocusBoardModel(m.runtime, m.configManager, &m.dailyPlan, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
-		if msg.SetTab {
-			if _, valid := plannerTabFromBoard(msg.Tab); !valid {
-				msg.Tab = boardTabToday
-			}
-			fb.tabs.Active = msg.Tab
-			fb.initialTabSet = true
-			fb.applyFilter()
-			fb.clampCursor()
-		}
-		if m.dailyPlanCarried > 0 && !m.dailyPlanCarriedShown {
-			fb.setStatus(fmt.Sprintf("%d item(s) carried over from yesterday", m.dailyPlanCarried))
-			m.dailyPlanCarriedShown = true
-		}
-		m.showView(ViewFocusBoard, fb)
-		if m.typedNavigation && m.navigation.Primary.Current().ID() == Planner {
-			tab, _ := plannerTabFromBoard(fb.tabs.Active)
-			route, err := NewRoute(Planner, PlannerParams{Tab: tab})
-			if err == nil {
-				route = withPresentation(route, ViewFocusBoard, "", "")
-				_ = m.navigation.Primary.ReplaceCurrentMode(route)
-				m.syncPresentationStack()
-			}
-		}
-		return true, nil
-
-	case FocusBoardSelectMsg:
-		return m.popAndNavigateToTask(msg.Task, msg.Project)
-
-	case FocusBoardRefreshMsg:
-		if v := m.views.Get(ViewFocusBoard); v != nil {
-			v.Update(msg)
-		}
-		return true, nil
-
 	case ShowRecentActivityMsg:
-		return true, m.activateReviewHub(ReviewActivity, nil)
+		// Activity is an Outliner computed mode over all projects.
+		return true, func() tea.Msg {
+			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeActivity}}
+		}
 
 	case ShowProjectRecentActivityMsg:
-		if msg.Project != nil {
-			return true, m.activateReviewHub(ReviewActivity, msg.Project)
+		if msg.Project == nil {
+			return true, nil
 		}
-		return true, nil
-
-	case ShowRecentActivityPreviewMsg:
-		preview := NewRecentActivityPreviewModel(msg.Task, msg.ProjectScope)
-		m.showView(ViewRecentActivityPreview, preview)
-		return true, nil
-
-	case RecentActivitySelectMsg:
-		return m.popAndNavigateToTask(msg.Task, msg.Project)
+		return true, m.openScopedOutlinerActivity(msg.Project)
 
 	case ShowRoadmapMsg:
 		return true, m.activateReviewHub(ReviewRoadmap, msg.Project)
@@ -147,4 +106,26 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	}
 
 	return false, nil
+}
+
+// openScopedOutlinerActivity opens the global Outliner scoped to a single
+// project and selects the Activity computed mode, replacing the retired
+// standalone project recent-activity screen.
+func (m *AppModel) openScopedOutlinerActivity(project *models.Project) tea.Cmd {
+	if m.outliner != nil {
+		m.saveOutlinerToggleState()
+		m.saveOutlinerFilterState()
+	}
+	presentationCmd := m.prepareCrossProjectOutliner()
+	m.crossOutliner.pushProjectScope(project.ID)
+	m.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{SetMode: true, Mode: ModeActivity})
+	if m.typedNavigation {
+		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+		if err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		return tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
+	}
+	m.showView(ViewCrossProjectOutliner, m.crossOutliner)
+	return presentationCmd
 }

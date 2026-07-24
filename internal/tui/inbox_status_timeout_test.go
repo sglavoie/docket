@@ -50,8 +50,12 @@ func TestCloseInboxProcessorNoOpReturnsNil(t *testing.T) {
 	if !handled {
 		t.Fatal("CloseInboxProcessorMsg should be handled")
 	}
+	// No status message is set, so the only possible command is the benign
+	// reveal of the Outliner root beneath the closed processor.
 	if cmd != nil {
-		t.Errorf("no-op close should not return a cmd, got %T", cmd())
+		if _, ok := cmd().(ViewDidAppearMsg); !ok {
+			t.Errorf("no-op close should only return the Outliner-root reveal, got %T", cmd())
+		}
 	}
 }
 

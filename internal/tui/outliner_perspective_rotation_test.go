@@ -68,82 +68,28 @@ func TestOutlinerPerspectiveCyclingUsesCanonicalOrderAcrossScopes(t *testing.T) 
 	})
 }
 
-func TestOutlinerPerspectiveShortcutsUseRemappedIDsAcrossScopes(t *testing.T) {
-	cases := []struct {
-		key  string
-		want int
-	}{
-		{key: "0", want: PerspectiveCompleted},
-		{key: "8", want: PerspectiveReview},
-		{key: "9", want: PerspectiveSnoozed},
-	}
-	for _, crossProject := range []bool{false, true} {
-		for _, tc := range cases {
-			m := minimalOutliner()
-			scope := "cross-project"
-			if !crossProject {
-				scope = "project"
-				m.project = &models.Project{ID: "project"}
-			}
-			t.Run(scope+"/P"+tc.key, func(t *testing.T) {
-				_, _ = m.handlePerspectivePrefix(tc.key)
-				if m.activePerspective != tc.want {
-					t.Fatalf("active perspective = %d, want %d", m.activePerspective, tc.want)
-				}
-			})
-		}
-	}
-}
-
-func TestOutlinerPerspectiveHintsUseRemappedKeys(t *testing.T) {
-	for _, tc := range []struct {
-		id      int
-		wantKey string
-	}{
-		{id: PerspectiveCompleted, wantKey: "0"},
-		{id: PerspectiveReview, wantKey: "8"},
-		{id: PerspectiveSnoozed, wantKey: "9"},
-	} {
-		m := minimalOutliner()
-		m.activePerspective = tc.id
-		hints := m.buildOutlinerPerspectiveHints("P")
-		found := false
-		for _, hint := range hints {
-			if hint.Key == tc.wantKey && hint.Active {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("perspective %d did not activate shortcut hint %q", tc.id, tc.wantKey)
-		}
-	}
-}
-
-func TestOutlinerPerspectiveKeymapUsesRemappedDescriptions(t *testing.T) {
-	entries := newOutlinerKeymapBuilder(minimalOutliner()).perspectiveEntries()
-	want := map[string]string{
-		"0": "Completed perspective",
-		"8": "Review perspective",
-		"9": "Snoozed perspective",
-	}
+// TestOutlinerModeKeymapBindsPickerAndCycle verifies the retired P0-P9 numeric
+// prefix is replaced by a single P binding (opening the searchable mode picker)
+// plus Tab/Shift+Tab for the Work cycle. No numeric-prefix children remain.
+func TestOutlinerModeKeymapBindsPickerAndCycle(t *testing.T) {
+	entries := newOutlinerKeymapBuilder(minimalOutliner()).modeEntries()
+	got := map[string]string{}
 	for _, entry := range entries {
-		if entry.PrefixNode == nil || entry.PrefixNode.Key != "P" {
-			continue
+		if entry.PrefixNode != nil {
+			t.Fatalf("mode entries must not use a prefix subtree; found prefix %q", entry.PrefixNode.Key)
 		}
-		for _, child := range entry.PrefixNode.Children {
-			if child.Binding == nil {
-				continue
-			}
-			if description, ok := want[child.Binding.Key]; ok {
-				if child.Binding.Description != description {
-					t.Errorf("P%s description = %q, want %q", child.Binding.Key, child.Binding.Description, description)
-				}
-				delete(want, child.Binding.Key)
-			}
+		if entry.Binding != nil {
+			got[entry.Binding.Key] = entry.Binding.Description
 		}
+	}
+	want := map[string]string{
+		"P":         "Switch mode",
+		"tab":       "Next work mode",
+		"shift+tab": "Previous work mode",
 	}
 	for key, description := range want {
-		t.Errorf("missing P%s binding for %q", key, description)
+		if got[key] != description {
+			t.Errorf("mode binding %q = %q, want %q", key, got[key], description)
+		}
 	}
 }

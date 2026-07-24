@@ -134,7 +134,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 				continue
 			}
 			if fresh := outliner.project.GetTaskByID(msg.Task.ID); fresh != nil {
-				outliner.NavigateToSidebarTask(fresh)
+				outliner.NavigateToTask(fresh)
 			}
 		}
 	}

@@ -6,40 +6,12 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestManageHubLandingNavigationAndNarrowLayout(t *testing.T) {
-	hub := NewManageHubModel(ManageHubDependencies{Runtime: config.EmptyRuntimeState(t.TempDir())})
-	hub.SetSize(60, 18)
-
-	landing := hub.View().Content
-	for _, name := range []string{"Inbox", "Notes", "Blockers", "Rules", "Templates", "Tags", "Notifications", "Settings"} {
-		if !strings.Contains(ansi.Strip(landing), name) {
-			t.Fatalf("Manage landing omitted %q:\n%s", name, ansi.Strip(landing))
-		}
-	}
-	assertBaselineLineWidth(t, "Manage landing", landing, 60)
-	assertNoFooterContentOverlap(t, "Manage landing", landing, 18)
-	if got := lipgloss.Height(landing); got != 18 {
-		t.Fatalf("Manage landing height = %d, want 18", got)
-	}
-
-	_, cmd := hub.Update(syntheticKey('7'))
-	if cmd == nil {
-		t.Fatal("Manage landing numeric selection did not emit a module change")
-	}
-	selected, ok := cmd().(ManageHubModuleSelectedMsg)
-	if !ok || selected.Params.Module != ManageNotifications || selected.Params.NotificationMode != NotificationAlerts {
-		t.Fatalf("Manage landing selection = %#v, want Notifications/Alerts", cmd())
-	}
-}
-
-func TestManageHubDeepLinksUseOneTypedRouteAndTwoStageEsc(t *testing.T) {
+func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 	tests := []struct {
 		name   string
 		open   func(*AppModel, *models.Project) (bool, tea.Cmd)
@@ -92,7 +64,7 @@ func TestManageHubDeepLinksUseOneTypedRouteAndTwoStageEsc(t *testing.T) {
 
 			route := app.CurrentRoute()
 			params, ok := route.Params().(ManageParams)
-			if route.ID() != ManageHub || !ok || params != want {
+			if route.ID() != SecondaryTool || !ok || params != want {
 				t.Fatalf("deep link route = %s/%#v, want Manage/%#v", route.ID(), route.Params(), want)
 			}
 			if _, legacy := route.Presentation(); legacy {
@@ -102,14 +74,11 @@ func TestManageHubDeepLinksUseOneTypedRouteAndTwoStageEsc(t *testing.T) {
 				t.Fatalf("active Manage renderer/params = %T/%#v", app.activeView(), app.manageHub.Params())
 			}
 
+			// A single Esc dismisses the child tool directly back to its launching
+			// destination — the sole Outliner root — with no intermediate landing.
 			app.handleGlobalKeyPress(syntheticSpecialKey(27))
-			landing := app.CurrentRoute().Params().(ManageParams)
-			if landing.Module != ManageLanding || app.manageHub.Params().Module != ManageLanding {
-				t.Fatalf("first Esc = route/hub %s/%s, want Manage landing", landing.Module, app.manageHub.Params().Module)
-			}
-			app.handleGlobalKeyPress(syntheticSpecialKey(27))
-			if app.CurrentRoute().ID() != Home {
-				t.Fatalf("second Esc route = %s, want Home", app.CurrentRoute().ID())
+			if app.CurrentRoute().ID() != TaskWorkspace {
+				t.Fatalf("Esc route = %s, want TaskWorkspace (Outliner root)", app.CurrentRoute().ID())
 			}
 		})
 	}
@@ -207,7 +176,7 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	}
 
 	app.handleNotesMessages(ShowNotesMsg{})
-	if app.CurrentRoute().ID() != ManageHub || app.manageHub.pickerTitle != "Select project" {
+	if app.CurrentRoute().ID() != SecondaryTool || app.manageHub.pickerTitle != "Select project" {
 		t.Fatalf("missing project fallback = %s/%q, want Manage project picker", app.CurrentRoute().ID(), app.manageHub.pickerTitle)
 	}
 }
@@ -223,7 +192,7 @@ func TestManageHubRemovedProjectFallsBackToAppScope(t *testing.T) {
 		t.Fatal("removed Manage project scope was not normalized")
 	}
 	params := app.CurrentRoute().Params().(ManageParams)
-	if app.CurrentRoute().ID() != ManageHub || params.Module != ManageNotes || params.Scope != AppEntityScope() {
+	if app.CurrentRoute().ID() != SecondaryTool || params.Module != ManageNotes || params.Scope != AppEntityScope() {
 		t.Fatalf("removed project fallback = %s/%#v, want Manage Notes app scope", app.CurrentRoute().ID(), params)
 	}
 	if app.currentProject != nil {
@@ -241,7 +210,7 @@ func TestManageHubProjectDeletionStaysInTheCollectionAtAppScope(t *testing.T) {
 		t.Fatal("ProjectDeletedMsg was not handled")
 	}
 	params := app.CurrentRoute().Params().(ManageParams)
-	if app.CurrentRoute().ID() != ManageHub || params.Module != ManageNotes || params.Scope != AppEntityScope() {
+	if app.CurrentRoute().ID() != SecondaryTool || params.Module != ManageNotes || params.Scope != AppEntityScope() {
 		t.Fatalf("delete fallback = %s/%#v, want Manage Notes app scope", app.CurrentRoute().ID(), params)
 	}
 }
@@ -272,7 +241,7 @@ func TestManageLegacyNamesCollapseToScopedModules(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("%s adapter: ok=%v err=%v", tc.view, ok, err)
 		}
-		if route.ID() != ManageHub || route.Params().(ManageParams) != tc.params {
+		if route.ID() != SecondaryTool || route.Params().(ManageParams) != tc.params {
 			t.Errorf("%s maps to %s/%#v, want Manage/%#v", tc.view, route.ID(), route.Params(), tc.params)
 		}
 	}
@@ -309,7 +278,7 @@ func TestManageLegacyNavigateMessagesReachTheTypedHub(t *testing.T) {
 				t.Fatal("NavigateToViewMsg was not handled")
 			}
 			params := app.CurrentRoute().Params().(ManageParams)
-			if app.CurrentRoute().ID() != ManageHub || params.Module != tc.module || params.Scope.Kind != tc.scope || params.NotificationMode != tc.mode {
+			if app.CurrentRoute().ID() != SecondaryTool || params.Module != tc.module || params.Scope.Kind != tc.scope || params.NotificationMode != tc.mode {
 				t.Fatalf("navigate result = %s/%#v, want Manage/%s/%v/%s", app.CurrentRoute().ID(), params, tc.module, tc.scope, tc.mode)
 			}
 			if tc.view == ViewWorkflowRules && app.manageHub.RulesMode() != ManageRulesWorkflow {

@@ -107,7 +107,7 @@ func TestShouldShowAlertIndicatorWithAlertsOnUnsupportedView(t *testing.T) {
 
 func TestShouldShowAlertIndicatorSupportedViews(t *testing.T) {
 	supported := []PresentationID{
-		ViewDashboard, ViewOutliner, ViewTemporaryOutliner, ViewFocusBoard,
+		ViewDashboard, ViewOutliner, ViewFocusBoard,
 		ViewCrossProjectOutliner,
 		ViewDailyReview, ViewWeeklyReview,
 		ViewMetricsDashboard,

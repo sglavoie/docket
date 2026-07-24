@@ -118,7 +118,7 @@ records the sequence of Next tasks and never decides membership.
 
 Next is distinct from Today (the daily plan) and from the
 ranked Backlog; a task is in at most one of Today or Next.
-Manage Next from Planner.`,
+Manage Next from the Outliner.`,
 		},
 		{
 			Title:    "Notes",
@@ -154,8 +154,8 @@ selected project is used by all task commands.
 
 # Pinning and Archiving
 
-Pin frequently-used projects so they appear at the top of your
-dashboard. Archive completed projects to keep things tidy.
+Pin frequently-used projects so they appear at the top of the
+Outliner. Archive completed projects to keep things tidy.
 
   tt project pin "My Project"
   tt project archive "Old Project"`,

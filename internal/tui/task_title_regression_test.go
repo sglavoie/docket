@@ -118,13 +118,6 @@ func TestLinkedTaskReferenceRowsUsePriorityTitleStyle(t *testing.T) {
 	}
 	want := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 
-	t.Run("sidebar dependency row", func(t *testing.T) {
-		line := formatSidebarLinkedTask(sidebarLinkedTask{Task: task}, 80, false, false)
-		if !strings.Contains(line, want) {
-			t.Fatalf("expected sidebar linked task title to use priority style in:\n%s", ansi.Strip(line))
-		}
-	})
-
 	t.Run("note detail linked task row", func(t *testing.T) {
 		m := &NotesViewModel{
 			project:       project,
@@ -154,7 +147,6 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 	files := []string{
 		"shared_render.go",
 		"outliner_render_rows.go",
-		"focus_board_render_helpers.go",
 		"app_pinned_tasks_render.go",
 		"task_quick_switch_render.go",
 		"metrics_dashboard_render.go",
@@ -170,21 +162,18 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 		"cross_project_linker_view.go",
 		"global_task_picker.go",
 		"quick_capture_autocomplete.go",
-		"recent_activity_preview.go",
 		"task_attachments_view.go",
 		"task_comments_view.go",
 		"task_decisions_view.go",
 		"task_checklist_view.go",
 		"fullscreen_task_helpers.go",
 		"picker_items.go",
-		"focus_board_render.go",
 		"task_activity.go",
 		"inbox_shared.go",
 		"note_task_linker.go",
 		"task_detail_view.go",
 		"palette_view_items.go",
 		"palette_preview_secondary.go",
-		"sidebar_render_links.go",
 		"notes_view_render.go",
 		"notes_search_render.go",
 	}

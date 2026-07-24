@@ -37,7 +37,7 @@ func TestUtilityKey_AllTasks_CrossNonCompletedEmitsGlobalOutliner(t *testing.T) 
 	}
 }
 
-func TestUtilityKey_AllTasks_CrossNonCompletedHeaderStillEmits(t *testing.T) {
+func TestUtilityKey_AllTasks_CrossNonCompletedSectionHeaderStillEmits(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0 // header row - non-Completed perspective still emits the global All focus
 	msg := invokeUtilityKey(t, m, "A")
@@ -70,7 +70,7 @@ func TestUtilityKey_ArchiveCompleted_CrossUsesCursorProject(t *testing.T) {
 	}
 }
 
-func TestUtilityKey_ArchiveCompleted_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestUtilityKey_ArchiveCompleted_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.activePerspective = PerspectiveCompleted
 	m.cursor = 0 // header
@@ -186,7 +186,7 @@ func TestUtilityKey_ArchiveProject_CrossSandboxEmitsError(t *testing.T) {
 	}
 }
 
-func TestUtilityKey_PasteClipboard_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestUtilityKey_PasteClipboard_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0 // header
 
@@ -232,7 +232,7 @@ func TestCommonTaskAction_MoveToProject_CrossUsesCursorTaskAndProject(t *testing
 	}
 }
 
-func TestCommonTaskAction_MoveToProject_CrossOnHeaderEmitsNothing(t *testing.T) {
+func TestCommonTaskAction_MoveToProject_CrossOnSectionHeaderEmitsNothing(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0 // header
 

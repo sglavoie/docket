@@ -6,36 +6,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestDailyReviewMultiSelectKeepsDuplicateTaskIDsIndependent(t *testing.T) {
-	alpha := &models.Project{ID: "alpha", Name: "Alpha"}
-	beta := &models.Project{ID: "beta", Name: "Beta"}
-	alphaTask := &models.Task{ID: "shared-id", Title: "Alpha task"}
-	betaTask := &models.Task{ID: "shared-id", Title: "Beta task"}
-	m := &DailyReviewModel{
-		MultiSelectState:  MultiSelectState{multiSelectMode: true, selectedTaskIdentities: make(map[TaskIdentity]bool)},
-		overdue:           []CrossProjectTask{{Task: alphaTask, Project: alpha}, {Task: betaTask, Project: beta}},
-		collapsedSections: make(map[int]bool),
-		tabs:              TabState{Names: dailyReviewTabNames},
-	}
-	m.calculateNavigation()
-
-	m.cursor = 1
-	m.toggleTaskSelection()
-	if got := m.getSelectedBulkItems(); len(got) != 1 || got[0].Project != alpha {
-		t.Fatalf("alpha selection = %+v", got)
-	}
-	m.cursor = 2
-	m.toggleTaskSelection()
-	if got := m.getSelectedBulkItems(); len(got) != 2 {
-		t.Fatalf("combined selection count = %d, want 2", len(got))
-	}
-	m.cursor = 1
-	m.toggleTaskSelection()
-	if got := m.getSelectedBulkItems(); len(got) != 1 || got[0].Project != beta {
-		t.Fatalf("deselecting alpha affected beta: %+v", got)
-	}
-}
-
 func TestWeeklyReviewMultiSelectKeepsDuplicateTaskIDsIndependent(t *testing.T) {
 	alpha := &models.Project{ID: "alpha", Name: "Alpha"}
 	beta := &models.Project{ID: "beta", Name: "Beta"}

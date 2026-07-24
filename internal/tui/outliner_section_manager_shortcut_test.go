@@ -34,7 +34,7 @@ func TestOutlinerCtrlS_CrossProjectTaskRowTargetsOwningProject(t *testing.T) {
 	}
 }
 
-func TestOutlinerCtrlS_CrossProjectNonTaskTargetsDoNotOpenManager(t *testing.T) {
+func TestOutlinerCtrlS_CrossProjectUnscopedNonProjectRowsDoNotOpenManager(t *testing.T) {
 	project := &models.Project{ID: "proj-cross", Name: "Cross"}
 
 	tests := []struct {
@@ -70,8 +70,8 @@ func TestOutlinerCtrlS_CrossProjectNonTaskTargetsDoNotOpenManager(t *testing.T) 
 			if cmd != nil {
 				t.Fatal("expected ctrl+s on a non-task target to avoid opening the manager")
 			}
-			if m.statusMessage != "No task selected for section manager" {
-				t.Fatalf("status = %q, want no-task section manager status", m.statusMessage)
+			if m.statusMessage != statusNoProjectUnderCursor {
+				t.Fatalf("status = %q, want %q", m.statusMessage, statusNoProjectUnderCursor)
 			}
 		})
 	}

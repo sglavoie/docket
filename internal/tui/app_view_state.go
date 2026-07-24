@@ -94,10 +94,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 
 	// Keep typed pointers in sync for views that need direct access
 	switch currentView {
-	case ViewDashboard:
-		if v := m.views.Get(ViewDashboard); v != nil {
-			m.dashboard = v.(*DashboardModel)
-		}
 	case ViewHelp:
 		if v := m.views.Get(ViewHelp); v != nil {
 			m.helpView = v.(*HelpViewModel)
@@ -192,12 +188,6 @@ func (m *AppModel) getCurrentCursorTask() *models.Task {
 	case ViewOutliner:
 		if m.outliner != nil {
 			return m.outliner.getCursorTask()
-		}
-	case ViewTemporaryOutliner:
-		if v := m.views.Get(ViewTemporaryOutliner); v != nil {
-			if o, ok := v.(*OutlinerModel); ok {
-				return o.getCursorTask()
-			}
 		}
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {

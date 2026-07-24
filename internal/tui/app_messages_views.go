@@ -93,29 +93,6 @@ type ShowTutorMsg struct{}
 type TutorDismissedMsg struct{}
 
 // =============================================================================
-// Today Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowFocusBoardMsg opens the Planner. When SetTab is true the Planner opens on
-// one of its three canonical tabs; an invalid value falls back to Today.
-type ShowFocusBoardMsg struct {
-	Tab    int
-	SetTab bool
-}
-
-// CloseFocusBoardMsg closes Planner.
-type CloseFocusBoardMsg struct{ PopToAnchorMsg }
-
-// FocusBoardRefreshMsg requests a refresh of Planner data.
-type FocusBoardRefreshMsg struct{}
-
-// FocusBoardSelectMsg navigates to a task from Planner.
-type FocusBoardSelectMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// =============================================================================
 // Score Profile Manager Messages (Show/Close Pattern)
 // =============================================================================
 
@@ -134,15 +111,11 @@ type ScoreProfileChangedMsg struct{}
 // Outliner Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowOutlinerMsg opens the outliner view for a project.
-// When Temporary is true, the handler pushes a fresh OutlinerModel via
-// showView() without assigning it to AppModel.outliner, so the existing
-// single-project outliner session is preserved. OpenAtTask, when non-nil,
-// positions the cursor on that task once the row list is first built.
+// ShowOutlinerMsg opens the outliner view for a project. OpenAtTask, when
+// non-nil, positions the cursor on that task once the row list is first built.
 type ShowOutlinerMsg struct {
 	Project    *models.Project
 	OpenAtTask *models.Task
-	Temporary  bool
 	Options    OutlinerOpenOptions
 }
 

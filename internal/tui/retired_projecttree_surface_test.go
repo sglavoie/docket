@@ -41,14 +41,14 @@ func TestRetiredProjectTreeSurfacesRemoved(t *testing.T) {
 		}
 	})
 
-	t.Run("ctrl+p is cross-project drill-down only", func(t *testing.T) {
+	t.Run("no outliner binds the retired ctrl+p drill-down", func(t *testing.T) {
 		singleProject := (&OutlinerModel{project: &models.Project{}}).buildKeyMap().HandledKeys()
 		if containsKey(singleProject, "ctrl+p") {
-			t.Fatalf("single-project outliner still binds no-op ctrl+p: %v", singleProject)
+			t.Fatalf("single-project outliner still binds retired ctrl+p: %v", singleProject)
 		}
 		crossProject := (&OutlinerModel{}).buildKeyMap().HandledKeys()
-		if !containsKey(crossProject, "ctrl+p") {
-			t.Fatalf("cross-project outliner dropped its meaningful ctrl+p drill-down: %v", crossProject)
+		if containsKey(crossProject, "ctrl+p") {
+			t.Fatalf("cross-project outliner still binds retired ctrl+p drill-down: %v", crossProject)
 		}
 	})
 
@@ -72,9 +72,10 @@ func TestRetiredProjectTreeSurfacesRemoved(t *testing.T) {
 				t.Fatalf("view command still advertises a tree surface: %+v", cmd)
 			}
 		}
-		// The meaningful cross-project drill-down command survives with outliner wording.
-		if cmd := findCommand(app.viewCommands(), "open project outliner"); cmd == nil {
-			t.Fatal("expected 'open project outliner' cross-project drill-down command")
+		// The retired project drill-down command must not resurface; project scope
+		// is reached through Ctrl+X and the project-header scope actions.
+		if cmd := findCommand(app.viewCommands(), "open project outliner"); cmd != nil {
+			t.Fatalf("retired 'open project outliner' drill-down command is still registered: %+v", cmd)
 		}
 	})
 }

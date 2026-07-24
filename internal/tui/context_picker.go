@@ -35,9 +35,7 @@ type ContextPickerModel struct {
 }
 
 // ShowContextPickerMsg is sent to open the context picker.
-type ShowContextPickerMsg struct {
-	Dashboard *DashboardModel
-}
+type ShowContextPickerMsg struct{}
 
 // ContextPickerDoneMsg is sent when the context picker is done.
 type ContextPickerDoneMsg struct {
@@ -62,34 +60,6 @@ type ContextRenamedMsg struct {
 	OldName      string
 	NewName      string
 	ProjectCount int
-}
-
-// NewContextPickerModel creates a new context picker from dashboard.
-func NewContextPickerModel(dashboard *DashboardModel, runtime *config.RuntimeState) *ContextPickerModel {
-	contexts := buildContextListWithCustom(dashboard.projects, runtime)
-
-	picker := NewBasePicker(contexts, PickerConfig{
-		Title:          "Filter by Context",
-		EmptyMessage:   "No contexts available.",
-		NoMatchMessage: "No matching contexts.",
-		MultiSelect:    false,
-		ShowCounts:     true,
-	})
-
-	// Position cursor on currently filtered context (custom or regular)
-	if dashboard.filterCustomContext != "" {
-		picker.SetCursorToID(customContextID(dashboard.filterCustomContext))
-	} else if dashboard.filterContext != "" {
-		picker.SetCursorToID(dashboard.filterContext)
-	}
-
-	return &ContextPickerModel{
-		BasePicker:          picker,
-		projects:            dashboard.projects,
-		runtime:             runtime,
-		currentFilter:       dashboard.filterContext,
-		currentCustomFilter: dashboard.filterCustomContext,
-	}
 }
 
 // NewContextPickerModelFromRuntime creates a context picker from the cached

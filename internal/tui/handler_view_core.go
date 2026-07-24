@@ -9,9 +9,6 @@ import (
 // handleViewCoreMessages handles generic view navigation, status, and utility messages.
 func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case ShowDestinationSwitcherMsg:
-		m.toggleDestinationSwitcher()
-		return true, nil
 	case BackMsg:
 		if m.currentView() == ViewProjectCreator {
 			m.pendingProjectMoveTask = nil
@@ -21,13 +18,10 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, nil
 
 	case JumpDashboardMsg:
-		return true, m.jumpToDashboard()
+		return true, m.jumpToOutlinerRoot()
 
 	case RefreshMsg:
 		m.refreshLoadedTaskWorkspace()
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		return true, nil
 
 	case ErrorMsg:
@@ -39,36 +33,8 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case NavigateToViewMsg:
 		return m.handleNavigateToView(msg)
 	case NavigatePaletteAliasMsg:
-		if msg.Target == PaletteAliasHomeAttention {
-			cmd := m.jumpToDashboard()
-			if m.dashboard != nil {
-				m.dashboard.FocusAttention()
-			}
-			return true, cmd
-		}
-		return true, nil
-
-	case plannerViewMenuMsg:
-		if msg.Open {
-			m.pushTypedOverlay(OverlayViewMenu, plannerViewMenuOverlayKey)
-		} else {
-			m.closeTypedOverlay(OverlayViewMenu, plannerViewMenuOverlayKey)
-		}
-		return true, nil
-
-	case PlannerRouteChangedMsg:
-		if !m.typedNavigation || m.navigation.Primary.Current().ID() != Planner {
-			return true, nil
-		}
-		route, err := NewRoute(Planner, PlannerParams(msg))
-		if err != nil {
-			return true, func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-		route = withPresentation(route, ViewFocusBoard, "", "")
-		if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
-			return true, func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-		m.syncPresentationStack()
+		// No searchable alias currently resolves to a distinct navigation
+		// target; the message is retained as generic palette-alias plumbing.
 		return true, nil
 
 	case ShowHelpMsg:
@@ -127,6 +93,9 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case MoveBlockedMsg:
 		m.setInfoStatus(msg.Reason)
 		return true, defaultStatusTimeout()
+
+	case OutlinerPlanningReorderMsg:
+		return true, m.handleOutlinerPlanningReorder(msg)
 	}
 
 	return false, nil

@@ -31,9 +31,6 @@ func (m *AppModel) handleTaskLinkMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CrossProjectLinkCreatedMsg:
 		return m.handleCrossProjectLinkCreated(msg)
-
-	case LinkRemovedMsg:
-		return m.handleLinkRemoved(msg)
 	}
 	return false, nil
 }
@@ -176,41 +173,4 @@ func (m *AppModel) handleCrossProjectLinkCreated(msg CrossProjectLinkCreatedMsg)
 	}
 	m.setSuccessStatus(fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName))
 	return true, statusTimeout(3 * time.Second)
-}
-
-// handleLinkRemoved handles the LinkRemovedMsg and adjusts sidebar cursors.
-func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
-	// Save task ID before refresh (project reload creates new task objects)
-	sourceTaskID := msg.SourceTask.ID
-	// The removal committed through the application layer against its own fresh
-	// snapshot, so reload the touched projects' in-memory copies before adjusting
-	// cursors (a cross-project related unlink touches both sides).
-	for _, projectID := range msg.TouchedProjectIDs {
-		m.reloadProjectByID(projectID)
-	}
-	m.refreshAllViews()
-	// Adjust cursors after link removal
-	if m.currentProject != nil {
-		task := m.currentProject.GetTaskByID(sourceTaskID)
-		if task != nil {
-			if m.outliner != nil {
-				m.outliner.NavigateToTaskInProject(task, m.outliner.project)
-				if m.outliner.sidebar != nil {
-					sidebarAdjustAfterLinkRemoval(m.currentProject, m.outliner.sidebar, task)
-				}
-			}
-		}
-	}
-	// Determine section name for status message
-	var sectionName string
-	switch msg.Section {
-	case 0:
-		sectionName = "blocker"
-	case 1:
-		sectionName = "dependent"
-	case 2:
-		sectionName = "related"
-	}
-	m.setSuccessStatus(fmt.Sprintf("Removed %s link", sectionName))
-	return true, defaultStatusTimeout()
 }

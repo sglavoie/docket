@@ -125,7 +125,7 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 }
 
 // parkedTaskCardLine renders the parked status shown at the end of the Task
-// card (task-detail header and outliner sidebar). Format mirrors the former
+// card (task-detail header). Format mirrors the former
 // standalone banner: "⏸ Parked <relative time> — <note>".
 func parkedTaskCardLine(task *models.Task) string {
 	if task == nil || !task.IsParked() {
@@ -174,7 +174,7 @@ func renderDueDateContentOpts(task *models.Task, hideRecurrence bool, timeFormat
 }
 
 // renderMetadataContent builds the tags, section, and type-specific attributes
-// content shared by sidebar and task detail.
+// content shared by task detail.
 func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int, showAttrs ...bool) string {
 	return renderMetadataContentOpts(task, project, innerWidth, false, showAttrs...)
 }

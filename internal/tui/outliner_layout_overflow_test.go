@@ -217,7 +217,7 @@ func TestOutlinerPromotedChildSearchHighlighting(t *testing.T) {
 }
 
 // TestOutlinerFullWidthHeaderFitsWidth guards the full-width header overflow:
-// renderWithSidebar clamps content via Width(treeWidth), but renderFullWidth
+// The former split-pane layout clamped content via Width(treeWidth), but renderFullWidth
 // passed the tree through with no enclosing width style, so a long project name
 // plus the perspective breadcrumb overflowed terminal width. renderFullWidth must
 // now clamp to width so no rendered line exceeds it.

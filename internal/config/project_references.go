@@ -5,7 +5,6 @@ import "sort"
 type ProjectReferences struct {
 	WasCurrent        bool               `json:"was_current,omitempty"`
 	WasActionInbox    bool               `json:"was_action_inbox,omitempty"`
-	SidebarEnabled    *bool              `json:"sidebar_enabled,omitempty"`
 	ScoringProfile    *string            `json:"scoring_profile,omitempty"`
 	WorkflowEval      *WorkflowEvalState `json:"workflow_eval,omitempty"`
 	FocusQueue        []FocusQueueItem   `json:"focus_queue,omitempty"`

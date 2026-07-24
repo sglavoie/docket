@@ -25,7 +25,7 @@ func pipelineStage(vt PresentationID) string {
 // taskCountBefore is the number of tasks in the project before the capture; returns "" otherwise.
 func captureNextHint(taskCountBefore int) string {
 	if taskCountBefore == 0 {
-		return "plan it today (w) or process it from Manage > Inbox"
+		return "plan it today (w) or triage it from the Inbox mode"
 	}
 	return ""
 }
@@ -44,19 +44,19 @@ func pipelineNextHintOnboarding(vt PresentationID) string {
 func pipelineNextHint(vt PresentationID) string {
 	switch vt {
 	case ViewQuickCapture, ViewBulkCapture:
-		return "Next: Manage Inbox | Ctrl+G Planner"
+		return "Next: Inbox triage | Tab cycles modes"
 	case ViewGlobalInboxProcessor, ViewCrossProjectOutliner:
-		return "Next: Planner Next | Planner Today"
+		return "Next: Tab for Next | w plans Today"
 	case ViewRoadmap:
-		return "Next: Planner Today | Enter project"
+		return "Next: Today mode | Enter project"
 	case ViewDailyReview:
-		return "ctrl+f weekly | Next: Planner Today"
+		return "ctrl+f weekly | Next: Today mode"
 	case ViewFocusBoard:
-		return "ctrl+t backlog | Next: Ctrl+G Review"
+		return "ctrl+t backlog | Next: Daily Review"
 	case ViewWeeklyReview:
-		return "ctrl+f daily | Next: Ctrl+N capture | Planner Next"
+		return "ctrl+f daily | Next: Ctrl+N capture | Next mode"
 	case ViewMetricsDashboard, ViewRecentActivity:
-		return "Next: Ctrl+N capture | Planner Next"
+		return "Next: Ctrl+N capture | Next mode"
 	default:
 	}
 	return ""

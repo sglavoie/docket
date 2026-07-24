@@ -3,6 +3,8 @@ package tui
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -329,7 +331,7 @@ func TestCrossPalette_RegistryExposesReadViewCaptureCommandsInCrossOutliner(t *t
 		name     string
 		shortcut string
 	}{
-		{"blockers view", "b"},
+		{"blockers view", "B"},
 		{"inbox processor", "W"},
 		{"create note", "}"},
 		{"bulk capture", "I"},
@@ -337,7 +339,6 @@ func TestCrossPalette_RegistryExposesReadViewCaptureCommandsInCrossOutliner(t *t
 		{"task activity", "gh"},
 		{"park task", "tP"},
 		{"project recent activity", "gl"},
-		{"open project outliner", "ctrl+p"},
 	}
 
 	for _, tc := range cases {
@@ -676,6 +677,301 @@ func TestCrossPalette_ArchiveProject_FallsBackToCurrentProject(t *testing.T) {
 	}
 	if msg.Project != project {
 		t.Errorf("Project: want current project, got %v", msg.Project)
+	}
+}
+
+// TestCrossPaletteProjectCommandsUseVisibleProject verifies the project-scoped
+// palette commands repaired in FR16-002 (rename project, project focus queue,
+// open project folder) resolve the project from the visible cross-project
+// Outliner cursor rather than the persisted m.currentProject. setupCrossPaletteApp
+// parks currentProject at singleProj while the cross Outliner cursor sits on
+// crossProj — a different project — so a stale-currentProject regression fails
+// here directly. The nil-currentProject subtest confirms a launch with no shell
+// pointer still targets the cursor project instead of returning nil.
+func TestCrossPaletteProjectCommandsUseVisibleProject(t *testing.T) {
+	assertRename := func(t *testing.T, app *AppModel, want *models.Project) {
+		t.Helper()
+		cmd := findCommand(app.projectCommands(), "rename project")
+		if cmd == nil {
+			t.Fatal("expected to find 'rename project' command")
+		}
+		msg, ok := cmd.Handler().(EditProjectMsg)
+		if !ok {
+			t.Fatalf("rename project: expected EditProjectMsg, got %T", cmd.Handler())
+		}
+		if msg.Project != want {
+			t.Errorf("rename project: want %v, got %v", want, msg.Project)
+		}
+	}
+	assertFocusQueue := func(t *testing.T, app *AppModel, want *models.Project) {
+		t.Helper()
+		cmd := findCommand(app.otherCommands(), "project focus queue")
+		if cmd == nil {
+			t.Fatal("expected to find 'project focus queue' command")
+		}
+		msg, ok := cmd.Handler().(ShowOutlinerMsg)
+		if !ok {
+			t.Fatalf("project focus queue: expected ShowOutlinerMsg, got %T", cmd.Handler())
+		}
+		if msg.Project != want {
+			t.Errorf("project focus queue: want %v, got %v", want, msg.Project)
+		}
+		if !msg.Options.SetFocus || msg.Options.Focus != OutlinerNext {
+			t.Errorf("project focus queue: want Next focus, got %#v", msg.Options)
+		}
+	}
+	assertOpenFolder := func(t *testing.T, app *AppModel, want *models.Project) {
+		t.Helper()
+		cmd := findCommand(app.filterCommands(), "open project folder")
+		if cmd == nil {
+			t.Fatal("expected to find 'open project folder' command")
+		}
+		msg, ok := cmd.Handler().(OpenDataFolderMsg)
+		if !ok {
+			t.Fatalf("open project folder: expected OpenDataFolderMsg, got %T", cmd.Handler())
+		}
+		if msg.Project != want {
+			t.Errorf("open project folder: want %v, got %v", want, msg.Project)
+		}
+	}
+
+	t.Run("cursor project differs from currentProject", func(t *testing.T) {
+		app, singleProj, crossProj, _ := setupCrossPaletteApp(t)
+		if app.currentProject != singleProj {
+			t.Fatalf("precondition: currentProject should be singleProj, got %v", app.currentProject)
+		}
+		if crossProj == singleProj {
+			t.Fatal("precondition: cross project must differ from currentProject")
+		}
+		assertRename(t, app, crossProj)
+		assertFocusQueue(t, app, crossProj)
+		assertOpenFolder(t, app, crossProj)
+	})
+
+	t.Run("nil currentProject launch", func(t *testing.T) {
+		app, _, crossProj, _ := setupCrossPaletteApp(t)
+		app.currentProject = nil
+		assertRename(t, app, crossProj)
+		assertFocusQueue(t, app, crossProj)
+		assertOpenFolder(t, app, crossProj)
+	})
+}
+
+// TestCrossPaletteProjectCommandsNoProjectUnderCursor confirms the repaired
+// handlers surface an explicit no-project status on a header/empty cursor row
+// instead of silently falling back to the stale currentProject.
+func TestCrossPaletteProjectCommandsNoProjectUnderCursor(t *testing.T) {
+	assertNoProjectStatus := func(t *testing.T, result tea.Msg) {
+		t.Helper()
+		status, ok := result.(StatusMsg)
+		if !ok {
+			t.Fatalf("expected StatusMsg, got %T", result)
+		}
+		if string(status) != statusNoProjectUnderCursor {
+			t.Errorf("status text: want %q, got %q", statusNoProjectUnderCursor, string(status))
+		}
+	}
+
+	app, _, _, _ := setupCrossPaletteApp(t)
+	app.crossOutliner.rows = []outlinerRow{{IsSeparator: true}}
+
+	assertNoProjectStatus(t, findCommand(app.projectCommands(), "rename project").Handler())
+	assertNoProjectStatus(t, findCommand(app.otherCommands(), "project focus queue").Handler())
+	assertNoProjectStatus(t, findCommand(app.filterCommands(), "open project folder").Handler())
+}
+
+func prepareCrossPaletteProjectContext(t *testing.T, scopedEmpty bool) (*AppModel, *models.Project) {
+	t.Helper()
+	app, stale, target, _ := setupCrossPaletteApp(t)
+	if stale == target {
+		t.Fatal("fixture currentProject must differ from visible target")
+	}
+	if scopedEmpty {
+		app.crossOutliner.scopedProjectID = target.ID
+		app.crossOutliner.rows = nil
+		app.crossOutliner.cursor = 0
+	} else {
+		app.crossOutliner.rows = []outlinerRow{{
+			IsProjectHeader: true,
+			ProjectID:       target.ID,
+		}}
+		app.crossOutliner.cursor = 0
+	}
+	return app, target
+}
+
+func projectFromPaletteMessage(t *testing.T, app *AppModel, msg tea.Msg) *models.Project {
+	t.Helper()
+	switch msg := msg.(type) {
+	case ShowBlockersMsg:
+		return msg.Project
+	case ShowInboxProcessorMsg:
+		return msg.Project
+	case ShowQuickCaptureMsg:
+		return msg.Project
+	case ShowBulkCaptureMsg:
+		return msg.Project
+	case ShowNotesMsg:
+		return msg.Project
+	case ShowNoteCreatorMsg:
+		return msg.Project
+	case ShowProjectRecentActivityMsg:
+		return msg.Project
+	case EditTaskMsg:
+		return msg.Project
+	case ShowTagManagerMsg:
+		return msg.Project
+	case ShowSectionManagerMsg:
+		return msg.Project
+	case ProjectArchiveRequestMsg:
+		return msg.Project
+	case ArchiveCompletedTasksMsg:
+		return msg.Project
+	case ShowStatusIconPickerMsg:
+		return msg.Project
+	case EditProjectMsg:
+		return msg.Project
+	case ShowOutlinerMsg:
+		return msg.Project
+	case OpenDataFolderMsg:
+		return msg.Project
+	case ShowMetricsDashboardMsg:
+		return msg.Project
+	case ExportProjectMsg:
+		return app.resolveExportProject(msg)
+	default:
+		t.Fatalf("unsupported palette result %T", msg)
+		return nil
+	}
+}
+
+func TestCrossPaletteProjectContextOrigins(t *testing.T) {
+	type paletteCase struct {
+		name   string
+		invoke func(*AppModel) tea.Msg
+	}
+	find := func(t *testing.T, commands []Command, name string) Command {
+		t.Helper()
+		cmd := findCommand(commands, name)
+		if cmd == nil {
+			t.Fatalf("command %q not found", name)
+		}
+		return *cmd
+	}
+	cases := []paletteCase{
+		{name: "quick capture", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.taskCommands(), "quick capture").Handler()
+		}},
+		{name: "bulk capture", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.taskCommands(), "bulk capture").Handler()
+		}},
+		{name: "blockers", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.otherCommands(), "blockers view").Handler()
+		}},
+		{name: "inbox processor", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.viewCommands(), "inbox processor").Handler()
+		}},
+		{name: "show notes", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.notesCommands(), "show notes").Handler()
+		}},
+		{name: "create note", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.notesCommands(), "create note").Handler()
+		}},
+		{name: "project activity", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.taskActionCommands(), "project recent activity").Handler()
+		}},
+		{name: "edit last task", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.taskCommands(), "edit last task").Handler()
+		}},
+		{name: "tag manager", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.filterCommands(), "tag manager").Handler()
+		}},
+		{name: "section manager", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.filterCommands(), "section manager").Handler()
+		}},
+		{name: "archive project", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.otherCommands(), "archive project").Handler()
+		}},
+		{name: "archive completed", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.taskCommands(), "archive completed tasks").Handler()
+		}},
+		{name: "edit project status", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.projectCommands(), "edit project status").Handler()
+		}},
+		{name: "rename project", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.projectCommands(), "rename project").Handler()
+		}},
+		{name: "project focus queue", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.otherCommands(), "project focus queue").Handler()
+		}},
+		{name: "open project folder", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.filterCommands(), "open project folder").Handler()
+		}},
+		{name: "project metrics", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.viewCommands(), "project metrics").Handler()
+		}},
+		{name: "export project", invoke: func(app *AppModel) tea.Msg {
+			return find(t, app.exportCommands(), "export project").Handler()
+		}},
+	}
+
+	for _, scopedEmpty := range []bool{false, true} {
+		origin := "project header"
+		if scopedEmpty {
+			origin = "empty project scope"
+		}
+		t.Run(origin, func(t *testing.T) {
+			for _, tc := range cases {
+				t.Run(tc.name, func(t *testing.T) {
+					app, target := prepareCrossPaletteProjectContext(t, scopedEmpty)
+					if got := projectFromPaletteMessage(t, app, tc.invoke(app)); got != target {
+						t.Fatalf("project = %v, want visible project %v", got, target)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestCrossPaletteUnscopedRowsReportNoProject(t *testing.T) {
+	type paletteCase struct {
+		name   string
+		invoke func(*AppModel) tea.Msg
+	}
+	cases := []paletteCase{
+		{name: "tag manager", invoke: func(app *AppModel) tea.Msg {
+			return findCommand(app.filterCommands(), "tag manager").Handler()
+		}},
+		{name: "section manager", invoke: func(app *AppModel) tea.Msg {
+			return findCommand(app.filterCommands(), "section manager").Handler()
+		}},
+		{name: "edit project status", invoke: func(app *AppModel) tea.Msg {
+			return findCommand(app.projectCommands(), "edit project status").Handler()
+		}},
+	}
+	rows := []struct {
+		name string
+		row  outlinerRow
+	}{
+		{name: "section", row: outlinerRow{IsSectionHeader: true, SectionName: models.SectionInbox}},
+		{name: "separator", row: outlinerRow{IsSeparator: true}},
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			for _, tc := range cases {
+				t.Run(tc.name, func(t *testing.T) {
+					app, _, _, _ := setupCrossPaletteApp(t)
+					app.crossOutliner.rows = []outlinerRow{row.row}
+					result, ok := tc.invoke(app).(StatusMsg)
+					if !ok {
+						t.Fatalf("result = %T, want StatusMsg", tc.invoke(app))
+					}
+					if string(result) != statusNoProjectUnderCursor {
+						t.Fatalf("status = %q, want %q", result, statusNoProjectUnderCursor)
+					}
+				})
+			}
+		})
 	}
 }
 

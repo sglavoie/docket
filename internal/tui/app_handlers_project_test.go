@@ -77,8 +77,6 @@ func TestHandleProjectMessagesProjectArchived(t *testing.T) {
 
 func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmWithoutMutation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.dashboard = NewDashboardModel(app.runtime)
-	app.views.Register(ViewDashboard, app.dashboard)
 
 	handled, cmd := app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
 
@@ -103,9 +101,6 @@ func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmWithoutMutation(t
 	}
 	if confirm.Action() != projectArchiveConfirmAction {
 		t.Fatalf("confirm action = %q, want %q", confirm.Action(), projectArchiveConfirmAction)
-	}
-	if app.dashboard.GetConfirmDialog().IsActive() {
-		t.Fatal("dashboard confirmation should not host project archive confirmation")
 	}
 }
 
@@ -500,11 +495,8 @@ func TestHandleProjectMessagesProjectDeleted(t *testing.T) {
 	if app.currentProject != nil {
 		t.Error("currentProject should be nil after project deleted")
 	}
-	if len(app.viewStack) != 1 {
-		t.Errorf("viewStack should have 1 view (Dashboard) after project deleted, got %d", len(app.viewStack))
-	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after project deleted, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should reset to the Outliner root after project deleted, got %v", app.currentView())
 	}
 	// Verify project was removed from config
 	for _, p := range app.allProjects() {
@@ -613,26 +605,11 @@ func TestHandleProjectMessagesProjectRestored(t *testing.T) {
 	}
 }
 
-func TestHandleProjectMessagesShowProjectPicker(t *testing.T) {
-	app, _ := newTestAppModelWithProject()
-
-	msg := ShowProjectPickerMsg{}
-	handled, _ := app.handleProjectMessages(msg)
-
-	if !handled {
-		t.Error("ShowProjectPickerMsg should be handled")
-	}
-	if app.currentView() != ViewProjectPicker {
-		t.Errorf("currentView should be ProjectPicker, got %v", app.currentView())
-	}
-}
-
 func TestHandleProjectMessagesSandboxResetDone(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	app.pendingSandboxReset = true
 	app.pendingSandboxProjectID = "sandbox"
 	app.pendingSandboxTaskCount = 5
-	app.dashboard = NewDashboardModel(app.runtime)
 
 	msg := SandboxResetDoneMsg{Result: appdomain.SandboxResetResult{
 		ProjectID: "sandbox",

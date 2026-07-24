@@ -30,7 +30,7 @@ Any nonterminal state may move to another nonterminal state. `done` and
 
 Dependency blocking is derived from unresolved dependencies and appears as a
 badge/filter. It is not a workflow state. The Active section identifies work
-currently being worked on. Next (the Planner's on-deck shortlist) is not a
+currently being worked on. Next (the on-deck shortlist) is not a
 separate membership collection: a task is in Next exactly when its workflow
 state is `next` (`StateNext`). The persisted Focus Queue list is ordering-only
 — it orders the StateNext tasks (the next tasks in the pipeline) and never
@@ -120,12 +120,12 @@ every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 ```
 
 `<workspace-id>` is the canonical UUID stored in synced `workspace.json`. The
-file contains editors, integration choices, the startup route, current project
+file contains editors, integration choices, current project
 selection, custom contexts, and bounded recent task/palette items. Renderer
 layout, filters, cursors, folds, and composer expansion are session-owned and
-are not serialized. Planner Today owns its project-qualified subtree overrides
-and global tree-depth limit for the session; users change both through Planner's
-`View` menu, and a depth change clears per-node overrides. A workspace with a
+are not serialized. The Outliner's Today mode owns its project-qualified subtree
+overrides and global tree-depth limit for the session, and a depth change clears
+per-node overrides. A workspace with a
 different ID never shares this state. On first
 startup after upgrading from the former layout, `tt` checks the machine file
 keyed by the current data-directory path, then the historical
@@ -157,16 +157,34 @@ namespace.
 
 ## TUI navigation architecture
 
-The TUI has exactly seven typed routes: Home, Planner, Task Workspace, Review,
-Manage, Task Detail, and Reference. `Ctrl+G` exposes six destinations because
-Task Detail and Reference are child/overlay flows; Tasks and Project both use
-Task Workspace with application and project scopes respectively. Layouts and
-focuses are route parameters or in-route View menu modes rather than extra
-routes. Planner's Today-only folds live in its View menu. Task Workspace's
-workspace-wide due-date lens is selected only by explicit due-date navigation;
-explicit All Tasks navigation restores the tree lens, while generic Outliner
-navigation preserves the current lens. Esc unwinds the active overlay or module,
-while Ctrl+Esc resets Home.
+The Outliner is the sole primary root and launches globally in Today on every
+run. Typed navigation is an Outliner root, Task Detail children, direct
+secondary-tool children (Weekly Review, Metrics, Roadmap, Inbox, Notes,
+operational Blockers, workflow/scoring tools, Templates, Tags, Notifications,
+Settings, and other retained utilities), and reference/help surfaces. Modes and
+project scopes belong to the Outliner rather than to routes: `Tab`/`Shift+Tab`
+cycle Today → Next → Backlog → Active → All, `h`/`l` rotate workflow
+perspectives, `P` opens a categorized searchable mode picker, and `Ctrl+X`
+changes project scope. Saved-perspective IDs and saved filters are preserved and
+normalized under the mode catalog; the workspace-wide due-date lens is a
+Due Date mode rather than a separate route. Esc unwinds local state, task zoom,
+project scope, then the active child screen; Ctrl+Esc resets to a clean global
+Today.
+
+A single Outliner model (`AppModel.crossOutliner`) and one presentation identity
+(`ViewCrossProjectOutliner`) own both global and project-scoped work. The root
+`TaskWorkspace` route is always app-scoped; project selection is represented only
+by Outliner scope frames, never by a project-scoped root route. Project scope is
+entered through `Ctrl+X` (the scope picker) and the project-header scope actions
+(`Enter` on a header or its `Shift+Enter` admin menu), which all share the
+Outliner's own `pushProjectScope` and preserve the active mode. The remaining
+project entry points — command-palette project navigation, task deep links, and
+project-aware commands — route through `AppModel.enterProjectScopeOutliner`,
+which pushes or replaces a scope frame on that one instance rather than
+constructing a separate `AppModel.outliner`. The retired `Ctrl+P` and `g o`
+drill-downs no longer exist. Task creation and every retained project operation
+run from the scoped Outliner. Esc pops to the previous scope
+frame; Ctrl+Esc clears the scope stack back to global Today.
 
 ## Transactions, recovery, and undo
 

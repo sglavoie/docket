@@ -31,11 +31,11 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.refreshProjectView()
 		if msg.ProcessedCount > 0 {
 			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
-			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged, %d skipped. Next: Planner Today or Next",
+			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged, %d skipped. Next: plan Today or Next",
 				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		} else if msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Inbox paused: %d skipped. Next: Planner Next",
+			m.setSuccessStatus(fmt.Sprintf("Inbox paused: %d skipped. Next: shortlist Next",
 				msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
@@ -47,16 +47,13 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseGlobalInboxProcessorMsg:
 		popCmd := m.popToAnchorView()
 		// Refresh dashboard to reflect any changes
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		if msg.ProcessedCount > 0 {
 			m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
-			m.setSuccessStatus(fmt.Sprintf("Global inbox clear! %d triaged, %d skipped. Next: Planner Today or Next",
+			m.setSuccessStatus(fmt.Sprintf("Global inbox clear! %d triaged, %d skipped. Next: plan Today or Next",
 				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		} else if msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Global inbox paused: %d skipped. Next: Planner Next",
+			m.setSuccessStatus(fmt.Sprintf("Global inbox paused: %d skipped. Next: shortlist Next",
 				msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
@@ -74,7 +71,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Palette emits this after closing itself so the underlying inbox view
 		// is at the top of the stack when toggleDailyPlan reads getTaskRef.
 		if cmd := m.toggleDailyPlan(); cmd != nil {
-			return true, m.batchWithFocusRefresh(cmd)
+			return true, cmd
 		}
 		return true, nil
 	}

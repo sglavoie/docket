@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 // The domain store unmarshals into constructors seeded with current defaults.
@@ -36,28 +35,6 @@ func (m *MachineState) UnmarshalJSON(data []byte) error {
 	type plain MachineState
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
-	}
-	// ProjectViewStates was retired with the canonical-destination migration,
-	// but older machine files may still contain the sidebar preference inside
-	// that catch-all object. Import only the sidebar value into its focused
-	// replacement. Explicit current values win per project; legacy values for
-	// other projects must still be imported from partially migrated payloads.
-	var legacy struct {
-		ProjectViewStates map[string]struct {
-			SidebarEnabled *bool `json:"sidebar_enabled"`
-		} `json:"project_view_states"`
-	}
-	if err := json.Unmarshal(data, &legacy); err != nil {
-		return err
-	}
-	for projectID, state := range legacy.ProjectViewStates {
-		if state.SidebarEnabled == nil {
-			continue
-		}
-		if _, current := m.ProjectSidebarEnabled[projectID]; current {
-			continue
-		}
-		m.SetProjectSidebarEnabled(projectID, *state.SidebarEnabled)
 	}
 	if !jsonObjectHasKey(data, "tui_state_version") {
 		m.TUIStateVersion = 0
@@ -105,8 +82,11 @@ func (s *Settings) MigrateTUIState() (bool, error) {
 	return changed, nil
 }
 
-// MigrateTUIState makes the six-destination startup route durable and drops
-// machine-only state owned by retired presentations and command histories.
+// MigrateTUIState advances the machine TUI-state marker as a one-way cleanup.
+// The retired startup destination (start view/route), Home layout sizing, and
+// sidebar state are dropped when the payload decodes into the current struct and
+// are omitted from the next save; only durable navigation, histories, and the
+// capped palette recents survive.
 func (m *MachineState) MigrateTUIState() (bool, error) {
 	if m == nil {
 		return false, nil
@@ -116,100 +96,9 @@ func (m *MachineState) MigrateTUIState() (bool, error) {
 	}
 
 	before := *m
-	destination, route := migrateStartRoute(m.StartView, m.StartRoute)
-	m.StartView = destination
-	m.StartRoute = route
-
 	if len(m.RecentPaletteItems) > MaxRecentPaletteItems {
 		m.RecentPaletteItems = append([]RecentPaletteItem(nil), m.RecentPaletteItems[:MaxRecentPaletteItems]...)
 	}
 	m.TUIStateVersion = CurrentTUIStateVersion
 	return !reflect.DeepEqual(before, *m), nil
-}
-
-// SetStartView stores a canonical destination. Changing destinations resets
-// route details so a migrated Backlog/Due Dates preference does not cling to a
-// later explicit Settings choice.
-func (m *MachineState) SetStartView(destination string) {
-	canonical, route := migrateStartRoute(destination, StartRouteState{})
-	m.StartView = canonical
-	m.StartRoute = route
-}
-
-// GetStartRoute returns normalized route semantics for the effective start
-// destination without mutating the snapshot.
-func (m *MachineState) GetStartRoute() StartRouteState {
-	_, route := migrateStartRoute(m.GetStartView(), m.StartRoute)
-	return route
-}
-
-func migrateStartRoute(value string, existing StartRouteState) (string, StartRouteState) {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "dashboard", StartViewHome:
-		return StartViewHome, StartRouteState{}
-	case "focus-board":
-		return StartViewPlanner, StartRouteState{PlannerTab: StartPlannerToday}
-	case "backlog":
-		return StartViewPlanner, StartRouteState{PlannerTab: StartPlannerBacklog}
-	case "cross-project-outliner":
-		return StartViewTasks, StartRouteState{TaskFocus: StartTaskActive}
-	case "all-tasks":
-		return StartViewTasks, StartRouteState{TaskFocus: StartTaskAll}
-	case "priority":
-		return StartViewTasks, StartRouteState{
-			TaskFocus: StartTaskHighPriority, TaskSort: StartTaskSortPriority,
-		}
-	case "due-dates":
-		return StartViewTasks, StartRouteState{
-			TaskFocus: StartTaskAll, TaskSort: StartTaskSortDueDate,
-		}
-	case "daily-review":
-		return StartViewReview, StartRouteState{ReviewModule: StartReviewDaily}
-	case StartViewPlanner:
-		return StartViewPlanner, normalizeStartRoute(StartViewPlanner, existing)
-	case StartViewTasks:
-		return StartViewTasks, normalizeStartRoute(StartViewTasks, existing)
-	case StartViewProject:
-		return StartViewProject, normalizeStartRoute(StartViewProject, existing)
-	case StartViewReview:
-		return StartViewReview, normalizeStartRoute(StartViewReview, existing)
-	case StartViewManage:
-		return StartViewManage, StartRouteState{}
-	default:
-		return DefaultStartView, normalizeStartRoute(DefaultStartView, StartRouteState{})
-	}
-}
-
-func normalizeStartRoute(destination string, route StartRouteState) StartRouteState {
-	switch destination {
-	case StartViewPlanner:
-		if route.PlannerTab != StartPlannerBacklog {
-			route.PlannerTab = StartPlannerToday
-		}
-		return StartRouteState{PlannerTab: route.PlannerTab}
-	case StartViewTasks, StartViewProject:
-		focus := route.TaskFocus
-		if route.TaskLayout == StartTaskList && focus == StartTaskActive {
-			focus = StartTaskAll
-		}
-		if focus != StartTaskAll && focus != StartTaskHighPriority {
-			focus = StartTaskActive
-		}
-		sort := route.TaskSort
-		if route.TaskGroup == StartTaskGroupDueDate {
-			sort = StartTaskSortDueDate
-		}
-		if sort != StartTaskSortPriority && sort != StartTaskSortDueDate {
-			sort = ""
-		}
-		return StartRouteState{
-			TaskFocus: focus,
-			TaskSort:  sort,
-		}
-	case StartViewReview:
-		if route.ReviewModule == StartReviewDaily {
-			return StartRouteState{ReviewModule: StartReviewDaily}
-		}
-	}
-	return StartRouteState{}
 }

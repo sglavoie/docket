@@ -20,6 +20,10 @@ type outlinerViewport struct {
 // renderOutlinerTreeContent renders the tree portion of the outliner, constrained to
 // the given width. Used by both full-width and split-pane layouts.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
+	if m.modePickerActive() {
+		return m.renderModePicker(width)
+	}
+
 	notice := m.zoomNotice
 	m.zoomNotice = ""
 
@@ -176,15 +180,22 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator() string {
 func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 	if m.project == nil {
 		projectCount := len(m.loadedProjects)
-		prefix := "Cross-project Outliner"
+		prefix := "Outliner"
 		if m.isActiveCrossPriority() {
-			prefix = "Cross-project Priority"
+			prefix = "Outliner: Priority"
 		}
-		title := fmt.Sprintf("%s (%d project", prefix, projectCount)
-		if projectCount != 1 {
-			title += "s"
+		var title string
+		if m.isProjectScoped() {
+			// Scoped: identify the project instead of reporting the full loaded
+			// count (which would mislabel a single-project scope as "N projects").
+			title = prefix + " — " + m.projectDisplayNameByID(m.scopedProjectID)
+		} else {
+			title = fmt.Sprintf("%s (%d project", prefix, projectCount)
+			if projectCount != 1 {
+				title += "s"
+			}
+			title += ")"
 		}
-		title += ")"
 		sortField := m.sort.Field
 		sortAscending := m.sort.Ascending
 		if m.isActiveCrossPriority() {
@@ -245,6 +256,8 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 	b.WriteString(m.buildOutlinerTitleLine(width, perspectiveLabel, searchIndicator))
 	b.WriteString("\n")
 
+	m.writeWorkModeChrome(b, width)
+
 	if m.ac.IsActive() {
 		b.WriteString(m.ac.RenderDropdown("    "))
 	}
@@ -268,6 +281,8 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 	line.WriteString(searchIndicator)
 	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
 	b.WriteString("\n")
+
+	m.writeWorkModeChrome(&b, width)
 
 	if m.ac.IsActive() {
 		b.WriteString(m.ac.RenderDropdown("    "))
@@ -315,6 +330,15 @@ func (m *OutlinerModel) renderPinnedTagTabBar(width int) string {
 func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 	if m.project == nil && len(m.loadedProjects) == 0 {
 		return "No projects in current context. Press C to switch context."
+	}
+	if m.workTodayMode {
+		return "Today is clear — press w to plan a task, Tab for Next, or P to pick a mode."
+	}
+	if m.workNextMode {
+		return "Next is empty — press q to shortlist a task, Tab for Backlog, or P to pick a mode."
+	}
+	if m.workBacklogMode {
+		return "Backlog is empty — everything actionable is already in Today or Next. Press Tab or P to switch modes."
 	}
 	if m.project == nil {
 		return "No tasks found."

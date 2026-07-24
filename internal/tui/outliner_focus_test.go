@@ -119,6 +119,43 @@ func TestOutlinerOpenOptionsPreserveLensUnlessIntentIsExplicit(t *testing.T) {
 	}
 }
 
+func TestOutlinerOpenOptionsReconcilesActiveAndTreeSorts(t *testing.T) {
+	m := NewOutlinerModel(nil, nil, newTestConfig())
+	m.selectOutlinerMode(ModeAll)
+	m.toggleSort(SortByPriority)
+
+	// The command shape used by "all tasks by due date" resolves to the fixed
+	// Due Date target. Its SetSort is not allowed to overwrite the tree sort.
+	m.ApplyOpenOptions(OutlinerOpenOptions{
+		Focus: OutlinerAll, SetFocus: true,
+		Sort: SortByDueDate, SetSort: true,
+		Lens: OutlinerLensDueDate, SetLens: true,
+	})
+	if got := m.activeOutlinerMode(); got != ModeDueDateLens {
+		t.Fatalf("command target = %q, want Due Date", got)
+	}
+	if m.sort != NewSortState() || m.treeSort.Field != SortByPriority {
+		t.Fatalf("Due Date command sorts = active %+v tree %+v", m.sort, m.treeSort)
+	}
+
+	// Command-driven focus changes use catalog selection and restore the stored
+	// tree ordering.
+	m.ApplyOpenOptions(OutlinerOpenOptions{Focus: OutlinerInbox, SetFocus: true})
+	if got := m.activeOutlinerMode(); got != ModeInbox {
+		t.Fatalf("focus target = %q, want Inbox", got)
+	}
+	if m.sort.Field != SortByPriority || m.treeSort != m.sort {
+		t.Fatalf("focus restore = active %+v tree %+v", m.sort, m.treeSort)
+	}
+
+	// Explicit sort intent on a tree target updates both copies atomically.
+	m.ApplyOpenOptions(OutlinerOpenOptions{Sort: SortByScore, SetSort: true})
+	want := SortState{Field: SortByScore, Ascending: true}
+	if m.sort != want || m.treeSort != want {
+		t.Fatalf("explicit tree sort = active %+v tree %+v, want %+v", m.sort, m.treeSort, want)
+	}
+}
+
 func TestOpenAtTaskRevealsTargetHiddenByFocusAndSearch(t *testing.T) {
 	active := &models.Task{ID: "active", Title: "visible active", WorkflowState: models.StateReady}
 	completed := &models.Task{ID: "completed", Title: "hidden completed", WorkflowState: models.StateDone}

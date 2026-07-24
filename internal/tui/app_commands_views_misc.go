@@ -152,36 +152,3 @@ func (m *AppModel) workflowRulesCommands() []Command {
 		},
 	}
 }
-
-func (m *AppModel) sidebarCommands() []Command {
-	return []Command{
-		{
-			Name:        "enable sidebar for all projects",
-			Description: "Turn on sidebar for every active project",
-			Category:    CategoryView,
-			Views:       []PresentationID{},
-			Aliases:     []string{"sidebar on all", "show sidebar all"},
-			Available: func() bool {
-				return !m.determiningProjectSidebarEnabled()
-			},
-			Handler: func() tea.Msg {
-				m.setAllProjectSidebarsEnabled(true)
-				return nil
-			},
-		},
-		{
-			Name:        "disable sidebar for all projects",
-			Description: "Turn off sidebar for every active project",
-			Category:    CategoryView,
-			Views:       []PresentationID{},
-			Aliases:     []string{"sidebar off all", "hide sidebar all"},
-			Available: func() bool {
-				return m.determiningProjectSidebarEnabled()
-			},
-			Handler: func() tea.Msg {
-				m.setAllProjectSidebarsEnabled(false)
-				return nil
-			},
-		},
-	}
-}

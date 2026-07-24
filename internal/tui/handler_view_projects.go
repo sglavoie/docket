@@ -11,27 +11,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
-			if msg.Temporary {
-				fresh := NewOutlinerModel(msg.Project, m.configManager, m.runtime)
-				fresh.queueIDs = m.focusQueueIDs
-				fresh.dailyPlanIDs = m.dailyPlanIDs
-				fresh.OpenAtTask = msg.OpenAtTask
-				m.restoreOutlinerFilterStateTo(fresh)
-				fresh.ApplyOpenOptions(msg.Options)
-				m.showView(ViewTemporaryOutliner, fresh)
-				return true, nil
-			}
-			m.currentProject = msg.Project
-			m.prepareProjectOutliner(msg.Project, msg.OpenAtTask)
-			m.outliner.ApplyOpenOptions(msg.Options)
-			if m.typedNavigation {
-				route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(msg.Project.ID)})
-				if err != nil {
-					return true, func() tea.Msg { return ErrorMsg{Err: err} }
-				}
-				return true, m.activateTaskWorkspaceRoute(route)
-			}
-			m.showView(ViewOutliner, m.outliner)
+			return true, m.enterProjectScopeOutliner(msg.Project, msg.OpenAtTask, msg.Options)
 		}
 		return true, nil
 
@@ -71,23 +51,63 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// The mature Outliner models are the canonical project and cross-project Task
-// Workspace renderers.
-func (m *AppModel) prepareProjectOutliner(project *models.Project, openAt *models.Task) {
+// enterProjectScopeOutliner represents project selection as a scope frame on the
+// single authoritative (cross-project) Outliner rather than constructing a
+// separate project-scoped root. It returns to the Outliner root — dropping any
+// child route and cancelling overlays — pushes the project's scope frame, applies
+// the requested open options, and reveals openAt when provided. The root route
+// stays app-scoped; project identity lives only in the Outliner's scope stack, so
+// Esc restores the previous scope and Ctrl+Esc restores clean global Today.
+func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *models.Task, options OutlinerOpenOptions) tea.Cmd {
 	if project == nil {
-		return
+		return nil
 	}
-	m.saveOutlinerToggleState()
-	m.saveOutlinerFilterState()
-	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-	m.outliner.queueIDs = m.focusQueueIDs
-	m.outliner.dailyPlanIDs = m.dailyPlanIDs
-	m.outliner.OpenAtTask = openAt
-	m.restoreOutlinerToggleState()
-	m.restoreOutlinerFilterState()
-	m.outliner.SetSize(m.width, m.height-2)
-	m.wireSecondaryCoordinators(m.outliner)
-	m.views.Register(ViewOutliner, m.outliner)
+	m.currentProject = project
+
+	var presentationCmd tea.Cmd
+	if m.crossOutliner == nil {
+		presentationCmd = m.prepareCrossProjectOutliner()
+	}
+
+	if m.typedNavigation {
+		// A project-navigation request abandons any transient overlay and child
+		// route and lands on the sole app-scoped Outliner root.
+		m.taskDetail = nil
+		m.taskComposer = nil
+		if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
+			return cmd
+		}
+	} else {
+		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
+	}
+
+	cross := m.crossOutliner
+	if cross == nil {
+		return presentationCmd
+	}
+	cross.pushProjectScope(project.ID)
+	if options.SetMode || options.SetFocus || options.SetSort || options.SetLens {
+		cross.ApplyOpenOptions(options)
+	} else {
+		// Explicit project navigation presents the project's full task tree — the
+		// same "All" default the retired single-project Outliner opened with —
+		// rather than inheriting the global Today horizon (which is empty for an
+		// unplanned project).
+		cross.selectOutlinerMode(ModeAll)
+	}
+	if openAt != nil {
+		cross.NavigateToTaskInProject(openAt, project)
+	}
+	m.setAccentOnView(cross)
+
+	// Project work is served by the scoped cross Outliner; discard any transient
+	// single-project instance switchToProject may have created so one
+	// authoritative Outliner owns all project-scoped work.
+	if m.outliner != nil {
+		m.outliner = nil
+		m.views.Remove(ViewOutliner)
+	}
+	return presentationCmd
 }
 
 func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {

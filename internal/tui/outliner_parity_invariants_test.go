@@ -9,8 +9,8 @@ import (
 )
 
 // parityKeyCase describes one cross-project parity binding and the status
-// invariant that must hold when the cursor sits on a non-task row (header or
-// separator). Each invoker resolves and executes the binding through the same
+// invariant that must hold when the cursor sits on an unscoped non-task row
+// (section header or separator). Each invoker resolves and executes the binding through the same
 // keymap builder the production view uses, so the test fails if any future
 // edit drops the cursor-project / cursor-task guard or stops setting the
 // shared status constant.
@@ -27,11 +27,6 @@ func crossParityKeyCases() []parityKeyCase {
 	return []parityKeyCase{
 		// Session 2 — navigation parity (primary view entries).
 		{
-			name:       "ctrl+p (OpenOutliner)",
-			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "ctrl+p") },
-			wantStatus: statusNoProjectUnderCursor,
-		},
-		{
 			name:       "B (ProjectBlockers)",
 			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "B") },
 			wantStatus: statusNoProjectUnderCursor,
@@ -44,6 +39,11 @@ func crossParityKeyCases() []parityKeyCase {
 		{
 			name:       "} (CreateNote)",
 			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "}") },
+			wantStatus: statusNoProjectUnderCursor,
+		},
+		{
+			name:       "{ (OpenNotes)",
+			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "{") },
 			wantStatus: statusNoProjectUnderCursor,
 		},
 		{
@@ -106,15 +106,25 @@ func crossParityKeyCases() []parityKeyCase {
 			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeUtilityKey(t, m, "ctrl+v") },
 			wantStatus: statusNoProjectUnderCursor,
 		},
+		{
+			name:       "ctrl+s (SectionManager)",
+			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeUtilityKey(t, m, "ctrl+s") },
+			wantStatus: statusNoProjectUnderCursor,
+		},
+		{
+			name:       "ctrl+e (ExportProject)",
+			invoke:     func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeUtilityKey(t, m, "ctrl+e") },
+			wantStatus: statusNoProjectUnderCursor,
+		},
 	}
 }
 
-// TestCrossOutlinerParity_HeaderInvariant aggregates every cross-project
-// parity key wired in sessions 2-4 and asserts that placing the cursor on a
-// section header emits no message and sets the shared status constant. The
+// TestCrossOutlinerParity_SectionHeaderInvariant aggregates every cross-project
+// parity key and asserts that placing the cursor on an unscoped section header
+// emits no message and sets the shared status constant. The
 // table-driven shape lets a regression in any single binding surface as one
 // targeted subtest failure rather than a diffuse keymap symptom.
-func TestCrossOutlinerParity_HeaderInvariant(t *testing.T) {
+func TestCrossOutlinerParity_SectionHeaderInvariant(t *testing.T) {
 	for _, tc := range crossParityKeyCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			m, _, _, _, _ := crossOutlinerWithConfig(t)
@@ -187,15 +197,6 @@ func TestCrossOutlinerParity_CursorRoutingMatrix(t *testing.T) {
 		extractOK func(tea.Msg) bool
 	}
 	cases := []routingCase{
-		{
-			name:    "ctrl+p (OpenOutliner)",
-			invoke:  func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "ctrl+p") },
-			extract: func(msg tea.Msg) *models.Project { return msg.(ShowOutlinerMsg).Project },
-			extractOK: func(msg tea.Msg) bool {
-				_, ok := msg.(ShowOutlinerMsg)
-				return ok
-			},
-		},
 		{
 			name:    "B (ProjectBlockers)",
 			invoke:  func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "B") },

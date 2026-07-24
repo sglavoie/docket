@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/template"
@@ -219,25 +218,6 @@ func TestTemplateListScrollbarRespectsVisualWidth(t *testing.T) {
 	assertRenderedLinesWithinVisualWidth(t, "template list scrollbar", rendered, 24)
 }
 
-func TestDashboardProjectListScrollbarRespectsVisualWidthWithEmoji(t *testing.T) {
-	icons.SetUseEmoji(true)
-	t.Cleanup(func() { icons.SetUseEmoji(false) })
-
-	projects := make([]*models.Project, 0, 10)
-	for i := range 10 {
-		project := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
-		project.Context = "work"
-		project.StatusIcon = "active"
-		projects = append(projects, project)
-	}
-
-	cfg := newTestConfig()
-	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
-	m.SetSize(28, 10)
-	rendered := m.renderProjectList(projects, 6, 28)
-	assertRenderedLinesWithinVisualWidth(t, "dashboard project list scrollbar", rendered, 24)
-}
-
 func TestTaskChecklistViewRespectsVisualWidth(t *testing.T) {
 	task, err := models.NewTask("task-1", 17, models.TaskTypeTask, "Checklist")
 	if err != nil {
@@ -274,34 +254,6 @@ func TestRenderInboxFooterRespectsVisualWidthAcrossLayouts(t *testing.T) {
 		rendered := renderInboxFooter(width)
 		assertRenderedLinesWithinVisualWidth(t, fmt.Sprintf("inbox footer @%d", width), rendered, width)
 	}
-}
-
-// TestRenderProjectListNarrowModeRespectsVisualWidth exercises the dashboard
-// narrow-mode rendering path: wide rows split into name + stats lines and
-// must respect cardWidth even with active inbox indicators and long names.
-func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
-	cfg := newTestConfig()
-	projects := make([]*models.Project, 0, 6)
-	for i := range 6 {
-		p := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
-		p.Context = "work"
-		// Add a couple of inbox tasks so the project row carries the inbox indicator.
-		for j := range 2 {
-			task, err := models.NewTask(fmt.Sprintf("p%d-t%d", i, j), j+1, models.TaskTypeTask, "inbox item")
-			if err != nil {
-				t.Fatalf("NewTask: %v", err)
-			}
-			task.SetSection(models.SectionInbox)
-			p.Tasks = append(p.Tasks, task)
-		}
-		projects = append(projects, p)
-	}
-
-	m := &DashboardModel{runtime: testRuntimeAt(cfg.DataDir(), cfg), projects: projects}
-	cardWidth := DashboardNarrowModeWidth - 4
-	m.SetSize(cardWidth+6, 30)
-	rendered := m.renderProjectList(projects, 12, cardWidth)
-	assertRenderedLinesWithinVisualWidth(t, "dashboard project list narrow mode", rendered, cardWidth)
 }
 
 // TestHelpRenderByIntentContentRespectsVisualWidth confirms that the per-view

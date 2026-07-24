@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 )
 
-// These tests pin the application use cases the sidebar-unlink, score-editor, and
+// These tests pin the application use cases the link-unlink, score-editor, and
 // pinned-task overlays route through after session 33.7.3.4.5 retired their raw
 // saves: ReplaceScoreDimensions (replace, not merge), RemoveRelatedBidirectional
 // (both sides, atomic, spanning projects), and ReorderPinnedTasks (atomic swap).

@@ -149,18 +149,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	mach.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	mach.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 	mach.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())
-	selectedStartView := startViewValues[m.startViewCursor]
-	if selectedStartView != mach.GetStartView() {
-		mach.SetStartView(selectedStartView)
-	} else {
-		mach.StartView = selectedStartView
-	}
-	if limit, err := strconv.Atoi(strings.TrimSpace(m.resumeCardLimitInput.Value())); err == nil {
-		s.ResumeCardLimit = &limit
-	}
-	if pct, err := strconv.Atoi(strings.TrimSpace(m.homeProjectsHeightInput.Value())); err == nil {
-		mach.HomeProjectsHeightPct = &pct
-	}
 	s.TUIZebraStriping = boolPtr(m.zebraStriping)
 	s.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	s.TimeFormat = timeFormatValues[m.timeFormatCursor]

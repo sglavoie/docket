@@ -148,6 +148,12 @@ func (m *OutlinerModel) toggleSectionFoldAtCursor() bool {
 			m.crossPriorityCollapsedGroups = make(map[PriorityGroup]bool)
 		}
 		m.crossPriorityCollapsedGroups[g] = !m.crossPriorityCollapsedGroups[g]
+	} else if isReviewCollapseKey(key) {
+		if m.reviewCollapsedSections == nil {
+			m.reviewCollapsedSections = make(map[string]bool)
+		}
+		m.reviewCollapsedSections[key] = !m.reviewCollapsedSections[key]
+		m.crossForceRebuild = true
 	} else {
 		if m.collapsedSections == nil {
 			m.collapsedSections = make(map[string]bool)

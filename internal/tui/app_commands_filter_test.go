@@ -270,7 +270,7 @@ func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *
 	}
 }
 
-func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
+func TestFilterCommands_SectionManagerUnscopedSectionHeaderHasNoProject(t *testing.T) {
 	app := newTestAppModel()
 	project := &models.Project{ID: "cross-project", Name: "Cross Project"}
 
@@ -291,8 +291,8 @@ func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected StatusMsg, got %T", result)
 	}
-	if string(msg) != "No task selected for section manager" {
-		t.Fatalf("status = %q, want no-task section manager status", msg)
+	if string(msg) != statusNoProjectUnderCursor {
+		t.Fatalf("status = %q, want %q", msg, statusNoProjectUnderCursor)
 	}
 }
 

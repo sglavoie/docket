@@ -41,7 +41,7 @@ func TestPrimaryViewKey_QuickCapture_CrossUsesCursorProject(t *testing.T) {
 	}
 }
 
-func TestPrimaryViewKey_QuickCapture_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestPrimaryViewKey_QuickCapture_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithConfig(t)
 	m.cursor = 0 // header
 
@@ -106,7 +106,7 @@ func TestPrimaryViewKey_BulkCapture_CrossUsesCursorProject(t *testing.T) {
 	}
 }
 
-func TestPrimaryViewKey_BulkCapture_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestPrimaryViewKey_BulkCapture_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithConfig(t)
 	m.cursor = 0
 
@@ -188,7 +188,7 @@ func TestHandleTaskPrefix_CrossNewTaskWithTemplateUsesCursorTaskAndProject(t *te
 	}
 }
 
-func TestHandleTaskPrefix_CrossNewTaskOnHeaderSetsStatus(t *testing.T) {
+func TestHandleTaskPrefix_CrossNewTaskOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0 // header
 

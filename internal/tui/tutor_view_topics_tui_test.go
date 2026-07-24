@@ -30,7 +30,7 @@ func findTutorTopicByTitle(t *testing.T, title string) TutorTopic {
 func TestTutorDocumentsConsolidatedNavigation(t *testing.T) {
 	for _, title := range []string{"The pipeline", "The Task Pipeline", "Pipeline Views"} {
 		topic := findTutorTopicByTitle(t, title)
-		for _, want := range []string{"Ctrl+G", "Home", "Planner", "Task Workspace", "Review", "Manage"} {
+		for _, want := range []string{"Outliner", "Today", "Tab", "Ctrl+Esc"} {
 			if !strings.Contains(topic.Content, want) {
 				t.Errorf("%s missing %q", title, want)
 			}

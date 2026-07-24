@@ -56,17 +56,19 @@ func (m *AppModel) currentPresentationView() PresentationID {
 			return taskWorkspacePresentation(params)
 		}
 	}
-	if route := m.navigation.Primary.Current(); route.ID() == ReviewHub && m.reviewHub != nil {
-		if params, ok := route.Params().(ReviewParams); ok {
-			if presentation, found := reviewModulePresentation(params.Module, m.reviewHub.ProjectScope()); found {
-				return presentation
+	if route := m.navigation.Primary.Current(); route.ID() == SecondaryTool {
+		switch params := route.Params().(type) {
+		case ReviewParams:
+			if m.reviewHub != nil {
+				if presentation, found := reviewModulePresentation(params.Module, m.reviewHub.ProjectScope()); found {
+					return presentation
+				}
 			}
-		}
-	}
-	if route := m.navigation.Primary.Current(); route.ID() == ManageHub && m.manageHub != nil {
-		if params, ok := route.Params().(ManageParams); ok {
-			if presentation, found := m.manageHub.PresentationView(); found && params == m.manageHub.Params() {
-				return presentation
+		case ManageParams:
+			if m.manageHub != nil {
+				if presentation, found := m.manageHub.PresentationView(); found && params == m.manageHub.Params() {
+					return presentation
+				}
 			}
 		}
 	}
@@ -78,10 +80,10 @@ func (m *AppModel) currentPresentationView() PresentationID {
 	return ViewDashboard
 }
 
-func taskWorkspacePresentation(params TaskWorkspaceParams) PresentationID {
-	if params.Scope.Kind == ScopeProject {
-		return ViewOutliner
-	}
+func taskWorkspacePresentation(_ TaskWorkspaceParams) PresentationID {
+	// TaskWorkspace routes are app-scoped only, so the single authoritative cross
+	// Outliner always renders them; project scopes are Outliner scope frames
+	// rather than a second presentation identity.
 	return ViewCrossProjectOutliner
 }
 
@@ -99,9 +101,9 @@ func (m *AppModel) outlinerPrimary() (*OutlinerModel, TaskWorkspaceParams, bool)
 	if !ok {
 		return nil, TaskWorkspaceParams{}, false
 	}
-	if params.Scope.Kind == ScopeProject {
-		return m.outliner, params, m.outliner != nil
-	}
+	// The single authoritative Outliner owns both global and project-scoped work.
+	// Project selection is a scope frame, so the root TaskWorkspace route is always
+	// app-scoped and resolves to the one cross-project instance.
 	return m.crossOutliner, params, m.crossOutliner != nil
 }
 
@@ -116,10 +118,10 @@ func (m *AppModel) activeOutlinerRoute() bool {
 	return true
 }
 
-// activeReviewHub reports whether the typed Review destination is the live
+// activeReviewHub reports whether the typed Review secondary tool is the live
 // renderer and is not covered by a legacy-rendered overlay.
 func (m *AppModel) activeReviewHub() bool {
-	if !m.typedNavigation || m.reviewHub == nil {
+	if _, _, ok := m.reviewHubPrimary(); !ok {
 		return false
 	}
 	if overlay, ok := m.navigation.Overlays.Current(); ok {
@@ -127,15 +129,7 @@ func (m *AppModel) activeReviewHub() bool {
 			return false
 		}
 	}
-	route := m.navigation.Primary.Current()
-	if route.ID() != ReviewHub {
-		return false
-	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return false
-	}
-	params, ok := route.Params().(ReviewParams)
-	return ok && params.Module == m.reviewHub.Module()
+	return true
 }
 
 // reviewHubPrimary returns Review even beneath shell overlays so palette
@@ -145,7 +139,7 @@ func (m *AppModel) reviewHubPrimary() (*ReviewHubModel, ReviewParams, bool) {
 		return nil, ReviewParams{}, false
 	}
 	route := m.navigation.Primary.Current()
-	if route.ID() != ReviewHub {
+	if route.ID() != SecondaryTool {
 		return nil, ReviewParams{}, false
 	}
 	if _, hasPresentation := route.Presentation(); hasPresentation {
@@ -158,10 +152,10 @@ func (m *AppModel) reviewHubPrimary() (*ReviewHubModel, ReviewParams, bool) {
 	return m.reviewHub, params, true
 }
 
-// activeManageHub reports whether the typed Manage destination is the live
+// activeManageHub reports whether the typed Manage secondary tool is the live
 // renderer and is not covered by a legacy-rendered overlay.
 func (m *AppModel) activeManageHub() bool {
-	if !m.typedNavigation || m.manageHub == nil {
+	if _, _, ok := m.manageHubPrimary(); !ok {
 		return false
 	}
 	if overlay, ok := m.navigation.Overlays.Current(); ok {
@@ -169,15 +163,7 @@ func (m *AppModel) activeManageHub() bool {
 			return false
 		}
 	}
-	route := m.navigation.Primary.Current()
-	if route.ID() != ManageHub {
-		return false
-	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return false
-	}
-	params, ok := route.Params().(ManageParams)
-	return ok && params == m.manageHub.Params()
+	return true
 }
 
 // manageHubPrimary returns Manage beneath shell overlays so palette and
@@ -187,7 +173,7 @@ func (m *AppModel) manageHubPrimary() (*ManageHubModel, ManageParams, bool) {
 		return nil, ManageParams{}, false
 	}
 	route := m.navigation.Primary.Current()
-	if route.ID() != ManageHub {
+	if route.ID() != SecondaryTool {
 		return nil, ManageParams{}, false
 	}
 	if _, hasPresentation := route.Presentation(); hasPresentation {
@@ -283,11 +269,11 @@ func (m *AppModel) installTypedPresentation(view PresentationID) bool {
 	m.syncPresentationStack()
 
 	switch route.ID() {
-	case Home:
-		if err := m.navigation.ReplaceDestination(route); err != nil {
+	case SecondaryTool:
+		if err := m.navigation.Primary.PushChild(route, m.currentFocusTarget()); err != nil {
 			return false
 		}
-		m.viewStack = []PresentationID{ViewDashboard}
+		m.syncPresentationStack()
 	case TaskDetail:
 		if m.navigation.Primary.Current().ID() == TaskDetail {
 			if err := m.navigation.Primary.ReplaceCurrentMode(route); err != nil {
@@ -356,17 +342,19 @@ func (m *AppModel) syncPresentationStack() {
 				view, ok = taskWorkspacePresentation(params), true
 			}
 		}
-		if !ok && route.ID() == ReviewHub && m.reviewHub != nil {
-			if params, paramsOK := route.Params().(ReviewParams); paramsOK {
-				view, ok = reviewModulePresentation(params.Module, m.reviewHub.ProjectScope())
-			}
-		}
-		if !ok && route.ID() == ManageHub && m.manageHub != nil {
-			if params, paramsOK := route.Params().(ManageParams); paramsOK {
-				if params == m.manageHub.Params() {
-					view, ok = m.manageHub.PresentationView()
-				} else {
-					view, ok = manageModulePresentation(params)
+		if !ok && route.ID() == SecondaryTool {
+			switch params := route.Params().(type) {
+			case ReviewParams:
+				if m.reviewHub != nil {
+					view, ok = reviewModulePresentation(params.Module, m.reviewHub.ProjectScope())
+				}
+			case ManageParams:
+				if m.manageHub != nil {
+					if params == m.manageHub.Params() {
+						view, ok = m.manageHub.PresentationView()
+					} else {
+						view, ok = manageModulePresentation(params)
+					}
 				}
 			}
 		}
@@ -401,63 +389,17 @@ func (m *AppModel) popTypedPresentation() bool {
 	}
 
 	current := m.navigation.Primary.Current()
-	if current.ID() == TaskDetail {
+	if current.ID() == TaskDetail || current.ID() == SecondaryTool {
+		// Task Detail and secondary tools are hierarchical children: a single Esc
+		// dismisses the child directly back to the launching destination without an
+		// intermediate landing retreat.
 		m.navigation.Primary.Pop()
 		m.syncPresentationStack()
 		return true
 	}
-	if m.retreatHubModule(current) {
-		m.syncPresentationStack()
-		return true
-	}
-	if current.ID() != Home {
-		m.navigation.Primary.ResetHome()
-		m.syncPresentationStack()
-		return true
-	}
+	// The Outliner destination is the sole root. A clean root Esc has nothing to
+	// unwind and is a no-op, letting the key fall through to the view.
 	return false
-}
-
-// retreatHubModule implements the first Esc inside Review/Manage: modules
-// return to their typed landing mode before a subsequent Esc returns Home.
-func (m *AppModel) retreatHubModule(current Route) bool {
-	view, hasPresentation := current.Presentation()
-	projectID := ""
-	if m.currentProject != nil {
-		projectID = m.currentProject.ID
-	}
-	switch params := current.Params().(type) {
-	case ReviewParams:
-		if params.Module == ReviewLanding {
-			return false
-		}
-		route, err := NewRoute(ReviewHub, ReviewParams{Module: ReviewLanding})
-		if err != nil {
-			return false
-		}
-		if m.reviewHub != nil {
-			_ = m.reviewHub.Activate(ReviewLanding, m.reviewHub.ProjectScope())
-		} else if hasPresentation {
-			route = withPresentation(route, view, projectID, "")
-		}
-		return m.navigation.Primary.ReplaceCurrentMode(route) == nil
-	case ManageParams:
-		if params.Module == ManageLanding {
-			return false
-		}
-		route, err := NewRoute(ManageHub, ManageParams{Module: ManageLanding, Scope: AppEntityScope()})
-		if err != nil {
-			return false
-		}
-		if m.manageHub != nil {
-			_ = m.manageHub.Activate(route.Params().(ManageParams))
-		} else if hasPresentation {
-			route = withPresentation(route, view, projectID, "")
-		}
-		return m.navigation.Primary.ReplaceCurrentMode(route) == nil
-	default:
-		return false
-	}
 }
 
 func (m *AppModel) closeTypedOverlay(kind OverlayKind, key string) {
@@ -512,23 +454,9 @@ func (m *AppModel) cancelTypedOverlayPresentation(kind OverlayKind, key string) 
 	case OverlayPinned:
 		m.showPinnedPopup = false
 		m.pinnedPopupFiltering = false
-	case OverlayPicker:
-		if key == destinationSwitcherOverlayKey {
-			m.destinationSwitcher = nil
-		}
 	case OverlayViewMenu:
-		switch key {
-		case plannerViewMenuOverlayKey:
-			if m.views != nil {
-				planner, ok := m.views.Get(ViewFocusBoard).(*FocusBoardModel)
-				if ok && planner != nil {
-					planner.menuOpen = false
-				}
-			}
-		case manageHubViewMenuOverlayKey:
-			if m.manageHub != nil {
-				m.manageHub.closePicker()
-			}
+		if key == manageHubViewMenuOverlayKey && m.manageHub != nil {
+			m.manageHub.closePicker()
 		}
 	default:
 	}

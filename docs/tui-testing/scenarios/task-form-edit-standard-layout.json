@@ -3,7 +3,10 @@
   "fixture": "rich",
   "size": "80x24",
   "actions": [
-    { "type": "command", "label": "triage inbox", "command": "triage inbox" },
+    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "key", "label": "step onto the project header", "key": "down" },
+    { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "command", "label": "triage inbox", "command": "inbox processor" },
     { "type": "key", "key": "enter" },
     { "type": "key", "key": "e" },
     { "type": "assert", "assert": "view", "value": "TaskForm" },

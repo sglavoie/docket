@@ -24,7 +24,7 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	rendered := m.renderOutlinerTreeContent(width)
 	plain := ansi.Strip(rendered)
 
-	assertContains(t, plain, "Cross-project Outliner (2 projects)", "title")
+	assertContains(t, plain, "Outliner (2 projects)", "title")
 	assertContains(t, plain, "‹ Completed", "previous perspective label")
 	assertContains(t, plain, "@ All", "current perspective label")
 	assertContains(t, plain, "Active ›", "next perspective label")
@@ -97,6 +97,10 @@ func TestCrossProjectOutlinerProjectColorsFollowSlotsAcrossThemesAndPerspectives
 			m.activePerspective = PerspectiveAll
 			m.crossForceRebuild = true
 			m.crossProjectRebuildRows()
+			// Project headers are navigable, so the default cursor can rest on
+			// one and render it highlighted. Park the cursor on a task row so the
+			// header badges under test render in their plain slot color.
+			m.cursor = findOutlinerRowIndex(t, m.rows, alphaTask.ID)
 			allRendered := m.renderOutlinerTreeContent(96)
 			assertContains(t, allRendered, alphaHeader, "All perspective alpha project color")
 			assertContains(t, allRendered, platformHeader, "All perspective platform project color")
@@ -104,6 +108,7 @@ func TestCrossProjectOutlinerProjectColorsFollowSlotsAcrossThemesAndPerspectives
 			m.activePerspective = PerspectiveActive
 			m.crossForceRebuild = true
 			m.crossProjectRebuildRows()
+			m.cursor = findOutlinerRowIndex(t, m.rows, alphaTask.ID)
 			activeRendered := m.renderOutlinerTreeContent(96)
 			assertContains(t, activeRendered, alphaHeader, "Active perspective alpha project color")
 			assertContains(t, activeRendered, platformHeader, "Active perspective platform project color")
@@ -175,7 +180,6 @@ func TestCrossProjectOutlinerViewMultiSelectTitleFitsNarrowWidth(t *testing.T) {
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	const width = 72
 	m.SetSize(width, 20)
-	m.sidebar.SetEnabled(false)
 
 	projects := make([]*models.Project, 0, 34)
 	for i := 0; i < 34; i++ {
@@ -192,7 +196,10 @@ func TestCrossProjectOutlinerViewMultiSelectTitleFitsNarrowWidth(t *testing.T) {
 
 	rendered := m.View().Content
 	plain := ansi.Strip(rendered)
-	if !strings.Contains(plain, "Cross-project Outliner (34 projects)") || !strings.Contains(plain, "[MULTI-SELECT: 0 selected]") {
+	// The multi-select badge may wrap across lines at this width; assert its
+	// prefix is present rather than the full "0 selected" text so the width-fit
+	// loop below stays the real assertion.
+	if !strings.Contains(plain, "Outliner (34 projects)") || !strings.Contains(plain, "[MULTI-SELECT:") {
 		t.Fatalf("test setup did not render aggregate multi-select title pressure:\n%s", plain)
 	}
 	for i, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
@@ -549,6 +556,10 @@ func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 		t.Fatalf("expected 2 project sub-headers (one per visible project), got %d", projectHeaderCount)
 	}
 
+	// Project headers are navigable, so the default cursor can rest on one and
+	// render it highlighted. Park the cursor on a task row so the header badges
+	// under test render in their plain slot color.
+	m.cursor = findOutlinerRowIndex(t, m.rows, alphaTask.ID)
 	rendered := m.renderOutlinerTreeContent(width)
 	assertContains(t, rendered, renderedProjectHeaderBadge(alpha), "non-All perspective renders bold project sub-header badge")
 	assertContains(t, rendered, renderedProjectHeaderBadge(beta), "non-All perspective renders bold project sub-header badge")

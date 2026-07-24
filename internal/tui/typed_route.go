@@ -13,21 +13,15 @@ import (
 type RouteID uint8
 
 const (
-	Home RouteID = iota
-	Planner
-	TaskWorkspace
-	ReviewHub
-	ManageHub
+	TaskWorkspace RouteID = iota
+	SecondaryTool
 	TaskDetail
 	Reference
 )
 
 var routeIDNames = [...]string{
-	"Home",
-	"Planner",
 	"TaskWorkspace",
-	"ReviewHub",
-	"ManageHub",
+	"SecondaryTool",
 	"TaskDetail",
 	"Reference",
 }
@@ -39,10 +33,13 @@ func (id RouteID) String() string {
 	return fmt.Sprintf("RouteID(%d)", id)
 }
 
-// IsDestination reports whether this identity may replace the primary stack
-// through Ctrl+G. Reference is intentionally presentation-only.
+// IsDestination reports whether this identity may occupy the single primary
+// slot. The Outliner (TaskWorkspace) is the sole canonical root and the only
+// destination type; the retired Home and Planner routes have been deleted.
+// Secondary tools are hierarchical children launched from the root, and
+// Reference is intentionally presentation-only.
 func (id RouteID) IsDestination() bool {
-	return id == Home || id == Planner || id == TaskWorkspace || id == ReviewHub || id == ManageHub
+	return id == TaskWorkspace
 }
 
 // RouteParams is sealed so every route instance can be exhaustively validated
@@ -50,22 +47,6 @@ func (id RouteID) IsDestination() bool {
 type RouteParams interface {
 	routeParams()
 }
-
-type HomeParams struct{}
-
-func (HomeParams) routeParams() {}
-
-type PlannerTab uint8
-
-const (
-	PlannerToday PlannerTab = iota
-	PlannerNext
-	PlannerBacklog
-)
-
-type PlannerParams struct{ Tab PlannerTab }
-
-func (PlannerParams) routeParams() {}
 
 // EntityScope identifies app-wide or project-bound route data. App scope is
 // canonicalized to an empty ProjectID; project scope requires one.
@@ -86,6 +67,10 @@ type TaskWorkspaceParams struct {
 
 func (TaskWorkspaceParams) routeParams() {}
 
+// ReviewModule and ManageModule identify a specific retained secondary tool.
+// They travel as SecondaryTool route parameters; the ReviewLanding/ManageLanding
+// sentinels are only the pre-activation state of the hub renderers and are never
+// valid route parameters (secondary tools launch directly, without a landing).
 type ReviewModule uint8
 
 const (
@@ -167,6 +152,10 @@ var (
 	ErrInvalidRouteParams = errors.New("invalid route parameters")
 	ErrProjectRequired    = errors.New("project-scoped route requires a project ID")
 	ErrTaskRequired       = errors.New("task detail requires a task ID")
+	// ErrTaskWorkspaceProjectScope rejects a project-scoped TaskWorkspace: the
+	// Outliner root is app-scoped only, and project selection is an Outliner
+	// scope frame rather than a second root identity.
+	ErrTaskWorkspaceProjectScope = errors.New("task workspace route is app-scoped; project selection is an Outliner scope frame")
 )
 
 // Route is a validated primary route instance. Its fields are private so an
@@ -197,16 +186,8 @@ func NewRoute(id RouteID, params RouteParams) (Route, error) {
 
 func defaultRouteParams(id RouteID) RouteParams {
 	switch id {
-	case Home:
-		return HomeParams{}
-	case Planner:
-		return PlannerParams{}
 	case TaskWorkspace:
 		return TaskWorkspaceParams{Scope: AppEntityScope()}
-	case ReviewHub:
-		return ReviewParams{}
-	case ManageHub:
-		return ManageParams{Scope: AppEntityScope()}
 	case Reference:
 		return ReferenceParams{}
 	default:
@@ -216,24 +197,15 @@ func defaultRouteParams(id RouteID) RouteParams {
 
 func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) { //nolint:gocyclo
 	switch id {
-	case Home:
-		if _, ok := params.(HomeParams); !ok {
-			return nil, paramsTypeError(id, params)
-		}
-		return HomeParams{}, nil
-	case Planner:
-		p, ok := params.(PlannerParams)
-		if !ok {
-			return nil, paramsTypeError(id, params)
-		}
-		if p.Tab > PlannerBacklog {
-			return nil, invalidParams(id, "unknown planner tab")
-		}
-		return p, nil
 	case TaskWorkspace:
 		p, ok := params.(TaskWorkspaceParams)
 		if !ok {
 			return nil, paramsTypeError(id, params)
+		}
+		// The Outliner root is the single app-scoped destination; a project scope
+		// is an Outliner scope frame, never a second project-rooted TaskWorkspace.
+		if p.Scope.Kind == ScopeProject {
+			return nil, ErrTaskWorkspaceProjectScope
 		}
 		scope, err := canonicalEntityScope(id, p.Scope)
 		if err != nil {
@@ -241,39 +213,36 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		}
 		p.Scope = scope
 		return p, nil
-	case ReviewHub:
-		p, ok := params.(ReviewParams)
-		if !ok {
-			return nil, paramsTypeError(id, params)
-		}
-		if p.Module > ReviewRoadmap {
-			return nil, invalidParams(id, "unknown review module")
-		}
-		return p, nil
-	case ManageHub:
-		p, ok := params.(ManageParams)
-		if !ok {
-			return nil, paramsTypeError(id, params)
-		}
-		if p.Module > ManageSettings {
-			return nil, invalidParams(id, "unknown manage module")
-		}
-		if p.NotificationMode > NotificationLog {
-			return nil, invalidParams(id, "unknown notification mode")
-		}
-		if manageModuleSupportsScope(p.Module) {
-			scope, err := canonicalEntityScope(id, p.Scope)
-			if err != nil {
-				return nil, err
+	case SecondaryTool:
+		switch p := params.(type) {
+		case ReviewParams:
+			if p.Module == ReviewLanding || p.Module > ReviewRoadmap {
+				return nil, invalidParams(id, "unknown review tool")
 			}
-			p.Scope = scope
-		} else {
-			p.Scope = AppEntityScope()
+			return p, nil
+		case ManageParams:
+			if p.Module == ManageLanding || p.Module > ManageSettings {
+				return nil, invalidParams(id, "unknown manage tool")
+			}
+			if p.NotificationMode > NotificationLog {
+				return nil, invalidParams(id, "unknown notification mode")
+			}
+			if manageModuleSupportsScope(p.Module) {
+				scope, err := canonicalEntityScope(id, p.Scope)
+				if err != nil {
+					return nil, err
+				}
+				p.Scope = scope
+			} else {
+				p.Scope = AppEntityScope()
+			}
+			if p.Module != ManageNotifications {
+				p.NotificationMode = NotificationAlerts
+			}
+			return p, nil
+		default:
+			return nil, paramsTypeError(id, params)
 		}
-		if p.Module != ManageNotifications {
-			p.NotificationMode = NotificationAlerts
-		}
-		return p, nil
 	case TaskDetail:
 		p, ok := params.(TaskDetailParams)
 		if !ok {
@@ -352,15 +321,14 @@ func (r Route) Accent() color.Color {
 		return accentColorForCategory(presentationAccentCategory(r.presentation))
 	}
 	switch r.id {
-	case Home:
-		return accentColorForCategory(AccentCatDashboard)
-	case Planner:
-		return accentColorForCategory(AccentCatPlan)
 	case TaskWorkspace, TaskDetail:
 		return accentColorForCategory(AccentCatExecute)
-	case ReviewHub:
-		return accentColorForCategory(AccentCatReview)
-	case ManageHub, Reference:
+	case SecondaryTool:
+		if _, ok := r.params.(ReviewParams); ok {
+			return accentColorForCategory(AccentCatReview)
+		}
+		return accentColorForCategory(AccentCatSupport)
+	case Reference:
 		return accentColorForCategory(AccentCatSupport)
 	default:
 		return nil

@@ -50,44 +50,6 @@ func snapInt(t *testing.T, snap map[string]any, key string) int {
 	return n
 }
 
-func TestUITestSnapshotDashboard(t *testing.T) {
-	ws := newSnapshotWorkspace(t)
-	m := NewDashboardModel(ws.Runtime)
-
-	snap := m.UITestSnapshot()
-	if got := snapInt(t, snap, "project_count"); got != 1 {
-		t.Errorf("project_count = %d, want 1", got)
-	}
-	if got := snapInt(t, snap, "cursor"); got != 0 {
-		t.Errorf("cursor = %d, want 0", got)
-	}
-	if got := snapString(t, snap, "selected_project"); got != "Rich Project" {
-		t.Errorf("selected_project = %q, want Rich Project", got)
-	}
-	if _, ok := snap["show_archived"]; !ok {
-		t.Error("snapshot missing show_archived")
-	}
-}
-
-func TestUITestSnapshotFocusBoard(t *testing.T) {
-	ws := newSnapshotWorkspace(t)
-	dailyPlan := []FocusTask{}
-	focusQueue := []FocusTask{}
-	m := NewFocusBoardModel(nil, ws.Manager, &dailyPlan, &focusQueue,
-		map[TaskIdentity]bool{}, map[TaskIdentity]bool{}, map[TaskIdentity]bool{})
-
-	snap := m.UITestSnapshot()
-	if _, ok := snap["row_count"]; !ok {
-		t.Error("snapshot missing row_count")
-	}
-	if _, ok := snap["cursor"]; !ok {
-		t.Error("snapshot missing cursor")
-	}
-	if got := snapString(t, snap, "active_tab"); got == "" {
-		t.Error("active_tab is empty")
-	}
-}
-
 func TestUITestSnapshotOutliner(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
 	project := ws.Runtime.ActiveProjects()[0]
@@ -152,14 +114,19 @@ func TestUITestSnapshotObservation(t *testing.T) {
 	defer func() { _ = ws.Cleanup() }()
 
 	obs := driver.Observe(ObserveOptions{})
-	if obs.CurrentView != "Dashboard" {
-		t.Fatalf("CurrentView = %q, want Dashboard", obs.CurrentView)
+	// The Outliner is the sole root, so the fixture opens on the global
+	// (cross-project) Outliner and exposes its own semantic snapshot.
+	if obs.CurrentView != "CrossProjectOutliner" {
+		t.Fatalf("CurrentView = %q, want CrossProjectOutliner", obs.CurrentView)
 	}
 	if obs.Snapshot == nil {
-		t.Fatal("Snapshot is nil for the dashboard view")
+		t.Fatal("Snapshot is nil for the Outliner root view")
 	}
-	if _, ok := obs.Snapshot["project_count"]; !ok {
-		t.Errorf("snapshot missing project_count; got %v", obs.Snapshot)
+	if crossProject, ok := obs.Snapshot["cross_project"]; !ok || crossProject != true {
+		t.Errorf("snapshot missing cross_project=true; got %v", obs.Snapshot)
+	}
+	if _, ok := obs.Snapshot["row_count"]; !ok {
+		t.Errorf("snapshot missing row_count; got %v", obs.Snapshot)
 	}
 }
 
@@ -198,7 +165,7 @@ func TestUITestAvailableCommandsFields(t *testing.T) {
 		Shortcut: "n",
 		Category: CategoryTasks,
 		Aliases:  []string{"add task", "new task"},
-		Views:    []PresentationID{ViewDashboard},
+		Views:    []PresentationID{ViewCrossProjectOutliner},
 	}); err != nil {
 		t.Fatalf("Register: %v", err)
 	}

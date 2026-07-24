@@ -49,10 +49,3 @@ type Command struct {
 	Available            func() bool               // Legacy dynamic availability predicate
 	Handler              func() tea.Msg            // Execution closure returning a BubbleTea message
 }
-
-// projectTreeAndOutlinerViews returns the Views slice for per-project primary
-// commands. The project tree was retired, so this is now the Outliner alone;
-// the name is retained to avoid churning its call sites.
-func projectTreeAndOutlinerViews() []PresentationID {
-	return []PresentationID{ViewOutliner}
-}

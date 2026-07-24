@@ -53,7 +53,7 @@ func rebuildStyles() {
 	rebuildFormStyles()
 	rebuildViewStyles()
 	rebuildSelectionStyles()
-	rebuildSidebarStyles()
+	rebuildPanelStyles()
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
 	rebuildPriorityTitleStyles()
@@ -202,20 +202,10 @@ func ApplyTheme(tc ThemeConfig) {
 		BorderForeground(ColorBorder).
 		Padding(0, 1)
 
-	SidebarCardStyle = lipgloss.NewStyle().
+	PanelCardStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).
 		Padding(0, 1)
-
-	SidebarCardFocusedStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1)
-
-	SidebarStyle = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
-		Padding(1)
 
 	TaskJumperListStyle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, true, false, false).

@@ -117,14 +117,6 @@ func TestValidateFocusedField_UsesCurrentSettingsFieldLayout(t *testing.T) {
 			wantErr: "stale badge days must be a number",
 		},
 		{
-			name:       "home parked task limit",
-			focusIndex: subTabFieldStart(tabBehavior, 6),
-			mutate: func(m *SettingsModel) {
-				m.resumeCardLimitInput.SetValue("0")
-			},
-			wantErr: "resume card limit must be 1-20",
-		},
-		{
 			name:       "project stale days alert",
 			focusIndex: subTabFieldStart(tabNotifications, 2) + 1,
 			mutate: func(m *SettingsModel) {

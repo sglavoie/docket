@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -33,9 +32,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case ProjectCreatedMsg:
 		m.popView()
 		m.syncProjectCache()
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.ProjectCreated = true })
 		moveTask := m.pendingProjectMoveTask
 		moveSource := m.pendingProjectMoveSource
@@ -93,9 +89,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			return true, nil
 		}
 		m.pruneDeletedTaskRefs()
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		if msg.Project != nil {
 			m.setSuccessStatus(fmt.Sprintf("Archived %s", msg.Project.Name))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
@@ -108,9 +101,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}); err != nil {
 			m.err = err
 			return true, nil
-		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
 		}
 		statusMsg := "Pinned"
 		if !msg.Project.Pinned {
@@ -136,22 +126,17 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		m.pruneDeletedTaskRefs()
 		if manageFallback != nil {
-			if m.dashboard != nil {
-				m.dashboard.Refresh()
-			}
 			m.setInfoStatus("Project removed — showing all " + manageFallback.Module.String())
 			return true, m.activateManageHub(*manageFallback)
 		}
-		// Pop back to dashboard since the project no longer exists
+		// Reset to the global Outliner root since the project no longer exists.
 		m.exitAskView()
-		m.viewStack = m.viewStack[:1]
 		if m.typedNavigation {
-			m.navigation.ResetHome()
+			m.prepareCrossProjectOutliner()
+			m.navigation.ResetRoot()
+			return true, m.activateTaskWorkspaceRoute(outlinerRootRoute())
 		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-			m.dashboard.ResetCursor()
-		}
+		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 		return true, nil
 
 	case ProjectRestoredMsg:
@@ -160,9 +145,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}); err != nil {
 			m.err = err
 			return true, nil
-		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
 		}
 		if msg.Project != nil {
 			m.setSuccessStatus(fmt.Sprintf("Unarchived %s", msg.Project.Name))
@@ -181,9 +163,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case ProjectUpdatedMsg:
 		m.popView()
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		m.refreshProjectView()
 		return true, nil
 
@@ -225,13 +204,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.rememberTrashRestoreRecovery(msg)
 		if err := m.completeTrashRestoreRecovery(msg.Project.ID); err != nil {
 			m.err = trashRestorePartialError(msg.Project.Name, err)
-			if m.dashboard != nil {
-				m.dashboard.Refresh()
-			}
 			return true, retryTrashRestoreMachineRefsCmd(msg.Project.ID)
-		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", msg.Project.Name))
@@ -245,9 +218,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if err := m.completeTrashRestoreRecovery(msg.ProjectID); err != nil {
 			m.err = trashRestorePartialError(recovery.Project.Name, err)
 			return true, retryTrashRestoreMachineRefsCmd(msg.ProjectID)
-		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", recovery.Project.Name))
@@ -271,42 +241,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.views.Register(ViewTrashedProjects, newModel)
 		m.setSuccessStatus(fmt.Sprintf("Permanently deleted: %s", msg.Slug))
 		return true, defaultStatusTimeout()
-
-	case ShowProjectPickerMsg:
-		projects := projectDiscoveryProjects(m.runtime)
-		for _, p := range projects {
-			if err := storage.LoadProject(p); err != nil {
-				logging.Warn("failed to load project %s: %v", p.Name, err)
-			}
-		}
-		return m.showViewInit(ViewProjectPicker, NewProjectPickerModel(projects))
-
-	case ProjectPickerDoneMsg:
-		m.popView() // Close picker
-		if !msg.Canceled && msg.Project != nil {
-			// Save current project's active view before switching away
-			m.saveCurrentProjectView()
-			// Save current project ID so we can restore it when navigating back
-			if m.currentProject != nil {
-				m.projectStack = append(m.projectStack, m.currentProject.ID)
-			}
-			m.switchToProject(msg.Project, true)
-			targetView := m.getProjectLastView(msg.Project.ID)
-			switch targetView {
-			case ViewOutliner:
-				m.saveOutlinerToggleState()
-				m.saveOutlinerFilterState()
-				m.outliner = NewOutlinerModel(msg.Project, m.configManager, m.runtime)
-				m.outliner.queueIDs = m.focusQueueIDs
-				m.outliner.dailyPlanIDs = m.dailyPlanIDs
-				m.restoreOutlinerToggleState()
-				m.restoreOutlinerFilterState()
-				m.showView(ViewOutliner, m.outliner)
-			default:
-				m.pushView(ViewOutliner)
-			}
-		}
-		return true, nil
 
 	case SandboxResetRequestMsg:
 		sandbox := m.runtime.GetSandboxProject()
@@ -343,9 +277,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// Refresh views if sandbox is currently displayed
 		if m.currentProject != nil && m.currentProject.ID == msg.Result.ProjectID {
 			m.refreshProjectView()
-		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
 		}
 		return true, defaultStatusTimeout()
 

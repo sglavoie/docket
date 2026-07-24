@@ -144,25 +144,19 @@ func ctrlEscKeyPress() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyEscape, Mod: tea.ModCtrl}
 }
 
-func TestHandleGlobalKeyPress_CtrlEscJumpsToDashboard(t *testing.T) {
+func TestHandleGlobalKeyPress_CtrlEscResetsToOutlinerRoot(t *testing.T) {
 	app := newTestAppModel()
 	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner, ViewTaskForm}
 	app.pendingSandboxReset = true
 	app.showQuickSwitch = true
 	app.peekActive = true
 
-	handled, cmd := app.handleGlobalKeyPress(ctrlEscKeyPress())
+	handled, _ := app.handleGlobalKeyPress(ctrlEscKeyPress())
 	if !handled {
 		t.Fatal("expected ctrl+esc to be handled")
 	}
-	if cmd != nil {
-		t.Fatal("dashboard jump should not need a command")
-	}
-	if app.currentView() != ViewDashboard {
-		t.Fatalf("currentView = %v, want Dashboard", app.currentView())
-	}
-	if len(app.viewStack) != 1 {
-		t.Fatalf("stack len = %d, want 1", len(app.viewStack))
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("currentView = %v, want CrossProjectOutliner", app.currentView())
 	}
 	if app.pendingSandboxReset || app.showQuickSwitch || app.peekActive {
 		t.Fatal("ctrl+esc should clear transient navigation state")
@@ -180,8 +174,8 @@ func TestAppUpdate_CtrlEscBypassesTextInputAndLocalView(t *testing.T) {
 	app.viewStack = []PresentationID{ViewDashboard, ViewTaskForm}
 
 	app.Update(ctrlEscKeyPress())
-	if app.currentView() != ViewDashboard {
-		t.Fatalf("currentView = %v, want Dashboard", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("currentView = %v, want CrossProjectOutliner", app.currentView())
 	}
 	if view.received {
 		t.Fatal("ctrl+esc should not fall through to the local text-input view")

@@ -94,14 +94,6 @@ func TestViewCommands_DueDateOverview(t *testing.T) {
 	}
 }
 
-func TestHomeAttentionDueDatesSelectsDueDateLens(t *testing.T) {
-	msg := homeAttentionActionCmd(homeAttentionRow{Action: homeAttentionOpenDueDates})()
-	outliner, ok := msg.(ShowGlobalOutlinerMsg)
-	if !ok || !outliner.Options.SetLens || outliner.Options.Lens != OutlinerLensDueDate {
-		t.Fatalf("Home overdue navigation = %#v, want explicit due-date lens", msg)
-	}
-}
-
 func TestViewCommands_DailyReview(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.viewCommands()
@@ -141,35 +133,6 @@ func TestViewCommands_LatestActivity(t *testing.T) {
 	}
 }
 
-func TestViewCommands_Backlog(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "planner next")
-	if cmd == nil {
-		t.Fatal("expected \"planner next\" command")
-	}
-	msg := cmd.Handler()
-	fbMsg, ok := msg.(ShowFocusBoardMsg)
-	if !ok {
-		t.Errorf("expected ShowFocusBoardMsg, got %T", msg)
-	} else if !fbMsg.SetTab || fbMsg.Tab != boardTabNext {
-		t.Errorf("planner next command opened tab %d (SetTab=%v), want Next tab", fbMsg.Tab, fbMsg.SetTab)
-	}
-}
-
-func TestViewCommands_FocusBoard(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "today")
-	if cmd == nil {
-		t.Fatal("expected 'today' command")
-	}
-	msg := cmd.Handler()
-	if _, ok := msg.(ShowFocusBoardMsg); !ok {
-		t.Errorf("expected ShowFocusBoardMsg, got %T", msg)
-	}
-}
-
 func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
 	app := newTestAppModel()
 	registry := registerCommandGroupsForTest(t, app.navCommands(), app.notesCommands(), app.taskCommands())
@@ -204,32 +167,49 @@ func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
 	assertPickerCommandPurpose(t, findCommand(registry.GetForView(ViewDashboard), "global section change"), PickerPurposeSectionChange)
 }
 
-func TestViewCommands_PriorityView(t *testing.T) {
+// TestPriorityViewUsesCatalogMode verifies the `priority view` command resolves
+// to the single catalog High Priority mode on the global Outliner rather than a
+// project-scoped High Priority focus keyed off the stale m.currentProject. The
+// currentProject (set by newTestAppModelWithProject) must never leak into the
+// dispatched message, and the conflicting "priority" aliases are retired so that
+// term resolves solely to the catalog Priority lens command.
+func TestPriorityViewUsesCatalogMode(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "priority view")
+	cmd := findCommand(app.viewCommands(), "priority view")
 	if cmd == nil {
 		t.Fatal("expected 'priority view' command")
 	}
-	msg := cmd.Handler()
-	outliner, ok := msg.(ShowOutlinerMsg)
-	if !ok || !outliner.Options.SetFocus || outliner.Options.Focus != OutlinerHighPriority || outliner.Options.Sort != SortByScore {
-		t.Errorf("expected High Priority ShowOutlinerMsg, got %#v", msg)
+	msg, ok := cmd.Handler().(ShowGlobalOutlinerMsg)
+	if !ok {
+		t.Fatalf("expected ShowGlobalOutlinerMsg, got %T", cmd.Handler())
+	}
+	if !msg.Options.SetMode || msg.Options.Mode != ModeHighPriority {
+		t.Errorf("expected global SetMode High Priority catalog mode, got %#v", msg.Options)
+	}
+	for _, alias := range cmd.Aliases {
+		switch alias {
+		case "priority", "priority mode", "toggle priority mode", "cross-project priority":
+			t.Errorf("priority view must not carry conflicting alias %q", alias)
+		}
 	}
 }
 
-func TestViewCommands_PriorityView_NilProject(t *testing.T) {
+// TestPriorityViewUsesCatalogMode_NilCurrentProject confirms a nil-currentProject
+// launch still dispatches the global catalog mode instead of returning nil.
+func TestPriorityViewUsesCatalogMode_NilCurrentProject(t *testing.T) {
 	app := newTestAppModel()
 
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "priority view")
+	cmd := findCommand(app.viewCommands(), "priority view")
 	if cmd == nil {
 		t.Fatal("expected 'priority view' command")
 	}
-	msg := cmd.Handler()
-	if msg != nil {
-		t.Errorf("expected nil, got %T", msg)
+	msg, ok := cmd.Handler().(ShowGlobalOutlinerMsg)
+	if !ok {
+		t.Fatalf("expected ShowGlobalOutlinerMsg, got %T", cmd.Handler())
+	}
+	if !msg.Options.SetMode || msg.Options.Mode != ModeHighPriority {
+		t.Errorf("expected global SetMode High Priority catalog mode, got %#v", msg.Options)
 	}
 }
 
@@ -246,57 +226,6 @@ func TestViewCommands_PriorityView_CrossOutlinerScope(t *testing.T) {
 	}
 	if cmd.Shortcut != "p" {
 		t.Errorf("priority view shortcut = %q, want p", cmd.Shortcut)
-	}
-}
-
-// TestViewCommands_PriorityView_Aliases verifies that the `priority view`
-// command advertises the cross-project alias set so palette search surfaces
-// it under "priority mode" / "toggle priority mode" / "cross-project priority".
-func TestViewCommands_PriorityView_Aliases(t *testing.T) {
-	app := newTestAppModel()
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "priority view")
-	if cmd == nil {
-		t.Fatal("expected 'priority view' command")
-	}
-
-	wantAliases := []string{"priority mode", "toggle priority mode", "cross-project priority"}
-	for _, want := range wantAliases {
-		found := false
-		for _, alias := range cmd.Aliases {
-			if alias == want {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("priority view aliases missing %q, got %v", want, cmd.Aliases)
-		}
-	}
-}
-
-// TestViewCommands_PriorityViewAliasesToWorkspace verifies that the retired
-func TestViewCommands_PriorityViewAliasesToOutliner(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
-	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
-
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "priority view")
-	if cmd == nil {
-		t.Fatal("expected 'priority view' command")
-	}
-
-	if app.crossOutliner.crossPriorityMode {
-		t.Fatal("crossPriorityMode should default to false")
-	}
-
-	msg, ok := cmd.Handler().(ShowOutlinerMsg)
-	if !ok || msg.Project != project {
-		t.Fatalf("priority alias returned %#v, want project Outliner entry message", msg)
-	}
-	if app.crossOutliner.crossPriorityMode {
-		t.Error("priority alias revived the retired cross-outliner priority mode")
 	}
 }
 

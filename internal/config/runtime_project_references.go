@@ -10,9 +10,6 @@ func (rs *RuntimeState) ExtractProjectReferences(id, slug string) ProjectReferen
 		WasCurrent:     machine.CurrentProject != "" && matches(machine.CurrentProject),
 		WasActionInbox: catalog.SystemInboxProjectID != "" && matches(catalog.SystemInboxProjectID),
 	}
-	if v, ok := lookupProjectKey(machine.ProjectSidebarEnabled, id, slug); ok {
-		refs.SidebarEnabled = &v
-	}
 	if v, ok := lookupProjectKey(automation.ProjectScoringProfile, id, slug); ok {
 		refs.ScoringProfile = &v
 	}
@@ -117,12 +114,9 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 	if m == nil || projectID == "" {
 		return false
 	}
-	changed := refs.WasCurrent || refs.SidebarEnabled != nil || len(refs.RecentTaskVisits) > 0 || len(refs.CustomContextKeys) > 0
+	changed := refs.WasCurrent || len(refs.RecentTaskVisits) > 0 || len(refs.CustomContextKeys) > 0
 	if refs.WasCurrent {
 		m.CurrentProject = projectID
-	}
-	if refs.SidebarEnabled != nil {
-		m.SetProjectSidebarEnabled(projectID, *refs.SidebarEnabled)
 	}
 	existingVisits := make(map[string]bool, len(m.RecentTaskVisits))
 	for _, visit := range m.RecentTaskVisits {

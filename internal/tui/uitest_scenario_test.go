@@ -159,9 +159,9 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 		"fixture": "rich",
 		"size": "120x40",
 		"actions": [
-			{"type": "assert", "assert": "view", "value": "Dashboard"},
-			{"type": "assert", "assert": "contains", "value": "Rich Project"},
-			{"type": "assert", "assert": "contains", "value": "Attention"},
+			{"type": "command", "command": "all tasks"},
+			{"type": "assert", "assert": "view", "value": "CrossProjectOutliner"},
+			{"type": "assert", "assert": "contains", "value": "[rich-project]"},
 			{"type": "assert", "assert": "no_layout_issues"}
 		]
 	}`
@@ -203,7 +203,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	// Golden-ish: the normalized screen carries stable fixture content and no
 	// ANSI escapes.
 	screen := result.FinalObservation.PlainScreen
-	for _, want := range []string{"Rich Project", "Attention"} {
+	for _, want := range []string{"[rich-project]", "Launch platform"} {
 		if !strings.Contains(screen, want) {
 			t.Fatalf("final screen missing stable token %q:\n%s", want, screen)
 		}
@@ -387,7 +387,7 @@ func TestUITestScenarioDashboardNarrowLayoutNoOverflow(t *testing.T) {
 					Fixture: fixture,
 					Size:    size,
 					Actions: []UITestAction{
-						{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
+						{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"},
 						{Type: UITestActionAssert, Assert: "no_layout_issues"},
 					},
 				}
@@ -412,8 +412,7 @@ func TestUITestScenarioDashboardSearchAlertHeavyMinimumLayoutNoOverflow(t *testi
 		Fixture: "alerts",
 		Size:    "60x20",
 		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "search projects"},
-			{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
+			{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"},
 			{Type: UITestActionAssert, Assert: "no_layout_issues"},
 		},
 	}
@@ -426,29 +425,6 @@ func TestUITestScenarioDashboardSearchAlertHeavyMinimumLayoutNoOverflow(t *testi
 
 	if !result.OK {
 		t.Fatalf("dashboard search alert-heavy layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioDestinationSwitcherMinimumLayoutNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "destination switcher minimum layout",
-		Fixture: "rich",
-		Size:    "72x20",
-		Actions: []UITestAction{
-			{Type: UITestActionKey, Key: "ctrl+g"},
-			{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("destination switcher layout should pass, got error: %+v", result.Error)
 	}
 }
 
@@ -485,30 +461,51 @@ func TestUITestScenarioWorkflowWizardFinalReviewMinimumLayoutNoOverflow(t *testi
 func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string
+		prefix  []UITestAction
 		command string
 		view    string
 	}{
-		{"settings", "settings", "Settings"},
-		{"metrics dashboard", "metrics dashboard", "MetricsDashboard"},
-		{"task template creator", "create task template", "TaskTemplateCreator"},
-		{"project creator", "new project", "ProjectCreator"},
-		{"project editor", "rename project", "ProjectEditor"},
-		{"workflow rule creator", "new workflow rule", "WorkflowRuleCreator"},
-		{"inbox processor", "triage inbox", "InboxProcessor"},
-		{"global inbox processor", "global inbox processor", "GlobalInboxProcessor"},
+		{"settings", nil, "settings", "Settings"},
+		{"metrics dashboard", nil, "metrics dashboard", "MetricsDashboard"},
+		{"task template creator", nil, "create task template", "TaskTemplateCreator"},
+		{"project creator", nil, "new project", "ProjectCreator"},
+		// rename project now targets the project under the visible Outliner
+		// cursor (not the stale current project), so switch to all-tasks and land
+		// the cursor on a task row before opening the project editor.
+		{"project editor", []UITestAction{
+			{Type: UITestActionCommand, Command: "all tasks"},
+			// Step past the shared section header and the navigable project
+			// header to land on the first task row.
+			{Type: UITestActionKey, Key: "down"},
+			{Type: UITestActionKey, Key: "down"},
+		}, "rename project", "ProjectEditor"},
+		{"workflow rule creator", nil, "new workflow rule", "WorkflowRuleCreator"},
+		// The inbox processor needs a project under the cursor in the global
+		// Outliner (Today mode has no rows), so switch to the all-tasks mode
+		// first and land the cursor on a task row.
+		{"inbox processor", []UITestAction{
+			{Type: UITestActionCommand, Command: "all tasks"},
+			// Step past the shared section header and the navigable project
+			// header to land on the first task row.
+			{Type: UITestActionKey, Key: "down"},
+			{Type: UITestActionKey, Key: "down"},
+		}, "inbox processor", "InboxProcessor"},
+		{"global inbox processor", nil, "global inbox processor", "GlobalInboxProcessor"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			actions := append([]UITestAction{}, tt.prefix...)
+			actions = append(actions,
+				UITestAction{Type: UITestActionCommand, Command: tt.command},
+				UITestAction{Type: UITestActionAssert, Assert: "view", Value: tt.view},
+				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
+			)
 			sc := UITestScenario{
 				Name:    tt.name + " minimum height",
 				Fixture: "rich",
 				Size:    "72x20",
-				Actions: []UITestAction{
-					{Type: UITestActionCommand, Command: tt.command},
-					{Type: UITestActionAssert, Assert: "view", Value: tt.view},
-					{Type: UITestActionAssert, Assert: "no_layout_issues"},
-				},
+				Actions: actions,
 			}
 
 			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
@@ -566,7 +563,6 @@ func TestUITestScenarioMinimumTerminalEmptyStatesNoOverflow(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"backlog queue empty state", "planner next", "Planner"},
 		{"workflow rules empty state", "workflow rules", "WorkflowRules"},
 		{"task templates empty state", "task templates", "TaskTemplates"},
 	}
@@ -605,17 +601,6 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 		actions []UITestAction
 	}{
 		{
-			name: "today quick add",
-			size: "60x20",
-			actions: []UITestAction{
-				{Type: UITestActionCommand, Command: "today"},
-				{Type: UITestActionKey, Key: "a"},
-				{Type: UITestActionText, Text: longValue},
-				{Type: UITestActionAssert, Assert: "view", Value: "Planner"},
-				{Type: UITestActionAssert, Assert: "no_layout_issues"},
-			},
-		},
-		{
 			name: "project creator slug preview",
 			size: "60x20",
 			actions: []UITestAction{
@@ -629,6 +614,13 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 			name: "project editor changed slug preview",
 			size: "60x35",
 			actions: []UITestAction{
+				// rename project targets the cursor project, so land the cursor on
+				// a task row via all-tasks before opening the editor. The rows lead
+				// with a shared section header then a navigable project header, so
+				// step past both to reach the first task.
+				{Type: UITestActionCommand, Command: "all tasks"},
+				{Type: UITestActionKey, Key: "down"},
+				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionCommand, Command: "rename project"},
 				{Type: UITestActionText, Text: longValue},
 				{Type: UITestActionAssert, Assert: "view", Value: "ProjectEditor"},
@@ -709,55 +701,6 @@ func TestUITestScenarioScoreProfileDetailPaneBoundaryNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioTodayQuickAddMinimumLayoutNoOverflow(t *testing.T) {
-	tests := []struct {
-		name    string
-		actions []UITestAction
-	}{
-		{
-			name: "syntax hint",
-			actions: []UITestAction{
-				{Type: UITestActionCommand, Command: "today"},
-				{Type: UITestActionKey, Key: "a"},
-			},
-		},
-		{
-			name: "metadata preview",
-			actions: []UITestAction{
-				{Type: UITestActionCommand, Command: "today"},
-				{Type: UITestActionKey, Key: "a"},
-				{Type: UITestActionText, Text: "New item !1 #reallylongtagname @tomorrow -s external -u https://example.com/very/long/path"},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actions := append([]UITestAction{}, tt.actions...)
-			actions = append(actions,
-				UITestAction{Type: UITestActionAssert, Assert: "view", Value: "Planner"},
-				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
-			)
-			sc := UITestScenario{
-				Name:    "today quick add " + tt.name + " minimum layout",
-				Fixture: "rich",
-				Size:    "72x20",
-				Actions: actions,
-			}
-
-			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-			if err != nil {
-				t.Fatalf("RunScenarioFixture error: %v", err)
-			}
-			t.Cleanup(func() { _ = ws.Cleanup() })
-
-			if !result.OK {
-				t.Fatalf("today quick add %s layout should pass, got error: %+v", tt.name, result.Error)
-			}
-		})
-	}
-}
-
 func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -784,6 +727,12 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 			name: "notes search",
 			view: "NotesSearch",
 			actions: []UITestAction{
+				// Scope into the fixture project via the Ctrl+X picker so "show
+				// notes" resolves the active project scope. The global Today root is
+				// empty, so without a scope the notes command correctly refuses to
+				// open a stale off-screen project (FR17-003).
+				{Type: UITestActionCommand, Command: "switch project"},
+				{Type: UITestActionKey, Key: "j"},
 				{Type: UITestActionKey, Key: "enter"},
 				{Type: UITestActionCommand, Command: "show notes"},
 				{Type: UITestActionCommand, Command: "search notes"},
@@ -864,7 +813,11 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 					Fixture: "narrow",
 					Size:    size,
 					Actions: []UITestAction{
-						{Type: UITestActionKey, Key: "enter"},
+						{Type: UITestActionCommand, Command: "all tasks"},
+						// All-tasks rows lead with a shared section header then a
+						// navigable project header; step past both to land the
+						// cursor on the first task before opening its subview.
+						{Type: UITestActionKey, Key: "down"},
 						{Type: UITestActionKey, Key: "down"},
 						{Type: UITestActionCommand, Command: tt.command},
 						{Type: UITestActionAssert, Assert: "view", Value: tt.view},
@@ -964,7 +917,7 @@ func TestUITestScenarioRunFixtureDefaults(t *testing.T) {
 	// package defaults (rich fixture at 100x30).
 	sc := UITestScenario{
 		Name:    "defaults",
-		Actions: []UITestAction{{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"}},
+		Actions: []UITestAction{{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"}},
 	}
 	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
 	if err != nil {
@@ -988,7 +941,7 @@ func TestUITestScenarioRunResultOnFailure(t *testing.T) {
 		Name:    "failing assert",
 		Fixture: "rich",
 		Actions: []UITestAction{
-			{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
+			{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"},
 			{Type: UITestActionAssert, Assert: "contains", Value: "zzz-absent-token", Label: "expects missing token"},
 		},
 	}
@@ -1035,7 +988,7 @@ func TestUITestScenarioRunFixtureRejectsInvalidScenario(t *testing.T) {
 func TestUITestScenarioResultJSONShape(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "shape",
-		Actions: []UITestAction{{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"}},
+		Actions: []UITestAction{{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"}},
 	}
 	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{IncludeObservations: true})
 	if err != nil {

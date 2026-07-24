@@ -22,8 +22,11 @@ type SectionFilterSelectorModel struct {
 }
 
 // ShowSectionFilterSelectorMsg is sent to open the section filter selector.
+// Projects, when set, builds the section list across the given projects (the
+// global cross-project Outliner); otherwise Project builds it for one project.
 type ShowSectionFilterSelectorMsg struct {
-	Project *models.Project
+	Project  *models.Project
+	Projects []*models.Project
 }
 
 // SectionFilterSelectorDoneMsg is sent when the section filter selector is done.
@@ -35,8 +38,17 @@ type SectionFilterSelectorDoneMsg struct {
 // NewSectionFilterSelectorModelForProject creates a section filter selector
 // backed by a standalone project (no pre-selected filters).
 func NewSectionFilterSelectorModelForProject(project *models.Project) *SectionFilterSelectorModel {
-	sections := buildSectionList(project)
+	return newSectionFilterSelectorModel(buildSectionList(project))
+}
 
+// NewSectionFilterSelectorModelForProjects creates a section filter selector
+// whose section list merges GTD sections and task counts across several
+// projects, so the cross-project Outliner can filter by section in global scope.
+func NewSectionFilterSelectorModelForProjects(projects []*models.Project) *SectionFilterSelectorModel {
+	return newSectionFilterSelectorModel(buildSectionListForProjects(projects))
+}
+
+func newSectionFilterSelectorModel(sections []SectionInfo) *SectionFilterSelectorModel {
 	picker := NewBasePicker(sections, PickerConfig{
 		Title:          "Filter by Sections",
 		EmptyMessage:   "No sections in project.",
@@ -52,23 +64,34 @@ func NewSectionFilterSelectorModelForProject(project *models.Project) *SectionFi
 
 // buildSectionList scans all tasks and builds a sorted list of sections with counts.
 func buildSectionList(project *models.Project) []SectionInfo {
+	return buildSectionListForProjects([]*models.Project{project})
+}
+
+// buildSectionListForProjects merges GTD section names and task counts across
+// every given project into one sorted list.
+func buildSectionListForProjects(projects []*models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
-	for _, task := range project.Tasks {
-		if bucket := taskSectionBucket(task); bucket != "" && models.IsGTDSection(bucket) {
-			sectionCounts[bucket]++
-		}
-	}
-
-	for _, section := range project.GetSections() {
-		if !models.IsGTDSection(section) {
+	for _, project := range projects {
+		if project == nil {
 			continue
 		}
-		if _, exists := sectionCounts[section]; !exists {
-			if section == models.SectionNext {
+		for _, task := range project.Tasks {
+			if bucket := taskSectionBucket(task); bucket != "" && models.IsGTDSection(bucket) {
+				sectionCounts[bucket]++
+			}
+		}
+
+		for _, section := range project.GetSections() {
+			if !models.IsGTDSection(section) {
 				continue
 			}
-			sectionCounts[section] = 0
+			if _, exists := sectionCounts[section]; !exists {
+				if section == models.SectionNext {
+					continue
+				}
+				sectionCounts[section] = 0
+			}
 		}
 	}
 

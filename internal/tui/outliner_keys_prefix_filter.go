@@ -38,17 +38,24 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "c":
+		target := ModeComplete
 		if m.activePerspective == PerspectiveCompleted {
-			m.activatePerspective(PerspectiveSnoozed)
-		} else {
-			m.activatePerspective(PerspectiveCompleted)
+			target = ModeSnoozed
 		}
 		m.resetViewScrollOffset()
-		m.rebuildRows()
-		return m, nil
+		return m.selectOutlinerMode(target)
 	case "@":
+		// Single-project instance filters its own project; the canonical cross
+		// Outliner filters the scoped project when scoped, or across every loaded
+		// project when global — so F @ works in both global and project scopes.
+		if m.project != nil {
+			return m, func() tea.Msg {
+				return ShowSectionFilterSelectorMsg{Project: m.project}
+			}
+		}
+		projects := m.scopeProjects()
 		return m, func() tea.Msg {
-			return ShowSectionFilterSelectorMsg{Project: m.project}
+			return ShowSectionFilterSelectorMsg{Projects: projects}
 		}
 	case "r":
 		m.filter.Actionable = !m.filter.Actionable

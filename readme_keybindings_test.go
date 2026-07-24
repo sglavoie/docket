@@ -67,16 +67,27 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 	}
 }
 
-func TestREADMEDescribesHomeDefault(t *testing.T) {
+func TestREADMEDescribesOutlinerTodayDefault(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 
 	required := []string{
-		"`tt` opens on Home by default",
-		"press `Ctrl+Esc` to return there from anywhere",
+		"`tt` opens on the Outliner in global Today by default",
+		"press `Ctrl+Esc` to return to that root from anywhere",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing Home default text: %q", needle)
+			t.Fatalf("README missing Outliner Today default text: %q", needle)
+		}
+	}
+
+	// The retired Home/Ctrl+G destination model must not reappear in user-facing copy.
+	for _, stale := range []string{
+		"opens on Home by default",
+		"Press `Ctrl+G` for Home",
+		"Open the TUI on Home",
+	} {
+		if strings.Contains(content, stale) {
+			t.Fatalf("README contains retired Home/Ctrl+G navigation text: %q", stale)
 		}
 	}
 }
@@ -196,6 +207,10 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"Commands for managing focus board actions",
 		"Add a new action to the focus board",
 		"Tasks are added to the daily plan by pressing 'w'",
+		"Show the Planner's Next shortlist",
+		"Plan work from the Today cockpit",
+		"';q' opens Planner/Next",
+		"';w' opens Planner/Today",
 		// The legacy --config help predates the local-first workspace flow: the
 		// flag is now a deprecated isolation alias and --data-dir is canonical.
 		"config file path (default: ~/.tt/.tt.json, or the iCloud Drive tt folder when available)",
@@ -231,7 +246,11 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"Usage: tt project unarchive <slug-or-id> [flags]",
 		"Projects can be specified by slug or ID.",
 		"tt select my-project   # Select by slug or ID directly",
-		"Plan work from the Today cockpit",
+		"Show the Outliner's Next shortlist (StateNext tasks)",
+		"press 'P' to open the Outliner mode picker",
+		"Press 'q' to toggle the",
+		"selected task's Next membership",
+		"Plan work in the Outliner's Today mode",
 		"tt task list --parked     # Show parked tasks only",
 		"--parked bool    show parked tasks only",
 	}

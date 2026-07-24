@@ -527,7 +527,6 @@ type Settings struct {
 	RecentActivityShowAll *bool `json:"recent_activity_show_all,omitempty"`
 	MaxPinnedBarItems     *int  `json:"max_pinned_bar_items,omitempty"`
 	MaxRecentTaskVisits   *int  `json:"max_recent_task_visits,omitempty"`
-	ResumeCardLimit       *int  `json:"resume_card_limit,omitempty"`
 
 	// Behavior — review windows.
 	ReviewDueSoonDays    *int `json:"review_due_soon_days,omitempty"`
@@ -667,8 +666,7 @@ func (a *AutomationConfig) RemoveProjectReferences(id, slug string) bool {
 // maps to ~/.tt/runtime/<workspace-id>/machine.json. The durable catalog UUID,
 // rather than the current data-directory path, selects its machine-local state.
 type MachineState struct {
-	TUIStateVersion int             `json:"tui_state_version"`
-	StartRoute      StartRouteState `json:"start_route,omitzero"`
+	TUIStateVersion int `json:"tui_state_version"`
 
 	// Editors and integrations.
 	Editor           string            `json:"editor,omitempty"`
@@ -682,30 +680,10 @@ type MachineState struct {
 	CurrentProject   string              `json:"current_project,omitempty"`
 	CustomContexts   map[string][]string `json:"custom_contexts,omitempty"`
 	RecentTaskVisits []RecentTaskVisit   `json:"recent_task_visits,omitempty"`
-	StartView        string              `json:"start_view,omitempty"`
 
 	// Histories.
 	RecentPaletteItems []RecentPaletteItem `json:"recent_palette_items,omitempty"`
-
-	// Home layout. HomeProjectsHeightPct is the machine-local percentage of the
-	// Home body allocated to the Projects card; the Attention card receives the
-	// remainder. Kept machine-local so a workspace does not force a split that
-	// suits one terminal geometry onto another machine.
-	HomeProjectsHeightPct *int `json:"home_projects_height_pct,omitempty"`
-
-	// ProjectSidebarEnabled remembers sidebar visibility for project-backed task
-	// workspaces. Missing entries retain the enabled-by-default behavior.
-	ProjectSidebarEnabled map[string]bool `json:"project_sidebar_enabled,omitempty"`
 }
-
-// Home Projects/Attention split bounds. The Projects card receives
-// HomeProjectsHeightPct of the stacked Home body; the Attention card takes the
-// rest. Persisted values outside [Min, Max] are clamped before rendering.
-const (
-	DefaultHomeProjectsHeightPct = 60
-	MinHomeProjectsHeightPct     = 10
-	MaxHomeProjectsHeightPct     = 90
-)
 
 // NewMachineState returns machine state seeded with the same editor default
 // NewConfig applies.
@@ -713,8 +691,6 @@ func NewMachineState() *MachineState {
 	return &MachineState{
 		TUIStateVersion: CurrentTUIStateVersion,
 		Editor:          "code",
-		StartView:       DefaultStartView,
-		StartRoute:      StartRouteState{PlannerTab: StartPlannerToday},
 	}
 }
 
@@ -763,10 +739,6 @@ func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
 	changed = filterProjectIDMap(m.CustomContexts, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	}) || changed
-	if mapHadProjectKey(m.ProjectSidebarEnabled, id, slug) {
-		deleteProjectKey(m.ProjectSidebarEnabled, id, slug)
-		changed = true
-	}
 	return changed
 }
 

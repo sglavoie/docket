@@ -100,56 +100,24 @@ func invokeGotoChild(t *testing.T, m *OutlinerModel, childKey string) tea.Msg {
 	return runEntryAction(t, findPrefixChildBinding(t, entries, "g", childKey))
 }
 
-func TestPrimaryViewKey_OpenOutliner_CrossUsesCursorProject(t *testing.T) {
-	m, projA, projB, _, _ := crossOutlinerWithTwoProjects(t)
-
-	m.cursor = 1 // task in projA
-	msg := invokePrimaryViewKey(t, m, "ctrl+p")
-	show, ok := msg.(ShowOutlinerMsg)
-	if !ok {
-		t.Fatalf("expected ShowOutlinerMsg, got %T", msg)
-	}
-	if show.Project != projA {
-		t.Fatalf("Project = %v, want %v", show.Project, projA)
-	}
-
-	m.cursor = 4 // task in projB
-	msg = invokePrimaryViewKey(t, m, "ctrl+p")
-	show, ok = msg.(ShowOutlinerMsg)
-	if !ok {
-		t.Fatalf("expected ShowOutlinerMsg, got %T", msg)
-	}
-	if show.Project != projB {
-		t.Fatalf("Project = %v, want %v", show.Project, projB)
-	}
-}
-
-func TestPrimaryViewKey_OpenOutliner_CrossOnHeaderSetsStatus(t *testing.T) {
-	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
-	m.cursor = 0 // header row
-
-	if msg := invokePrimaryViewKey(t, m, "ctrl+p"); msg != nil {
-		t.Fatalf("expected nil message on header, got %T", msg)
-	}
-	if m.statusMessage != statusNoProjectUnderCursor {
-		t.Fatalf("status = %q, want %q", m.statusMessage, statusNoProjectUnderCursor)
-	}
-}
-
-func TestPrimaryViewKey_OpenOutliner_SingleProjectHasNoCtrlP(t *testing.T) {
-	// ProjectTree was retired: the single-project outliner is the only per-project
-	// view, so it no longer binds a no-op ctrl+p "toggle". The binding survives
-	// only on the cross-project outliner as a meaningful drill-down.
+func TestPrimaryViewKey_OpenOutliner_NoOutlinerBindsCtrlP(t *testing.T) {
+	// ProjectTree and the Ctrl+P project drilldown were retired: neither the
+	// single-project nor the cross-project outliner binds ctrl+p. Project scope is
+	// entered through Ctrl+X and the project-header scope actions.
 	proj := &models.Project{ID: "p", Name: "P"}
-	m := minimalOutliner()
-	m.project = proj
-	m.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox}}
-	m.cursor = 0
+	single := minimalOutliner()
+	single.project = proj
+	single.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox}}
+	single.cursor = 0
 
-	entries := newOutlinerKeymapBuilder(m).primaryViewEntries()
-	for _, e := range entries {
-		if e.Binding != nil && e.Binding.Key == "ctrl+p" {
-			t.Fatalf("single-project outliner should not bind ctrl+p, got %q", e.Binding.Description)
+	cross := minimalOutliner()
+
+	for name, m := range map[string]*OutlinerModel{"single-project": single, "cross-project": cross} {
+		entries := newOutlinerKeymapBuilder(m).primaryViewEntries()
+		for _, e := range entries {
+			if e.Binding != nil && e.Binding.Key == "ctrl+p" {
+				t.Fatalf("%s outliner should not bind ctrl+p, got %q", name, e.Binding.Description)
+			}
 		}
 	}
 }
@@ -208,7 +176,7 @@ func TestPrimaryViewKey_InboxProcessor_CrossUsesCursorProject(t *testing.T) {
 	}
 }
 
-func TestPrimaryViewKey_InboxProcessor_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestPrimaryViewKey_InboxProcessor_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0
 
@@ -285,7 +253,7 @@ func TestPrimaryViewKey_EditLastModified_CrossUsesCursorProjectTask(t *testing.T
 	}
 }
 
-func TestPrimaryViewKey_EditLastModified_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestPrimaryViewKey_EditLastModified_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0
 
@@ -318,7 +286,7 @@ func TestGotoKey_ViewTaskActivity_CrossUsesCursorTaskProject(t *testing.T) {
 	}
 }
 
-func TestGotoKey_ViewTaskActivity_CrossOnHeaderSetsStatus(t *testing.T) {
+func TestGotoKey_ViewTaskActivity_CrossOnSectionHeaderSetsStatus(t *testing.T) {
 	m, _, _, _, _ := crossOutlinerWithTwoProjects(t)
 	m.cursor = 0
 
@@ -360,5 +328,273 @@ func TestGotoKey_ProjectRecentActivity_CrossOnSeparatorSetsStatus(t *testing.T) 
 	}
 	if m.statusMessage != statusNoProjectUnderCursor {
 		t.Fatalf("status = %q, want %q", m.statusMessage, statusNoProjectUnderCursor)
+	}
+}
+
+type directProjectKeyCase struct {
+	name    string
+	invoke  func(t *testing.T, m *OutlinerModel) tea.Msg
+	project func(t *testing.T, msg tea.Msg) *models.Project
+}
+
+func directProjectKeyCases() []directProjectKeyCase {
+	return []directProjectKeyCase{
+		{
+			name:   "B (Project Blockers)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "B") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowBlockersMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowBlockersMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "W (Inbox Processor)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "W") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowInboxProcessorMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowInboxProcessorMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "i (Quick Capture)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "i") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowQuickCaptureMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowQuickCaptureMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "I (Bulk Capture)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "I") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowBulkCaptureMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowBulkCaptureMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "{ (Open Notes)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "{") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowNotesMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowNotesMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "} (Create Note)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "}") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowNoteCreatorMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowNoteCreatorMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "gl (Project Activity)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeGotoChild(t, m, "l") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowProjectRecentActivityMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowProjectRecentActivityMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "ctrl+l (Edit Last Modified)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokePrimaryViewKey(t, m, "ctrl+l") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				edit, ok := msg.(EditTaskMsg)
+				if !ok {
+					t.Fatalf("message = %T, want EditTaskMsg", msg)
+				}
+				return edit.Project
+			},
+		},
+		{
+			name:   "ctrl+a (Archive Project)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeUtilityKey(t, m, "ctrl+a") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				request, ok := msg.(ProjectArchiveRequestMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ProjectArchiveRequestMsg", msg)
+				}
+				return request.Project
+			},
+		},
+		{
+			name:   "ctrl+s (Section Manager)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeUtilityKey(t, m, "ctrl+s") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				show, ok := msg.(ShowSectionManagerMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ShowSectionManagerMsg", msg)
+				}
+				return show.Project
+			},
+		},
+		{
+			name:   "ctrl+e (Export Project)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeUtilityKey(t, m, "ctrl+e") },
+			project: func(t *testing.T, msg tea.Msg) *models.Project {
+				t.Helper()
+				export, ok := msg.(ExportProjectMsg)
+				if !ok {
+					t.Fatalf("message = %T, want ExportProjectMsg", msg)
+				}
+				return export.Project
+			},
+		},
+	}
+}
+
+func prepareDirectProjectKeyFixture(t *testing.T, scopedEmpty bool) (*OutlinerModel, *models.Project) {
+	t.Helper()
+	m, _, betaHeader, _, _ := crossProjectHeaderFixture(t)
+	config := newTestConfig()
+	setTestProjects(config, m.loadedProjects)
+	m.runtime = testRuntimeAt(config.DataDir(), config)
+
+	target := m.crossResolveProject(m.rows[betaHeader].ProjectID)
+	if target == nil {
+		t.Fatal("fixture beta project did not resolve")
+	}
+	if scopedEmpty {
+		m.scopedProjectID = target.ID
+		m.rows = nil
+		m.cursor = 0
+	} else {
+		m.cursor = betaHeader
+	}
+	return m, target
+}
+
+func TestOutlinerProjectHeaderDirectKeysTargetHeaderProject(t *testing.T) {
+	for _, tc := range directProjectKeyCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			m, target := prepareDirectProjectKeyFixture(t, false)
+			if got := tc.project(t, tc.invoke(t, m)); got != target {
+				t.Fatalf("project = %v, want highlighted header project %v", got, target)
+			}
+		})
+	}
+}
+
+func TestOutlinerProjectContextScopedEmptyDirectKeysTargetScope(t *testing.T) {
+	for _, tc := range directProjectKeyCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			m, target := prepareDirectProjectKeyFixture(t, true)
+			if got := tc.project(t, tc.invoke(t, m)); got != target {
+				t.Fatalf("project = %v, want scoped project %v", got, target)
+			}
+		})
+	}
+}
+
+func TestOutlinerProjectContextCompletedArchiveAndPasteAcceptProjectContext(t *testing.T) {
+	for _, scopedEmpty := range []bool{false, true} {
+		name := "project header"
+		if scopedEmpty {
+			name = "scoped empty view"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Run("completed archive", func(t *testing.T) {
+				m, target := prepareDirectProjectKeyFixture(t, scopedEmpty)
+				target.Tasks[0].WorkflowState = models.StateDone
+				m.activePerspective = PerspectiveCompleted
+
+				if msg := invokeUtilityKey(t, m, "A"); msg != nil {
+					t.Fatalf("archive completed message = %T, want nil", msg)
+				}
+				if m.archiveTargetProject != target {
+					t.Fatalf("archive target = %v, want %v", m.archiveTargetProject, target)
+				}
+				if !m.confirm.IsActive() || m.confirm.Action() != "archive-tasks" {
+					t.Fatal("archive completed did not open the expected confirmation")
+				}
+			})
+
+			t.Run("clipboard paste", func(t *testing.T) {
+				m, _ := prepareDirectProjectKeyFixture(t, scopedEmpty)
+				action := findTopLevelBinding(t, newOutlinerKeymapBuilder(m).utilityEntries(), "ctrl+v")
+				_, cmd := action()
+				if cmd == nil {
+					t.Fatal("clipboard paste rejected valid project context")
+				}
+				if m.statusMessage == statusNoProjectUnderCursor {
+					t.Fatalf("status = %q for valid project context", m.statusMessage)
+				}
+			})
+		})
+	}
+}
+
+func TestOutlinerProjectHeaderTaskOnlyBindingsRejectHeader(t *testing.T) {
+	type taskOnlyCase struct {
+		name   string
+		invoke func(t *testing.T, m *OutlinerModel) tea.Msg
+	}
+	cases := []taskOnlyCase{
+		{
+			name:   "gh (Task Activity)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeGotoChild(t, m, "h") },
+		},
+		{
+			name:   "o (Task Detail)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeCommonTaskActionKey(t, m, "o") },
+		},
+		{
+			name:   "ctrl+b (Move Task to Project)",
+			invoke: func(t *testing.T, m *OutlinerModel) tea.Msg { return invokeCommonTaskActionKey(t, m, "ctrl+b") },
+		},
+		{
+			name: "tn (Create Child Task)",
+			invoke: func(_ *testing.T, m *OutlinerModel) tea.Msg {
+				_, cmd := m.handleTaskPrefix("n", nil)
+				if cmd == nil {
+					return nil
+				}
+				return cmd()
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _, betaHeader, _, _ := crossProjectHeaderFixture(t)
+			m.cursor = betaHeader
+			if msg := tc.invoke(t, m); msg != nil {
+				t.Fatalf("task-only binding emitted %T for project header", msg)
+			}
+			if task, project := m.getTaskRef(); task != nil || project != nil {
+				t.Fatalf("getTaskRef() = (%v, %v), want (nil, nil)", task, project)
+			}
+		})
 	}
 }

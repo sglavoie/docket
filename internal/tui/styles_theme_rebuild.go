@@ -120,7 +120,6 @@ func rebuildBadgeStyles() {
 	SectionBadgeStyle = lipgloss.NewStyle().Foreground(ColorBadgeText).Background(ColorBackground)
 	ChildrenBadgeStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Background(ColorBackground)
 	TagStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Background(ColorBackground).Padding(0, 1)
-	SidebarFocusBadgeStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 }
 
 func rebuildLayoutStyles() {
@@ -224,12 +223,9 @@ func rebuildSelectionStyles() {
 	PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render("·")
 }
 
-func rebuildSidebarStyles() {
-	SidebarStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(1)
-	SidebarHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	SidebarCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
-	SidebarCardFocusedStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(0, 1)
-	SidebarCardTitleStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+func rebuildPanelStyles() {
+	PanelCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
+	PanelCardTitleStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DashboardCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
 	DashboardCardTitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
 	OverlaySplitStyle = lipgloss.NewStyle().Foreground(ColorBorder)

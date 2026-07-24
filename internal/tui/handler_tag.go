@@ -115,7 +115,11 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 	case TagManagerFilterMsg:
 		m.popView()
 		if msg.Tag != "" {
-			m.applyTagFilterToView(ViewOutliner, map[string]bool{msg.Tag: true})
+			// Apply to whichever Outliner is the visible project surface — the
+			// canonical cross Outliner at the sole root (including a project scope
+			// frame), or the legacy single-project instance when it is still the
+			// base view — so the mutated model is always the one on screen.
+			m.applyTagFilterToView(m.baseProjectView(), map[string]bool{msg.Tag: true})
 		}
 		return true, nil
 
@@ -133,9 +137,6 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 
 	case GlobalTagRenamedMsg:
 		m.popView()
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		return true, nil
 
 	case GlobalTagPinnedMsg:
@@ -186,8 +187,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 
 	case GlobalTagNavigateMsg:
 		m.popView()
-		m.showProjectWithTagFilter(msg.Project, msg.Tag)
-		return true, nil
+		return true, m.showProjectWithTagFilter(msg.Project, msg.Tag)
 
 	case ShowColumnPickerMsg:
 		m.showView(ViewColumnPicker, NewColumnPickerModel(msg))
@@ -229,22 +229,24 @@ func (m *AppModel) applyNoteTags(location app.NoteLocation, notes []*models.Note
 	}, label, bulk)
 }
 
-func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string) {
+// showProjectWithTagFilter enters the target project as a scope frame on the
+// single authoritative (cross-project) Outliner and applies the tag filter,
+// rather than constructing a separate AppModel.outliner root. The visible model
+// and the model targeted by later palette actions are therefore the same
+// instance.
+func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string) tea.Cmd {
 	if project == nil || tag == "" {
-		return
+		return nil
 	}
 
-	m.switchToProject(project, false) // Don't restore state - apply specific tag filter.
-	tags := map[string]bool{tag: true}
-
-	m.saveOutlinerToggleState()
-	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-	m.outliner.queueIDs = m.focusQueueIDs
-	m.outliner.dailyPlanIDs = m.dailyPlanIDs
-	m.restoreOutlinerToggleState()
-	m.outliner.filter.Tags = tags
-	m.outliner.rebuildRows()
-	m.showView(ViewOutliner, m.outliner)
+	cmd := m.enterProjectScopeOutliner(project, nil, OutlinerOpenOptions{})
+	if m.crossOutliner != nil {
+		m.crossOutliner.filter.Tags = map[string]bool{tag: true}
+		m.crossOutliner.crossForceRebuild = true
+		m.crossOutliner.rebuildRows()
+		m.crossOutliner.clampCursor()
+	}
+	return cmd
 }
 
 func (m *AppModel) refreshAfterProjectTagChange(oldName, newName string) {
@@ -296,15 +298,7 @@ func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]b
 
 	switch source {
 	case ViewOutliner:
-		target := m.outliner
-		if target == nil {
-			if v := m.views.Get(ViewTemporaryOutliner); v != nil {
-				if o, ok := v.(*OutlinerModel); ok {
-					target = o
-				}
-			}
-		}
-		if target != nil {
+		if target := m.outliner; target != nil {
 			target.filter.Tags = tags
 			target.rebuildRows()
 			target.clampCursor()
@@ -312,6 +306,7 @@ func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]b
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
 			m.crossOutliner.filter.Tags = tags
+			m.crossOutliner.crossForceRebuild = true
 			m.crossOutliner.rebuildRows()
 			m.crossOutliner.clampCursor()
 		}
@@ -332,13 +327,6 @@ func (m *AppModel) applyColumnToggles(source PresentationID, toggles map[string]
 	switch source {
 	case ViewOutliner:
 		target := m.outliner
-		if m.currentView() == ViewTemporaryOutliner {
-			if v := m.views.Get(ViewTemporaryOutliner); v != nil {
-				if o, ok := v.(*OutlinerModel); ok {
-					target = o
-				}
-			}
-		}
 		if target == nil {
 			break
 		}

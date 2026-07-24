@@ -50,14 +50,14 @@ func (m *AppModel) activateReviewHub(module ReviewModule, project *models.Projec
 		return view.Init()
 	}
 
-	route, err := NewRoute(ReviewHub, ReviewParams{Module: module})
+	route, err := NewRoute(SecondaryTool, ReviewParams{Module: module})
 	if err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-	if err := m.navigation.ReplaceDestination(route); err != nil {
+	if err := m.navigation.PushChild(route, m.currentFocusTarget()); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-	if m.startupRoute != nil && m.startupRoute.ID() == ReviewHub {
+	if m.startupRoute != nil && m.startupRoute.ID() == SecondaryTool {
 		m.startupRoute = nil
 		m.startupView = ViewDashboard
 	}
@@ -77,13 +77,5 @@ func (m *AppModel) registerReviewModulePresentation(module ReviewModule, project
 	presentation, ok := reviewModulePresentation(module, project)
 	if ok {
 		m.views.Register(presentation, view)
-	}
-	// Project Activity's filter messages retain ViewRecentActivity as their
-	// legacy source, so both old names must resolve to the same embedded module.
-	if module == ReviewActivity {
-		m.views.Register(ViewRecentActivity, view)
-		if project != nil {
-			m.views.Register(ViewProjectRecentActivity, view)
-		}
 	}
 }

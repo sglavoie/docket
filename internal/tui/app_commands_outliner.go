@@ -121,8 +121,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Aliases:     []string{"outliner default sort", "outliner clear sort"},
 			Handler: func() tea.Msg {
 				if out := m.activeOutliner(); out != nil {
-					out.sort.Reset()
-					out.rebuildRows()
+					out.resetSort()
 				}
 				return nil
 			},
@@ -439,6 +438,30 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	return cmds
 }
 
+// visibleOutliner resolves the OutlinerModel currently presented as the project
+// work surface: the canonical cross-project instance at the sole root (including
+// when scoped to a project via a scope frame) or the legacy single-project
+// instance when it is still the base project view. Section/tag filter
+// completions and section navigation target this so the mutated model is always
+// the one the user sees.
+func (m *AppModel) visibleOutliner() *OutlinerModel {
+	switch m.baseProjectView() {
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.crossOutliner
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			return m.outliner
+		}
+	default:
+	}
+	if m.crossOutliner != nil {
+		return m.crossOutliner
+	}
+	return m.outliner
+}
+
 // activeOutliner returns the OutlinerModel matching the non-palette origin so
 // command-palette handlers operate on the outliner the user actually launched
 // from. Falls back to whichever outliner is non-nil when the origin does not
@@ -524,34 +547,31 @@ func (m *AppModel) outlinerCreateParent() (*models.Task, *models.Project) {
 	return parentTask, project
 }
 
-// outlinerCursorProject returns the project owning the cursor row on the active
-// outliner. Returns nil when no outliner is active, the cursor is on a header
-// or separator, or a cross-project row points at a stale project ID.
-func (m *AppModel) outlinerCursorProject() *models.Project {
-	if view, _, ok := m.outlinerPrimary(); ok {
-		_, project := view.getTaskRef()
-		return project
-	}
-	out := m.activeOutliner()
-	if out == nil {
-		return nil
-	}
-	return out.cursorProject()
-}
-
 // paletteCursorProject returns the project that project-scoped palette commands
-// should target based on the non-palette origin. Cross-project outliner origin
-// uses the cursor row's project so palette handlers mirror the direct-key
-// routing; every other origin falls back to m.currentProject.
+// should target. Every visible Outliner origin delegates to the Outliner's
+// canonical contextProject resolver, including project headers and empty project
+// scopes. Non-Outliner origins retain the legacy currentProject fallback because
+// it still represents their visible project context.
 func (m *AppModel) paletteCursorProject() *models.Project {
 	if view, _, ok := m.outlinerPrimary(); ok {
-		_, project := view.getTaskRef()
-		return project
+		return view.contextProject()
 	}
-	if m.nonPaletteOrigin() == ViewCrossProjectOutliner && m.crossOutliner != nil {
-		return m.crossOutliner.cursorProject()
+	switch m.nonPaletteOrigin() {
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.crossOutliner.contextProject()
+		}
+		return nil
+	case ViewOutliner:
+		if m.outliner != nil {
+			return m.outliner.contextProject()
+		}
+		// Legacy single-project origins can outlive their lazily-instantiated
+		// Outliner model; currentProject still names the visible project there.
+		return m.currentProject
+	default:
+		return m.currentProject
 	}
-	return m.currentProject
 }
 
 // paletteTaskTarget returns the (task, project) pair that task-scoped palette

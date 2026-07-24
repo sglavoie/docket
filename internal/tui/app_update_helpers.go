@@ -40,14 +40,6 @@ func (m *AppModel) currentViewCapabilities() ViewCapabilities {
 	return nil
 }
 
-// batchWithFocusRefresh batches a command with a refresh message for the Planner.
-func (m *AppModel) batchWithFocusRefresh(cmd tea.Cmd) tea.Cmd {
-	return tea.Batch(
-		cmd,
-		func() tea.Msg { return FocusBoardRefreshMsg{} },
-	)
-}
-
 // hasActiveTextInput returns true if the current view has an active text input
 // that should receive keyboard input (like search boxes, text fields).
 // This is used to determine whether global keyboard shortcuts should be intercepted.

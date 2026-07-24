@@ -123,7 +123,10 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 			app.currentProject = current
 		}
 	}
-	if runtime.Machine().GetStartView() == config.StartViewProject && app.currentProject != nil &&
+	// The Outliner always launches globally in Today, so a restored current
+	// project that is no longer a normal work target must not linger as the shell
+	// pointer; drop it before resolving startup navigation.
+	if app.currentProject != nil &&
 		(app.currentProject.Archived || app.currentProject.Sandbox || app.currentProject.Internal) {
 		app.currentProject = nil
 	}
@@ -163,18 +166,22 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		app.focusDismissedIDs[id] = true
 	}
 
-	// Initialize dashboard and register it
-	app.dashboard = NewHomeModel(runtime)
-	app.views.Register(ViewDashboard, app.dashboard)
-
 	// Register global commands
 	app.registerGlobalCommands()
 
 	ApplyTheme(NewThemeConfig(runtime.Settings()))
-	app.dashboard.SetAccentColor(AccentDashboard)
 
 	app.openLoops = ComputeOpenLoops(app.runtime, app.dailyPlanIDs)
 	app.refreshOnboardingProgress(startupLoads)
+
+	// The Outliner is the sole root: construct and register the global
+	// (All Projects) Outliner in Today so the first frame renders the root even
+	// before Init's startup reload lands. NewNavigationState already roots the
+	// primary stack at the Outliner; sync the presentation mirror to match.
+	app.prepareCrossProjectOutliner()
+	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeToday, SetMode: true})
+	app.setAccentOnView(app.crossOutliner)
+	app.syncPresentationStack()
 
 	return app, nil
 }
@@ -447,11 +454,8 @@ func (m *AppModel) commandGroups() [][]Command {
 		m.taskCommentsCommands(),
 		m.globalTagManagerCommands(),
 		m.attachmentCommands(),
-		m.focusBoardCommands(),
-		m.dailyReviewCommands(),
 		m.inboxProcessorCommands(),
 		m.workflowRulesCommands(),
-		m.sidebarCommands(),
 		m.scoringCommands(),
 		m.outlinerCommands(),
 		m.exportCommands(),
@@ -500,93 +504,13 @@ type startupNavigationPlan struct {
 	Presentation PresentationID
 }
 
-// resolveStartupNavigation translates the canonical persisted destination and
-// its narrow route semantics into a typed route plus a temporary renderer.
-func resolveStartupNavigation(machine *config.MachineState, projectID string) (startupNavigationPlan, bool) {
-	if machine == nil {
-		machine = config.NewMachineState()
-	}
-	destination := machine.GetStartView()
-	state := machine.GetStartRoute()
-	mustRoute := func(id RouteID, params RouteParams) Route {
-		route, err := NewRoute(id, params)
-		if err != nil {
-			panic(err)
-		}
-		return route
-	}
-	plan := func(message tea.Msg, route Route, presentation PresentationID) (startupNavigationPlan, bool) {
-		return startupNavigationPlan{Message: message, Route: route, HasRoute: true, Presentation: presentation}, true
-	}
-
-	switch destination {
-	case config.StartViewHome:
-		return startupNavigationPlan{}, false
-	case config.StartViewPlanner:
-		tab := PlannerToday
-		boardTab := boardTabToday
-		if state.PlannerTab == config.StartPlannerBacklog {
-			tab = PlannerBacklog
-			boardTab = boardTabBacklog
-		}
-		return plan(
-			ShowFocusBoardMsg{Tab: boardTab, SetTab: true},
-			mustRoute(Planner, PlannerParams{Tab: tab}),
-			ViewFocusBoard,
-		)
-	case config.StartViewTasks:
-		opts := startupOutlinerOptions(state)
-		if state.TaskSort == config.StartTaskSortDueDate {
-			opts.Lens, opts.SetLens = OutlinerLensDueDate, true
-		}
-		return plan(
-			ShowGlobalOutlinerMsg{Options: opts},
-			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}),
-			ViewCrossProjectOutliner,
-		)
-	case config.StartViewProject:
-		if projectID == "" {
-			return startupNavigationPlan{Message: ShowProjectPickerMsg{}}, true
-		}
-		return plan(
-			NavigateToViewMsg{PresentationID: ViewOutliner, OutlinerOptions: startupOutlinerOptions(state)},
-			mustRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}),
-			ViewOutliner,
-		)
-	case config.StartViewReview:
-		module := ReviewLanding
-		if state.ReviewModule == config.StartReviewDaily {
-			module = ReviewDaily
-		}
-		return plan(
-			ShowReviewHubMsg{Module: module},
-			mustRoute(ReviewHub, ReviewParams{Module: module}),
-			ViewDailyReview,
-		)
-	case config.StartViewManage:
-		return plan(
-			ShowManageHubMsg{Params: ManageParams{Module: ManageLanding, Scope: AppEntityScope()}},
-			mustRoute(ManageHub, ManageParams{Module: ManageLanding, Scope: AppEntityScope()}),
-			ViewSettings,
-		)
-	default:
-		return startupNavigationPlan{}, false
-	}
-}
-
-func startupOutlinerOptions(state config.StartRouteState) OutlinerOpenOptions {
-	opts := OutlinerOpenOptions{Focus: OutlinerActive, SetFocus: true}
-	switch state.TaskFocus {
-	case config.StartTaskAll:
-		opts.Focus = OutlinerAll
-	case config.StartTaskHighPriority:
-		opts.Focus = OutlinerHighPriority
-	}
-	switch state.TaskSort {
-	case config.StartTaskSortPriority:
-		opts.Sort, opts.SetSort = SortByPriority, true
-	case config.StartTaskSortDueDate:
-		opts.Sort, opts.SetSort = SortByDueDate, true
-	}
-	return opts
+// resolveStartupNavigation resolves the single startup destination. The Outliner
+// is the sole root and always launches globally in Today; startup is no longer
+// configurable, so this ignores persisted machine state entirely. The Outliner
+// root route itself is installed by NewAppModel; this only supplies the reload +
+// mode-selection message dispatched from Init.
+func resolveStartupNavigation(_ *config.MachineState, _ string) (startupNavigationPlan, bool) {
+	return startupNavigationPlan{
+		Message: ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Mode: ModeToday, SetMode: true}},
+	}, true
 }

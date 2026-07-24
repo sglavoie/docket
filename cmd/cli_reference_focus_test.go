@@ -38,23 +38,44 @@ func TestCLIReferenceFocusContract(t *testing.T) {
 	if end := strings.Index(queueSection, "\n## "); end >= 0 {
 		queueSection = queueSection[:end]
 	}
-	// The queue section must describe the state-driven Planner/Next model:
+	// The queue section must describe the state-driven Outliner/Next model:
 	// membership is StateNext and the persisted list is ordering-only.
-	for _, want := range []string{"StateNext", "ordering-only", "Planner"} {
+	for _, want := range []string{"StateNext", "ordering-only", "Outliner", "mode picker", "press 'P'", "Press 'q'", "'w'"} {
 		if !strings.Contains(queueSection, want) {
 			t.Fatalf("CLI reference queue section missing %q:\n%s", want, queueSection)
 		}
 	}
-	// The retired Focus View and its obsolete state-independent Queue vocabulary
+	// Retired TUI navigation and obsolete state-independent Queue vocabulary
 	// must not resurface in the generated reference.
 	for _, stale := range []string{
 		"'q' to toggle Queue membership",
 		"dismisses a suggestion without changing existing Queue items",
 		"focus view",
 		"'x' to remove",
+		"Planner",
+		"';q'",
+		"';w'",
 	} {
 		if strings.Contains(queueSection, stale) {
 			t.Fatalf("CLI reference queue section still contains obsolete wording %q:\n%s", stale, queueSection)
 		}
+	}
+
+	const todayHeading = "## tt focus today\n"
+	todayStart := strings.Index(string(reference), todayHeading)
+	if todayStart < 0 {
+		t.Fatal("CLI reference is missing tt focus today section")
+	}
+	todaySection := string(reference)[todayStart+len(todayHeading):]
+	if end := strings.Index(todaySection, "\n## "); end >= 0 {
+		todaySection = todaySection[:end]
+	}
+	for _, want := range []string{"Outliner's Today mode", "press 'P'", "mode picker"} {
+		if !strings.Contains(todaySection, want) {
+			t.Fatalf("CLI reference today section missing %q:\n%s", want, todaySection)
+		}
+	}
+	if strings.Contains(strings.ToLower(todaySection), "cockpit") {
+		t.Fatalf("CLI reference today section still references the retired cockpit:\n%s", todaySection)
 	}
 }

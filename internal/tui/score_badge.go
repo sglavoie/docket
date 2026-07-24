@@ -92,7 +92,7 @@ func RenderScoreBar(task *models.Task, profile *scoring.ScoringProfile) string {
 }
 
 // renderScoreCardContent renders the score breakdown body (header + per-dimension lines)
-// shared by the sidebar and task detail score cards. The innerWidth should be
+// shared by the task detail score cards. The innerWidth should be
 // the card's content width (total width minus card chrome, typically width-6).
 func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, innerWidth int) string {
 	results := scoring.ScoreBreakdown(task, profile)

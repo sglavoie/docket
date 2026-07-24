@@ -157,10 +157,14 @@ func TestTUITestRunFixtureSuccess(t *testing.T) {
 	useFileSystemStorage(t)
 	resetTUITestRunFlags(t)
 
+	// The Outliner launches in an empty global Today, so fixture task titles only
+	// appear after switching to the All mode. Prove the rich fixture loaded by
+	// navigating there and asserting on one of its task titles.
 	scenario := writeScenario(t, `{
       "name": "rich smoke",
       "actions": [
-        {"type": "assert", "assert": "contains", "value": "Rich Project"}
+        {"type": "command", "command": "all tasks"},
+        {"type": "assert", "assert": "contains", "value": "Triage support inbox"}
       ]
     }`)
 	fs := tuiTestRunCmd.Flags()
@@ -181,8 +185,8 @@ func TestTUITestRunFixtureSuccess(t *testing.T) {
 	if !result.OK {
 		t.Fatalf("result.OK = false, want true: %+v", result)
 	}
-	if result.ActionsRun != 1 {
-		t.Fatalf("actions_run = %d, want 1", result.ActionsRun)
+	if result.ActionsRun != 2 {
+		t.Fatalf("actions_run = %d, want 2", result.ActionsRun)
 	}
 }
 
@@ -303,10 +307,13 @@ func TestTUITestRunConfigModeCopiesData(t *testing.T) {
 	sourceConfig := buildSourceConfig(t, "Copied Project", "Copied task title")
 	viper.Set("config", sourceConfig)
 
+	// The copied task lands in the Inbox section, visible after switching to All
+	// mode; asserting its title proves the source workspace was copied and loaded.
 	scenario := writeScenario(t, `{
       "name": "config smoke",
       "actions": [
-        {"type": "assert", "assert": "contains", "value": "Copied Project"}
+        {"type": "command", "command": "all tasks"},
+        {"type": "assert", "assert": "contains", "value": "Copied task title"}
       ]
     }`)
 	fs := tuiTestRunCmd.Flags()
@@ -342,8 +349,8 @@ func TestTUITestRunObservationsIncludesList(t *testing.T) {
 	scenario := writeScenario(t, `{
       "name": "observations",
       "actions": [
-        {"type": "assert", "assert": "contains", "value": "Rich Project"},
-        {"type": "wait"}
+        {"type": "command", "command": "all tasks"},
+        {"type": "assert", "assert": "contains", "value": "Triage support inbox"}
       ]
     }`)
 	fs := tuiTestRunCmd.Flags()
@@ -440,9 +447,11 @@ func TestTUITestSessionActionsObserveQuit(t *testing.T) {
 	useFileSystemStorage(t)
 	resetTUITestSessionFlags(t)
 
-	// Two actions, an explicit observe, then quit — the integration flow.
+	// Two actions, an explicit observe, then quit — the integration flow. The
+	// first action switches to All mode (fixture task titles are hidden in the
+	// empty startup Today), exercising a command action end to end.
 	input := strings.Join([]string{
-		`{"id":"a1","action":{"type":"assert","assert":"contains","value":"Rich Project"}}`,
+		`{"id":"a1","action":{"type":"command","command":"all tasks"}}`,
 		`{"id":"a2","action":{"type":"resize","width":120,"height":40}}`,
 		`{"id":"o1","command":"observe"}`,
 		`{"id":"q1","command":"quit"}`,
@@ -639,17 +648,20 @@ func TestTUITestSessionConfigModeCopiesData(t *testing.T) {
 	sourceConfig := buildSourceConfig(t, "Session Copied Project", "Session copied task")
 	viper.Set("config", sourceConfig)
 
+	// Switch to All mode, then assert the copied task title is present — proving
+	// the source workspace was copied and loaded in session mode.
 	input := strings.Join([]string{
-		`{"id":"c1","action":{"type":"assert","assert":"contains","value":"Session Copied Project"}}`,
+		`{"id":"c1","action":{"type":"command","command":"all tasks"}}`,
+		`{"id":"c2","action":{"type":"assert","assert":"contains","value":"Session copied task"}}`,
 		`{"id":"q","command":"quit"}`,
 	}, "\n") + "\n"
 
 	responses := runSession(t, input)
-	if len(responses) != 2 {
-		t.Fatalf("got %d responses, want 2: %+v", len(responses), responses)
+	if len(responses) != 3 {
+		t.Fatalf("got %d responses, want 3: %+v", len(responses), responses)
 	}
-	if !responses[0].OK {
-		t.Fatalf("config-mode assert failed: %+v", responses[0])
+	if !responses[1].OK {
+		t.Fatalf("config-mode assert failed: %+v", responses[1])
 	}
 	// The source workspace's domain files must be untouched by the copy path
 	// (persistence is the decomposed domain files, not a monolithic file).

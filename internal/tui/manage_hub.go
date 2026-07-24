@@ -32,23 +32,6 @@ const manageHubViewMenuOverlayKey = "manage-view-menu"
 
 type manageHubViewMenuMsg struct{ Open bool }
 
-type manageHubEntry struct {
-	module      ManageModule
-	name        string
-	description string
-}
-
-var manageHubEntries = []manageHubEntry{
-	{module: ManageInbox, name: "Inbox", description: "Triage captured tasks across projects"},
-	{module: ManageNotes, name: "Notes", description: "Create, find, and organize notes"},
-	{module: ManageBlockers, name: "Blockers", description: "Track operational impediments"},
-	{module: ManageRules, name: "Rules", description: "Manage workflow and scoring automation"},
-	{module: ManageTemplates, name: "Templates", description: "Create and maintain task templates"},
-	{module: ManageTags, name: "Tags", description: "Maintain project and workspace tags"},
-	{module: ManageNotifications, name: "Notifications", description: "Review alerts and the message log"},
-	{module: ManageSettings, name: "Settings", description: "Edit supported application preferences"},
-}
-
 // ManageRulesMode is hub-owned because the sealed Manage route intentionally
 // carries Rules as one module rather than exposing Workflow and Scoring as
 // separate routes.
@@ -134,7 +117,6 @@ type ManageHubModel struct {
 
 	params    ManageParams
 	rulesMode ManageRulesMode
-	cursor    int
 	active    View
 	activeKey string
 
@@ -171,9 +153,6 @@ func (m *ManageHubModel) Init() tea.Cmd {
 func (m *ManageHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if len(m.pickerEntries) > 0 {
 		return m.updatePicker(msg)
-	}
-	if m.params.Module == ManageLanding {
-		return m.updateLanding(msg)
 	}
 	if m.active == nil {
 		return m, nil
@@ -245,42 +224,6 @@ func (m *ManageHubModel) normalizeCollectionKey(key tea.KeyPressMsg) tea.Msg {
 		}
 	}
 	return key
-}
-
-func (m *ManageHubModel) updateLanding(msg tea.Msg) (tea.Model, tea.Cmd) {
-	key, ok := msg.(tea.KeyPressMsg)
-	if !ok {
-		return m, nil
-	}
-	switch key.String() {
-	case "j", "down":
-		m.cursor = min(m.cursor+1, len(manageHubEntries)-1)
-	case "k", "up":
-		m.cursor = max(m.cursor-1, 0)
-	case "g", "home":
-		m.cursor = 0
-	case "G", "end":
-		m.cursor = len(manageHubEntries) - 1
-	case "enter":
-		return m.selectLandingEntry(m.cursor)
-	default:
-		keyText := key.String()
-		if len(keyText) == 1 && keyText[0] >= '1' && int(keyText[0]-'1') < len(manageHubEntries) {
-			return m.selectLandingEntry(int(keyText[0] - '1'))
-		}
-	}
-	return m, nil
-}
-
-func (m *ManageHubModel) selectLandingEntry(index int) (tea.Model, tea.Cmd) {
-	if index < 0 || index >= len(manageHubEntries) {
-		return m, nil
-	}
-	params := ManageParams{
-		Module: manageHubEntries[index].module,
-		Scope:  AppEntityScope(),
-	}
-	return m, func() tea.Msg { return ManageHubModuleSelectedMsg{Params: params} }
 }
 
 func (m *ManageHubModel) updatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -393,7 +336,7 @@ func (m *ManageHubModel) OpenProjectPicker(module ManageModule) bool {
 // scope share one hub slot, so changing scope replaces the embedded model
 // without creating another route identity.
 func (m *ManageHubModel) Activate(params ManageParams) error {
-	route, err := NewRoute(ManageHub, params)
+	route, err := NewRoute(SecondaryTool, params)
 	if err != nil {
 		return err
 	}
@@ -568,40 +511,7 @@ func (m *ManageHubModel) View() tea.View {
 	if m.active != nil {
 		return m.active.View()
 	}
-	return m.viewLanding()
-}
-
-func (m *ManageHubModel) viewLanding() tea.View {
-	width := max(m.width, 1)
-	height := max(m.height, 1)
-	title := renderFullscreenTitle("Manage", "Collections and operations", m.AccentColor())
-	footer := renderStatusBarFooter(
-		HelpStyle.Render(fmt.Sprintf("j/k choose · Enter open · 1-%d direct · Esc Home · ? help", len(manageHubEntries))),
-		MutedStyle.Render("Manage"),
-		width,
-		m.AccentColor(),
-	)
-
-	lines := make([]string, 0, len(manageHubEntries))
-	for i, entry := range manageHubEntries {
-		marker := "  "
-		nameStyle := BoldStyle
-		if i == m.cursor {
-			marker = IconCursorRight + " "
-			nameStyle = SelectedItemTextStyle
-		}
-		name := fmt.Sprintf("%d  %-13s", i+1, entry.name)
-		line := marker + nameStyle.Render(name) + " " + MutedStyle.Render(entry.description)
-		line = truncateToVisualWidth(line, width)
-		if i == m.cursor {
-			line = SelectionRowStyle.Width(width).Render(line)
-		}
-		lines = append(lines, line)
-	}
-
-	contentHeight := fullscreenContentHeightForBlocks(height, title, footer)
-	content := fitBlockHeight(strings.Join(lines, "\n"), contentHeight)
-	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, title, content, footer))
+	return tea.NewView("")
 }
 
 func (m *ManageHubModel) viewPicker() tea.View {
@@ -724,14 +634,6 @@ func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *ManageHubModel) GetHelpItems() []HelpItem {
-	if m.params.Module == ManageLanding {
-		return []HelpItem{
-			{Key: "j/k", Description: "Choose module", Category: "Navigation"},
-			{Key: "enter", Description: "Open module", Category: "Navigation"},
-			{Key: fmt.Sprintf("1-%d", len(manageHubEntries)), Description: "Open named module", Category: "Navigation"},
-			{Key: "esc", Description: "Return Home", Category: "Navigation"},
-		}
-	}
 	if m.params.Module == ManageRules || m.params.Module == ManageTemplates || m.params.Module == ManageSettings {
 		if provider, ok := m.active.(HelpProvider); ok {
 			items := append([]HelpItem(nil), provider.GetHelpItems()...)

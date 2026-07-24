@@ -99,22 +99,6 @@ type periodicSaveMsg struct{}
 // modified (e.g. Fx clear) and should be persisted to config immediately.
 type outlinerFilterStateChangedMsg struct{}
 
-// projectSidebarStateChangedMsg signals that a project view changed the shared
-// per-project sidebar visibility preference.
-type projectSidebarStateChangedMsg struct {
-	ProjectID string
-	Enabled   bool
-}
-
-func projectSidebarStateChangedCmd(projectID string, before, after bool) tea.Cmd {
-	if projectID == "" || before == after {
-		return nil
-	}
-	return func() tea.Msg {
-		return projectSidebarStateChangedMsg{ProjectID: projectID, Enabled: after}
-	}
-}
-
 // StatusMsg sets a temporary status message (used by command palette handlers).
 type StatusMsg string
 

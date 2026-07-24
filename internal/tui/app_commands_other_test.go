@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 func TestOtherCommands_ProjectFocus(t *testing.T) {
@@ -78,34 +78,36 @@ func TestOtherCommands_BlockersView(t *testing.T) {
 	}
 }
 
-func TestOtherCommands_BlockersView_DashboardUsesSelectedProject(t *testing.T) {
-	app, firstProject := newTestAppModelWithProject()
-	secondProject := testutil.NewTestProjectWithTasks("Second Project")
-	addTestAppProject(app, secondProject)
-	app.currentProject = firstProject
-	app.dashboard = NewDashboardModel(app.runtime)
-	visible := app.dashboard.visibleProjects()
-	if len(visible) < 2 {
-		t.Fatalf("expected at least 2 visible projects, got %d", len(visible))
+func TestProjectBlockersShortcutMatchesLiveOutlinerKeymap(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
+
+	var projectBlockers *keymap.Binding
+	var blockerPrefix *keymap.PrefixNode
+	for _, entry := range outliner.buildKeyMap().Entries {
+		if entry.Binding != nil && entry.Binding.Description == "Project blockers" {
+			projectBlockers = entry.Binding
+		}
+		if entry.PrefixNode != nil && entry.PrefixNode.Description == "Blockers" {
+			blockerPrefix = entry.PrefixNode
+		}
 	}
-	app.dashboard.cursor = len(visible) - 1
-	selectedProject := visible[app.dashboard.cursor]
-	if selectedProject == firstProject {
-		app.currentProject = secondProject
+	if projectBlockers == nil {
+		t.Fatal("built Outliner keymap is missing the Project blockers binding")
 	}
 
-	cmds := app.otherCommands()
-	cmd := findCommand(cmds, "blockers view")
-	if cmd == nil {
+	command := findCommand(app.otherCommands(), "blockers view")
+	if command == nil {
 		t.Fatal("expected to find 'blockers view' command")
 	}
-
-	result := cmd.Handler()
-	msg, ok := result.(ShowBlockersMsg)
-	if !ok {
-		t.Fatalf("expected ShowBlockersMsg, got %T", result)
+	if command.Shortcut != projectBlockers.Key {
+		t.Errorf("blockers view shortcut = %q, live Outliner binding = %q", command.Shortcut, projectBlockers.Key)
 	}
-	if msg.Project == nil || msg.Project.ID != selectedProject.ID {
-		t.Errorf("expected selected dashboard project %q, got %#v", selectedProject.Name, msg.Project)
+
+	if blockerPrefix == nil {
+		t.Fatal("built Outliner keymap is missing the blocker prefix")
+	}
+	if blockerPrefix.Key != "b" {
+		t.Errorf("blocker prefix = %q, want lowercase b", blockerPrefix.Key)
 	}
 }

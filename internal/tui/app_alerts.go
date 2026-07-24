@@ -35,11 +35,6 @@ func (m *AppModel) reevaluateAlerts() {
 	if len(dismissals) == 0 {
 		m.dismissedSet = nil
 		m.proactiveAlerts = rawSnapshot
-		if m.dashboard != nil {
-			counts, _ := loadAttentionCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
-			m.dashboard.SetPipelineCounts(counts)
-			m.dashboard.SetAttentionAlerts(m.proactiveAlerts)
-		}
 		return
 	}
 
@@ -82,11 +77,6 @@ func (m *AppModel) reevaluateAlerts() {
 
 	m.dismissedSet = dismissedSet
 	m.proactiveAlerts = alerts.FilterDismissed(rawSnapshot, dismissedSet)
-	if m.dashboard != nil {
-		counts, _ := loadAttentionCounts(m.runtime, m.focusQueueIDs, m.dailyPlanIDs)
-		m.dashboard.SetPipelineCounts(counts)
-		m.dashboard.SetAttentionAlerts(m.proactiveAlerts)
-	}
 }
 
 // refreshNotificationCenter recreates the notification center if it's the current view,

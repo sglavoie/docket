@@ -20,7 +20,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				m.viewStack = []PresentationID{ViewDashboard}
 			}
 			if m.typedNavigation {
-				m.navigation.ResetHome()
+				m.navigation.ResetRoot()
 			}
 			m.sectionQuickPicker = nil
 			m.linkTypeQuickPicker = nil

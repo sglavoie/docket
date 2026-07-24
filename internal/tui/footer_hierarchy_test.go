@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
@@ -30,7 +29,7 @@ import (
 // escape-hatch row reads identically across full-height and non-full-height
 // surfaces.
 func TestFooterEscapeHintsCanonicalOrder(t *testing.T) {
-	if FooterEscapeHints != "ctrl+g go · : cmd · ? help" {
+	if FooterEscapeHints != "ctrl+esc today · : cmd · ? help" {
 		t.Fatalf("FooterEscapeHints drifted from canonical order: %q", FooterEscapeHints)
 	}
 }
@@ -57,23 +56,6 @@ func TestComposeFullHeightFooterLeftFallsBackToEscapeHatches(t *testing.T) {
 	}
 }
 
-// TestPlannerFooterUsesSixContextualHints locks the consolidated inline-footer
-// budget. Global bindings remain in Help instead of expanding this row.
-func TestPlannerFooterUsesSixContextualHints(t *testing.T) {
-	const title = "Ship overdue invoice"
-	m := cockpitWorkOnTaskFixture(t, title)
-
-	plain := ansi.Strip(m.View().Content)
-	for _, want := range []string{"j/k move", "enter detail", "space select", "x done", "a add", "tab switch"} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("Planner footer missing %q; rendered:\n%s", want, plain)
-		}
-	}
-	if strings.Contains(plain, FooterEscapeHints) {
-		t.Fatalf("Planner footer exceeds its six contextual hints with %q; rendered:\n%s", FooterEscapeHints, plain)
-	}
-}
-
 // TestNextActionStripHintsDoNotDuplicateTodayFooter walks every recommendation
 // kind/variant and asserts the strip's hint cluster shares no key with the
 // Today-tab footer the strip actually co-renders with. The strip is suppressed
@@ -94,8 +76,14 @@ func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
 		"completed": {"a add", "tab switch"},
 	}
 
-	project := cockpitProject(t, "Hierarchy")
-	blocked := cockpitTask(t, project, "Resolve blocker", models.StatusBlocked, models.SectionNext)
+	project := &models.Project{ID: "hierarchy", Name: "Hierarchy"}
+	blocked := &models.Task{
+		ID:            "blocked-task",
+		Title:         "Resolve blocker",
+		Type:          models.TaskTypeTask,
+		WorkflowState: models.StateWaiting,
+	}
+	blocked.SetSection(models.SectionNext)
 
 	// Per-kind hint expectations. AllDone-caught-up intentionally emits no
 	// hint because the completed-Today footer already carries `p plan more`.
@@ -136,33 +124,13 @@ func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
 	}
 }
 
-// TestTodayCompletedFooterKeepsPlannerTabNavigation verifies the celebration
-// path retains the consolidated Planner's tab affordance.
-func TestTodayCompletedFooterKeepsPlannerTabNavigation(t *testing.T) {
-	project := cockpitProject(t, "Cockpit Done")
-	task := cockpitTask(t, project, "Wrap up release notes", models.StatusDone, models.SectionCompleted)
-	row := cockpitBoardRow(task, project)
-	dailyPlanIDs := map[TaskIdentity]bool{taskIdentityFor(task, project): true}
-	openLoops := OpenLoops{TodayTotal: 1, TodayDone: 1, HasTasks: true}
-	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, openLoops, boardTabToday)
-	m.SetSize(120, 30)
-
-	plain := ansi.Strip(m.View().Content)
-	if !strings.Contains(plain, "tab switch") {
-		t.Fatalf("completed-today footer missing `tab switch` hint:\n%s", plain)
-	}
-	if strings.Contains(plain, "p plan more") {
-		t.Fatalf("completed-today footer contains retired planning hint:\n%s", plain)
-	}
-}
-
 // TestAppStatusBarDefaultHelpMatchesFooterEscapeHints ensures the app status
 // bar's default contextual help hint (used by non-full-height views like
 // Dashboard) matches the escape-hatch constant the full-height footers
 // advertise. Without this lockstep, Dashboard users would see one set of
 // escape keys while Today and Hub users see a different ordering.
 func TestAppStatusBarDefaultHelpMatchesFooterEscapeHints(t *testing.T) {
-	const appStatusDefault = "ctrl+g go · : cmd · ? help"
+	const appStatusDefault = "ctrl+esc today · : cmd · ? help"
 	if FooterEscapeHints != appStatusDefault {
 		t.Fatalf("FooterEscapeHints %q diverges from app status bar default %q; surfaces will show inconsistent escape hatches",
 			FooterEscapeHints, appStatusDefault)

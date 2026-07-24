@@ -231,15 +231,6 @@ func TestParkKeybindingsEmitShowParkInput(t *testing.T) {
 	detail := NewTaskDetailModel(task, project, nil)
 	_, cmd := detail.handleKeyMsg(syntheticKey('P'))
 	assertShowParkInputCmd(t, cmd, task, project)
-
-	board := newTestFocusBoard()
-	board.filtered = []boardRow{{Task: task, Project: project}}
-	board.Dispatcher = keymap.NewDispatcher(board.buildKeyMap())
-	_, cmd, handled := board.Dispatcher.Dispatch(syntheticKey('P'))
-	if !handled {
-		t.Fatal("focus board P should be handled")
-	}
-	assertShowParkInputCmd(t, cmd, task, project)
 }
 
 func assertShowParkInputCmd(t *testing.T, cmd tea.Cmd, task *models.Task, project *models.Project) {
@@ -283,7 +274,6 @@ func newCrossProjectParkFlowFixture(t *testing.T, mutateTaskB func(*models.Task)
 	app.currentProject = projectA
 
 	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
-	crossOutliner.sidebar.SetEnabled(false)
 	crossOutliner.SetSize(120, 20)
 	crossOutliner.loadedProjects = []*models.Project{projectA, projectB}
 	crossOutliner.rows = []outlinerRow{
@@ -529,7 +519,6 @@ func TestCrossProjectOutlinerTPParkFlowUsesCursorTaskProjectAndReloads(t *testin
 	app.currentProject = projectA
 
 	crossOutliner := NewOutlinerModel(nil, app.configManager, app.runtime)
-	crossOutliner.sidebar.SetEnabled(false)
 	crossOutliner.SetSize(120, 20)
 	crossOutliner.loadedProjects = []*models.Project{projectA, projectB}
 	crossOutliner.rows = []outlinerRow{

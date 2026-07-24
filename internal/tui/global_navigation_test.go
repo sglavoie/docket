@@ -14,32 +14,15 @@ func typedTestApp(t *testing.T) *AppModel {
 	return app
 }
 
-func TestGlobalDestinationSwitcherContract(t *testing.T) {
-	entries := GlobalDestinationEntries("project-1")
-	if len(entries) != 6 {
-		t.Fatalf("Ctrl+G destinations = %d, want 6", len(entries))
-	}
-	wantNames := []string{"Home", "Planner", "Tasks", "Project", "Review", "Manage"}
-	wantRoutes := []RouteID{Home, Planner, TaskWorkspace, TaskWorkspace, ReviewHub, ManageHub}
-	for i, entry := range entries {
-		if entry.Name != wantNames[i] || entry.Route.ID() != wantRoutes[i] {
-			t.Errorf("destination[%d] = %s/%s, want %s/%s", i, entry.Name, entry.Route.ID(), wantNames[i], wantRoutes[i])
-		}
-	}
-	tasks := entries[2].Route.Params().(TaskWorkspaceParams)
-	project := entries[3].Route.Params().(TaskWorkspaceParams)
-	if tasks.Scope != AppEntityScope() || project.Scope != ProjectEntityScope("project-1") {
-		t.Fatalf("Tasks/Project scopes = %+v/%+v", tasks.Scope, project.Scope)
-	}
-}
-
 func TestExactGlobalBindingContract(t *testing.T) {
 	items := NewKeybindingRegistry().GetGlobalBindings()
 	got := make([]string, len(items))
 	for i := range items {
 		got[i] = items[i].Key
 	}
-	want := []string{":", "?", "esc", "ctrl+c", "ctrl+esc", "ctrl+g", "ctrl+n", "ctrl+x", "|", "#"}
+	// Ctrl+G and the destination switcher are retired: the Outliner is the sole
+	// root, so no "go to destination" global binding remains.
+	want := []string{":", "?", "esc", "ctrl+c", "ctrl+esc", "ctrl+n", "ctrl+x", "|", "#"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("global bindings = %v, want exactly %v", got, want)
 	}
@@ -57,6 +40,8 @@ func TestRemovedGlobalKeysDoNotDispatchInTypedShell(t *testing.T) {
 		{Code: ',', Mod: tea.ModCtrl},
 		{Code: 'i', Mod: tea.ModCtrl},
 		{Code: 'o', Mod: tea.ModCtrl},
+		// Ctrl+G (the retired destination switcher) is now inert.
+		{Code: 'g', Mod: tea.ModCtrl},
 	}
 	for _, key := range removed {
 		t.Run(key.String(), func(t *testing.T) {
@@ -66,35 +51,14 @@ func TestRemovedGlobalKeysDoNotDispatchInTypedShell(t *testing.T) {
 			if handled || cmd != nil {
 				t.Fatalf("removed key %q dispatched handled=%v cmd=%T", key.String(), handled, cmd)
 			}
-			if !app.CurrentRoute().Equal(before) || app.destinationSwitcher != nil {
+			if !app.CurrentRoute().Equal(before) {
 				t.Fatalf("removed key %q changed navigation", key.String())
 			}
 		})
 	}
 }
 
-func TestCtrlGSwitcherAndCanonicalHomeReset(t *testing.T) {
-	app := typedTestApp(t)
-	app.pushView(ViewOutliner)
-
-	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'g', Mod: tea.ModCtrl})
-	if !handled || cmd != nil || app.destinationSwitcher == nil {
-		t.Fatalf("Ctrl+G did not open switcher: handled=%v cmd=%T", handled, cmd)
-	}
-	if app.navigation.Overlays.Depth() != 1 {
-		t.Fatalf("overlay depth = %d, want 1", app.navigation.Overlays.Depth())
-	}
-
-	cmd = app.handleDestinationSwitcherKey(syntheticKey('1'))
-	if cmd != nil || app.CurrentRoute().ID() != Home || app.currentView() != ViewDashboard {
-		t.Fatalf("Home selection left route/view %s/%s", app.CurrentRoute().ID(), app.currentView())
-	}
-	if app.navigation.Overlays.Active() || len(app.viewStack) != 1 {
-		t.Fatal("Home reset must clear overlays and the presentation mirror")
-	}
-}
-
-func TestEscUnwindsModalReferenceDetailAndDestination(t *testing.T) {
+func TestEscUnwindsModalReferenceDetailToOutlinerRoot(t *testing.T) {
 	app := typedTestApp(t)
 	app.pushView(ViewOutliner)
 	app.lastNavigatedTaskID = app.currentProject.Tasks[0].ID
@@ -102,26 +66,35 @@ func TestEscUnwindsModalReferenceDetailAndDestination(t *testing.T) {
 	app.pushView(ViewHelp)
 	app.pushView(ViewTaskForm)
 
-	want := []PresentationID{ViewHelp, ViewTaskDetail, ViewOutliner, ViewDashboard}
+	// Esc unwinds overlays, then the Task Detail child, landing on the Outliner
+	// root. The Outliner is the sole root, so the sequence terminates there.
+	want := []PresentationID{ViewHelp, ViewTaskDetail, ViewOutliner}
 	for i, view := range want {
 		handled, _ := app.handleGlobalKeyPress(syntheticSpecialKey(tea.KeyEsc))
 		if !handled || app.currentView() != view {
 			t.Fatalf("Esc step %d = handled %v view %s, want %s", i, handled, app.currentView(), view)
 		}
 	}
+	// A clean Outliner root Esc is a no-op.
+	if handled, _ := app.handleGlobalKeyPress(syntheticSpecialKey(tea.KeyEsc)); handled || app.currentView() != ViewOutliner {
+		t.Fatalf("clean root Esc = handled %v view %s, want no-op on Outliner", handled, app.currentView())
+	}
 }
 
-func TestReviewModuleEscReturnsLandingThenHome(t *testing.T) {
+func TestSecondaryToolEscReturnsToOutlinerRoot(t *testing.T) {
 	app := typedTestApp(t)
-	app.pushView(ViewDailyReview)
-	app.handleGlobalKeyPress(syntheticSpecialKey(tea.KeyEsc))
-	params := app.CurrentRoute().Params().(ReviewParams)
-	if params.Module != ReviewLanding {
-		t.Fatalf("first Esc Review module = %v, want landing", params.Module)
+	// Launch a secondary tool as a child of the Outliner root.
+	if cmd := app.activateReviewHub(ReviewWeekly, nil); cmd != nil {
+		cmd()
 	}
+	if app.CurrentRoute().ID() != SecondaryTool {
+		t.Fatalf("weekly review route = %s, want SecondaryTool", app.CurrentRoute().ID())
+	}
+	// A single Esc dismisses the child directly back to the Outliner root with no
+	// intermediate landing retreat.
 	app.handleGlobalKeyPress(syntheticSpecialKey(tea.KeyEsc))
-	if app.CurrentRoute().ID() != Home {
-		t.Fatalf("second Esc route = %s, want Home", app.CurrentRoute().ID())
+	if app.CurrentRoute().ID() != TaskWorkspace {
+		t.Fatalf("Esc route = %s, want TaskWorkspace (Outliner root)", app.CurrentRoute().ID())
 	}
 }
 
@@ -165,12 +138,12 @@ func TestGlobalInputCapturePrecedence(t *testing.T) {
 		}
 	}
 
-	if handled, _ := app.handleGlobalKeyPress(syntheticSpecialKey(tea.KeyEsc)); !handled || app.currentView() != ViewDashboard {
-		t.Fatal("Esc must preempt and close the text-input overlay")
+	if handled, _ := app.handleGlobalKeyPress(syntheticSpecialKey(tea.KeyEsc)); !handled || app.currentView() != ViewCrossProjectOutliner {
+		t.Fatal("Esc must preempt and close the text-input overlay, revealing the Outliner root")
 	}
 	app.pushView(ViewTaskForm)
-	if handled, _ := app.handleGlobalKeyPress(ctrlEscKeyPress()); !handled || app.currentView() != ViewDashboard {
-		t.Fatal("Ctrl+Esc must preempt and reset Home")
+	if handled, _ := app.handleGlobalKeyPress(ctrlEscKeyPress()); !handled || app.currentView() != ViewCrossProjectOutliner {
+		t.Fatal("Ctrl+Esc must preempt and reset to the Outliner root")
 	}
 	app.pushView(ViewTaskForm)
 	if handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}); !handled || cmd == nil || !app.quitting {

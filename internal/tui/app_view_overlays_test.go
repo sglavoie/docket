@@ -454,10 +454,7 @@ func TestPeekEligibleViews_SatisfyTaskRefProvider(t *testing.T) {
 		getTaskRef() (*models.Task, *models.Project)
 	}
 	views := []any{
-		(*FocusBoardModel)(nil),
-		(*DailyReviewModel)(nil),
 		(*WeeklyReviewModel)(nil),
-		(*RecentActivityModel)(nil),
 		(*OutlinerModel)(nil),
 		(*InboxProcessorModel)(nil),
 		(*GlobalInboxProcessorModel)(nil),

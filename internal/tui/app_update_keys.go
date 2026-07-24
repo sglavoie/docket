@@ -61,7 +61,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, tea.Quit
 	}
 	if isCtrlEscKey(msg) {
-		return true, m.jumpToDashboard()
+		return true, m.jumpToOutlinerRoot()
 	}
 	// Esc is the canonical close/back operation. App-owned overlays and
 	// confirmations receive it before routed controls; a routed control may
@@ -151,11 +151,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	// The exact non-preemptive global map is suppressed while the active
 	// control captures text. Ctrl+C, Ctrl+Esc, and Esc were handled above.
 	switch key {
-	case "ctrl+g":
-		if !m.hasActiveTextInput() {
-			m.toggleDestinationSwitcher()
-			return true, nil
-		}
 	case "ctrl+n":
 		if !m.typedNavigation {
 			break
@@ -165,7 +160,12 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 	case "ctrl+x":
 		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowProjectPickerMsg{} }
+			// The Outliner is the sole primary root, so Ctrl+X always opens the
+			// unified scope/administration picker (All Projects, Active, Archived,
+			// Trash) in place without leaving the view.
+			return true, func() tea.Msg {
+				return ShowScopePickerMsg{}
+			}
 		}
 	case ":":
 		if !m.hasActiveTextInput() {
@@ -176,10 +176,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			view := m.currentView()
 			items := GetKeybindingRegistry().GetForView(view)
 			viewName := view.String()
-			if planner, ok := m.activeView().(*FocusBoardModel); ok {
-				items = planner.GetHelpItems()
-				viewName = "Planner"
-			} else if review, ok := m.activeView().(*ReviewHubModel); ok {
+			if review, ok := m.activeView().(*ReviewHubModel); ok {
 				items = review.GetHelpItems()
 				viewName = review.StatusBarLabel()
 			} else if manage, ok := m.activeView().(*ManageHubModel); ok {
@@ -205,22 +202,27 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
-		if m.activeOutlinerRoute() || m.currentView() == ViewFocusBoard {
+		// The Outliner is the sole primary root, so q must reach the durable
+		// Next-membership toggle here (the view has no local q binding). Only the
+		// retired Planner keeps its own Today-grammar handling.
+		if m.currentView() == ViewFocusBoard {
 			break
 		}
 		if cmd := m.toggleQueue(); cmd != nil {
-			return true, m.batchWithFocusRefresh(cmd)
+			return true, cmd
 		}
 		return true, nil
 	case "w":
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 			break
 		}
-		if m.activeOutlinerRoute() || m.currentView() == ViewFocusBoard {
+		// As with q, w drives the durable Today-membership toggle from the
+		// Outliner root; the retired Planner is the only exception.
+		if m.currentView() == ViewFocusBoard {
 			break
 		}
 		if cmd := m.toggleDailyPlan(); cmd != nil {
-			return true, m.batchWithFocusRefresh(cmd)
+			return true, cmd
 		}
 	case "u":
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
@@ -302,6 +304,15 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 		task, project := m.getCurrentCursorTaskAndProject()
 		if task == nil {
+			// Shift+Enter on a focused Outliner project header opens that
+			// project's contextual administration menu (preview + lifecycle
+			// commands) instead of peeking a task.
+			if key == "shift+enter" {
+				if p := m.crossOutlinerHeaderProject(); p != nil {
+					m.projectAdminMenu = newProjectAdminMenu(p)
+					return true, nil
+				}
+			}
 			return false, nil
 		}
 		if key == "shift+enter" {
@@ -415,9 +426,6 @@ func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if m.destinationSwitcher != nil {
-		return true, m.handleDestinationSwitcherKey(msg)
-	}
 	if m.showQuickSwitch {
 		_, cmd := m.handleQuickSwitchKey(msg)
 		return true, cmd
@@ -437,6 +445,20 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		dismiss, cmd := dispatchOverlayKey(m.globalProjectPicker, msg)
 		if dismiss {
 			m.globalProjectPicker = nil
+		}
+		return true, cmd
+	}
+	if m.scopePicker != nil {
+		dismiss, cmd := dispatchOverlayKey(m.scopePicker, msg)
+		if dismiss {
+			m.scopePicker = nil
+		}
+		return true, cmd
+	}
+	if m.projectAdminMenu != nil {
+		dismiss, cmd := dispatchOverlayKey(m.projectAdminMenu, msg)
+		if dismiss {
+			m.projectAdminMenu = nil
 		}
 		return true, cmd
 	}

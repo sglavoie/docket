@@ -42,11 +42,11 @@ itself, not a separate flag layered on top. The persisted order index is
 ordering-only: it records the sequence of Next tasks and never decides
 membership.
 
-Manage Next from Planner. Press q on a task to
+Manage Next from the Outliner. Press q on a task to
 toggle StateNext membership, and J/K to reorder the selected Next task
 without changing its state. Today and
 Next are mutually exclusive: a task lives in at most one horizon. The
-Planner is the single home for Next; there is no separate focus screen.
+Outliner is the single home for Next; there is no separate focus screen.
 
 # Actionable Tasks
 

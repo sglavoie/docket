@@ -72,44 +72,11 @@ func (m *AppModel) handleExportProjectMsg(msg ExportProjectMsg) tea.Cmd {
 	)
 }
 
-// resolveExportProject returns the project to export based on msg and the active view.
+// resolveExportProject returns the explicit direct-key target when present, then
+// delegates palette/shell resolution to the canonical project-command boundary.
 func (m *AppModel) resolveExportProject(msg ExportProjectMsg) *models.Project {
 	if msg.Project != nil {
 		return msg.Project
 	}
-	switch m.currentView() { //nolint:exhaustive // only a few views support project export
-	case ViewDashboard:
-		return m.dashboard.SelectedProject()
-	case ViewOutliner:
-		if m.outliner != nil {
-			return m.outliner.getProject()
-		}
-	case ViewCrossProjectOutliner:
-		return m.crossOutlinerCursorProject()
-	}
-	return nil
-}
-
-// crossOutlinerCursorProject returns the project for the cursor row in the
-// cross-project outliner, or nil for separators, section headers, and project
-// sub-headers.
-func (m *AppModel) crossOutlinerCursorProject() *models.Project {
-	if m.crossOutliner == nil {
-		return nil
-	}
-	rows := m.crossOutliner.rows
-	cursor := m.crossOutliner.cursor
-	if cursor < 0 || cursor >= len(rows) {
-		return nil
-	}
-	row := rows[cursor]
-	if !row.isTaskRow() || row.task == nil {
-		return nil
-	}
-	for _, p := range m.crossOutliner.loadedProjects {
-		if p.ID == row.ProjectID {
-			return p
-		}
-	}
-	return nil
+	return m.paletteCursorProject()
 }

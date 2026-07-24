@@ -7,7 +7,10 @@ import (
 )
 
 // TUIScenarioBaseline records the committed consolidated scenario inventory.
-const TUIScenarioBaseline = 41
+// The retired destination-switcher scenario was removed with the Ctrl+G
+// destination switcher (41→40); session 8 removed the retired Planner
+// focus-empty scenario when the Planner surface was deleted (40→39).
+const TUIScenarioBaseline = 39
 
 // OperationID is the stable semantic identity of a registered command.
 type OperationID string
@@ -19,7 +22,7 @@ type CommandReachability string
 const (
 	CommandReachGlobalBinding CommandReachability = "global-binding"
 	CommandReachViewMenu      CommandReachability = "view-menu"
-	CommandReachHub           CommandReachability = "hub-or-route-mode"
+	CommandReachRouteMode     CommandReachability = "route-mode"
 	CommandReachContextAction CommandReachability = "contextual-action"
 	CommandReachPaletteAlias  CommandReachability = "searchable-alias"
 )
@@ -49,15 +52,13 @@ func buildCommandClassificationTable() map[OperationID]commandFinalClassificatio
 	add(CommandReachGlobalBinding, "Ctrl+N/TaskComposer", "quick capture")
 	add(CommandReachGlobalBinding, "Ctrl+X/ProjectPicker", "switch project")
 	add(CommandReachGlobalBinding, "|/RecentTasks", "recent tasks")
-	add(CommandReachHub, "Home",
-		"dashboard")
-	add(CommandReachHub, "Planner",
-		"today", "planner next", "planner backlog")
-	add(CommandReachHub, "TaskWorkspace",
+	add(CommandReachRouteMode, "TaskWorkspace/Today",
+		"outliner root")
+	add(CommandReachRouteMode, "TaskWorkspace",
 		"all tasks", "outliner")
-	add(CommandReachHub, "ReviewHub",
+	add(CommandReachRouteMode, "Review tools",
 		"daily review", "weekly review", "latest activity", "project recent activity", "metrics dashboard", "roadmap")
-	add(CommandReachHub, "ManageHub",
+	add(CommandReachRouteMode, "Manage tools",
 		"inbox processor", "global inbox processor", "global notes", "global blockers", "global tag manager",
 		"tag manager", "workflow rules", "scoring profiles", "task templates", "settings", "notifications", "message log")
 	add(CommandReachViewMenu, "View menu",
@@ -66,12 +67,11 @@ func buildCommandClassificationTable() map[OperationID]commandFinalClassificatio
 		"outliner sort by created", "outliner sort by due date", "outliner sort by priority", "outliner sort by score",
 		"outliner sort by status", "section manager", "show notes", "view completed")
 	add(CommandReachPaletteAlias, "Reference/Ask", "ask ai")
-	add(CommandReachPaletteAlias, "ManageHub/Blockers", "blockers view")
+	add(CommandReachPaletteAlias, "Blockers", "blockers view")
 	add(CommandReachPaletteAlias, "Palette/Search", "global search")
-	add(CommandReachPaletteAlias, "TaskWorkspace/Outline/Project", "open project outliner")
 	add(CommandReachPaletteAlias, "TaskWorkspace/Smart/HighPriority", "priority view")
 	add(CommandReachPaletteAlias, "TaskWorkspace/Smart/ProjectFocus", "project focus queue")
-	add(CommandReachPaletteAlias, "ReviewHub/Metrics/Project", "project metrics")
+	add(CommandReachPaletteAlias, "Metrics/Project", "project metrics")
 	add(CommandReachPaletteAlias, "Reference", "reference")
 	return table
 }

@@ -4,9 +4,10 @@
   "size": "60x20",
   "actions": [
     { "type": "resize", "width": 60, "height": 20 },
-    { "type": "key", "label": "open project outliner (enter)", "key": "enter" },
-    { "type": "assert", "assert": "view", "value": "Outliner" },
-    { "type": "command", "label": "disable sidebar (full-width header)", "command": "disable sidebar for all projects" },
+    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "key", "label": "drill into highlighted project", "key": "ctrl+p" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

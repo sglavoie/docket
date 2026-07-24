@@ -198,7 +198,6 @@ func TestOutlinerDenseRowShowsParkedSnippet(t *testing.T) {
 
 	cfg := newTestConfig()
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.sidebar.SetEnabled(false)
 	m.SetSize(120, 18)
 	m.project = project
 	m.rebuildRows()
@@ -206,40 +205,6 @@ func TestOutlinerDenseRowShowsParkedSnippet(t *testing.T) {
 	line := ansi.Strip(findOutlinerRowLine(t, m, task.ID))
 	if !strings.Contains(line, "⏸ resume pairing") {
 		t.Fatalf("dense row should show parked snippet inline, got %q", line)
-	}
-}
-
-// TestOutlinerDenseRowSuppressesParkedSnippetWhenSidebarEnabled verifies the
-// sidebar-aware placement from issue #3: when the outliner sidebar is visible,
-// the parked marker is dropped from the dense row (it renders in the sidebar
-// Task card instead).
-func TestOutlinerDenseRowSuppressesParkedSnippetWhenSidebarEnabled(t *testing.T) {
-	task := renderFixtureTask(t, "parked-dense-sidebar", 25, models.TaskTypeTask,
-		"Parked sidebar dense row task", models.StatusTodo, 3, models.SectionNext)
-	task.ParkedNote = "resume pairing"
-
-	project := renderFixtureProject(t, "proj-parked-dense-sidebar", "prs", "Parked Sidebar Project", []*models.Task{task})
-
-	cfg := newTestConfig()
-	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.SetSize(120, 18)
-	m.project = project
-	m.rebuildRows()
-
-	if !m.sidebar.IsEnabled() {
-		t.Fatal("sidebar should be enabled by default for this test")
-	}
-
-	line := ansi.Strip(findOutlinerRowLine(t, m, task.ID))
-	if strings.Contains(line, "⏸") || strings.Contains(line, "resume pairing") {
-		t.Fatalf("dense row must not show parked snippet when sidebar is enabled, got %q", line)
-	}
-
-	// The parked line moves to the sidebar Task card, which shares
-	// renderTaskHeaderContent.
-	card := ansi.Strip(renderTaskHeaderContent(task, false, true))
-	if !strings.Contains(card, "⏸ Parked") || !strings.Contains(card, "resume pairing") {
-		t.Fatalf("sidebar Task card should show parked line, got %q", card)
 	}
 }
 
@@ -253,7 +218,6 @@ func TestOutlinerDenseRowShowsParkedFallbackForBlankNote(t *testing.T) {
 
 	cfg := newTestConfig()
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.sidebar.SetEnabled(false)
 	m.SetSize(120, 18)
 	m.project = project
 	m.rebuildRows()
@@ -271,7 +235,6 @@ func TestOutlinerDenseRowParkedSnippetStaysWithinWidth(t *testing.T) {
 
 	cfg := newTestConfig()
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.sidebar.SetEnabled(false)
 	const width = 48
 	m.SetSize(width, 18)
 
@@ -288,7 +251,6 @@ func TestOutlinerDenseRowParkedSnippetExpandsWithRowWidth(t *testing.T) {
 
 	cfg := newTestConfig()
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.sidebar.SetEnabled(false)
 
 	narrow := ansi.Strip(m.renderOutlinerTaskRow(outlinerRow{task: task}, false, 54, 54, 0, nil))
 	wide := ansi.Strip(m.renderOutlinerTaskRow(outlinerRow{task: task}, false, 120, 120, 0, nil))

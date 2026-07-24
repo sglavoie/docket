@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 
@@ -103,6 +104,22 @@ func (m *OutlinerModel) rebuildRows() {
 
 	m.validateZoomStack()
 
+	// Computed work horizons (Today, Backlog) are flat, fixed-order lists built
+	// from the daily plan / cross-project ranker rather than the perspective
+	// tree. An explicit navigation target (openAt) falls through to the tree
+	// path so the target can be revealed.
+	if (m.workTodayMode || m.workBacklogMode) && openAt == nil {
+		m.buildWorkModeRows()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return
+	}
+
+	if m.reviewModeActive() && openAt == nil {
+		m.buildReviewModeRows()
+		return
+	}
+
 	roots := m.project.GetRootTasks()
 	if len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
@@ -164,7 +181,7 @@ func (m *OutlinerModel) rebuildRows() {
 	m.clampCursor()
 
 	if openAt != nil {
-		m.revealSidebarTask(openAt)
+		m.revealTask(openAt)
 	}
 }
 
@@ -195,7 +212,7 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 }
 
 // effectiveDisplaySection returns the task's display section for non-header
-// contexts such as sidebar matching and task-form dimming.
+// contexts such as navigation matching and task-form dimming.
 func effectiveDisplaySection(t *models.Task) string {
 	return taskSectionBucket(t)
 }
@@ -260,17 +277,41 @@ func (m *OutlinerModel) sortTaskTree(tasks []*models.Task) []*models.Task {
 	return sorted
 }
 
-// toggleSort sets the sort field, toggling ascending/descending if already set.
+// toggleSort updates both the active and durable tree sorts. Fixed-order modes
+// own their ordering and reject manual sort changes without touching either.
 func (m *OutlinerModel) toggleSort(field SortField) {
+	if !m.activeOutlinerModeEntry().SupportsManualSort() {
+		m.manualSortUnavailableStatus()
+		return
+	}
+	m.clearActiveSavedFilter()
 	m.sort.Toggle(field)
+	m.treeSort = m.sort
 	m.rebuildRows()
 }
 
+func (m *OutlinerModel) resetSort() {
+	if !m.activeOutlinerModeEntry().SupportsManualSort() {
+		m.manualSortUnavailableStatus()
+		return
+	}
+	m.clearActiveSavedFilter()
+	m.sort.Reset()
+	m.treeSort = m.sort
+	m.rebuildRows()
+}
+
+func (m *OutlinerModel) manualSortUnavailableStatus() {
+	mode := m.activeOutlinerModeEntry()
+	m.setStatus(fmt.Sprintf("Ordering is automatic in %s mode — manual sorting is available only in tree modes", mode.Label))
+}
+
 // clampCursor ensures the cursor stays within [0, len(rows)-1] and never
-// rests on a non-navigable row (project sub-header or separator). The cursor
-// is allowed to settle on section headers (which act as collapse toggles) and
-// task rows. Project sub-headers are visual-only and must never be selected
-// after a rebuild, filter, collapse, paging, or perspective change.
+// rests on a non-navigable row (a separator). The cursor is allowed to settle
+// on section headers (which act as collapse toggles), project sub-headers
+// (Enter scopes, Shift+Enter administers), and task rows. Separators are
+// visual-only and must never be selected after a rebuild, filter, collapse,
+// paging, or perspective change.
 func (m *OutlinerModel) clampCursor() {
 	m.ClampCursorTo(len(m.rows))
 	if len(m.rows) == 0 {
@@ -423,10 +464,15 @@ func (m *OutlinerModel) searchSectionCache() []string {
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
 	headerLines := 1
+	headerLines += m.workModeChromeHeaderLines()
 	if m.pinnedTagTabs() != nil {
 		headerLines += 2
 	}
-	if (m.project != nil && len(m.zoomStack) > 0) || (m.project == nil && len(m.crossZoomStack) > 0) {
+	// The cross-project breadcrumb renders on one line whenever the view is
+	// zoomed OR a project scope is active (the scope chrome), so budget a single
+	// line for either/both — crossProjectBreadcrumb combines them onto one line.
+	if (m.project != nil && len(m.zoomStack) > 0) ||
+		(m.project == nil && (len(m.crossZoomStack) > 0 || m.isProjectScoped())) {
 		headerLines++
 	}
 	height := m.height - headerLines

@@ -10,7 +10,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "shrink again", "width": 80, "height": 24 },
     { "type": "resize", "label": "settle at a comfortable size", "width": 120, "height": 40 },
-    { "type": "assert", "assert": "view", "value": "Dashboard" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

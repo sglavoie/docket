@@ -3,9 +3,10 @@
   "fixture": "narrow",
   "size": "60x20",
   "actions": [
-    { "type": "key", "label": "open project outliner", "key": "enter" },
-    { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "command", "label": "open global All focus", "command": "all tasks" },
+    { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "command", "label": "open task detail", "command": "view task details" },
     { "type": "assert", "assert": "view", "value": "TaskDetail" },
     { "type": "assert", "assert": "no_layout_issues" },

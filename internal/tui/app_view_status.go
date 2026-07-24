@@ -216,8 +216,12 @@ func (m *AppModel) buildBreadcrumb() string {
 		crumb = truncateToVisualWidth(crumb, maxLen)
 	}
 
-	// Esc-preview: show what pressing Esc will return to.
-	if len(m.viewStack) >= 2 && m.currentView() != ViewDashboard {
+	// Esc-preview: show what pressing Esc will return to. The Outliner is the
+	// sole root, so suppress the hint there — a clean root Esc is a no-op with
+	// nothing to return to, even though the presentation mirror carries a
+	// Dashboard sentinel beneath the root.
+	atTypedRoot := m.typedNavigation && m.navigation.Primary.Depth() <= 1 && !m.navigation.Overlays.Active()
+	if len(m.viewStack) >= 2 && m.currentView() != ViewDashboard && !atTypedRoot {
 		prevVT := m.viewStack[len(m.viewStack)-2]
 		prevLabel := m.breadcrumbLabel(prevVT, maxProjectLen)
 		if prevLabel != "" {
@@ -233,9 +237,12 @@ func (m *AppModel) buildBreadcrumb() string {
 
 // breadcrumbLabel returns a short human-readable label for a single view type.
 func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string {
-	// ViewDashboard is Home's renderer identity.
+	// ViewDashboard is the retired root sentinel carried at index 0 of the
+	// presentation mirror beneath the Outliner root. Home was removed with the
+	// Outliner-only cutover, so the sentinel contributes no visible breadcrumb
+	// segment — the normal root status bar shows the Outliner label alone.
 	if vt == ViewDashboard {
-		return "Home"
+		return ""
 	}
 
 	var label string

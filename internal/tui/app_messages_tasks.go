@@ -531,17 +531,6 @@ type LinkedTaskSelectedMsg struct {
 	TaskRef string // Optional: qualified ref for cross-project links (projectID:taskID)
 }
 
-// LinkRemovedMsg signals a task link was removed from the sidebar.
-type LinkRemovedMsg struct {
-	SourceTask *models.Task
-	Section    int // 0=blocked by, 1=blocking, 2=related
-	// TouchedProjectIDs lists the projects the removal committed through the
-	// application layer, so the shell reloads exactly those in-memory copies
-	// before adjusting sidebar cursors (a cross-project related unlink touches
-	// two projects).
-	TouchedProjectIDs []string
-}
-
 // =============================================================================
 // Cross-Project Linking Messages (Show/Close Pattern)
 // =============================================================================

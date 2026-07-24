@@ -35,13 +35,6 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 			paletteProject = review.ProjectScope()
 		}
 		palette := NewCommandPaletteModel(m.runtime, m.commandRegistry, currentView, paletteProject)
-		if currentView == ViewFocusBoard {
-			if planner, ok := m.activeView().(*FocusBoardModel); ok {
-				palette.SetCommandContext(planner.CommandContext())
-			}
-			palette.suggestedCommandOrder = m.focusBoardSuggestedCommandOrder()
-			palette.filterItems()
-		}
 		if review, ok := m.activeView().(*ReviewHubModel); ok {
 			palette.SetCommandContext(review.CommandContext())
 		}

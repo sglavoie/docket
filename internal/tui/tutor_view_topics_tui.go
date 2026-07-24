@@ -40,8 +40,8 @@ unless a bulk picker or bulk action is explicitly opened.
 
 # Where It Works
 
-Task multi-select field actions are available in project and
-cross-project Outliners, Planner, and daily/weekly review.
+Task multi-select field actions are available in the Outliner
+and in daily/weekly review.
 
 Press Esc to exit multi-select mode and clear selections.`,
 		},
@@ -65,7 +65,7 @@ When you are inside an inbox processor, the palette exposes the
 full triage vocabulary by name so you can search instead of
 memorizing chords:
 
-  triage inbox               (dashboard O: per-project inbox)
+  triage inbox               (Outliner W: per-project inbox)
   skip task                  (n)
   mark task done             (D)
   edit inbox task            (e)
@@ -87,28 +87,28 @@ The palette's "Suggested" section is context-aware inside the
 inbox processors: it leads with the triage-momentum vocabulary
 ("plan today", "send to next", "set due date today", "snooze
 inbox task") so a brand-new user lands on the close-message
-next actions in Planner Today and Next without memorizing keys
+next actions in Today and Next without memorizing keys
 first.`,
 		},
 		{
-			Title:    "Dashboard at a glance",
+			Title:    "Cross-project signals at a glance",
 			Category: "TUI",
-			Content: `# Where Dashboard Fits
+			Content: `# Where Cross-Project Signals Fit
 
-Home is the project command center. Use Ctrl+G to reach it
-when you need cross-project counts, project switching, or to
+The global Outliner is the project command center. It surfaces
+cross-project counts and lets you narrow scope with Ctrl+X or
 triage a specific project's inbox.
 
 # Next Action Strip
 
-Home Attention holds actionable cross-project signals while
-Planner Today owns daily planning. Home stays focused on
-project selection, administration, archive recovery, and
-selected-project metadata.
+The Outliner's Today work mode owns daily planning while its
+attention signals hold actionable cross-project alerts. Project
+selection, administration, archive recovery, and selected-project
+metadata all stay reachable from the Outliner and its tools.
 
 # Triage Prominence
 
-The dashboard surfaces "what needs triage" through three
+The Outliner surfaces "what needs triage" through three
 layered signals so you can answer "what should I look at?"
 without scanning competing badges:
 
@@ -128,19 +128,15 @@ prominent slot.
 
 # Triage Entry Points
 
-Three keys cover the entire capture-to-triage loop from the
-dashboard:
+These keys cover the capture-to-triage loop from the Outliner:
 
   i        Quick Capture (per-project capture view)
-  O        Open inbox triage for the selected project
+  W        Open inbox triage for the highlighted project
   ctrl+i   Global Inbox Processor (cross-project triage)
 
-Use i to add a task to a project's inbox, then O to triage
+Use i to add a task to a project's inbox, then W to triage
 that project's inbox immediately, or ctrl+i to triage every
-project's inbox in one flow.
-
-Note: T on the dashboard still opens View Trash; the triage
-shortcut for a specific project is O.`,
+project's inbox in one flow.`,
 		},
 		{
 			Title:    "Dimming",
@@ -228,7 +224,7 @@ most relevant actions show first. The canonical order is:
   Task & Blockers
   View Controls
   Navigate
-  Jump to View    Global routes and overlays (:, ctrl+g, ctrl+x, …)
+  Jump to View    Global routes and overlays (:, ctrl+x, ctrl+esc, …)
   Other
 
 In triage-style views (inbox processors) the leading "Triage"
@@ -290,9 +286,9 @@ deeper escape hatches: "t* task ops · ? help · : palette".
 
 # How to Open
 
-  Per-project    Press O on the Dashboard with a project
-                 selected, or pick "triage inbox" from the
-                 palette.
+  Per-project    Press W in the Outliner with a project
+                 highlighted, or pick "inbox processor"
+                 from the palette.
   Cross-project  Press ctrl+i from anywhere, or pick
                  "global inbox processor" from the palette.
 
@@ -318,20 +314,21 @@ matches the same verbs as the in-app chrome:
   manage inbox dependencies  (bm)
   delete inbox task          (x/X)
 
-The dashboard-only "triage inbox" command (Shortcut O) opens
-the per-project processor for the currently selected project.
+The Outliner "inbox processor" command (Shortcut W) opens
+the per-project processor for the highlighted project.
 
 # Closing the Loop
 
 When the inbox empties the close message hands you the next
 moves verbatim:
 
-  Inbox clear! X triaged, Y skipped. Next: Planner Today or Next
-  Inbox paused: Y skipped. Next: Planner Next
+  Inbox clear! X triaged, Y skipped. Next: plan Today or Next
+  Inbox paused: Y skipped. Next: shortlist Next
 
 The Global Inbox Processor uses the matching "Global inbox
-clear!" / "Global inbox paused:" prefixes. Planner Today and
-Next keep the vocabulary consistent between triage and review.
+clear!" / "Global inbox paused:" prefixes. Plan Today and
+shortlist Next keep the vocabulary consistent between triage
+and review.
 
 # Both Processors Share One Model
 
@@ -366,8 +363,8 @@ screen. Help is context-sensitive and shows only relevant actions.`,
 			Content: `# What Is the Outliner
 
 The outliner is a column-based flat view that shows tasks organized
-by sections. It is the sole per-project surface and focuses on one
-level at a time with zoom navigation.
+by sections. It is the sole task surface and focuses on one level at
+a time with zoom navigation.
 
 # Zooming
 
@@ -375,49 +372,52 @@ Press Enter on a parent task to zoom into its children. Press
 Esc to zoom back out. The zoom stack remembers your position
 at each level.
 
-# Drilling In From the Cross-Project Outliner
+# Scoping to a Project
 
-The single-project outliner has no view toggle — it is the only
-per-project view. From the cross-project outliner, press Ctrl+p to
-open the highlighted project's own outliner.
+There is no separate per-project outliner. To narrow the same
+Outliner to one project, press Ctrl+X for the scope picker, or press
+Enter on a project header. Scoping keeps the active mode, and Esc
+restores the previous scope.
 
 # Perspectives
 
-Press 1-9 to switch between perspective presets that filter and
-group tasks differently.`,
+Press h and l to rotate workflow perspectives, and P to open the
+categorized, searchable mode picker.`,
 		},
 		{
 			Title:    "Pipeline Views",
 			Category: "TUI",
-			Content: `# Canonical Destinations
+			Content: `# The Outliner Is the Sole Root
 
-Press Ctrl+G from any non-text control to choose one of six
-destinations: Home, Planner, Tasks, Project, Review, or Manage.
-Tasks and Project share Task Workspace and differ only by scope.
+The Outliner is the sole root view. It always opens in Today on
+every run. There is no Home, Planner, or project destination —
+modes and project scopes live inside the Outliner.
 
-# Home
+# Work Modes
 
-Home combines Projects and Attention. Attention keeps actionable
-recommendations, alerts, parked work, and workflow issues without
-introducing another navigation hub.
+Tab cycles the work modes Today, Next, Backlog, Active, and All;
+Shift+Tab reverses. h and l rotate workflow perspectives, and P
+opens a categorized, searchable mode picker. Daily Review and
+Activity are Outliner modes rather than separate views.
 
-# Destination Modules
+# Scope and Folds
 
-Planner contains Today, Next, and Backlog. Review contains Daily,
-Weekly, Activity, Metrics, and Roadmap. Manage contains Inbox,
-Notes, Blockers, Rules, Templates, Tags, Notifications, and
-Settings. Use the View menu inside a destination to change modes
-or organization without creating route-history entries. In Planner
-Today, the View menu toggles the selected subtree or shows tree
-depth 1, 2, 3, or all; these folds last only for the TUI session.
-In Task Workspace, All Tasks uses the hierarchy tree, while explicit
-due-date navigation owns the flat due-date lens. Generic Outliner
-navigation keeps the lens already in use.
+Ctrl+X opens the project scope picker so the Outliner runs
+globally or narrows to one project. The View menu toggles the
+selected subtree or shows tree depth 1, 2, 3, or all; these folds
+last only for the TUI session. All Tasks uses the hierarchy tree,
+while explicit due-date navigation owns the flat due-date lens.
+
+# Secondary Tools
+
+Weekly Review, Metrics, Roadmap, Inbox, Notes, Blockers,
+Templates, Tags, Notifications, and Settings open as direct
+children of the Outliner.
 
 # Getting Back
 
-Esc closes the top overlay, Detail, or active hub module before
-returning to Home. Ctrl+Esc clears every overlay and resets Home.`,
+Esc closes the top overlay, Detail, or child before returning to
+the Outliner. Ctrl+Esc resets to a clean global Today Outliner.`,
 		},
 		{
 			Title:    "Priority",
@@ -596,10 +596,10 @@ dimensions use default values. The number is a normalized 0-300 score
 where 150 means all dimensions are at their defaults. The badge appears
 in Outliner task rows, including the High Priority smart focus.
 
-# Score in Sidebar
+# Score in Task Detail
 
-The sidebar shows a score breakdown with each dimension value and
-the computed total when a scored task is selected.
+Task Detail shows a score breakdown with each dimension value and
+the computed total for a scored task.
 
 # Score Threshold Filter
 

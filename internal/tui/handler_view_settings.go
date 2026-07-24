@@ -24,9 +24,6 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		}
 		ApplyTheme(NewThemeConfig(settings))
 		icons.SetUseEmoji(settings.GetUseEmoji())
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		if settings.GetAutoTheme() {
 			return true, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
 				return systemAppearanceCheckMsg{}

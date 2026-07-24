@@ -5,13 +5,15 @@ import (
 	"testing"
 )
 
-// newUITestApp builds a minimal, fully-renderable AppModel (dashboard
-// registered) for driver tests, without the real-data side effects of
+// newUITestApp builds a minimal, fully-renderable AppModel (cross-project
+// Outliner registered) for driver tests, without the real-data side effects of
 // NewAppModel.
 func newUITestApp() *AppModel {
 	app := newTestAppModel()
-	app.dashboard = NewDashboardModel(app.runtime)
-	app.views.Register(ViewDashboard, app.dashboard)
+	o := NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = o
+	app.views.Register(ViewCrossProjectOutliner, o)
+	app.viewStack = []PresentationID{ViewCrossProjectOutliner}
 	return app
 }
 

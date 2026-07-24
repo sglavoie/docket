@@ -1,5 +1,5 @@
 {
-  "tui_state_version": 2,
+  "tui_state_version": 3,
   "focus_queue": [{"project_id": "project-1", "task_id": "task-1"}],
   "saved_filters": [{
     "id": "filter-1",

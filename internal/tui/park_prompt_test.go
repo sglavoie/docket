@@ -48,8 +48,8 @@ func TestMaybePromptParkEscSkipsAndDoesNotReprompt(t *testing.T) {
 	if continued != 1 {
 		t.Fatalf("continuation calls = %d, want 1", continued)
 	}
-	if app.currentView() != ViewOutliner {
-		t.Fatalf("currentView after skip = %v, want ViewOutliner", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("currentView after skip = %v, want ViewCrossProjectOutliner", app.currentView())
 	}
 	if !wasParkPrompted(taskIdentityFor(source, project)) {
 		t.Fatal("Esc skip should mark the task prompted")
@@ -206,10 +206,16 @@ func TestNavigateToTaskPromptsThenEscLandsOnTarget(t *testing.T) {
 		t.Fatal("ParkNoteDoneMsg should be handled")
 	}
 
-	if app.currentView() != ViewOutliner {
-		t.Fatalf("currentView after skip = %v, want ViewOutliner", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("currentView after skip = %v, want ViewCrossProjectOutliner", app.currentView())
 	}
-	selected := app.outliner.getCursorTask()
+	if app.outliner != nil {
+		t.Fatal("deep-link navigation must not construct a separate AppModel.outliner root")
+	}
+	if got := app.crossOutliner.scopedProjectID; got != project.ID {
+		t.Fatalf("scopedProjectID after skip = %q, want %q", got, project.ID)
+	}
+	selected := app.crossOutliner.getCursorTask()
 	if selected == nil || selected.ID != target.ID {
 		t.Fatalf("selected task = %v, want target %q", selected, target.ID)
 	}
@@ -239,12 +245,14 @@ func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 
 	setTestCurrentProject(app, project.ID)
 	app.currentProject = project
-	app.lastProjectView = ViewOutliner
-	app.projectLastView[project.ID] = ViewOutliner
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
-	app.outliner.SetSize(app.width, app.height-2)
-	app.views.Register(ViewOutliner, app.outliner)
-	app.viewStack = []PresentationID{ViewDashboard, ViewOutliner}
+	// The single authoritative Outliner is the cross-project instance; project
+	// selection is a scope frame on it, so wire it as the sole root here.
+	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross.loadedProjects = []*models.Project{project}
+	cross.SetSize(app.width, app.height-2)
+	app.crossOutliner = cross
+	app.views.Register(ViewCrossProjectOutliner, cross)
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 
 	return app, project, source, target
 }

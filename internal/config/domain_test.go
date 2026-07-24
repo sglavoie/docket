@@ -437,54 +437,17 @@ func TestMachineStateValidate(t *testing.T) {
 	}
 }
 
-func TestMachineGetHomeProjectsHeightPct(t *testing.T) {
-	pct := func(v int) *int { return &v }
-	tests := []struct {
-		name  string
-		state *MachineState
-		want  int
-	}{
-		{"nil state", nil, DefaultHomeProjectsHeightPct},
-		{"unset", &MachineState{}, DefaultHomeProjectsHeightPct},
-		{"in range", &MachineState{HomeProjectsHeightPct: pct(70)}, 70},
-		{"below min clamps", &MachineState{HomeProjectsHeightPct: pct(3)}, MinHomeProjectsHeightPct},
-		{"above max clamps", &MachineState{HomeProjectsHeightPct: pct(150)}, MaxHomeProjectsHeightPct},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.state.GetHomeProjectsHeightPct(); got != tt.want {
-				t.Fatalf("GetHomeProjectsHeightPct() = %d, want %d", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMachineStateHomeProjectsHeightPctJSONRoundTrip(t *testing.T) {
-	pct := 75
-	original := &MachineState{HomeProjectsHeightPct: &pct}
-	data, err := json.Marshal(original)
+func TestMachineStateOmitsRetiredStartupAndLayoutFields(t *testing.T) {
+	// The Outliner is the sole root: startup destination, Home layout sizing, and
+	// sidebar state are no longer persisted and must never appear on save.
+	data, err := json.Marshal(NewMachineState())
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if !strings.Contains(string(data), `"home_projects_height_pct":75`) {
-		t.Fatalf("expected home_projects_height_pct in JSON, got %s", data)
-	}
-
-	var reloaded MachineState
-	if unmarshalErr := json.Unmarshal(data, &reloaded); unmarshalErr != nil {
-		t.Fatalf("unmarshal: %v", unmarshalErr)
-	}
-	if reloaded.GetHomeProjectsHeightPct() != 75 {
-		t.Fatalf("reloaded height = %d, want 75", reloaded.GetHomeProjectsHeightPct())
-	}
-
-	// Unset stays omitted so machines without the preference serialize cleanly.
-	empty, err := json.Marshal(&MachineState{})
-	if err != nil {
-		t.Fatalf("marshal empty: %v", err)
-	}
-	if strings.Contains(string(empty), "home_projects_height_pct") {
-		t.Fatalf("unset height should be omitted, got %s", empty)
+	for _, field := range []string{"start_view", "start_route", "home_projects_height_pct", "sidebar_enabled"} {
+		if strings.Contains(string(data), field) {
+			t.Fatalf("machine state should omit retired field %q, got %s", field, data)
+		}
 	}
 }
 

@@ -13,8 +13,6 @@ type CommonPrimaryViewDeps struct {
 	ProjectBlockers Action
 	// PriorityView opens the priority focus or lens.
 	PriorityView Action
-	// AddToPlan adds the task to today's plan.
-	AddToPlan Action
 	// InboxProcessor opens the inbox processor.
 	InboxProcessor Action
 	// QuickCapture opens the quick capture dialog.
@@ -27,8 +25,6 @@ type CommonPrimaryViewDeps struct {
 	OpenNotesView Action
 	// CreateNote creates a new note.
 	CreateNote Action
-	// ReloadFromDisk reloads project data from disk.
-	ReloadFromDisk Action
 	// Redo re-applies the last undone change.
 	Redo Action
 	// EditLastModified opens the last-modified task for editing. Nil if not supported.
@@ -57,14 +53,12 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 	entries = append(entries,
 		Bind("B", "Project blockers", cat, deps.ProjectBlockers),
 		Bind("p", "Priority focus", cat, deps.PriorityView),
-		Bind("w", "Open today's plan fallback", cat, deps.AddToPlan, AsHidden()),
 		Bind("W", "Inbox processor", cat, deps.InboxProcessor),
 		Bind("i", "Quick capture", "Task Operations", deps.QuickCapture),
 		Bind("I", "Bulk capture", "Task Operations", deps.BulkCapture),
 		Bind(`\`, "Jump to task", "Navigation", deps.JumpToTask),
 		Bind("{", "Open project Notes", "Notes", deps.OpenNotesView, AsHidden()),
 		Bind("}", "Create new note", "Notes", deps.CreateNote),
-		Bind("R", "Reload from disk", "Other", deps.ReloadFromDisk),
 		Bind("ctrl+r", "Redo", "Other", deps.Redo),
 		Bind("u", "Undo last change", "Other", deps.Undo),
 	)

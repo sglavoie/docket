@@ -1,10 +1,8 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -102,38 +100,6 @@ func newBaselineInboxProject(name string) *models.Project {
 		project.Tasks = append(project.Tasks, task)
 	}
 	return project
-}
-
-// newBaselineAlertProjects builds in-memory projects designed to fill the
-// dashboard alerts info card with a representative mix: triage backlog,
-// overdue, due-today, and an inbox hotspot project (>=5 inbox tasks).
-func newBaselineAlertProjects() []*models.Project {
-	projects := make([]*models.Project, 0, 2)
-	now := time.Now()
-
-	hotspot := testutil.NewTestProject("Triage Hotspot")
-	hotspot.EnsureDefaultSections()
-	for i := 0; i < 6; i++ {
-		task, _ := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, fmt.Sprintf("Inbox item %d", i))
-		task.SetSection(models.SectionInbox)
-		hotspot.Tasks = append(hotspot.Tasks, task)
-	}
-	projects = append(projects, hotspot)
-
-	planning := testutil.NewTestProject("Planning")
-	planning.EnsureDefaultSections()
-	overdue, _ := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Overdue deliverable")
-	overdueDue := now.Add(-48 * time.Hour)
-	overdue.DueDate = &overdueDue
-	overdue.SetSection(models.SectionNext)
-	dueToday, _ := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Due today checkpoint")
-	dueTodayDue := now
-	dueToday.DueDate = &dueTodayDue
-	dueToday.SetSection(models.SectionNext)
-	planning.Tasks = append(planning.Tasks, overdue, dueToday)
-	projects = append(projects, planning)
-
-	return projects
 }
 
 // TestBaselineQuickCaptureRendersAcrossSizes locks down the composed Quick
@@ -255,75 +221,6 @@ func TestBaselineGlobalInboxProcessorRendersAcrossSizes(t *testing.T) {
 				"esc", "Back",
 				"w", "Today",
 				"Where should this task go next?",
-			)
-			assertNoFooterContentOverlap(t, label, rendered, sz.height)
-		})
-	}
-}
-
-// TestBaselineDashboardTriageAlertsRendersAcrossSizes locks down the
-// dashboard's triage-alert surface: the expanded alerts info card must
-// render its "to triage" and "overdue" rollup lines without overflowing
-// the card width or exceeding the terminal height. Session 5 extends this
-// fixture to cover the end-state momentum copy.
-func TestBaselineDashboardTriageAlertsRendersAcrossSizes(t *testing.T) {
-	for _, sz := range baselineSizes {
-		t.Run(sz.label, func(t *testing.T) {
-			cfg := newTestConfigAt(t.TempDir())
-
-			m := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
-			// loadProjects ran with an empty cfg.AllProjects(), so m.projects is
-			// nil. Assign fresh in-memory projects (with their tasks intact)
-			// so the alerts card sees real triage backlog and overdue items.
-			m.projects = newBaselineAlertProjects()
-			m.rebuildHomeAttention()
-			m.FocusAttention()
-			m.SetSize(sz.width, sz.height)
-
-			rendered := m.View().Content
-			label := "dashboard alerts " + sz.label
-
-			assertBaselineLineWidth(t, label, rendered, sz.width)
-			assertPrimaryActionsVisible(t, label, rendered,
-				"Triage 6 inbox item",
-				"Resolve 1 overdue task",
-			)
-		})
-	}
-}
-
-// TestBaselineFocusBoardTodayRendersAcrossSizes locks down the Today view's
-// chrome (title, tab bar, empty-state hint) and footer at each baseline size
-// plus the narrow case. With no daily plan or queue, the focus board takes
-// the empty-state path, which is exactly the surface session 5 will hand
-// the user momentum copy on.
-func TestBaselineFocusBoardTodayRendersAcrossSizes(t *testing.T) {
-	sizes := append([]baselineSize{}, baselineSizes...)
-	sizes = append(sizes, narrowBaseline)
-
-	for _, sz := range sizes {
-		t.Run(sz.label, func(t *testing.T) {
-			dailyPlan := []FocusTask{}
-			focusQueue := []FocusTask{}
-			m := NewFocusBoardModel(
-				nil, nil,
-
-				&dailyPlan,
-				&focusQueue,
-				map[TaskIdentity]bool{},
-				map[TaskIdentity]bool{},
-				map[TaskIdentity]bool{})
-
-			m.SetSize(sz.width, sz.height)
-
-			rendered := m.View().Content
-			label := "focus board " + sz.label
-
-			assertBaselineLineWidth(t, label, rendered, sz.width)
-			assertPrimaryActionsVisible(t, label, rendered,
-				"Today",
-				"Esc",
-				"close",
 			)
 			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})

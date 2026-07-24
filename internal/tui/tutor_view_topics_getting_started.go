@@ -20,57 +20,67 @@ project's Inbox.
 
 # Triage
 
-Home shows projects and work needing attention. Press O on a
-selected project to process its Inbox, or find "global inbox
-processor" in the command palette to process every project.
+The Outliner shows work needing attention. Open the Inbox tool
+to process captured tasks, or find "global inbox processor" in
+the command palette to process every project.
 
 # First Workflow
 
 1. Capture a task with Ctrl+N.
-2. Triage it from Home or Manage > Inbox.
+2. Triage it from the Inbox tool.
 3. Add it to Today with w.
-4. Open Planner from Ctrl+G and work from Today.`,
+4. The Outliner opens in Today — work from there.`,
 		},
 		{
 			Title:    "The pipeline",
 			Category: "Getting Started",
-			Content: `# Canonical Destinations
+			Content: `# The Outliner Is the Sole Root
 
-Press Ctrl+G to choose Home, Planner, Tasks, Project, Review,
-or Manage. Tasks and Project share Task Workspace and differ
-only by scope.
+The Outliner is the sole root view. It always opens in Today, so
+every run starts on the same clean surface. There is no separate
+Home, Planner, or project destination — modes and scopes live
+inside the Outliner.
 
-Home combines Projects and Attention. Planner contains Today,
-Next, and Backlog. Task Workspace uses one hierarchical Outliner
-with project or application scope. Review contains Daily, Weekly, Activity,
-Metrics, and Roadmap. Manage contains Inbox, Notes, Blockers,
-Rules, Templates, Tags, Notifications, and Settings.
+# Work Modes
 
-Use : to search commands by name when you do not remember a
-local key. Use Esc to close the current overlay or mode, and
-Ctrl+Esc to clear the stack and return Home.`,
+Tab cycles Today, Next, Backlog, Active, and All; Shift+Tab
+reverses. h and l rotate workflow perspectives, and P opens a
+categorized, searchable mode picker. Daily Review and Activity
+are Outliner modes too.
+
+# Scope and Tools
+
+Ctrl+X picks the project scope, and q and w toggle Next and
+Today planning membership. Weekly Review, Metrics, Roadmap,
+Inbox, Notes, Blockers, Templates, Tags, Notifications, and
+Settings open as direct secondary tools.
+
+Use : to search commands by name and ? for help. Press Esc to
+close the current overlay or child, and Ctrl+Esc to reset to a
+clean global Today Outliner.`,
 		},
 		{
 			Title:    "Daily rhythm",
 			Category: "Getting Started",
 			Content: `# A Suggested Daily Rhythm
 
-Morning: open Planner from Ctrl+G, review Next and Backlog,
-then add a short list to Today with w.
+Morning: press Tab to review Next and Backlog, then add a short
+list to Today with w.
 
-During the day: stay in Planner Today or open a project-scoped
-Task Workspace. Use Outliner perspectives, smart focuses, filters,
-and sorting to narrow the hierarchy without changing destinations.
+During the day: stay in the Today work mode, or narrow scope to
+a single project with Ctrl+X. Use Outliner perspectives, smart
+focuses, filters, and sorting to narrow the hierarchy without
+leaving the Outliner.
 
-Evening: capture loose ends with Ctrl+N and open Review from
-Ctrl+G for Daily or Weekly review.
+Evening: capture loose ends with Ctrl+N, use the Daily Review
+mode, and open Weekly Review as a secondary tool when needed.
 
 # When You Feel Lost
 
-Ctrl+G always exposes the six destinations. Home Attention
-surfaces inbox, overdue, blocked, parked, and workflow issues.
-The top-right open-loops counter remains a passive summary of
-inbox, today, and overdue work.`,
+Ctrl+Esc always resets to a clean global Today Outliner. The
+Outliner surfaces inbox, overdue, blocked, parked, and workflow
+issues. The top-right open-loops counter remains a passive
+summary of inbox, today, and overdue work.`,
 		},
 	}
 }

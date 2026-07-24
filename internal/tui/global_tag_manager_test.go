@@ -227,13 +227,23 @@ func TestGlobalTagManagerNavigatesCatalogOnlyTag(t *testing.T) {
 	}
 }
 
-func TestGlobalTagNavigateRespectsDefaultOutlinerView(t *testing.T) {
+// TestGlobalTagNavigateScopesCrossOutliner locks FR13-001: global-tag navigation
+// must enter the target project as a scope frame on the single authoritative
+// cross Outliner and apply the tag filter there, never constructing a separate
+// AppModel.outliner root the palette would then fail to target.
+func TestGlobalTagNavigateScopesCrossOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	syncTestRuntime(app)
 	project.Tags = []string{"catalog-only"}
 	mockPersister := NewMockPersister()
 	mockPersister.Projects[project.ID] = project
 	app.persister = mockPersister
+
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.SetSize(app.width, app.height-2)
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
+	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 	app.pushView(ViewGlobalTagManager)
 
 	handled, _ := app.handleTagMessages(GlobalTagNavigateMsg{Project: project, Tag: "catalog-only"})
@@ -241,14 +251,17 @@ func TestGlobalTagNavigateRespectsDefaultOutlinerView(t *testing.T) {
 	if !handled {
 		t.Fatal("GlobalTagNavigateMsg should be handled")
 	}
-	if app.currentView() != ViewOutliner {
-		t.Fatalf("current view = %s, want %s", app.currentView(), ViewOutliner)
+	if app.outliner != nil {
+		t.Fatal("global-tag navigation must not construct a separate AppModel.outliner root")
 	}
-	if app.outliner == nil {
-		t.Fatal("outliner should be initialized")
+	if app.baseProjectView() != ViewCrossProjectOutliner {
+		t.Fatalf("base view = %s, want the single %s root", app.baseProjectView(), ViewCrossProjectOutliner)
 	}
-	if !app.outliner.filter.Tags["catalog-only"] {
-		t.Fatalf("outliner tag filter = %v, want catalog-only", app.outliner.filter.Tags)
+	if app.crossOutliner.scopedProjectID != project.ID {
+		t.Fatalf("scopedProjectID = %q, want %q", app.crossOutliner.scopedProjectID, project.ID)
+	}
+	if !app.crossOutliner.filter.Tags["catalog-only"] {
+		t.Fatalf("cross outliner tag filter = %v, want catalog-only", app.crossOutliner.filter.Tags)
 	}
 }
 

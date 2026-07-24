@@ -22,6 +22,14 @@ func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.currentProject = project
 	_ = m.persister.Load(project)
 	m.runtime.Settings().ApplyGlobalColorsToProject(project)
+	// Production navigation (typed) owns a single authoritative cross-project
+	// Outliner; every project selection becomes a scope frame via
+	// enterProjectScopeOutliner, so there is no second single-project Outliner to
+	// construct, register, present, or target here. The legacy single-project
+	// ViewOutliner is built only on the non-typed (headless-test) path.
+	if m.typedNavigation {
+		return
+	}
 	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
 	m.outliner.queueIDs = m.focusQueueIDs
 	m.outliner.dailyPlanIDs = m.dailyPlanIDs

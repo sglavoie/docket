@@ -8,6 +8,11 @@ import (
 func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	key := msg.String()
 
+	// The inline mode picker owns all input while open.
+	if m.modePickerActive() {
+		return m.handleModePickerKey(msg)
+	}
+
 	// Handle score filter custom value input
 	if m.scoreFilterInput.IsActive() {
 		cmd := m.scoreFilterInput.ProcessKey(msg, &m.filter.ScoreMin, func() { m.rebuildRows() })
@@ -32,22 +37,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmDialog(key)
 	}
 
-	// Sidebar-focused key handling (before prefix/action keys)
-	if m.sidebar.IsFocused() {
-		wasEnabled := m.sidebar.IsEnabled()
-		_, cmd := m.sidebar.HandleKeys(m, msg)
-		projectID := ""
-		if m.project != nil {
-			projectID = m.project.ID
-		}
-		stateCmd := projectSidebarStateChangedCmd(projectID, wasEnabled, m.sidebar.IsEnabled())
-		// When sidebar is focused, consume all keys to prevent tree navigation
-		if stateCmd == nil {
-			return m, cmd
-		}
-		return m, tea.Batch(cmd, stateCmd)
-	}
-
 	// Dispatcher handles prefix keys and registered key actions.
 	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
 		return model, cmd
@@ -60,11 +49,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.toggleMultiSelectMode()
 			return m, nil
 		}
-	}
-
-	// Cross-project mode: intercept creation keys before they reach the shared handler.
-	if model, cmd, handled := m.crossInterceptCreationKeys(key); handled {
-		return model, cmd
 	}
 
 	// Cross-project mode: C opens the context picker, including from the empty state.

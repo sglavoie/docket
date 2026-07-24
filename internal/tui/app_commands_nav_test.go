@@ -2,15 +2,15 @@ package tui
 
 import "testing"
 
-func TestNavCommands_Dashboard(t *testing.T) {
+func TestNavCommands_OutlinerRoot(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.navCommands()
-	cmd := findCommand(cmds, "dashboard")
+	cmd := findCommand(cmds, "outliner root")
 	if cmd == nil {
-		t.Fatal("expected 'dashboard' command")
+		t.Fatal("expected 'outliner root' command")
 	}
 	if cmd.Shortcut != "ctrl+esc" {
-		t.Fatalf("dashboard shortcut = %q, want ctrl+esc", cmd.Shortcut)
+		t.Fatalf("outliner root shortcut = %q, want ctrl+esc", cmd.Shortcut)
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(JumpDashboardMsg); !ok {

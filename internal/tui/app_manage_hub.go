@@ -55,7 +55,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 // history; PresentationID remains only a presentation observation for commands and
 // existing overlay return messages.
 func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
-	route, err := NewRoute(ManageHub, params)
+	route, err := NewRoute(SecondaryTool, params)
 	if err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
@@ -65,7 +65,7 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 	missingProject := params.Scope.Kind == ScopeProject && m.projectByID(params.Scope.ProjectID) == nil
 	if missingProject {
 		params.Scope = AppEntityScope()
-		route, err = NewRoute(ManageHub, params)
+		route, err = NewRoute(SecondaryTool, params)
 		if err != nil {
 			return func() tea.Msg { return ErrorMsg{Err: err} }
 		}
@@ -99,10 +99,10 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		return view.Init()
 	}
 
-	if err := m.navigation.ReplaceDestination(route); err != nil {
+	if err := m.navigation.PushChild(route, m.currentFocusTarget()); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-	if m.startupRoute != nil && m.startupRoute.ID() == ManageHub {
+	if m.startupRoute != nil && m.startupRoute.ID() == SecondaryTool {
 		m.startupRoute = nil
 		m.startupView = ViewDashboard
 	}

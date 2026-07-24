@@ -140,8 +140,11 @@ func TestSpaceOnProjectHeaderNoPanic(t *testing.T) {
 	if row.isTaskRow() {
 		t.Error("project header row should not be classified as a task row")
 	}
-	if row.isNavigable() {
-		t.Error("project header row should be non-navigable")
+	// Project headers are navigable (Enter scopes, Shift+Enter administers); the
+	// space multi-select guard is safe because it keys off isTaskRow, not
+	// isNavigable.
+	if !row.isNavigable() {
+		t.Error("project header row should be navigable")
 	}
 }
 
@@ -165,8 +168,10 @@ func TestDeleteOnProjectHeaderNoPanic(t *testing.T) {
 			if cur.isTaskRow() {
 				t.Error("project header row must not be classified as a task row")
 			}
-			if cur.isNavigable() {
-				t.Error("project header row must be non-navigable")
+			// Delete safety comes from the isTaskRow/nil-task guards, not from
+			// non-navigability: headers are navigable so Enter/Shift+Enter work.
+			if !cur.isNavigable() {
+				t.Error("project header row must be navigable")
 			}
 			if cur.task != nil {
 				t.Error("project header row must carry no task payload")

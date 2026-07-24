@@ -367,35 +367,6 @@ func TestPaletteTriage_GlobalInboxMarkDoneExecution(t *testing.T) {
 	}
 }
 
-// TestPaletteTriage_DashboardTriageInboxCommand pins the new dashboard-scoped
-// "triage inbox" entry that mirrors the dashboard's `O` key (session 7's
-// prominent triage entry point).
-func TestPaletteTriage_DashboardTriageInboxCommand(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.dashboard = NewDashboardModel(app.runtime)
-
-	cmds := triageInboxCommands(t, app, ViewDashboard)
-	cmd := findCommand(cmds, "triage inbox")
-	if cmd == nil {
-		t.Fatal("'triage inbox' command missing for ViewDashboard")
-	}
-	if cmd.Shortcut != "O" {
-		t.Errorf("'triage inbox' shortcut = %q, want %q", cmd.Shortcut, "O")
-	}
-	if !slices.Contains(cmd.Views, ViewDashboard) {
-		t.Errorf("'triage inbox' Views should include ViewDashboard, got %v", cmd.Views)
-	}
-
-	msg := cmd.Handler()
-	showMsg, ok := msg.(ShowInboxProcessorMsg)
-	if !ok {
-		t.Fatalf("triage inbox handler should return ShowInboxProcessorMsg, got %T", msg)
-	}
-	if showMsg.Project == nil || showMsg.Project.ID != project.ID {
-		t.Errorf("triage inbox handler should target the selected dashboard project, got %v", showMsg.Project)
-	}
-}
-
 // TestPaletteTriage_InboxProcessorCommandsRetainTriageAliases pins triage
 // aliases on the cross-view "inbox processor" and "global inbox processor"
 // view-level commands so palette search for "triage" surfaces them.

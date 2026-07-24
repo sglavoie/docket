@@ -4,8 +4,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	tea "charm.land/bubbletea/v2"
 )
 
 func TestNewKeybindingRegistry(t *testing.T) {
@@ -20,19 +18,19 @@ func TestNewKeybindingRegistry(t *testing.T) {
 
 func TestProjectViewToggle_KeybindingRegistryDescriptions(t *testing.T) {
 	registry := NewKeybindingRegistry()
-	// ProjectTree was retired: the single-project outliner has no second view to
-	// switch to, so it no longer advertises any ctrl+p binding. ctrl+p survives
-	// only on the cross-project outliner as a meaningful drill-down.
-	const crossDescription = "Open highlighted project's outliner"
-
+	// ProjectTree and the Ctrl+P project drilldown were retired: neither the
+	// single-project nor the cross-project outliner advertises a ctrl+p binding.
+	// Project scope is entered through Ctrl+X and the project-header scope actions.
 	for _, item := range registry.GetForView(ViewOutliner) {
 		if item.Key == "ctrl+p" {
 			t.Fatalf("single-project outliner should not advertise a ctrl+p binding, got %q", item.Description)
 		}
 	}
-	assertHasHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", crossDescription)
-	assertLacksHelpItem(t, registry.GetForView(ViewCrossProjectOutliner), ViewCrossProjectOutliner, "ctrl+p", "Toggle project tree/outliner")
-
+	for _, item := range registry.GetForView(ViewCrossProjectOutliner) {
+		if item.Key == "ctrl+p" {
+			t.Fatalf("cross-project outliner should not advertise a ctrl+p binding, got %q", item.Description)
+		}
+	}
 }
 
 func hasHelpItem(items []HelpItem, key, description string) bool {
@@ -68,36 +66,6 @@ func assertLacksHelpItem(t *testing.T, items []HelpItem, view PresentationID, ke
 	}
 }
 
-func TestGetForView_Dashboard(t *testing.T) {
-	// Dashboard is migrated to declarative keymap; verify via buildKeyMap().
-	m := &DashboardModel{}
-	keys := m.buildKeyMap().HandledKeys()
-	if len(keys) == 0 {
-		t.Fatal("No keys returned from DashboardModel.buildKeyMap()")
-	}
-	foundJK := false
-	foundEnter := false
-	for _, k := range keys {
-		if k == "j" || k == "k" {
-			foundJK = true
-		}
-		if k == "enter" {
-			foundEnter = true
-		}
-	}
-	if !foundJK {
-		t.Error("Expected j/k navigation keys in Dashboard keymap")
-	}
-	if !foundEnter {
-		t.Error("Expected enter key in Dashboard keymap")
-	}
-	for _, key := range []string{"ctrl+u", "ctrl+d", "h", "l", "a", "e", "v", "/", "shift+enter"} {
-		if !slices.Contains(keys, key) {
-			t.Errorf("Expected %s navigation key in Dashboard keymap", key)
-		}
-	}
-}
-
 func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
 	r := NewKeybindingRegistry()
 	items := r.GetForView(ViewDashboard)
@@ -120,7 +88,6 @@ func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
 		{Key: "ctrl+c", Description: "Quit"},
 		{Key: "?", Description: "Help"},
 		{Key: ":", Description: "Command palette"},
-		{Key: "ctrl+g", Description: "Go to destination"},
 		{Key: "ctrl+n", Description: "Task composer"},
 	}
 	for _, binding := range globalBindings {
@@ -186,79 +153,6 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "ctrl+o", "Open task reference copy")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "y", "Copy title")
 	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "shift+enter", "Peek task detail")
-}
-
-func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
-	m, _, _ := focusBoardTaskActionFixture(t)
-	keys := m.HandledKeys()
-	want := []string{
-		"j", "down", "k", "up", "g", "G", "ctrl+u", "ctrl+d", "n", "N",
-		"enter", "shift+enter", "space", "/", "v", "a", "e", "x", "X", "s", "p",
-		"!", "d", "t", "Z", "m", "J", "K", "P", "y", "u", "ctrl+r", "tab", "shift+tab",
-	}
-	if !slices.Equal(keys, want) {
-		t.Fatalf("Planner keymap snapshot = %v, want %v", keys, want)
-	}
-
-	items := m.GetHelpItems()
-	for _, expected := range []HelpItem{
-		{Key: "enter", Description: "Open task detail"},
-		{Key: "shift+enter", Description: "Peek at task"},
-		{Key: "space", Description: "Toggle selection"},
-		{Key: "v", Description: "Open View menu"},
-		{Key: "x", Description: "Complete task"},
-		{Key: "J", Description: "Reorder down within Today or Next"},
-		{Key: "tab", Description: "Next Planner tab"},
-		{Key: "shift+tab", Description: "Previous Planner tab"},
-	} {
-		assertHasHelpItem(t, items, ViewFocusBoard, expected.Key, expected.Description)
-	}
-	for _, key := range []string{
-		"q", "w", "o", "gg", "gp", "fp", "fa", "1", "2", "3", "4", "5", "0", "tn", "tN", ",d",
-	} {
-		for _, item := range items {
-			if item.Key == key {
-				t.Errorf("Planner help advertises retired key %q: %+v", key, item)
-			}
-		}
-	}
-}
-
-func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	view := &ctrlORecorderTaskRefView{task: project.Tasks[0], project: project}
-	app.views.Register(ViewFocusBoard, view)
-	app.viewStack = []PresentationID{ViewDashboard, ViewFocusBoard}
-	app.enableTypedNavigation()
-	app.focusQueueIDs = map[TaskIdentity]bool{}
-	app.dailyPlanIDs = map[TaskIdentity]bool{}
-
-	// The Planner owns its complete shared task grammar in the view dispatcher.
-	// App-level legacy aliases must therefore fall through.
-	removed := []struct {
-		name string
-		key  tea.KeyPressMsg
-	}{
-		{"queue", syntheticKey('q')},
-		{"today", syntheticKey('w')},
-		{"reference", syntheticCtrlKey('o')},
-		{"copy description", syntheticKey('Y')},
-		{"copy title and description", syntheticCtrlKey('y')},
-	}
-	for _, tc := range removed {
-		t.Run(tc.name, func(t *testing.T) {
-			if handled, _ := app.handleGlobalKeyPress(tc.key); handled {
-				t.Fatalf("FocusBoard should let removed app-level alias %q fall through", tc.key.String())
-			}
-		})
-	}
-
-	if handled, _ := app.handleGlobalKeyPress(syntheticKey('u')); !handled {
-		t.Fatal("FocusBoard should keep canonical app-level undo key u handled")
-	}
-	if handled, cmd := app.handleGlobalKeyPress(syntheticCtrlKey('n')); !handled || cmd == nil {
-		t.Fatal("FocusBoard should route canonical Ctrl+N to Task Composer")
-	}
 }
 
 func TestGetGlobalBindings_ExcludesRemovedSemicolonShortcuts(t *testing.T) {
@@ -413,8 +307,6 @@ func TestListNavigationGroupConsumersExposeArrowKeys(t *testing.T) {
 		keys []string
 	}{
 		{name: "Outliner", keys: (&OutlinerModel{}).HandledKeys()},
-		{name: "Planner", keys: (&FocusBoardModel{}).HandledKeys()},
-		{name: "Recent Activity", keys: (&RecentActivityModel{}).HandledKeys()},
 	}
 
 	for _, tc := range tests {
@@ -522,7 +414,7 @@ func TestGetGlobalBindings(t *testing.T) {
 		if item.Key == ":" && item.Description == "Command palette" {
 			foundCommandPalette = true
 		}
-		if item.Key == "ctrl+esc" && item.Description == "Home" {
+		if item.Key == "ctrl+esc" && item.Description == "Reset to Today" {
 			foundDashboard = true
 		}
 	}
@@ -530,7 +422,7 @@ func TestGetGlobalBindings(t *testing.T) {
 		t.Error("Expected command palette in global bindings")
 	}
 	if !foundDashboard {
-		t.Error("Expected Ctrl+Esc dashboard jump in global bindings")
+		t.Error("Expected Ctrl+Esc reset-to-Today in global bindings")
 	}
 	removedShortcut := "ctrl+" + "Z"
 	removedDescription := "Undo/redo" + " stack"

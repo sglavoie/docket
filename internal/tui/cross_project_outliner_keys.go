@@ -26,58 +26,43 @@ func (m *OutlinerModel) crossHandleContextPickerKey(key string) (tea.Model, tea.
 	}, true
 }
 
-// crossInterceptCreationKeys intercepts 'a' (normal mode only), 'i', and 'I'
-// in the cross-project outliner and shows a status message directing the user
-// to use 'go' to open the single-project outliner for task creation.
-//
-// Returns (model, cmd, true) when the key is consumed, (nil, nil, false)
-// otherwise. The caller must place this check after the multi-select block so
-// that 'a' in multi-select mode still triggers select-all.
-func (m *OutlinerModel) crossInterceptCreationKeys(key string) (tea.Model, tea.Cmd, bool) {
-	if m.project != nil {
-		return nil, nil, false
-	}
-	switch key {
-	case "a", "i", "I":
-		m.setStatus("use go to open project outliner for task creation")
-		return m, nil, true
-	}
-	return nil, nil, false
-}
-
 // crossHandlePerspectiveCycle handles h/l perspective cycling for the
-// cross-project outliner. It changes activePerspective, sets forceRebuild via
-// rebuildRows, rebuilds rows, then skips past any non-navigable row (separator
-// or project sub-header) the cursor may have landed on after the row list is
-// reconstructed.
+// cross-project outliner. It captures the selected task identity, changes
+// activePerspective, rebuilds rows, then restores the cursor onto the same task
+// (or the deterministic nearest-row fallback) so a task that stays eligible
+// across the differently shaped perspective keeps focus and scroll position.
 func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.Cmd) {
-	prevCursor := m.cursor
+	delta := 0
 	switch key {
 	case "h":
-		m.activatePerspective(CyclePerspective(m.activePerspective, -1))
+		delta = -1
 	case "l":
-		m.activatePerspective(CyclePerspective(m.activePerspective, 1))
+		delta = 1
+	default:
+		return m, nil
 	}
-	m.resetViewScrollOffset()
-	m.rebuildRows()
-	return m.crossSkipNonNavigableRows(prevCursor, nil)
+	mode, ok := OutlinerModeForPerspective(CyclePerspective(m.activePerspective, delta))
+	if !ok {
+		return m, nil
+	}
+	return m.selectOutlinerMode(mode.ID)
 }
 
-// crossHandlePerspectiveJump handles P0-P9 direct perspective jumps for the
-// cross-project outliner. It sets activePerspective, forces a rebuild via
-// rebuildRows, then skips past any non-navigable row the cursor may have
-// landed on.
+// crossHandlePerspectiveJump jumps the cross-project outliner directly to a
+// perspective-backed mode (from the mode picker or Tab/h/l cycling). It captures
+// the selected task identity before rebuilding and restores it afterward, so the
+// cursor tracks the task across the reshape rather than a bare numeric row index.
 func (m *OutlinerModel) crossHandlePerspectiveJump(perspID int) (tea.Model, tea.Cmd) {
-	prevCursor := m.cursor
-	m.activatePerspective(perspID)
-	m.resetViewScrollOffset()
-	m.rebuildRows()
-	return m.crossSkipNonNavigableRows(prevCursor, nil)
+	mode, ok := OutlinerModeForPerspective(perspID)
+	if !ok {
+		return m, nil
+	}
+	return m.selectOutlinerMode(mode.ID)
 }
 
 // crossSkipNonNavigableRows advances the cursor past any contiguous
-// non-navigable rows (separators and project sub-headers) after a cursor
-// movement, ensuring the cursor only rests on section headers or task rows.
+// non-navigable rows (separators only; project sub-headers are now navigable)
+// after a cursor movement, ensuring the cursor never rests on a separator.
 //
 // It uses prevCursor to determine the direction of travel:
 //   - Moving up (cursor < prevCursor): walks backward until a navigable row or
@@ -130,32 +115,6 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(prevCursor int, cmd tea.Cmd) (
 	return m, cmd
 }
 
-// crossHandleGoDrillDown handles the 'go' (g→o) two-key sequence in cross-project
-// mode. When the cursor is on a task row it pushes a fresh temporary OutlinerModel
-// for the row's owning project, initialized with OpenAtTask set to the selected
-// task, via ShowOutlinerMsg{Temporary: true}. This leaves m.outliner untouched.
-// Non-task rows (section headers, project sub-headers, separators) are silently
-// ignored.
-func (m *OutlinerModel) crossHandleGoDrillDown() (tea.Model, tea.Cmd) {
-	if m.project != nil || m.cursor < 0 || m.cursor >= len(m.rows) {
-		return m, nil
-	}
-	row := m.rows[m.cursor]
-	if !row.isTaskRow() {
-		return m, nil
-	}
-	for _, p := range m.loadedProjects {
-		if p.ID == row.ProjectID {
-			proj := p
-			task := row.task
-			return m, func() tea.Msg {
-				return ShowOutlinerMsg{Project: proj, OpenAtTask: task, Temporary: true}
-			}
-		}
-	}
-	return m, nil
-}
-
 // crossHandleEnterKey handles the Enter key in cross-project mode. For leaf
 // task rows it resolves the owning project from row.ProjectID and emits
 // ShowTaskDetailMsg to open the task detail via glow. Section headers toggle
@@ -174,7 +133,13 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	row := m.rows[m.cursor]
-	if row.IsSeparator || row.IsProjectHeader {
+	if row.IsProjectHeader {
+		// Enter on a focusable project header pushes that project's scope,
+		// narrowing the global data set to one project in place.
+		m.pushProjectScope(row.ProjectID)
+		return m, nil, true
+	}
+	if row.IsSeparator {
 		return m, nil, true
 	}
 	if row.IsSectionHeader {

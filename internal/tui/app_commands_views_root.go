@@ -2,27 +2,10 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *AppModel) viewCommands() []Command {
 	return []Command{
-		{
-			Name:        "open project outliner",
-			Description: "Open highlighted project's outliner",
-			Shortcut:    "ctrl+p",
-			Category:    CategoryViews,
-			Views:       []PresentationID{ViewCrossProjectOutliner},
-			Aliases:     []string{"project outliner", "drill into project", "open project view"},
-			Handler: func() tea.Msg {
-				project := m.paletteCursorProject()
-				if project == nil {
-					return StatusMsg(statusNoProjectUnderCursor)
-				}
-				return ShowOutlinerMsg{Project: project}
-			},
-		},
 		{
 			Name:        "all tasks",
 			Description: "View all tasks across every project",
@@ -37,9 +20,9 @@ func (m *AppModel) viewCommands() []Command {
 		},
 		{
 			Name:        "outliner",
-			Description: "Open the cross-project outliner",
+			Description: "Open the global Outliner",
 			Category:    CategoryViews,
-			Aliases:     []string{"global outliner", "cross-project outliner", "all tasks outliner"},
+			Aliases:     []string{"global outliner", "all tasks outliner"},
 			Handler: func() tea.Msg {
 				return ShowGlobalOutlinerMsg{}
 			},
@@ -60,7 +43,7 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "daily review",
 			Description: "Daily planning and review view",
 			Category:    CategoryViews,
-			Aliases:     []string{"planning", "morning review", "DailyReview", "review daily", "ReviewHub/Daily"},
+			Aliases:     []string{"planning", "morning review", "DailyReview", "review daily"},
 			Handler: func() tea.Msg {
 				return ShowDailyReviewMsg{}
 			},
@@ -69,7 +52,7 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "weekly review",
 			Description: "Strategic project health review",
 			Category:    CategoryViews,
-			Aliases:     []string{"weekly", "project health", "strategic review", "WeeklyReview", "review weekly", "ReviewHub/Weekly"},
+			Aliases:     []string{"weekly", "project health", "strategic review", "WeeklyReview", "review weekly"},
 			Handler: func() tea.Msg {
 				return ShowWeeklyReviewMsg{}
 			},
@@ -78,54 +61,23 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "latest activity",
 			Description: "View recently modified tasks across all projects",
 			Category:    CategoryViews,
-			Aliases:     []string{"recent", "activity", "latest", "recent tasks", "recent activity", "RecentActivity", "project recent activity", "ProjectRecentActivity", "review activity", "completed tasks", "ReviewHub/Activity"},
+			Aliases:     []string{"recent", "activity", "latest", "recent tasks", "recent activity", "RecentActivity", "project recent activity", "ProjectRecentActivity", "review activity", "completed tasks"},
 			Handler: func() tea.Msg {
 				return ShowRecentActivityMsg{}
 			},
 		},
 		{
-			Name:        "planner next",
-			Description: "Planner — Next (on-deck shortlist, StateNext ordered)",
-			Category:    CategoryViews,
-			Aliases:     []string{"next", "planner on-deck", "queue", "on deck", "shortlist", "what's next"},
-			Handler: func() tea.Msg {
-				return ShowFocusBoardMsg{Tab: boardTabNext, SetTab: true}
-			},
-		},
-		{
-			Name:        "today",
-			Description: "Planner — Today cockpit for daily execution",
-			Category:    CategoryViews,
-			Aliases:     []string{"planner today", "daily", "cockpit", "today cockpit", "command center", "external items"},
-			Handler: func() tea.Msg {
-				return ShowFocusBoardMsg{Tab: boardTabToday, SetTab: true}
-			},
-		},
-		{
-			Name:        "planner backlog",
-			Description: "Planner — Backlog (ranked actionable work behind Today/Next)",
-			Category:    CategoryViews,
-			Aliases:     []string{"backlog ranked", "ranked backlog", "suggestions", "what to work on"},
-			Handler: func() tea.Msg {
-				return ShowFocusBoardMsg{Tab: boardTabBacklog, SetTab: true}
-			},
-		},
-		{
 			Name:        "priority view",
-			Description: "Open the High Priority smart focus in Task Workspace",
+			Description: "Open the High Priority smart focus in the Outliner",
 			Shortcut:    "p",
 			Category:    CategoryViews,
-			Aliases:     []string{"priority", "priority mode", "toggle priority mode", "high priority", "cross-project priority"},
+			Aliases:     []string{"high priority"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowOutlinerMsg{
-						Project: m.currentProject,
-						Options: OutlinerOpenOptions{
-							Focus: OutlinerHighPriority, SetFocus: true, Sort: SortByScore, SetSort: true,
-						},
-					}
-				}
-				return nil
+				// Resolve to the single catalog High Priority mode on the global
+				// Outliner rather than a project-scoped focus keyed off the stale
+				// m.currentProject. The bare "priority" aliases are retired so that
+				// term resolves solely to the catalog Priority lens command.
+				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeHighPriority}}
 			},
 		},
 		{
@@ -141,24 +93,6 @@ func (m *AppModel) viewCommands() []Command {
 					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
 						return StatusMsg(statusNoProjectUnderCursor)
 					}
-					return nil
-				}
-				return ShowInboxProcessorMsg{Project: project}
-			},
-		},
-		{
-			Name:        "triage inbox",
-			Description: "Triage inbox items for the highlighted project",
-			Shortcut:    "O",
-			Category:    CategoryViews,
-			Views:       []PresentationID{ViewDashboard},
-			Aliases:     []string{"inbox triage", "process inbox", "open inbox processor"},
-			Handler: func() tea.Msg {
-				var project *models.Project
-				if m.dashboard != nil {
-					project = m.dashboard.SelectedProject()
-				}
-				if project == nil {
 					return nil
 				}
 				return ShowInboxProcessorMsg{Project: project}
@@ -196,7 +130,7 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "metrics dashboard",
 			Description: "View completion rates, cycle time, and throughput",
 			Category:    CategoryViews,
-			Aliases:     []string{"metrics", "analytics", "stats", "statistics", "MetricsDashboard", "review metrics", "ReviewHub/Metrics"},
+			Aliases:     []string{"metrics", "analytics", "stats", "statistics", "MetricsDashboard", "review metrics"},
 			Handler: func() tea.Msg {
 				return ShowMetricsDashboardMsg{}
 			},
@@ -205,7 +139,7 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "roadmap",
 			Description: "View Gantt chart, critical path, and forecasts",
 			Category:    CategoryViews,
-			Aliases:     []string{"gantt", "timeline", "schedule", "critical path", "forecast", "review roadmap", "ReviewHub/Roadmap"},
+			Aliases:     []string{"gantt", "timeline", "schedule", "critical path", "forecast", "review roadmap"},
 			Handler: func() tea.Msg {
 				return ShowRoadmapMsg{}
 			},
@@ -214,13 +148,17 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "project metrics",
 			Description: "View metrics for current project",
 			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"metrics", "analytics", "stats", "statistics"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowMetricsDashboardMsg{Project: m.currentProject}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
 				}
-				return nil
+				return ShowMetricsDashboardMsg{Project: project}
 			},
 		},
 	}

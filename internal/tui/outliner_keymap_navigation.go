@@ -57,83 +57,52 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 	m := b.model
 
-	// ctrl+p only exists on the cross-project outliner, where it drills into the
-	// highlighted project's outliner. On the single-project outliner there is no
-	// second per-project view (ProjectTree was retired), so switchProjectView is
-	// left nil and CommonPrimaryViewGroup omits the binding entirely.
-	var switchProjectView keymap.Action
-	projectViewDescription := ""
-	if m.project == nil {
-		projectViewDescription = "Open highlighted project's outliner"
-		switchProjectView = func() (tea.Model, tea.Cmd) {
-			project := m.cursorProject()
+	// The retired Ctrl+P project drilldown is gone: project scope is entered
+	// exclusively through Ctrl+X (the scope picker) and the project-header scope
+	// actions, so CommonPrimaryViewGroup omits the binding on both the
+	// single-project and cross-project outliners.
+	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
+		ProjectBlockers: func() (tea.Model, tea.Cmd) {
+			project := m.contextProject()
 			if project == nil {
 				m.setNoProjectStatus()
 				return m, nil
 			}
-			return m, func() tea.Msg { return ShowOutlinerMsg{Project: project} }
-		}
-	}
-
-	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
-		SwitchProjectView:            switchProjectView,
-		SwitchProjectViewDescription: projectViewDescription,
-		ProjectBlockers: func() (tea.Model, tea.Cmd) {
-			project := m.project
-			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
-			}
 			return m, func() tea.Msg { return ShowBlockersMsg{Project: project} }
 		},
 		PriorityView: func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				m.toggleCrossPriorityMode()
-				return m, nil
-			}
-			m.ApplyOpenOptions(OutlinerOpenOptions{
-				Focus: OutlinerHighPriority, SetFocus: true, Sort: SortByScore, SetSort: true,
-			})
-			return m, nil
-		},
-		AddToPlan: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowFocusBoardMsg{} }
-		},
-		InboxProcessor: func() (tea.Model, tea.Cmd) {
-			project := m.project
-			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
+			if m.activeOutlinerMode() == ModePriorityLens {
+				mode, ok := OutlinerModeForPerspective(m.activePerspective)
+				if !ok {
 					return m, nil
 				}
+				return m.selectOutlinerMode(mode.ID)
+			}
+			return m.selectOutlinerMode(ModePriorityLens)
+		},
+		InboxProcessor: func() (tea.Model, tea.Cmd) {
+			project := m.contextProject()
+			if project == nil {
+				m.setNoProjectStatus()
+				return m, nil
 			}
 			return m, func() tea.Msg { return ShowInboxProcessorMsg{Project: project} }
 		},
 		QuickCapture: func() (tea.Model, tea.Cmd) {
-			project := m.project
+			project := m.contextProject()
 			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
+				m.setNoProjectStatus()
+				return m, nil
 			}
 			return m, func() tea.Msg {
 				return ShowQuickCaptureMsg{Project: project, AllProjects: m.runtime.ActiveProjects()}
 			}
 		},
 		BulkCapture: func() (tea.Model, tea.Cmd) {
-			project := m.project
+			project := m.contextProject()
 			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
+				m.setNoProjectStatus()
+				return m, nil
 			}
 			return m, func() tea.Msg { return ShowBulkCaptureMsg{Project: project} }
 		},
@@ -146,25 +115,20 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowTaskJumperMsg{Project: m.project} }
 		},
 		OpenNotesView: func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
+			project := m.contextProject()
+			if project == nil {
+				m.setNoProjectStatus()
 				return m, nil
 			}
-			project := m.project
 			return m, func() tea.Msg { return ShowNotesMsg{Project: project} }
 		},
 		CreateNote: func() (tea.Model, tea.Cmd) {
-			project := m.project
+			project := m.contextProject()
 			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
+				m.setNoProjectStatus()
+				return m, nil
 			}
 			return m, func() tea.Msg { return ShowNoteCreatorMsg{Project: project} }
-		},
-		ReloadFromDisk: func() (tea.Model, tea.Cmd) {
-			return m, m.reloadFromDisk()
 		},
 		Redo: func() (tea.Model, tea.Cmd) {
 			if m.project == nil {
@@ -181,16 +145,14 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, m.performUndo()
 		},
 		EditLastModified: func() (tea.Model, tea.Cmd) {
-			project := m.project
+			project := m.contextProject()
 			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
+				m.setNoProjectStatus()
+				return m, nil
 			}
 			recent := storage.GetRecentTasks(project.Tasks, 1)
 			if len(recent) == 0 {
+				m.setStatus("No recent tasks")
 				return m, nil
 			}
 			task := recent[0]
@@ -231,13 +193,10 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 			return m, func() tea.Msg { return OpenTaskActivityMsg{Task: task, Project: project} }
 		}),
 		keymap.Bind("l", "Project recent activity", "Navigation", func() (tea.Model, tea.Cmd) {
-			project := m.project
+			project := m.contextProject()
 			if project == nil {
-				project = m.cursorProject()
-				if project == nil {
-					m.setNoProjectStatus()
-					return m, nil
-				}
+				m.setNoProjectStatus()
+				return m, nil
 			}
 			return m, func() tea.Msg { return ShowProjectRecentActivityMsg{Project: project} }
 		}),
@@ -248,55 +207,39 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 			return m, nil
 		}),
 		keymap.Bind("z", "Jump to Snoozed perspective", "Navigation", func() (tea.Model, tea.Cmd) {
-			m.activatePerspective(PerspectiveSnoozed)
 			m.resetViewScrollOffset()
-			m.rebuildRows()
-			return m, nil
-		}),
-		keymap.Bind("o", "Drill down to project outliner", "Navigation", func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m.crossHandleGoDrillDown()
-			}
-			return m, nil
+			return m.selectOutlinerMode(ModeSnoozed)
 		}),
 	})}
 }
 
-func (b *outlinerKeymapBuilder) perspectiveEntries() []keymap.Entry {
+// modeEntries binds the mode surface: P opens the searchable, categorized mode
+// picker (replacing the retired P0-P9 numeric prefix), and Tab/Shift+Tab cycle
+// the five-item Work rotation Today → Next → Backlog → Active → All.
+//
+// R carries a single, non-conflicting behavior that depends on the active mode:
+// in Daily Review mode it marks or resets the persisted review timestamp;
+// otherwise it reloads the visible projects from disk. The earlier duplicate
+// R=reload binding in the shared primary-view group was retired so this one
+// dispatch owns the key.
+func (b *outlinerKeymapBuilder) modeEntries() []keymap.Entry {
 	m := b.model
 
 	return []keymap.Entry{
-		keymap.Prefix("P", "Switch perspective", "Perspectives", []keymap.Entry{
-			keymap.Bind("1", "All perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("1")
-			}),
-			keymap.Bind("2", "Active perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("2")
-			}),
-			keymap.Bind("3", "Next perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("3")
-			}),
-			keymap.Bind("4", "Inbox perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("4")
-			}),
-			keymap.Bind("5", "Standby perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("5")
-			}),
-			keymap.Bind("6", "Waiting perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("6")
-			}),
-			keymap.Bind("7", "Someday perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("7")
-			}),
-			keymap.Bind("8", "Review perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("8")
-			}),
-			keymap.Bind("9", "Snoozed perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("9")
-			}),
-			keymap.Bind("0", "Completed perspective", "Perspectives", func() (tea.Model, tea.Cmd) {
-				return m.handlePerspectivePrefix("0")
-			}),
+		keymap.Bind("P", "Switch mode", "Modes", func() (tea.Model, tea.Cmd) {
+			return m.openModePicker()
+		}),
+		keymap.Bind("tab", "Next work mode", "Modes", func() (tea.Model, tea.Cmd) {
+			return m.cycleWorkMode(1)
+		}),
+		keymap.Bind("shift+tab", "Previous work mode", "Modes", func() (tea.Model, tea.Cmd) {
+			return m.cycleWorkMode(-1)
+		}),
+		keymap.Bind("R", "Reload / complete daily review", "Modes", func() (tea.Model, tea.Cmd) {
+			if m.reviewMode == reviewDaily {
+				return m.handleReviewCompletionToggle()
+			}
+			return m, m.reloadFromDisk()
 		}),
 	}
 }

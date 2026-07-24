@@ -9,68 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestProjectPickerUpdate_CtrlPNAndEscBehavior(t *testing.T) {
-	projectA, err := models.NewProject("proj-a", "Alpha", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject A: %v", err)
-	}
-	projectB, err := models.NewProject("proj-b", "Beta", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject B: %v", err)
-	}
-	projectC, err := models.NewProject("proj-c", "Gamma", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject C: %v", err)
-	}
-
-	m := NewProjectPickerModel([]*models.Project{projectA, projectB, projectC})
-
-	model, _ := m.Update(syntheticCtrlKey('n'))
-	m = model.(*ProjectPickerModel)
-	if m.Cursor != 1 {
-		t.Fatalf("ctrl+n should move cursor to 1, got %d", m.Cursor)
-	}
-
-	model, _ = m.Update(syntheticCtrlKey('p'))
-	m = model.(*ProjectPickerModel)
-	if m.Cursor != 0 {
-		t.Fatalf("ctrl+p should move cursor back to 0, got %d", m.Cursor)
-	}
-
-	model, _ = m.Update(syntheticKey('b'))
-	m = model.(*ProjectPickerModel)
-	if m.SearchQuery() != "b" {
-		t.Fatalf("expected search query %q, got %q", "b", m.SearchQuery())
-	}
-	if len(m.Filtered) != 1 || m.Filtered[0].Project.ID != projectB.ID {
-		t.Fatalf("expected only Beta to match, got %#v", m.Filtered)
-	}
-
-	model, cmd := m.Update(syntheticSpecialKey(tea.KeyEsc))
-	m = model.(*ProjectPickerModel)
-	if cmd != nil {
-		t.Fatal("first esc with a query should clear search, not cancel")
-	}
-	if m.SearchQuery() != "" {
-		t.Fatalf("expected cleared search query, got %q", m.SearchQuery())
-	}
-	if len(m.Filtered) != 3 {
-		t.Fatalf("expected all projects after clearing search, got %d", len(m.Filtered))
-	}
-
-	_, cmd = m.Update(syntheticSpecialKey(tea.KeyEsc))
-	if cmd == nil {
-		t.Fatal("second esc should cancel the picker")
-	}
-	msg, ok := cmd().(ProjectPickerDoneMsg)
-	if !ok {
-		t.Fatalf("expected ProjectPickerDoneMsg, got %T", cmd())
-	}
-	if !msg.Canceled || msg.Project != nil {
-		t.Fatalf("expected canceled project picker result, got %#v", msg)
-	}
-}
-
 func TestProjectSelectorUpdate_ReturnsMoveMessage(t *testing.T) {
 	sourceProject, err := models.NewProject("source", "Source", t.TempDir())
 	if err != nil {

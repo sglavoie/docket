@@ -105,11 +105,6 @@ func TestGitHubIssueAttachmentSurfacesUseCompactLabel(t *testing.T) {
 		t.Fatalf("task detail attachments should label GitHub issue compactly, got:\n%s", detail)
 	}
 
-	sidebar := ansi.Strip(renderSidebarAttachmentsCard(task, 80))
-	if !strings.Contains(sidebar, "GH acme/roadmap#123") {
-		t.Fatalf("sidebar attachments should label GitHub issue compactly, got:\n%s", sidebar)
-	}
-
 	peek := ansi.Strip(strings.Join(peekAttachmentsBlock(task, 40), "\n"))
 	if !strings.Contains(peek, "GitHub issue acme/roadmap#123") {
 		t.Fatalf("peek attachments should label GitHub issue compactly, got:\n%s", peek)

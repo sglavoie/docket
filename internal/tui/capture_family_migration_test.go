@@ -67,37 +67,3 @@ func TestQuickCaptureStatusSigilAppliesState(t *testing.T) {
 		t.Fatalf("state = %v, want review", task)
 	}
 }
-
-// TestFocusBoardCreatesThroughCoordinator proves the Focus Board quick-add routes
-// creation through the CaptureCoordinator (CaptureBoard), committing into the
-// selected project without a raw project save.
-func TestFocusBoardCreatesThroughCoordinator(t *testing.T) {
-	env := newScenarioEnv(t, "board")
-	m := &FocusBoardModel{
-		acProjectCache: []*models.Project{env.project},
-		capture:        env.features.Capture,
-	}
-
-	_, cmd := m.createItemFromInput("%board Review PR !2 #urgent")
-	if cmd == nil {
-		t.Fatal("expected a command from createItemFromInput")
-	}
-	msg, ok := cmd().(TransactionResultMsg)
-	if !ok {
-		t.Fatalf("expected TransactionResultMsg, got %T", cmd())
-	}
-	if msg.Result.Title != "Review PR" {
-		t.Errorf("result title = %q, want %q", msg.Result.Title, "Review PR")
-	}
-
-	task := env.reload(t).GetTaskByID(msg.Result.TaskID)
-	if task == nil {
-		t.Fatal("focus-board task absent from reloaded project")
-	}
-	if task.Priority != 2 {
-		t.Errorf("priority = %d, want 2", task.Priority)
-	}
-	if !task.HasTag("urgent") {
-		t.Errorf("tags = %v, want urgent", task.Tags)
-	}
-}

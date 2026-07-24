@@ -27,6 +27,9 @@ func (m *AppModel) notesCommands() []Command {
 				if project := m.notesTargetProject(); project != nil {
 					return ShowNotesMsg{Project: project}
 				}
+				if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+					return StatusMsg(statusNoProjectUnderCursor)
+				}
 				return nil
 			},
 		},
@@ -59,7 +62,13 @@ func (m *AppModel) notesTargetProject() *models.Project {
 	if project := m.selectedTaskProjectFromOrigin(); project != nil {
 		return project
 	}
-	return m.currentProject
+	// Fall back through the canonical cursor/scope resolver rather than the raw
+	// currentProject: from a cross-project Outliner origin (the sole root, global
+	// or project-scoped) paletteCursorProject resolves the active scope and
+	// returns nil at the unscoped root, so Notes never opens a stale off-screen
+	// project. Single-project and non-outliner origins keep currentProject, where
+	// it IS the visible project.
+	return m.paletteCursorProject()
 }
 
 func (m *AppModel) selectedTaskProjectFromOrigin() *models.Project {
@@ -104,30 +113,28 @@ func (m *AppModel) otherCommands() []Command {
 			Category:    CategoryViews,
 			Aliases:     []string{"project focus", "project focus queue", "project queue", "next tasks"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowOutlinerMsg{
-						Project: m.currentProject,
-						Options: OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true},
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
 					}
+					return nil
 				}
-				return nil
+				return ShowOutlinerMsg{
+					Project: project,
+					Options: OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true},
+				}
 			},
 		},
 		{
 			Name:        "blockers view",
 			Description: "Show blockers for the selected project",
-			Shortcut:    "b",
+			Shortcut:    "B",
 			Category:    CategoryViews,
 			Views:       []PresentationID{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"blockers", "blocked tasks", "project blockers"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
-				if m.nonPaletteOrigin() == ViewDashboard && m.dashboard != nil {
-					visible := m.dashboard.visibleProjects()
-					if CursorInBounds(m.dashboard.cursor, len(visible)) {
-						project = visible[m.dashboard.cursor]
-					}
-				}
 				if project == nil {
 					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
 						return StatusMsg(statusNoProjectUnderCursor)
@@ -142,19 +149,30 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Reload project data from storage",
 			Shortcut:    "ctrl+r",
 			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"refresh", "reload data", "sync"},
 			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					err := storage.LoadProject(m.outliner.project)
-					if err != nil {
-						logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
-					}
-					m.outliner.rebuildRows()
-					if err != nil {
-						return ErrorMsg{Err: err}
+				// Reload the project under the visible Outliner cursor (or active
+				// scope) and rebuild the model the user actually sees, rather than
+				// the retired single-project m.outliner. From the global root a nil
+				// resolution surfaces an explicit no-project status.
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
 					}
 					return nil
+				}
+				err := storage.LoadProject(project)
+				if err != nil {
+					logging.Warn("failed to load project %s: %v", project.Name, err)
+				}
+				if out := m.visibleOutliner(); out != nil {
+					out.crossForceRebuild = true
+					out.rebuildRows()
+				}
+				if err != nil {
+					return ErrorMsg{Err: err}
 				}
 				return nil
 			},

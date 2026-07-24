@@ -56,7 +56,7 @@ func FormatRelativeDue(dueDate *time.Time, styled bool) string {
 }
 
 // formatRelativeDueVerbose returns a verbose relative due date string
-// (e.g. "in 3 weeks", "in 2 months") for use in detail/sidebar panels.
+// (e.g. "in 3 weeks", "in 2 months") for use in detail panels.
 func formatRelativeDueVerbose(dueDate *time.Time) string {
 	if dueDate == nil {
 		return ""

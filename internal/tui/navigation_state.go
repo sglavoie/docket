@@ -20,16 +20,23 @@ type primaryRouteFrame struct {
 	restoreFocus FocusTarget
 }
 
-// PrimaryRouteStack always contains Home at index zero. Destination switches
-// replace index one; Task Detail alone may be pushed as a child route.
-type PrimaryRouteStack struct{ frames []primaryRouteFrame }
-
-func NewPrimaryRouteStack() PrimaryRouteStack {
-	home, err := NewRoute(Home, HomeParams{})
+// outlinerRootRoute is the sole primary root: the global (All Projects)
+// Outliner. Every navigation stack bottoms out here; there is no Home root.
+func outlinerRootRoute() Route {
+	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
 	if err != nil {
 		panic(err)
 	}
-	return PrimaryRouteStack{frames: []primaryRouteFrame{{route: home}}}
+	return route
+}
+
+// PrimaryRouteStack always contains the Outliner root at index zero. A
+// destination switch replaces that root frame; Task Detail and secondary tools
+// are pushed as child routes above it.
+type PrimaryRouteStack struct{ frames []primaryRouteFrame }
+
+func NewPrimaryRouteStack() PrimaryRouteStack {
+	return PrimaryRouteStack{frames: []primaryRouteFrame{{route: outlinerRootRoute()}}}
 }
 
 func (s *PrimaryRouteStack) ensureRoot() {
@@ -57,18 +64,16 @@ func (s *PrimaryRouteStack) Depth() int {
 	return len(s.frames)
 }
 
-// ReplaceDestination implements Ctrl+G stack replacement. Reference and Task
-// Detail are rejected because neither is a primary destination.
+// ReplaceDestination swaps the primary root. Only the Outliner (TaskWorkspace)
+// is a destination, so this replaces the single root frame and drops any child
+// routes above it; scope variations (All Projects vs. a single project) all
+// resolve to the same Outliner root.
 func (s *PrimaryRouteStack) ReplaceDestination(route Route) error {
 	s.ensureRoot()
 	if !route.IsDestination() {
-		return fmt.Errorf("%w: %s is not a Ctrl+G destination", ErrInvalidRouteTransition, route.ID())
+		return fmt.Errorf("%w: %s is not a root destination", ErrInvalidRouteTransition, route.ID())
 	}
-	if route.ID() == Home {
-		s.frames = s.frames[:1]
-		return nil
-	}
-	s.frames = append(s.frames[:1], primaryRouteFrame{route: route})
+	s.frames = []primaryRouteFrame{{route: route}}
 	return nil
 }
 
@@ -81,6 +86,30 @@ func (s *PrimaryRouteStack) PushTaskDetail(route Route, restore FocusTarget) err
 	}
 	if s.Current().ID() == TaskDetail {
 		return fmt.Errorf("%w: TaskDetail cannot parent TaskDetail", ErrInvalidRouteTransition)
+	}
+	s.frames = append(s.frames, primaryRouteFrame{route: route, restoreFocus: restore})
+	return nil
+}
+
+// PushChild adds a hierarchical child route on top of the active destination and
+// records the parent focus bookmark to restore on pop. Task Detail and secondary
+// tools are children: they launch from a destination and dismiss back to it.
+// Launching another secondary tool while one is active replaces the current
+// child (tools do not nest) so a single Esc still returns to the destination.
+func (s *PrimaryRouteStack) PushChild(route Route, restore FocusTarget) error {
+	s.ensureRoot()
+	switch route.ID() {
+	case TaskDetail:
+		if s.Current().ID() == TaskDetail {
+			return fmt.Errorf("%w: TaskDetail cannot parent TaskDetail", ErrInvalidRouteTransition)
+		}
+	case SecondaryTool:
+		if s.Current().ID() == SecondaryTool {
+			s.frames[len(s.frames)-1].route = route
+			return nil
+		}
+	default:
+		return fmt.Errorf("%w: %s is not a child route", ErrInvalidRouteTransition, route.ID())
 	}
 	s.frames = append(s.frames, primaryRouteFrame{route: route, restoreFocus: restore})
 	return nil
@@ -110,7 +139,9 @@ func (s *PrimaryRouteStack) Pop() (popped Route, restore FocusTarget, ok bool) {
 	return frame.route, frame.restoreFocus, true
 }
 
-func (s *PrimaryRouteStack) ResetHome() { s.ensureRoot(); s.frames = s.frames[:1] }
+// ResetRoot collapses the stack back to the sole Outliner root, dropping every
+// child route above it.
+func (s *PrimaryRouteStack) ResetRoot() { s.ensureRoot(); s.frames = s.frames[:1] }
 
 type overlayFrame struct {
 	overlay      Overlay
@@ -184,9 +215,17 @@ func (s *NavigationState) ReplaceDestination(route Route) error {
 	return nil
 }
 
-func (s *NavigationState) ResetHome() {
+func (s *NavigationState) ResetRoot() {
 	s.Overlays.CancelAll()
-	s.Primary.ResetHome()
+	s.Primary.ResetRoot()
+}
+
+// PushChild launches a hierarchical child route (a secondary tool or Task
+// Detail), abandoning any transient overlay that triggered it so the child is
+// the live primary and dismisses back to its launching destination.
+func (s *NavigationState) PushChild(route Route, restore FocusTarget) error {
+	s.Overlays.CancelAll()
+	return s.Primary.PushChild(route, restore)
 }
 
 // RouteEntityLookup is the narrow existence check used to resolve deep links.
@@ -202,22 +241,22 @@ type DeepLinkResolution struct {
 	Status  string
 }
 
-// ResolveTaskDetailDeepLink synthesizes a Task Workspace parent for direct
-// task links. Missing projects request the project picker; missing tasks remain
-// on that parent and return an error status.
+// ResolveTaskDetailDeepLink reveals a direct task link inside the Outliner or
+// Task Detail without ever constructing a standalone Project route. Missing
+// projects fall back to the Outliner root with a project picker; missing tasks
+// remain on the Outliner parent and return an error status.
 func ResolveTaskDetailDeepLink(params TaskDetailParams, lookup RouteEntityLookup) (DeepLinkResolution, error) {
-	parent, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(params.ProjectID)})
-	if err != nil || lookup == nil || !lookup.ProjectExists(params.ProjectID) {
-		home, homeErr := NewRoute(Home, HomeParams{})
-		if homeErr != nil {
-			return DeepLinkResolution{}, homeErr
-		}
+	// The parent is always the canonical app-scoped Outliner root. Entering the
+	// task's project is an Outliner scope frame applied by the caller, so a deep
+	// link never constructs a separate project-scoped TaskWorkspace root.
+	parent := outlinerRootRoute()
+	if lookup == nil || !lookup.ProjectExists(params.ProjectID) {
 		picker, pickerErr := NewOverlay(OverlayProjectPicker, params.ProjectID)
 		if pickerErr != nil {
 			return DeepLinkResolution{}, pickerErr
 		}
 		return DeepLinkResolution{
-			Parent: home, Overlay: &picker, Status: fmt.Sprintf("Project %q was not found", params.ProjectID),
+			Parent: outlinerRootRoute(), Overlay: &picker, Status: fmt.Sprintf("Project %q was not found", params.ProjectID),
 		}, nil
 	}
 	if params.TaskID == "" || !lookup.TaskExists(params.ProjectID, params.TaskID) {
@@ -252,29 +291,21 @@ func ResolveDeepLink(id RouteID, params RouteParams, lookup RouteEntityLookup) (
 	if id != Reference {
 		return DeepLinkResolution{Parent: route}, nil
 	}
-	home, homeErr := NewRoute(Home, HomeParams{})
-	if homeErr != nil {
-		return DeepLinkResolution{}, homeErr
-	}
 	overlay, overlayErr := NewReferenceOverlay(route)
 	if overlayErr != nil {
 		return DeepLinkResolution{}, overlayErr
 	}
-	return DeepLinkResolution{Parent: home, Overlay: &overlay}, nil
+	return DeepLinkResolution{Parent: outlinerRootRoute(), Overlay: &overlay}, nil
 }
 
 func invalidDeepLinkResolution(cause error) (DeepLinkResolution, error) {
-	home, err := NewRoute(Home, HomeParams{})
-	if err != nil {
-		return DeepLinkResolution{}, err
-	}
-	return DeepLinkResolution{Parent: home, Status: "Invalid deep link: " + cause.Error()}, nil
+	return DeepLinkResolution{Parent: outlinerRootRoute(), Status: "Invalid deep link: " + cause.Error()}, nil
 }
 
 // ApplyDeepLink makes a resolved deep link atomic with overlay cancellation.
 func (s *NavigationState) ApplyDeepLink(resolution DeepLinkResolution, restore FocusTarget) error {
 	if resolution.Overlay != nil {
-		s.ResetHome()
+		s.ResetRoot()
 		s.Overlays.Push(*resolution.Overlay, restore, nil)
 		return nil
 	}

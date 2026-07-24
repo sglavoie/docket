@@ -31,7 +31,7 @@ func (b *outlinerKeymapBuilder) entries() []keymap.Entry {
 	entries = append(entries, b.navigationEntries()...)
 	entries = append(entries, b.primaryViewEntries()...)
 	entries = append(entries, b.gotoEntries()...)
-	entries = append(entries, b.perspectiveEntries()...)
+	entries = append(entries, b.modeEntries()...)
 	entries = append(entries, b.foldEntries()...)
 	entries = append(entries, b.statusEntries()...)
 	entries = append(entries, b.priorityEntries()...)

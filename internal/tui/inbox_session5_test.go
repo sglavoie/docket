@@ -16,7 +16,7 @@ func TestCloseInboxProcessorMessageOffersNextActions(t *testing.T) {
 		t.Fatal("expected handled close msg with a status-clear cmd")
 	}
 	got := app.statusMessage
-	for _, want := range []string{"3 triaged", "1 skipped", "Planner Today", "or Next"} {
+	for _, want := range []string{"3 triaged", "1 skipped", "plan Today", "or Next"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("expected %q in status, got %q", want, got)
 		}
@@ -32,8 +32,8 @@ func TestCloseInboxProcessorSkippedOnlyOffersNext(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatal("expected handled close msg with a status-clear cmd")
 	}
-	if got := app.statusMessage; !strings.Contains(got, "2 skipped") || !strings.Contains(got, "Planner Next") {
-		t.Errorf("expected skipped count and Planner Next in status, got %q", got)
+	if got := app.statusMessage; !strings.Contains(got, "2 skipped") || !strings.Contains(got, "shortlist Next") {
+		t.Errorf("expected skipped count and shortlist Next in status, got %q", got)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestCloseGlobalInboxProcessorMessageOffersNextActions(t *testing.T) {
 		t.Fatal("expected handled close msg with a status-clear cmd")
 	}
 	got := app.statusMessage
-	for _, want := range []string{"5 triaged", "2 skipped", "Planner Today", "or Next"} {
+	for _, want := range []string{"5 triaged", "2 skipped", "plan Today", "or Next"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("expected %q in status, got %q", want, got)
 		}
@@ -61,7 +61,7 @@ func TestCloseGlobalInboxProcessorSkippedOnlyOffersNext(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatal("expected handled close msg with a status-clear cmd")
 	}
-	if got := app.statusMessage; !strings.Contains(got, "3 skipped") || !strings.Contains(got, "Planner Next") {
-		t.Errorf("expected skipped count and Planner Next in status, got %q", got)
+	if got := app.statusMessage; !strings.Contains(got, "3 skipped") || !strings.Contains(got, "shortlist Next") {
+		t.Errorf("expected skipped count and shortlist Next in status, got %q", got)
 	}
 }

@@ -3,42 +3,18 @@ package tui
 import (
 	"fmt"
 	"image/color"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
-
-// ReviewHubModuleSelectedMsg changes the active Review Hub mode without
-// introducing a child route. The shell owns the corresponding typed route
-// replacement so Esc can return to the landing menu first.
-type ReviewHubModuleSelectedMsg struct {
-	Module  ReviewModule
-	Project *models.Project
-}
 
 // ShowReviewHubMsg opens the Review destination at a named module. It is the
 // typed entry point used by startup routing and direct Review deep links.
 type ShowReviewHubMsg struct {
 	Module  ReviewModule
 	Project *models.Project
-}
-
-type reviewHubEntry struct {
-	module      ReviewModule
-	name        string
-	description string
-}
-
-var reviewHubEntries = []reviewHubEntry{
-	{module: ReviewDaily, name: "Daily", description: "Plan today and review recent work"},
-	{module: ReviewWeekly, name: "Weekly", description: "Review project health and the week ahead"},
-	{module: ReviewActivity, name: "Activity", description: "Browse recent and completed tasks"},
-	{module: ReviewMetrics, name: "Metrics", description: "Inspect completion, cycle time, and throughput"},
-	{module: ReviewRoadmap, name: "Roadmap", description: "Explore timelines, forecasts, and critical paths"},
 }
 
 var reviewModuleNames = [...]string{
@@ -67,17 +43,15 @@ type ReviewHubModel struct {
 	wire          func(View)
 
 	module  ReviewModule
-	cursor  int
 	project *models.Project
 
-	daily           *DailyReviewModel
-	weekly          *WeeklyReviewModel
-	activity        *RecentActivityModel
-	activityScopeID string
-	metrics         *MetricsDashboardModel
-	metricsScopeID  string
-	roadmap         *RoadmapModel
-	roadmapScopeID  string
+	// Daily Review and Activity are Outliner computed modes, not hub submodels,
+	// so the hub only owns the remaining direct review tools.
+	weekly         *WeeklyReviewModel
+	metrics        *MetricsDashboardModel
+	metricsScopeID string
+	roadmap        *RoadmapModel
+	roadmapScopeID string
 
 	queueIDs     map[TaskIdentity]bool
 	dailyPlanIDs map[TaskIdentity]bool
@@ -100,9 +74,6 @@ func (m *ReviewHubModel) Init() tea.Cmd {
 }
 
 func (m *ReviewHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.module == ReviewLanding {
-		return m.updateLanding(msg)
-	}
 	active := m.ActiveModuleView()
 	if active == nil {
 		return m, nil
@@ -114,77 +85,11 @@ func (m *ReviewHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *ReviewHubModel) updateLanding(msg tea.Msg) (tea.Model, tea.Cmd) {
-	key, ok := msg.(tea.KeyPressMsg)
-	if !ok {
-		return m, nil
-	}
-	switch key.String() {
-	case "j", "down":
-		m.cursor = min(m.cursor+1, len(reviewHubEntries)-1)
-	case "k", "up":
-		m.cursor = max(m.cursor-1, 0)
-	case "g", "home":
-		m.cursor = 0
-	case "G", "end":
-		m.cursor = len(reviewHubEntries) - 1
-	case "enter":
-		return m.selectLandingEntry(m.cursor)
-	case "1", "2", "3", "4", "5":
-		return m.selectLandingEntry(int(key.String()[0] - '1'))
-	}
-	return m, nil
-}
-
-func (m *ReviewHubModel) selectLandingEntry(index int) (tea.Model, tea.Cmd) {
-	if index < 0 || index >= len(reviewHubEntries) {
-		return m, nil
-	}
-	entry := reviewHubEntries[index]
-	project := m.project
-	return m, func() tea.Msg {
-		return ReviewHubModuleSelectedMsg{Module: entry.module, Project: project}
-	}
-}
-
 func (m *ReviewHubModel) View() tea.View {
 	if active := m.ActiveModuleView(); active != nil {
 		return active.View()
 	}
-	return m.viewLanding()
-}
-
-func (m *ReviewHubModel) viewLanding() tea.View {
-	width := max(m.width, 1)
-	height := max(m.height, 1)
-	title := renderFullscreenTitle("Review", "Reviews and reports", m.AccentColor())
-	footer := renderStatusBarFooter(
-		HelpStyle.Render("j/k choose · Enter open · 1-5 direct · Esc Home · ? help"),
-		MutedStyle.Render("Review"),
-		width,
-		m.AccentColor(),
-	)
-
-	lines := make([]string, 0, len(reviewHubEntries)*2+1)
-	for i, entry := range reviewHubEntries {
-		marker := "  "
-		nameStyle := BoldStyle
-		if i == m.cursor {
-			marker = IconCursorRight + " "
-			nameStyle = SelectedItemTextStyle
-		}
-		name := fmt.Sprintf("%d  %-9s", i+1, entry.name)
-		line := marker + nameStyle.Render(name) + " " + MutedStyle.Render(entry.description)
-		line = truncateToVisualWidth(line, width)
-		if i == m.cursor {
-			line = SelectionRowStyle.Width(width).Render(line)
-		}
-		lines = append(lines, line)
-	}
-
-	contentHeight := fullscreenContentHeightForBlocks(height, title, footer)
-	content := fitBlockHeight(strings.Join(lines, "\n"), contentHeight)
-	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, title, content, footer))
+	return tea.NewView("")
 }
 
 // Activate switches the hub mode and lazily creates the requested legacy model.
@@ -203,15 +108,9 @@ func (m *ReviewHubModel) Activate(module ReviewModule, project *models.Project) 
 	scopeID := reviewScopeID(project)
 	var view View
 	switch module {
-	case ReviewLanding:
+	case ReviewLanding, ReviewDaily, ReviewActivity:
+		// Landing has no renderer, and Daily Review / Activity are Outliner modes.
 		return nil
-	case ReviewDaily:
-		if m.daily == nil {
-			m.daily = NewDailyReviewModel(m.runtime, m.configManager)
-			m.wireModule(m.daily)
-		}
-		m.daily.queueIDs, m.daily.dailyPlanIDs = m.queueIDs, m.dailyPlanIDs
-		view = m.daily
 	case ReviewWeekly:
 		if m.weekly == nil {
 			m.weekly = NewWeeklyReviewModel(m.runtime, m.configManager)
@@ -219,18 +118,6 @@ func (m *ReviewHubModel) Activate(module ReviewModule, project *models.Project) 
 		}
 		m.weekly.queueIDs, m.weekly.dailyPlanIDs = m.queueIDs, m.dailyPlanIDs
 		view = m.weekly
-	case ReviewActivity:
-		if m.activity == nil || m.activityScopeID != scopeID {
-			if project == nil {
-				m.activity = NewRecentActivityModel(m.runtime, m.configManager)
-			} else {
-				m.activity = NewProjectRecentActivityModel(m.runtime, m.configManager, project)
-			}
-			m.activityScopeID = scopeID
-			m.wireModule(m.activity)
-		}
-		m.activity.queueIDs, m.activity.dailyPlanIDs = m.queueIDs, m.dailyPlanIDs
-		view = m.activity
 	case ReviewMetrics:
 		if m.metrics == nil || m.metricsScopeID != scopeID {
 			if project == nil {
@@ -278,13 +165,8 @@ func (m *ReviewHubModel) wireModule(view View) {
 
 func (m *ReviewHubModel) replaceActiveModule(view View) {
 	switch m.module {
-	case ReviewLanding:
-	case ReviewDaily:
-		m.daily, _ = view.(*DailyReviewModel)
 	case ReviewWeekly:
 		m.weekly, _ = view.(*WeeklyReviewModel)
-	case ReviewActivity:
-		m.activity, _ = view.(*RecentActivityModel)
 	case ReviewMetrics:
 		m.metrics, _ = view.(*MetricsDashboardModel)
 	case ReviewRoadmap:
@@ -294,19 +176,9 @@ func (m *ReviewHubModel) replaceActiveModule(view View) {
 
 func (m *ReviewHubModel) ActiveModuleView() View {
 	switch m.module {
-	case ReviewLanding:
-		return nil
-	case ReviewDaily:
-		if m.daily != nil {
-			return m.daily
-		}
 	case ReviewWeekly:
 		if m.weekly != nil {
 			return m.weekly
-		}
-	case ReviewActivity:
-		if m.activity != nil {
-			return m.activity
 		}
 	case ReviewMetrics:
 		if m.metrics != nil {
@@ -326,14 +198,8 @@ func (m *ReviewHubModel) ProjectScope() *models.Project { return m.project }
 
 func (m *ReviewHubModel) SetPlanningIndicators(queueIDs, dailyPlanIDs map[TaskIdentity]bool) {
 	m.queueIDs, m.dailyPlanIDs = queueIDs, dailyPlanIDs
-	if m.daily != nil {
-		m.daily.queueIDs, m.daily.dailyPlanIDs = queueIDs, dailyPlanIDs
-	}
 	if m.weekly != nil {
 		m.weekly.queueIDs, m.weekly.dailyPlanIDs = queueIDs, dailyPlanIDs
-	}
-	if m.activity != nil {
-		m.activity.queueIDs, m.activity.dailyPlanIDs = queueIDs, dailyPlanIDs
 	}
 }
 
@@ -354,15 +220,9 @@ func (m *ReviewHubModel) SetAccentColor(accent color.Color) {
 }
 
 func (m *ReviewHubModel) cachedModuleViews() []View {
-	views := make([]View, 0, 5)
-	if m.daily != nil {
-		views = append(views, m.daily)
-	}
+	views := make([]View, 0, 3)
 	if m.weekly != nil {
 		views = append(views, m.weekly)
-	}
-	if m.activity != nil {
-		views = append(views, m.activity)
 	}
 	if m.metrics != nil {
 		views = append(views, m.metrics)
@@ -442,18 +302,13 @@ func (m *ReviewHubModel) GetHelpItems() []HelpItem {
 	if provider, ok := m.ActiveModuleView().(HelpProvider); ok {
 		return provider.GetHelpItems()
 	}
-	return []HelpItem{
-		{Key: "j/k", Description: "Choose module", Category: "Navigation"},
-		{Key: "enter", Description: "Open module", Category: "Navigation"},
-		{Key: "1-5", Description: "Open named module", Category: "Navigation"},
-		{Key: "esc", Description: "Return Home", Category: "Navigation"},
-	}
+	return nil
 }
 
 func (m *ReviewHubModel) StatusBarLabel() string { return m.module.String() }
 
 func (m *ReviewHubModel) SupportsTaskUndoRedo() bool {
-	return m.module == ReviewDaily || m.module == ReviewWeekly || m.module == ReviewActivity
+	return m.module == ReviewWeekly
 }
 
 func (m *ReviewHubModel) CommandContext() CommandContext {
@@ -477,17 +332,9 @@ func (m *ReviewHubModel) CommandContext() CommandContext {
 }
 
 func (m *ReviewHubModel) Refresh() {
-	if m.daily != nil {
-		m.daily.reloadData()
-		m.daily.clampCursor()
-	}
 	if m.weekly != nil {
 		m.weekly.reloadData()
 		m.weekly.clampCursor()
-	}
-	if m.activity != nil {
-		m.activity.loadTasks()
-		m.activity.clampCursor()
 	}
 	if m.metrics != nil {
 		m.metrics.computeMetrics()
@@ -499,15 +346,8 @@ func (m *ReviewHubModel) Refresh() {
 
 func reviewModulePresentation(module ReviewModule, project *models.Project) (PresentationID, bool) {
 	switch module {
-	case ReviewLanding, ReviewDaily:
-		return ViewDailyReview, true
 	case ReviewWeekly:
 		return ViewWeeklyReview, true
-	case ReviewActivity:
-		if project != nil {
-			return ViewProjectRecentActivity, true
-		}
-		return ViewRecentActivity, true
 	case ReviewMetrics:
 		return ViewMetricsDashboard, true
 	case ReviewRoadmap:

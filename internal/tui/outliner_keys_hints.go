@@ -39,20 +39,6 @@ var CrossProjectNavigationPrefixHints = []PrefixHint{
 	{Key: "z", Description: "snoozed", Detail: "Jump to Snoozed perspective"},
 }
 
-// OutlinerPerspectivePrefixHints provides the hint list for the p-prefix popup overlay.
-var OutlinerPerspectivePrefixHints = []PrefixHint{
-	{Key: "1", Description: "All"},
-	{Key: "2", Description: "Active"},
-	{Key: "3", Description: "Next"},
-	{Key: "4", Description: "Inbox"},
-	{Key: "5", Description: "Standby"},
-	{Key: "6", Description: "Waiting"},
-	{Key: "7", Description: "Someday"},
-	{Key: "8", Description: "Review"},
-	{Key: "9", Description: "Snoozed"},
-	{Key: "0", Description: "Completed"},
-}
-
 // buildPrefixHints returns the hints map for all supported prefix keys.
 func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	currentPriority := m.currentTaskPrefixContext()
@@ -64,7 +50,6 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	hints["f"] = OutlinerFoldPrefixHints
 
 	activePrefix := m.currentPrefixHint()
-	hints["P"] = m.buildOutlinerPerspectiveHints(activePrefix)
 
 	// Add filter hints
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter.CommonFilterState, m.runtime.Machine(), true, true, true))
@@ -108,26 +93,6 @@ func (m *OutlinerModel) currentPrefixHint() string {
 		return m.Dispatcher.PendingPrefix()
 	}
 	return m.pendingPrefix
-}
-
-func (m *OutlinerModel) buildOutlinerPerspectiveHints(activePrefix string) []PrefixHint {
-	if activePrefix != "P" {
-		return OutlinerPerspectivePrefixHints
-	}
-	idx := m.activePerspective
-	if idx < 0 {
-		idx = PerspectiveAll
-	}
-	perspective, ok := PerspectiveByID(idx)
-	if !ok {
-		perspective, _ = PerspectiveByID(PerspectiveAll)
-	}
-	activeKey := fmt.Sprintf("%d", perspective.Key)
-	return annotatePrefixHints(OutlinerPerspectivePrefixHints, func(hint *PrefixHint) {
-		if hint.Key == activeKey {
-			hint.Active = true
-		}
-	})
 }
 
 func (m *OutlinerModel) addOutlinerFilterHints(hints PrefixHints) {

@@ -38,8 +38,6 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		if project != nil {
 			return m.handleViewMessages(ShowProjectRecentActivityMsg{Project: project})
 		}
-	case ViewFocusBoard:
-		return m.handleViewMessages(ShowFocusBoardMsg{})
 	case ViewCrossProjectOutliner:
 		return m.handleViewMessages(ShowGlobalOutlinerMsg{Options: msg.OutlinerOptions})
 	case ViewMetricsDashboard:

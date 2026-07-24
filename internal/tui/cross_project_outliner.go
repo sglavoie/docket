@@ -110,15 +110,24 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossProjectRebuildRows()
 	m.restoreCrossOutlinerCursorAfterReload()
 
-	if len(msg.failedLoads) == 0 {
-		return nil
-	}
 	var cmds []tea.Cmd
+	// A scoped project may have been archived, trashed, or deleted externally
+	// while the reload was in flight; unwind to the nearest valid scope.
+	if scopeMsg, repaired := m.reconcileProjectScope(); repaired {
+		cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(scopeMsg) })
+	}
+
+	if len(msg.failedLoads) == 0 {
+		if len(cmds) == 0 {
+			return nil
+		}
+		return tea.Batch(cmds...)
+	}
 	for _, failure := range msg.failedLoads {
 		f := failure // capture for closure
 		cmds = append(cmds, func() tea.Msg {
 			return AppendToMessageLogMsg{
-				Message: "Cross-project outliner: " + f.Detail,
+				Message: "Outliner: " + f.Detail,
 				Level:   MessageLogLevelError,
 			}
 		})
@@ -186,12 +195,27 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		return
 	}
 
+	if m.workTodayMode || m.workNextMode || m.workBacklogMode {
+		m.buildWorkModeRows()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return
+	}
+
+	if m.reviewModeActive() {
+		m.buildReviewModeRows()
+		return
+	}
+
 	p := m.currentPerspective()
 
 	// Collect per-project task groups, applying per-project perspective filter.
 	// Grouping preserves project identity so ProjectID can be set on task rows.
 	var groups []projectTasksGroup
 	for _, proj := range m.loadedProjects {
+		if m.scopeSkipProject(proj.ID) {
+			continue
+		}
 		if len(m.filterProjects) > 0 && !m.filterProjects[proj.ID] {
 			continue
 		}
@@ -284,6 +308,9 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 func (m *OutlinerModel) crossPriorityRebuildRows() {
 	var groups []projectTasksGroup
 	for _, proj := range m.loadedProjects {
+		if m.scopeSkipProject(proj.ID) {
+			continue
+		}
 		if len(m.filterProjects) > 0 && !m.filterProjects[proj.ID] {
 			continue
 		}
@@ -341,7 +368,10 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	} else {
 		b.WriteString("focus=perspective|")
 	}
-	fmt.Fprintf(&b, "priority=%t:%s", m.crossPriorityMode, crossPriorityCollapsedGroupsFingerprint(m.crossPriorityCollapsedGroups))
+	fmt.Fprintf(&b, "priority=%t:%s|", m.crossPriorityMode, crossPriorityCollapsedGroupsFingerprint(m.crossPriorityCollapsedGroups))
+	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
+	fmt.Fprintf(&b, "work=%t:%t:%t|", m.workTodayMode, m.workNextMode, m.workBacklogMode)
+	fmt.Fprintf(&b, "review=%d:%s", m.reviewMode, reviewCollapsedFingerprint(m.reviewCollapsedSections))
 	return b.String()
 }
 
@@ -527,21 +557,26 @@ func (m *OutlinerModel) crossMergedTaskSlice() []*models.Task {
 	return merged
 }
 
-// crossStatusBarLabel returns the status bar label for cross-project mode,
-// formatted as 'Cross-Outliner · [context-name] · N tasks'.
+// crossStatusBarLabel returns the status bar label for the global Outliner,
+// formatted as 'Outliner · [context-name] · N tasks'.
 // N counts only task rows, excluding section headers, project sub-headers,
 // and separators.
 func (m *OutlinerModel) crossStatusBarLabel() string {
 	ctxName := "All"
+	if m.isProjectScoped() {
+		// Under a project scope the label names the scoped project (chain) rather
+		// than the unscoped "All" context.
+		ctxName = strings.Join(m.scopeChainNames(), scopeChainSeparator)
+	}
 	taskCount := 0
 	for _, row := range m.rows {
 		if row.isTaskRow() {
 			taskCount++
 		}
 	}
-	label := "Cross-Outliner"
+	label := "Outliner"
 	if m.crossPriorityMode {
-		label = "Cross-Outliner: Priority"
+		label = "Outliner: Priority"
 	}
 	return fmt.Sprintf("%s · %s · %d tasks", label, ctxName, taskCount)
 }
@@ -558,6 +593,14 @@ func (m *OutlinerModel) toggleCrossPriorityMode() {
 
 func (m *OutlinerModel) enterCrossPriorityMode() {
 	m.crossPriorityMode = true
+	m.workTodayMode = false
+	m.workNextMode = false
+	m.workBacklogMode = false
+	m.reviewMode = reviewNone
+	m.smartFocus = nil
+	// Priority is a grouped tree-based view, not the Due Date schedule; drop any
+	// prior Due Date lens so the two lens modes stay mutually exclusive.
+	m.lens = OutlinerLensTree
 	m.crossPriorityCollapsedGroups = map[PriorityGroup]bool{
 		PriorityGroupWaitingOn: true,
 	}

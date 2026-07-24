@@ -78,13 +78,13 @@ func TestTutorNormalWidthAlignedRowsRemainReadable(t *testing.T) {
 		token string
 	}
 	samples := []sample{
-		{"Quick Capture Grammar", ">Login"},  // >parent … (66 cols)
-		{"Repeat Last Action", "+1m)"},       // d1-9 … (68 cols)
-		{"Attachments", "IDE)"},              // tt attach … (65 cols)
-		{"Help", "installed"},                // provider's CLI … (54 cols)
-		{"Command Palette", "inbox)"},        // triage inbox … (61 cols)
-		{"Recurrence", "2 weeks)"},           // Nd, Nw … (63 cols)
-		{"Dashboard at a glance", "triage)"}, // ctrl+i … (56 cols)
+		{"Quick Capture Grammar", ">Login"},              // >parent … (66 cols)
+		{"Repeat Last Action", "+1m)"},                   // d1-9 … (68 cols)
+		{"Attachments", "IDE)"},                          // tt attach … (65 cols)
+		{"Help", "installed"},                            // provider's CLI … (54 cols)
+		{"Command Palette", "inbox)"},                    // triage inbox … (61 cols)
+		{"Recurrence", "2 weeks)"},                       // Nd, Nw … (63 cols)
+		{"Cross-project signals at a glance", "triage)"}, // ctrl+i … (56 cols)
 	}
 
 	byTitle := map[string]int{}

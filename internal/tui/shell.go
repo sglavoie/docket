@@ -81,11 +81,11 @@ func (m *AppModel) CurrentRoute() Route {
 			return route
 		}
 	}
-	home, err := NewRoute(Home, HomeParams{})
+	root, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
 	if err != nil {
 		panic(err)
 	}
-	return home
+	return root
 }
 
 // CurrentView satisfies ShellContext.
@@ -144,6 +144,7 @@ func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
 	return m.quickNoteOverlay != nil ||
 		m.globalProjectPicker != nil ||
+		(m.scopePicker != nil && m.scopePicker.searching) ||
 		m.globalTaskPicker != nil ||
 		m.statusQuickPicker != nil ||
 		m.sectionQuickPicker != nil
@@ -153,9 +154,10 @@ func (o OverlayManager) HasActiveTextInput() bool {
 func (o OverlayManager) Active() bool {
 	m := o.app
 	return (m.typedNavigation && m.navigation.Overlays.Active()) ||
-		m.destinationSwitcher != nil ||
 		m.quickNoteOverlay != nil ||
 		m.globalProjectPicker != nil ||
+		m.scopePicker != nil ||
+		m.projectAdminMenu != nil ||
 		m.globalTaskPicker != nil ||
 		m.statusQuickPicker != nil ||
 		m.sectionQuickPicker != nil ||
@@ -173,13 +175,14 @@ func (o OverlayManager) ClearAll() {
 	if m.typedNavigation {
 		m.navigation.Overlays.CancelAll()
 	}
-	m.destinationSwitcher = nil
 	m.showQuickSwitch = false
 	m.quickSwitchFiltering = false
 	m.showPinnedPopup = false
 	m.pinnedPopupFiltering = false
 	m.quickNoteOverlay = nil
 	m.globalProjectPicker = nil
+	m.scopePicker = nil
+	m.projectAdminMenu = nil
 	m.globalTaskPicker = nil
 	m.statusQuickPicker = nil
 	m.sectionQuickPicker = nil

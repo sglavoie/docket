@@ -2,7 +2,7 @@ package tui
 
 import "charm.land/lipgloss/v2"
 
-// Manager panel and sidebar styles.
+// Manager panel styles.
 var (
 	TagManagerBoxStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
@@ -89,35 +89,18 @@ var (
 	BoldSecondaryStyle        = BoldStyle.Foreground(ColorSecondary)
 	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
 	PurpleStyle               = lipgloss.NewStyle().Foreground(ColorPurple)
-	SidebarStyle              = lipgloss.NewStyle().
-					BorderStyle(lipgloss.RoundedBorder()).
-					BorderForeground(ColorBorder).
-					Padding(1)
-
-	SidebarHeaderStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(ColorPrimary)
 
 	TagStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary).
 			Background(ColorBackground).
 			Padding(0, 1)
 
-	SidebarFocusBadgeStyle = lipgloss.NewStyle().
-				Foreground(ColorAccent).
-				Bold(true)
+	PanelCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1)
 
-	SidebarCardStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorBorder).
-				Padding(0, 1)
-
-	SidebarCardFocusedStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary).
-				Padding(0, 1)
-
-	SidebarCardTitleStyle = lipgloss.NewStyle().
+	PanelCardTitleStyle = lipgloss.NewStyle().
 				Foreground(ColorMuted)
 
 	// TabContentBgStyle is applied to the content area below tab bars to create

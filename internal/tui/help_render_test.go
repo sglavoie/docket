@@ -262,37 +262,3 @@ func TestIntentForItem_DashboardDoesNotPromoteTriageKeys(t *testing.T) {
 		t.Errorf("intentForItem(%q, ViewDashboard) = %q, want Triage", openTriage.Key, got)
 	}
 }
-
-// TestHomeFirstLevelHelpMatchesSimplifiedGrammar verifies Help exposes Home's
-// pane, search, project, and open controls without retired Dashboard shortcuts.
-func TestHomeFirstLevelHelpMatchesSimplifiedGrammar(t *testing.T) {
-	cfg, _ := newTestConfigWithProject("Alpha")
-	cfg = testRuntimeAt(t.TempDir(), cfg)
-	dashboard := NewDashboardModel(testRuntimeAt(cfg.DataDir(), cfg))
-	items := dashboard.GetHelpItems()
-
-	for key, description := range map[string]string{
-		"h": "Focus Projects", "l": "Focus Attention", "/": "Search Home",
-		"a": "Create project", "e": "Edit project", "v": "Show archived projects",
-		"enter": "Open", "shift+enter": "Peek",
-	} {
-		if got := dashboardHelpDescription(items, key); got != description {
-			t.Errorf("Home help %s = %q, want %q", key, got, description)
-		}
-	}
-
-	for _, retired := range []string{"n", "O", "D", "T", "@", "`", "~", ",", ";", "ctrl+b", "ctrl+f"} {
-		if got := dashboardHelpDescription(items, retired); got != "" {
-			t.Errorf("Home help still advertises retired key %q as %q", retired, got)
-		}
-	}
-
-	help := NewHelpViewModel(items, ViewDashboard, "Home")
-	help.SetSize(120, 40)
-	out := help.renderByIntentContent()
-	for _, required := range []string{"Focus Projects", "Focus Attention", "Search Home", "Create project", "Show archived projects"} {
-		if !strings.Contains(out, required) {
-			t.Errorf("Home help missing %q:\n%s", required, out)
-		}
-	}
-}

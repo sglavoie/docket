@@ -68,7 +68,7 @@ Active is the section for work you are working on right now.
 A task is on Next exactly when its workflow state is StateNext,
 so pressing q to queue it moves the task into StateNext. The
 persisted order index is ordering-only and never decides
-membership. Manage Next from the Planner.
+membership. Manage Next from the Outliner.
 
 Next and Today are mutually exclusive planning horizons, and
 both are distinct from the ranked Backlog.
@@ -179,9 +179,9 @@ reappears automatically when the snooze period expires.
 
 # How Snoozed Tasks Reappear
 
-Snoozed tasks are excluded from normal Outliner perspectives and the
-dashboard. When the snooze time passes, the task returns to
-its previous section and appears in your task list again.
+Snoozed tasks are excluded from normal Outliner perspectives.
+When the snooze time passes, the task returns to its previous
+section and appears in your task list again.
 
 # Use Cases
 

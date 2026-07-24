@@ -37,23 +37,13 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 	return m.handleLinkedTaskNavigation(task, targetProject)
 }
 
-// handleLinkedTaskNavigation navigates to a linked task, switching projects if needed.
+// handleLinkedTaskNavigation reveals a linked task by entering (or updating) the
+// target project's scope on the single authoritative cross Outliner. It never
+// constructs a separate AppModel.outliner root, so a subsequent palette action
+// resolves the same project-qualified task the user sees, and Esc restores the
+// previous Outliner scope.
 func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models.Project) (bool, tea.Cmd) {
-	// If we're already in the outliner for this project, just jump to the task
-	if m.currentView() == ViewOutliner && m.currentProject != nil && m.currentProject.ID == project.ID {
-		if m.outliner != nil {
-			m.outliner.NavigateToTaskInProject(task, m.outliner.project)
-			m.setSuccessStatus(fmt.Sprintf("Jumped to #%d", task.ShortID))
-		}
-		return true, defaultStatusTimeout()
-	}
-
-	// Otherwise, switch to the project and jump
-	m.switchToProject(project, true)
-	m.pushView(ViewOutliner)
-	if m.outliner != nil {
-		m.outliner.NavigateToTaskInProject(task, m.outliner.project)
-		m.setSuccessStatus(fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name))
-	}
-	return true, defaultStatusTimeout()
+	cmd := m.enterProjectScopeOutliner(project, task, OutlinerOpenOptions{})
+	m.setSuccessStatus(fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name))
+	return true, tea.Batch(cmd, defaultStatusTimeout())
 }

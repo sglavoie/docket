@@ -102,6 +102,12 @@ func (v *BaseSearchableView) SearchInputValue() string {
 	return v.searchInput.Value()
 }
 
+// SetSearchInputValue sets the underlying search input's text, used when
+// restoring a captured search state (e.g. an outliner scope pop).
+func (v *BaseSearchableView) SetSearchInputValue(value string) {
+	v.searchInput.SetValue(value)
+}
+
 // SearchInputView returns the rendered search input for display.
 func (v *BaseSearchableView) SearchInputView() string {
 	return v.searchInput.View()

@@ -16,7 +16,7 @@ func TestUITestActionResizeAndAssertView(t *testing.T) {
 
 	sc := UITestScenario{Actions: []UITestAction{
 		{Type: UITestActionResize, Width: 80, Height: 24},
-		{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
+		{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"},
 	}}
 
 	obs, err := driver.RunScenario(sc, ObserveOptions{})
@@ -258,7 +258,7 @@ func TestUITestActionCommandUnknownFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unknown command, got nil")
 	}
-	if driver.App().currentView() != ViewDashboard {
+	if driver.App().currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("view changed on unknown command: %s", driver.App().currentView())
 	}
 }
@@ -343,8 +343,8 @@ func TestUITestAssertContainsAndNotContains(t *testing.T) {
 func TestUITestAssertView(t *testing.T) {
 	driver := NewUITestDriver(newUITestApp(), 100, 30)
 
-	if err := driver.runAssert(UITestAction{Assert: "view", Value: "Dashboard"}); err != nil {
-		t.Fatalf("view=Dashboard should pass: %v", err)
+	if err := driver.runAssert(UITestAction{Assert: "view", Value: "CrossProjectOutliner"}); err != nil {
+		t.Fatalf("view=CrossProjectOutliner should pass: %v", err)
 	}
 	if err := driver.runAssert(UITestAction{Assert: "view", Value: "Nope"}); err == nil {
 		t.Fatal("view=Nope should fail")

@@ -23,10 +23,7 @@ func (m *AppModel) projectCommands() []Command {
 			Views:       []PresentationID{},
 			Aliases:     []string{"context filter", "workspace"},
 			Handler: func() tea.Msg {
-				if m.dashboard != nil {
-					return ShowContextPickerMsg{Dashboard: m.dashboard}
-				}
-				return nil
+				return ShowContextPickerMsg{}
 			},
 		},
 		{
@@ -47,36 +44,30 @@ func (m *AppModel) projectCommands() []Command {
 			Description: "Edit status note for the selected project",
 			Shortcut:    "S",
 			Category:    CategoryProjects,
-			Views:       []PresentationID{ViewDashboard},
+			Views:       []PresentationID{ViewCrossProjectOutliner},
 			Aliases:     []string{"status", "project status"},
 			Handler: func() tea.Msg {
-				if m.dashboard != nil {
-					visible := m.dashboard.visibleProjects()
-					if CursorInBounds(m.dashboard.cursor, len(visible)) {
-						return ShowStatusIconPickerMsg{Project: visible[m.dashboard.cursor]}
-					}
+				if project := m.paletteCursorProject(); project != nil {
+					return ShowStatusIconPickerMsg{Project: project}
 				}
-				return nil
+				return StatusMsg(statusNoProjectUnderCursor)
 			},
 		},
 		{
 			Name:        "rename project",
 			Description: "Rename the selected project",
 			Category:    CategoryProjects,
-			Views:       []PresentationID{ViewDashboard, ViewOutliner},
+			Views:       []PresentationID{ViewCrossProjectOutliner, ViewOutliner},
 			Aliases:     []string{"edit project", "rename"},
 			Handler: func() tea.Msg {
-				if m.currentView() == ViewDashboard {
-					if m.dashboard != nil {
-						visible := m.dashboard.visibleProjects()
-						if CursorInBounds(m.dashboard.cursor, len(visible)) {
-							return EditProjectMsg{Project: visible[m.dashboard.cursor]}
-						}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
 					}
-				} else if m.currentProject != nil {
-					return EditProjectMsg{Project: m.currentProject}
+					return nil
 				}
-				return nil
+				return EditProjectMsg{Project: project}
 			},
 		},
 		{

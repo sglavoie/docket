@@ -18,26 +18,21 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.activateManageHub(ManageParams{Module: ManageBlockers, Scope: AppEntityScope()})
 
 	case BlockerGoToProjectMsg:
-		m.popView()
+		// Return to the app-scoped Outliner root and push the selected project's
+		// scope frame on the single authoritative cross Outliner rather than
+		// reviving a separate project Outliner root.
 		if msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.pushView(ViewOutliner)
+			return true, m.enterProjectScopeOutliner(msg.Project, nil, OutlinerOpenOptions{})
 		}
-		return true, nil
+		return true, m.popToAnchorView()
 
 	case BlockerAddedMsg, BlockerEditedMsg, BlockerDeletedMsg:
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		return true, nil
 
 	case ShowTaskAttachmentsMsg:
 		return true, m.activateTaskDetail(msg.Task, msg.Project, TaskAttachments)
 
 	case AttachmentAddedMsg, AttachmentDeletedMsg:
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		return true, nil
 	}
 

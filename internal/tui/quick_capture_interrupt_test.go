@@ -12,7 +12,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	driver, _, project := newQuickCaptureInterruptFixture(t)
 	openFixtureOutliner(t, driver, project)
 
-	outliner := driver.App().outliner
+	outliner := driver.App().crossOutliner
 	outliner.cursor = nthTaskRowIndex(t, outliner, 1)
 	before := driver.Observe(ObserveOptions{})
 	beforeStack := slices.Clone(before.ViewStack)
@@ -21,8 +21,8 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	beforeCursor := outliner.cursor
 
 	driveUITestKeys(t, driver, "ctrl+n")
-	assertQuickCaptureOpenOver(t, driver, ViewOutliner, beforeStack)
-	if got := driver.App().outliner.cursor; got != beforeCursor {
+	assertQuickCaptureOpenOver(t, driver, ViewCrossProjectOutliner, beforeStack)
+	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
 	}
 
@@ -30,8 +30,8 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	// and scroll it by line and page. None of this may disturb the parked
 	// outliner beneath capture (cursor or view stack).
 	driveUITestKeys(t, driver, "?", "ctrl+j", "pgdown")
-	assertQuickCaptureOpenOver(t, driver, ViewOutliner, beforeStack)
-	if got := driver.App().outliner.cursor; got != beforeCursor {
+	assertQuickCaptureOpenOver(t, driver, ViewCrossProjectOutliner, beforeStack)
+	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after syntax scroll = %d, want %d", got, beforeCursor)
 	}
 	// Close the guide so the single-Esc dismissal path below is unchanged.
@@ -39,13 +39,13 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 
 	driveUITestKeys(t, driver, "esc")
 	after := driver.Observe(ObserveOptions{})
-	if after.CurrentView != ViewOutliner.String() {
-		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, ViewOutliner.String())
+	if after.CurrentView != ViewCrossProjectOutliner.String() {
+		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, ViewCrossProjectOutliner.String())
 	}
 	if !slices.Equal(after.ViewStack, beforeStack) {
 		t.Fatalf("view stack after capture dismiss = %v, want %v", after.ViewStack, beforeStack)
 	}
-	if got := driver.App().outliner.cursor; got != beforeCursor {
+	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after capture dismiss = %d, want %d", got, beforeCursor)
 	}
 }
@@ -55,7 +55,7 @@ func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
 	openFixtureOutliner(t, driver, project)
 
 	_ = driver.Observe(ObserveOptions{})
-	outliner := driver.App().outliner
+	outliner := driver.App().crossOutliner
 	task := outliner.rows[nthTaskRowIndex(t, outliner, 1)].task
 	task.Description = strings.Repeat("Interrupt verification detail line.\n", 40)
 
@@ -131,11 +131,15 @@ func openFixtureOutliner(t *testing.T, driver *UITestDriver, project *models.Pro
 	driver.pendingCmd = driver.App().selectProjectNow(project)
 	driver.drain()
 	obs := driver.Observe(ObserveOptions{})
-	if obs.CurrentView != ViewOutliner.String() {
-		t.Fatalf("current view = %q, want %q", obs.CurrentView, ViewOutliner.String())
+	if obs.CurrentView != ViewCrossProjectOutliner.String() {
+		t.Fatalf("current view = %q, want %q", obs.CurrentView, ViewCrossProjectOutliner.String())
 	}
-	if driver.App().outliner == nil {
-		t.Fatal("outliner should be registered after selecting fixture project")
+	cross := driver.App().crossOutliner
+	if cross == nil {
+		t.Fatal("cross-project outliner should be registered after selecting fixture project")
+	}
+	if cross.scopedProjectID != project.ID {
+		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.scopedProjectID)
 	}
 }
 

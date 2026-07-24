@@ -21,7 +21,9 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		switch msg.Category {
 		case alerts.CategoryDailyReview:
-			return true, m.activateReviewHub(ReviewDaily, nil)
+			return true, func() tea.Msg {
+				return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeDailyReview}}
+			}
 		case alerts.CategoryWeeklyReview:
 			return true, m.activateReviewHub(ReviewWeekly, nil)
 		default:

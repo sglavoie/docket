@@ -79,7 +79,6 @@ const (
 	ViewParkInput
 	ViewTutor
 	ViewAsk
-	ViewProjectPicker
 	ViewTaskTemplates
 	ViewTaskTemplateCreator
 	ViewTaskTemplateEditor
@@ -93,7 +92,6 @@ const (
 	ViewScoringProfilePicker
 	ViewFocusBoard
 	ViewOutliner
-	ViewTemporaryOutliner
 	ViewCrossProjectOutliner
 	ViewColumnPicker
 	ViewFilterBuilder
@@ -211,7 +209,6 @@ type AppModel struct {
 	commandRegistry *CommandRegistry
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
-	dashboard            *DashboardModel
 	helpView             *HelpViewModel
 	taskJumper           *TaskJumperModel
 	inboxProcessor       *InboxProcessorModel
@@ -434,6 +431,12 @@ type AppModel struct {
 	// Global project picker overlay (shown for project selection in global workflows)
 	globalProjectPicker *GlobalProjectPicker
 
+	// Unified Ctrl+X scope/administration picker (All Projects, Active, Archived, Trash)
+	scopePicker *ScopePickerModel
+
+	// Contextual project administration menu for a focused Outliner project header
+	projectAdminMenu *ProjectAdminMenuModel
+
 	// Global task picker overlay (shown for task selection in global workflows)
 	globalTaskPicker *GlobalTaskPicker
 
@@ -484,10 +487,6 @@ type AppModel struct {
 	peekLeftLines   int  // cached total line count for left pane
 	peekRightLines  int  // cached total line count for right pane
 	peekPaneHeight  int  // cached visible height per pane
-
-	// Six-destination Ctrl+G switcher. It is a typed overlay rather than a
-	// routed view and therefore never enters the primary stack.
-	destinationSwitcher *DestinationSwitcher
 
 	// Export state for repeat-press clipboard behavior.
 	lastExportPath string

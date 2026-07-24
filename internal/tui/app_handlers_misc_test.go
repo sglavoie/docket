@@ -378,11 +378,11 @@ func TestCloseViewMsgPropagatesPopCmd(t *testing.T) {
 		app.pushView(ViewCrossProjectOutliner)
 		// Push a non-anchor view that the anchor-pop will unwind past.
 		app.pushView(ViewTaskDetail)
-		// Push a global overlay-style anchor target. CloseFocusBoardMsg is
+		// Push a global overlay-style anchor target. CloseMetricsDashboardMsg is
 		// declared with PopToAnchorMsg so this exercises the popToAnchor arm.
-		app.pushView(ViewFocusBoard)
+		app.pushView(ViewMetricsDashboard)
 
-		_, cmd := app.Update(CloseFocusBoardMsg{})
+		_, cmd := app.Update(CloseMetricsDashboardMsg{})
 		if app.currentView() != ViewCrossProjectOutliner {
 			t.Fatalf("expected ViewCrossProjectOutliner, got %v", app.currentView())
 		}

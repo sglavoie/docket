@@ -70,19 +70,13 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.recentActivityShowAll = !m.recentActivityShowAll
 		case 2:
 			m.linkedTaskJump = !m.linkedTaskJump
-		case 12:
-			m.startViewCursor = (m.startViewCursor + 1) % len(startViewOptions)
 		}
 	case tabOutliner:
-		columnsBase := subTabFieldStart(tabOutliner, 2) - tabFieldStart[tabOutliner]
+		columnsBase := subTabFieldStart(tabOutliner, 1) - tabFieldStart[tabOutliner]
 		columnsEnd := columnsBase + len(AllColumns) - 1
 		switch {
-		case local == 0:
-			m.crossOutlinerSidebar = !m.crossOutlinerSidebar
-		case local == 1:
-			m.crossOutlinerCycleOnly = !m.crossOutlinerCycleOnly
-		case local >= 2 && local <= 8:
-			m.outlinerCollapsed[local-2] = !m.outlinerCollapsed[local-2]
+		case local >= 0 && local <= 6:
+			m.outlinerCollapsed[local] = !m.outlinerCollapsed[local]
 		case local == columnsBase+1:
 			m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
 		case local >= columnsBase && local <= columnsEnd:
@@ -171,12 +165,7 @@ func (m *SettingsModel) handleLeftPaletteKey(local int) {
 	}
 }
 
-func (m *SettingsModel) handleLeftBehaviorKey(local int) {
-	switch local {
-	case 12:
-		stepBoundedCursor(&m.startViewCursor, -1, len(startViewOptions)-1)
-	}
-}
+func (m *SettingsModel) handleLeftBehaviorKey(int) {}
 
 func (m *SettingsModel) handleLeftOutlinerKey(local int) {
 	if local == 10 {
@@ -211,12 +200,7 @@ func (m *SettingsModel) handleRightPaletteKey(local int) {
 	}
 }
 
-func (m *SettingsModel) handleRightBehaviorKey(local int) {
-	switch local {
-	case 12:
-		stepBoundedCursor(&m.startViewCursor, 1, len(startViewOptions)-1)
-	}
-}
+func (m *SettingsModel) handleRightBehaviorKey(int) {}
 
 func (m *SettingsModel) handleRightOutlinerKey(local int) {
 	if local == 10 {

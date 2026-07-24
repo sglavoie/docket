@@ -272,8 +272,8 @@ func TestSession15TypedReferenceAskCancellationAndOverlayManager(t *testing.T) {
 
 func TestSession15GlobalHelpHasNoGhostBindings(t *testing.T) {
 	items := getGlobalHelpItems()
-	if len(items) != 10 {
-		t.Fatalf("global Help bindings = %d, want 10", len(items))
+	if len(items) != 9 {
+		t.Fatalf("global Help bindings = %d, want 9", len(items))
 	}
 	keys := make(map[string]bool, len(items))
 	for _, item := range items {

@@ -46,8 +46,8 @@ Examples:
 
 var focusQueueCmd = &cobra.Command{
 	Use:   "queue",
-	Short: "Show the Planner's Next shortlist (StateNext tasks)",
-	Long: `Show the Planner's "Next" on-deck shortlist across projects.
+	Short: "Show the Outliner's Next shortlist (StateNext tasks)",
+	Long: `Show the Outliner's "Next" on-deck shortlist across projects.
 
 Next membership is the workflow state: a task is in Next exactly when its
 state is "next" (StateNext). The persisted focus queue list is ordering-only
@@ -55,10 +55,10 @@ state is "next" (StateNext). The persisted focus queue list is ordering-only
 unindexed StateNext task). Today (the Daily Plan) is a mutually exclusive
 planning horizon, so a task is never in both Next and Today.
 
-Promote a Backlog task from the Planner (';q' opens Planner/Next, ';w' opens
-Planner/Today): press 'q' to move it to Next or 'w' to move it to Today. From
-the CLI use 'tt focus queue add' (Next) or 'tt focus today add' (Today), and
-reorder Next with 'tt focus queue move'.
+In the TUI, press 'P' to open the Outliner mode picker. Press 'q' to toggle the
+selected task's Next membership or 'w' to toggle Today membership. From the CLI
+use 'tt focus queue add' (Next) or 'tt focus today add' (Today), and reorder Next
+with 'tt focus queue move'.
 
 Examples:
   tt focus queue`,
@@ -70,8 +70,9 @@ var focusTodayCmd = &cobra.Command{
 	Short: "Show tasks planned for today",
 	Long: `Show tasks that have been planned for today's work session.
 
-Plan work from the Today cockpit or the command palette's Today commands.
-Unfinished tasks carry over automatically to the next day.
+Plan work in the Outliner's Today mode: press 'P' to open the mode picker, or
+use the command palette's Today commands. Unfinished tasks carry over
+automatically to the next day.
 
 Examples:
   tt focus today`,

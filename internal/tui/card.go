@@ -16,11 +16,11 @@ type CardConfig struct {
 	Height      int         // optional fixed height (0 = auto)
 }
 
-// DefaultCardConfig returns the default card configuration for sidebar cards.
+// DefaultCardConfig returns the default card configuration for panel cards.
 func DefaultCardConfig() CardConfig {
 	return CardConfig{
-		Style:      SidebarCardStyle,
-		TitleStyle: SidebarCardTitleStyle,
+		Style:      PanelCardStyle,
+		TitleStyle: PanelCardTitleStyle,
 		Focused:    false,
 	}
 }
@@ -181,7 +181,7 @@ func renderClusterColumn(title, content string, width int) string {
 	if width < 1 {
 		width = 1
 	}
-	heading := SidebarCardTitleStyle.Render(title)
+	heading := PanelCardTitleStyle.Render(title)
 	body := heading + "\n" + content
 	return lipgloss.NewStyle().Width(width).Padding(0, 1).Render(body)
 }

@@ -93,8 +93,8 @@ func TestTaskDetailLegacyMessagesChangeOneTypedRouteMode(t *testing.T) {
 		if route.ID() != TaskDetail || !ok || params.Tab != tc.tab {
 			t.Fatalf("%T route = %s/%+v, want TaskDetail/%s", tc.msg, route.ID(), route.Params(), tc.tab)
 		}
-		if app.navigation.Primary.Depth() != 3 {
-			t.Fatalf("%T grew primary stack to depth %d; child tabs must replace one mode", tc.msg, app.navigation.Primary.Depth())
+		if app.navigation.Primary.Depth() != 2 {
+			t.Fatalf("%T grew primary stack to depth %d; child tabs must replace one mode above the sole Outliner root", tc.msg, app.navigation.Primary.Depth())
 		}
 		if app.activeView() != app.taskDetail {
 			t.Fatalf("%T selected %T instead of unified TaskDetailModel", tc.msg, app.activeView())

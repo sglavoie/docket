@@ -3,16 +3,15 @@ package tui
 import (
 	"testing"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TestFocusBoardEditTitle_UndoContextUsesOldTitle verifies that the undo
+// TestRenameEditTitle_UndoContextUsesOldTitle verifies that the undo
 // context captures the original title, not the new one, when renaming a task
-// via the focus board edit input.
-func TestFocusBoardEditTitle_UndoContextUsesOldTitle(t *testing.T) {
+// via an inline edit input.
+func TestRenameEditTitle_UndoContextUsesOldTitle(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", t.TempDir())
 	task := makeBoardTask(t, "id-title", 1, "Old Title")
 	project.Tasks = append(project.Tasks, task)
@@ -20,20 +19,8 @@ func TestFocusBoardEditTitle_UndoContextUsesOldTitle(t *testing.T) {
 
 	row := boardRow{Task: task, Project: project, Source: project.Name}
 
-	m := newTestFocusBoard()
-	m.filtered = []boardRow{row}
-	m.editMode = true
-	m.editIdx = 0
-
-	ei := textinput.New()
-	ei.SetValue("New Title")
-	ei.Focus()
-	m.editInput = ei
-
-	// Simulate pressing Enter to confirm the edit.
-	// We cannot fully exercise persistWithWorkflow (no persister wired),
-	// so instead we verify the mutation ordering directly:
-	// after MutateTask, the task pointer holds the new title.
+	// Verify the mutation ordering directly: after MutateTask, the task pointer
+	// holds the new title, while the previously captured old title is unchanged.
 	oldTitle := row.Task.Title
 	row.Project.MutateTask(row.Task.ID, func(t *models.Task) {
 		t.Title = "New Title"

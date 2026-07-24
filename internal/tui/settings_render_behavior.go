@@ -1,13 +1,9 @@
 package tui
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 func (m *SettingsModel) renderBehaviorTab() string {
@@ -20,47 +16,9 @@ func (m *SettingsModel) renderBehaviorTab() string {
 		return m.renderBehaviorRecentTasksSection()
 	case 4:
 		return m.renderBehaviorSectionLimitsSection()
-	case 5:
-		return m.renderBehaviorStartupSection()
-	case 6:
-		return m.renderBehaviorHomeSection()
 	default:
 		return m.renderBehaviorRecentActivitySection()
 	}
-}
-
-func (m *SettingsModel) renderBehaviorHomeSection() string {
-	var b strings.Builder
-	const labelWidth = 19
-	const indent = 21
-	base := subTabFieldStart(tabBehavior, 6)
-
-	b.WriteString(renderFormLabelWithWidth("Parked task limit: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(m.resumeCardLimitInput.View())
-	b.WriteString(renderDefaultHint(m.resumeCardLimitInput.Value(), strconv.Itoa(config.DefaultResumeCardLimit)))
-	b.WriteString("\n")
-	if m.focusIndex == base+0 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Maximum parked tasks shown in Home Attention", indent, m.focusIndex == base+0))
-
-	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Projects height %: ", labelWidth, m.focusIndex == base+1))
-	b.WriteString(m.homeProjectsHeightInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%d-%d)", config.MinHomeProjectsHeightPct, config.MaxHomeProjectsHeightPct)))
-	b.WriteString(renderDefaultHint(m.homeProjectsHeightInput.Value(), strconv.Itoa(config.DefaultHomeProjectsHeightPct)))
-	b.WriteString("\n")
-	if m.focusIndex == base+1 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Share of Home height for Projects; Attention gets the rest", indent, m.focusIndex == base+1))
-	return b.String()
 }
 
 func (m *SettingsModel) renderBehaviorRecentActivitySection() string {
@@ -191,21 +149,6 @@ func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
-}
-
-func (m *SettingsModel) renderBehaviorStartupSection() string {
-	var b strings.Builder
-	const labelWidth = 17
-	const indent = 19
-	base := subTabFieldStart(tabBehavior, 5)
-
-	b.WriteString(renderFormLabelWithWidth("Start view: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(renderEnumSelector(startViewOptions, m.startViewCursor, m.focusIndex == base+0, m.width-indent))
-	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Today"))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Destination shown when the application starts (default: Planner)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

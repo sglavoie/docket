@@ -30,7 +30,12 @@ func TestPaletteSuggestionsAreDeterministicAcrossRegistrationOrder(t *testing.T)
 	slices.Reverse(reverseInput)
 	reverse := build(reverseInput)
 
-	want := []string{"alpha filter", "beta action", "zeta action"}
+	// The three registered commands lead the Suggested section in a
+	// registration-order-independent order; the catalog-derived Outliner mode
+	// actions (appended by loadAllItems in stable catalog order) fill the
+	// remaining contextual slots (cap 6), so the leading modes are Today, Next,
+	// and Backlog.
+	want := []string{"alpha filter", "beta action", "zeta action", "Today", "Next", "Backlog"}
 	if !slices.Equal(forward, want) {
 		t.Fatalf("forward suggestions = %v, want %v", forward, want)
 	}

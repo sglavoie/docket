@@ -14,53 +14,61 @@ func routeForPresentation(view PresentationID, projectID, taskID string) (route 
 	var params RouteParams
 	switch view {
 	case ViewDashboard, ViewProjectList:
-		id, params = Home, HomeParams{}
+		// The retired Home/ProjectList renderers resolve to the global Outliner
+		// root; they survive only as the viewStack sentinel beneath TaskWorkspace.
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewFocusBoard:
-		id, params = Planner, PlannerParams{Tab: PlannerToday}
+		// The retired Planner renderer resolves to the global Outliner.
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewOutliner:
-		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(projectID)}
+		// The single-project Outliner presentation resolves to the app-scoped
+		// Outliner root; entering a project is an Outliner scope frame, never a
+		// separate project-scoped TaskWorkspace root.
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewCrossProjectOutliner:
 		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewDailyReview:
-		id, params = ReviewHub, ReviewParams{Module: ReviewDaily}
-	case ViewWeeklyReview:
-		id, params = ReviewHub, ReviewParams{Module: ReviewWeekly}
+		// Daily Review and Activity are Outliner computed modes, not standalone
+		// routes; their legacy presentation IDs resolve to the global Outliner.
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
 	case ViewRecentActivity, ViewProjectRecentActivity:
-		id, params = ReviewHub, ReviewParams{Module: ReviewActivity}
+		id, params = TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()}
+	case ViewWeeklyReview:
+		id, params = SecondaryTool, ReviewParams{Module: ReviewWeekly}
 	case ViewMetricsDashboard:
-		id, params = ReviewHub, ReviewParams{Module: ReviewMetrics}
+		id, params = SecondaryTool, ReviewParams{Module: ReviewMetrics}
 	case ViewRoadmap:
-		id, params = ReviewHub, ReviewParams{Module: ReviewRoadmap}
+		id, params = SecondaryTool, ReviewParams{Module: ReviewRoadmap}
 	case ViewInboxProcessor:
-		id, params = ManageHub, ManageParams{Module: ManageInbox, Scope: ProjectEntityScope(projectID)}
+		id, params = SecondaryTool, ManageParams{Module: ManageInbox, Scope: ProjectEntityScope(projectID)}
 	case ViewGlobalInboxProcessor:
-		id, params = ManageHub, ManageParams{Module: ManageInbox, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageInbox, Scope: AppEntityScope()}
 	case ViewNotes:
-		id, params = ManageHub, ManageParams{Module: ManageNotes, Scope: ProjectEntityScope(projectID)}
+		id, params = SecondaryTool, ManageParams{Module: ManageNotes, Scope: ProjectEntityScope(projectID)}
 	case ViewGlobalNotes:
-		id, params = ManageHub, ManageParams{Module: ManageNotes, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageNotes, Scope: AppEntityScope()}
 	case ViewBlockers:
-		id, params = ManageHub, ManageParams{Module: ManageBlockers, Scope: ProjectEntityScope(projectID)}
+		id, params = SecondaryTool, ManageParams{Module: ManageBlockers, Scope: ProjectEntityScope(projectID)}
 	case ViewGlobalBlockers:
-		id, params = ManageHub, ManageParams{Module: ManageBlockers, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageBlockers, Scope: AppEntityScope()}
 	case ViewWorkflowRules, ViewScoreProfileManager:
-		id, params = ManageHub, ManageParams{Module: ManageRules, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageRules, Scope: AppEntityScope()}
 	case ViewTaskTemplates:
-		id, params = ManageHub, ManageParams{Module: ManageTemplates, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageTemplates, Scope: AppEntityScope()}
 	case ViewTagManager:
-		id, params = ManageHub, ManageParams{Module: ManageTags, Scope: ProjectEntityScope(projectID)}
+		id, params = SecondaryTool, ManageParams{Module: ManageTags, Scope: ProjectEntityScope(projectID)}
 	case ViewGlobalTagManager:
-		id, params = ManageHub, ManageParams{Module: ManageTags, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageTags, Scope: AppEntityScope()}
 	case ViewNotificationCenter:
-		id, params = ManageHub, ManageParams{
+		id, params = SecondaryTool, ManageParams{
 			Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationAlerts,
 		}
 	case ViewMessageLog:
-		id, params = ManageHub, ManageParams{
+		id, params = SecondaryTool, ManageParams{
 			Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationLog,
 		}
 	case ViewSettings:
-		id, params = ManageHub, ManageParams{Module: ManageSettings, Scope: AppEntityScope()}
+		id, params = SecondaryTool, ManageParams{Module: ManageSettings, Scope: AppEntityScope()}
 	case ViewTaskDetail:
 		id, params = TaskDetail, TaskDetailParams{ProjectID: projectID, TaskID: taskID, Tab: TaskOverview}
 	case ViewTaskChecklist:
@@ -121,7 +129,7 @@ func presentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlayPalette, true
 	case ViewQuickCapture, ViewBulkCapture, ViewBulkEdit, ViewLinkedTaskCreator, ViewTaskForm, ViewTemplateVarFiller:
 		return OverlayComposer, true
-	case ViewProjectSelector, ViewProjectPicker:
+	case ViewProjectSelector:
 		return OverlayProjectPicker, true
 	case ViewSectionManager, ViewColumnPicker:
 		return OverlayViewMenu, true
@@ -129,8 +137,6 @@ func presentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlaySearch, true
 	case ViewTaskJumper:
 		return OverlayTaskJump, true
-	case ViewTemporaryOutliner:
-		return OverlayProjectDrilldown, true
 	case ViewProjectPreview, ViewRecentActivityPreview:
 		return OverlayPeek, true
 	case ViewProjectCreator, ViewProjectEditor, ViewWorkflowRuleCreator, ViewWorkflowRuleEditor, ViewWorkflowWizard,

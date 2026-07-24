@@ -1,14 +1,16 @@
 package tui
 
 import (
-	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func openRichTemporaryOutliner(t *testing.T) (*UITestDriver, *OutlinerModel) {
+// openScopedProjectDrilldown drills the global Outliner into a single project
+// scope (the consolidated replacement for the retired temporary Outliner) and
+// returns the driver plus the scoped project's loaded copy. Refresh regressions
+// then assert that mutations reach the crossOutliner's own project pointer.
+func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 	t.Helper()
 	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
 	if err != nil {
@@ -16,69 +18,47 @@ func openRichTemporaryOutliner(t *testing.T) (*UITestDriver, *OutlinerModel) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	for _, action := range []UITestAction{
-		{Type: UITestActionKey, Key: "ctrl+g"},
-		{Type: UITestActionKey, Key: "3"},
-		{Type: UITestActionWait},
-	} {
-		if _, actionErr := driver.ApplyAction(action, ObserveOptions{}); actionErr != nil {
-			t.Fatal(actionErr)
-		}
-	}
+	// The Outliner is the sole root and already open on launch; ensure its
+	// cross-project cache is loaded before drilling into a single project scope.
+	driver.dispatch(ShowGlobalOutlinerMsg{})
+	driver.drain()
 
-	// TemporaryOutliner is still a supported compatibility surface, but the
-	// consolidated Task Workspace intentionally has no hidden `go` drill-down
-	// alias. Open it through its message contract so this regression continues
-	// to test registry-owned refresh behavior rather than retired navigation.
-	var targetProject *models.Project
-	if driver.App().crossOutliner == nil {
+	cross := driver.App().crossOutliner
+	if cross == nil {
 		t.Fatal("fixture did not open the cross-project Outliner")
 	}
-	for _, project := range driver.App().crossOutliner.loadedProjects {
-		if project != nil && driver.App().currentProject != nil && project.ID == driver.App().currentProject.ID {
+
+	var targetProject *models.Project
+	for _, project := range cross.loadedProjects {
+		if project != nil && len(project.Tasks) > 0 {
 			targetProject = project
 			break
 		}
 	}
-	if targetProject == nil || len(targetProject.Tasks) == 0 {
-		t.Fatal("fixture did not load a temporary-outliner target project")
+	if targetProject == nil {
+		t.Fatal("fixture did not load a scope-drilldown target project")
 	}
-	driver.dispatch(ShowOutlinerMsg{Project: targetProject, OpenAtTask: targetProject.Tasks[0], Temporary: true})
+
+	// Push the project scope and reveal a task, mirroring the project-header
+	// scope entry (Enter on a project header / Ctrl+X scope picker).
+	cross.pushProjectScope(targetProject.ID)
+	cross.NavigateToTaskInProject(targetProject.Tasks[0], targetProject)
 	driver.drain()
 
-	if driver.App().currentView() != ViewTemporaryOutliner {
-		t.Fatalf("current view = %s, want TemporaryOutliner", driver.App().currentView())
+	if driver.App().currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("current view = %s, want CrossProjectOutliner", driver.App().currentView())
 	}
-	temporary, ok := driver.App().views.Get(ViewTemporaryOutliner).(*OutlinerModel)
-	if !ok || temporary.project == nil {
-		t.Fatalf("temporary outliner = %T, want project-backed *OutlinerModel", driver.App().views.Get(ViewTemporaryOutliner))
+	if !cross.isProjectScoped() || cross.scopedProjectID != targetProject.ID {
+		t.Fatalf("outliner scope = %q (scoped=%v), want %q", cross.scopedProjectID, cross.isProjectScoped(), targetProject.ID)
 	}
-	if temporary.project == driver.App().currentProject {
-		t.Fatal("setup requires temporary outliner and current project to use distinct project pointers")
-	}
-	if temporary.project.ID != driver.App().currentProject.ID {
-		t.Fatalf("temporary project ID = %q, current project ID = %q", temporary.project.ID, driver.App().currentProject.ID)
-	}
-	return driver, temporary
+	return driver, targetProject
 }
 
-func outlinerContainsTask(outliner *OutlinerModel, taskID string) bool {
-	for _, row := range outliner.rows {
-		if row.task != nil && row.task.ID == taskID {
-			return true
-		}
-	}
-	return false
-}
-
-func TestTemporaryOutlinerEscRestoresCrossProjectParent(t *testing.T) {
-	driver, _ := openRichTemporaryOutliner(t)
-	if route := driver.App().navigation.Primary.Current(); route.ID() != TaskWorkspace {
-		t.Fatalf("primary route = %s, want TaskWorkspace", route.ID())
-	}
-	overlay, ok := driver.App().navigation.Overlays.Current()
-	if !ok || overlay.Kind() != OverlayProjectDrilldown {
-		t.Fatalf("overlay = %v/%v, want project drill-down", overlay, ok)
+func TestScopedDrilldownEscRestoresCrossProjectParent(t *testing.T) {
+	driver, _ := openScopedProjectDrilldown(t)
+	cross := driver.App().crossOutliner
+	if !cross.isProjectScoped() {
+		t.Fatal("setup should leave the outliner scoped to one project")
 	}
 	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
 		t.Fatal(err)
@@ -86,85 +66,7 @@ func TestTemporaryOutlinerEscRestoresCrossProjectParent(t *testing.T) {
 	if got := driver.App().currentView(); got != ViewCrossProjectOutliner {
 		t.Fatalf("current view after Esc = %s, want CrossProjectOutliner", got)
 	}
-	if driver.App().navigation.Overlays.Active() {
-		t.Fatal("temporary drill-down overlay remained active after Esc")
-	}
-}
-
-// Regression: a project drill-down from the cross-project outliner owns a
-// separate project pointer and lives only in the view registry. Quick Capture
-// previously reloaded m.currentProject/m.outliner, leaving this view's Inbox
-// count and rows stale until the user navigated away and back.
-func TestQuickCaptureRefreshesTemporaryOutlinerImmediately(t *testing.T) {
-	driver, temporary := openRichTemporaryOutliner(t)
-	beforeCount := len(temporary.project.Tasks)
-	temporary.collapsedSections[models.SectionInbox] = true
-	temporary.rebuildRows()
-
-	const title = "Temporary outliner refresh probe"
-	for _, action := range []UITestAction{
-		{Type: UITestActionKey, Key: "i"},
-		{Type: UITestActionText, Text: title},
-		{Type: UITestActionKey, Key: "enter"},
-		{Type: UITestActionWait},
-	} {
-		if _, actionErr := driver.ApplyAction(action, ObserveOptions{}); actionErr != nil {
-			t.Fatal(actionErr)
-		}
-	}
-
-	if driver.App().currentView() != ViewTemporaryOutliner {
-		t.Fatalf("current view = %s, want TemporaryOutliner", driver.App().currentView())
-	}
-	refreshed := driver.App().views.Get(ViewTemporaryOutliner).(*OutlinerModel)
-	if len(refreshed.project.Tasks) != beforeCount+1 {
-		t.Fatalf("temporary project task count = %d, want %d", len(refreshed.project.Tasks), beforeCount+1)
-	}
-	created := refreshed.getCursorTask()
-	if created == nil || created.Title != title {
-		t.Fatalf("selected task = %v, want %q", created, title)
-	}
-	if models.SectionForState(created.State()) != models.SectionInbox {
-		t.Fatalf("created task section = %q, want Inbox", models.SectionForState(created.State()))
-	}
-	if refreshed.collapsedSections[models.SectionInbox] {
-		t.Fatal("Inbox remained collapsed after navigating to the created task")
-	}
-	if !outlinerContainsTask(refreshed, created.ID) {
-		t.Fatalf("temporary outliner rows do not contain created task %q", title)
-	}
-	if !strings.Contains(driver.Render(), title) {
-		t.Fatalf("rendered temporary outliner does not contain %q", title)
-	}
-}
-
-// The shared coordinator result path must refresh the same registry-owned
-// project pointer, not just the AppModel's canonical project cache.
-func TestTransactionResultRefreshesTemporaryOutlinerProjectCopy(t *testing.T) {
-	driver, temporary := openRichTemporaryOutliner(t)
-
-	const title = "Post-save temporary refresh probe"
-	cmd := driver.App().features.Capture.Capture(app.CaptureRequest{
-		ProjectID: temporary.project.ID,
-		Title:     title,
-		Section:   models.SectionInbox,
-	})
-	raw := cmd()
-	msg, ok := raw.(TransactionResultMsg)
-	if !ok {
-		t.Fatalf("capture result = %T, want TransactionResultMsg", raw)
-	}
-	if temporary.project.GetTaskByID(msg.Result.TaskID) != nil {
-		t.Fatal("setup requires the temporary project pointer to be stale before shared refresh")
-	}
-
-	_ = driver.App().handleTransactionResult(msg)
-
-	created := temporary.project.GetTaskByID(msg.Result.TaskID)
-	if created == nil || created.Title != title {
-		t.Fatalf("temporary project task = %v, want %q", created, title)
-	}
-	if !outlinerContainsTask(temporary, msg.Result.TaskID) {
-		t.Fatalf("temporary outliner rows do not contain refreshed task %q", title)
+	if cross.isProjectScoped() {
+		t.Fatal("Esc should pop the project scope back to all projects")
 	}
 }

@@ -303,7 +303,7 @@ func (m *OutlinerModel) renderTaskIndicators(task *models.Task, rowWidth int) st
 	if m.columnConfig.IsVisible(ColShortID) {
 		parts = append(parts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
 	}
-	if parked := parkedRowSnippet(task, rowWidth); parked != "" && !m.sidebar.IsEnabled() {
+	if parked := parkedRowSnippet(task, rowWidth); parked != "" {
 		parts = append(parts, parked)
 	}
 	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {

@@ -58,7 +58,7 @@ func (m *AppModel) getActiveNotesView() *NotesViewModel {
 
 // validateCurrentProject checks that the current project still exists in config.
 // If the project was deleted (e.g., by an external CLI command), it clears the
-// stale pointer and pops back to the dashboard with a status message.
+// stale pointer and resets to the global Outliner root with a status message.
 // Returns true if the project was invalidated.
 func (m *AppModel) validateCurrentProject() bool {
 	if m.currentProject == nil {
@@ -69,14 +69,14 @@ func (m *AppModel) validateCurrentProject() bool {
 	}
 	m.exitAskView()
 	m.currentProject = nil
-	m.viewStack = m.viewStack[:1]
 	if m.typedNavigation {
-		m.navigation.ResetHome()
+		m.prepareCrossProjectOutliner()
+		m.navigation.ResetRoot()
+		m.activateTaskWorkspaceRoute(outlinerRootRoute())
+	} else {
+		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 	}
-	m.setInfoStatus("Project was removed — returning to dashboard")
-	if m.dashboard != nil {
-		m.dashboard.Refresh()
-	}
+	m.setInfoStatus("Project was removed — returning to the Outliner")
 	return true
 }
 
@@ -170,9 +170,13 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			return false, nil
 		}
 	}
+	// The Outliner is the sole root: a clean root Esc has no child or overlay to
+	// unwind and must fall through to the view. There is something to close only
+	// when a primary child (Task Detail, secondary tool) is stacked above the
+	// root or a transient overlay is open.
 	primaryCanClose := m.currentView() != ViewDashboard
-	if m.typedNavigation && m.navigation.Primary.Current().ID() != Home {
-		primaryCanClose = true
+	if m.typedNavigation {
+		primaryCanClose = m.navigation.Primary.Depth() > 1 || m.navigation.Overlays.Active()
 	}
 	if primaryCanClose {
 		closingView := m.currentView()
@@ -191,32 +195,13 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 		}
-		// Save temporary outliner's filter state so subsequent temporary
-		// outliners for the same project inherit any filter changes.
-		if closingView == ViewTemporaryOutliner {
-			if tempOutliner, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
-				m.saveOutlinerFilterStateFrom(tempOutliner)
-			}
-		}
 		cmd := m.popView()
 		// Rebuild outliner rows when returning from cross-outliner so the
 		// display reflects the current in-memory filter state (e.g. after Fx).
 		if closingView == ViewCrossProjectOutliner && m.outliner != nil {
 			m.outliner.rebuildRows()
 		}
-		// Restore previous project when popping a stacked project view
-		statusAlreadySet := false
-		if closingView == ViewOutliner && m.currentView() == ViewOutliner && len(m.projectStack) > 0 {
-			prevID := m.projectStack[len(m.projectStack)-1]
-			m.projectStack = m.projectStack[:len(m.projectStack)-1]
-			if prev := m.projectByID(prevID); prev != nil {
-				m.switchToProject(prev, true)
-			} else {
-				m.setInfoStatus("Previous project no longer exists")
-				statusAlreadySet = true
-			}
-		}
-		if !statusAlreadySet && closingLabel != "" && closingView != ViewCommandPalette {
+		if closingLabel != "" && closingView != ViewCommandPalette {
 			m.setInfoStatus("Closed " + closingLabel)
 			return true, tea.Batch(cmd, defaultStatusTimeout())
 		}
@@ -225,10 +210,12 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	return false, nil
 }
 
-// jumpToDashboard collapses the navigation stack to the dashboard root.
-// It intentionally bypasses view-local Esc ownership so Ctrl+Esc remains a
-// reliable global escape hatch from modal inputs and transient overlays.
-func (m *AppModel) jumpToDashboard() tea.Cmd {
+// jumpToOutlinerRoot is the preemptive Ctrl+Esc reset. It bypasses view-local
+// Esc ownership so it remains a reliable global escape hatch: it closes every
+// overlay, editor, child, and preview, clears project scope, search, filters,
+// task zoom, selections, pending prefixes, and transient modes, then activates
+// the clean global Today Outliner with the cursor safely reset.
+func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		viewType := m.viewStack[i]
 		if viewType == ViewDashboard {
@@ -243,16 +230,28 @@ func (m *AppModel) jumpToDashboard() tea.Cmd {
 	}
 
 	m.clearTransientNavigationState()
+	// Dismiss the primary children (Task Detail, secondary tools) that live
+	// outside the view registry so the reset lands on a bare Outliner root.
+	m.taskDetail = nil
+	m.taskComposer = nil
+
+	presentationCmd := m.prepareCrossProjectOutliner()
 	if m.typedNavigation {
-		m.navigation.ResetHome()
+		m.navigation.ResetRoot()
+		if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
+			// A reset never produces an invalid root route; surface any error.
+			return cmd
+		}
+	} else {
+		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
 	}
-	m.viewStack = []PresentationID{ViewDashboard}
 	m.projectStack = nil
-	m.reevaluateAlerts()
-	if view := m.views.Get(ViewDashboard); view != nil {
-		m.setAccentOnView(view)
+	if m.crossOutliner != nil {
+		m.crossOutliner.resetToGlobalToday()
+		m.setAccentOnView(m.crossOutliner)
 	}
-	return nil
+	m.reevaluateAlerts()
+	return presentationCmd
 }
 
 func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
@@ -260,10 +259,6 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
-	case ViewTemporaryOutliner:
-		if tempOutliner, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
-			m.saveOutlinerFilterStateFrom(tempOutliner)
-		}
 	default:
 		// Other views do not keep close-time navigation state.
 	}
@@ -271,9 +266,6 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 
 func (m *AppModel) clearTransientNavigationState() {
 	m.dismissPeek()
-	if planner, ok := m.views.Get(ViewFocusBoard).(*FocusBoardModel); ok && planner != nil {
-		planner.menuOpen = false
-	}
 	m.pendingSandboxReset = false
 	m.pendingSandboxProjectID = ""
 	m.pendingSandboxTaskCount = 0
@@ -541,26 +533,7 @@ func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models
 			task = resolved
 		}
 	}
-	if m.typedNavigation {
-		m.prepareProjectOutliner(project, task)
-		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope(project.ID)})
-		if err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-		cmd := m.activateTaskWorkspaceRoute(route)
-		return cmd
-	}
-
-	m.saveOutlinerToggleState()
-	m.saveOutlinerFilterState()
-	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-	m.outliner.queueIDs = m.focusQueueIDs
-	m.outliner.dailyPlanIDs = m.dailyPlanIDs
-	m.restoreOutlinerToggleState()
-	m.restoreOutlinerFilterState()
-	if task != nil {
-		m.outliner.NavigateToSidebarTask(task)
-	}
-	m.showView(ViewOutliner, m.outliner)
-	return nil
+	// Task deep links push a project scope onto the single authoritative Outliner
+	// and reveal the task, rather than constructing a separate project root.
+	return m.enterProjectScopeOutliner(project, task, OutlinerOpenOptions{})
 }

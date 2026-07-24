@@ -88,53 +88,39 @@ func TestTUIStateMigrationFixtures(t *testing.T) {
 	}
 }
 
-func TestMachineTUIStateMigrationMapsEveryLegacyStartValue(t *testing.T) {
-	tests := []struct {
-		legacy string
-		view   string
-		route  StartRouteState
-	}{
-		{"dashboard", StartViewHome, StartRouteState{}},
-		{"focus-board", StartViewPlanner, StartRouteState{PlannerTab: StartPlannerToday}},
-		{"backlog", StartViewPlanner, StartRouteState{PlannerTab: StartPlannerBacklog}},
-		{"cross-project-outliner", StartViewTasks, StartRouteState{TaskFocus: StartTaskActive}},
-		{"all-tasks", StartViewTasks, StartRouteState{TaskFocus: StartTaskAll}},
-		{"priority", StartViewTasks, StartRouteState{TaskFocus: StartTaskHighPriority, TaskSort: StartTaskSortPriority}},
-		{"due-dates", StartViewTasks, StartRouteState{TaskFocus: StartTaskAll, TaskSort: StartTaskSortDueDate}},
-		{"daily-review", StartViewReview, StartRouteState{ReviewModule: StartReviewDaily}},
-		{"not-a-view", StartViewPlanner, StartRouteState{PlannerTab: StartPlannerToday}},
-	}
-	for _, tc := range tests {
-		t.Run(tc.legacy, func(t *testing.T) {
-			machine := &MachineState{StartView: tc.legacy}
-			changed, err := machine.MigrateTUIState()
-			if err != nil || !changed {
-				t.Fatalf("MigrateTUIState changed=%v err=%v", changed, err)
-			}
-			if machine.StartView != tc.view || !reflect.DeepEqual(machine.StartRoute, tc.route) {
-				t.Fatalf("migration = %q %+v, want %q %+v", machine.StartView, machine.StartRoute, tc.view, tc.route)
-			}
-		})
-	}
-}
-
-func TestMachineUnmarshalMergesLegacySidebarStatePerProject(t *testing.T) {
-	payload := []byte(`{
-		"project_sidebar_enabled":{"current":false},
-		"project_view_states":{
-			"current":{"sidebar_enabled":true},
-			"legacy":{"sidebar_enabled":true}
-		}
+func TestMachineTUIStateMigrationIsOneWayCleanup(t *testing.T) {
+	// Legacy startup, Home-layout, and sidebar JSON must be ignored rather than
+	// mapped to a replacement route: the payload decodes into the trimmed struct
+	// (dropping the obsolete keys) and only the version marker advances.
+	legacy := []byte(`{
+		"editor": "vim",
+		"start_view": "due-dates",
+		"start_route": {"task_focus": "all", "task_sort": "due-date"},
+		"home_projects_height_pct": 42,
+		"sidebar_enabled": true
 	}`)
 	var machine MachineState
-	if err := json.Unmarshal(payload, &machine); err != nil {
-		t.Fatal(err)
+	if err := json.Unmarshal(legacy, &machine); err != nil {
+		t.Fatalf("unmarshal legacy machine: %v", err)
 	}
-	if machine.ProjectSidebarEnabled["current"] {
-		t.Fatal("legacy value overwrote explicit current sidebar value")
+	changed, err := machine.MigrateTUIState()
+	if err != nil || !changed {
+		t.Fatalf("MigrateTUIState changed=%v err=%v", changed, err)
 	}
-	if !machine.ProjectSidebarEnabled["legacy"] {
-		t.Fatal("legacy-only project sidebar value was not imported")
+	if machine.TUIStateVersion != CurrentTUIStateVersion {
+		t.Fatalf("version = %d, want %d", machine.TUIStateVersion, CurrentTUIStateVersion)
+	}
+	if machine.Editor != "vim" {
+		t.Fatalf("durable editor lost: %q", machine.Editor)
+	}
+	out, err := json.Marshal(machine)
+	if err != nil {
+		t.Fatalf("marshal migrated machine: %v", err)
+	}
+	for _, field := range []string{"start_view", "start_route", "home_projects_height_pct", "sidebar_enabled"} {
+		if bytes.Contains(out, []byte(field)) {
+			t.Fatalf("migrated machine still emits retired field %q: %s", field, out)
+		}
 	}
 }
 
@@ -183,10 +169,8 @@ func TestLoadTimeTUIStateMigrationIsAtomicPerDomainAndIdempotent(t *testing.T) {
 	if runtime.Planning().StreakCount != 7 || runtime.Settings().DefaultContext != "work" || runtime.Machine().Editor != "vim" {
 		t.Fatalf("durable values changed: planning=%d settings=%q machine=%q", runtime.Planning().StreakCount, runtime.Settings().DefaultContext, runtime.Machine().Editor)
 	}
-	if runtime.Machine().GetStartView() != StartViewTasks ||
-		runtime.Machine().GetStartRoute().TaskFocus != StartTaskAll ||
-		runtime.Machine().GetStartRoute().TaskSort != StartTaskSortDueDate {
-		t.Fatalf("startup route not migrated: %q %+v", runtime.Machine().GetStartView(), runtime.Machine().GetStartRoute())
+	if runtime.Machine().TUIStateVersion != CurrentTUIStateVersion {
+		t.Fatalf("machine TUI state version = %d, want %d", runtime.Machine().TUIStateVersion, CurrentTUIStateVersion)
 	}
 
 	after := map[string][]byte{}

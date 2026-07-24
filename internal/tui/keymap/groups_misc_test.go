@@ -91,10 +91,12 @@ func TestTypeChangeGroup(t *testing.T) {
 func TestCommonPrimaryViewGroup_Base(t *testing.T) {
 	deps := CommonPrimaryViewDeps{}
 	entries := CommonPrimaryViewGroup(deps)
-	// 12 base entries: project-cycle keys are gone, EditLastModified and
-	// MoveReparent are nil, ctrl+p is omitted, and ctrl+n is globally captured.
-	if len(entries) != 12 {
-		t.Errorf("CommonPrimaryViewGroup (base): want 12 entries, got %d", len(entries))
+	// 10 base entries: project-cycle keys are gone, EditLastModified and
+	// MoveReparent are nil, ctrl+p is omitted, ctrl+n is globally captured, and
+	// the retired w=AddToPlan and R=ReloadFromDisk bindings were removed (w is now
+	// an app-level Today toggle; R is the Outliner's mode-aware reload/review key).
+	if len(entries) != 10 {
+		t.Errorf("CommonPrimaryViewGroup (base): want 10 entries, got %d", len(entries))
 	}
 }
 
@@ -105,9 +107,9 @@ func TestCommonPrimaryViewGroup_AllOptional(t *testing.T) {
 		MoveReparent:      actFn(),
 	}
 	entries := CommonPrimaryViewGroup(deps)
-	// 12 base + ctrl+p (SwitchProjectView set) + EditLastModified + MoveReparent.
-	if len(entries) != 15 {
-		t.Errorf("CommonPrimaryViewGroup (full): want 15 entries, got %d", len(entries))
+	// 10 base + ctrl+p (SwitchProjectView set) + EditLastModified + MoveReparent.
+	if len(entries) != 13 {
+		t.Errorf("CommonPrimaryViewGroup (full): want 13 entries, got %d", len(entries))
 	}
 }
 

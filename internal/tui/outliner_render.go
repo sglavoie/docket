@@ -11,17 +11,11 @@ func (m *OutlinerModel) View() tea.View {
 			return tea.NewView(m.crossProjectView())
 		}
 		m.crossProjectRebuildRows()
-		if m.sidebar.IsEnabled() {
-			return tea.NewView(m.renderWithSidebar())
-		}
 		return tea.NewView(m.renderFullWidth())
 	}
 
 	// Rebuild flat row list with perspective filter and clamp cursor.
 	m.rebuildRows()
 
-	if m.sidebar.IsEnabled() {
-		return tea.NewView(m.renderWithSidebar())
-	}
 	return tea.NewView(m.renderFullWidth())
 }

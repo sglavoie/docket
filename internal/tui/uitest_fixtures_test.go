@@ -122,64 +122,6 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	}
 }
 
-func TestFreshFixturePlannerAddOwnsAWithoutLegacyCaptureAliases(t *testing.T) {
-	driver, ws, err := NewFixtureDriver(FixtureFresh, 100, 35)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "a"}, ObserveOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	planner, ok := driver.App().views.Get(ViewFocusBoard).(*FocusBoardModel)
-	if driver.App().currentView() != ViewFocusBoard || !ok || !planner.addMode {
-		t.Fatalf("a should open inline Planner add; view=%s model=%T addMode=%v", driver.App().currentView(), planner, ok && planner.addMode)
-	}
-
-	for _, keys := range [][]string{{"i"}, {";", "i"}} {
-		legacyDriver, legacyWS, fixtureErr := NewFixtureDriver(FixtureFresh, 100, 35)
-		if fixtureErr != nil {
-			t.Fatal(fixtureErr)
-		}
-		t.Cleanup(func() { _ = legacyWS.Cleanup() })
-		for _, key := range keys {
-			if _, actionErr := legacyDriver.ApplyAction(UITestAction{Type: UITestActionKey, Key: key}, ObserveOptions{}); actionErr != nil {
-				t.Fatal(actionErr)
-			}
-		}
-		legacyPlanner, _ := legacyDriver.App().views.Get(ViewFocusBoard).(*FocusBoardModel)
-		if legacyDriver.App().currentView() != ViewFocusBoard || (legacyPlanner != nil && legacyPlanner.addMode) {
-			t.Fatalf("retired alias %v changed Planner state", keys)
-		}
-	}
-}
-
-func TestFreshFixtureCapturePersistsOnboardingProgress(t *testing.T) {
-	driver, ws, fixtureErr := NewFixtureDriver(FixtureFresh, 100, 35)
-	if fixtureErr != nil {
-		t.Fatal(fixtureErr)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-	for _, action := range []UITestAction{
-		{Type: UITestActionKey, Key: "a"},
-		{Type: UITestActionText, Text: "Persist this milestone"},
-		{Type: UITestActionKey, Key: "enter"},
-		{Type: UITestActionWait},
-	} {
-		if _, err := driver.ApplyAction(action, ObserveOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	settings, settingsErr := config.NewDomainFileStore(ws.DataDir).LoadSettings()
-	if settingsErr != nil {
-		t.Fatalf("load settings: %v", settingsErr)
-	}
-	progress := settings.GetOnboardingProgress()
-	if !progress.TaskCaptured || !progress.TaskPlanned || progress.ProjectCreated || progress.CompletedCount() != 2 {
-		t.Fatalf("persisted onboarding progress = %+v", progress)
-	}
-}
-
 func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
 	if err != nil {

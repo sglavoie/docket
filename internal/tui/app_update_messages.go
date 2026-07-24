@@ -40,9 +40,6 @@ func (m *AppModel) handleAskMessage(raw tea.Msg) (bool, tea.Cmd) {
 		}
 		m.clearToggleHistory()
 		m.observeLoadedProjectMilestones(msg.Result.TouchedProjects...)
-		if m.dashboard != nil {
-			m.dashboard.Refresh()
-		}
 		cmds = append(cmds, m.refreshTaskViewsAfterSave()...)
 	}
 
@@ -151,9 +148,6 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case outlinerFilterStateChangedMsg:
 		m.persistOutlinerFilterState()
 		return true, nil
-	case projectSidebarStateChangedMsg:
-		m.setProjectSidebarEnabled(msg.ProjectID, msg.Enabled)
-		return true, nil
 	case SaveStartMsg:
 		m.isLoading = true
 		m.loadingMessage = msg.Message
@@ -211,9 +205,6 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 	}
 	m.refreshLoadedTaskWorkspace()
 	m.observeLoadedProjectMilestones(msg.Result.ProjectID)
-	if m.dashboard != nil {
-		m.dashboard.Refresh()
-	}
 	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 }
 
@@ -266,9 +257,6 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 		m.rebuildPlanningFromRuntime()
 	}
 	m.observeLoadedProjectMilestones(msg.TouchedProjectIDs...)
-	if m.dashboard != nil {
-		m.dashboard.Refresh()
-	}
 	// Credit the Weekly Review completion summary for a committed delete it
 	// originated. A no-op for every other origin (the count is armed only for a
 	// Weekly Review-origin delete in confirmTaskDelete) and for an unrelated batch
@@ -416,26 +404,10 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 		saveCmds = append(saveCmds, m.crossOutliner.reloadCrossProjects())
 	}
 	if m.views != nil {
-		if v := m.views.Get(ViewDailyReview); v != nil {
-			if dr, ok := v.(*DailyReviewModel); ok {
-				dr.reloadData()
-				dr.clampCursor()
-			}
-		}
 		if v := m.views.Get(ViewWeeklyReview); v != nil {
 			if wr, ok := v.(*WeeklyReviewModel); ok {
 				wr.reloadData()
 				wr.clampCursor()
-			}
-		}
-		if v := m.views.Get(ViewFocusBoard); v != nil {
-			if fb, ok := v.(*FocusBoardModel); ok {
-				fb.refreshData()
-			}
-		}
-		if v := m.views.Get(ViewRecentActivity); v != nil {
-			if ra, ok := v.(*RecentActivityModel); ok {
-				ra.loadTasks()
 			}
 		}
 		if v := m.views.Get(ViewTaskAttachments); v != nil {

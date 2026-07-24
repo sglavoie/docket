@@ -104,17 +104,6 @@ func (s *Settings) GetMaxRecentTaskVisits() int {
 	return *s.MaxRecentTaskVisits
 }
 
-// GetResumeCardLimit mirrors (*Config).GetResumeCardLimit.
-func (s *Settings) GetResumeCardLimit() int {
-	if s.ResumeCardLimit == nil || *s.ResumeCardLimit < 1 {
-		return DefaultResumeCardLimit
-	}
-	if *s.ResumeCardLimit > ResumeCardLimitUpperBound {
-		return ResumeCardLimitUpperBound
-	}
-	return *s.ResumeCardLimit
-}
-
 // GetSectionLimit mirrors (*Config).GetSectionLimit.
 func (s *Settings) GetSectionLimit(section string) int {
 	switch section {
@@ -379,15 +368,4 @@ func (m *MachineState) GetCodeEditor() string {
 		}
 	}
 	return "code"
-}
-
-// GetStartView mirrors (*Config).GetStartView.
-func (m *MachineState) GetStartView() string {
-	switch m.StartView {
-	case StartViewHome, StartViewPlanner, StartViewTasks, StartViewProject,
-		StartViewReview, StartViewManage:
-		return m.StartView
-	default:
-		return DefaultStartView
-	}
 }

@@ -166,7 +166,7 @@ func (m *GlobalInboxProcessorModel) emptyStateText() string {
 func (m *GlobalInboxProcessorModel) emptyInboxText() string {
 	return icons.Get("success") + " All inboxes are empty! No tasks to process across any project."
 }
-func (m *GlobalInboxProcessorModel) returnHint() string       { return "return to dashboard" }
+func (m *GlobalInboxProcessorModel) returnHint() string       { return "return to all tasks" }
 func (m *GlobalInboxProcessorModel) viewType() PresentationID { return ViewGlobalInboxProcessor }
 func (m *GlobalInboxProcessorModel) helpViewName() string     { return "Global Inbox Processor" }
 

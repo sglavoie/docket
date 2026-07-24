@@ -32,31 +32,6 @@ func TestParentSelectorViewRespectsVisualWidth(t *testing.T) {
 	}
 }
 
-func TestProjectPickerViewRespectsVisualWidth(t *testing.T) {
-	projectA, err := models.NewProject("proj-a", "ui-fix-sprint", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject A: %v", err)
-	}
-	projectA.Name = "界面修复冲刺计划项目"
-	projectA.Context = "work"
-
-	projectB, err := models.NewProject("proj-b", "ops-project", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject B: %v", err)
-	}
-	projectB.Context = "ops"
-
-	m := NewProjectPickerModel([]*models.Project{projectA, projectB})
-	m.SetSize(32, 14)
-	rendered := m.View().Content
-
-	for line := range strings.SplitSeq(rendered, "\n") {
-		if lipgloss.Width(ansi.Strip(line)) > 32 {
-			t.Fatalf("project picker line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
-		}
-	}
-}
-
 func TestGlobalProjectPickerRespectsTerminalWidth(t *testing.T) {
 	project, err := models.NewProject("proj-a", "ui-fix-sprint", t.TempDir())
 	if err != nil {

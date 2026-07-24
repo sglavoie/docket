@@ -12,46 +12,6 @@ package tui
 // UITestDriver.Observe type-asserts the active view to TUITestInspectable and
 // embeds the result as Observation.Snapshot.
 
-// UITestSnapshot exposes the dashboard's project list state.
-func (m *DashboardModel) UITestSnapshot() map[string]any {
-	snap := map[string]any{
-		"project_count": len(m.projects),
-		"cursor":        m.cursor,
-		"show_archived": m.showArchived,
-	}
-	if m.cursor >= 0 && m.cursor < len(m.projects) {
-		snap["selected_project"] = m.projects[m.cursor].Name
-	}
-	if m.filterContext != "" {
-		snap["filter_context"] = m.filterContext
-	}
-	if q := m.SearchQuery(); q != "" {
-		snap["search_query"] = q
-	}
-	if m.HasActiveSearch() {
-		snap["search_active"] = true
-	}
-	return snap
-}
-
-// UITestSnapshot exposes the focus board (Today) tab and row state.
-func (m *FocusBoardModel) UITestSnapshot() map[string]any {
-	snap := map[string]any{
-		"row_count": len(m.filtered),
-		"cursor":    m.cursor,
-	}
-	if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabs.Names) {
-		snap["active_tab"] = m.tabs.Names[m.tabs.Active]
-	}
-	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
-		snap["selected_task"] = row.Task.Title
-	}
-	if q := m.SearchQuery(); q != "" {
-		snap["search_query"] = q
-	}
-	return snap
-}
-
 // UITestSnapshot exposes the outliner's perspective, rows, and selection.
 func (m *OutlinerModel) UITestSnapshot() map[string]any {
 	snap := map[string]any{

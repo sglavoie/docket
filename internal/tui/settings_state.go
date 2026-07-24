@@ -45,8 +45,6 @@ var visualTabSubTabs = [][]visualSubTabRef{
 		{"Pinned Tasks", tabBehavior, 2},
 		{"Recent Tasks", tabBehavior, 3},
 		{"Section Limits", tabBehavior, 4},
-		{"Startup", tabBehavior, 5},
-		{"Home", tabBehavior, 6},
 		{"Attachments", tabAttachments, 0},
 	},
 	// vtab 1: Appearance = old Palette sub-sections + old Appearance
@@ -89,7 +87,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Outliner", "Notifications", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 18, 5, 15, 2, 24, 15, 5}
+	tabFieldCount = []int{4, 18, 5, 12, 2, 22, 15, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -100,10 +98,10 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Home", 2}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Section Limits", 7}}, // 3: Behavior
 		nil, // 4: Attachments
-		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 5: Outliner
-		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                   // 6: Notifications
+		{{"Section State", 7}, {"Column Visibility", 15}}, // 5: Outliner
+		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},   // 6: Notifications
 		nil, // 7: Appearance
 	}
 
@@ -127,25 +125,6 @@ var (
 
 	// timeFormatValues maps cursor index to config string value.
 	timeFormatValues = []string{"12h", "24h"}
-
-	// startViewOptions lists display labels for the start view selector.
-	startViewOptions = []string{"Home", "Planner", "Tasks", "Project", "Review", "Manage"}
-
-	// startViewValues maps cursor index to config string value.
-	startViewValues = []string{
-		config.StartViewHome,
-		config.StartViewPlanner,
-		config.StartViewTasks,
-		config.StartViewProject,
-		config.StartViewReview,
-		config.StartViewManage,
-	}
-
-	// defaultStartViewCursor is the cursor index in startViewValues whose value
-	// matches config.DefaultStartView. Computed in init() so the settings UI
-	// stays in sync if either side moves. Falls back to 0 when no match is
-	// found, which keeps the selector pointed at a real option.
-	defaultStartViewCursor int
 )
 
 func init() {
@@ -154,13 +133,6 @@ func init() {
 		tabFieldStart[i] = tabFieldStart[i-1] + tabFieldCount[i-1]
 	}
 	settingsFields = buildSettingsFieldRegistry()
-
-	for i, v := range startViewValues {
-		if v == config.DefaultStartView {
-			defaultStartViewCursor = i
-			break
-		}
-	}
 }
 
 // tabForField returns which tab a given focusIndex belongs to.
@@ -267,8 +239,6 @@ type SettingsModel struct {
 	outlinerCollapsed        [7]bool  // Per-section default collapse state (indexed by outlinerSectionLabels)
 	outlinerColumnDefaults   [15]bool // Global default column visibility for outliner view (full AllColumns)
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
-	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
-	crossOutlinerCycleOnly   bool     // Restrict cross-project outliner to cycle projects only
 	zebraStriping            bool     // Alternating backgrounds in task rows
 	weekEndDayCursor         int      // Index into weekEndDayValues (0=fri, 1=sat, 2=sun)
 	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)
@@ -276,10 +246,6 @@ type SettingsModel struct {
 	useEmoji                 bool     // Use emoji icons instead of Unicode symbols
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
-
-	startViewCursor         int // Index into startViewValues
-	resumeCardLimitInput    textinput.Model
-	homeProjectsHeightInput textinput.Model // Home Projects/Attention split % (machine-local)
 
 	// Alert settings (Notifications tab, indices 75-89)
 	alertDailyReviewEnabled    bool

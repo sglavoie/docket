@@ -204,7 +204,7 @@ func TestCrossPriorityModeBypassesSortField(t *testing.T) {
 }
 
 // TestCrossPriorityModeTitleRendering verifies the title prefix swap from
-// "Cross-project Outliner" to "Cross-project Priority" while in priority mode.
+// "Outliner" to "Outliner: Priority" while in priority mode.
 func TestCrossPriorityModeTitleRendering(t *testing.T) {
 	cfg := newTestConfig()
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
@@ -217,17 +217,17 @@ func TestCrossPriorityModeTitleRendering(t *testing.T) {
 
 	// Off: title uses the default outliner prefix.
 	off := ansi.Strip(m.renderOutlinerTitle(120))
-	if !strings.Contains(off, "Cross-project Outliner (1 project)") {
+	if !strings.Contains(off, "Outliner (1 project)") {
 		t.Errorf("expected default outliner title, got %q", off)
 	}
-	if strings.Contains(off, "Cross-project Priority") {
+	if strings.Contains(off, "Outliner: Priority") {
 		t.Errorf("default title should not advertise Priority mode, got %q", off)
 	}
 
 	// On: title swaps to the Priority prefix while preserving the project count.
 	m.enterCrossPriorityMode()
 	on := ansi.Strip(m.renderOutlinerTitle(120))
-	if !strings.Contains(on, "Cross-project Priority (1 project)") {
+	if !strings.Contains(on, "Outliner: Priority (1 project)") {
 		t.Errorf("expected Priority-mode title with project count, got %q", on)
 	}
 }
@@ -235,7 +235,7 @@ func TestCrossPriorityModeTitleRendering(t *testing.T) {
 // TestCrossPriorityModeSuppressesPerspectiveAndSort verifies that, when active
 // cross-project Priority mode is entered from a non-All perspective with a
 // non-default sort and an active filter+search, the rendered header/title:
-//   - includes "Cross-project Priority"
+//   - includes "Outliner: Priority"
 //   - omits the perspective label segments (no "‹ ... @ <name> ... ›")
 //   - omits the sort suffix (no "Sort:")
 //   - still surfaces the active filter badge and the search indicator
@@ -261,7 +261,7 @@ func TestCrossPriorityModeSuppressesPerspectiveAndSort(t *testing.T) {
 	m.enterCrossPriorityMode()
 
 	title := ansi.Strip(m.renderOutlinerTitle(160))
-	if !strings.Contains(title, "Cross-project Priority") {
+	if !strings.Contains(title, "Outliner: Priority") {
 		t.Errorf("title should advertise Priority mode, got %q", title)
 	}
 	if strings.Contains(title, "Sort:") {
@@ -272,7 +272,7 @@ func TestCrossPriorityModeSuppressesPerspectiveAndSort(t *testing.T) {
 	}
 
 	tree := ansi.Strip(m.renderOutlinerTreeContent(160))
-	if !strings.Contains(tree, "Cross-project Priority") {
+	if !strings.Contains(tree, "Outliner: Priority") {
 		t.Errorf("tree content should advertise Priority mode, got %q", tree)
 	}
 	// Perspective label format from buildPerspectiveLabel:
@@ -296,13 +296,13 @@ func TestCrossPriorityModeSuppressesPerspectiveAndSort(t *testing.T) {
 }
 
 // TestCrossPriorityModeStatusBarLabel verifies the status bar label swap from
-// "Cross-Outliner" to "Cross-Outliner: Priority" while in priority mode.
+// "Outliner" to "Outliner: Priority" while in priority mode.
 func TestCrossPriorityModeStatusBarLabel(t *testing.T) {
 	cfg := newTestConfig()
 	m := NewOutlinerModel(nil, nil, testRuntimeAt(cfg.DataDir(), cfg))
 
 	off := m.crossStatusBarLabel()
-	if !strings.HasPrefix(off, "Cross-Outliner · ") {
+	if !strings.HasPrefix(off, "Outliner · ") {
 		t.Errorf("expected default status bar prefix, got %q", off)
 	}
 	if strings.Contains(off, "Priority") {
@@ -311,7 +311,7 @@ func TestCrossPriorityModeStatusBarLabel(t *testing.T) {
 
 	m.enterCrossPriorityMode()
 	on := m.crossStatusBarLabel()
-	if !strings.HasPrefix(on, "Cross-Outliner: Priority · ") {
+	if !strings.HasPrefix(on, "Outliner: Priority · ") {
 		t.Errorf("expected status bar to advertise Priority mode, got %q", on)
 	}
 }

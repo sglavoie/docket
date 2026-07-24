@@ -169,12 +169,16 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
 	}
-	if w.startAtDefault {
-		if app.startupMessage != nil {
-			_, _ = app.Update(app.startupMessage)
-		}
+	// The Outliner is the sole root and always boots into a loaded global Today.
+	// Dispatch the startup message through the driver and drain it so the
+	// cross-project cache is populated before the scenario observes the screen —
+	// mirroring the real app rather than a cold, unrendered root.
+	driver := NewUITestDriver(app, width, height)
+	if app.startupMessage != nil {
+		driver.dispatch(app.startupMessage)
+		driver.drain()
 	}
-	return NewUITestDriver(app, width, height), nil
+	return driver, nil
 }
 
 func (w *uitestWorkspace) persistSyncedDomains() error {

@@ -333,33 +333,27 @@ func (b *outlinerKeymapBuilder) sortEntries() []keymap.Entry {
 
 	return keymap.SortGroup(keymap.SortDeps{
 		SortByPriority: func() (tea.Model, tea.Cmd) {
-			m.clearActiveSavedFilter()
-			handleSortKey("1", &m.sort, func() { m.rebuildRows() }, func(SortField) { m.rebuildRows() })
+			m.toggleSort(SortByPriority)
 			return m, nil
 		},
 		SortByDueDate: func() (tea.Model, tea.Cmd) {
-			m.clearActiveSavedFilter()
-			handleSortKey("2", &m.sort, func() { m.rebuildRows() }, func(SortField) { m.rebuildRows() })
+			m.toggleSort(SortByDueDate)
 			return m, nil
 		},
 		SortByCreated: func() (tea.Model, tea.Cmd) {
-			m.clearActiveSavedFilter()
-			handleSortKey("3", &m.sort, func() { m.rebuildRows() }, func(SortField) { m.rebuildRows() })
+			m.toggleSort(SortByCreatedAt)
 			return m, nil
 		},
 		SortByStatus: func() (tea.Model, tea.Cmd) {
-			m.clearActiveSavedFilter()
-			handleSortKey("4", &m.sort, func() { m.rebuildRows() }, func(SortField) { m.rebuildRows() })
+			m.toggleSort(SortByStatus)
 			return m, nil
 		},
 		SortByScore: func() (tea.Model, tea.Cmd) {
-			m.clearActiveSavedFilter()
-			handleSortKey("5", &m.sort, func() { m.rebuildRows() }, func(SortField) { m.rebuildRows() })
+			m.toggleSort(SortByScore)
 			return m, nil
 		},
 		ResetSort: func() (tea.Model, tea.Cmd) {
-			m.clearActiveSavedFilter()
-			handleSortKey("0", &m.sort, func() { m.rebuildRows() }, func(SortField) { m.rebuildRows() })
+			m.resetSort()
 			return m, nil
 		},
 	})

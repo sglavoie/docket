@@ -53,8 +53,9 @@ type OutlinerModel struct {
 	activePerspective int            // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
 	smartFocus        *OutlinerFocus // Optional base predicate for non-perspective task focuses.
 
-	sort SortState // Current sort field and direction
-	lens OutlinerLens
+	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
+	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
+	lens     OutlinerLens
 
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
@@ -63,7 +64,6 @@ type OutlinerModel struct {
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool       // Section collapse state for All perspective
 
-	sidebar   *SidebarComponent   // Sidebar detail panel
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 
 	archiveTargetProject *models.Project // Project to archive completed tasks for when "archive-tasks" confirms
@@ -115,6 +115,47 @@ type OutlinerModel struct {
 	// Blocked/Waiting starts collapsed by default.
 	crossPriorityCollapsedGroups map[PriorityGroup]bool
 
+	// scopedProjectID names the single project the global outliner is currently
+	// scoped to. Empty means the authoritative all-projects scope. Only
+	// meaningful in cross-project mode (m.project == nil); scoping filters the
+	// loaded data set down to one project without switching to a separate
+	// single-project OutlinerModel.
+	scopedProjectID string
+
+	// scopeStack records the state to restore when a project scope is popped.
+	// Each push saves the previous scope's cursor, scroll, mode, multi-project
+	// filter, and zoom so Esc returns exactly where the user left off. The
+	// bottom of the stack is the base all-projects frame.
+	scopeStack []outlinerScopeFrame
+
+	// workTodayMode / workNextMode / workBacklogMode select the three purpose-built
+	// work horizons (Today, Next, Backlog) from the unified mode catalog. Like
+	// crossPriorityMode they are session-only computed modes: when set, rebuildRows
+	// delegates to the mode-row strategies instead of the perspective/tree builder.
+	// workNextMode is only ever set in the global (cross-project) Outliner; a single
+	// project keeps Next as its persisted perspective. All default false so every
+	// existing perspective/smart-focus path is unchanged.
+	workTodayMode   bool
+	workNextMode    bool
+	workBacklogMode bool
+
+	// reviewMode selects the Daily Review or Activity computed mode. Like the
+	// other computed modes it is session-only: when non-zero, the rebuild path
+	// delegates to the review row builders (buildDailyReviewRows /
+	// buildActivityRows) which emit collapsible section headers plus task rows.
+	// reviewNone leaves every perspective/smart-focus/work path unchanged.
+	reviewMode reviewModeKind
+
+	// reviewCollapsedSections tracks which review section headers are collapsed,
+	// keyed by the header's CollapseKey ("_rv:*" sentinel). Session-only, shared
+	// by both review modes; distinct key spaces keep Daily Review and Activity
+	// folds independent.
+	reviewCollapsedSections map[string]bool
+
+	// modePicker is the inline searchable, categorized mode selector opened with
+	// P. Nil when closed; when non-nil it intercepts key input in handleKeyMsg.
+	modePicker *outlinerModePicker
+
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops
 }
@@ -164,7 +205,6 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		PrimaryViewBundle: NewPrimaryViewBundle(cfgManager, runtime),
 		project:           project,
 		activePerspective: 1,
-		sidebar:           NewSidebarComponent(),
 		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
@@ -172,15 +212,13 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
+		treeSort:          NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		columnConfig:      NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
-	if project != nil && runtime != nil {
-		m.sidebar.SetEnabled(runtime.Machine().GetProjectSidebarEnabled(project.ID))
-	}
 	return m
 }
 

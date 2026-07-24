@@ -3,13 +3,17 @@ package tui
 import tea "charm.land/bubbletea/v2"
 
 func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command registry closures encode view-specific filter actions.
+	// The cross Outliner is the sole per-project surface (project selection is a
+	// scope frame), so per-project filter commands must be reachable from it in
+	// both global and project scopes as well as the legacy single-project view.
+	outlinerFilterViews := []PresentationID{ViewOutliner, ViewCrossProjectOutliner}
 	return []Command{
 		{
 			Name:        "filter by tag",
 			Description: "Open tag filter selector",
 			Shortcut:    "T",
 			Category:    CategoryFilters,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
 					tags := BuildProjectsTagList(m.crossOutliner.loadedProjects, false)
@@ -27,8 +31,14 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Open section filter selector",
 			Shortcut:    "N",
 			Category:    CategoryFilters,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+					if p := m.crossOutliner.scopedProject(); p != nil {
+						return ShowSectionFilterSelectorMsg{Project: p}
+					}
+					return ShowSectionFilterSelectorMsg{Projects: m.crossOutliner.scopeProjects()}
+				}
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					return ShowSectionFilterSelectorMsg{Project: m.outliner.project}
 				}
@@ -39,15 +49,14 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Name:        "view completed",
 			Description: "Switch to Completed view",
 			Category:    CategoryFilters,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
 				if outliner, _, ok := m.outlinerPrimary(); ok {
+					target := ModeComplete
 					if outliner.smartFocus == nil && outliner.activePerspective == PerspectiveCompleted {
-						outliner.activatePerspective(PerspectiveSnoozed)
-					} else {
-						outliner.activatePerspective(PerspectiveCompleted)
+						target = ModeSnoozed
 					}
-					outliner.rebuildRows()
+					outliner.selectOutlinerMode(target)
 					return nil
 				}
 				return nil
@@ -57,16 +66,16 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Name:        "toggle high priority",
 			Description: "Filter high priority tasks only",
 			Category:    CategoryFilters,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					if m.outliner.filter.Priority == 0 {
-						m.outliner.filter.Priority = 1
+				if out := m.visibleOutliner(); out != nil {
+					if out.filter.Priority == 0 {
+						out.filter.Priority = 1
 					} else {
-						m.outliner.filter.Priority = 0
+						out.filter.Priority = 0
 					}
-					m.outliner.rebuildRows()
-					return nil
+					out.crossForceRebuild = true
+					out.rebuildRows()
 				}
 				return nil
 			},
@@ -76,16 +85,16 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Reset all task filters",
 			Shortcut:    "Fx",
 			Category:    CategoryFilters,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					clearCommonFilters(&m.outliner.filter.CommonFilterState)
-					m.outliner.filter.Sections = make(map[string]bool)
-					m.outliner.filter.Actionable = false
-					m.outliner.filterProjects = make(map[string]bool)
-					m.outliner.ClearSearch()
-					m.outliner.rebuildRows()
-					return nil
+				if out := m.visibleOutliner(); out != nil {
+					clearCommonFilters(&out.filter.CommonFilterState)
+					out.filter.Sections = make(map[string]bool)
+					out.filter.Actionable = false
+					out.filterProjects = make(map[string]bool)
+					out.ClearSearch()
+					out.crossForceRebuild = true
+					out.rebuildRows()
 				}
 				return nil
 			},
@@ -111,12 +120,16 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Description: "Manage project tags and pinned tag tabs",
 			Shortcut:    "ctrl+t",
 			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					return ShowTagManagerMsg{Project: m.outliner.project}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
 				}
-				return nil
+				return ShowTagManagerMsg{Project: project}
 			},
 		},
 		{
@@ -136,20 +149,14 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Category:    CategoryActions,
 			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewCrossProjectOutliner {
-					if m.crossOutliner == nil {
-						return StatusMsg("No task selected for section manager")
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
 					}
-					task, project := m.crossOutliner.getTaskRef()
-					if task == nil || project == nil {
-						return StatusMsg("No task selected for section manager")
-					}
-					return ShowSectionManagerMsg{Project: project}
+					return nil
 				}
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					return ShowSectionManagerMsg{Project: m.outliner.project}
-				}
-				return nil
+				return ShowSectionManagerMsg{Project: project}
 			},
 		},
 		{
@@ -175,23 +182,17 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Name:        "open project folder",
 			Description: "Open project data folder in editor",
 			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       outlinerFilterViews,
 			Aliases:     []string{"open folder", "reveal data", "data directory", "open data folder"},
 			Handler: func() tea.Msg {
-				return OpenDataFolderMsg{Project: m.currentProject}
-			},
-		},
-		{
-			Name:        "search projects",
-			Description: "Filter projects by name",
-			Shortcut:    "/",
-			Category:    CategorySearch,
-			Views:       []PresentationID{ViewDashboard},
-			Handler: func() tea.Msg {
-				if m.dashboard != nil {
-					return m.dashboard.ActivateSearch()
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
 				}
-				return nil
+				return OpenDataFolderMsg{Project: project}
 			},
 		},
 	}

@@ -24,12 +24,13 @@ func TestCurrentRouteBinding(t *testing.T) {
 	app.currentProject = proj
 	app.lastNavigatedTaskID = "t1"
 
-	// Project-scoped view carries the project, no task.
+	// The Outliner presentation is the app-scoped TaskWorkspace root; project
+	// selection is an Outliner scope frame, not a project-scoped root route.
 	app.pushView(ViewOutliner)
 	r := app.CurrentRoute()
 	workspace, ok := r.Params().(TaskWorkspaceParams)
-	if r.ID() != TaskWorkspace || !ok || workspace.Scope.ProjectID != "p1" {
-		t.Errorf("Outliner route = %s %+v, want project p1", r.ID(), r.Params())
+	if r.ID() != TaskWorkspace || !ok || workspace.Scope != AppEntityScope() {
+		t.Errorf("Outliner route = %s %+v, want app-scoped root", r.ID(), r.Params())
 	}
 
 	// Task-scoped view carries both.
@@ -41,7 +42,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 	}
 
 	// Global-nav view drops the project.
-	app.jumpToDashboard()
+	app.jumpToOutlinerRoot()
 	app.pushView(ViewCrossProjectOutliner)
 	r = app.CurrentRoute()
 	workspace, ok = r.Params().(TaskWorkspaceParams)
@@ -61,21 +62,32 @@ func TestShellStateFacade(t *testing.T) {
 	app := newShellTestApp()
 	app.currentProject = &models.Project{ID: "p1", Name: "Proj"}
 	s := app.Shell()
-	if !s.AtRoot() {
-		t.Error("expected AtRoot at construction")
-	}
-	if s.CurrentView() != ViewDashboard {
-		t.Errorf("CurrentView = %s, want Dashboard", s.CurrentView())
-	}
-	app.pushView(ViewOutliner)
-	if s.AtRoot() {
-		t.Error("expected not AtRoot after push")
-	}
-	if s.Depth() != 2 {
-		t.Errorf("Depth = %d, want 2", s.Depth())
+	// Construction lands on the sole Outliner root. The presentation mirror
+	// carries a Dashboard sentinel beneath the root, so Depth is 2 there.
+	if s.CurrentView() != ViewCrossProjectOutliner {
+		t.Errorf("CurrentView = %s, want CrossProjectOutliner", s.CurrentView())
 	}
 	if s.CurrentRoute().ID() != TaskWorkspace {
+		t.Errorf("root route = %s, want TaskWorkspace", s.CurrentRoute().ID())
+	}
+	// The Outliner presentation replaces the single root in place and stays
+	// app-scoped; project selection is an Outliner scope frame, not a root route.
+	app.pushView(ViewOutliner)
+	if s.CurrentRoute().ID() != TaskWorkspace {
 		t.Errorf("CurrentRoute = %s, want TaskWorkspace", s.CurrentRoute().ID())
+	}
+	sp, ok := s.CurrentRoute().Params().(TaskWorkspaceParams)
+	if !ok || sp.Scope != AppEntityScope() {
+		t.Errorf("root scope = %+v, want app-scoped root", s.CurrentRoute().Params())
+	}
+	// A child (Task Detail) stacks above the root.
+	app.lastNavigatedTaskID = "t1"
+	app.pushView(ViewTaskDetail)
+	if s.AtRoot() {
+		t.Error("expected not AtRoot after pushing a child")
+	}
+	if s.CurrentRoute().ID() != TaskDetail {
+		t.Errorf("child route = %s, want TaskDetail", s.CurrentRoute().ID())
 	}
 }
 

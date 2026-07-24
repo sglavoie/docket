@@ -1,17 +1,28 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/storage"
+)
 
 // handleGlobalPickerMessages handles global picker, status, priority, due date, section, and linked task messages.
 func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowGlobalProjectPickerMsg:
-		activeProjects := m.activeProjects()
-		m.globalProjectPicker = newGlobalProjectPicker(activeProjects, m.allProjects(), msg.Purpose, msg.ExcludeIDs, msg.BackMsg)
+		m.globalProjectPicker = newGlobalProjectPicker(m.activeProjects(), m.allProjects(), msg.Purpose, msg.ExcludeIDs, msg.BackMsg)
 		return true, m.globalProjectPicker.initCmd()
+
+	case ShowScopePickerMsg:
+		trash, _ := storage.ListTrashEntries(m.runtime.DataDir())
+		m.scopePicker = newScopePicker(m.activeProjects(), m.archivedScopeProjects(), trash)
+		return true, m.scopePicker.initCmd()
 
 	case GlobalProjectPickerResultMsg:
 		return m.routeGlobalProjectPickerResult(msg)
+
+	case ApplyProjectScopeMsg:
+		return m.applyProjectScope(msg)
 
 	case ShowGlobalTaskPickerMsg:
 		var backMsg tea.Msg = ShowGlobalProjectPickerMsg{Purpose: PickerPurposeStatusUpdate}
