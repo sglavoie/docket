@@ -61,7 +61,6 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 		focusQueue:            []FocusTask{},
 		dailyPlan:             []FocusTask{},
 		outlinerToggleStates:  make(map[string]*OutlinerToggleState),
-		projectLastView:       make(map[string]PresentationID),
 		dailyPlanCarriedShown: true,
 	}
 

@@ -62,8 +62,6 @@ func newProjectAdminMenu(project *models.Project) *ProjectAdminMenuModel {
 	return &ProjectAdminMenuModel{project: project, items: items}
 }
 
-func (m *ProjectAdminMenuModel) initCmd() tea.Cmd { return nil }
-
 // handleKey implements the shared overlay contract (inputCmd, dismiss, resultMsg).
 func (m *ProjectAdminMenuModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	switch msg.String() {

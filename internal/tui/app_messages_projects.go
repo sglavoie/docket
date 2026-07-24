@@ -29,10 +29,10 @@ type ProjectCreatedMsg struct{ Project *models.Project }
 // ProjectUpdatedMsg signals a project's metadata was updated.
 type ProjectUpdatedMsg struct{ Project *models.Project }
 
-// ProjectArchivedMsg signals a project was archived.
+// ProjectArchivedMsg requests the checked commit of a confirmed archive.
 type ProjectArchivedMsg struct{ Project *models.Project }
 
-// ProjectRestoredMsg signals an archived project was restored.
+// ProjectRestoredMsg requests the checked commit of a confirmed unarchive.
 type ProjectRestoredMsg struct{ Project *models.Project }
 
 // ProjectArchiveRequestMsg requests a confirmed archive/unarchive action.

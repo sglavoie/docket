@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/lipgloss/v2"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -138,24 +136,4 @@ func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 	}
 
 	return lines
-}
-
-// renderVerticalDivider renders a vertical line for split-pane separation.
-// When focused is true, the divider uses ColorPrimary; otherwise ColorBorder.
-func renderVerticalDivider(height int, focused bool) string {
-	if height <= 0 {
-		return ""
-	}
-	var b strings.Builder
-	for i := range height {
-		b.WriteString("┃")
-		if i < height-1 {
-			b.WriteString("\n")
-		}
-	}
-	color := ColorBorder
-	if focused {
-		color = ColorPrimary
-	}
-	return lipgloss.NewStyle().Foreground(color).Render(b.String())
 }

@@ -17,7 +17,7 @@ func TestRenameEditTitle_UndoContextUsesOldTitle(t *testing.T) {
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
-	row := boardRow{Task: task, Project: project, Source: project.Name}
+	row := boardRow{Task: task, Project: project}
 
 	// Verify the mutation ordering directly: after MutateTask, the task pointer
 	// holds the new title, while the previously captured old title is unchanged.

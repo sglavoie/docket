@@ -340,8 +340,8 @@ func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flas
 }
 
 // Spacing rule: 1 blank line between sections, 0 blank lines between rows
-// within a section. Use renderEmptyState / renderFilterAwareEmptyState for
-// empty-state blocks so spacing is embedded and not duplicated at call sites.
+// within a section. Use renderEmptyState for empty-state blocks so spacing is
+// embedded and not duplicated at call sites.
 
 // renderEmptyState returns the standard empty-state block used when a view has
 // no visible tasks. msg is rendered in MutedStyle; helpText (if non-empty) is
@@ -352,26 +352,4 @@ func renderEmptyState(msg string, helpText string) string {
 		s += "\n\n" + HelpStyle.Render(helpText)
 	}
 	return s
-}
-
-// renderContextualEmptyState renders an empty-state block with view-specific
-// action hints. hints are formatted as "key action" pairs joined by " · ".
-// Only call this when there are no tasks, no active filters, and no pending prefix.
-func renderContextualEmptyState(msg string, hints []string) string {
-	s := MutedStyle.Render(msg)
-	if len(hints) > 0 {
-		s += "\n\n" + HelpStyle.Render(strings.Join(hints, " · "))
-	}
-	return s
-}
-
-// renderFilterAwareEmptyState returns an empty-state block that adapts its message
-// based on whether filters are active. When hasFilters is true, it shows the
-// standard "No tasks match current filters" message with filterHelpText; otherwise
-// it shows baseMsg with baseHelpText.
-func renderFilterAwareEmptyState(hasFilters bool, baseMsg, baseHelpText, filterHelpText string) string {
-	if hasFilters {
-		return renderEmptyState(EmptyStateFiltered, filterHelpText)
-	}
-	return renderEmptyState(baseMsg, baseHelpText)
 }

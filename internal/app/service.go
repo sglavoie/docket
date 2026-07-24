@@ -142,26 +142,6 @@ func (s *Service) loadTaskSelection(taskID string, locator TaskLocator) (TaskRef
 	return ref, snap, snap.Revision(ref.Project.ID), nil
 }
 
-func (s *Service) loadTask(taskID string) (TaskRef, Snapshot, string, error) {
-	return s.loadTaskSelection(taskID, TaskLocator{})
-}
-
-func (s *Service) loadTaskByLocator(locator TaskLocator) (TaskRef, Snapshot, string, error) {
-	return s.loadTaskSelection("", locator)
-}
-
-// resolveTask loads a snapshot and resolves a task by its UUID, returning the
-// task, its owning project, and the revision the project was loaded at.
-func (s *Service) resolveTask(taskID string) (TaskRef, string, error) {
-	ref, _, revision, err := s.loadTask(taskID)
-	return ref, revision, err
-}
-
-func (s *Service) resolveTaskByLocator(locator TaskLocator) (TaskRef, string, error) {
-	ref, _, revision, err := s.loadTaskByLocator(locator)
-	return ref, revision, err
-}
-
 // mutateTask is the shared runner for every single-task mutation. It resolves
 // the task, applies mutate (which enforces domain rules and may return a typed
 // error), runs the post-mutation hooks, and commits one ChangeSet carrying the

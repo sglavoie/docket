@@ -446,7 +446,6 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 		persister:            NewProjectService(),
 		appService:           svc,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,

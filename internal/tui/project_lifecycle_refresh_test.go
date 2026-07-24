@@ -189,6 +189,7 @@ func session4DiskProject(t *testing.T, dataDir, projectID string) *models.Projec
 	return session3ProjectByID(t, runtime.AllProjects(), projectID)
 }
 
+//nolint:gocyclo // A single table-driven lifecycle matrix keeps reload invariants comparable.
 func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 	tests := []struct {
 		name string
@@ -362,7 +363,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t, true, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.cross.pushProjectScope(live.ID)
-				live.Archive()
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectArchivedMsg{Project: live})
 				runSession2AppCommand(t, fixture.app, cmd)
@@ -388,7 +388,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project.Archive()
 				fixture := newSession4LifecycleFixture(t, true, project)
 				live := fixture.app.projectByID(project.ID)
-				live.Unarchive()
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
 				runSession2AppCommand(t, fixture.app, cmd)
@@ -517,7 +516,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project.Archive()
 				fixture := newSession4LifecycleFixture(t, false, project)
 				live := fixture.app.projectByID(project.ID)
-				live.Unarchive()
 				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewCrossProjectOutliner, "Help"))
 				fixture.app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewHelp}
 

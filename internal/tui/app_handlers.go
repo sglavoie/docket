@@ -8,13 +8,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+const maxOutlinerToggleStateEntries = 50
+
 // saveOutlinerToggleState captures the current outliner's section/fold state
 // into the per-project cache so it can be restored after recreation.
 func (m *AppModel) saveOutlinerToggleState() {
 	if m.outliner != nil && m.outliner.project != nil {
 		id := m.outliner.project.ID
 		m.outlinerToggleStates[id] = m.outliner.SaveToggleState()
-		for len(m.outlinerToggleStates) > maxProjectLastViewEntries {
+		for len(m.outlinerToggleStates) > maxOutlinerToggleStateEntries {
 			for k := range m.outlinerToggleStates {
 				if k != id {
 					delete(m.outlinerToggleStates, k)

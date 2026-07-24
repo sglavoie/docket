@@ -1,21 +1,10 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 )
-
-// ScrollUpIndicator returns a muted "↑ N more" string for scroll overflow above.
-func ScrollUpIndicator(n int) string {
-	return MutedStyle.Render(fmt.Sprintf("↑ %d more", n))
-}
-
-// ScrollDownIndicator returns a muted "↓ N more" string for scroll overflow below.
-func ScrollDownIndicator(n int) string {
-	return MutedStyle.Render(fmt.Sprintf("↓ %d more", n))
-}
 
 // RenderScrollbar returns a viewportHeight-line string of ░/█ characters
 // representing the scroll position. Returns "" when content fits (no scroll

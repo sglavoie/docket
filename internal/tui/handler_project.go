@@ -64,42 +64,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, m.confirmProjectArchive()
 
 	case ProjectArchivedMsg:
-		archivedLocators := make([]config.ProjectTaskLocator, 0)
-		if msg.Project != nil {
-			archivedLocators = make([]config.ProjectTaskLocator, 0, len(msg.Project.Tasks))
-			for _, task := range msg.Project.Tasks {
-				if task != nil && task.ID != "" {
-					archivedLocators = append(archivedLocators, config.ProjectTaskLocator{ProjectID: msg.Project.ID, TaskID: task.ID})
-				}
-			}
-		}
-		popCmd := m.popView()
-		domains := cloneRuntimeDomains(m.runtime)
-		if msg.Project != nil {
-			domains.Catalog.UpsertProject(msg.Project)
-		}
-		// Clear current project if archived
-		if msg.Project != nil && msg.Project.Archived && domains.Machine.CurrentProject == msg.Project.ID {
-			domains.Machine.CurrentProject = ""
-		}
-		if msg.Project != nil && msg.Project.Archived && m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
-			m.currentProject = nil
-		}
-		// Clean up config references for tasks in the archived project
-		if len(archivedLocators) > 0 {
-			domains.Planning.RemoveDurableTaskLocators(archivedLocators)
-			domains.Machine.RemoveMachineLocalTaskLocators(archivedLocators)
-		}
-		if err := m.commitRuntimeDomains(domains); err != nil {
-			m.err = err
-			return true, nil
-		}
-		m.pruneDeletedTaskRefs()
-		if msg.Project != nil {
-			m.setSuccessStatus(fmt.Sprintf("Archived %s", msg.Project.Name))
-			return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
-		}
-		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload())
+		return true, m.commitProjectArchive(msg.Project)
 
 	case ProjectPinRequestMsg:
 		if msg.Project == nil {
@@ -156,18 +121,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case ProjectRestoredMsg:
-		if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
-			catalog.UpsertProject(msg.Project)
-		}); err != nil {
-			m.err = err
-			return true, nil
-		}
-		m.syncProjectCache()
-		if msg.Project != nil {
-			m.setSuccessStatus(fmt.Sprintf("Unarchived %s", msg.Project.Name))
-			return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
-		}
-		return true, nil
+		return true, m.commitProjectUnarchive(msg.Project)
 
 	case EditProjectMsg:
 		if msg.Project != nil {
@@ -322,7 +276,6 @@ func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
 	if m.currentView() == ViewCommandPalette {
 		m.popView()
 	}
-	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
 	if m.typedNavigation {
 		_, cmd := m.handleProjectViewMessages(ShowOutlinerMsg{Project: project})
@@ -386,27 +339,85 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	}
 
 	if archive {
-		// Dashboard/catalog project snapshots may not have their computed task list
-		// loaded. Resolve it before flipping the archive flag so the completion
-		// message can carry every project-qualified cleanup target.
-		if project.Tasks == nil {
-			if m.persister == nil {
-				return errorCmd("cannot archive project: project storage is unavailable")
-			}
-			if err := m.persister.Load(project); err != nil {
-				return errorCmd("cannot archive project: %v", err)
-			}
-		}
-		project.Archive()
 		return func() tea.Msg {
 			return ProjectArchivedMsg{Project: project}
 		}
 	}
 
-	project.Unarchive()
 	return func() tea.Msg {
 		return ProjectRestoredMsg{Project: project}
 	}
+}
+
+// commitProjectArchive applies the confirmed lifecycle mutation to an isolated
+// copy, commits every catalog/planning/machine effect, and only then publishes
+// the new metadata to the live project pointer. A rejected commit therefore
+// cannot leak speculative archive state or clear the current project.
+func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
+	if project == nil {
+		return nil
+	}
+	updated := *project
+	if updated.Tasks == nil {
+		if m.persister == nil {
+			return errorCmd("cannot archive project: project storage is unavailable")
+		}
+		if err := m.persister.Load(&updated); err != nil {
+			return errorCmd("cannot archive project: %v", err)
+		}
+	}
+	updated.Archive()
+
+	archivedLocators := make([]config.ProjectTaskLocator, 0, len(updated.Tasks))
+	for _, task := range updated.Tasks {
+		if task != nil && task.ID != "" {
+			archivedLocators = append(archivedLocators, config.ProjectTaskLocator{
+				ProjectID: updated.ID,
+				TaskID:    task.ID,
+			})
+		}
+	}
+
+	domains := cloneRuntimeDomains(m.runtime)
+	domains.Catalog.UpsertProject(&updated)
+	if domains.Machine.CurrentProject == updated.ID {
+		domains.Machine.CurrentProject = ""
+	}
+	if len(archivedLocators) > 0 {
+		domains.Planning.RemoveDurableTaskLocators(archivedLocators)
+		domains.Machine.RemoveMachineLocalTaskLocators(archivedLocators)
+	}
+	if err := m.commitRuntimeDomains(domains); err != nil {
+		m.err = err
+		return nil
+	}
+
+	copyCatalogMetadata(project, &updated)
+	if m.currentProject != nil && m.currentProject.ID == updated.ID {
+		m.currentProject = nil
+	}
+	m.pruneDeletedTaskRefs()
+	m.setSuccessStatus(fmt.Sprintf("Archived %s", updated.Name))
+	return tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
+}
+
+// commitProjectUnarchive mirrors commitProjectArchive for the catalog-only
+// recovery path: checked persistence precedes publication to every live cache.
+func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
+	if project == nil {
+		return nil
+	}
+	updated := *project
+	updated.Unarchive()
+	if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
+		catalog.UpsertProject(&updated)
+	}); err != nil {
+		m.err = err
+		return nil
+	}
+	copyCatalogMetadata(project, &updated)
+	m.setSuccessStatus(fmt.Sprintf("Unarchived %s", updated.Name))
+	return tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 }
 
 // restoreProjectFromTrash captures an immutable command input on the Bubble Tea

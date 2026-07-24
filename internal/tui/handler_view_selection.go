@@ -71,17 +71,20 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 
 		if !msg.Canceled {
-			msg.Project.StatusIcon = msg.Key
+			updated := *msg.Project
+			updated.StatusIcon = msg.Key
 			if msg.Key != "" {
-				msg.Project.StatusIconSource = "user"
+				updated.StatusIconSource = "user"
 			} else {
-				msg.Project.StatusIconSource = ""
+				updated.StatusIconSource = ""
 			}
-			msg.Project.UpdatedAt = time.Now()
+			updated.UpdatedAt = time.Now()
 			if err := m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
-				catalog.UpsertProject(msg.Project)
+				catalog.UpsertProject(&updated)
 			}); err != nil {
 				m.err = err
+			} else {
+				copyCatalogMetadata(msg.Project, &updated)
 			}
 		}
 

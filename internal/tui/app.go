@@ -402,13 +402,6 @@ type AppModel struct {
 	pinnedPreviewID      string         // project ID the preview was built for
 	pinnedPreviewTaskID  string         // task ID the preview cursor was set for
 
-	// Last project-level view used (Outliner) for cycle preservation
-	lastProjectView PresentationID
-
-	// Per-project last view memory: remembers which project-level view was active
-	// for each project so switching back restores the same view.
-	projectLastView map[string]PresentationID
-
 	// Proactive alert snapshots (ephemeral, regenerated on navigation)
 	rawAlerts       *alerts.AlertSnapshot // unfiltered (before dismissal filter)
 	proactiveAlerts *alerts.AlertSnapshot // filtered (after dismissals applied)

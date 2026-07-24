@@ -55,10 +55,6 @@ func renderTaskScopedFullscreenTitle(prefix string, task *models.Task, subtitle 
 	return fitStyledChromeToWidth("fullscreen title", renderFullscreenTitleContent(titleContent, subtitle), width)
 }
 
-func renderFullscreenTitleContentWithCounter(titleContent, subtitle, counter string, width int) string {
-	return appendFullscreenTitleCounter(renderFullscreenTitleContent(titleContent, subtitle), counter, width)
-}
-
 // titleCounterAlertReserve mirrors the alert-indicator reserve used by
 // fullscreen views so the right-aligned open-loops counter never collides with
 // the proactive-alert badge rendered by the app shell.
@@ -142,13 +138,6 @@ func parkedTaskCardLine(task *models.Task) string {
 	return InfoStatusStyle.Render(line)
 }
 
-// renderDueDateContent builds the styled due date string with overdue/today/normal
-// coloring, and appends a recurrence line when the task has one.
-// timeFormat is a Go time layout string (e.g. "15:04" or "3:04pm").
-func renderDueDateContent(task *models.Task, timeFormat string) string {
-	return renderDueDateContentOpts(task, false, timeFormat)
-}
-
 // renderDueDateContentOpts builds the styled due date string. When hideRecurrence
 // is true, the "Recurs:" line is omitted (useful when a dedicated Recurrence card
 // is shown nearby). timeFormat is a Go time layout string.
@@ -171,12 +160,6 @@ func renderDueDateContentOpts(task *models.Task, hideRecurrence bool, timeFormat
 	}
 
 	return dueLine
-}
-
-// renderMetadataContent builds the tags, section, and type-specific attributes
-// content shared by task detail.
-func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int, showAttrs ...bool) string {
-	return renderMetadataContentOpts(task, project, innerWidth, false, showAttrs...)
 }
 
 // renderMetadataContentOpts is like renderMetadataContent but can optionally hide

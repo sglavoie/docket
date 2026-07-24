@@ -64,7 +64,6 @@ func newTrashRestoreTestApp(
 		height:               24,
 		dailyPlanIDs:         make(map[TaskIdentity]bool),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 	}
 	return app, project, entryID
 }

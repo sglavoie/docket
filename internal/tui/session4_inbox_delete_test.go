@@ -71,7 +71,6 @@ func newInboxDeleteEnv(t *testing.T) *inboxDeleteEnv {
 		width:                80,
 		height:               24,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 	}
 
 	processor := NewInboxProcessorModel(proj, mgr, runtime)

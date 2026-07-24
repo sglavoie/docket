@@ -82,20 +82,6 @@ func fChildKeys(km *keymap.KeyMap) []string {
 	return keys
 }
 
-// fChildIsPrefix reports whether the F child at key is a sub-prefix node.
-func fChildIsPrefix(km *keymap.KeyMap, key string) bool {
-	f := findRootFPrefix(km)
-	if f == nil {
-		return false
-	}
-	for _, c := range f.Children {
-		if c.PrefixNode != nil && c.PrefixNode.Key == key {
-			return true
-		}
-	}
-	return false
-}
-
 // fChildIsBinding reports whether the F child at key is a direct binding leaf.
 func fChildIsBinding(km *keymap.KeyMap, key string) bool {
 	f := findRootFPrefix(km)

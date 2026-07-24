@@ -78,6 +78,7 @@ func finishSession3CrossReload(t *testing.T, app *AppModel, cross *OutlinerModel
 	}
 }
 
+//nolint:gocyclo // This regression keeps both entry points in one persistence-and-ordering matrix.
 func TestProjectAdminAndPalettePinRequestsPersistAndReorder(t *testing.T) {
 	dataDir := t.TempDir()
 	alpha := newSession2Project(t, dataDir, "Alpha")
@@ -205,6 +206,134 @@ func TestProjectPinRequestFailureRollsBackLiveMetadata(t *testing.T) {
 	}
 }
 
+func newBlockedProjectMutationApp(t *testing.T, archived bool) (*AppModel, *models.Project) {
+	t.Helper()
+
+	blockedRoot := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(blockedRoot, []byte("blocked"), 0o600); err != nil {
+		t.Fatalf("create blocked workspace root: %v", err)
+	}
+
+	project := testutil.NewTestProjectWithTasks("Blocked Mutation")
+	if archived {
+		project.Archive()
+	}
+	catalog := config.NewWorkspaceCatalog()
+	catalog.UpsertProject(project)
+	domains := config.NewDomains()
+	domains.Catalog = catalog
+	domains.Machine.CurrentProject = project.ID
+	runtime := config.NewRuntimeState(blockedRoot, domains)
+	manager := config.NewManager(filepath.Join(blockedRoot, ".tt.json"))
+	ledger := workspaceLedgerFromConfig(runtime)
+	service := newTUIAppService(blockedRoot, manager.RuntimeDependencies(), ledger)
+
+	app := newTestAppModel()
+	app.configManager = manager
+	app.runtime = runtime
+	app.appService = service
+	app.deps = newShellDeps(runtime, service, manager, ledger)
+	app.projects = map[string]*models.Project{project.ID: project}
+	app.currentProject = project
+	app.statusMessage = "unchanged"
+	return app, project
+}
+
+func TestProjectArchiveFailureDoesNotPublishLiveMetadata(t *testing.T) {
+	app, project := newBlockedProjectMutationApp(t, false)
+	originalUpdatedAt := project.UpdatedAt
+	originalCurrent := app.currentProject
+
+	handled, cmd := app.handleProjectMessages(ProjectArchivedMsg{Project: project})
+
+	if !handled || cmd != nil {
+		t.Fatalf("failed archive = handled %v cmd %v, want handled with no commands", handled, cmd)
+	}
+	if app.err == nil {
+		t.Fatal("failed archive commit should surface an error")
+	}
+	if project.Archived || project.ArchivedAt != nil || !project.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed archive published live metadata: %#v", project)
+	}
+	if app.currentProject != originalCurrent {
+		t.Fatal("failed archive cleared the live current project")
+	}
+	if app.runtime.Machine().CurrentProject != project.ID {
+		t.Fatalf("failed archive cleared runtime current project: %q", app.runtime.Machine().CurrentProject)
+	}
+	if app.statusMessage != "unchanged" {
+		t.Fatalf("failed archive changed status to %q", app.statusMessage)
+	}
+	runtimeProject := session3ProjectByID(t, app.runtime.AllProjects(), project.ID)
+	if runtimeProject.Archived || runtimeProject.ArchivedAt != nil ||
+		!runtimeProject.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed archive changed runtime metadata: %#v", runtimeProject)
+	}
+}
+
+func TestProjectUnarchiveFailureDoesNotPublishLiveMetadata(t *testing.T) {
+	app, project := newBlockedProjectMutationApp(t, true)
+	originalArchivedAt := *project.ArchivedAt
+	originalUpdatedAt := project.UpdatedAt
+
+	handled, cmd := app.handleProjectMessages(ProjectRestoredMsg{Project: project})
+
+	if !handled || cmd != nil {
+		t.Fatalf("failed unarchive = handled %v cmd %v, want handled with no commands", handled, cmd)
+	}
+	if app.err == nil {
+		t.Fatal("failed unarchive commit should surface an error")
+	}
+	if !project.Archived || project.ArchivedAt == nil ||
+		!project.ArchivedAt.Equal(originalArchivedAt) || !project.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed unarchive published live metadata: %#v", project)
+	}
+	if app.statusMessage != "unchanged" {
+		t.Fatalf("failed unarchive changed status to %q", app.statusMessage)
+	}
+	runtimeProject := session3ProjectByID(t, app.runtime.AllProjects(), project.ID)
+	if !runtimeProject.Archived || runtimeProject.ArchivedAt == nil ||
+		!runtimeProject.ArchivedAt.Equal(originalArchivedAt) ||
+		!runtimeProject.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed unarchive changed runtime metadata: %#v", runtimeProject)
+	}
+}
+
+func TestProjectStatusIconFailureDoesNotPublishLiveMetadata(t *testing.T) {
+	app, project := newBlockedProjectMutationApp(t, false)
+	project.StatusIcon = "on-track"
+	project.StatusIconSource = "user"
+	originalUpdatedAt := project.UpdatedAt
+	app.viewStack = []PresentationID{ViewDashboard, ViewStatusIconPicker}
+
+	handled, cmd := app.handleViewSelectionMessages(StatusIconSelectedMsg{
+		Project: project,
+		Key:     "at-risk",
+	})
+
+	if !handled || cmd != nil {
+		t.Fatalf("failed status icon = handled %v cmd %v, want handled with no commands", handled, cmd)
+	}
+	if app.err == nil {
+		t.Fatal("failed status-icon commit should surface an error")
+	}
+	if project.StatusIcon != "on-track" || project.StatusIconSource != "user" ||
+		!project.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed status-icon commit published live metadata: %#v", project)
+	}
+	if app.currentView() != ViewStatusInput {
+		t.Fatalf("failed status-icon commit returned to %s, want status input", app.currentView())
+	}
+	if app.statusMessage != "unchanged" {
+		t.Fatalf("failed status-icon commit changed status to %q", app.statusMessage)
+	}
+	runtimeProject := session3ProjectByID(t, app.runtime.AllProjects(), project.ID)
+	if runtimeProject.StatusIcon != "" || !runtimeProject.UpdatedAt.Equal(originalUpdatedAt) {
+		t.Fatalf("failed status-icon commit changed runtime metadata: %#v", runtimeProject)
+	}
+}
+
+//nolint:gocyclo // The end-to-end regression deliberately asserts every confirmation transition.
 func TestCrossPaletteArchivedProjectOpenConfirmsWithoutChangingScope(t *testing.T) {
 	dataDir := t.TempDir()
 	active := newSession2Project(t, dataDir, "Active")

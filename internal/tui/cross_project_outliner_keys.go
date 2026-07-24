@@ -48,18 +48,6 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 	return m.selectOutlinerMode(mode.ID)
 }
 
-// crossHandlePerspectiveJump jumps the cross-project outliner directly to a
-// perspective-backed mode (from the mode picker or Tab/h/l cycling). It captures
-// the selected task identity before rebuilding and restores it afterward, so the
-// cursor tracks the task across the reshape rather than a bare numeric row index.
-func (m *OutlinerModel) crossHandlePerspectiveJump(perspID int) (tea.Model, tea.Cmd) {
-	mode, ok := OutlinerModeForPerspective(perspID)
-	if !ok {
-		return m, nil
-	}
-	return m.selectOutlinerMode(mode.ID)
-}
-
 // crossSkipNonNavigableRows advances the cursor past any contiguous
 // non-navigable rows (separators only; project sub-headers are now navigable)
 // after a cursor movement, ensuring the cursor never rests on a separator.

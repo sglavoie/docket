@@ -127,7 +127,6 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 		dailyPlanIDs:         map[TaskIdentity]bool{taskIdentityFor(task, project): true},
 		recentTaskVisits:     []RecentTaskVisitEntry{{Task: task, Project: project}},
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 	}
 
 	// NotesSearchModel also loads the project while building its linked-task

@@ -129,6 +129,15 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return true, cmd
+	case crossProjectsLoadedMsg:
+		// Cross-project loads belong to the sole authoritative Outliner, not to
+		// whichever child presentation happens to be visible when the async
+		// command completes. Routing the result globally guarantees loading state
+		// settles even if navigation covered the Outliner after the load started.
+		if m.crossOutliner == nil {
+			return true, nil
+		}
+		return true, m.crossOutliner.handleCrossProjectsLoaded(msg)
 	case RecordRepeatableActionMsg:
 		m.lastRepeatableAction = msg.Action
 		return true, nil

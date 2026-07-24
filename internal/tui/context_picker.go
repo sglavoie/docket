@@ -83,11 +83,6 @@ func NewContextPickerModelFromRuntime(runtime *config.RuntimeState) *ContextPick
 	}
 }
 
-// customContextID returns the ID used to identify custom contexts (prefixed with "+").
-func customContextID(name string) string {
-	return "+" + name
-}
-
 // buildContextListWithCustom gathers contexts including custom contexts. Project
 // contexts derive from the passed catalog projects; custom contexts and their
 // project counts are machine-local state read from the runtime.

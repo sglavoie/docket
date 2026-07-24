@@ -32,20 +32,6 @@ func CommonTaskActionPrefixHints(currentPriority int) PrefixHints {
 	}
 }
 
-// overrideHintDetail returns a shallow copy of hints with the Detail field of
-// the entry matching key replaced. If key is not found, the original slice is returned.
-func overrideHintDetail(hints []PrefixHint, key, detail string) []PrefixHint {
-	result := make([]PrefixHint, len(hints))
-	copy(result, hints)
-	for i, h := range result {
-		if h.Key == key {
-			result[i].Detail = detail
-			return result
-		}
-	}
-	return result
-}
-
 // BuildFilterScorePrefixHints builds dynamic filter score hints showing the
 // current custom value from config. The supportsCustomInput flag gates the
 // `C` (inline input) entry — views without a score-input component must pass

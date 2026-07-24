@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -67,6 +66,7 @@ func (m *OutlinerModel) applyReviewMode(kind reviewModeKind) {
 // rebuild paths so both surfaces render review modes identically.
 func (m *OutlinerModel) buildReviewModeRows() {
 	switch m.reviewMode {
+	case reviewNone:
 	case reviewDaily:
 		m.buildDailyReviewRows()
 	case reviewActivity:
@@ -161,22 +161,4 @@ func reviewCollapsedFingerprint(collapsed map[string]bool) string {
 	}
 	sort.Strings(keys)
 	return strings.Join(keys, ",")
-}
-
-// reviewKindFromCollapseKey extracts the review kind embedded in a review
-// CollapseKey, used only by tests and defensive parsing.
-func reviewKindFromCollapseKey(key string) (reviewModeKind, bool) {
-	if !isReviewCollapseKey(key) {
-		return reviewNone, false
-	}
-	rest := strings.TrimPrefix(key, reviewCollapseKeyPrefix)
-	parts := strings.SplitN(rest, ":", 2)
-	if len(parts) != 2 {
-		return reviewNone, false
-	}
-	n, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return reviewNone, false
-	}
-	return reviewModeKind(n), true
 }

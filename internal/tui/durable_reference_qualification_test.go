@@ -25,7 +25,6 @@ func TestTUIArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t *testin
 		{
 			name: "project archive",
 			apply: func(m *AppModel, beta *models.Project) {
-				beta.Archived = true
 				m.handleProjectMessages(ProjectArchivedMsg{Project: beta})
 			},
 		},

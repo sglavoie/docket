@@ -285,38 +285,6 @@ func tagNamesFromInfos(infos []TagInfo) []string {
 	return tags
 }
 
-func projectsFromCrossProjectTasks(items []CrossProjectTask) []*models.Project {
-	projects := make([]*models.Project, 0, len(items))
-	for _, item := range items {
-		projects = append(projects, item.Project)
-	}
-	return uniqueProjects(projects)
-}
-
-func tasksFromCrossProjectTasks(items []CrossProjectTask) []*models.Task {
-	tasks := make([]*models.Task, 0, len(items))
-	for _, item := range items {
-		tasks = append(tasks, item.Task)
-	}
-	return tasks
-}
-
-func projectsFromBoardRows(rows []boardRow) []*models.Project {
-	projects := make([]*models.Project, 0, len(rows))
-	for _, row := range rows {
-		projects = append(projects, row.Project)
-	}
-	return uniqueProjects(projects)
-}
-
-func tasksFromBoardRows(rows []boardRow) []*models.Task {
-	tasks := make([]*models.Task, 0, len(rows))
-	for _, row := range rows {
-		tasks = append(tasks, row.Task)
-	}
-	return tasks
-}
-
 func projectsFromWeeklyReviewTasks(items []WeeklyReviewTask) []*models.Project {
 	projects := make([]*models.Project, 0, len(items))
 	for _, item := range items {
@@ -414,9 +382,6 @@ func (fm *FilterMixin) HasActiveFilters() bool {
 func (fm *FilterMixin) ClearAllFilters() {
 	clearCommonFilters(&fm.filter)
 	fm.activeCriteriaFilter = nil
-}
-func (fm *FilterMixin) renderActiveFilterIndicator() string {
-	return renderCommonFilterIndicator(&fm.filter)
 }
 
 // ActiveFilterCount returns the number of active filters.

@@ -58,8 +58,6 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		views:                NewViewRegistry(),
 		commandRegistry:      NewCommandRegistry(),
 		spinner:              NewSpinner(),
-		lastProjectView:      defaultProjectPresentation(runtime.Settings()),
-		projectLastView:      make(map[string]PresentationID),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 		focusQueue:           []FocusTask{},
 		focusQueueIDs:        make(map[TaskIdentity]bool),

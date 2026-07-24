@@ -190,7 +190,6 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 		persister:            NewProjectService(),
 		appService:           svc,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,

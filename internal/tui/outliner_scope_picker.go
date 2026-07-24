@@ -294,6 +294,8 @@ func (m *ScopePickerModel) activateCurrent() (tea.Cmd, bool, tea.Msg) {
 
 func scopeSectionLabel(k scopeEntryKind) string {
 	switch k {
+	case scopeEntryAllProjects:
+		return ""
 	case scopeEntryActive:
 		return "Active"
 	case scopeEntryArchived:

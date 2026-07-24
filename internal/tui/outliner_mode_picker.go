@@ -298,7 +298,7 @@ func (m *OutlinerModel) renderModePickerLine(row modePickerRow, selected, isCurr
 		suffix += "  " + MutedStyle.Render("(soon)")
 	}
 
-	styledLabel := label
+	var styledLabel string
 	switch {
 	case row.disabled:
 		styledLabel = MutedStyle.Render(label)

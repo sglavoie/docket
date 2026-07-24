@@ -113,7 +113,6 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 		width:                80,
 		height:               24,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 	}
 }
 

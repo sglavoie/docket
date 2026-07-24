@@ -29,6 +29,8 @@ func cursorOnFirstTaskRow(t *testing.T, m *OutlinerModel) (*models.Task, string)
 // palette's target are the same instance, a palette task action after either
 // navigation can never mutate a hidden canonical cursor, and Esc restores the
 // previous Outliner scope.
+//
+//nolint:gocyclo // Both navigation paths share one canonical-Outliner invariant matrix.
 func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 	t.Run("linked-task navigation scopes the cross Outliner and reveals the task", func(t *testing.T) {
 		owner, ownerTasks := planningOrderProject(t, t.TempDir(), "p-own", "own", "Alpha", "Bravo")

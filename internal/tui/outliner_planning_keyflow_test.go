@@ -147,7 +147,7 @@ func TestPlanningOnlyTodayRowsRefreshThroughGlobalKeys(t *testing.T) {
 		}
 		_ = cross.View().Content // establish the memoized pre-toggle rows
 
-		m = sendAppKey(m, syntheticKey('w'))
+		sendAppKey(m, syntheticKey('w'))
 		assertPlanningOnlyTodayVisualState(t, m, task, project, 1, true)
 		if got := diskDailyPlanLen(t, dataDir); got != 1 {
 			t.Fatalf("Daily Plan after w = %d, want 1", got)
@@ -209,7 +209,7 @@ func TestPlanningOnlyTodayRowsRefreshThroughGlobalKeys(t *testing.T) {
 		}
 		_ = cross.View().Content // establish the memoized pre-toggle rows
 
-		m = sendAppKey(m, syntheticKey('w'))
+		sendAppKey(m, syntheticKey('w'))
 		rendered := ansi.Strip(cross.View().Content)
 		if strings.Contains(rendered, second.Title) {
 			t.Fatalf("removed Today task still rendered in scoped view: %q", rendered)

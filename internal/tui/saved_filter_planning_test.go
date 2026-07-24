@@ -27,7 +27,6 @@ func newSavedFilterTestApp(t *testing.T) *AppModel {
 		deps:                 newShellDeps(runtime, nil, manager, nil),
 		persister:            NewProjectService(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		projectLastView:      make(map[string]PresentationID),
 		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,

@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -108,15 +107,9 @@ func (m *AppModel) baseProjectView() PresentationID {
 func (m *AppModel) pushView(view PresentationID) {
 	if m.installTypedPresentation(view) {
 		m.installPendingStartupRoute(view)
-		if view == ViewOutliner {
-			m.lastProjectView = view
-		}
 		return
 	}
 	m.viewStack = append(m.viewStack, view)
-	if view == ViewOutliner {
-		m.lastProjectView = view
-	}
 }
 
 // popView removes the top view from the stack. It returns any commands needed
@@ -463,42 +456,6 @@ func (m *AppModel) exitAskView() {
 	}
 }
 
-// defaultProjectPresentation returns the sole project presentation.
-func defaultProjectPresentation(_ *config.Settings) PresentationID {
-	return ViewOutliner
-}
-
-const maxProjectLastViewEntries = 50
-
-// saveCurrentProjectView records the current project-level view for the active project.
-func (m *AppModel) saveCurrentProjectView() {
-	if m.currentProject == nil {
-		return
-	}
-	cv := m.currentView()
-	if cv == ViewOutliner {
-		m.projectLastView[m.currentProject.ID] = cv
-		// Evict oldest entries when over cap (simple eviction: delete arbitrary entries)
-		for len(m.projectLastView) > maxProjectLastViewEntries {
-			for id := range m.projectLastView {
-				if id != m.currentProject.ID {
-					delete(m.projectLastView, id)
-					break
-				}
-			}
-		}
-	}
-}
-
-// getProjectLastView returns the last project-level view for the given project ID,
-// falling back to the configured default project view.
-func (m *AppModel) getProjectLastView(projectID string) PresentationID {
-	if v, ok := m.projectLastView[projectID]; ok {
-		return v
-	}
-	return defaultProjectPresentation(m.runtime.Settings())
-}
-
 // popAndNavigateToTask pops the current view and navigates to a task in its project.
 // If either task or project is nil, it just pops and returns. This encapsulates the
 // common "select from overview" pattern used by many *SelectMsg handlers.
@@ -526,7 +483,6 @@ func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Pr
 }
 
 func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models.Project) tea.Cmd {
-	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
 
 	// Re-resolve task in the freshly loaded project so parent pointers are valid.

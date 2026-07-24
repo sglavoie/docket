@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	appdomain "github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -70,8 +71,8 @@ func TestHandleProjectMessagesProjectArchived(t *testing.T) {
 	if !handled {
 		t.Error("ProjectArchivedMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after project archived, got %v", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Errorf("nil archive intent should not change the current view, got %v", app.currentView())
 	}
 }
 
@@ -138,8 +139,8 @@ func TestHandleProjectMessagesProjectArchiveConfirmedArchivesAndSetsStatus(t *te
 	if !handled {
 		t.Fatal("projectArchiveConfirmedMsg should be handled")
 	}
-	if !project.Archived {
-		t.Fatal("project should be archived after confirmation")
+	if project.Archived {
+		t.Fatal("confirmation should not publish archive metadata before the checked commit")
 	}
 	if cmd == nil {
 		t.Fatal("projectArchiveConfirmedMsg should return a result command")
@@ -152,6 +153,9 @@ func TestHandleProjectMessagesProjectArchiveConfirmedArchivesAndSetsStatus(t *te
 	handled, _ = app.handleProjectMessages(msg)
 	if !handled {
 		t.Fatal("ProjectArchivedMsg should be handled")
+	}
+	if !project.Archived {
+		t.Fatal("project should be archived after the checked commit")
 	}
 	if app.runtime.Machine().CurrentProject != "" {
 		t.Fatalf("CurrentProject = %q, want cleared after archiving current project", app.runtime.Machine().CurrentProject)
@@ -185,6 +189,9 @@ func TestConfirmProjectArchiveLoadsQualifiedCleanupTargets(t *testing.T) {
 	}
 	project.Tasks = nil // Catalog/dashboard snapshots are intentionally unloaded.
 	setTestAppProjects(m, project)
+	domains := cloneRuntimeDomains(m.runtime)
+	domains.Planning.FocusQueue = []config.FocusQueueItem{{ProjectID: project.ID, TaskID: task.ID}}
+	m.runtime.SetDomainsInMemory(domains)
 	m.pendingProjectArchive = project
 	m.pendingProjectArchiveArchive = true
 
@@ -197,11 +204,18 @@ func TestConfirmProjectArchiveLoadsQualifiedCleanupTargets(t *testing.T) {
 	if !ok {
 		t.Fatalf("archive command returned %T", raw)
 	}
-	if msg.Project != project || !project.Archived {
-		t.Fatalf("archive result = %#v, want archived project", msg)
+	if msg.Project != project || project.Archived {
+		t.Fatalf("archive result = %#v, want unmutated live project intent", msg)
 	}
-	if len(project.Tasks) != 1 || project.Tasks[0].ID != task.ID {
-		t.Fatalf("archive cleanup targets were not loaded: %#v", project.Tasks)
+	handled, _ := m.handleProjectMessages(msg)
+	if !handled || !project.Archived {
+		t.Fatal("archive intent did not commit")
+	}
+	if project.Tasks != nil {
+		t.Fatalf("archive target loading leaked into the live catalog pointer: %#v", project.Tasks)
+	}
+	if got := m.runtime.Planning().GetFocusQueue(); len(got) != 0 {
+		t.Fatalf("archive did not clean the qualified planning target: %#v", got)
 	}
 }
 
@@ -277,6 +291,9 @@ func TestCommandPaletteProjectRestoreFromHelpConfirmsAtAppLevel(t *testing.T) {
 	if !handled {
 		t.Fatal("projectArchiveConfirmedMsg should be handled")
 	}
+	if !project.Archived {
+		t.Fatal("project should remain archived until the checked restore commit")
+	}
 	if restoreCmd == nil {
 		t.Fatal("projectArchiveConfirmedMsg should return a restore command")
 	}
@@ -312,8 +329,8 @@ func TestHandleProjectMessagesProjectArchiveConfirmedUnarchivesAndSetsStatus(t *
 	if !handled {
 		t.Fatal("projectArchiveConfirmedMsg should be handled")
 	}
-	if project.Archived {
-		t.Fatal("project should be unarchived after confirmation")
+	if !project.Archived {
+		t.Fatal("confirmation should not publish unarchive metadata before the checked commit")
 	}
 	if cmd == nil {
 		t.Fatal("projectArchiveConfirmedMsg should return a result command")
@@ -326,6 +343,9 @@ func TestHandleProjectMessagesProjectArchiveConfirmedUnarchivesAndSetsStatus(t *
 	handled, _ = app.handleProjectMessages(msg)
 	if !handled {
 		t.Fatal("ProjectRestoredMsg should be handled")
+	}
+	if project.Archived {
+		t.Fatal("project should be unarchived after the checked commit")
 	}
 	if app.statusMessage != "Unarchived Test Project" {
 		t.Fatalf("statusMessage = %q, want %q", app.statusMessage, "Unarchived Test Project")

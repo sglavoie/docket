@@ -180,31 +180,3 @@ func (m *AppModel) peekCursorTaskAndProject() (*models.Task, *models.Project) {
 	}
 	return nil, nil
 }
-
-// getCurrentCursorTask returns the task under the cursor in the current primary view,
-// or nil if no task is selected or the current view is not a primary project view.
-func (m *AppModel) getCurrentCursorTask() *models.Task {
-	switch m.currentView() {
-	case ViewOutliner:
-		if m.outliner != nil {
-			return m.outliner.getCursorTask()
-		}
-	case ViewCrossProjectOutliner:
-		if m.crossOutliner != nil {
-			return m.crossOutliner.getCursorTask()
-		}
-	case ViewInboxProcessor:
-		if m.inboxProcessor != nil {
-			task, _ := m.inboxProcessor.getTaskRef()
-			return task
-		}
-	case ViewGlobalInboxProcessor:
-		if m.globalInboxProcessor != nil {
-			task, _ := m.globalInboxProcessor.getTaskRef()
-			return task
-		}
-	default:
-		// Other view types don't have a cursor task.
-	}
-	return nil
-}

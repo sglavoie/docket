@@ -124,18 +124,6 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 	m.clampCursor()
 }
 
-// withModeContinuity captures the selected task identity and viewport, invokes
-// apply (which must rebuild the rows), then restores the cursor onto the same
-// task — or the deterministic nearest-row fallback when it is gone — without an
-// unconditional scroll-to-top. It is the shared seam every mode transition uses
-// so Tab, Shift+Tab, the P picker, h/l rotation, Priority, Due Date, Daily
-// Review, and Activity behave identically.
-func (m *OutlinerModel) withModeContinuity(apply func()) {
-	anchor := m.captureModeCursor()
-	apply()
-	m.restoreModeCursor(anchor)
-}
-
 // selectOutlinerMode applies the named catalog mode, translating it into the
 // underlying perspective/smart-focus/lens/priority state. It is the sole entry
 // point used by Tab cycling, the mode picker, and any command that jumps

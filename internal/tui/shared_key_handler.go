@@ -174,11 +174,6 @@ func AnyEscStepActive(steps []EscStep) bool {
 	return false
 }
 
-// FilterClearEscStep builds an EscStep that clears filters and refreshes.
-func FilterClearEscStep(hasFilters func() bool, clearAndRefresh func()) EscStep {
-	return EscStep{Active: hasFilters, Clear: clearAndRefresh}
-}
-
 // MultiSelectEscStep builds an EscStep for exiting multi-select mode.
 func MultiSelectEscStep(isActive func() bool, toggle func()) EscStep {
 	return EscStep{Active: isActive, Clear: toggle}

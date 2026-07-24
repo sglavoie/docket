@@ -39,10 +39,6 @@ type boardRow struct {
 	Depth       int    // 0 for root tasks; n for n-th level descendant in Today mode
 }
 
-func (r boardRow) isTask() bool {
-	return r.Task != nil
-}
-
 // buildBoardTreePrefix builds a tree prefix with shorter horizontal lines
 // (one fewer ─) to fit the compact daily-driver layout.
 func buildBoardTreePrefix(ancestorIsLast []bool, isLast bool) string {

@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"charm.land/lipgloss/v2"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -42,21 +40,4 @@ func projectPickerDisplayText(project *models.Project) string {
 		return fmt.Sprintf("%s %s", project.Name, archivedProjectMarker)
 	}
 	return project.Name
-}
-
-func projectPickerListName(project *models.Project, width int) string {
-	if project == nil {
-		return ""
-	}
-	if !project.Archived {
-		return truncateToVisualWidth(project.Name, width)
-	}
-
-	markerWidth := lipgloss.Width(archivedProjectMarker) + 1
-	if width <= markerWidth {
-		return truncateToVisualWidth(archivedProjectMarker, width)
-	}
-
-	name := truncateToVisualWidth(project.Name, width-markerWidth)
-	return fmt.Sprintf("%s %s", name, archivedProjectMarker)
 }

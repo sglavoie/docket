@@ -54,7 +54,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 // enterProjectScopeOutliner represents project selection as a scope frame on the
 // single authoritative (cross-project) Outliner rather than constructing a
 // separate project-scoped root. It returns to the Outliner root — dropping any
-// child route and cancelling overlays — pushes the project's scope frame, applies
+// child route and canceling overlays — pushes the project's scope frame, applies
 // the requested open options, and reveals openAt when provided. The root route
 // stays app-scoped; project identity lives only in the Outliner's scope stack, so
 // Esc restores the previous scope and Ctrl+Esc restores clean global Today.

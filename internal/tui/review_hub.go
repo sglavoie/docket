@@ -165,6 +165,7 @@ func (m *ReviewHubModel) wireModule(view View) {
 
 func (m *ReviewHubModel) replaceActiveModule(view View) {
 	switch m.module {
+	case ReviewLanding, ReviewDaily, ReviewActivity:
 	case ReviewWeekly:
 		m.weekly, _ = view.(*WeeklyReviewModel)
 	case ReviewMetrics:
@@ -176,6 +177,8 @@ func (m *ReviewHubModel) replaceActiveModule(view View) {
 
 func (m *ReviewHubModel) ActiveModuleView() View {
 	switch m.module {
+	case ReviewLanding, ReviewDaily, ReviewActivity:
+		return nil
 	case ReviewWeekly:
 		if m.weekly != nil {
 			return m.weekly

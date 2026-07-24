@@ -238,3 +238,43 @@ func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing
 		t.Fatalf("cursor identity was not restored after reload: %#v", row)
 	}
 }
+
+func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testing.T) {
+	dataDir := t.TempDir()
+	project := newSession2Project(t, dataDir, "covered completion")
+	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+
+	_ = cross.reloadCrossProjects()
+	generation := cross.crossLoadGen
+	app.viewStack = append(app.viewStack, ViewTaskDetail)
+
+	raw := cross.loadCrossProjectsCmd()()
+	loaded, ok := raw.(crossProjectsLoadedMsg)
+	if !ok {
+		t.Fatalf("load command returned %T, want crossProjectsLoadedMsg", raw)
+	}
+	_, followup := app.Update(loaded)
+	if followup != nil {
+		runSession2AppCommand(t, app, followup)
+	}
+
+	if cross.crossLoading {
+		t.Fatal("covered load completion left the authoritative Outliner loading")
+	}
+	if len(cross.loadedProjects) != 1 || cross.loadedProjects[0].ID != project.ID {
+		t.Fatalf("covered load completion did not update the Outliner cache: %#v", cross.loadedProjects)
+	}
+
+	_, popCmd := app.Update(BackMsg{})
+	if popCmd == nil {
+		t.Fatal("returning to the Outliner did not emit its appearance reload")
+	}
+	runSession2AppCommand(t, app, popCmd)
+
+	if cross.crossLoadGen != generation+1 {
+		t.Fatalf("appearance reload generation = %d, want %d", cross.crossLoadGen, generation+1)
+	}
+	if cross.crossLoading {
+		t.Fatal("appearance reload after covered completion did not settle")
+	}
+}

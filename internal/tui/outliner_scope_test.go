@@ -664,6 +664,8 @@ func scopeIdentityOutliner(t *testing.T) *OutlinerModel {
 // depth and identity must track push/pop/clear/reconcile; and the added scope
 // chrome must be budgeted for height and stay overflow-free at narrow and
 // standard widths.
+//
+//nolint:gocyclo // The assertions intentionally cover the full project-scope rendering matrix.
 func TestProjectScopeRendersIdentity(t *testing.T) {
 	t.Run("scoped title, status, and breadcrumb identify the project (populated)", func(t *testing.T) {
 		m := scopeIdentityOutliner(t)

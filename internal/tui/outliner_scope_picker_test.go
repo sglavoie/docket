@@ -88,6 +88,8 @@ func TestScopePickerActiveProjectScopes(t *testing.T) {
 // archived rows recover (never scope) since the cross Outliner cannot load them,
 // and trash rows support restore plus confirmation-gated permanent deletion —
 // all through lifecycle-safe result types rather than fabricated active projects.
+//
+//nolint:gocyclo // One lifecycle matrix verifies all picker actions and state transitions together.
 func TestScopePickerArchivedAndTrashActions(t *testing.T) {
 	t.Run("archived enter recovers, never scopes", func(t *testing.T) {
 		m, _, archived, _ := newScopePickerFixture()

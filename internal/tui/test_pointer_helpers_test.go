@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func intPtr(value int) *int { return &value }
@@ -33,12 +31,4 @@ func requestTaskIDs(msg TaskDeleteRequestedMsg) []string {
 	}
 	sort.Strings(ids)
 	return ids
-}
-
-func mustNewTestTask(project *models.Project, title string) *models.Task {
-	task, err := models.NewTask(title, len(project.Tasks)+1, models.TaskTypeTask, title)
-	if err != nil {
-		panic(err)
-	}
-	return task
 }
