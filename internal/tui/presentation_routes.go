@@ -69,6 +69,8 @@ func routeForPresentation(view PresentationID, projectID, taskID string) (route 
 		}
 	case ViewSettings:
 		id, params = SecondaryTool, ManageParams{Module: ManageSettings, Scope: AppEntityScope()}
+	case ViewContextHub:
+		id, params = SecondaryTool, ManageParams{Module: ManageContexts, Scope: AppEntityScope()}
 	case ViewTaskDetail:
 		id, params = TaskDetail, TaskDetailParams{ProjectID: projectID, TaskID: taskID, Tab: TaskOverview}
 	case ViewTaskChecklist:
@@ -133,19 +135,19 @@ func presentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlayProjectPicker, true
 	case ViewSectionManager, ViewColumnPicker:
 		return OverlayViewMenu, true
-	case ViewFilter, ViewFilterBuilder, ViewTagFilterSelector, ViewSectionFilterSelector, ViewProjectFilterSelector, ViewAttrFilterPicker, ViewNotesSearch:
+	case ViewFilter, ViewFilterBuilder, ViewTagFilterSelector, ViewSectionFilterSelector, ViewAttrFilterPicker, ViewNotesSearch:
 		return OverlaySearch, true
 	case ViewTaskJumper:
 		return OverlayTaskJump, true
 	case ViewProjectPreview, ViewRecentActivityPreview:
 		return OverlayPeek, true
 	case ViewProjectCreator, ViewProjectEditor, ViewWorkflowRuleCreator, ViewWorkflowRuleEditor, ViewWorkflowWizard,
-		ViewTaskTemplateCreator, ViewTaskTemplateEditor, ViewCustomContextEditor, ViewTextEditor:
+		ViewTaskTemplateCreator, ViewTaskTemplateEditor, ViewTextEditor:
 		return OverlayForm, true
 	case ViewConflictResolution:
 		return OverlayConfirmation, true
 	case ViewDateInput, ViewDependencySelector, ViewDependencyViewer, ViewSectionPicker,
-		ViewPriorityPicker, ViewContextPicker, ViewParentSelector, ViewTagSelector,
+		ViewPriorityPicker, ViewParentSelector, ViewTagSelector,
 		ViewBulkTagSelector, ViewRecurrenceEditor,
 		ViewLinkedTaskSelector, ViewCrossProjectLinker, ViewNoteTaskLinker,
 		ViewNoteTagSelector, ViewSnoozeInput, ViewParkInput, ViewTaskTemplatePicker,

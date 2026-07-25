@@ -174,6 +174,19 @@ func (c *DomainCoordinator) LoadAutomation() (*AutomationConfig, error) {
 	return automation, nil
 }
 
+// LoadSettings reads only the portable settings domain and records its raw
+// revision for a subsequent CheckedSettingsArtifact call. It is the
+// settings-scoped counterpart to LoadCatalog for a mutation that must carry one
+// setting inside another domain's transaction.
+func (c *DomainCoordinator) LoadSettings() (*Settings, error) {
+	settings, rev, err := c.store.LoadSettingsChecked()
+	if err != nil {
+		return nil, err
+	}
+	c.revs[domainSettings] = rev
+	return settings, nil
+}
+
 // LoadCatalog reads only the workspace catalog and records its raw revision for
 // a subsequent CheckedCatalogArtifact call. It is the catalog-scoped counterpart
 // to LoadPlanning for project metadata mutations folded into a larger workspace
@@ -271,6 +284,34 @@ func (c *DomainCoordinator) CheckedAutomationArtifact(automation *AutomationConf
 	}
 	rev := c.revs[domainAutomation]
 	return DomainArtifact{Path: AutomationPath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
+}
+
+// CheckedSettingsArtifact renders only settings.json against the revision
+// observed by LoadSettings (or LoadDomains), leaving catalog, planning, and
+// automation untouched. Renaming the default context uses this seam so the
+// relabeled catalog and the moved DefaultContext setting commit as one checked
+// transaction.
+func (c *DomainCoordinator) CheckedSettingsArtifact(settings *Settings) (DomainArtifact, error) {
+	if settings == nil {
+		return DomainArtifact{}, fmt.Errorf("settings are required")
+	}
+	_, catalogRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
+		return DomainArtifact{}, err
+	}
+	if catalogRev == "" {
+		return DomainArtifact{}, fmt.Errorf("%w: checked settings artifacts require an existing workspace catalog", ErrWorkspaceIDRequired)
+	}
+	workspaceID, err := c.store.validatedWorkspaceID()
+	if err != nil {
+		return DomainArtifact{}, err
+	}
+	data, err := encodeDomainEnvelope(domainSettings, workspaceID, settings)
+	if err != nil {
+		return DomainArtifact{}, err
+	}
+	rev := c.revs[domainSettings]
+	return DomainArtifact{Path: SettingsPath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
 }
 
 // AdoptArtifacts advances the coordinator's baseline to the revisions of a set of

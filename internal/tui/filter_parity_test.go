@@ -179,7 +179,6 @@ func runtimeFilterPopupInfo(t *testing.T, name string) *PrefixPopupInfo {
 			filter:            NewFilterState(),
 			sort:              NewSortState(),
 			activePerspective: 1,
-			filterProjects:    make(map[string]bool),
 		}
 		m.Dispatcher = dispatcherPendingF(m.buildKeyMap())
 		return m.GetPrefixPopupInfo()
@@ -201,7 +200,7 @@ func TestFilterParity_SharedFilterViews_RootChildKeys(t *testing.T) {
 		// The Outliner appends view-specific filters for
 		// completed/actionable/section/columns plus Fv saved filters.
 		"Outliner":             {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
-		"CrossProjectOutliner": {"#", "@", "D", "P", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
+		"CrossProjectOutliner": {"#", "@", "D", "S", "a", "c", "d", "h", "i", "k", "p", "r", "s", "t", "v", "x"},
 		"WeeklyReview":         {"#", "S", "a", "d", "h", "i", "k", "p", "s", "t", "x"},
 	}
 

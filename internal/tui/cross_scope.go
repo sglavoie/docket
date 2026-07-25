@@ -16,10 +16,11 @@ type CrossScopeOpts struct {
 	// Defaults to false; matches existing per-caller behavior.
 	IncludeSandbox bool
 
-	// ActiveOnly restricts selection to cfg.GetActiveProjects() (which
-	// already excludes archived/sandbox/internal). When false, the
-	// selection falls back to cfg.GetAllLoadableProjects() (archived
-	// excluded only).
+	// ActiveOnly restricts selection to RuntimeState.ActiveProjects, which
+	// admits exactly config.IsActiveContextMember — the same rule a context
+	// scope resolves by, so a scoped Outliner load can never be asked for a
+	// project this selection drops. When false, the selection falls back to
+	// AllLoadableProjects (archived excluded only).
 	ActiveOnly bool
 }
 

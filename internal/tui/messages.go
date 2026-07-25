@@ -31,7 +31,7 @@ package tui
 //   - TagSelectorDoneMsg{Tags: []string, Canceled: bool}
 //   - SectionPickerDoneMsg{Section: string, Canceled: bool}
 //   - PriorityPickerDoneMsg{Priority: int, Canceled: bool}
-//   - ContextPickerDoneMsg{Context: string, Canceled: bool}
+//   - ContextScopeSelectedMsg{SelectedContext: string, Canceled: bool}
 //
 // # CRUD Pattern (Entity Lifecycle)
 //

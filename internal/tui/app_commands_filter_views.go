@@ -16,12 +16,10 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Views:       outlinerFilterViews,
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
-					tags := BuildProjectsTagList(m.crossOutliner.loadedProjects, false)
-					return ShowTagFilterMsg{Tags: tags, Selected: m.crossOutliner.filter.Tags, Source: ViewCrossProjectOutliner, Title: "Filter by Tags"}
+					return m.crossOutliner.scopedTagFilterMsg()
 				}
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					tags := BuildProjectTagList(m.outliner.project, false)
-					return ShowTagFilterMsg{Tags: tags, Selected: m.outliner.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
+					return m.outliner.scopedTagFilterMsg()
 				}
 				return nil
 			},
@@ -91,7 +89,6 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 					clearCommonFilters(&out.filter.CommonFilterState)
 					out.filter.Sections = make(map[string]bool)
 					out.filter.Actionable = false
-					out.filterProjects = make(map[string]bool)
 					out.ClearSearch()
 					out.crossForceRebuild = true
 					out.rebuildRows()
@@ -107,7 +104,7 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Views:       []PresentationID{ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
-					return ShowTaskJumperMsg{Projects: m.crossOutliner.loadedProjects, CrossProject: true}
+					return ShowTaskJumperMsg{Projects: m.crossOutliner.scopeProjects(), CrossProject: true}
 				}
 				if m.currentProject != nil {
 					return ShowTaskJumperMsg{Project: m.currentProject}

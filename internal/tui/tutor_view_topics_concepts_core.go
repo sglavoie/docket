@@ -76,16 +76,37 @@ is holding up project progress.`,
 			Category: "Concepts",
 			Content: `# What Are Contexts
 
-Contexts group related projects together. You might have a
-"work" context, a "personal" context, and a "side-projects"
-context. Switching contexts changes which projects appear
-in the Outliner and when cycling through projects.
+A context groups related projects. The active context is the
+Outliner's project scope: it decides which projects the global
+Outliner shows. Only one is active at a time.
 
-# How Contexts Work
+# The Three Kinds Of Scope
 
-When a context is active, only projects in that context
-appear in the Outliner. This keeps your
-view focused on the relevant area of your life.`,
+  All      Every active project. The default.
+  Label    Every project carrying one context label, such
+           as "work" or "personal". Each project has
+           exactly one label.
+  Custom   A saved group of hand-picked projects, which may
+           span labels.
+
+# Applying And Managing A Context
+
+Press C in the Outliner to open Contexts. Browse with j/k,
+preview the projects a scope resolves to, / to search, and
+Enter to apply. From the same surface, n creates a custom
+context, e edits membership, r renames, and d deletes.
+
+# What A Context Does Not Do
+
+Applying a context is a scope change, not a task filter: it
+never touches your workflow mode, tag filters, search, or
+sort. It is also session-only and always starts at All, so it
+never leaks into another tt run. Ctrl+Esc returns to global
+All from anywhere.
+
+Custom contexts are machine-local. Context labels travel with
+the workspace catalog and are also managed by tt context on
+the CLI.`,
 		},
 		{
 			Title:    "Checklists",

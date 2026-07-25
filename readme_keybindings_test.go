@@ -92,6 +92,30 @@ func TestREADMEDescribesOutlinerAllDefault(t *testing.T) {
 	}
 }
 
+func TestREADMEDescribesSessionOnlyContextScope(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+
+	required := []string{
+		"Press `C` to open Contexts",
+		"The active context is the Outliner's project scope for the current session",
+		"is never persisted across runs",
+		"Custom contexts name a hand-picked group of projects and stay machine-local",
+	}
+	for _, needle := range required {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("README missing session-only context scope text: %q", needle)
+		}
+	}
+
+	// The retired ad-hoc project-subset filter must not reappear in user-facing copy.
+	lowered := strings.ToLower(content)
+	for _, stale := range []string{"`f p`", "filter by project", "project filter"} {
+		if strings.Contains(lowered, stale) {
+			t.Fatalf("README contains retired project-filter text: %q", stale)
+		}
+	}
+}
+
 func TestREADMEUsesUppercaseVMultiSelectBinding(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 )
@@ -43,9 +42,6 @@ func (m *OutlinerModel) activeFilterParts() []string {
 			secNames[i] = "@" + sec
 		}
 		parts = append(parts, strings.Join(secNames, " "))
-	}
-	if len(m.filterProjects) > 0 {
-		parts = append(parts, fmt.Sprintf("proj:%d", len(m.filterProjects)))
 	}
 
 	return parts

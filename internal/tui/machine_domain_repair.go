@@ -227,10 +227,15 @@ func (m *AppModel) commitMachineDomainRepair(repair machineDomainRepair) error {
 	return nil
 }
 
-// reconcileStartupMachineReferences reconstructs project-reference cleanup from
-// the authoritative catalog. If machine.json is still unavailable, the patch is
-// retained for Init to schedule; if the process exits first, the same repair is
-// derived again on the next startup.
+// reconcileStartupMachineReferences clears a current-project selection that can
+// no longer resolve through the authoritative catalog. Missing custom-context
+// members are intentionally retained: the Context Hub reports them as stale
+// references and only an explicit custom-context edit or delete may discard
+// them. Recent task visits are reconciled separately by hydrateRecentVisits.
+//
+// If machine.json is still unavailable, the patch is retained for Init to
+// schedule; if the process exits first, the same repair is derived again on the
+// next startup.
 func (m *AppModel) reconcileStartupMachineReferences() error {
 	if m == nil || m.runtime == nil {
 		return nil
@@ -241,18 +246,13 @@ func (m *AppModel) reconcileStartupMachineReferences() error {
 		project := m.runtime.GetProject(current)
 		switch {
 		case project == nil:
-			repair.merge(machineRepairForRemovedProject(current, ""))
+			repair.merge(machineDomainRepair{
+				clearCurrentProjects: []machineProjectReference{{ID: current}},
+			})
 		case !isNormalWorkProject(project):
 			repair.merge(machineDomainRepair{
 				clearCurrentProjects: []machineProjectReference{{ID: project.ID, Slug: project.Slug}},
 			})
-		}
-	}
-	for _, projectRefs := range machine.CustomContexts {
-		for _, ref := range projectRefs {
-			if ref != "" && m.runtime.GetProject(ref) == nil {
-				repair.merge(machineRepairForRemovedProject(ref, ""))
-			}
 		}
 	}
 	if repair.empty() {

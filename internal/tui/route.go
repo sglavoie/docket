@@ -38,7 +38,7 @@ func presentationScope(view PresentationID) RouteScope {
 		ViewGlobalTagManager, ViewSettings, ViewWorkflowRules, ViewTaskTemplates,
 		ViewTutor, ViewAsk, ViewScoreProfileManager, ViewMetricsDashboard,
 		ViewCrossProjectOutliner, ViewFocusBoard, ViewRoadmap,
-		ViewNotificationCenter, ViewMessageLog:
+		ViewNotificationCenter, ViewMessageLog, ViewContextHub:
 		return ScopeApp
 	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail,
 		ViewTaskAttachments, ViewTaskActivity:
@@ -67,7 +67,7 @@ func presentationAccentCategory(view PresentationID) AccentCategory {
 	case ViewWeeklyReview, ViewMetricsDashboard, ViewRecentActivity:
 		return AccentCatReview
 	case ViewGlobalBlockers, ViewGlobalNotes, ViewNotes, ViewWorkflowRules,
-		ViewNotificationCenter:
+		ViewNotificationCenter, ViewContextHub:
 		return AccentCatSupport
 	case ViewGlobalSearch, ViewCommandPalette:
 		return AccentCatSearch
@@ -104,8 +104,8 @@ func accentColorForCategory(category AccentCategory) color.Color {
 
 // allPresentations returns the contiguous renderer inventory.
 func allPresentations() []PresentationID {
-	presentations := make([]PresentationID, 0, int(ViewConflictResolution)+1)
-	for presentation := ViewDashboard; presentation <= ViewConflictResolution; presentation++ {
+	presentations := make([]PresentationID, 0, int(ViewContextHub)+1)
+	for presentation := ViewDashboard; presentation <= ViewContextHub; presentation++ {
 		presentations = append(presentations, presentation)
 	}
 	return presentations

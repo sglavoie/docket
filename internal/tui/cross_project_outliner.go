@@ -104,6 +104,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
+	m.refreshContextScopeProjects()
 	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
 	m.resetViewScrollOffset()
@@ -218,7 +219,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		if m.scopeSkipProject(proj.ID) {
 			continue
 		}
-		if len(m.filterProjects) > 0 && !m.filterProjects[proj.ID] {
+		if m.contextScopeSkipsProject(proj.ID) {
 			continue
 		}
 
@@ -326,7 +327,7 @@ func (m *OutlinerModel) crossPriorityRebuildRows() {
 		if m.scopeSkipProject(proj.ID) {
 			continue
 		}
-		if len(m.filterProjects) > 0 && !m.filterProjects[proj.ID] {
+		if m.contextScopeSkipsProject(proj.ID) {
 			continue
 		}
 
@@ -375,7 +376,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "lens=%d|", m.lens)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "sections=%s|", boolMapFingerprint(m.filter.Sections))
-	fmt.Fprintf(&b, "projects=%s|", boolMapFingerprint(m.filterProjects))
+	fmt.Fprintf(&b, "context=%d:%q|", m.activeContext.Kind, m.activeContext.Name)
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "criteria=%s|", m.activeCriteriaFilterFingerprint())
 	if m.smartFocus != nil {
@@ -564,30 +565,15 @@ func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload() {
 	m.moveCursorToProjectTask(taskID, projectID)
 }
 
-// crossMergedTaskSlice returns a single flat slice of all tasks from every
-// loaded project. Callers use this to call BuildTagList once on the union of
-// all visible projects' tasks rather than merging per-project results.
-func (m *OutlinerModel) crossMergedTaskSlice() []*models.Task {
-	var total int
-	for _, p := range m.loadedProjects {
-		total += len(p.Tasks)
-	}
-	merged := make([]*models.Task, 0, total)
-	for _, p := range m.loadedProjects {
-		merged = append(merged, p.Tasks...)
-	}
-	return merged
-}
-
 // crossStatusBarLabel returns the status bar label for the global Outliner,
 // formatted as 'Outliner · [context-name] · N tasks'.
 // N counts only task rows, excluding section headers, project sub-headers,
 // and separators.
 func (m *OutlinerModel) crossStatusBarLabel() string {
-	ctxName := "All"
+	ctxName := m.contextScopeLabel()
 	if m.isProjectScoped() {
 		// Under a project scope the label names the scoped project (chain) rather
-		// than the unscoped "All" context.
+		// than the active context.
 		ctxName = strings.Join(m.scopeChainNames(), scopeChainSeparator)
 	}
 	taskCount := 0

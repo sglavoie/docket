@@ -51,21 +51,35 @@ in a dedicated action inbox project.
 		{
 			Title:    "Contexts",
 			Category: "CLI",
-			Content: `# Creating Contexts
+			Content: `# Custom Contexts
+
+tt context manages custom contexts: named, hand-picked groups
+of projects stored per machine.
 
   tt context new work
-  tt context new personal
+  tt context list
+  tt context show work
 
-# Managing Projects in Contexts
+# Managing Projects in Custom Contexts
 
-  tt context add work "Project Alpha"
-  tt context add work "Project Beta"
+  tt context add work project-alpha
+  tt context remove work project-alpha
+  tt context edit work
+  tt context delete work
 
-# Switching Contexts
+# Context Labels
 
-Use tt select to switch between projects and contexts.
+Every project also carries one context label, set at creation
+or with tt project edit. Labels live in the workspace catalog
+and sync with it; custom contexts stay machine-local.
 
-  tt select`,
+  tt project new "Client Site" --context work
+  tt project edit --context personal
+
+# Applying A Context
+
+Applying a context is a session-only TUI scope change, so
+there is no CLI switch command. Press C in the Outliner.`,
 		},
 		{
 			Title:    "Comments",

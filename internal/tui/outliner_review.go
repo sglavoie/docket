@@ -97,8 +97,8 @@ func (m *OutlinerModel) reviewGlobalScopeBlockers() []string {
 	if m.isProjectScoped() {
 		blockers = append(blockers, "the project scope (Ctrl+X → All Projects)")
 	}
-	if len(m.filterProjects) > 0 {
-		blockers = append(blockers, "the project filter (F P)")
+	if !m.activeContext.IsAll() {
+		blockers = append(blockers, "the active context ("+m.contextScopeLabel()+")")
 	}
 	if m.SearchQuery() != "" {
 		blockers = append(blockers, "the search")

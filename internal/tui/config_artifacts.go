@@ -108,3 +108,32 @@ func catalogDomainArtifact(mgr *config.Manager, catalog *config.WorkspaceCatalog
 	}
 	return []storage.ArtifactChange{artifact.StorageChange()}, nil
 }
+
+// catalogAndSettingsDomainArtifacts renders workspace.json and settings.json as
+// one revision-checked pair for a mutation that moves project labels and a
+// setting naming one of them together, so neither can land without the other.
+func catalogAndSettingsDomainArtifacts(
+	mgr *config.Manager,
+	catalog *config.WorkspaceCatalog,
+	settings *config.Settings,
+) ([]storage.ArtifactChange, error) {
+	coord := mgr.DomainCoordinator()
+	if _, err := coord.LoadCatalog(); err != nil {
+		return nil, err
+	}
+	if _, err := coord.LoadSettings(); err != nil {
+		return nil, err
+	}
+	catalogArtifact, err := coord.CheckedCatalogArtifact(catalog)
+	if err != nil {
+		return nil, err
+	}
+	settingsArtifact, err := coord.CheckedSettingsArtifact(settings)
+	if err != nil {
+		return nil, err
+	}
+	return []storage.ArtifactChange{
+		catalogArtifact.StorageChange(),
+		settingsArtifact.StorageChange(),
+	}, nil
+}

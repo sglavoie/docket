@@ -13,26 +13,6 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case ShowProjectFilterSelectorMsg:
-		m.showView(ViewProjectFilterSelector, NewProjectFilterSelectorModel(msg.Projects, msg.Selected))
-		return true, nil
-
-	case ProjectFilterSelectorDoneMsg:
-		m.popView()
-		if msg.Canceled {
-			return true, nil
-		}
-		selected := make(map[string]bool, len(msg.SelectedProjectIDs))
-		for _, id := range msg.SelectedProjectIDs {
-			selected[id] = true
-		}
-		// The cross-project outliner uses the selection as its project scope.
-		if m.crossOutliner != nil {
-			m.crossOutliner.filterProjects = selected
-			m.crossOutliner.crossForceRebuild = true
-		}
-		return true, nil
-
 	case ShowSectionFilterSelectorMsg:
 		switch {
 		case len(msg.Projects) > 0:

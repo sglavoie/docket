@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -63,6 +64,7 @@ var manageModuleNames = [...]string{
 	"Tags",
 	"Notifications",
 	"Settings",
+	"Contexts",
 }
 
 func (module ManageModule) String() string {
@@ -89,6 +91,7 @@ func (mode NotificationMode) String() string {
 type ManageHubDependencies struct {
 	Runtime        *config.RuntimeState
 	ConfigManager  *config.Manager
+	AppService     *app.Service
 	NoteService    projectNoteService
 	HistoryLedger  *storage.WorkspaceLedger
 	Blockers       BlockerCoordinator
@@ -97,6 +100,8 @@ type ManageHubDependencies struct {
 	ResolveProject func(string) *models.Project
 	CurrentProject func() *models.Project
 	NewSettings    func() *SettingsModel
+	ActiveContext  func() ContextScope
+	LoadedProjects func() []*models.Project
 }
 
 type manageHubPickerEntry struct {
@@ -354,7 +359,10 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		return err
 	}
 	key := manageModuleCacheKey(params, m.rulesMode)
-	if key == m.activeKey && m.active != nil && params.Module != ManageNotifications {
+	// Notifications and Contexts read live state at construction time, so a
+	// cached instance would show a stale snapshot.
+	if key == m.activeKey && m.active != nil &&
+		params.Module != ManageNotifications && params.Module != ManageContexts {
 		return nil
 	}
 
@@ -419,6 +427,16 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			return fmt.Errorf("settings dependencies are unavailable")
 		}
 		view = m.deps.NewSettings()
+	case ManageContexts:
+		active := AllContextScope()
+		if m.deps.ActiveContext != nil {
+			active = m.deps.ActiveContext()
+		}
+		hub := NewContextHubModel(m.deps.Runtime, m.deps.ConfigManager, m.deps.AppService, active)
+		if m.deps.LoadedProjects != nil {
+			hub.SetLoadedProjects(m.deps.LoadedProjects())
+		}
+		view = hub
 	default:
 		return fmt.Errorf("unsupported manage module %s", params.Module)
 	}
@@ -634,7 +652,8 @@ func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *ManageHubModel) GetHelpItems() []HelpItem {
-	if m.params.Module == ManageRules || m.params.Module == ManageTemplates || m.params.Module == ManageSettings {
+	if m.params.Module == ManageRules || m.params.Module == ManageTemplates ||
+		m.params.Module == ManageSettings || m.params.Module == ManageContexts {
 		if provider, ok := m.active.(HelpProvider); ok {
 			items := append([]HelpItem(nil), provider.GetHelpItems()...)
 			if m.params.Module == ManageRules {
@@ -662,6 +681,9 @@ func (m *ManageHubModel) StatusBarLabel() string {
 	}
 	if m.params.Module == ManageRules {
 		return "Rules · " + m.rulesMode.String()
+	}
+	if m.params.Module == ManageContexts {
+		return "Contexts"
 	}
 	if m.params.Scope.Kind == ScopeProject {
 		return m.params.Module.String() + " · Project"
@@ -779,6 +801,8 @@ func manageModulePresentation(params ManageParams) (PresentationID, bool) {
 		return ViewNotificationCenter, true
 	case ManageSettings:
 		return ViewSettings, true
+	case ManageContexts:
+		return ViewContextHub, true
 	default:
 		return 0, false
 	}

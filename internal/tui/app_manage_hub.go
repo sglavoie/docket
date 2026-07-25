@@ -24,6 +24,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 	deps := ManageHubDependencies{
 		Runtime:        runtime,
 		ConfigManager:  m.configManager,
+		AppService:     m.appService,
 		NoteService:    noteService,
 		HistoryLedger:  historyLedger,
 		Blockers:       m.secondaryFeatures.Blocker,
@@ -32,6 +33,18 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 		ResolveProject: m.projectByID,
 		CurrentProject: func() *models.Project { return m.currentProject },
 		NewSettings:    func() *SettingsModel { return NewSettingsModel(m.deps) },
+		ActiveContext: func() ContextScope {
+			if m.crossOutliner == nil {
+				return AllContextScope()
+			}
+			return m.crossOutliner.activeContext
+		},
+		LoadedProjects: func() []*models.Project {
+			if m.crossOutliner == nil {
+				return nil
+			}
+			return m.crossOutliner.loadedProjects
+		},
 	}
 	if m.manageHub == nil {
 		m.manageHub = NewManageHubModel(deps)

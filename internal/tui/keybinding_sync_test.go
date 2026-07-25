@@ -96,7 +96,6 @@ func session1SyncViews() []syncTestCase {
 		{ViewTutor, &TutorModel{}},
 		{ViewScoreProfileManager, &ScoreProfileManagerModel{}},
 		{ViewProjectPreview, &ProjectPreviewModel{}},
-		{ViewCustomContextEditor, &CustomContextEditorModel{}},
 		{ViewBulkEdit, &BulkEditModel{}},
 		{ViewBlockers, &BlockersModel{}},
 		{ViewMetricsDashboard, &MetricsDashboardModel{}},
@@ -154,7 +153,6 @@ func TestPresentationIDString(t *testing.T) {
 		ViewTutor:               "Reference",
 		ViewScoreProfileManager: "ScoreProfileManager",
 		ViewProjectPreview:      "ProjectPreview",
-		ViewCustomContextEditor: "CustomContextEditor",
 		ViewBulkEdit:            "BulkEdit",
 		ViewBlockers:            "Blockers",
 		ViewMetricsDashboard:    "MetricsDashboard",
@@ -182,6 +180,10 @@ func TestPresentationIDString(t *testing.T) {
 		ViewLinkedTaskCreator: "LinkedTaskCreator",
 		// Conflict management
 		ViewConflictResolution: "ConflictResolution",
+		// Context Hub redesign: the retired ContextPicker and CustomContextEditor
+		// presentations collapsed into this one Manage destination, whose keys are
+		// documented through GetHelpItems() rather than the registry.
+		ViewContextHub: "ContextHub",
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {

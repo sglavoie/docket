@@ -1,0 +1,16 @@
+{
+  "name": "context-hub-open",
+  "fixture": "contexts",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open the Context Hub", "key": "C" },
+    { "type": "assert", "assert": "view", "value": "ContextHub" },
+    { "type": "assert", "assert": "contains", "value": "0 custom · 3 project contexts" },
+    { "type": "assert", "assert": "contains", "value": "All (active)" },
+    { "type": "assert", "assert": "contains", "value": "Regular Contexts" },
+    { "type": "assert", "assert": "contains", "value": "Every active project" },
+    { "type": "assert", "assert": "contains", "value": "5 active project(s) · 4 task(s)" },
+    { "type": "assert", "assert": "not_contains", "value": "Custom Contexts" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

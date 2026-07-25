@@ -87,10 +87,8 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 
 	case "T":
 		if m.project == nil {
-			tags := BuildCatalogTagList(m.loadedProjects, m.crossMergedTaskSlice(), false)
-			return m, func() tea.Msg {
-				return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewCrossProjectOutliner, Title: "Filter by Tags"}
-			}, true
+			msg := m.scopedTagFilterMsg()
+			return m, func() tea.Msg { return msg }, true
 		}
 		cmd, _ := handleTagKey(m, ViewOutliner, false, m.filter.Tags)
 		return m, cmd, true
@@ -103,7 +101,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 
 	case "C":
 		return m, func() tea.Msg {
-			return ShowContextPickerMsg{}
+			return ShowContextHubMsg{}
 		}, true
 
 	case "alt+f":

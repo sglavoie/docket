@@ -387,6 +387,17 @@ func (rs *RuntimeState) commitThenRefresh(commit func() error) error {
 	return rs.RefreshAfterCommit()
 }
 
+// IsActiveContextMember is the single eligibility rule for the projects a
+// context scope may resolve to. It is deliberately the same rule ActiveProjects
+// applies, because the cross-project surfaces that consume a scope load
+// active-only: a scope admitting a project outside this set would count and
+// preview a project no surface ever shows. Everything it rejects — archived,
+// sandbox, internal, or absent — is a hidden context member, preserved on save
+// rather than resolved.
+func IsActiveContextMember(p *models.Project) bool {
+	return p != nil && !p.Archived && !p.Sandbox && !p.Internal
+}
+
 // ActiveProjects returns the non-archived, non-sandbox, non-internal cataloged
 // projects sorted with pinned first, rehydrated from the loaded catalog snapshot
 // with paths derived from the data directory. It mirrors
@@ -395,7 +406,7 @@ func (rs *RuntimeState) commitThenRefresh(commit func() error) error {
 func (rs *RuntimeState) ActiveProjects() []*models.Project {
 	var active []*models.Project
 	for _, p := range rs.catalogProjects() {
-		if !p.Archived && !p.Sandbox && !p.Internal {
+		if IsActiveContextMember(p) {
 			active = append(active, p)
 		}
 	}

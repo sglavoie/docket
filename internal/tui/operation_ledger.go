@@ -10,8 +10,10 @@ import (
 // The retired destination-switcher scenario was removed with the Ctrl+G
 // destination switcher (41→40); session 8 removed the retired Planner
 // focus-empty scenario when the Planner surface was deleted (40→39). The
-// retained scope-query scenario added one committed interaction (39→40).
-const TUIScenarioBaseline = 40
+// retained scope-query scenario added one committed interaction (39→40). The
+// Context Hub redesign added six scenarios covering browse, apply, inline CRUD,
+// and minimum-size layout for the new surface (40→46).
+const TUIScenarioBaseline = 46
 
 // OperationID is the stable semantic identity of a registered command.
 type OperationID string
@@ -61,10 +63,11 @@ func buildCommandClassificationTable() map[OperationID]commandFinalClassificatio
 		"weekly review", "project recent activity", "metrics dashboard", "roadmap")
 	add(CommandReachRouteMode, "Manage tools",
 		"inbox processor", "global inbox processor", "global notes", "global blockers", "global tag manager",
-		"tag manager", "workflow rules", "scoring profiles", "task templates", "settings", "notifications", "message log")
+		"tag manager", "workflow rules", "scoring profiles", "task templates", "settings", "notifications", "message log",
+		"switch context")
 	add(CommandReachViewMenu, "View menu",
 		"clear filters", "clear tag filter", "cycle note sort",
-		"cycle note tag filter", "filter by context", "filter by section", "filter by tag", "outliner reset sort",
+		"cycle note tag filter", "filter by section", "filter by tag", "outliner reset sort",
 		"outliner sort by created", "outliner sort by due date", "outliner sort by priority", "outliner sort by score",
 		"outliner sort by status", "section manager", "show notes", "view completed")
 	add(CommandReachPaletteAlias, "Reference/Ask", "ask ai")

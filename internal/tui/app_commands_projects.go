@@ -16,14 +16,14 @@ func (m *AppModel) projectCommands() []Command {
 			},
 		},
 		{
-			Name:        "filter by context",
-			Description: "Filter projects by context",
+			Name:        "switch context",
+			Description: "Choose the active project context scope",
 			Shortcut:    "C",
-			Category:    CategoryFilters,
+			Category:    CategoryProjects,
 			Views:       []PresentationID{},
-			Aliases:     []string{"context filter", "workspace"},
+			Aliases:     []string{"context", "context scope", "active context", "workspace"},
 			Handler: func() tea.Msg {
-				return ShowContextPickerMsg{}
+				return ShowContextHubMsg{}
 			},
 		},
 		{

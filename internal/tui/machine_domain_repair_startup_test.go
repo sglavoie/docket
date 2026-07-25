@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-func TestStartupMachineReferenceReconciliationPersistsCatalogTruth(t *testing.T) {
+func TestStartupMachineReferenceReconciliationPreservesStaleCustomContextMembers(t *testing.T) {
 	project := newSession4Project(t, "Startup Repair")
 	fixture := newSession4LifecycleFixture(t, true, project)
 
@@ -32,8 +32,9 @@ func TestStartupMachineReferenceReconciliationPersistsCatalogTruth(t *testing.T)
 	if got.CurrentProject != "" {
 		t.Fatalf("CurrentProject = %q, want stale project cleared", got.CurrentProject)
 	}
-	if refs := got.GetCustomContext("Work"); !slices.Equal(refs, []string{project.ID}) {
-		t.Fatalf("custom context refs = %v, want only valid project %q", refs, project.ID)
+	wantRefs := []string{project.ID, "missing-project"}
+	if refs := got.GetCustomContext("Work"); !slices.Equal(refs, wantRefs) {
+		t.Fatalf("custom context refs = %v, want stale membership preserved as %v", refs, wantRefs)
 	}
 	if len(got.RecentTaskVisits) != 0 {
 		t.Fatalf("recent visits retained deleted project: %+v", got.RecentTaskVisits)
@@ -47,7 +48,7 @@ func TestStartupMachineReferenceReconciliationPersistsCatalogTruth(t *testing.T)
 		t.Fatalf("reload persisted runtime: %v", err)
 	}
 	if persisted.Machine().CurrentProject != "" ||
-		!slices.Equal(persisted.Machine().GetCustomContext("Work"), []string{project.ID}) {
+		!slices.Equal(persisted.Machine().GetCustomContext("Work"), wantRefs) {
 		t.Fatalf("startup repair was not persisted: %+v", persisted.Machine())
 	}
 }

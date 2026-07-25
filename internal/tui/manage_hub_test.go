@@ -234,6 +234,7 @@ func TestManageLegacyNamesCollapseToScopedModules(t *testing.T) {
 		{ViewScoreProfileManager, ManageParams{Module: ManageRules, Scope: AppEntityScope()}},
 		{ViewTaskTemplates, ManageParams{Module: ManageTemplates, Scope: AppEntityScope()}},
 		{ViewSettings, ManageParams{Module: ManageSettings, Scope: AppEntityScope()}},
+		{ViewContextHub, ManageParams{Module: ManageContexts, Scope: AppEntityScope()}},
 	}
 
 	for _, tc := range tests {
@@ -268,6 +269,7 @@ func TestManageLegacyNavigateMessagesReachTheTypedHub(t *testing.T) {
 		{view: ViewScoreProfileManager, module: ManageRules, scope: ScopeApp},
 		{view: ViewTaskTemplates, module: ManageTemplates, scope: ScopeApp},
 		{view: ViewSettings, module: ManageSettings, scope: ScopeApp},
+		{view: ViewContextHub, module: ManageContexts, scope: ScopeApp},
 	}
 
 	for _, tc := range tests {

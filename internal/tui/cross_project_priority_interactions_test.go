@@ -73,7 +73,6 @@ func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.P
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{alpha, beta},
-		filterProjects:    make(map[string]bool),
 	}
 
 	// Wire the single-task coordinator over the same in-memory project pointers,
@@ -228,7 +227,6 @@ func TestCrossPriorityEnterOnParentTaskOpensDetailNotZoom(t *testing.T) {
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
-		filterProjects:    make(map[string]bool),
 	}
 	m.enterCrossPriorityMode()
 	m.crossProjectRebuildRows()
@@ -414,10 +412,14 @@ func TestCrossPrioritySearchFiltersRows(t *testing.T) {
 	}
 }
 
-func TestCrossPriorityProjectFilterScopesRows(t *testing.T) {
+func TestCrossPriorityContextScopeScopesRows(t *testing.T) {
 	m, alpha, _, alphaTaskID, betaTaskID, _ := crossPriorityFixture(t)
 
-	m.filterProjects = map[string]bool{alpha.ID: true}
+	// The fixture has no runtime, so applyContextScope cannot resolve the scope
+	// against the catalog; set the resolved ID set directly since
+	// contextScopeSkipsProject reads contextScopeProjectIDs.
+	m.activeContext = CustomContextScope("focus")
+	m.contextScopeProjectIDs = map[string]bool{alpha.ID: true}
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 
@@ -428,10 +430,10 @@ func TestCrossPriorityProjectFilterScopesRows(t *testing.T) {
 		}
 	}
 	if !seen[alphaTaskID] {
-		t.Error("expected alpha task visible when project filter includes alpha")
+		t.Error("expected alpha task visible when context scope includes alpha")
 	}
 	if seen[betaTaskID] {
-		t.Error("expected beta task filtered out when project filter excludes beta")
+		t.Error("expected beta task filtered out when context scope excludes beta")
 	}
 }
 
@@ -560,7 +562,6 @@ func TestCrossPriorityPinnedTagDoesNotDragNonMatchingParent(t *testing.T) {
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
-		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		pinnedTagTab:      make(map[string]int),
 		sort:              NewSortState(),

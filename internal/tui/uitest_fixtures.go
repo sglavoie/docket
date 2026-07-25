@@ -39,6 +39,7 @@ const (
 	FixtureAlerts   = "alerts"
 	FixtureWorkflow = "workflow"
 	FixtureNarrow   = "narrow"
+	FixtureContexts = "contexts"
 )
 
 // builtinFixtures maps each fixture name to the builder that populates its
@@ -51,6 +52,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureAlerts:   buildAlertsFixture,
 	FixtureWorkflow: buildWorkflowFixture,
 	FixtureNarrow:   buildNarrowFixture,
+	FixtureContexts: buildContextsFixture,
 }
 
 // BuiltinFixtureNames returns the sorted list of built-in fixture names.
@@ -502,6 +504,39 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 		return err
 	}
 	w.setCurrentProject(project.ID)
+	return nil
+}
+
+// buildContextsFixture spreads projects across several context labels so Context
+// Hub scenarios can prove a scope actually narrows. Every other fixture takes
+// the default "personal" label for all of its projects, which leaves a single
+// selectable regular context and nothing to narrow away.
+func buildContextsFixture(w *uitestWorkspace) error {
+	projects := []struct {
+		name    string
+		context string
+		task    string
+	}{
+		{"Client Alpha", "work", "Alpha migration kickoff"},
+		{"Client Beta", "work", "Beta rollout checklist"},
+		{"Home Errands", "personal", "Renew passport"},
+		{"Reading List", "research", "Finish the distributed systems book"},
+	}
+	var first *models.Project
+	for _, spec := range projects {
+		project, err := w.addProject(spec.name, func(p *models.Project) {
+			p.Context = spec.context
+			task := newFixtureTask(p, models.TaskTypeTask, spec.task)
+			task.ApplyWorkflowState(models.StateNext)
+		})
+		if err != nil {
+			return err
+		}
+		if first == nil {
+			first = project
+		}
+	}
+	w.setCurrentProject(first.ID)
 	return nil
 }
 

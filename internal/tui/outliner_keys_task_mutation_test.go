@@ -234,7 +234,6 @@ func TestOutlinerJ_CrossProject_LastInProjectIsNoOp(t *testing.T) {
 	m := minimalOutliner()
 	m.activePerspective = 1
 	m.loadedProjects = []*models.Project{projA, projB}
-	m.filterProjects = make(map[string]bool)
 	m.rows = []outlinerRow{
 		{IsSectionHeader: true, SectionName: models.SectionInbox, ProjectID: projA.ID},
 		{task: a1, ProjectID: projA.ID},

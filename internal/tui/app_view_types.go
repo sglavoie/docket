@@ -20,8 +20,6 @@ var viewTypeNames = map[PresentationID]string{
 	ViewSectionPicker:         "SectionPicker",
 	ViewSectionManager:        "SectionManager",
 	ViewPriorityPicker:        "PriorityPicker",
-	ViewContextPicker:         "ContextPicker",
-	ViewCustomContextEditor:   "CustomContextEditor",
 	ViewGlobalSearch:          "GlobalSearch",
 	ViewParentSelector:        "ParentSelector",
 	ViewQuickCapture:          "QuickCapture",
@@ -84,12 +82,12 @@ var viewTypeNames = map[PresentationID]string{
 	ViewStatusIconPicker:      "StatusIconPicker",
 	ViewNotificationCenter:    "NotificationCenter",
 	ViewMessageLog:            "MessageLog",
-	ViewProjectFilterSelector: "ProjectFilterSelector",
 	ViewTaskForm:              "TaskForm",
 	ViewRoadmap:               "Roadmap",
 	ViewTaskDecisions:         "TaskDecisions",
 	ViewAttrFilterPicker:      "AttrFilterPicker",
 	ViewConflictResolution:    "ConflictResolution",
+	ViewContextHub:            "ContextHub",
 }
 
 // String returns the name of the PresentationID for readable test output.

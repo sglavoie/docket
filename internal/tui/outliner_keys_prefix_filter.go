@@ -11,18 +11,6 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 	// View-specific filter keys
 	switch key {
-	case "P":
-		if m.project != nil {
-			return m, nil // single-project: no-op
-		}
-		selected := m.filterProjects
-		projects := m.loadedProjects
-		return m, func() tea.Msg {
-			return ShowProjectFilterSelectorMsg{
-				Projects: projects,
-				Selected: selected,
-			}
-		}
 	case "v":
 		if m.Dispatcher != nil {
 			m.Dispatcher.SetPendingPrefix("Fv")
@@ -71,10 +59,11 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			return ShowColumnPickerMsg{Source: source, ColumnConfig: m.columnConfig}
 		}
 	case "x":
+		// Clears task filters only. The active Context is scope, not a filter, so
+		// it survives here and is reset solely by the global reset.
 		clearCommonFilters(&m.filter.CommonFilterState)
 		m.filter.Actionable = false
 		m.filter.Sections = make(map[string]bool)
-		m.filterProjects = make(map[string]bool)
 		m.ClearSearch()
 		m.resetViewScrollOffset()
 		m.rebuildRows()
@@ -82,22 +71,9 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Common filter prefix keys
-	tagSource := ViewOutliner
-	if m.project == nil {
-		tagSource = ViewCrossProjectOutliner
-	}
 	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
-		if m.project != nil {
-			return buildTagCmdFromProject(m.project, m.filter.Tags, tagSource, "Filter by Tags", false)
-		}
-		return buildTagCmdFromProjectTasks(
-			m.loadedProjects,
-			m.crossMergedTaskSlice(),
-			m.filter.Tags,
-			tagSource,
-			"Filter by Tags",
-			false,
-		)
+		msg := m.scopedTagFilterMsg()
+		return func() tea.Msg { return msg }
 	})
 	setPfx := func(p string) {
 		if m.Dispatcher != nil {

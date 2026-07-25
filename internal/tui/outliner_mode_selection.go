@@ -313,28 +313,14 @@ func (m *OutlinerModel) orderingUnavailableStatus() {
 }
 
 // workModeScopeProjects returns the projects the computed work horizons and
-// Today section range over: the single project when scoped, otherwise every
-// loaded project narrowed by the active multi-project (F P) filter.
-//
-// The F P filter is honored only when unscoped: inside a single-project scope
-// the filter is disabled and scopeProjects already returns the lone scoped
-// project, so the tree, Priority, and computed paths agree on the same visible
-// project set.
+// Today section range over: the single project when scoped, otherwise the loaded
+// projects admitted by the active Context. Routing through scopeProjects keeps
+// the tree, Priority, and computed paths on the same visible project set.
 func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 	if m.project != nil {
 		return []*models.Project{m.project}
 	}
-	projects := m.scopeProjects()
-	if m.scopedProjectID != "" || len(m.filterProjects) == 0 {
-		return projects
-	}
-	filtered := make([]*models.Project, 0, len(projects))
-	for _, p := range projects {
-		if p != nil && m.filterProjects[p.ID] {
-			filtered = append(filtered, p)
-		}
-	}
-	return filtered
+	return m.scopeProjects()
 }
 
 // workModeFilterPredicate returns the per-task predicate applying the active

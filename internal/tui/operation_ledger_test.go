@@ -130,7 +130,9 @@ func TestRegisteredOperationInventoryHasStableClassification(t *testing.T) {
 	sort.Strings(operationSignatures)
 	sort.Strings(conditionallyUnavailable)
 	fingerprint := sha256.Sum256([]byte(strings.Join(operationSignatures, "\n")))
-	const wantFingerprint = "7e9de6db93d7d9abb5af7eabd9d315d2e93caa55167bc40d84ded682ed24c4d3"
+	// Re-audited when "filter by context" became "switch context": the Context
+	// is the Outliner's project scope, not a task filter.
+	const wantFingerprint = "ea3618742da21970c72d8bf8b854010718ef797f5fe7959005f1221c507eda6e"
 	if got := fmt.Sprintf("%x", fingerprint); got != wantFingerprint {
 		t.Fatalf("command ledger fingerprint = %s, want audited baseline %s", got, wantFingerprint)
 	}

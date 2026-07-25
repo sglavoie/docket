@@ -73,6 +73,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 			return m.handleViewMessages(ShowNotesMsg{Project: project})
 		}
 		return m.handleViewMessages(ShowNotesMsg{})
+	case ViewContextHub:
+		return m.handleContextMessages(ShowContextHubMsg{})
 	case ViewSettings:
 		return m.handleViewMessages(SettingsMsg{})
 	case ViewWorkflowRules:

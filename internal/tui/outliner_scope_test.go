@@ -33,7 +33,6 @@ func scopeTestOutliner(projects ...*models.Project) *OutlinerModel {
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    projects,
-		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 	}
 	m.crossForceRebuild = true
@@ -107,24 +106,6 @@ func TestPopProjectScopeAtBaseReportsNoPop(t *testing.T) {
 	m := scopeTestOutliner(scopeTestProject("A", "Alpha", "1"))
 	if m.popProjectScope() {
 		t.Fatal("expected no pop at base all-projects scope")
-	}
-}
-
-func TestPushProjectScopeDisablesMultiProjectFilterAndRestoresOnPop(t *testing.T) {
-	projA := scopeTestProject("A", "Alpha", "1")
-	projB := scopeTestProject("B", "Bravo", "1")
-	m := scopeTestOutliner(projA, projB)
-	// Simulate an active multi-project filter (F P).
-	m.filterProjects = map[string]bool{"A": true, "B": true}
-
-	m.pushProjectScope("A")
-	if len(m.filterProjects) != 0 {
-		t.Fatalf("expected multi-project filter disabled inside scope, got %v", m.filterProjects)
-	}
-
-	m.popProjectScope()
-	if !m.filterProjects["A"] || !m.filterProjects["B"] {
-		t.Fatalf("expected multi-project filter restored on pop, got %v", m.filterProjects)
 	}
 }
 
@@ -236,8 +217,9 @@ func seedAllOutlinerNarrowing(m *OutlinerModel, projectID, taskID string) {
 	// Project scope (Ctrl+X) plus a stacked frame.
 	m.scopeStack = []outlinerScopeFrame{{}}
 	m.scopedProjectID = projectID
-	// Multi-project filter (F P).
-	m.filterProjects = map[string]bool{projectID: true}
+	// Active Context scope.
+	m.activeContext = RegularContextScope("work")
+	m.contextScopeProjectIDs = map[string]bool{projectID: true}
 	// Search (/).
 	m.SetSearchActive(true)
 	m.SetSearchQuery("alpha")
@@ -276,8 +258,8 @@ func assertGlobalAllClean(t *testing.T, m *OutlinerModel) {
 	if m.scopedProjectID != "" || len(m.scopeStack) != 0 {
 		t.Fatalf("project scope not cleared: id=%q stack=%d", m.scopedProjectID, len(m.scopeStack))
 	}
-	if len(m.filterProjects) != 0 {
-		t.Fatalf("multi-project filter not cleared: %v", m.filterProjects)
+	if !m.activeContext.IsAll() || len(m.contextScopeProjectIDs) != 0 {
+		t.Fatalf("context scope not reset to All: %+v ids=%v", m.activeContext, m.contextScopeProjectIDs)
 	}
 	if m.SearchQuery() != "" {
 		t.Fatalf("search not cleared: %q", m.SearchQuery())
@@ -376,7 +358,6 @@ func scopeVariantOutliner(t *testing.T) (*OutlinerModel, []*models.Task) {
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{projA, projB},
-		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		treeSort:          NewSortState(),
@@ -406,7 +387,6 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.crossPriorityMode = false
 		m.reviewMode = reviewNone
 		m.filter = NewFilterState()
-		m.filterProjects = map[string]bool{"A": true}
 		m.SetSearchActive(false)
 		m.SetSearchQuery("")
 		m.SetSearchInputValue("")
@@ -433,7 +413,6 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.filter.Actionable = true
 		m.filter.Sections = map[string]bool{"inbox": true}
 		m.filter.Tags = map[string]bool{"backend": true}
-		m.filterProjects = map[string]bool{}
 		m.SetSearchActive(true)
 		m.SetSearchQuery("alpha")
 		m.SetSearchInputValue("alpha")
@@ -460,7 +439,6 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.filter.Actionable = false
 		m.filter.Sections = map[string]bool{"next": true}
 		m.filter.Tags = map[string]bool{}
-		m.filterProjects = map[string]bool{"B": true}
 		m.SetSearchActive(true)
 		m.SetSearchQuery("bravo")
 		m.SetSearchInputValue("bravo")

@@ -20,6 +20,9 @@ import (
 //     scope change cannot corrupt another project's folds.
 //   - crossPriorityCollapsedGroups / reviewCollapsedSections are per-computed-mode
 //     fold maps reset on mode entry, not per scope.
+//
+// The active Context is likewise not snapshotted: applying a Context empties the
+// scope stack, so no frame can outlive the Context it was pushed under.
 type outlinerScopeFrame struct {
 	scopedProjectID  string
 	cursor           int
@@ -36,7 +39,6 @@ type outlinerScopeFrame struct {
 
 	// Filter / search / saved-filter / pinned-tag narrowing.
 	filter               FilterState
-	filterProjects       map[string]bool
 	searchActive         bool
 	searchQuery          string
 	searchInputValue     string
@@ -107,7 +109,6 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		crossPriorityMode:    m.crossPriorityMode,
 		reviewMode:           m.reviewMode,
 		filter:               cloneFilterState(m.filter),
-		filterProjects:       maps.Clone(m.filterProjects),
 		searchActive:         m.HasActiveSearch(),
 		searchQuery:          m.SearchQuery(),
 		searchInputValue:     m.SearchInputValue(),
@@ -136,10 +137,6 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.crossPriorityMode = f.crossPriorityMode
 	m.reviewMode = f.reviewMode
 	m.filter = cloneFilterState(f.filter)
-	m.filterProjects = maps.Clone(f.filterProjects)
-	if m.filterProjects == nil {
-		m.filterProjects = make(map[string]bool)
-	}
 	m.SetSearchActive(f.searchActive)
 	m.SetSearchQuery(f.searchQuery)
 	m.SetSearchInputValue(f.searchInputValue)
@@ -157,16 +154,39 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 
 // scopeProjects returns the projects the outliner should currently range over.
 // When scoped to a single project it returns just that project (if still
-// loaded); otherwise it returns every loaded project. Callers that build rows,
-// counts, and work horizons route through this so scope is honored in one place.
+// loaded); otherwise it returns the loaded projects admitted by the active
+// Context. Callers that build rows, counts, and work horizons route through this
+// so scope is honored in one place.
 func (m *OutlinerModel) scopeProjects() []*models.Project {
 	if m.scopedProjectID == "" {
-		return m.loadedProjects
+		return m.contextScopeProjects()
 	}
 	if p := m.scopedProject(); p != nil {
 		return []*models.Project{p}
 	}
 	return nil
+}
+
+// scopedTagFilterMsg builds the tag-filter picker payload for the outliner's
+// current scope. Catalog tags and task counts both come from scopeProjects(), so
+// an active Context (or drill-in scope) can never offer a tag whose only tasks
+// live outside the scoped project set. Keyboard and command-palette entry points
+// share this builder so the two can't drift apart.
+func (m *OutlinerModel) scopedTagFilterMsg() ShowTagFilterMsg {
+	if m.project != nil {
+		return ShowTagFilterMsg{
+			Tags:     BuildProjectTagList(m.project, false),
+			Selected: m.filter.Tags,
+			Source:   ViewOutliner,
+			Title:    "Filter by Tags",
+		}
+	}
+	return ShowTagFilterMsg{
+		Tags:     BuildProjectsTagList(m.scopeProjects(), false),
+		Selected: m.filter.Tags,
+		Source:   ViewCrossProjectOutliner,
+		Title:    "Filter by Tags",
+	}
 }
 
 // scopeSkipProject reports whether a loaded project must be skipped by the
@@ -191,7 +211,7 @@ func (m *OutlinerModel) scopedProject() *models.Project {
 }
 
 // isProjectScoped reports whether a single-project scope is active. Used to
-// disable the multi-project filter and drive scope breadcrumbs.
+// drive scope breadcrumbs.
 func (m *OutlinerModel) isProjectScoped() bool {
 	return m.project == nil && m.scopedProjectID != ""
 }
@@ -216,10 +236,8 @@ func (m *OutlinerModel) scopeChainNames() []string {
 }
 
 // pushProjectScope enters a single-project scope, saving the previous scope so
-// Esc restores it. The multi-project filter is disabled for the duration (it is
-// meaningless within a single project) but preserved in the frame for
-// restoration. Fresh scopes reset cursor/scroll and clear any cross-project zoom
-// so the scoped project renders from its roots.
+// Esc restores it. Fresh scopes reset cursor/scroll and clear any cross-project
+// zoom so the scoped project renders from its roots.
 func (m *OutlinerModel) pushProjectScope(projectID string) {
 	if projectID == "" || m.project != nil {
 		return
@@ -229,7 +247,6 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	}
 	m.scopeStack = append(m.scopeStack, m.captureScopeFrame())
 	m.scopedProjectID = projectID
-	m.filterProjects = make(map[string]bool)
 	m.crossZoomStack = nil
 	m.cursor = 0
 	m.resetViewScrollOffset()
@@ -252,8 +269,8 @@ func (m *OutlinerModel) popProjectScope() bool {
 }
 
 // clearProjectScope drops the entire scope stack and returns to the
-// authoritative all-projects scope, restoring the base frame (the multi-project
-// filter captured at the very first push). Reports whether anything changed.
+// authoritative all-projects scope, restoring the base frame captured at the
+// very first push. Reports whether anything changed.
 func (m *OutlinerModel) clearProjectScope() bool {
 	if m.scopedProjectID == "" && len(m.scopeStack) == 0 {
 		return false
@@ -274,15 +291,15 @@ func (m *OutlinerModel) clearProjectScope() bool {
 
 // resetToGlobalAll returns the cross-project Outliner to a clean, unscoped
 // global All root: it drops any project scope, clears every narrowing and ordering
-// axis (project filter, multi-project filter, search, saved criteria, common
-// filters, section/actionable filters, pinned-tag tab, and manual sort), clears
+// axis (active Context, search, saved criteria, common filters,
+// section/actionable filters, pinned-tag tab, and manual sort), clears
 // zoom/selection, activates All, and parks the cursor at the top. It is the state
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
-// leave the root silently narrowed by a stale filter, tag, or sort.
+// leave the root silently narrowed by a stale context, filter, tag, or sort.
 func (m *OutlinerModel) resetToGlobalAll() {
 	m.scopeStack = nil
 	m.scopedProjectID = ""
-	m.filterProjects = make(map[string]bool)
+	m.clearContextScope()
 	m.zoomStack = nil
 	m.crossZoomStack = nil
 	m.activeSavedFilter = ""
@@ -334,7 +351,6 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	}
 	// No valid frame remained; fall back to the base all-projects scope.
 	m.scopedProjectID = ""
-	m.filterProjects = make(map[string]bool)
 	m.crossZoomStack = nil
 	m.cursor = 0
 	m.resetViewScrollOffset()

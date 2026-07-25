@@ -43,37 +43,6 @@ func (s SectionInfo) ItemID() string {
 	return s.Name
 }
 
-// ContextInfo implements PickerItem for context selection.
-// FilterText returns the context name for filtering.
-func (c ContextInfo) FilterText() string {
-	if c.Name == "" {
-		return "all contexts"
-	}
-	return c.Name
-}
-
-// DisplayText returns the context name for display.
-func (c ContextInfo) DisplayText() string {
-	if c.Name == "" {
-		return "All Contexts"
-	}
-	return c.Name
-}
-
-// CountValue returns the project count for this context.
-func (c ContextInfo) CountValue() int {
-	return c.ProjectCount
-}
-
-// ItemID returns the context name as its unique identifier.
-// Custom contexts are prefixed with "+" to distinguish from project contexts.
-func (c ContextInfo) ItemID() string {
-	if c.IsCustom {
-		return "+" + c.Name
-	}
-	return c.Name
-}
-
 // TagInfo implements PickerItem for tag selection.
 // FilterText returns the tag name for filtering.
 func (t TagInfo) FilterText() string {

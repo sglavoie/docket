@@ -51,8 +51,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Cross-project mode: C opens the context picker, including from the empty state.
-	if model, cmd, handled := m.crossHandleContextPickerKey(key); handled {
+	// Cross-project mode: C opens the Context Hub, including from the empty state.
+	if model, cmd, handled := m.crossHandleContextHubKey(key); handled {
 		return model, cmd
 	}
 

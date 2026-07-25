@@ -1,0 +1,22 @@
+{
+  "name": "context-hub-minimum-layout",
+  "fixture": "contexts",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open the Context Hub", "key": "C" },
+    { "type": "assert", "assert": "view", "value": "ContextHub" },
+    { "type": "assert", "assert": "contains", "value": "j/k · Enter apply · n/e/r/d · / search" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "start a new custom context", "key": "n" },
+    { "type": "text", "label": "name the custom context", "text": "Focus" },
+    { "type": "key", "label": "focus the project list", "key": "tab" },
+    { "type": "key", "label": "select the first project", "key": " " },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "save the custom context", "key": "ctrl+s" },
+    { "type": "assert", "assert": "status_contains", "value": "Created custom context 'Focus' with 1 projects" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "widen to a common terminal size", "width": 120, "height": 40 },
+    { "type": "assert", "assert": "contains", "value": "Focus  custom · 1 project(s)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

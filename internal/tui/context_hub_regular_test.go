@@ -1,0 +1,700 @@
+package tui
+
+import (
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/config"
+)
+
+// Regular contexts are labels on cataloged projects, so every assertion here
+// reads the catalog rather than the hub's own list: the hub is only correct if
+// what it renders and what the catalog stores agree after a save.
+
+func catalogContextOf(t *testing.T, app *AppModel, id string) string {
+	t.Helper()
+	for _, entry := range app.runtime.Catalog().Projects {
+		if entry.ID == id {
+			return entry.Context
+		}
+	}
+	t.Fatalf("catalog has no project %q", id)
+	return ""
+}
+
+// addContextHubProject extends the shared fixture with one more cataloged
+// project, archived or not, so tests can cover members the editor never lists.
+func addContextHubProject(app *AppModel, id, name, label string, archived bool) {
+	project := scopeTestProject(id, name, "1")
+	project.Slug = id
+	project.Context = label
+	project.Archived = archived
+	addTestAppProject(app, project)
+}
+
+// openRegularEditorOn focuses a regular label and opens its membership editor.
+func openRegularEditorOn(t *testing.T, app *AppModel, label string) *ContextHubModel {
+	t.Helper()
+	hub := openContextHub(t, app)
+	focusContextHubScope(t, hub, RegularContextScope(label))
+	hub.Update(syntheticKey('e'))
+	if hub.editor == nil {
+		t.Fatalf("e on %q opened no editor", label)
+	}
+	return hub
+}
+
+// saveRegularEditor commits the editor and returns the message the hub emitted,
+// failing when the save was rejected instead.
+func saveRegularEditor(t *testing.T, hub *ContextHubModel) RegularContextSavedMsg {
+	t.Helper()
+	_, cmd := hub.Update(contextHubSaveKey)
+	if cmd == nil {
+		errText := ""
+		if hub.editor != nil {
+			errText = hub.editor.err
+		}
+		t.Fatalf("save emitted no command (editor error: %q)", errText)
+	}
+	saved, ok := cmd().(RegularContextSavedMsg)
+	if !ok {
+		t.Fatalf("save emitted %#v, want RegularContextSavedMsg", cmd())
+	}
+	return saved
+}
+
+// TestContextHubAssignsProjectToRegularContext is the session's "done when": a
+// project takes a label from the hub instead of one trip through Project Editor.
+func TestContextHubAssignsProjectToRegularContext(t *testing.T) {
+	app := contextHubApp(t)
+	hub := openRegularEditorOn(t, app, "home")
+
+	checkEditorProject(t, hub, "alpha")
+	saved := saveRegularEditor(t, hub)
+
+	if saved.Assigned != 1 || saved.Removed != 0 || saved.Renamed {
+		t.Fatalf("save reported %#v, want one assignment", saved)
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != "home" {
+		t.Fatalf("alpha context = %q, want home", got)
+	}
+	if got := catalogContextOf(t, app, "beta"); got != "home" {
+		t.Fatalf("beta lost its label: %q", got)
+	}
+	if hub.editor != nil {
+		t.Fatal("a committed save must close the editor")
+	}
+	// "work" has no members left, so the hub must stop offering it.
+	for _, scope := range contextHubScopes(hub) {
+		if scope == RegularContextScope("work") {
+			t.Fatal("the emptied label survived the refresh")
+		}
+	}
+}
+
+// TestContextHubRemovesProjectToDefaultContext covers the other direction:
+// unchecking a member moves it to the default context rather than clearing it.
+func TestContextHubRemovesProjectToDefaultContext(t *testing.T) {
+	app := contextHubApp(t)
+	hub := openRegularEditorOn(t, app, "work")
+
+	checkEditorProject(t, hub, "alpha")
+	saved := saveRegularEditor(t, hub)
+
+	if saved.Removed != 1 || saved.Assigned != 0 {
+		t.Fatalf("save reported %#v, want one removal", saved)
+	}
+	want := app.runtime.DefaultContext()
+	if got := catalogContextOf(t, app, "alpha"); got != want {
+		t.Fatalf("alpha context = %q, want the default %q", got, want)
+	}
+	if saved.Destination != want {
+		t.Fatalf("save reported destination %q, want %q", saved.Destination, want)
+	}
+}
+
+// TestContextHubKeepsHiddenRegularMembers guards the membership request itself:
+// SaveRegularContext treats the request as the full membership, so an archived
+// member the editor cannot show would be relabeled by an edit the user never
+// saw.
+func TestContextHubKeepsHiddenRegularMembers(t *testing.T) {
+	app := contextHubApp(t)
+	addContextHubProject(app, "gamma", "Gamma", "work", true)
+	hub := openRegularEditorOn(t, app, "work")
+
+	for _, project := range hub.editor.projects {
+		if project.ID == "gamma" {
+			t.Fatal("the editor listed an archived project")
+		}
+	}
+	checkEditorProject(t, hub, "beta")
+	saveRegularEditor(t, hub)
+
+	if got := catalogContextOf(t, app, "gamma"); got != "work" {
+		t.Fatalf("archived member context = %q, want work", got)
+	}
+	if got := catalogContextOf(t, app, "beta"); got != "work" {
+		t.Fatalf("beta context = %q, want work", got)
+	}
+}
+
+// TestContextHubPromptsForDestinationLeavingDefault covers the one label with no
+// fallback of its own: removing from the default context asks where to go.
+func TestContextHubPromptsForDestinationLeavingDefault(t *testing.T) {
+	app := contextHubApp(t)
+	app.runtime.Settings().DefaultContext = "work"
+	hub := openRegularEditorOn(t, app, "work")
+
+	checkEditorProject(t, hub, "alpha")
+	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
+		t.Fatalf("the save committed without a destination: %#v", cmd())
+	}
+	if !hub.editor.destPrompt {
+		t.Fatalf("no destination prompt (editor error: %q)", hub.editor.err)
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != "work" {
+		t.Fatalf("the blocked save committed anyway: alpha = %q", got)
+	}
+	if got := ansi.Strip(hub.View().Content); !strings.Contains(got, "home") {
+		t.Fatalf("the prompt offered no destination:\n%s", got)
+	}
+
+	hub.Update(syntheticSpecialKey(tea.KeyEnter))
+	if got := catalogContextOf(t, app, "alpha"); got != "home" {
+		t.Fatalf("alpha context = %q, want the chosen destination home", got)
+	}
+}
+
+// TestContextHubBlocksDefaultRemovalWithoutAlternative separates "under-specified"
+// from "impossible": with no other label to receive it, the removal is refused
+// rather than prompted.
+func TestContextHubBlocksDefaultRemovalWithoutAlternative(t *testing.T) {
+	app := contextHubApp(t)
+	app.runtime.Settings().DefaultContext = "work"
+	hub := openContextHub(t, app)
+	focusContextHubScope(t, hub, RegularContextScope("home"))
+	hub.Update(syntheticKey('e'))
+	// Empty "home" first so "work" becomes the only label in the catalog.
+	checkEditorProject(t, hub, "beta")
+	saveRegularEditor(t, hub)
+
+	hub = openRegularEditorOn(t, app, "work")
+	checkEditorProject(t, hub, "alpha")
+	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
+		t.Fatalf("the save committed with nowhere to move to: %#v", cmd())
+	}
+	if hub.editor.destPrompt {
+		t.Fatal("an empty destination prompt was offered")
+	}
+	if !strings.Contains(hub.editor.err, "no other context") {
+		t.Fatalf("editor error = %q, want the blocked-removal explanation", hub.editor.err)
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != "work" {
+		t.Fatalf("the blocked save committed anyway: alpha = %q", got)
+	}
+}
+
+// TestContextHubRenamesRegularContextAcrossCatalog locks the catalog-wide rename
+// including the archived members no surface lists, and the active scope following
+// the new name.
+func TestContextHubRenamesRegularContextAcrossCatalog(t *testing.T) {
+	app := contextHubApp(t)
+	addContextHubProject(app, "gamma", "Gamma", "work", true)
+	app.crossOutliner.applyContextScope(RegularContextScope("work"))
+	hub := openContextHub(t, app)
+	focusContextHubScope(t, hub, RegularContextScope("work"))
+
+	hub.Update(syntheticKey('r'))
+	if hub.editor == nil || hub.editor.listFocus {
+		t.Fatal("r must open the editor on the name field")
+	}
+	hub.editor.nameInput.SetValue("Deep Work")
+	saved := saveRegularEditor(t, hub)
+
+	if !saved.Renamed || saved.RelabeledCount != 2 || saved.PreviousName != "work" {
+		t.Fatalf("rename reported %#v, want 2 relabeled from work", saved)
+	}
+	for _, id := range []string{"alpha", "gamma"} {
+		if got := catalogContextOf(t, app, id); got != "Deep Work" {
+			t.Fatalf("%s context = %q, want Deep Work", id, got)
+		}
+	}
+	if hub.active != RegularContextScope("Deep Work") {
+		t.Fatalf("hub active scope = %#v, want the renamed label", hub.active)
+	}
+
+	handled, _ := app.handleContextMessages(saved)
+	if !handled {
+		t.Fatal("the shell ignored the regular-context save")
+	}
+	if got := app.crossOutliner.activeContext; got != RegularContextScope("Deep Work") {
+		t.Fatalf("Outliner scope = %#v, want the renamed label", got)
+	}
+	if got := app.projectByID("alpha"); got == nil || got.Context != "Deep Work" {
+		t.Fatalf("the shell's cached project kept a stale label: %#v", got)
+	}
+}
+
+// TestContextHubRegularRenameAndMembershipCommitTogether covers the half-applied
+// save: renaming a label onto the default context while dropping a member is
+// rejected for want of a destination, and the rename must not survive the
+// rejection. Committing the rename separately would leave the catalog relabeled,
+// the editor editing a name it never showed the user, and the shell's project
+// cache stale behind a save that reported failure.
+func TestContextHubRegularRenameAndMembershipCommitTogether(t *testing.T) {
+	app := contextHubApp(t)
+	addContextHubProject(app, "gamma", "Gamma", "work", false)
+	hub := openRegularEditorOn(t, app, "work")
+
+	// No project carries "personal", so the rename passes the collision check and
+	// lands on the one label whose removals have no fallback of their own.
+	fallback := app.runtime.DefaultContext()
+	hub.editor.nameInput.SetValue(fallback)
+	checkEditorProject(t, hub, "gamma")
+
+	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
+		t.Fatalf("the save committed without a destination: %#v", cmd())
+	}
+	if !hub.editor.destPrompt {
+		t.Fatalf("no destination prompt (editor error: %q)", hub.editor.err)
+	}
+	for _, id := range []string{"alpha", "gamma"} {
+		if got := catalogContextOf(t, app, id); got != "work" {
+			t.Fatalf("%s context = %q: the rename outlived a save that never committed", id, got)
+		}
+	}
+	if hub.editor.originalName != "work" {
+		t.Fatalf("editor identity = %q, want work until the whole save commits", hub.editor.originalName)
+	}
+	if slices.Contains(hub.editor.destinations, "work") {
+		t.Fatalf("destinations %v offer the label the save is vacating", hub.editor.destinations)
+	}
+	if got := app.projectByID("alpha"); got == nil || got.Context != "work" {
+		t.Fatalf("the shell's cached project drifted from the catalog: %#v", got)
+	}
+
+	// Answering the prompt replays the whole save, so both halves land at once.
+	_, cmd := hub.Update(syntheticSpecialKey(tea.KeyEnter))
+	if cmd == nil {
+		t.Fatalf("the answered prompt committed nothing (editor error: %q)", hub.editor.err)
+	}
+	saved, ok := cmd().(RegularContextSavedMsg)
+	if !ok {
+		t.Fatalf("the answered prompt emitted %#v, want RegularContextSavedMsg", cmd())
+	}
+	if !saved.Renamed || saved.RelabeledCount != 2 || saved.Removed != 1 || saved.Destination != "home" {
+		t.Fatalf("save reported %#v, want 2 relabeled with one removal into home", saved)
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != fallback {
+		t.Fatalf("alpha context = %q, want the renamed label %q", got, fallback)
+	}
+	if got := catalogContextOf(t, app, "gamma"); got != "home" {
+		t.Fatalf("gamma context = %q, want the chosen destination home", got)
+	}
+}
+
+// TestContextHubRegularSaveFailureLeavesNothingBehind drives the same combined
+// edit into a failing catalog commit: nothing durable, no runtime change, no
+// shell cache refresh, and an editor still identified by the name it opened on.
+func TestContextHubRegularSaveFailureLeavesNothingBehind(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	catalog := config.NewWorkspaceCatalog()
+	catalog.Projects = []config.CatalogProject{
+		{ID: "alpha", Slug: "alpha", Name: "Alpha", Context: "work", CreatedAt: now, UpdatedAt: now},
+		{ID: "gamma", Slug: "gamma", Name: "Gamma", Context: "work", CreatedAt: now, UpdatedAt: now},
+		{ID: "beta", Slug: "beta", Name: "Beta", Context: "home", CreatedAt: now, UpdatedAt: now},
+	}
+	if err := config.NewDomainFileStore(dataDir).SaveCatalog(catalog); err != nil {
+		t.Fatalf("SaveCatalog: %v", err)
+	}
+	runtime, err := config.LoadRuntimeState(dataDir)
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	app, err := NewAppModel(runtime, config.NewManager(config.ConfigPathForDataDir(dataDir)), WithPersister(NewMockPersister()))
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
+	app.enableTypedNavigation()
+	hub := openRegularEditorOn(t, app, "work")
+
+	// A catalog the store can read no longer is a commit that cannot be staged.
+	// The backup sidecar goes too, because the store otherwise self-heals from it
+	// and the commit would succeed.
+	catalogPath := config.WorkspaceCatalogPath(dataDir)
+	for _, path := range []string{catalogPath, catalogPath + ".bak"} {
+		if writeErr := os.WriteFile(path, []byte("{broken"), config.FilePermissions); writeErr != nil {
+			t.Fatalf("corrupt %s: %v", filepath.Base(path), writeErr)
+		}
+	}
+
+	hub.editor.nameInput.SetValue("Deep Work")
+	checkEditorProject(t, hub, "gamma")
+	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
+		t.Fatalf("a failed commit still reported success: %#v", cmd())
+	}
+	if hub.editor == nil {
+		t.Fatal("a failed commit closed the editor, stranding the edit")
+	}
+	if hub.editor.err == "" {
+		t.Fatal("a failed commit left the editor with no error to show")
+	}
+	if hub.editor.originalName != "work" {
+		t.Fatalf("editor identity = %q, want work after a failed commit", hub.editor.originalName)
+	}
+
+	for _, id := range []string{"alpha", "gamma"} {
+		if got := runtime.GetProject(id); got == nil || got.Context != "work" {
+			t.Fatalf("runtime snapshot for %s = %#v, want the pre-save label", id, got)
+		}
+		if got := app.projectByID(id); got == nil || got.Context != "work" {
+			t.Fatalf("shell project cache for %s = %#v, want the pre-save label", id, got)
+		}
+	}
+	// Any half that committed would have rewritten the file over the corruption.
+	if durable, readErr := os.ReadFile(catalogPath); readErr != nil || string(durable) != "{broken" {
+		t.Fatalf("durable catalog = %q (err %v), want the untouched sentinel", durable, readErr)
+	}
+}
+
+// TestContextHubRejectsRegularNameCollision checks names case-insensitively so a
+// workspace never carries two labels that only differ in casing.
+func TestContextHubRejectsRegularNameCollision(t *testing.T) {
+	app := contextHubApp(t)
+	hub := openRegularEditorOn(t, app, "work")
+
+	hub.editor.nameInput.SetValue("HOME")
+	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
+		t.Fatalf("the colliding rename committed: %#v", cmd())
+	}
+	if !strings.Contains(hub.editor.err, "already exists") {
+		t.Fatalf("editor error = %q, want a duplicate-name rejection", hub.editor.err)
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != "work" {
+		t.Fatalf("alpha context = %q, want work", got)
+	}
+}
+
+// TestContextHubAllowsCaseOnlyRegularRename is the flip side: the collision rule
+// must not block repainting a label's own display casing.
+func TestContextHubAllowsCaseOnlyRegularRename(t *testing.T) {
+	app := contextHubApp(t)
+	hub := openRegularEditorOn(t, app, "work")
+
+	hub.editor.nameInput.SetValue("Work")
+	saved := saveRegularEditor(t, hub)
+	if !saved.Renamed || saved.RelabeledCount != 1 {
+		t.Fatalf("case-only rename reported %#v", saved)
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != "Work" {
+		t.Fatalf("alpha context = %q, want Work", got)
+	}
+}
+
+// defaultContextWorkspace seeds a durable workspace whose default context names a
+// label two projects carry. Renaming it has to move the catalog labels and
+// Settings.DefaultContext together, so both halves must be readable from disk.
+func defaultContextWorkspace(t *testing.T) (*AppModel, string) {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+	dataDir := filepath.Join(t.TempDir(), "workspace")
+	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	catalog := config.NewWorkspaceCatalog()
+	catalog.Projects = []config.CatalogProject{
+		{ID: "alpha", Slug: "alpha", Name: "Alpha", Context: "work", CreatedAt: now, UpdatedAt: now},
+		{ID: "gamma", Slug: "gamma", Name: "Gamma", Context: "work", CreatedAt: now, UpdatedAt: now},
+		{ID: "beta", Slug: "beta", Name: "Beta", Context: "home", CreatedAt: now, UpdatedAt: now},
+	}
+	store := config.NewDomainFileStore(dataDir)
+	if err := store.SaveCatalog(catalog); err != nil {
+		t.Fatalf("SaveCatalog: %v", err)
+	}
+	settings := config.NewSettings()
+	settings.DefaultContext = "work"
+	if err := store.SaveSettings(settings); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+	runtime, err := config.LoadRuntimeState(dataDir)
+	if err != nil {
+		t.Fatalf("LoadRuntimeState: %v", err)
+	}
+	app, err := NewAppModel(runtime, config.NewManager(config.ConfigPathForDataDir(dataDir)), WithPersister(NewMockPersister()))
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
+	app.enableTypedNavigation()
+	return app, dataDir
+}
+
+// durableContextOf reads a project's label straight off disk, which is the only
+// way to tell a committed pair from a runtime snapshot that merely agrees.
+func durableContextOf(t *testing.T, dataDir, id string) string {
+	t.Helper()
+	catalog, err := config.NewDomainFileStore(dataDir).LoadCatalog()
+	if err != nil {
+		t.Fatalf("LoadCatalog: %v", err)
+	}
+	for _, entry := range catalog.Projects {
+		if entry.ID == id {
+			return entry.Context
+		}
+	}
+	t.Fatalf("durable catalog has no project %q", id)
+	return ""
+}
+
+// TestContextHubRenamesDefaultContextWithItsSetting covers the default label's
+// rename: the catalog labels and Settings.DefaultContext name the same thing
+// before and after, so they have to travel in one commit.
+func TestContextHubRenamesDefaultContextWithItsSetting(t *testing.T) {
+	app, dataDir := defaultContextWorkspace(t)
+	hub := openRegularEditorOn(t, app, "work")
+
+	if got := ansi.Strip(hub.View().Content); !strings.Contains(got, "renaming it moves the default too") {
+		t.Fatalf("the editor never said the default follows the rename:\n%s", got)
+	}
+
+	hub.editor.nameInput.SetValue("Deep Work")
+	saved := saveRegularEditor(t, hub)
+	if !saved.Renamed || !saved.DefaultContextMoved {
+		t.Fatalf("save reported %#v, want a rename carrying the default", saved)
+	}
+	if got := regularContextSavedStatus(saved); !strings.Contains(got, "Renamed default context") {
+		t.Fatalf("status = %q, want it to name the moved default", got)
+	}
+
+	for _, id := range []string{"alpha", "gamma"} {
+		if got := catalogContextOf(t, app, id); got != "Deep Work" {
+			t.Fatalf("%s context = %q, want Deep Work", id, got)
+		}
+	}
+	if got := catalogContextOf(t, app, "beta"); got != "home" {
+		t.Fatalf("beta context = %q, want the untouched home", got)
+	}
+	if got := app.runtime.DefaultContext(); got != "Deep Work" {
+		t.Fatalf("runtime default context = %q, want Deep Work", got)
+	}
+
+	// Reading both domains back proves the pair is durable rather than only
+	// refreshed in memory.
+	for _, id := range []string{"alpha", "gamma"} {
+		if got := durableContextOf(t, dataDir, id); got != "Deep Work" {
+			t.Fatalf("durable %s context = %q, want Deep Work", id, got)
+		}
+	}
+	durableSettings, err := config.NewDomainFileStore(dataDir).LoadSettings()
+	if err != nil {
+		t.Fatalf("LoadSettings: %v", err)
+	}
+	if durableSettings.DefaultContext != "Deep Work" {
+		t.Fatalf("durable default context = %q, want Deep Work", durableSettings.DefaultContext)
+	}
+}
+
+// TestContextHubDefaultContextRenameFailureMovesNeitherDomain breaks the settings
+// half specifically: the catalog half is perfectly writable, so a catalog that
+// moved anyway would leave the default naming a label no project carries.
+func TestContextHubDefaultContextRenameFailureMovesNeitherDomain(t *testing.T) {
+	app, dataDir := defaultContextWorkspace(t)
+	hub := openRegularEditorOn(t, app, "work")
+
+	// The backup sidecar goes too, because the store otherwise self-heals from it
+	// and the settings half would commit.
+	settingsPath := config.SettingsPath(dataDir)
+	for _, path := range []string{settingsPath, settingsPath + ".bak"} {
+		if writeErr := os.WriteFile(path, []byte("{broken"), config.FilePermissions); writeErr != nil {
+			t.Fatalf("corrupt %s: %v", filepath.Base(path), writeErr)
+		}
+	}
+
+	hub.editor.nameInput.SetValue("Deep Work")
+	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
+		t.Fatalf("a failed commit still reported success: %#v", cmd())
+	}
+	if hub.editor == nil {
+		t.Fatal("a failed commit closed the editor, stranding the edit")
+	}
+	if hub.editor.err == "" {
+		t.Fatal("a failed commit left the editor with no error to show")
+	}
+	if hub.editor.originalName != "work" {
+		t.Fatalf("editor identity = %q, want work after a failed commit", hub.editor.originalName)
+	}
+
+	if got := app.runtime.DefaultContext(); got != "work" {
+		t.Fatalf("runtime default context = %q, want the pre-save work", got)
+	}
+	for _, id := range []string{"alpha", "gamma"} {
+		if got := catalogContextOf(t, app, id); got != "work" {
+			t.Fatalf("runtime %s context = %q, want the pre-save label", id, got)
+		}
+		if got := app.projectByID(id); got == nil || got.Context != "work" {
+			t.Fatalf("shell project cache for %s = %#v, want the pre-save label", id, got)
+		}
+		if got := durableContextOf(t, dataDir, id); got != "work" {
+			t.Fatalf("durable %s context = %q: the catalog moved without the setting", id, got)
+		}
+	}
+}
+
+// TestContextHubDeletesRegularContextIntoDefault covers `d` on a label: the
+// projects survive under the default context and an active scope falls back.
+func TestContextHubDeletesRegularContextIntoDefault(t *testing.T) {
+	app := contextHubApp(t)
+	app.crossOutliner.applyContextScope(RegularContextScope("work"))
+	hub := openContextHub(t, app)
+	focusContextHubScope(t, hub, RegularContextScope("work"))
+
+	hub.Update(syntheticKey('d'))
+	if !hub.confirm.IsActive() {
+		t.Fatal("d did not arm the delete confirmation")
+	}
+	// The prompt wraps inside the overlay box, so assert on the destination name
+	// rather than the whole sentence.
+	overlay := ansi.Strip(app.renderConfirmDialogOverlay())
+	if !strings.Contains(overlay, app.runtime.DefaultContext()) {
+		t.Fatalf("the confirmation hid where the projects go: %q", overlay)
+	}
+
+	_, cmd := hub.Update(syntheticKey('y'))
+	if cmd == nil {
+		t.Fatal("confirming the delete emitted no command")
+	}
+	deleted, ok := cmd().(RegularContextDeletedMsg)
+	if !ok || deleted.Name != "work" || deleted.ProjectCount != 1 || !deleted.WasActive {
+		t.Fatalf("delete emitted %#v, want the active work label", cmd())
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != app.runtime.DefaultContext() {
+		t.Fatalf("alpha context = %q, want the default", got)
+	}
+	if hub.active != AllContextScope() {
+		t.Fatalf("hub active scope = %#v, want All", hub.active)
+	}
+
+	app.handleContextMessages(deleted)
+	if got := app.crossOutliner.activeContext; got != AllContextScope() {
+		t.Fatalf("Outliner scope = %#v, want All", got)
+	}
+}
+
+// TestContextHubRefusesDeletingDefaultContext protects the label every other
+// removal falls back to.
+func TestContextHubRefusesDeletingDefaultContext(t *testing.T) {
+	app := contextHubApp(t)
+	app.runtime.Settings().DefaultContext = "work"
+	hub := openContextHub(t, app)
+	focusContextHubScope(t, hub, RegularContextScope("work"))
+
+	hub.Update(syntheticKey('d'))
+	if hub.confirm.IsActive() {
+		t.Fatal("the default context armed a delete confirmation")
+	}
+	if hub.notice == "" {
+		t.Fatal("the refusal gave the user no explanation")
+	}
+	if got := catalogContextOf(t, app, "alpha"); got != "work" {
+		t.Fatalf("alpha context = %q, want work", got)
+	}
+}
+
+// TestContextHubEmptyingActiveRegularContextFallsBackToAll locks the chosen
+// resolution for a label that loses its last active member: regular scopes are
+// derived from the labels active projects carry, so the emptied label leaves the
+// hub list and cannot be reselected or marked active. Keeping it as the scope
+// would leave the Outliner empty under a name nothing in the workspace carries.
+func TestContextHubEmptyingActiveRegularContextFallsBackToAll(t *testing.T) {
+	app := contextHubApp(t)
+	app.crossOutliner.applyContextScope(RegularContextScope("work"))
+	if got := taskRowProjectIDs(app.crossOutliner); containsProject(got, "beta") {
+		t.Fatalf("the work context did not narrow the Outliner first: %v", got)
+	}
+	hub := openRegularEditorOn(t, app, "work")
+
+	// Alpha is the label's only active member, so unchecking it empties "work".
+	checkEditorProject(t, hub, "alpha")
+	saved := saveRegularEditor(t, hub)
+	if !saved.WasActive || saved.Removed != 1 {
+		t.Fatalf("save reported %#v, want one removal from the active label", saved)
+	}
+	if slices.Contains(contextHubScopes(hub), RegularContextScope("work")) {
+		t.Fatalf("the emptied label survived the refresh: %#v", contextHubScopes(hub))
+	}
+	if hub.active != AllContextScope() {
+		t.Fatalf("hub active scope = %#v, want All once the label stopped existing", hub.active)
+	}
+
+	handled, _ := app.handleContextMessages(saved)
+	if !handled {
+		t.Fatal("the shell ignored the regular-context save")
+	}
+	if got := app.crossOutliner.activeContext; got != AllContextScope() {
+		t.Fatalf("Outliner scope = %#v, want All", got)
+	}
+	if got := app.crossOutliner.contextScopeProjectIDs; got != nil {
+		t.Fatalf("All must admit every project, got %#v", got)
+	}
+	// The orphaned scope was visible as an empty Outliner, so the fallback is only
+	// real if the rows came back.
+	if got := taskRowProjectIDs(app.crossOutliner); !containsProject(got, "alpha") || !containsProject(got, "beta") {
+		t.Fatalf("Outliner rows = %v, want every project under All", got)
+	}
+}
+
+// TestContextHubEmptyingUnrelatedRegularContextFallsBackToAll covers the other
+// way a label empties: the active scope is not the one being edited, but the
+// edit takes in its last member. The scope has no members left either way.
+func TestContextHubEmptyingUnrelatedRegularContextFallsBackToAll(t *testing.T) {
+	app := contextHubApp(t)
+	app.crossOutliner.applyContextScope(RegularContextScope("home"))
+	hub := openRegularEditorOn(t, app, "work")
+
+	// Beta is "home"'s only member; assigning it to "work" vacates "home".
+	checkEditorProject(t, hub, "beta")
+	saved := saveRegularEditor(t, hub)
+	if saved.WasActive || saved.Assigned != 1 {
+		t.Fatalf("save reported %#v, want one assignment into an inactive label", saved)
+	}
+	if hub.active != AllContextScope() {
+		t.Fatalf("hub active scope = %#v, want All once home stopped existing", hub.active)
+	}
+
+	app.handleContextMessages(saved)
+	if got := app.crossOutliner.activeContext; got != AllContextScope() {
+		t.Fatalf("Outliner scope = %#v, want All", got)
+	}
+	if got := taskRowProjectIDs(app.crossOutliner); !containsProject(got, "alpha") || !containsProject(got, "beta") {
+		t.Fatalf("Outliner rows = %v, want every project under All", got)
+	}
+}
+
+// TestContextHubReconcilesUnrelatedRegularScope covers the reconciliation the
+// custom-context path does not need: editing one label moves projects between
+// labels, so a scope the user was not editing can still gain or lose members.
+func TestContextHubReconcilesUnrelatedRegularScope(t *testing.T) {
+	app := contextHubApp(t)
+	app.crossOutliner.applyContextScope(RegularContextScope("home"))
+	hub := openRegularEditorOn(t, app, "home")
+
+	// Edit "work" indirectly: alpha joins "home" while "home" stays the active
+	// scope, so the Outliner must re-resolve even though nothing was renamed.
+	checkEditorProject(t, hub, "alpha")
+	saved := saveRegularEditor(t, hub)
+	if !saved.WasActive {
+		t.Fatalf("save reported %#v, want the active scope", saved)
+	}
+
+	app.handleContextMessages(saved)
+	ids := app.crossOutliner.contextScopeProjectIDs
+	if len(ids) != 2 || !ids["alpha"] || !ids["beta"] {
+		t.Fatalf("Outliner scope resolved to %#v, want alpha and beta", ids)
+	}
+}

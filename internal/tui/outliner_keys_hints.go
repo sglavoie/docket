@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"maps"
 )
 
@@ -117,23 +116,8 @@ func (m *OutlinerModel) addOutlinerFilterHints(hints PrefixHints) {
 		PrefixHint{Key: "D", Description: "columns"},
 		PrefixHint{Key: "v", Description: "saved filters"},
 	)
-	if m.project == nil {
-		fHints = append(fHints, PrefixHint{
-			Key:         "P",
-			Description: "projects",
-			Detail:      m.outlinerProjectFilterDetail(),
-			Active:      len(m.filterProjects) > 0,
-		})
-	}
 	sortPrefixHintsLowercaseFirst(fHints)
 	hints["F"] = fHints
-}
-
-func (m *OutlinerModel) outlinerProjectFilterDetail() string {
-	if len(m.filterProjects) == 0 {
-		return "all"
-	}
-	return fmt.Sprintf("%d selected", len(m.filterProjects))
 }
 
 func (m *OutlinerModel) addOutlinerStatusHints(hints PrefixHints, activePrefix string) {

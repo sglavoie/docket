@@ -85,8 +85,16 @@ type OutlinerModel struct {
 	// time rebuildRows produces a non-empty row list. Cleared after first use.
 	OpenAtTask *models.Task
 
+	// activeContext is the session-only Context scope narrowing the global
+	// Outliner's project set. It is scope, not a filter: F x leaves it alone and
+	// only the global reset returns it to All. Never persisted.
+	activeContext ContextScope
+
+	// contextScopeProjectIDs caches activeContext resolved against the catalog.
+	// Nil under the All scope, which admits every project.
+	contextScopeProjectIDs map[string]bool
+
 	// Cross-project mode fields (used when m.project == nil)
-	filterProjects        map[string]bool   // Project IDs to include (empty = all)
 	loadedProjects        []*models.Project // Successfully loaded projects
 	crossLoading          bool              // True while cross-project load is in progress
 	crossSpinnerVisible   bool              // True once the 200ms delay has elapsed during load
@@ -208,7 +216,6 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
 		pinnedTagTab:      make(map[string]int),
-		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		treeSort:          NewSortState(),

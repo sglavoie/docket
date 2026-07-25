@@ -21,6 +21,7 @@ reliable, pre-populated data to drive against:
 | `alerts`   | Overdue / due-soon / high-priority-blocked work that trips alerts.      |
 | `workflow` | Tasks spread across workflow stages for the stage-oriented views.       |
 | `narrow`   | Long titles and tags that stress layout at narrow widths.               |
+| `contexts` | Projects spread across several context labels, so a context scope has something to narrow away. |
 
 List them at runtime:
 
@@ -206,6 +207,12 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `date-input-minimum-layout.json` | Open the Set Due Date input at `72x20` and assert no layout issues. |
 | `snooze-input-minimum-layout.json` | Open the Snooze Task input at `72x20` and assert no layout issues. |
 | `quick-capture-minimum-layout.json` | Open Quick Capture over a project outliner at `60x20`, expand the grouped `Capture Syntax` reference, scroll it by line (`ctrl+j`) and page (`pgdown`), and assert no layout issues with the wrapped contextual footer. |
+| `context-hub-open.json`         | Open the Context Hub with `C` and assert its grouped list, active All scope, and preview counts. |
+| `context-hub-regular-search-apply.json` | Search the hub for a project-context label, keep the query, apply it, and assert the Outliner narrowed to that label's projects. |
+| `context-hub-custom-create-apply.json` | Create a custom context inline (name plus two members), then apply it and assert the scoped Outliner title and rows. |
+| `context-hub-custom-edit-membership.json` | Reopen a saved custom context with `e`, add a member, save with `Ctrl+S`, and assert the updated count. |
+| `context-hub-delete-active-custom.json` | Delete the *active* custom context and assert the hub and Outliner both fall back to All. |
+| `context-hub-minimum-layout.json` | Open the Context Hub and its inline editor at `60x20`, save with a status message showing, resize to `120x40`, and assert no layout issues throughout. |
 
 Run any of them:
 
@@ -229,6 +236,7 @@ just tui-scenarios
 | Outliner project scopes and focus/sort translation | `navigate-outliner.json`, `scope-picker-search-commit.json` |
 | Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
 | Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |
+| Context Hub browse, apply, and inline CRUD | `context-hub-open.json`, `context-hub-regular-search-apply.json`, `context-hub-custom-create-apply.json`, `context-hub-custom-edit-membership.json`, `context-hub-delete-active-custom.json`, `context-hub-minimum-layout.json` |
 | Detail and Composer | `task-detail-narrow-layout.json`, `quick-capture-minimum-layout.json`, `task-form-edit-standard-layout.json` |
 | Palette, Recent, Pinned aliases, and reference overlays | `command-palette-search.json`, `recent-tasks-empty-status.json`, `command-action-help.json` |
 | Picker/form overlays | `attr-filter-picker-minimum-layout.json`, `date-input-minimum-layout.json`, `workflow-rule-creator-minimum-layout.json` |

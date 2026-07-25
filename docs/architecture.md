@@ -122,10 +122,10 @@ every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 `<workspace-id>` is the canonical UUID stored in synced `workspace.json`. The
 file contains editors, integration choices, current project
 selection, custom contexts, and bounded recent task/palette items. Renderer
-layout, filters, cursors, folds, and composer expansion are session-owned and
-are not serialized. The Outliner's Today section owns its project-qualified
-subtree overrides and global tree-depth limit for the session, and a depth
-change clears per-node overrides. A workspace with a
+layout, filters, cursors, folds, composer expansion, and the active context
+scope are session-owned and are not serialized. The Outliner's Today section
+owns its project-qualified subtree overrides and global tree-depth limit for the
+session, and a depth change clears per-node overrides. A workspace with a
 different ID never shares this state. On first
 startup after upgrading from the former layout, `tt` checks the machine file
 keyed by the current data-directory path, then the historical
@@ -186,6 +186,38 @@ constructing a separate `AppModel.outliner`. The retired `Ctrl+P` and `g o`
 drill-downs no longer exist. Task creation and every retained project operation
 run from the scoped Outliner. Esc pops to the previous scope
 frame; Ctrl+Esc clears the scope stack back to global All.
+
+### Active context scope
+
+The active context is the global Outliner's project scope and is the only
+project-set authority in the TUI; the retired ad-hoc project-subset filter no
+longer exists. Exactly one scope is active at a time and it is one of three
+kinds: All (every active project), a regular context label carried by the
+catalog projects themselves, or a custom context naming a hand-picked project
+group. An empty scope name degrades to All.
+
+The scope is session-owned. It is held on the single Outliner instance, is never
+written to `workspace.json` or `machine.json`, and every run starts in All.
+`Ctrl+Esc` clears it along with the rest of the Outliner's narrowing. Applying a
+scope is a scope change and not a filter: it clears project scope frames, task
+zoom, multi-select, and cursor position, and it leaves the work mode, task
+filters, search, sort, columns, and pinned-tag tab untouched. It narrows every
+cross-project surface through the Outliner's one `scopeProjects()` seam, so
+tree, priority, work-horizon, and review modes all inherit it, and the
+workspace-wide daily-review checkpoint refuses to complete while a scope is
+narrowing the visible set. Regular scopes resolve against the live catalog;
+custom scopes resolve their stored project IDs and silently skip members that
+are archived or no longer cataloged.
+
+`C` in the Outliner opens Contexts, an app-scoped Manage destination that browses
+scopes, previews the projects and task counts each resolves to, applies one, and
+runs create, membership edit, rename, and delete inline for both kinds. Every
+mutation commits through one use-case layer: custom contexts write to
+machine-local state, regular labels relabel catalog projects in a checked
+workspace commit, and removing a project from a label reassigns it to another
+one rather than leaving it unlabeled. Renaming the default context label carries
+`Settings.DefaultContext` along in the same checked transaction, so the catalog
+relabel and the setting can never disagree about which label is the default.
 
 ## Transactions, recovery, and undo
 

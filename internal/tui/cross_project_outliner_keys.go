@@ -10,19 +10,19 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// crossHandleContextPickerKey handles the C key in cross-project mode,
-// emitting ShowContextPickerMsg{} to open the context picker. It is called
+// crossHandleContextHubKey handles the C key in cross-project mode,
+// emitting ShowContextHubMsg{} to open the Context Hub. It is called
 // early in the key dispatch so that C works even when m.rows is empty (the
 // empty-state view rendered when no projects exist in the current context).
 //
 // Returns (model, cmd, true) in cross-project mode (m.project == nil),
 // (nil, nil, false) otherwise.
-func (m *OutlinerModel) crossHandleContextPickerKey(key string) (tea.Model, tea.Cmd, bool) {
+func (m *OutlinerModel) crossHandleContextHubKey(key string) (tea.Model, tea.Cmd, bool) {
 	if m.project != nil || key != "C" {
 		return nil, nil, false
 	}
 	return m, func() tea.Msg {
-		return ShowContextPickerMsg{}
+		return ShowContextHubMsg{}
 	}, true
 }
 

@@ -98,7 +98,6 @@ func migratedViewKeymaps() map[PresentationID]*keymap.KeyMap {
 		ViewLinkedTaskCreator:    (&LinkedTaskCreatorModel{}).buildKeyMap(),
 		ViewTaskForm:             (&TaskFormModel{}).buildKeyMap(),
 		ViewProjectPreview:       (&ProjectPreviewModel{}).buildKeyMap(),
-		ViewCustomContextEditor:  (&CustomContextEditorModel{}).buildKeyMap(),
 		ViewSettings:             (&SettingsModel{}).buildKeyMap(),
 		ViewConflictResolution:   (&ConflictResolutionModel{}).buildKeyMap(),
 	}

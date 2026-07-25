@@ -36,8 +36,6 @@ const (
 	ViewSectionPicker
 	ViewSectionManager
 	ViewPriorityPicker
-	ViewContextPicker
-	ViewCustomContextEditor
 	ViewGlobalSearch
 	ViewParentSelector
 	ViewQuickCapture
@@ -100,12 +98,12 @@ const (
 	ViewStatusIconPicker
 	ViewNotificationCenter
 	ViewMessageLog
-	ViewProjectFilterSelector
 	ViewTaskForm
 	ViewRoadmap
 	ViewTaskDecisions
 	ViewAttrFilterPicker
 	ViewConflictResolution
+	ViewContextHub
 )
 
 // sessionStats tracks task activity during a single TUI session for the end-of-session summary.

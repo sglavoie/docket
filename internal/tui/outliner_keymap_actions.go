@@ -235,7 +235,7 @@ func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 			model, cmd, _ := m.handleUtilityKey("T")
 			return model, cmd
 		}),
-		keymap.Bind("C", "Context filter", "Filters", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("C", "Context scope (active projects)", "Views", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleUtilityKey("C")
 			return model, cmd
 		}),

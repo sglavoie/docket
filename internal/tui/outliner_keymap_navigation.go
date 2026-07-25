@@ -108,8 +108,9 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 		},
 		JumpToTask: func() (tea.Model, tea.Cmd) {
 			if m.project == nil {
+				projects := m.scopeProjects()
 				return m, func() tea.Msg {
-					return ShowTaskJumperMsg{Projects: m.loadedProjects, CrossProject: true}
+					return ShowTaskJumperMsg{Projects: projects, CrossProject: true}
 				}
 			}
 			return m, func() tea.Msg { return ShowTaskJumperMsg{Project: m.project} }

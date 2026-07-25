@@ -317,11 +317,6 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 				return m.handleFilterPrefix("D")
 			}),
 		}
-		if m.project == nil {
-			extra = append(extra, keymap.Bind("P", "Filter by projects", "Filters", func() (tea.Model, tea.Cmd) {
-				return m.handleFilterPrefix("P")
-			}))
-		}
 		extra = append(extra, savedFilterPrefixEntry(m))
 		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children, extra...)
 	}

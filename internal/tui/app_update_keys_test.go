@@ -397,28 +397,34 @@ func TestHandleGlobalKeyPress_SpaceFallsThroughWithoutCursorTask(t *testing.T) {
 }
 
 func TestCustomContextEditorSpaceTogglesProjectThroughApp(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	// Custom contexts are machine-local state; the editor reads them from the
-	// runtime snapshot (which diverges from app.config in the in-memory harness).
-	app.runtime.Machine().SetCustomContext("Work", []string{project.ID})
-	editor := NewCustomContextEditorModel(app.runtime, "Work")
-	app.showView(ViewCustomContextEditor, editor)
-
-	if !editor.selectedIDs[project.ID] {
-		t.Fatal("expected project to start selected in existing custom context")
+	app := contextHubApp(t)
+	hub := openContextHub(t, app)
+	for hub.filtered[hub.cursor].Scope != CustomContextScope("focus") {
+		hub.Update(syntheticKey('j'))
+	}
+	hub.Update(syntheticKey('e'))
+	editor := hub.editor
+	if editor == nil {
+		t.Fatal("e did not open the inline custom context editor")
+	}
+	if !editor.selected["alpha"] {
+		t.Fatal("expected alpha to start selected in the existing custom context")
 	}
 
 	app.Update(syntheticSpecialKey(tea.KeyTab))
-	if !editor.projectListMode {
-		t.Fatal("expected tab to move focus to project list")
+	if !editor.listFocus {
+		t.Fatal("expected tab to move focus to the project list")
+	}
+	for editor.filtered[editor.cursor].ID != "alpha" {
+		app.Update(syntheticKey('j'))
 	}
 
 	app.Update(syntheticSpecialKey(tea.KeySpace))
-	if editor.selectedIDs[project.ID] {
-		t.Fatal("expected space to toggle selected project off through app dispatch")
+	if editor.selected["alpha"] {
+		t.Fatal("expected space to toggle the selected project off through app dispatch")
 	}
 	if app.peekActive {
-		t.Fatal("space should not activate peek in custom context editor")
+		t.Fatal("space should not activate peek in the custom context editor")
 	}
 }
 

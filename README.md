@@ -41,6 +41,7 @@ The product surface is intentionally documented in the app instead of in a long 
 
 - Press `?` in most TUI views for contextual help.
 - Press `Tab`/`Shift+Tab` to cycle Next → Backlog → Active → All, `P` to pick a workflow, smart, lens, or review mode, and `Ctrl+X` to change project scope.
+- Press `C` to open Contexts, where you apply the active context and create, edit, rename, or delete contexts.
 - Open the command palette with `:` and run `:reference` for the full reference encyclopedia.
 - Use the `Ask AI` command from the TUI when you want precise answers while working.
 - Use `tt --help` and `tt <command> --help` for authoritative CLI usage.
@@ -99,6 +100,13 @@ confirmation instead of applying stale advice.
   ordering-only index for the next tasks in the pipeline; it does not confer Next membership.
 - Today is a separate, config-backed Daily Plan shown as the first section in
   the Outliner's All mode. Today and Next membership are mutually exclusive.
+- The active context is the Outliner's project scope for the current session: All
+  projects, one context label, or a saved custom context. It is a scope, not a task
+  filter, so it leaves modes, filters, search, and sort alone; it always starts at
+  All and is never persisted across runs. `Ctrl+Esc` clears it.
+- Every project carries one context label, which syncs with the workspace catalog.
+  Custom contexts name a hand-picked group of projects and stay machine-local;
+  manage them with `C` in the TUI or `tt context`.
 - Tags are flexible labels for grouping work across sections.
 - Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
 - Parking notes capture where you left off without changing task status. Parked tasks resurface in task detail, quick switch, and the Outliner's Parked mode.

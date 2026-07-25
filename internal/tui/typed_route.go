@@ -98,6 +98,7 @@ const (
 	ManageTags
 	ManageNotifications
 	ManageSettings
+	ManageContexts
 )
 
 type NotificationMode uint8
@@ -221,7 +222,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 			}
 			return p, nil
 		case ManageParams:
-			if p.Module == ManageLanding || p.Module > ManageSettings {
+			if p.Module == ManageLanding || p.Module > ManageContexts {
 				return nil, invalidParams(id, "unknown manage tool")
 			}
 			if p.NotificationMode > NotificationLog {

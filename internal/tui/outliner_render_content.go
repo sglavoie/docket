@@ -194,6 +194,12 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 			// count (which would mislabel a single-project scope as "N projects").
 			title = prefix + " — " + m.projectDisplayNameByID(m.scopedProjectID)
 		} else {
+			if !m.activeContext.IsAll() {
+				// The context is scope chrome, so it names the title and supplies the
+				// project count instead of appearing as a filter badge.
+				prefix += " — Context: " + m.contextScopeLabel()
+				projectCount = len(m.contextScopeProjects())
+			}
 			title = fmt.Sprintf("%s (%d project", prefix, projectCount)
 			if projectCount != 1 {
 				title += "s"

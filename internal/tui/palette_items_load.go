@@ -211,6 +211,7 @@ func staticPaletteViewItems() []paletteViewItemSpec {
 		{name: "Global Notes", description: "Notes not tied to any project", viewType: ViewGlobalNotes},
 		{name: "Workflow Rules", description: "Manage workflow automation rules", viewType: ViewWorkflowRules},
 		{name: "Settings", description: "Application preferences and configuration", viewType: ViewSettings},
+		{name: "Contexts", description: "Browse and apply the active project context", viewType: ViewContextHub},
 		// These names remain searchable aliases for consolidated surfaces. They
 		// do not restore the retired view implementations or their old keys.
 		{name: "Global Search", description: "Alias for Command Palette search", viewType: ViewGlobalSearch},
