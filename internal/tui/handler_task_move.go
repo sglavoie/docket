@@ -138,11 +138,11 @@ func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, sourceProjectID
 	}
 	planning := clonePlanningState(m.runtime.Planning())
 	changed := planning.ReassignDurablePlanningProjectFrom(movedSet, sourceProjectID, destProjectID) > 0
-	if finalState != nil && reconcilePlanningExclusivity(planning, []app.PlanningReconcileTarget{{
-		TaskID:    rootID,
-		ProjectID: destProjectID,
-		State:     *finalState,
-	}}) {
+	if finalState != nil && app.ReconcilePlanningState(planning, app.PlanningReconcileRequest{
+		Targets: []app.PlanningReconcileTarget{{
+			TaskID: rootID, ProjectID: destProjectID, State: *finalState,
+		}},
+	}) {
 		changed = true
 	}
 	if !changed {

@@ -195,3 +195,28 @@ func TestQualifiedMoveReassignmentPreservesDuplicateIDInOtherProject(t *testing.
 		t.Fatalf("recent visits = %+v, want alpha preserved and beta moved", machine.RecentTaskVisits)
 	}
 }
+
+func TestPlanningMembershipSettersCanonicalizeIdentities(t *testing.T) {
+	planning := NewPlanningState()
+	planning.SetFocusQueue([]FocusQueueItem{
+		{TaskID: "", ProjectID: "p"},
+		{TaskID: "same", ProjectID: "p"},
+		{TaskID: "same", ProjectID: "p"},
+		{TaskID: "same", ProjectID: "other"},
+	})
+	planning.SetDailyPlan([]DailyPlanItem{
+		{TaskID: "", ProjectID: "p"},
+		{TaskID: "same", ProjectID: "p", PlannedDate: "2026-07-25"},
+		{TaskID: "same", ProjectID: "p", PlannedDate: "2026-07-26"},
+		{TaskID: "same", ProjectID: "other", PlannedDate: "2026-07-25"},
+	})
+
+	if got := planning.GetFocusQueue(); len(got) != 2 ||
+		got[0].ProjectID != "p" || got[1].ProjectID != "other" {
+		t.Fatalf("FocusQueue = %+v, want one entry per project-qualified identity", got)
+	}
+	if got := planning.GetDailyPlan(); len(got) != 2 ||
+		got[0].PlannedDate != "2026-07-25" || got[1].ProjectID != "other" {
+		t.Fatalf("DailyPlan = %+v, want first entry per project-qualified identity", got)
+	}
+}

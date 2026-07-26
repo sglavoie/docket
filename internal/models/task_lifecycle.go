@@ -10,80 +10,55 @@ import (
 // Complete marks the task as done and sets the completion time.
 // Snooze and parking are cleared since hiding or resuming a completed task is meaningless.
 func (t *Task) Complete() {
-	now := time.Now()
-	t.Unpark(true)
-	t.WorkflowState = StateDone
-	t.CompletedAt = &now
-	t.UpdatedAt = now
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StateDone)
 }
 
 // Start marks the task as in progress.
 // Snooze is cleared since an in-progress task should always be visible.
 func (t *Task) Start() {
-	t.WorkflowState = StateInProgress
-	t.UpdatedAt = time.Now()
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StateInProgress)
 }
 
 // Review marks the task as in review.
 // Snooze is cleared since a task in review should always be visible.
 func (t *Task) Review() {
-	t.WorkflowState = StateReview
-	t.UpdatedAt = time.Now()
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StateReview)
 }
 
 // Standby puts the task on hold (the paused state).
 // Snooze is cleared since paused tasks should remain visible.
 func (t *Task) Standby() {
-	t.WorkflowState = StatePaused
-	t.UpdatedAt = time.Now()
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StatePaused)
 }
 
 // Maybe marks the task as a tentative consideration (the someday state).
 // Snooze is cleared since maybe tasks should remain visible for review.
 func (t *Task) Maybe() {
-	t.WorkflowState = StateSomeday
-	t.UpdatedAt = time.Now()
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StateSomeday)
 }
 
 // Block marks the task as waiting (blocked on external input).
 // Snooze is cleared since a waiting task needs visibility for tracking blockers.
 func (t *Task) Block() {
-	t.WorkflowState = StateWaiting
-	t.UpdatedAt = time.Now()
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StateWaiting)
 }
 
 // Cancel marks the task as canceled (terminal).
 // Snooze is cleared since hiding a canceled task is meaningless.
 func (t *Task) Cancel() {
-	now := time.Now()
-	t.WorkflowState = StateCanceled
-	t.CompletedAt = &now
-	t.UpdatedAt = now
-	t.SnoozedUntil = nil
+	_ = t.ApplyStateTransition(StateCanceled)
 }
 
 // Reopen returns the task to the Inbox for re-processing.
 // Snooze is cleared so the reopened task is immediately visible.
 func (t *Task) Reopen() {
-	t.WorkflowState = StateInbox
-	t.CompletedAt = nil
-	t.Dimmed = false
-	t.SnoozedUntil = nil
-	t.UpdatedAt = time.Now()
+	_ = t.ApplyStateTransition(StateInbox)
 }
 
 // Uncomplete reverts a completed task to in-progress without relocating it to
 // Inbox, so it stays visible in place.
 func (t *Task) Uncomplete() {
-	t.WorkflowState = StateInProgress
-	t.CompletedAt = nil
-	t.UpdatedAt = time.Now()
+	_ = t.ApplyStateTransition(StateInProgress)
 }
 
 // CanTransitionTo checks whether the task can move to newStatus. Returns an
@@ -106,64 +81,52 @@ func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 	return CanTransitionState(t.State(), TargetStateForStatus(newStatus))
 }
 
-// ApplyTransition moves the task to newStatus by calling the appropriate
-// lifecycle method (Start, Complete, Block, Cancel, Review, Reopen).
+// ApplyTransition is the legacy-status adapter over ApplyStateTransition.
 // The caller should check CanTransitionTo first.
 func (t *Task) ApplyTransition(newStatus TaskStatus) {
-	switch newStatus {
-	case StatusInProgress:
-		t.Start()
-	case StatusDone:
-		t.Complete()
-	case StatusBlocked:
-		t.Block()
-	case StatusCanceled:
-		t.Cancel()
-	case StatusTodo:
-		t.Reopen()
-	case StatusReview:
-		t.Review()
-	case StatusStandby:
-		t.Standby()
-	case StatusMaybe:
-		t.Maybe()
+	if !newStatus.IsValid() {
+		return
 	}
+	_ = t.ApplyStateTransition(TargetStateForStatus(newStatus))
 }
 
 // ApplyStateTransition moves the task to the given canonical WorkflowState,
-// invoking the appropriate lifecycle method so terminal timestamps (CompletedAt),
-// reopen-to-inbox, and snooze-clearing side effects stay consistent. It is the
-// WorkflowState-native successor to ApplyTransition(TaskStatus): interactive and
-// bulk transition controls call it directly with one of the ten states rather
-// than routing a legacy TaskStatus through TargetStateForStatus first.
+// applying all lifecycle side effects at time.Now. It is the state-native
+// successor to ApplyTransition(TaskStatus). The caller should check
+// CanTransitionState first when normal transition policy must be enforced.
+func (t *Task) ApplyStateTransition(state WorkflowState) error {
+	return t.ApplyStateTransitionAt(state, time.Now())
+}
+
+// ApplyStateTransitionAt is the canonical task-state mutation primitive. It
+// owns terminal completion timestamps, reopen cleanup, snooze clearing, and the
+// update timestamp. Supplying now lets application services use their injected
+// clock while legacy model adapters retain their time.Now behavior.
 //
-// The ready and next states have no dedicated legacy lifecycle mutator, so they
-// are applied through ApplyWorkflowState (which sets the canonical backing
-// fields) with an explicit snooze clear and UpdatedAt bump to match the other
-// nonterminal transitions. The caller should check CanTransitionState first.
-func (t *Task) ApplyStateTransition(state WorkflowState) {
-	switch state {
-	case StateInProgress:
-		t.Start()
-	case StateDone:
-		t.Complete()
-	case StateWaiting:
-		t.Block()
-	case StateCanceled:
-		t.Cancel()
-	case StateInbox:
-		t.Reopen()
-	case StateReview:
-		t.Review()
-	case StatePaused:
-		t.Standby()
-	case StateSomeday:
-		t.Maybe()
-	case StateReady, StateNext:
-		t.SnoozedUntil = nil
-		t.ApplyWorkflowState(state)
-		t.UpdatedAt = time.Now()
+// This method validates the target but deliberately does not enforce
+// CanTransitionState: compatibility adapters and reconciliation may perform
+// explicit overrides. User-facing transition services validate policy first.
+func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error {
+	if !state.IsValid() {
+		return fmt.Errorf("invalid workflow state %q", state)
 	}
+
+	if state == StateDone {
+		t.Unpark(true)
+	}
+	t.ApplyWorkflowState(state)
+	t.SnoozedUntil = nil
+	if state.IsTerminal() {
+		completedAt := now
+		t.CompletedAt = &completedAt
+	} else {
+		t.CompletedAt = nil
+	}
+	if state == StateInbox {
+		t.Dimmed = false
+	}
+	t.UpdatedAt = now
+	return nil
 }
 
 // IsComplete returns true if the task is in a terminal workflow state (done or

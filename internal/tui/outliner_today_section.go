@@ -99,6 +99,7 @@ func (m *OutlinerModel) appendTodaySection(section todaySectionBuild) {
 		IsTodaySection:  true,
 		SectionName:     todaySectionName,
 		SectionCount:    section.visiblePlanCount,
+		StateGroup:      models.StateGroupToday,
 		CollapseKey:     todaySectionCollapseKey,
 	})
 	if !m.collapsedSections[todaySectionCollapseKey] {

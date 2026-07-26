@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -63,7 +64,7 @@ func TestSaveProject_Roundtrip(t *testing.T) {
 	}
 }
 
-func TestSaveProject_WithSections(t *testing.T) {
+func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
@@ -86,6 +87,17 @@ func TestSaveProject_WithSections(t *testing.T) {
 		t.Fatalf("SaveProject failed: %v", err)
 	}
 
+	content, err := os.ReadFile(tasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read saved project: %v", err)
+	}
+	if !strings.Contains(string(content), "<!-- tt-schema: 2 -->") {
+		t.Fatalf("saved project is missing schema-v2 marker:\n%s", content)
+	}
+	if strings.Contains(string(content), "<!-- sections:") {
+		t.Fatalf("saved project retained legacy section metadata:\n%s", content)
+	}
+
 	// Load and verify
 	loadedProject := testutil.NewTestProject("Sections Test")
 	loadedProject.Path = project.Path
@@ -99,8 +111,8 @@ func TestSaveProject_WithSections(t *testing.T) {
 		t.Errorf("expected at least 3 sections, got %d", len(loadedProject.Sections))
 	}
 
-	if loadedProject.SectionColors[models.SectionInbox] != "green" {
-		t.Errorf("expected Inbox section color green, got %s", loadedProject.SectionColors[models.SectionInbox])
+	if len(loadedProject.SectionColors) != 0 {
+		t.Errorf("expected canonical runtime section colors to be empty, got %v", loadedProject.SectionColors)
 	}
 
 	if len(loadedProject.Tasks) != 1 {
@@ -134,6 +146,47 @@ func TestSaveProject_EmptyProject(t *testing.T) {
 
 	if len(loadedProject.Tasks) != 0 {
 		t.Errorf("expected 0 tasks, got %d", len(loadedProject.Tasks))
+	}
+}
+
+func TestSaveProject_PreservesOpaqueMetadataWhileCanonicalizing(t *testing.T) {
+	projectPath := filepath.Join(t.TempDir(), "opaque-project")
+	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
+		t.Fatalf("create project path: %v", err)
+	}
+	legacy := "# Project: Opaque Project\n" +
+		"<!-- future-feature: preserve-exactly -->\n" +
+		"<!-- sections: Next:blue;Waiting:red -->\n\n" +
+		"## Task: Existing\n" +
+		"<!-- id: existing-1, status: blocked, section: Waiting, priority: 2 -->\n"
+	if err := os.WriteFile(tasksFilePath(projectPath), []byte(legacy), FilePermissions); err != nil {
+		t.Fatalf("seed legacy project: %v", err)
+	}
+
+	project := &models.Project{ID: "opaque-project", Name: "Opaque Project", Path: projectPath}
+	if err := LoadProject(project); err != nil {
+		t.Fatalf("load legacy project: %v", err)
+	}
+	project.Tags = []string{"keep"}
+	if err := SaveProject(project); err != nil {
+		t.Fatalf("save canonical project: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksFilePath(projectPath))
+	if err != nil {
+		t.Fatalf("read canonical project: %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "<!-- tt-schema: 2 -->") ||
+		!strings.Contains(text, "<!-- future-feature: preserve-exactly -->") ||
+		!strings.Contains(text, "<!-- tags: keep -->") ||
+		!strings.Contains(text, "state: waiting") {
+		t.Fatalf("canonical save lost project/task metadata:\n%s", text)
+	}
+	if strings.Contains(text, "<!-- sections:") ||
+		strings.Contains(text, "status:") ||
+		strings.Contains(text, "section:") {
+		t.Fatalf("canonical save retained legacy lifecycle metadata:\n%s", text)
 	}
 }
 

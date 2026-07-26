@@ -7,7 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -52,7 +51,7 @@ func (m *AppModel) removeFromDailyPlan(identity TaskIdentity) {
 // committed save) and schedules the status-line timeout, without clearing the
 // toggle-undo history the toggle just recorded.
 func (m *AppModel) queueToggleResultCmd() tea.Cmd {
-	cmds := m.refreshTaskViewsAfterSave()
+	cmds := m.refreshTaskViewsAfterPlanningMutation()
 	cmds = append(cmds, defaultStatusTimeout())
 	return tea.Batch(cmds...)
 }
@@ -88,6 +87,7 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 		// ledger transaction.
 		fresh, _, err := m.queueLedgerTransition(taskID, projectID, models.StateReady, false)
 		if err != nil {
+			m.err = err
 			return errorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
@@ -97,6 +97,7 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 		// one ledger transaction.
 		fresh, _, err := m.queueLedgerTransition(taskID, projectID, models.StateNext, true)
 		if err != nil {
+			m.err = err
 			return errorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
@@ -108,33 +109,14 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 	return m.queueToggleResultCmd()
 }
 
-// queueLedgerTransition commits a Next-queue promotion or removal as one ledger
-// transaction that folds the workflow-state change and the planning change
-// (Today/Next exclusivity plus, when appendOrder is set, the Next order entry)
-// together, then reloads the touched project and config and rebuilds the
-// in-memory planning collections from the committed state.
+// queueLedgerTransition delegates the whole Next mutation to the application
+// service, then reloads the task and planning snapshots from the committed state.
 func (m *AppModel) queueLedgerTransition(taskID, projectID string, target models.WorkflowState, appendOrder bool) (*models.Task, *models.Project, error) {
-	var builder app.PlanningArtifactBuilder
+	action := app.PlanningRemoveNext
 	if appendOrder {
-		builder = focusQueueAddArtifactBuilder(m.configManager, taskID, projectID)
-	} else {
-		builder = planningReconcileArtifactBuilder(m.configManager)
+		action = app.PlanningAddNext
 	}
-	res, err := m.appService.Transition(app.StateRequest{
-		Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID}, Target: target, PlanningArtifacts: builder,
-	})
-	if err != nil {
-		return nil, m.projectByID(projectID), err
-	}
-	m.reloadProjectByID(res.ProjectID)
-	m.refreshRuntime()
-	m.rebuildPlanningFromRuntime()
-	project := m.projectByID(res.ProjectID)
-	var fresh *models.Task
-	if project != nil {
-		fresh = project.GetTaskByID(taskID)
-	}
-	return fresh, project, nil
+	return m.applyTaskPlanningAction(taskID, projectID, action)
 }
 
 // undoQueueToggle reverses the last Next-queue toggle by undoing its durable
@@ -175,22 +157,4 @@ func taskTitleOrFallback(fresh, fallback *models.Task) string {
 		return fallback.Title
 	}
 	return ""
-}
-
-// persistFocusQueue saves the current Next order index through a checked planning
-// commit. The order index is planning-domain state, so it is committed to
-// planning.json alone rather than routed through a whole-config save.
-func (m *AppModel) persistFocusQueue() {
-	items := make([]config.FocusQueueItem, len(m.focusQueue))
-	for i, ft := range m.focusQueue {
-		items[i] = config.FocusQueueItem{
-			TaskID:    ft.Task.ID,
-			ProjectID: ft.Project.ID,
-		}
-	}
-	if err := m.commitPlanningMutation(func(p *config.PlanningState) {
-		p.SetFocusQueue(items)
-	}); err != nil {
-		m.err = err
-	}
 }

@@ -25,19 +25,20 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	}
 	setTestProjects(runtime, []*models.Project{project})
 	runtime.Machine().CurrentProject = project.ID
-	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{{ProjectID: project.ID, TaskID: "task-1"}})
+	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{{ProjectID: project.ID, TaskID: "task-next"}})
 	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{{
 		ProjectID:   project.ID,
-		TaskID:      "task-1",
+		TaskID:      "task-today",
 		PlannedDate: time.Now().Format("2006-01-02"),
 	}})
-	runtime.Machine().SetRecentTaskVisits([]config.RecentTaskVisit{{ProjectID: project.ID, TaskID: "task-1"}})
+	runtime.Machine().SetRecentTaskVisits([]config.RecentTaskVisit{{ProjectID: project.ID, TaskID: "task-next"}})
 
-	// Queue membership is the StateNext workflow state, so the referenced member
-	// must be StateNext to survive prune-on-load hydration.
-	task := &models.Task{ID: "task-1", ShortID: 1, Title: "Task", WorkflowState: models.StateNext}
+	// Next and Today are mutually exclusive, so use separate valid members while
+	// proving all planning/recent references share one startup project load.
+	nextTask := &models.Task{ID: "task-next", ShortID: 1, Title: "Next task", WorkflowState: models.StateNext}
+	todayTask := &models.Task{ID: "task-today", ShortID: 2, Title: "Today task", WorkflowState: models.StateReady}
 	stored := *project
-	stored.Tasks = []*models.Task{task}
+	stored.Tasks = []*models.Task{nextTask, todayTask}
 	mock := NewMockPersister()
 	mock.Projects[project.ID] = &stored
 

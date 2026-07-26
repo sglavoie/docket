@@ -200,11 +200,17 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		count := countTasks(ctx.Tasks, func(t *models.Task) bool { return !t.IsTerminalState() })
 		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
 
+	case FieldAllTasksState:
+		return matchAllTasksState(ctx, trigger)
+
 	case FieldAllTasksStatus:
 		return matchAllTasksStatus(ctx, trigger)
 
 	case FieldMajorityTaskType:
 		return matchesMajority(ctx, func(t *models.Task) string { return string(t.Type) }, trigger)
+
+	case FieldMajorityTaskState:
+		return matchesMajorityTaskState(ctx, trigger)
 
 	case FieldMajorityTaskStatus:
 		return matchesMajority(ctx, statusFieldValue, trigger)
@@ -217,6 +223,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 
 	case FieldProjectStatus:
 		return compareValues(ctx.Project.StatusIcon, trigger.Operation, trigger.Value)
+
+	case FieldHasTasksWithState:
+		return matchHasTasksWithState(ctx.Tasks, trigger)
 
 	case FieldHasTasksWithStatus:
 		// Presence check: returns true when any task has the given status.
@@ -260,6 +269,75 @@ func countTasks(tasks []*models.Task, pred func(*models.Task) bool) int {
 		}
 	}
 	return count
+}
+
+// matchAllTasksState checks whether all nonterminal tasks share one canonical
+// state, then evaluates that state against the trigger's state set.
+func matchAllTasksState(ctx *ProjectEvaluationContext, trigger RuleTrigger) bool {
+	var common models.WorkflowState
+	for _, task := range ctx.Tasks {
+		if task == nil || task.IsTerminalState() {
+			continue
+		}
+		state := task.State()
+		if common == "" {
+			common = state
+			continue
+		}
+		if state != common {
+			return false
+		}
+	}
+	if common == "" {
+		return false
+	}
+	return matchesWorkflowState(common, trigger.Operation, trigger.Value)
+}
+
+// matchesMajorityTaskState evaluates the strict majority state among active
+// tasks without mapping it through legacy status buckets.
+func matchesMajorityTaskState(ctx *ProjectEvaluationContext, trigger RuleTrigger) bool {
+	counts := make(map[models.WorkflowState]int)
+	total := 0
+	for _, task := range ctx.Tasks {
+		if task == nil || task.IsTerminalState() {
+			continue
+		}
+		total++
+		counts[task.State()]++
+	}
+	if total == 0 {
+		return false
+	}
+	for _, state := range models.AllWorkflowStates() {
+		if counts[state]*2 > total {
+			return matchesWorkflowState(state, trigger.Operation, trigger.Value)
+		}
+	}
+	return false
+}
+
+// matchHasTasksWithState treats negative operations as the inverse of the
+// positive presence query: not_in/not_equals mean no task has a matching state.
+func matchHasTasksWithState(tasks []*models.Task, trigger RuleTrigger) bool {
+	states, err := ParseWorkflowStateSet(trigger.Value)
+	if err != nil {
+		return false
+	}
+	if (trigger.Operation == OpEquals || trigger.Operation == OpNotEquals) && states.Len() != 1 {
+		return false
+	}
+	has := anyTaskMatches(tasks, func(task *models.Task) bool {
+		return states.Contains(task.State())
+	})
+	switch trigger.Operation {
+	case OpEquals, OpIn:
+		return has
+	case OpNotEquals, OpNotIn:
+		return !has
+	default:
+		return false
+	}
 }
 
 // matchAllTasksStatus checks if all non-complete tasks share the same status.

@@ -177,8 +177,7 @@ func (s *Service) stateWithWorkflow(taskID string, locator TaskLocator, target m
 		if err := childrenCompletionGuard(ref.Task, target); err != nil {
 			return err
 		}
-		applyState(ref.Task, target)
-		return nil
+		return applyState(ref.Task, target, s.clock.Now())
 	})
 }
 

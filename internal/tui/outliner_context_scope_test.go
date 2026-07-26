@@ -183,7 +183,7 @@ func TestApplyContextScopeClearsRowAxesAndPreservesFilters(t *testing.T) {
 
 	// Preserved axes.
 	m.filter.Priority = 1
-	m.filter.Sections = map[string]bool{"inbox": true}
+	m.filter.setStateFilter(testWorkflowStateSet(models.StateInbox), true)
 	m.filter.Actionable = true
 	m.SetSearchQuery("alpha")
 	m.setPinnedTagTabIndex(0)
@@ -207,7 +207,7 @@ func TestApplyContextScopeClearsRowAxesAndPreservesFilters(t *testing.T) {
 		t.Fatalf("cursor/scroll not reset: cursor=%d scroll=%d", m.cursor, m.viewScrollOffset)
 	}
 
-	if m.filter.Priority != 1 || !m.filter.Actionable || len(m.filter.Sections) != 1 {
+	if m.filter.Priority != 1 || !m.filter.Actionable || !m.filter.States.Contains(models.StateInbox) {
 		t.Fatalf("task filters not preserved: %+v", m.filter)
 	}
 	if m.SearchQuery() != "alpha" {

@@ -37,7 +37,7 @@ var (
 	// Scope flags
 	workflowEditScopeProjects []string
 	workflowEditScopeTypes    []string
-	workflowEditScopeSections []string
+	workflowEditScopeStates   []string
 	workflowEditClearScope    bool
 
 	// Confirmation flag
@@ -64,7 +64,7 @@ Examples:
   
   # Add triggers (multiple in one command)
   tt workflow edit abc123 \
-    -f status -o equals -V blocked \
+    -f state -o equals -V waiting \
     -f priority -o greater_than -V 3 \
     --yes
   
@@ -118,8 +118,13 @@ func init() {
 	// Scope flags
 	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeProjects, "scope-project", nil, "set rule scope: project names or IDs (comma-separated)")
 	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeTypes, "scope-type", nil, "set rule scope for task-level rules: task types (comma-separated)")
-	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeSections, "scope-section", nil, "set rule scope for task-level rules: sections (comma-separated)")
+	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeStates, "scope-state", nil, "set rule scope for task-level rules: canonical states (comma-separated)")
 	workflowEditCmd.Flags().BoolVar(&workflowEditClearScope, "clear-scope", false, "remove all scope restrictions")
+
+	_ = workflowEditCmd.RegisterFlagCompletionFunc("add-trigger-field", completeEnum(workflowTriggerFieldCompletions()))
+	_ = workflowEditCmd.RegisterFlagCompletionFunc("add-trigger-op", completeEnum(workflowTriggerOperationCompletions()))
+	_ = workflowEditCmd.RegisterFlagCompletionFunc("add-action", completeEnum(workflowActionTypeCompletions()))
+	_ = workflowEditCmd.RegisterFlagCompletionFunc("scope-state", completeEnum(stateCompletions))
 
 	// Confirmation flag
 	workflowEditCmd.Flags().BoolVarP(&workflowEditYes, "yes", "y", false, "apply changes without preview confirmation")
@@ -296,9 +301,9 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		modifiedRule.Scope = nil
 		hasChanges = true
 	}
-	if cmd.Flags().Changed("scope-project") || cmd.Flags().Changed("scope-type") || cmd.Flags().Changed("scope-section") {
+	if cmd.Flags().Changed("scope-project") || cmd.Flags().Changed("scope-type") || cmd.Flags().Changed("scope-state") {
 		if workflowEditClearScope {
-			return fmt.Errorf("cannot use --clear-scope with --scope-project/--scope-type/--scope-section")
+			return fmt.Errorf("cannot use --clear-scope with --scope-project/--scope-type/--scope-state")
 		}
 		// Start from existing scope or create new one
 		if modifiedRule.Scope == nil {
@@ -310,8 +315,12 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if cmd.Flags().Changed("scope-type") {
 			modifiedRule.Scope.Types = workflowEditScopeTypes
 		}
-		if cmd.Flags().Changed("scope-section") {
-			modifiedRule.Scope.Sections = workflowEditScopeSections
+		if cmd.Flags().Changed("scope-state") {
+			states, err := parseWorkflowScopeStates(workflowEditScopeStates)
+			if err != nil {
+				return err
+			}
+			modifiedRule.Scope.States = states
 		}
 		hasChanges = true
 	}

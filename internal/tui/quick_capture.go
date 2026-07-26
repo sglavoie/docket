@@ -278,11 +278,10 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		Type:       result.taskType,
 		Priority:   result.priority,
 		Tags:       result.tags,
-		Section:    targetSection,
 		Due:        result.dueDate,
 		ParentID:   result.parentID,
 		Recurrence: result.recurrence,
-		State:      captureStateForStatus(result.status),
+		State:      creationStateFromLegacyInputs(targetSection, result.status, ""),
 		Prepend:    true,
 	}
 	return m.capture.CaptureCreate(req, openContent, openDetail)
@@ -300,6 +299,23 @@ func captureStateForStatus(status models.TaskStatus) models.WorkflowState {
 		return ""
 	}
 	return models.TargetStateForStatus(status)
+}
+
+// creationStateFromLegacyInputs is the temporary presentation-boundary adapter
+// for capture surfaces that still parse section and status vocabulary. Status
+// sigils retain precedence, then an explicit route preset, then the section
+// bucket. The application service receives exactly one canonical state.
+func creationStateFromLegacyInputs(section string, status models.TaskStatus, preset models.WorkflowState) models.WorkflowState {
+	if state := captureStateForStatus(status); state != "" {
+		return state
+	}
+	if preset != "" {
+		return preset
+	}
+	if state, ok := stateForSectionName(section); ok {
+		return state
+	}
+	return models.StateInbox
 }
 
 func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }

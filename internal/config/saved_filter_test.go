@@ -2,7 +2,10 @@ package config
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestGetSavedFilters_Empty(t *testing.T) {
@@ -129,7 +132,7 @@ func TestEffectiveLogic(t *testing.T) {
 func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	c := NewPlanningState()
 	c.SavedViews = []savedView{
-		{Name: "Bugs", FilterType: "bug", FilterGitHubIssue: true, FilterParked: true, SortField: 1, PinnedTagTab: "backend"},
+		{Name: "Bugs", FilterType: "bug", FilterStatus: "todo", FilterSections: []string{models.SectionNext}, FilterGitHubIssue: true, FilterParked: true, SortField: 1, PinnedTagTab: "backend"},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
 	}
 
@@ -160,6 +163,12 @@ func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	if !c.SavedFilters[0].FilterParked {
 		t.Error("expected filter_parked to migrate")
 	}
+	if got, want := c.SavedFilters[0].FilterStates.Values(), []models.WorkflowState{models.StateNext}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("legacy todo AND Next states = %v, want %v", got, want)
+	}
+	if !c.SavedFilters[0].HasStateFilter() {
+		t.Fatal("migrated lifecycle predicates should remain an active state filter")
+	}
 }
 
 func TestMigrateLegacyFilters_smartLists(t *testing.T) {
@@ -169,6 +178,8 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 			ID:   "sl-1",
 			Name: "Overdue",
 			Criteria: []SmartListCriterion{
+				{Field: "status", Operation: "equals", Value: "todo"},
+				{Field: "section", Operation: "equals", Value: models.SectionNext},
 				{Field: "due_date", Operation: "less_than", Value: "today"},
 				{Field: "parked", Operation: "equals", Value: "true"},
 			},
@@ -193,11 +204,20 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 	if f.Mode != "criteria" {
 		t.Errorf("expected mode 'criteria', got %q", f.Mode)
 	}
-	if len(f.Criteria) != 2 {
-		t.Fatalf("expected 2 criteria, got %d", len(f.Criteria))
+	if len(f.Criteria) != 4 {
+		t.Fatalf("expected 4 criteria, got %d", len(f.Criteria))
 	}
-	if f.Criteria[1].Field != "parked" || f.Criteria[1].Value != "true" {
-		t.Fatalf("parked criterion = %+v, want parked equals true", f.Criteria[1])
+	if f.Criteria[0].Field != "state" || f.Criteria[0].Operation != "in" {
+		t.Fatalf("status criterion = %+v, want canonical state set", f.Criteria[0])
+	}
+	if got, want := f.Criteria[0].States.Values(), []models.WorkflowState{models.StateInbox, models.StateReady, models.StateNext}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("todo criterion states = %v, want %v", got, want)
+	}
+	if f.Criteria[1].Field != "state" || !f.Criteria[1].States.Contains(models.StateNext) {
+		t.Fatalf("section criterion = %+v, want state includes Next", f.Criteria[1])
+	}
+	if f.Criteria[3].Field != "parked" || f.Criteria[3].Value != "true" {
+		t.Fatalf("parked criterion = %+v, want parked equals true", f.Criteria[3])
 	}
 }
 
@@ -242,6 +262,10 @@ func TestMigrateLegacyFilters_Idempotent(t *testing.T) {
 // --- Round-trip JSON test ---
 
 func TestSavedFilter_JSONRoundTrip(t *testing.T) {
+	states, err := models.NewWorkflowStateSet(models.StateWaiting, models.StateNext)
+	if err != nil {
+		t.Fatalf("state set: %v", err)
+	}
 	original := SavedFilter{
 		ID:                "test-id",
 		Name:              "Complex",
@@ -253,6 +277,7 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 		FilterParked:      true,
 		FilterScoreMin:    42.5,
 	}
+	original.SetFilterStates(states, true)
 
 	data, err := json.Marshal(original)
 	if err != nil {
@@ -279,6 +304,180 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	if len(decoded.FilterTags) != 2 {
 		t.Errorf("tags: got %d, want 2", len(decoded.FilterTags))
 	}
+	if !decoded.HasStateFilter() || !decoded.FilterStates.Equal(states) {
+		t.Errorf("filter states = %v active=%v, want %v active", decoded.FilterStates.Values(), decoded.HasStateFilter(), states.Values())
+	}
+}
+
+func TestSavedFilterJSONMigratesLegacyLifecycleIntersection(t *testing.T) {
+	var decoded SavedFilter
+	err := json.Unmarshal([]byte(`{
+		"id":"legacy",
+		"name":"Legacy",
+		"mode":"snapshot",
+		"filter_status":"todo",
+		"filter_sections":["Next"]
+	}`), &decoded)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got, want := decoded.FilterStates.Values(), []models.WorkflowState{models.StateNext}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("migrated states = %v, want %v", got, want)
+	}
+
+	data, err := json.Marshal(decoded)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		t.Fatalf("decode fields: %v", err)
+	}
+	if _, ok := fields["filter_states"]; !ok {
+		t.Fatal("canonical JSON missing filter_states")
+	}
+	if _, ok := fields["filter_status"]; ok {
+		t.Fatal("canonical JSON retained filter_status")
+	}
+	if _, ok := fields["filter_sections"]; ok {
+		t.Fatal("canonical JSON retained filter_sections")
+	}
+}
+
+func TestSavedFilterJSONCanonicalStatesWinMixedLegacyInputAndTriggerRewrite(t *testing.T) {
+	var decoded SavedFilter
+	err := json.Unmarshal([]byte(`{
+		"id":"mixed",
+		"name":"Mixed",
+		"mode":"snapshot",
+		"filter_states":["waiting","next"],
+		"filter_status":"done",
+		"filter_sections":["Completed"]
+	}`), &decoded)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := testConfigStateSet(t, models.StateNext, models.StateWaiting)
+	if !decoded.FilterStates.Equal(want) {
+		t.Fatalf("mixed states = %v, want canonical %v", decoded.FilterStates.Values(), want.Values())
+	}
+
+	planning := NewPlanningState()
+	planning.SavedFilters = []SavedFilter{decoded}
+	if !planning.MigrateLegacyFilters() {
+		t.Fatal("mixed legacy fields should request a canonical rewrite")
+	}
+	if planning.MigrateLegacyFilters() {
+		t.Fatal("canonical rewrite marker should be idempotent")
+	}
+	data, err := json.Marshal(planning.SavedFilters[0])
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if containsJSONField(data, "filter_status") || containsJSONField(data, "filter_sections") {
+		t.Fatalf("rewritten JSON retained legacy snapshot fields: %s", data)
+	}
+}
+
+func TestSavedFilterJSONRejectsInvalidCanonicalStates(t *testing.T) {
+	for _, payload := range []string{
+		`{"id":"bad","name":"Bad","mode":"snapshot","filter_states":["todo"]}`,
+		`{"id":"bad","name":"Bad","mode":"criteria","criteria":[{"field":"state","operation":"in","states":["todo"]}]}`,
+		`{"id":"bad","name":"Bad","mode":"criteria","criteria":[{"field":"state","operation":"equals","value":"inbox"}]}`,
+	} {
+		var decoded SavedFilter
+		if err := json.Unmarshal([]byte(payload), &decoded); err == nil {
+			t.Fatalf("json.Unmarshal accepted invalid canonical state payload %s", payload)
+		}
+	}
+}
+
+func TestSavedFilterJSONPreservesContradictoryLegacyLifecycleAsMatchNone(t *testing.T) {
+	var decoded SavedFilter
+	err := json.Unmarshal([]byte(`{
+		"id":"legacy-none",
+		"name":"Legacy none",
+		"mode":"snapshot",
+		"filter_status":"done",
+		"filter_sections":["Next"]
+	}`), &decoded)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !decoded.HasStateFilter() || !decoded.FilterStates.IsEmpty() {
+		t.Fatalf("contradictory migration = states %v active=%v, want active empty set", decoded.FilterStates.Values(), decoded.HasStateFilter())
+	}
+	data, err := json.Marshal(decoded)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !json.Valid(data) || !containsJSONField(data, "filter_states") {
+		t.Fatalf("canonical match-none JSON = %s, want filter_states", data)
+	}
+}
+
+func TestSavedFilterJSONMigratesLegacyCriteriaLifecycleFields(t *testing.T) {
+	var decoded SavedFilter
+	err := json.Unmarshal([]byte(`{
+		"id":"criteria",
+		"name":"Criteria",
+		"mode":"criteria",
+		"logic":"and",
+		"criteria":[
+			{"field":"status","operation":"equals","value":"todo"},
+			{"field":"section","operation":"not_equals","value":"Completed"}
+		]
+	}`), &decoded)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	for i, criterion := range decoded.Criteria {
+		if criterion.Field != "state" {
+			t.Fatalf("criterion %d field = %q, want state", i, criterion.Field)
+		}
+	}
+	data, err := json.Marshal(decoded)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(data) == "" || containsJSONField(data, "filter_status") || containsJSONField(data, "filter_sections") {
+		t.Fatalf("canonical criteria JSON retained legacy lifecycle fields: %s", data)
+	}
+}
+
+func containsJSONField(data []byte, field string) bool {
+	var value any
+	if err := json.Unmarshal(data, &value); err != nil {
+		return false
+	}
+	return containsJSONFieldValue(value, field)
+}
+
+func containsJSONFieldValue(value any, field string) bool {
+	switch value := value.(type) {
+	case map[string]any:
+		for key, child := range value {
+			if key == field || containsJSONFieldValue(child, field) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range value {
+			if containsJSONFieldValue(child, field) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func testConfigStateSet(t *testing.T, states ...models.WorkflowState) models.WorkflowStateSet {
+	t.Helper()
+	set, err := models.NewWorkflowStateSet(states...)
+	if err != nil {
+		t.Fatalf("state set: %v", err)
+	}
+	return set
 }
 
 func TestSavedFilter_JSONMissingGitHubIssueDefaultsFalse(t *testing.T) {

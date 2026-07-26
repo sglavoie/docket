@@ -436,14 +436,15 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
 
 	effectiveSection := taskSectionBucket(m.task)
-	sectionColor := m.project.GetSectionColor(effectiveSection)
+	stateGroup := taskStateGroup(m.task)
+	stateAccent := GetWorkflowStateGroupAccent(stateGroup)
 
 	// Append section badge to the type/status/ID line (line index 1)
 	sectionName := effectiveSection
 	if sectionName == "" {
 		sectionName = "Active"
 	}
-	sectionStyle := GetSectionColorStyle(sectionColor)
+	sectionStyle := lipgloss.NewStyle().Foreground(stateAccent)
 	badge := sectionStyle.Render("[" + sectionName + "]")
 	lines := strings.Split(content, "\n")
 	if len(lines) > 1 {
@@ -452,7 +453,7 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 	content = strings.Join(lines, "\n")
 
 	cfg := DefaultCardConfig()
-	cfg.AccentColor = GetSectionColorValue(sectionColor)
+	cfg.AccentColor = stateAccent
 	return renderCard("Task", content, width, cfg)
 }
 

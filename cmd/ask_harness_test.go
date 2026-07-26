@@ -24,7 +24,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-const emptyAskPlan = `{"version":1,"summary":"Done","actions":[]}`
+const emptyAskPlan = `{"version":2,"summary":"Done","actions":[]}`
 
 type askRunnerFunc func(context.Context, external.Request) (string, error)
 
@@ -607,9 +607,9 @@ func TestRunAskRetriesOnlyBeforePreviewAndAppliesOnce(t *testing.T) {
 	runner := askRunnerFunc(func(_ context.Context, request external.Request) (string, error) {
 		attempted = append(attempted, request.Harness)
 		if request.Harness == aiharness.Claude {
-			return `{"version":1,"summary":"Bad target","actions":[{"type":"create_task","project_id":"missing","title":"Must not apply"}]}`, nil
+			return `{"version":2,"summary":"Bad target","actions":[{"type":"create_task","project_id":"missing","title":"Must not apply"}]}`, nil
 		}
-		return fmt.Sprintf(`{"version":1,"summary":"Ready","actions":[{"type":"create_task","project_id":%q,"title":"Created once"}]}`, project.ID), nil
+		return fmt.Sprintf(`{"version":2,"summary":"Ready","actions":[{"type":"create_task","project_id":%q,"title":"Created once"}]}`, project.ID), nil
 	})
 
 	if err := runAskWithRunner(cmd, []string{"create one"}, runner, true); err != nil {

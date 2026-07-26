@@ -26,7 +26,7 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	// Disable the Next section limit so a full viewport of rows does not emit a
 	// wrapping "over section limit" warning (orthogonal to the status/badge
 	// height accounting under test).
-	cfg.Settings().SectionLimitNext = intPtr(0)
+	cfg.Settings().SetStateGroupLimit(models.StateGroupNext, 0)
 
 	// Enough task rows to fill the viewport so footer/header accounting matters.
 	tasks := make([]*models.Task, 0, 12)

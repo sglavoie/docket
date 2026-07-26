@@ -228,9 +228,7 @@ func seedAllOutlinerNarrowing(m *OutlinerModel, projectID, taskID string) {
 	m.activeCriteriaFilter = &config.SavedFilter{Name: "crit", Mode: "criteria"}
 	// Common filters (priority + state).
 	m.filter.Priority = 1
-	m.filter.State = models.StateReady
-	// Section filter (F @).
-	m.filter.Sections = map[string]bool{"inbox": true}
+	m.filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateReady), true)
 	// Actionable filter (F r).
 	m.filter.Actionable = true
 	// Pinned-tag tab (a non-"All" tab).
@@ -269,9 +267,6 @@ func assertGlobalAllClean(t *testing.T, m *OutlinerModel) {
 	}
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		t.Fatalf("common filters not cleared: %+v", m.filter.CommonFilterState)
-	}
-	if len(m.filter.Sections) != 0 {
-		t.Fatalf("section filter not cleared: %v", m.filter.Sections)
 	}
 	if m.filter.Actionable {
 		t.Fatal("actionable filter not cleared")
@@ -409,9 +404,8 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.reviewMode = reviewDaily
 		m.filter = NewFilterState()
 		m.filter.Priority = 1
-		m.filter.State = models.StateReady
+		m.filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateReady), true)
 		m.filter.Actionable = true
-		m.filter.Sections = map[string]bool{"inbox": true}
 		m.filter.Tags = map[string]bool{"backend": true}
 		m.SetSearchActive(true)
 		m.SetSearchQuery("alpha")
@@ -435,9 +429,8 @@ func applyScopeVariant(m *OutlinerModel, v int, realTaskID string) {
 		m.reviewMode = reviewActivity
 		m.filter = NewFilterState()
 		m.filter.Priority = 2
-		m.filter.State = models.StateInProgress
+		m.filter.setStateFilter(testWorkflowStateSet(models.StateNext, models.StateInProgress), true)
 		m.filter.Actionable = false
-		m.filter.Sections = map[string]bool{"next": true}
 		m.filter.Tags = map[string]bool{}
 		m.SetSearchActive(true)
 		m.SetSearchQuery("bravo")

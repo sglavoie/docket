@@ -83,7 +83,10 @@ func partitionAndSortWorkflowRules(all []workflow.WorkflowRule) (defaultRules, c
 }
 
 func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
-	if a.Name != b.Name || a.Priority != b.Priority || a.GetTriggerLogic() != b.GetTriggerLogic() {
+	if a.Name != b.Name ||
+		a.Priority != b.Priority ||
+		a.GetLevel() != b.GetLevel() ||
+		a.GetTriggerLogic() != b.GetTriggerLogic() {
 		return true
 	}
 	aTriggers := a.GetTriggers()
@@ -135,6 +138,11 @@ func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
 		if bActionSigs[sig] != count {
 			return true
 		}
+	}
+	aScopeJSON, aScopeErr := json.Marshal(a.Scope)
+	bScopeJSON, bScopeErr := json.Marshal(b.Scope)
+	if aScopeErr != nil || bScopeErr != nil || string(aScopeJSON) != string(bScopeJSON) {
+		return true
 	}
 	return false
 }
@@ -380,6 +388,10 @@ func (a *AutomationConfig) ComputeWorkflowRulesHash() string {
 	var rules []workflow.WorkflowRule
 	for _, rule := range a.WorkflowRules {
 		if rule.Enabled {
+			// TriggerCount is runtime telemetry, not part of the executable
+			// rule definition. Including it would invalidate the evaluation
+			// cache every time a rule fires.
+			rule.TriggerCount = 0
 			rules = append(rules, rule)
 		}
 	}

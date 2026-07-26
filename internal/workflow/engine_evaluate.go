@@ -247,6 +247,7 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 				PreviousTaskMap: evalCtx.PreviousTaskMap,
 				ProjectName:     evalCtx.ProjectName,
 				ProjectID:       evalCtx.ProjectID,
+				TransitionState: evalCtx.TransitionState,
 			}
 			evaluateRulesWithContextRecursive(newEvalCtx, rules, ctx, result)
 		}
@@ -263,11 +264,8 @@ func shouldSkipAllChildrenDoneCompletion(task, prev *models.Task, rule WorkflowR
 	if task == nil {
 		return false
 	}
-	if action.ActionType != ActionSetStatus {
-		return false
-	}
-	target := models.TaskStatus(action.Value)
-	if !target.IsValid() || !target.IsComplete() {
+	target, stateChanging := actionTargetState(action)
+	if !stateChanging || !target.IsTerminal() {
 		return false
 	}
 	if !triggerGroupContainsField(rule.GetTriggerGroup(), FieldAllChildrenDone) {
@@ -327,12 +325,10 @@ func triggerGroupContainsField(group *TriggerGroup, field TriggerField) bool {
 
 func getFieldFromAction(actionType ActionType) string {
 	switch actionType {
-	case ActionSetStatus:
-		return "status"
+	case ActionSetState, ActionSetStatus, ActionSetSection:
+		return "state"
 	case ActionSetPriority:
 		return "priority"
-	case ActionSetSection:
-		return "section"
 	case ActionSetType:
 		return "type"
 	case ActionMoveToProject:

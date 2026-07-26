@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"maps"
 	"strconv"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // buildTentativeThemeConfig reads all color input values and returns a ThemeConfig
@@ -75,6 +77,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	// captured when the view opened, so every field the editor does not own
 	// (fzf/glow, histories, navigation, cross-outliner state) is preserved.
 	s := m.baseSettings
+	s.StateGroupLimits = maps.Clone(s.StateGroupLimits)
 	mach := m.baseMachine
 
 	mach.Editor = editor
@@ -133,19 +136,19 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
 	s.MaxRecentTaskVisits = &maxRecentVisits
 	sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
-	s.SectionLimitActive = &sectionLimitActive
+	s.SetLegacySectionLimit("", sectionLimitActive)
 	sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
-	s.SectionLimitNext = &sectionLimitNext
+	s.SetLegacySectionLimit(models.SectionNext, sectionLimitNext)
 	sectionLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
-	s.SectionLimitInbox = &sectionLimitInbox
+	s.SetLegacySectionLimit(models.SectionInbox, sectionLimitInbox)
 	sectionLimitStandby, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
-	s.SectionLimitStandby = &sectionLimitStandby
+	s.SetLegacySectionLimit(models.SectionStandby, sectionLimitStandby)
 	sectionLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
-	s.SectionLimitWaiting = &sectionLimitWaiting
+	s.SetLegacySectionLimit(models.SectionWaiting, sectionLimitWaiting)
 	sectionLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
-	s.SectionLimitSomeday = &sectionLimitSomeday
+	s.SetLegacySectionLimit(models.SectionSomeday, sectionLimitSomeday)
 	sectionLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
-	s.SectionLimitReview = &sectionLimitReview
+	s.SetLegacySectionLimit(models.SectionReview, sectionLimitReview)
 	mach.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	mach.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 	mach.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())

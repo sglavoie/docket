@@ -77,6 +77,6 @@ func TestTemplateAddSectionValidation(t *testing.T) {
 		if tmpl == nil {
 			t.Fatal("template not found after add")
 		}
-		testutil.AssertEqual(t, tmpl.Section, models.SectionInbox)
+		testutil.AssertEqual(t, tmpl.State, models.StateInbox)
 	})
 }

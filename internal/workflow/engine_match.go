@@ -88,6 +88,9 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 	}
 
 	switch trigger.Field {
+	case FieldStateChanged:
+		return matchesStateTransition(prev.State(), task.State(), trigger.Operation, trigger.Value)
+
 	case FieldStatusChanged:
 		return matchesTransition(
 			getPrevValue(prev, statusFieldValue),
@@ -183,6 +186,32 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 	return false
 }
 
+// matchesStateTransition evaluates a canonical state transition against its
+// validated endpoint sets. A transition event requires an actual state change;
+// not_equals negates the endpoint match, not the existence of the event.
+func matchesStateTransition(oldState, newState models.WorkflowState, operation TriggerOperation, value string) bool {
+	if oldState == newState {
+		return false
+	}
+	pattern, err := ParseStateTransitionPattern(value)
+	if err != nil {
+		return false
+	}
+	matches := stateEndpointMatches(pattern.From, oldState) && stateEndpointMatches(pattern.To, newState)
+	switch operation {
+	case OpEquals:
+		return matches
+	case OpNotEquals:
+		return !matches
+	default:
+		return false
+	}
+}
+
+func stateEndpointMatches(endpoint StateTransitionEndpoint, state models.WorkflowState) bool {
+	return endpoint.Any || endpoint.States.Contains(state)
+}
+
 // matchesTransition checks if a field transition matches the pattern "old->new".
 func matchesTransition(oldVal, newVal, pattern string) bool {
 	if oldVal == newVal {
@@ -255,6 +284,12 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 	}()
 
 	switch trigger.Field {
+	case FieldParentState:
+		if task.Parent == nil {
+			return false
+		}
+		return matchesWorkflowState(task.Parent.State(), trigger.Operation, trigger.Value)
+
 	case FieldParentStatus:
 		if task.Parent == nil {
 			return false
@@ -400,6 +435,8 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	var fieldValue string
 
 	switch trigger.Field {
+	case FieldState:
+		return matchesWorkflowState(task.State(), trigger.Operation, trigger.Value)
 	case FieldStatus:
 		fieldValue = statusFieldValue(task)
 	case FieldPriority:
@@ -440,6 +477,28 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	}
 
 	return compareValues(fieldValue, trigger.Operation, trigger.Value)
+}
+
+// matchesWorkflowState evaluates equals/not_equals and in/not_in directly
+// against a validated canonical state set. Invalid hand-built rules fail closed
+// even when a caller bypasses rule validation.
+func matchesWorkflowState(state models.WorkflowState, operation TriggerOperation, value string) bool {
+	states, err := ParseWorkflowStateSet(value)
+	if err != nil {
+		return false
+	}
+	if (operation == OpEquals || operation == OpNotEquals) && states.Len() != 1 {
+		return false
+	}
+	contains := states.Contains(state)
+	switch operation {
+	case OpEquals, OpIn:
+		return contains
+	case OpNotEquals, OpNotIn:
+		return !contains
+	default:
+		return false
+	}
 }
 
 func matchesTagTrigger(tags []string, trigger RuleTrigger) bool {

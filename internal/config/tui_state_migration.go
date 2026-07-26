@@ -25,6 +25,9 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(s)); err != nil {
 		return err
 	}
+	if err := s.decodeLegacySectionLimits(data); err != nil {
+		return err
+	}
 	if !jsonObjectHasKey(data, "tui_state_version") {
 		s.TUIStateVersion = 0
 	}
@@ -58,6 +61,9 @@ func (p *PlanningState) MigrateTUIState() (bool, error) {
 	}
 
 	changed := p.MigrateLegacyFilters()
+	if p.NormalizePlanningMemberships() {
+		changed = true
+	}
 	if p.TUIStateVersion != CurrentTUIStateVersion {
 		p.TUIStateVersion = CurrentTUIStateVersion
 		changed = true
@@ -66,7 +72,10 @@ func (p *PlanningState) MigrateTUIState() (bool, error) {
 }
 
 // MigrateTUIState advances the portable settings marker. Retired settings are
-// ignored while decoding and disappear on the next write.
+// ignored while decoding and disappear on the next write. Legacy section WIP
+// values are decoded into canonical state-group limits before this method runs;
+// the marker below makes that rewrite durable even for an otherwise-current
+// settings payload.
 func (s *Settings) MigrateTUIState() (bool, error) {
 	if s == nil {
 		return false, nil
@@ -74,7 +83,8 @@ func (s *Settings) MigrateTUIState() (bool, error) {
 	if s.TUIStateVersion > CurrentTUIStateVersion {
 		return false, fmt.Errorf("settings: TUI state version %d not supported, please upgrade tt", s.TUIStateVersion)
 	}
-	changed := false
+	changed := s.legacySectionLimitsDecoded
+	s.legacySectionLimitsDecoded = false
 	if s.TUIStateVersion != CurrentTUIStateVersion {
 		s.TUIStateVersion = CurrentTUIStateVersion
 		changed = true

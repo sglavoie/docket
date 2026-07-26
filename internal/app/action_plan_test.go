@@ -135,6 +135,47 @@ func TestActionPlanDisplaySafetyPreservesMultilineMarkdownDescription(t *testing
 	}
 }
 
+func TestActionPlanCreateTaskUsesCanonicalStateContract(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		state *models.WorkflowState
+		want  models.WorkflowState
+	}{
+		{name: "omitted defaults to Inbox", want: models.StateInbox},
+		{name: "explicit state is applied", state: func() *models.WorkflowState {
+			state := models.StatePaused
+			return &state
+		}(), want: models.StatePaused},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			project := newProject("p1", "Alpha")
+			repo := newFakeRepo(project)
+			service := newTestService(repo)
+			title := "AI-created task"
+
+			prepared, err := service.PrepareActionPlan(app.ActionPlan{
+				Version: app.ActionPlanVersion,
+				Actions: []app.Action{{
+					Type: app.ActionCreateTask, ProjectID: project.ID, Title: &title, State: tc.state,
+				}},
+			})
+			if err != nil {
+				t.Fatalf("PrepareActionPlan: %v", err)
+			}
+			if _, err := service.ApplyPreparedActionPlan(context.Background(), prepared, app.ApplyActionPlanOptions{ConfirmSafe: true}); err != nil {
+				t.Fatalf("ApplyPreparedActionPlan: %v", err)
+			}
+			if len(repo.commits) != 1 {
+				t.Fatalf("commits = %d, want one atomic transaction", len(repo.commits))
+			}
+			committed := repo.commits[0][0].Project
+			if len(committed.Tasks) != 1 || committed.Tasks[0].State() != tc.want {
+				t.Fatalf("created tasks = %+v, want one task in %s", committed.Tasks, tc.want)
+			}
+		})
+	}
+}
+
 func TestPreparedActionPlanDefensivelyRetainsInputSnapshotAndPreview(t *testing.T) {
 	task := newTask("task-1", 1, "Original")
 	project := newProject("p1", "Alpha", task)
@@ -437,7 +478,7 @@ func TestActionPlanCancellationAndRevisionConflictCommitNothing(t *testing.T) {
 			project := newProject("p1", "Alpha", task)
 			repo := newFakeRepo(project)
 			service := newTestService(repo)
-			plan := app.ActionPlan{Version: 1, Actions: []app.Action{{Type: app.ActionEditTask, TaskID: task.ID, Title: strptr("Changed")}}}
+			plan := app.ActionPlan{Version: app.ActionPlanVersion, Actions: []app.Action{{Type: app.ActionEditTask, TaskID: task.ID, Title: strptr("Changed")}}}
 			prepared, prepareErr := service.PrepareActionPlan(plan)
 			if prepareErr != nil {
 				t.Fatalf("PrepareActionPlan: %v", prepareErr)
@@ -467,7 +508,7 @@ func TestActionPlanRollbackThroughWorkspaceUndo(t *testing.T) {
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 	service := app.NewService(repo, nil, nil)
-	plan := app.ActionPlan{Version: 1, Summary: "AI edit", Actions: []app.Action{{Type: app.ActionEditTask, TaskID: taskID, Title: strptr("After")}}}
+	plan := app.ActionPlan{Version: app.ActionPlanVersion, Summary: "AI edit", Actions: []app.Action{{Type: app.ActionEditTask, TaskID: taskID, Title: strptr("After")}}}
 
 	prepared, err := service.PrepareActionPlan(plan)
 	if err != nil {

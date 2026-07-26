@@ -74,9 +74,12 @@ func NewTaskFormModelCreateFromTemplate(
 	if len(tmpl.Tags) > 0 {
 		m.draft.tags = append([]string{}, tmpl.Tags...)
 	}
-	if tmpl.Section != "" {
-		project.EnsureSection(tmpl.Section)
-		m.draft.section = tmpl.Section
+	m.presetState = tmpl.EffectiveState()
+	if section := models.SectionForState(m.presetState); section != "" {
+		project.EnsureSection(section)
+		m.draft.section = section
+	} else {
+		m.draft.section = ""
 	}
 	if tmpl.Description != "" {
 		m.draft.desc = tmpl.Description

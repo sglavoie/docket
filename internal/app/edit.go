@@ -162,7 +162,9 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 		if *req.WorkflowState == originalState {
 			task.ApplyWorkflowState(originalState)
 		} else {
-			task.ApplyStateTransition(*req.WorkflowState)
+			if err := applyState(task, *req.WorkflowState, s.clock.Now()); err != nil {
+				return invalidInput("workflow state", err.Error())
+			}
 		}
 	}
 	task.UpdatedAt = s.clock.Now()

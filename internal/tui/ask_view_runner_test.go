@@ -35,7 +35,7 @@ func TestAskViewRunnerUsesRememberedHarnessConfigAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtime := config.NewRuntimeState(t.TempDir(), domains)
-	stream := newScriptedAskStream([]byte(`{"version":1,"summary":"ok","actions":[]}`), 5, nil)
+	stream := newScriptedAskStream([]byte(`{"version":2,"summary":"ok","actions":[]}`), 5, nil)
 	runner := &fakeAskRunner{streams: []external.Stream{stream}}
 	project := &models.Project{ID: "p1", Slug: "demo", Name: "Demo"}
 	m := NewAskViewModelWithRunner(project, "", runtime, nil, runner)
@@ -120,7 +120,7 @@ func TestAskViewConsentPersistenceFailureDoesNotInvokeRunner(t *testing.T) {
 	}
 	runtime := config.NewRuntimeState(dataDir, config.NewDomains())
 	runner := &fakeAskRunner{streams: []external.Stream{
-		newScriptedAskStream([]byte(`{"version":1,"summary":"must not run","actions":[]}`), 16, nil),
+		newScriptedAskStream([]byte(`{"version":2,"summary":"must not run","actions":[]}`), 16, nil),
 	}}
 	m := NewAskViewModelWithRunner(&models.Project{ID: "p1"}, "", runtime, nil, runner)
 	m.state = askStateConsent
@@ -143,7 +143,7 @@ func TestAskViewConsentPersistenceFailureDoesNotInvokeRunner(t *testing.T) {
 func TestAskViewStaleConsentSaveAfterEscapeDoesNotInvokeRunner(t *testing.T) {
 	runtime := config.EmptyRuntimeState("")
 	runner := &fakeAskRunner{streams: []external.Stream{
-		newScriptedAskStream([]byte(`{"version":1,"summary":"must not run","actions":[]}`), 16, nil),
+		newScriptedAskStream([]byte(`{"version":2,"summary":"must not run","actions":[]}`), 16, nil),
 	}}
 	m := NewAskViewModelWithRunner(&models.Project{ID: "p1"}, "", runtime, nil, runner)
 	m.state = askStateConsent
@@ -260,7 +260,7 @@ func TestAskViewConsentSaveOperationIdentity(t *testing.T) {
 
 func TestAskViewEmptyQueryDoesNotInvokeRunner(t *testing.T) {
 	runner := &fakeAskRunner{streams: []external.Stream{
-		newScriptedAskStream([]byte(`{"version":1,"summary":"must not run","actions":[]}`), 16, nil),
+		newScriptedAskStream([]byte(`{"version":2,"summary":"must not run","actions":[]}`), 16, nil),
 	}}
 	m := NewAskViewModelWithRunner(nil, "", nil, nil, runner)
 	m.state = askStateConsent
@@ -286,7 +286,7 @@ func TestAskViewStreamingSuccessPreviewsAndAppliesOnce(t *testing.T) {
 	}
 	project.Path = filepath.Join(t.TempDir(), "projects", project.Slug)
 	service := app.NewService(newTestAppRepo(project), nil, nil)
-	response := `{"version":1,"summary":"create it","actions":[{"type":"create_task","project_id":"` + project.ID + `","title":"From stream"}]}`
+	response := `{"version":2,"summary":"create it","actions":[{"type":"create_task","project_id":"` + project.ID + `","title":"From stream"}]}`
 	stream := newScriptedAskStream([]byte(response), 9, nil)
 	runner := &fakeAskRunner{streams: []external.Stream{stream}}
 	m := NewAskViewModelWithRunner(project, "", config.EmptyRuntimeState(""), service, runner)
@@ -322,7 +322,7 @@ func TestAskViewStreamingSuccessPreviewsAndAppliesOnce(t *testing.T) {
 
 func TestAskViewEOFWaitSurfacesExitErrorSafely(t *testing.T) {
 	waitErr := errors.New("codex exited with code 7: \x1b[2Jbad\rstderr")
-	stream := newScriptedAskStream([]byte(`{"version":1,"summary":"ignored","actions":[]}`), 32, waitErr)
+	stream := newScriptedAskStream([]byte(`{"version":2,"summary":"ignored","actions":[]}`), 32, waitErr)
 	runner := &fakeAskRunner{streams: []external.Stream{stream}}
 	m := NewAskViewModelWithRunner(nil, "", nil, nil, runner)
 
@@ -340,7 +340,7 @@ func TestAskViewEOFWaitSurfacesExitErrorSafely(t *testing.T) {
 
 func TestAskViewCancellationIsNonBlockingAndOldCompletionIsStale(t *testing.T) {
 	oldStream := newBlockingAskStream()
-	newStream := newScriptedAskStream([]byte(`{"version":1,"summary":"new result","actions":[]}`), 11, nil)
+	newStream := newScriptedAskStream([]byte(`{"version":2,"summary":"new result","actions":[]}`), 11, nil)
 	runner := &fakeAskRunner{streams: []external.Stream{oldStream, newStream}}
 	m := NewAskViewModelWithRunner(nil, "", nil, nil, runner)
 
@@ -390,7 +390,7 @@ func TestAskViewPreviousInstanceStreamIsNotAdopted(t *testing.T) {
 	})
 	previousStart := askStartMessage(t, previous.submitQuery("previous request"))
 
-	currentStream := newScriptedAskStream([]byte(`{"version":1,"summary":"current","actions":[]}`), 16, nil)
+	currentStream := newScriptedAskStream([]byte(`{"version":2,"summary":"current","actions":[]}`), 16, nil)
 	current := NewAskViewModelWithRunner(nil, "", nil, nil, &fakeAskRunner{
 		streams: []external.Stream{currentStream},
 	})

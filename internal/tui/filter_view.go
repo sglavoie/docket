@@ -16,7 +16,7 @@ type FilterType int
 const (
 	FilterCompleted FilterType = iota
 	FilterTypeFilter
-	FilterStatusFilter
+	FilterStateFilter
 	FilterPriorityFilter
 	FilterTagFilter
 	FilterDueDateFilter
@@ -82,12 +82,21 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if m.filter.Status != "" {
+	if m.filter.hasStateFilter() {
+		values := m.filter.States.Values()
+		names := make([]string, len(values))
+		for i, state := range values {
+			names[i] = string(state)
+		}
+		value := "(none)"
+		if len(names) > 0 {
+			value = strings.Join(names, ", ")
+		}
 		m.items = append(m.items, FilterItem{
-			Name:       "Status",
-			Value:      string(m.filter.Status),
+			Name:       "State",
+			Value:      value,
 			Key:        fmt.Sprintf("%d", keyNum),
-			FilterType: FilterStatusFilter,
+			FilterType: FilterStateFilter,
 		})
 		keyNum++
 	}
@@ -146,8 +155,8 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 	switch filterType {
 	case FilterTypeFilter:
 		m.filter.Type = ""
-	case FilterStatusFilter:
-		m.filter.Status = ""
+	case FilterStateFilter:
+		m.filter.setStateFilter(models.WorkflowStateSet{}, false)
 	case FilterPriorityFilter:
 		m.filter.Priority = 0
 	case FilterTagFilter:
@@ -162,7 +171,7 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 // clearAllFilters clears all active filters.
 func (m *FilterViewModel) clearAllFilters() {
 	m.filter.Type = ""
-	m.filter.Status = ""
+	m.filter.setStateFilter(models.WorkflowStateSet{}, false)
 	m.filter.Priority = 0
 	m.filter.Tags = make(map[string]bool)
 	m.filter.DueDate = DueDateAll

@@ -39,6 +39,11 @@ func TestPerformTargetedUndo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}
+	if !strings.Contains(string(content), "<!-- tt-schema: 2 -->") ||
+		strings.Contains(string(content), "status:") ||
+		strings.Contains(string(content), "section:") {
+		t.Fatalf("targeted undo did not write canonical lifecycle metadata:\n%s", content)
+	}
 
 	taskMap := make(map[string]*models.Task)
 	for _, task := range result.Tasks {
@@ -86,6 +91,11 @@ func TestPerformTargetedRedo(t *testing.T) {
 	result, parseErr := ParseTasksMarkdownWithSections(string(content))
 	if parseErr != nil {
 		t.Fatalf("failed to parse restored content: %v", parseErr)
+	}
+	if !strings.Contains(string(content), "<!-- tt-schema: 2 -->") ||
+		strings.Contains(string(content), "status:") ||
+		strings.Contains(string(content), "section:") {
+		t.Fatalf("targeted redo did not write canonical lifecycle metadata:\n%s", content)
 	}
 
 	taskMap := make(map[string]*models.Task)

@@ -22,13 +22,13 @@ DEFAULT RULES
     When due_days < 0: add tag #overdue
 
   Mark Stale In-Progress
-    When status = in_progress AND updated_days > 14: add tag #stale
+    When state = in_progress AND updated_days > 14: add tag #stale
 
   Auto-complete Epic
-    When type = epic AND all_children_done = true: set status done
+    When type = epic AND all_children_done = true: set state to done
 
   Route Completed Tasks
-    When completed = true: move to Completed section
+    When completed = true: set state to done
 
 FLAGS
 

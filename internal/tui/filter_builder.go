@@ -1,11 +1,15 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // Smart list field definitions for the criteria builder.
@@ -14,17 +18,16 @@ import (
 type SLField struct {
 	Name       string
 	Operations []string
-	ValueType  string   // "enum", "text", "numeric", "bool"
+	ValueType  string   // "enum", "text", "numeric", "states"
 	EnumValues []string // for enum type
 }
 
 var smartListFields = []SLField{
 	{Name: "type", Operations: []string{"equals", "not_equals"}, ValueType: "enum", EnumValues: []string{"epic", "story", "task", "bug", "idea"}},
-	{Name: "status", Operations: []string{"equals", "not_equals"}, ValueType: "enum", EnumValues: []string{"todo", "in_progress", "review", "standby", "maybe", "blocked", "done", "canceled"}},
+	{Name: "state", Operations: []string{"in", "not_in"}, ValueType: "states"},
 	{Name: "priority", Operations: []string{"equals", "less_than", "greater_than"}, ValueType: "enum", EnumValues: []string{"1", "2", "3", "4", "5"}},
 	{Name: "tags", Operations: []string{"contains"}, ValueType: "text"},
 	{Name: "due_date", Operations: []string{"equals"}, ValueType: "enum", EnumValues: []string{"overdue", "today", "this_week", "none"}},
-	{Name: "section", Operations: []string{"equals", "not_equals"}, ValueType: "text"},
 	{Name: "score_min", Operations: []string{"greater_than"}, ValueType: "numeric"},
 	{Name: "actionable", Operations: []string{"equals"}, ValueType: "enum", EnumValues: []string{"true", "false"}},
 	{Name: "parked", Operations: []string{"equals"}, ValueType: "enum", EnumValues: []string{"true", "false"}},
@@ -147,6 +150,13 @@ func NewFilterEditorModel(runtime *config.RuntimeState, sf *config.SavedFilter) 
 						break
 					}
 				}
+			} else if field.ValueType == "states" {
+				values := c.States.Values()
+				states := make([]string, len(values))
+				for j, state := range values {
+					states[j] = string(state)
+				}
+				valueInput.SetValue(strings.Join(states, ","))
 			} else {
 				valueInput.SetValue(c.Value)
 			}
@@ -304,6 +314,11 @@ func (m *FilterBuilderModel) buildSavedFilter() config.SavedFilter {
 			Operation: op,
 			Value:     value,
 		}
+		if field.ValueType == "states" {
+			states, _ := parseWorkflowStateSetInput(c.valueInput.Value())
+			criteria[i].Value = ""
+			criteria[i].States = states
+		}
 	}
 
 	id := m.editingID
@@ -319,6 +334,26 @@ func (m *FilterBuilderModel) buildSavedFilter() config.SavedFilter {
 		Logic:            m.logic,
 		IncludeCompleted: m.includeCompleted,
 	}
+}
+
+func parseWorkflowStateSetInput(value string) (models.WorkflowStateSet, error) {
+	parts := strings.Split(value, ",")
+	states := make([]models.WorkflowState, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		states = append(states, models.WorkflowState(strings.ToLower(part)))
+	}
+	if len(states) == 0 {
+		return models.WorkflowStateSet{}, fmt.Errorf("state criterion requires at least one canonical state")
+	}
+	set, err := models.NewWorkflowStateSet(states...)
+	if err != nil {
+		return models.WorkflowStateSet{}, err
+	}
+	return set, nil
 }
 
 func (m *FilterBuilderModel) StatusBarLabel() string { return "Smart List" }

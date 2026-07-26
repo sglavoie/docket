@@ -200,7 +200,7 @@ func (m *OutlinerModel) pasteFromClipboardInto(proj *models.Project) tea.Cmd {
 		ProjectID:   proj.ID,
 		Title:       pt.Title,
 		Description: pt.Description,
-		Section:     models.SectionInbox,
+		State:       models.StateInbox,
 		URL:         pt.URL,
 		Prepend:     true,
 	})

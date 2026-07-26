@@ -72,6 +72,9 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	sectionStyle := GetViewModeStyleForSection(row.SectionName)
+	if row.StateGroup.IsValid() {
+		sectionStyle = GetWorkflowStateGroupStyle(row.StateGroup)
+	}
 	prefix := "@ "
 	if row.IsLensHeader {
 		prefix = "◷ "
@@ -85,7 +88,13 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		Prefix:      prefix,
 	})
 
-	if limit := m.runtime.Settings().GetSectionLimit(row.SectionName); !row.IsLensHeader && limit > 0 && row.SectionCount > limit {
+	limit := 0
+	if row.StateGroup.IsValid() {
+		limit = m.runtime.Settings().GetStateGroupLimit(row.StateGroup)
+	} else {
+		limit = m.runtime.Settings().GetSectionLimit(row.SectionName)
+	}
+	if !row.IsLensHeader && limit > 0 && row.SectionCount > limit {
 		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
 	}
 	if row.ProjectID != "" {

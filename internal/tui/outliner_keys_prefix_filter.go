@@ -63,7 +63,6 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		// it survives here and is reset solely by the global reset.
 		clearCommonFilters(&m.filter.CommonFilterState)
 		m.filter.Actionable = false
-		m.filter.Sections = make(map[string]bool)
 		m.ClearSearch()
 		m.resetViewScrollOffset()
 		m.rebuildRows()

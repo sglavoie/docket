@@ -12,14 +12,11 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-// Focus Queue and Daily Plan are planning collections persisted in config, not
-// task workflow states. Their mutation commands operate purely on config through
-// config.Manager.Save and never touch project storage, so they stay off the
-// application-layer task-mutation boundary.
+// Focus Queue and Daily Plan mutations route through the application planning
+// service so task state and planning membership commit atomically.
 
 var (
 	focusQueueAddCmd = &cobra.Command{
@@ -157,44 +154,22 @@ func runFocusQueueAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Queue membership is the StateNext workflow state. When the task is not yet
-	// Next this is a Today->Next move: transition to StateNext and fold the
-	// exclusivity drop (leave Today) plus the Next order append into one ledger
-	// transaction, so state and planning commit and undo atomically.
-	if task.State() != models.StateNext {
-		projectID := project.ID
-		if transitionErr := setFocusQueueState(workspace, task, project, models.StateNext, "Move to Next", func(p *config.PlanningState) {
-			if !focusQueueContains(p, task.ID, projectID) {
-				p.SetFocusQueue(append(p.GetFocusQueue(), config.FocusQueueItem{TaskID: task.ID, ProjectID: projectID}))
-			}
-		}); transitionErr != nil {
-			return transitionErr
-		}
-		return emitFocusMutation(out, "queued", task, project, len(workspace.Runtime.Planning().FocusQueue))
+	alreadyQueued := task.State() == models.StateNext &&
+		focusQueueContains(workspace.Runtime.Planning(), task.ID, project.ID)
+	if _, err := newWorkspaceAppService(workspace).ApplyPlanning(app.PlanningRequest{
+		Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Action:  app.PlanningAddNext,
+	}); err != nil {
+		return translateAppError(err)
 	}
-
-	// Already Next: no state move to be atomic with — record ordering (and any
-	// stale Today drop) through a standalone planning commit.
-	domains, err := cloneCLIWorkspaceDomains(workspace)
-	if err != nil {
+	if err := workspace.Runtime.Reload(); err != nil {
 		return err
-	}
-	planning := domains.Planning
-	dropped := planning.RemoveFromDailyPlanInProject(task.ID, project.ID)
-	alreadyQueued := focusQueueContains(planning, task.ID, project.ID)
-	if !alreadyQueued {
-		planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{TaskID: task.ID, ProjectID: project.ID})
-	}
-	if !alreadyQueued || dropped {
-		if err := commitCLIPlanning(workspace, planning); err != nil {
-			return err
-		}
 	}
 	action := "queued"
 	if alreadyQueued {
 		action = "already queued"
 	}
-	return emitFocusMutation(out, action, task, project, len(planning.FocusQueue))
+	return emitFocusMutation(out, action, task, project, len(workspace.Runtime.Planning().FocusQueue))
 }
 
 func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
@@ -217,76 +192,16 @@ func runFocusQueueRemove(cmd *cobra.Command, args []string) error {
 		return emitFocusMutation(out, "not in queue", task, project, len(workspace.Runtime.Planning().FocusQueue))
 	}
 
-	// Leaving Next is a Next->none move: transition to StateReady and fold the
-	// order-entry drop (Today/Next exclusivity for the non-Next result) into the
-	// same ledger transaction.
-	if wasNext {
-		if transitionErr := setFocusQueueState(workspace, task, project, models.StateReady, "Leave Next", nil); transitionErr != nil {
-			return transitionErr
-		}
-		return emitFocusMutation(out, "dequeued", task, project, len(workspace.Runtime.Planning().FocusQueue))
-	}
-
-	// Not Next but has a stale order entry: pure planning cleanup.
-	domains, err := cloneCLIWorkspaceDomains(workspace)
-	if err != nil {
-		return err
-	}
-	planning := domains.Planning
-	planning.RemoveFromFocusQueueInProject(task.ID, project.ID)
-	if err := commitCLIPlanning(workspace, planning); err != nil {
-		return err
-	}
-	return emitFocusMutation(out, "dequeued", task, project, len(planning.FocusQueue))
-}
-
-// setFocusQueueState moves a task to target through the workflow-aware
-// application transaction (one ledger-undoable ChangeSet), folding the planning
-// change the move implies (Today/Next exclusivity plus the caller's additive
-// order/plan edit) into the same transaction so state and planning commit — and
-// undo — together. It refreshes the workspace runtime so callers read
-// post-mutation planning state. A nil planningMutate folds only the exclusivity
-// reconciliation.
-func setFocusQueueState(workspace *CLIWorkspace, task *models.Task, project *models.Project, target models.WorkflowState, undoAction string, planningMutate func(*config.PlanningState)) error {
-	workflows := newCLIWorkflowRunner(workspace)
-	defer workflows.flush()
-	opts := workflows.options(true, undoAction, task)
-	opts.PlanningArtifacts = focusPlanningArtifactBuilder(workspace, planningMutate)
-	cascade, err := withResultRetry(func() (app.BulkResult, error) {
-		return workflows.service.StateWithWorkflowByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, target, opts)
-	})
-	if err != nil {
+	if _, err := newWorkspaceAppService(workspace).ApplyPlanning(app.PlanningRequest{
+		Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Action:  app.PlanningRemoveNext,
+	}); err != nil {
 		return translateAppError(err)
 	}
-	workflows.observe(cascade)
-	return nil
-}
-
-// focusPlanningArtifactBuilder renders the planning.json artifact that rides a
-// focus-command state move: it loads the current planning, applies Today/Next
-// exclusivity for the transitioned task, then applies the caller's additive edit
-// (append a Next order entry, add a Daily Plan entry) on top, and returns one
-// revision-checked artifact for the transition's transaction.
-func focusPlanningArtifactBuilder(workspace *CLIWorkspace, extra func(*config.PlanningState)) app.PlanningArtifactBuilder {
-	if workspace == nil || workspace.Manager == nil {
-		return nil
+	if err := workspace.Runtime.Reload(); err != nil {
+		return err
 	}
-	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
-		coord := workspace.Manager.DomainCoordinator()
-		planning, err := coord.LoadPlanning()
-		if err != nil {
-			return nil, err
-		}
-		reconcilePlanningExclusivity(planning, targets)
-		if extra != nil {
-			extra(planning)
-		}
-		artifact, err := coord.CheckedPlanningArtifact(planning)
-		if err != nil {
-			return nil, err
-		}
-		return []storage.ArtifactChange{artifact.StorageChange()}, nil
-	}
+	return emitFocusMutation(out, "dequeued", task, project, len(workspace.Runtime.Planning().FocusQueue))
 }
 
 // focusQueueContains reports whether the Next order index already lists the
@@ -383,8 +298,11 @@ func runFocusQueueMove(cmd *cobra.Command, args []string) error {
 	for _, ft := range ordered {
 		rebuilt = append(rebuilt, config.FocusQueueItem{TaskID: ft.Task.ID, ProjectID: ft.Project.ID})
 	}
-	planning.SetFocusQueue(rebuilt)
-	if err := commitCLIPlanning(workspace, planning); err != nil {
+	order := make([]app.TaskLocator, 0, len(rebuilt))
+	for _, item := range rebuilt {
+		order = append(order, app.TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID})
+	}
+	if err := newWorkspaceAppService(workspace).ReorderNext(order); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, fmt.Sprintf("moved to position %d", target+1), task, project, len(ordered))
@@ -404,44 +322,22 @@ func runFocusTodayAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Mutual exclusivity: Today and Next are exclusive horizons, so a task planned
-	// for Today must leave Next. When the task is StateNext this is a Next->Today
-	// move: transition out through the ledger and fold both the order-entry drop
-	// (exclusivity for the non-Next result) and the Daily Plan add into one
-	// transaction so state and planning commit and undo atomically.
-	wasNext := task.State() == models.StateNext
-	plannedDate := time.Now().Format("2006-01-02")
-	projectID := project.ID
-	addPlan := func(p *config.PlanningState) {
-		if !dailyPlanContains(p, task.ID, projectID) {
-			p.SetDailyPlan(append(p.GetDailyPlan(), config.DailyPlanItem{
-				TaskID:      task.ID,
-				ProjectID:   projectID,
-				PlannedDate: plannedDate,
-			}))
-		}
+	alreadyPlanned := dailyPlanContains(workspace.Runtime.Planning(), task.ID, project.ID)
+	if _, err := newWorkspaceAppService(workspace).ApplyPlanning(app.PlanningRequest{
+		Locator:     app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Action:      app.PlanningAddToday,
+		PlannedDate: time.Now().Format("2006-01-02"),
+	}); err != nil {
+		return translateAppError(err)
 	}
-	if wasNext {
-		if transitionErr := setFocusQueueState(workspace, task, project, models.StateReady, "Plan for Today", addPlan); transitionErr != nil {
-			return transitionErr
-		}
-		return emitFocusMutation(out, "planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
-	}
-
-	// Not Next: pure planning add (no state move to be atomic with).
-	if dailyPlanContains(workspace.Runtime.Planning(), task.ID, project.ID) {
-		return emitFocusMutation(out, "already planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
-	}
-	domains, err := cloneCLIWorkspaceDomains(workspace)
-	if err != nil {
+	if err := workspace.Runtime.Reload(); err != nil {
 		return err
 	}
-	planning := domains.Planning
-	addPlan(planning)
-	if err := commitCLIPlanning(workspace, planning); err != nil {
-		return err
+	action := "planned"
+	if alreadyPlanned {
+		action = "already planned"
 	}
-	return emitFocusMutation(out, "planned", task, project, len(planning.DailyPlan))
+	return emitFocusMutation(out, action, task, project, len(workspace.Runtime.Planning().DailyPlan))
 }
 
 func runFocusTodayRemove(cmd *cobra.Command, args []string) error {
@@ -458,28 +354,20 @@ func runFocusTodayRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	domains, err := cloneCLIWorkspaceDomains(workspace)
-	if err != nil {
-		return err
-	}
-	planning := domains.Planning
-	filtered := make([]config.DailyPlanItem, 0, len(planning.DailyPlan))
-	removed := false
-	for _, item := range planning.DailyPlan {
-		if item.TaskID == task.ID && item.ProjectID == project.ID {
-			removed = true
-			continue
-		}
-		filtered = append(filtered, item)
-	}
+	removed := dailyPlanContains(workspace.Runtime.Planning(), task.ID, project.ID)
 	if !removed {
-		return emitFocusMutation(out, "not planned", task, project, len(planning.DailyPlan))
+		return emitFocusMutation(out, "not planned", task, project, len(workspace.Runtime.Planning().DailyPlan))
 	}
-	planning.DailyPlan = filtered
-	if err := commitCLIPlanning(workspace, planning); err != nil {
+	if _, err := newWorkspaceAppService(workspace).ApplyPlanning(app.PlanningRequest{
+		Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Action:  app.PlanningRemoveToday,
+	}); err != nil {
+		return translateAppError(err)
+	}
+	if err := workspace.Runtime.Reload(); err != nil {
 		return err
 	}
-	return emitFocusMutation(out, "unplanned", task, project, len(filtered))
+	return emitFocusMutation(out, "unplanned", task, project, len(workspace.Runtime.Planning().DailyPlan))
 }
 
 func runFocusTodayClear(cmd *cobra.Command, args []string) error {
@@ -491,13 +379,7 @@ func runFocusTodayClear(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	domains, err := cloneCLIWorkspaceDomains(workspace)
-	if err != nil {
-		return err
-	}
-	planning := domains.Planning
-	planning.DailyPlan = nil
-	if err := commitCLIPlanning(workspace, planning); err != nil {
+	if err := newWorkspaceAppService(workspace).ClearToday(); err != nil {
 		return err
 	}
 	return emitFocusMutation(out, "cleared today's plan", nil, nil, 0)

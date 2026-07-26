@@ -7,6 +7,92 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// StateTransitionEndpoint is one side of a state_changed transition pattern.
+// Any represents "*"; otherwise States contains one or more canonical states.
+type StateTransitionEndpoint struct {
+	Any    bool
+	States models.WorkflowStateSet
+}
+
+// String returns the endpoint in deterministic canonical state order.
+func (e StateTransitionEndpoint) String() string {
+	if e.Any {
+		return "*"
+	}
+	values := e.States.Values()
+	parts := make([]string, 0, len(values))
+	for _, state := range values {
+		parts = append(parts, string(state))
+	}
+	return strings.Join(parts, ",")
+}
+
+// StateTransitionPattern is the parsed representation of a state_changed
+// trigger value.
+type StateTransitionPattern struct {
+	From StateTransitionEndpoint
+	To   StateTransitionEndpoint
+}
+
+// String returns the transition in deterministic canonical state order.
+func (p StateTransitionPattern) String() string {
+	return p.From.String() + "->" + p.To.String()
+}
+
+// ParseWorkflowStateSet parses a non-empty comma-separated set of canonical
+// workflow states. Whitespace and duplicates are normalized.
+func ParseWorkflowStateSet(value string) (models.WorkflowStateSet, error) {
+	parts := strings.Split(value, ",")
+	states := make([]models.WorkflowState, 0, len(parts))
+	for _, part := range parts {
+		raw := strings.TrimSpace(part)
+		if raw == "" {
+			return models.WorkflowStateSet{}, fmt.Errorf("state set contains an empty value")
+		}
+		state, ok := models.ParseWorkflowState(raw)
+		if !ok {
+			return models.WorkflowStateSet{}, fmt.Errorf("invalid workflow state %q", raw)
+		}
+		states = append(states, state)
+	}
+	if len(states) == 0 {
+		return models.WorkflowStateSet{}, fmt.Errorf("state set must contain at least one state")
+	}
+	return models.NewWorkflowStateSet(states...)
+}
+
+// ParseStateTransitionEndpoint parses "*", one canonical state, or a
+// comma-separated canonical state set.
+func ParseStateTransitionEndpoint(value string) (StateTransitionEndpoint, error) {
+	value = strings.TrimSpace(value)
+	if value == "*" {
+		return StateTransitionEndpoint{Any: true}, nil
+	}
+	states, err := ParseWorkflowStateSet(value)
+	if err != nil {
+		return StateTransitionEndpoint{}, err
+	}
+	return StateTransitionEndpoint{States: states}, nil
+}
+
+// ParseStateTransitionPattern parses a state_changed value with exactly one
+// arrow and validates both endpoints.
+func ParseStateTransitionPattern(value string) (StateTransitionPattern, error) {
+	if strings.Count(value, "->") != 1 {
+		return StateTransitionPattern{}, fmt.Errorf("state_changed value must use from->to")
+	}
+	parts := strings.SplitN(value, "->", 2)
+	from, err := ParseStateTransitionEndpoint(parts[0])
+	if err != nil {
+		return StateTransitionPattern{}, fmt.Errorf("invalid state_changed source: %w", err)
+	}
+	to, err := ParseStateTransitionEndpoint(parts[1])
+	if err != nil {
+		return StateTransitionPattern{}, fmt.Errorf("invalid state_changed target: %w", err)
+	}
+	return StateTransitionPattern{From: from, To: to}, nil
+}
+
 // Validate checks that a TriggerGroup is properly configured.
 func (g *TriggerGroup) Validate() error {
 	return g.validateAtDepth(0)
@@ -89,6 +175,7 @@ func (r *WorkflowRule) Validate() error {
 // Validate checks if the trigger is properly configured.
 func (t RuleTrigger) Validate() error {
 	validFields := map[TriggerField]bool{
+		FieldState:               true,
 		FieldStatus:              true,
 		FieldPriority:            true,
 		FieldSection:             true,
@@ -97,6 +184,7 @@ func (t RuleTrigger) Validate() error {
 		FieldDueDays:             true,
 		FieldCreatedDays:         true,
 		FieldUpdatedDays:         true,
+		FieldStateChanged:        true,
 		FieldStatusChanged:       true,
 		FieldSectionChanged:      true,
 		FieldPriorityChanged:     true,
@@ -111,6 +199,7 @@ func (t RuleTrigger) Validate() error {
 		FieldHasDueDate:          true,
 		FieldHasTags:             true,
 		FieldDescriptionEmpty:    true,
+		FieldParentState:         true,
 		FieldParentStatus:        true,
 		FieldParentType:          true,
 		FieldParentTags:          true,
@@ -123,12 +212,15 @@ func (t RuleTrigger) Validate() error {
 		FieldDependencyCount:     true,
 		FieldHasInProgressTasks:  true,
 		FieldActiveTaskCount:     true,
+		FieldAllTasksState:       true,
 		FieldAllTasksStatus:      true,
 		FieldMajorityTaskType:    true,
+		FieldMajorityTaskState:   true,
 		FieldMajorityTaskStatus:  true,
 		FieldCompletionRatio:     true,
 		FieldDaysSinceUpdate:     true,
 		FieldProjectStatus:       true,
+		FieldHasTasksWithState:   true,
 		FieldHasTasksWithStatus:  true,
 	}
 	if !validFields[t.Field] {
@@ -141,6 +233,8 @@ func (t RuleTrigger) Validate() error {
 		OpContains:    true,
 		OpGreaterThan: true,
 		OpLessThan:    true,
+		OpIn:          true,
+		OpNotIn:       true,
 	}
 	if !validOps[t.Operation] {
 		return fmt.Errorf("invalid operation: %s", t.Operation)
@@ -151,7 +245,59 @@ func (t RuleTrigger) Validate() error {
 	if err := validateSectionTriggerValue(t); err != nil {
 		return err
 	}
+	if err := validateCanonicalStateTrigger(t); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+// ValidateForAuthoring validates a trigger against the canonical schema exposed
+// for new rules. Validate remains broader so decoded legacy rules can survive
+// until the versioned migration rewrites them.
+func (t RuleTrigger) ValidateForAuthoring() error {
+	if !containsTriggerField(ValidTriggerFields(), t.Field) {
+		return fmt.Errorf("trigger field is not available for canonical authoring: %s", t.Field)
+	}
+	return t.Validate()
+}
+
+func containsTriggerField(fields []TriggerField, target TriggerField) bool {
+	for _, field := range fields {
+		if field == target {
+			return true
+		}
+	}
+	return false
+}
+
+func validateCanonicalStateTrigger(t RuleTrigger) error {
+	switch t.Field {
+	case FieldState, FieldParentState, FieldAllTasksState, FieldMajorityTaskState, FieldHasTasksWithState:
+		switch t.Operation {
+		case OpEquals, OpNotEquals, OpIn, OpNotIn:
+		default:
+			return fmt.Errorf("%s only supports equals, not_equals, in, and not_in", t.Field)
+		}
+		states, err := ParseWorkflowStateSet(t.Value)
+		if err != nil {
+			return fmt.Errorf("%s value must contain canonical states: %w", t.Field, err)
+		}
+		if (t.Operation == OpEquals || t.Operation == OpNotEquals) && states.Len() != 1 {
+			return fmt.Errorf("%s with %s requires exactly one canonical state", t.Field, t.Operation)
+		}
+	case FieldStateChanged:
+		if t.Operation != OpEquals && t.Operation != OpNotEquals {
+			return fmt.Errorf("state_changed only supports equals and not_equals")
+		}
+		if _, err := ParseStateTransitionPattern(t.Value); err != nil {
+			return err
+		}
+	default:
+		if t.Operation == OpIn || t.Operation == OpNotIn {
+			return fmt.Errorf("%s is only valid for canonical state fields", t.Operation)
+		}
+	}
 	return nil
 }
 
@@ -190,6 +336,7 @@ func validateSectionTransitionPattern(pattern string) error {
 // Validate checks if the action is properly configured.
 func (a RuleAction) Validate() error {
 	validActions := map[ActionType]bool{
+		ActionSetState:         true,
 		ActionSetStatus:        true,
 		ActionSetPriority:      true,
 		ActionSetSection:       true,
@@ -226,6 +373,10 @@ func (a RuleAction) Validate() error {
 	}
 
 	switch a.ActionType { //nolint:exhaustive
+	case ActionSetState:
+		if state, ok := models.ParseWorkflowState(strings.TrimSpace(a.Value)); !ok || string(state) != strings.TrimSpace(a.Value) {
+			return fmt.Errorf("set_state value must be one canonical state: %s", a.Value)
+		}
 	case ActionSetPinned:
 		if a.Value != "true" && a.Value != "false" {
 			return fmt.Errorf("%s value must be 'true' or 'false'", a.ActionType)
@@ -259,6 +410,32 @@ func (a RuleAction) Validate() error {
 	}
 
 	return nil
+}
+
+// ValidateForAuthoring validates an action against the canonical schema exposed
+// for new rules while Validate retains decode compatibility for legacy actions.
+func (a RuleAction) ValidateForAuthoring() error {
+	if !containsActionType(ValidActionTypes(), a.ActionType) {
+		return fmt.Errorf("action type is not available for canonical authoring: %s", a.ActionType)
+	}
+	if err := a.Validate(); err != nil {
+		return err
+	}
+	if a.Condition != nil {
+		if err := a.Condition.ValidateForAuthoring(); err != nil {
+			return fmt.Errorf("invalid action condition: %w", err)
+		}
+	}
+	return nil
+}
+
+func containsActionType(actions []ActionType, target ActionType) bool {
+	for _, action := range actions {
+		if action == target {
+			return true
+		}
+	}
+	return false
 }
 
 // ParseRelativeDuration parses a relative duration string like "+3d", "+1w", "+2m".
@@ -308,30 +485,30 @@ func ParseRelativeDuration(s string) (int, error) {
 // ValidTriggerFields returns all valid trigger field options.
 func ValidTriggerFields() []TriggerField {
 	return []TriggerField{
-		FieldStatus, FieldPriority, FieldSection, FieldTags, FieldType,
+		FieldState, FieldPriority, FieldTags, FieldType,
 		FieldDueDays, FieldCreatedDays, FieldUpdatedDays,
-		FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
+		FieldStateChanged, FieldPriorityChanged,
 		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
 		FieldDueDateChanged, FieldTypeChanged, FieldRecurrenceCompleted, FieldStreakBroken,
 		FieldHasDueDate, FieldHasTags, FieldDescriptionEmpty,
-		FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
+		FieldParentState, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
 		FieldIsBlocked, FieldBlockerCount, FieldDependencyCount,
-		FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksStatus,
-		FieldMajorityTaskType, FieldMajorityTaskStatus, FieldCompletionRatio,
-		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithStatus,
+		FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksState,
+		FieldMajorityTaskType, FieldMajorityTaskState, FieldCompletionRatio,
+		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithState,
 	}
 }
 
 // ValidTriggerOperations returns all valid trigger operation options.
 func ValidTriggerOperations() []TriggerOperation {
-	return []TriggerOperation{OpEquals, OpNotEquals, OpContains, OpGreaterThan, OpLessThan}
+	return []TriggerOperation{OpEquals, OpNotEquals, OpContains, OpGreaterThan, OpLessThan, OpIn, OpNotIn}
 }
 
 // ValidActionTypes returns all valid action type options.
 func ValidActionTypes() []ActionType {
 	return []ActionType{
-		ActionSetStatus, ActionSetPriority, ActionSetSection,
+		ActionSetState, ActionSetPriority,
 		ActionAddTag, ActionRemoveTag,
 		ActionSetDueRelative, ActionClearDue,
 		ActionSetPinned,
@@ -346,7 +523,7 @@ func ValidActionTypes() []ActionType {
 // IsEventTrigger returns true if the trigger field requires change detection.
 func IsEventTrigger(field TriggerField) bool {
 	switch field {
-	case FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
+	case FieldStateChanged, FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
 		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
 		FieldDueDateChanged, FieldTypeChanged, FieldRecurrenceCompleted, FieldStreakBroken:
 		return true
@@ -358,7 +535,7 @@ func IsEventTrigger(field TriggerField) bool {
 // IsHierarchicalTrigger returns true if the trigger requires parent/child data.
 func IsHierarchicalTrigger(field TriggerField) bool {
 	switch field {
-	case FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
+	case FieldParentState, FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
 		FieldIsBlocked, FieldBlockerCount, FieldDependencyCount:
 		return true
@@ -381,9 +558,9 @@ func IsHierarchicalAction(actionType ActionType) bool {
 // IsProjectTrigger returns true if the trigger field is a project-level aggregate field.
 func IsProjectTrigger(field TriggerField) bool {
 	switch field {
-	case FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksStatus,
-		FieldMajorityTaskType, FieldMajorityTaskStatus, FieldCompletionRatio,
-		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithStatus:
+	case FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksState, FieldAllTasksStatus,
+		FieldMajorityTaskType, FieldMajorityTaskState, FieldMajorityTaskStatus, FieldCompletionRatio,
+		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithState, FieldHasTasksWithStatus:
 		return true
 	default:
 	}
@@ -427,6 +604,24 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 		}
 	}
 
+	if len(r.Scope.States) > 0 {
+		if task == nil {
+			return false
+		}
+		matched := false
+		for _, state := range r.Scope.States {
+			if task.State() == state {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	// Legacy section scope remains executable until the versioned migration
+	// rewrites persisted workflow rules.
 	if len(r.Scope.Sections) > 0 {
 		if task == nil {
 			return false
@@ -461,6 +656,11 @@ func (r *WorkflowRule) validateScope() error {
 	for _, project := range r.Scope.Projects {
 		if strings.TrimSpace(project) == "" {
 			return fmt.Errorf("empty project name in scope")
+		}
+	}
+	for _, state := range r.Scope.States {
+		if !state.IsValid() {
+			return fmt.Errorf("invalid state in scope: %s", state)
 		}
 	}
 	for _, section := range r.Scope.Sections {
@@ -528,6 +728,9 @@ func (r *WorkflowRule) scopeTaskFields() []string {
 	var fields []string
 	if len(r.Scope.Types) > 0 {
 		fields = append(fields, "types")
+	}
+	if len(r.Scope.States) > 0 {
+		fields = append(fields, "states")
 	}
 	if len(r.Scope.Sections) > 0 {
 		fields = append(fields, "sections")

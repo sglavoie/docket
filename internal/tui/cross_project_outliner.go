@@ -267,12 +267,6 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			})
 		}
 
-		if len(m.filter.Sections) > 0 {
-			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return m.filter.Sections[taskSectionBucket(t)]
-			})
-		}
-
 		if m.filter.Actionable {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
 				return taskIsActionableState(t, proj)
@@ -375,7 +369,6 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "lens=%d|", m.lens)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
-	fmt.Fprintf(&b, "sections=%s|", boolMapFingerprint(m.filter.Sections))
 	fmt.Fprintf(&b, "context=%d:%q|", m.activeContext.Kind, m.activeContext.Name)
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "criteria=%s|", m.activeCriteriaFilterFingerprint())

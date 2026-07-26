@@ -453,34 +453,6 @@ func migrateLegacyFocusQueueMembers(workspace *CLIWorkspace, queue []config.Focu
 	return nil
 }
 
-// pruneStaleFocusQueue drops order-index entries whose task has left Next so the
-// ordering-only list stays aligned with the state-driven membership. It is
-// best-effort maintenance: a save failure is a warning, not a command failure.
-func pruneStaleFocusQueue(workspace *CLIWorkspace, queue []config.FocusQueueItem, ordered []focus.FocusTask) {
-	nextIDs := make(map[config.ProjectTaskLocator]bool, len(ordered))
-	for _, ft := range ordered {
-		nextIDs[config.ProjectTaskLocator{ProjectID: ft.Project.ID, TaskID: ft.Task.ID}] = true
-	}
-	pruned := make([]config.FocusQueueItem, 0, len(queue))
-	for _, item := range queue {
-		if nextIDs[config.ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] {
-			pruned = append(pruned, item)
-		}
-	}
-	if len(pruned) == len(queue) {
-		return
-	}
-	domains, err := cloneCLIWorkspaceDomains(workspace)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to prune focus queue: %v\n", err)
-		return
-	}
-	domains.Planning.SetFocusQueue(pruned)
-	if err := commitCLIPlanning(workspace, domains.Planning); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
-	}
-}
-
 func runFocusQueue(cmd *cobra.Command, args []string) error {
 	workspace, err := LoadCLIWorkspaceStrict()
 	if err != nil {
@@ -500,12 +472,19 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 	}
 	ordered := nextTasks(projects, queue)
 
-	// Keep the ordering-only index aligned with state-driven membership — but only
-	// after a successful migration. A failed migration must leave the index at its
-	// pre-migration value; pruning here would drop the still-legacy members (they
-	// read as non-Next) exactly when their only evidence is the queue entry.
+	// Keep the ordering index aligned through the application-owned reconciler,
+	// but only after a successful legacy migration.
 	if migrationErr == nil {
-		pruneStaleFocusQueue(workspace, queue, ordered)
+		if changed, reconcileErr := newWorkspaceAppService(workspace).ReconcilePlanning(); reconcileErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to reconcile planning state: %v\n", reconcileErr)
+		} else if changed {
+			if reloadErr := workspace.Runtime.Reload(); reloadErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to reload reconciled planning state: %v\n", reloadErr)
+			} else {
+				queue = workspace.Runtime.Planning().GetFocusQueue()
+				ordered = nextTasks(projects, queue)
+			}
+		}
 	}
 
 	if wantJSON {

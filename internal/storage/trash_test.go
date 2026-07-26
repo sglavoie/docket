@@ -151,7 +151,7 @@ func TestMoveProjectToTrash_RejectsEmptyIDAndSlug(t *testing.T) {
 func TestRestoreTrashEntry_FaithfulMetadata(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "tt-data")
 	projectDir := filepath.Join(dataDir, "projects", "faithful")
-	writeProjectDir(t, projectDir, "# Faithful\n\n## Task: One\n<!-- id: t1, status: todo, priority: 1 -->\n")
+	writeProjectDir(t, projectDir, "# Faithful\n<!-- sections: Next:blue;Waiting:red -->\n\n## Task: One\n<!-- id: t1, status: blocked, section: Waiting, priority: 1 -->\n")
 
 	archivedAt := time.Now().Add(-48 * time.Hour)
 	pinnedAt := time.Now().Add(-72 * time.Hour)
@@ -206,6 +206,11 @@ func TestRestoreTrashEntry_FaithfulMetadata(t *testing.T) {
 	}
 	if len(restored.Tasks) != 1 {
 		t.Errorf("expected 1 task loaded from disk, got %d", len(restored.Tasks))
+	} else if restored.Tasks[0].State() != models.StateWaiting {
+		t.Errorf("restored task state = %q, want waiting", restored.Tasks[0].State())
+	}
+	if len(restored.SectionColors) != 0 {
+		t.Errorf("restored runtime project hydrated legacy section colors: %v", restored.SectionColors)
 	}
 	if restored.Path != filepath.Join(dataDir, "projects", "faithful") {
 		t.Errorf("restored Path = %q", restored.Path)

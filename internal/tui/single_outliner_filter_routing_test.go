@@ -77,8 +77,8 @@ func TestTagAndSectionWorkflowsUseCanonicalOutliner(t *testing.T) {
 		if cross.scopedProjectID != project.ID {
 			t.Fatalf("scopedProjectID = %q, want %q", cross.scopedProjectID, project.ID)
 		}
-		if !cross.filter.Sections[models.SectionInbox] {
-			t.Fatalf("cross filter sections = %v, want inbox", cross.filter.Sections)
+		if !cross.filter.States.Contains(models.StateInbox) {
+			t.Fatalf("cross filter states = %v, want inbox", cross.filter.States.Values())
 		}
 		visible := visibleOutlinerTaskIDs(cross)
 		if !visible[tasks[1].ID] {
@@ -106,8 +106,8 @@ func TestTagAndSectionWorkflowsUseCanonicalOutliner(t *testing.T) {
 		if app.outliner != nil {
 			t.Fatal("section filter completion must not construct a separate AppModel.outliner root")
 		}
-		if !cross.filter.Sections[models.SectionInbox] {
-			t.Fatalf("cross filter sections = %v, want inbox applied to the visible model", cross.filter.Sections)
+		if !cross.filter.States.Contains(models.StateInbox) {
+			t.Fatalf("cross filter states = %v, want inbox applied to the visible model", cross.filter.States.Values())
 		}
 		visible := visibleOutlinerTaskIDs(cross)
 		if !visible[tasks[2].ID] {

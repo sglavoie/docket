@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -35,32 +37,48 @@ func handleFilterTypeKey(key string, f *CommonFilterState) bool {
 // pressed. It backs the Fs sub-prefix (the sole state/status filter after the
 // legacy TaskStatus cycle was retired). Returns true if the key was handled.
 func handleFilterStateKey(key string, f *CommonFilterState) bool {
+	var state models.WorkflowState
 	switch key {
 	case "i":
-		f.State = models.StateInbox
+		state = models.StateInbox
 	case "r":
-		f.State = models.StateReady
+		state = models.StateReady
 	case "n":
-		f.State = models.StateNext
+		state = models.StateNext
 	case "s":
-		f.State = models.StateInProgress
+		state = models.StateInProgress
 	case "w":
-		f.State = models.StateWaiting
+		state = models.StateWaiting
 	case "p":
-		f.State = models.StatePaused
+		state = models.StatePaused
 	case "v":
-		f.State = models.StateReview
+		state = models.StateReview
 	case "m":
-		f.State = models.StateSomeday
+		state = models.StateSomeday
 	case "d":
-		f.State = models.StateDone
+		state = models.StateDone
 	case "x":
-		f.State = models.StateCanceled
+		state = models.StateCanceled
 	case "0":
-		f.State = ""
+		f.setStateFilter(models.WorkflowStateSet{}, false)
+		return true
 	default:
 		return false
 	}
+
+	values := f.States.Values()
+	if f.States.Contains(state) {
+		values = slices.DeleteFunc(values, func(candidate models.WorkflowState) bool {
+			return candidate == state
+		})
+	} else {
+		values = append(values, state)
+	}
+	states, err := models.NewWorkflowStateSet(values...)
+	if err != nil {
+		panic(err)
+	}
+	f.setStateFilter(states, len(values) > 0)
 	return true
 }
 
@@ -327,10 +345,18 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 
 	if includeStatus {
 		stateDetail := "(all)"
-		if f.State != "" {
-			stateDetail = string(f.State)
+		if f.hasStateFilter() {
+			values := f.States.Values()
+			names := make([]string, len(values))
+			for i, state := range values {
+				names[i] = string(state)
+			}
+			stateDetail = "(none)"
+			if len(names) > 0 {
+				stateDetail = strings.Join(names, ",")
+			}
 		}
-		hints = append(hints, PrefixHint{Key: "s", Description: "state", Detail: stateDetail, Active: f.State != ""})
+		hints = append(hints, PrefixHint{Key: "s", Description: "state", Detail: stateDetail, Active: f.hasStateFilter()})
 	}
 
 	hints = append(hints, PrefixHint{Key: "#", Description: "tags", Detail: tagDetail, Active: len(f.Tags) > 0})

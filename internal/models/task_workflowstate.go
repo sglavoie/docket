@@ -140,7 +140,7 @@ func TargetStateForStatus(status TaskStatus) WorkflowState {
 	case StatusCanceled:
 		return StateCanceled
 	default:
-		return WorkflowState(status) // invalid status -> invalid state, rejected by IsValid
+		return "" // invalid status -> invalid state, rejected by IsValid
 	}
 }
 

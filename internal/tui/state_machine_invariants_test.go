@@ -368,7 +368,7 @@ func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.Sections = map[string]bool{models.SectionNext: true}
+		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateNext), true)
 		outliner.rebuildRows()
 
 		assertSelectedOutlinerTasksVisible(t, outliner, "next-task")
@@ -387,7 +387,7 @@ func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.Sections = map[string]bool{models.SectionNext: true}
+		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateNext), true)
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()
 

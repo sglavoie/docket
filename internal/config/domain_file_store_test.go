@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -116,6 +117,92 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	}
 	if gotMachine.CurrentProject != "p1" {
 		t.Fatalf("machine round-trip mismatch: %+v", gotMachine)
+	}
+}
+
+func TestDomainFileStore_LoadAutomationRewritesLegacyTemplateStates(t *testing.T) {
+	store := newIsolatedStore(t)
+	path := AutomationPath(store.DataDir())
+	payload := json.RawMessage(`{
+		"task_templates":[{
+			"id":"legacy-template",
+			"name":"Legacy template",
+			"enabled":true,
+			"source":"imported",
+			"category":"process",
+			"type":"story",
+			"priority":2,
+			"tags":["b","a"],
+			"section":"Waiting",
+			"description":"preserved",
+			"children":[{"title":"second","type":"bug","optional":true},{"title":"first","type":"task","optional":false}],
+			"checklist":["second","first"],
+			"use_count":9
+		}]
+	}`)
+	raw, err := json.MarshalIndent(domainEnvelope{
+		SchemaVersion: CurrentDomainSchemaVersion,
+		WorkspaceID:   testWorkspaceID,
+		Kind:          domainAutomation.name(),
+		Data:          payload,
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal legacy envelope: %v", err)
+	}
+	if err := os.WriteFile(path, raw, FilePermissions); err != nil {
+		t.Fatalf("write legacy automation: %v", err)
+	}
+
+	loaded, migratedRevision, err := store.LoadAutomationChecked()
+	if err != nil {
+		t.Fatalf("LoadAutomationChecked: %v", err)
+	}
+	if len(loaded.TaskTemplates) != 1 {
+		t.Fatalf("templates = %d, want 1", len(loaded.TaskTemplates))
+	}
+	got := loaded.TaskTemplates[0]
+	if got.ID != "legacy-template" || got.Name != "Legacy template" || !got.Enabled ||
+		got.Source != "imported" || got.Category != "process" ||
+		got.Type != models.TaskTypeStory || got.Priority != 2 ||
+		got.State != models.StateWaiting || got.Description != "preserved" ||
+		got.UseCount != 9 {
+		t.Fatalf("migrated template metadata mismatch: %+v", got)
+	}
+	if strings.Join(got.Tags, ",") != "b,a" ||
+		strings.Join(got.Checklist, ",") != "second,first" ||
+		len(got.Children) != 2 || got.Children[0].Title != "second" ||
+		!got.Children[0].Optional || got.Children[1].Title != "first" {
+		t.Fatalf("migrated ordered content mismatch: %+v", got)
+	}
+
+	canonicalBytes, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read canonical automation: %v", err)
+	}
+	var canonicalEnvelope domainEnvelope
+	if err := json.Unmarshal(canonicalBytes, &canonicalEnvelope); err != nil {
+		t.Fatalf("decode canonical envelope: %v", err)
+	}
+	var canonicalPayload struct {
+		TaskTemplates []map[string]json.RawMessage `json:"task_templates"`
+	}
+	if err := json.Unmarshal(canonicalEnvelope.Data, &canonicalPayload); err != nil {
+		t.Fatalf("decode canonical payload: %v", err)
+	}
+	fields := canonicalPayload.TaskTemplates[0]
+	if _, ok := fields["section"]; ok {
+		t.Fatalf("canonical automation retained legacy section: %s", canonicalEnvelope.Data)
+	}
+	if string(fields["state"]) != `"waiting"` {
+		t.Fatalf("canonical state = %s, want waiting", fields["state"])
+	}
+
+	_, stableRevision, err := store.LoadAutomationChecked()
+	if err != nil {
+		t.Fatalf("second LoadAutomationChecked: %v", err)
+	}
+	if stableRevision != migratedRevision {
+		t.Fatalf("idempotent reload revision = %q, want %q", stableRevision, migratedRevision)
 	}
 }
 

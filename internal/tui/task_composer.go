@@ -391,17 +391,13 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 		if recurrence == nil {
 			recurrence = cloneRecurrence(m.preset.Shared.Recurrence)
 		}
-		state := captureStateForStatus(parsed.status)
-		if state == "" {
-			state = m.preset.Shared.State
-		}
+		state := creationStateFromLegacyInputs(section, parsed.status, m.preset.Shared.State)
 		req := app.CaptureRequest{
 			ProjectID:         target.ID,
 			Title:             parsed.title,
 			Type:              taskType,
 			Priority:          priority,
 			Tags:              mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
-			Section:           section,
 			Due:               due,
 			ParentID:          parentID,
 			Recurrence:        recurrence,
@@ -490,11 +486,10 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 			Type:              taskType,
 			Priority:          priority,
 			Tags:              append([]string(nil), m.preset.Shared.Tags...),
-			Section:           m.preset.Shared.Section,
 			Due:               cloneTime(m.preset.Shared.Due),
 			ParentID:          cloneStringPtr(m.preset.Shared.ParentID),
 			Recurrence:        cloneRecurrence(m.preset.Shared.Recurrence),
-			State:             m.preset.Shared.State,
+			State:             creationStateFromLegacyInputs(m.preset.Shared.Section, "", m.preset.Shared.State),
 			PlanningArtifacts: m.preset.PlanningArtifacts,
 		})
 	}
@@ -520,14 +515,18 @@ func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.taskType = req.Type
 	form.draft.priority = req.Priority
 	form.draft.tags = append([]string(nil), req.Tags...)
-	form.draft.section = req.Section
+	state := req.State
+	if state == "" {
+		state = models.StateInbox
+	}
+	form.draft.section = models.SectionForState(state)
 	form.draft.parentID = cloneStringPtr(req.ParentID)
 	form.draft.dueDate = cloneTime(req.Due)
 	form.draft.dueInput = formatDateInput(req.Due, req.HasTime)
 	form.draft.recurrence = cloneRecurrence(req.Recurrence)
 	form.titleInput.SetValue(req.Title)
 	form.dueTextInput.SetValue(form.draft.dueInput)
-	form.presetState = req.State
+	form.presetState = state
 	form.presetPlan = req.PlanningArtifacts
 	form.hostTitle = "Task Composer · Expanded"
 	form.SetTaskFormCoordinator(m.taskForm)

@@ -96,7 +96,7 @@ Description here.
 	}
 }
 
-func TestWriteTasksMarkdownWithSections(t *testing.T) {
+func TestWriteTasksMarkdownWithSections_OmitsLegacyProjectMetadata(t *testing.T) {
 	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
@@ -112,14 +112,15 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 		t.Error("content should contain project header")
 	}
 
-	// Check sections metadata
-	if !strings.Contains(content, "<!-- sections: Next;Inbox;Waiting -->") {
-		t.Error("content should contain sections metadata")
+	if !strings.Contains(content, "<!-- tt-schema: 2 -->") {
+		t.Error("content should contain the schema-v2 marker")
+	}
+	if strings.Contains(content, "<!-- sections:") {
+		t.Error("canonical content should omit legacy project sections metadata")
 	}
 
 	// v2 collapses the per-task section into the derived `state`; the Next
-	// section derives to state=next. The project-level sections metadata above
-	// is still written.
+	// section derives to state=next.
 	if !strings.Contains(content, "state: next") {
 		t.Error("content should contain task state derived from Next section")
 	}
@@ -150,7 +151,7 @@ func TestWriteTasksMarkdownWithSections_EmptySections(t *testing.T) {
 	}
 }
 
-func TestSectionsRoundTrip(t *testing.T) {
+func TestCanonicalWriteDropsProjectSectionsButPreservesTaskStates(t *testing.T) {
 	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task in Next")
 	if err != nil {
 		t.Fatal(err)
@@ -184,14 +185,10 @@ func TestSectionsRoundTrip(t *testing.T) {
 		t.Errorf("project name mismatch: got '%s'", result.ProjectName)
 	}
 
-	// Check sections
-	if len(result.Sections) != len(sections) {
-		t.Errorf("expected %d sections, got %d", len(sections), len(result.Sections))
-	}
-	for i, expected := range sections {
-		if i >= len(result.Sections) || result.Sections[i] != expected {
-			t.Errorf("section %d: expected %s, got %s", i, expected, result.Sections[i])
-		}
+	// The parser's compatibility default remains Next, but the supplied legacy
+	// project layout is not serialized into the canonical document.
+	if len(result.Sections) != 1 || result.Sections[0] != models.SectionNext {
+		t.Errorf("canonical parse sections = %v, want [Next] compatibility default", result.Sections)
 	}
 
 	// Check tasks
@@ -210,7 +207,7 @@ func TestSectionsRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSectionColorsRoundTrip(t *testing.T) {
+func TestCanonicalWriteDropsSectionColors(t *testing.T) {
 	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
@@ -227,15 +224,11 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	// Write to markdown with colors
 	content := WriteTasksMarkdownWithSections("Color Test", tasks, sections, colors)
 
-	// Check that colors are in the output
-	if !strings.Contains(content, "Inbox:green") {
-		t.Error("content should contain Inbox:green")
-	}
-	if !strings.Contains(content, "Review:blue") {
-		t.Error("content should contain Review:blue")
-	}
-	if strings.Contains(content, "Legacy:gray") {
-		t.Error("content should not contain non-GTD Legacy section color")
+	if strings.Contains(content, "<!-- sections:") ||
+		strings.Contains(content, "Inbox:green") ||
+		strings.Contains(content, "Review:blue") ||
+		strings.Contains(content, "Legacy:gray") {
+		t.Fatalf("canonical content retained legacy section/color metadata:\n%s", content)
 	}
 
 	// Parse back
@@ -244,15 +237,8 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 		t.Fatalf("failed to parse: %v", err)
 	}
 
-	// Check section colors
-	if result.SectionColors[models.SectionInbox] != "green" {
-		t.Errorf("Inbox color should be green, got %s", result.SectionColors[models.SectionInbox])
-	}
-	if result.SectionColors[models.SectionReview] != "blue" {
-		t.Errorf("Review color should be blue, got %s", result.SectionColors[models.SectionReview])
-	}
-	if _, ok := result.SectionColors["Legacy"]; ok {
-		t.Errorf("Legacy color should be filtered, got %s", result.SectionColors["Legacy"])
+	if len(result.SectionColors) != 0 {
+		t.Errorf("canonical parse section colors = %v, want empty", result.SectionColors)
 	}
 }
 

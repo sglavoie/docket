@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // SetSection moves the task to the workflow state a GTD section name maps to.
 // Sections are retired as a stored concept; the name is inverted through
 // SectionForState onto a WorkflowState. Built-in GTD section names (Inbox, Next,
@@ -13,19 +11,20 @@ func (t *Task) SetSection(name string) {
 	if !IsGTDSection(name) && name != "" {
 		return
 	}
-	newState := stateForSectionName(name)
+	newState := StateForSection(name)
 	if t.State() == newState {
 		return
 	}
-	t.WorkflowState = newState
-	t.UpdatedAt = time.Now()
+	_ = t.ApplyStateTransition(newState)
 }
 
-// stateForSectionName inverts SectionForState: it maps a GTD section name to the
+// StateForSection inverts SectionForState: it maps a GTD section name to the
 // canonical WorkflowState that section occupies. The empty name and any name
 // SectionForState never emits resolve to StateReady (the default active bucket).
-// The Completed section maps to StateDone (the terminal representative).
-func stateForSectionName(name string) WorkflowState {
+// The Completed section maps to StateDone (the terminal representative). This
+// compatibility bridge lets legacy presentation adapters translate before they
+// call state-native application services.
+func StateForSection(name string) WorkflowState {
 	switch name {
 	case SectionInbox:
 		return StateInbox

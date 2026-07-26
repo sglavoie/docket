@@ -284,7 +284,8 @@ func resolvedDocument(bundle *ConflictBundle, resolution ConflictResolution, mer
 
 // projectFromDocument reconstructs a models.Project ready for commit from a
 // resolved document, keeping the live project's identity (id, name, slug, path)
-// and taking all content (tasks, sections, colors, tags) from the document.
+// and taking canonical content (tasks and tags) from the document. Legacy
+// project sections/colors are decode-only and receive runtime defaults.
 func projectFromDocument(identity *models.Project, doc *ProjectDocument) *models.Project {
 	return &models.Project{
 		ID:            identity.ID,
@@ -292,8 +293,8 @@ func projectFromDocument(identity *models.Project, doc *ProjectDocument) *models
 		Slug:          identity.Slug,
 		Path:          identity.Path,
 		Tasks:         doc.Tasks,
-		Sections:      doc.Sections,
-		SectionColors: doc.SectionColors,
+		Sections:      []string{models.SectionNext},
+		SectionColors: map[string]string{},
 		Tags:          doc.Tags,
 		PinnedTags:    doc.PinnedTags,
 	}

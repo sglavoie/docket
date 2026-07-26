@@ -18,7 +18,7 @@ type TemplateChildSpec struct {
 
 // ApplyTemplateRequest describes a `tt template use` invocation: the root task
 // (the embedded AddTaskRequest, carrying the template's type, priority, tags,
-// section, description, checklist, parent placement, and the config artifact
+// state, description, checklist, parent placement, and the config artifact
 // with the bumped use-count) plus the child tasks an epic/story template
 // creates alongside it.
 type ApplyTemplateRequest struct {
@@ -26,7 +26,7 @@ type ApplyTemplateRequest struct {
 	// TemplateName is the template's display name, recorded in the undo context.
 	TemplateName string
 	// Children are the child tasks to create under the root task. They inherit
-	// the root's priority, tags, and section, matching the legacy template
+	// the root's priority, tags, and state, matching the legacy template
 	// semantics. Ignored when the root type cannot have children.
 	Children []TemplateChildSpec
 }
@@ -179,10 +179,8 @@ func (s *Service) buildApplyTemplate(snap Snapshot, req ApplyTemplateRequest, no
 			for _, tag := range task.Tags {
 				childTask.AddTag(tag)
 			}
-			// SetSection (not a raw Section assignment) keeps the stored
-			// WorkflowState coherent with the legacy fields.
-			if req.Section != "" {
-				childTask.SetSection(req.Section)
+			if stateErr := s.initializeCreatedTask(project, childTask, task.State()); stateErr != nil {
+				return TaskRef{}, "", 0, stateErr
 			}
 			project.Tasks = append(project.Tasks, childTask)
 			created++

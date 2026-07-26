@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // SaveFilterInputModel handles naming a saved filter preset.
@@ -136,8 +137,8 @@ func describeSavedFilterSummary(sf *config.SavedFilter) string {
 		return describeCriteriaFilter(sf)
 	}
 	return describeSnapshotFilters(
-		sf.FilterType, sf.FilterStatus, sf.FilterPriority,
-		sf.FilterTags, sf.FilterSections, sf.FilterDueDate,
+		sf.FilterType, sf.FilterStates, sf.HasStateFilter(), sf.FilterPriority,
+		sf.FilterTags, sf.FilterDueDate,
 		sf.FilterActionable, sf.FilterHideDimmed, sf.FilterGitHubIssue,
 		sf.FilterParked,
 		sf.FilterAttrs, sf.FilterScoreMin,
@@ -152,6 +153,15 @@ func describeCriteriaFilter(sf *config.SavedFilter) string {
 	}
 	var parts []string
 	for _, c := range sf.Criteria {
+		if c.Field == "state" {
+			values := c.States.Values()
+			states := make([]string, len(values))
+			for i, state := range values {
+				states[i] = string(state)
+			}
+			parts = append(parts, c.Field+" "+c.Operation+" "+strings.Join(states, ","))
+			continue
+		}
 		parts = append(parts, c.Field+" "+c.Operation+" "+c.Value)
 	}
 	logic := sf.EffectiveLogic()
@@ -163,7 +173,7 @@ func describeCriteriaFilter(sf *config.SavedFilter) string {
 }
 
 // describeSnapshotFilters builds a human-readable summary of a snapshot filter's state.
-func describeSnapshotFilters(filterType string, filterStatus string, filterPriority int, filterTags []string, filterSections []string, filterDueDate int, filterActionable bool, filterHideDimmed bool, filterGitHubIssue bool, filterParked bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
+func describeSnapshotFilters(filterType string, filterStates models.WorkflowStateSet, hasStateFilter bool, filterPriority int, filterTags []string, filterDueDate int, filterActionable bool, filterHideDimmed bool, filterGitHubIssue bool, filterParked bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
 	var parts []string
 
 	switch viewMode {
@@ -189,17 +199,21 @@ func describeSnapshotFilters(filterType string, filterStatus string, filterPrior
 	if filterType != "" {
 		parts = append(parts, "type:"+filterType)
 	}
-	if filterStatus != "" {
-		parts = append(parts, "status:"+filterStatus)
+	if hasStateFilter {
+		values := filterStates.Values()
+		states := make([]string, len(values))
+		for i, state := range values {
+			states[i] = string(state)
+		}
+		value := "none"
+		if len(states) > 0 {
+			value = strings.Join(states, ",")
+		}
+		parts = append(parts, "state:"+value)
 	}
 	if len(filterTags) > 0 {
 		for _, tag := range filterTags {
 			parts = append(parts, "#"+tag)
-		}
-	}
-	if len(filterSections) > 0 {
-		for _, sec := range filterSections {
-			parts = append(parts, "@"+sec)
 		}
 	}
 	switch filterDueDate {

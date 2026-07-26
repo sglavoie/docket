@@ -331,33 +331,103 @@ func RenderProgressBar(percent float64, width int) string {
 	return bar.String()
 }
 
-// GetViewModeStyleForSection returns the ViewMode style for a section name.
+// GetWorkflowStateGroupStyle resolves the canonical static theme role for a
+// state group. Project section colors never participate.
+func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style {
+	switch group.ThemeRole() {
+	case models.StateThemePlan, models.StateThemeBacklog:
+		return ViewModeActiveStyle
+	case models.StateThemeWork:
+		return ViewModeWorkStyle
+	case models.StateThemeInbox:
+		return ViewModeInboxStyle
+	case models.StateThemeNext:
+		return ViewModeNextStyle
+	case models.StateThemeReview:
+		return ViewModeReviewStyle
+	case models.StateThemeWaiting:
+		return ViewModeWaitingStyle
+	case models.StateThemePaused:
+		return ViewModeStandbyStyle
+	case models.StateThemeSomeday:
+		return ViewModeSomedayStyle
+	case models.StateThemeComplete:
+		return ViewModeCompletedStyle
+	case models.StateThemeCanceled:
+		return ViewModeCanceledStyle
+	default:
+		return ViewModeActiveStyle
+	}
+}
+
+// GetWorkflowStateGroupAccent resolves the foreground/card accent for a
+// canonical state group through the active theme.
+func GetWorkflowStateGroupAccent(group models.WorkflowStateGroup) color.Color {
+	switch group.ThemeRole() {
+	case models.StateThemePlan, models.StateThemeNext:
+		return AccentPlan
+	case models.StateThemeWork:
+		return AccentWork
+	case models.StateThemeInbox:
+		return AccentTriage
+	case models.StateThemeBacklog:
+		return AccentSupport
+	case models.StateThemeReview:
+		return AccentReview
+	case models.StateThemeWaiting:
+		return ColorWarning
+	case models.StateThemePaused, models.StateThemeSomeday:
+		return ColorPurple
+	case models.StateThemeComplete:
+		return ColorSuccess
+	case models.StateThemeCanceled:
+		return ColorError
+	default:
+		return ColorMuted
+	}
+}
+
+// GetViewModeStyleForSection is a visible-surface compatibility adapter for
+// section-shaped labels. Canonical workflow headers use
+// GetWorkflowStateGroupStyle directly.
 func GetViewModeStyleForSection(section string) lipgloss.Style {
 	switch section {
 	case "":
-		return ViewModeActiveStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
 	case "Next":
-		return ViewModeNextStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupNext)
 	case "Inbox":
-		return ViewModeInboxStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupInbox)
 	case "Waiting":
-		return ViewModeWaitingStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupWaiting)
 	case "Someday":
-		return ViewModeSomedayStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupSomeday)
 	case "Review":
-		return ViewModeReviewStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupReview)
 	case "Standby":
-		return ViewModeStandbyStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupPaused)
+	case "Today":
+		return GetWorkflowStateGroupStyle(models.StateGroupToday)
+	case "In Progress":
+		return GetWorkflowStateGroupStyle(models.StateGroupInProgress)
+	case "Backlog":
+		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
+	case "Paused":
+		return GetWorkflowStateGroupStyle(models.StateGroupPaused)
+	case "Done":
+		return GetWorkflowStateGroupStyle(models.StateGroupDone)
+	case "Canceled":
+		return GetWorkflowStateGroupStyle(models.StateGroupCanceled)
 	case "All":
 		return ViewModeAllStyle
 	case "Active":
-		return ViewModeActiveStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
 	case "Completed":
-		return ViewModeCompletedStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupDone)
 	case "Snoozed":
 		return ViewModeSnoozedStyle
 	default:
-		return ViewModeActiveStyle
+		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
 	}
 }
 

@@ -17,20 +17,8 @@ import (
 // assert the reconciliation happened, and returns one revision-checked artifact so
 // the fold into the transaction is exercised.
 func exclusivityBuilder(planning *config.PlanningState) app.PlanningArtifactBuilder {
-	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
-		changed := false
-		for _, tgt := range targets {
-			if tgt.State == models.StateNext {
-				if planning.RemoveFromDailyPlan(tgt.TaskID) {
-					changed = true
-				}
-				continue
-			}
-			if planning.RemoveFromFocusQueue(tgt.TaskID) {
-				changed = true
-			}
-		}
-		if !changed {
+	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
+		if !app.ReconcilePlanningState(planning, req) {
 			return nil, nil
 		}
 		rev := ""

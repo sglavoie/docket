@@ -20,18 +20,19 @@ type outlinerRow struct {
 	task               *models.Task
 	priorityTask       *PriorityTask // Cached priority metadata for flat Priority-mode task rows.
 	prefix             string
-	Breadcrumb         string // Ancestor path for tasks promoted across a section boundary.
-	hasVisibleChildren bool   // Children rendered in this row's section-local tree.
-	IsSectionHeader    bool   // True if this row is a section header (not a task)
-	IsLensHeader       bool   // True for a non-GTD grouping header such as a due-date bucket
-	IsProjectHeader    bool   // True if this row is a synthetic, render-only project sub-header (not a task)
-	IsTodaySection     bool   // True for the synthetic Daily Plan header and every task row rendered beneath it
-	IsDailyPlanMember  bool   // True only for explicit Daily Plan roots; contextual descendants remain false
-	SectionName        string // Section name for header rows
-	SectionCount       int    // Number of tasks in this section
-	CollapseKey        string // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
-	ProjectID          string // Project that owns task/project-header rows; empty for shared section headers
-	IsSeparator        bool   // True if this row is a visual separator between projects
+	Breadcrumb         string                    // Ancestor path for tasks promoted across a section boundary.
+	hasVisibleChildren bool                      // Children rendered in this row's section-local tree.
+	IsSectionHeader    bool                      // True if this row is a section header (not a task)
+	IsLensHeader       bool                      // True for a non-GTD grouping header such as a due-date bucket
+	IsProjectHeader    bool                      // True if this row is a synthetic, render-only project sub-header (not a task)
+	IsTodaySection     bool                      // True for the synthetic Daily Plan header and every task row rendered beneath it
+	IsDailyPlanMember  bool                      // True only for explicit Daily Plan roots; contextual descendants remain false
+	SectionName        string                    // Section name for header rows
+	SectionCount       int                       // Number of tasks in this section
+	StateGroup         models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/lens headers
+	CollapseKey        string                    // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
+	ProjectID          string                    // Project that owns task/project-header rows; empty for shared section headers
+	IsSeparator        bool                      // True if this row is a visual separator between projects
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a

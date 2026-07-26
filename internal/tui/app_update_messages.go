@@ -390,17 +390,25 @@ func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 }
 
 func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
-	return m.refreshTaskViews(true)
+	return m.refreshTaskViews(true, true)
+}
+
+// refreshTaskViewsAfterPlanningMutation fans planning changes out through the
+// already-loaded task views. The application service has synchronously reloaded
+// every touched project and planning snapshot, so starting an asynchronous
+// cross-project reload here would blank live rows until its command is run.
+func (m *AppModel) refreshTaskViewsAfterPlanningMutation() []tea.Cmd {
+	return m.refreshTaskViews(true, false)
 }
 
 // refreshTaskViewsAfterRestore uses the same cache/view fan-out as a committed
 // save. When the runtime reload failed, it rebuilds the current project tree in
 // memory without persisting view state from the stale runtime snapshot.
 func (m *AppModel) refreshTaskViewsAfterRestore(runtimeReloaded bool) []tea.Cmd {
-	return m.refreshTaskViews(runtimeReloaded)
+	return m.refreshTaskViews(runtimeReloaded, true)
 }
 
-func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
+func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject bool) []tea.Cmd {
 	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
 	m.refreshNotesSearchState()
 	m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
@@ -411,8 +419,10 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState bool) []tea.Cmd {
 	m.reloadRegisteredProjectOutliners(storage.LoadProject)
 	m.rebuildRegisteredProjectOutliners()
 	var saveCmds []tea.Cmd
-	if reloadCmd := m.requestCrossProjectOutlinerReload(); reloadCmd != nil {
-		saveCmds = append(saveCmds, reloadCmd)
+	if reloadCrossProject {
+		if reloadCmd := m.requestCrossProjectOutlinerReload(); reloadCmd != nil {
+			saveCmds = append(saveCmds, reloadCmd)
+		}
 	}
 	if m.views != nil {
 		if v := m.views.Get(ViewWeeklyReview); v != nil {

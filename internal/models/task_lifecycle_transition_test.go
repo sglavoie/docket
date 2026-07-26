@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestCanTransitionTo(t *testing.T) {
 	tests := []struct {
@@ -105,6 +108,17 @@ func TestApplyTransition(t *testing.T) {
 	}
 }
 
+func TestApplyTransitionRejectsInvalidLegacyStatus(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	before := task.State()
+
+	task.ApplyTransition(TaskStatus(StateNext))
+
+	if task.State() != before {
+		t.Fatalf("invalid legacy status changed state to %q, want %q", task.State(), before)
+	}
+}
+
 func TestApplyStateTransition(t *testing.T) {
 	for _, state := range AllWorkflowStates() {
 		state := state
@@ -123,6 +137,81 @@ func TestApplyStateTransition(t *testing.T) {
 				t.Errorf("nonterminal state %s: expected CompletedAt nil, got %v", state, task.CompletedAt)
 			}
 		})
+	}
+}
+
+func TestApplyStateTransitionAtOwnsLifecycleSideEffectsForEveryState(t *testing.T) {
+	now := time.Date(2026, 7, 25, 9, 30, 0, 0, time.UTC)
+	staleCompletion := now.Add(-24 * time.Hour)
+	snoozedUntil := now.Add(24 * time.Hour)
+
+	for _, state := range AllWorkflowStates() {
+		state := state
+		t.Run(state.String(), func(t *testing.T) {
+			task := newLifecycleTestTask(t, "t1", 1)
+			task.CompletedAt = &staleCompletion
+			task.SnoozedUntil = &snoozedUntil
+			task.Dimmed = true
+			if state == StateDone {
+				parkedAt := now.Add(-time.Hour)
+				task.ParkedAt = &parkedAt
+				task.ParkedNote = "resume here"
+			}
+
+			if err := task.ApplyStateTransitionAt(state, now); err != nil {
+				t.Fatalf("ApplyStateTransitionAt(%q): %v", state, err)
+			}
+			if task.State() != state {
+				t.Errorf("State() = %q, want %q", task.State(), state)
+			}
+			if !task.UpdatedAt.Equal(now) {
+				t.Errorf("UpdatedAt = %v, want %v", task.UpdatedAt, now)
+			}
+			if task.SnoozedUntil != nil {
+				t.Errorf("SnoozedUntil = %v, want nil", task.SnoozedUntil)
+			}
+			if state.IsTerminal() {
+				if task.CompletedAt == nil || !task.CompletedAt.Equal(now) {
+					t.Errorf("CompletedAt = %v, want %v", task.CompletedAt, now)
+				}
+			} else if task.CompletedAt != nil {
+				t.Errorf("CompletedAt = %v, want nil", task.CompletedAt)
+			}
+			if state == StateInbox && task.Dimmed {
+				t.Error("inbox transition should clear Dimmed")
+			}
+			if state != StateInbox && !task.Dimmed {
+				t.Errorf("%q transition unexpectedly cleared Dimmed", state)
+			}
+			if state == StateDone && task.IsParked() {
+				t.Error("done transition should clear parking")
+			}
+		})
+	}
+}
+
+func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	now := time.Date(2026, 7, 25, 9, 30, 0, 0, time.UTC)
+	completedAt := now.Add(-time.Hour)
+	snoozedUntil := now.Add(time.Hour)
+	task.WorkflowState = StateNext
+	task.CompletedAt = &completedAt
+	task.SnoozedUntil = &snoozedUntil
+	task.Dimmed = true
+	task.UpdatedAt = completedAt
+
+	if err := task.ApplyStateTransitionAt(WorkflowState("todo"), now); err == nil {
+		t.Fatal("ApplyStateTransitionAt accepted invalid state")
+	}
+	if task.State() != StateNext {
+		t.Errorf("State() = %q, want unchanged next", task.State())
+	}
+	if task.CompletedAt != &completedAt || task.SnoozedUntil != &snoozedUntil {
+		t.Error("invalid transition changed lifecycle timestamps")
+	}
+	if !task.UpdatedAt.Equal(completedAt) || !task.Dimmed {
+		t.Error("invalid transition changed task metadata")
 	}
 }
 

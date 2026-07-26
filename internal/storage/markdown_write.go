@@ -15,41 +15,46 @@ func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
 	return WriteTasksMarkdownWithSections(projectName, tasks, nil, nil)
 }
 
-// WriteTasksMarkdownWithSections generates markdown content from tasks and sections.
-// Tasks are written in their slice order, preserving user-defined ordering.
-func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string) string {
-	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, nil, nil)
+// WriteTasksMarkdownWithSections generates canonical schema-v2 markdown.
+//
+// sections and sectionColors are retained in the signature only while legacy
+// runtime callers are staged away from project lifecycle sections. Canonical
+// project documents never persist either value.
+func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, _ []string, _ map[string]string) string {
+	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, nil, nil)
 }
 
 // WriteTasksMarkdownWithProjectMetadata generates markdown content from tasks,
-// sections, and project-level task-file metadata.
-func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string) string {
-	return WriteTasksMarkdownWithFullProjectMetadata(projectName, tasks, sections, sectionColors, tags, nil)
+// tags, and retained compatibility arguments for legacy section metadata.
+func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, _ []string, _ map[string]string, tags []string) string {
+	return WriteTasksMarkdownWithFullProjectMetadata(projectName, tasks, nil, nil, tags, nil)
 }
 
 // WriteTasksMarkdownWithFullProjectMetadata generates markdown content from
-// tasks and all project-level task-file metadata.
-func WriteTasksMarkdownWithFullProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string) string {
-	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, tags, pinnedTags)
+// tasks and all canonical project-level task-file metadata. Legacy lifecycle
+// sections and section colors are accepted for source compatibility but ignored.
+func WriteTasksMarkdownWithFullProjectMetadata(projectName string, tasks []*models.Task, _ []string, _ map[string]string, tags []string, pinnedTags []string) string {
+	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, tags, pinnedTags)
 }
 
-func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string) string {
-	return writeTasksMarkdownDocument(projectName, tasks, sections, sectionColors, tags, pinnedTags, nil, format.WriteMetadataV2)
+func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, tags []string, pinnedTags []string) string {
+	header := func(b *strings.Builder) {
+		fmt.Fprintf(b, "<!-- tt-schema: %d -->\n", SchemaVersionV2)
+	}
+	return writeTasksMarkdownDocument(projectName, tasks, tags, pinnedTags, header, format.WriteMetadataV2)
 }
 
-// writeTasksMarkdownDocument is the shared serializer for both schema v1 and v2.
-// The header hook writes any schema-specific header content (e.g. the v2 schema
-// marker and preserved opaque blocks) immediately after the project-level
-// metadata, and writeMeta selects the per-task metadata encoder (v1 legacy
-// fields vs. v2 canonical `state`).
-func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string, header func(*strings.Builder), writeMeta func(*models.Task) string) string {
+// writeTasksMarkdownDocument is the canonical serializer used by ordinary
+// project writes and ProjectDocument. The header hook writes the schema marker
+// and any preserved opaque blocks before structured project metadata; writeMeta
+// supplies the canonical per-task metadata encoder.
+func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, tags []string, pinnedTags []string, header func(*strings.Builder), writeMeta func(*models.Task) string) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(&builder, "# Project: %s\n", projectName)
 	if header != nil {
 		header(&builder)
 	}
-	writeSectionsMetadata(&builder, sections, sectionColors)
 	writeTagsMetadata(&builder, tags)
 	writePinnedTagsMetadata(&builder, pinnedTags)
 	builder.WriteString("\n")
@@ -66,24 +71,6 @@ func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, sectio
 	appendOrphanedTasks(&builder, tasks, hierarchy.children, visited, writeMeta)
 
 	return builder.String()
-}
-
-func writeSectionsMetadata(builder *strings.Builder, sections []string, sectionColors map[string]string) {
-	sections = models.FilterGTDSections(sections)
-	if len(sections) == 0 {
-		return
-	}
-
-	var sectionParts []string
-	for _, name := range sections {
-		if color, ok := sectionColors[name]; ok && color != "" {
-			sectionParts = append(sectionParts, name+":"+color)
-			continue
-		}
-		sectionParts = append(sectionParts, name)
-	}
-
-	fmt.Fprintf(builder, "<!-- sections: %s -->\n", strings.Join(sectionParts, ";"))
 }
 
 func writeTagsMetadata(builder *strings.Builder, tags []string) {

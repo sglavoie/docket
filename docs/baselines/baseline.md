@@ -22,6 +22,23 @@ runs `go test -count=2 ./internal/external/...`, `go test -count=1 ./...`, and
 `go vet ./...`; milestone gates additionally run `go test -race ./...` and
 `golangci-lint run`.
 
+## Daily-loop simplification phase gates
+
+Recorded on 2026-07-25 for the daily-loop simplification program. These commands
+separate fast fixture feedback from the authoritative session and milestone
+gates:
+
+| Gate | Command |
+| --- | --- |
+| Acceptance-fixture inner loop | `go test ./internal/testutil ./internal/config ./cmd ./internal/tui -run TestDailyLoop && go test ./internal/storage -run TestLegacyWorkspaceFixture` |
+| Every session | `go test ./...` |
+| Public cutover milestones | `go test -race ./...` and `go vet ./...` |
+
+The uncached baseline command `/usr/bin/time -p go test -count=1 ./...` passed
+in **270.08 seconds wall time** (`user 86.73s`, `sys 70.97s`) from the repository
+root. Later measurements should use the same uncached command so Go's test cache
+does not hide a duration regression.
+
 ## TUI scenarios
 
 | Metric                   | Value | Reproduce |

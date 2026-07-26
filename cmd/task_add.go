@@ -167,7 +167,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			fmt.Sprintf("must be %d-%d", models.PriorityMin, models.PriorityMax))
 	}
 
-	// Resolve tags (template tags first, then flags), section, description,
+	// Resolve tags (template tags first, then flags), state, description,
 	// recurrence, parent, checklist, and type attributes into presentation-neutral
 	// primitives. The application-layer AddTask use case owns task construction,
 	// validation, ID/short-ID minting, and the single atomic commit.
@@ -180,11 +180,17 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Handle section (explicit flag overrides template, using Changed() for
 	// consistency). Sections are limited to built-in GTD buckets; the app layer
 	// re-validates and ensures the section on the freshly snapshotted project.
-	section := ""
+	state := models.StateReady
 	if cmd.Flags().Changed("section") {
-		section = taskSectionFlag
-	} else if tmpl != nil && tmpl.Section != "" {
-		section = tmpl.Section
+		if taskSectionFlag != "" && !models.IsGTDSection(taskSectionFlag) {
+			return tterrors.NewInvalidValueError("section", taskSectionFlag, "must be a built-in GTD section")
+		}
+		state = models.StateForSection(taskSectionFlag)
+	} else if tmpl != nil {
+		state = tmpl.EffectiveState()
+	}
+	if !state.IsValid() {
+		return tterrors.NewInvalidValueError("template state", state, "must be a canonical workflow state")
 	}
 
 	description := ""
@@ -271,7 +277,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			Priority:    priority,
 			Tags:        tags,
 			Description: description,
-			Section:     section,
+			State:       state,
 			Recurrence:  recurrence,
 			ParentID:    parentID,
 			Checklist:   checklist,

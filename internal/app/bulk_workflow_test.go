@@ -20,7 +20,7 @@ func TestBulkTransitionWithWorkflowFiresEventRuleAndCountsTriggers(t *testing.T)
 		ID:      "r-done-tag",
 		Name:    "Tag on completion",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->done"},
+		Trigger: workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}},
 	}}
 
@@ -60,8 +60,8 @@ func TestBulkTransitionLocatorsDisambiguateDuplicateTaskIDs(t *testing.T) {
 	_, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
 		TaskLocators: []app.TaskLocator{{ProjectID: beta.ID, TaskID: betaTask.ID}},
 		Target:       models.StateInProgress,
-		PlanningArtifacts: func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
-			planningTargets = append(planningTargets, targets...)
+		PlanningArtifacts: func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
+			planningTargets = append(planningTargets, req.Targets...)
 			return nil, nil
 		},
 	})
@@ -87,7 +87,7 @@ func TestBulkTransitionWithWorkflowMovesTaskInSameTransaction(t *testing.T) {
 		ID:      "r-move-done",
 		Name:    "Archive done to Beta",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->done"},
+		Trigger: workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}},
 	}}
 

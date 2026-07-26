@@ -116,10 +116,8 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("template %q: %w", t.Name, err)
 	}
-	if section, sectionErr := normalizeTemplateSectionInput(t.Section); sectionErr != nil {
-		return sectionErr
-	} else {
-		t.Section = section
+	if err := t.Validate(); err != nil {
+		return fmt.Errorf("invalid template %q: %w", t.Name, err)
 	}
 
 	// Load current project (only its identity and parent-resolution context are
@@ -175,7 +173,7 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 				Priority:    t.GetEffectivePriority(),
 				Tags:        t.Tags,
 				Description: t.Description,
-				Section:     t.Section,
+				State:       t.EffectiveState(),
 				ParentID:    parentID,
 				Checklist:   t.Checklist,
 				Artifacts:   arts,

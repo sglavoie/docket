@@ -119,7 +119,7 @@ func (m *OutlinerModel) projectByID(id string) *models.Project {
 // crossPriorityRowPredicate returns the per-task predicate that decides
 // whether a task is emitted as a flat row in cross-project Priority mode. It
 // combines the same filters the normal cross-project path applies (pinned
-// tag, search, common filters, saved criteria, sections, actionable) but
+// tag, search, common filters, saved criteria, actionable) but
 // judges each task individually instead of relying on filterTaskTree's
 // context-preserving parent rule. The owning project is required for
 // criteria, dependency, and project-scoped common-filter checks.
@@ -128,7 +128,6 @@ func (m *OutlinerModel) crossPriorityRowPredicate(proj *models.Project) func(*mo
 	query := m.SearchQuery()
 	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
 	criteria := m.activeCriteriaFilter
-	sections := m.filter.Sections
 	actionable := m.filter.Actionable
 
 	return func(t *models.Task) bool {
@@ -145,9 +144,6 @@ func (m *OutlinerModel) crossPriorityRowPredicate(proj *models.Project) func(*mo
 			return false
 		}
 		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, m.runtime.Automation()) {
-			return false
-		}
-		if len(sections) > 0 && !sections[taskSectionBucket(t)] {
 			return false
 		}
 		if actionable && !taskIsActionableState(t, proj) {

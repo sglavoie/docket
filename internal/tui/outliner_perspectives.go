@@ -32,7 +32,13 @@ func headerSectionForTask(t *models.Task) string {
 	if t == nil {
 		return ""
 	}
-	return taskSectionBucket(t)
+	return legacySectionForStateGroup(headerStateGroupForTask(t))
+}
+
+// headerStateGroupForTask is the authoritative classifier used by All-mode
+// grouping. headerSectionForTask above remains the thin visible-surface adapter.
+func headerStateGroupForTask(t *models.Task) models.WorkflowStateGroup {
+	return legacyAllPresentationGroup(taskStateGroup(t))
 }
 
 func sectionOrderCopy() []string {

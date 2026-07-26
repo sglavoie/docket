@@ -140,9 +140,11 @@ func (s *Service) BulkTransitionWithWorkflow(req BulkTransitionRequest) (BulkRes
 				previousStates:       previous,
 				planningTaskLocators: planningTaskLocators,
 				mutate: func(_ *WorkspaceResolver) error {
+					now := s.clock.Now()
 					for _, ref := range refs {
-						applyState(ref.Task, req.Target)
-						ref.Task.UpdatedAt = s.clock.Now()
+						if err := applyState(ref.Task, req.Target, now); err != nil {
+							return invalidInput("state", err.Error())
+						}
 					}
 					return nil
 				},

@@ -180,9 +180,7 @@ func renderMetadataContentOpts(task *models.Task, project *models.Project, inner
 		if sectionName == "" {
 			sectionName = "Active"
 		}
-		effectiveSection := taskSectionBucket(task)
-		sectionColor := project.GetSectionColor(effectiveSection)
-		sectionStyle := GetSectionColorStyle(sectionColor)
+		sectionStyle := lipgloss.NewStyle().Foreground(GetWorkflowStateGroupAccent(taskStateGroup(task)))
 		sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 		lines = append(lines, sectionLine)
 	}

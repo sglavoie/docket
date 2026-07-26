@@ -152,9 +152,13 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	migrationErr := app.migrateLegacyFocusQueue(newTUIAppService(dataDir, runtimeDeps, ledger), activeProjects, startupLoads)
 	if migrationErr != nil {
 		logging.Warn("failed to migrate legacy focus queue: %v", migrationErr)
+	} else if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
+		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)
+	} else if changed {
+		app.refreshRuntime()
 	}
 	app.hydrateFocusQueue(activeProjects, startupLoads, migrationErr == nil)
-	app.hydrateDailyPlan(activeProjects, startupLoads)
+	app.hydrateDailyPlan(activeProjects, startupLoads, migrationErr == nil)
 	app.hydrateRecentVisits(activeProjects, startupLoads)
 
 	app.reviewHub = NewReviewHubModel(app.runtime, app.configManager, app.wireSecondaryCoordinators)
@@ -302,47 +306,75 @@ func (m *AppModel) migrateLegacyFocusQueue(svc *app.Service, activeProjects []*m
 	return errors.Join(reloadErrs...)
 }
 
-// hydrateFocusQueue rebuilds the in-memory Next order index from the planning
-// snapshot. Queue membership is now the StateNext workflow state, so it keeps a
-// member only while its task is still StateNext and drops entries whose task is
-// missing, terminal, or has left StateNext (prune-on-load, mirroring the
-// applyQueueFilter prune). Legacy members that predate the state-driven queue are
-// backfilled to StateNext by the `tt doctor` migration, which runs before the
-// invariant is enforced on first launch. When migration could not be fully
-// confirmed, hydration still exposes cached StateNext tasks but must not rewrite
-// the durable index: an unconfirmed entry may be legacy rather than stale.
-func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startupLoads map[string]error, allowPrune bool) {
-	queueChanged := false
-	var updatedQueue []config.FocusQueueItem
-	for _, item := range app.runtime.Planning().GetFocusQueue() {
-		found := false
+// hydrateFocusQueue rebuilds the in-memory Next order index from an app-owned
+// reconciliation of the planning snapshot. Legacy members that predate the
+// state-driven queue are backfilled before this runs. When that migration could
+// not be confirmed, hydration exposes only cached StateNext tasks but preserves
+// the durable index for a later retry.
+func (m *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startupLoads map[string]error, allowReconcile bool) {
+	planning := m.runtime.Planning()
+	if allowReconcile {
+		projectsByID := make(map[string]*models.Project, len(activeProjects))
+		for _, project := range activeProjects {
+			if project != nil {
+				projectsByID[project.ID] = project
+			}
+		}
+		referencedProjects := make(map[string]bool)
+		for _, item := range planning.GetFocusQueue() {
+			referencedProjects[item.ProjectID] = true
+		}
+		for _, item := range planning.GetDailyPlan() {
+			referencedProjects[item.ProjectID] = true
+		}
+		var targets []app.PlanningReconcileTarget
+		canReconcile := true
+		for projectID := range referencedProjects {
+			project := projectsByID[projectID]
+			if project == nil {
+				continue
+			}
+			if err := m.loadStartupProject(project, startupLoads); err != nil {
+				canReconcile = false
+				continue
+			}
+			for _, task := range project.Tasks {
+				if task != nil {
+					targets = append(targets, app.PlanningReconcileTarget{
+						TaskID: task.ID, ProjectID: project.ID, State: task.State(),
+					})
+				}
+			}
+		}
+		if canReconcile {
+			reconciled := clonePlanningState(planning)
+			if app.ReconcilePlanningState(reconciled, app.PlanningReconcileRequest{
+				Targets: targets, Complete: true,
+			}) {
+				if m.runtime.DataDir() == "" {
+					planning = reconciled
+				} else if err := m.runtime.CommitPlanning(reconciled); err != nil {
+					logging.Warn("failed to persist reconciled focus queue: %v", err)
+				} else {
+					planning = m.runtime.Planning()
+				}
+			}
+		}
+	}
+
+	for _, item := range planning.GetFocusQueue() {
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
-			if err := app.loadStartupProject(p, startupLoads); err != nil {
+			if err := m.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil && task.IsInState(models.StateNext) {
-				app.focusQueue = append(app.focusQueue, FocusTask{Task: task, Project: p})
-				app.focusQueueIDs[taskIdentityFor(task, p)] = true
-				updatedQueue = append(updatedQueue, item)
-				found = true
+				m.focusQueue = append(m.focusQueue, FocusTask{Task: task, Project: p})
+				m.focusQueueIDs[taskIdentityFor(task, p)] = true
 			}
 			break
-		}
-		if !found {
-			queueChanged = true
-		}
-	}
-	if allowPrune && queueChanged {
-		if updatedQueue == nil {
-			updatedQueue = []config.FocusQueueItem{}
-		}
-		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
-			p.SetFocusQueue(updatedQueue)
-		}); err != nil {
-			logging.Warn("failed to persist focus queue pruning: %v", err)
 		}
 	}
 }
@@ -350,18 +382,19 @@ func (app *AppModel) hydrateFocusQueue(activeProjects []*models.Project, startup
 // hydrateDailyPlan restores the daily plan from the planning-domain snapshot with
 // carry-over logic, committing the carried/pruned plan through a checked planning
 // commit.
-func (app *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupLoads map[string]error) {
+func (m *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupLoads map[string]error, reconcile ...bool) {
+	allowReconcile := len(reconcile) == 0 || reconcile[0]
 	today := time.Now().Format("2006-01-02")
-	var updatedPlan []config.DailyPlanItem
+	var updates []app.PlanningTodayUpdate
 	planChanged := false
-	for _, item := range app.runtime.Planning().GetDailyPlan() {
+	for _, item := range m.runtime.Planning().GetDailyPlan() {
 		var foundTask *models.Task
 		var foundProject *models.Project
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
-			if err := app.loadStartupProject(p, startupLoads); err != nil {
+			if err := m.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil {
@@ -370,7 +403,7 @@ func (app *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupL
 			}
 			break
 		}
-		if foundTask == nil || foundProject == nil {
+		if foundTask == nil || foundProject == nil || !app.PlanningTodayEligible(foundTask.State()) {
 			planChanged = true
 			continue
 		}
@@ -380,22 +413,22 @@ func (app *AppModel) hydrateDailyPlan(activeProjects []*models.Project, startupL
 				continue
 			}
 			item.PlannedDate = today
-			app.dailyPlanCarried++
-			app.dailyPlanCarriedIDs[taskIdentityFor(foundTask, foundProject)] = true
+			m.dailyPlanCarried++
+			m.dailyPlanCarriedIDs[taskIdentityFor(foundTask, foundProject)] = true
 			planChanged = true
 		}
-		updatedPlan = append(updatedPlan, item)
-		app.dailyPlan = append(app.dailyPlan, FocusTask{Task: foundTask, Project: foundProject})
-		app.dailyPlanIDs[taskIdentityFor(foundTask, foundProject)] = true
+		updates = append(updates, app.PlanningTodayUpdate{
+			Locator:     app.TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID},
+			PlannedDate: item.PlannedDate,
+		})
+		m.dailyPlan = append(m.dailyPlan, FocusTask{Task: foundTask, Project: foundProject})
+		m.dailyPlanIDs[taskIdentityFor(foundTask, foundProject)] = true
 	}
-	if planChanged {
-		if updatedPlan == nil {
-			updatedPlan = []config.DailyPlanItem{}
-		}
-		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
-			p.SetDailyPlan(updatedPlan)
-		}); err != nil {
+	if planChanged && allowReconcile && m.appService != nil {
+		if err := m.appService.UpdateTodayDates(updates); err != nil {
 			logging.Warn("failed to persist daily plan carry-over: %v", err)
+		} else {
+			m.refreshRuntime()
 		}
 	}
 }

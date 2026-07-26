@@ -79,7 +79,7 @@ for arg in "$@"; do
   printf 'arg=<%s>\n' "$arg" >> "$RECORD_DIR/meta"
 done
 cat > "$RECORD_DIR/stdin"
-printf '{"version":1,"summary":"ok","actions":[]}'
+printf '{"version":2,"summary":"ok","actions":[]}'
 `)
 
 			var workDirs []string
@@ -113,7 +113,7 @@ printf '{"version":1,"summary":"ok","actions":[]}'
 			if err != nil {
 				t.Fatalf("Run: %v", err)
 			}
-			if response != `{"version":1,"summary":"ok","actions":[]}` {
+			if response != `{"version":2,"summary":"ok","actions":[]}` {
 				t.Fatalf("response = %q", response)
 			}
 			if _, err := ParseActionPlan(response); err != nil {

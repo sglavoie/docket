@@ -53,7 +53,9 @@ func (p *Project) GetCompletedTasks() []*Task {
 	})
 }
 
-// GetTasksByState returns tasks filtered by workflow state.
+// GetTasksByState returns tasks in the exact canonical workflow state while
+// preserving project task order. Project sections and display buckets do not
+// participate.
 func (p *Project) GetTasksByState(state WorkflowState) []*Task {
 	return p.FilterTasks(func(t *Task) bool {
 		return t.IsInState(state)

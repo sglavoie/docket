@@ -46,12 +46,13 @@ type OpaqueBlock struct {
 	Content string
 }
 
-// ProjectDocument is a lossless in-memory representation of a project's
-// tasks.md: the structured tasks and project metadata plus any opaque header
-// blocks the structured parser could not interpret, together with the detected
-// schema version and a canonical content revision. It is the base retained for
-// three-way merging (session 20) and the unit persisted by the transactional
-// repository (sessions 12+).
+// ProjectDocument is the storage-boundary representation of a project's
+// tasks.md: canonical tasks and project metadata plus any opaque header blocks
+// the structured parser could not interpret, together with the detected schema
+// version and a canonical content revision. Sections and SectionColors are
+// decode-only schema-v1 inputs. They remain available for migration inspection
+// but never participate in canonical revisions, merges, runtime project state,
+// or schema-v2 writes.
 type ProjectDocument struct {
 	ProjectName   string
 	Sections      []string
@@ -68,7 +69,7 @@ type ProjectDocument struct {
 	Warnings []ParseWarning
 }
 
-// ParseProjectDocument parses tasks.md content into a lossless ProjectDocument.
+// ParseProjectDocument parses tasks.md content into a storage ProjectDocument.
 // It detects the schema version, captures unknown header comment lines as opaque
 // blocks, delegates structured task parsing to the shared parser (so both legacy
 // v1 and v2 `state` documents load identically for the rest of the domain), and
@@ -173,9 +174,9 @@ func (d *ProjectDocument) canonicalContent() string {
 	return d.render()
 }
 
-// WriteV2 renders the document as schema-v2 markdown: the schema marker, project
-// metadata, preserved opaque blocks, and tasks serialized with the canonical
-// `state` field instead of the legacy lifecycle fields.
+// WriteV2 renders the document as schema-v2 markdown: the schema marker,
+// canonical project metadata, preserved opaque blocks, and tasks serialized
+// with the canonical `state` field instead of legacy lifecycle fields.
 func (d *ProjectDocument) WriteV2() string {
 	return d.render()
 }
@@ -192,7 +193,7 @@ func (d *ProjectDocument) render() string {
 			b.WriteString("\n")
 		}
 	}
-	return writeTasksMarkdownDocument(d.ProjectName, d.Tasks, d.Sections, d.SectionColors, d.Tags, d.PinnedTags, header, format.WriteMetadataV2)
+	return writeTasksMarkdownDocument(d.ProjectName, d.Tasks, d.Tags, d.PinnedTags, header, format.WriteMetadataV2)
 }
 
 // ToProjectDocument builds a v2 ProjectDocument from an already-loaded project,
@@ -202,8 +203,6 @@ func (d *ProjectDocument) render() string {
 func ToProjectDocument(project *models.Project, opaque []OpaqueBlock) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   project.Name,
-		Sections:      project.GetSections(),
-		SectionColors: project.SectionColors,
 		Tags:          project.Tags,
 		PinnedTags:    project.PinnedTags,
 		Tasks:         project.Tasks,
@@ -251,8 +250,6 @@ func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	if os.IsNotExist(err) {
 		doc := &ProjectDocument{
 			ProjectName:   project.Name,
-			Sections:      []string{models.SectionNext},
-			SectionColors: map[string]string{},
 			Tasks:         []*models.Task{},
 			SchemaVersion: SchemaVersionV2,
 		}

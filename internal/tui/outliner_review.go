@@ -112,9 +112,6 @@ func (m *OutlinerModel) reviewGlobalScopeBlockers() []string {
 	if m.activeCriteriaFilter != nil {
 		blockers = append(blockers, "the saved filter")
 	}
-	if len(m.filter.Sections) > 0 {
-		blockers = append(blockers, "the section filter")
-	}
 	if m.filter.Actionable {
 		blockers = append(blockers, "the actionable filter")
 	}

@@ -37,10 +37,8 @@ func (m *TemplatePickerModel) renderPreviewPanel(t *template.TaskTemplate, width
 		lines = append(lines, fmt.Sprintf("Tags: %s", tagStr))
 	}
 
-	// Section
-	if t.Section != "" {
-		lines = append(lines, fmt.Sprintf("Section: %s", t.Section))
-	}
+	// State
+	lines = append(lines, fmt.Sprintf("State: %s", t.EffectiveState()))
 
 	// Description
 	if t.Description != "" {

@@ -7,32 +7,32 @@ import (
 )
 
 // sectionTaskForest is a presentation-only hierarchy containing tasks from one
-// canonical section. Cross-section children become roots while same-section
-// parent/child relationships retain normal tree rendering.
+// authoritative state group. Cross-group children become roots while
+// same-group parent/child relationships retain normal tree rendering.
 type sectionTaskForest struct {
 	roots    []*models.Task
 	children map[string][]*models.Task
 	count    int
 }
 
-func buildSectionTaskForests(tasks []*models.Task) map[string]*sectionTaskForest {
+func buildSectionTaskForests(tasks []*models.Task) map[models.WorkflowStateGroup]*sectionTaskForest {
 	ordered := flattenTaskPointers(tasks)
 	included := make(map[string]*models.Task, len(ordered))
 	for _, task := range ordered {
 		included[task.ID] = task
 	}
 
-	forests := make(map[string]*sectionTaskForest)
+	forests := make(map[models.WorkflowStateGroup]*sectionTaskForest)
 	for _, task := range ordered {
-		section := renderedHeaderSectionForTask(task)
-		forest := forests[section]
+		group := renderedHeaderStateGroupForTask(task)
+		forest := forests[group]
 		if forest == nil {
 			forest = &sectionTaskForest{children: make(map[string][]*models.Task)}
-			forests[section] = forest
+			forests[group] = forest
 		}
 		forest.count++
 		if task.ParentID != nil {
-			if parent := included[*task.ParentID]; parent != nil && renderedHeaderSectionForTask(parent) == section {
+			if parent := included[*task.ParentID]; parent != nil && renderedHeaderStateGroupForTask(parent) == group {
 				forest.children[parent.ID] = append(forest.children[parent.ID], task)
 				continue
 			}

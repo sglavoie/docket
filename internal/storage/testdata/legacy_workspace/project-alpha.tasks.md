@@ -22,6 +22,11 @@ Completion signalled by section, not status.
 
 Pending reviewer approval.
 
+## Task: Review via section
+<!-- id: legacy-review-section-1, status: todo, priority: 2, section: Review, created: 2024-01-04 09:00 -->
+
+Review state signalled by section, not status.
+
 ## Task: Wiring the parser
 <!-- id: legacy-inprogress-1, status: in_progress, priority: 1, created: 2024-01-05 12:00 -->
 

@@ -5,6 +5,7 @@ import "charm.land/lipgloss/v2"
 // View mode and filter styles.
 var (
 	ViewModeActiveStyle    = makeViewModeStyle("#2e4a30", "#15803d")
+	ViewModeWorkStyle      = makeViewModeStyle("#4a321e", "#9a3412")
 	ViewModeNextStyle      = makeViewModeStyle("#2d3a6a", "#3730a3")
 	ViewModeInboxStyle     = makeViewModeStyle("#1e3a5f", "#1d4ed8")
 	ViewModeWaitingStyle   = makeViewModeStyle("#5c3a1e", "#92400e")
@@ -13,6 +14,7 @@ var (
 	ViewModeReviewStyle    = makeViewModeStyle("#1e3a3f", "#0f766e")
 	ViewModeStandbyStyle   = makeViewModeStyle("#4a2e6a", "#7c3aed")
 	ViewModeSnoozedStyle   = makeViewModeStyle("#4a2e3a", "#7c2d12")
+	ViewModeCanceledStyle  = makeViewModeStyle("#4a2430", "#991b1b")
 	ViewModeAllStyle       = makeViewModeStyle("#283352", "#0369a1")
 
 	FilterBadgeStyle = lipgloss.NewStyle().

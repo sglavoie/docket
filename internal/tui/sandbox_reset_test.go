@@ -74,7 +74,12 @@ func TestSandboxResetTUIFailurePreservesDiskAndCache(t *testing.T) {
 	if err := storage.LoadProject(fresh); err != nil {
 		t.Fatalf("LoadProject after failed reset: %v", err)
 	}
-	assertSandboxResetTUICacheIntact(t, fresh)
+	if len(fresh.Tasks) != 1 || fresh.NextShortID != 2 || len(fresh.Tags) != 1 || len(fresh.PinnedTags) != 1 {
+		t.Fatalf("sandbox disk state changed after failed reset: %+v", fresh)
+	}
+	if len(fresh.SectionColors) != 0 {
+		t.Fatalf("canonical disk load hydrated legacy section colors: %v", fresh.SectionColors)
+	}
 
 	handled, cmd := shell.handleProjectMessages(failed)
 	if !handled || cmd == nil {

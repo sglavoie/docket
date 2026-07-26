@@ -311,6 +311,14 @@ func (m *FilterBuilderModel) saveSavedFilter() tea.Cmd {
 	if len(m.criteria) == 0 {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("at least one criterion is required")} }
 	}
+	for i := range m.criteria {
+		if m.currentField(i).ValueType != "states" {
+			continue
+		}
+		if _, err := parseWorkflowStateSetInput(m.criteria[i].valueInput.Value()); err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("criterion %d: %w", i+1, err)} }
+		}
+	}
 
 	sf := m.buildSavedFilter()
 

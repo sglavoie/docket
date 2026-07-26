@@ -694,6 +694,12 @@ func (s *DomainFileStore) LoadAutomationChecked() (*AutomationConfig, string, er
 	if err != nil {
 		return nil, "", err
 	}
+	if out.MigrateTaskTemplateStates() {
+		rev, err = s.persistLoadedMigration(domainAutomation, out, rev)
+		if err != nil {
+			return nil, rev, err
+		}
+	}
 	return out, rev, nil
 }
 

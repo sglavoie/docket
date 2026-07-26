@@ -224,8 +224,7 @@ func renderInboxCurrentSettings(task *models.Task, settings *config.Settings) st
 	if section == "" {
 		section = "(no section)"
 	}
-	sectionColorName := settings.GetGlobalSectionColor(section)
-	sectionStyle := GetSectionColorStyle(sectionColorName)
+	sectionStyle := lipgloss.NewStyle().Foreground(GetWorkflowStateGroupAccent(taskStateGroup(task)))
 	lines = append(lines, renderSettingLine("Section", sectionStyle.Render(section)))
 	lines = append(lines, renderSettingLine("Priority", GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority))))
 

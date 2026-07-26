@@ -1,10 +1,19 @@
 package tui
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+func testWorkflowStateSet(states ...models.WorkflowState) models.WorkflowStateSet {
+	set, err := models.NewWorkflowStateSet(states...)
+	if err != nil {
+		panic(err)
+	}
+	return set
+}
 
 // buildWorkflowStateFixture returns a project seeded with one leaf task per
 // canonical workflow state (via the legacy Status/Section backing fields the
@@ -62,7 +71,7 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 		state := state
 		t.Run(state.String(), func(t *testing.T) {
 			filter := newFilterState()
-			filter.State = state
+			filter.setStateFilter(testWorkflowStateSet(state), true)
 			for _, task := range project.Tasks {
 				want := task.State() == state
 				got := passesCommonFilters(task, &filter, project, nil)
@@ -72,6 +81,47 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testing.T) {
+	project := buildWorkflowStateFixture(t)
+	filter := newFilterState()
+	filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateWaiting, models.StateDone), true)
+
+	for _, task := range project.Tasks {
+		want := filter.States.Contains(task.State())
+		if got := passesCommonFilters(task, &filter, project, nil); got != want {
+			t.Errorf("task %q state=%s: multi-state filter got %v, want %v", task.ID, task.State(), got, want)
+		}
+	}
+
+	filter.setStateFilter(models.WorkflowStateSet{}, true)
+	if !hasActiveCommonFilters(&filter) {
+		t.Fatal("explicit empty state set must remain an active match-nothing filter")
+	}
+	for _, task := range project.Tasks {
+		if passesCommonFilters(task, &filter, project, nil) {
+			t.Errorf("explicit empty state set unexpectedly matched task %q", task.ID)
+		}
+	}
+}
+
+func TestHandleFilterStateKeyTogglesMultiStateSet(t *testing.T) {
+	filter := newFilterState()
+	if !handleFilterStateKey("i", &filter) || !handleFilterStateKey("n", &filter) {
+		t.Fatal("state keys should be handled")
+	}
+	if got, want := filter.States.Values(), []models.WorkflowState{models.StateInbox, models.StateNext}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("toggled states = %v, want %v", got, want)
+	}
+	handleFilterStateKey("i", &filter)
+	if got, want := filter.States.Values(), []models.WorkflowState{models.StateNext}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("states after toggling Inbox off = %v, want %v", got, want)
+	}
+	handleFilterStateKey("n", &filter)
+	if filter.hasStateFilter() {
+		t.Fatalf("toggling the final state off left active filter %v", filter.States.Values())
 	}
 }
 
@@ -104,7 +154,7 @@ func TestBlockedFilter_SelectsDependencyBlockedTasks(t *testing.T) {
 // surfaced in the filter badge parts.
 func TestStateFilter_ActiveClearAndBadge(t *testing.T) {
 	filter := newFilterState()
-	filter.State = models.StateInProgress
+	filter.setStateFilter(testWorkflowStateSet(models.StateReady, models.StateInProgress), true)
 	filter.Blocked = true
 
 	if !hasActiveCommonFilters(&filter) {
@@ -112,16 +162,16 @@ func TestStateFilter_ActiveClearAndBadge(t *testing.T) {
 	}
 
 	parts := commonFilterParts(&filter)
-	if !containsString(parts, "state:in_progress") {
-		t.Errorf("commonFilterParts()=%v, want to contain state:in_progress", parts)
+	if !containsString(parts, "state:ready,in_progress") {
+		t.Errorf("commonFilterParts()=%v, want canonical multi-state chip", parts)
 	}
 	if !containsString(parts, "blocked") {
 		t.Errorf("commonFilterParts()=%v, want to contain blocked", parts)
 	}
 
 	clearCommonFilters(&filter)
-	if filter.State != "" || filter.Blocked {
-		t.Errorf("clearCommonFilters left State=%q Blocked=%v", filter.State, filter.Blocked)
+	if filter.hasStateFilter() || filter.Blocked {
+		t.Errorf("clearCommonFilters left States=%v Blocked=%v", filter.States.Values(), filter.Blocked)
 	}
 	if hasActiveCommonFilters(&filter) {
 		t.Error("cleared filter should not be active")

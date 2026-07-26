@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -180,7 +181,7 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 // none do. It is the single-project analog of the note/blocker commitArtifact
 // path, generalized to carry an already-encoded artifact set the caller assembled.
 func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
-	generated := applyPostMutationHooks(ref.Project)
+	generated := applyPostMutationHooksAt(ref.Project, s.clock.Now())
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
@@ -237,8 +238,9 @@ type groupedCommitOutcome struct {
 func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) (groupedCommitOutcome, error) {
 	changesets := make([]storage.ChangeSet, len(commits))
 	recurring := make(map[string]int, len(commits))
+	now := s.clock.Now()
 	for i, c := range commits {
-		recurring[c.project.ID] += applyPostMutationHooks(c.project)
+		recurring[c.project.ID] += applyPostMutationHooksAt(c.project, now)
 		changesets[i] = storage.ChangeSet{
 			Project:          c.project,
 			ExpectedRevision: c.expectedRevision,
@@ -273,9 +275,17 @@ func revisionAt(results []*storage.CommitResult, i int) string {
 // rebuilt, and root tasks are reordered by completion. It returns the number of
 // recurring instances generated so single-task callers can surface that count.
 func applyPostMutationHooks(project *models.Project) int {
+	return applyPostMutationHooksAt(project, time.Now())
+}
+
+// applyPostMutationHooksAt is the deterministic variant used by Service commit
+// paths. In particular, recurrence generation shares the service mutation
+// timestamp instead of overwriting a just-transitioned task with wall-clock
+// time.
+func applyPostMutationHooksAt(project *models.Project, now time.Time) int {
 	project.CheckAndAutoUnblock()
 	project.ReconcileParentCompletion()
-	generated := project.GenerateRecurringInstances()
+	generated := project.GenerateRecurringInstancesAt(now)
 	project.BuildTaskTree()
 	project.ReorderRootTasksByCompletion()
 	return generated

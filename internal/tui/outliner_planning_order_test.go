@@ -280,6 +280,9 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 
 	t.Run("Today J reorders the durable daily plan without changing hierarchy", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-today", "today", "Alpha", "Bravo", "Charlie")
+		for _, task := range tasks {
+			task.ApplyWorkflowState(models.StateReady)
+		}
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedDailyPlanOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
@@ -332,17 +335,17 @@ func TestTodayPlanningReorderStateBuckets(t *testing.T) {
 		key        rune
 		cursorTask int
 	}{
-		{name: "J from open into completed", key: 'J', cursorTask: 0},
-		{name: "K from completed into open", key: 'K', cursorTask: 1},
+		{name: "J from ready into waiting", key: 'J', cursorTask: 0},
+		{name: "K from waiting into ready", key: 'K', cursorTask: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			project, tasks := planningOrderProject(t, t.TempDir(), "p-boundary", "boundary", "Open", "Completed")
+			project, tasks := planningOrderProject(t, t.TempDir(), "p-boundary", "boundary", "Ready", "Waiting")
 			tasks[0].ApplyWorkflowState(models.StateReady)
-			tasks[1].ApplyWorkflowState(models.StateDone)
+			tasks[1].ApplyWorkflowState(models.StateWaiting)
 			m, cross, dataDir := newPlanningOrderApp(t, project)
 
 			// Deliberately persist the opposite order. Today must still render the
-			// open bucket before the completed bucket, and a boundary key must not
+			// Ready bucket before the Waiting bucket, and a boundary key must not
 			// rewrite this durable order merely to leave the display unchanged.
 			seedDailyPlanOrder(t, m,
 				locatorOf(project, tasks[1]), locatorOf(project, tasks[0]),
@@ -380,13 +383,10 @@ func TestTodayPlanningReorderStateBuckets(t *testing.T) {
 		})
 	}
 
-	t.Run("distinct states sharing a rank swap visibly and durably", func(t *testing.T) {
-		project, tasks := planningOrderProject(t, t.TempDir(), "p-same-rank", "same-rank", "Ready", "Next")
+	t.Run("eligible tasks sharing a rank swap visibly and durably", func(t *testing.T) {
+		project, tasks := planningOrderProject(t, t.TempDir(), "p-same-rank", "same-rank", "Ready one", "Ready two")
 		tasks[0].ApplyWorkflowState(models.StateReady)
-		tasks[1].ApplyWorkflowState(models.StateNext)
-		if tasks[0].State() == tasks[1].State() {
-			t.Fatal("test requires distinct workflow states")
-		}
+		tasks[1].ApplyWorkflowState(models.StateReady)
 		if TodayStateOrder(tasks[0].State()) != TodayStateOrder(tasks[1].State()) {
 			t.Fatal("test requires workflow states in the same Today bucket")
 		}
@@ -457,6 +457,9 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 
 	t.Run("filtered Today swaps visible neighbors, not the hidden middle task", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-ftoday", "ftoday", "keep-one", "hide-me", "keep-two")
+		for _, task := range tasks {
+			task.ApplyWorkflowState(models.StateReady)
+		}
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedDailyPlanOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),

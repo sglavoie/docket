@@ -134,7 +134,7 @@ func (p *PlanningState) GetFocusQueue() []FocusQueueItem {
 
 // SetFocusQueue mirrors (*Config).SetFocusQueue.
 func (p *PlanningState) SetFocusQueue(items []FocusQueueItem) {
-	p.FocusQueue = items
+	p.FocusQueue = canonicalFocusQueue(items)
 }
 
 // AddToFocusQueue appends a task to the Next order index (idempotent by task ID).
@@ -201,7 +201,57 @@ func (p *PlanningState) GetDailyPlan() []DailyPlanItem {
 
 // SetDailyPlan mirrors (*Config).SetDailyPlan.
 func (p *PlanningState) SetDailyPlan(items []DailyPlanItem) {
-	p.DailyPlan = items
+	p.DailyPlan = canonicalDailyPlan(items)
+}
+
+// NormalizePlanningMemberships removes structurally stale empty and duplicate
+// identities during decode and before semantic app-layer reconciliation. Task
+// existence and workflow-state eligibility require a workspace snapshot and are
+// therefore enforced by app.ReconcilePlanningState.
+func (p *PlanningState) NormalizePlanningMemberships() bool {
+	if p == nil {
+		return false
+	}
+	focus := canonicalFocusQueue(p.FocusQueue)
+	daily := canonicalDailyPlan(p.DailyPlan)
+	changed := len(focus) != len(p.FocusQueue) || len(daily) != len(p.DailyPlan)
+	p.FocusQueue = focus
+	p.DailyPlan = daily
+	return changed
+}
+
+func canonicalFocusQueue(items []FocusQueueItem) []FocusQueueItem {
+	if items == nil {
+		return nil
+	}
+	out := make([]FocusQueueItem, 0, len(items))
+	seen := make(map[ProjectTaskLocator]bool, len(items))
+	for _, item := range items {
+		locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
+		if item.TaskID == "" || seen[locator] {
+			continue
+		}
+		seen[locator] = true
+		out = append(out, item)
+	}
+	return out
+}
+
+func canonicalDailyPlan(items []DailyPlanItem) []DailyPlanItem {
+	if items == nil {
+		return nil
+	}
+	out := make([]DailyPlanItem, 0, len(items))
+	seen := make(map[ProjectTaskLocator]bool, len(items))
+	for _, item := range items {
+		locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
+		if item.TaskID == "" || seen[locator] {
+			continue
+		}
+		seen[locator] = true
+		out = append(out, item)
+	}
+	return out
 }
 
 // RemoveFromDailyPlan drops a task's Today (Daily Plan) entry, returning true
@@ -334,6 +384,7 @@ func (p *PlanningState) GetSavedFilterByName(name string) *SavedFilter {
 
 // SaveFilter mirrors (*Config).SaveFilter: upsert by ID.
 func (p *PlanningState) SaveFilter(f SavedFilter) {
+	f.normalizeLifecycle()
 	for i := range p.SavedFilters {
 		if p.SavedFilters[i].ID == f.ID {
 			p.SavedFilters[i] = f

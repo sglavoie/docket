@@ -70,7 +70,7 @@ func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cm
 		Priority:  priority,
 		Tags:      msg.Tags,
 		Due:       msg.DueDate,
-		Section:   models.SectionInbox,
+		State:     models.StateInbox,
 		Prepend:   true,
 	})
 	if err != nil {

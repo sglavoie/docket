@@ -211,11 +211,10 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 			Type:       result.taskType,
 			Priority:   result.priority,
 			Tags:       tags,
-			Section:    targetSection,
 			Due:        result.dueDate,
 			ParentID:   result.parentID,
 			Recurrence: result.recurrence,
-			State:      captureStateForStatus(result.status),
+			State:      creationStateFromLegacyInputs(targetSection, result.status, ""),
 			Prepend:    true,
 		})
 	}

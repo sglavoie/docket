@@ -175,7 +175,10 @@ func TestResolveConflict_UseFileValidatesAndCommits(t *testing.T) {
 	env := newConflictTestEnv(t)
 	id, base, _, _ := recordTitleConflict(t, env)
 
-	mergedDoc := cloneEdit(base, func(tk *models.Task) { tk.Title = "hand merged" })
+	mergedDoc := cloneEdit(base, func(tk *models.Task) {
+		tk.Title = "hand merged"
+		tk.ApplyWorkflowState(models.StatePaused)
+	})
 	mergedPath := filepath.Join(t.TempDir(), "merged.md")
 	if err := os.WriteFile(mergedPath, []byte(mergedDoc.WriteV2()), 0o600); err != nil {
 		t.Fatal(err)
@@ -188,8 +191,8 @@ func TestResolveConflict_UseFileValidatesAndCommits(t *testing.T) {
 	if !res.Committed {
 		t.Fatal("expected the merged file to be committed")
 	}
-	if got := env.onDiskDoc(t); got.Tasks[0].Title != "hand merged" {
-		t.Fatalf("on-disk title = %q, want hand merged", got.Tasks[0].Title)
+	if got := env.onDiskDoc(t); got.Tasks[0].Title != "hand merged" || got.Tasks[0].State() != models.StatePaused {
+		t.Fatalf("on-disk task = title %q state %q, want hand merged/paused", got.Tasks[0].Title, got.Tasks[0].State())
 	}
 }
 

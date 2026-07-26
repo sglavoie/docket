@@ -21,6 +21,10 @@ func (t RuleTrigger) String() string {
 		opStr = ">"
 	case OpLessThan:
 		opStr = "<"
+	case OpIn:
+		opStr = "in"
+	case OpNotIn:
+		opStr = "not in"
 	}
 
 	return fmt.Sprintf("%s %s %s", t.Field, opStr, t.Value)
@@ -29,6 +33,8 @@ func (t RuleTrigger) String() string {
 // String returns a human-readable description of the action.
 func (a RuleAction) String() string {
 	switch a.ActionType {
+	case ActionSetState:
+		return fmt.Sprintf("set state to %s", a.Value)
 	case ActionSetStatus:
 		return fmt.Sprintf("set status to %s", a.Value)
 	case ActionSetPriority:

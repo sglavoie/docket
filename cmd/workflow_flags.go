@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -33,7 +34,7 @@ func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigge
 			Value:     values[i],
 		}
 
-		if err := trigger.Validate(); err != nil {
+		if err := trigger.ValidateForAuthoring(); err != nil {
 			return nil, fmt.Errorf("invalid trigger %d: %w", i+1, err)
 		}
 
@@ -57,7 +58,7 @@ func buildConditionFromFlags(field, op, value string) (*workflow.RuleTrigger, er
 		Operation: workflow.TriggerOperation(strings.ToLower(op)),
 		Value:     value,
 	}
-	if err := cond.Validate(); err != nil {
+	if err := cond.ValidateForAuthoring(); err != nil {
 		return nil, fmt.Errorf("invalid action condition: %w", err)
 	}
 	return cond, nil
@@ -70,7 +71,7 @@ func buildActionFromFlags(actionType, actionValue string) (workflow.RuleAction, 
 		Value:      actionValue,
 	}
 
-	if err := action.Validate(); err != nil {
+	if err := action.ValidateForAuthoring(); err != nil {
 		return workflow.RuleAction{}, fmt.Errorf("invalid action: %w", err)
 	}
 
@@ -141,15 +142,59 @@ func removeByIndices[T any](slice []T, indices []int) ([]T, error) {
 	return result, nil
 }
 
-// buildScopeFromFlags creates a RuleScope from CLI flag values.
+// buildScopeFromFlags creates a canonical RuleScope from CLI flag values.
 // Returns nil if all slices are empty (no restriction).
-func buildScopeFromFlags(projects, types, sections []string) *workflow.RuleScope {
-	if len(projects) == 0 && len(types) == 0 && len(sections) == 0 {
-		return nil
+func buildScopeFromFlags(projects, types, states []string) (*workflow.RuleScope, error) {
+	if len(projects) == 0 && len(types) == 0 && len(states) == 0 {
+		return nil, nil
 	}
-	return &workflow.RuleScope{
+	scope := &workflow.RuleScope{
 		Projects: projects,
 		Types:    types,
-		Sections: sections,
 	}
+	parsedStates, err := parseWorkflowScopeStates(states)
+	if err != nil {
+		return nil, err
+	}
+	scope.States = parsedStates
+	return scope, nil
+}
+
+func parseWorkflowScopeStates(values []string) ([]models.WorkflowState, error) {
+	states := make([]models.WorkflowState, 0, len(values))
+	for _, raw := range values {
+		state, ok := models.ParseWorkflowState(strings.TrimSpace(raw))
+		if !ok {
+			return nil, fmt.Errorf("invalid workflow state in scope: %s", raw)
+		}
+		states = append(states, state)
+	}
+	return states, nil
+}
+
+func workflowTriggerFieldCompletions() []string {
+	fields := workflow.ValidTriggerFields()
+	values := make([]string, 0, len(fields))
+	for _, field := range fields {
+		values = append(values, string(field))
+	}
+	return values
+}
+
+func workflowTriggerOperationCompletions() []string {
+	operations := workflow.ValidTriggerOperations()
+	values := make([]string, 0, len(operations))
+	for _, operation := range operations {
+		values = append(values, string(operation))
+	}
+	return values
+}
+
+func workflowActionTypeCompletions() []string {
+	actions := workflow.ValidActionTypes()
+	values := make([]string, 0, len(actions))
+	for _, action := range actions {
+		values = append(values, string(action))
+	}
+	return values
 }

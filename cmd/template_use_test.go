@@ -120,9 +120,33 @@ func TestRunTemplateUse(t *testing.T) {
 		testutil.AssertEqual(t, task.Title, "My Task Title")
 		testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 		testutil.AssertEqual(t, task.Priority, 2)
+		testutil.AssertEqual(t, task.State(), models.StateInbox)
 		if !task.HasTag("backend") {
 			t.Error("task should have 'backend' tag from template")
 		}
+	})
+
+	t.Run("materializes exact canonical state", func(t *testing.T) {
+		deps, project := setupTemplateUseTest(t)
+		defer deps.Cleanup()
+
+		tmpl := template.TaskTemplate{
+			ID:      "state-tmpl",
+			Name:    "In progress template",
+			Enabled: true,
+			Type:    models.TaskTypeTask,
+			State:   models.StateInProgress,
+		}
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
+
+		err := runTemplateUse(templateUseCmd, []string{"state-tmpl", "Exact state task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		testutil.AssertEqual(t, task.State(), models.StateInProgress)
 	})
 
 	t.Run("increments use count through automation artifact only", func(t *testing.T) {
@@ -309,32 +333,6 @@ func TestRunTemplateUse(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects non-GTD template section", func(t *testing.T) {
-		deps, project := setupTemplateUseTest(t)
-		defer deps.Cleanup()
-
-		tmpl := template.TaskTemplate{
-			ID:      "bad-section-tmpl",
-			Name:    "Bad Section Template",
-			Enabled: true,
-			Type:    models.TaskTypeTask,
-			Section: "Backlog",
-		}
-		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
-		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
-
-		initialCount := len(project.Tasks)
-		err := runTemplateUse(templateUseCmd, []string{"bad-section-tmpl", "Bad Section Task"})
-		if err == nil {
-			t.Fatal("expected error for non-GTD template section")
-		}
-
-		savedProject := deps.Repository.Projects[project.ID]
-		if len(savedProject.Tasks) != initialCount {
-			t.Fatalf("expected %d tasks, got %d", initialCount, len(savedProject.Tasks))
-		}
-	})
 }
 
 // TestResolveTemplateVars_NonInteractiveRequiredVar verifies that when stdin

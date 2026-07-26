@@ -54,6 +54,28 @@ func TestSetSection_RefreshesUpdatedAtOnChange(t *testing.T) {
 	}
 }
 
+func TestSetSectionDelegatesLifecycleSideEffects(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Complete()
+	snoozedUntil := time.Now().Add(24 * time.Hour)
+	task.SnoozedUntil = &snoozedUntil
+
+	task.SetSection(SectionNext)
+
+	if task.State() != StateNext {
+		t.Errorf("State() = %q, want next", task.State())
+	}
+	if task.CompletedAt != nil {
+		t.Errorf("CompletedAt = %v, want nil", task.CompletedAt)
+	}
+	if task.SnoozedUntil != nil {
+		t.Errorf("SnoozedUntil = %v, want nil", task.SnoozedUntil)
+	}
+}
+
 func TestSetSection_RejectedNamePreservesUpdatedAt(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
 	if err != nil {

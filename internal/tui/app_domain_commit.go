@@ -211,6 +211,7 @@ func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 		return nil
 	}
 	settings := *runtime.Settings()
+	settings.StateGroupLimits = maps.Clone(settings.StateGroupLimits)
 	return &config.Domains{
 		Catalog:    cloneWorkspaceCatalog(runtime.Catalog()),
 		Planning:   clonePlanningState(runtime.Planning()),

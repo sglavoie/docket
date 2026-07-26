@@ -15,7 +15,7 @@ import (
 )
 
 // Version is the only structured AI action-plan version this build accepts.
-const Version = 1
+const Version = 2
 
 // ActionType is the allowlisted tagged-union discriminator. There is no shell
 // command or arbitrary executable action.
@@ -204,6 +204,9 @@ func validateAction(action Action) error {
 		if action.TaskType != nil && !action.TaskType.IsValid() {
 			return fmt.Errorf("invalid task_type %q", *action.TaskType)
 		}
+		if action.State != nil && !action.State.IsValid() {
+			return fmt.Errorf("invalid state %q", *action.State)
+		}
 		if action.Priority != nil {
 			if err := models.ValidatePriority(*action.Priority, false); err != nil {
 				return fmt.Errorf("invalid priority: %w", err)
@@ -212,7 +215,7 @@ func validateAction(action Action) error {
 		if err := validateTags(action.Tags); err != nil {
 			return err
 		}
-		return noExtras("project_id", "title", "description", "task_type", "priority", "tags")
+		return noExtras("project_id", "title", "description", "task_type", "state", "priority", "tags")
 
 	case ActionEditTask:
 		if err := requireTask(); err != nil {

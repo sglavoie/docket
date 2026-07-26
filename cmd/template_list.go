@@ -141,7 +141,7 @@ func displayTemplateListJSON(defaultTemplates, customTemplates []template.TaskTe
 		Type     string   `json:"type"`
 		Priority int      `json:"priority"`
 		Tags     []string `json:"tags"`
-		Section  string   `json:"section,omitempty"`
+		State    string   `json:"state"`
 		UseCount int64    `json:"use_count"`
 		Summary  string   `json:"summary"`
 	}
@@ -166,7 +166,7 @@ func displayTemplateListJSON(defaultTemplates, customTemplates []template.TaskTe
 				Type:     t.Type.String(),
 				Priority: t.Priority,
 				Tags:     tags,
-				Section:  t.Section,
+				State:    t.EffectiveState().String(),
 				UseCount: t.UseCount,
 				Summary:  t.Summary(),
 			})

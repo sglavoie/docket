@@ -92,6 +92,25 @@ func TestMatchesScope_TypeMatch(t *testing.T) {
 	}
 }
 
+func TestMatchesScope_StateMatch(t *testing.T) {
+	rule := WorkflowRule{
+		Scope: &RuleScope{States: []models.WorkflowState{models.StateNext, models.StateReview}},
+	}
+	for _, tt := range []struct {
+		state models.WorkflowState
+		want  bool
+	}{
+		{state: models.StateNext, want: true},
+		{state: models.StateReview, want: true},
+		{state: models.StateReady, want: false},
+	} {
+		task := &models.Task{ID: string(tt.state), WorkflowState: tt.state}
+		if got := rule.MatchesScope(task, "Proj", "p1"); got != tt.want {
+			t.Errorf("MatchesScope(state=%s) = %v, want %v", tt.state, got, tt.want)
+		}
+	}
+}
+
 func TestMatchesScope_SectionListMatch(t *testing.T) {
 	// The task's section is now derived canonically from its state, so
 	// case-insensitivity is exercised on the (user-authored) scope side: a

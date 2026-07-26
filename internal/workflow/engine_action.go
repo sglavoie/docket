@@ -21,6 +21,8 @@ func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *Evalu
 		return applyCreateFollowup(task, action, result)
 	case ActionMoveToProject:
 		return applyMoveToProject(task, action, evalCtx, result)
+	case ActionSetState:
+		return applyCanonicalStateAction(task, action.Value, evalCtx)
 	default:
 	}
 
@@ -35,16 +37,18 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 	switch action.ActionType {
 	case ActionCompleteParent:
 		if task.Parent != nil && !task.Parent.IsComplete() {
-			task.Parent.Complete()
-			recordModified(result, task.Parent)
-			return true
+			if applyCanonicalState(task.Parent, models.StateDone, evalCtx) {
+				recordModified(result, task.Parent)
+				return true
+			}
 		}
 
 	case ActionBlockParent:
 		if task.Parent != nil && !task.Parent.IsInState(models.StateWaiting) {
-			task.Parent.Block()
-			recordModified(result, task.Parent)
-			return true
+			if applyCanonicalState(task.Parent, models.StateWaiting, evalCtx) {
+				recordModified(result, task.Parent)
+				return true
+			}
 		}
 
 	case ActionCascadeTag:
@@ -158,6 +162,8 @@ func applyMoveToProject(task *models.Task, action RuleAction, evalCtx *Evaluatio
 // applyAction applies a rule action to a task. Returns true if the task was modified.
 func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	switch action.ActionType {
+	case ActionSetState:
+		return applyCanonicalStateAction(task, action.Value, nil)
 	case ActionSetStatus:
 		newStatus := models.TaskStatus(action.Value)
 		// Idempotency is checked against the canonical state the target status
@@ -303,6 +309,47 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	default:
 	}
 	return false
+}
+
+func applyCanonicalStateAction(task *models.Task, value string, evalCtx *EvaluationContext) bool {
+	target, ok := models.ParseWorkflowState(value)
+	if !ok {
+		return false
+	}
+	return applyCanonicalState(task, target, evalCtx)
+}
+
+// applyCanonicalState is the one state-action mutation path. Application
+// workflow orchestration injects its clock-aware transition seam; standalone
+// engine use falls back to the canonical model primitive.
+func applyCanonicalState(task *models.Task, target models.WorkflowState, evalCtx *EvaluationContext) bool {
+	if task == nil || !target.IsValid() || task.State() == target {
+		return false
+	}
+	before := task.State()
+	var err error
+	if evalCtx != nil && evalCtx.TransitionState != nil {
+		err = evalCtx.TransitionState(task, target)
+	} else {
+		err = task.ApplyStateTransition(target)
+	}
+	return err == nil && task.State() != before
+}
+
+func actionTargetState(action RuleAction) (models.WorkflowState, bool) {
+	switch action.ActionType {
+	case ActionSetState:
+		state, ok := models.ParseWorkflowState(action.Value)
+		return state, ok
+	case ActionSetStatus:
+		status := models.TaskStatus(action.Value)
+		if !status.IsValid() {
+			return "", false
+		}
+		return models.TargetStateForStatus(status), true
+	default:
+		return "", false
+	}
 }
 
 // recurrencePatternsEqual reports whether two recurrence patterns are

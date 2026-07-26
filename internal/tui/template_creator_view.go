@@ -94,13 +94,13 @@ func (m *TaskTemplateCreatorModel) renderFieldsTab() string {
 	b.WriteString(m.renderPrioritySelector())
 	b.WriteString("\n")
 
-	// Section field
-	b.WriteString(m.renderLabel("Section", 4))
-	b.WriteString(m.sectionInput.View())
+	// State field
+	b.WriteString(m.renderLabel("State", 4))
+	b.WriteString(m.stateInput.View())
 	b.WriteString("\n")
-	// Render section suggestions if focused and showing
-	if m.focusIndex == 4 && m.showSuggestions && len(m.sectionSuggestions) > 0 {
-		b.WriteString(m.renderSuggestionsDropdown(m.sectionSuggestions))
+	// Render state suggestions if focused and showing
+	if m.focusIndex == 4 && m.showSuggestions && len(m.stateSuggestions) > 0 {
+		b.WriteString(m.renderSuggestionsDropdown(m.stateSuggestions))
 	}
 
 	// Tags field

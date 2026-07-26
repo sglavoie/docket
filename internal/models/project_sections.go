@@ -95,8 +95,18 @@ func (p *Project) EnsureSection(name string) {
 	}
 }
 
-// GetTasksBySection returns tasks whose workflow state resolves to the given
-// section bucket (see Task.InSection).
+// CountTasksByState returns task counts keyed by exact canonical workflow
+// state. Project sections and display buckets do not participate.
+func (p *Project) CountTasksByState() map[WorkflowState]int {
+	counts := make(map[WorkflowState]int)
+	for _, task := range p.Tasks {
+		counts[task.State()]++
+	}
+	return counts
+}
+
+// GetTasksBySection is a legacy presentation adapter. New runtime consumers
+// should query exact state with GetTasksByState.
 func (p *Project) GetTasksBySection(section string) []*Task {
 	var result []*Task
 	for _, task := range p.Tasks {
@@ -107,13 +117,12 @@ func (p *Project) GetTasksBySection(section string) []*Task {
 	return result
 }
 
-// CountTasksBySection returns the number of tasks in each section bucket,
-// keyed by the bucket each task's workflow state resolves to (empty string is
-// the default active bucket).
+// CountTasksBySection is a legacy presentation adapter over canonical state
+// counts. New runtime consumers should use CountTasksByState.
 func (p *Project) CountTasksBySection() map[string]int {
 	counts := make(map[string]int)
-	for _, task := range p.Tasks {
-		counts[SectionForState(task.State())]++
+	for state, count := range p.CountTasksByState() {
+		counts[SectionForState(state)] += count
 	}
 	return counts
 }

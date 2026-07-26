@@ -110,7 +110,7 @@ func TestWorkflowDryRunLoadingRetainsOwningProject(t *testing.T) {
 	task := &models.Task{
 		ID:            "workflow-task",
 		ShortID:       7,
-		Title:         "Promote priority",
+		Title:         "Start next task",
 		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateNext,
 		Priority:      3,
@@ -118,11 +118,11 @@ func TestWorkflowDryRunLoadingRetainsOwningProject(t *testing.T) {
 	persister := NewMockPersister()
 	persister.Projects[project.ID] = &models.Project{Tasks: []*models.Task{task}}
 	rule := workflow.WorkflowRule{
-		ID:      "promote-priority",
-		Name:    "Promote priority",
+		ID:      "start-next",
+		Name:    "Start Next task",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}},
+		Trigger: workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "next"},
+		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: "in_progress"}},
 	}
 
 	model := NewWorkflowDryRunModel(dataDir, manager, persister, &rule)
@@ -149,6 +149,11 @@ func TestWorkflowDryRunLoadingRetainsOwningProject(t *testing.T) {
 	}
 	if result.Task != task {
 		t.Fatal("dry-run result did not retain the original unmodified task")
+	}
+	if len(result.Changes) != 1 || result.Changes[0] != (DryRunChange{
+		Field: "state", OldValue: "next", NewValue: "in_progress",
+	}) {
+		t.Fatalf("dry-run changes = %+v, want one canonical state transition", result.Changes)
 	}
 }
 

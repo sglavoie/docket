@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -32,8 +31,8 @@ const (
 	// MergeConflictHierarchy is an incompatible parent (hierarchy) or sibling
 	// order edit that cannot be reconciled automatically.
 	MergeConflictHierarchy MergeConflictKind = "hierarchy"
-	// MergeConflictProjectMetadata is a divergent edit to project-level metadata
-	// (project name or a section color).
+	// MergeConflictProjectMetadata is a divergent edit to canonical project-level
+	// metadata (currently the project name).
 	MergeConflictProjectMetadata MergeConflictKind = "project_metadata"
 	// MergeConflictOpaqueBlock is a concurrent divergent edit to the opaque
 	// header region both sides changed differently.
@@ -147,9 +146,6 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 		result.Conflicts = append(result.Conflicts, *nameConflict)
 	}
 
-	sectionColors, colorConflicts := mergeSectionColors(base, local, current)
-	result.Conflicts = append(result.Conflicts, colorConflicts...)
-
 	opaque, opaqueConflict := mergeOpaqueBlocks(base, local, current)
 	if opaqueConflict != nil {
 		result.Conflicts = append(result.Conflicts, *opaqueConflict)
@@ -163,8 +159,6 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 
 	merged := &ProjectDocument{
 		ProjectName:   name,
-		Sections:      mergeStringSet(base.Sections, local.Sections, current.Sections),
-		SectionColors: sectionColors,
 		Tags:          mergeStringSet(base.Tags, local.Tags, current.Tags),
 		PinnedTags:    mergeStringSet(base.PinnedTags, local.PinnedTags, current.PinnedTags),
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
@@ -368,8 +362,8 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 	project := &models.Project{
 		Name:          doc.ProjectName,
 		Tasks:         doc.Tasks,
-		Sections:      doc.Sections,
-		SectionColors: doc.SectionColors,
+		Sections:      []string{models.SectionNext},
+		SectionColors: map[string]string{},
 		Tags:          doc.Tags,
 		PinnedTags:    doc.PinnedTags,
 	}
@@ -425,56 +419,6 @@ func mergeScalarMetadata(field, base, local, current string) (string, *MergeConf
 		Local:   local,
 		Current: current,
 	}
-}
-
-// mergeSectionColors three-way merges the section-color map key by key, treating
-// a divergent value for the same section as a project-metadata conflict.
-func mergeSectionColors(base, local, current *ProjectDocument) (map[string]string, []MergeConflict) {
-	merged := make(map[string]string)
-	var conflicts []MergeConflict
-
-	for _, key := range unionMapKeys(base.SectionColors, local.SectionColors, current.SectionColors) {
-		b, bok := base.SectionColors[key]
-		l, lok := local.SectionColors[key]
-		c, cok := current.SectionColors[key]
-
-		localChanged := lok != bok || l != b
-		currentChanged := cok != bok || c != b
-
-		switch {
-		case localChanged && currentChanged:
-			if lok == cok && l == c {
-				if lok {
-					merged[key] = l
-				}
-				continue
-			}
-			conflicts = append(conflicts, MergeConflict{
-				Kind:    MergeConflictProjectMetadata,
-				Field:   "section_color:" + key,
-				Base:    b,
-				Local:   l,
-				Current: c,
-			})
-		case localChanged:
-			if lok {
-				merged[key] = l
-			}
-		case currentChanged:
-			if cok {
-				merged[key] = c
-			}
-		default:
-			if bok {
-				merged[key] = b
-			}
-		}
-	}
-
-	if len(merged) == 0 {
-		return map[string]string{}, conflicts
-	}
-	return merged, conflicts
 }
 
 // mergeOpaqueBlocks three-way merges the opaque header region. Opaque blocks have
@@ -716,21 +660,6 @@ func toSet(values []string) map[string]bool {
 		set[v] = true
 	}
 	return set
-}
-
-func unionMapKeys(maps ...map[string]string) []string {
-	seen := make(map[string]bool)
-	for _, m := range maps {
-		for k := range m {
-			seen[k] = true
-		}
-	}
-	keys := make([]string, 0, len(seen))
-	for k := range seen {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 func opaqueContents(blocks []OpaqueBlock) []string {

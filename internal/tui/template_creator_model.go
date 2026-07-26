@@ -52,7 +52,7 @@ type TaskTemplateCreatorModel struct {
 	nameInput      textinput.Model
 	descInput      textarea.Model
 	tagsInput      textinput.Model
-	sectionInput   textinput.Model
+	stateInput     textinput.Model
 	typeCursor     int
 	types          []models.TaskType
 	categoryCursor int
@@ -66,7 +66,7 @@ type TaskTemplateCreatorModel struct {
 	subtasks []SubtaskFormState
 
 	// Focus tracking
-	// 0=name, 1=type, 2=category, 3=priority, 4=section, 5=tags, 6=description
+	// 0=name, 1=type, 2=category, 3=priority, 4=state, 5=tags, 6=description
 	// 7...N = checklist items (all types)
 	// N+1...M = subtask items (Epic/Story only)
 	focusIndex int
@@ -79,14 +79,14 @@ type TaskTemplateCreatorModel struct {
 	editingTemplate *template.TaskTemplate
 
 	// Autocomplete caches (gathered from all projects)
-	sectionCache []string
-	tagCache     []string
+	stateCache []string
+	tagCache   []string
 
 	// Autocomplete state
-	sectionSuggestions []string
-	tagSuggestions     []string
-	suggestionCursor   int
-	showSuggestions    bool
+	stateSuggestions []string
+	tagSuggestions   []string
+	suggestionCursor int
+	showSuggestions  bool
 
 	width  int
 	height int
@@ -108,7 +108,8 @@ func NewTaskTemplateCreatorModel(runtime *config.RuntimeState) *TaskTemplateCrea
 	applyThemedTextarea(&descInput)
 
 	tagsInput := factory.NewTextInput("Tags (comma-separated)")
-	sectionInput := factory.NewTextInput("Section (optional)")
+	stateInput := factory.NewTextInput("State")
+	stateInput.SetValue(models.StateInbox.String())
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
@@ -130,7 +131,7 @@ func NewTaskTemplateCreatorModel(runtime *config.RuntimeState) *TaskTemplateCrea
 		nameInput:      nameInput,
 		descInput:      descInput,
 		tagsInput:      tagsInput,
-		sectionInput:   sectionInput,
+		stateInput:     stateInput,
 		typeCursor:     0,
 		types:          types,
 		categoryCursor: 0,
@@ -168,7 +169,7 @@ func NewTaskTemplateEditorModel(runtime *config.RuntimeState, t template.TaskTem
 	}
 
 	m.priorityCursor = t.Priority
-	m.sectionInput.SetValue(t.Section)
+	m.stateInput.SetValue(t.EffectiveState().String())
 
 	if len(t.Tags) > 0 {
 		m.tagsInput.SetValue(joinTags(t.Tags))
@@ -233,7 +234,7 @@ func (m *TaskTemplateCreatorModel) SetSize(width, height int) {
 	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, templateInlineLabelReserve)
 	formFactory.ResizeTextareaWithReserve(&m.descInput, width, templateDescIndentReserve)
 	formFactory.ResizeTextInputWithReserve(&m.tagsInput, width, templateInlineLabelReserve)
-	formFactory.ResizeTextInputWithReserve(&m.sectionInput, width, templateInlineLabelReserve)
+	formFactory.ResizeTextInputWithReserve(&m.stateInput, width, templateInlineLabelReserve)
 	for i := range m.checklist {
 		formFactory.ResizeTextInputWithReserve(&m.checklist[i], width, templateNestedInputReserve)
 	}

@@ -65,8 +65,6 @@ func cloneFilterState(f FilterState) FilterState {
 	if dup.Attrs == nil {
 		dup.Attrs = make(map[string]string)
 	}
-	dup.Sections = make(map[string]bool, len(f.Sections))
-	maps.Copy(dup.Sections, f.Sections)
 	return dup
 }
 
@@ -78,9 +76,12 @@ func cloneSavedFilter(f *config.SavedFilter) *config.SavedFilter {
 	}
 	dup := *f
 	dup.FilterTags = slices.Clone(f.FilterTags)
-	dup.FilterSections = slices.Clone(f.FilterSections)
+	dup.SetFilterStates(f.FilterStates, f.HasStateFilter())
 	dup.FilterAttrs = maps.Clone(f.FilterAttrs)
 	dup.Criteria = slices.Clone(f.Criteria)
+	for i := range dup.Criteria {
+		dup.Criteria[i].States = cloneCommonWorkflowStateSet(f.Criteria[i].States)
+	}
 	return &dup
 }
 
@@ -306,7 +307,6 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.activeCriteriaFilter = nil
 	clearCommonFilters(&m.filter.CommonFilterState)
 	m.filter.Actionable = false
-	m.filter.Sections = make(map[string]bool)
 	m.setPinnedTagTabIndex(0)
 	m.sort.Reset()
 	m.treeSort.Reset()

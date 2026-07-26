@@ -32,6 +32,7 @@ Rules for these fixtures:
 | Shipped changelog     | `status: done`                    | `done`                 |
 | Completed via section | `section: Completed`              | `done`                 |
 | Awaiting sign-off     | `status: review`                  | `review`              |
+| Review via section    | `section: Review`                 | `review`              |
 | Wiring the parser     | `status: in_progress`             | `in_progress`          |
 | Blocked on vendor     | `status: blocked`                 | `waiting`              |
 | Waiting on teammate   | `section: Waiting`                | `waiting`              |

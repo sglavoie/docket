@@ -127,7 +127,7 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	}
 
 	sf.FilterType = string(ol.filter.Type)
-	sf.FilterStatus = string(ol.filter.Status)
+	sf.SetFilterStates(ol.filter.States, ol.filter.hasStateFilter())
 	sf.FilterPriority = ol.filter.Priority
 	sf.FilterDueDate = int(ol.filter.DueDate)
 	sf.FilterActionable = ol.filter.Actionable
@@ -139,11 +139,6 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	if len(ol.filter.Tags) > 0 {
 		for tag := range ol.filter.Tags {
 			sf.FilterTags = append(sf.FilterTags, tag)
-		}
-	}
-	if len(ol.filter.Sections) > 0 {
-		for sec := range ol.filter.Sections {
-			sf.FilterSections = append(sf.FilterSections, sec)
 		}
 	}
 	if len(ol.filter.Attrs) > 0 {
@@ -168,6 +163,7 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		return
 	}
 
+	clearCommonFilters(&ol.filter.CommonFilterState)
 	if sf.Mode == "criteria" {
 		// Criteria-mode: apply per-task criteria matching, clear snapshot filters
 		ol.activeCriteriaFilter = &sf
@@ -175,7 +171,7 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		// Snapshot-mode: restore all flat filter/sort state
 		ol.activeCriteriaFilter = nil
 		ol.filter.Type = models.TaskType(sf.FilterType)
-		ol.filter.Status = models.TaskStatus(sf.FilterStatus)
+		ol.filter.setStateFilter(sf.FilterStates, sf.HasStateFilter())
 		ol.filter.Priority = sf.FilterPriority
 		ol.filter.DueDate = DueDateFilter(sf.FilterDueDate)
 		ol.filter.Actionable = sf.FilterActionable
@@ -190,9 +186,6 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 			validTags = CollectTagNamesForProjects(ol.loadedProjects)
 		}
 		ol.filter.Tags = validateSavedStringSet(sf.FilterTags, validTags)
-
-		// Restore sections — validate against the active outliner scope.
-		ol.filter.Sections = validateSavedStringSet(sf.FilterSections, ol.searchSectionCache())
 
 		// Restore attributes
 		ol.filter.Attrs = make(map[string]string)
@@ -233,17 +226,12 @@ func (m *AppModel) buildOutlinerSummaryFrom(ol *OutlinerModel) string {
 	for tag := range ol.filter.Tags {
 		tags = append(tags, tag)
 	}
-	var sections []string
-	for sec := range ol.filter.Sections {
-		sections = append(sections, sec)
-	}
-
 	return describeSnapshotFilters(
 		string(ol.filter.Type),
-		string(ol.filter.Status),
+		ol.filter.States,
+		ol.filter.hasStateFilter(),
 		ol.filter.Priority,
 		tags,
-		sections,
 		int(ol.filter.DueDate),
 		ol.filter.Actionable,
 		ol.filter.HideDimmed,

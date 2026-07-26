@@ -1,5 +1,7 @@
 package workflow
 
+import "github.com/sglavoie/tt/internal/models"
+
 // RuleLevel indicates whether a rule operates on individual tasks or on projects.
 type RuleLevel string
 
@@ -12,9 +14,9 @@ const (
 type TriggerField string
 
 const (
-	FieldStatus   TriggerField = "status"
+	// Canonical task fields.
+	FieldState    TriggerField = "state"
 	FieldPriority TriggerField = "priority"
-	FieldSection  TriggerField = "section"
 	FieldTags     TriggerField = "tags"
 	FieldType     TriggerField = "type"
 	// Time-based trigger fields
@@ -22,8 +24,7 @@ const (
 	FieldCreatedDays TriggerField = "created_days" // Days since creation
 	FieldUpdatedDays TriggerField = "updated_days" // Days since last update
 	// Event-based trigger fields (detect transitions)
-	FieldStatusChanged       TriggerField = "status_changed"       // Value: "old->new", "*->done", "blocked->*"
-	FieldSectionChanged      TriggerField = "section_changed"      // Value: "Next->Inbox", "*->Completed"
+	FieldStateChanged        TriggerField = "state_changed"        // Value: "old->new", "*->done", "waiting,paused->ready"
 	FieldPriorityChanged     TriggerField = "priority_changed"     // Value: "*->1", "3->1"
 	FieldTagAdded            TriggerField = "tag_added"            // Value: tag name that was added
 	FieldTagRemoved          TriggerField = "tag_removed"          // Value: tag name that was removed
@@ -34,7 +35,7 @@ const (
 	FieldRecurrenceCompleted TriggerField = "recurrence_completed" // Value: "true"
 	FieldStreakBroken        TriggerField = "streak_broken"        // Value: "true"
 	// Hierarchical trigger fields
-	FieldParentStatus     TriggerField = "parent_status"     // Parent task status
+	FieldParentState      TriggerField = "parent_state"      // Parent task workflow state
 	FieldParentType       TriggerField = "parent_type"       // Parent task type (epic, story)
 	FieldParentTags       TriggerField = "parent_tags"       // Parent has tag
 	FieldLevel            TriggerField = "level"             // Hierarchy depth (0=root)
@@ -50,14 +51,26 @@ const (
 	FieldDescriptionEmpty TriggerField = "description_empty" // Value: "true"/"false"
 	// Project-level trigger fields (aggregate task data)
 	FieldHasInProgressTasks TriggerField = "has_in_progress_tasks" // bool: any task is in_progress
-	FieldActiveTaskCount    TriggerField = "active_task_count"     // numeric: tasks where Status.IsActive()
-	FieldAllTasksStatus     TriggerField = "all_tasks_status"      // string: all non-complete tasks share this status
+	FieldActiveTaskCount    TriggerField = "active_task_count"     // numeric: nonterminal tasks
+	FieldAllTasksState      TriggerField = "all_tasks_state"       // string: all nonterminal tasks share this state
 	FieldMajorityTaskType   TriggerField = "majority_task_type"    // string: >50% of active tasks are this type
-	FieldMajorityTaskStatus TriggerField = "majority_task_status"  // string: >50% of active tasks have this status
+	FieldMajorityTaskState  TriggerField = "majority_task_state"   // string: >50% of active tasks have this state
 	FieldCompletionRatio    TriggerField = "completion_ratio"      // numeric 0-100
 	FieldDaysSinceUpdate    TriggerField = "days_since_update"     // numeric: max of project/task UpdatedAt
 	FieldProjectStatus      TriggerField = "project_status"        // string: current StatusIcon key
-	FieldHasTasksWithStatus TriggerField = "has_tasks_with_status" // string: any task has this status
+	FieldHasTasksWithState  TriggerField = "has_tasks_with_state"  // string/set: any task has a matching state
+
+	// Legacy lifecycle fields remain decodable until the versioned workflow
+	// migration rewrites persisted rules. They are intentionally omitted from
+	// authoring metadata returned by ValidTriggerFields.
+	FieldStatus             TriggerField = "status"
+	FieldSection            TriggerField = "section"
+	FieldStatusChanged      TriggerField = "status_changed"
+	FieldSectionChanged     TriggerField = "section_changed"
+	FieldParentStatus       TriggerField = "parent_status"
+	FieldAllTasksStatus     TriggerField = "all_tasks_status"
+	FieldMajorityTaskStatus TriggerField = "majority_task_status"
+	FieldHasTasksWithStatus TriggerField = "has_tasks_with_status"
 )
 
 // TriggerOperation represents how to compare the field value.
@@ -69,15 +82,16 @@ const (
 	OpContains    TriggerOperation = "contains"
 	OpGreaterThan TriggerOperation = "greater_than"
 	OpLessThan    TriggerOperation = "less_than"
+	OpIn          TriggerOperation = "in"
+	OpNotIn       TriggerOperation = "not_in"
 )
 
 // ActionType represents what action to take when a rule matches.
 type ActionType string
 
 const (
-	ActionSetStatus      ActionType = "set_status"
+	ActionSetState       ActionType = "set_state"
 	ActionSetPriority    ActionType = "set_priority"
-	ActionSetSection     ActionType = "set_section"
 	ActionAddTag         ActionType = "add_tag"
 	ActionRemoveTag      ActionType = "remove_tag"
 	ActionSetDueRelative ActionType = "set_due_relative"
@@ -97,6 +111,11 @@ const (
 	ActionMoveToProject    ActionType = "move_to_project"    // Value: project name
 	ActionSetRecurrence    ActionType = "set_recurrence"     // Value: recurrence pattern string
 	ActionSetProjectStatus ActionType = "set_project_status" // Value: project status icon key
+
+	// Legacy lifecycle actions remain decodable until persisted rules migrate.
+	// They are intentionally omitted from ValidActionTypes.
+	ActionSetStatus  ActionType = "set_status"
+	ActionSetSection ActionType = "set_section"
 )
 
 // RuleTrigger defines when a rule should fire.
@@ -132,12 +151,16 @@ type TriggerGroup struct {
 	Groups   []TriggerGroup `json:"groups,omitempty"`
 }
 
-// RuleScope restricts a rule to specific projects, task types, or sections.
+// RuleScope restricts a rule to specific projects, task types, or states.
 // Nil scope means no restriction. Non-empty fields use AND logic.
 type RuleScope struct {
-	Projects []string `json:"projects,omitempty"` // Match by project name or ID
-	Types    []string `json:"types,omitempty"`    // Match by task type
-	Sections []string `json:"sections,omitempty"` // Match by section
+	Projects []string               `json:"projects,omitempty"` // Match by project name or ID
+	Types    []string               `json:"types,omitempty"`    // Match by task type
+	States   []models.WorkflowState `json:"states,omitempty"`   // Match by canonical workflow state
+
+	// Sections is decode-only compatibility state for persisted legacy rules.
+	// The v3-to-v4 domain migration owns converting it to States.
+	Sections []string `json:"sections,omitempty"`
 }
 
 // WorkflowRule defines an automation rule.
@@ -147,7 +170,7 @@ type WorkflowRule struct {
 	Level        RuleLevel     `json:"level,omitempty"` // "task" (default) or "project"
 	Enabled      bool          `json:"enabled"`
 	Priority     int           `json:"priority,omitempty"`      // Evaluation order: 1=highest (runs first), 0=unset (sorts last)
-	Trigger      RuleTrigger   `json:"trigger"`                 // Legacy single trigger (for backward compat)
+	Trigger      RuleTrigger   `json:"trigger,omitzero"`        // Legacy single trigger (decode compatibility)
 	Triggers     []RuleTrigger `json:"triggers,omitempty"`      // Multiple triggers
 	TriggerLogic TriggerLogic  `json:"trigger_logic,omitempty"` // "and" or "or" (default: "and")
 	TriggerGroup *TriggerGroup `json:"trigger_group,omitempty"` // Nested trigger groups (takes precedence over flat Triggers/TriggerLogic)

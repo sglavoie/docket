@@ -162,8 +162,8 @@ func TestWriteTasksMarkdownWithProjectMetadata_WritesTags(t *testing.T) {
 		[]string{" backend ", "#frontend", "backend", "bad,tag"},
 	)
 
-	if !strings.Contains(content, "<!-- sections: Next;Inbox:gray -->") {
-		t.Fatalf("content should contain sections metadata:\n%s", content)
+	if strings.Contains(content, "<!-- sections:") {
+		t.Fatalf("canonical content should omit legacy sections metadata:\n%s", content)
 	}
 	if !strings.Contains(content, "<!-- tags: backend;frontend -->") {
 		t.Fatalf("content should contain normalized tag metadata:\n%s", content)
@@ -171,8 +171,8 @@ func TestWriteTasksMarkdownWithProjectMetadata_WritesTags(t *testing.T) {
 	if strings.Contains(content, "bad,tag") {
 		t.Fatalf("content should skip invalid project tags:\n%s", content)
 	}
-	if strings.Index(content, "<!-- tags:") < strings.Index(content, "<!-- sections:") {
-		t.Fatalf("tags metadata should be written after sections metadata:\n%s", content)
+	if strings.Index(content, "<!-- tags:") < strings.Index(content, "<!-- tt-schema: 2 -->") {
+		t.Fatalf("tags metadata should be written after the schema marker:\n%s", content)
 	}
 }
 

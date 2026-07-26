@@ -201,12 +201,9 @@ func deepCopyTaskForDryRun(task *models.Task) *models.Task {
 		Type:        task.Type,
 		Title:       task.Title,
 		Description: task.Description,
-		// The workflow engine now reads task lifecycle through State()/WorkflowState
-		// (33.7.6.4), so only the canonical WorkflowState is carried — the retired
-		// Status/Section clones are gone. It is seeded from State() (not the raw
-		// WorkflowState field, which is empty for schema-v1 tasks) so the copy's
-		// State() resolves identically to the original and stays coherent after the
-		// engine's lifecycle mutators sync it.
+		// The workflow engine reads and mutates lifecycle directly through the
+		// canonical WorkflowState. Seed it from State() rather than the raw field
+		// so a legacy schema-v1 task and its dry-run copy resolve identically.
 		WorkflowState: task.State(),
 		Priority:      task.Priority,
 		CreatedAt:     task.CreatedAt,
@@ -340,9 +337,7 @@ func buildTaskMap(tasks []*models.Task) map[string]*models.Task {
 func detectChanges(original, modified *models.Task) []DryRunChange {
 	var changes []DryRunChange
 
-	// Lifecycle changes are reported as a single canonical WorkflowState
-	// transition rather than separate status/section fields (the engine still
-	// mutates the legacy shims, but State() collapses them to one truth).
+	// Lifecycle changes are reported as one canonical state transition.
 	if original.State() != modified.State() {
 		changes = append(changes, DryRunChange{
 			Field: "state", OldValue: string(original.State()), NewValue: string(modified.State()),

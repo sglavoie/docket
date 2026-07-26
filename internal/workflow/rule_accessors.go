@@ -5,11 +5,11 @@ import "github.com/google/uuid"
 // NewRule creates a new workflow rule with a generated ID.
 func NewRule(name string, trigger RuleTrigger, actions []RuleAction) *WorkflowRule {
 	return &WorkflowRule{
-		ID:      uuid.New().String()[:8],
-		Name:    name,
-		Enabled: true,
-		Trigger: trigger,
-		Actions: actions,
+		ID:       uuid.New().String()[:8],
+		Name:     name,
+		Enabled:  true,
+		Triggers: []RuleTrigger{trigger},
+		Actions:  actions,
 	}
 }
 

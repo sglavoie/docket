@@ -10,7 +10,7 @@ import (
 
 // TestService_Capture_ExtendedFields exercises the capture-family surface the TUI
 // capture flows depend on: a parsed status sigil applied as a workflow-state
-// transition (which overrides the captured section), recurrence, URL/Source
+// state, recurrence, URL/Source
 // metadata, tag add + remove, and prepend positioning. It asserts the committed
 // task carries every field and lands at the FRONT of the project's tasks.
 func TestService_Capture_ExtendedFields(t *testing.T) {
@@ -25,11 +25,10 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 		Priority:   2,
 		Tags:       []string{"keep", "drop"},
 		RemoveTags: []string{"drop"},
-		Section:    models.SectionInbox,
 		URL:        "https://example.com",
 		Source:     "slack",
 		Recurrence: models.ParseRecurrence("daily"),
-		State:      models.StateInProgress, // overrides the captured Inbox section
+		State:      models.StateInProgress,
 		Prepend:    true,
 	})
 	if err != nil {
@@ -57,8 +56,6 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 	if task.Recurrence == nil {
 		t.Error("recurrence not set")
 	}
-	// The in-progress transition overrides the Inbox section (auto-triage moves an
-	// in-progress task to the active bucket).
 	if task.State() != models.StateInProgress {
 		t.Errorf("state = %q, want in_progress", task.State())
 	}
@@ -71,10 +68,10 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 	}
 }
 
-// TestService_Capture_DefaultInboxSection verifies that a captured task with the
-// Inbox section and no state transition stays in Inbox, and that the Inbox
+// TestService_Capture_DefaultInboxState verifies that a captured task with an
+// omitted state defaults to Inbox, and that the Inbox
 // section is ensured with its red highlight color.
-func TestService_Capture_DefaultInboxSection(t *testing.T) {
+func TestService_Capture_DefaultInboxState(t *testing.T) {
 	project := newProject("proj-1", "Proj")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -82,7 +79,6 @@ func TestService_Capture_DefaultInboxSection(t *testing.T) {
 	res, err := svc.Capture(app.CaptureRequest{
 		ProjectID: project.ID,
 		Title:     "Inbox task",
-		Section:   models.SectionInbox,
 	})
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
@@ -99,14 +95,14 @@ func TestService_Capture_DefaultInboxSection(t *testing.T) {
 	}
 }
 
-// TestService_Capture_RejectsNonGTDSection verifies a non-GTD section is rejected
-// before any commit.
-func TestService_Capture_RejectsNonGTDSection(t *testing.T) {
+// TestService_Capture_RejectsInvalidState verifies an invalid canonical state is
+// rejected before any commit.
+func TestService_Capture_RejectsInvalidState(t *testing.T) {
 	project := newProject("proj-1", "Proj")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "x", Section: "Custom"})
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "x", State: models.WorkflowState("Custom")})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("error = %v, want ErrInvalidInput", err)
 	}
@@ -125,8 +121,8 @@ func TestService_CaptureMany_OneAtomicCommit(t *testing.T) {
 	svc := newTestService(repo)
 
 	reqs := []app.CaptureRequest{
-		{ProjectID: project.ID, Title: "First", Section: models.SectionInbox, Prepend: true},
-		{ProjectID: project.ID, Title: "Second", Section: models.SectionInbox, Prepend: true},
+		{ProjectID: project.ID, Title: "First", State: models.StateInbox, Prepend: true},
+		{ProjectID: project.ID, Title: "Second", State: models.StateInbox, Prepend: true},
 	}
 	results, err := svc.CaptureMany(reqs)
 	if err != nil {
@@ -247,6 +243,9 @@ func TestService_CreateLinkedTask_Relations(t *testing.T) {
 			created := project.GetTaskByID(res.New.TaskID)
 			if created == nil {
 				t.Fatal("created linked task not found")
+			}
+			if created.State() != models.StateInbox {
+				t.Fatalf("linked task state = %q, want canonical Inbox default", created.State())
 			}
 			tc.verify(t, project, project.GetTaskByID(source.ID), created)
 		})

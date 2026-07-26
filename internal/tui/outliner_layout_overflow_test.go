@@ -26,7 +26,7 @@ func TestOutlinerMultiSelectNestedRowsFitHeight(t *testing.T) {
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	cfg := newTestConfig()
-	cfg.Settings().SectionLimitNext = intPtr(0)
+	cfg.Settings().SetStateGroupLimit(models.StateGroupNext, 0)
 
 	// A deep hierarchy: epic → story → several leaf tasks. The leaves carry the
 	// longest tree prefix, which is exactly where the checkbox tips the row into a

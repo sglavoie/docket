@@ -206,6 +206,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 			Type:      taskType,
 			Priority:  priority,
 			Tags:      tags,
+			State:     models.StateReady,
 			ParentID:  parentID,
 		}, workflows.options(false, "Add Task", nil))
 	})

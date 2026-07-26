@@ -9,11 +9,11 @@ func GetDefaultRules() []WorkflowRule {
 			Name:    "Tag Overdue Tasks",
 			Enabled: false,
 			Source:  "default",
-			Trigger: RuleTrigger{
+			Triggers: []RuleTrigger{{
 				Field:     FieldDueDays,
 				Operation: OpLessThan,
 				Value:     "0",
-			},
+			}},
 			Actions: []RuleAction{
 				{ActionType: ActionAddTag, Value: "overdue"},
 			},
@@ -24,7 +24,7 @@ func GetDefaultRules() []WorkflowRule {
 			Enabled: false,
 			Source:  "default",
 			Triggers: []RuleTrigger{
-				{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+				{Field: FieldState, Operation: OpEquals, Value: "in_progress"},
 				{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "14"},
 			},
 			TriggerLogic: LogicAnd,
@@ -43,7 +43,7 @@ func GetDefaultRules() []WorkflowRule {
 			},
 			TriggerLogic: LogicAnd,
 			Actions: []RuleAction{
-				{ActionType: ActionSetStatus, Value: "done"},
+				{ActionType: ActionSetState, Value: "done"},
 			},
 		},
 		{
@@ -51,13 +51,13 @@ func GetDefaultRules() []WorkflowRule {
 			Name:    "Route Completed Tasks",
 			Enabled: false,
 			Source:  "default",
-			Trigger: RuleTrigger{
+			Triggers: []RuleTrigger{{
 				Field:     FieldCompleted,
 				Operation: OpEquals,
 				Value:     "true",
-			},
+			}},
 			Actions: []RuleAction{
-				{ActionType: ActionSetSection, Value: "Completed"},
+				{ActionType: ActionSetState, Value: "done"},
 			},
 		},
 		// Auto-complete Story: same logic as epic completion
@@ -72,7 +72,7 @@ func GetDefaultRules() []WorkflowRule {
 			},
 			TriggerLogic: LogicAnd,
 			Actions: []RuleAction{
-				{ActionType: ActionSetStatus, Value: "done"},
+				{ActionType: ActionSetState, Value: "done"},
 			},
 		},
 		// Clear Overdue Tag: cleanup when due date extended
@@ -98,7 +98,7 @@ func GetDefaultRules() []WorkflowRule {
 			Source:  "default",
 			Triggers: []RuleTrigger{
 				{Field: FieldType, Operation: OpEquals, Value: "bug"},
-				{Field: FieldStatus, Operation: OpNotEquals, Value: "done"},
+				{Field: FieldState, Operation: OpNotIn, Value: "done,canceled"},
 				{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
 			},
 			TriggerLogic: LogicAnd,
@@ -106,7 +106,7 @@ func GetDefaultRules() []WorkflowRule {
 				{ActionType: ActionAddTag, Value: "aging"},
 			},
 		},
-		// Auto-block on Blockers: sync status with dependency state
+		// Auto-block on Blockers: sync task state with dependency state
 		{
 			ID:      "def-auto-block",
 			Name:    "Auto-block on Blockers",
@@ -114,11 +114,11 @@ func GetDefaultRules() []WorkflowRule {
 			Source:  "default",
 			Triggers: []RuleTrigger{
 				{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
-				{Field: FieldStatus, Operation: OpNotEquals, Value: "blocked"},
+				{Field: FieldState, Operation: OpNotEquals, Value: "waiting"},
 			},
 			TriggerLogic: LogicAnd,
 			Actions: []RuleAction{
-				{ActionType: ActionSetStatus, Value: "blocked"},
+				{ActionType: ActionSetState, Value: "waiting"},
 			},
 		},
 		// Unblock When Ready: complement to auto-block
@@ -129,12 +129,12 @@ func GetDefaultRules() []WorkflowRule {
 			Source:  "default",
 			Triggers: []RuleTrigger{
 				{Field: FieldIsBlocked, Operation: OpEquals, Value: "false"},
-				{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+				{Field: FieldState, Operation: OpEquals, Value: "waiting"},
 				{Field: FieldDependencyCount, Operation: OpGreaterThan, Value: "0"},
 			},
 			TriggerLogic: LogicAnd,
 			Actions: []RuleAction{
-				{ActionType: ActionSetStatus, Value: "todo"},
+				{ActionType: ActionSetState, Value: "ready"},
 			},
 		},
 		// High Priority Due Soon: bump priority when deadline approaches
@@ -159,7 +159,7 @@ func GetDefaultRules() []WorkflowRule {
 			Enabled: false,
 			Source:  "default",
 			Triggers: []RuleTrigger{
-				{Field: FieldSection, Operation: OpEquals, Value: "Inbox"},
+				{Field: FieldState, Operation: OpEquals, Value: "inbox"},
 				{Field: FieldCreatedDays, Operation: OpGreaterThan, Value: "3"},
 			},
 			TriggerLogic: LogicAnd,
@@ -174,7 +174,7 @@ func GetDefaultRules() []WorkflowRule {
 			Enabled: false,
 			Source:  "default",
 			Triggers: []RuleTrigger{
-				{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+				{Field: FieldState, Operation: OpEquals, Value: "in_progress"},
 				{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
 			},
 			TriggerLogic: LogicAnd,
@@ -206,11 +206,11 @@ func GetDefaultRules() []WorkflowRule {
 			Triggers: []RuleTrigger{
 				{Field: FieldType, Operation: OpEquals, Value: "epic"},
 				{Field: FieldChildrenProgress, Operation: OpGreaterThan, Value: "0"},
-				{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+				{Field: FieldState, Operation: OpIn, Value: "inbox,ready,next"},
 			},
 			TriggerLogic: LogicAnd,
 			Actions: []RuleAction{
-				{ActionType: ActionSetStatus, Value: "in_progress"},
+				{ActionType: ActionSetState, Value: "in_progress"},
 			},
 		},
 
@@ -224,11 +224,11 @@ func GetDefaultRules() []WorkflowRule {
 			Enabled:  false,
 			Priority: 30,
 			Source:   "default",
-			Trigger: RuleTrigger{
+			Triggers: []RuleTrigger{{
 				Field:     FieldMajorityTaskType,
 				Operation: OpEquals,
 				Value:     "bug",
-			},
+			}},
 			Actions: []RuleAction{
 				{ActionType: ActionSetProjectStatus, Value: "bugfix"},
 			},
@@ -241,11 +241,11 @@ func GetDefaultRules() []WorkflowRule {
 			Enabled:  false,
 			Priority: 30,
 			Source:   "default",
-			Trigger: RuleTrigger{
-				Field:     FieldMajorityTaskStatus,
+			Triggers: []RuleTrigger{{
+				Field:     FieldMajorityTaskState,
 				Operation: OpEquals,
 				Value:     "review",
-			},
+			}},
 			Actions: []RuleAction{
 				{ActionType: ActionSetProjectStatus, Value: "review"},
 			},
@@ -275,11 +275,11 @@ func GetDefaultRules() []WorkflowRule {
 			Enabled:  false,
 			Priority: 50,
 			Source:   "default",
-			Trigger: RuleTrigger{
+			Triggers: []RuleTrigger{{
 				Field:     FieldHasInProgressTasks,
 				Operation: OpEquals,
 				Value:     "true",
-			},
+			}},
 			Actions: []RuleAction{
 				{ActionType: ActionSetProjectStatus, Value: "active"},
 			},

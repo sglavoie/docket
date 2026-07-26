@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -85,6 +86,42 @@ func TestComputeWorkflowRulesHash_DetectsContentChanges(t *testing.T) {
 
 	if hash1 == hash2 {
 		t.Error("hash should change when rule content changes")
+	}
+}
+
+func TestComputeWorkflowRulesHash_CanonicalStateDefinition(t *testing.T) {
+	cfg := NewAutomationConfig()
+	cfg.WorkflowRules = []workflow.WorkflowRule{{
+		ID:      "r1",
+		Name:    "State rule",
+		Enabled: true,
+		Triggers: []workflow.RuleTrigger{{
+			Field:     workflow.FieldState,
+			Operation: workflow.OpIn,
+			Value:     "ready,next",
+		}},
+		Actions: []workflow.RuleAction{{
+			ActionType: workflow.ActionSetState,
+			Value:      string(models.StateInProgress),
+		}},
+		Scope: &workflow.RuleScope{States: []models.WorkflowState{models.StateReady}},
+	}}
+
+	hash := cfg.ComputeWorkflowRulesHash()
+	cfg.WorkflowRules[0].Scope.States = []models.WorkflowState{models.StateNext}
+	if hash == cfg.ComputeWorkflowRulesHash() {
+		t.Error("hash should change when canonical state scope changes")
+	}
+}
+
+func TestComputeWorkflowRulesHash_IgnoresTriggerTelemetry(t *testing.T) {
+	cfg := NewAutomationConfig()
+	cfg.WorkflowRules = []workflow.WorkflowRule{{ID: "r1", Name: "Rule 1", Enabled: true}}
+
+	hash := cfg.ComputeWorkflowRulesHash()
+	cfg.WorkflowRules[0].TriggerCount = 42
+	if hash != cfg.ComputeWorkflowRulesHash() {
+		t.Error("hash should ignore runtime trigger counts")
 	}
 }
 

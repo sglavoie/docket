@@ -76,6 +76,7 @@ func (s *Service) ApplyWorkflowsWithArtifacts(
 	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
 		rules:                  rules,
 		projectStatusArtifacts: builders.ProjectStatus,
+		planningArtifacts:      builders.Planning,
 		undoAction:             "Apply Workflow Rules",
 		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
 			project = snap.ProjectByID(projectID)

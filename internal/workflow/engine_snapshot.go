@@ -7,8 +7,8 @@ import (
 )
 
 // CopyTaskState creates a snapshot copy of the fields that event-based
-// triggers inspect (status, priority, section, tags, type, due date,
-// recurrence, dependencies, and parent identity). This is intentionally minimal — only fields
+// triggers inspect (state, priority, tags, type, due date, recurrence,
+// dependencies, and parent identity). This is intentionally minimal — only fields
 // checked by matchesEventTrigger, matchesHierarchicalTrigger, and
 // TaskStateChanged are copied.
 //
@@ -49,10 +49,9 @@ func CopyTaskState(task *models.Task) *models.Task {
 
 	snapshot := &models.Task{
 		ID: task.ID,
-		// The snapshot carries the canonical WorkflowState (not the retired
-		// Status/Section fields) so State() on the snapshot resolves identically
-		// to the live task; event-trigger matching derives the legacy
-		// status/section strings from it via LegacyStatusForState/SectionForState.
+		// Event matching compares this canonical snapshot directly. Legacy
+		// status/section triggers, while still decodable, are compatibility
+		// adapters over the same value.
 		WorkflowState: task.State(),
 		Priority:      task.Priority,
 		Tags:          tagsCopy,

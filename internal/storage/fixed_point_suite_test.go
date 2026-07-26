@@ -45,8 +45,8 @@ func TestRoundTrip_KitchenSinkParseWriteFixedPoint(t *testing.T) {
 	if result1.ProjectName != project.Name {
 		t.Fatalf("project name = %q, want %q", result1.ProjectName, project.Name)
 	}
-	assertSectionsAndColors(t, result1.Sections, project.GetSections(), result1.SectionColors, project.SectionColors)
-	assertSectionsAndColors(t, result2.Sections, project.GetSections(), result2.SectionColors, project.SectionColors)
+	assertSectionsAndColors(t, result1.Sections, []string{models.SectionNext}, result1.SectionColors, map[string]string{})
+	assertSectionsAndColors(t, result2.Sections, []string{models.SectionNext}, result2.SectionColors, map[string]string{})
 	assertKitchenSinkRoundTrip(t, result1.Tasks, project.Tasks)
 	assertKitchenSinkRoundTrip(t, result2.Tasks, project.Tasks)
 }
@@ -85,7 +85,7 @@ func TestRoundTrip_KitchenSinkSaveLoadSaveFixedPoint(t *testing.T) {
 		t.Fatalf("expected no load warnings, got %v", result.Warnings)
 	}
 
-	assertSectionsAndColors(t, loaded.GetSections(), project.GetSections(), loaded.SectionColors, project.SectionColors)
+	assertSectionsAndColors(t, loaded.GetSections(), project.GetSections(), loaded.SectionColors, map[string]string{})
 	assertKitchenSinkRoundTrip(t, loaded.Tasks, project.Tasks)
 	assertLoadedHierarchy(t, loaded.Tasks)
 

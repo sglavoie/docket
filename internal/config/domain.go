@@ -384,6 +384,9 @@ func (p *PlanningState) Validate() error {
 		if f.Name == "" {
 			return fmt.Errorf("planning: saved filter %d has empty name", i)
 		}
+		if err := f.Validate(); err != nil {
+			return fmt.Errorf("planning: saved filter %d: %w", i, err)
+		}
 	}
 	return nil
 }
@@ -543,14 +546,11 @@ type Settings struct {
 	WeeklyBlockedThreshold    *int `json:"weekly_blocked_threshold,omitempty"`
 	WeeklyInProgressThreshold *int `json:"weekly_in_progress_threshold,omitempty"`
 
-	// Behavior — GTD section WIP limits.
-	SectionLimitActive  *int `json:"section_limit_active,omitempty"`
-	SectionLimitNext    *int `json:"section_limit_next,omitempty"`
-	SectionLimitInbox   *int `json:"section_limit_inbox,omitempty"`
-	SectionLimitStandby *int `json:"section_limit_standby,omitempty"`
-	SectionLimitWaiting *int `json:"section_limit_waiting,omitempty"`
-	SectionLimitSomeday *int `json:"section_limit_someday,omitempty"`
-	SectionLimitReview  *int `json:"section_limit_review,omitempty"`
+	// Behavior — canonical All/state-group WIP limits. Legacy section_limit_*
+	// keys are decoded and migrated by Settings.UnmarshalJSON but never emitted.
+	StateGroupLimits map[models.WorkflowStateGroup]int `json:"state_group_limits,omitempty"`
+
+	legacySectionLimitsDecoded bool `json:"-"`
 
 	// Appearance.
 	ActiveTheme        string        `json:"active_theme,omitempty"`

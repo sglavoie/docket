@@ -56,7 +56,6 @@ func ExtractVariables(t *TaskTemplate) []TemplateVariable {
 
 	extract(t.Name)
 	extract(t.Description)
-	extract(t.Section)
 	for _, tag := range t.Tags {
 		extract(tag)
 	}
@@ -91,7 +90,6 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 	}
 	extractDefaults(t.Name)
 	extractDefaults(t.Description)
-	extractDefaults(t.Section)
 	for _, tag := range t.Tags {
 		extractDefaults(tag)
 	}
@@ -126,7 +124,6 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 
 	t.Name = replace(t.Name)
 	t.Description = replace(t.Description)
-	t.Section = replace(t.Section)
 
 	if t.Tags != nil {
 		tags := make([]string, len(t.Tags))
@@ -191,7 +188,6 @@ func ValidateTokens(t *TaskTemplate) error {
 	}{
 		{"name", t.Name},
 		{"description", t.Description},
-		{"section", t.Section},
 	}
 
 	for _, f := range fields {
@@ -230,7 +226,7 @@ func HasVariables(t *TaskTemplate) bool {
 		return validVarPattern.MatchString(s)
 	}
 
-	if check(t.Name) || check(t.Description) || check(t.Section) {
+	if check(t.Name) || check(t.Description) {
 		return true
 	}
 	if slices.ContainsFunc(t.Tags, check) {

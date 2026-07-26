@@ -383,8 +383,14 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	m.recentTaskVisits = m.recentTaskVisits[:n]
 
 	if dirty {
-		m.persistFocusQueue()
-		m.persistDailyPlan()
+		if m.appService != nil {
+			if changed, err := m.appService.ReconcilePlanning(); err != nil {
+				logging.Warn("failed to reconcile deleted planning references: %v", err)
+			} else if changed {
+				m.refreshRuntime()
+				m.rebuildPlanningFromRuntime()
+			}
+		}
 		m.persistRecentTaskVisits()
 	}
 }

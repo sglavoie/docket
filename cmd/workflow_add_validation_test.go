@@ -11,10 +11,11 @@ func TestWorkflowAdd_TriggerFieldValidation(t *testing.T) {
 	for _, field := range workflow.ValidTriggerFields() {
 		value := "test"
 		switch field {
-		case workflow.FieldSection:
-			value = "Inbox"
-		case workflow.FieldSectionChanged:
-			value = "Next->Inbox"
+		case workflow.FieldState, workflow.FieldParentState, workflow.FieldAllTasksState,
+			workflow.FieldMajorityTaskState, workflow.FieldHasTasksWithState:
+			value = "ready"
+		case workflow.FieldStateChanged:
+			value = "waiting,paused->ready"
 		default:
 		}
 		trigger := workflow.RuleTrigger{Field: field, Operation: workflow.OpEquals, Value: value}
@@ -34,7 +35,13 @@ func TestWorkflowAdd_TriggerFieldValidation(t *testing.T) {
 
 func TestWorkflowAdd_TriggerOperationValidation(t *testing.T) {
 	for _, op := range workflow.ValidTriggerOperations() {
-		trigger := workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: op, Value: "test"}
+		field := workflow.FieldTags
+		value := "test"
+		if op == workflow.OpIn || op == workflow.OpNotIn {
+			field = workflow.FieldState
+			value = "ready,next"
+		}
+		trigger := workflow.RuleTrigger{Field: field, Operation: op, Value: value}
 		if err := trigger.Validate(); err != nil {
 			t.Errorf("expected operation %s to be valid, got: %v", op, err)
 		}
@@ -57,7 +64,7 @@ func TestWorkflowAdd_ActionTypeValidation(t *testing.T) {
 		workflow.ActionSetSnooze:        "+1d",
 		workflow.ActionSetRecurrence:    "daily",
 		workflow.ActionSetProjectStatus: "active",
-		workflow.ActionSetSection:       "Inbox",
+		workflow.ActionSetState:         "ready",
 	}
 
 	for _, action := range workflow.ValidActionTypes() {
@@ -87,10 +94,10 @@ func TestWorkflowAdd_TriggerCountMismatch(t *testing.T) {
 		values    []string
 		expectErr bool
 	}{
-		{"matching counts", []string{"status"}, []string{"done"}, false},
-		{"mismatched counts", []string{"status", "priority"}, []string{"done"}, true},
+		{"matching counts", []string{"state"}, []string{"done"}, false},
+		{"mismatched counts", []string{"state", "priority"}, []string{"done"}, true},
 		{"empty fields", []string{}, []string{}, false},
-		{"multiple matching", []string{"status", "tags"}, []string{"done", "urgent"}, false},
+		{"multiple matching", []string{"state", "tags"}, []string{"done", "urgent"}, false},
 	}
 
 	for _, tt := range tests {
@@ -104,7 +111,7 @@ func TestWorkflowAdd_TriggerCountMismatch(t *testing.T) {
 }
 
 func TestWorkflowAdd_DefaultOpsToEquals(t *testing.T) {
-	fields := []string{"status", "priority", "tags"}
+	fields := []string{"state", "priority", "tags"}
 	var ops []string
 
 	if len(ops) == 0 {
@@ -121,7 +128,7 @@ func TestWorkflowAdd_DefaultOpsToEquals(t *testing.T) {
 }
 
 func TestWorkflowAdd_OpCountMismatch(t *testing.T) {
-	fields := []string{"status", "priority"}
+	fields := []string{"state", "priority"}
 	ops := []string{"equals"}
 
 	if len(ops) > 0 && len(ops) != len(fields) {
@@ -169,7 +176,7 @@ func TestWorkflowAdd_NoValueRequiredActions(t *testing.T) {
 	}
 
 	requiresValue := []workflow.ActionType{
-		workflow.ActionSetStatus,
+		workflow.ActionSetState,
 		workflow.ActionSetPriority,
 		workflow.ActionAddTag,
 		workflow.ActionRemoveTag,

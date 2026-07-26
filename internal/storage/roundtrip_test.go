@@ -300,12 +300,10 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		t.Errorf("story parent: got %v, want %s", gotStory.ParentID, epic.ID)
 	}
 
-	// Section colors preserved
-	if loaded.SectionColors["Inbox"] != "blue" {
-		t.Errorf("section color Inbox: got %q, want %q", loaded.SectionColors["Inbox"], "blue")
-	}
-	if loaded.SectionColors["Waiting"] != "orange" {
-		t.Errorf("section color Waiting: got %q, want %q", loaded.SectionColors["Waiting"], "orange")
+	// Legacy project section colors are intentionally decode-only and are not
+	// hydrated into the canonical runtime project.
+	if len(loaded.SectionColors) != 0 {
+		t.Errorf("section colors: got %v, want empty canonical runtime metadata", loaded.SectionColors)
 	}
 }
 

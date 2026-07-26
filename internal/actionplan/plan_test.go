@@ -1,6 +1,7 @@
 package actionplan
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"unicode"
@@ -133,6 +134,42 @@ func TestDisplaySafetyAllowsMultilineMarkdownDescription(t *testing.T) {
 	}}}
 	if err := Validate(plan); err != nil {
 		t.Fatalf("Validate rejected safe multiline description: %v", err)
+	}
+}
+
+func TestCreateTaskStateIsOptionalAndValidated(t *testing.T) {
+	t.Parallel()
+
+	title := "Create me"
+	valid := models.StateNext
+	for _, action := range []Action{
+		{Type: ActionCreateTask, ProjectID: "project", Title: &title},
+		{Type: ActionCreateTask, ProjectID: "project", Title: &title, State: &valid},
+	} {
+		if err := Validate(ActionPlan{Version: Version, Actions: []Action{action}}); err != nil {
+			t.Fatalf("Validate rejected create_task state contract: %v", err)
+		}
+	}
+
+	invalid := models.WorkflowState("backlog")
+	err := Validate(ActionPlan{Version: Version, Actions: []Action{{
+		Type: ActionCreateTask, ProjectID: "project", Title: &title, State: &invalid,
+	}}})
+	if err == nil || !strings.Contains(err.Error(), `invalid state "backlog"`) {
+		t.Fatalf("Validate error = %v, want invalid state rejection", err)
+	}
+}
+
+func TestCreateTaskRejectsLegacyLifecycleFields(t *testing.T) {
+	t.Parallel()
+
+	for _, field := range []string{"section", "status"} {
+		payload := `{"version":2,"summary":"","actions":[{"type":"create_task","project_id":"project","title":"Create me","state":"ready","` + field + `":"legacy"}]}`
+		var plan ActionPlan
+		err := json.Unmarshal([]byte(payload), &plan)
+		if err == nil || !strings.Contains(err.Error(), `unknown field "`+field+`"`) {
+			t.Fatalf("%s payload error = %v, want unknown-field rejection", field, err)
+		}
 	}
 }
 

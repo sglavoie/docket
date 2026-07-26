@@ -160,10 +160,10 @@ Do not emit shell commands. Do not invent task_id or project_id values; use stab
 If the request needs no mutation, return an empty actions array and explain the answer briefly in summary. Every answer and proposed action must use the strict JSON action-plan contract below.
 
 Required schema:
-{"version":1,"summary":"brief user-facing answer","actions":[ACTION,...]}
+{"version":2,"summary":"brief user-facing answer","actions":[ACTION,...]}
 
 ACTION is exactly one of these tagged shapes (no additional fields):
-{"type":"create_task","project_id":"stable project id","title":"...","description":"optional","task_type":"task|story|epic|bug|idea","priority":1,"tags":["tag"]}
+{"type":"create_task","project_id":"stable project id","title":"...","description":"optional","task_type":"task|story|epic|bug|idea","state":"inbox|ready|next|in_progress|waiting|paused|review|someday|done|canceled","priority":1,"tags":["tag"]}
 {"type":"edit_task","task_id":"stable task id","title":"optional","description":"optional","task_type":"optional task type"}
 {"type":"set_state","task_id":"stable task id","state":"inbox|ready|next|in_progress|waiting|paused|review|someday|done|canceled"}
 {"type":"set_priority","task_id":"stable task id","priority":1}
@@ -174,7 +174,7 @@ ACTION is exactly one of these tagged shapes (no additional fields):
 {"type":"remove_dependency","task_id":"stable task id","blocker_task_id":"stable task id"}
 {"type":"delete_task","task_id":"stable task id"}
 
-Omit optional fields instead of setting them to null. Priority must be 1 through 5.`)
+Omit optional fields instead of setting them to null. create_task state is optional and defaults to inbox. Priority must be 1 through 5.`)
 	if strings.TrimSpace(taskContext) != "" {
 		b.WriteString("\n\n")
 		b.WriteString(taskContext)

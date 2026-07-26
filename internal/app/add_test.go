@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -9,8 +10,26 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+func TestCreationRequestsExposeOnlyCanonicalState(t *testing.T) {
+	for name, requestType := range map[string]reflect.Type{
+		"add":     reflect.TypeOf(app.AddTaskRequest{}),
+		"capture": reflect.TypeOf(app.CaptureRequest{}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if field, ok := requestType.FieldByName("State"); !ok || field.Type != reflect.TypeOf(models.WorkflowState("")) {
+				t.Fatalf("%s request State field = %#v, want models.WorkflowState", name, field)
+			}
+			for _, legacy := range []string{"Section", "InitialState", "Status"} {
+				if _, ok := requestType.FieldByName(legacy); ok {
+					t.Fatalf("%s request still exposes legacy creation field %s", name, legacy)
+				}
+			}
+		})
+	}
+}
+
 // TestService_AddTask_Parity exercises the full typed-capture surface: type,
-// priority, tags, description, section, stage, recurrence, parent placement,
+// priority, tags, description, state, recurrence, parent placement,
 // checklist, and type-specific attributes, plus an auxiliary durable artifact
 // (standing in for the config store with an incremented template use-count). It
 // asserts the created task carries every field AND that the task write and the
@@ -33,7 +52,7 @@ func TestService_AddTask_Parity(t *testing.T) {
 		Priority:    1,
 		Tags:        []string{"backend", "api"},
 		Description: "body text",
-		Section:     models.SectionNext,
+		State:       models.StateNext,
 		Recurrence:  models.ParseRecurrence("weekly"),
 		ParentID:    &parentID,
 		Checklist:   []string{"step 1", "step 2"},
@@ -100,6 +119,56 @@ func TestService_AddTask_Parity(t *testing.T) {
 	if cs.UndoAction != "Add Task" {
 		t.Errorf("undo action = %q, want %q", cs.UndoAction, "Add Task")
 	}
+}
+
+func TestService_AddTask_StateContract(t *testing.T) {
+	t.Run("omitted state defaults to Inbox", func(t *testing.T) {
+		project := newProject("proj-1", "Proj")
+		svc := newTestService(newFakeRepo(project))
+
+		res, err := svc.AddTask(app.AddTaskRequest{ProjectID: project.ID, Title: "triage me"})
+		if err != nil {
+			t.Fatalf("AddTask: %v", err)
+		}
+		if got := project.GetTaskByID(res.TaskID).State(); got != models.StateInbox {
+			t.Fatalf("state = %q, want inbox", got)
+		}
+	})
+
+	t.Run("explicit legacy default remains Ready", func(t *testing.T) {
+		project := newProject("proj-1", "Proj")
+		svc := newTestService(newFakeRepo(project))
+
+		res, err := svc.AddTask(app.AddTaskRequest{
+			ProjectID: project.ID,
+			Title:     "legacy active task",
+			State:     models.StateReady,
+		})
+		if err != nil {
+			t.Fatalf("AddTask: %v", err)
+		}
+		if got := project.GetTaskByID(res.TaskID).State(); got != models.StateReady {
+			t.Fatalf("state = %q, want ready", got)
+		}
+	})
+
+	t.Run("invalid state is rejected atomically", func(t *testing.T) {
+		project := newProject("proj-1", "Proj")
+		repo := newFakeRepo(project)
+		svc := newTestService(repo)
+
+		_, err := svc.AddTask(app.AddTaskRequest{
+			ProjectID: project.ID,
+			Title:     "invalid",
+			State:     models.WorkflowState("Backlog"),
+		})
+		if !errors.Is(err, app.ErrInvalidInput) {
+			t.Fatalf("error = %v, want ErrInvalidInput", err)
+		}
+		if len(repo.commits) != 0 || len(project.Tasks) != 0 {
+			t.Fatal("invalid state must not mutate or commit")
+		}
+	})
 }
 
 // TestService_AddTask_InvalidParentRef verifies that a parent reference to a task

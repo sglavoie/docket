@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -50,8 +51,9 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if guardErr := childrenCompletionGuard(ref.Task, target); guardErr != nil {
 		return TaskResult{}, guardErr
 	}
-	applyState(ref.Task, target)
-	ref.Task.UpdatedAt = s.clock.Now()
+	if err := applyState(ref.Task, target, s.clock.Now()); err != nil {
+		return TaskResult{}, invalidInput("state", err.Error())
+	}
 	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return TaskResult{}, err
@@ -72,7 +74,7 @@ func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtif
 		ProjectID: ref.Project.ID,
 		State:     ref.Task.State(),
 	}}
-	artifacts, err := builder(targets)
+	artifacts, err := builder(PlanningReconcileRequest{Targets: targets})
 	if err != nil {
 		return nil, err
 	}
@@ -125,32 +127,10 @@ func newChildrenBlockedError(task *models.Task, children []*models.Task) error {
 	return &ChildrenBlockedError{ParentShortID: task.ShortID, Children: kids}
 }
 
-// applyState routes a validated target state to the domain lifecycle method that
-// realizes it, so state changes reuse the exact field mutations (completion
-// timestamps, snooze clearing, section moves) the domain already guarantees.
-func applyState(task *models.Task, target models.WorkflowState) {
-	switch target {
-	case models.StateDone:
-		task.Complete()
-	case models.StateCanceled:
-		task.Cancel()
-	case models.StateInbox:
-		// Reopen returns a terminal task to inbox and also serves a nonterminal
-		// move to inbox: it clears any completion timestamp and sets todo+inbox.
-		task.Reopen()
-	case models.StateInProgress:
-		task.Start()
-	case models.StateReview:
-		task.Review()
-	case models.StateWaiting:
-		task.Block()
-	case models.StatePaused:
-		task.Standby()
-	case models.StateSomeday:
-		task.Maybe()
-	case models.StateNext, models.StateReady:
-		// Ready and Next carry no dedicated lifecycle method; the canonical
-		// legacy-field mapping realizes them (todo, with/without the Next section).
-		task.ApplyWorkflowState(target)
-	}
+// applyState is the application-layer state mutation seam. It supplies the
+// service clock to the canonical model primitive so state, completion, snooze,
+// and update timestamps change together deterministically. Callers validate
+// transition policy before reaching this helper.
+func applyState(task *models.Task, target models.WorkflowState, now time.Time) error {
+	return task.ApplyStateTransitionAt(target, now)
 }

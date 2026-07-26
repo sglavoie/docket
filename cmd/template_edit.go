@@ -176,11 +176,11 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	if cmd.Flags().Changed("section") {
-		section, sectionErr := normalizeTemplateSectionInput(templateEditSection)
-		if sectionErr != nil {
-			return sectionErr
+		state, stateErr := templateStateFromLegacySectionInput(templateEditSection, models.StateReady)
+		if stateErr != nil {
+			return stateErr
 		}
-		t.Section = section
+		t.State = state
 		hasChanges = true
 	}
 

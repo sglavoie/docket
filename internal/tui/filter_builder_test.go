@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestFilterBuilderSupportsParkedCriterion(t *testing.T) {
@@ -29,6 +31,37 @@ func TestFilterBuilderSupportsParkedCriterion(t *testing.T) {
 	criterion := filter.Criteria[0]
 	if criterion.Field != "parked" || criterion.Operation != "equals" || criterion.Value != "false" {
 		t.Fatalf("criterion = %+v, want parked equals false", criterion)
+	}
+}
+
+func TestFilterBuilderSupportsCanonicalStateSets(t *testing.T) {
+	fieldIdx := smartListFieldIndex("state")
+	if fieldIdx < 0 {
+		t.Fatal("smart list fields should include state")
+	}
+	if smartListFieldIndex("status") >= 0 || smartListFieldIndex("section") >= 0 {
+		t.Fatal("smart list fields should not expose legacy lifecycle criteria")
+	}
+
+	builder := NewFilterBuilderModel(nil)
+	builder.nameInput.SetValue("Planning states")
+	builder.criteria[0].fieldCursor = fieldIdx
+	builder.criteria[0].opCursor = 0
+	builder.criteria[0].valueInput.SetValue("waiting, inbox, next")
+
+	filter := builder.buildSavedFilter()
+	criterion := filter.Criteria[0]
+	want := testWorkflowStateSet(models.StateInbox, models.StateNext, models.StateWaiting)
+	if criterion.Field != "state" || criterion.Operation != "in" || !criterion.States.Equal(want) {
+		t.Fatalf("criterion = field %q op %q states %v, want canonical state set %v", criterion.Field, criterion.Operation, criterion.States.Values(), want.Values())
+	}
+
+	editor := NewFilterEditorModel(nil, &filter)
+	got := editor.criteria[0].valueInput.Value()
+	for _, state := range []string{"inbox", "next", "waiting"} {
+		if !strings.Contains(got, state) {
+			t.Fatalf("editor state input = %q, missing %q", got, state)
+		}
 	}
 }
 

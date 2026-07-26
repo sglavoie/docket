@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // TestCommonFilterParts_TagsDeterministicOrder guards against a regression where
@@ -46,39 +48,38 @@ func tagPartFromCommonFilterParts(parts []string) string {
 	return ""
 }
 
-// TestOutlinerActiveFilterParts_SectionsDeterministicOrder guards against
-// map-iteration nondeterminism bug for the per-view Sections filter in
-// OutlinerModel.activeFilterParts().
-func TestOutlinerActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
+// TestOutlinerActiveFilterParts_StatesCanonicalOrder guards the canonical
+// state-set display order used by the active filter chip.
+func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	ol := NewOutlinerModel(project, app.configManager, app.runtime)
-	ol.filter.Sections = map[string]bool{
-		"Zeta":   true,
-		"Alpha":  true,
-		"Middle": true,
-		"Beta":   true,
-	}
+	ol.filter.setStateFilter(testWorkflowStateSet(
+		models.StateCanceled,
+		models.StateNext,
+		models.StateInbox,
+		models.StateWaiting,
+	), true)
 
-	first := sectionPartFromParts(ol.activeFilterParts())
+	first := statePartFromParts(ol.activeFilterParts())
 	if first == "" {
-		t.Fatalf("expected a section part in activeFilterParts output, got none")
+		t.Fatalf("expected a state part in activeFilterParts output, got none")
 	}
-	wantSecPart := "@Alpha @Beta @Middle @Zeta"
-	if first != wantSecPart {
-		t.Errorf("section part not in deterministic sorted order: got %q, want %q", first, wantSecPart)
+	wantStatePart := "state:inbox,next,waiting,canceled"
+	if first != wantStatePart {
+		t.Errorf("state part not in canonical order: got %q, want %q", first, wantStatePart)
 	}
 
 	for i := range 50 {
-		got := sectionPartFromParts(ol.activeFilterParts())
+		got := statePartFromParts(ol.activeFilterParts())
 		if got != first {
-			t.Fatalf("iteration %d: section part changed across calls: got %q, want %q", i, got, first)
+			t.Fatalf("iteration %d: state part changed across calls: got %q, want %q", i, got, first)
 		}
 	}
 }
 
-func sectionPartFromParts(parts []string) string {
+func statePartFromParts(parts []string) string {
 	for _, p := range parts {
-		if strings.HasPrefix(p, "@") {
+		if strings.HasPrefix(p, "state:") {
 			return p
 		}
 	}

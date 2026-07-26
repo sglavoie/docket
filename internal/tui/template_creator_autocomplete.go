@@ -4,30 +4,26 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// buildCaches gathers sections and tags from all projects for autocomplete.
+// buildCaches gathers canonical states and project tags for autocomplete.
 func (m *TaskTemplateCreatorModel) buildCaches() {
-	sectionSet := make(map[string]struct{})
 	tagSet := make(map[string]struct{})
 
 	for _, proj := range m.runtime.AllLoadableProjects() {
 		if err := storage.LoadProject(proj); err == nil {
-			for _, section := range proj.Sections {
-				sectionSet[section] = struct{}{}
-			}
 			for _, tag := range CollectTagNamesForProject(proj) {
 				tagSet[tag] = struct{}{}
 			}
 		}
 	}
 
-	m.sectionCache = make([]string, 0, len(sectionSet))
-	for section := range sectionSet {
-		m.sectionCache = append(m.sectionCache, section)
+	m.stateCache = make([]string, 0, len(models.AllWorkflowStates()))
+	for _, state := range models.AllWorkflowStates() {
+		m.stateCache = append(m.stateCache, state.String())
 	}
-	sort.Strings(m.sectionCache)
 
 	m.tagCache = make([]string, 0, len(tagSet))
 	for tag := range tagSet {
@@ -36,22 +32,22 @@ func (m *TaskTemplateCreatorModel) buildCaches() {
 	sort.Strings(m.tagCache)
 }
 
-// updateSectionSuggestions filters section cache based on current input.
-func (m *TaskTemplateCreatorModel) updateSectionSuggestions() {
-	query := strings.ToLower(strings.TrimSpace(m.sectionInput.Value()))
+// updateStateSuggestions filters canonical states based on current input.
+func (m *TaskTemplateCreatorModel) updateStateSuggestions() {
+	query := strings.ToLower(strings.TrimSpace(m.stateInput.Value()))
 	if query == "" {
-		m.sectionSuggestions = nil
+		m.stateSuggestions = nil
 		m.showSuggestions = false
 		return
 	}
 
-	m.sectionSuggestions = nil
-	for _, section := range m.sectionCache {
-		if strings.Contains(strings.ToLower(section), query) && strings.ToLower(section) != query {
-			m.sectionSuggestions = append(m.sectionSuggestions, section)
+	m.stateSuggestions = nil
+	for _, state := range m.stateCache {
+		if strings.Contains(strings.ToLower(state), query) && strings.ToLower(state) != query {
+			m.stateSuggestions = append(m.stateSuggestions, state)
 		}
 	}
-	m.showSuggestions = len(m.sectionSuggestions) > 0
+	m.showSuggestions = len(m.stateSuggestions) > 0
 	m.suggestionCursor = 0
 }
 
@@ -88,14 +84,14 @@ func (m *TaskTemplateCreatorModel) updateTagSuggestions() {
 	m.suggestionCursor = 0
 }
 
-// acceptSectionSuggestion accepts the currently selected section suggestion.
-func (m *TaskTemplateCreatorModel) acceptSectionSuggestion() {
-	if m.suggestionCursor < len(m.sectionSuggestions) {
-		m.sectionInput.SetValue(m.sectionSuggestions[m.suggestionCursor])
-		m.sectionInput.SetCursor(len(m.sectionInput.Value()))
+// acceptStateSuggestion accepts the currently selected state suggestion.
+func (m *TaskTemplateCreatorModel) acceptStateSuggestion() {
+	if m.suggestionCursor < len(m.stateSuggestions) {
+		m.stateInput.SetValue(m.stateSuggestions[m.suggestionCursor])
+		m.stateInput.SetCursor(len(m.stateInput.Value()))
 	}
 	m.showSuggestions = false
-	m.sectionSuggestions = nil
+	m.stateSuggestions = nil
 }
 
 // acceptTagSuggestion accepts the currently selected tag suggestion.
@@ -118,7 +114,7 @@ func (m *TaskTemplateCreatorModel) acceptTagSuggestion() {
 // hideSuggestions hides the suggestions dropdown.
 func (m *TaskTemplateCreatorModel) hideSuggestions() {
 	m.showSuggestions = false
-	m.sectionSuggestions = nil
+	m.stateSuggestions = nil
 	m.tagSuggestions = nil
 	m.suggestionCursor = 0
 }
@@ -127,24 +123,24 @@ func (m *TaskTemplateCreatorModel) hideSuggestions() {
 func (m *TaskTemplateCreatorModel) getCurrentSuggestions() []string {
 	section, _ := m.getFocusSection()
 	switch section {
-	case "section":
-		return m.sectionSuggestions
+	case "state":
+		return m.stateSuggestions
 	case "tags":
 		return m.tagSuggestions
 	}
 	return nil
 }
 
-// showAllSectionSuggestions populates sectionSuggestions with all cached sections.
-func (m *TaskTemplateCreatorModel) showAllSectionSuggestions() {
-	currentValue := strings.ToLower(strings.TrimSpace(m.sectionInput.Value()))
-	m.sectionSuggestions = nil
-	for _, section := range m.sectionCache {
-		if strings.ToLower(section) != currentValue {
-			m.sectionSuggestions = append(m.sectionSuggestions, section)
+// showAllStateSuggestions populates stateSuggestions with all canonical states.
+func (m *TaskTemplateCreatorModel) showAllStateSuggestions() {
+	currentValue := strings.ToLower(strings.TrimSpace(m.stateInput.Value()))
+	m.stateSuggestions = nil
+	for _, state := range m.stateCache {
+		if strings.ToLower(state) != currentValue {
+			m.stateSuggestions = append(m.stateSuggestions, state)
 		}
 	}
-	if len(m.sectionSuggestions) > 0 {
+	if len(m.stateSuggestions) > 0 {
 		m.showSuggestions = true
 		m.suggestionCursor = 0
 	}

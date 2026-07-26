@@ -104,6 +104,7 @@ func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
 	project.Tasks = []*models.Task{}
 	project.NextShortID = 1
 	project.Sections = []string{models.SectionNext}
+	project.SectionColors = make(map[string]string)
 	project.Tags = []string{}
 	project.PinnedTags = []string{}
 	if auditErr := auditLoadedProject(project); auditErr != nil {
@@ -130,10 +131,13 @@ func loadProjectContentWithCrossRefValidation(project *models.Project, content [
 	}
 
 	project.Tasks = result.Tasks
-	project.Sections = result.Sections
+	// Project sections and colors are schema-v1 decode inputs only. Keep the
+	// compatibility fields on their canonical runtime defaults until their
+	// staged removal; never hydrate retired persisted presentation metadata.
+	project.Sections = []string{models.SectionNext}
 	project.Tags = result.Tags
 	project.PinnedTags = result.PinnedTags
-	project.SectionColors = result.SectionColors
+	project.SectionColors = make(map[string]string)
 
 	maxShortID := 0
 	for _, task := range result.Tasks {
@@ -255,15 +259,17 @@ func SaveProject(project *models.Project) error {
 	}
 
 	tasksPath := tasksFilePath(project.Path)
+	var opaque []OpaqueBlock
 	if oldContent, err := os.ReadFile(tasksPath); err == nil {
-		if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
-			diffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
+		if oldDoc, parseErr := ParseProjectDocument(string(oldContent)); parseErr == nil {
+			diffAndRecordActivity(oldDoc.Tasks, project.Tasks, MaxActivityEntries)
+			opaque = append([]OpaqueBlock(nil), oldDoc.OpaqueBlocks...)
 		} else {
 			logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
 		}
 	}
 
-	content := WriteTasksMarkdownWithFullProjectMetadata(project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags)
+	content := ToProjectDocument(project, opaque).WriteV2()
 	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}

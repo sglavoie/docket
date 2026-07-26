@@ -63,7 +63,7 @@ func TestLoadSavedFilterAppliesCrossProjectCatalogTags(t *testing.T) {
 	}
 }
 
-func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
+func TestLoadSavedFilterAppliesCrossProjectStates(t *testing.T) {
 	app := newTestAppModel()
 	project := &models.Project{
 		ID:       "alpha",
@@ -75,12 +75,14 @@ func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.pushView(ViewCrossProjectOutliner)
 
+	filter := config.SavedFilter{
+		Name: "Cross States",
+		Mode: "snapshot",
+	}
+	filter.SetFilterStates(testWorkflowStateSet(models.StateNext, models.StateWaiting), true)
+
 	handled, cmd := app.handleSavedFilterMessages(LoadSavedFilterMsg{
-		Filter: config.SavedFilter{
-			Name:           "Cross Sections",
-			Mode:           "snapshot",
-			FilterSections: []string{models.SectionNext, "Sprint-1", "missing"},
-		},
+		Filter: filter,
 	})
 	if !handled {
 		t.Fatal("LoadSavedFilterMsg should be handled")
@@ -88,13 +90,38 @@ func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
 	if cmd != nil {
 		t.Fatalf("LoadSavedFilterMsg command = %v, want nil", cmd)
 	}
-	if !app.crossOutliner.filter.Sections[models.SectionNext] {
-		t.Fatalf("cross-project sections = %v, want Next restored", app.crossOutliner.filter.Sections)
+	if !app.crossOutliner.filter.States.Contains(models.StateNext) {
+		t.Fatalf("cross-project states = %v, want Next restored", app.crossOutliner.filter.States.Values())
 	}
-	if app.crossOutliner.filter.Sections["Sprint-1"] {
-		t.Fatalf("cross-project sections = %v, want Sprint-1 rejected", app.crossOutliner.filter.Sections)
+	if !app.crossOutliner.filter.States.Contains(models.StateWaiting) {
+		t.Fatalf("cross-project states = %v, want Waiting restored", app.crossOutliner.filter.States.Values())
 	}
-	if app.crossOutliner.filter.Sections["missing"] {
-		t.Fatalf("cross-project sections = %v, want missing section rejected", app.crossOutliner.filter.Sections)
+	if got := app.crossOutliner.filter.States.Len(); got != 2 {
+		t.Fatalf("cross-project states = %v, want exactly two canonical states", app.crossOutliner.filter.States.Values())
+	}
+}
+
+func TestCaptureAndApplySavedFilterPreservesCanonicalStateSet(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.outliner.filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateNext), true)
+
+	captured := app.captureOutlinerFilter("Planning", "planning")
+	if !captured.HasStateFilter() || !captured.FilterStates.Equal(app.outliner.filter.States) {
+		t.Fatalf("captured states = %v active=%v, want %v", captured.FilterStates.Values(), captured.HasStateFilter(), app.outliner.filter.States.Values())
+	}
+
+	app.outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone), true)
+	app.applySavedFilterToOutliner(captured)
+	if !app.outliner.filter.States.Equal(captured.FilterStates) {
+		t.Fatalf("applied states = %v, want %v", app.outliner.filter.States.Values(), captured.FilterStates.Values())
+	}
+}
+
+func TestSectionFilterAdapterExpandsCompletedToBothTerminalStates(t *testing.T) {
+	states := workflowStatesForSectionNames([]string{models.SectionCompleted})
+	want := testWorkflowStateSet(models.StateDone, models.StateCanceled)
+	if !states.Equal(want) {
+		t.Fatalf("Completed adapter states = %v, want %v", states.Values(), want.Values())
 	}
 }

@@ -11,18 +11,18 @@ var workflowCmd = &cobra.Command{
 	Long: `Commands for creating, listing, and managing workflow automation rules.
 
 Workflow rules automatically modify tasks when conditions are met.
-Rules are evaluated whenever tasks are saved (status changes, edits, etc).
+Rules are evaluated whenever tasks are saved (state changes, edits, etc).
 
 EXAMPLES
 
-  When task unblocked, add ready tag (event trigger):
-    tt workflow add -n "Unblock Ready" -f status_changed -o equals -V "blocked->*" -a add_tag --action-value ready
+  When task becomes ready, add ready tag (event trigger):
+    tt workflow add -n "Unblock Ready" -f state_changed -o equals -V "waiting->ready" -a add_tag --action-value ready
 
-  When completed, move to Completed (event trigger):
-    tt workflow add -n "Route Completed" -f completed -o equals -V true -a set_section --action-value Completed
+  When completed, ensure the task is done (event trigger):
+    tt workflow add -n "Route Completed" -f completed -o equals -V true -a set_state --action-value done
 
   Auto-complete epic when all children done (hierarchical):
-    tt workflow add -n "Epic Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_status --action-value done
+    tt workflow add -n "Epic Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_state --action-value done
 
   Inherit urgent tag from parent (hierarchical):
     tt workflow add -n "Inherit Urgent" -f parent_tags -o contains -V urgent -a inherit_tag --action-value urgent
@@ -36,8 +36,8 @@ EXAMPLES
   List all rules:
     tt workflow list
 
-STATE TRIGGER FIELDS (match current task state)
-  status, priority, section, tags, type
+TASK TRIGGER FIELDS (match current task values)
+  state, priority, tags, type
   due_days, created_days, updated_days
 
 BOOLEAN STATE TRIGGER FIELDS (presence/absence checks)
@@ -46,8 +46,7 @@ BOOLEAN STATE TRIGGER FIELDS (presence/absence checks)
   description_empty - Value: "true"/"false"
 
 EVENT TRIGGER FIELDS (detect transitions)
-  status_changed        - Value: "old->new" (e.g., "blocked->*", "*->done")
-  section_changed       - Value: "old->new" (e.g., "Next->Waiting")
+  state_changed         - Value: "old->new" (e.g., "waiting,paused->ready", "*->done")
   priority_changed      - Value: "old->new" (e.g., "*->1")
   tag_added             - Value: tag name that was added
   tag_removed           - Value: tag name that was removed
@@ -59,24 +58,24 @@ EVENT TRIGGER FIELDS (detect transitions)
   streak_broken         - Value: "true" (fires when recurrence streak resets)
 
 HIERARCHICAL TRIGGER FIELDS
-  parent_status, parent_type, parent_tags, level
+  parent_state, parent_type, parent_tags, level
   has_children, children_progress, all_children_done
   is_blocked, blocker_count, dependency_count
 
 ACTION TYPES
-  set_status, set_priority, set_section, add_tag, remove_tag
+  set_state, set_priority, add_tag, remove_tag
   set_due_relative, clear_due, set_pinned, add_comment, set_type
   complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
   set_snooze, create_followup, move_to_project, set_recurrence
 
 RULE SCOPING
-  Rules can be restricted to specific projects, task types, or sections:
+  Rules can be restricted to specific projects, task types, or states:
     tt workflow add ... --scope-project "MyProject"
-    tt workflow add ... --scope-type task,bug --scope-section Waiting
+    tt workflow add ... --scope-type task,bug --scope-state waiting,paused
 
 COMPOUND TRIGGERS
   Multiple triggers can be combined with --logic:
-    tt workflow add -n "Rule" -f status -o equals -V blocked -f priority -o equals -V 1 --logic and ...
+    tt workflow add -n "Rule" -f state -o equals -V waiting -f priority -o equals -V 1 --logic and ...
     tt workflow add -n "Rule" -f tags -o contains -V urgent -f due_days -o less_than -V 3 --logic or ...`,
 	RunE: runWorkflowList,
 }

@@ -131,6 +131,14 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 		if len(rule.Scope.Types) > 0 {
 			fmt.Printf("  Types: %s\n", strings.Join(rule.Scope.Types, ", "))
 		}
+		if len(rule.Scope.States) > 0 {
+			states := make([]string, 0, len(rule.Scope.States))
+			for _, state := range rule.Scope.States {
+				states = append(states, string(state))
+			}
+			fmt.Printf("  States: %s\n", strings.Join(states, ", "))
+		}
+		// Legacy section scope remains visible until persisted rules migrate.
 		if len(rule.Scope.Sections) > 0 {
 			fmt.Printf("  Sections: %s\n", strings.Join(rule.Scope.Sections, ", "))
 		}

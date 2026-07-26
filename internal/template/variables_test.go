@@ -44,7 +44,6 @@ func TestExtractVariables_Deduplication(t *testing.T) {
 	tmpl := &TaskTemplate{
 		Name:        "{{client}} setup",
 		Description: "Welcome {{client}} to {{plan}}",
-		Section:     "{{client}}",
 	}
 
 	vars := ExtractVariables(tmpl)
@@ -93,18 +92,17 @@ func TestExtractVariables_AllFields(t *testing.T) {
 	tmpl := &TaskTemplate{
 		Name:        "{{f1}}",
 		Description: "{{f2}}",
-		Section:     "{{f3}}",
-		Tags:        []string{"{{f4}}", "{{f5}}"},
-		Checklist:   []string{"{{f6}}", "{{f7}}"},
+		Tags:        []string{"{{f3}}", "{{f4}}"},
+		Checklist:   []string{"{{f5}}", "{{f6}}"},
 		Children: []TemplateChild{
+			{Title: "{{f7}}"},
 			{Title: "{{f8}}"},
-			{Title: "{{f9}}"},
 		},
 	}
 
 	vars := ExtractVariables(tmpl)
-	if len(vars) != 9 {
-		t.Fatalf("expected 9 variables, got %d", len(vars))
+	if len(vars) != 8 {
+		t.Fatalf("expected 8 variables, got %d", len(vars))
 	}
 	for i, v := range vars {
 		expected := "f" + string(rune('1'+i))
@@ -164,7 +162,6 @@ func TestApplyVariables_AllFields(t *testing.T) {
 	tmpl := TaskTemplate{
 		Name:        "Setup {{client}}",
 		Description: "Onboard {{client}} with {{plan}}",
-		Section:     "{{section_name}}",
 		Tags:        []string{"{{tag1}}", "static", "{{tag2}}"},
 		Checklist:   []string{"Do {{task}} first", "Then {{task}} again"},
 		Children: []TemplateChild{
@@ -173,12 +170,11 @@ func TestApplyVariables_AllFields(t *testing.T) {
 	}
 
 	result := ApplyVariables(tmpl, map[string]string{
-		"client":       "Acme",
-		"plan":         "enterprise",
-		"section_name": "Projects",
-		"tag1":         "important",
-		"tag2":         "urgent",
-		"task":         "review",
+		"client": "Acme",
+		"plan":   "enterprise",
+		"tag1":   "important",
+		"tag2":   "urgent",
+		"task":   "review",
 	})
 
 	if result.Name != "Setup Acme" {
@@ -186,9 +182,6 @@ func TestApplyVariables_AllFields(t *testing.T) {
 	}
 	if result.Description != "Onboard Acme with enterprise" {
 		t.Errorf("Description: got %q", result.Description)
-	}
-	if result.Section != "Projects" {
-		t.Errorf("Section: got %q", result.Section)
 	}
 	if result.Tags[0] != "important" || result.Tags[1] != "static" || result.Tags[2] != "urgent" {
 		t.Errorf("Tags: got %v", result.Tags)
@@ -304,10 +297,9 @@ func TestValidateTokens_Valid(t *testing.T) {
 		{"all fields", &TaskTemplate{
 			Name:        "{{a}}",
 			Description: "{{b}}",
-			Section:     "{{c}}",
-			Tags:        []string{"{{d}}"},
-			Checklist:   []string{"{{e}}"},
-			Children:    []TemplateChild{{Title: "{{f}}"}},
+			Tags:        []string{"{{c}}"},
+			Checklist:   []string{"{{d}}"},
+			Children:    []TemplateChild{{Title: "{{e}}"}},
 		}},
 	}
 
@@ -409,7 +401,6 @@ func TestHasVariables(t *testing.T) {
 		{"no variables", &TaskTemplate{Name: "Plain"}, false},
 		{"in name", &TaskTemplate{Name: "{{x}}"}, true},
 		{"in description", &TaskTemplate{Description: "{{x}}"}, true},
-		{"in section", &TaskTemplate{Section: "{{x}}"}, true},
 		{"in tag", &TaskTemplate{Tags: []string{"{{x}}"}}, true},
 		{"in checklist", &TaskTemplate{Checklist: []string{"{{x}}"}}, true},
 		{"in child", &TaskTemplate{Children: []TemplateChild{{Title: "{{x}}"}}}, true},
@@ -638,7 +629,6 @@ func TestApplyVariables_RoundTripWithExtract(t *testing.T) {
 	tmpl := TaskTemplate{
 		Name:        "{{a}} - {{b:beta}}",
 		Description: "{{a}} also {{c}}",
-		Section:     "{{a}}",
 		Tags:        []string{"{{c}}"},
 		Checklist:   []string{"{{b}} {{a}}"},
 		Children:    []TemplateChild{{Title: "{{c}} for {{a}}"}},
@@ -672,7 +662,6 @@ func TestApplyVariables_CrossFieldDefaultFallback(t *testing.T) {
 	tmpl := TaskTemplate{
 		Name:        "{{b:beta}} release",
 		Description: "Notes for {{b}}",
-		Section:     "{{b}}",
 		Tags:        []string{"{{b}}"},
 		Checklist:   []string{"Ship {{b}}"},
 		Children:    []TemplateChild{{Title: "Verify {{b}}"}},
@@ -683,9 +672,6 @@ func TestApplyVariables_CrossFieldDefaultFallback(t *testing.T) {
 	}
 	if result.Description != "Notes for beta" {
 		t.Errorf("Description: got %q (cross-field default should resolve)", result.Description)
-	}
-	if result.Section != "beta" {
-		t.Errorf("Section: got %q", result.Section)
 	}
 	if result.Tags[0] != "beta" {
 		t.Errorf("Tags[0]: got %q", result.Tags[0])
@@ -751,7 +737,6 @@ func TestApplyVariables_ExplicitEmptyDefaultAcrossAllFields(t *testing.T) {
 	tmpl := TaskTemplate{
 		Name:        "{{x:}}",
 		Description: "bare {{x}}",
-		Section:     "{{x:}}",
 		Tags:        []string{"{{x:}}"},
 		Checklist:   []string{"{{x:fallback}}"},
 		Children:    []TemplateChild{{Title: "{{x:}}"}},
@@ -762,9 +747,6 @@ func TestApplyVariables_ExplicitEmptyDefaultAcrossAllFields(t *testing.T) {
 	}
 	if result.Description != "bare fallback" {
 		t.Errorf("Description: got %q, want %q (bare token falls back)", result.Description, "bare fallback")
-	}
-	if result.Section != "" {
-		t.Errorf("Section: got %q, want empty", result.Section)
 	}
 	if result.Tags[0] != "" {
 		t.Errorf("Tags[0]: got %q, want empty", result.Tags[0])

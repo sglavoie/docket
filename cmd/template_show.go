@@ -17,7 +17,7 @@ var templateShowCmd = &cobra.Command{
 
 Shows full template configuration including:
 - Template metadata (ID, name, source, enabled state, category)
-- Task type, priority, section, tags
+- Task type, priority, state, tags
 - Description (if any)
 - Checklist items
 - Items with optional markers and types
@@ -89,9 +89,7 @@ func runTemplateShow(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("  Priority: (default)\n")
 	}
-	if t.Section != "" {
-		fmt.Printf("  Section: %s\n", t.Section)
-	}
+	fmt.Printf("  State: %s\n", t.EffectiveState())
 	if len(t.Tags) > 0 {
 		fmt.Printf("  Tags: %v\n", t.Tags)
 	}

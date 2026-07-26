@@ -365,7 +365,7 @@ func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 	if m.SearchQuery() != "" {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
 	}
-	if hasActiveCommonFilters(&m.filter.CommonFilterState) || len(m.filter.Sections) > 0 || m.filter.Actionable {
+	if hasActiveCommonFilters(&m.filter.CommonFilterState) || m.filter.Actionable {
 		return EmptyStateFiltered
 	}
 	return EmptyStateNoTasks

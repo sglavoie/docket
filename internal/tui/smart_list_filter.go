@@ -37,8 +37,12 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 	case "type":
 		return evalStringOp(string(task.Type), c.Operation, c.Value)
 
-	case "status":
-		return evalStringOp(legacyStatusColumnForState(task.State()), c.Operation, c.Value)
+	case "state":
+		contains := c.States.Contains(task.State())
+		if c.Operation == "not_in" {
+			return !contains
+		}
+		return c.Operation == "in" && contains
 
 	case "priority":
 		taskVal := task.Priority
@@ -56,9 +60,6 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 
 	case "due_date":
 		return evalDueDate(task, c.Value)
-
-	case "section":
-		return evalStringOp(taskSectionBucket(task), c.Operation, c.Value)
 
 	case "score_min":
 		threshold, err := strconv.ParseFloat(c.Value, 64)

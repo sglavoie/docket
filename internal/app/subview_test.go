@@ -300,12 +300,18 @@ func TestApplyTemplateCreatesRootAndChildrenInOneCommit(t *testing.T) {
 	if root.Title != "My Epic" || len(root.Checklist) != 1 {
 		t.Fatalf("root = %+v, want epic with checklist", root)
 	}
+	if root.State() != models.StateInbox {
+		t.Fatalf("root state = %q, want canonical Inbox default", root.State())
+	}
 	for _, child := range project.Tasks[1:] {
 		if child.ParentID == nil || *child.ParentID != root.ID {
 			t.Fatalf("child %q not parented to root", child.Title)
 		}
 		if child.Priority != 2 || !child.HasTag("backend") {
 			t.Fatalf("child %q did not inherit priority/tags", child.Title)
+		}
+		if child.State() != root.State() {
+			t.Fatalf("child %q state = %q, want inherited %q", child.Title, child.State(), root.State())
 		}
 	}
 	if len(repo.commits) != 1 {

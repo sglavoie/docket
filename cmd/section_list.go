@@ -42,7 +42,10 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 	}
 
 	sections := project.GetSections()
-	counts := project.CountTasksBySection()
+	counts := make(map[string]int)
+	for state, count := range project.CountTasksByState() {
+		counts[models.SectionForState(state)] += count
+	}
 
 	// Filter out empty Next section
 	var visibleSections []string

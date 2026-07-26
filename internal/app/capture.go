@@ -11,7 +11,7 @@ import (
 
 // CaptureRequest describes a new task to create in a project. Only ProjectID and
 // Title are required; every other field is optional and defaults to the domain
-// default (task type, medium priority, no section, no due date).
+// default (task type, medium priority, Inbox state, no due date).
 type CaptureRequest struct {
 	// ProjectID is the owning project's stable ID. Required.
 	ProjectID string
@@ -28,9 +28,6 @@ type CaptureRequest struct {
 	RemoveTags []string
 	// Description is optional free-form body text.
 	Description string
-	// Section, when set, must be a built-in GTD section; it is ensured on the
-	// project before assignment. Empty leaves the task in the default active view.
-	Section string
 	// Due, when non-nil, sets the task's due date. HasTime marks a meaningful
 	// clock component.
 	Due     *time.Time
@@ -38,10 +35,9 @@ type CaptureRequest struct {
 	// ParentID, when non-nil, nests the new task under an existing task in the
 	// same project (validated to exist).
 	ParentID *string
-	// State, when set, applies a workflow-state transition after the section is
-	// assigned, mirroring the capture sigils ($start, $blocked, $done, …). The
-	// transition's own section move (e.g. done → Completed) overrides Section, so
-	// State is applied last. Empty leaves the task at its section-derived state.
+	// State is the task's initial canonical workflow state. Empty defaults to
+	// Inbox; compatibility adapters must translate any legacy section/status
+	// inputs and explicitly request StateReady when preserving their old default.
 	State models.WorkflowState
 	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
 	// task.SetRecurrence (which populates derived fields such as OriginalDay).
@@ -59,7 +55,7 @@ type CaptureRequest struct {
 }
 
 // Capture creates a new task in the target project and commits it as one
-// ChangeSet. It validates the title, type, priority, tags, section, and parent
+// ChangeSet. It validates the title, type, priority, tags, state, and parent
 // before mutating, so a rejected request never persists a partial task.
 func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	snap, err := s.repo.Snapshot()
@@ -79,7 +75,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	insertCapturedTask(project, task, req.Prepend)
 
 	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
-	artifacts, err := s.transitionPlanningArtifacts(ref, req.PlanningArtifacts)
+	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -125,6 +121,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 			planningBuilder = req.PlanningArtifacts
 		}
 	}
+	planningBuilder = s.defaultedPlanningArtifacts(planningBuilder)
 	// Prepend the whole batch at once (newest first), then append the rest.
 	prepend := make([]*models.Task, 0, len(tasks))
 	for _, task := range tasks {
@@ -170,7 +167,7 @@ func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder Plan
 	if builder == nil || len(targets) == 0 {
 		return nil, nil
 	}
-	artifacts, err := builder(targets)
+	artifacts, err := builder(PlanningReconcileRequest{Targets: targets})
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +182,7 @@ func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder Plan
 // buildCapturedTask validates a CaptureRequest against an already-resolved
 // project and returns the fully-constructed task WITHOUT inserting it, so both
 // Capture and CreateLinkedTask share the exact field-application order (metadata,
-// section, recurrence, due, parent, then the state transition). It does not
+// recurrence, due, parent, then canonical state initialization). It does not
 // commit; the caller positions the task and commits the ChangeSet.
 func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest) (*models.Task, error) {
 	title := strings.TrimSpace(req.Title)
@@ -208,10 +205,6 @@ func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest)
 		return nil, invalidInput("priority", err.Error())
 	}
 
-	if req.Section != "" && !models.IsGTDSection(req.Section) {
-		return nil, invalidInput("section", fmt.Sprintf("%q is not a built-in GTD section; use tags for flexible grouping", req.Section))
-	}
-
 	normalizedTags, err := normalizeTags(req.Tags)
 	if err != nil {
 		return nil, err
@@ -225,8 +218,9 @@ func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest)
 		return nil, fmt.Errorf("%w: parent %s", ErrTaskNotFound, *req.ParentID)
 	}
 
-	if req.State != "" && !req.State.IsValid() {
-		return nil, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", req.State))
+	state, err := normalizeCreationState(req.State)
+	if err != nil {
+		return nil, err
 	}
 
 	task, err := models.NewTask(s.ids.NewID(), project.GetNextShortID(), taskType, title)
@@ -243,17 +237,6 @@ func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest)
 	for _, tag := range removeTags {
 		task.RemoveTag(tag)
 	}
-	if req.Section != "" {
-		if !project.HasSection(req.Section) {
-			project.EnsureSection(req.Section)
-			// The Inbox is the one section the capture flows highlight in red so a
-			// freshly captured, un-triaged task stands out.
-			if req.Section == models.SectionInbox {
-				project.SetSectionColor(models.SectionInbox, "red")
-			}
-		}
-		task.SetSection(req.Section)
-	}
 	if req.Recurrence != nil {
 		if err := task.SetRecurrence(req.Recurrence); err != nil {
 			return nil, invalidInput("recurrence", err.Error())
@@ -268,11 +251,14 @@ func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest)
 		parentID := *req.ParentID
 		task.ParentID = &parentID
 	}
-	// The state transition is applied last so its own section move (done →
-	// Completed, start → active) overrides an explicitly captured section, exactly
-	// as the legacy capture flows applied Task.ApplyTransition after SetSection.
-	if req.State != "" {
-		applyState(task, req.State)
+	hadInboxSection := project.HasSection(models.SectionInbox)
+	if err := s.initializeCreatedTask(project, task, state); err != nil {
+		return nil, err
+	}
+	// Capture keeps the legacy Inbox highlight until section-oriented views are
+	// removed. State initialization already ensured the Inbox section exists.
+	if state == models.StateInbox && !hadInboxSection {
+		project.SetSectionColor(models.SectionInbox, "red")
 	}
 	return task, nil
 }

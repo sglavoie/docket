@@ -1,6 +1,7 @@
 package template
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,19 +12,21 @@ import (
 
 // TaskTemplate defines a reusable template for creating tasks.
 type TaskTemplate struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Enabled     bool            `json:"enabled"`
-	Source      string          `json:"source,omitempty"`   // "default" for built-in
-	Category    string          `json:"category,omitempty"` // bug, feature, process
-	Type        models.TaskType `json:"type"`
-	Priority    int             `json:"priority,omitempty"`
-	Tags        []string        `json:"tags,omitempty"`
-	Section     string          `json:"section,omitempty"`
-	Description string          `json:"description,omitempty"`
-	Children    []TemplateChild `json:"children,omitempty"`  // Subtasks for Epic/Story templates
-	Checklist   []string        `json:"checklist,omitempty"` // Checklist items to create
-	UseCount    int64           `json:"use_count,omitempty"`
+	ID          string               `json:"id"`
+	Name        string               `json:"name"`
+	Enabled     bool                 `json:"enabled"`
+	Source      string               `json:"source,omitempty"`   // "default" for built-in
+	Category    string               `json:"category,omitempty"` // bug, feature, process
+	Type        models.TaskType      `json:"type"`
+	Priority    int                  `json:"priority,omitempty"`
+	Tags        []string             `json:"tags,omitempty"`
+	State       models.WorkflowState `json:"state"`
+	Description string               `json:"description,omitempty"`
+	Children    []TemplateChild      `json:"children,omitempty"`  // Subtasks for Epic/Story templates
+	Checklist   []string             `json:"checklist,omitempty"` // Checklist items to create
+	UseCount    int64                `json:"use_count,omitempty"`
+
+	legacyStateDecoded bool
 }
 
 // TemplateChild defines a child task to create when using a template.
@@ -43,8 +46,89 @@ func NewTemplate(name string, taskType models.TaskType) *TaskTemplate {
 		Type:     taskType,
 		Priority: 0, // 0 means use default (3)
 		Tags:     []string{},
+		State:    models.StateInbox,
 		Children: []TemplateChild{},
 	}
+}
+
+// EffectiveState returns the canonical state a template materializes.
+// Unspecified in-memory templates default to Inbox, matching decoded legacy
+// templates and newly created templates.
+func (t *TaskTemplate) EffectiveState() models.WorkflowState {
+	if t == nil || t.State == "" {
+		return models.StateInbox
+	}
+	return t.State
+}
+
+// NormalizeState makes the defaulted state explicit and clears the one-time
+// legacy-decode marker. It reports whether the template needs a canonical
+// persistence rewrite.
+func (t *TaskTemplate) NormalizeState() bool {
+	if t == nil {
+		return false
+	}
+	changed := t.legacyStateDecoded || t.State == ""
+	t.legacyStateDecoded = false
+	if t.State == "" {
+		t.State = models.StateInbox
+	}
+	return changed
+}
+
+// MarshalJSON persists only the canonical state shape. The value receiver keeps
+// normalization side-effect free for callers while ensuring even a zero-value
+// in-memory State is written explicitly as Inbox.
+func (t TaskTemplate) MarshalJSON() ([]byte, error) {
+	type plain TaskTemplate
+	t.State = t.EffectiveState()
+	t.legacyStateDecoded = false
+	if !t.State.IsValid() {
+		return nil, fmt.Errorf("invalid template state: %s", t.State)
+	}
+	return json.Marshal(plain(t))
+}
+
+// UnmarshalJSON accepts canonical state and legacy section metadata. Canonical
+// state wins when both keys are present. A missing or empty lifecycle field
+// defaults to Inbox; a legacy non-empty section maps through the deterministic
+// section-to-state compatibility table.
+func (t *TaskTemplate) UnmarshalJSON(data []byte) error {
+	type plain TaskTemplate
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	var lifecycle struct {
+		State   *models.WorkflowState `json:"state"`
+		Section *string               `json:"section"`
+	}
+	if err := json.Unmarshal(data, &lifecycle); err != nil {
+		return err
+	}
+
+	result := TaskTemplate(decoded)
+	switch {
+	case lifecycle.State != nil && *lifecycle.State != "":
+		result.State = *lifecycle.State
+	case lifecycle.Section != nil && strings.TrimSpace(*lifecycle.Section) != "":
+		result.State = models.StateForSection(strings.TrimSpace(*lifecycle.Section))
+		result.legacyStateDecoded = true
+	default:
+		result.State = models.StateInbox
+		result.legacyStateDecoded = lifecycle.State == nil ||
+			(lifecycle.State != nil && *lifecycle.State == "") ||
+			lifecycle.Section != nil
+	}
+	if lifecycle.Section != nil {
+		result.legacyStateDecoded = true
+	}
+	if !result.State.IsValid() {
+		return fmt.Errorf("invalid template state: %s", result.State)
+	}
+	*t = result
+	return nil
 }
 
 // Validate checks if the template is properly configured.
@@ -68,6 +152,9 @@ func (t *TaskTemplate) Validate() error {
 
 	if t.Priority < 0 || t.Priority > models.PriorityMax {
 		return fmt.Errorf("priority must be 0-%d (0 for default)", models.PriorityMax)
+	}
+	if !t.EffectiveState().IsValid() {
+		return fmt.Errorf("invalid template state: %s", t.State)
 	}
 
 	for i, item := range t.Checklist {
@@ -129,9 +216,7 @@ func (t *TaskTemplate) Summary() string {
 		parts = append(parts, "#"+strings.Join(t.Tags, " #"))
 	}
 
-	if t.Section != "" {
-		parts = append(parts, "→"+t.Section)
-	}
+	parts = append(parts, "→"+t.EffectiveState().String())
 
 	// Show checklist count (prefer checklist over children)
 	if len(t.Checklist) > 0 {
@@ -174,7 +259,7 @@ func (c *TemplateChild) GetChildType() models.TaskType {
 // order. Treating them as sets would silently hide reorderings.
 //
 // Metadata fields ID, Source, Enabled, and UseCount are excluded — they are
-// instance-level state rather than template content. Description and Section
+// instance-level state rather than template content. Description and State
 // are content and are compared. The receiver-nil case treats two nil templates
 // as equal and any (nil, non-nil) pair as unequal.
 func (t *TaskTemplate) ContentEqual(other *TaskTemplate) bool {
@@ -193,7 +278,7 @@ func (t *TaskTemplate) ContentEqual(other *TaskTemplate) bool {
 	if t.Priority != other.Priority {
 		return false
 	}
-	if t.Section != other.Section {
+	if t.EffectiveState() != other.EffectiveState() {
 		return false
 	}
 	if t.Description != other.Description {

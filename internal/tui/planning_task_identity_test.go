@@ -38,6 +38,21 @@ func duplicatePlanningProjects(t *testing.T) (*models.Project, *models.Project, 
 
 func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
+	todaySharedID := uuid.NewString()
+	alphaToday, err := models.NewTask(todaySharedID, 2, models.TaskTypeTask, "Alpha Today shared")
+	if err != nil {
+		t.Fatalf("NewTask(alpha Today): %v", err)
+	}
+	betaToday, err := models.NewTask(todaySharedID, 2, models.TaskTypeTask, "Beta Today shared")
+	if err != nil {
+		t.Fatalf("NewTask(beta Today): %v", err)
+	}
+	alphaToday.WorkflowState = models.StateReady
+	betaToday.WorkflowState = models.StateReady
+	alpha.Tasks = append(alpha.Tasks, alphaToday)
+	beta.Tasks = append(beta.Tasks, betaToday)
+	alpha.BuildTaskTree()
+	beta.BuildTaskTree()
 	runtime := testConfigWithProjects(alpha, beta)
 	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{
@@ -45,8 +60,8 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
 	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{
-		{ProjectID: alpha.ID, TaskID: alphaTask.ID, PlannedDate: yesterday},
-		{ProjectID: beta.ID, TaskID: betaTask.ID, PlannedDate: yesterday},
+		{ProjectID: alpha.ID, TaskID: alphaToday.ID, PlannedDate: yesterday},
+		{ProjectID: beta.ID, TaskID: betaToday.ID, PlannedDate: yesterday},
 	})
 
 	persister := NewMockPersister()
@@ -70,19 +85,23 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 
 	alphaID := taskIdentityFor(alphaTask, alpha)
 	betaID := taskIdentityFor(betaTask, beta)
+	alphaTodayID := taskIdentityFor(alphaToday, alpha)
+	betaTodayID := taskIdentityFor(betaToday, beta)
 	if len(shell.focusQueue) != 2 || !shell.focusQueueIDs[alphaID] || !shell.focusQueueIDs[betaID] {
 		t.Fatalf("qualified Next hydration = slice:%d map:%v", len(shell.focusQueue), shell.focusQueueIDs)
 	}
-	if len(shell.dailyPlan) != 2 || !shell.dailyPlanIDs[alphaID] || !shell.dailyPlanIDs[betaID] {
+	if len(shell.dailyPlan) != 2 || !shell.dailyPlanIDs[alphaTodayID] || !shell.dailyPlanIDs[betaTodayID] {
 		t.Fatalf("qualified Today hydration = slice:%d map:%v", len(shell.dailyPlan), shell.dailyPlanIDs)
 	}
-	if shell.dailyPlanCarried != 2 || !shell.dailyPlanCarriedIDs[alphaID] || !shell.dailyPlanCarriedIDs[betaID] {
+	if shell.dailyPlanCarried != 2 || !shell.dailyPlanCarriedIDs[alphaTodayID] || !shell.dailyPlanCarriedIDs[betaTodayID] {
 		t.Fatalf("qualified carry-over hydration = count:%d map:%v", shell.dailyPlanCarried, shell.dailyPlanCarriedIDs)
 	}
 }
 
 func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
+	alphaTask.WorkflowState = models.StateReady
+	betaTask.WorkflowState = models.StateReady
 	alphaID := taskIdentityFor(alphaTask, alpha)
 	betaID := taskIdentityFor(betaTask, beta)
 	shell := &AppModel{

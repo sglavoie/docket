@@ -92,11 +92,13 @@ func (a *AutomationConfig) HasTemplateWithID(id string) bool {
 
 // AddTaskTemplate appends a new task template.
 func (a *AutomationConfig) AddTaskTemplate(t template.TaskTemplate) {
+	t.NormalizeState()
 	a.TaskTemplates = append(a.TaskTemplates, t)
 }
 
 // UpdateTaskTemplate replaces an existing template by ID, returning true when found.
 func (a *AutomationConfig) UpdateTaskTemplate(t template.TaskTemplate) bool {
+	t.NormalizeState()
 	for i := range a.TaskTemplates {
 		if a.TaskTemplates[i].ID == t.ID {
 			a.TaskTemplates[i] = t
@@ -104,6 +106,22 @@ func (a *AutomationConfig) UpdateTaskTemplate(t template.TaskTemplate) bool {
 		}
 	}
 	return false
+}
+
+// MigrateTaskTemplateStates makes every template's defaulted canonical state
+// explicit and reports whether a legacy section or omitted state requires the
+// automation artifact to be rewritten.
+func (a *AutomationConfig) MigrateTaskTemplateStates() bool {
+	if a == nil {
+		return false
+	}
+	changed := false
+	for i := range a.TaskTemplates {
+		if a.TaskTemplates[i].NormalizeState() {
+			changed = true
+		}
+	}
+	return changed
 }
 
 // DeleteTaskTemplate removes a template by ID, returning true when found.

@@ -148,12 +148,6 @@ func (m *OutlinerModel) rebuildRows() {
 		})
 	}
 
-	if len(m.filter.Sections) > 0 {
-		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return m.filter.Sections[taskSectionBucket(task)]
-		})
-	}
-
 	if m.filter.Actionable {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
 			return taskIsActionableState(task, m.project)
@@ -185,16 +179,17 @@ func (m *OutlinerModel) rebuildRows() {
 	}
 }
 
-// buildRowsWithSectionHeaders groups tasks by GTD section and inserts
-// collapsible section headers for the All perspective.
+// buildRowsWithSectionHeaders groups tasks by canonical state group, then uses
+// the temporary section-shaped presentation adapter for current visible labels.
 func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 	forests := buildSectionTaskForests(tasks)
 
-	for _, sectionName := range BuildSectionOrder(tasks) {
-		forest := forests[sectionName]
+	for _, group := range legacyAllPresentationGroupOrder() {
+		forest := forests[group]
 		if forest == nil || forest.count == 0 {
 			continue
 		}
+		sectionName := legacySectionForStateGroup(group)
 
 		if len(m.rows) > 0 {
 			m.rows = append(m.rows, outlinerRow{IsSeparator: true})
@@ -203,6 +198,7 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 			IsSectionHeader: true,
 			SectionName:     sectionName,
 			SectionCount:    forest.count,
+			StateGroup:      group,
 		})
 
 		if !m.collapsedSections[sectionName] {
@@ -217,12 +213,13 @@ func effectiveDisplaySection(t *models.Task) string {
 	return taskSectionBucket(t)
 }
 
-func renderedHeaderSectionForTask(task *models.Task) string {
-	section := headerSectionForTask(task)
+func renderedHeaderStateGroupForTask(task *models.Task) models.WorkflowStateGroup {
+	group := headerStateGroupForTask(task)
+	section := legacySectionForStateGroup(group)
 	if section == "" || isRenderedOutlinerHeaderSection(section) {
-		return section
+		return group
 	}
-	return ""
+	return models.StateGroupBacklog
 }
 
 func isRenderedOutlinerHeaderSection(section string) bool {

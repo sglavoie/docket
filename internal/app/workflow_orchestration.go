@@ -128,7 +128,7 @@ func (s *Service) runWorkflowOrchestration(req workflowOrchestrationRequest) (wo
 		if project == nil {
 			continue
 		}
-		out.recurringByProjectID[project.ID] += reconcileBeforeWorkflowEvaluation(project)
+		out.recurringByProjectID[project.ID] += s.reconcileBeforeWorkflowEvaluation(project)
 	}
 
 	committed := make(map[string]bool, len(plan.commits))
@@ -200,10 +200,10 @@ func (s *Service) runWorkflowOrchestration(req workflowOrchestrationRequest) (wo
 // reconciliation happens after the user mutation but before rules inspect the
 // project. Final hooks run again inside commitProjects because rules themselves
 // may complete tasks, unblock dependents, or create recurring instances.
-func reconcileBeforeWorkflowEvaluation(project *models.Project) int {
+func (s *Service) reconcileBeforeWorkflowEvaluation(project *models.Project) int {
 	project.CheckAndAutoUnblock()
 	project.ReconcileParentCompletion()
-	return project.GenerateRecurringInstances()
+	return project.GenerateRecurringInstancesAt(s.clock.Now())
 }
 
 // applyWorkflowCascade evaluates and applies task-level and project-level rules
@@ -218,13 +218,11 @@ func (s *Service) applyWorkflowCascade(
 	committed map[string]bool,
 	out *workflowOrchestrationOutcome,
 ) error {
-	var evaluated *workflow.EvaluationResult
-	if previous != nil {
-		evalCtx := workflow.BuildEvaluationContext(project.Tasks, previous, project.Name, project.ID, forcedChanges...)
-		evaluated = workflow.EvaluateRulesWithContext(evalCtx, rules)
-	} else {
-		evaluated = workflow.EvaluateRules(project.Tasks, rules)
+	evalCtx := workflow.BuildEvaluationContext(project.Tasks, previous, project.Name, project.ID, forcedChanges...)
+	evalCtx.TransitionState = func(task *models.Task, target models.WorkflowState) error {
+		return applyState(task, target, s.clock.Now())
 	}
+	evaluated := workflow.EvaluateRulesWithContext(evalCtx, rules)
 
 	for _, conflict := range evaluated.Conflicts {
 		out.conflicts = append(out.conflicts, WorkflowConflict{

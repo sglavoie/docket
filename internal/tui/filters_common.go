@@ -17,26 +17,29 @@ import (
 // CommonFilterState contains the filter fields shared across views that support
 // the F-prefix filter system. Views embed this struct directly.
 type CommonFilterState struct {
-	Type        models.TaskType      // filter by type (epic/story/task/bug/idea)
-	Status      models.TaskStatus    // filter by status
-	Priority    int                  // 0=all, 1=high only (<=2)
-	Tags        map[string]bool      // filter by tag names (AND logic)
-	DueDate     DueDateFilter        // filter by due date
-	Attrs       map[string]string    // type.attribute -> value
-	ScoreMin    float64              // minimum score threshold (0 = no filter)
-	Actionable  bool                 // only show tasks ready to work on (no blockers)
-	HideDimmed  bool                 // hide dimmed tasks
-	GitHubIssue bool                 // only show tasks linked to a GitHub issue
-	Parked      bool                 // only show parked tasks
-	State       models.WorkflowState // filter by the canonical workflow state (one of the ten)
-	Blocked     bool                 // only show tasks blocked by an unresolved dependency
+	Type        models.TaskType         // filter by type (epic/story/task/bug/idea)
+	States      models.WorkflowStateSet // filter by one or more canonical workflow states
+	Priority    int                     // 0=all, 1=high only (<=2)
+	Tags        map[string]bool         // filter by tag names (AND logic)
+	DueDate     DueDateFilter           // filter by due date
+	Attrs       map[string]string       // type.attribute -> value
+	ScoreMin    float64                 // minimum score threshold (0 = no filter)
+	Actionable  bool                    // only show tasks ready to work on (no blockers)
+	HideDimmed  bool                    // hide dimmed tasks
+	GitHubIssue bool                    // only show tasks linked to a GitHub issue
+	Parked      bool                    // only show parked tasks
+	Blocked     bool                    // only show tasks blocked by an unresolved dependency
+
+	// statesSet distinguishes no state predicate from an explicit empty
+	// match-nothing set produced by intersecting contradictory legacy filters.
+	statesSet bool
 }
 
 // copyCommonFilterState returns a deep copy of a CommonFilterState.
 func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 	dst := &CommonFilterState{
 		Type:        src.Type,
-		Status:      src.Status,
+		States:      cloneCommonWorkflowStateSet(src.States),
 		Priority:    src.Priority,
 		DueDate:     src.DueDate,
 		ScoreMin:    src.ScoreMin,
@@ -44,8 +47,8 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		HideDimmed:  src.HideDimmed,
 		GitHubIssue: src.GitHubIssue,
 		Parked:      src.Parked,
-		State:       src.State,
 		Blocked:     src.Blocked,
+		statesSet:   src.statesSet,
 	}
 	if len(src.Tags) > 0 {
 		dst.Tags = make(map[string]bool, len(src.Tags))
@@ -56,6 +59,23 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		maps.Copy(dst.Attrs, src.Attrs)
 	}
 	return dst
+}
+
+func cloneCommonWorkflowStateSet(states models.WorkflowStateSet) models.WorkflowStateSet {
+	cloned, err := models.NewWorkflowStateSet(states.Values()...)
+	if err != nil {
+		panic(err)
+	}
+	return cloned
+}
+
+func (f *CommonFilterState) hasStateFilter() bool {
+	return f.statesSet || !f.States.IsEmpty()
+}
+
+func (f *CommonFilterState) setStateFilter(states models.WorkflowStateSet, active bool) {
+	f.States = cloneCommonWorkflowStateSet(states)
+	f.statesSet = active || !states.IsEmpty()
 }
 
 // passesCommonFilters checks if a task passes the shared filter criteria.
@@ -76,10 +96,7 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, project *model
 	if f.Type != "" && task.Type != f.Type {
 		return false
 	}
-	if f.Status != "" && !stateMatchesLegacyStatus(task.State(), f.Status) {
-		return false
-	}
-	if f.State != "" && task.State() != f.State {
+	if f.hasStateFilter() && !f.States.Contains(task.State()) {
 		return false
 	}
 	if f.Blocked && !task.IsDependencyBlocked(project) {
@@ -137,7 +154,7 @@ func passesDueDateFilter(task *models.Task, filter DueDateFilter) bool {
 // hasActiveCommonFilters returns true if any common filter is non-default.
 func hasActiveCommonFilters(f *CommonFilterState) bool {
 	return f.Type != "" ||
-		f.Status != "" ||
+		f.hasStateFilter() ||
 		f.Priority != 0 ||
 		len(f.Tags) > 0 ||
 		f.DueDate != DueDateAll ||
@@ -147,14 +164,14 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.HideDimmed ||
 		f.GitHubIssue ||
 		f.Parked ||
-		f.State != "" ||
 		f.Blocked
 }
 
 // clearCommonFilters resets all common filters to defaults.
 func clearCommonFilters(f *CommonFilterState) {
 	f.Type = ""
-	f.Status = ""
+	f.States = models.WorkflowStateSet{}
+	f.statesSet = false
 	f.Priority = 0
 	f.Tags = make(map[string]bool)
 	f.DueDate = DueDateAll
@@ -164,7 +181,6 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.HideDimmed = false
 	f.GitHubIssue = false
 	f.Parked = false
-	f.State = ""
 	f.Blocked = false
 }
 
@@ -178,11 +194,17 @@ func commonFilterParts(f *CommonFilterState) []string {
 	if f.Type != "" {
 		parts = append(parts, "type:"+string(f.Type))
 	}
-	if f.Status != "" {
-		parts = append(parts, "status:"+string(f.Status))
-	}
-	if f.State != "" {
-		parts = append(parts, "state:"+string(f.State))
+	if f.hasStateFilter() {
+		states := f.States.Values()
+		stateNames := make([]string, len(states))
+		for i, state := range states {
+			stateNames[i] = string(state)
+		}
+		value := "none"
+		if len(stateNames) > 0 {
+			value = strings.Join(stateNames, ",")
+		}
+		parts = append(parts, "state:"+value)
 	}
 	if len(f.Tags) > 0 {
 		tagNames := make([]string, 0, len(f.Tags))
@@ -319,15 +341,13 @@ func validateSavedStringSet(saved []string, valid []string) map[string]bool {
 // FilterState contains all task filtering options including view-specific fields
 // beyond the common set. Used by ProjectTree and Outliner.
 type FilterState struct {
-	CommonFilterState                 // embedded common filter fields
-	Sections          map[string]bool // filter by section names (OR logic)
+	CommonFilterState // embedded common filter fields
 }
 
 // NewFilterState returns an initialized FilterState with allocated maps.
 func NewFilterState() FilterState {
 	return FilterState{
 		CommonFilterState: newFilterState(),
-		Sections:          make(map[string]bool),
 	}
 }
 

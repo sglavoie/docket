@@ -27,12 +27,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if msg.Canceled {
 			return true, nil
 		}
-		sections := make(map[string]bool)
-		for _, section := range msg.SelectedSections {
-			sections[section] = true
-		}
 		if out := m.visibleOutliner(); out != nil {
-			out.filter.Sections = sections
+			out.filter.setStateFilter(
+				workflowStatesForSectionNames(msg.SelectedSections),
+				len(msg.SelectedSections) > 0,
+			)
 			out.crossForceRebuild = true
 			out.rebuildRows()
 		}
@@ -199,7 +198,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case GoToSectionMsg:
 		m.popView()
 		if out := m.visibleOutliner(); out != nil {
-			out.filter.Sections = map[string]bool{msg.SectionName: true}
+			out.filter.setStateFilter(workflowStatesForSectionNames([]string{msg.SectionName}), true)
 			out.crossForceRebuild = true
 			out.rebuildRows()
 		}
@@ -239,7 +238,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// AppModel.outliner root that would diverge from the palette's target.
 		cmd := m.enterProjectScopeOutliner(msg.Project, nil, OutlinerOpenOptions{})
 		if m.crossOutliner != nil {
-			m.crossOutliner.filter.Sections = map[string]bool{msg.Section: true}
+			m.crossOutliner.filter.setStateFilter(workflowStatesForSectionNames([]string{msg.Section}), true)
 			m.crossOutliner.crossForceRebuild = true
 			m.crossOutliner.rebuildRows()
 			m.crossOutliner.clampCursor()

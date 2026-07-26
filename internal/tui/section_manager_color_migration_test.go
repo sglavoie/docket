@@ -15,7 +15,7 @@ import (
 // action makes the Settings domain the sole owner: the change is recorded and
 // persisted in settings.json, every loaded project reflects it only after the
 // success message reaches the update loop, and no per-project tasks.md raw save
-// happens (the on-disk project markdown keeps its old color).
+// happens (the canonical project markdown has no section-color metadata).
 func TestSetSectionColorIsSettingsDomainOnly(t *testing.T) {
 	dir := t.TempDir()
 
@@ -37,6 +37,10 @@ func TestSetSectionColorIsSettingsDomainOnly(t *testing.T) {
 	other.SetSectionColor(models.SectionNext, "yellow")
 	if saveErr := storage.SaveProjectLocked(other); saveErr != nil {
 		t.Fatalf("seed other project: %v", saveErr)
+	}
+	projectBytesBefore, err := os.ReadFile(storage.TasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read seeded project: %v", err)
 	}
 
 	mgr := config.NewManager(filepath.Join(dir, ".tt.json"))
@@ -118,14 +122,21 @@ func TestSetSectionColorIsSettingsDomainOnly(t *testing.T) {
 		t.Errorf("persisted global color = %q, want green", got)
 	}
 
-	// The project markdown was NOT rewritten: a fresh disk load keeps the old
-	// color, proving no per-project raw save occurred.
+	// The project markdown was NOT rewritten. Canonical project storage omits
+	// section colors entirely, so a fresh load gets the compatibility default.
+	projectBytesAfter, err := os.ReadFile(storage.TasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read project after settings commit: %v", err)
+	}
+	if string(projectBytesAfter) != string(projectBytesBefore) {
+		t.Fatal("settings-only color change rewrote project markdown")
+	}
 	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
 	if err := storage.LoadProject(fresh); err != nil {
 		t.Fatalf("reload project: %v", err)
 	}
-	if got := fresh.GetSectionColor(models.SectionNext); got != "blue" {
-		t.Errorf("on-disk project color = %q, want the untouched blue (no raw save expected)", got)
+	if got := fresh.GetSectionColor(models.SectionNext); got != "gray" {
+		t.Errorf("canonical project color = %q, want compatibility default gray", got)
 	}
 }
 

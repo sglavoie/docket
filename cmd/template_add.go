@@ -134,7 +134,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	section, err := normalizeTemplateSectionInput(templateAddSection)
+	state, err := templateStateFromLegacySectionInput(templateAddSection, models.StateInbox)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	t.Enabled = !templateAddDisabled
 	t.Priority = templateAddPriority
 	t.Tags = tags
-	t.Section = section
+	t.State = state
 	t.Description = templateAddDescription
 	t.Category = templateAddCategory
 	t.Children = children

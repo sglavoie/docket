@@ -127,8 +127,5 @@ func (m *OutlinerModel) crossTaskMatchesAllFilters(task *models.Task, project *m
 		!passesSavedFilterCriteria(task, project, m.activeCriteriaFilter, m.runtime.Automation()) {
 		return false
 	}
-	if len(m.filter.Sections) > 0 && !m.filter.Sections[taskSectionBucket(task)] {
-		return false
-	}
 	return !m.filter.Actionable || taskIsActionableState(task, project)
 }

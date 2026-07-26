@@ -3,6 +3,7 @@ package app_test
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -40,6 +41,33 @@ func TestApplyWorkflowsAppliesFieldMutation(t *testing.T) {
 	}
 	if len(repo.commits) != 1 {
 		t.Errorf("Commit called %d times, want 1", len(repo.commits))
+	}
+}
+
+func TestApplyWorkflowsSetStateUsesServiceTransitionClock(t *testing.T) {
+	task := newTask("t1", 1, "task")
+	task.Priority = 1
+	task.WorkflowState = models.StateReady
+	projA := newProject("proj-a", "Alpha", task)
+	repo := newFakeRepo(projA)
+	svc := newTestService(repo)
+	rules := []workflow.WorkflowRule{{
+		ID: "r-state", Name: "Queue high priority", Enabled: true,
+		Triggers: []workflow.RuleTrigger{{
+			Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "ready",
+		}},
+		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: "next"}},
+	}}
+
+	if _, err := svc.ApplyWorkflows(projA.ID, rules, nil); err != nil {
+		t.Fatalf("ApplyWorkflows: %v", err)
+	}
+	wantTime := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	if task.State() != models.StateNext {
+		t.Fatalf("state = %s, want next", task.State())
+	}
+	if !task.UpdatedAt.Equal(wantTime) {
+		t.Fatalf("UpdatedAt = %v, want service clock %v", task.UpdatedAt, wantTime)
 	}
 }
 
@@ -97,14 +125,12 @@ func TestApplyWorkflowsExecutesCrossProjectMoveInOneTransaction(t *testing.T) {
 
 	rules := []workflow.WorkflowRule{{
 		ID:      "r1",
-		Name:    "Route todos to Beta",
+		Name:    "Route ready tasks to Beta",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: string(models.StatusTodo)},
+		Trigger: workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateReady)},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}},
 	}}
 
-	// Non-nil prevStates selects the context-aware path so ProjectName scope is
-	// available for the move action's self-target guard.
 	res, err := svc.ApplyWorkflows("proj-a", rules, map[string]*models.Task{})
 	if err != nil {
 		t.Fatalf("ApplyWorkflows: %v", err)

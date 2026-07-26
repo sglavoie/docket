@@ -1,5 +1,7 @@
 package config
 
+import "github.com/sglavoie/tt/internal/models"
+
 // This file gives the Settings and MachineState domains the same defaulting
 // accessors the config.Config facade exposes, so a caller that reads a domain
 // directly (via RuntimeState) normalizes nil/invalid values identically to the
@@ -104,23 +106,24 @@ func (s *Settings) GetMaxRecentTaskVisits() int {
 	return *s.MaxRecentTaskVisits
 }
 
-// GetSectionLimit mirrors (*Config).GetSectionLimit.
+// GetSectionLimit is the read-side compatibility adapter for section-shaped
+// settings and header rows. Runtime callers should use GetStateGroupLimit.
 func (s *Settings) GetSectionLimit(section string) int {
 	switch section {
 	case "":
-		return sectionLimitValue(s.SectionLimitActive, DefaultSectionLimitActive)
+		return s.GetStateGroupLimit(models.StateGroupBacklog)
 	case "Next":
-		return sectionLimitValue(s.SectionLimitNext, DefaultSectionLimitNext)
+		return s.GetStateGroupLimit(models.StateGroupNext)
 	case "Inbox":
-		return sectionLimitValue(s.SectionLimitInbox, DefaultSectionLimitInbox)
+		return s.GetStateGroupLimit(models.StateGroupInbox)
 	case "Standby":
-		return sectionLimitValue(s.SectionLimitStandby, DefaultSectionLimitStandby)
+		return s.GetStateGroupLimit(models.StateGroupPaused)
 	case "Waiting":
-		return sectionLimitValue(s.SectionLimitWaiting, DefaultSectionLimitWaiting)
+		return s.GetStateGroupLimit(models.StateGroupWaiting)
 	case "Someday":
-		return sectionLimitValue(s.SectionLimitSomeday, DefaultSectionLimitSomeday)
+		return s.GetStateGroupLimit(models.StateGroupSomeday)
 	case "Review":
-		return sectionLimitValue(s.SectionLimitReview, DefaultSectionLimitReview)
+		return s.GetStateGroupLimit(models.StateGroupReview)
 	default:
 		return 0
 	}

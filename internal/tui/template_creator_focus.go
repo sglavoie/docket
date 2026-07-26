@@ -1,7 +1,7 @@
 package tui
 
 // focusFieldCount returns total number of focusable fields.
-// Base fields: name(1) + type(1) + category(1) + priority(1) + section(1) + tags(1) + description(1) = 7
+// Base fields: name(1) + type(1) + category(1) + priority(1) + state(1) + tags(1) + description(1) = 7
 // Plus checklist items (all types) plus subtasks (Epic/Story only)
 func (m *TaskTemplateCreatorModel) focusFieldCount() int {
 	count := 7 + len(m.checklist)
@@ -79,7 +79,7 @@ func (m *TaskTemplateCreatorModel) getFocusSection() (section string, idx int) {
 	case 3:
 		return "priority", -1
 	case 4:
-		return "section", -1
+		return "state", -1
 	case 5:
 		return "tags", -1
 	case 6:

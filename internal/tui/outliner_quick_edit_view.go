@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"sort"
 	"strings"
 )
 
@@ -30,19 +29,6 @@ func (m *OutlinerModel) activeFilterParts() []string {
 	// score, actionable, hide-dimmed). commonFilterParts already emits
 	// "ready" for Actionable, so do not re-append it below.
 	parts = append(parts, commonFilterParts(&m.filter.CommonFilterState)...)
-
-	// Add view-specific filter parts
-	if len(m.filter.Sections) > 0 {
-		secNames := make([]string, 0, len(m.filter.Sections))
-		for sec := range m.filter.Sections {
-			secNames = append(secNames, sec)
-		}
-		sort.Strings(secNames)
-		for i, sec := range secNames {
-			secNames[i] = "@" + sec
-		}
-		parts = append(parts, strings.Join(secNames, " "))
-	}
 
 	return parts
 }

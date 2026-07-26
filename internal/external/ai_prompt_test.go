@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseActionPlan_StrictStructuredOutput(t *testing.T) {
-	response := " \r\n\t" + `{"version":1,"summary":"Create it","actions":[{"type":"create_task","project_id":"p1","title":"Hello"}]}` + "\n "
+	response := " \r\n\t" + `{"version":2,"summary":"Create it","actions":[{"type":"create_task","project_id":"p1","title":"Hello"}]}` + "\n "
 	plan, err := ParseActionPlan(response)
 	if err != nil {
 		t.Fatalf("ParseActionPlan: %v", err)
@@ -27,7 +27,7 @@ func TestParseActionPlan_AcceptsFencedOutput(t *testing.T) {
 		{
 			name: "JSON fence with LF",
 			response: "```json\n{\n" +
-				`  "version": 1,` + "\n" +
+				`  "version": 2,` + "\n" +
 				`  "summary": "Create it",` + "\n" +
 				`  "actions": [{"type":"create_task","project_id":"p1","title":"Hello"}]` + "\n" +
 				"}\n```",
@@ -35,27 +35,27 @@ func TestParseActionPlan_AcceptsFencedOutput(t *testing.T) {
 		},
 		{
 			name:        "bare fence with LF",
-			response:    "```\n" + `{"version":1,"summary":"No changes","actions":[]}` + "\n```",
+			response:    "```\n" + `{"version":2,"summary":"No changes","actions":[]}` + "\n```",
 			wantSummary: "No changes",
 		},
 		{
 			name:        "case-insensitive JSON fence",
-			response:    "```JsOn\n" + `{"version":1,"summary":"Mixed case","actions":[]}` + "\n```",
+			response:    "```JsOn\n" + `{"version":2,"summary":"Mixed case","actions":[]}` + "\n```",
 			wantSummary: "Mixed case",
 		},
 		{
 			name:        "JSON fence with CRLF",
-			response:    "```json\r\n" + `{"version":1,"summary":"CRLF","actions":[]}` + "\r\n```",
+			response:    "```json\r\n" + `{"version":2,"summary":"CRLF","actions":[]}` + "\r\n```",
 			wantSummary: "CRLF",
 		},
 		{
 			name:        "bare fence with CRLF and outer whitespace",
-			response:    " \r\n```\r\n" + `{"version":1,"summary":"Outer whitespace","actions":[]}` + "\r\n```\r\n\t",
+			response:    " \r\n```\r\n" + `{"version":2,"summary":"Outer whitespace","actions":[]}` + "\r\n```\r\n\t",
 			wantSummary: "Outer whitespace",
 		},
 		{
 			name:        "fence-like text inside JSON string",
-			response:    "```json\n{\"version\":1,\"summary\":\"Keep ``` as data\",\"actions\":[]}\n```",
+			response:    "```json\n{\"version\":2,\"summary\":\"Keep ``` as data\",\"actions\":[]}\n```",
 			wantSummary: "Keep ``` as data",
 		},
 	}
@@ -74,7 +74,7 @@ func TestParseActionPlan_AcceptsFencedOutput(t *testing.T) {
 }
 
 func TestParseActionPlan_RejectsMalformedFences(t *testing.T) {
-	const plan = `{"version":1,"summary":"No changes","actions":[]}`
+	const plan = `{"version":2,"summary":"No changes","actions":[]}`
 	tests := []struct {
 		name        string
 		response    string
@@ -132,13 +132,13 @@ func TestParseActionPlan_RejectsMalformedFences(t *testing.T) {
 
 func TestParseActionPlan_RejectsMalformedAndCommandOutput(t *testing.T) {
 	cases := []string{
-		`{"version":1,"summary":"x","actions":[`,
+		`{"version":2,"summary":"x","actions":[`,
 		`tt task delete 1`,
-		`{"version":1,"summary":"x","actions":[],"command":"rm -rf /"}`,
-		`{"version":1,"summary":"x","actions":[{"type":"shell","title":"rm -rf /"}]}`,
-		`{"version":1,"summary":"x","actions":[{"type":"delete_task","task_id":"t1","has_time":false}]}`,
-		`{"version":1,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","project_id":"","title":"x"}]}`,
-		`{"version":1,"summary":"x","actions":null}`,
+		`{"version":2,"summary":"x","actions":[],"command":"rm -rf /"}`,
+		`{"version":2,"summary":"x","actions":[{"type":"shell","title":"rm -rf /"}]}`,
+		`{"version":2,"summary":"x","actions":[{"type":"delete_task","task_id":"t1","has_time":false}]}`,
+		`{"version":2,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","project_id":"","title":"x"}]}`,
+		`{"version":2,"summary":"x","actions":null}`,
 	}
 	for _, response := range cases {
 		if _, err := ParseActionPlan(response); err == nil {
@@ -149,12 +149,12 @@ func TestParseActionPlan_RejectsMalformedAndCommandOutput(t *testing.T) {
 
 func TestParseActionPlan_RejectsUnsafeProviderDisplayText(t *testing.T) {
 	tests := map[string]string{
-		"summary CSI":     `{"version":1,"summary":"clear\u001b[2Jspoof","actions":[]}`,
-		"title OSC":       `{"version":1,"summary":"x","actions":[{"type":"create_task","project_id":"p1","title":"title\u001b]0;spoof\u0007"}]}`,
-		"description BEL": `{"version":1,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","description":"ring\u0007bell"}]}`,
-		"description CR":  `{"version":1,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","description":"replace\rline"}]}`,
-		"tag bidi":        `{"version":1,"summary":"x","actions":[{"type":"set_tags","task_id":"t1","tags":["safe\u202e"]}]}`,
-		"reference C1":    `{"version":1,"summary":"x","actions":[{"type":"delete_task","task_id":"t1\u009b"}]}`,
+		"summary CSI":     `{"version":2,"summary":"clear\u001b[2Jspoof","actions":[]}`,
+		"title OSC":       `{"version":2,"summary":"x","actions":[{"type":"create_task","project_id":"p1","title":"title\u001b]0;spoof\u0007"}]}`,
+		"description BEL": `{"version":2,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","description":"ring\u0007bell"}]}`,
+		"description CR":  `{"version":2,"summary":"x","actions":[{"type":"edit_task","task_id":"t1","description":"replace\rline"}]}`,
+		"tag bidi":        `{"version":2,"summary":"x","actions":[{"type":"set_tags","task_id":"t1","tags":["safe\u202e"]}]}`,
+		"reference C1":    `{"version":2,"summary":"x","actions":[{"type":"delete_task","task_id":"t1\u009b"}]}`,
 	}
 	for name, response := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestParseActionPlan_RejectsUnsafeProviderDisplayText(t *testing.T) {
 }
 
 func TestParseActionPlan_AllowsMultilineMarkdownDescription(t *testing.T) {
-	response := `{"version":1,"summary":"Edit it","actions":[{"type":"edit_task","task_id":"t1","description":"## Notes\n\t- keep **Markdown**"}]}`
+	response := `{"version":2,"summary":"Edit it","actions":[{"type":"edit_task","task_id":"t1","description":"## Notes\n\t- keep **Markdown**"}]}`
 	plan, err := ParseActionPlan(response)
 	if err != nil {
 		t.Fatalf("ParseActionPlan: %v", err)

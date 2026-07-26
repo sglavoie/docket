@@ -10,7 +10,7 @@ import (
 )
 
 // AddTaskRequest is the full typed representation of a `tt task add` invocation:
-// every supported input — metadata (type, priority, tags, description, section),
+// every supported input — metadata (type, priority, tags, description, state),
 // hierarchy placement, recurrence, task-type attributes, and a
 // template-materialized checklist — plus any auxiliary durable artifacts that must
 // commit atomically with the new task (the config store carrying an incremented
@@ -32,9 +32,10 @@ type AddTaskRequest struct {
 	Tags []string
 	// Description is optional free-form body text.
 	Description string
-	// Section, when set, must be a built-in GTD section; it is ensured on the
-	// project before assignment. Empty leaves the task in the default active view.
-	Section string
+	// State is the task's initial canonical workflow state. Empty defaults to
+	// Inbox; compatibility adapters must explicitly request StateReady while
+	// their visible legacy creation surfaces still default to the active bucket.
+	State models.WorkflowState
 	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
 	// task.SetRecurrence (which populates derived fields such as OriginalDay).
 	Recurrence *models.RecurrencePattern
@@ -55,9 +56,8 @@ type AddTaskRequest struct {
 	// ChangeSet as the new task (e.g. the config store with an incremented
 	// template use-count), so the add and its side effects are atomic.
 	Artifacts []storage.ArtifactChange
-	// InitialState and PlanningArtifacts carry route-local composer presets
-	// (notably Planner Today/Next) through the full expanded form path.
-	InitialState      models.WorkflowState
+	// PlanningArtifacts carries route-local composer presets (notably Planner
+	// Today/Next) through the full expanded form path.
 	PlanningArtifacts PlanningArtifactBuilder
 
 	// The following fields are populated only by the task form (via
@@ -90,7 +90,7 @@ type AddTaskRequest struct {
 	StoryAttrs *models.StoryAttrs
 	EpicAttrs  *models.EpicAttrs
 	// Subtasks are child tasks created under the new task in the SAME ChangeSet
-	// (task-form Epic/Story create). Each inherits the parent's priority, section,
+	// (task-form Epic/Story create). Each inherits the parent's priority, state,
 	// and tags; a blank-title subtask is skipped.
 	Subtasks []AddSubtaskRequest
 }
@@ -112,7 +112,7 @@ type FormCreateResult struct {
 
 // AddTask creates a fully-specified task in the target project and commits it —
 // together with any auxiliary durable artifacts the request carries — as ONE
-// ChangeSet. It validates the title, type, priority, tags, section, parent
+// ChangeSet. It validates the title, type, priority, tags, state, parent
 // placement, recurrence, and type attributes before mutating, so a rejected
 // request never persists a partial task or a dangling config write. It is the
 // task-add parity path routed through the application layer; the pre-application
@@ -123,7 +123,7 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	planning, err := s.transitionPlanningArtifacts(ref, req.PlanningArtifacts)
+	planning, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -196,6 +196,7 @@ type normalizedAddTaskRequest struct {
 	taskType models.TaskType
 	priority int
 	tags     []string
+	state    models.WorkflowState
 }
 
 func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, error) {
@@ -219,18 +220,16 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 		return normalizedAddTaskRequest{}, invalidInput("priority", err.Error())
 	}
 
-	if req.Section != "" && !models.IsGTDSection(req.Section) {
-		return normalizedAddTaskRequest{}, invalidInput("section", fmt.Sprintf("%q is not a built-in GTD section; use tags for flexible grouping", req.Section))
-	}
-	if req.InitialState != "" && !req.InitialState.IsValid() {
-		return normalizedAddTaskRequest{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", req.InitialState))
+	state, err := normalizeCreationState(req.State)
+	if err != nil {
+		return normalizedAddTaskRequest{}, err
 	}
 
 	tags, err := normalizeTags(req.Tags)
 	if err != nil {
 		return normalizedAddTaskRequest{}, err
 	}
-	return normalizedAddTaskRequest{title: title, taskType: taskType, priority: priority, tags: tags}, nil
+	return normalizedAddTaskRequest{title: title, taskType: taskType, priority: priority, tags: tags, state: state}, nil
 }
 
 // buildAddTask validates an AddTaskRequest against a fresh snapshot and appends
@@ -289,17 +288,13 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	for _, tag := range normalized.tags {
 		task.AddTag(tag)
 	}
-	if req.Section != "" {
-		project.EnsureSection(req.Section)
-		task.SetSection(req.Section)
-	}
 	if req.Recurrence != nil {
 		if err := task.SetRecurrence(req.Recurrence); err != nil {
 			return TaskRef{}, "", invalidInput("recurrence", err.Error())
 		}
 	}
-	if req.InitialState != "" {
-		applyState(task, req.InitialState)
+	if err := s.initializeCreatedTask(project, task, normalized.state); err != nil {
+		return TaskRef{}, "", err
 	}
 	if parent != nil {
 		parentID := parent.ID
@@ -366,7 +361,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 // AddTaskWithChildren creates a fully-specified parent task and its subtasks and
 // commits them — with any auxiliary artifacts (e.g. a template use-count bump) —
 // as ONE ChangeSet, preserving the task form's atomic Epic/Story creation and
-// single undo entry. Each subtask inherits the parent's priority, section, and
+// single undo entry. Each subtask inherits the parent's priority, state, and
 // tags; a blank-title subtask is skipped. The parent is positioned per
 // InsertBeforeDimmed. It returns the parent result plus a result per created
 // subtask in creation order.
@@ -393,7 +388,9 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 			return FormCreateResult{}, invalidInput("title", buildErr.Error())
 		}
 		child.Priority = ref.Task.Priority
-		child.SetSection(req.Section)
+		if stateErr := s.initializeCreatedTask(ref.Project, child, ref.Task.State()); stateErr != nil {
+			return FormCreateResult{}, stateErr
+		}
 		for _, tag := range ref.Task.Tags {
 			child.AddTag(tag)
 		}
@@ -403,7 +400,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		childRefs = append(childRefs, TaskRef{Task: child, Project: ref.Project})
 	}
 
-	planning, err := s.transitionPlanningArtifacts(ref, req.PlanningArtifacts)
+	planning, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return FormCreateResult{}, err
 	}

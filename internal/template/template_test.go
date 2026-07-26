@@ -1,6 +1,8 @@
 package template
 
 import (
+	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -22,11 +24,119 @@ func TestNewTemplate_BasicFields(t *testing.T) {
 	if tmpl.Priority != 0 {
 		t.Errorf("Priority: got %d, want 0", tmpl.Priority)
 	}
+	if tmpl.State != models.StateInbox {
+		t.Errorf("State: got %q, want %q", tmpl.State, models.StateInbox)
+	}
 	if tmpl.Tags == nil || len(tmpl.Tags) != 0 {
 		t.Errorf("Tags: got %v, want empty slice", tmpl.Tags)
 	}
 	if tmpl.Children == nil || len(tmpl.Children) != 0 {
 		t.Errorf("Children: got %v, want empty slice", tmpl.Children)
+	}
+}
+
+func TestTaskTemplateJSONMigratesLegacySectionAndPreservesContent(t *testing.T) {
+	data := []byte(`{
+		"id":"custom-1",
+		"name":"Legacy",
+		"enabled":false,
+		"source":"imported",
+		"category":"process",
+		"type":"story",
+		"priority":2,
+		"tags":["second","first"],
+		"section":"Next",
+		"description":"kept",
+		"children":[
+			{"title":"child-b","type":"bug","optional":true},
+			{"title":"child-a","type":"task","optional":false}
+		],
+		"checklist":["check-b","check-a"],
+		"use_count":17
+	}`)
+
+	var got TaskTemplate
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if got.ID != "custom-1" || got.Name != "Legacy" || got.Enabled ||
+		got.Source != "imported" || got.Category != "process" ||
+		got.Type != models.TaskTypeStory || got.Priority != 2 ||
+		got.Description != "kept" || got.UseCount != 17 {
+		t.Fatalf("legacy metadata changed: %+v", got)
+	}
+	if got.State != models.StateNext {
+		t.Fatalf("State = %q, want %q", got.State, models.StateNext)
+	}
+	if !reflect.DeepEqual(got.Tags, []string{"second", "first"}) ||
+		!reflect.DeepEqual(got.Checklist, []string{"check-b", "check-a"}) ||
+		!reflect.DeepEqual(got.Children, []TemplateChild{
+			{Title: "child-b", Type: models.TaskTypeBug, Optional: true},
+			{Title: "child-a", Type: models.TaskTypeTask, Optional: false},
+		}) {
+		t.Fatalf("ordered template content changed: %+v", got)
+	}
+	if !got.NormalizeState() {
+		t.Fatal("legacy section decode did not request a canonical rewrite")
+	}
+	if got.NormalizeState() {
+		t.Fatal("canonical state normalization was not idempotent")
+	}
+
+	canonical, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(canonical, &fields); err != nil {
+		t.Fatalf("decode canonical fields: %v", err)
+	}
+	if _, ok := fields["section"]; ok {
+		t.Fatalf("canonical JSON retained legacy section: %s", canonical)
+	}
+	if string(fields["state"]) != `"next"` {
+		t.Fatalf("canonical state = %s, want next", fields["state"])
+	}
+}
+
+func TestTaskTemplateJSONStateDefaultsAndCanonicalPrecedence(t *testing.T) {
+	tests := []struct {
+		name        string
+		payload     string
+		want        models.WorkflowState
+		wantRewrite bool
+	}{
+		{"omitted defaults inbox", `{"name":"x","type":"task"}`, models.StateInbox, true},
+		{"empty canonical defaults inbox", `{"name":"x","type":"task","state":""}`, models.StateInbox, true},
+		{"empty legacy defaults inbox", `{"name":"x","type":"task","section":""}`, models.StateInbox, true},
+		{"legacy custom section falls back ready", `{"name":"x","type":"task","section":"Custom"}`, models.StateReady, true},
+		{"canonical wins mixed input", `{"name":"x","type":"task","state":"paused","section":"Next"}`, models.StatePaused, true},
+		{"canonical only", `{"name":"x","type":"task","state":"review"}`, models.StateReview, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got TaskTemplate
+			if err := json.Unmarshal([]byte(tt.payload), &got); err != nil {
+				t.Fatalf("Unmarshal: %v", err)
+			}
+			if got.State != tt.want {
+				t.Fatalf("State = %q, want %q", got.State, tt.want)
+			}
+			if changed := got.NormalizeState(); changed != tt.wantRewrite {
+				t.Fatalf("NormalizeState changed = %v, want %v", changed, tt.wantRewrite)
+			}
+		})
+	}
+}
+
+func TestTaskTemplateJSONRejectsInvalidCanonicalState(t *testing.T) {
+	var got TaskTemplate
+	if err := json.Unmarshal([]byte(`{"name":"x","type":"task","state":"Backlog"}`), &got); err == nil {
+		t.Fatal("Unmarshal accepted invalid canonical state")
+	}
+	got = TaskTemplate{Name: "x", Type: models.TaskTypeTask, State: models.WorkflowState("Backlog")}
+	if _, err := json.Marshal(got); err == nil {
+		t.Fatal("Marshal accepted invalid canonical state")
 	}
 }
 
@@ -451,8 +561,8 @@ func TestValidate_MultipleErrors_FirstReturned(t *testing.T) {
 func TestSummary_TypeOnly(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeTask)
 	got := tmpl.Summary()
-	if got != "task" {
-		t.Errorf("Summary: got %q, want %q", got, "task")
+	if got != "task, →inbox" {
+		t.Errorf("Summary: got %q, want %q", got, "task, →inbox")
 	}
 }
 
@@ -460,8 +570,8 @@ func TestSummary_WithPriority(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeBug)
 	tmpl.Priority = 2
 	got := tmpl.Summary()
-	if got != "bug, P2" {
-		t.Errorf("Summary: got %q, want %q", got, "bug, P2")
+	if got != "bug, P2, →inbox" {
+		t.Errorf("Summary: got %q, want %q", got, "bug, P2, →inbox")
 	}
 }
 
@@ -478,18 +588,18 @@ func TestSummary_WithTags(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeStory)
 	tmpl.Tags = []string{"backend", "api"}
 	got := tmpl.Summary()
-	if got != "story, #backend #api" {
-		t.Errorf("Summary: got %q, want %q", got, "story, #backend #api")
+	if got != "story, #backend #api, →inbox" {
+		t.Errorf("Summary: got %q, want %q", got, "story, #backend #api, →inbox")
 	}
 }
 
-func TestSummary_WithSection(t *testing.T) {
+func TestSummary_WithState(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeTask)
-	tmpl.Section = "Next"
+	tmpl.State = models.StateNext
 	got := tmpl.Summary()
 	// Expect the arrow prefix
-	if !strings.Contains(got, "→Next") {
-		t.Errorf("Summary should contain →Next, got %q", got)
+	if !strings.Contains(got, "→next") {
+		t.Errorf("Summary should contain →next, got %q", got)
 	}
 }
 
@@ -531,12 +641,12 @@ func TestSummary_AllParts(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeEpic)
 	tmpl.Priority = 1
 	tmpl.Tags = []string{"urgent"}
-	tmpl.Section = "Now"
+	tmpl.State = models.StateReview
 	tmpl.Children = []TemplateChild{{Title: "Child"}}
 
 	got := tmpl.Summary()
-	if got != "epic, P1, #urgent, →Now, 1 item" {
-		t.Errorf("Summary: got %q, want %q", got, "epic, P1, #urgent, →Now, 1 item")
+	if got != "epic, P1, #urgent, →review, 1 item" {
+		t.Errorf("Summary: got %q, want %q", got, "epic, P1, #urgent, →review, 1 item")
 	}
 }
 
@@ -598,7 +708,7 @@ func TestContentEqual_Identical(t *testing.T) {
 		Category:    "feature",
 		Type:        models.TaskTypeStory,
 		Priority:    2,
-		Section:     "Next",
+		State:       models.StateNext,
 		Description: "desc",
 		Tags:        []string{"a", "b"},
 		Checklist:   []string{"step1", "step2"},
@@ -609,7 +719,7 @@ func TestContentEqual_Identical(t *testing.T) {
 		Category:    "feature",
 		Type:        models.TaskTypeStory,
 		Priority:    2,
-		Section:     "Next",
+		State:       models.StateNext,
 		Description: "desc",
 		Tags:        []string{"a", "b"},
 		Checklist:   []string{"step1", "step2"},
@@ -671,7 +781,7 @@ func TestContentEqual_FieldDifferences(t *testing.T) {
 			Category:    "feature",
 			Type:        models.TaskTypeTask,
 			Priority:    2,
-			Section:     "Next",
+			State:       models.StateNext,
 			Description: "d",
 			Tags:        []string{"t"},
 			Checklist:   []string{"c"},
@@ -683,7 +793,7 @@ func TestContentEqual_FieldDifferences(t *testing.T) {
 		"Category":       func(x *TaskTemplate) { x.Category = "bug" },
 		"Type":           func(x *TaskTemplate) { x.Type = models.TaskTypeBug },
 		"Priority":       func(x *TaskTemplate) { x.Priority = 3 },
-		"Section":        func(x *TaskTemplate) { x.Section = "Inbox" },
+		"State":          func(x *TaskTemplate) { x.State = models.StateInbox },
 		"Description":    func(x *TaskTemplate) { x.Description = "d2" },
 		"Tags len":       func(x *TaskTemplate) { x.Tags = []string{"t", "u"} },
 		"Tags content":   func(x *TaskTemplate) { x.Tags = []string{"u"} },

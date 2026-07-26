@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
 )
 
@@ -36,8 +37,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 				return m, nil
 			case "tab", "enter":
 				switch section {
-				case "section":
-					m.acceptSectionSuggestion()
+				case "state":
+					m.acceptStateSuggestion()
 				case "tags":
 					m.acceptTagSuggestion()
 				}
@@ -234,8 +235,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 		case "down":
 			// Show all suggestions when dropdown not visible
 			switch section {
-			case "section":
-				m.showAllSectionSuggestions()
+			case "state":
+				m.showAllStateSuggestions()
 				return m, nil
 			case "tags":
 				m.showAllTagSuggestions()
@@ -247,11 +248,11 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 		switch section {
 		case "name":
 			m.nameInput, cmd = m.nameInput.Update(msg)
-		case "section":
-			prevValue := m.sectionInput.Value()
-			m.sectionInput, cmd = m.sectionInput.Update(msg)
-			if m.sectionInput.Value() != prevValue {
-				m.updateSectionSuggestions()
+		case "state":
+			prevValue := m.stateInput.Value()
+			m.stateInput, cmd = m.stateInput.Update(msg)
+			if m.stateInput.Value() != prevValue {
+				m.updateStateSuggestions()
 			}
 		case "tags":
 			prevValue := m.tagsInput.Value()
@@ -280,8 +281,8 @@ func (m *TaskTemplateCreatorModel) blurCurrentField() {
 	switch section {
 	case "name":
 		m.nameInput.Blur()
-	case "section":
-		m.sectionInput.Blur()
+	case "state":
+		m.stateInput.Blur()
 	case "tags":
 		m.tagsInput.Blur()
 	case "description":
@@ -302,8 +303,8 @@ func (m *TaskTemplateCreatorModel) focusCurrentField() tea.Cmd {
 	switch section {
 	case "name":
 		m.nameInput.Focus()
-	case "section":
-		m.sectionInput.Focus()
+	case "state":
+		m.stateInput.Focus()
 	case "tags":
 		m.tagsInput.Focus()
 	case "description":
@@ -349,7 +350,13 @@ func (m *TaskTemplateCreatorModel) saveTemplate() tea.Cmd {
 	}
 
 	t.Priority = m.priorityCursor
-	t.Section = strings.TrimSpace(m.sectionInput.Value())
+	state, ok := models.ParseWorkflowState(strings.TrimSpace(m.stateInput.Value()))
+	if !ok {
+		return func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("invalid template state %q", strings.TrimSpace(m.stateInput.Value()))}
+		}
+	}
+	t.State = state
 	t.Description = strings.TrimSpace(m.descInput.Value())
 
 	// Parse tags

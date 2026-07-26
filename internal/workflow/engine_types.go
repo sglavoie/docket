@@ -44,6 +44,11 @@ type EvaluationContext struct {
 	PreviousTaskMap map[string]*models.Task // taskID -> pre-mutation snapshot; nil for stateless evaluation
 	ProjectName     string                  // Current project name (for scope matching)
 	ProjectID       string                  // Current project ID (for scope matching)
+	// TransitionState is the application-owned mutation seam for set_state and
+	// state-changing hierarchical actions. Application callers inject their
+	// clock-aware canonical transition helper; standalone engine callers fall
+	// back to the model's canonical transition primitive.
+	TransitionState func(*models.Task, models.WorkflowState) error
 }
 
 // executionContext tracks rule applications to prevent infinite loops.

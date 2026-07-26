@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestEvaluateCriterion_SectionMatchesGTDOnly(t *testing.T) {
+func TestEvaluateCriterion_StateSet(t *testing.T) {
 	project := &models.Project{Name: "test"}
 
 	gtdTask := &models.Task{
@@ -26,26 +26,25 @@ func TestEvaluateCriterion_SectionMatchesGTDOnly(t *testing.T) {
 		name string
 		task *models.Task
 		op   string
-		val  string
 		want bool
 	}{
-		{"GTD equals matches GTD task", gtdTask, "equals", "Next", true},
-		{"GTD equals does not match empty task", activeTask, "equals", "Next", false},
-		{"non-GTD equals does not match empty task", activeTask, "equals", "Design", false},
-		{"non-GTD equals does not match GTD task", gtdTask, "equals", "Design", false},
-		{"non-GTD equals does not match task with GTD section", bothTask, "equals", "Design", false},
-		{"GTD equals matches task with both", bothTask, "equals", "Next", true},
-		{"not_equals GTD on empty task", activeTask, "not_equals", "Next", true},
-		{"not_equals Design on empty task", activeTask, "not_equals", "Design", true},
-		{"contains partial non-GTD section does not match", activeTask, "contains", "esig", false},
+		{"in matches Next task", gtdTask, "in", true},
+		{"in rejects Ready task", activeTask, "in", false},
+		{"in matches another Next task", bothTask, "in", true},
+		{"not_in rejects Next task", gtdTask, "not_in", false},
+		{"not_in matches Ready task", activeTask, "not_in", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := config.SmartListCriterion{Field: "section", Operation: tt.op, Value: tt.val}
+			c := config.SmartListCriterion{
+				Field:     "state",
+				Operation: tt.op,
+				States:    testWorkflowStateSet(models.StateNext),
+			}
 			got := evaluateCriterion(tt.task, project, c, nil)
 			if got != tt.want {
-				t.Errorf("evaluateCriterion(section %s %q) = %v, want %v", tt.op, tt.val, got, tt.want)
+				t.Errorf("evaluateCriterion(state %s Next) = %v, want %v", tt.op, got, tt.want)
 			}
 		})
 	}

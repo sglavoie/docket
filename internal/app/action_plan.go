@@ -424,7 +424,11 @@ func describeAction(snap Snapshot, action Action) (string, error) {
 		if action.Priority != nil {
 			priority = *action.Priority
 		}
-		details := fmt.Sprintf("Create %s %q in %s with priority %d", taskType, strings.TrimSpace(*action.Title), name, priority)
+		state := models.StateInbox
+		if action.State != nil {
+			state = *action.State
+		}
+		details := fmt.Sprintf("Create %s %q in %s with priority %d and state %s", taskType, strings.TrimSpace(*action.Title), name, priority, state)
 		if action.Tags != nil {
 			details += fmt.Sprintf(" and tags [%s]", strings.Join(action.Tags, ", "))
 		}
@@ -621,7 +625,7 @@ func (s *Service) applyPreparedActionPlan(ctx context.Context, prepared *Prepare
 		if !touched[project.ID] {
 			continue
 		}
-		applyPostMutationHooks(project)
+		applyPostMutationHooksAt(project, s.clock.Now())
 		var projectArtifacts []storage.ArtifactChange
 		if len(changesets) == 0 {
 			projectArtifacts = artifacts
@@ -758,6 +762,13 @@ func (s *Service) applyPlannedAction(snap Snapshot, action Action, touched map[s
 		if action.Description != nil {
 			task.Description = *action.Description
 		}
+		state := models.WorkflowState("")
+		if action.State != nil {
+			state = *action.State
+		}
+		if err := s.initializeCreatedTask(project, task, state); err != nil {
+			return err
+		}
 		project.Tasks = append(project.Tasks, task)
 		touched[project.ID] = true
 		return nil
@@ -791,7 +802,9 @@ func (s *Service) applyPlannedAction(snap Snapshot, action Action, touched map[s
 		if err := childrenCompletionGuard(task, target); err != nil {
 			return err
 		}
-		applyState(task, target)
+		if err := applyState(task, target, s.clock.Now()); err != nil {
+			return invalidInput("state", err.Error())
+		}
 	case ActionSetPriority:
 		task.Priority = *action.Priority
 	case ActionSetDueDate:

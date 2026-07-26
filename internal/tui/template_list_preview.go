@@ -78,9 +78,7 @@ func (m *TaskTemplatesModel) renderTemplateDetails(t template.TaskTemplate, isDe
 	if t.Priority > 0 {
 		lines = append(lines, MutedStyle.Render("Priority: ")+fmt.Sprintf("%d", t.Priority))
 	}
-	if t.Section != "" {
-		lines = append(lines, MutedStyle.Render("Section: ")+t.Section)
-	}
+	lines = append(lines, MutedStyle.Render("State: ")+t.EffectiveState().String())
 	if len(t.Tags) > 0 {
 		lines = append(lines, MutedStyle.Render("Tags: ")+strings.Join(t.Tags, ", "))
 	}

@@ -11,26 +11,26 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// stateBasedTagRule fires on the task's current status without requiring an
+// stateBasedTagRule fires on the task's current state without requiring an
 // event transition.
 func stateBasedTagRule() workflow.WorkflowRule {
 	return workflow.WorkflowRule{
 		ID:      "r-status-tag",
 		Name:    "Tag done tasks",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+		Trigger: workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}},
 	}
 }
 
-// contextualTagRule fires only on a status transition into done, so it requires
+// contextualTagRule fires only on a state transition into done, so it requires
 // the pre-mutation state (Contextual=true) to trigger.
 func contextualTagRule() workflow.WorkflowRule {
 	return workflow.WorkflowRule{
 		ID:      "r-status-changed-tag",
 		Name:    "Tag on completion",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->done"},
+		Trigger: workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}},
 	}
 }
@@ -231,7 +231,7 @@ func TestNonStateWorkflowCascadePreservesPlanningExclusivity(t *testing.T) {
 			planning.SetDailyPlan([]config.DailyPlanItem{wantToday})
 		})
 		ledger, service := newWorkflowPlanningService(t, dataDir, project, manager)
-		rule := priorityCascadeRule("enter-next", models.SectionNext)
+		rule := priorityCascadeRule("enter-next", models.StateNext)
 
 		if _, err := service.SetPriorityWithWorkflow(task.ID, 1, app.SingleTaskWorkflowOptions{
 			Rules:      []workflow.WorkflowRule{rule},
@@ -266,7 +266,7 @@ func TestNonStateWorkflowCascadePreservesPlanningExclusivity(t *testing.T) {
 			planning.SetFocusQueue([]config.FocusQueueItem{wantOrder})
 		})
 		ledger, service := newWorkflowPlanningService(t, dataDir, project, manager)
-		rule := priorityCascadeRule("leave-next", models.SectionWaiting)
+		rule := priorityCascadeRule("leave-next", models.StateWaiting)
 
 		if _, err := service.SetPriorityWithWorkflow(task.ID, 1, app.SingleTaskWorkflowOptions{
 			Rules:      []workflow.WorkflowRule{rule},
@@ -290,7 +290,7 @@ func TestNonStateWorkflowCascadePreservesPlanningExclusivity(t *testing.T) {
 	})
 }
 
-func priorityCascadeRule(id, section string) workflow.WorkflowRule {
+func priorityCascadeRule(id string, state models.WorkflowState) workflow.WorkflowRule {
 	return workflow.WorkflowRule{
 		ID:      id,
 		Name:    id,
@@ -300,7 +300,7 @@ func priorityCascadeRule(id, section string) workflow.WorkflowRule {
 			Operation: workflow.OpEquals,
 			Value:     "3->1",
 		},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetSection, Value: section}},
+		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: string(state)}},
 	}
 }
 
@@ -334,21 +334,13 @@ func newWorkflowPlanningService(
 }
 
 func durablePlanningExclusivityBuilder(manager *config.Manager) app.PlanningArtifactBuilder {
-	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
+	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
 		coordinator := manager.DomainCoordinator()
 		planning, err := coordinator.LoadPlanning()
 		if err != nil {
 			return nil, err
 		}
-		changed := false
-		for _, target := range targets {
-			if target.State == models.StateNext {
-				changed = planning.RemoveFromDailyPlan(target.TaskID) || changed
-				continue
-			}
-			changed = planning.RemoveFromFocusQueue(target.TaskID) || changed
-		}
-		if !changed {
+		if !app.ReconcilePlanningState(planning, req) {
 			return nil, nil
 		}
 		artifact, err := coordinator.CheckedPlanningArtifact(planning)
@@ -425,7 +417,7 @@ func TestSetSectionWithWorkflowDoesNotAutoCompleteEligibleParent(t *testing.T) {
 			{Field: workflow.FieldAllChildrenDone, Operation: workflow.OpEquals, Value: "true"},
 		},
 		TriggerLogic: workflow.LogicAnd,
-		Actions:      []workflow.RuleAction{{ActionType: workflow.ActionSetStatus, Value: "done"}},
+		Actions:      []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: "done"}},
 	}
 
 	if _, err := newTestService(repo).SetSectionWithWorkflow(story.ID, models.SectionSomeday, app.SingleTaskWorkflowOptions{Rules: []workflow.WorkflowRule{rule}}); err != nil {

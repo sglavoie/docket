@@ -71,7 +71,7 @@ func TestAskViewProductionWorkspaceSnapshotIgnoresStaleDashboardProject(t *testi
 	runtime, persister, alpha, beta := newAskWorkspaceFixture(t, true)
 	const staleDashboardProjectName = "SDR"
 	runner := &fakeAskRunner{streams: []external.Stream{
-		newScriptedAskStream([]byte(`{"version":1,"summary":"ok","actions":[]}`), 32, nil),
+		newScriptedAskStream([]byte(`{"version":2,"summary":"ok","actions":[]}`), 32, nil),
 	}}
 	m := NewAskViewModelForWorkspaceWithRunner("", runtime, nil, persister, runner)
 
@@ -148,7 +148,7 @@ func TestAskViewWorkspaceContextGatesLoadingAndInspection(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			runtime, persister, alpha, _ := newAskWorkspaceFixture(t, true)
 			runner := &fakeAskRunner{streams: []external.Stream{
-				newScriptedAskStream([]byte(`{"version":1,"summary":"ok","actions":[]}`), 32, nil),
+				newScriptedAskStream([]byte(`{"version":2,"summary":"ok","actions":[]}`), 32, nil),
 			}}
 			m := NewAskViewModelForWorkspaceWithRunner("", runtime, nil, persister, runner)
 			m.contextMode = mode
@@ -199,7 +199,7 @@ func TestAskViewWorkspaceConsentResumeAndLoadFailure(t *testing.T) {
 		// keep the same active catalog while exercising the in-memory save path.
 		runtime = config.NewRuntimeState("", domains)
 		runner := &fakeAskRunner{streams: []external.Stream{
-			newScriptedAskStream([]byte(`{"version":1,"summary":"ok","actions":[]}`), 32, nil),
+			newScriptedAskStream([]byte(`{"version":2,"summary":"ok","actions":[]}`), 32, nil),
 		}}
 		m := NewAskViewModelForWorkspaceWithRunner("", runtime, nil, persister, runner)
 		m.textarea.SetValue("resume with context")
@@ -247,7 +247,7 @@ func TestAskViewWorkspaceResponsePreparesMultiProjectActionPlan(t *testing.T) {
 	service := app.NewService(newTestAppRepo(alpha, beta), nil, nil)
 	title := "Create in beta"
 	runner := &fakeAskRunner{streams: []external.Stream{
-		newScriptedAskStream([]byte(`{"version":1,"summary":"planned","actions":[{"type":"create_task","project_id":"beta","title":"`+title+`"}]}`), 64, nil),
+		newScriptedAskStream([]byte(`{"version":2,"summary":"planned","actions":[{"type":"create_task","project_id":"beta","title":"`+title+`"}]}`), 64, nil),
 	}}
 	m := NewAskViewModelForWorkspaceWithRunner("", runtime, service, persister, runner)
 	loaded := askWorkspaceLoadedMessage(t, m.submitQuery("add a beta task"))

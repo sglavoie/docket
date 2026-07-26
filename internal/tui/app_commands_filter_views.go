@@ -87,7 +87,6 @@ func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command regi
 			Handler: func() tea.Msg {
 				if out := m.visibleOutliner(); out != nil {
 					clearCommonFilters(&out.filter.CommonFilterState)
-					out.filter.Sections = make(map[string]bool)
 					out.filter.Actionable = false
 					out.ClearSearch()
 					out.crossForceRebuild = true

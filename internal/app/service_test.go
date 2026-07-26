@@ -21,7 +21,7 @@ func TestCaptureCreatesTaskAndEmitsOneChangeSet(t *testing.T) {
 		Title:     "Write the report",
 		Priority:  1,
 		Tags:      []string{"#work", "urgent"},
-		Section:   models.SectionNext,
+		State:     models.StateNext,
 	})
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
@@ -95,11 +95,11 @@ func TestCaptureRejectsInvalidTag(t *testing.T) {
 	}
 }
 
-func TestCaptureRejectsNonGTDSection(t *testing.T) {
+func TestCaptureRejectsInvalidState(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha"))
 	svc := newTestService(repo)
 
-	_, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-1", Title: "ok", Section: "Backlog"})
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-1", Title: "ok", State: models.WorkflowState("backlog")})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -180,6 +180,69 @@ func TestTransitionMovesThroughNonterminalStates(t *testing.T) {
 	}
 }
 
+func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	staleCompletion := now.Add(-24 * time.Hour)
+	snoozedUntil := now.Add(24 * time.Hour)
+
+	for _, target := range models.AllWorkflowStates() {
+		target := target
+		t.Run(target.String(), func(t *testing.T) {
+			task := newTask("t1", 1, "task")
+			task.WorkflowState = models.StateReady
+			if target == models.StateReady {
+				task.WorkflowState = models.StateInbox
+			}
+			task.CompletedAt = &staleCompletion
+			task.SnoozedUntil = &snoozedUntil
+			task.Dimmed = true
+			project := newProject("proj-1", "Alpha", task)
+			repo := newFakeRepo(project)
+			svc := newTestService(repo)
+
+			res, err := svc.Transition(app.StateRequest{TaskID: task.ID, Target: target})
+			if err != nil {
+				t.Fatalf("Transition(%q): %v", target, err)
+			}
+			if res.State != target || task.State() != target {
+				t.Errorf("result/task state = %q/%q, want %q", res.State, task.State(), target)
+			}
+			if !task.UpdatedAt.Equal(now) {
+				t.Errorf("UpdatedAt = %v, want injected time %v", task.UpdatedAt, now)
+			}
+			if task.SnoozedUntil != nil {
+				t.Errorf("SnoozedUntil = %v, want nil", task.SnoozedUntil)
+			}
+			if target.IsTerminal() {
+				if task.CompletedAt == nil || !task.CompletedAt.Equal(now) {
+					t.Errorf("CompletedAt = %v, want injected time %v", task.CompletedAt, now)
+				}
+			} else if task.CompletedAt != nil {
+				t.Errorf("CompletedAt = %v, want nil", task.CompletedAt)
+			}
+			if target == models.StateInbox && task.Dimmed {
+				t.Error("inbox transition should clear Dimmed")
+			}
+		})
+	}
+}
+
+func TestTransitionRejectsInvalidStateWithoutMutation(t *testing.T) {
+	task := newTask("t1", 1, "task")
+	project := newProject("proj-1", "Alpha", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+	before := task.State()
+
+	_, err := svc.Transition(app.StateRequest{TaskID: task.ID, Target: models.WorkflowState("todo")})
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("Transition invalid state error = %v, want ErrInvalidInput", err)
+	}
+	if task.State() != before || len(repo.commits) != 0 {
+		t.Fatalf("invalid transition changed state/committed: state=%q commits=%d", task.State(), len(repo.commits))
+	}
+}
+
 func TestTransitionRejectedFromTerminalState(t *testing.T) {
 	task := newTask("t1", 1, "task")
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
@@ -247,14 +310,29 @@ func TestCompleteGeneratesRecurringInstance(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	if _, err := svc.Complete("t1"); err != nil {
+	res, err := svc.Complete("t1")
+	if err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 	if task.State() != models.StateDone {
 		t.Errorf("completed task state = %q, want done", task.State())
 	}
+	fixedNow := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	if task.CompletedAt == nil || !task.CompletedAt.Equal(fixedNow) || !task.UpdatedAt.Equal(fixedNow) {
+		t.Errorf("completed timestamps = %v/%v, want injected time %v", task.CompletedAt, task.UpdatedAt, fixedNow)
+	}
+	if res.RecurringGenerated != 1 {
+		t.Errorf("RecurringGenerated = %d, want 1", res.RecurringGenerated)
+	}
 	if len(project.Tasks) != 2 {
 		t.Fatalf("project has %d tasks, want 2 (original + generated instance)", len(project.Tasks))
+	}
+	generated := project.Tasks[0]
+	if generated.State() != models.StateInbox {
+		t.Errorf("generated state = %q, want inbox", generated.State())
+	}
+	if !generated.CreatedAt.Equal(fixedNow) || !generated.UpdatedAt.Equal(fixedNow) {
+		t.Errorf("generated timestamps = %v/%v, want injected time %v", generated.CreatedAt, generated.UpdatedAt, fixedNow)
 	}
 }
 

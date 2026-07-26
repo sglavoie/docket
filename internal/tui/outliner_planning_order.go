@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -183,28 +184,29 @@ func locatorIndex(order []config.ProjectTaskLocator, loc config.ProjectTaskLocat
 // reloads the cross outliner so the new order renders with the cursor kept on the
 // moved task. The reorder is planning-domain only: task files are never rewritten.
 func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg) tea.Cmd {
+	order := make([]app.TaskLocator, 0, len(msg.Order))
+	for _, loc := range msg.Order {
+		order = append(order, app.TaskLocator{ProjectID: loc.ProjectID, TaskID: loc.TaskID})
+	}
 	var err error
 	switch msg.Kind {
 	case reorderFocusQueue:
-		items := make([]config.FocusQueueItem, 0, len(msg.Order))
-		for _, loc := range msg.Order {
-			items = append(items, config.FocusQueueItem{TaskID: loc.TaskID, ProjectID: loc.ProjectID})
-		}
-		err = m.commitPlanningMutation(func(p *config.PlanningState) { p.SetFocusQueue(items) })
+		err = m.appService.ReorderNext(order)
 	case reorderDailyPlan:
-		items := m.dailyPlanItemsForOrder(msg.Order)
-		err = m.commitPlanningMutation(func(p *config.PlanningState) { p.SetDailyPlan(items) })
+		err = m.appService.ReorderToday(order)
 	}
 	if err != nil {
+		m.err = err
 		return errorCmd("%s", err)
 	}
 
+	m.refreshRuntime()
 	m.rebuildPlanningFromRuntime()
 	if m.crossOutliner != nil {
 		m.crossOutliner.crossForceRebuild = true
 	}
 	m.setInfoStatus("Reordered planning list")
-	return tea.Batch(m.refreshTaskViewsAfterSave()...)
+	return tea.Batch(m.refreshTaskViewsAfterPlanningMutation()...)
 }
 
 // dailyPlanItemsForOrder rebuilds Daily Plan items in the given order, preserving

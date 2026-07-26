@@ -102,8 +102,9 @@ func TestCrossProjectRebuildRowsSectionFilter(t *testing.T) {
 		filter:            NewFilterState(),
 	}
 
-	// Enable section filter for Next only
-	m.filter.Sections[models.SectionNext] = true
+	// The temporary section-selector presentation translates immediately to a
+	// canonical state-set filter.
+	m.filter.setStateFilter(workflowStatesForSectionNames([]string{models.SectionNext}), true)
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	titles := collectCrossProjectTaskTitles(m)

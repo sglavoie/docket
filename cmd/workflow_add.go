@@ -17,8 +17,8 @@ var workflowAddCmd = &cobra.Command{
 Rules are defined with trigger condition(s) and one or more actions.
 When a task matches the trigger(s), the actions are applied automatically.
 
-STATE TRIGGER FIELDS (match current task state):
-  status, priority, section, tags, type
+TASK TRIGGER FIELDS (match current task values):
+  state, priority, tags, type
   due_days, created_days, updated_days
 
 BOOLEAN STATE TRIGGER FIELDS (presence/absence checks):
@@ -27,8 +27,7 @@ BOOLEAN STATE TRIGGER FIELDS (presence/absence checks):
   description_empty - Value: "true"/"false"
 
 EVENT TRIGGER FIELDS (detect transitions):
-  status_changed        - Value: "old->new" (e.g., "blocked->*", "*->done")
-  section_changed       - Value: "old->new" (e.g., "Next->Waiting")
+  state_changed         - Value: "old->new" (e.g., "waiting,paused->ready", "*->done")
   priority_changed      - Value: "old->new" (e.g., "*->1")
   tag_added             - Value: tag name that was added
   tag_removed           - Value: tag name that was removed
@@ -40,15 +39,15 @@ EVENT TRIGGER FIELDS (detect transitions):
   streak_broken         - Value: "true" (recurrence streak resets to zero)
 
 HIERARCHICAL TRIGGER FIELDS:
-  parent_status, parent_type, parent_tags, level
+  parent_state, parent_type, parent_tags, level
   has_children, children_progress, all_children_done
   is_blocked, blocker_count, dependency_count
 
 TRIGGER OPERATIONS:
-  equals, not_equals, contains, greater_than, less_than
+  equals, not_equals, contains, greater_than, less_than, in, not_in
 
 ACTION TYPES:
-  set_status, set_priority, set_section, add_tag, remove_tag
+  set_state, set_priority, add_tag, remove_tag
   set_due_relative, clear_due, set_pinned, add_comment, set_type
   complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
   set_snooze, create_followup, move_to_project, set_recurrence
@@ -56,16 +55,16 @@ ACTION TYPES:
 
 PROJECT-LEVEL RULES:
   Use --level project to create rules that operate on aggregate task data.
-  Project triggers: has_in_progress_tasks, active_task_count, all_tasks_status,
-    majority_task_type, majority_task_status, completion_ratio,
-    days_since_update, project_status, has_tasks_with_status
+  Project triggers: has_in_progress_tasks, active_task_count, all_tasks_state,
+    majority_task_type, majority_task_state, completion_ratio,
+    days_since_update, project_status, has_tasks_with_state
   Project action: set_project_status (value = icon key: planning, active, etc.)
 
 RULE SCOPING:
-  Restrict task-level rules to specific projects, types, or sections:
+  Restrict task-level rules to specific projects, types, or states:
     --scope-project "MyProject"    Only apply to tasks in this project
     --scope-type task,bug          Only apply to these task types
-    --scope-section Waiting        Only apply to tasks in these sections
+    --scope-state waiting,paused   Only apply to tasks in these states
   Project-level rules support --scope-project only.
 
 COMPOUND TRIGGERS:
@@ -74,13 +73,13 @@ COMPOUND TRIGGERS:
 
 Examples:
   # When unblocked, add ready tag (event trigger)
-  tt workflow add -n "Unblock Ready" -f status_changed -o equals -V "blocked->*" -a add_tag --action-value ready
+  tt workflow add -n "Unblock Ready" -f state_changed -o equals -V "waiting->ready" -a add_tag --action-value ready
 
-  # When completed, move to Completed
-  tt workflow add -n "Route Completed" -f completed -o equals -V true -a set_section --action-value Completed
+  # When completed, ensure the task is done
+  tt workflow add -n "Route Completed" -f completed -o equals -V true -a set_state --action-value done
 
   # Auto-complete epic when all children done (hierarchical)
-  tt workflow add -n "Epic Auto-Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_status --action-value done
+  tt workflow add -n "Epic Auto-Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_state --action-value done
 
   # Inherit urgent tag from parent
   tt workflow add -n "Inherit Urgent" -f parent_tags -o contains -V urgent -a inherit_tag --action-value urgent
@@ -89,7 +88,7 @@ Examples:
   tt workflow add -n "Overdue Alert" -f due_days -o less_than -V 0 -a add_tag --action-value overdue
 
   # Tag stale in-progress tasks (not updated in 7 days)
-  tt workflow add -n "Stale WIP" -f updated_days -o greater_than -V 7 -f status -o equals -V in_progress --logic and -a add_tag --action-value stale
+  tt workflow add -n "Stale WIP" -f updated_days -o greater_than -V 7 -f state -o equals -V in_progress --logic and -a add_tag --action-value stale
 
 CONDITIONAL ACTIONS:
   Add an optional condition to the action. The rule's triggers decide if the
@@ -99,9 +98,9 @@ CONDITIONAL ACTIONS:
     --cond-value 2          Condition value
 
 Examples:
-  # Move high-priority todo tasks to Next (conditional branching)
-  tt workflow add -n "Priority Route" -f status -o equals -V todo \
-    -a set_section --action-value Next \
+  # Move high-priority ready tasks to Next (conditional branching)
+  tt workflow add -n "Priority Route" -f state -o equals -V ready \
+    -a set_state --action-value next \
     --cond-field priority --cond-op less_than --cond-value 3`,
 	RunE: runWorkflowAdd,
 }
@@ -122,7 +121,7 @@ var (
 	ruleDisabled  bool
 	scopeProjects []string
 	scopeTypes    []string
-	scopeSections []string
+	scopeStates   []string
 )
 
 func init() {
@@ -131,19 +130,24 @@ func init() {
 	workflowAddCmd.Flags().StringVarP(&ruleName, "name", "n", "", "rule name (required)")
 	workflowAddCmd.Flags().StringVar(&ruleLevel, "level", "task", "rule level: task (default) or project")
 	workflowAddCmd.Flags().IntVar(&rulePriority, "priority", 0, "rule priority (1=highest, runs first; 0=default, runs last)")
-	workflowAddCmd.Flags().StringArrayVarP(&triggerFields, "field", "f", nil, "trigger field: status, priority, section, tags, type (can specify multiple)")
-	workflowAddCmd.Flags().StringArrayVarP(&triggerOps, "op", "o", nil, "trigger operation: equals, not_equals, contains, greater_than, less_than (default: equals)")
+	workflowAddCmd.Flags().StringArrayVarP(&triggerFields, "field", "f", nil, "trigger field: state, priority, tags, type, or an event/aggregate field (can specify multiple)")
+	workflowAddCmd.Flags().StringArrayVarP(&triggerOps, "op", "o", nil, "trigger operation: equals, not_equals, in, not_in, contains, greater_than, less_than (default: equals)")
 	workflowAddCmd.Flags().StringArrayVarP(&triggerValues, "value", "V", nil, "trigger value (can specify multiple)")
 	workflowAddCmd.Flags().StringVar(&triggerLogic, "logic", "and", "trigger logic for compound rules: and, or")
 	workflowAddCmd.Flags().StringVarP(&actionType, "action", "a", "", "action type (required)")
-	workflowAddCmd.Flags().StringVar(&actionValue, "action-value", "", "action value (empty string for set_section means Active)")
+	workflowAddCmd.Flags().StringVar(&actionValue, "action-value", "", "action value")
 	workflowAddCmd.Flags().StringVar(&condField, "cond-field", "", "condition field for the action (action only runs if condition matches)")
 	workflowAddCmd.Flags().StringVar(&condOp, "cond-op", "equals", "condition operation (default: equals)")
 	workflowAddCmd.Flags().StringVar(&condValue, "cond-value", "", "condition value")
 	workflowAddCmd.Flags().BoolVar(&ruleDisabled, "disabled", false, "create rule in disabled state")
 	workflowAddCmd.Flags().StringSliceVar(&scopeProjects, "scope-project", nil, "restrict rule to projects (comma-separated names or IDs)")
 	workflowAddCmd.Flags().StringSliceVar(&scopeTypes, "scope-type", nil, "restrict task-level rules to task types (comma-separated)")
-	workflowAddCmd.Flags().StringSliceVar(&scopeSections, "scope-section", nil, "restrict task-level rules to sections (comma-separated)")
+	workflowAddCmd.Flags().StringSliceVar(&scopeStates, "scope-state", nil, "restrict task-level rules to canonical states (comma-separated)")
+
+	_ = workflowAddCmd.RegisterFlagCompletionFunc("field", completeEnum(workflowTriggerFieldCompletions()))
+	_ = workflowAddCmd.RegisterFlagCompletionFunc("op", completeEnum(workflowTriggerOperationCompletions()))
+	_ = workflowAddCmd.RegisterFlagCompletionFunc("action", completeEnum(workflowActionTypeCompletions()))
+	_ = workflowAddCmd.RegisterFlagCompletionFunc("scope-state", completeEnum(stateCompletions))
 
 	_ = workflowAddCmd.MarkFlagRequired("name")
 	_ = workflowAddCmd.MarkFlagRequired("field")
@@ -206,7 +210,10 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("priority must be 0-99, got: %d", rulePriority)
 	}
 	rule.Priority = rulePriority
-	rule.Scope = buildScopeFromFlags(scopeProjects, scopeTypes, scopeSections)
+	rule.Scope, err = buildScopeFromFlags(scopeProjects, scopeTypes, scopeStates)
+	if err != nil {
+		return err
+	}
 
 	err = rule.Validate()
 	if err != nil {

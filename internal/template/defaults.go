@@ -14,6 +14,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:    "default",
 			Category:  "bug",
 			Type:      models.TaskTypeBug,
+			State:     models.StateInbox,
 			Tags:      []string{"bug"},
 			Checklist: []string{"Steps to Reproduce", "Expected Behavior", "Actual Behavior", "Environment"},
 		},
@@ -25,8 +26,8 @@ func GetDefaultTemplates() []TaskTemplate {
 			Category:  "bug",
 			Type:      models.TaskTypeBug,
 			Priority:  1,
+			State:     models.StateNext,
 			Tags:      []string{"incident", "urgent"},
-			Section:   models.SectionNext,
 			Checklist: []string{"Impact Assessment", "Root Cause", "Mitigation", "Post-mortem"},
 		},
 
@@ -38,6 +39,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:    "default",
 			Category:  "feature",
 			Type:      models.TaskTypeStory,
+			State:     models.StateInbox,
 			Tags:      []string{"feature"},
 			Checklist: []string{"User Story", "Acceptance Criteria", "Technical Notes"},
 			Children: []TemplateChild{
@@ -53,6 +55,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:   "default",
 			Category: "feature",
 			Type:     models.TaskTypeStory,
+			State:    models.StateInbox,
 			Tags:     []string{"api", "backend"},
 			Children: []TemplateChild{
 				{Title: "Define contract"},
@@ -68,6 +71,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:   "default",
 			Category: "feature",
 			Type:     models.TaskTypeStory,
+			State:    models.StateInbox,
 			Tags:     []string{"frontend", "ui"},
 			Children: []TemplateChild{
 				{Title: "Design review"},
@@ -85,6 +89,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:    "default",
 			Category:  "process",
 			Type:      models.TaskTypeTask,
+			State:     models.StateInbox,
 			Tags:      []string{"review"},
 			Checklist: []string{"Logic", "Tests", "Edge Cases", "Performance", "Docs"},
 		},
@@ -95,6 +100,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:   "default",
 			Category: "process",
 			Type:     models.TaskTypeStory,
+			State:    models.StateInbox,
 			Tags:     []string{"release"},
 			Children: []TemplateChild{
 				{Title: "Run tests"},
@@ -111,6 +117,7 @@ func GetDefaultTemplates() []TaskTemplate {
 			Source:   "default",
 			Category: "process",
 			Type:     models.TaskTypeEpic,
+			State:    models.StateInbox,
 			Tags:     []string{"planning"},
 			Children: []TemplateChild{
 				{Title: "Backlog grooming", Type: models.TaskTypeStory},

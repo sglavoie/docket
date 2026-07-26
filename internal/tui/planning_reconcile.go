@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -11,29 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
-
-// reconcilePlanningExclusivity applies Today/Next exclusivity to a planning
-// snapshot for exactly the transitioned tasks: a task now in StateNext leaves the
-// Daily Plan (Today), and a task that is no longer StateNext drops its stale Next
-// order-index entry. It returns true when any entry changed. It is the shared
-// reconciliation every TUI transition folds into the same durable ledger
-// transaction as the task write, so undo restores task state and planning
-// membership together.
-func reconcilePlanningExclusivity(planning *config.PlanningState, targets []app.PlanningReconcileTarget) bool {
-	changed := false
-	for _, t := range targets {
-		if t.State == models.StateNext {
-			if planning.RemoveFromDailyPlanInProject(t.TaskID, t.ProjectID) {
-				changed = true
-			}
-			continue
-		}
-		if planning.RemoveFromFocusQueueInProject(t.TaskID, t.ProjectID) {
-			changed = true
-		}
-	}
-	return changed
-}
 
 // focusQueueContains reports whether the Next order index already lists the
 // project-qualified task.
@@ -44,29 +22,6 @@ func focusQueueContains(planning *config.PlanningState, identity TaskIdentity) b
 		}
 	}
 	return false
-}
-
-// focusQueueAddArtifactBuilder renders the planning.json artifact that rides a
-// Next-queue promotion: it reconciles Today/Next exclusivity for the transitioned
-// task (dropping any Daily Plan entry) and appends the task's Next order entry, so
-// the workflow-state change, the Today drop, and the order entry all land in one
-// durable ledger transaction and undo together.
-func focusQueueAddArtifactBuilder(mgr *config.Manager, taskID, projectID string) app.PlanningArtifactBuilder {
-	if mgr == nil {
-		return nil
-	}
-	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
-		coord := mgr.DomainCoordinator()
-		planning, err := coord.LoadPlanning()
-		if err != nil {
-			return nil, err
-		}
-		reconcilePlanningExclusivity(planning, targets)
-		if !focusQueueContains(planning, TaskIdentity{ProjectID: projectID, TaskID: taskID}) {
-			planning.SetFocusQueue(append(planning.GetFocusQueue(), config.FocusQueueItem{TaskID: taskID, ProjectID: projectID}))
-		}
-		return planningDomainArtifact(mgr, planning)
-	}
 }
 
 // dailyPlanContains reports whether the Daily Plan (Today) already lists the
@@ -80,33 +35,77 @@ func dailyPlanContains(planning *config.PlanningState, identity TaskIdentity) bo
 	return false
 }
 
-// dailyPlanAddArtifactBuilder renders the planning.json artifact that rides a
-// Next-to-Today move: it reconciles Today/Next exclusivity for the transitioned
-// task (dropping the stale Next order entry now that the task has left StateNext)
-// and appends the task's Today (Daily Plan) entry, so the workflow-state change,
-// the Next order drop, and the Today insertion all land in one durable ledger
-// transaction and undo together. This is the Today-side analog of
-// focusQueueAddArtifactBuilder.
-func dailyPlanAddArtifactBuilder(mgr *config.Manager, taskID, projectID, plannedDate string) app.PlanningArtifactBuilder {
-	if mgr == nil {
-		return nil
-	}
-	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
-		coord := mgr.DomainCoordinator()
-		planning, err := coord.LoadPlanning()
+// applyTaskPlanningAction drives production mutations through Service.ApplyPlanning
+// and gives isolated in-memory UI tests the same app-owned state/invariant logic
+// without manufacturing a filesystem repository.
+func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.PlanningAction) (*models.Task, *models.Project, error) {
+	if m.appService != nil && m.configManager != nil {
+		stateChanged := false
+		if project := m.projectByID(projectID); project != nil {
+			if task := project.GetTaskByID(taskID); task != nil {
+				switch action {
+				case app.PlanningAddToday:
+					stateChanged = task.State() == models.StateInbox || task.State() == models.StateNext
+				case app.PlanningAddNext:
+					stateChanged = task.State() != models.StateNext
+				case app.PlanningRemoveNext:
+					stateChanged = task.State() == models.StateNext
+				case app.PlanningBacklog:
+					stateChanged = task.State() != models.StateReady
+				}
+			}
+		}
+		builder := runtimePlanningReconcileArtifactBuilder(m.runtime)
+		if builder == nil {
+			builder = planningReconcileArtifactBuilder(m.configManager)
+		}
+		m.appService.WithPlanningArtifacts(builder)
+		res, err := m.appService.ApplyPlanning(app.PlanningRequest{
+			Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID},
+			Action:  action,
+		})
 		if err != nil {
-			return nil, err
+			return nil, m.projectByID(projectID), err
 		}
-		reconcilePlanningExclusivity(planning, targets)
-		if !dailyPlanContains(planning, TaskIdentity{ProjectID: projectID, TaskID: taskID}) {
-			planning.SetDailyPlan(append(planning.GetDailyPlan(), config.DailyPlanItem{
-				TaskID:      taskID,
-				ProjectID:   projectID,
-				PlannedDate: plannedDate,
-			}))
+		if stateChanged {
+			m.reloadProjectByID(res.ProjectID)
 		}
-		return planningDomainArtifact(mgr, planning)
+		m.refreshRuntime()
+		m.rebuildPlanningFromRuntime()
+		if m.crossOutliner != nil {
+			m.crossOutliner.crossForceRebuild = true
+		}
+		project := m.projectByID(res.ProjectID)
+		if project == nil {
+			return nil, nil, nil
+		}
+		return project.GetTaskByID(taskID), project, nil
 	}
+
+	project := m.projectByID(projectID)
+	if project == nil {
+		project = m.currentProject
+	}
+	if project == nil {
+		return nil, nil, fmt.Errorf("planning project %s is unavailable", projectID)
+	}
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return nil, project, fmt.Errorf("planning task %s is unavailable", taskID)
+	}
+	target, _, err := app.ApplyPlanningActionToTask(
+		task, project.ID, action, time.Now().Format("2006-01-02"), time.Now(),
+	)
+	if err != nil {
+		return nil, project, err
+	}
+	if m.runtime != nil {
+		app.ReconcilePlanningState(m.runtime.Planning(), app.PlanningReconcileRequest{
+			Targets: []app.PlanningReconcileTarget{target},
+		})
+		m.rebuildPlanningFromRuntime()
+	}
+	return task, project, nil
 }
 
 // rebuildPlanningFromRuntime rebuilds the in-memory Next order index and Daily
@@ -181,6 +180,11 @@ func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
 		m.reloadProjectByID(id)
 	}
 	m.refreshRuntime()
+	if changed, reconcileErr := m.appService.ReconcilePlanning(); reconcileErr != nil {
+		return errorCmd("%s", reconcileErr)
+	} else if changed {
+		m.refreshRuntime()
+	}
 	m.rebuildPlanningFromRuntime()
 	m.setInfoStatus(fmt.Sprintf("%s: %s", verb, desc))
 	return m.queueToggleResultCmd()
@@ -195,15 +199,36 @@ func planningReconcileArtifactBuilder(mgr *config.Manager) app.PlanningArtifactB
 	if mgr == nil {
 		return nil
 	}
-	return func(targets []app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) {
+	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
 		coord := mgr.DomainCoordinator()
 		planning, err := coord.LoadPlanning()
 		if err != nil {
 			return nil, err
 		}
-		if !reconcilePlanningExclusivity(planning, targets) {
+		if !app.ReconcilePlanningState(planning, req) {
 			return nil, nil
 		}
 		return planningDomainArtifact(mgr, planning)
+	}
+}
+
+// runtimePlanningReconcileArtifactBuilder binds an interactive planning action
+// to the shell's current runtime snapshot. This keeps injected/failing runtime
+// tests honest and prevents a long-lived service from writing through a stale
+// manager after the shell switches workspace state.
+func runtimePlanningReconcileArtifactBuilder(runtime *config.RuntimeState) app.PlanningArtifactBuilder {
+	if runtime == nil {
+		return nil
+	}
+	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
+		planning := clonePlanningState(runtime.Planning())
+		if !app.ReconcilePlanningState(planning, req) {
+			return nil, nil
+		}
+		artifact, err := runtime.CheckedPlanningArtifact(planning)
+		if err != nil {
+			return nil, err
+		}
+		return []storage.ArtifactChange{artifact.StorageChange()}, nil
 	}
 }

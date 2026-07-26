@@ -182,8 +182,8 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	if first.Revision != firstReload.Revision {
 		t.Fatalf("first result revision %s != reload %s", first.Revision, firstReload.Revision)
 	}
-	if got := firstReload.SectionColors[models.SectionNext]; got != "orange" {
-		t.Fatalf("section color = %q, want orange", got)
+	if strings.Contains(firstContent, "<!-- sections:") || len(firstReload.SectionColors) != 0 {
+		t.Fatalf("canonical commit retained legacy section metadata: colors=%v\n%s", firstReload.SectionColors, firstContent)
 	}
 	if len(firstReload.Tags) != 2 || len(firstReload.PinnedTags) != 1 || firstReload.PinnedTags[0] != "beta" {
 		t.Fatalf("full metadata not preserved: tags=%v pinned=%v", firstReload.Tags, firstReload.PinnedTags)

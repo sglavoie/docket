@@ -176,6 +176,7 @@ func (m *TaskFormModel) buildDraftTaskAttrs() (
 // the task pointers for navigation, status, and open-after.
 func (m *TaskFormModel) saveCreate() tea.Cmd {
 	bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildDraftTaskAttrs()
+	state := creationStateFromLegacyInputs(m.draft.section, "", m.presetState)
 
 	// Build the subtask request list (blank titles skipped) and map the draft
 	// open-after index onto the created (non-blank) subtask index.
@@ -204,7 +205,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		Priority:           m.draft.priority,
 		Tags:               append([]string{}, m.draft.tags...),
 		Description:        strings.TrimSpace(m.draft.desc),
-		Section:            m.draft.section,
+		State:              state,
 		Recurrence:         m.draft.recurrence,
 		ParentID:           m.draft.parentID,
 		ChecklistItems:     append([]models.ChecklistItem(nil), m.draft.checklist...),
@@ -223,7 +224,6 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		TaskAttrs:          taskAttrs,
 		StoryAttrs:         storyAttrs,
 		EpicAttrs:          epicAttrs,
-		InitialState:       m.presetState,
 		PlanningArtifacts:  m.presetPlan,
 	}
 

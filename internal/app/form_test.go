@@ -10,7 +10,7 @@ import (
 
 // TestAddTaskWithChildrenCreatesParentAndSubtasks proves the task-form create use
 // case commits a parent plus its subtasks as ONE ChangeSet, parents the subtasks,
-// and inherits the parent's priority, section, and tags. A blank-title subtask is
+// and inherits the parent's priority, state, and tags. A blank-title subtask is
 // skipped.
 func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 	project := newProject("proj-1", "Proj")
@@ -23,7 +23,7 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 		Type:      models.TaskTypeEpic,
 		Priority:  2,
 		Tags:      []string{"backend"},
-		Section:   models.SectionNext,
+		State:     models.StateNext,
 		Subtasks: []app.AddSubtaskRequest{
 			{Title: "child one", Type: models.TaskTypeTask},
 			{Title: "  ", Type: models.TaskTypeTask},
@@ -77,7 +77,7 @@ func TestAddTaskWithChildrenAppliesFormFields(t *testing.T) {
 		ProjectID:     project.ID,
 		Title:         "Full task",
 		Priority:      3,
-		Section:       models.SectionNext,
+		State:         models.StateNext,
 		DueDate:       &due,
 		HasTime:       true,
 		StartDate:     &start,
@@ -134,7 +134,7 @@ func TestAddTaskWithChildrenInsertBeforeDimmed(t *testing.T) {
 	res, err := svc.AddTaskWithChildren(app.AddTaskRequest{
 		ProjectID:          project.ID,
 		Title:              "New",
-		Section:            models.SectionNext,
+		State:              models.StateNext,
 		InsertBeforeDimmed: true,
 	})
 	if err != nil {

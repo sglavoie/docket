@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestDescribeSnapshotFiltersAttrsDeterministic(t *testing.T) {
@@ -12,9 +14,9 @@ func TestDescribeSnapshotFiltersAttrsDeterministic(t *testing.T) {
 		"sprint": "42",
 		"team":   "core",
 	}
-	first := describeSnapshotFilters("", "", 0, nil, nil, 0, false, false, false, false, attrs, 0, 0, 0)
+	first := describeSnapshotFilters("", models.WorkflowStateSet{}, false, 0, nil, 0, false, false, false, false, attrs, 0, 0, 0)
 	for range 50 {
-		got := describeSnapshotFilters("", "", 0, nil, nil, 0, false, false, false, false, attrs, 0, 0, 0)
+		got := describeSnapshotFilters("", models.WorkflowStateSet{}, false, 0, nil, 0, false, false, false, false, attrs, 0, 0, 0)
 		if got != first {
 			t.Fatalf("describeSnapshotFilters output not deterministic:\nfirst: %q\ngot:   %q", first, got)
 		}
@@ -36,14 +38,14 @@ func TestDescribeSnapshotFiltersAttrsDeterministic(t *testing.T) {
 }
 
 func TestDescribeSnapshotFiltersIncludesGitHubIssue(t *testing.T) {
-	got := describeSnapshotFilters("", "", 0, nil, nil, 0, false, false, true, false, nil, 0, 0, 0)
+	got := describeSnapshotFilters("", models.WorkflowStateSet{}, false, 0, nil, 0, false, false, true, false, nil, 0, 0, 0)
 	if !strings.Contains(got, "issue") {
 		t.Fatalf("summary = %q, want issue marker", got)
 	}
 }
 
 func TestDescribeSnapshotFiltersIncludesParked(t *testing.T) {
-	got := describeSnapshotFilters("", "", 0, nil, nil, 0, false, false, false, true, nil, 0, 0, 0)
+	got := describeSnapshotFilters("", models.WorkflowStateSet{}, false, 0, nil, 0, false, false, false, true, nil, 0, 0, 0)
 	if !strings.Contains(got, "parked") {
 		t.Fatalf("summary = %q, want parked marker", got)
 	}

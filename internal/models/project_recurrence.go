@@ -11,10 +11,17 @@ import (
 
 // GenerateRecurringInstances checks for completed recurring tasks and creates
 // their next instances. Returns the number of instances generated.
-// New instances are placed in the Inbox section with status todo.
+// New instances start in StateInbox.
 func (p *Project) GenerateRecurringInstances() int {
+	return p.GenerateRecurringInstancesAt(time.Now())
+}
+
+// GenerateRecurringInstancesAt is the deterministic form of
+// GenerateRecurringInstances. Application services pass their injected clock so
+// completing the old instance and creating the next one share one mutation
+// timestamp.
+func (p *Project) GenerateRecurringInstancesAt(now time.Time) int {
 	generated := 0
-	now := time.Now()
 
 	// Collect tasks that need new instances (don't modify slice while iterating)
 	var toGenerate []*Task

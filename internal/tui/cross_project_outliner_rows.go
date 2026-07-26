@@ -26,21 +26,22 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 		projectID string
 		forest    *sectionTaskForest
 	}
-	sectionsPerProject := make(map[string][]sectionGroup)
+	groupsPerProject := make(map[models.WorkflowStateGroup][]sectionGroup)
 	for _, g := range groups {
-		for section, forest := range buildSectionTaskForests(g.tasks) {
-			sectionsPerProject[section] = append(sectionsPerProject[section], sectionGroup{
+		for group, forest := range buildSectionTaskForests(g.tasks) {
+			groupsPerProject[group] = append(groupsPerProject[group], sectionGroup{
 				projectID: g.projectID,
 				forest:    forest,
 			})
 		}
 	}
 
-	for _, sectionName := range BuildCrossProjectSectionOrder(groups) {
-		projGroups := sectionsPerProject[sectionName]
+	for _, group := range legacyAllPresentationGroupOrder() {
+		projGroups := groupsPerProject[group]
 		if len(projGroups) == 0 {
 			continue
 		}
+		sectionName := legacySectionForStateGroup(group)
 
 		// Emit ONE shared section header for all projects in this section.
 		// Per requirements, tasks from multiple projects appear under the same
@@ -63,6 +64,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 			IsSectionHeader: true,
 			SectionName:     sectionName,
 			SectionCount:    totalCount,
+			StateGroup:      group,
 			CollapseKey:     collapseKey,
 		})
 

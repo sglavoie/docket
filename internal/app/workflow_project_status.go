@@ -23,6 +23,7 @@ type WorkflowProjectStatusArtifactBuilder func([]WorkflowProjectStatusChange) ([
 // standalone workflow evaluation may need.
 type WorkflowArtifactBuilders struct {
 	ProjectStatus WorkflowProjectStatusArtifactBuilder
+	Planning      PlanningArtifactBuilder
 }
 
 func attachWorkflowProjectStatusArtifacts(

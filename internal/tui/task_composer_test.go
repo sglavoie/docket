@@ -17,7 +17,13 @@ func TestTaskComposerPresetModes(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 	parentID := task.ID
-	tmpl := &template.TaskTemplate{Name: "Bug report", Type: models.TaskTypeBug, Priority: 1, Tags: []string{"triage"}}
+	tmpl := &template.TaskTemplate{
+		Name:     "Bug report",
+		Type:     models.TaskTypeBug,
+		Priority: 1,
+		Tags:     []string{"triage"},
+		State:    models.StatePaused,
+	}
 
 	tests := []struct {
 		name       string
@@ -53,6 +59,11 @@ func TestTaskComposerPresetModes(t *testing.T) {
 	templateComposer := NewTaskComposerModel(tests[5].preset, appModel.runtime)
 	if templateComposer.expanded.draft.taskType != models.TaskTypeBug || templateComposer.expanded.draft.priority != 1 {
 		t.Fatalf("template defaults not applied: %+v", templateComposer.expanded.draft)
+	}
+	if templateComposer.expanded.presetState != models.StatePaused ||
+		templateComposer.expanded.draft.section != models.SectionStandby {
+		t.Fatalf("template state not staged exactly: state=%q section adapter=%q",
+			templateComposer.expanded.presetState, templateComposer.expanded.draft.section)
 	}
 	editComposer := NewTaskComposerModel(tests[6].preset, appModel.runtime)
 	editComposer.expanded.titleInput.SetValue("one\ntwo")
@@ -305,7 +316,7 @@ func TestTaskComposerEditEscFlowThroughTypedOverlay(t *testing.T) {
 
 func TestTaskComposerPlannerPresetCarriesStateAndAtomicArtifacts(t *testing.T) {
 	project := &models.Project{ID: "p", Name: "P"}
-	builder := app.PlanningArtifactBuilder(func([]app.PlanningReconcileTarget) ([]storage.ArtifactChange, error) { return nil, nil })
+	builder := app.PlanningArtifactBuilder(func(app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) { return nil, nil })
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:              ComposerPlanner,
 		Project:           project,
