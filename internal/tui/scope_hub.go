@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -704,6 +705,53 @@ func (m *ContextHubModel) executeScopeHubAction() tea.Cmd {
 		Value:    target,
 		HasValue: true,
 	})
+	return m.applyScopeHubExecutionResult(result)
+}
+
+// executeScopeHubBrowseAction gives the documented browse keys the same
+// item-declared availability and centralized execution path as the Space action
+// sheet. The typed target is captured before execution so an operation cannot
+// follow a cursor that moves while its handler is running.
+func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
+	entry, ok := m.selectedScopeHubEntry()
+	if !ok || m.surface == nil {
+		m.notice = "No scope item is selected"
+		return nil
+	}
+	if m.executor == nil {
+		m.notice = "Scope actions are unavailable"
+		return nil
+	}
+	result := m.surface.ExecuteAction(m.executor, OperationExecutionRequest{
+		ID:       id,
+		Context:  m.scopeHubCommandContext(),
+		Source:   OperationSourceDirectKey,
+		Value:    scopeHubTarget(entry),
+		HasValue: true,
+	})
+	if errors.Is(result.Err, ErrListActionUnavailable) {
+		m.notice = scopeHubBrowseActionUnavailableNotice(id)
+		return nil
+	}
+	return m.applyScopeHubExecutionResult(result)
+}
+
+func scopeHubBrowseActionUnavailableNotice(id OperationID) string {
+	switch id {
+	case operationScopeCreateContext:
+		return "New custom context is available only on a context row"
+	case operationScopeEditContext:
+		return "Edit membership is available only on an editable context row"
+	case operationScopeRenameContext:
+		return "Rename context is available only on an editable context row"
+	case operationScopeDeleteContext:
+		return "Delete context is available only on a deletable context row"
+	default:
+		return "That action is unavailable for this scope item"
+	}
+}
+
+func (m *ContextHubModel) applyScopeHubExecutionResult(result OperationExecutionResult) tea.Cmd {
 	if result.Err != nil {
 		m.notice = result.Err.Error()
 		return nil

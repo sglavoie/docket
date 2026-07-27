@@ -156,13 +156,13 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.surface.MoveCursorToEnd()
 		}
 	case "n":
-		m.openEditor("")
+		return m, m.executeScopeHubBrowseAction(operationScopeCreateContext)
 	case "e":
-		m.editSelected()
+		return m, m.executeScopeHubBrowseAction(operationScopeEditContext)
 	case "r":
-		m.renameSelected()
+		return m, m.executeScopeHubBrowseAction(operationScopeRenameContext)
 	case "d":
-		m.requestDeleteSelected()
+		return m, m.executeScopeHubBrowseAction(operationScopeDeleteContext)
 	case " ", "space":
 		m.openScopeHubActions()
 	case "enter":
@@ -447,6 +447,10 @@ func (m *ContextHubModel) GetHelpItems() []HelpItem {
 		{Key: "/", Description: "Search scopes, projects, and trash", Category: "Filters"},
 		{Key: "enter", Description: "Activate a base scope or project focus", Category: "Actions"},
 		{Key: "space", Description: "Open contextual administration actions", Category: "Actions"},
+		{Key: "n", Description: "Create a custom context", Category: "Actions"},
+		{Key: "e", Description: "Edit context membership", Category: "Actions"},
+		{Key: "r", Description: "Rename a context", Category: "Actions"},
+		{Key: "d", Description: "Delete a context", Category: "Actions"},
 		{Key: "esc", Description: "Return to the Outliner", Category: "Navigation"},
 	}
 }

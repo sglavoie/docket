@@ -81,6 +81,39 @@ func currentContextHubScope(hub *ContextHubModel) (ContextScope, bool) {
 	return entry.Scope, true
 }
 
+func seekContextHubScope(t *testing.T, hub *ContextHubModel, target ContextScope) {
+	t.Helper()
+	if hub == nil || hub.surface == nil {
+		t.Fatalf("cannot seek context scope %#v without a List Surface", target)
+	}
+
+	matchCount := len(hub.surface.Matches())
+	for range matchCount {
+		if scope, ok := currentContextHubScope(hub); ok && scope == target {
+			return
+		}
+
+		before, beforeOK := hub.surface.CurrentItem()
+		hub.Update(syntheticKey('j'))
+		after, afterOK := hub.surface.CurrentItem()
+		if beforeOK == afterOK && (!beforeOK || before.ID == after.ID) {
+			break
+		}
+	}
+
+	scope, scopeOK := currentContextHubScope(hub)
+	item, itemOK := hub.surface.CurrentItem()
+	t.Fatalf(
+		"context scope %#v not found after scanning at most %d List Surface matches; cursor stopped at item %q (present=%t, scope=%#v, scope row=%t)",
+		target,
+		matchCount,
+		item.ID,
+		itemOK,
+		scope,
+		scopeOK,
+	)
+}
+
 func currentContextHubSummary(hub *ContextHubModel) (ContextScopeSummary, bool) {
 	scope, ok := currentContextHubScope(hub)
 	if !ok {
@@ -299,9 +332,7 @@ func TestContextHubGroupsScopesAndPreviewsMembers(t *testing.T) {
 
 	// Moving onto the custom context must repoint the preview and surface the
 	// archived/stale counts only custom scopes can have.
-	for scope, _ := currentContextHubScope(hub); scope != CustomContextScope("focus"); scope, _ = currentContextHubScope(hub) {
-		hub.Update(syntheticKey('j'))
-	}
+	seekContextHubScope(t, hub, CustomContextScope("focus"))
 	rendered = contextHubRender(hub)
 	for _, want := range []string{
 		"Custom context · saved project group",
@@ -373,9 +404,7 @@ func TestContextHubRendersEmptyStates(t *testing.T) {
 	app.runtime.Machine().SetCustomContext("empty", nil)
 	hub := openContextHub(t, app)
 
-	for scope, _ := currentContextHubScope(hub); scope != CustomContextScope("empty"); scope, _ = currentContextHubScope(hub) {
-		hub.Update(syntheticKey('j'))
-	}
+	seekContextHubScope(t, hub, CustomContextScope("empty"))
 	if got := contextHubRender(hub); !strings.Contains(got, "No active projects in this context.") {
 		t.Fatalf("empty custom context preview missing its empty state:\n%s", got)
 	}

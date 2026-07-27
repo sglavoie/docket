@@ -2,6 +2,7 @@ package tui
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -135,6 +136,198 @@ func TestScopeHubSpaceOpensRegistryBackedContextActions(t *testing.T) {
 	}
 	if hub.editor == nil || hub.editor.originalName != "focus" {
 		t.Fatalf("rename action opened editor %#v, want focus", hub.editor)
+	}
+}
+
+func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing.T) {
+	tests := []struct {
+		name      string
+		key       rune
+		operation OperationID
+		assert    func(*testing.T, *ContextHubModel)
+	}{
+		{
+			name:      "new",
+			key:       'n',
+			operation: operationScopeCreateContext,
+			assert: func(t *testing.T, hub *ContextHubModel) {
+				t.Helper()
+				if hub.editor == nil || !hub.editor.isNew() {
+					t.Fatalf("new operation opened editor %#v", hub.editor)
+				}
+			},
+		},
+		{
+			name:      "edit",
+			key:       'e',
+			operation: operationScopeEditContext,
+			assert: func(t *testing.T, hub *ContextHubModel) {
+				t.Helper()
+				if hub.editor == nil || hub.editor.originalName != "focus" {
+					t.Fatalf("edit operation opened editor %#v", hub.editor)
+				}
+			},
+		},
+		{
+			name:      "rename",
+			key:       'r',
+			operation: operationScopeRenameContext,
+			assert: func(t *testing.T, hub *ContextHubModel) {
+				t.Helper()
+				if hub.editor == nil || hub.editor.originalName != "focus" {
+					t.Fatalf("rename operation opened editor %#v", hub.editor)
+				}
+			},
+		},
+		{
+			name:      "delete",
+			key:       'd',
+			operation: operationScopeDeleteContext,
+			assert: func(t *testing.T, hub *ContextHubModel) {
+				t.Helper()
+				if !hub.confirm.IsActive() || hub.pendingDelete != CustomContextScope("focus") {
+					t.Fatalf("delete operation armed confirm=%v target=%#v", hub.confirm.IsActive(), hub.pendingDelete)
+				}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			hub := openContextHub(t, contextHubApp(t))
+			focusScopeHubItem(t, hub, contextScopeListItemID(CustomContextScope("focus")))
+
+			registry := NewOperationRegistry()
+			descriptor := OperationDescriptor{}
+			for _, candidate := range scopeHubOperationDescriptors() {
+				if candidate.ID == tc.operation {
+					descriptor = candidate
+					break
+				}
+			}
+			if descriptor.ID == "" {
+				t.Fatalf("scope operation %s has no descriptor", tc.operation)
+			}
+			if err := registry.Register(descriptor); err != nil {
+				t.Fatalf("register scope operation: %v", err)
+			}
+
+			var invocation OperationInvocation
+			executor := NewOperationExecutor(registry)
+			if err := executor.Register(OperationBinding{
+				OperationID:          tc.operation,
+				RequiredCapabilities: NewCapabilitySet(CapabilityScopeHub),
+				Handler: func(got OperationInvocation) OperationHandlerResult {
+					invocation = got
+					focusScopeHubItem(t, hub, "scope-hub:active:beta")
+					target, _ := got.Value.(scopeHubActionTarget)
+					return OperationHandlerResult{
+						Message: scopeHubInlineActionMsg{OperationID: tc.operation, Target: target},
+					}
+				},
+				DelegateTargetResolution: true,
+				DelegateValueProvider:    true,
+				DelegateConfirmation:     true,
+				DelegateTransaction:      true,
+			}); err != nil {
+				t.Fatalf("bind scope operation: %v", err)
+			}
+			hub.SetOperationSystem(registry, executor)
+
+			hub.Update(syntheticKey(tc.key))
+
+			if invocation.Descriptor.ID != tc.operation {
+				t.Fatalf("browse key invoked %s, want %s", invocation.Descriptor.ID, tc.operation)
+			}
+			if invocation.Source != OperationSourceDirectKey {
+				t.Fatalf("invocation source = %q, want %q", invocation.Source, OperationSourceDirectKey)
+			}
+			target, ok := invocation.Value.(scopeHubActionTarget)
+			if !ok || !invocation.HasValue || target.Scope != CustomContextScope("focus") ||
+				target.ProjectID != "" || target.TrashEntryID != "" {
+				t.Fatalf("frozen invocation target = %#v/%v, want custom context focus", invocation.Value, invocation.HasValue)
+			}
+			tc.assert(t, hub)
+			if tc.operation != operationScopeCreateContext {
+				entry, ok := hub.selectedScopeHubEntry()
+				if !ok || entry.Kind != scopeHubEntryBase || entry.Scope != CustomContextScope("focus") {
+					t.Fatalf("inline action followed the moved cursor to %#v/%v", entry, ok)
+				}
+			}
+		})
+	}
+}
+
+func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testing.T) {
+	for _, row := range []struct {
+		name string
+		id   func(string) ListItemID
+	}{
+		{name: "active project", id: func(string) ListItemID { return "scope-hub:active:beta" }},
+		{name: "archived project", id: func(string) ListItemID { return "scope-hub:archived:archived" }},
+		{name: "trash", id: func(entryID string) ListItemID { return ListItemID("scope-hub:trash:" + entryID) }},
+	} {
+		for _, key := range []rune{'n', 'e', 'r', 'd'} {
+			t.Run(row.name+"/"+string(key), func(t *testing.T) {
+				app := contextHubApp(t)
+				app.runtime = testRuntimeAt(t.TempDir(), app.runtime)
+				app.crossOutliner.runtime = app.runtime
+				archived := scopeTestProject("archived", "Archived", "1")
+				archived.Slug = "archived"
+				archived.Context = "work"
+				archived.Archived = true
+				archived.Path = t.TempDir()
+				addTestAppProject(app, archived)
+
+				deleted := &models.Project{
+					ID:   "deleted-id",
+					Slug: "deleted",
+					Name: "Deleted",
+					Path: t.TempDir(),
+				}
+				entryID, err := storage.MoveProjectToTrash(
+					deleted,
+					app.runtime.DataDir(),
+					"scope hub browse key test",
+					nil,
+				)
+				if err != nil {
+					t.Fatalf("MoveProjectToTrash: %v", err)
+				}
+
+				hub := openContextHub(t, app)
+				itemID := row.id(entryID)
+				focusScopeHubItem(t, hub, itemID)
+				hub.Update(syntheticKey(key))
+
+				if hub.notice == "" {
+					t.Fatalf("%q on %s produced no notice", string(key), row.name)
+				}
+				if hub.editor != nil || hub.confirm.IsActive() {
+					t.Fatalf("%q on %s opened editor=%v confirm=%v", string(key), row.name, hub.editor != nil, hub.confirm.IsActive())
+				}
+				item, ok := hub.surface.CurrentItem()
+				if !ok || item.ID != itemID {
+					t.Fatalf("%q on %s moved cursor to %#v/%v", string(key), row.name, item, ok)
+				}
+				if rendered := hub.View().Content; !strings.Contains(rendered, hub.notice) {
+					t.Fatalf("notice %q is not visible in the rendered hub:\n%s", hub.notice, rendered)
+				}
+			})
+		}
+	}
+}
+
+func TestScopeHubHelpDocumentsEveryBrowseKey(t *testing.T) {
+	hub := openContextHub(t, contextHubApp(t))
+	keys := make(map[string]bool)
+	for _, item := range hub.GetHelpItems() {
+		keys[item.Key] = true
+	}
+	for _, key := range []string{"n", "e", "r", "d"} {
+		if !keys[key] {
+			t.Fatalf("Scope Hub help omits browse key %q: %#v", key, hub.GetHelpItems())
+		}
 	}
 }
 
