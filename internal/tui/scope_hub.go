@@ -708,10 +708,10 @@ func (m *ContextHubModel) executeScopeHubAction() tea.Cmd {
 	return m.applyScopeHubExecutionResult(result)
 }
 
-// executeScopeHubBrowseAction gives the documented browse keys the same
-// item-declared availability and centralized execution path as the Space action
-// sheet. The typed target is captured before execution so an operation cannot
-// follow a cursor that moves while its handler is running.
+// executeScopeHubBrowseAction routes every documented browse key through the
+// centralized executor with a target captured before execution. Creating a
+// context is global and therefore bypasses item-declared action availability;
+// the edit, rename, and delete actions remain gated by the selected row.
 func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 	entry, ok := m.selectedScopeHubEntry()
 	if !ok || m.surface == nil {
@@ -722,13 +722,19 @@ func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 		m.notice = "Scope actions are unavailable"
 		return nil
 	}
-	result := m.surface.ExecuteAction(m.executor, OperationExecutionRequest{
+	request := OperationExecutionRequest{
 		ID:       id,
 		Context:  m.scopeHubCommandContext(),
 		Source:   OperationSourceDirectKey,
 		Value:    scopeHubTarget(entry),
 		HasValue: true,
-	})
+	}
+	var result OperationExecutionResult
+	if id == operationScopeCreateContext {
+		result = m.executor.Execute(request)
+	} else {
+		result = m.surface.ExecuteAction(m.executor, request)
+	}
 	if errors.Is(result.Err, ErrListActionUnavailable) {
 		m.notice = scopeHubBrowseActionUnavailableNotice(id)
 		return nil
@@ -738,8 +744,6 @@ func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 
 func scopeHubBrowseActionUnavailableNotice(id OperationID) string {
 	switch id {
-	case operationScopeCreateContext:
-		return "New custom context is available only on a context row"
 	case operationScopeEditContext:
 		return "Edit membership is available only on an editable context row"
 	case operationScopeRenameContext:

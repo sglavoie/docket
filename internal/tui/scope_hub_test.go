@@ -267,7 +267,7 @@ func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testi
 		{name: "archived project", id: func(string) ListItemID { return "scope-hub:archived:archived" }},
 		{name: "trash", id: func(entryID string) ListItemID { return ListItemID("scope-hub:trash:" + entryID) }},
 	} {
-		for _, key := range []rune{'n', 'e', 'r', 'd'} {
+		for _, key := range []rune{'e', 'r', 'd'} {
 			t.Run(row.name+"/"+string(key), func(t *testing.T) {
 				app := contextHubApp(t)
 				app.runtime = testRuntimeAt(t.TempDir(), app.runtime)
@@ -315,6 +315,61 @@ func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testi
 				}
 			})
 		}
+	}
+}
+
+func TestScopeHubNewContextBrowseKeyOpensFromEveryNonContextRow(t *testing.T) {
+	for _, row := range []struct {
+		name string
+		id   func(string) ListItemID
+	}{
+		{name: "active project", id: func(string) ListItemID { return "scope-hub:active:beta" }},
+		{name: "archived project", id: func(string) ListItemID { return "scope-hub:archived:archived" }},
+		{name: "trash", id: func(entryID string) ListItemID { return ListItemID("scope-hub:trash:" + entryID) }},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			app := contextHubApp(t)
+			app.runtime = testRuntimeAt(t.TempDir(), app.runtime)
+			app.crossOutliner.runtime = app.runtime
+			archived := scopeTestProject("archived", "Archived", "1")
+			archived.Slug = "archived"
+			archived.Context = "work"
+			archived.Archived = true
+			archived.Path = t.TempDir()
+			addTestAppProject(app, archived)
+
+			deleted := &models.Project{
+				ID:   "deleted-id",
+				Slug: "deleted",
+				Name: "Deleted",
+				Path: t.TempDir(),
+			}
+			entryID, err := storage.MoveProjectToTrash(
+				deleted,
+				app.runtime.DataDir(),
+				"scope hub browse key test",
+				nil,
+			)
+			if err != nil {
+				t.Fatalf("MoveProjectToTrash: %v", err)
+			}
+
+			hub := openContextHub(t, app)
+			itemID := row.id(entryID)
+			focusScopeHubItem(t, hub, itemID)
+			hub.Update(syntheticKey('n'))
+
+			if hub.editor == nil || !hub.editor.isNew() {
+				t.Fatalf("n on %s opened editor %#v", row.name, hub.editor)
+			}
+			if hub.notice != "" {
+				t.Fatalf("n on %s produced notice %q", row.name, hub.notice)
+			}
+			item, ok := hub.surface.CurrentItem()
+			if !ok || item.ID != itemID {
+				t.Fatalf("n on %s moved cursor to %#v/%v", row.name, item, ok)
+			}
+		})
 	}
 }
 
