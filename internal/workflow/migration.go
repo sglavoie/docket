@@ -34,6 +34,8 @@ const (
 	legacySectionReview                        = "Review"
 	legacySectionSomeday                       = "Someday"
 	legacySectionCompleted                     = "Completed"
+	legacySectionArchive                       = "Archive"
+	legacyDefaultArchiveRuleID                 = "def-archive"
 )
 
 var legacyStatusValues = []string{
@@ -111,7 +113,20 @@ func migrateLegacyLifecycleRule(rule WorkflowRule) (WorkflowRule, bool, error) {
 		changed = flatChanged || changed
 	}
 	for i := range cloned.Actions {
-		action, actionChanged, migrateErr := migrateLegacyAction(cloned.Actions[i])
+		legacyAction := cloned.Actions[i]
+		// The shipped v3 def-archive rule routed completed tasks into a custom
+		// "Archive" section. Canonical v4 has no custom workflow sections; the
+		// current rule with this stable ID keeps completed tasks in Done.
+		// Restrict the rewrite to the exact built-in rule so a user-authored
+		// custom-section action is never reinterpreted as task completion.
+		if cloned.ID == legacyDefaultArchiveRuleID &&
+			cloned.Source == "default" &&
+			legacyAction.ActionType == legacyActionSetSection &&
+			strings.EqualFold(strings.TrimSpace(legacyAction.Value), legacySectionArchive) {
+			legacyAction.ActionType = legacyActionSetStatus
+			legacyAction.Value = legacyStatusDone
+		}
+		action, actionChanged, migrateErr := migrateLegacyAction(legacyAction)
 		if migrateErr != nil {
 			return WorkflowRule{}, false, fmt.Errorf("action %d: %w", i, migrateErr)
 		}

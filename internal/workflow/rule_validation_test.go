@@ -185,6 +185,58 @@ func TestWorkflowRuleJSONRetainsLegacyDecodeAndWritesCanonicalRules(t *testing.T
 	}
 }
 
+func TestLegacyDefaultArchiveRuleMigratesToDone(t *testing.T) {
+	legacyJSON := `{
+		"id":"def-archive",
+		"name":"Archive Completed",
+		"enabled":true,
+		"source":"default",
+		"trigger":{"field":"completed","operation":"equals","value":"true"},
+		"actions":[{"action_type":"set_section","value":"Archive"}],
+		"trigger_count":393
+	}`
+	var legacy WorkflowRule
+	if err := json.Unmarshal([]byte(legacyJSON), &legacy); err != nil {
+		t.Fatalf("decode legacy default archive rule: %v", err)
+	}
+
+	migrated, changed, err := MigrateLegacyLifecycleRules([]WorkflowRule{legacy})
+	if err != nil || !changed || len(migrated) != 1 {
+		t.Fatalf("default archive migration = %#v, changed=%v, err=%v", migrated, changed, err)
+	}
+	got := migrated[0]
+	if got.ID != legacy.ID || got.Name != legacy.Name || got.Source != legacy.Source ||
+		got.Enabled != legacy.Enabled || got.TriggerCount != legacy.TriggerCount {
+		t.Fatalf("default archive metadata changed: got %#v, want metadata from %#v", got, legacy)
+	}
+	if len(got.Actions) != 1 || got.Actions[0] != (RuleAction{
+		ActionType: ActionSetState,
+		Value:      string(models.StateDone),
+	}) {
+		t.Fatalf("default archive action = %#v, want set_state done", got.Actions)
+	}
+}
+
+func TestCustomArchiveSectionActionRemainsUnrepresentable(t *testing.T) {
+	legacyJSON := `{
+		"id":"custom-archive",
+		"name":"Custom Archive",
+		"enabled":true,
+		"source":"custom",
+		"trigger":{"field":"completed","operation":"equals","value":"true"},
+		"actions":[{"action_type":"set_section","value":"Archive"}]
+	}`
+	var legacy WorkflowRule
+	if err := json.Unmarshal([]byte(legacyJSON), &legacy); err != nil {
+		t.Fatalf("decode custom archive rule: %v", err)
+	}
+
+	if _, _, err := MigrateLegacyLifecycleRules([]WorkflowRule{legacy}); err == nil ||
+		!strings.Contains(err.Error(), `unknown legacy task section "Archive"`) {
+		t.Fatalf("custom archive migration error = %v, want unrepresentable section error", err)
+	}
+}
+
 func TestDefaultRulesUseCanonicalLifecycleVocabulary(t *testing.T) {
 	for _, rule := range GetDefaultRules() {
 		if err := rule.Validate(); err != nil {

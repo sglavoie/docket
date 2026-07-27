@@ -33,7 +33,10 @@ func legacySectionColorGroups(value string) ([]models.WorkflowStateGroup, bool) 
 }
 
 // decodeLegacySectionColors accepts the v3 registry and seeds canonical
-// state_group_colors. Explicit canonical entries win mixed payloads.
+// state_group_colors. Explicit canonical entries win mixed payloads. Custom
+// section colors are intentionally discarded: custom workflow sections have no
+// canonical v4 equivalent, so their presentation-only colors cannot be
+// migrated.
 func (s *Settings) decodeLegacySectionColors(data []byte) error {
 	var wire struct {
 		Colors map[string]string `json:"section_colors"`
@@ -46,7 +49,7 @@ func (s *Settings) decodeLegacySectionColors(data []byte) error {
 	for value, color := range wire.Colors {
 		groups, ok := legacySectionColorGroups(value)
 		if !ok {
-			return fmt.Errorf("settings: cannot migrate unknown legacy color key %q", value)
+			continue
 		}
 		if color == "" {
 			color = "gray"

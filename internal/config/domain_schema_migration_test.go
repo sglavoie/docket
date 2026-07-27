@@ -44,6 +44,10 @@ func TestSplitDomainV3ToV4MigrationIsAtomicLosslessAndIdempotent(t *testing.T) {
 			"Active":    "red",
 			"Completed": "green",
 			"Waiting":   "yellow",
+			// Custom workflow sections were presentation-only. Their colors
+			// have no canonical v4 destination and are discarded.
+			"New":      "yellow",
+			"Features": "purple",
 		},
 		"state_group_colors": map[string]string{
 			string(models.StateGroupBacklog): "blue",
