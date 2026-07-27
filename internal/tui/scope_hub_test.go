@@ -373,6 +373,78 @@ func TestScopeHubNewContextBrowseKeyOpensFromEveryNonContextRow(t *testing.T) {
 	}
 }
 
+func TestScopeHubNewContextBrowseKeyOpensWithoutVisibleRows(t *testing.T) {
+	hub := openContextHub(t, contextHubApp(t))
+
+	registry := NewOperationRegistry()
+	var descriptor OperationDescriptor
+	for _, candidate := range scopeHubOperationDescriptors() {
+		if candidate.ID == operationScopeCreateContext {
+			descriptor = candidate
+			break
+		}
+	}
+	if descriptor.ID == "" {
+		t.Fatal("create-context operation has no descriptor")
+	}
+	if err := registry.Register(descriptor); err != nil {
+		t.Fatalf("register create-context operation: %v", err)
+	}
+
+	var invocation OperationInvocation
+	executor := NewOperationExecutor(registry)
+	if err := executor.Register(OperationBinding{
+		OperationID:          operationScopeCreateContext,
+		RequiredCapabilities: NewCapabilitySet(CapabilityScopeHub),
+		Handler: func(got OperationInvocation) OperationHandlerResult {
+			invocation = got
+			target, _ := got.Value.(scopeHubActionTarget)
+			return OperationHandlerResult{
+				Message: scopeHubInlineActionMsg{
+					OperationID: operationScopeCreateContext,
+					Target:      target,
+				},
+			}
+		},
+		DelegateTargetResolution: true,
+		DelegateValueProvider:    true,
+		DelegateConfirmation:     true,
+		DelegateTransaction:      true,
+	}); err != nil {
+		t.Fatalf("bind create-context operation: %v", err)
+	}
+	hub.SetOperationSystem(registry, executor)
+
+	hub.Update(syntheticKey('/'))
+	typeIntoContextHub(hub, "nothing-matches")
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if hub.HasTextInput() || hub.SearchQuery() != "nothing-matches" {
+		t.Fatalf("search was not confirmed with its query retained: input=%v query=%q", hub.HasTextInput(), hub.SearchQuery())
+	}
+	if matches := hub.surface.Matches(); len(matches) != 0 {
+		t.Fatalf("confirmed no-match search kept %d visible rows", len(matches))
+	}
+
+	hub.Update(syntheticKey('n'))
+
+	if invocation.Descriptor.ID != operationScopeCreateContext {
+		t.Fatalf("n invoked %s, want %s", invocation.Descriptor.ID, operationScopeCreateContext)
+	}
+	if invocation.Source != OperationSourceDirectKey {
+		t.Fatalf("invocation source = %q, want %q", invocation.Source, OperationSourceDirectKey)
+	}
+	target, ok := invocation.Value.(scopeHubActionTarget)
+	if !ok || !invocation.HasValue || target != (scopeHubActionTarget{}) {
+		t.Fatalf("no-row invocation target = %#v/%v, want empty scope target", invocation.Value, invocation.HasValue)
+	}
+	if hub.editor == nil || !hub.editor.isNew() {
+		t.Fatalf("n with no visible rows opened editor %#v", hub.editor)
+	}
+	if hub.notice != "" {
+		t.Fatalf("n with no visible rows produced notice %q", hub.notice)
+	}
+}
+
 func TestScopeHubHelpDocumentsEveryBrowseKey(t *testing.T) {
 	hub := openContextHub(t, contextHubApp(t))
 	keys := make(map[string]bool)

@@ -710,11 +710,12 @@ func (m *ContextHubModel) executeScopeHubAction() tea.Cmd {
 
 // executeScopeHubBrowseAction routes every documented browse key through the
 // centralized executor with a target captured before execution. Creating a
-// context is global and therefore bypasses item-declared action availability;
-// the edit, rename, and delete actions remain gated by the selected row.
+// context is global and therefore works with an empty target when no row is
+// visible; the edit, rename, and delete actions remain gated by the selected
+// row.
 func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 	entry, ok := m.selectedScopeHubEntry()
-	if !ok || m.surface == nil {
+	if id != operationScopeCreateContext && (!ok || m.surface == nil) {
 		m.notice = "No scope item is selected"
 		return nil
 	}
@@ -722,11 +723,15 @@ func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 		m.notice = "Scope actions are unavailable"
 		return nil
 	}
+	target := scopeHubActionTarget{}
+	if ok {
+		target = scopeHubTarget(entry)
+	}
 	request := OperationExecutionRequest{
 		ID:       id,
 		Context:  m.scopeHubCommandContext(),
 		Source:   OperationSourceDirectKey,
-		Value:    scopeHubTarget(entry),
+		Value:    target,
 		HasValue: true,
 	}
 	var result OperationExecutionResult
