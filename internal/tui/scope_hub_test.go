@@ -15,7 +15,6 @@ func focusScopeHubItem(t *testing.T, hub *ContextHubModel, id ListItemID) {
 	if hub.surface == nil || !hub.surface.SetCursorToID(id) {
 		t.Fatalf("scope hub omitted item %q", id)
 	}
-	hub.cursor = hub.surface.Cursor()
 }
 
 func scopeHubActionIDs(hub *ContextHubModel) []OperationID {
@@ -173,6 +172,34 @@ func TestScopeHubTrashActionsPreserveRestoreAndPurgeSafety(t *testing.T) {
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if !hub.confirm.IsActive() || hub.confirm.Action() != scopeHubConfirmPurge {
 		t.Fatal("purge did not arm the explicit irreversible confirmation")
+	}
+}
+
+func TestScopeHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
+	app := contextHubApp(t)
+	hub := openContextHub(t, app)
+	if hub.registry != app.operationRegistry || hub.executor != app.operationExecutor {
+		t.Fatal("Scope Hub did not receive the production operation system")
+	}
+
+	focusScopeHubItem(t, hub, "scope-hub:active:beta")
+	hub.Update(syntheticKey(' '))
+	if hub.actions == nil {
+		t.Fatal("Space did not freeze the project action target")
+	}
+	if !hub.actions.surface.SetCursorToID(ListItemID("scope-hub-action:" + string(operationScopeRenameProject))) {
+		t.Fatal("rename action was not selectable")
+	}
+
+	alpha := app.projectByID("alpha")
+	setTestAppProjects(app, alpha)
+	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("stale project action emitted no error message")
+	}
+	msg, ok := cmd().(ErrorMsg)
+	if !ok || msg.Err == nil || msg.Err.Error() != "scope action target is no longer available" {
+		t.Fatalf("stale project action emitted %#v, want the production ErrorMsg", cmd())
 	}
 }
 

@@ -29,10 +29,7 @@ type ContextHubModel struct {
 	runtime          *config.RuntimeState
 	mutator          *ContextMutator
 	summaries        []ContextScopeSummary
-	filtered         []ContextScopeSummary
 	active           ContextScope
-	cursor           int
-	scroll           int
 	taskCounts       map[string]int
 	surface          *ListSurfaceModel
 	actions          *scopeHubActionSheet
@@ -64,7 +61,6 @@ func NewContextHubModel(runtime *config.RuntimeState, manager *config.Manager, s
 		active:    active,
 	}
 	m.InitSearchInput("Search contexts and projects", 64, 32)
-	m.filtered = m.summaries
 	m.rebuildScopeSurface(contextScopeListItemID(active))
 	return m
 }
@@ -134,7 +130,6 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if model, cmd, handled := m.HandleSearchMode(key, m, m.applyFilter); handled {
 		return model, cmd
 	}
-	m.syncScopeSurfaceCursorFromLegacy()
 	m.notice = ""
 	switch key.String() {
 	case "/":
@@ -145,17 +140,21 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.applyFilter()
 		}
 	case "j", "down":
-		m.setCursor(m.cursor + 1)
-	case "k", "up":
-		m.setCursor(m.cursor - 1)
-	case "g", "home":
-		m.setCursor(0)
-	case "G", "end":
-		last := len(m.filtered) - 1
 		if m.surface != nil {
-			last = len(m.surface.Matches()) - 1
+			m.surface.MoveCursor(1)
 		}
-		m.setCursor(last)
+	case "k", "up":
+		if m.surface != nil {
+			m.surface.MoveCursor(-1)
+		}
+	case "g", "home":
+		if m.surface != nil {
+			m.surface.MoveCursorToStart()
+		}
+	case "G", "end":
+		if m.surface != nil {
+			m.surface.MoveCursorToEnd()
+		}
 	case "n":
 		m.openEditor("")
 	case "e":
@@ -182,78 +181,15 @@ func (m *ContextHubModel) SetSize(width, height int) {
 	}
 }
 
-func (m *ContextHubModel) setCursor(index int) {
-	if m.surface == nil {
-		m.cursor = min(max(index, 0), max(len(m.filtered)-1, 0))
-		return
-	}
-	matches := m.surface.Matches()
-	if len(matches) == 0 {
-		m.cursor = -1
-		return
-	}
-	index = min(max(index, 0), len(matches)-1)
-	m.surface.SetCursorToID(matches[index].Item.ID)
-	m.cursor = m.surface.Cursor()
-}
-
-// applyFilter narrows the browse list to the scopes whose own name or whose
-// member project names match the query, keeping the highlighted scope selected
-// when it survives the filter.
+// applyFilter delegates query ranking and stable cursor preservation to the
+// shared List Surface.
 func (m *ContextHubModel) applyFilter() {
-	var selected ContextScope
-	hadSelection := m.cursor >= 0 && m.cursor < len(m.filtered)
-	if hadSelection {
-		selected = m.filtered[m.cursor].Scope
-	}
-
-	query := strings.ToLower(strings.TrimSpace(m.SearchQuery()))
-	if query == "" {
-		m.filtered = m.summaries
-	} else {
-		filtered := make([]ContextScopeSummary, 0, len(m.summaries))
-		for _, summary := range m.summaries {
-			if m.scopeMatches(summary.Scope, query) {
-				filtered = append(filtered, summary)
-			}
-		}
-		m.filtered = filtered
-	}
-
 	if m.surface != nil {
 		m.surface.SetQuery(m.SearchQuery())
-		m.cursor = m.surface.Cursor()
-	} else {
-		m.cursor = 0
 	}
-	m.scroll = 0
-	if !hadSelection {
-		return
-	}
-	for i, summary := range m.filtered {
-		if summary.Scope == selected {
-			if m.surface == nil {
-				m.cursor = i
-			}
-			return
-		}
-	}
-}
-
-func (m *ContextHubModel) scopeMatches(scope ContextScope, query string) bool {
-	if strings.Contains(strings.ToLower(contextScopeDisplayName(scope)), query) {
-		return true
-	}
-	for _, project := range scope.Projects(m.runtime) {
-		if project != nil && strings.Contains(strings.ToLower(project.Name), query) {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *ContextHubModel) View() tea.View {
-	m.syncScopeSurfaceCursorFromLegacy()
 	width := max(m.width, 1)
 	height := max(m.height, 1)
 
@@ -366,7 +302,7 @@ func (m *ContextHubModel) renderSearchBar() string {
 	case m.HasActiveSearch():
 		return "/" + m.SearchInputView()
 	case m.SearchQuery() != "":
-		matches := len(m.filtered)
+		matches := 0
 		if m.surface != nil {
 			matches = len(m.surface.Matches())
 		}

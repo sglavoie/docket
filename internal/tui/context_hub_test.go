@@ -53,11 +53,45 @@ func contextHubRender(hub *ContextHubModel) string {
 }
 
 func contextHubScopes(hub *ContextHubModel) []ContextScope {
-	scopes := make([]ContextScope, 0, len(hub.filtered))
-	for _, summary := range hub.filtered {
-		scopes = append(scopes, summary.Scope)
+	scopes := make([]ContextScope, 0)
+	if hub == nil || hub.surface == nil {
+		return scopes
+	}
+	for _, match := range hub.surface.Matches() {
+		entry, ok := match.Item.Data.(scopeHubEntry)
+		if ok && entry.Kind == scopeHubEntryBase {
+			scopes = append(scopes, entry.Scope)
+		}
 	}
 	return scopes
+}
+
+func currentContextHubScope(hub *ContextHubModel) (ContextScope, bool) {
+	if hub == nil || hub.surface == nil {
+		return ContextScope{}, false
+	}
+	item, ok := hub.surface.CurrentItem()
+	if !ok {
+		return ContextScope{}, false
+	}
+	entry, ok := item.Data.(scopeHubEntry)
+	if !ok || entry.Kind != scopeHubEntryBase {
+		return ContextScope{}, false
+	}
+	return entry.Scope, true
+}
+
+func currentContextHubSummary(hub *ContextHubModel) (ContextScopeSummary, bool) {
+	scope, ok := currentContextHubScope(hub)
+	if !ok {
+		return ContextScopeSummary{}, false
+	}
+	for _, summary := range hub.summaries {
+		if summary.Scope == scope {
+			return summary, true
+		}
+	}
+	return ContextScopeSummary{}, false
 }
 
 func typeIntoContextHub(hub *ContextHubModel, text string) {
@@ -72,13 +106,10 @@ var contextHubSaveKey = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 
 func focusContextHubScope(t *testing.T, hub *ContextHubModel, scope ContextScope) {
 	t.Helper()
-	for i, summary := range hub.filtered {
-		if summary.Scope == scope {
-			hub.cursor = i
-			return
-		}
+	if hub.surface != nil && hub.surface.SetCursorToID(contextScopeListItemID(scope)) {
+		return
 	}
-	t.Fatalf("context hub omitted %#v: %#v", scope, hub.filtered)
+	t.Fatalf("context hub omitted %#v from List Surface matches %#v", scope, contextHubScopes(hub))
 }
 
 // checkEditorProject moves the editor's project cursor onto id and toggles it.
@@ -162,16 +193,7 @@ func TestManageHubContextSelectionAppliesOutlinerScope(t *testing.T) {
 			app.handleContextMessages(ShowContextHubMsg{})
 			hub := contextHubModuleView(t, app)
 
-			hub.cursor = -1
-			for i, summary := range hub.summaries {
-				if summary.Scope == tc.want {
-					hub.cursor = i
-					break
-				}
-			}
-			if hub.cursor < 0 {
-				t.Fatalf("context hub omitted %#v: %#v", tc.want, hub.summaries)
-			}
+			focusContextHubScope(t, hub, tc.want)
 
 			_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 			if cmd == nil {
@@ -205,8 +227,8 @@ func TestManageHubContextsRendersEveryScopeWithCounts(t *testing.T) {
 	if hub.active != RegularContextScope("work") {
 		t.Fatalf("hub active context = %#v, want the Outliner's live scope", hub.active)
 	}
-	if hub.summaries[hub.cursor].Scope != RegularContextScope("work") {
-		t.Fatalf("cursor started on %#v, want the active context", hub.summaries[hub.cursor].Scope)
+	if scope, ok := currentContextHubScope(hub); !ok || scope != RegularContextScope("work") {
+		t.Fatalf("cursor started on %#v/%v, want the active context", scope, ok)
 	}
 
 	rendered := strings.Join(strings.Fields(ansi.Strip(hub.View().Content)), " ")
@@ -277,7 +299,7 @@ func TestContextHubGroupsScopesAndPreviewsMembers(t *testing.T) {
 
 	// Moving onto the custom context must repoint the preview and surface the
 	// archived/stale counts only custom scopes can have.
-	for hub.filtered[hub.cursor].Scope != CustomContextScope("focus") {
+	for scope, _ := currentContextHubScope(hub); scope != CustomContextScope("focus"); scope, _ = currentContextHubScope(hub) {
 		hub.Update(syntheticKey('j'))
 	}
 	rendered = contextHubRender(hub)
@@ -308,7 +330,7 @@ func TestContextHubGroupsScopesAndPreviewsMembers(t *testing.T) {
 // axes the session names, and that clearing it restores the full list.
 func TestContextHubSearchMatchesContextAndProjectNames(t *testing.T) {
 	hub := openContextHub(t, contextHubApp(t))
-	all := len(hub.filtered)
+	all := len(contextHubScopes(hub))
 
 	hub.Update(syntheticKey('/'))
 	if !hub.HasTextInput() {
@@ -338,8 +360,8 @@ func TestContextHubSearchMatchesContextAndProjectNames(t *testing.T) {
 		t.Fatal("a live query must keep Esc inside the hub so it clears the search first")
 	}
 	hub.Update(syntheticSpecialKey(tea.KeyEscape))
-	if hub.SearchQuery() != "" || len(hub.filtered) != all {
-		t.Fatalf("Esc left query=%q with %d of %d scopes", hub.SearchQuery(), len(hub.filtered), all)
+	if hub.SearchQuery() != "" || len(contextHubScopes(hub)) != all {
+		t.Fatalf("Esc left query=%q with %d of %d scopes", hub.SearchQuery(), len(contextHubScopes(hub)), all)
 	}
 }
 
@@ -351,7 +373,7 @@ func TestContextHubRendersEmptyStates(t *testing.T) {
 	app.runtime.Machine().SetCustomContext("empty", nil)
 	hub := openContextHub(t, app)
 
-	for hub.filtered[hub.cursor].Scope != CustomContextScope("empty") {
+	for scope, _ := currentContextHubScope(hub); scope != CustomContextScope("empty"); scope, _ = currentContextHubScope(hub) {
 		hub.Update(syntheticKey('j'))
 	}
 	if got := contextHubRender(hub); !strings.Contains(got, "No active projects in this context.") {
@@ -360,8 +382,8 @@ func TestContextHubRendersEmptyStates(t *testing.T) {
 
 	hub.Update(syntheticKey('/'))
 	typeIntoContextHub(hub, "nothing-matches")
-	if len(hub.filtered) != 0 {
-		t.Fatalf("unmatched search kept %d scopes", len(hub.filtered))
+	if matches := hub.surface.Matches(); len(matches) != 0 {
+		t.Fatalf("unmatched search kept %d List Surface matches", len(matches))
 	}
 	if got := contextHubRender(hub); !strings.Contains(got, "No contexts match") {
 		t.Fatalf("unmatched search missing its empty state:\n%s", got)
@@ -393,16 +415,7 @@ func TestContextHubApplyUpdatesOutlinerRows(t *testing.T) {
 			app.crossOutliner.applyContextScope(tc.seed)
 			hub := openContextHub(t, app)
 
-			hub.cursor = -1
-			for i, summary := range hub.filtered {
-				if summary.Scope == tc.want {
-					hub.cursor = i
-					break
-				}
-			}
-			if hub.cursor < 0 {
-				t.Fatalf("context hub omitted %#v: %#v", tc.want, hub.filtered)
-			}
+			focusContextHubScope(t, hub, tc.want)
 
 			loaded := app.crossOutliner.loadedProjects
 			_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -475,8 +488,8 @@ func TestContextHubCreatesCustomContext(t *testing.T) {
 	if got := app.runtime.Machine().GetCustomContext("ship"); !slices.Equal(got, []string{"beta"}) {
 		t.Fatalf("committed membership = %v, want [beta]", got)
 	}
-	if hub.filtered[hub.cursor].Scope != CustomContextScope("ship") {
-		t.Fatalf("cursor parked on %#v, want the context just saved", hub.filtered[hub.cursor].Scope)
+	if scope, ok := currentContextHubScope(hub); !ok || scope != CustomContextScope("ship") {
+		t.Fatalf("cursor parked on %#v/%v, want the context just saved", scope, ok)
 	}
 }
 
@@ -577,7 +590,10 @@ func TestContextHubEditPreservesSandboxAndInternalMembers(t *testing.T) {
 
 	hub := openContextHub(t, app)
 	focusContextHubScope(t, hub, CustomContextScope("focus"))
-	summary := hub.filtered[hub.cursor]
+	summary, ok := currentContextHubSummary(hub)
+	if !ok {
+		t.Fatal("List Surface cursor did not resolve a context summary")
+	}
 	if summary.ActiveProjectCount != 1 || summary.HiddenProjectCount != 2 {
 		t.Fatalf("summary = %+v, want active=1 hidden=2", summary)
 	}

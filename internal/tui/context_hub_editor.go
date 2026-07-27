@@ -399,10 +399,11 @@ func (m *ContextHubModel) refreshScopes(prefer ContextScope) {
 }
 
 func (m *ContextHubModel) selectedScope() (ContextScope, bool) {
-	if m.cursor < 0 || m.cursor >= len(m.filtered) {
+	entry, ok := m.selectedScopeHubEntry()
+	if !ok || entry.Kind != scopeHubEntryBase {
 		return ContextScope{}, false
 	}
-	return m.filtered[m.cursor].Scope, true
+	return entry.Scope, true
 }
 
 // editSelected opens the membership editor for either context kind. All is the

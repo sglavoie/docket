@@ -204,14 +204,6 @@ func (m *AppModel) scopeHubOperationMessage(id OperationID, target scopeHubActio
 	return ErrorMsg{Err: fmt.Errorf("scope action target is no longer available")}
 }
 
-func localScopeHubOperationRegistry() *OperationRegistry {
-	registry := NewOperationRegistry()
-	for _, descriptor := range scopeHubOperationDescriptors() {
-		_ = registry.Register(descriptor)
-	}
-	return registry
-}
-
 func (m *ContextHubModel) SetOperationSystem(registry *OperationRegistry, executor *OperationExecutor) {
 	m.registry = registry
 	m.executor = executor
@@ -223,13 +215,6 @@ func (m *ContextHubModel) SetProjectFocus(projectID string) {
 	}
 	m.focusedProjectID = projectID
 	m.rebuildScopeSurface(m.currentScopeHubItemID())
-}
-
-func (m *ContextHubModel) scopeHubRegistry() *OperationRegistry {
-	if m.registry != nil {
-		return m.registry
-	}
-	return localScopeHubOperationRegistry()
 }
 
 func (m *ContextHubModel) scopeHubCommandContext() CommandContext {
@@ -287,23 +272,6 @@ func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 	if prefer != "" {
 		m.surface.SetCursorToID(prefer)
 	}
-	m.cursor = m.surface.Cursor()
-	m.refreshLegacyFilteredScopes()
-}
-
-func (m *ContextHubModel) refreshLegacyFilteredScopes() {
-	query := strings.ToLower(strings.TrimSpace(m.SearchQuery()))
-	if query == "" {
-		m.filtered = m.summaries
-		return
-	}
-	filtered := make([]ContextScopeSummary, 0, len(m.summaries))
-	for _, summary := range m.summaries {
-		if m.scopeMatches(summary.Scope, query) {
-			filtered = append(filtered, summary)
-		}
-	}
-	m.filtered = filtered
 }
 
 func (m *ContextHubModel) scopeHubItems(trash []storage.TrashEntry) []ListItem {
@@ -514,19 +482,7 @@ func (m *ContextHubModel) scopeHubLifecycleCounts() (active, archived, trash int
 	return active, archived, trash
 }
 
-func (m *ContextHubModel) syncScopeSurfaceCursorFromLegacy() {
-	if m.surface == nil || m.cursor < 0 || m.cursor == m.surface.Cursor() {
-		return
-	}
-	matches := m.surface.Matches()
-	if m.cursor >= len(matches) {
-		return
-	}
-	m.surface.SetCursorToID(matches[m.cursor].Item.ID)
-}
-
 func (m *ContextHubModel) selectedScopeHubEntry() (scopeHubEntry, bool) {
-	m.syncScopeSurfaceCursorFromLegacy()
 	if m.surface == nil {
 		return scopeHubEntry{}, false
 	}
@@ -583,7 +539,7 @@ func (m *ContextHubModel) openScopeHubActions() {
 		return
 	}
 	state := m.surface.ActionState()
-	descriptors, err := state.Descriptors(m.scopeHubRegistry(), m.scopeHubCommandContext())
+	descriptors, err := state.Descriptors(m.registry, m.scopeHubCommandContext())
 	if err != nil {
 		m.notice = err.Error()
 		return
@@ -737,23 +693,22 @@ func (m *ContextHubModel) executeScopeHubAction() tea.Cmd {
 	target := m.actions.target
 	m.actions = nil
 
-	var message tea.Msg
-	if m.executor != nil {
-		result := m.executor.Execute(OperationExecutionRequest{
-			ID:       descriptor.ID,
-			Context:  m.scopeHubCommandContext(),
-			Source:   OperationSourceActionSheet,
-			Value:    target,
-			HasValue: true,
-		})
-		if result.Err != nil {
-			m.notice = result.Err.Error()
-			return nil
-		}
-		message = result.AsMessage()
-	} else {
-		message = m.localScopeHubOperationMessage(descriptor.ID, target)
+	if m.executor == nil {
+		m.notice = "Scope actions are unavailable"
+		return nil
 	}
+	result := m.executor.Execute(OperationExecutionRequest{
+		ID:       descriptor.ID,
+		Context:  m.scopeHubCommandContext(),
+		Source:   OperationSourceActionSheet,
+		Value:    target,
+		HasValue: true,
+	})
+	if result.Err != nil {
+		m.notice = result.Err.Error()
+		return nil
+	}
+	message := result.AsMessage()
 	if inline, ok := message.(scopeHubInlineActionMsg); ok {
 		m.applyScopeHubInlineAction(inline)
 		return nil
@@ -762,39 +717,6 @@ func (m *ContextHubModel) executeScopeHubAction() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg { return message }
-}
-
-func (m *ContextHubModel) localScopeHubOperationMessage(id OperationID, target scopeHubActionTarget) tea.Msg {
-	var project *models.Project
-	if target.ProjectID != "" {
-		project = m.runtime.GetProject(target.ProjectID)
-	}
-	switch id {
-	case operationScopeCreateContext,
-		operationScopeEditContext,
-		operationScopeRenameContext,
-		operationScopeDeleteContext,
-		operationScopePurgeTrash:
-		return scopeHubInlineActionMsg{OperationID: id, Target: target}
-	case operationScopeCreateProject:
-		return CreateProjectMsg{}
-	case operationScopeRenameProject:
-		return EditProjectMsg{Project: project}
-	case operationScopeStatusProject:
-		return ShowStatusIconPickerMsg{Project: project}
-	case operationScopePinProject:
-		return ProjectPinRequestMsg{Project: project, Pinned: project != nil && !project.Pinned}
-	case operationScopeArchiveProject:
-		return ProjectArchiveRequestMsg{Project: project, Archive: true}
-	case operationScopeRestoreProject:
-		return ProjectArchiveRequestMsg{Project: project, Archive: false}
-	case operationScopeOpenProjectNote:
-		return ShowNotesMsg{Project: project}
-	case operationScopeRestoreTrash:
-		return RestoreFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
-	default:
-	}
-	return nil
 }
 
 func (m *ContextHubModel) applyScopeHubInlineAction(msg scopeHubInlineActionMsg) {
@@ -827,17 +749,6 @@ func (m *ContextHubModel) applyScopeHubInlineAction(msg scopeHubInlineActionMsg)
 func (m *ContextHubModel) focusScopeHubContext(scope ContextScope) {
 	if m.surface != nil {
 		m.surface.SetCursorToID(contextScopeListItemID(scope))
-		m.cursor = m.surface.Cursor()
-	}
-	for index, summary := range m.filtered {
-		if summary.Scope == scope {
-			// Direct-action compatibility tests still inspect this cursor against
-			// filtered context summaries.
-			if m.surface == nil {
-				m.cursor = index
-			}
-			return
-		}
 	}
 }
 
